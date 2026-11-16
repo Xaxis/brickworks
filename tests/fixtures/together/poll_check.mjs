@@ -266,7 +266,13 @@ async function refused() {
 }
 
 // The database's requests logged from [from], each [what, ms after from].
-const loggedSince = (from) => store.log.filter(([, at]) => at >= from).map(([what, at]) => [what, at - from]);
+// A request logged as [what, ms since from, how long this process was held
+// in the 20 ms before it]: a poll's request reaches this log by code that
+// never waits, so all a held process can do to its time is make it later
+// than the poll asked (pollreads: two reads of the changes 96 ms apart under
+// heavy, the first held 4 ms on its way).
+const logged = (from) => ([what, at]) => [what, at - from, stalledIn(at - 20, at)];
+const loggedSince = (from) => store.log.filter(([, at]) => at >= from).map(logged(from));
 
 async function reads(stream, slow = false) {
   reset();
@@ -582,7 +588,7 @@ async function changeWhileJoining() {
   const joined = store.joinedAt === null ? null : store.joinedAt - from;
   store.joinMs = 5;
   return { ms: endedAt - madeAt, stalled: stalledIn(madeAt, endedAt), joined, madeMs: madeAt - from,
-    ops: JSON.parse(response.ended).ops.map((op) => op.seq), log: store.log.map(([what, at]) => [what, at - from]) };
+    ops: JSON.parse(response.ended).ops.map((op) => op.seq), log: store.log.map(logged(from)) };
 }
 
 const result = { changed: await changeWhileJoining(), looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),

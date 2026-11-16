@@ -38,7 +38,7 @@ def _run() -> dict:
 
 
 def _times(log: list, what: str) -> list[int]:
-    return [at for kind, at in log if kind == what]
+    return [at for kind, at, _ in log if kind == what]
 
 
 def _no_more_often(log: list, where) -> None:
@@ -47,11 +47,13 @@ def _no_more_often(log: list, where) -> None:
     often, not by how many reads fit in a second, which a busy box makes
     fewer, never more (rel-m305's gate, 4 reads of the changes in one second
     against 10 in the next, failed on that, pollreads 2026-11-16). 2 ms for
-    a timer's and a clock's rounding."""
+    a timer's and a clock's rounding, and what the box held the fixture's
+    process for just before the earlier read, which can only have made it
+    reach the log later than the poll asked."""
     for what, every in (("GET together_people", PEOPLE_MS), ("GET together_ops", POLL_MS),
                         ("GET together_sessions", SESSION_MS)):
-        times = _times(log, what)
-        assert all(b - a >= every - 2 for a, b in zip(times, times[1:])), (where, what, times)
+        reads = [(at, held) for kind, at, held in log if kind == what]
+        assert all(b - a >= every - 2 - held for (a, held), (b, _) in zip(reads, reads[1:])), (where, what, reads)
 
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
@@ -108,7 +110,7 @@ def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
         assert case["writes"] == 0 and len(_times(log, "PATCH together_people")) == 1, (where, log)
         people = _times(log, "GET together_people")
         # The session and who is in it read together, first: one beside the other.
-        kinds = [what for what, _ in log if what.startswith("GET together_") and what != "GET together_ops"]
+        kinds = [what for what, *_ in log if what.startswith("GET together_") and what != "GET together_ops"]
         assert people and kinds[:2] == ["GET together_sessions", "GET together_people"], (where, log)
         _no_more_often(log, where)
         if case["joinMs"] < PEOPLE_MS:
@@ -167,8 +169,8 @@ def test_somebody_pointing_reads_no_more_than_nobody():
     # From its first read of them: as it begins, the changes are read before
     # it (a change waits for no channel, pollreads).
     log = unheard["log"]
-    first = next(n for n, (what, _) in enumerate(log) if what == "GET together_people")
-    steps = [n for n, (what, _) in enumerate(log) if what == "GET together_ops" and n > first]
+    first = next(n for n, (what, *_) in enumerate(log) if what == "GET together_people")
+    steps = [n for n, (what, *_) in enumerate(log) if what == "GET together_ops" and n > first]
     assert len(steps) >= 2, unheard
     assert all(n + 1 < len(log) and log[n + 1][0] == "GET together_people" for n in steps), log
 

@@ -324,8 +324,9 @@ signed in as someone else.
   hearing only once joined, as Realtime does; it is in the poll's one
   first read of who is in it, taken once the channel has joined, so a
   poll reads no more than before pointfix (pollreads: `begins`, read
-  counts barred by the gap between two reads, and timed bars less what
-  the busy box held the fixture for, `stalled`; a point's timed from the
+  counts barred by the gap between two reads, less what the box held the
+  fixture for in the 20 ms before the earlier, each log's third field, and
+  timed bars less what the busy box held the fixture for, `stalled`; a point's timed from the
   server telling the channel, `relay_ms`, since a send's own sign-in
   check waits on the thread pool a busy box keeps, and `joining`'s
   channel joins 70 ms after that telling, not by the clock). The fixture
