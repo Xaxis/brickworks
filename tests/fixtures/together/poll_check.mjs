@@ -87,6 +87,12 @@ const reset = () => {
     readMs: 0,
     joinMs: 5,
     broadcasts: 0,
+    // While unseen, a person's row is read as it was before the writes made
+    // to it since (row -> its copy): a pointer then reaches a poll only on
+    // the channel, so a line with it went out without a read, however a
+    // busy box times the reads (pollreads, 2026-11-16).
+    unseen: false,
+    shown: new Map(),
   };
 };
 
@@ -164,10 +170,12 @@ globalThis.fetch = async (url, options = {}) => {
       // The point's guard (api/together.js point): kept only over an older one.
       const older = /^\(pointer_at\.is\.null,pointer_at\.lt\."(.+)"\)$/.exec(q.get("or") || "");
       const keeps = Boolean(row) && (!older || !row.pointer_at || Date.parse(row.pointer_at) < Date.parse(older[1]));
+      if (keeps && store.unseen && !store.shown.has(row)) store.shown.set(row, { ...row });
       if (keeps) Object.assign(row, body);
       return answer(keeps ? [row] : []);
     }
-    return answer(store.people.filter((one) => !account || one.account === account).map((one) => ({ ...one })));
+    return answer(store.people.filter((one) => !account || one.account === account)
+      .map((one) => ({ ...(store.shown.get(one) ?? one) })));
   }
   if (table === "together_ops") {
     const after = Number((q.get("seq") || "gt.0").replace("gt.", ""));
@@ -319,24 +327,28 @@ async function told(stream) {
   const quiet = response.writes.length + (response.ended ? 1 : 0);
   // Their pointer: the moment it is sent to the moment it goes out, and the
   // reads of who is in it between.
-  const readsBefore = store.reads.filter((one) => one === "GET together_people").length;
   store.toldAt = null;
+  store.unseen = true;
   const sentAt = Date.now();
   const sending = pointAs(OTHER, [4, 5, 6]);
+  const has = () => [...response.writes.map((one) => one.text), response.ended || ""].some((one) => one.includes("[4,5,6]"));
   for (const end = Date.now() + 2000; Date.now() < end; await sleep(1)) {
-    if (response.ended || response.writes.some((one) => one.text.includes("[4,5,6]"))) break;
+    if (response.ended || has()) break;
   }
   const outAt = Date.now();
-  const readsBetween = store.reads.filter((one) => one === "GET together_people").length - readsBefore;
+  // Said while its reads still showed them as before: told on the channel.
+  const heard = has();
   await sending;
+  Object.assign(store, { unseen: false, shown: new Map() });
+  const toldAt = store.toldAt ?? outAt;
+  const readsBetween = store.log.filter(([what, at]) => what === "GET together_people" && at >= toldAt && at <= outAt).length;
   if (stream) {
     store.ops.push({ seq: 2, author: OTHER, client: "abcdef", cid: 1, changes: {} });
   }
   await done;
   const said = [...response.writes.map((one) => JSON.parse(one.text)), JSON.parse(response.ended)];
   const atOf = (one) => one.people?.find((p) => !p.me)?.at ?? null;
-  const toldAt = store.toldAt ?? outAt;
-  return { stranger_status: stranger.statusCode, quiet, ms: outAt - sentAt, stalled: stalledIn(sentAt, outAt),
+  return { stranger_status: stranger.statusCode, quiet, heard, ms: outAt - sentAt, stalled: stalledIn(sentAt, outAt),
     relay_ms: outAt - toldAt, relay_stalled: stalledIn(toldAt, outAt), reads_between: readsBetween, shown: said.map(atOf).filter(Boolean), broadcasts: store.broadcasts,
     strangers_shown: said.some((one) => (one.people || []).length !== 2) };
 }
@@ -422,12 +434,14 @@ async function looked() {
   const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
   await sleep(300);
   store.toldAt = null;
+  store.unseen = true;
   const sentAt = Date.now();
   const sent = await lookAs(OTHER, { n: 1763000000000, sel: ["ab12.3"], at: [1, 2, 3], age: 40 });
   let outAt = null;
   for (const end = Date.now() + 2000; Date.now() < end && outAt === null; await sleep(1)) {
     if (response.writes.some((one) => one.text.includes("1763000000000"))) outAt = Date.now();
   }
+  Object.assign(store, { unseen: false, shown: new Map() });
   const toldAt = store.toldAt ?? outAt;
   const relay = outAt === null ? {} : { relay_ms: outAt - toldAt, relay_stalled: stalledIn(toldAt, outAt),
     reads_between: store.log.filter(([what, at]) => what === "GET together_people" && at >= toldAt && at <= outAt).length };
@@ -511,7 +525,27 @@ async function joining() {
     via: line?.pointed?.[who]?.[2] ?? null };
 }
 
-const result = { looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),
+// pollreads: a change made 30 ms into a poll whose channel joins at 240,
+// slower than PEOPLE_MS lets it wait: the change's way to the answer, and
+// the poll's requests.
+async function changeWhileJoining() {
+  reset();
+  store.joinMs = 240;
+  const from = Date.now();
+  const response = responseOf();
+  const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
+  await sleep(30);
+  const madeAt = Date.now();
+  store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
+  await done;
+  const endedAt = Date.now();
+  const joined = store.joinedAt === null ? null : store.joinedAt - from;
+  store.joinMs = 5;
+  return { ms: endedAt - madeAt, stalled: stalledIn(madeAt, endedAt), joined, madeMs: madeAt - from,
+    ops: JSON.parse(response.ended).ops.map((op) => op.seq), log: store.log.map(([what, at]) => [what, at - from]) };
+}
+
+const result = { changed: await changeWhileJoining(), looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),
   reads: { lines: await reads(true), whole: await reads(false), lines_slow_join: await reads(true, true) },
   begins: [await begins(5, 0), await begins(120, 20), await begins(400, 20)],
   told: { lines: await told(true), whole: await told(false), taken_out: await takenOut() },

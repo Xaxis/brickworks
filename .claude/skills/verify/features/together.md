@@ -74,7 +74,10 @@ app, joined by a link (docs/TOGETHER.md).
   is in it once its channel has joined (at most 250 ms after it began),
   once: what was told before is in that read (pollreads; the `begins`
   case barring its reads by how often, a join slower than a read on
-  purpose). A browser's poll asks
+  purpose). The changes wait for no channel: read at once and every
+  100 ms while it joins, and a change found then answered at once
+  (`changed`: made 30 ms into a poll whose channel joins at 240, given
+  at its next read of them). A browser's poll asks
   `stream: true` and reads its answer a line at a time (`_ask_page`,
   `_on_page_heard`): who is in it comes as a line
   `{more: true, people, seen, at}` the moment it changes and the poll

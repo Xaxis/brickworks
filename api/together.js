@@ -215,12 +215,12 @@ async function tell(id, said) {
 }
 
 // Session [id]'s channel, [heard] called with each pointer told on it, until
-// closed. joined() is whether it is listening yet; ready(ms) waits until it
-// is, or cannot be (refused, or its socket failed or closed), or [ms] have
-// passed.
+// closed. joined() is whether it is listening yet; over() whether it is, or
+// cannot be (refused, or its socket failed or closed); ready(ms) waits until
+// over(), or [ms] have passed.
 function listen(id, heard) {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  const none = { joined: () => false, ready: async () => {}, close() {} };
+  const none = { joined: () => false, over: () => true, ready: async () => {}, close() {} };
   if (typeof WebSocket !== "function" || !key) return none;
   let socket;
   try {
@@ -230,8 +230,14 @@ function listen(id, heard) {
   }
   const topic = `realtime:${channelOf(id)}`;
   let joined = false;
+  let over = false;
   let settle;
-  const settled = new Promise((done) => { settle = done; });
+  const settled = new Promise((done) => {
+    settle = () => {
+      over = true;
+      done();
+    };
+  });
   socket.addEventListener("open", () => socket.send(JSON.stringify({ topic, event: "phx_join", ref: "1", join_ref: "1",
     payload: { config: { broadcast: { self: false, ack: false }, presence: { key: "" }, postgres_changes: [],
       private: false } } })));
@@ -253,7 +259,7 @@ function listen(id, heard) {
       done();
     });
   });
-  return { joined: () => joined, ready, close: () => { settle(); try { socket.close(); } catch {} } };
+  return { joined: () => joined, over: () => over, ready, close: () => { settle(); try { socket.close(); } catch {} } };
 }
 
 function secretOf(body) {
@@ -700,21 +706,36 @@ async function poll(request, me, response = null) {
     learn(said.account, said.pointer_at, "told");
     wake?.();
   });
-  // Two trips before it waits, not four: this person heard from (their row,
-  // if they are in it and not taken out), then the session and who is in it
-  // at once. A poll begins again after every change it gives, so what it
-  // costs to begin is in every change. The second waits for the channel, the
-  // first beside it, but never past when who is in it would have been read
-  // again (PEOPLE_MS): a channel slower than that is not waited for, and
-  // what is told before it joins is read then, as before pointfix.
+  // This person heard from (their row, if they are in it and not taken
+  // out), then the session and who is in it at once. A poll begins again
+  // after every change it gives, so what it costs to begin is in every
+  // change. The second waits for the channel, but never past when who is in
+  // it would have been read again (PEOPLE_MS): a channel slower than that is
+  // not waited for, and what is told before it joins is read then, as
+  // before pointfix. The changes do not wait for it: read at once and at
+  // each step meanwhile, as before, and a change found then answered at
+  // once, with who is in it read for it. Waited for too, each change made
+  // as a poll began (as the next is, just after the last arrives) waited
+  // out the join: 516 ms from browser to browser at p50, against 432
+  // (pollreads, 2026-11-16).
+  const readOps = () => db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
+    + "&select=seq,author,client,cid,changes").then((got) => got || []);
   let mine;
   let all;
   let session;
+  let early = [];
+  let opsAt = 0;
   try {
     [mine] = (await db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
       method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null }, prefer: "return=representation",
     })) || [];
-    await channel.ready(opened + PEOPLE_MS - Date.now());
+    for (const until = opened + PEOPLE_MS; ;) {
+      opsAt = Date.now();
+      early = await readOps();
+      if (early.length > 0 || channel.over() || Date.now() >= until) break;
+      await channel.ready(Math.min(opsAt + POLL_MS, until) - Date.now());
+      if (channel.over() || Date.now() >= until) break;
+    }
     [session, all] = await Promise.all([sessionRow(id), peopleRows(id)]);
     if (!mine || !session || session.ended_at) session = await inSession(id, me);
   } catch (error) {
@@ -810,14 +831,19 @@ async function poll(request, me, response = null) {
       const quick = lively(withMoved(all), me) && !channel.joined();
       const due = Date.now() - checked > (quick ? POLL_MS : PEOPLE_MS);
       const sessionDue = due && Date.now() - looked > SESSION_MS;
+      // The changes no sooner than POLL_MS after they were last read (as
+      // the channel joined, just before), and those found then given now.
+      // Less 2 ms for a timer's and a clock's rounding.
+      const opsDue = early.length === 0 && Date.now() - opsAt >= POLL_MS - 2;
       if (due) checked = Date.now();
       if (sessionDue) looked = Date.now();
+      if (opsDue) opsAt = Date.now();
       const [rows, fresh, standing] = await Promise.all([
-        db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
-          + "&select=seq,author,client,cid,changes").then((got) => got || []),
+        opsDue ? readOps() : early,
         due ? peopleRows(id) : null,
         sessionDue ? sessionRow(id) : null,
       ]);
+      early = [];
       if (due) {
         if (sessionDue) {
           session = standing;

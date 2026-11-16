@@ -117,15 +117,30 @@ def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
             assert case["joined"] is None or people[0] <= case["joined"], (where, log)
 
 
+def test_a_change_made_as_a_poll_begins_waits_for_no_channel():
+    changed = _run()["changed"]
+    # Made 30 ms into a poll whose channel joins at 240: given at the poll's
+    # next read of the changes (each POLL_MS while it joins, as before
+    # pollreads waited them for the join: 516 ms browser to browser at p50
+    # on the preview, against 432), not once it has joined; reading them,
+    # and who is in it, no more often than ever.
+    assert changed["ops"] == [1], changed
+    assert changed["ms"] - changed["stalled"] < POLL_MS + 50, changed
+    _no_more_often(changed["log"], "changed")
+
+
 def test_a_pointer_sent_goes_out_at_once_without_a_read():
     for asked in ("lines", "whole"):
         told = _run()["told"][asked]
+        # Its reads of who is in it showed them as before it was sent, so the
+        # line with it went out without one (a read beside it counted none,
+        # since a busy box's pause lets one fall due between: pollreads).
+        assert told["heard"] and [4, 5, 6] in told["shown"], (asked, told)
         # From the server telling the channel to the line, less what the box
         # did not let the fixture run for; the send's own way in (its sign-in
         # check waits on the thread pool a busy box keeps: 81 ms in 1 of 20
         # under heavy with 2 ms stalled, pollreads) is not the relay's.
-        assert told["relay_ms"] - told["relay_stalled"] < 50 and told["reads_between"] == 0, (asked, told)
-        assert [4, 5, 6] in told["shown"]
+        assert told["relay_ms"] - told["relay_stalled"] < 50, (asked, told)
 
 
 def test_nobody_outside_the_session_is_shown_by_the_channel():
@@ -149,8 +164,11 @@ def test_somebody_pointing_reads_no_more_than_nobody():
     # 20 ms, so every step is over POLL_MS from the last): a step's reads go
     # out together, so each read of the changes is followed by one of them.
     # By order, not by time: a busy box has paused the fixture between two.
+    # From its first read of them: as it begins, the changes are read before
+    # it (a change waits for no channel, pollreads).
     log = unheard["log"]
-    steps = [n for n, (what, _) in enumerate(log) if what == "GET together_ops"]
+    first = next(n for n, (what, _) in enumerate(log) if what == "GET together_people")
+    steps = [n for n, (what, _) in enumerate(log) if what == "GET together_ops" and n > first]
     assert len(steps) >= 2, unheard
     assert all(n + 1 < len(log) and log[n + 1][0] == "GET together_people" for n in steps), log
 
@@ -161,9 +179,9 @@ def test_somebody_pointing_reads_no_more_than_nobody():
 def test_a_part_pointed_out_goes_out_at_once_with_its_age():
     looked = _run()["looked"]
     assert looked["sent"] == 200 and looked["ms"] is not None, looked
-    # As a pointer is: from the server telling the channel to the line, with
-    # no read of who is in it between.
-    assert looked["relay_ms"] - looked["relay_stalled"] < 50 and looked["reads_between"] == 0, looked
+    # As a pointer is: reads showing them as before, so the line went out
+    # without one; timed from the server telling the channel to the line.
+    assert looked["relay_ms"] - looked["relay_stalled"] < 50, looked
     first = next(look for look in looked["looks"] if look and look["n"] == 1763000000000)
     assert first["sel"] == ["ab12.3"] and first["at"] == [1, 2, 3] and first["claude"] is False
     assert 40 <= first["age"] < 400 + looked["stalled"], looked
