@@ -1506,6 +1506,8 @@ func _heard_people(body: Dictionary, polled: int) -> void:
 	people = now
 	timing["people_heard"] = polled
 	timing["people_said"] = body.get("at", 0)
+	# Another's doing, drawn as this person's own input is, held or not.
+	GpuFence.answer()
 	_show_presence()
 	# A check reads the page as the dots move, not a frame later.
 	if OS.has_feature("web"):
@@ -2612,6 +2614,8 @@ func _add_look(key: String, who: String, name: String, colour: Color, bricks: Di
 	marker.position = Vector3(box.get_center().x, box.end.y, box.get_center().z)
 	_looks[key] = {"who": who, "name": name, "colour": colour, "bricks": bricks,
 		"ends": Time.get_ticks_msec() + left_ms, "outline": outline, "marker": marker}
+	# Drawn held or not: another's, or Claude's, is no input of this window's.
+	GpuFence.answer()
 	timing["look_shown"] = _unix_ms()
 	if not RenderingServer.frame_post_draw.is_connected(_look_drawn):
 		RenderingServer.frame_post_draw.connect(_look_drawn, CONNECT_ONE_SHOT)
