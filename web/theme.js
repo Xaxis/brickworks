@@ -182,3 +182,13 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
 })();
+
+// The site's notice (console3, 2026-11-13): what the owner set in the
+// console, on every page (web/notice.js), floating at the window's foot;
+// not on an embed's card or the connector's consent page either.
+(() => {
+  if (document.documentElement.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
+  const load = () => import("/notice.js").catch(() => null);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
+  else load();
+})();

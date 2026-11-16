@@ -791,6 +791,22 @@ is on the page, `hidden`, for the script to show.
   window (a small phone, a long language), `.tight` drops the badge and
   keeps Report a bug, Join and × whole. While shown, `<html data-betabar>`
   lifts the toast over it and pads the footer, so nothing ends under it.
+- **Site notice**: `aside.site-notice` (`web/notice.js`, asked for by
+  `web/theme.js` on every page but an embed's card and the consent page):
+  what the owner set in the console (`/admin#switches`), a card floating
+  at the window's foot, at its right (the beta bar is at its left), over
+  the page and moving nothing in it (Steady loads). Its words as one
+  paragraph in `--t-small`, its left edge 4 px of `--accent-edge` (news)
+  or `--bad` (`.warn`, a warning), and an `.icon-btn` × that hides that
+  notice in this browser (`localStorage` `brickworks.notice.hidden`, its
+  id); a new notice shows again. Its words are the page's language's
+  where the owner typed them (German, French, Spanish), else English:
+  never a machine's translation. The last one heard is kept
+  (`brickworks.notice`), so the next page shows it at once, and asked
+  again (`/api/plans?op=notice`, a minute at the CDN). On a phone it is
+  the window's width less its gutters, centred; under 900 px, with the
+  beta bar shown, it sits over the bar. While shown, `<html data-notice>`
+  pads the footer. It rises in as the beta bar does.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the

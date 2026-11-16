@@ -295,11 +295,22 @@ export function sitePages({ remote = "" } = {}) {
         const opened = await until(page, () => document.querySelector("dialog.sheet[open] .facts"));
         return [[opened ? "account" : "account (missing)", "dialog.sheet"]];
       } },
-    { name: "admin-gallery", path: "/admin#gallery/reported", admin: true, signedInOnly: true,
+    // Part C (console3): Moderation's one queue, Gallery's own, Challenges,
+    // Data and Switches.
+    { name: "admin-moderation", path: "/admin#moderation/queue", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.querySelectorAll("#reports tr").length > 0
         || /^Nothing is reported/.test(document.getElementById("reports-note").textContent)) },
-    { name: "admin-challenges", path: "/admin#gallery/challenges", admin: true, signedInOnly: true,
+    { name: "admin-gallery", path: "/admin#gallery/listed", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#gallery tr").length > 0
+        || /^Nothing is listed/.test(document.getElementById("gallery-note").textContent)) },
+    { name: "admin-challenges", path: "/admin#challenges", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.querySelectorAll("#challenges tr").length > 0) },
+    { name: "admin-data", path: "/admin#data", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#buckets tr").length > 0
+        && document.querySelectorAll("#db-tables tr").length > 0) },
+    { name: "admin-switches", path: "/admin#switches", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#variables tr").length > 0
+        && document.querySelectorAll("#settings tr").length > 0) },
     { name: "admin-beta", path: "/admin#beta", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.querySelectorAll("#apps li.app").length > 0
         || !document.getElementById("empty").hidden) },
