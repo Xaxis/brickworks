@@ -3152,8 +3152,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel in a column
   beside the model's (main's `_tool_column`, Simulate's too), never over it:
   over the model's left edge it covered the left one of two gears a chain was
-  to go round at 1400 x 900 (keys3). Opening it folds the parts column, Done
-  puts it back; where nothing folds and the column would take a part in sight
+  to go round at 1400 x 900 (keys3). Opening it keeps the parts column beside
+  it where the model keeps its least room and folds it where it would not
+  (binstay, smalls4), Done puts back what it folded; where nothing folds and the column would take a part in sight
   out of the model's room, the view steps back by as much as the room
   narrowed. In the panel, what to lay (pneumatic tube, ribbed hose, flex-system
   hose, flexible axle, string with end studs, Technic chain, tread) and how long
