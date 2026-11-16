@@ -12,6 +12,9 @@
 // database, as one throwaway account at a Resend test address (its session
 // minted here; nobody is emailed), deleted at the end:
 //
+//   0. with no network, the parsers: a Built column's cells, and a
+//      BrickLink REMARKS of Built alone is the mark while a person's note
+//      that begins with the word ("Built once, box opened") is not
 //   1. an older collection: 7140-1 and 6020-1 typed, 12 loose lots, 7140-1
 //      with a part marked missing
 //   2. 7140-1 marked built (was 0, built 1): kept as built 1 on its entry,
@@ -32,6 +35,7 @@
 //      Rebrickable CSV with no Built column carries the marks on a replace
 //   6. taken apart (built 0): the entry as the older shape, no "built" left;
 //      then the whole older collection of step 1, lot for lot
+import { bricklinkXml, rebrickableCsv } from "../../api/collection.js";
 import { deleteAccount, mintSession } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -85,6 +89,18 @@ const LOTS = [["3001", 4, 12], ["3020", 0, 4], ["3021", 4, 4], ["4600", 0, 2], [
 let token = null;
 try {
   console.log(`keptbuilt API test against ${base}`);
+  console.log("\n0. the files' Built, read with no network");
+  const xmlOf = (remarks) => bricklinkXml("<INVENTORY><ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>7140-1</ITEMID>"
+    + `<QTY>2</QTY>${remarks}</ITEM></INVENTORY>`);
+  const note = xmlOf("<REMARKS>Built once, box opened</REMARKS>");
+  check(note.sets[0][3] === 0 && !note.builtKnown,
+    `a person's remark "Built once, box opened" is a note, not the mark: ${JSON.stringify(note.sets)}`);
+  const alone = xmlOf("<REMARKS> built </REMARKS>");
+  check(alone.sets[0][3] === 2 && alone.builtKnown,
+    `REMARKS of Built alone marks its 2 copies: ${JSON.stringify(alone.sets)}`);
+  const cells = rebrickableCsv("Set Number,Quantity,Built\n7140-1,3,yes\n6020-1,2,1\n10237-1,1,\n");
+  check(cells.builtKnown && cells.sets.map((one) => one[3]).join() === "3,1,0",
+    `a Built column: yes, a count and empty read as ${cells.sets.map((one) => one[3]).join(", ")} copies`);
   const session = await mintSession(EMAIL);
   token = session.access_token;
   check(Boolean(token && session.kept.user_id), "a throwaway account, signed in");

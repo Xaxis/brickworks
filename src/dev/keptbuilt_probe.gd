@@ -38,6 +38,9 @@
 ##   8. two copies: the mark says "Built 1 of 2", then "Built 2 of 2", then
 ##      none, the pool 285 less a copy built
 ##   9. the new lines drawn read in de, fr and es
+##  10. a built copy's spares still counted beside a part marked missing:
+##      the mark is against the inventory's lots, so it comes off the
+##      copies apart alone (the review's finding, 2026-11-16)
 ##
 ## On pre261 there is no Built mark, no op "built" and no built=: 2 to 8
 ## fail with words. Writes nothing in the app's own directory: the account's
@@ -231,7 +234,8 @@ func _steps() -> void:
 	var held: Dictionary = await _account_now()
 	for refused: Array in [[{"built": ["6020-1"]}, "is not a set in the person's collection"],
 			[{"built": [{"set": SET, "copies": 2}]}, "copies is a whole number from 0 to 1"],
-			[{"built": [SET], "add": [{"part": "3001", "color": 4, "count": 1}]}, "one thing a call"]]:
+			[{"built": [SET], "add": [{"part": "3001", "color": 4, "count": 1}]}, "one thing a call"],
+			[{"built": [SET], "missing": {"set": SET, "none": true}}, "one thing a call"]]:
 		var no: String = await _call("edit_collection", refused[0])
 		_check("refused: \"%s\"" % no.left(130), no.begins_with("Nothing was changed") and no.contains(refused[1]))
 	_check("...none of it changed anything at the account", _same(await _account_now(), held))
@@ -355,6 +359,9 @@ func _steps() -> void:
 	print("\n9. the words in de, fr and es")
 	_languages()
 
+	print("\n10. a built copy's spares beside a part marked missing")
+	_spares_and_missing()
+
 
 # -- the counts by hand ---------------------------------------------------------------
 
@@ -422,6 +429,27 @@ func _bin_is(want: Dictionary, what: String) -> void:
 	await _shot("keptbuilt_bin")
 	bin.leave_set()
 	await _frames(3)
+
+
+## One set's pool, apart and then built, with a spare 6141 and one of its
+## four 6141s marked missing: apart the mark comes off the lots (4 - 1, and
+## the spare: 4); built, the lots are on the shelf and the spare is in hand
+## (1), the mark not taken off it.
+func _spares_and_missing() -> void:
+	var record: Dictionary = {"n": "Test", "p": [["3001", 4, 2], ["6141", 7, 4]], "s": [["6141", 7, 1]]}
+	var round: String = Collection.key_of("6141", 7, _library)
+	var brick: String = Collection.key_of("3001", 4, _library)
+	var seen: Array = []
+	for built: int in [0, 1]:
+		var entry: Dictionary = {"set": "9999-1", "qty": 1, "spares": true,
+			"missing": [{"part": "6141", "colour": 7, "qty": 1}]}
+		if built > 0:
+			entry["built"] = built
+		var one: Collection = Collection.from_json({"sets": [entry], "parts": []})
+		var counted: Dictionary = one.pool({"9999-1": record}, _library)
+		seen.append([int(counted.get(round, 0)), int(counted.get(brick, 0))])
+	_check("apart, 6141 %d and 3001 %d (4 and 2); built, 6141 %d and 3001 %d (the spare, 1, and 0)"
+		% [seen[0][0], seen[0][1], seen[1][0], seen[1][1]], seen == [[4, 2], [1, 0]])
 
 
 # -- an older build -------------------------------------------------------------------

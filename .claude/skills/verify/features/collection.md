@@ -624,7 +624,10 @@ Proves it when:
   signed out the screen back and nothing held; the bar's line in de, fr and
   es. Look at `localbricks_gate`, `_marked`, `_build`, `_two_copies`,
   `_signed_out`.
-- `keptbuilt_api.mjs` ends `every check passed`: on a throwaway account, an
+- `keptbuilt_api.mjs` ends `every check passed`: first with no network, a
+  Built column's cells (yes, a count, empty) and a BrickLink REMARKS of
+  Built alone read as the mark, a person's note that begins with the word
+  ("Built once, box opened") not; then on a throwaway account, an
   older collection (no `built` anywhere) read as it was; op `built` marks
   7140-1, the same id again changes nothing, a stale `was`, a set not
   owned, copies past those owned and a set named twice each refused with
@@ -646,7 +649,9 @@ Proves it when:
   `{set, copies: 0}` back; a restart and another device read the mark; Save
   sets as CSV and as XML read back into an empty collection built; rel-m304's
   Collection, compiled from git, keeps the set and drops only the mark;
-  two copies Built 1 of 2, 2 of 2, none; the new lines in de, fr and es.
+  two copies Built 1 of 2, 2 of 2, none; the new lines in de, fr and es;
+  a built copy's spares still counted beside a part marked missing (the
+  mark comes off the copies apart alone); missing= with built= refused.
   Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box

@@ -443,7 +443,7 @@ function tag(block, name) {
 /// A BrickLink XML: a wanted list (MINQTY) or an inventory upload (QTY),
 /// in BrickLink's numbers. Parts and sets are kept; minifigures, books
 /// and gear are counted and left out, since nothing here can say what is
-/// in a BrickLink minifigure. A set item whose REMARKS say Built is that
+/// in a BrickLink minifigure. A set item whose REMARKS are Built alone is that
 /// many copies kept built, as the app's own export writes them (keptbuilt);
 /// "builtKnown" says any item did.
 export function bricklinkXml(text) {
@@ -464,7 +464,9 @@ export function bricklinkXml(text) {
       const set = setNumber(id);
       if (!set) throw new Refusal(400, `${line}: "${id}" is not a set number`);
       const copies = quantity(qty, line);
-      const built = /^\s*built\b/i.test(tag(item, "REMARKS") || "");
+      // Only a remark that is the word alone, as the app's export writes it:
+      // "Built once, box opened" is a person's note, not the mark.
+      const built = /^\s*built\s*$/i.test(tag(item, "REMARKS") || "");
       builtKnown ||= built;
       sets.push([set, copies, false, built ? copies : 0]);
     } else if (type === "P") {

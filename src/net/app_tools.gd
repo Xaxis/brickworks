@@ -4227,11 +4227,17 @@ func _edit_collection(input: Dictionary) -> String:
 	if account == null or not account.signed_in():
 		return ("The person is not signed in, and a collection is kept with their account: "
 			+ "they sign in (Account), then it can be read and added to.")
+	# keptbuilt (APP_UX9 #6): sets kept built on a shelf, or taken apart. An
+	# empty list asks nothing, as an empty add= does.
+	var built: Variant = input.get("built")
+	var marking_built: bool = built != null and not (built is Array and (built as Array).is_empty())
+	if marking_built and input.get("missing") != null:
+		return ("Nothing was changed: missing= marks a set's missing parts and built= the sets kept built, "
+			+ "one thing a call: send them in separate calls.")
 	# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
 	if input.get("missing") != null:
 		return await _collection_marks(mine, library, input)
-	# keptbuilt (APP_UX9 #6): sets kept built on a shelf, or taken apart.
-	if input.get("built") != null:
+	if marking_built:
 		return await _collection_built(mine, input)
 	var adding: Variant = input.get("add", [])
 	var removing: Variant = input.get("remove", [])

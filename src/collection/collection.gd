@@ -222,22 +222,23 @@ func pool(inventories: Dictionary, library: PartLibrary = null) -> Dictionary:
 			continue
 		var copies: int = int(entry["qty"])
 		var apart: int = copies - built_of(entry)
-		var rows: Array = []
-		for row: Variant in (record as Dictionary).get("p", []):
-			rows.append([row, apart])
-		if bool(entry.get("spares", false)):
-			for row: Variant in (record as Dictionary).get("s", []):
-				rows.append([row, copies])
 		# Only what is really there: the parts marked missing are not (mysets).
+		# They are marked against the inventory's lots, never its spares, so
+		# they come off the apart copies' lots alone: the rest are missing
+		# from a copy on the shelf, whose parts are not counted anyway.
 		var gone: Dictionary = missing_keys(entry, library)
-		for one: Array in rows:
-			var lot: Array = one[0]
+		for row: Variant in (record as Dictionary).get("p", []):
+			var lot: Array = row
 			var key: String = key_of(str(lot[0]), int(lot[1]), library)
-			var count: int = int(lot[2]) * int(one[1])
+			var count: int = int(lot[2]) * apart
 			var taken: int = mini(count, int(gone.get(key, 0)))
 			if taken > 0:
 				gone[key] = int(gone[key]) - taken
 			_add(on_hand, key, count - taken)
+		if bool(entry.get("spares", false)):
+			for row: Variant in (record as Dictionary).get("s", []):
+				var spare: Array = row
+				_add(on_hand, key_of(str(spare[0]), int(spare[1]), library), int(spare[2]) * copies)
 	return on_hand
 
 
