@@ -2826,16 +2826,29 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 	# write each step's ending line as its turn says, in its place, and a
 	# ROTSTEP said in many steps matched the first like it, lines on
 	# (stepops: 20019-1's twelve).
+	# Most lines are a part's or a shape's, which a look at the first
+	# character tells from the app's and the STEP lines with no call: a save
+	# of 8466-1's 311k lines costs what it did before the keys (stfix).
 	var wrote_keys := PackedStringArray()
 	for k: int in plan.out.size():
-		if not _is_app_line(plan.out[k]):
-			wrote.append(plan.out[k])
+		var line: String = plan.out[k]
+		var first: int = line.unicode_at(0) if not line.is_empty() else 0
+		if first > 32 and first != 48:
+			wrote.append(line)
 			wrote_at.append(k)
-			wrote_keys.append(_STEP_KEY if _is_step(plan.out[k]) else plan.out[k])
+			wrote_keys.append(line)
+		elif not _is_app_line(line):
+			wrote.append(line)
+			wrote_at.append(k)
+			wrote_keys.append(_STEP_KEY if _is_step(line) else line)
 	var said := PackedStringArray()
 	var said_keys := PackedStringArray()
 	for line: String in final:
-		if not _is_app_line(line):
+		var first: int = line.unicode_at(0) if not line.is_empty() else 0
+		if first > 32 and first != 48:
+			said.append(line)
+			said_keys.append(line)
+		elif not _is_app_line(line):
 			said.append(line)
 			said_keys.append(_STEP_KEY if _is_step(line) else line)
 	var matched: PackedInt32Array = _aligned(said_keys, wrote_keys)
