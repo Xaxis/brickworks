@@ -232,6 +232,7 @@
       "area": "together",
       "tests": [
         "tests/test_flows_for.py",
+        "tests/test_start_abba.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -1428,7 +1429,7 @@
       "id": "cli:first visit load check",
       "kind": "cli",
       "entry": "tools/web/load_check.mjs",
-      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=\u2026 for a preview; --profiles=broadband,slow --runs=3 --warm; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
+      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=\u2026 for a preview; --profiles=broadband,slow --runs=3 --warm; --phone for a phone's window, timed to its first frame; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
       "area": "web",
       "tests": []
     },
@@ -3110,7 +3111,7 @@
       "id": "cli:two builds' first visits at an equal load",
       "kind": "cli",
       "entry": "tools/web/start_abba.mjs",
-      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
+      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --pairs=N [--phone] for same-moment pairs, each arm in a browser of its own at once, a phone's first frame too; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
       "area": "web",
       "tests": []
     },
@@ -3604,6 +3605,7 @@
       "area": "together",
       "tests": [
         "tests/test_flows_for.py",
+        "tests/test_start_abba.py",
         "tests/test_steps_score.py"
       ]
     },

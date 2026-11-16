@@ -255,6 +255,14 @@ plan with Claude as the client.
   inspector V8 records the stack at every caught throw, and a miss in a
   frame cost 300 us against a person's 5 (lazycompile, 2026-11-05);
   `--inspector-frames` times frames as every load before that was timed.
+  `--phone` loads it in a phone's window (390 x 844 at 3x, by touch), timed
+  to its first frame, since a phone keeps the bin behind a button. Each
+  load says what the start waited for, file by file (`startAccount`, and
+  `start` in load.json): the engine's script, wasm and pack, which the
+  engine cannot start without, with its banner after; the data pack, when
+  it came over the wire, when it was handed to the page (the page's thread
+  is the compile's until it ends) and how long Main waited for it; the rest
+  of the parts, which nothing waits for; and the rest.
   `--trace=DIR` writes a Chrome trace of each load (V8's sampled CPU
   profile of every thread, GC, wasm tiers) with its marks beside it, and
   `tools/web/trace_window.py TRACE --compile` (or `--later=NAME`, or
@@ -309,6 +317,35 @@ plan with Claude as the client.
   one within 10% (`bench/results/webstart9-2026-11-09/abba`). The same
   m276 build read 16.9 s cold, 11.2 s warm and a 4.0 s compile here,
   where APP_UX7 read 10.2, 6.0 and 2.2 s at load 18-31: the box.
+  `--pairs=N` times the arms at the same moments instead (webstart10,
+  2026-11-16; memory same-moment-pairs): in each pair every arm's
+  load_check starts at once, each in a browser of its own, the second a
+  quarter second after the first, who goes first alternating; `--phone`
+  runs each pair again in a phone's window, judged by its first frame. The
+  pairing is by pair, and each arm is said against APP_UX9's target (the
+  bin usable 12 s cold and 6.5 s warm, a phone's first frame 11 s cold):
+  met in how many pairs. Then each arm's medians of what the start waited
+  for (load_check's account), cold and warm.
+  ```sh
+  heavy node tools/web/start_abba.mjs --arm=live=https://brickworks.diy/app \
+    --arm=mine=SNAP/build/web --pairs=3 --phone --port=10452 --out=DIR
+  ```
+  About 3 minutes a pair at load 40 (desktop and phone). Measured live
+  m304 (c5571c305) against pre261's export (2fcd2967e), three pairs at
+  load 37-51 (`bench/results/webstart10-2026-11-16/measure`): the export
+  x0.98 cold and warm usable, x1.01 and x0.97 a phone's first frame, so a
+  local export stands for live. Live's medians: usable 22.0 s cold and
+  13.6 s warm, a phone's first frame 20.2 s cold and 11.8 warm. Cold, the
+  engine's files (9.29 MB: wasm 6.89, pack 2.33, script 0.06) were on the
+  wire to 6.6 s, its banner at 7.7; the data pack (4.95 MB) came over
+  the wire 6.6-10.5 s, during the compile, was handed to the page at 15.3
+  s, when the compile let the page's thread go, and Main waited 0.3 s for
+  it; the rest of the parts (2.62 MB) came by 13.4 s and nothing waited.
+  Warm, all of it from the cache by 0.9 s, the banner at 1.5. After the
+  banner, cold and warm: the engine's own start 1.0 and 0.7 s, the
+  compile 5.9 and 4.9, the catalogue 2.1 and 1.8, the interface 1.6 and
+  1.0, the model 0.3, the frames to the bin usable 4.2 and 1.8 (SwiftShader
+  compiles the first frame's shaders; a warm profile keeps them).
 - `POST /api/account?op=fetch` (`api/_link.js`, urlfetch 2026-11-03) — a link
   fetched for the app in a browser, signed in: brickify `url=` and
   print_part `picture_url=` (`AppTools._fetch_through_site`). The page's

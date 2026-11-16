@@ -21,6 +21,17 @@
 //                                 its GC, wasm and compile events) to DIR/LABEL.json;
 //                                 tools/web/trace_window.py says where a stretch
 //                                 of the page's clock went
+//     --phone                     a phone's window, 390 x 844 at 3x, by touch: a
+//                                 phone keeps the bin behind a button, so the load
+//                                 is timed to its first frame, not to the bin
+//
+// Each load then says what the start waited for, file by file (the start's
+// files): the engine's script, its wasm and its pack, which the engine
+// cannot start without; the data pack (the catalogue, the models, LDraw's
+// tables), which Main waits for after its compile; the rest of the parts,
+// which nothing waits for; and the rest. For each, its bytes as sent, when
+// it was asked and when it came, and what of the wait was its own: the
+// engine's files to the engine's banner, the data pack's to Main's "data".
 //
 // A local export (tools/export.sh web), sent and cached as the deployment
 // sends it: without --cached every file is no-store, and a warm load timed
@@ -128,6 +139,12 @@ const traceDir = args.trace && args.trace !== true ? String(args.trace) : "";
 // how every load before lazycompile (2026-11-05) was timed.
 const asPerson = !args["inspector-frames"];
 if (traceDir) mkdirSync(traceDir, { recursive: true });
+// --phone: a phone's window; its load ends at the first frame (the goal).
+const phone = Boolean(args.phone);
+const WINDOW = phone ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
+  : { viewport: { width: 1280, height: 800 } };
+const goal = (m) => (phone ? m?.firstFrame : m?.interactive);
+const goalSaid = phone ? "first frame" : "interactive";
 // What a trace records: the page's tasks and console stamps (the page's
 // clock is found from load_check's own), V8's sampled CPU profile of every
 // thread (the engine's workers too), its GC, the wasm compiler's tiers.
@@ -383,7 +400,8 @@ async function load(context, profile, label) {
         panel: ["brief", "connect_claude", "key_field"].some((name) => c[name]),
         found: Array.isArray(s.found) ? s.found.length : 0, now: performance.now() };
     }).catch(() => null);
-    if (now && (assistant ? now.panel : now.bin && now.found > 0)) { marks = { ...now.at, interactive: now.now }; cpu1 = await cpuNow(cdp); break; }
+    if (now && phone && now.at.firstFrame) { marks = { ...now.at, interactive: NaN }; cpu1 = await cpuNow(cdp); break; }
+    if (now && !phone && (assistant ? now.panel : now.bin && now.found > 0)) { marks = { ...now.at, interactive: now.now }; cpu1 = await cpuNow(cdp); break; }
     if (Date.now() > deadline) { marks = now ? { ...now.at, interactive: NaN } : null; break; }
     await page.waitForTimeout(100);
   }
@@ -415,7 +433,9 @@ async function load(context, profile, label) {
       { label, marks: { ...marks, said, stalls, longtasks: undefined }, loaded });
   }
   const cpuAll = cpu1 ? cpu1.all - cpu0.all : NaN;
-  const busy = (marks?.longtasks || []).filter(([t]) => t <= (marks?.interactive ?? Infinity)).reduce((n, [, d]) => n + d, 0);
+  // What came and ran before the load's goal: interactive, or a phone's first frame.
+  const until = Number.isFinite(goal(marks)) ? goal(marks) : Infinity;
+  const busy = (marks?.longtasks || []).filter(([t]) => t <= until).reduce((n, [, d]) => n + d, 0);
   // Request times to the page's clock: the document's request is its zero
   // within a few ms (the navigation's own start).
   const rel = (t) => (t - zero) * 1000;
@@ -423,8 +443,8 @@ async function load(context, profile, label) {
     path: r.url.replace(/^https?:\/\/[^/]+/, "").replace(/[?#].*$/, ""), host: (r.url.match(/^https?:\/\/([^/]+)/) || [])[1] || "",
     status: r.status || 0, encoding: r.encoding || "", cache: r.cache || "", cached: Boolean(r.cached), type: r.type || "",
     bytes: Math.max(r.bytes || 0, r.chunks.reduce((n, [, b]) => n + b, 0)), start: rel(r.start), end: r.end ? rel(r.end) : NaN,
-    before: r.chunks.filter(([t]) => rel(t) <= (marks?.interactive ?? Infinity)).reduce((n, [, b]) => n + b, 0)
-      + (r.end && rel(r.end) <= (marks?.interactive ?? Infinity) ? (r.headers || 0) : 0),
+    before: r.chunks.filter(([t]) => rel(t) <= until).reduce((n, [, b]) => n + b, 0)
+      + (r.end && rel(r.end) <= until ? (r.headers || 0) : 0),
     failed: r.failed || "",
   }));
   // What came by a worker: on the page's clock from the timings' epoch.
@@ -435,10 +455,10 @@ async function load(context, profile, label) {
     files.push({ path: one.url.replace(/^https?:\/\/[^/]+/, "").replace(/[?#].*$/, ""), host: (one.url.match(/^https?:\/\/([^/]+)/) || [])[1] || "",
       status: 200, encoding: one.headers["content-encoding"] || "", cache: one.headers["cache-control"] || "",
       cached: false, type: one.headers["content-type"] || "", bytes: one.bytes, start: begun, end,
-      before: end <= (marks?.interactive ?? Infinity) ? one.bytes : 0, failed: "", worker: true });
+      before: end <= until ? one.bytes : 0, failed: "", worker: true });
   }
   const build = files.filter((f) => /\/index\.(wasm|pck|js)$/.test(f.path) || /\.pck$/.test(f.path));
-  const ends = build.filter((f) => f.end <= (marks?.interactive ?? Infinity)).map((f) => f.end);
+  const ends = build.filter((f) => f.end <= until).map((f) => f.end);
   const net = ends.length ? Math.max(...ends) : NaN;
   const bytes = files.reduce((n, f) => n + f.before, 0);
   if (marks) delete marks.longtasks;
@@ -446,9 +466,57 @@ async function load(context, profile, label) {
     // A part of the pick fetched alone from the store, after the click.
     picked.fetched = files.filter((f) => f.path.endsWith(".lbm") && f.start >= picked.at).length;
   }
-  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart, picked, loaded, watched };
+  const start = startAccount(files, marks, until);
+  const run = { label, profile, phone, marks, net, cpu, cpuAll, busy, bytes, start, files, errors: errors.slice(0, 5), navStart, picked, loaded, watched };
   await page.close().catch(() => {});
   return run;
+}
+
+// What the start waited for, file by file, of what came before the load's
+// goal ([until]): each kind's bytes as sent, from its first ask to its last
+// byte, and whether it came from the browser's cache. The engine starts once
+// its script, wasm and pack are all here (its banner after); Main waits for
+// the data pack after its compile ("data" against "ready"); nothing waits
+// for the rest of the parts, which are written in when they come.
+const KINDS = [
+  ["engine", /\/index\.(js|wasm|pck)$/], ["data", /\/index\.data\.pck$/], ["parts", /\/index\.parts\.bin$/],
+];
+function startAccount(files, marks, until) {
+  const kind = (f) => (KINDS.find(([, re]) => re.test(f.path)) || ["rest"])[0];
+  // Bytes come in chunks the protocol counts, or for a small file only in
+  // its end's count.
+  const got = (f) => (f.end <= until ? Math.max(f.before, f.bytes) : f.before);
+  const account = {};
+  for (const name of [...KINDS.map(([k]) => k), "rest"]) {
+    // Not the engine's threads' own loads of its script, which never answer
+    // here (no status, no end): eight of them, from the page's memory.
+    const these = files.filter((f) => kind(f) === name && f.start <= until && (f.status || Number.isFinite(f.end)));
+    const ends = these.map((f) => f.end).filter(Number.isFinite);
+    account[name] = {
+      bytes: these.reduce((n, f) => n + got(f), 0), files: these.length,
+      from: these.length ? Math.min(...these.map((f) => f.start)) : NaN, to: ends.length ? Math.max(...ends) : NaN,
+      cached: these.length > 0 && these.every((f) => f.cached || (f.worker && !f.bytes)),
+      each: Object.fromEntries(these.filter(() => name !== "rest").map((f) => [f.path.replace(/^.*\//, ""), got(f)])),
+    };
+  }
+  const m = marks || {};
+  const b = m.boot || {};
+  account.banner = ((m.said || []).find(([, line]) => /^Godot Engine/.test(line)) || [NaN])[0];
+  account.data.handed = m.packs?.data?.came ?? NaN;
+  account.data.waited = Number.isFinite(b.ready) ? (b.data ?? b.ready) - b.ready : NaN;
+  account.parts.written = m.later?.written ?? NaN;
+  return account;
+}
+
+function sayStart(run) {
+  const a = run.start;
+  if (!a) return;
+  const span = (k) => `${a[k].cached ? "from the cache " : ""}${sec(a[k].from)}-${sec(a[k].to)} s`;
+  const each = Object.entries(a.engine.each).sort((x, y) => y[1] - x[1]).map(([f, n]) => `${f.replace(/^index\./, "")} ${mb(n)}`).join(", ");
+  console.log(`    what the start waited for: the engine's files ${mb(a.engine.bytes)} MB (${each}) ${span("engine")}, its banner ${sec(a.banner)} s; `
+    + `the data pack ${mb(a.data.bytes)} MB ${span("data")}, handed to the page ${sec(a.data.handed)} s, Main waited ${sec(a.data.waited)} s for it; `
+    + `the rest of the parts ${mb(a.parts.bytes)} MB ${span("parts")}, written ${sec(a.parts.written)} s, waited for by nothing; `
+    + `the rest ${mb(a.rest.bytes)} MB in ${a.rest.files} files`);
 }
 
 // When the engine's own start was done: its last line before it loads the
@@ -465,8 +533,9 @@ function sayRun(run) {
   const banner = (m.said || []).find(([, line]) => /^Godot Engine/.test(line));
   console.log(`  ${run.label}: interactive ${sec(m.interactive)} s (bin drawn ${sec(m.binDrawn)} s), first frame ${sec(m.firstFrame)} s, `
     + `shown ${sec(m.shown)} s, started ${sec(m.started)} s, net ${sec(run.net)} s, main thread ${sec(run.cpu)} s on a CPU (${sec(run.busy)} s in long tasks; `
-    + `${sec(run.cpuAll)} s all threads), ${mb(run.bytes)} MB before interactive`
+    + `${sec(run.cpuAll)} s all threads), ${mb(run.bytes)} MB before ${goalSaid}`
     + (run.errors.length ? ` (page errors: ${run.errors.join(" | ")})` : ""));
+  sayStart(run);
   if (run.picked) {
     console.log(`    first pick of ${pickId}: in hand with its ghost ${Number.isFinite(run.picked.ms) ? `${Math.round(run.picked.ms)} ms` : `never (${run.picked.why})`}`
       + ` after the click, ${run.picked.fetched ?? 0} part file${run.picked.fetched === 1 ? "" : "s"} fetched for it alone`);
@@ -528,8 +597,7 @@ async function visitor() {
   const dir = mkdtempSync(join(tmpdir(), "load_check-"));
   // The bucket itself, not this machine's copy of it (storage_mirror.mjs): a
   // first visit's parts come from there, and are part of what is timed.
-  const context = await chromium.launchPersistentContext(dir, { args: SOFTWARE, viewport: { width: 1280, height: 800 },
-    realStore: true });
+  const context = await chromium.launchPersistentContext(dir, { args: SOFTWARE, ...WINDOW, realStore: true });
   if (canSignIn()) await signInContext(context).catch((e) => console.log(`  (could not sign in: ${e.message})`));
   else console.log("  (not signed in: no Supabase keys in the environment, so the app shows its sign-in screen)");
   return { context, done: async () => { await context.close().catch(() => {}); rmSync(dir, { recursive: true, force: true }); } };
@@ -539,7 +607,7 @@ const results = [];
 let failed = false;
 for (const profile of profiles) {
   const held = PROFILES[profile] ? `${PROFILES[profile].down} Mbps, ${PROFILES[profile].rtt} ms` : "not held";
-  console.log(`load_check: ${asked}, ${profile} (${held}), ${runs} cold${warm ? " and warm" : ""}`);
+  console.log(`load_check: ${asked}, ${profile} (${held}), ${phone ? "a phone's window, " : ""}${runs} cold${warm ? " and warm" : ""}`);
   for (let n = 1; n <= runs; n++) {
     const { context, done } = await visitor();
     try {
@@ -562,7 +630,7 @@ for (const profile of profiles) {
   }
 }
 
-console.log("\nload_check: medians (s; MB before interactive)");
+console.log(`\nload_check: medians (s; MB before ${goalSaid})`);
 const summary = {};
 for (const profile of profiles) {
   for (const kind of warm ? ["cold", "warm"] : ["cold"]) {
@@ -581,6 +649,14 @@ for (const profile of profiles) {
       bytes: median(these.map((r) => r.bytes)),
       pick: pickId ? Math.max(...these.map((r) => r.picked?.ms ?? NaN)) : NaN,
       runs: these.length,
+    };
+    // What the start waited for (startAccount), as medians.
+    const of = (f) => median(these.map((r) => (r.start ? f(r.start) : NaN)));
+    row.start = {
+      engine: { bytes: of((a) => a.engine.bytes), from: of((a) => a.engine.from), to: of((a) => a.engine.to) }, banner: of((a) => a.banner),
+      data: { bytes: of((a) => a.data.bytes), from: of((a) => a.data.from), to: of((a) => a.data.to), handed: of((a) => a.data.handed), waited: of((a) => a.data.waited) },
+      parts: { bytes: of((a) => a.parts.bytes), from: of((a) => a.parts.from), to: of((a) => a.parts.to), written: of((a) => a.parts.written) },
+      rest: { bytes: of((a) => a.rest.bytes) },
     };
     // The start's parts, after the bytes (Main._boot_mark): the engine to
     // its banner, the scripts to Main._ready (of which the engine's own
@@ -640,6 +716,6 @@ if (maxPick) {
     failed ||= !ok;
   }
 }
-for (const r of results) if (!Number.isFinite(r.marks?.interactive)) { console.log(`FAIL ${r.profile} ${r.label} never became interactive`); failed = true; }
+for (const r of results) if (!Number.isFinite(goal(r.marks))) { console.log(`FAIL ${r.profile} ${r.label} never became ${phone ? "drawn" : "interactive"}`); failed = true; }
 console.log(failed ? "load_check: FAIL" : "load_check: ok");
 process.exit(failed ? 1 : 0);
