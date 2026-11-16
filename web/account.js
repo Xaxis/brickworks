@@ -120,12 +120,21 @@ function keep(body, email) {
       url: project.url,
       key: project.key,
     }));
+  } catch {
+    // A browser that keeps nothing is signed in for this page only.
+  }
+  keepAccess(body, email);
+}
+
+/// This tab's access token, from a sign-in or a renewal.
+function keepAccess(body, email) {
+  try {
     sessionStorage.setItem(ACCESS, JSON.stringify({
       token: body.access_token, until: Date.now() + (Number(body.expires_in) || 3600) * 1000 - 60000,
       email: body.user?.email || email || "",
     }));
   } catch {
-    // A browser that keeps nothing is signed in for this page only.
+    // Asked again at the next call.
   }
 }
 
@@ -160,11 +169,12 @@ addEventListener("input", (event) => {
 }, true);
 const typedHere = () => [...document.querySelectorAll("input, textarea")]
   .some((one) => typedIn.has(one) && one.value.trim() && one.value !== one.defaultValue);
-// Who a kept sign-in is (its account), or "" for none.
+// Who a kept sign-in is (its account), or "" for none: [was] as kept, or
+// its text.
+const whoOf = (was) => (was && was.refresh_token ? String(was.user_id || was.email || "someone") : "");
 const whoIn = (text) => {
   try {
-    const was = JSON.parse(text || "null");
-    return was && was.refresh_token ? String(was.user_id || was.email || "someone") : "";
+    return whoOf(JSON.parse(text || "null"));
   } catch {
     return "";
   }
@@ -242,7 +252,16 @@ async function renew(was) {
     });
     const body = await json(reply);
     if (reply.ok && body.access_token) {
-      keep(body, was.email);
+      // Kept only while the sign-in it renewed is still this browser's
+      // (m305fix: a tab's renewal, asked when another tab signed in, was
+      // answered after that tab signed out, and written back over the
+      // sign-out, signing every tab in again). Signed out meanwhile, or
+      // in as somebody else: nothing kept, no token. Renewed meanwhile by
+      // another tab: theirs kept, this tab's token its own.
+      const now = kept();
+      if (!whoOf(now) || whoOf(now) !== whoOf(was)) return null;
+      if (now.refresh_token === was.refresh_token) keep(body, was.email);
+      else keepAccess(body, was.email);
       return body.access_token;
     }
     if (!wait || (reply.status !== 429 && reply.status < 500)) return null;
@@ -526,7 +545,10 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
 /// Signed in, the page is told "brickworks:signed-in-done" once the age
 /// question and First steps are behind, to draw what it shows somebody
 /// signed in where they are (the header's Sign in opens this on any page).
-export async function askToSignIn(why, { prefer = "" } = {}) {
+/// [back]: what has the focus once signed in, the moment the dialog goes,
+/// where what opened it is no more (the header's Sign in, the avatar by
+/// then); without it the dialog gives the focus back to what opened it.
+export async function askToSignIn(why, { prefer = "", back = null } = {}) {
   await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
@@ -755,8 +777,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
           onToken: async (token) => {
             await exchangeOrangecheck(token);
             finished = true;
-            dialog.close();
-            dialog.remove();
+            gone();
             const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
             settled(!asked?.refused);
           },
@@ -795,6 +816,14 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       if (signed) dispatchEvent(new Event("brickworks:signed-in-done"));
       done(signed);
     };
+    // Signed in: the dialog gone and the focus on [back] in the same
+    // moment, not on the page while the age question is looked up
+    // (m305fix: BODY for over 300 ms after the dialog went, at 1280).
+    const gone = () => {
+      dialog.close();
+      dialog.remove();
+      back?.()?.focus({ preventScroll: true });
+    };
     const end = (result) => {
       if (finished) return;
       finished = true;
@@ -809,8 +838,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       if (finished || checking || !signedIn()) return false;
       finished = true;
       windowed?.cancel();
-      dialog.close();
-      dialog.remove();
+      gone();
       settled(true);
       return true;
     };
@@ -913,8 +941,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       // answered it, before the page carries on.
       finished = true;
       windowed?.cancel();
-      dialog.close();
-      dialog.remove();
+      gone();
       const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
       // Asked at the box's tick, never otherwise, never for an account
       // under 13, and never waited on.
