@@ -248,6 +248,10 @@ func drive(body: int, how: String = "picked") -> void:
 		return
 	_driving = true
 	_driving_to = body
+	# What was said of the last driver or the last tap goes: a tap on the
+	# frame, then one on the Earth, left "That part does not turn on anything
+	# here" under "Driver: Earth, tapped".
+	_status.text = ""
 	_stop()
 	turns = 0.0
 	var job: Working.Job = Working.begin("Turning the mechanism…")
