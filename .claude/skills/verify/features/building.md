@@ -395,7 +395,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
-  less room than it needs.
+  less room than it needs. Asked for from a part's actions or its More
+  (Shell `show_properties`), its place and turn are scrolled into sight
+  (`Inspector.show_place`): a tablet's drawer, 1024 x 768, has it over the
+  colours with Z, Turn, Tilt and Roll under its fold, and phonewalk's typed
+  turn tapped the bar under it three runs of three (smalls4 item 6). Probes:
+  `typedturn_probe` (tablet) and `typedturn_phone_probe` (phone): the brick
+  tapped, held, Properties tapped; Turn in sight, a tap gives it the keys,
+  15 typed and Enter turn it 15°.
 - `properties under the bin` (`Inspector.compact`, `Main._bin_props`,
   2026-10-30, docs/APP_UX2.md gap 5): where the columns take turns (a
   laptop's 1280 x 720 and 1400 x 900, and 1920 x 1080), opening the properties folded the bin

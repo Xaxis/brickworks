@@ -1549,7 +1549,8 @@ func _define() -> void:
 	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
 	_add("show_properties", "Properties", 0, func() -> void:
 		SideDock.of(inspector).set_open(true)
-		inspector.set_open(true), selected,
+		inspector.set_open(true)
+		inspector.show_place(), selected,
 		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
