@@ -120,12 +120,21 @@ function keep(body, email) {
       url: project.url,
       key: project.key,
     }));
+  } catch {
+    // A browser that keeps nothing is signed in for this page only.
+  }
+  keepAccess(body, email);
+}
+
+/// This tab's access token, from a sign-in or a renewal.
+function keepAccess(body, email) {
+  try {
     sessionStorage.setItem(ACCESS, JSON.stringify({
       token: body.access_token, until: Date.now() + (Number(body.expires_in) || 3600) * 1000 - 60000,
       email: body.user?.email || email || "",
     }));
   } catch {
-    // A browser that keeps nothing is signed in for this page only.
+    // Asked again at the next call.
   }
 }
 
@@ -160,11 +169,12 @@ addEventListener("input", (event) => {
 }, true);
 const typedHere = () => [...document.querySelectorAll("input, textarea")]
   .some((one) => typedIn.has(one) && one.value.trim() && one.value !== one.defaultValue);
-// Who a kept sign-in is (its account), or "" for none.
+// Who a kept sign-in is (its account), or "" for none: [was] as kept, or
+// its text.
+const whoOf = (was) => (was && was.refresh_token ? String(was.user_id || was.email || "someone") : "");
 const whoIn = (text) => {
   try {
-    const was = JSON.parse(text || "null");
-    return was && was.refresh_token ? String(was.user_id || was.email || "someone") : "";
+    return whoOf(JSON.parse(text || "null"));
   } catch {
     return "";
   }
@@ -242,7 +252,16 @@ async function renew(was) {
     });
     const body = await json(reply);
     if (reply.ok && body.access_token) {
-      keep(body, was.email);
+      // Kept only while the sign-in it renewed is still this browser's
+      // (m305fix: a tab's renewal, asked when another tab signed in, was
+      // answered after that tab signed out, and written back over the
+      // sign-out, signing every tab in again). Signed out meanwhile, or
+      // in as somebody else: nothing kept, no token. Renewed meanwhile by
+      // another tab: theirs kept, this tab's token its own.
+      const now = kept();
+      if (!whoOf(now) || whoOf(now) !== whoOf(was)) return null;
+      if (now.refresh_token === was.refresh_token) keep(body, was.email);
+      else keepAccess(body, was.email);
       return body.access_token;
     }
     if (!wait || (reply.status !== 429 && reply.status < 500)) return null;
