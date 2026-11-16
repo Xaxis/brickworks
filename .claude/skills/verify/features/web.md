@@ -365,6 +365,15 @@ plan with Claude as the client.
   compile 5.9 and 4.9, the catalogue 2.1 and 1.8, the interface 1.6 and
   1.0, the model 0.3, the frames to the bin usable 4.2 and 1.8 (SwiftShader
   compiles the first frame's shaders; a warm profile keeps them).
+  A return after a release, the engine at `/e/<hash>/` against every file
+  under `/b/<sha>/` (two releases of one export in each layout, served
+  locally; `-- --after=../aaaaaaa/index.html`, three pairs at load 44-62,
+  `bench/results/webstart10-2026-11-16/lever_after`): the bin usable
+  19.7 to 14.9 s (x0.76, every pair 0.74-0.79), a phone's first frame 17.7
+  to 13.2 s (x0.74), 16.87 to 9.91 MB, the banner at 2.0 s where it was
+  5.7; returns within a release and first visits as before (warm x1.01;
+  against live m304 at load 28-35, two pairs, `lever_live`: x1.02 cold,
+  x0.99 warm, x0.99 a phone's first frame).
 - `POST /api/account?op=fetch` (`api/_link.js`, urlfetch 2026-11-03) — a link
   fetched for the app in a browser, signed in: brickify `url=` and
   print_part `picture_url=` (`AppTools._fetch_through_site`). The page's
