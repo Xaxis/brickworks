@@ -218,9 +218,118 @@ async function mcp(token, session, method, params) {
   return [answer.status, body, answer.headers.get("mcp-session-id") || ""];
 }
 
+// Each of the app's frames, as the page runs them (the engine's loop is a
+// requestAnimationFrame callback): when it began and ended on the page, and
+// when a WebGL fence put in after it passed, which is when SwiftShader had
+// drawn it. A page drawing in software hands a frame over in its 17 ms and
+// draws it behind the page, 0.3-2 s later at this box's load
+// (brickworks-swiftshader-timing), so the frame a point was drawn in is
+// seen when its fence passes, not when the page's frame ended. Kept while
+// window.__fences is on, the last 600.
+function frameFences() {
+  const real = window.requestAnimationFrame.bind(window);
+  const frames = window.__frames = [];
+  const waiting = [];
+  let gl = null;
+  const look = () => {
+    for (let i = waiting.length - 1; i >= 0; i -= 1) {
+      const frame = waiting[i];
+      if (gl.getSyncParameter(frame.sync, gl.SYNC_STATUS) !== gl.SIGNALED) continue;
+      frame.passed = Date.now();
+      gl.deleteSync(frame.sync);
+      frame.sync = null;
+      waiting.splice(i, 1);
+    }
+    if (waiting.length) setTimeout(look, 2);
+  };
+  window.requestAnimationFrame = (callback) => real((stamp) => {
+    const start = Date.now();
+    try {
+      callback(stamp);
+    } finally {
+      if (window.__fences) {
+        if (!gl) {
+          const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+          gl = canvas?.getContext("webgl2") || null;
+        }
+        const frame = { start, end: Date.now(), passed: null, sync: gl ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null };
+        if (frame.sync) {
+          gl.flush();
+          if (!waiting.length) setTimeout(look, 0);
+          waiting.push(frame);
+        }
+        frames.push(frame);
+        if (frames.length > 600) frames.shift();
+      }
+    }
+  });
+}
+// The lines of the page's polls that name a part pointed out, as the page
+// reads them: [{got (unix ms), at (the server's), pointed: {who: [the
+// server had it, the poll had it, how]}, looks: {who: n}}], the last 200.
+function pollLines() {
+  const real = window.fetch;
+  const lines = window.__pollLines = [];
+  window.fetch = function (input, init) {
+    const asked = real.apply(this, arguments);
+    if (!String(input?.url || input).includes("op=poll")) return asked;
+    return asked.then((answer) => {
+      const reader = answer.clone().body?.getReader();
+      const text = new TextDecoder();
+      let kept = "";
+      const take = (line) => {
+        if (!line.includes("\"look\"")) return;
+        try {
+          const said = JSON.parse(line);
+          const looks = {};
+          for (const one of said.people || []) if (one.look) looks[one.who] = one.look.n;
+          lines.push({ got: Date.now(), at: said.at, pointed: said.pointed || null, looks });
+          if (lines.length > 200) lines.shift();
+        } catch {}
+      };
+      (async () => {
+        for (;;) {
+          const { done, value } = await reader.read();
+          const now = done ? text.decode() : text.decode(value, { stream: true });
+          const cut = now.lastIndexOf("\n");
+          if (cut < 0) kept += now;
+          else {
+            (kept + now.slice(0, cut)).split("\n").forEach(take);
+            kept = now.slice(cut + 1);
+          }
+          if (done) { take(kept); break; }
+        }
+      })().catch(() => {});
+      return answer;
+    });
+  };
+}
+// The frame of [page] that ran at unix ms [at] (a page's own time of a
+// frame drawn, Together.timing), once its fence has passed: {start, end,
+// passed}; null if none ran then, or its fence has not passed in [ms].
+async function frameAt(page, at, ms = 15000) {
+  if (!Number.isFinite(at)) return null;
+  const end = Date.now() + ms;
+  for (;;) {
+    const frame = await page.evaluate((when) => {
+      const one = (window.__frames || []).find((f) => f.start <= when && when <= f.end + 1);
+      return one ? { start: one.start, end: one.end, passed: one.passed } : null;
+    }, at).catch(() => null);
+    if (frame?.passed || Date.now() > end) return frame?.passed ? frame : null;
+    await wait(20);
+  }
+}
+// [page]'s frames that ran between unix ms [from] and [to]: the longest's
+// page time, and when the last of them that began before [to] was drawn.
+const framesBetween = (page, from, to) => page.evaluate(([a, b]) => (window.__frames || [])
+  .filter((f) => f.end >= a && f.start <= b)
+  .map((f) => ({ start: f.start, end: f.end, passed: f.passed })), [from, to]).catch(() => []);
+
 const browser = await launch({ signedOut: true });
 async function person(email) {
   const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });
+  await context.addInitScript(frameFences);
+  await context.addInitScript(pollLines);
   const session = await mintSession(email, { age: true });
   await context.addInitScript(([name, value]) => {
     try { if (!localStorage.getItem(name)) localStorage.setItem(name, value); } catch {}
@@ -331,6 +440,19 @@ try {
     pointSends.push({ asked: Math.round(timing.startTime), waited: Math.round(timing.requestStart),
       answered: Math.round(timing.responseStart) });
   });
+  // The second page's polls, each [asked, ended] (unix ms): a point said
+  // while none was waiting waits for the next to be asked.
+  const guestPolls = [];
+  guest.page.on("request", (request) => {
+    if (request.url().includes("op=poll")) guestPolls.push({ request, asked: Date.now(), ended: null });
+  });
+  const pollEnded = (request) => {
+    const one = guestPolls.find((p) => p.request === request);
+    if (one) one.ended = Date.now();
+  };
+  guest.page.on("requestfinished", pollEnded);
+  guest.page.on("requestfailed", pollEnded);
+  for (const page of [owner.page, guest.page]) await page.evaluate(() => { window.__fences = true; });
   for (let n = 0; n < ROUNDS; n++) {
     const spots = laid.filter((one) => one.brick !== last);
     const aim = spots[n % spots.length];
@@ -353,11 +475,33 @@ try {
     const seen = theirs(await looks(guest.page), ownerWho);
     const sender = await timesOf(owner.page, (now) => now.looked >= t0 && now.look_drawn >= now.looked);
     const timing = got ? await timesOf(guest.page, (now) => now.look_shown >= t0 && now.look_drawn >= now.look_shown) : {};
+    // The frames each was drawn in, once drawn (their fences).
+    const ownFrame = await frameAt(owner.page, sender.look_drawn);
+    const guestFrame = await frameAt(guest.page, timing.look_drawn);
+    // The second page's frames from the line had to the frame that drew it:
+    // more than one, and the drawing was held (or nothing asked for it).
+    const between = Number.isFinite(timing.look_shown) && guestFrame
+      ? (await framesBetween(guest.page, timing.look_shown, guestFrame.start)).length : null;
+    // The line that brought it: heard with it, not a later one.
+    const sameLine = Number.isFinite(timing.people_heard) && timing.people_heard <= timing.look_shown;
+    const polling = guestPolls.filter((p) => p.asked <= (timing.look_shown ?? t0) && (p.ended ?? Infinity) >= t0);
+    // The first of the second page's lines that had this point: when the
+    // server said it, and when it had it and its poll did (its clock).
+    const line = seen ? await guest.page.evaluate(([who, n]) => (window.__pollLines || [])
+      .find((one) => one.looks[who] === n) || null, [ownerWho, seen.n]).catch(() => null) : null;
+    const relay = line?.pointed?.[ownerWho] || [];
     rows.push({ n, t0, part: aim.part,
       looked: after0(sender.looked, t0), sent: after0(sender.look_sent, t0),
       own: after0(sender.look_drawn, t0) ?? (own ? own - t0 : null),
-      said: Number.isFinite(timing.people_said) ? timing.people_said - t0 : null,
-      heard: after0(timing.people_heard, t0), drawn: after0(timing.look_drawn, t0),
+      ownFenced: ownFrame ? ownFrame.passed - t0 : null,
+      said: sameLine && Number.isFinite(timing.people_said) ? timing.people_said - t0 : null,
+      heard: sameLine ? after0(timing.people_heard, t0) : null,
+      shown: after0(timing.look_shown, t0), drawn: after0(timing.look_drawn, t0),
+      frame: guestFrame ? { start: guestFrame.start - t0, end: guestFrame.end - t0 } : null,
+      fenced: guestFrame ? guestFrame.passed - t0 : null, between,
+      polls: polling.map((p) => [p.asked - t0, p.ended === null ? null : p.ended - t0]),
+      line: line ? { said: line.at - t0, got: line.got - t0, server: Number.isFinite(relay[0]) ? relay[0] - t0 : null,
+        poll: Number.isFinite(relay[1]) ? relay[1] - t0 : null, via: relay[2] || null } : null,
       seen: got ? got - t0 : null, name: seen?.name, parts: seen?.parts });
     if (n === 0) {
       const during = await colourCount(guest.page, ownerColour, "1_pointed_guest.png");
@@ -371,13 +515,46 @@ try {
       .sort((a, b) => a.asked - b.asked)[0];
     if (send) Object.assign(row, { asked: send.asked - row.t0, waited: send.waited, answered: send.answered });
   }
-  writeFileSync(path.join(out, "rounds.json"), JSON.stringify({ rows, pointSends }, null, 1));
+  // Each point's way, a leg at a time (ms): the key to the owner's page
+  // handling it; to its send asked of the browser; to the server saying it
+  // on the second page's poll (the server's clock); to the second page
+  // having it; to the frame that drew it run on the page; to that frame
+  // drawn (its fence).
+  const less = (a, b) => (Number.isFinite(a) && Number.isFinite(b) ? a - b : null);
+  const legsOf = (row) => {
+    const said = row.line?.said ?? row.said;
+    return {
+      key: row.looked,
+      send: less(row.asked, row.looked),
+      // The relay in three where the server says its own: the send to the
+      // server having it (two clocks), on to the second page's poll having
+      // it, on to the line said.
+      up: less(row.line?.server, row.asked),
+      fan: less(row.line?.poll, row.line?.server),
+      say: less(said, row.line?.poll),
+      relay: less(said, row.asked),
+      down: less(row.shown, said),
+      frame: less(row.drawn, row.shown),
+      raster: less(row.fenced, row.drawn),
+    };
+  };
+  for (const row of rows) row.legs = legsOf(row);
+  writeFileSync(path.join(out, "rounds.json"), JSON.stringify({ rows, pointSends,
+    polls: guestPolls.map((p) => [p.asked, p.ended]) }, null, 1));
   for (const row of rows) {
-    console.log(`        ${String(row.n).padStart(2)} ${row.part}: key handled ${row.looked}, sent ${row.sent},`
-      + ` own drawn ${row.own}; its send asked ${row.asked}, waited ${row.waited} for a connection, answered`
-      + ` ${row.answered} after; server said ${row.said}, heard ${row.heard}, drawn ${row.drawn},`
+    const legs = Object.entries(row.legs).map(([k, v]) => `${k} ${v ?? "-"}`).join(", ");
+    console.log(`        ${String(row.n).padStart(2)} ${row.part}: drawn there ${row.fenced ?? "-"} ms after the key`
+      + ` (${legs}; ${row.between ?? "-"} frames before the one that drew it, which ran`
+      + ` ${row.frame ? `${row.frame.start}-${row.frame.end}` : "-"}); own drawn ${row.ownFenced ?? "-"}`
+      + ` (page ${row.own}); its send answered ${row.answered} after; the poll had it ${row.line?.via ?? "-"};`
+      + ` polls ${JSON.stringify(row.polls)};`
       + ` read ${row.seen} ms; "${row.name}"`);
   }
+  const legSpread = (key) => percentile(rows.map((row) => row.legs[key]), 0.5) + "/"
+    + percentile(rows.map((row) => row.legs[key]), 0.95);
+  console.log(`        legs, p50/p95 ms: ${["key", "send", "up", "fan", "say", "relay", "down", "frame", "raster"]
+    .map((key) => `${key} ${legSpread(key)}`).join(", ")}; drawn there ${percentile(rows.map((row) => row.fenced), 0.5)}/`
+    + `${percentile(rows.map((row) => row.fenced), 0.95)} (load ${loadavg()[0].toFixed(0)})`);
   const p = percentile;
   const of = (key) => rows.map((row) => row[key]).filter((x) => Number.isFinite(x));
   const spread = (list) => `p50 ${p(list, 0.5)}, p95 ${p(list, 0.95)}`;
