@@ -544,13 +544,9 @@ fieldset.date .dropdowns {
    What a page opens over itself: sign in and the age question
    (account.js), report it (report.js). */
 
-/* Its padding as two values, so what reaches to its edges (the report's
-   footer) follows a narrower one on a phone. */
 dialog {
-	--dialog-pad-block: 24px; --dialog-pad-inline: 24px;
 	width: min(420px, calc(100vw - 32px)); border: 1px solid var(--line-strong); border-radius: var(--r-4);
-	background: var(--panel); color: var(--ink); padding: var(--dialog-pad-block) var(--dialog-pad-inline);
-	box-shadow: var(--highlight), var(--shadow);
+	background: var(--panel); color: var(--ink); padding: var(--s-5); box-shadow: var(--highlight), var(--shadow);
 }
 dialog::backdrop { background: var(--scrim); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 dialog h2 { margin: 0 0 6px; }
@@ -597,7 +593,7 @@ dialog .waiting { padding: var(--s-3) 0 0; text-align: center; }
 dialog .waiting .spinner { display: block; width: 28px; height: 28px; margin: 0 auto var(--s-4); color: var(--accent-edge); }
 dialog .waiting-said { margin: 0 0 var(--s-1); font-size: var(--t-h3); font-weight: 640; color: var(--ink); }
 dialog .waiting .note { margin: 0 0 var(--s-5); }
-@media (width < 480px) { dialog.sign-in { --dialog-pad-block: var(--s-5); --dialog-pad-inline: var(--s-4); } }
+@media (width < 480px) { dialog.sign-in { padding: var(--s-5) var(--s-4); } }
 /* The code from the email, a box per digit (web/code-boxes.js): a row as
    wide as the dialog, each box a thumb's 56 px tall, an eight-digit code
    in two fours. Read-only while it is checked; a refused code shakes the
@@ -637,14 +633,17 @@ dialog.feedback .sends-head { margin: 0 0 2px; font-size: var(--t-small); color:
 dialog.feedback .sends { margin: 0 0 4px; color: var(--ink); font-size: var(--t-small); }
 /* Send and Cancel stay in sight while the report scrolls, as a dialog's
    footer does (GitHub's and Linear's new issue), edge to edge of the
-   dialog whatever its padding: the report is a .sign-in dialog too, 16 px
-   a side on a phone since signinux, and a fixed 24 px bleed ran 8 px past
-   it, sideways. */
+   dialog: its bleed is the dialog's padding. The report is a .sign-in
+   dialog too, 16 px a side on a phone since signinux, so there it bleeds
+   16 px; a 24 px bleed ran 8 px past the dialog, sideways. Said again for
+   the phone rather than as a token: tokens are made in :root alone. */
 dialog.feedback.report form > .actions {
-	position: sticky; bottom: calc(-1 * var(--dialog-pad-block)); z-index: 1;
-	margin: 0 calc(-1 * var(--dialog-pad-inline)) calc(-1 * var(--dialog-pad-block));
-	padding: 12px var(--dialog-pad-inline) var(--dialog-pad-block);
+	position: sticky; bottom: calc(-1 * var(--s-5)); z-index: 1;
+	margin: 0 calc(-1 * var(--s-5)) calc(-1 * var(--s-5)); padding: var(--s-3) var(--s-5) var(--s-5);
 	background: var(--panel); border-top: 1px solid var(--line);
+}
+@media (width < 480px) {
+	dialog.sign-in.feedback.report form > .actions { margin-inline: calc(-1 * var(--s-4)); padding-inline: var(--s-4); }
 }
 /* Wide enough, the words on the left and the picture on the right, the
    whole report in one screen. */
