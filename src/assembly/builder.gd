@@ -3770,7 +3770,8 @@ func _balled_clear(mine: String, at: Transform3D, theirs: String, there: Transfo
 			break
 	if centre == Vector3.INF:
 		return false
-	var round: float = float(ExactCheck.JOINT_ROUND["ball"])
+	var round: float = float((Later.script(&"ExactCheck").get_script_constant_map()["JOINT_ROUND"]
+		as Dictionary)["ball"])
 	var a: Exact.Shape = Exact.shape_for(library, mine)
 	var b: Exact.Shape = Exact.shape_for(library, theirs)
 	if a == null or b == null or not a.has_pieces() or not b.has_pieces():
