@@ -3440,9 +3440,11 @@ picture the assistant is shown.
   joint's slider in sight in a drag at most and dragged. 3: simulate_probe's
   gear train (an 8 driving a 24, put down by the probe: the orrery fixture
   reads locked since kinefuncs): Play in sight and tapped, the cycle
-  scrubbed, the other gear made the driver by a tap; then, while that tap is
-  still being driven, the first gear tapped back, and it is the driver when
-  Simulate is done, 2 taps in all (smalls4). 4: Measure's words.
+  scrubbed, the other gear made the driver by a tap; then phonewalk's orrery
+  (orrery_two_planets.ldr) opened in Simulate and, while its first driver
+  is still being turned and its stops sought, another gear tapped: it is
+  the driver when that is done, in the one tap (smalls4). 4: Measure's
+  words.
   Every target in each panel 44 points or more, those under printed.
   `--only=page,motions,simulate,measure` runs those sections. Pictures in
   `--shots=DIR`.
