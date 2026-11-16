@@ -78,9 +78,13 @@ class StandInSocket extends EventTarget {
   send(text) {
     const said = JSON.parse(text);
     if (said.event !== "phx_join") return;
-    this.topics.add(said.topic);
-    setTimeout(() => this.said({ topic: said.topic, event: "phx_reply", ref: said.ref,
-      payload: { status: "ok", response: { postgres_changes: [] } } }), 5);
+    // Broadcasts reach it once it has joined, as Realtime's do: what is
+    // told before is not heard (joining, below, waits longer for it).
+    setTimeout(() => {
+      this.topics.add(said.topic);
+      this.said({ topic: said.topic, event: "phx_reply", ref: said.ref,
+        payload: { status: "ok", response: { postgres_changes: [] } } });
+    }, store?.joinMs ?? 5);
   }
   close() { sockets.delete(this); }
 }
@@ -386,7 +390,32 @@ async function ordered() {
     read: JSON.parse(response.ended).people.find((p) => !p.me)?.look?.n ?? null };
 }
 
-const result = { looked: await looked(), ordered: await ordered(), lines: await lines(), whole: await whole(), refused: await refused(),
+// pointfix: a part pointed out while a poll begun a moment before is still
+// joining its channel: told before it could hear, it is read the moment the
+// channel has joined, not at the next read of who is in it (PEOPLE_MS).
+async function joining() {
+  reset();
+  store.joinMs = 100;
+  const began = Date.now();
+  const response = responseOf();
+  const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
+  await sleep(30);
+  const sentAt = Date.now();
+  await lookAs(OTHER, { n: 1763000000010, sel: ["ab12.3"], at: [1, 2, 3], age: 0 });
+  let outAt = null;
+  for (const end = Date.now() + 1000; Date.now() < end && outAt === null; await sleep(1)) {
+    if (response.writes.some((one) => one.text.includes("1763000000010"))) outAt = Date.now();
+  }
+  store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
+  await done;
+  store.joinMs = 5;
+  const line = response.writes.map((one) => JSON.parse(one.text))
+    .find((one) => one.people?.find((p) => !p.me)?.look?.n === 1763000000010);
+  const who = line?.people?.find((p) => !p.me)?.who;
+  return { sentMs: sentAt - began, ms: outAt === null ? null : outAt - sentAt, via: line?.pointed?.[who]?.[2] ?? null };
+}
+
+const result = { looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),
   reads: { lines: await reads(true), whole: await reads(false) },
   told: { lines: await told(true), whole: await told(false), taken_out: await takenOut() },
   pointing: { listening: await pointing(true), not: await pointing(false) } };

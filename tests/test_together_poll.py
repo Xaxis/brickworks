@@ -138,6 +138,15 @@ def test_a_line_with_a_point_says_when_the_server_and_the_poll_had_it():
     assert looked["sentAt"] - 5 <= server <= poll <= looked["lineAt"], looked
 
 
+def test_a_part_pointed_out_while_the_poll_joins_its_channel_is_read_once_joined():
+    joining = _run()["joining"]
+    # Told 30 ms into a poll whose channel joins at 100: not heard, so read,
+    # the moment it has joined (~70 ms on), not at the next read of who is in
+    # it (PEOPLE_MS, ~220 ms on).
+    assert joining["via"] == "read", joining
+    assert joining["ms"] is not None and joining["ms"] < 150, joining
+
+
 def test_a_part_pointed_out_beside_a_pointer_on_its_way_is_kept():
     ordered = _run()["ordered"]
     # The pointer's send reached the database after the point sent beside
