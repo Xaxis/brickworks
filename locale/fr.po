@@ -14835,3 +14835,20 @@ msgstr "Aucun pied d'au plus trois pièces n'a la place sous son côté %s pour 
 
 msgid "No foot of up to three parts reaches the floor under its %s side far enough out to stand it: widen its base that way, or move weight back over it, by hand."
 msgstr "Aucun pied d'au plus trois pièces n'atteint le sol sous son côté %s assez loin pour le faire tenir : élargis sa base de ce côté, ou ramène du poids au-dessus, à la main."
+
+# An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy (named), or no room in one, with the menu command round it (followfix, flfix)
+
+msgid "Locked in one copy of %s: unlock it, or use Build › Make this copy unique"
+msgstr "Verrouillée dans une copie de %s : déverrouillez-la, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "Locked in one copy of %s: %s. Unlock it, or use Build › Make this copy unique"
+msgstr "Verrouillée dans une copie de %s : %s. Déverrouillez-la, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "No room in %s: %s is in the way there. Move it, or use Build › Make this copy unique"
+msgstr "Pas de place dans %s : %s gêne à cet endroit. Déplacez-la, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "No room in %s: move what is in the way there, or use Build › Make this copy unique"
+msgstr "Pas de place dans %s : déplacez ce qui gêne à cet endroit, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
+msgstr "Pas de place dans %s : elle passerait sous le sol. Montez cette copie, ou utilisez Construire › Rendre cette copie unique"

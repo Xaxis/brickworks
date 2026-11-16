@@ -25,10 +25,11 @@
 ## A part in a copy of a sub-model goes with its twin in every other copy,
 ## each laid where the copies' follow lays it: where one of them has no room
 ## for the new part, or is locked, all of them stay, and that is said ("Pl
-## has no room in 1 of its 2 copies, so all 2 stay"). A follow lays a twin
-## without asking whether it fits, and copies follow whatever is locked, so
-## a replace changes no copy it cannot change in all of them (swreview F1,
-## F3).
+## has no room in 1 of its 2 copies, so all 2 stay"). A follow that some copy
+## cannot take takes back the whole edit (Assemblies.copies_follow, by the
+## same lock rule, Assemblies.locked_twins), so a replace leaves out ahead
+## of it each part it cannot change in all of its copies, and changes the
+## rest (swreview F1, F3).
 class_name FindReplace
 extends RefCounted
 
@@ -335,10 +336,10 @@ func plan(found: Dictionary, into: Dictionary) -> Dictionary:
 	var taken: Dictionary = {}       ## the new parts' places so far, by bucket
 	for root: int in groups:
 		var group: Array = members[root]
-		var locked: int = 0
-		for brick_id: int in group:
-			if builder.is_locked(brick_id):
-				locked += 1
+		# One rule with the copies' follow (Assemblies.locked_twins): a part
+		# locked in one copy holds its twins in every other.
+		var locked: int = assemblies.locked_twins(group).size() if assemblies != null \
+			else group.filter(func(brick_id: int) -> bool: return builder.is_locked(brick_id)).size()
 		var laid: Dictionary = {}    ## id -> [its new part, where]
 		for brick_id: int in group:
 			laid[brick_id] = _laid_as(brick_id, moving, reached)
