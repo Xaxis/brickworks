@@ -1306,10 +1306,7 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				assistant.who if assistant != null else CLAUDE, taken])
 			if assistant != null:
 				_mark(assistant.builder, assistant.chat)
-			# About to build: the outline first, if none is held.
-			var asking: String = assistant.outline_ask("clear_model") if assistant != null else ""
-			return "The baseplate is bare. undo puts it back." + (
-				"\n\nBefore the first build: " + asking if not asking.is_empty() else "")
+			return "The baseplate is bare. undo puts it back."
 		"save_model":
 			# A name in the app's own models, never a path. It wrote
 			# wherever it was told: a design run put orthanc.ldr in the

@@ -422,7 +422,7 @@
                 "type": "object"
               },
               "extrude": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by, \"screen\": true where its front climbs to a roof as glass (a cabin, a cab, a cockpit) — a windscreen laid at that rake, the roof on its top studs; or {\"from\", \"to\": studs along, \"color\"}}, \"plan\": its shape from above (round, T, U...). A cabin is its own profile on the body, its roof falling to the tail. \"profile\": \"outline\" (and \"under\": \"outline\") is the outline given to plan_scale, over its \"length\" in studs from its \"start\" (the outline's own unless said).",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by, \"screen\": true where its front climbs to a roof as glass (a cabin, a cab, a cockpit) — a windscreen laid at that rake, the roof on its top studs; or {\"from\", \"to\": studs along, \"color\"}}. A cabin is its own profile on the body, its roof falling to the tail.",
                 "type": "object"
               },
               "face": {
@@ -471,7 +471,7 @@
                 "type": "number"
               },
               "loft": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point; \"screen\" as on an extrude; \"sections\": \"outline\" with its \"width\" lays them to the outline given to plan_scale.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point; \"screen\" as on an extrude.",
                 "type": "object"
               },
               "masonry": {
@@ -586,7 +586,7 @@
                 "type": "number"
               },
               "revolve": {
-                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}; along x or z, \"screen\" as on an extrude. Up y, \"profile\": \"outline\" is the outline given to plan_scale.",
+                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}; along x or z, \"screen\" as on an extrude.",
                 "type": "object"
               },
               "rise": {
@@ -618,7 +618,7 @@
                 "type": "number"
               },
               "solids": {
-                "description": "shape: what it is made of, each an object naming one kind — {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}}, {\"dome\": {...}}, {\"tiers\": {...}} or {\"outline\": {}}, the first mass to the outline given to plan_scale — with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at. sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, {\"capsule\": {...}} or {\"superellipsoid\": {...}}, each {\"centre\": [x, y, z] in the design's studs and plates, \"size\": [studs across, plates tall, studs deep], \"color\"}; an egg's \"point\" is the way its narrow end faces (\"+y\" unless said; \"-x\" a body lying with its narrow end to -x), its \"taper\" 0 to 0.6; a capsule's or an ellipsoid's \"axis\" x, y or z; a superellipsoid's \"power\" 2 (round) to 6 (nearly a box), 3 unless said. Joined where they overlap.",
+                "description": "shape: what it is made of, each an object naming one kind — {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at. sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, {\"capsule\": {...}} or {\"superellipsoid\": {...}}, each {\"centre\": [x, y, z] in the design's studs and plates, \"size\": [studs across, plates tall, studs deep], \"color\"}; an egg's \"point\" is the way its narrow end faces (\"+y\" unless said; \"-x\" a body lying with its narrow end to -x), its \"taper\" 0 to 0.6; a capsule's or an ellipsoid's \"axis\" x, y or z; a superellipsoid's \"power\" 2 (round) to 6 (nearly a box), 3 unless said. Joined where they overlap.",
                 "items": {
                   "type": "object"
                 },
@@ -648,16 +648,13 @@
                 "type": "object"
               },
               "storeys": {
-                "description": "prism: {\"count\": 2 to 8, \"in\": studs} — the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y. {\"outline\": true}: a storey for each tier of the outline given to plan_scale, each its own height and radius.",
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} — the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
                 "properties": {
                   "count": {
                     "type": "integer"
                   },
                   "in": {
                     "type": "integer"
-                  },
-                  "outline": {
-                    "type": "boolean"
                   }
                 },
                 "type": "object"
@@ -674,10 +671,6 @@
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
-              },
-              "tiers": {
-                "description": "shape: {\"centre\": [x, z], \"plan\": its shape from above, rectangle, square, round, Y, T, L, cross, H, U or triangle, \"levels\": [[plates up, studs wide, studs deep], ...] ground first} — the plan stood up level by level, two levels at one height where it steps in: a skyscraper's setbacks, a ziggurat, a pagoda, a wedding cake. \"levels\": \"outline\" is the outline given to plan_scale, its steps and plan, to its own \"height\" in plates unless said.",
-                "type": "object"
               },
               "times": {
                 "description": "repeat: how many",
@@ -1044,84 +1037,13 @@
       "readOnlyHint": true,
       "title": "Plan the scale"
     },
-    "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model. Give it outline=, the real thing's outline read off a photograph of it (find_reference), and it answers with the first mass already in that outline at that size, a shape to send as it is: the app's shapes take the outline as their profile.",
+    "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "longest_metres": {
           "description": "how long the real thing is along its longest side. A guess within half is enough.",
           "type": "number"
-        },
-        "outline": {
-          "additionalProperties": false,
-          "description": "the real thing's outline, read off a photograph of it (find_reference) taken square from one side, before the first build: the answer is the first mass in it at the model's size, and \"outline\" in a shape's profile lays it",
-          "properties": {
-            "arm": {
-              "description": "a Y, T, L, cross, H or U's arms' thickness, a share of its width (a third unless said)",
-              "type": "number"
-            },
-            "bottoms": {
-              "description": "with heights: the underside at the same places, shares of the length (a car's sills, a plane's belly; 0 where it meets the ground)",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            "deep": {
-              "description": "a long thing's width across, a share of its length, when studs= does not say it; a tall thing's depth, a share of its width",
-              "type": "number"
-            },
-            "from": {
-              "description": "the side of your model the photograph shows; the front is +z, so a car laid along x is seen from the front or the back",
-              "enum": [
-                "front",
-                "back",
-                "left",
-                "right"
-              ],
-              "type": "string"
-            },
-            "heights": {
-              "description": "a long thing: the top's height at each tenth of its length, left to right as the photograph shows it, as shares of that length: 11 numbers (a car's roof about 0.25)",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            "picture": {
-              "description": "the photograph's title, as find_reference named it",
-              "type": "string"
-            },
-            "plan": {
-              "description": "its shape seen from above: rectangle (unless said), square, round, Y, T, L, cross, H, U or triangle",
-              "type": "string"
-            },
-            "steps": {
-              "description": "where the outline steps, each a share of the way (up a tall thing's height, along a long thing's length), lowest first: every setback of a tower, every step of a roofline. Count them off the photograph; between two the outline is level",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            "widths": {
-              "description": "a tall thing, instead of heights: its width at each tenth of its height, ground to top, as shares of that height: 11 numbers",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "from"
-          ],
-          "type": "object"
-        },
-        "studs": {
-          "description": "the size to build it at, when the brief gives one: its studs as said (\"fitting in about 25 x 54 studs\": [25, 54]). The outline is laid that long, or a tall thing that wide at its widest",
-          "items": {
-            "type": "number"
-          },
-          "type": "array"
         },
         "subject": {
           "type": "string"
@@ -2593,7 +2515,7 @@
                 "type": "object"
               },
               "extrude": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by, \"screen\": true where its front climbs to a roof as glass (a cabin, a cab, a cockpit) — a windscreen laid at that rake, the roof on its top studs; or {\"from\", \"to\": studs along, \"color\"}}, \"plan\": its shape from above (round, T, U...). A cabin is its own profile on the body, its roof falling to the tail. \"profile\": \"outline\" (and \"under\": \"outline\") is the outline given to plan_scale, over its \"length\" in studs from its \"start\" (the outline's own unless said).",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by, \"screen\": true where its front climbs to a roof as glass (a cabin, a cab, a cockpit) — a windscreen laid at that rake, the roof on its top studs; or {\"from\", \"to\": studs along, \"color\"}}. A cabin is its own profile on the body, its roof falling to the tail.",
                 "type": "object"
               },
               "face": {
@@ -2642,7 +2564,7 @@
                 "type": "number"
               },
               "loft": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point; \"screen\" as on an extrude; \"sections\": \"outline\" with its \"width\" lays them to the outline given to plan_scale.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point; \"screen\" as on an extrude.",
                 "type": "object"
               },
               "masonry": {
@@ -2757,7 +2679,7 @@
                 "type": "number"
               },
               "revolve": {
-                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}; along x or z, \"screen\" as on an extrude. Up y, \"profile\": \"outline\" is the outline given to plan_scale.",
+                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}; along x or z, \"screen\" as on an extrude.",
                 "type": "object"
               },
               "rise": {
@@ -2789,7 +2711,7 @@
                 "type": "number"
               },
               "solids": {
-                "description": "shape: what it is made of, each an object naming one kind — {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}}, {\"dome\": {...}}, {\"tiers\": {...}} or {\"outline\": {}}, the first mass to the outline given to plan_scale — with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at. sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, {\"capsule\": {...}} or {\"superellipsoid\": {...}}, each {\"centre\": [x, y, z] in the design's studs and plates, \"size\": [studs across, plates tall, studs deep], \"color\"}; an egg's \"point\" is the way its narrow end faces (\"+y\" unless said; \"-x\" a body lying with its narrow end to -x), its \"taper\" 0 to 0.6; a capsule's or an ellipsoid's \"axis\" x, y or z; a superellipsoid's \"power\" 2 (round) to 6 (nearly a box), 3 unless said. Joined where they overlap.",
+                "description": "shape: what it is made of, each an object naming one kind — {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at. sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, {\"capsule\": {...}} or {\"superellipsoid\": {...}}, each {\"centre\": [x, y, z] in the design's studs and plates, \"size\": [studs across, plates tall, studs deep], \"color\"}; an egg's \"point\" is the way its narrow end faces (\"+y\" unless said; \"-x\" a body lying with its narrow end to -x), its \"taper\" 0 to 0.6; a capsule's or an ellipsoid's \"axis\" x, y or z; a superellipsoid's \"power\" 2 (round) to 6 (nearly a box), 3 unless said. Joined where they overlap.",
                 "items": {
                   "type": "object"
                 },
@@ -2819,16 +2741,13 @@
                 "type": "object"
               },
               "storeys": {
-                "description": "prism: {\"count\": 2 to 8, \"in\": studs} — the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y. {\"outline\": true}: a storey for each tier of the outline given to plan_scale, each its own height and radius.",
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} — the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
                 "properties": {
                   "count": {
                     "type": "integer"
                   },
                   "in": {
                     "type": "integer"
-                  },
-                  "outline": {
-                    "type": "boolean"
                   }
                 },
                 "type": "object"
@@ -2845,10 +2764,6 @@
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
-              },
-              "tiers": {
-                "description": "shape: {\"centre\": [x, z], \"plan\": its shape from above, rectangle, square, round, Y, T, L, cross, H, U or triangle, \"levels\": [[plates up, studs wide, studs deep], ...] ground first} — the plan stood up level by level, two levels at one height where it steps in: a skyscraper's setbacks, a ziggurat, a pagoda, a wedding cake. \"levels\": \"outline\" is the outline given to plan_scale, its steps and plan, to its own \"height\" in plates unless said.",
-                "type": "object"
               },
               "times": {
                 "description": "repeat: how many",
