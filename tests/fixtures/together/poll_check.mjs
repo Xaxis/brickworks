@@ -107,13 +107,20 @@ class StandInSocket extends EventTarget {
     if (said.event !== "phx_join") return;
     // Broadcasts reach it once it has joined, as Realtime's do: what is
     // told before is not heard (joining, below, waits longer for it).
-    setTimeout(() => {
+    const join = () => {
       if (!sockets.has(this)) return;
       this.topics.add(said.topic);
       store.joinedAt = Date.now();
       this.said({ topic: said.topic, event: "phx_reply", ref: said.ref,
         payload: { status: "ok", response: { postgres_changes: [] } } });
-    }, store?.joinMs ?? 5);
+    };
+    // joinAfterTold: joined that long after the server told the channel, so
+    // a point is told while it joins however long the send's own way in
+    // took (pollreads, 2026-11-16).
+    const after = store?.joinAfterTold;
+    const wait = () => setTimeout(() => sockets.has(this) && (store.toldAt ? setTimeout(join, after) : wait()), 1);
+    if (after) wait();
+    else setTimeout(join, store?.joinMs ?? 5);
   }
   close() { sockets.delete(this); }
 }
@@ -126,6 +133,10 @@ globalThis.fetch = async (url, options = {}) => {
   if (where.pathname === "/realtime/v1/api/broadcast") {
     for (const message of JSON.parse(options.body).messages) {
       store.broadcasts += 1;
+      // When the server told the channel: the relay's leg from there to the
+      // line is timed apart from the send's own way in, whose sign-in check
+      // waits on the thread pool a busy box keeps (pollreads, 2026-11-16).
+      store.toldAt = Date.now();
       const topic = `realtime:${message.topic}`;
       for (const socket of sockets) {
         if (socket.topics.has(topic)) {
@@ -309,6 +320,7 @@ async function told(stream) {
   // Their pointer: the moment it is sent to the moment it goes out, and the
   // reads of who is in it between.
   const readsBefore = store.reads.filter((one) => one === "GET together_people").length;
+  store.toldAt = null;
   const sentAt = Date.now();
   const sending = pointAs(OTHER, [4, 5, 6]);
   for (const end = Date.now() + 2000; Date.now() < end; await sleep(1)) {
@@ -323,8 +335,9 @@ async function told(stream) {
   await done;
   const said = [...response.writes.map((one) => JSON.parse(one.text)), JSON.parse(response.ended)];
   const atOf = (one) => one.people?.find((p) => !p.me)?.at ?? null;
+  const toldAt = store.toldAt ?? outAt;
   return { stranger_status: stranger.statusCode, quiet, ms: outAt - sentAt, stalled: stalledIn(sentAt, outAt),
-    reads_between: readsBetween, shown: said.map(atOf).filter(Boolean), broadcasts: store.broadcasts,
+    relay_ms: outAt - toldAt, relay_stalled: stalledIn(toldAt, outAt), reads_between: readsBetween, shown: said.map(atOf).filter(Boolean), broadcasts: store.broadcasts,
     strangers_shown: said.some((one) => (one.people || []).length !== 2) };
 }
 
@@ -408,12 +421,16 @@ async function looked() {
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
   await sleep(300);
+  store.toldAt = null;
   const sentAt = Date.now();
   const sent = await lookAs(OTHER, { n: 1763000000000, sel: ["ab12.3"], at: [1, 2, 3], age: 40 });
   let outAt = null;
   for (const end = Date.now() + 2000; Date.now() < end && outAt === null; await sleep(1)) {
     if (response.writes.some((one) => one.text.includes("1763000000000"))) outAt = Date.now();
   }
+  const toldAt = store.toldAt ?? outAt;
+  const relay = outAt === null ? {} : { relay_ms: outAt - toldAt, relay_stalled: stalledIn(toldAt, outAt),
+    reads_between: store.log.filter(([what, at]) => what === "GET together_people" && at >= toldAt && at <= outAt).length };
   // Pointed out 4.8 s ago on their side: said with that age, then gone.
   await lookAs(OTHER, { n: 1763000000001, sel: ["ab12.3", "ab12.4"], at: null, age: 4800, claude: true });
   await sleep(900);
@@ -437,7 +454,7 @@ async function looked() {
   const firstLine = said.find((one) => one.people?.find((p) => !p.me)?.look?.n === 1763000000000);
   const who = firstLine?.people?.find((p) => !p.me)?.who;
   return { always: always === seen, sent: sent.statusCode, ms: outAt === null ? null : outAt - sentAt,
-    stalled: outAt === null ? null : stalledIn(sentAt, outAt), looks,
+    stalled: outAt === null ? null : stalledIn(sentAt, outAt), ...relay, looks,
     kept: store.people[0].pointer, refused, pointed: firstLine?.pointed?.[who] ?? null, sentAt, lineAt: firstLine?.at ?? null };
 }
 
@@ -470,7 +487,7 @@ async function ordered() {
 // channel has joined, not at the next read of who is in it (PEOPLE_MS).
 async function joining() {
   reset();
-  store.joinMs = 100;
+  store.joinAfterTold = 70;
   const began = Date.now();
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
@@ -481,14 +498,17 @@ async function joining() {
   for (const end = Date.now() + 1000; Date.now() < end && outAt === null; await sleep(1)) {
     if (response.writes.some((one) => one.text.includes("1763000000010"))) outAt = Date.now();
   }
+  const toldAt = store.toldAt ?? outAt;
+  const joinedAt = store.joinedAt;
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
   await done;
-  store.joinMs = 5;
+  store.joinAfterTold = 0;
   const line = response.writes.map((one) => JSON.parse(one.text))
     .find((one) => one.people?.find((p) => !p.me)?.look?.n === 1763000000010);
   const who = line?.people?.find((p) => !p.me)?.who;
-  return { sentMs: sentAt - began, ms: outAt === null ? null : outAt - sentAt,
-    stalled: outAt === null ? null : stalledIn(sentAt, outAt), via: line?.pointed?.[who]?.[2] ?? null };
+  return { sentMs: sentAt - began, toldMs: toldAt - began, joinedMs: joinedAt === null ? null : joinedAt - began,
+    ms: outAt === null ? null : outAt - toldAt, stalled: outAt === null ? null : stalledIn(toldAt, outAt),
+    via: line?.pointed?.[who]?.[2] ?? null };
 }
 
 const result = { looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),

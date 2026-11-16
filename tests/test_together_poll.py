@@ -120,7 +120,11 @@ def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
 def test_a_pointer_sent_goes_out_at_once_without_a_read():
     for asked in ("lines", "whole"):
         told = _run()["told"][asked]
-        assert told["ms"] - told["stalled"] < 50 and told["reads_between"] == 0, (asked, told)
+        # From the server telling the channel to the line, less what the box
+        # did not let the fixture run for; the send's own way in (its sign-in
+        # check waits on the thread pool a busy box keeps: 81 ms in 1 of 20
+        # under heavy with 2 ms stalled, pollreads) is not the relay's.
+        assert told["relay_ms"] - told["relay_stalled"] < 50 and told["reads_between"] == 0, (asked, told)
         assert [4, 5, 6] in told["shown"]
 
 
@@ -156,7 +160,10 @@ def test_somebody_pointing_reads_no_more_than_nobody():
 
 def test_a_part_pointed_out_goes_out_at_once_with_its_age():
     looked = _run()["looked"]
-    assert looked["sent"] == 200 and looked["ms"] is not None and looked["ms"] - looked["stalled"] < 50, looked
+    assert looked["sent"] == 200 and looked["ms"] is not None, looked
+    # As a pointer is: from the server telling the channel to the line, with
+    # no read of who is in it between.
+    assert looked["relay_ms"] - looked["relay_stalled"] < 50 and looked["reads_between"] == 0, looked
     first = next(look for look in looked["looks"] if look and look["n"] == 1763000000000)
     assert first["sel"] == ["ab12.3"] and first["at"] == [1, 2, 3] and first["claude"] is False
     assert 40 <= first["age"] < 400 + looked["stalled"], looked
@@ -194,9 +201,11 @@ def test_a_line_with_a_point_says_when_the_server_and_the_poll_had_it():
 
 def test_a_part_pointed_out_while_the_poll_joins_its_channel_is_read_once_joined():
     joining = _run()["joining"]
-    # Told 30 ms into a poll whose channel joins at 100: not heard, so read,
-    # the moment it has joined (~70 ms on), not at the next read of who is in
-    # it (PEOPLE_MS, ~220 ms on).
+    # Told 30 ms into a poll whose channel joins 70 ms after (after the
+    # server told it, not by the clock: a busy box's sign-in check can take
+    # longer than that, pollreads): not heard, so read the moment it has
+    # joined, not at the next read of who is in it (PEOPLE_MS, ~270 ms on).
+    assert joining["joinedMs"] is not None and joining["joinedMs"] >= joining["toldMs"], joining
     assert joining["via"] == "read", joining
     assert joining["ms"] is not None and joining["ms"] - joining["stalled"] < 150, joining
 
