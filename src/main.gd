@@ -5664,13 +5664,20 @@ func _build_ui() -> void:
 	hint.offset_bottom = 0.0
 	hint.alignment = FlowContainer.ALIGNMENT_CENTER
 	hint_area.add_child(hint)
-	# The box grows to whatever the strip needs, however it wraps.
-	hint.resized.connect(func() -> void:
+	# The box grows to whatever the strip needs, however it wraps, and gives
+	# it back as it unwraps. A flow knows its rows only once it has sorted at
+	# its new width, after it is resized: heard on resized alone, the strip
+	# kept the rows a narrow column had wrapped it to (a tool's panel opened
+	# beside the bin, binstay) once the column was wide again, and the
+	# model's room stayed 26 units short (flex_room at 1400 x 900).
+	var fit_hint := func() -> void:
 		if _phone != null:
 			return
 		var wants: float = maxf(hint.get_combined_minimum_size().y, 46.0)
 		hint_area.custom_minimum_size = Vector2(0, wants + 4.0)
-		hint.offset_top = -wants)
+		hint.offset_top = -wants
+	hint.resized.connect(fit_hint)
+	hint.minimum_size_changed.connect(fit_hint)
 
 	var pad := Control.new()
 	pad.custom_minimum_size = Vector2(0, 6)
