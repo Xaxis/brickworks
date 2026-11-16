@@ -1520,7 +1520,13 @@ func _is_figure(path: String) -> bool:
 func after_edit() -> int:
 	if _syncing:
 		return 0
-	# Said of this edit alone: the one before's words stand for none after it.
+	# The edit refused last is still the newest until the model changes: the
+	# frame's end hears its parts lifted and put back (Main._edited_soon) as
+	# an edit, and is told it was refused, so nothing marks the model changed
+	# (flreview F2). Any change after it, an undo or another edit, is asked
+	# afresh.
+	if not refused.is_empty() and _as_refused():
+		return 0
 	refused = ""
 	var step: Dictionary = builder.last_step()
 	# An undo or a redo changed the model by a step whose copies already
@@ -1547,6 +1553,7 @@ func after_edit() -> int:
 		_keep_redo()
 		# Kept through whatever the taking back set off.
 		refused = why
+		_refused_left = [world.revision, builder.history_depth(), builder.last_step()]
 		changed.emit()
 		edit_refused.emit(why)
 		return 0
@@ -1580,6 +1587,17 @@ var refused: String = ""
 
 ## An edit was taken back for [member refused]: the words to say.
 signal edit_refused(words: String)
+
+## The model as the edit [member refused] was taken back left it: [the
+## world's revision, the history's depth, its newest step].
+var _refused_left: Array = []
+
+
+## Whether the model is as the refused edit's taking back left it.
+func _as_refused() -> bool:
+	return _refused_left.size() == 3 and world.revision == int(_refused_left[0]) \
+		and builder.history_depth() == int(_refused_left[1]) \
+		and is_same(builder.last_step(), _refused_left[2])
 
 ## The history as after_edit last left it, [its depth, its newest step, the
 ## redo then], for an edit taken back to give back the redo it cleared.

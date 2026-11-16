@@ -3098,7 +3098,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the twin shares no more cells with it, made in both; deeper, refused),
   `real` (10179's #1028, #1030, #1076 and 10030's #446 nudged a plate by the
   handles, each made with its twin in every copy, one undo the file back;
-  opens both sets, so about eight minutes in all).
+  each from the set as it opens, so about eight minutes in all), `unchanged`
+  (a refused paint, pointer lift and paste leave `ModelStore._dirty_at` where
+  it was; the lift's drag does not begin).
 - `swapfind phone probe` (`src/dev/swapfind_phone_probe.gd`): windowed, 390 x
   844 laid out for a phone at a browser's scale, no sign-in, about a
   minute. More, Edit, Find and replace… in 3 taps; the bar inside the
