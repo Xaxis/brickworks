@@ -3296,11 +3296,15 @@ less the pairs a pin, axle, clip, ball or glue holds):
 - **A hidden sub-assembly goes on once what holds it is in**
   (`HeldSteps._put_on_sooner`). 7815's two passengers, each put on whole,
   went on after the roof slopes over them.
-- **A model of sub-models keeps its whole sub-model steps** only when they
-  put no more in under, and no more apart in the hand (`HeldSteps.Hand`),
-  than the order worked out. Kept, they floated 1.4% of steps in the hand
-  that the steps test lets stand, its rule that an author's sub-model
-  begins on nothing.
+- **A model of sub-models keeps its whole sub-model steps** where they put
+  no more in the air and hide no more than the order worked out, as before.
+  Judged also by what they put in under and apart in the hand
+  (`HeldSteps.Hand`), as buildorder first had it, the car's Sill went into
+  its sides' steps and a save wrote it nowhere; rel-m304 stopped on it
+  (copyorder_probe's whole). Which way this goes decides whether a model's
+  sub-models are written whole, so it judges by the two only, and stops
+  counting only on those two: given all four, it stopped at the castle's
+  first part in under, before its 31 in the air were counted.
 
 **The steps test's seeds** (tested_seeds_probe). copyorder's key, largest
 first within a step (`Instructions._pressed_up`), took seed 23, 7815-1 the
@@ -3333,27 +3337,30 @@ from every side, now passes the steps test with the mend.
 Patience did most: 9391's string of 294 LSynth pieces, each its own thing,
 went from 278 under at patience 8 to 56 at 16 (354 in pre261).
 
-**Judged on `proof`** (100 sets, `--check`; 562d40eb8 against pre261
+**Judged on `proof`** (100 sets, `--check`; 63cbf3355 against pre261
 067e19d59; the report's means, with the measure's own intervals). It was
-judged on 9682bb89a, before the kart's fix (1.2% under, 10.2% hiding), and
-on 73a18ac4d, before the two rules for 6361 and 7815 (1.37% under, 10.3%
-hiding, 4.9% the build check).
+judged on 9682bb89a, before the kart's fix (1.2% under, 10.2% hiding); on
+73a18ac4d, before the two rules for 6361 and 7815 (1.37% under, 10.3%
+hiding, 4.9% the build check); and on 562d40eb8, whose judge of whole
+sub-model steps wrote sub-models into their parents (1.1% floating, 1.49%
+under, 10.4% hiding).
 
 | | pre261 | buildorder | bar | authors |
 |---|---:|---:|---:|---:|
-| steps with a floating thing | 1.3% | 1.1% | 2% | 1.3% |
-| things put in under one already there | 4.6% | 1.49% (1.0-2.3) | 1.5% | 0.8% |
-| steps with a hidden new thing | 10.7% | 10.4% (8.2-12.9) | 8% | 6.7% |
-| tau against the author | 0.35 | 0.34 | 0.29 | 1 |
-| parts the build check calls floating | 12.4% | 5.2% (1.1-10.9) | 4% | 0.9% |
-| steps in all | 12,508 | 11,512 | | 11,930 |
-| planning, the 100 files | 170 s | 204 s (1.20 times) | 1.33 times | |
+| steps with a floating thing | 1.3% | 1.8% (1.1-2.6) | 2% | 1.3% |
+| things put in under one already there | 4.6% | 1.60% (1.1-2.5) | 1.5% | 0.8% |
+| steps with a hidden new thing | 10.7% | 10.3% (8.1-12.7) | 8% | 6.7% |
+| tau against the author | 0.35 | 0.37 | 0.29 | 1 |
+| parts the build check calls floating | 12.4% | 5.2% (1.1-11.0) | 4% | 0.9% |
+| steps in all | 12,508 | 11,716 | | 11,930 |
+| planning, the 100 files | 170 s | 191 s (1.12 times) | 1.33 times | |
 
-Under is at its bar. Between 73a18ac4d and 562d40eb8 one set, 8169-1,
-went from 121 under to 213; the other 99 fell by 29 in all. Its cause is
-not traced: the rule was not tuned again on what proof showed.
+**NO-GO, under** (1.60% against 1.5%). Sub-models kept whole put back
+what the order had taken in under less (1.49% at 562d40eb8), and floating
+steps rose with them (1.1% to 1.8%). One set, 8169-1, holds 213 of the
+841; it had 121 at 73a18ac4d, and why it rose is not traced.
 
-**NO-GO, hidden steps** (10.4% against 8%). The mend moves sooner only what
+**NO-GO, hidden steps** (10.3% against 8%). The mend moves sooner only what
 the steps test's own hidden rule finds; the score's front and back pictures
 find more. Two sets hold 172 of the 404 steps over the authors': 10283
 (120 of 386 steps, the authors 28 of 948) and 76161 (102 of 484, the
@@ -3365,7 +3372,12 @@ sampled steps), 6901, 3183 and 6501. The score's own graph finds no step of
 4434 or 6901 floating: the check's table and the score's disagree there,
 not the order.
 
-**Also measured.**
+**Also measured.** At 63cbf3355, from a locked snapshot: swapfind,
+swapfind_phone, swreview, openfaults, copyorder (its whole case too),
+cf3attack's S2 and S3, tested_seeds (all 30), held_steps, instructions,
+steps_kept and keep_text pass. swapfind's car, the app's settled save of
+it, is that save again: the planner orders the car's own parts otherwise.
+At 562d40eb8:
 - coreview's plan2 set (62 models): none worse by HeldSteps.faults_of, and
   as many save differently once before they save the same as in pre261 (12
   of 62). corner_shop's faults are [0, 0], as before copyorder.
