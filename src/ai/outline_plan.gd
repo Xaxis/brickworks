@@ -936,7 +936,8 @@ func _said_storeys() -> String:
 		+ "height up to it with it")
 	if mode == "heights" and most() * unit * PLATES_PER_STUD > face + 0.5:
 		said += ("; what stands above its face (a dome, a tower, a pediment) keeps its own height "
-			+ "and stands on it, %s plates higher than read") % _n(built - read_)
+			+ "and stands on it, %s %s higher than read") % [_n(built - read_),
+				"plate" if is_equal_approx(built - read_, 1.0) else "plates"]
 	said += (". The height read is beside each: at microscale an expert stretches a building's "
 		+ "storeys before losing one, a balcony or a portico, and keeps what crowns them at its "
 		+ "own size. Its length and plan stay as read.")
