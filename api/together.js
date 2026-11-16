@@ -690,18 +690,39 @@ async function poll(request, me, response = null) {
     return { ...row, pointer: said.pointer, pointer_at: said.pointer_at,
       seen_at: Date.parse(row.seen_at) >= Date.parse(said.pointer_at) ? row.seen_at : said.pointer_at };
   });
+  // pointfix: each pointer as this poll came to have it, by account: when
+  // the server had it (its pointer_at), when this poll did, and how: told
+  // on the channel, or read from the database. Said beside each part
+  // pointed out (pointed, by who, in ms), so a check times the relay's own
+  // legs: the point to the server, the server to this poll, the line out.
+  const learned = new Map();
+  const learn = (account, pointerAt, via) => {
+    const at = Date.parse(pointerAt);
+    if (!Number.isFinite(at) || (learned.get(account)?.[0] ?? -1) >= at) return;
+    learned.set(account, [at, Date.now(), via]);
+  };
+  for (const row of all) learn(row.account, row.pointer_at, "began");
+  const pointed = () => {
+    const out = {};
+    for (const row of withMoved(all)) {
+      const one = learned.get(row.account);
+      if (one && row.pointer?.look && one[0] === Date.parse(row.pointer_at)) out[whoOf(id, row.account)] = one;
+    }
+    return Object.keys(out).length ? { pointed: out } : {};
+  };
   let wake = null;
   const channel = listen(id, (said) => {
     if (typeof said?.account !== "string" || typeof said.pointer_at !== "string" || !Date.parse(said.pointer_at)) return;
     const was = moved.get(said.account);
     if (was && Date.parse(was.pointer_at) >= Date.parse(said.pointer_at)) return;
     moved.set(said.account, said);
+    learn(said.account, said.pointer_at, "told");
     wake?.();
   });
   const say = (signature) => {
     told = signature;
     if (!response.headersSent) response.setHeader("Content-Type", LINES);
-    response.write(`${JSON.stringify({ more: true, people, seen: signature, at: Date.now() })}\n`);
+    response.write(`${JSON.stringify({ more: true, people, seen: signature, at: Date.now(), ...pointed() })}\n`);
   };
   const answer = async (rows, signature) => {
     // No more than about ANSWER_MOST at once: the rest at the next poll.
@@ -715,7 +736,7 @@ async function poll(request, me, response = null) {
       ops: rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), client: row.client,
         cid: row.cid, changes: hide ? Object.fromEntries(Object.entries(row.changes || {})
           .filter(([key]) => !talk(key))) : row.changes })),
-      people, seen: signature, ...(hide ? { chat: CHAT_WORDS.under_13 } : {}), at: Date.now(),
+      people, seen: signature, ...(hide ? { chat: CHAT_WORDS.under_13 } : {}), at: Date.now(), ...pointed(),
     };
   };
   // Until the next read; a pointer told meanwhile goes out at once: a line,
@@ -767,6 +788,7 @@ async function poll(request, me, response = null) {
           if (!session || session.ended_at) return { ended: true, ops: [], people, seen: signatureOf(people) };
         }
         all = fresh;
+        for (const row of all) learn(row.account, row.pointer_at, "read");
         if (all.some((row) => row.account === me && row.removed_at)) {
           throw new Refusal(403, "the owner has taken you out of this session");
         }
