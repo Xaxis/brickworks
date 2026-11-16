@@ -133,6 +133,22 @@ its key.
 |---|---|---|---|---|---|---|---|---|---|---|
 | `report_bug` | Help › Report a bug | — | — | — | when something goes wrong | alt-shift-R | alt-shift-R | alt-shift-R | alt-shift-R | R for Report, beside Alt-R, Replace; Chrome's Alt-Shift-I is the browser's |
 
+## Given a key with Find and replace (swapfind and smalls4, 2026-11-15)
+
+Find and replace finds a part or a colour across the whole model, every sub-model too, as an
+editor's Replace in files does across a project: VS Code's Ctrl-Shift-H. It sits beside
+Hide's Ctrl-H; Shift-H alone stays Show only the selection. Until smalls4 the editing verbs
+took any Shift-H, Ctrl or not, so the key showed only the selection and never opened the
+bar. LDCad's keys give Ctrl-Shift-H to Show everything and Ctrl-H to bringing back the last
+hidden, so neither H is free there. LDCad has no find and replace of its own. Its people
+write LDraw in Notepad++ and VS Code, whose Ctrl-Shift-F finds across every file with
+Replace beside it, and under LDCad's keys Ctrl-F already finds a part in the model: so
+Ctrl-Shift-F.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `find_replace` | Edit › Find and replace… | — | — | — (Ctrl-Shift-H shows all, Ctrl-H brings back the last hidden) | a few times a model | Ctrl-shift-H | Ctrl-shift-H | Ctrl-shift-H | Ctrl-shift-F | VS Code's Replace in files, beside Hide's Ctrl-H; LDCad's Hs are its own, so the Find in files of Notepad++ and VS Code there |
+
 ## Left without a key, on purpose
 
 "Keyless under" names the presets a command has no key in; "all" is all four.
