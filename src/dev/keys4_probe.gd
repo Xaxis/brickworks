@@ -19,7 +19,7 @@
 ##   (the booklet's Save dialog, cancelled);
 ## - typed into the parts' search, each still does what its row does;
 ## - the keys sheet (F1) lists each with its words, and Replace set there
-##   to Alt-W is done by Alt-W.
+##   to Alt-Q is done by Alt-Q.
 ##
 ## The data folder is the run's own (probe.sh gives one).
 extends SceneTree
@@ -486,7 +486,8 @@ func _sheet_lists_them(table: Dictionary) -> void:
 	find.text = ""
 	find.text_changed.emit("")
 	await _frames(6)
-	# Set there to another: Replace to Alt-W.
+	# Set there to another: Replace to Alt-Q, which no command has (Alt-W is
+	# Point it out to the others since pointat).
 	var chip: Control = _sheet.controls_by_name().get("key_replace")
 	if chip == null:
 		_check("Replace's key is on the sheet to click", false)
@@ -494,11 +495,11 @@ func _sheet_lists_them(table: Dictionary) -> void:
 	(_sheet.get("_keys") as ScrollContainer).ensure_control_visible(chip)
 	await _frames(4)
 	await _click(chip.get_global_rect().get_center())
-	await _press(ALT | KEY_W)
+	await _press(ALT | KEY_Q)
 	await _frames(4)
 	var said: String = (_sheet.get("_said") as Label).text
-	_check("Replace's key clicked, then Alt-W: it is Replace's (%s), and said: \"%s\"" % [
-		Keymap.listed("replace"), said], Keymap.key_of("replace") == ALT | KEY_W and said.contains("alt-W"))
+	_check("Replace's key clicked, then Alt-Q: it is Replace's (%s), and said: \"%s\"" % [
+		Keymap.listed("replace"), said], Keymap.key_of("replace") == ALT | KEY_Q and said.contains("alt-Q"))
 	await _shot("sheet_set")
 	await _press(KEY_ESCAPE)
 	await _frames(4)
@@ -506,9 +507,9 @@ func _sheet_lists_them(table: Dictionary) -> void:
 	await case[0].call()
 	await _frames(4)
 	root.gui_release_focus()
-	await _press(ALT | KEY_W)
+	await _press(ALT | KEY_Q)
 	var seen: Variant = await case[1].call()
-	_check("Alt-W replaces the selection with the part in hand (%s)" % str(seen), case[3].call(seen))
+	_check("Alt-Q replaces the selection with the part in hand (%s)" % str(seen), case[3].call(seen))
 	await case[2].call()
 	Keymap.reset()
 	_check("back to these keys, Replace is alt-R again (%s)" % Keymap.listed("replace"),

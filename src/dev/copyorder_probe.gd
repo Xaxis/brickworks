@@ -28,7 +28,13 @@
 ## said every way, read by one rule here and on the site (numbers); an edit
 ## undone and redone (undo); and the house, the castle (copies built in its
 ## steps) and 7128-1 and 8845-1 of the LDraw model repository as the app's
-## own and as someone else's (models). Each saved three times in a row; the
+## own and as someone else's (models). And the car of sub-models with no
+## steps, each sub-model used two or four times (whole): the plan orders
+## steps but never builds a sub-model in its parent's, so each is written
+## once. When the mend's judge of whole sub-model steps also counted parts
+## put in under and apart in the hand (buildorder), the car's Sill went into
+## its sides' steps and was written nowhere (rel-m304). Each saved three
+## times in a row; the
 ## site reads each copy by the name the app does
 ## (tools/web/copy_names_check.mjs).
 ##
@@ -36,7 +42,7 @@
 extends "res://src/dev/copyfaults_probe.gd"
 
 const ORDER_CASES: Array = ["s2", "s2_flipped", "s4s5", "o1", "nested", "mirror", "crlf", "older",
-	"numbers", "undo", "models"]
+	"numbers", "undo", "models", "whole"]
 const HEAD := "0 Name: %s\n0 Author: %s\n"
 const OMR := "res://vendor/omr/files/"
 var _scratch: String = ""
@@ -79,6 +85,7 @@ func _run() -> void:
 			"numbers": await _case_numbers()
 			"undo": await _case_undo()
 			"models": await _case_models()
+			"whole": await _case_whole()
 			_: _check("no such case %s" % name, false)
 	print("\ncopyorder probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -416,3 +423,22 @@ func _case_models() -> void:
 			text = second
 		await _open(text)
 		await _rounds(name.get_file())
+
+
+## The car of sub-models (swapfind's fixture) with no steps and no COPY
+## lines, as someone's model nobody gave steps: Side, Sill and Axle placed
+## twice, Wheel four times. Saved, every sub-model written once, and the
+## save opened and saved again to the byte.
+func _case_whole() -> void:
+	var lines := PackedStringArray()
+	for line: String in FileAccess.get_file_as_string("res://src/dev/fixtures/swapfind_car.mpd").split("\n"):
+		if line.strip_edges() != "0 STEP" and not line.begins_with(LdrModel.COPY_META):
+			lines.append(line)
+	await _open("\n".join(lines))
+	var first: String = await _rounds("whole")
+	var written: Array = []
+	for file: String in ["side.ldr", "sill.ldr", "axle.ldr", "wheel.ldr"]:
+		written.append("%s %d" % [file, first.count("0 FILE %s" % file)])
+	_check("whole: each sub-model written once, none built in its parent's steps (%s)"
+		% ", ".join(written), written.all(func(one: String) -> bool: return one.ends_with(" 1"))
+		and not first.contains(LdrModel.IN_META))

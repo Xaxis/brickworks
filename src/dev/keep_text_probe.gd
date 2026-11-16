@@ -264,6 +264,10 @@ func _run() -> void:
 		await _metas_crlf()
 	if only.is_empty() or only.contains("pairs"):
 		await _omr_pairs()
+	if only.is_empty() or only.contains("stepops"):
+		await _step_ops()
+	if not OS.get_environment("KEEP_TEXT_OPEN").is_empty():
+		await _saved_elsewhere(OS.get_environment("KEEP_TEXT_OPEN"))
 	print("\nlines lost by one step edit and a save:")
 	for row: Array in _summary:
 		print("  %-48s %4d in its section, %4d from the file, saved %s" % row)
@@ -2236,3 +2240,698 @@ func _command(name: String) -> void:
 		if not Working.is_busy():
 			break
 		await process_frame
+
+
+# -- the step edits, each its own change (stepops) ---------------------------------
+#
+# APP_UX8 #18: a step put in, taken out, split, merged, or a part moved to
+# another step, written as its own change: the STEP lines that moved and the
+# parts' lines that moved, every other line of the file byte for byte, in
+# its order. Up to stepops a step put in was written as every line after it
+# moved (kt5review #8): a diff of the person's file, in git or another
+# LDraw tool, showed the rest of the model changed.
+
+## Thirty files: [name, path, how it is made (_made), the sub-model whose
+## steps are edited, or "" for the first placed twice with four steps or
+## more, else the model's own]. The LDraw model repository's are CRLF.
+const STEP_OPS_FILES: Array = [
+	["7140-1 (four rear engines)", "res://vendor/omr/files/7140-1.mpd", "", ""],
+	["6780-1 (author, history, notes)", "res://vendor/omr/files/6780-1.mpd", "", ""],
+	["5540-1's plane (LPub's lines)", "res://vendor/omr/files/5540-1_Plane.mpd", "", ""],
+	["20019-1 (12 ROTSTEPs)", "res://vendor/omr/files/20019-1.mpd", "", ""],
+	["30051-1 (ROTSTEPs, placed thrice)", "res://vendor/omr/files/30051-1.mpd", "", ""],
+	["358-1 (ROTSTEPs)", "res://vendor/omr/files/358-1.mpd", "", ""],
+	["8028-1 (ROTSTEPs, placed twice)", "res://vendor/omr/files/8028-1.mpd", "", ""],
+	["8121-1", "res://vendor/omr/files/8121-1.mpd", "", ""],
+	["6054-1 (placed twice)", "res://vendor/omr/files/6054-1.mpd", "", ""],
+	["6480-1 (placed twice)", "res://vendor/omr/files/6480-1.mpd", "", ""],
+	["1775-1", "res://vendor/omr/files/1775-1.mpd", "", ""],
+	["6747-1's chopper", "res://vendor/omr/files/6747-1_Chopper.mpd", "", ""],
+	["8062-1's vehicle (placed twice)", "res://vendor/omr/files/8062-1_Smale-Vehicle.mpd", "", ""],
+	["8281-1 (placed twice)", "res://vendor/omr/files/8281-1.mpd", "", ""],
+	["10183-1's caboose", "res://vendor/omr/files/10183-1_Caboose.mpd", "", ""],
+	["10183-1's tram", "res://vendor/omr/files/10183-1_Tram-2.mpd", "", ""],
+	["1489-1", "res://vendor/omr/files/1489-1.mpd", "", ""],
+	["8135-1 (a tab, ROTSTEPs)", "res://vendor/omr/files/8135-1.mpd", "", ""],
+	["31040-1's dune buggy", "res://vendor/omr/files/31040-1_Dune-Buggy.mpd", "", ""],
+	["4348-1's space ship", "res://vendor/omr/files/4348-1_Space-Ship.mpd", "", ""],
+	["notes between every part", "res://src/dev/fixtures/keep_text_notes.mpd", "", "-"],
+	["CRLF line endings", "res://src/dev/fixtures/kt_crlf.mpd", "", "-"],
+	["tabs between the fields", "res://src/dev/fixtures/kt_tabs.mpd", "", "-"],
+	["no NOFILE, no last line break", "res://src/dev/fixtures/kt_nonl.mpd", "", "-"],
+	["a one-part mirrored sub-model", "res://src/dev/fixtures/kt_onepart.mpd", "", "-"],
+	["an empty step with a ROTSTEP", "res://src/dev/fixtures/kt3r_emptystep.ldr", "", ""],
+	["LeoCAD's and Studio's lines", "res://src/dev/fixtures/kt3r_leocad.ldr", "", ""],
+	["a step of only held parts", "res://src/dev/fixtures/cf3_held_step.ldr", "foreign", ""],
+	["LPub's lines between steps, two STEPs", "res://src/dev/fixtures/stepops_lpub.ldr", "", ""],
+	["a wing placed twice, a fin mirrored, tabs", "res://src/dev/fixtures/stepops_wings.mpd", "", ""],
+]
+const STEP_OPS: Array = ["insert", "remove", "split", "merge", "move"]
+## Each file's row: its name, then each edit's mark.
+var _ops_rows: Array = []
+## [edits written as a patch, diff lines, lines moved].
+var _ops_total: Array = [0, 0, 0]
+
+
+func _step_ops() -> void:
+	print("\nstep edits, each written as its own change (stepops):")
+	_ops_total = [0, 0, 0]
+	for entry: Array in STEP_OPS_FILES:
+		var name: String = str(entry[0])
+		if not _ops_wanted(name):
+			continue
+		var text: String = _made(FileAccess.get_file_as_string(str(entry[1])), str(entry[2]))
+		print("\n%s (%s)" % [name, str(entry[1]).get_file()])
+		if not _check("read, %d lines" % text.split("\n").size(), not text.is_empty()):
+			continue
+		var row: Array = [name]
+		for op: String in STEP_OPS:
+			row.append(await _step_op(name, text, op, str(entry[3])))
+		_ops_rows.append(row)
+	print("\nstep edits: lines the save changed / lines the edit moved (a STEP line put in or "
+		+ "taken out 1, a part's line moved 2), each patched into the file (B: as live writes it)")
+	print("  %-44s %s" % ["", " ".join(STEP_OPS.map(func(op: String) -> String: return op.rpad(9)))])
+	for row: Array in _ops_rows:
+		print("  %-44s %s" % [str(row[0]).left(44), " ".join(row.slice(1).map(
+			func(mark: String) -> String: return mark.rpad(9)))])
+	print("  %d edits written into the file, %d lines changed for %d moved" % _ops_total)
+	await _step_attacks()
+
+
+## Edits the thirty do not make by themselves: [name, path, how it is made,
+## the sub-model's steps edited, heard in a Build together room].
+const STEP_ATTACKS: Array = [
+	["the fin, placed once mirrored", "res://src/dev/fixtures/stepops_wings.mpd", "", "fin.ldr", false],
+	["the wing placed twice, in a room", "res://src/dev/fixtures/stepops_wings.mpd", "", "wing.ldr", true],
+	["the plane's own steps, in a room", "res://src/dev/fixtures/stepops_wings.mpd", "", "-", true],
+	["LPub's lines, in a room", "res://src/dev/fixtures/stepops_lpub.ldr", "", "", true],
+	["8028-1 (placed twice), in a room", "res://vendor/omr/files/8028-1.mpd", "", "", true],
+	["tabs, in a room", "res://src/dev/fixtures/kt_tabs.mpd", "", "-", true],
+	# Live's save of kt3r_emptystep merged: its first step unturned, the
+	# next turned by the ROTSTEP between them, so a merge of the two carries
+	# the turn above the first's parts.
+	["a turned step after an unturned one", "res://src/dev/fixtures/stepops_turned.ldr", "", "-",
+		false],
+]
+## A step emptied by taking off its parts, then a step edit by it.
+const STEP_EMPTIED: Array = [
+	["LPub's lines", "res://src/dev/fixtures/stepops_lpub.ldr"],
+	["CRLF line endings", "res://src/dev/fixtures/kt_crlf.mpd"],
+	["6780-1", "res://vendor/omr/files/6780-1.mpd"],
+]
+
+
+func _step_attacks() -> void:
+	print("\nstep edits the thirty do not make (stepops):")
+	var rows: Array = []
+	for entry: Array in STEP_ATTACKS:
+		if not _ops_wanted(str(entry[0])):
+			continue
+		var text: String = _made(FileAccess.get_file_as_string(str(entry[1])), str(entry[2]))
+		print("\n%s (%s)" % [entry[0], str(entry[1]).get_file()])
+		var row: Array = [entry[0]]
+		for op: String in STEP_OPS:
+			row.append(await _step_op(str(entry[0]), text, op, str(entry[3]), bool(entry[4])))
+		rows.append(row)
+	for entry: Array in STEP_EMPTIED:
+		if not _ops_wanted("%s, a step emptied" % entry[0]):
+			continue
+		var text: String = FileAccess.get_file_as_string(str(entry[1]))
+		print("\n%s, a step emptied (%s)" % [entry[0], str(entry[1]).get_file()])
+		var row: Array = ["%s, a step emptied" % entry[0]]
+		for op: String in ["merge", "remove"]:
+			row.append(await _emptied_op(str(entry[0]), text, op))
+		rows.append(row)
+	for entry: Array in STEP_EMPTIED:
+		if not _ops_wanted("%s, a step put in, a part taken off" % entry[0]):
+			continue
+		var text: String = FileAccess.get_file_as_string(str(entry[1]))
+		print("\n%s, a step put in, a part taken off (%s)" % [entry[0], str(entry[1]).get_file()])
+		rows.append(["%s, a step put in, a part taken off" % entry[0],
+			await _insert_then_delete(str(entry[0]), text)])
+	print("\nstep edits the thirty do not make: lines changed / lines moved")
+	for row: Array in rows:
+		print("  %-44s %s" % [str(row[0]).left(44), " ".join(row.slice(1).map(
+			func(mark: String) -> String: return mark.rpad(9)))])
+
+
+## Whether step [param step] of [param section] has nothing in it but parts
+## of its own: no copy of a sub-model, nothing the model holds unseen.
+func _only_parts(section: String, step: int) -> bool:
+	for item: Dictionary in AuthorSteps.items_of(_world, section, _store.scenery):
+		if int(item["step"]) == step and not item.has("brick"):
+			return false
+	return true
+
+
+## STEP_OPS_ONLY=a,b: only the rows whose name has one of them in it.
+static func _ops_wanted(name: String) -> bool:
+	var only: String = OS.get_environment("STEP_OPS_ONLY")
+	if only.is_empty():
+		return true
+	for word: String in only.split(",", false):
+		if name.contains(word):
+			return true
+	return false
+
+
+## A step of the model's own emptied by taking off its parts (its STEP line
+## stays, a step with nothing in it), then [param op] on the step before
+## it: the edit writes its own STEP line and the emptied step's, nothing
+## else. Undone, the file with the parts off; undone again, as opened.
+func _emptied_op(name: String, text: String, op: String) -> String:
+	await _open(text, name)
+	_live_flow = false
+	_own_flow = false
+	var depth: int = _builder.history_depth()
+	var unedited: String = _store.saved_text()
+	var steps: Array = _ops_steps("")
+	# A step of parts alone (no copy of a sub-model in it) with a step on
+	# either side, from the middle out.
+	var at: int = -1
+	for d: int in steps.size():
+		for k: int in [steps.size() / 2 - 1 - d, steps.size() / 2 - 1 + d]:
+			if at < 0 and k >= 0 and k + 2 < steps.size() and not (steps[k + 1][1] as Array).is_empty() \
+					and _only_parts("", int(steps[k + 1][0])):
+				at = k
+	if at < 0:
+		print("  --  %d steps, none fit" % steps.size())
+		return "--"
+	var s0: Array = steps[at]
+	_builder.clear_selection()
+	for brick_id: int in steps[at + 1][1]:
+		_builder.select_brick(brick_id, true)
+	var taken: int = _builder.remove_selection()
+	await _frames(4)
+	var emptied: String = _store.saved_text()
+	var deep: int = _builder.history_depth()
+	_check("%d parts of step %d taken off: %d lines changed" % [taken, int(steps[at + 1][0]),
+		_diff_size(unedited.split("\n"), emptied.split("\n"))], taken > 0 and _store.get("last_whole") == "")
+	var said: String = _shell.change_steps("merge" if op == "merge" else "delete", [], _ops_step("", s0))
+	await _frames(4)
+	var edited: String = _store.saved_text()
+	var whole: String = str(_store.get("last_whole"))
+	var changed: int = _diff_size(_own_lines(emptied), _own_lines(edited))
+	var moved: int = 1 + _empty_steps(emptied) + _turn_moves(text.split("\n"),
+		s0[1] if op == "remove" else steps[mini(at + 2, steps.size() - 1)][1])
+	var rest: Array = _rest_unlike(emptied, edited, PackedStringArray())
+	var ok: bool = _check("%s step %d (\"%s\"): %s, %d lines changed for %d moved%s" % [op, int(s0[0]),
+		said.get_slice("\n", 0).left(70), "patched" if whole.is_empty() else "as live writes it (%s)" % whole,
+		changed, moved, ("; not byte for byte: " + " | ".join(rest)) if not rest.is_empty() else ""],
+		whole.is_empty() and rest.is_empty() and changed <= moved)
+	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
+		print("        " + "\n        ".join(_lines_unlike(emptied, edited)))
+	await _back_to(deep)
+	ok = _hard("...undone: the parts off, as before the step edit", _store.saved_text() == emptied) and ok
+	await _back_to(depth)
+	ok = _hard("...undone again: the file as it was opened", _store.saved_text() == unedited) and ok
+	_builder.redo()
+	_builder.redo()
+	await _frames(4)
+	ok = _check("...redone twice: the step edit's file again", _store.saved_text() == edited) and ok
+	var mark: String = "%d/%d" % [changed, moved]
+	return mark if ok else "FAIL " + mark
+
+
+## A step put in after a step, holding the middle part of the next of three
+## parts or more; then that step's last part taken off (streview). The file's
+## step now went two ways, one part each: the half with its first part stays
+## its step, so the lines above that part (LPub's INSERT PAGE) stay with it,
+## and the take-off changes its own line alone. Undone twice, as opened.
+func _insert_then_delete(name: String, text: String) -> String:
+	await _open(text, name)
+	_live_flow = false
+	_own_flow = false
+	var depth: int = _builder.history_depth()
+	var unedited: String = _store.saved_text()
+	var steps: Array = _ops_steps("")
+	var at: int = -1
+	for d: int in steps.size():
+		for k: int in [steps.size() / 2 - 1 - d, steps.size() / 2 - 1 + d]:
+			if at < 0 and k >= 0 and k + 1 < steps.size() and (steps[k + 1][1] as Array).size() >= 3 \
+					and _only_parts("", int(steps[k + 1][0])):
+				at = k
+	if at < 0:
+		print("  --  %d steps, none fit" % steps.size())
+		return "--"
+	var b1: Array = steps[at + 1][1]
+	# Its first part's line, as the file has it (Placement.line counts from 0).
+	var read: PackedStringArray = text.split("\n")
+	var first: String = read[_line_of(int(b1[0]))] if _line_of(int(b1[0])) < read.size() else ""
+	if not first.begins_with("1 "):
+		first = ""
+	var said: String = _shell.change_steps("new", [b1[b1.size() / 2]], _ops_step("", steps[at]))
+	await _frames(4)
+	var inserted: String = _store.saved_text()
+	var deep: int = _builder.history_depth()
+	_select_only([b1[b1.size() - 1]])
+	var taken: int = _builder.remove_selection()
+	await _frames(4)
+	var edited: String = _store.saved_text()
+	var whole: String = str(_store.get("last_whole"))
+	var changed: int = _diff_size(_own_lines(inserted), _own_lines(edited))
+	var above: Callable = func(saved: String) -> String:
+		var lines: PackedStringArray = _own_lines(saved)
+		var n: int = lines.find(first)
+		return lines[n - 1] if n > 0 else "(none)"
+	var done: String = "a step put in after step %d (\"%s\"), then %d part of the next taken off" % [
+		int(steps[at][0]), said.get_slice("\n", 0).left(60), taken]
+	var seen: String = "%s, %d lines changed for 1; above its first part (%s) \"%s\", was \"%s\"" % [
+		"patched" if whole.is_empty() else "as live writes it (%s)" % whole, changed, first.left(30),
+		str(above.call(edited)).left(40), str(above.call(unedited)).left(40)]
+	var ok: bool = _check(done + ": " + seen,
+		taken == 1 and whole.is_empty() and changed <= 1 and not first.is_empty()
+		and above.call(edited) == above.call(unedited))
+	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
+		print("        " + "\n        ".join(_lines_unlike(inserted, edited)))
+	await _back_to(deep)
+	ok = _hard("...undone: the step put in, as before the take-off", _store.saved_text() == inserted) and ok
+	await _back_to(depth)
+	ok = _hard("...undone again: the file as it was opened", _store.saved_text() == unedited) and ok
+	_builder.redo()
+	_builder.redo()
+	await _frames(4)
+	ok = _check("...redone twice: the take-off's file again", _store.saved_text() == edited) and ok
+	var mark: String = "%d/1" % changed
+	return mark if ok else "FAIL " + mark
+
+
+## [param op] on [param text] opened afresh, in the steps of the sub-model
+## [param want] ("" the first placed twice with four steps or more, else the
+## model's; "-" the model's): saved, undone, redone and opened again. Its
+## mark: "changed/moved", "B ..." where live's write wrote it, FAIL, or
+## "--" where the file has no steps for it.
+func _step_op(name: String, text: String, op: String, want: String, room: bool = false) -> String:
+	await _open(text, name)
+	_live_flow = false
+	_own_flow = false
+	var depth: int = _builder.history_depth()
+	var unedited: String = _store.saved_text()
+	if unedited != text and op == STEP_OPS[0]:
+		print("  note: saved unedited, %d lines unlike the file: %s" % [_diff_size(text.split("\n"),
+			unedited.split("\n")), " | ".join(_lines_unlike(text, unedited))])
+	var section: String = _ops_section(want, op)
+	var steps: Array = _ops_steps(section)
+	var at: int = _ops_pick(steps, op)
+	if at < 0:
+		print("  --  %s: %d steps of %s, none fit" % [op, steps.size(), "the model" if section.is_empty() else section])
+		return "--"
+	var s0: Array = steps[at]
+	var s1: Array = steps[mini(at + 1, steps.size() - 1)]
+	var s2: Array = steps[mini(at + 2, steps.size() - 1)]
+	var bricks0: Array = s0[1]
+	var bricks1: Array = s1[1]
+	var ids: Array = []
+	var on: Instructions.Step = null
+	var verb: String = op
+	match op:
+		"insert":
+			ids = [bricks1[bricks1.size() / 2]]
+			on = _ops_step(section, s0)
+			verb = "new"
+		"split":
+			ids = bricks0.slice(bricks0.size() / 2)
+			on = _ops_step(section, s0)
+			verb = "new"
+		"remove":
+			on = _ops_step(section, s1)
+			verb = "delete"
+		"merge":
+			on = _ops_step(section, s0)
+		"move":
+			ids = [bricks0[bricks0.size() / 2]]
+			on = _ops_step(section, s2)
+			verb = "to"
+	var source: SourceFile = _store.call("_live_source")
+	var moved_lines: int = 0
+	var chosen := PackedStringArray()      ## the selection's lines, those bound to them too
+	var file_lines: PackedStringArray = text.split("\n")
+	# A step taken out, or merged, past a step of only what the model holds
+	# and does not show: its parts' lines go above that step.
+	var carried: Array = ids
+	if op in ["remove", "merge"] and int(s1[0]) - int(s0[0]) > 1:
+		carried = bricks1
+	for brick_id: int in carried:
+		var origin: String = str(_world.get_brick(brick_id).origin)
+		var line: int = origin.get_slice("/", origin.get_slice_count("/") - 1).to_int()
+		var from: int = source._bound_from[line] if source != null and line < source._bound_from.size() else line
+		for k: int in range(from, line + 1):
+			chosen.append(file_lines[k])
+			moved_lines += 1
+	var empty: int = _empty_steps(text)
+	var said: String = _shell.change_steps(verb, ids, on)
+	await _frames(4)
+	var edited: String = _store.saved_text()
+	if edited == unedited:
+		_check("%s: the app made no edit (\"%s\")" % [op, said.get_slice("\n", 0).left(90)], false)
+		await _back_to(depth)
+		return "FAIL none"
+	var whole: String = str(_store.get("last_whole"))
+	var state: Dictionary = _state()
+	# KEEP_TEXT_SAVED=DIR: each file as this build saved it, for another
+	# build to open (_saved_elsewhere).
+	var out_dir: String = OS.get_environment("KEEP_TEXT_SAVED")
+	if not out_dir.is_empty():
+		DirAccess.make_dir_recursive_absolute(out_dir)
+		var file := FileAccess.open(out_dir.path_join("%02d_%s.mpd" % [_ops_rows.size(), op]),
+			FileAccess.WRITE)
+		file.store_string(edited)
+		file.close()
+	# The file's own lines: the app's (a name a save gives someone else's
+	# file, "0 !BRICKWORKS TITLE") are said apart.
+	var changed: int = _diff_size(_own_lines(text), _own_lines(edited))
+	var app_lines: int = _diff_size(text.split("\n"), edited.split("\n")) - changed
+	# A step taken out, or merged into the one before, that a ROTSTEP turned:
+	# the turn goes up to the STEP line starting the step they are in now.
+	var turned: int = _turn_moves(file_lines, bricks1) if op in ["remove", "merge"] else 0
+	var moved: int = 2 * moved_lines + 1 + empty + turned
+	var rest: Array = _rest_unlike(text, edited, chosen)
+	var where: String = "in %s's steps %d to %d" % ["the model" if section.is_empty() else section,
+		int(s0[0]), int(s2[0])]
+	var mark: String = "%d/%d" % [changed, moved]
+	var ok: bool = _check("%s %s (\"%s\"): %s, %d lines changed for %d moved (and %d of the app's)%s" % [
+		op, where, said.get_slice("\n", 0).left(70),
+		"patched" if whole.is_empty() else "as live writes it (%s)" % whole, changed, moved, app_lines,
+		("; not byte for byte: " + " | ".join(rest.slice(0, 3))) if not rest.is_empty() else ""],
+		whole.is_empty() and rest.is_empty() and changed <= moved)
+	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
+		print("        " + "\n        ".join(_lines_unlike(text, edited)))
+	if whole.is_empty():
+		_ops_total[0] += 1
+		_ops_total[1] += changed
+		_ops_total[2] += moved
+	else:
+		mark = "B " + mark
+	await _back_to(depth)
+	var undone: String = _store.saved_text()
+	ok = _hard("...undone: the file as it was opened, byte for byte (%d lines changed)"
+		% _diff_size(unedited.split("\n"), undone.split("\n")), undone == unedited) and ok
+	_builder.redo()
+	await _frames(4)
+	var redone: String = _store.saved_text()
+	ok = _check("...redone: the edit's file again (%d lines changed)"
+		% _diff_size(edited.split("\n"), redone.split("\n")), redone == edited) and ok
+	if room:
+		ok = await _heard_in_room(depth, edited) and ok
+	await _reopened("...opened again", edited, name, state)
+	return mark if ok else "FAIL " + mark
+
+
+## The edit undone and heard back as a Build together room hears another
+## side's (Together._put): each part's step set, the copies' steps and the
+## steps' looks given, past the builder's history. The save is the edit's.
+func _heard_in_room(depth: int, edited: String) -> bool:
+	var steps: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		steps[brick.id] = brick.step
+	var units: Dictionary = _world.unit_steps.duplicate(true)
+	var looks: Dictionary = _world.step_looks.duplicate(true)
+	await _back_to(depth)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if steps.has(brick.id):
+			brick.step = int(steps[brick.id])
+	_world.unit_steps = units
+	_world.step_looks = looks
+	await _frames(2)
+	var heard: String = _store.saved_text()
+	return _check("...heard in a Build together room (each part's step set as Together._put sets "
+		+ "it): the edit's file (%d lines changed)" % _diff_size(edited.split("\n"), heard.split("\n")),
+		heard == edited)
+
+
+## Saved by another build and back (stepops): each file of [param dir] (as
+## KEEP_TEXT_SAVED wrote them, an edit's save) opened here and saved
+## unedited, byte for byte, then two of its steps merged and the merge
+## undone: the merge one STEP line, the undo the file again.
+func _saved_elsewhere(dir: String) -> void:
+	print("\nfiles another build saved after a step edit, opened here (stepops):")
+	var names: Array = Array(DirAccess.get_files_at(dir))
+	names.sort()
+	var same: int = 0
+	var merged: int = 0
+	for file_name: String in names:
+		var text: String = FileAccess.get_file_as_string(dir.path_join(file_name))
+		await _open(text, file_name)
+		var unedited: String = _store.saved_text()
+		# Its own lines: the app's TITLE line says the name it was opened
+		# under, here the file's, and is the app's (as _step_op counts).
+		var own: int = _diff_size(_own_lines(text), _own_lines(unedited))
+		var all: int = _diff_size(text.split("\n"), unedited.split("\n"))
+		var kept: bool = _hard("%s (%d lines) saved unedited: its own lines byte for byte "
+			% [file_name, text.split("\n").size()] + "(%d lines changed, and %d of the app's)"
+			% [own, maxi(all - own, 0)], _own_lines(unedited) == _own_lines(text))
+		same += 1 if kept else 0
+		if OS.get_environment("KEEP_TEXT_OPEN_ONLY_SAVE") == "1":
+			continue
+		var mark: String = await _step_op(file_name, text, "merge", "")
+		merged += 1 if not mark.begins_with("FAIL") else 0
+	print("  %d of %d saved byte for byte, %d of %d merged as their own change" % [same, names.size(),
+		merged, names.size()])
+
+
+## The section whose steps [param op] edits: [param want] by name, the
+## model's for "-", else the first copy of a sub-model placed twice or more
+## with steps of its own that fit ([method _ops_pick]), else the model's,
+## else the sub-model with the most steps that fit.
+func _ops_section(want: String, op: String) -> String:
+	if want == "-":
+		return ""
+	var paths: Array = AuthorSteps.paths_in(_world, _store.scenery).keys()
+	paths.sort()
+	var copies: Dictionary = {}
+	for path: String in paths:
+		var kind: String = Assemblies.definition(Assemblies.leaf(path))
+		copies[kind] = int(copies.get(kind, 0)) + 1
+	for path: String in paths:
+		var kind: String = Assemblies.definition(Assemblies.leaf(path))
+		if AuthorSteps.in_parent(_world, path) or AuthorSteps.home(_world, path) != path:
+			continue
+		if not want.is_empty() and kind.to_lower() != want.to_lower():
+			continue
+		if (want.is_empty() and int(copies[kind]) < 2) or _ops_pick(_ops_steps(path), op) < 0:
+			continue
+		return path
+	if not want.is_empty() or _ops_pick(_ops_steps(""), op) >= 0:
+		return ""
+	var best: String = ""
+	var most: int = 0
+	for path: String in paths:
+		if AuthorSteps.in_parent(_world, path) or AuthorSteps.home(_world, path) != path:
+			continue
+		var steps: Array = _ops_steps(path)
+		if _ops_pick(steps, op) >= 0 and steps.size() > most:
+			most = steps.size()
+			best = path
+	return best
+
+
+## The steps of [param section] a person sees, in order: [step, its parts'
+## ids in their lines' order].
+func _ops_steps(section: String) -> Array:
+	var by_step: Dictionary = {}
+	for item: Dictionary in AuthorSteps.items_of(_world, section, _store.scenery):
+		if item.has("unseen"):
+			continue
+		var step: int = int(item["step"])
+		if not by_step.has(step):
+			by_step[step] = []
+		if item.has("brick"):
+			(by_step[step] as Array).append(int(item["brick"]))
+	var out: Array = []
+	var order: Array = by_step.keys()
+	order.sort()
+	for step: int in order:
+		var bricks: Array = by_step[step]
+		bricks.sort_custom(func(a: int, b: int) -> bool: return _line_of(a) < _line_of(b))
+		out.append([step, bricks])
+	return out
+
+
+func _line_of(brick_id: int) -> int:
+	var origin: String = str(_world.get_brick(brick_id).origin)
+	return origin.get_slice("/", origin.get_slice_count("/") - 1).to_int() if not origin.is_empty() else 1 << 30
+
+
+## The step of [param steps] [param op] starts at, from the middle out, or
+## -1 for none: a step put in after it holds a part of the next, of two
+## parts or more; it split, of two parts or more; the next taken out into
+## it, or merged into it; a part of it, of two or more, moved two steps on.
+static func _ops_pick(steps: Array, op: String) -> int:
+	var middle: int = steps.size() / 2 - 1
+	for d: int in steps.size():
+		for k: int in [middle - d, middle + d]:
+			if k < 0 or k + 1 >= steps.size():
+				continue
+			var here: int = (steps[k][1] as Array).size()
+			var next: int = (steps[k + 1][1] as Array).size()
+			match op:
+				"insert":
+					if next >= 2:
+						return k
+				"split":
+					if here >= 2:
+						return k
+				"remove", "merge":
+					return k
+				"move":
+					if here >= 2 and k + 2 < steps.size():
+						return k
+	return -1
+
+
+static func _ops_step(section: String, step: Array) -> Instructions.Step:
+	var at := Instructions.Step.new()
+	at.authored_in = section
+	at.authored_step = int(step[0])
+	at.number = int(step[0]) + 1
+	at.brick_ids = PackedInt64Array(step[1] as Array)
+	return at
+
+
+## How many steps of [param text] have no part in them before its last part
+## of their section: the steps an edit numbers again (AuthorSteps._tidy).
+static func _empty_steps(text: String) -> int:
+	var out: int = 0
+	var empty_run: int = 0
+	var any: bool = false
+	for line: String in text.split("\n"):
+		var words: PackedStringArray = LdrModel._fields(line.strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["FILE", "NOFILE"]:
+			empty_run = 0
+			any = false
+		elif words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["STEP", "ROTSTEP"]:
+			if not any:
+				empty_run += 1
+			any = false
+		elif words.size() >= 15 and words[0] == "1":
+			out += empty_run
+			empty_run = 0
+			any = true
+	return out
+
+
+## The lines of [param was] that [param now] has not in their order, each
+## section's alike: every line but the STEP lines and the app's own, as
+## many out of place as [param chosen] has (the parts the edit moved, and
+## the lines bound to them: where a step's two parts went two ways, either
+## is the one moved); [] when no more.
+static func _rest_unlike(was: String, now: String, chosen: PackedStringArray) -> Array:
+	if _diff_size(PackedStringArray(_rest_of(was, PackedStringArray())),
+			PackedStringArray(_rest_of(now, PackedStringArray()))) <= 2 * chosen.size():
+		return []
+	var a: Array = _rest_of(was, chosen)
+	var b: Array = _rest_of(now, chosen)
+	var out: Array = []
+	for n: int in maxi(a.size(), b.size()):
+		var x: String = str(a[n]) if n < a.size() else "(none)"
+		var y: String = str(b[n]) if n < b.size() else "(none)"
+		if x != y:
+			out.append("%s, now %s" % [x.strip_edges().left(50), y.strip_edges().left(50)])
+			break
+	return out
+
+
+static func _rest_of(text: String, chosen: PackedStringArray) -> Array:
+	var skip: Dictionary = {}
+	for line: String in chosen:
+		skip[line.trim_suffix("\r")] = true
+	var out: Array = []
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in lines.size():
+		var line: String = lines[n]
+		var bare: String = line.trim_suffix("\r")
+		var words: PackedStringArray = LdrModel._fields(bare.strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["STEP", "ROTSTEP"]:
+			continue
+		if bare.begins_with("0 !BRICKWORKS") or skip.has(bare):
+			continue
+		# A last line with no end: as the line it is, ended or not.
+		out.append(bare if n == lines.size() - 1 or n == lines.size() - 2 else line)
+	return out
+
+
+## What a save changed, to read in the log: each line of [param was] the
+## save has not got ("-", with its number) and each it has that [param was]
+## has not ("+"), as many times as each is short, up to 12.
+static func _lines_unlike(was: String, now: String) -> Array:
+	var a: PackedStringArray = was.split("\n")
+	var b: PackedStringArray = now.split("\n")
+	var count: Dictionary = {}
+	for line: String in a:
+		count[line] = int(count.get(line, 0)) + 1
+	for line: String in b:
+		count[line] = int(count.get(line, 0)) - 1
+	var out: Array = []
+	for n: int in a.size():
+		if int(count.get(a[n], 0)) > 0 and out.size() < 12:
+			count[a[n]] = int(count[a[n]]) - 1
+			out.append("- %d: %s" % [n + 1, a[n].c_escape().left(90)])
+	for n: int in b.size():
+		if int(count.get(b[n], 0)) < 0 and out.size() < 12:
+			count[b[n]] = int(count[b[n]]) + 1
+			out.append("+ %d: %s" % [n + 1, b[n].c_escape().left(90)])
+	if out.is_empty():
+		out.append("(the same lines, in another order)")
+	return out
+
+
+## 2 where the step of [param bricks] starts with a ROTSTEP that turns
+## (the lines of [param lines]): taken out or merged into the step before,
+## its turn goes up to that step's STEP line, a line out and one changed;
+## else 0.
+func _turn_moves(lines: PackedStringArray, bricks: Array) -> int:
+	var first: int = 1 << 30
+	for brick_id: int in bricks:
+		first = mini(first, _line_of(brick_id))
+	for n: int in range(mini(first, lines.size()) - 1, -1, -1):
+		var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["STEP", "ROTSTEP", "FILE"]:
+			return 2 if words[1].to_upper() == "ROTSTEP" and words.size() > 2 \
+				and words[2].to_upper() != "END" else 0
+	return 0
+
+
+## [param text]'s lines but the app's own ("0 !BRICKWORKS").
+static func _own_lines(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line: String in text.split("\n"):
+		if not line.begins_with("0 !BRICKWORKS"):
+			out.append(line)
+	return out
+
+
+## How many lines a diff of [param a] and [param b] gives: those taken out
+## and those put in (Myers), after their common start and end.
+static func _diff_size(a: PackedStringArray, b: PackedStringArray) -> int:
+	var start: int = 0
+	while start < a.size() and start < b.size() and a[start] == b[start]:
+		start += 1
+	var end_a: int = a.size()
+	var end_b: int = b.size()
+	while end_a > start and end_b > start and a[end_a - 1] == b[end_b - 1]:
+		end_a -= 1
+		end_b -= 1
+	var n: int = end_a - start
+	var m: int = end_b - start
+	if n == 0 or m == 0:
+		return n + m
+	var most: int = mini(n + m, 4000)
+	var offset: int = most + 1
+	var v := PackedInt32Array()
+	v.resize(2 * most + 3)
+	v.fill(0)
+	for d: int in most + 1:
+		for k: int in range(-d, d + 1, 2):
+			var x: int
+			if k == -d or (k != d and v[offset + k - 1] < v[offset + k + 1]):
+				x = v[offset + k + 1]
+			else:
+				x = v[offset + k - 1] + 1
+			var y: int = x - k
+			while x < n and y < m and a[start + x] == b[start + y]:
+				x += 1
+				y += 1
+			v[offset + k] = x
+			if x >= n and y >= m:
+				return d
+	return most
