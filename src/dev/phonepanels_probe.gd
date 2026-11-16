@@ -654,7 +654,8 @@ func _tap_while_busy(panel: SimulatePanel, parts: Array) -> void:
 	var other: Vector2 = Vector2.INF
 	var other_body: int = -1
 	for spot: Dictionary in parts:
-		var body: int = panel.sim.model.body_of(int(spot.get("part", -1)))
+		# "part" is its part's number; "id" is the brick, the mechanism's key.
+		var body: int = panel.sim.model.body_of(int(spot.get("id", -1)))
 		if body == driver and back == Vector2.INF:
 			back = spot["screen"]
 		elif body != driver and panel.sim.can_drive(body) and other == Vector2.INF:
