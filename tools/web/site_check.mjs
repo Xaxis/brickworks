@@ -312,6 +312,9 @@ if (app.status !== 200) {
     if (r.status !== 200) fail(`/e/${engine}/${file} answered ${r.status}`);
     else if (!cache.includes("immutable")) fail(`/e/${engine}/${file} is not cached for good: ${cache}`);
     else if (r.headers.get("content-encoding") !== "br") fail(`/e/${engine}/${file} is not sent as brotli`);
+    else if (!(r.headers.get("content-type") || "").startsWith(file.endsWith(".js") ? "application/javascript" : "application/wasm")) {
+      fail(`/e/${engine}/${file} is sent as ${r.headers.get("content-type")}, where nosniff runs only a script sent as one`);
+    }
     else if (r.headers.get("content-security-policy") !== appCsp) fail(`/e/${engine}/${file} is sent under another policy than the app's`);
     else if (r.headers.get("cross-origin-embedder-policy") !== "require-corp") fail(`/e/${engine}/${file} is not sent for a cross-origin-isolated page`);
   }

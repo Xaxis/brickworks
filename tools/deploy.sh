@@ -330,14 +330,14 @@ python3 tools/site.py .vercel/output/static | sed 's/^/deploy: /' || {
 pages=""
 # The .br files keep their own file's type: instantiateStreaming takes a
 # wasm only as application/wasm.
-overrides="\"b/$sha/index.wasm.br\": { \"contentType\": \"application/wasm\" },
+overrides="\"e/$engine/index.wasm.br\": { \"contentType\": \"application/wasm\" },
+    \"e/$engine/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" },
     \"b/$sha/index.pck.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.data.pck.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.parts.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.primitives.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.hdri.bin.br\": { \"contentType\": \"application/octet-stream\" },
-    \"b/$sha/index.fonts.bin.br\": { \"contentType\": \"application/octet-stream\" },
-    \"b/$sha/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" }"
+    \"b/$sha/index.fonts.bin.br\": { \"contentType\": \"application/octet-stream\" }"
 for page in .vercel/output/static/*.html; do
   name=$(basename "$page" .html)
   case "$name" in index|404|authorize) continue ;; esac

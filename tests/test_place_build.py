@@ -122,6 +122,11 @@ def test_deploy_serves_the_engine_as_it_serves_the_build():
     assert '"src": "/(app|b/.*|e/.*)"' in deploy
     assert re.search(r'"src": "/e/\(\[\^/\]\+\)/\(\.\*\)",\s*"headers": \{ "Cache-Control": "public, max-age=31536000, immutable"', deploy)
     assert '"dest": "/e/$engine/\\$1.br"' in deploy
+    # Sent with nosniff, the script runs only as a script's type, and the
+    # wasm streams only as application/wasm.
+    assert '\\"e/$engine/index.js.br\\": { \\"contentType\\": \\"application/javascript; charset=utf-8\\" }' in deploy
+    assert '\\"e/$engine/index.wasm.br\\": { \\"contentType\\": \\"application/wasm\\" }' in deploy
+    assert "b/$sha/index.js.br" not in deploy and "b/$sha/index.wasm.br" not in deploy
     assert 'engine="$(python3 tools/web/place_build.py .vercel/output/static "$sha")"' in deploy
 
 
