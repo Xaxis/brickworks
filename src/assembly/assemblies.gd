@@ -1553,7 +1553,7 @@ func after_edit() -> int:
 		_keep_redo()
 		# Kept through whatever the taking back set off.
 		refused = why
-		_refused_left = [world.revision, builder.history_depth(), builder.last_step()]
+		_refused_left = [world.revision, builder.history_depth(), _newest()]
 		changed.emit()
 		edit_refused.emit(why)
 		return 0
@@ -1597,7 +1597,13 @@ var _refused_left: Array = []
 func _as_refused() -> bool:
 	return _refused_left.size() == 3 and world.revision == int(_refused_left[0]) \
 		and builder.history_depth() == int(_refused_left[1]) \
-		and is_same(builder.last_step(), _refused_left[2])
+		and is_same(_newest(), _refused_left[2])
+
+
+## The history's newest step, or null with none: the history empty, its
+## last_step is a new {} each time it is asked, never the same twice.
+func _newest() -> Variant:
+	return builder.last_step() if builder.history_depth() > 0 else null
 
 ## The history as after_edit last left it, [its depth, its newest step, the
 ## redo then], for an edit taken back to give back the redo it cleared.
