@@ -594,12 +594,12 @@ document.addEventListener("click", (event) => {
     || event.shiftKey || event.altKey) return;
   event.preventDefault();
   link.closest("details")?.removeAttribute("open");
-  askToSignIn().then((signed) => {
-    // The focus on the avatar the link became, the page where it was: the
-    // header is sticky, and a plain focus() scrolled the page to its top
-    // to show it (sifix, 2026-11-15: 1829 px down at 1280 became 1411).
-    if (signed) [...document.querySelectorAll(".site-head .account-btn")].find((one) => one.checkVisibility())
-      ?.focus({ preventScroll: true });
+  // The focus on the avatar the link became as the dialog goes, the page
+  // where it was: the header is sticky, and a plain focus() scrolled the
+  // page to its top to show it (sifix, 2026-11-15: 1829 px down at 1280
+  // became 1411). The age question, if asked after, gives it back there.
+  askToSignIn(undefined, {
+    back: () => [...document.querySelectorAll(".site-head .account-btn")].find((one) => one.checkVisibility()),
   }).catch(() => { location.href = link.href; });
 });
 

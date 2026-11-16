@@ -545,7 +545,10 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
 /// Signed in, the page is told "brickworks:signed-in-done" once the age
 /// question and First steps are behind, to draw what it shows somebody
 /// signed in where they are (the header's Sign in opens this on any page).
-export async function askToSignIn(why, { prefer = "" } = {}) {
+/// [back]: what has the focus once signed in, the moment the dialog goes,
+/// where what opened it is no more (the header's Sign in, the avatar by
+/// then); without it the dialog gives the focus back to what opened it.
+export async function askToSignIn(why, { prefer = "", back = null } = {}) {
   await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
@@ -774,8 +777,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
           onToken: async (token) => {
             await exchangeOrangecheck(token);
             finished = true;
-            dialog.close();
-            dialog.remove();
+            gone();
             const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
             settled(!asked?.refused);
           },
@@ -814,6 +816,14 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       if (signed) dispatchEvent(new Event("brickworks:signed-in-done"));
       done(signed);
     };
+    // Signed in: the dialog gone and the focus on [back] in the same
+    // moment, not on the page while the age question is looked up
+    // (m305fix: BODY for over 300 ms after the dialog went, at 1280).
+    const gone = () => {
+      dialog.close();
+      dialog.remove();
+      back?.()?.focus({ preventScroll: true });
+    };
     const end = (result) => {
       if (finished) return;
       finished = true;
@@ -828,8 +838,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       if (finished || checking || !signedIn()) return false;
       finished = true;
       windowed?.cancel();
-      dialog.close();
-      dialog.remove();
+      gone();
       settled(true);
       return true;
     };
@@ -932,8 +941,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       // answered it, before the page carries on.
       finished = true;
       windowed?.cancel();
-      dialog.close();
-      dialog.remove();
+      gone();
       const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
       // Asked at the box's tick, never otherwise, never for an account
       // under 13, and never waited on.
