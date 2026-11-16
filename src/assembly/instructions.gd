@@ -3815,7 +3815,10 @@ static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLi
 		held: GDScript) -> bool:
 	if read.is_empty():
 		return true
-	var was: Array[int] = read["faults"]
+	# Stopped only by these two: given the read's four, faults_of stopped at
+	# the castle's first part put in under, before its 31 in the air were
+	# counted, and the castle kept its sub-models built whole (steps_kept).
+	var was: Array[int] = (read["faults"] as Array[int]).slice(0, 2)
 	var now: Array[int] = held.faults_of(kept, read, library, was)
 	return now[0] <= was[0] and now[1] <= was[1]
 
