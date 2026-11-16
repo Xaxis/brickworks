@@ -37,7 +37,6 @@ Every AI is your own, set up once in [Connect your AI](/docs/connect):
 lib:design loop
 lib:claude's design is one undo step
 lib:a big check on a worker
-lib:the outline read as sizes
 -->
 
 ### Sketch first {#sketch}

@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:the outline read as sizes, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
 
 ## Sub-features
 
@@ -2150,28 +2150,6 @@ fixing what it got wrong.
   how many, their range and median and three of them. `part_choice_probe --
   scale`: 15 held-out vehicles and buildings, each within the official models
   its own pattern picks; base 14 (a police station 40 studs, theirs 13-38).
-- `the outline read as sizes`: `plan_scale outline=` (design22, `src/ai/outline_plan.gd`,
-  `OutlinePlan`). A session reads the real thing's outline off a photograph
-  taken square from one side: heights= along a long thing with bottoms= its
-  underside (a vehicle's body read over its wheels, not down to the ground)
-  and breaks= what breaks the outline (wheels, tracks, a header, a blade, a
-  spire), each its own mass; or widths= up a tall thing, with steps= each
-  setback and the side it steps in on ({"at", "side": left, right or both})
-  and plan= its shape from above. studs= names what it measures:
-  {"longest"}, {"footprint"} as a brief gives it, or {"read"}, the part
-  read; a bare number is not taken. The answer is sizes and no solid: the
-  outline in studs and plates at each tenth, a long thing's stretches
-  between steps, a tall thing's tiers with each setback on its side
-  (mirrored from the back or the right), each break where it is and how big,
-  a body read down to the ground over its wheels told to read its underside,
-  and the plan in studs. design21's solid (an extrude or tiers to send) lost
-  its screen and is not here. Asked for once each, while none is held, in
-  how_real_sets_build_this (leading), find_reference, clear_model, plan_scale
-  and the first bare submit_design. `outline_sizes_probe`: the asks; five
-  tune-half sets read exactly from the front, each tenth's top within a plate
-  and width within a stud of the set's own; setbacks left, right, both, from
-  the back, unsaid and under a stud; a loader's wheels and boom as breaks;
-  what studs= measures; 16 wrong readings refused.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   83 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round

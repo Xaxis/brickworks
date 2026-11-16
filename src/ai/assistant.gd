@@ -3397,11 +3397,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			# The outline's ask leads: at the foot of the tables it went unread
-			# (design21's first arm).
-			var asking: String = outline_ask("how_real_sets_build_this")
-			return [{"type": "text", "text": ("Before the first build: " + asking + "\n\n"
-				if not asking.is_empty() else "") + str(_how_real_sets_build_this(subject)["content"])}] \
+			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
 				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
@@ -19490,14 +19486,9 @@ each feature the subject is known by, then the detail. In this order:
      moving the whole model.
   2. find_reference, for anything that exists. A lighthouse you recall \
      is a tapering tower with a light on top, which is every lighthouse \
-     and no lighthouse. A picture gives you this one. Read its outline \
-     off a picture taken square from one side and give it to plan_scale \
-     as outline= (heights along a long thing, a vehicle's body over its \
-     wheels, and what breaks the outline as masses of their own; widths \
-     up a tall one, each setback with the side it steps in on, and its \
-     plan from above): the answer is the sizes to build to.
+     and no lighthouse. A picture gives you this one.
   3. The silhouette. Decide the main masses and their sizes in studs, \
-     off that picture, those sizes and the brief, and what each is: round in section, \
+     off that picture and the brief, and what each is: round in section, \
      tapered, at a slant, smooth, moving, mechanical, organic. Say a \
      hull, a car body, a fuselage or a building as a shape and submit \
      that first: its proportions are judged before anything is put on \
@@ -21174,10 +21165,6 @@ func _plan_scale(args: Dictionary) -> String:
 	var metres: float = float(args.get("longest_metres", 0.0))
 	var subject: String = str(args.get("subject", "it"))
 	if metres <= 0.0:
-		# An outline sized by studs= needs no scale.
-		if args.get("outline") is Dictionary \
-				and not OutlinePlan.studs_read(args.get("studs")).get("numbers", []).is_empty():
-			return _outline_planned(args, 0.0, subject, "")
 		return ("Say how long the real thing is, in metres, as "
 			+ "longest_metres. A guess within half is enough — this is "
 			+ "about which scale, not about the decimal.")
@@ -21224,10 +21211,8 @@ func _plan_scale(args: Dictionary) -> String:
 			scale["note"], fits])
 
 	var chosen: String = ""
-	var planned: float = minifig
 	if not best.is_empty():
 		var across: float = minifig if best == SCALES[0] else _studs_at(best, metres)
-		planned = across
 		var shortened: bool = across < metres * float(best["studs_per_metre"]) - 0.5
 		# A plate is a third of a brick, so height in plates is what
 		# actually gets placed and is worth saying out loud.
@@ -21294,100 +21279,9 @@ func _plan_scale(args: Dictionary) -> String:
 	# Not capitalize(), which title-cases every word and turns a double
 	# decker bus into A Double Decker Bus.
 	var named: String = subject.substr(0, 1).to_upper() + subject.substr(1)
-	var scaled: String = ("%s is %s metres along its longest side. At each scale "
+	return ("%s is %s metres along its longest side. At each scale "
 		% [named, Placement._num(metres)]
 		+ "builders use, the model would be:\n" + "\n".join(rows) + chosen + measured)
-	return _outline_planned(args, planned, subject, scaled)
-
-
-## The real thing's outline as the session read it off a photograph and gave
-## it to plan_scale (outline=), sized to the model. Null until given;
-## plan_scale for another subject without one clears it. Held only so the
-## asks stop once it is read: it is answered as sizes, and nothing builds it.
-var _outline_plan: OutlinePlan = null
-## The subject it was read for.
-var _outline_subject: String = ""
-## Which answers have asked for it, so each asks once a subject.
-var _outline_asked: Dictionary = {}
-
-## Asked before the first build, where a session is planning. design21 handed
-## the first mass as a solid and the sessions that built it lost ("a block on
-## wheels", "a wedding cake"); those that took the reading as a measure and
-## built their own way won 7 of 8. So the answer is sizes, and the ask says so.
-const OUTLINE_ASK := ("Read the real thing's outline before the first build and build to "
-	+ "it: off a photograph of it (find_reference) taken square from one side, give "
-	+ "plan_scale outline=. Its answer is sizes, not a shape to send: studs and plates at "
-	+ "each tenth, each setback (where it is, which side it steps in on, how tall each tier "
-	+ "is) and the plan from above, for you to build each mass to your own way. A long thing "
-	+ "(a vehicle, a ship, a long building, a row of buildings): heights= its top at each "
-	+ "tenth of its length and bottoms= its underside, a vehicle's body read over its "
-	+ "wheels, not down to the ground; what breaks that outline (wheels, tracks, a header, a "
-	+ "blade, a guard, a boom, a spire) goes in breaks=, masses of their own. A tall thing (a "
-	+ "tower, a lighthouse, a rocket): widths= at each tenth of its height, steps= each "
-	+ "setback with the side it steps in on, plan= its shape from above. studs= names what "
-	+ "it measures: {\"longest\": n}, {\"footprint\": [w, d]} as the brief gives it, or "
-	+ "{\"read\": n}, the part read. A subject with no real counterpart has none: go on "
-	+ "without it.")
-
-
-## The ask for the outline, from the answer of [param tool], while none is held
-## and that answer has not asked it yet for this subject; "" otherwise.
-func outline_ask(tool: String) -> String:
-	if _outline_plan != null or _outline_asked.has(tool):
-		return ""
-	_outline_asked[tool] = true
-	return OUTLINE_ASK
-
-
-## plan_scale's answer [param scaled], then the outline read and sized: to
-## studs= as it names its measure, else to [param planned] studs along its
-## longest side (the scale's), and said as sizes to build to. With none given,
-## the ask for it, once a subject.
-func _outline_planned(args: Dictionary, planned: float, subject: String,
-		scaled: String) -> String:
-	var lead: String = scaled + ("\n\n" if not scaled.is_empty() else "")
-	if not args.get("outline") is Dictionary:
-		if _outline_plan != null and subject.strip_edges().to_lower() \
-				!= _outline_subject.strip_edges().to_lower():
-			_outline_plan = null
-			_outline_asked = {}
-		if _outline_plan != null:
-			return lead + "The outline read before stands: %s, %s." % [
-				_outline_plan.said_read(), _outline_plan.said_size()]
-		_outline_asked["plan_scale"] = true
-		return lead + OUTLINE_ASK
-	var plan: OutlinePlan = OutlinePlan.read(args["outline"])
-	if not plan.error.is_empty():
-		return lead + "The outline was not read: %s Give it again; nothing is held." % plan.error
-	var studs: Dictionary = OutlinePlan.studs_read(args.get("studs"))
-	plan.fit(studs if not studs.has("error") else {}, planned)
-	_outline_plan = plan
-	_outline_subject = subject
-	var said := PackedStringArray()
-	said.append("The outline read (%s), sized at %s: %s." % [plan.said_read(), plan.sized_by,
-		plan.said_size()])
-	if studs.has("error"):
-		said.append(str(studs["error"]) + " The sizes are at the scale's.")
-	elif not studs.is_empty() and planned > 0.0:
-		# The size the brief gives wins over the scale table's: one answer, one
-		# size, and the other said beside it when they are far apart.
-		var longest: float = plan.longest()
-		if longest > planned * OutlinePlan.FAR or longest * OutlinePlan.FAR < planned:
-			var first: String = OutlinePlan._n(float((studs["numbers"] as Array)[0]))
-			said.append(("That is %s studs along its longest side, where the scale above "
-				+ "says %s: the sizes are at studs=. %s") % [Placement._num(snappedf(longest,
-					1.0)), Placement._num(snappedf(planned, 1.0)), ("If %s is the whole model's "
-					+ "longest side, not the part read, give {\"longest\": %s}.") % [first, first]
-				if str(studs["measure"]) == "read" else ("If %s is the part you read, not the "
-					+ "whole model, give {\"read\": %s}.") % [first, first]])
-	said.append(plan.said_sizes())
-	said.append("These are the sizes to build to, not a shape: build each mass your own way "
-		+ "(fills, shapes, bricks by hand, sloped and tiled as a set's are) to these studs "
-		+ "and plates, %s, and hold the proportions to them through every edit. The outline "
-		% ("each break a mass of its own" if not plan.breaks.is_empty() else "each tier its own "
-			+ "mass where it steps" if plan.mode == "widths" else "the body to its outline")
-		+ "stands for this subject until plan_scale reads another.")
-	return lead + "\n\n".join(said)
 
 
 ## Pictures of the thing it has been asked to build.
@@ -21475,11 +21369,6 @@ func _find_reference(subject: String) -> Variant:
 				"data": encoded,
 			},
 		})
-	# The photograph is in front of it now: read the outline off it here.
-	var asking: String = outline_ask("find_reference")
-	if not asking.is_empty():
-		blocks.append({"type": "text", "text": "With a picture taken square from one side: "
-			+ asking})
 	return blocks
 
 
@@ -21664,20 +21553,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-	if not designing:
-		return _placed_said(design, report)
-	var built: String = _built_from_outside(design, report)
-	var asking: String = outline_ask("submit_design") if bare else ""
-	if asking.is_empty():
-		return built
-	# Said under its first line, before the check's measures: at the foot of
-	# a long answer it went unread.
-	var said: String = ("Its masses are its own: no outline of the real thing was read "
-		+ "before it. " + asking)
-	var head: int = built.find("\n")
-	if head < 0:
-		return built + "\n\n" + said
-	return built.substr(0, head) + "\n\n" + said + "\n" + built.substr(head)
+	return _built_from_outside(design, report) if designing else _placed_said(design, report)
 
 
 ## A design built from outside — Claude over the connector, or a session
@@ -24450,12 +24326,7 @@ func _tools() -> Array:
 				+ "use, and which one is worth building at. Settle this "
 				+ "first: everything after it depends on the "
 				+ "proportions, and changing it later means moving the "
-				+ "whole model. Give it outline=, the real thing's outline "
-				+ "read off a photograph of it (find_reference), and it answers "
-				+ "with the sizes to build to: studs and plates at each tenth, "
-				+ "each setback where it is and on which side, how tall each "
-				+ "tier is, what breaks the outline as masses of their own, and "
-				+ "the plan from above."),
+				+ "whole model."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -24463,73 +24334,6 @@ func _tools() -> Array:
 					"longest_metres": {"type": "number", "description":
 						"how long the real thing is along its longest "
 						+ "side. A guess within half is enough."},
-					"studs": {"type": "object", "description": ("the size to build "
-						+ "it at, when the brief gives one, named by what it measures: "
-						+ "{\"longest\": 54}, the model's longest side; {\"footprint\": "
-						+ "[12, 13]}, its foot as a brief gives it (\"fitting in about "
-						+ "12 x 13 studs\"); or {\"read\": 6}, the part the outline "
-						+ "reads (a long thing's length, a tall thing's widest width as "
-						+ "the photograph shows it)"),
-						"properties": {
-							"longest": {"type": "number"},
-							"footprint": {"type": "array", "items": {"type": "number"}},
-							"read": {"type": "number"},
-						},
-						"additionalProperties": false},
-					"outline": {"type": "object", "description": ("the real thing's "
-						+ "outline, read off a photograph of it (find_reference) taken "
-						+ "square from one side, before the first build: the answer is "
-						+ "the sizes to build to, not a shape"),
-						"properties": {
-							"from": {"type": "string", "enum": ["front", "back", "left", "right"],
-								"description": ("the side of your model the photograph shows; "
-									+ "the front is +z, so a car laid along x is seen from the "
-									+ "front or the back")},
-							"heights": {"type": "array", "items": {"type": "number"},
-								"description": ("a long thing: the top's height at each tenth "
-									+ "of its length, left to right as the photograph shows "
-									+ "it, as shares of that length: 11 numbers (a car's roof "
-									+ "about 0.25). A vehicle's is its body's, over its wheels")},
-							"bottoms": {"type": "array", "items": {"type": "number"},
-								"description": ("with heights: the underside at the same "
-									+ "places, shares of the length: a vehicle's body read "
-									+ "over its wheels or tracks, where the body stops, not "
-									+ "down to the ground (0 only where the body itself meets "
-									+ "it)")},
-							"widths": {"type": "array", "items": {"type": "number"},
-								"description": ("a tall thing, instead of heights: its width "
-									+ "at each tenth of its height, ground to top, as shares "
-									+ "of that height: 11 numbers")},
-							"steps": {"type": "array", "description": ("where the outline "
-								+ "steps, lowest first, each a share of the way (up a tall "
-								+ "thing's height, along a long thing's length): every "
-								+ "setback of a tower, every step of a roofline. A tall "
-								+ "thing's setback says the side it steps in on, as the "
-								+ "photograph shows it: {\"at\": 0.4, \"side\": \"left\"} "
-								+ "(left, right or both); between two the outline is level")},
-							"breaks": {"type": "array", "items": {"type": "object"},
-								"description": ("what breaks the outline, each a mass of its "
-									+ "own and not part of it (wheels, tracks, a header, a "
-									+ "blade, a guard, a boom, a spire): {\"name\": \"front "
-									+ "wheel\", \"from\": 0.08, \"to\": 0.26, \"bottom\": 0, "
-									+ "\"top\": 0.18}, from and to across from the outline's "
-									+ "left as the photograph shows it, bottom and top up from "
-									+ "the ground, shares of the length (or a tall thing's "
-									+ "height) as the outline's are")},
-							"plan": {"type": "string", "description": ("its shape seen from "
-								+ "above: rectangle (unless said), square, round, Y, T, L, cross, "
-								+ "H, U or triangle")},
-							"arm": {"type": "number", "description": ("a Y, T, L, cross, H or "
-								+ "U's arms' thickness, a share of its width (a third unless "
-								+ "said)")},
-							"deep": {"type": "number", "description": ("a long thing's width "
-								+ "across, a share of its length, when studs= does not say it; "
-								+ "a tall thing's depth, a share of its width")},
-							"picture": {"type": "string", "description":
-								"the photograph's title, as find_reference named it"},
-						},
-						"required": ["from"],
-						"additionalProperties": false},
 				},
 				"required": ["longest_metres"],
 				"additionalProperties": false,

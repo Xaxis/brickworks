@@ -1037,100 +1037,13 @@
       "readOnlyHint": true,
       "title": "Plan the scale"
     },
-    "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model. Give it outline=, the real thing's outline read off a photograph of it (find_reference), and it answers with the sizes to build to: studs and plates at each tenth, each setback where it is and on which side, how tall each tier is, what breaks the outline as masses of their own, and the plan from above.",
+    "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "longest_metres": {
           "description": "how long the real thing is along its longest side. A guess within half is enough.",
           "type": "number"
-        },
-        "outline": {
-          "additionalProperties": false,
-          "description": "the real thing's outline, read off a photograph of it (find_reference) taken square from one side, before the first build: the answer is the sizes to build to, not a shape",
-          "properties": {
-            "arm": {
-              "description": "a Y, T, L, cross, H or U's arms' thickness, a share of its width (a third unless said)",
-              "type": "number"
-            },
-            "bottoms": {
-              "description": "with heights: the underside at the same places, shares of the length: a vehicle's body read over its wheels or tracks, where the body stops, not down to the ground (0 only where the body itself meets it)",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            "breaks": {
-              "description": "what breaks the outline, each a mass of its own and not part of it (wheels, tracks, a header, a blade, a guard, a boom, a spire): {\"name\": \"front wheel\", \"from\": 0.08, \"to\": 0.26, \"bottom\": 0, \"top\": 0.18}, from and to across from the outline's left as the photograph shows it, bottom and top up from the ground, shares of the length (or a tall thing's height) as the outline's are",
-              "items": {
-                "type": "object"
-              },
-              "type": "array"
-            },
-            "deep": {
-              "description": "a long thing's width across, a share of its length, when studs= does not say it; a tall thing's depth, a share of its width",
-              "type": "number"
-            },
-            "from": {
-              "description": "the side of your model the photograph shows; the front is +z, so a car laid along x is seen from the front or the back",
-              "enum": [
-                "front",
-                "back",
-                "left",
-                "right"
-              ],
-              "type": "string"
-            },
-            "heights": {
-              "description": "a long thing: the top's height at each tenth of its length, left to right as the photograph shows it, as shares of that length: 11 numbers (a car's roof about 0.25). A vehicle's is its body's, over its wheels",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            "picture": {
-              "description": "the photograph's title, as find_reference named it",
-              "type": "string"
-            },
-            "plan": {
-              "description": "its shape seen from above: rectangle (unless said), square, round, Y, T, L, cross, H, U or triangle",
-              "type": "string"
-            },
-            "steps": {
-              "description": "where the outline steps, lowest first, each a share of the way (up a tall thing's height, along a long thing's length): every setback of a tower, every step of a roofline. A tall thing's setback says the side it steps in on, as the photograph shows it: {\"at\": 0.4, \"side\": \"left\"} (left, right or both); between two the outline is level",
-              "type": "array"
-            },
-            "widths": {
-              "description": "a tall thing, instead of heights: its width at each tenth of its height, ground to top, as shares of that height: 11 numbers",
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "from"
-          ],
-          "type": "object"
-        },
-        "studs": {
-          "additionalProperties": false,
-          "description": "the size to build it at, when the brief gives one, named by what it measures: {\"longest\": 54}, the model's longest side; {\"footprint\": [12, 13]}, its foot as a brief gives it (\"fitting in about 12 x 13 studs\"); or {\"read\": 6}, the part the outline reads (a long thing's length, a tall thing's widest width as the photograph shows it)",
-          "properties": {
-            "footprint": {
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            "longest": {
-              "type": "number"
-            },
-            "read": {
-              "type": "number"
-            }
-          },
-          "type": "object"
         },
         "subject": {
           "type": "string"

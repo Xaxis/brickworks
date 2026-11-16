@@ -377,13 +377,6 @@
     },
     {
       "kind": "lib",
-      "label": "the outline read as sizes",
-      "entry": "src/ai/outline_plan.gd",
-      "reach": "tools/probe.sh outline_sizes_probe   (plan_scale outline=: asked for before the first build; answered as sizes, never a solid: studs and plates at each tenth, setbacks on the side read with each tier's height, breaks as masses of their own, a vehicle's body over its wheels, studs= naming what it measures; wrong readings refused)",
-      "area": "assistant"
-    },
-    {
-      "kind": "lib",
       "label": "worked constructions",
       "entry": "src/ai/techniques.gd",
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
