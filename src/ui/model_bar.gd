@@ -508,7 +508,22 @@ func status_text() -> String:
 ## Say something in the bar's status line. Public because the parts list
 ## and the booklet live outside the bar but have nowhere else to report.
 func say(text: String) -> void:
+	# An edit refused said this frame stands: the command that made it says
+	# what it did after the app has taken it back (EditVerbs: "painted 1
+	# part" after the copies could not follow).
+	if Engine.get_process_frames() == _over_frame:
+		return
 	_say(text)
+
+
+## [param text] said, and kept over anything else said this frame: why an
+## edit was refused (Assemblies.edit_refused).
+func say_over(text: String) -> void:
+	_over_frame = Engine.get_process_frames()
+	_say(text)
+
+
+var _over_frame: int = -1
 
 
 func _say(text: String) -> void:
