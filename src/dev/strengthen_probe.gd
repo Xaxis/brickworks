@@ -29,6 +29,16 @@
 ## cantilever, with a collection that has the prop's part in red only, the
 ## fix is red and "All from your bricks", over MCP too (mine=true); with
 ## none of it, it says one is not theirs. A picture of each fix's ghost.
+##
+## And a model that tips over whole (smalls4, APP_UX9 #4): the walk's tower
+## of eight 2 x 4s on one corner stud, no joint near its working load. The
+## status bar names the tip ("tips over, 0.7 studs past the right edge"), not
+## "weak joints"; Stress offers a foot from the floor under the side it tips
+## toward, with no row stepped to and with the walk's first row pressed;
+## pressed, it adds 1 to 3 parts with room, and the status bar says "stands
+## up"; one undo puts it back to the byte; weakest_joints gives the same
+## foot as an edit_model call that makes the same model. A pole of 1 x 1s
+## with a stack on top, whose overhang is out of a foot's reach, says why.
 extends SceneTree
 
 const SHOTS := "user://strengthen"
@@ -125,6 +135,8 @@ func _run() -> void:
 	_check("across the ten, a tie, a prop and a pin each: %s" % _kinds,
 		_kinds.has("tie") and _kinds.has("prop") and _kinds.has("pin"))
 	await _from_my_bricks(models["cantilever"])
+	await _tips_whole()
+	await _out_of_reach()
 	await _finish()
 
 
@@ -340,6 +352,134 @@ func _from_my_bricks(text: String) -> void:
 	await _shot("from_my_bricks_%s" % _size)
 	store.on_hand = kept
 	await _click(mine)
+
+
+# -- a model that tips whole -----------------------------------------------------
+
+
+## The walk's tower: eight 2 x 4s on one corner stud of a 2 x 4 (APP_UX9).
+func _tips_whole() -> void:
+	print("\n  a tower that tips whole")
+	var lines := PackedStringArray([_line(15, "3001", 0, 0, 0, 24)])
+	lines.append_array(_stack(1, "3001", 60, 24, 20, 24, 8))
+	var text: String = "0 tower\n0 Name: tower.ldr\n0 Author: Brickworks\n%s\n" % "\n".join(lines)
+	await _open("tower", text)
+	var said: String = str(_main.get("_stability_text"))
+	_check("the status bar names the tip, not a weak joint: \"%s\"" % said,
+		said.begins_with("tips over, ") and said.contains("studs past the right edge")
+		and not said.contains("weak joint"))
+	var stress: StressView = _shell.stress
+	if not stress.on:
+		_shell.run("stress")
+	await _weighed()
+	var panel: Variant = stress.get("panel")
+	if panel == null or not (panel as Control).is_visible_in_tree():
+		_check("with Stress on, its panel shows (there is none)", false)
+		return
+	panel.call("_choose", -1, false)
+	await _offered(panel)
+	var shown: Dictionary = panel.call("fields")
+	var fix: Variant = panel.get("fix")
+	_check("Stress says it tips whole, no joint near: \"%s\" / \"%s\"" % [shown["count"], shown["tips"]],
+		str(shown["count"]).begins_with("0 past working load · 0 near it")
+		and str(shown["tips"]).begins_with("The whole model tips over"))
+	_check("...and with no row stepped to, offers a foot: \"%s\"" % shown["offer"], fix != null
+		and str(fix.get("kind")) == "foot" and bool(shown["strengthen"])
+		and str(shown["offer"]).begins_with("Strengthen adds ")
+		and str(shown["offer"]).contains("under its right side, down to "))
+	# The walk's own press: its first row, a joint that holds.
+	await _click(panel.call("controls_by_name").get("stress_row_0"))
+	await _offered(panel)
+	shown = panel.call("fields")
+	fix = panel.get("fix")
+	var button: Variant = panel.call("controls_by_name").get("stress_strengthen")
+	var room := Rect2(Vector2.ZERO, root.get_visible_rect().size)
+	_check("...and with the first row pressed, as the walk does, the same foot, Strengthen in sight: \"%s\"" % shown["offer"],
+		fix != null and str(fix.get("kind")) == "foot" and bool(shown["strengthen"])
+		and button is Control and room.grow(0.5).encloses((button as Control).get_global_rect()))
+	if fix == null:
+		return
+	var parts: Array = fix.get("parts")
+	var ghost: Variant = panel.get("_ghost")
+	var ghost_box: AABB = (ghost as MeshInstance3D).get_aabb() if ghost is MeshInstance3D else AABB()
+	_check("...drawn as a ghost where it would go (%d part%s)" % [parts.size(),
+		"" if parts.size() == 1 else "s"], ghost is MeshInstance3D and (ghost as MeshInstance3D).visible
+		and ghost_box.grow(1.0).encloses(_parts_box(parts)))
+	_camera.frame(_model_box().merge(ghost_box), 1.25)
+	await _frames(20)
+	await _shot("tower_foot_%s" % _size)
+	var before: String = _store.to_text("tower", true)
+	var ids_before: Dictionary = _ids()
+	await _click(button)
+	await _weighed()
+	var made: Array = _ids().keys().filter(func(id: int) -> bool: return not ids_before.has(id))
+	var in_way: Array = []
+	for id: int in made:
+		for other: int in _builder.lattice.blockers_boxes(_builder.lattice.boxes_of(id), id):
+			in_way.append("#%d %s in #%d %s" % [id, _part_of(id), other, _part_of(other)])
+	var grounded: bool = not made.is_empty()
+	for id: int in made:
+		grounded = grounded and _builder.lattice.boxes_of(id).size() > 0
+	said = str(_main.get("_stability_text"))
+	shown = panel.call("fields")
+	_check("pressed, it adds %d part%s with room (%s), and the status bar says \"%s\", Stress no tip (\"%s\")" % [
+		made.size(), "" if made.size() == 1 else "s", "nothing in its way" if in_way.is_empty()
+		else "; ".join(in_way), said, shown["tips"]], made.size() >= 1 and made.size() <= 3
+		and in_way.is_empty() and said == "stands up" and str(shown["tips"]).is_empty())
+	await _shot("tower_footed_%s" % _size)
+	var after: String = _store.to_text("tower", true)
+	_shell.run("undo")
+	await _weighed()
+	_check("one undo puts the tower back to the byte, tipping again (\"%s\")" % _main.get("_stability_text"),
+		_store.to_text("tower", true) == before
+		and str(_main.get("_stability_text")).begins_with("tips over, "))
+	var answer: String = await _say("weakest_joints", {})
+	var line: String = ""
+	for one: String in answer.split("\n"):
+		if one.begins_with("  The whole model tips over: "):
+			line = one
+	var call: Variant = JSON.parse_string(line.get_slice("Call edit_model ", 1)) \
+		if line.contains("Call edit_model ") else null
+	_check("weakest_joints gives the same foot as a call: \"%s\"" % line.strip_edges().left(240),
+		call is Dictionary and line.contains(str(fix.get("what"))))
+	if not call is Dictionary:
+		return
+	await _say("edit_model", call)
+	await _weighed()
+	var given: String = _store.to_text("tower", true)
+	_check("...that call made as given gives the model Strengthen gave, to the byte", given == after)
+	if given != after:
+		_diff(after, given)
+	_shell.run("undo")
+	await _weighed()
+
+
+## A pole of sixteen 1 x 1s with four 2 x 4s on its top stud: it tips, and
+## the overhang is 384 LDU up, past any column of three parts (2453b's 120
+## three times): Stress says why there is no foot, and over MCP too.
+func _out_of_reach() -> void:
+	print("\n  a pole that tips, its overhang out of a foot's reach")
+	var lines := PackedStringArray()
+	lines.append_array(_stack(71, "3005", 0, 0, 0, 24, 16))
+	lines.append_array(_stack(1, "3001", 30, 384, 10, 24, 4))
+	var text: String = "0 pole\n0 Name: pole.ldr\n0 Author: Brickworks\n%s\n" % "\n".join(lines)
+	await _open("pole", text)
+	var stress: StressView = _shell.stress
+	if not stress.on:
+		_shell.run("stress")
+	await _weighed()
+	var panel: Variant = stress.get("panel")
+	panel.call("_choose", -1, false)
+	await _offered(panel)
+	var shown: Dictionary = panel.call("fields")
+	_check("the status bar names the tip: \"%s\"" % _main.get("_stability_text"),
+		str(_main.get("_stability_text")).begins_with("tips over, "))
+	_check("with no row stepped to, Stress says why there is no foot: \"%s\"" % shown["offer"],
+		panel.get("fix") == null and not bool(shown["strengthen"])
+		and str(shown["offer"]).begins_with("No foot of up to three parts reaches the floor under its "))
+	var answer: String = await _say("weakest_joints", {})
+	_check("...and weakest_joints says so", answer.contains("  The whole model tips over: no foot of up to three parts reaches the floor"))
+	await _shot("pole_no_foot_%s" % _size)
 
 
 # -- the models -----------------------------------------------------------------

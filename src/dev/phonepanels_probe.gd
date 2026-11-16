@@ -38,7 +38,9 @@
 ##    here; the orrery fixture reads locked since kinefuncs, 2026-11-14): Play in sight as it opens, and a
 ##    tap plays it; the cycle's slider in sight in no more than one drag, and
 ##    dragged by a finger it moves the cycle; a tap on another part makes it
-##    the driver in no more than 2. Every target 44 points or more.
+##    the driver in no more than 2; and a tap made while Simulate still turns
+##    the part tapped before it is kept, and drives once that is done (a
+##    phone's slow frames dropped it: smalls4). Every target 44 points or more.
 ## 4. Measure taken out says what a finger does, in taps (edit_verbs).
 ## Pictures in --shots=DIR (else user://phonepanels). Exits non-zero when a
 ## check fails.
@@ -629,9 +631,59 @@ func _simulate() -> void:
 	_check("a tap on another part makes it the driver, in %d: %s" % [_presses, now.left(60)],
 		now != driver and _presses <= 2)
 	_act("Simulate: another part made the driver", 1)
+	await _tap_while_busy(panel, parts)
 	_measure_panel(panel, "simulate")
 	panel.close()
 	await _frames(6)
+
+
+## A tap while Simulate is still busy with the driver tapped before it: the
+## second tap's part is the driver once the first's has been turned. A
+## phone draws its frames slowly, so the stop check (a slice a frame) ran for
+## seconds after Simulate opened on phonewalk's orrery, and a tap then was
+## dropped: 3 taps where the tablet took 2 (APP_UX9, smalls4 item 7). Here
+## the other gear is tapped, and the driver's gear again 2 frames after the
+## finger lifts, while the first is still being turned and weighed.
+func _tap_while_busy(panel: SimulatePanel, parts: Array) -> void:
+	if panel.sim == null:
+		_check("a tap while Simulate is busy: Simulate has no mechanism", false)
+		return
+	await _until(func() -> bool: return not panel._driving, 30.0)
+	var driver: int = panel.sim.driver
+	var back: Vector2 = Vector2.INF
+	var other: Vector2 = Vector2.INF
+	var other_body: int = -1
+	for spot: Dictionary in parts:
+		var body: int = panel.sim.model.body_of(int(spot.get("part", -1)))
+		if body == driver and back == Vector2.INF:
+			back = spot["screen"]
+		elif body != driver and panel.sim.can_drive(body) and other == Vector2.INF:
+			other = spot["screen"]
+			other_body = body
+	if back == Vector2.INF or other == Vector2.INF:
+		_check("a tap while Simulate is busy: two gears to tap (%s, %s)" % [back, other], false)
+		return
+	_presses = 1
+	_touch(0, other, true)
+	await _frames(2)
+	_touch(0, other, false)
+	await _frames(2)
+	# Whether the second tap came while the first was still being turned:
+	# the panel then keeps it for after (SimulatePanel._wanted), heard as the
+	# selection changes, after the panel has heard it.
+	var queued: Array = []
+	var builder: Builder = _main.get("_builder")
+	var hear: Callable = func(_count: int) -> void: queued.append(panel._wanted)
+	builder.selection_changed.connect(hear)
+	await _tap(back)
+	builder.selection_changed.disconnect(hear)
+	await _until(func() -> bool: return not panel._driving, 30.0)
+	await _frames(4)
+	var now: String = str(panel.said().get("driver", ""))
+	_check("the other gear tapped, then the driver's gear 2 frames after, while Simulate still turned the first (kept for after: %s): the second drives, in %d: %s"
+		% [queued.has(driver), _presses, now.left(60)],
+		queued.has(driver) and panel.sim != null and panel.sim.driver == driver
+		and other_body != driver and _presses == 2)
 
 
 ## simulate_probe's train, put down as it puts it: an 8 on one axle meshing a

@@ -13658,6 +13658,9 @@ msgstr "%s grandes étoiles"
 msgid "Far corner cut flat"
 msgstr "Coin arrière coupé droit"
 
+msgid "At the tip"
+msgstr "À la pointe"
+
 msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
 msgstr "Comme sur les plaques biseautées LEGO® telles que 54383 et 41770b : le coin pointu où finit le côté biseauté, coupé sur 1,2 mm"
 
@@ -14772,3 +14775,63 @@ msgstr "1 verrouillée, laissée de côté : déverrouillez-la pour la modifier"
 
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d verrouillées, laissées de côté : déverrouillez-les pour les modifier"
+
+# smalls4 (APP_UX9 #4): a model that tips whole is named as a tip, a lean or top-heavy,
+# not "weak joints"; Stress offers a foot from the floor under the side it tips toward.
+
+msgid "tips over, %s studs past the %s edge"
+msgstr "bascule, à %s tenons au-delà du bord %s"
+
+msgid "leans past what holds it"
+msgstr "penche au-delà de ce qui le tient"
+
+msgid "top-heavy"
+msgstr "trop lourd en haut"
+
+msgid "levered"
+msgstr "en levier"
+
+msgid "rests on a touch"
+msgstr "posé sans tenir"
+
+msgid "1 weak joint (%s)"
+msgstr "1 liaison faible (%s)"
+
+msgid "%d weak joints (%s)"
+msgstr "%d liaisons faibles (%s)"
+
+msgid "Looking for the fewest parts that stand it up…"
+msgstr "Recherche du moins de pièces qui le font tenir debout…"
+
+msgid "Put the parts shown down: the model then stands. One step to undo"
+msgstr "Poser les pièces montrées : le modèle tient alors debout. Une seule étape à annuler"
+
+msgid "a %s under its %s side, down to the ground"
+msgstr "%s sous son côté %s, jusqu'au sol"
+
+msgid "a %s and a %s under its %s side, down to the ground"
+msgstr "%s et %s sous son côté %s, jusqu'au sol"
+
+msgid "a %s, a %s and a %s under its %s side, down to the ground"
+msgstr "%s, %s et %s sous son côté %s, jusqu'au sol"
+
+msgid "a %s under its %s side, down to the baseplate"
+msgstr "%s sous son côté %s, jusqu'à la plaque de base"
+
+msgid "a %s and a %s under its %s side, down to the baseplate"
+msgstr "%s et %s sous son côté %s, jusqu'à la plaque de base"
+
+msgid "a %s, a %s and a %s under its %s side, down to the baseplate"
+msgstr "%s, %s et %s sous son côté %s, jusqu'à la plaque de base"
+
+msgid "Then it stands, its weight %s studs inside its %s edge"
+msgstr "Il tient alors debout, son poids à %s tenons en deçà du bord %s"
+
+msgid "Then it stands, its weight %s studs inside its %s edge."
+msgstr "Il tient alors debout, son poids à %s tenons en deçà du bord %s."
+
+msgid "No foot of up to three parts has room under its %s side to stand it: widen its base that way, or move weight back over it, by hand."
+msgstr "Aucun pied d'au plus trois pièces n'a la place sous son côté %s pour le faire tenir : élargis sa base de ce côté, ou ramène du poids au-dessus, à la main."
+
+msgid "No foot of up to three parts reaches the floor under its %s side far enough out to stand it: widen its base that way, or move weight back over it, by hand."
+msgstr "Aucun pied d'au plus trois pièces n'atteint le sol sous son côté %s assez loin pour le faire tenir : élargis sa base de ce côté, ou ramène du poids au-dessus, à la main."

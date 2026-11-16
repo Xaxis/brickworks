@@ -2178,10 +2178,17 @@ func _check_stability() -> void:
 	if report == null:
 		report = stability.check(world)
 	var said: String = "it stands up — no joint is carrying more than it can hold"
-	# The joints Stability finds weak, apart from tipping, which the
-	# balance says better.
+	# The joints Stability finds weak, apart from the balance of the whole
+	# (a tip, a lean, top-heavy), which is no joint and no part to select:
+	# the walk's tower on one corner stud, which tips whole, read "1 weak
+	# joint, selected" of its lean, with nothing selected (smalls4). A lean
+	# is said as itself, and a tip as the balance says it.
 	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
-		return risk.kind != "tips")
+		return not risk.kind in Stability.BALANCE_KINDS)
+	var leans: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind in ["leaning", "top-heavy"])
+	if weak.is_empty() and not leans.is_empty():
+		said = (leans[0] as Stability.Risk).message
 	if not weak.is_empty():
 		builder.selection.clear()
 		for risk: Stability.Risk in weak:
@@ -2196,7 +2203,8 @@ func _check_stability() -> void:
 	var balance: Balance.Report = await weigh_balance(poses, true, true,
 		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
-		bar.say(balance.words() if weak.is_empty() else "%s. %s" % [said, balance.words()])
+		bar.say(balance.words() if weak.is_empty() and leans.is_empty()
+			else "%s. %s" % [said, balance.words()])
 
 
 var _balance_mark: BalanceMark = null
