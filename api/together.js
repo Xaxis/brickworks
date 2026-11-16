@@ -734,7 +734,12 @@ async function poll(request, me, response = null) {
       early = await readOps();
       if (early.length > 0 || channel.over() || Date.now() >= until) break;
       await channel.ready(Math.min(opsAt + POLL_MS, until) - Date.now());
-      if (channel.over() || Date.now() >= until) break;
+      // Woken by its channel, or by when it waits no longer, not for the
+      // next read of the changes: who is in it read now. (By the clock, a
+      // timer to [until] can end a millisecond before it: the changes were
+      // read again 30 ms after the last, 3 runs in 20, pollreads.) Less 2 ms
+      // for a timer's and a clock's rounding.
+      if (channel.over() || Date.now() - opsAt < POLL_MS - 2) break;
     }
     [session, all] = await Promise.all([sessionRow(id), peopleRows(id)]);
     if (!mine || !session || session.ended_at) session = await inSession(id, me);
