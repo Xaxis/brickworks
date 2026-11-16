@@ -5624,6 +5624,20 @@
       "entry": "src/dev/mvreview_probe.gd",
       "reach": "MVREVIEW_CASES=listing,omr2,editfirst,mcp2,xform tools/probe.sh mvreview_probe   (headless, the movedparts review's own cases: a file's own sub-model, embedded part and shortcut blocks named as moved numbers left alone; 396-1 and 364-1 listed and replaced alike; an edit, then the replace, then two undos; open_model's answer on 40 moved numbers under 4,000 characters; every turned stub placed within 0.00001 LDU)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "copies follow only where a person could",
+      "entry": "src/assembly/assemblies.gd",
+      "reach": "godot --path .  (a sub-model placed twice, a part locked in one copy: paint, replace, move, turn, delete or paste into the other copy, by hand or a session's edit_model, is refused with \"Locked in one copy of …: …. Unlock it, or use Build › Make this copy unique\"; a part newly in the way of a twin (not its own copy, nor one it stood in already unless deeper): \"No room in … (copy 2): … is in the way there\"; nothing changes, no undo step is left and the model is not marked changed; 10179 and 10030 parts that stand in others still move with their copies; tools/probe.sh followfix_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "followfix probe",
+      "entry": "src/dev/followfix_probe.gd",
+      "reach": "tools/probe.sh followfix_probe   (headless, about 3 minutes; FOLLOWFIX_CASES=paint,mcp_move,mirror for some)",
+      "area": "building"
     }
   ]
 }

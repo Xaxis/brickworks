@@ -3590,6 +3590,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if scoped:
 				var had: int = world.brick_count()
 				var words: String = _gather_focus_step(standing_was)
+				if not _focus_refused.is_empty():
+					_judged_said = {}
+					return CommandSocket.refused_answer(_focus_refused)
 				# Counted and judged as the copies that followed it left the
 				# model, which the words after it name.
 				said = str(recounted(said, focus.followed, world.brick_count() - had, false))
@@ -23176,9 +23179,11 @@ func _refused_beyond(beyond: PackedStringArray) -> String:
 ## parts put in the selection's sub-assembly, the selection now what it
 ## became.
 func _gather_focus_step(was: Dictionary) -> String:
+	_focus_refused = ""
 	var steps: Array = SelectionScope.steps_back(was, world, scenery)
 	if steps.is_empty():
 		return ""
+	var ids_were: Dictionary = focus.ids.duplicate()
 	for step: Dictionary in steps:
 		var kind: String = str(step.get("undo", ""))
 		if kind == "remove":
@@ -23203,6 +23208,14 @@ func _gather_focus_step(was: Dictionary) -> String:
 	var followed: Array = [[], 0]
 	if assemblies != null:
 		followed = assemblies.copies_follow({"undo": "group", "steps": steps})
+		# A copy could not take it (a part locked, or no room): it is made in
+		# none, as by hand (Assemblies.after_edit), and said instead.
+		if not assemblies.refused.is_empty():
+			_focus_refused = assemblies.refused
+			for back: Dictionary in steps:
+				builder._apply(back)
+			focus.ids = ids_were
+			return ""
 	focus.followed = int(followed[1])
 	var own: Array = steps
 	# What followed first, newest first as a group keeps them (Builder.extend_last).
@@ -23242,6 +23255,10 @@ func _done_words(count: int) -> String:
 ## of every other call.
 var _done_said: String = ""
 var _done_count: int = 0
+
+## Why the last edit about the selection was taken back, a copy of its
+## sub-model unable to take it (Assemblies.refused); "" when it stood.
+var _focus_refused: String = ""
 
 
 ## What the last edit's reply said of the model as it stood when it was made
