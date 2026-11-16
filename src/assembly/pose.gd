@@ -271,6 +271,24 @@ func _touched_at_rest(brick_id: int, other: int) -> bool:
 	return not mine.is_empty() and not theirs.is_empty() and BrickLattice._overlaps(mine, theirs)
 
 
+## Whether a joint's sub-assembly no longer holds the parts it was found
+## with: the model cleared and built again, or the sub-assembly ungrouped,
+## its parts where they stood. The parts stand as the angles say, so
+## [method holds] cannot tell: f1's arm built again after a clear, at the
+## same numbers and places, was listed as "Arm" with no Arm in the model.
+func outdated() -> bool:
+	if assemblies == null:
+		return not joints.is_empty()
+	for one: Joint in joints:
+		var now: PackedInt64Array = assemblies.ids_under(one.assembly)
+		if now.size() != one.ids.size():
+			return true
+		for brick_id: int in now:
+			if not one.ids.has(brick_id):
+				return true
+	return false
+
+
 ## Whether the parts stand as the joints' angles say: false once something
 ## else has moved them (an undo, an edit), and the pose is read again.
 func holds() -> bool:

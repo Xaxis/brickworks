@@ -2283,7 +2283,8 @@ const WEIGH_OFF_THREAD_FROM := 600
 func _poses_to_weigh() -> Array:
 	var panel: Control = app.get("_pose_made")
 	var poser: Poser = panel.poser if panel != null else null
-	if poser != null and poser.world != null and not poser.joints.is_empty() and poser.holds():
+	if poser != null and poser.world != null and not poser.joints.is_empty() and not poser.outdated() \
+			and poser.holds():
 		return poser.sweep(panel.animation)
 	poser = Poser.new()
 	poser.world = world

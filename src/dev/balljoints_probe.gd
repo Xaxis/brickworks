@@ -6,6 +6,8 @@
 ##
 ##   godot --headless --path . --script src/dev/balljoints_probe.gd
 ##   godot --path . --resolution 1280x720 --script src/dev/balljoints_probe.gd -- --picture
+##   --only=real, catalogue, turn, pose or session runs that part alone; --only=app the
+##   last three in one app, in turn, as a whole run has them.
 ##
 ##  1. The real ones: every ball in its socket the stability reads in the
 ##     real sets' files (src/dev/balljoints_real.json, 749 kinds of pose of
@@ -108,7 +110,7 @@ func _run() -> void:
 		_builder.queue_free()
 		_world.queue_free()
 		await process_frame
-	if not (only.is_empty() or only in ["turn", "pose", "session"]) and not _picture:
+	if not (only.is_empty() or only in ["turn", "pose", "session", "app"]) and not _picture:
 		_end()
 		return
 	_main = load("res://src/main.tscn").instantiate()
@@ -128,11 +130,11 @@ func _run() -> void:
 	_socket.app = _main
 	_main.add_child(_socket)
 	await process_frame
-	if only.is_empty() or only == "turn":
+	if only.is_empty() or only == "turn" or only == "app":
 		await _turn()
-	if only.is_empty() or only == "pose":
+	if only.is_empty() or only == "pose" or only == "app":
 		await _pose()
-	if only.is_empty() or only == "session":
+	if only.is_empty() or only == "session" or only == "app":
 		await _session()
 	if _picture:
 		await _shoot()
