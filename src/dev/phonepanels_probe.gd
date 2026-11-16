@@ -657,23 +657,37 @@ func _tap_while_busy(panel: SimulatePanel) -> void:
 		_check("a tap while Simulate is busy: Simulate opened on the orrery, turning its first driver (read %s, turning %s)"
 			% [panel.sim != null, panel._driving], false)
 		return
-	# Another body a drive can turn, by a part of it in sight above the panel.
+	# Another body a drive can turn, by a point in sight above the panel
+	# where the app's own hit test finds a part of it (a gear's middle is
+	# its axle hole, and a tap there finds what is behind).
 	var first: int = panel._driving_to
 	var room: Rect2 = _view().grow(-8.0 * _pt())
 	var top: float = panel.get_global_rect().position.y - 8.0 * _pt()
+	var verbs: EditVerbs = _main.get("_verbs")
+	var library: Variant = _main.get("_library")
 	var target: int = -1
 	var at: Vector2 = Vector2.INF
 	for body: Variant in panel.sim.keys_of:
 		if int(body) == first or not panel.sim.can_drive(int(body)):
 			continue
-		for id: Variant in panel.sim.keys_of[body]:
+		var mine: Array = panel.sim.keys_of[body]
+		for id: Variant in mine:
 			var brick: BrickWorld.Brick = _world.get_brick(int(id))
-			if brick == null or _camera.is_position_behind(brick.transform.origin):
+			if brick == null:
 				continue
-			var spot: Vector2 = _camera.unproject_position(brick.transform.origin)
-			if room.has_point(spot) and spot.y < top:
-				target = int(body)
-				at = spot
+			var box: AABB = library.mesh_for(brick.part_id).bounds
+			for local: Vector3 in [box.get_center(), box.get_center() + Vector3(box.size.x * 0.35, 0, 0),
+					box.get_center() - Vector3(box.size.x * 0.35, 0, 0),
+					box.get_center() + Vector3(0, 0, box.size.z * 0.35)]:
+				var point: Vector3 = brick.transform * local
+				if _camera.is_position_behind(point):
+					continue
+				var spot: Vector2 = _camera.unproject_position(point)
+				if room.has_point(spot) and spot.y < top and mine.has(verbs.brick_at(spot)):
+					target = int(body)
+					at = spot
+					break
+			if target >= 0:
 				break
 		if target >= 0:
 			break
@@ -693,11 +707,13 @@ func _tap_while_busy(panel: SimulatePanel) -> void:
 	_touch(0, at, false)
 	await _frames(2)
 	builder.selection_changed.disconnect(hear)
+	var picked: bool = (panel.sim.keys_of.get(target, []) as Array).any(func(id: Variant) -> bool:
+		return builder.selection.has(int(id)))
 	await _until(func() -> bool: return not panel._driving, 60.0)
 	await _frames(4)
 	var now: String = str(panel.said().get("driver", ""))
-	_check("the orrery opened in Simulate, another gear tapped while its first driver still turned (%s; kept for after: %s): it drives, in %d: %s"
-		% [busy, queued.has(target), _presses, now.left(60)],
+	_check("the orrery opened in Simulate, another gear tapped while its first driver still turned (%s; the tap picked it %s, kept for after: %s): it drives, in %d: %s"
+		% [busy, picked, queued.has(target), _presses, now.left(60)],
 		busy and queued.has(target) and panel.sim != null and panel.sim.driver == target
 		and _presses == 1)
 
