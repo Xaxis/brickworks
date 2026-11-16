@@ -582,7 +582,9 @@ geometry in front of them.
   kept never moves the parts under the pointer. The categories after them
   scroll. At 1280 x 720 with Stress open the window was one row and Like this
   sat under it (appux7's walk). `binrow_probe` (1400 x 900; the window made
-  1280 x 720 and 1024 x 768 in turn; through the sign-in screen, .env),
+  1280 x 720 and 1024 x 768 in turn; through the sign-in screen, .env; at
+  the walk's two sizes binstay too: Stress opened beside the open bin and a
+  2 x 4 clicked, the bin where it was),
   `binrow_phone_probe` (390 x 844), `binrow_tablet_probe` (1024 x 768).
 - `rare colours in the bin` (`PartsBin._swatch_tip`, `PartLibrary.sets_in_colour`;
   APP_UX7 rarity): with a part in hand, a colour's swatch tooltip says in how

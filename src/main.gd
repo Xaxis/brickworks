@@ -448,6 +448,8 @@ var _tool_sheet: bool = false
 var _tool_panels: VBoxContainer
 ## Whether opening the column folded the parts column, to put it back.
 var _tool_folded_parts: bool = false
+## The right-hand column opening it folded to keep the bin, to put back.
+var _tool_folded_right: SideDock = null
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -7838,12 +7840,18 @@ const PHONE_SHEET := 0.9
 
 
 ## A panel in the column opened or closed: the column shown while any is.
-## Opening it folds the parts column, which building by hand needs and the
-## panels do not (Stress's legend too: the bin is a click on its rail
-## away), so the model keeps its share of the window; closing the last
-## puts it back as it was. Where nothing folds, the column's room comes
-## out of the model's, and the view steps back so what was in sight stays
-## in sight.
+## The parts bin stays where it is beside it, narrowed to the room left,
+## while the model keeps its least (MODEL_LEAST); the right-hand column
+## folds first where that keeps it, as the bin's rail would fold it; the
+## bin folds only where even then the model would have too little. Closing
+## the last puts back what it folded. Where nothing folds, the column's
+## room comes out of the model's, and the view steps back so what was in
+## sight stays in sight.
+##
+## It folded the bin whenever it opened, there being a rail to bring it
+## back by: round eight's walk, with Stress open, lost the bin it was
+## picking from at 1280 x 720 and 1400 x 900, and its rail brought it back
+## beside Stress with every shelf in sight (binstay, APP_UX9 #2).
 func _tool_column_shown() -> void:
 	var open: bool = _shown(_simulate_made) or _flex.panel.visible or _shown(_pose_made) \
 		or _shown(_hidden_colours_made) or _shell.stress.panel.visible
@@ -7851,21 +7859,51 @@ func _tool_column_shown() -> void:
 		return
 	var room: Rect2 = _model_rect()
 	_tool_column.visible = open
-	# The bin's width beside it, or back without it, before it is opened.
-	_fit_bin()
 	if open and _bin_dock.is_open() and _columns != "drawers":
-		_tool_folded_parts = true
-		_arranging = true
-		_bin_dock.set_open(false, false)
-		_arranging = false
-	elif not open and _tool_folded_parts:
-		_tool_folded_parts = false
-		if not _bin_dock.is_open():
+		var right: SideDock = _right_column_open()
+		if _room_with_bin(right != null) < MODEL_LEAST:
 			_arranging = true
-			_bin_dock.set_open(true, false)
+			if right != null and _room_with_bin(false) >= MODEL_LEAST:
+				_tool_folded_right = right
+				right.set_open(false, false)
+			else:
+				_tool_folded_parts = true
+				_bin_dock.set_open(false, false)
 			_arranging = false
+	elif not open:
+		_arranging = true
+		if _tool_folded_parts and not _bin_dock.is_open():
+			_bin_dock.set_open(true, false)
+		if _tool_folded_right != null and not _tool_folded_right.is_open() \
+				and (_columns == "wide" or not _bin_dock.is_open()):
+			_tool_folded_right.set_open(true, false)
+		_arranging = false
+		_tool_folded_parts = false
+		_tool_folded_right = null
+	# The bin's width beside it, or back without it.
+	_fit_bin()
 	if open:
 		_keep_in_sight.call_deferred(room)
+
+
+## The right-hand column's tab that is open, the properties or the
+## assistant; null while it is folded.
+func _right_column_open() -> SideDock:
+	if _props_dock != null and _props_dock.is_open():
+		return _props_dock
+	if _chat_dock.visible and _chat_dock.is_open():
+		return _chat_dock
+	return null
+
+
+## The model's room, in units, with the bin open at its narrowest beside
+## the tools' column as it stands, and the right-hand column open beside
+## them too when [param right].
+func _room_with_bin(right: bool) -> float:
+	var units: float = get_viewport().get_visible_rect().size.x
+	var rails: float = 2.0 if _props_dock != null or _chat_dock.visible else 1.0
+	return units - SideDock.RAIL_WIDTH * rails - _tool_room() - _parts_wide(LEAST_ACROSS) \
+		- (SIDE_WIDE if right else 0.0)
 
 
 ## After the column opened, once the columns are laid out: if a part of

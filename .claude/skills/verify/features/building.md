@@ -538,7 +538,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the other and the tools' column that would leave it less folds the other
   side's, as where they take turns (`Main.MODEL_LEAST`, `_room_beside`, in
   `_column_opening`; at 1400 x 900 the bin, Stress and the assistant together
-  left it 393 px). On a tablet on its side the tools' column goes under the
+  left it 393 px). The tools' column opening beside an open bin keeps the
+  bin, narrowed, while the model keeps that least; the right-hand column
+  folds first where that keeps it, and the bin only where even that leaves
+  too little; closing it puts back what it folded (`Main._tool_column_shown`,
+  `_room_with_bin`; binstay, APP_UX9 #2: it folded the bin every time, and
+  round eight's walk lost the bin it was picking from as Stress opened).
+  On a tablet on its side the tools' column goes under the
   model while, beside it, it would leave the model less than that, with a
   drawer or the parts out, and back beside it when they go
   (`Main._place_tool_column`, `_tool_crowds_model`): Stress and the
