@@ -657,6 +657,19 @@ func _tap_while_busy(panel: SimulatePanel) -> void:
 		_check("a tap while Simulate is busy: Simulate opened on the orrery, turning its first driver (read %s, turning %s)"
 			% [panel.sim != null, panel._driving], false)
 		return
+	# The view settled first, as a person's eye waits for it: it slides the
+	# model up over the panel as Simulate opens, a gear 280 units in six
+	# frames, and a tap aimed before it settled found the driver.
+	var mark: Vector3 = _world_box().get_center()
+	var was: Vector2 = Vector2.INF
+	var still: int = 0
+	for _n: int in 240:
+		await process_frame
+		var now: Vector2 = _camera.unproject_position(mark)
+		still = still + 1 if now.distance_to(was) < 0.5 else 0
+		was = now
+		if still >= 5 or not panel._driving:
+			break
 	# Another body a drive can turn, by a point in sight above the panel
 	# where the app's own hit test finds a part of it (a gear's middle is
 	# its axle hole, and a tap there finds what is behind).
@@ -691,8 +704,9 @@ func _tap_while_busy(panel: SimulatePanel) -> void:
 				break
 		if target >= 0:
 			break
-	if target < 0:
-		_check("a tap while Simulate is busy: another gear of the orrery in sight to tap", false)
+	if target < 0 or not panel._driving:
+		_check("a tap while Simulate is busy: another gear of the orrery in sight to tap while its first drive turns (found %s, still turning %s)"
+			% [target >= 0, panel._driving], false)
 		return
 	# The panel hears the tap first; what it kept is read as the selection changes.
 	var queued: Array = []
