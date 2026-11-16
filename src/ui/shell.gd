@@ -209,8 +209,8 @@ const MENUS: Array = [
 		"-", "share", "together", "together_point",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
-		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
+		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", ">show_hide",
+		"lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
 		"ortho", "grid", ">floor",
@@ -276,6 +276,11 @@ const SUBMENUS: Dictionary = {
 		"export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
+	# Hide, Show only the selection and Show everything, folded as Blender's
+	# Show/Hide is (smalls4, APP_UX9 #3): with Find and replace, Edit was 486
+	# units tall at 1280 x 720, past the 470 a menu has there (keys3). Each
+	# keeps its key (Ctrl+H, Shift+H and Alt+H by default), which most use.
+	"show_hide": ["hide", "isolate", "show_all"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right",
 		# savedviews: the views kept with the model (SavedViews), each row
@@ -321,6 +326,7 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
+	"show_hide": "Show and hide",
 	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
 	"floor": "Floor", "floor_colour": "Baseplate colour",

@@ -181,6 +181,9 @@ msgstr "Ne rien sélectionner"
 msgid "Select by"
 msgstr "Sélectionner par"
 
+msgid "Show and hide"
+msgstr "Afficher et masquer"
+
 msgid "Same colour"
 msgstr "Même couleur"
 

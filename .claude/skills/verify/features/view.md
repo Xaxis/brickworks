@@ -925,7 +925,10 @@ picture the assistant is shown.
   Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
   tilts, this view, usual view and zoom into Build › Booklet page › Step's view
   (19 rows and 9), and View, 482 of 470 units with Stud map, its five panels
-  into View › Panels (menurows, 2026-11-07). `keys3_probe`
+  into View › Panels (menurows, 2026-11-07); Edit, 486 of 470 units once Find
+  and replace joined it, folds Hide, Show only the selection and Show
+  everything into Edit › Show and hide, as Blender's Show/Hide, each with its
+  key (smalls4, APP_UX9 #3). `keys3_probe`
   (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
   palette measures Edit, presses the colour keys as a desktop and a browser
   send them, the four selection keys against their menu rows, Studio's Shift-V,
