@@ -161,17 +161,11 @@ static func _listen(tree: SceneTree) -> void:
 	if _listening:
 		return
 	_listening = true
-	tree.root.window_input.connect(func(_event: InputEvent) -> void: GpuFence.answer())
+	tree.root.window_input.connect(func(_event: InputEvent) -> void: GpuFence._asked())
 	tree.process_frame.connect(func() -> void: GpuFence._decide())
 
 
-## A person's doing, drawn held or not: this window's input, and what another
-## person in a Build together room does, heard over the network (their
-## pointer, their selection, a part they point out), or Claude's point. Held
-## behind the parts bin's pictures, the second tab drew a part pointed out
-## 817 ms after it had it, live, and 2.8 s in rel-m303's check, after 48
-## frames that drew nothing (Together, pointfix, 2026-11-15).
-static func answer() -> void:
+static func _asked() -> void:
 	_asked_at = Time.get_ticks_msec()
 	_drawn_when_asked = Engine.get_frames_drawn()
 	if _holding > 0:

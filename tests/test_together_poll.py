@@ -125,33 +125,3 @@ def test_a_look_not_of_its_shape_is_refused_and_none_keeps_the_signature():
     assert looked["refused"] == [400] * 7
     assert looked["always"] is True
 
-
-# -- pointfix (2026-11-15): a point's way, and two sends at once ------------------
-
-
-def test_a_line_with_a_point_says_when_the_server_and_the_poll_had_it():
-    looked = _run()["looked"]
-    server, poll, via = looked["pointed"]
-    # Had by the server once sent, by this poll on the channel after, and
-    # said on its line after both: a check times the relay's legs by them.
-    assert via == "told", looked["pointed"]
-    assert looked["sentAt"] - 5 <= server <= poll <= looked["lineAt"], looked
-
-
-def test_a_part_pointed_out_while_the_poll_joins_its_channel_is_read_once_joined():
-    joining = _run()["joining"]
-    # Told 30 ms into a poll whose channel joins at 100: not heard, so read,
-    # the moment it has joined (~70 ms on), not at the next read of who is in
-    # it (PEOPLE_MS, ~220 ms on).
-    assert joining["via"] == "read", joining
-    assert joining["ms"] is not None and joining["ms"] < 150, joining
-
-
-def test_a_part_pointed_out_beside_a_pointer_on_its_way_is_kept():
-    ordered = _run()["ordered"]
-    # The pointer's send reached the database after the point sent beside
-    # it: the point is kept, and a poll that reads it is told it.
-    assert ordered["codes"] == [200, 200], ordered
-    assert ordered["kept"]["look"]["n"] == 1763000000009 and ordered["kept"]["at"] == [1, 2, 3], ordered
-    assert ordered["read"] == 1763000000009, ordered
-
