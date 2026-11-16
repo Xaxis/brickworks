@@ -869,11 +869,15 @@ async function point(request, me) {
   // pointat: a part pointed out, kept with the pointer while it is sent.
   const look = lookOf(body.look);
   // One trip a few times a second: the row of someone in it, not taken out;
-  // and told to the polls waiting in it at the same time (channelOf).
+  // and told to the polls waiting in it at the same time (channelOf). Kept
+  // only over an older one: a part pointed out goes beside a send of the
+  // pointer still on its way (Together._point), and the database may take
+  // the two in either order (pointfix, 2026-11-15).
   const now = new Date().toISOString();
   const pointer = { at, sel, view, ...(look ? { look } : {}) };
   const [[mine]] = await Promise.all([
-    db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
+    db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`
+      + `&or=(pointer_at.is.null,pointer_at.lt.%22${now}%22)`, {
       method: "PATCH", body: { pointer, pointer_at: now, seen_at: now }, prefer: "return=representation",
     }).then((got) => got || []),
     tell(id, { account: me, pointer, pointer_at: now }),

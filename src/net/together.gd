@@ -177,7 +177,15 @@ var _outlines: Dictionary = {}
 var _outlined: Dictionary = {}
 var _point_at: int = 0
 var _pointed: Variant = null
-var _pointing: bool = false
+## Sends of this side's point on their way. A part pointed out, or taken
+## back, goes at once beside one still out: behind it, it waited out that
+## send's whole trip, 120-240 ms of the live site's under load, where a
+## person puts the pointer on the part and presses Alt-W at once (pointfix,
+## 2026-11-15). The server keeps the later of two (api/together.js point);
+## sent while another was out, the point is sent once more after both, so
+## whichever the server had last, it has this one's.
+var _pointing: int = 0
+var _overlapped: bool = false
 const POINT_MS := 250
 ## A pointer that leaves the model is said gone only once it has stayed off
 ## it this long. Crossing a gap between two parts, it went out and came back
@@ -2169,7 +2177,8 @@ func _pointer_now() -> Dictionary:
 ## Sent a few times a second while it moves; a part pointed out, or taken
 ## back, at once (pointat).
 func _point() -> void:
-	if _pointing or _offline or (Time.get_ticks_msec() - _point_at < POINT_MS and not _look_due):
+	if _offline or (_pointing > 0 and not _look_due) \
+			or (Time.get_ticks_msec() - _point_at < POINT_MS and not _look_due):
 		return
 	var now: Dictionary = _pointer_now()
 	if now == _pointed:
@@ -2184,7 +2193,9 @@ func _point() -> void:
 			return
 	_off_at = -1
 	_point_at = Time.get_ticks_msec()
-	_pointing = true
+	if _pointing > 0:
+		_overlapped = true
+	_pointing += 1
 	_pointed = now
 	_look_due = false
 	timing["pointed"] = _unix_ms()
@@ -2195,7 +2206,12 @@ func _point() -> void:
 		asked["look"] = (now["look"] as Dictionary).merged({"age": Time.get_ticks_msec() - _look_at})
 		timing["look_sent"] = _unix_ms()
 	await _ask("point", asked)
-	_pointing = false
+	_pointing -= 1
+	# Two were out at once: once both are back, sent again at the pointer's
+	# pace, so the server's last is this side's last.
+	if _pointing == 0 and _overlapped:
+		_overlapped = false
+		_pointed = null
 	# Pointed out or taken back while this one was on its way: sent now,
 	# not at the next frame's.
 	if _look_due:
