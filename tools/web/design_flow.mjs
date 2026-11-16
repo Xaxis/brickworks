@@ -1,6 +1,8 @@
 // Does any control on the site look wrong to a person? (web/site.css,
 // docs/DESIGN_SYSTEM.md)
 //
+// flows_for: every page
+//
 //   node tools/web/design_flow.mjs [--out=shots/design]              # this checkout's web/ and api/
 //   node tools/web/design_flow.mjs --root=DIR [--out=...]            # another checkout's (an old one, to see it fail)
 //   node tools/web/design_flow.mjs --url=<deployment> [--out=...]    # a deployment's pages, the API answered here
