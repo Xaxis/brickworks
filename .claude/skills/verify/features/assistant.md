@@ -2172,10 +2172,11 @@ fixing what it got wrong.
   ends and its highest; steps under a brick are bands), a tall thing's tiers
   with each setback on its side (mirrored from the back or the right), the
   height a building's storeys need (a plinth of 2, 5 a storey, 2 over it)
-  with every height stretched up to 2 times when the face is lower and the
-  height read beside each (a tower's many floors never), each break where it
-  is and how big, a body read down to the ground over its wheels told to
-  read its underside, and the plan in studs. design21's solid (an extrude or
+  with its face stretched up to 2 times when it is lower, what stands above
+  the face (a dome, a tower) kept at its own height on top, and the height
+  read beside each (a tower's many floors never), each break where it is and
+  how big, a vehicle's body read down to the ground over its wheels told to
+  read its underside (never a building's steps), and the plan in studs. design21's solid (an extrude or
   tiers to send) lost its screen and is not here. Asked for once each, while
   none is held, in how_real_sets_build_this (leading), find_reference,
   clear_model, plan_scale and the first bare submit_design.
@@ -2185,7 +2186,8 @@ fixing what it got wrong.
   13 by 6, deep= the box's shape said, no deep= 0.4 with the ask, a plan
   wider than the box held to it; a noisy roofline in one level with its dome
   a curve, steps kept where read and bands merged; a palace stretched 1.5
-  for 3 storeys with the read beside each, the stretch capped at 2, a face
+  for 3 storeys with the read beside each, a capitol's dome 57 plates on its
+  stretched wings, not 70, its steps no underside, the stretch capped at 2, a face
   with room and a tower left alone; setbacks left, right, both, from the
   back, unsaid and under a stud; a loader's wheels and boom as breaks; what
   studs= measures; 18 wrong readings refused.

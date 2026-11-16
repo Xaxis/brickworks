@@ -314,19 +314,51 @@ func _height_for_storeys() -> void:
 		"longest_metres": 108, "studs": {"box": [26, 24]}, "outline": palace}))
 	_ok(answer.contains("Height for its features: its 3 storeys need 19 plates at this size, a "
 		+ "plinth of 2, 5 for each storey") and answer.contains("Its face is 13 plates as read, "
-			+ "so every height below is stretched 1.5 times, its face to 19 plates"),
+			+ "so it is stretched 1.5 times, to 19 plates, and every height up to it with it"),
 		"a palace a fifth as tall as long: 13 plates read, its 3 storeys need 19, stretched 1.5: "
 			+ _line_with(answer, "Height for"))
 	_ok(answer.contains("  x 0 to 11.5: 19 plates (13 read)") and answer.contains(
-		"  x 11.5 to 14.5: 25 plates (17 read)") and answer.contains("26 studs long and 8 across, "
-			+ "25 plates at its highest"), "every level stretched with the read beside it, its "
-		+ "length and plan as read:\n%s" % _lines_with(answer, "read)"))
+		"  x 11.5 to 14.5: 23 plates (17 read)") and answer.contains("26 studs long and 8 across, "
+			+ "23 plates at its highest") and answer.contains("stands on it, 6 plates higher "
+				+ "than read"), "its face stretched, its centre above the face raised by the 6 "
+		+ "plates the face gained, the read beside each, its length and plan as read:\n%s"
+			% _lines_with(answer, "read)"))
+	# The Capitol as design23's first start read it: wings level at a tenth of
+	# its length, the dome 0.37. Its set has wings of 18 plates and a dome of
+	# 48; stretching the dome with the storeys made it 70.
+	answer = _text(await _assistant.use_tool("plan_scale", {"subject": "a capitol",
+		"longest_metres": 229, "studs": {"box": [56, 18]}, "outline": {"from": "front",
+			"heights": [0.1, 0.1, 0.085, 0.1, 0.2, 0.37, 0.2, 0.1, 0.085, 0.1, 0.1],
+			"plan": "rectangle", "deep": 0.32, "storeys": 3, "breaks": [{"name": "dome",
+				"from": 0.4, "to": 0.6, "bottom": 0.1, "top": 0.37}, {"name": "steps",
+				"from": 0.38, "to": 0.62, "bottom": 0, "top": 0.05}]}}))
+	_ok(answer.contains("Its face is 14 plates as read, so it is stretched 1.4 times, to 19 "
+		+ "plates") and answer.contains("  x 0 to 17: 19 plates (14 read)") and answer.contains(
+			"  dome: x 22.5 to 33.5 (11 studs), y 19 to 57 plates (38 tall)") and answer.contains(
+				"56 studs long and 18 across, 57 plates at its highest") and not answer.contains(
+					"70 plates"), "a dome above the wings keeps its own 38 plates on the "
+		+ "stretched wings, 57 where 52 are read, not stretched to 70:\n%s"
+			% _lines_with(answer, "plates"))
+	_ok(not answer.contains("read its underside"), "a building's steps on the ground are not "
+		+ "told to be read as its underside: %s" % _line_with(answer, "underside"))
+	# The Guggenheim as the same start read it: the annex and the rotunda each
+	# run 8 of its 18 studs. Its storeys are counted on the rotunda, its main
+	# block; its set has the rotunda 32 plates and the annex 21 to 24.
+	answer = _text(await _assistant.use_tool("plan_scale", {"subject": "a spiral museum",
+		"longest_metres": 70, "studs": {"box": [18, 10]}, "outline": {"from": "front",
+			"heights": [0.22, 0.24, 0.3, 0.3, 0.3, 0.42, 0.45, 0.45, 0.45, 0.42, 0.18],
+			"deep": 0.55, "storeys": 6}}))
+	_ok(answer.contains("Its face is 20 plates as read, so it is stretched 1.7 times, to 34 "
+		+ "plates") and answer.contains("  x 0 to 8: 23 plates (13 read)") and answer.contains(
+			"  x 8 to 16: 34 plates (20 read)"), "storeys counted on its main block, the highest "
+		+ "level a quarter of its length or more, not the lower annex as long:\n%s"
+			% _lines_with(answer, "read)"))
 	palace["heights"] = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 	palace.erase("steps")
 	palace["storeys"] = 5
 	answer = _text(await _assistant.use_tool("plan_scale", {"subject": "a long block",
 		"longest_metres": 108, "studs": {"box": [26, 24]}, "outline": palace}))
-	_ok(answer.contains("stretched 2 times, its face to 14 plates") and answer.contains(
+	_ok(answer.contains("stretched 2 times, to 14 plates") and answer.contains(
 		"That is the most an expert stretches it: build each storey 4 plates"),
 		"a stretch is at most 2, then each storey a brick and a plate: %s"
 			% _line_with(answer, "the most"))

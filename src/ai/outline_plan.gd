@@ -26,8 +26,11 @@
 ##   where the reading steps.
 ## - A real long, low building's proportion leaves no room at microscale for
 ##   its storeys, balcony and portico. A building's storeys= say what its face
-##   needs, and the answer stretches the height for them, as a set does, with
-##   the height read beside it.
+##   needs, and the answer stretches the face for them, as a set does, with
+##   the height read beside it. What stands above the face (a dome, a tower,
+##   a pediment) keeps its own height on top of it: the Capitol's set has
+##   wings of 18 plates where 14 are read and a dome of 48 where 52 are, so
+##   stretching the dome with the storeys (to 70) would lose it.
 ##
 ## Nothing here knows what a car or a tower is: a reading is heights along a
 ## long thing or widths up a tall one, and the session says which.
@@ -110,6 +113,9 @@ const MOST_STOREYS := 300
 ## The most an expert stretches a face's height for its storeys: past it a
 ## storey is built a brick and a plate tall rather than stretched further.
 const MOST_STRETCH := 2.0
+## The share of a long thing's length a level must run to be its main block,
+## the face its storeys are counted on.
+const MAIN_BLOCK := 0.25
 
 var side: String = ""
 ## "heights" (a long thing: the top at each sample along its length, shares
@@ -151,8 +157,12 @@ var unit: float = 0.0
 var across: float = 0.0
 var widest: float = 0.0
 var depth: float = 0.0
-## How many times its heights are stretched for its storeys: 1 for none.
+## How many times its face is stretched for its storeys: 1 for none.
 var stretch: float = 1.0
+## Its face's height read, in plates, before any stretch (see [method
+## face_plates]): what is up to it stretches, and what stands above it rises
+## by the plates the face gained.
+var face: float = 0.0
 ## How the size was set, as the answer says it.
 var sized_by: String = ""
 ## What the answer says about the size besides, one sentence each.
@@ -437,6 +447,7 @@ func fit(studs: Dictionary, planned: float) -> void:
 	else:
 		widest = maxf(1.0, roundf(top * unit))
 		depth = maxf(1.0, roundf(other if other > 0.0 else widest * ratio))
+	face = face_plates()
 	stretch = _stretched()
 
 
@@ -710,37 +721,50 @@ func storeys_need() -> float:
 
 
 ## The height its face is read at, in plates, before any stretch: a long
-## thing's longest level (its main face), a tall thing's whole height.
+## thing's main block (the highest level a quarter of its length or more), a tall thing's whole height.
 func face_plates() -> float:
 	if mode == "widths":
 		return unit * PLATES_PER_STUD
+	# Its main block, where its storeys are counted: the highest level that runs
+	# MAIN_BLOCK of its length or more (the Guggenheim's rotunda, not the lower
+	# annex beside it as long; its set stretches the rotunda 20 read to 32);
+	# else its longest level. A slope (a dome, a curve) is never its face.
+	var main: float = -1.0
 	var longest_: float = 0.0
-	var face: float = 0.0
+	var longest_level: float = 0.0
 	for piece: Dictionary in levels(values):
 		if piece.get("slope", false):
 			continue
-		if float(piece["span"]) > longest_:
-			longest_ = float(piece["span"])
-			face = float(piece["level"])
-	if longest_ <= 0.0:
-		face = _level(values, 0.0, 1.0)
-	return face * unit * PLATES_PER_STUD
+		var span: float = float(piece["span"])
+		if span >= MAIN_BLOCK - 0.0001:
+			main = maxf(main, float(piece["level"]))
+		if span > longest_:
+			longest_ = span
+			longest_level = float(piece["level"])
+	var level_: float = main if main >= 0.0 else longest_level
+	if main < 0.0 and longest_ <= 0.0:
+		level_ = _level(values, 0.0, 1.0)
+	return level_ * unit * PLATES_PER_STUD
 
 
 ## How many times its heights stretch so its storeys fit: 1 when they fit as
 ## read, at most MOST_STRETCH.
 func _stretched() -> float:
 	var need: float = storeys_need()
-	var face: float = roundf(face_plates())
-	if need <= 0.0 or face <= 0.0 or need <= face:
+	var read_: float = roundf(face)
+	if need <= 0.0 or read_ <= 0.0 or need <= read_:
 		return 1.0
-	return minf(MOST_STRETCH, need / face)
+	return minf(MOST_STRETCH, need / read_)
 
 
-## [param share] of the reading's measure up, as plates at its size and
-## stretch.
+## [param share] of the reading's measure up, as plates at its size: up to
+## its face stretched, and above it raised by the plates the face gained, so
+## a dome or a tower keeps its own height on the taller storeys.
 func _plates(share: float) -> float:
-	return roundf(share * unit * PLATES_PER_STUD * stretch)
+	var read_: float = share * unit * PLATES_PER_STUD
+	if stretch <= 1.0 or read_ <= face:
+		return roundf(read_ * stretch)
+	return roundf(read_ + face * (stretch - 1.0))
 
 
 ## "22 plates", or "22 plates (15 read)" when stretched.
@@ -891,11 +915,11 @@ func said_sizes() -> String:
 func _said_storeys() -> String:
 	if storeys <= 0:
 		return ""
-	var face: float = roundf(face_plates())
+	var read_: float = roundf(face)
 	if storeys > FEW_STOREYS:
 		return ("Its %d storeys are a tower's floors: at this size they are texture, a plate or a "
 			+ "grille's line each, so its height is its proportion's, %s plates.") % [storeys,
-				_n(face)]
+				_n(read_)]
 	var need: float = storeys_need()
 	var many: String = ("its storey needs" if storeys == 1 else "its %d storeys need" % storeys)
 	var how: String = ("a plinth of %d, %d for each storey, a brick of windows with its sill and "
@@ -903,15 +927,19 @@ func _said_storeys() -> String:
 			CORNICE]
 	if stretch <= 1.0:
 		return "Height for its features: %s %s plates at this size, %s. Its face is %s plates as read: room for %s." % [
-			many, _n(need), how, _n(face), "it" if storeys == 1 else "each"]
-	var built: float = roundf(face * stretch)
+			many, _n(need), how, _n(read_), "it" if storeys == 1 else "each"]
+	var built: float = roundf(read_ * stretch)
 	var said: String = ("Height for its features: %s %s plates at this size, %s. " % [many,
 		_n(need), how]
-		+ "Its face is %s plates as read, so every height below is stretched %s times, its "
-			% [_n(face), _n(snappedf(stretch, 0.1))]
-		+ "face to %s plates, with the height read beside each: at microscale an expert " % _n(built)
-		+ "stretches a building's height before losing a storey, a balcony or a portico. Its "
-		+ "length and plan stay as read.")
+		+ "Its face is %s plates as read, so it is stretched %s times, to %s plates, and every "
+			% [_n(read_), _n(snappedf(stretch, 0.1)), _n(built)]
+		+ "height up to it with it")
+	if mode == "heights" and most() * unit * PLATES_PER_STUD > face + 0.5:
+		said += ("; what stands above its face (a dome, a tower, a pediment) keeps its own height "
+			+ "and stands on it, %s plates higher than read") % _n(built - read_)
+	said += (". The height read is beside each: at microscale an expert stretches a building's "
+		+ "storeys before losing one, a balcony or a portico, and keeps what crowns them at its "
+		+ "own size. Its length and plan stay as read.")
 	if need > built + 0.5:
 		said += (" That is the most an expert stretches it: build each storey %d plates (a brick "
 			+ "and a plate) to fit them.") % LEAST_STOREY
@@ -1047,7 +1075,11 @@ func _said_breaks() -> String:
 ## up: over a break that stands on the ground, or meeting it at places with
 ## its underside off it between. "" when neither.
 func _said_ground() -> String:
-	if mode != "heights":
+	# A building's breaks on the ground (its steps, a terrace) stand before its
+	# body, which goes down to the ground: the Capitol's portico steps were
+	# told to be read as an underside. Wheels, tracks and legs are a vehicle's
+	# or a machine's, which says no storeys.
+	if mode != "heights" or storeys > 0:
 		return ""
 	var count: int = values.size()
 	var said := PackedStringArray()
