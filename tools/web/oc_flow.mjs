@@ -140,11 +140,11 @@ async function context(width, theme, { blockWindows = false } = {}) {
   return made;
 }
 
+// Signed out, /profile?sign-in opens the sign-in by itself (signinux,
+// 2026-11-14; a bare /profile only since sifix asks it to be pressed).
 async function openDialog(page) {
-  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await page.locator("#sign-in").waitFor({ state: "visible", timeout: 60000 });
-  await page.locator("#sign-in").click();
-  await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+  await page.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 60000 });
 }
 
 // What the deployment says of orangecheck (api/_oc_config.js): whether it
@@ -222,12 +222,16 @@ try {
         const tick = document.querySelector("dialog.sign-in #oc-connect");
         const label = tick?.closest("label");
         const blurb = document.querySelector("dialog.sign-in #oc-connect-blurb");
-        const b = document.querySelector("#oc-sign-in").getBoundingClientRect();
+        // With the email it belongs to (signinux): between the address and
+        // Email me a code, since a sign-in with orangecheck has an account.
+        const field = document.querySelector("dialog.sign-in input[type=email]").getBoundingClientRect();
+        const go = document.querySelector("dialog.sign-in button[type=submit]").getBoundingClientRect();
+        const r = label?.getBoundingClientRect();
         return { drawn: Boolean(tick && tick.checkVisibility()), checked: tick?.checked, label: label?.textContent.trim(),
           blurb: blurb?.textContent, described: tick?.getAttribute("aria-describedby") === "oc-connect-blurb",
-          under: tick ? label.getBoundingClientRect().top >= b.bottom : false, choice: label?.classList.contains("choice") };
+          under: tick ? r.top >= field.bottom && r.bottom <= go.top : false, choice: label?.classList.contains("choice") };
       });
-      check(`${width} ${theme}: under it, orangecheck Connect's box, unticked, with orangecheck's exact words`, box.drawn && box.checked === false
+      check(`${width} ${theme}: with the email, orangecheck Connect's box, unticked, with orangecheck's exact words`, box.drawn && box.checked === false
         && box.label === CONNECT_CONSENT_LABEL && box.blurb === CONNECT_CONSENT_BLURB && box.described && box.under && box.choice, JSON.stringify(box));
       check(`${width} ${theme}: nothing sideways`, !(await sideways(page)));
       // The pointer off the dialog: the click that opened it leaves it over
@@ -256,7 +260,7 @@ try {
     await openDialog(page);
     await page.locator("#oc-sign-in").click();
     await page.waitForTimeout(1500);
-    const said = await page.locator("dialog.sign-in .said").textContent();
+    const said = await page.locator("dialog.sign-in .oc-said").textContent();
     check("unavailable here: the button says so, in words, and opens no window",
       said === "Signing in with orangecheck is unavailable here. Sign in with your email instead." && !opened, said);
     await page.mouse.move(1, 1);
@@ -281,7 +285,7 @@ try {
     await popup.waitForLoadState("domcontentloaded", { timeout: 60000 }).catch(() => null);
     const where = new URL(popup.url());
     check("the button opens orangecheck's sign-in window", where.origin === "https://me.ochk.io", popup.url());
-    check("while it is open the dialog says so", /orangecheck/.test(await page.locator("dialog.sign-in .said").textContent()));
+    check("while it is open the dialog says so", /orangecheck window/.test(await page.locator("dialog.sign-in .waiting-said").textContent()));
     await popup.waitForTimeout(3000);
     await shot(popup, "window_1280.png");
     await popup.close();
@@ -289,7 +293,7 @@ try {
     // orangecheck's button is busy (aria-busy) until it sees the window shut.
     await page.waitForFunction(() => !document.querySelector("#oc-sign-in")?.hasAttribute("aria-busy"), null, { timeout: 15000 }).catch(() => null);
     const after = await page.evaluate(() => ({ open: document.querySelector("dialog.sign-in")?.open,
-      said: document.querySelector("dialog.sign-in .said")?.textContent, enabled: !document.querySelector("#oc-sign-in").disabled }));
+      said: document.querySelector("dialog.sign-in .oc-said")?.textContent, enabled: !document.querySelector("#oc-sign-in").disabled }));
     check("closed, the dialog stays, says so in orangecheck's words, and can try again", after.open === true
       && after.said === OUTCOME_COPY.closed && after.enabled, JSON.stringify(after));
     await made.close();
@@ -300,9 +304,9 @@ try {
     listen(page, "blocked");
     await openDialog(page);
     await page.locator("#oc-sign-in").click();
-    await page.waitForFunction(() => /blocked/.test(document.querySelector("dialog.sign-in .said")?.textContent || ""), null,
+    await page.waitForFunction(() => /blocked/.test(document.querySelector("dialog.sign-in .oc-said")?.textContent || ""), null,
       { timeout: 15000 }).catch(() => null);
-    const said = await page.locator("dialog.sign-in .said").textContent();
+    const said = await page.locator("dialog.sign-in .oc-said").textContent();
     check("a blocked window is said in orangecheck's words, with how to allow it", said === OUTCOME_COPY.blocked, said);
     await shot(page, "blocked_390_dark.png");
     await made.close();
@@ -321,10 +325,13 @@ try {
     await page.mouse.move(1, 1);
     await shot(page, "from_app_390_light.png");
     await page.goto(`${site}/profile?then=${encodeURIComponent("https://elsewhere.example/")}`, { waitUntil: "domcontentloaded" });
-    await page.locator("#sign-in").waitFor({ state: "visible", timeout: 60000 });
+    // A signed-out /profile opens the plain sign-in by itself (signinux):
+    // never the one that goes back, and nothing followed.
+    await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 60000 }).catch(() => null);
     await page.waitForTimeout(1500);
-    check("sent with an address elsewhere, nothing opens and nothing is followed",
-      !(await page.locator("dialog.sign-in").isVisible().catch(() => false)) && new URL(page.url()).origin === new URL(site).origin);
+    const plain = await page.locator("dialog.sign-in p").first().textContent().catch(() => "");
+    check("sent with an address elsewhere, only the plain sign-in opens and nothing is followed",
+      !/back to the app/.test(plain) && new URL(page.url()).origin === new URL(site).origin, plain);
     await made.close();
   }
 
@@ -502,8 +509,8 @@ try {
     const ticked = await page.locator("dialog.sign-in #oc-connect").isChecked();
     const shown = await page.locator("dialog.sign-in #oc-connect").isVisible();
     if (tick) await shot(page, "connect_ticked_390_light.png");
-    await page.fill("dialog.sign-in form input", await mintCode(person));
-    await page.click('dialog.sign-in button[type="submit"]');
+    // One digit a box (signinux): the whole code in the first goes by itself.
+    await page.fill("dialog.sign-in .code-boxes input:first-child", await mintCode(person));
     const signedIn = await page.waitForFunction((key) => {
       try {
         return Boolean(JSON.parse(localStorage.getItem(key) || "null")?.refresh_token);
@@ -516,6 +523,12 @@ try {
     await made.close();
     return { signedIn, ticked, shown };
   };
+  // Its age answered first, as 6 does where orangecheck takes a token. On a
+  // deployment without the signing secret (a unit's preview) the first
+  // sign-in here made the account, the age question came up after the
+  // code, and the ask, which waits for the answer (account.js), was never
+  // sent in the three seconds given it (signinux2, 2026-11-14).
+  if (!session) await mintSession(person, { age: true });
   connectAsks.length = 0;
   const unticked = await signInByCode({ tick: false });
   check("Connect: unticked, a sign-in by code asks for no orangecheck account", unticked.signedIn && connectAsks.length === 0,

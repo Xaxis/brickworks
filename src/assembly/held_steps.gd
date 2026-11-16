@@ -25,6 +25,18 @@ const ROUNDS := 4
 ## The most steps after the last for the parts still waiting then, each what
 ## stands with what is in by then.
 const MOST_AFTER := 64
+## The most later parts one step takes in sooner, each with a part of it whose
+## cover meets its own both ways round ([method _put]). Tuned with
+## [constant PATIENCE] on the steps score's tune sample (docs/INSTRUCTIONS.md,
+## buildorder): at patience 16, 16 left 1.54% of things in under one already
+## there and 32 1.41%.
+const PULL_MOST := 32
+## The most steps a part that would stand waits for what it rests on
+## ([method Under._waited]). Round a sub-assembly put on whole, what it waits
+## for may wait for it in turn: with no limit 7347's truck put what waited in
+## at its last step. At pull 16, 8 left 2.10% of things in under and 16
+## 1.54%; at pull 32, 16 left 1.41% and 32 1.25%.
+const PATIENCE := 32
 
 ## Whether the planner's steps are put right: off only for a probe, to see
 ## what the planner alone would have made.
@@ -72,6 +84,7 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 	await Tested.holds_into(holding, bricks, lattice, library, job)
 	if holding.is_empty() or job != null and job.cancelled:
 		return {}
+	Under.read_into(holding)
 	# Each part's box where it stands, made here: nothing on the worker reads
 	# the library.
 	var nodes: Dictionary = {}
@@ -94,27 +107,330 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 	said = mended["said"]
 	said["ms"] = Time.get_ticks_msec() - began
 	return {"holding": holding, "by_id": by_id, "nodes": nodes,
-		"faults": [int(said["floating"]), int(said["hidden"])] as Array[int]}
+		"faults": [int(said["floating"]), int(said["hidden"]), int(said["under"]),
+			hand_floating(out, by_id, holding["near"])] as Array[int]}
 
 
-## How many parts [param steps] put down in the air, and how many behind
-## what is already built, by the steps test's own rules (Tested.check), of
-## the model as [param read] ([method mend_into]'s) has it: [in the air,
-## hidden]. With [param most], it stops once either is past most's: they
-## only grow. Reads nothing but what it is given, so it runs on a worker.
+## How many parts [param steps] put down in the air, how many behind what is
+## already built, by the steps test's own rules (Tested.check), how many in
+## under a part already there ([class Under]), and how many a sub-assembly's
+## steps in the hand put down apart from what it began ([class Hand]), of the
+## model as [param read] ([method mend_into]'s) has it: [in the air, hidden,
+## under, apart in the hand]. With [param most], it stops once any is past
+## most's: they only grow. Reads nothing but what it is given, so it runs on
+## a worker.
 static func faults_of(steps: Array[Instructions.Step], read: Dictionary, library: PartLibrary,
 		most: Array[int] = []) -> Array[int]:
 	var test := Tested.Steps.new(read["by_id"], read["holding"], library)
 	test.nodes = read["nodes"]
+	var under := Under.new(read["holding"])
+	var hand := Hand.new((read["holding"] as Dictionary)["near"])
 	for step: Instructions.Step in steps:
 		var things: Array = test.things_of(step)
 		if things.is_empty():
 			continue
 		test.take(step, things)
-		if not most.is_empty() and (test.floating.size() > most[0] or test.hidden.size() > most[1]):
-			return [test.floating.size(), test.hidden.size()]
+		if step.in_callout():
+			hand.take(step, things)
+		else:
+			under.take(things)
+		if not most.is_empty() and (test.floating.size() > most[0] or test.hidden.size() > most[1]
+				or most.size() > 2 and under.faults > most[2] or most.size() > 3 and hand.floating > most[3]):
+			return [test.floating.size(), test.hidden.size(), under.faults, hand.floating]
 	test.finish()
-	return [test.floating.size(), test.hidden.size()]
+	return [test.floating.size(), test.hidden.size(), under.faults, hand.floating]
+
+
+## Things the sub-assemblies of [param steps] built in the hand put down
+## apart from what their first steps began ([class Hand]).
+static func hand_floating(steps: Array[Instructions.Step], by_id: Dictionary, near: Dictionary) -> int:
+	var hand := Hand.new(near)
+	for step: Instructions.Step in steps:
+		if not step.in_callout():
+			continue
+		var things: Array = []
+		for id: int in (step.shown_ids if not step.shown_ids.is_empty() else step.brick_ids):
+			if by_id.has(id):
+				things.append(PackedInt64Array([id]))
+		hand.take(step, things)
+	return hand.floating
+
+
+## A sub-assembly built in the hand is held as one piece: what its first step
+## puts down, and what is joined to that. A thing a later step puts down
+## apart from it is in the air, as the steps score reads it (src/dev/
+## steps_score.gd, floating on the table), though the steps test lets the
+## first parts of each of the author's sub-models stand (Tested.Steps.take):
+## the lighthouse's sub-models built whole in one box, the robot's arm
+## beside its body, each begun on nothing. Kept for the steps a model of
+## sub-models keeps (Instructions._kept), they put 1.4% of 100 real sets'
+## steps in the air that the order worked out did not (buildorder).
+class Hand extends RefCounted:
+	var near: Dictionary
+	## callout -> its parts down so far (id -> true).
+	var _of: Dictionary = {}
+	## id -> the part it is joined to, toward its piece's root.
+	var _up: Dictionary = {}
+	## The roots of the pieces held: those the first step began.
+	var _held: Dictionary = {}
+	var floating: int = 0
+
+	func _init(given_near: Dictionary) -> void:
+		near = given_near
+
+	## [param things], each a PackedInt64Array of ids, put down as [param
+	## step]'s in its box.
+	func take(step: Instructions.Step, things: Array) -> void:
+		if things.is_empty():
+			return
+		var first: bool = not _of.has(step.callout)
+		if first:
+			_of[step.callout] = {}
+		var mine: Dictionary = _of[step.callout]
+		var fresh: Array[int] = []
+		for thing: PackedInt64Array in things:
+			for id: int in thing:
+				if not mine.has(id):
+					mine[id] = true
+					_up[id] = id
+					fresh.append(id)
+					if first:
+						_held[id] = true
+		for id: int in fresh:
+			for other: int in (near.get(id, {}) as Dictionary):
+				if mine.has(other):
+					_join(id, other)
+		for thing: PackedInt64Array in things:
+			var held: bool = false
+			for id: int in thing:
+				if _held.has(_root(id)):
+					held = true
+					break
+			if not held:
+				floating += 1
+
+	func _root(id: int) -> int:
+		while int(_up[id]) != id:
+			_up[id] = _up[_up[id]]
+			id = _up[id]
+		return id
+
+	func _join(one: int, other: int) -> void:
+		var a: int = _root(one)
+		var b: int = _root(other)
+		if a == b:
+			return
+		_up[a] = b
+		if _held.has(a):
+			_held[b] = true
+
+
+## What rests on what by the parts' covers, as the steps score reads a part
+## put in under one already there (src/dev/steps_score.gd, "blocked"): its
+## cover lifted a cell meets another's (Stability.contacts), and no pin, axle,
+## clip, ball or hole holds the two, which go in along their line. A part goes
+## in once what it rests on is in, or with it: put in after, it goes in under
+## a part already there, which a hand cannot press on from above. In 100 real
+## sets the planner's steps put 5.0% of what they put in under one already
+## there, against the authors' 1.2% (docs/INSTRUCTIONS.md, buildorder): the
+## order reads what rests on what by the studs and the boxes, and waits for
+## what holds a part, not for all it rests on.
+class Under extends RefCounted:
+	## id -> what it rests on, and id -> what rests on it.
+	var rests: Dictionary = {}
+	var carries: Dictionary = {}
+	## id -> the parts whose covers meet its own both ways round: whichever of
+	## two goes in second goes in under the first, so they go in together.
+	var mutual: Dictionary = {}
+	## id -> {id: true}, what a pin, axle, clip, ball or glue joins it to,
+	## either way round.
+	var pinned: Dictionary = {}
+	## id -> the step of the model it went in at, counted from 1.
+	var at: Dictionary = {}
+	## The parts a later step of the main build puts in, each of which may go
+	## in sooner with a part [member mutual] to it (HeldSteps._put).
+	var later: Dictionary = {}
+	## id -> the step it first stood at and waited for what it rests on; a
+	## sub-assembly's copies by their first part.
+	var since: Dictionary = {}
+	var step: int = 0
+	## Things put in under one already there.
+	var faults: int = 0
+
+	func _init(holding: Dictionary) -> void:
+		rests = holding.get("rests", {})
+		carries = holding.get("carries", {})
+		mutual = holding.get("mutual", {})
+		pinned = holding.get("pinned", {})
+
+	## Into [param holding] (Tested.holds_into's): "rests", "carries",
+	## "mutual" and "pinned".
+	static func read_into(holding: Dictionary) -> void:
+		var above: Dictionary = (holding["contacts"] as Dictionary)["above"]
+		var jointed: Dictionary = holding["jointed"]
+		var otherwise: Dictionary = holding["otherwise"]
+		var rests: Dictionary = {}
+		var carries: Dictionary = {}
+		var mutual: Dictionary = {}
+		var pinned: Dictionary = {}
+		for one: Variant in jointed:
+			for other: Variant in (jointed[one] as Dictionary):
+				var a: int = int(one)
+				var b: int = int(other)
+				if a == b:
+					continue
+				if not pinned.has(a):
+					pinned[a] = {}
+				if not pinned.has(b):
+					pinned[b] = {}
+				(pinned[a] as Dictionary)[b] = true
+				(pinned[b] as Dictionary)[a] = true
+		var held := func(a: int, b: int) -> bool:
+			return (jointed.has(a) and (jointed[a] as Dictionary).has(b)
+				or jointed.has(b) and (jointed[b] as Dictionary).has(a)) \
+				and not (otherwise.has(a) and (otherwise[a] as Dictionary).has(b)
+					or otherwise.has(b) and (otherwise[b] as Dictionary).has(a))
+		for low: Variant in above:
+			for high: Variant in (above[low] as Dictionary):
+				var a: int = int(low)
+				var b: int = int(high)
+				# Covers that meet both ways round (a stud's into the part over
+				# it) say neither rests on the other: each would wait for the
+				# other, and a model's plates all for one another.
+				if a == b or held.call(a, b):
+					continue
+				if above.has(high) and (above[high] as Dictionary).has(low):
+					if not mutual.has(a):
+						mutual[a] = PackedInt64Array()
+					var with: PackedInt64Array = mutual[a]
+					with.append(b)
+					mutual[a] = with
+					continue
+				if not rests.has(b):
+					rests[b] = PackedInt64Array()
+				if not carries.has(a):
+					carries[a] = PackedInt64Array()
+				# Not appended in place: a packed array read out of a Dictionary
+				# is a copy.
+				var on: PackedInt64Array = rests[b]
+				on.append(a)
+				rests[b] = on
+				var over: PackedInt64Array = carries[a]
+				over.append(b)
+				carries[a] = over
+		holding["rests"] = rests
+		holding["carries"] = carries
+		holding["mutual"] = mutual
+		holding["pinned"] = pinned
+
+	## [param things] (each a PackedInt64Array of ids) put on the model as its
+	## next step: a fault for each that goes in under one already there.
+	func take(things: Array) -> void:
+		step += 1
+		for thing: PackedInt64Array in things:
+			var below: bool = false
+			for id: int in thing:
+				for over: int in carries.get(id, PackedInt64Array()):
+					if int(at.get(over, step)) < step and not thing.has(over):
+						below = true
+						break
+				if below:
+					break
+			if below:
+				faults += 1
+		for thing: PackedInt64Array in things:
+			for id: int in thing:
+				if not at.has(id):
+					at[id] = step
+
+	## Of [param trying], in order, those [param standing] has (id -> true)
+	## that may go in now, with [param going] (id -> true): every part each
+	## rests on is in, going in, or one of them that may, and no part of
+	## [param together] whose cover meets its own both ways round is left out.
+	## One that has waited as long as it may ([method _waited]) goes in anyway.
+	func ready_of(trying: Array[int], standing: Dictionary, going: Dictionary,
+			together: Dictionary) -> Array[int]:
+		var left: Dictionary = {}
+		for id: int in trying:
+			if standing.has(id):
+				left[id] = true
+		var gone: Array[int] = []
+		for id: int in trying:
+			if left.has(id) and not _waited(id) and (not _on_built(id, left, going)
+					or _apart(id, left, together, going)):
+				gone.append(id)
+		while not gone.is_empty():
+			var id: int = gone.pop_back()
+			if not left.erase(id):
+				continue
+			for over: int in carries.get(id, PackedInt64Array()):
+				if left.has(over) and not _waited(over):
+					gone.append(over)
+			if together.has(id):
+				for other: int in mutual.get(id, PackedInt64Array()):
+					if left.has(other) and not _waited(other):
+						gone.append(other)
+		var out: Array[int] = []
+		for id: int in trying:
+			if left.has(id):
+				out.append(id)
+			elif standing.has(id) and not since.has(id):
+				since[id] = step
+		return out
+
+	## Whether [param id], which stands, has waited for what it rests on as
+	## long as it may: what it waits for may wait for it in turn, round a
+	## sub-assembly put on whole, and the last step would take both.
+	func _waited(id: int) -> bool:
+		return since.has(id) and step - int(since[id]) >= HeldSteps.PATIENCE
+
+	## Whether a part of [param together] whose cover meets [param id]'s both
+	## ways round is not in, nor going in with it ([param left]).
+	func _apart(id: int, left: Dictionary, together: Dictionary, going: Dictionary) -> bool:
+		for other: int in mutual.get(id, PackedInt64Array()):
+			if together.has(other) and not left.has(other) and not at.has(other) and not going.has(other):
+				return true
+		return false
+
+	## Whether everything a pin, axle, clip, ball or glue joins [param id] to
+	## is in, or in [param with] or [param going]. A part taken in sooner goes
+	## in after what it is pinned to, as the planner has it: the kart's gear
+	## taken in two steps before its axle stood by its teeth alone.
+	func pinned_in(id: int, with: Dictionary, going: Dictionary) -> bool:
+		for other: int in (pinned.get(id, {}) as Dictionary):
+			if not at.has(other) and not with.has(other) and not going.has(other):
+				return false
+		return true
+
+	## Whether everything [param id] rests on is in, or in [param left] or
+	## [param going].
+	func _on_built(id: int, left: Dictionary, going: Dictionary) -> bool:
+		for low: int in rests.get(id, PackedInt64Array()):
+			if not at.has(low) and not left.has(low) and not going.has(low):
+				return false
+		return true
+
+	## Whether every part [param copies] put on rest on what is in, on one
+	## another, or on [param ids].
+	func copies_ready(copies: Array, ids: Array[int]) -> bool:
+		if copies.is_empty():
+			return true
+		var going: Dictionary = {}
+		for copy: PackedInt64Array in copies:
+			for id: int in copy:
+				going[id] = true
+		for id: int in ids:
+			going[id] = true
+		var first: int = (copies[0] as PackedInt64Array)[0]
+		if _waited(first):
+			return true
+		for copy: PackedInt64Array in copies:
+			for id: int in copy:
+				if not _on_built(id, {}, going):
+					if not since.has(first):
+						since[first] = step
+					return false
+		return true
 
 
 ## The main build's steps, each a slot: {"step", "ids": the parts it puts in
@@ -307,12 +623,13 @@ static func _mended(slots: Array, holding: Dictionary, by_id: Dictionary, nodes:
 			left.append("%s %s %s at %d" % [kind, "hand" if in_hand.has(int(one[1])) else "model",
 				(by_id[int(one[1])] as BrickWorld.Brick).part_id, int(one[0])])
 	return {"slots": best["slots"], "said": {"waited": waited, "sooner": sooner.size(),
-		"floating": test.floating.size(), "hidden": test.hidden.size(), "rounds": rounds, "left": left}}
+		"floating": test.floating.size(), "hidden": test.hidden.size(),
+		"under": (best["under"] as Under).faults, "rounds": rounds, "left": left}}
 
 
 static func _faults(carried: Dictionary) -> int:
 	var test: Tested.Steps = carried["test"]
-	return test.floating.size() + test.hidden.size()
+	return test.floating.size() + test.hidden.size() + (carried["under"] as Under).faults
 
 
 ## The steps of [param slots] built as the steps test builds them, each part
@@ -323,6 +640,12 @@ static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes
 		library: PartLibrary) -> Dictionary:
 	var test := Tested.Steps.new(by_id, holding, library)
 	test.nodes = nodes
+	var under := Under.new(holding)
+	# The parts the main build's later steps put in: one may go in sooner, with
+	# a part whose cover meets its own both ways round.
+	for slot: Dictionary in slots:
+		for id: int in slot["ids"]:
+			under.later[id] = true
 	var out: Array = []
 	var waiting: Array[int] = []
 	## Slots whose sub-assemblies wait, their parts put on beside them gone on.
@@ -336,19 +659,23 @@ static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes
 			continue
 		section = step.section
 		var ids: Array[int] = waiting.duplicate()
-		ids.append_array(slot["ids"])
+		for id: int in slot["ids"]:
+			if under.later.erase(id):
+				ids.append(id)
 		waiting = []
-		if not step.copies.is_empty() and not _copies_stand(test, step):
+		if not step.copies.is_empty() and not (_copies_stand(test, step)
+				and under.copies_ready(test.copies_of(step), ids)):
 			waiting = ids
 			held_back.append({"step": step, "ids": [] as Array[int], "other": slot["other"],
 				"before": slot["before"]})
 			continue
 		_in_hand_taken(test, slot)
-		out.append({"step": step, "ids": _put(test, step, ids, waiting), "other": slot["other"],
+		out.append({"step": step, "ids": _put(test, under, step, ids, waiting), "other": slot["other"],
 			"before": slot["before"]})
-		_put_back(test, held_back, out, waiting)
+		_put_back(test, under, held_back, out, waiting)
 	# What still waits after the last step, in steps of its own.
 	var after: int = 0
+	var pressed: bool = false
 	while (not waiting.is_empty() or not held_back.is_empty()) and after < MOST_AFTER:
 		after += 1
 		var kept: Array[int] = []
@@ -357,15 +684,21 @@ static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes
 			step.section = section
 			var ids: Array[int] = waiting
 			waiting = []
-			kept = _put(test, step, ids, waiting)
+			kept = _put(test, under, step, ids, waiting)
 			if not kept.is_empty():
 				out.append({"step": step, "ids": kept, "other": [] as Array[int], "before": []})
-		if not _put_back(test, held_back, out, waiting) and kept.is_empty():
-			break
+		if not _put_back(test, under, held_back, out, waiting) and kept.is_empty():
+			# What waits only for what it rests on has waited long enough now.
+			if pressed:
+				break
+			pressed = true
+			under.step += PATIENCE
 	# Held by nothing that stands even then: last, as planned.
 	for slot: Dictionary in held_back:
 		_in_hand_taken(test, slot)
-		test.take(slot["step"], test.copies_of(slot["step"]))
+		var copies: Array = test.copies_of(slot["step"])
+		test.take(slot["step"], copies)
+		under.take(copies)
 		out.append(slot)
 	if not waiting.is_empty():
 		var step := Instructions.Step.new()
@@ -374,9 +707,10 @@ static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes
 		for id: int in waiting:
 			things.append(PackedInt64Array([id]))
 		test.take(step, things)
+		under.take(things)
 		out.append({"step": step, "ids": waiting, "other": [] as Array[int], "before": []})
 	test.finish()
-	return {"slots": out, "test": test}
+	return {"slots": out, "test": test, "under": under}
 
 
 ## The steps in the hand of the sub-assembly [param slot] puts on, built.
@@ -397,16 +731,19 @@ static func _copies_stand(test: Tested.Steps, step: Instructions.Step) -> bool:
 ## Each of [param held_back] whose sub-assemblies would stand now put on, in
 ## a step of its own after what is built, as often as one put on lets
 ## another: whether any was.
-static func _put_back(test: Tested.Steps, held_back: Array, out: Array, waiting: Array[int]) -> bool:
+static func _put_back(test: Tested.Steps, under: Under, held_back: Array, out: Array,
+		waiting: Array[int]) -> bool:
 	var any: bool = false
 	var more: bool = true
 	while more:
 		more = false
 		for slot: Dictionary in held_back.duplicate():
-			if not _copies_stand(test, slot["step"]):
+			if not _copies_stand(test, slot["step"]) \
+					or not under.copies_ready(test.copies_of(slot["step"]), [] as Array[int]):
 				continue
 			_in_hand_taken(test, slot)
-			_put(test, slot["step"], [] as Array[int], waiting)
+			# With the parts it takes in sooner, if any.
+			slot["ids"] = _put(test, under, slot["step"], [] as Array[int], waiting)
 			out.append(slot)
 			held_back.erase(slot)
 			more = true
@@ -415,27 +752,107 @@ static func _put_back(test: Tested.Steps, held_back: Array, out: Array, waiting:
 
 
 ## [param ids] tried as [param step]'s parts, after the sub-assemblies it puts
-## on: those that would stand put in with them, and returned; the rest added
-## to [param waiting].
-static func _put(test: Tested.Steps, step: Instructions.Step, ids: Array[int],
+## on: those that would stand, and rest on nothing not yet in ([class Under]),
+## put in with them, and returned; the rest added to [param waiting].
+static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids: Array[int],
 		waiting: Array[int]) -> Array[int]:
-	var things: Array = test.copies_of(step)
-	var copies: int = things.size()
+	var copies: Array = test.copies_of(step)
+	var going: Dictionary = {}
+	for copy: PackedInt64Array in copies:
+		for id: int in copy:
+			going[id] = true
+	var trying: Array[int] = ids.duplicate()
+	var asked: Dictionary = {}
 	for id: int in ids:
-		things.append(PackedInt64Array([id]))
-	var stands: Array[bool] = test.stands_if(step, things)
-	var taken: Array = things.slice(0, copies)
-	var kept: Array[int] = []
-	for n: int in range(copies, things.size()):
-		var id: int = int((things[n] as PackedInt64Array)[0])
-		if stands[n]:
-			taken.append(things[n])
-			kept.append(id)
+		asked[id] = true
+	var sooner: Array[int] = []
+	var pulled: Dictionary = {}
+	## What stood when asked, though it may not go in yet.
+	var stood: Dictionary = {}
+	while true:
+		while not trying.is_empty():
+			var things: Array = copies.duplicate()
+			for id: int in trying:
+				things.append(PackedInt64Array([id]))
+			var stands: Array[bool] = test.stands_if(step, things)
+			var standing: Dictionary = {}
+			for n: int in trying.size():
+				if stands[copies.size() + n]:
+					standing[trying[n]] = true
+			stood.merge(standing)
+			# What stands, and is not over what is not yet in. One left out may
+			# have held up another, so asked again of those left.
+			var ready: Array[int] = under.ready_of(trying, standing, going, asked)
+			if not pulled.is_empty():
+				# And a part taken in sooner whose pin's other part is left out
+				# waits with it.
+				var left: Dictionary = {}
+				for id: int in ready:
+					left[id] = true
+				var kept_in: Array[int] = []
+				for id: int in ready:
+					if not pulled.has(id) or under.pinned_in(id, left, going):
+						kept_in.append(id)
+				ready = kept_in
+			if ready.size() == trying.size():
+				break
+			trying = ready
+		# A later part whose cover meets one of these both ways round goes in
+		# with it if it stands: put in after, it would go in under it. And so
+		# does a later part that one waiting here rests on: waited for, all
+		# that rests on it waits. 6361's back plate, planned for its last
+		# step, held the plates over it and 73 parts on those to that step,
+		# where the 2 x 16 under the cab then hung from its wheel plates.
+		var more: Array[int] = []
+		var leaning: Array[int] = []
+		var take_in := func(other: int) -> void:
+			if sooner.size() + more.size() < PULL_MOST and not asked.has(other) \
+					and under.later.has(other) and not under.at.has(other) \
+					and under.pinned_in(other, asked, going):
+				asked[other] = true
+				more.append(other)
+		# Not in the model's first step, where anything stands (Tested.Steps).
+		if test.main.begun:
+			for id: int in trying + going.keys():
+				for other: int in under.mutual.get(id, PackedInt64Array()):
+					take_in.call(other)
+			for id: int in stood:
+				if not under.since.has(id):
+					continue
+				for other: int in under.rests.get(id, PackedInt64Array()):
+					take_in.call(other)
+				if not trying.has(id):
+					leaning.append(id)
+		if more.is_empty():
+			break
+		sooner.append_array(more)
+		for id: int in more:
+			pulled[id] = true
+		trying.append_array(more)
+		# And what waited for them, asked again: it goes in with them. Only
+		# that: the whole step asked again took 4002020's parts in under ones
+		# already there (23 under to 33, tau 0.61 to 0.28).
+		trying.append_array(leaning)
+	var kept: Dictionary = {}
+	for id: int in trying:
+		kept[id] = true
+	var taken: Array = copies.duplicate()
+	var put: Array[int] = []
+	for id: int in ids:
+		if kept.has(id):
+			taken.append(PackedInt64Array([id]))
+			put.append(id)
 		else:
 			waiting.append(id)
+	for id: int in sooner:
+		if kept.has(id):
+			taken.append(PackedInt64Array([id]))
+			put.append(id)
+			under.later.erase(id)
 	if not taken.is_empty():
 		test.take(step, taken)
-	return kept
+		under.take(taken)
+	return put
 
 
 ## [param slots] with each part of [param sooner] in the step of what holds
@@ -463,7 +880,52 @@ static func _sooner(slots: Array, sooner: Dictionary, near: Dictionary) -> Array
 				for id: int in copy:
 					at[id] = n
 	_sooner_within(out, "ids", sooner, near, func(id: int) -> int: return id, at)
+	_put_on_sooner(out, sooner, near)
 	return out
+
+
+## Each sub-assembly put on whole in [param slots] that a part of is in
+## [param sooner] put on in the step after what holds it, as [method _sooner]
+## moves a part: the slot that puts it on, with its steps in the hand, moved
+## to after the latest slot before its own that puts in a part it is joined
+## to, or at its second time asked the first. Where that is too soon, it
+## waits for what it rests on (HeldSteps._carried). 7815's two passengers,
+## each put on whole as the model's last steps, lay under the roof slopes
+## put on before them, both hidden.
+static func _put_on_sooner(slots: Array, sooner: Dictionary, near: Dictionary) -> void:
+	for n: int in slots.size():
+		var step: Instructions.Step = (slots[n] as Dictionary)["step"]
+		if step == null or step.copies.is_empty():
+			continue
+		var own: Dictionary = {}
+		var level: int = 0
+		for copy: PackedInt64Array in step.copies:
+			for id: int in copy:
+				own[id] = true
+				level = maxi(level, int(sooner.get(id, 0)))
+		if level == 0:
+			continue
+		var at: Dictionary = {}
+		for k: int in n:
+			for id: int in (slots[k] as Dictionary)["ids"]:
+				at[id] = k
+			var other_step: Instructions.Step = (slots[k] as Dictionary)["step"]
+			if other_step != null:
+				for copy: PackedInt64Array in other_step.copies:
+					for id: int in copy:
+						at[id] = k
+		var best: int = -1
+		for id: int in own:
+			for other: int in (near.get(id, {}) as Dictionary):
+				if own.has(other) or not at.has(other):
+					continue
+				var there: int = at[other]
+				best = there if best < 0 else (maxi(best, there) if level < 2 else mini(best, there))
+		if best < 0 or best + 1 >= n:
+			continue
+		var slot: Dictionary = slots[n]
+		slots.remove_at(n)
+		slots.insert(best + 1, slot)
 
 
 ## Each of [param sooner] in [param places] (each its [param key] list of
@@ -486,16 +948,36 @@ static func _sooner_within(places: Array, key: String, sooner: Dictionary, near:
 			if not thing_of.has(id):
 				continue
 			var here: int = at[id]
+			# Joined only to parts of its own step (a figure's head to its
+			# body, the body to its hips), it goes in sooner with them: what
+			# they are joined to that went in before is what holds it.
+			var with: Array[int] = [id]
+			var seen: Dictionary = {id: true}
+			var n: int = 0
+			while n < with.size():
+				for other: int in (near.get(with[n], {}) as Dictionary):
+					if not seen.has(other) and thing_of.has(other) and int(at[other]) == here:
+						seen[other] = true
+						with.append(other)
+				n += 1
 			var best: int = -1
-			for other: int in (near.get(id, {}) as Dictionary):
-				if at.has(other) and int(at[other]) < here:
-					var there: int = int(at[other])
-					best = there if best < 0 else (maxi(best, there) if int(sooner[id]) < 2 else mini(best, there))
+			for one: int in with:
+				for other: int in (near.get(one, {}) as Dictionary):
+					if at.has(other) and int(at[other]) < here:
+						var there: int = int(at[other])
+						best = there if best < 0 else (maxi(best, there) if int(sooner[id]) < 2 else mini(best, there))
+				if one == id and best >= 0:
+					with = [id]
+					break
 			if best < 0:
 				continue
-			((places[here] as Dictionary)[key] as Array).erase(thing_of[id])
-			((places[best] as Dictionary)[key] as Array).append(thing_of[id])
-			at[id] = best
+			# In the order they had: a pin after what it goes into.
+			var was: Array = (places[here] as Dictionary)[key]
+			with.sort_custom(func(a: int, b: int) -> bool: return was.find(thing_of[a]) < was.find(thing_of[b]))
+			for one: int in with:
+				((places[here] as Dictionary)[key] as Array).erase(thing_of[one])
+				((places[best] as Dictionary)[key] as Array).append(thing_of[one])
+				at[one] = best
 			moved = true
 		if not moved:
 			break

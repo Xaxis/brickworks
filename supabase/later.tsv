@@ -36,3 +36,4 @@ replies.sql	notification_rows	comment_mentions.sql	'mention'::text
 achievements.sql	notification_rows	comment_mentions.sql	'mention'::text
 challenge_notices.sql	notification_rows	comment_mentions.sql	'mention'::text
 feedback.sql	beta_tester	beta_join.sql	public.beta_testers t
+console3.sql	admin_export	console3b.sql	'oc_rh'

@@ -90,7 +90,8 @@ def test_the_new_reads_are_ops_of_admin_and_resends_word_an_op_of_otp() -> None:
     # No new function: Vercel's twelve stay twelve.
     functions = [p.name for p in (ROOT / "api").glob("*.js") if not p.name.startswith("_")]
     assert len(functions) == 12, functions
-    for op in ("plans: () => plansRead()", "mail: () => mailRead(request, tests)", "site: () => siteRead()"):
+    # Part C gives the crons Run now (console3).
+    for op in ("plans: () => plansRead()", "mail: () => mailRead(request, tests)", "site: async () => withRunNow(await siteRead())"):
         assert op in ADMIN, op
     assert "connector: () => connectorRead(tests" in ADMIN
     # Behind the owner check, like part A's.

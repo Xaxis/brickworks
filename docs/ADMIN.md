@@ -16,9 +16,48 @@ The console is one page, `/admin`, with a section for each part of the
 site that is the owner's to look after. This file is its inventory (what
 there is to manage, and where each part lives), what it learned from the
 consoles people already know, its design, and what is in it: part A
-(console1) and part B (console2, 2026-11-13).
+(console1), part B (console2, 2026-11-13) and part C (console3,
+2026-11-13), after which everything the owner manages is in it but real
+money, which stays at Admission, and secrets' values, which stay at Vercel.
 
 ## What there is to manage
+
+### Everything, and where it is managed
+
+console3's brief: "nothing the owner manages lives outside /admin, except
+real money (at Admission) and secrets' values (in Vercel)." Each thing, where
+it was managed before part C, and where it is since. **Outside** marks the
+three that stay outside, each with why.
+
+| What | Before part C | Since part C |
+|---|---|---|
+| Reports of models, comments, photos, profiles; takedown requests and counter-notices | Gallery's Reported tab | Moderation › Queue: one list of every kind, oldest first, one set of acts, sifted by kind and searched |
+| Reports of lists (lists1) | Gallery › Reported, with Take the list down | Moderation › Queue as the kind List, with Take the list down |
+| Comments, reported or not | Gallery's Comments tab | Moderation › Comments |
+| Accounts taken out | Gallery's Taken out tab | Moderation › Taken out, with Let back in |
+| Models taken out by fingerprint (barred_models) | nowhere but SQL | Moderation › Taken out, with Let back (`unbar_model`) |
+| In the gallery, Tested marks | Gallery | Gallery, unchanged |
+| This week's pick | Gallery | Gallery, unchanged (the gallery shows it) |
+| Set a challenge, end one | Gallery's Challenges tab | Challenges, with a preview as visitors will see it |
+| The year's plan of themes | Gallery's Challenges tab | Challenges, with each month's preview and the day visitors are told |
+| A challenge's entries, groups, rule failures, results | its public page, or SQL | Challenges › its panel (`#challenges/N`) |
+| A notice on every page | nothing: it would have been a deploy | Switches › The notice: set, cleared, its history, each act audited |
+| site_settings (the beta's switch, any other key) | Beta for the beta; SQL for the rest | Switches › Settings: every key by scope; the beta's flipped there or in Beta, one act |
+| Deployment variables | Vercel's dashboard | Switches › Variables: each by name, whether here, which of Vercel's environments, what it switches, where it is changed. Its value: **outside**, at Vercel |
+| The crons | Site (part B), read only; running one meant curl with CRON_SECRET | Site, with Run now for the four safe ones (`run_cron`, audited); never the beta's round, which mails testers |
+| Rebrickable's last fetch, set counts | tools/fetch_data.sh on the box | Data |
+| Set pictures' coverage | tools/set_pictures.py's output | Data |
+| What the OMR's look found | library_arrivals, by SQL | Data › What the weekly look found |
+| Database size, its biggest tables, storage by bucket | Supabase's dashboard | Data › Usage (`admin_usage`) |
+| Supabase's egress | Supabase's dashboard | **Outside**: Supabase's Management API has no token narrower than the whole organization's, which may also delete projects; Data says so and links to the usage page |
+| An account's data, at its person's request | SQL by hand | People › the account › Export their data (JSON, audited) |
+| An account deleted at its person's request | only by its person, in Settings | People › the account › Delete, its address typed again (audited; the same code as Settings' own, api/_erase.js) |
+| An account signed out everywhere | Supabase's dashboard | People › the account › Sign out everywhere (audited) |
+| An account's lists, comments, photos, challenge entries | each public page | People › the account |
+| Finding anything | each section's own search | Find, in the console's bar: people, models, lists, reports, acts |
+| Beta, feedback, plans' reading, mail, connector, releases, backend health, the audit | the console (parts A and B) | unchanged |
+| Prices, trials, comps, promotions, refunds, payouts | Admission | **Outside**: real money stays the owner's yes at Admission; Plans reads it and links to each |
+| Secrets' values (keys, signing secrets, CRON_SECRET) | Vercel, Resend, Supabase | **Outside**: never on a page; Switches names them and says where each is changed |
 
 ### api/admin.js, every op
 
@@ -58,11 +97,23 @@ it answers.
 | `plans` | GET | Plans and revenue, read from Admission (part B) | Admission's `/v1/plans` (ADMISSION_KEY), admission_customers, `/v1/owner/metrics` and `/v1/owner/events` (ADMISSION_READ_TOKEN) |
 | `mail` | GET `&days=` | Every mail by kind and day and what became of each (part B) | admin_mail: mail_events, beta_mail, feedback_replies |
 | `connector` | GET `&account=` | Each account's Claudes, tabs, conversations and tool calls (part B) | relay_tabs, relay_picks, oauth_grants, relay_call_days |
-| `site` | GET | The live release and those before, each cron's last runs, Supabase's health (part B) | site_releases_list, cron_runs_of, canary_runs, Supabase's auth, rest and storage |
+| `site` | GET | The live release and those before, each cron's last runs, Supabase's health (part B); each cron's Run now, or why not (part C) | site_releases_list, cron_runs_of, canary_runs, Supabase's auth, rest and storage |
+| `switches` | GET | Part C adds every variable by name (never a value or its length), the settings, the notice and its history | site_env_list, site_settings_list, site_notice, site_notices_list |
+| `data` | GET | The catalogue and Rebrickable's tables (written beside the function at deploy), the parts library's index, the OMR's finds and runs, the database's and storage's size, why egress is not read (part C) | `_data_facts.json` (tools/web/data_facts.mjs), the parts store, library_arrivals_in, cron_runs_of, admin_usage |
+| `find` | GET `&q=` | Accounts, people, models, lists, reports and acts holding the words (part C) | auth users, admin_find, admin_audit_list |
+| `challenge_view` | GET `&challenge=` | One challenge whole: its entries by group, those failing its rules, its winners, what visitors see (part C) | challenge_list, challenge_admin_entries |
+| `unbar_model` | POST `&id=` | A model taken out let back (part C) | barred_models |
+| `notice_set`, `notice_clear` | POST | The notice on every page of this deployment but the studio, or cleared (part C) | site_notice_set, site_notice_clear |
+| `run_cron` | POST `&job=` | A safe cron run now at this deployment's own address with CRON_SECRET, on the server (part C) | the cron's own path |
+| `export` | POST `&account=` | Every row of the account as JSON: at most 1000 a table, the rest counted; no secret column (part C) | auth user, admin_export |
+| `delete_account` | POST `&account=` `{confirm, reason}` | The account deleted at its person's request, its address typed again; never the owner's (part C) | api/_erase.js: Admission, orangecheck, photos, pictures, feedback's files, auth |
+| `sign_out` | POST `&account=` | Every sign-in session ended and every Claude let go (part C) | admin_sign_out |
 
-Part B's four are reads: not kept in the audit, like the other GETs.
-`api/otp.js` takes one more op that is not the owner's: `POST
-?op=mail_event`, Resend's word on each mail (below).
+Part B's four are reads: not kept in the audit, like the other GETs; part
+C's reads are not either, and each of its POSTs is. `api/otp.js` takes one
+more op that is not the owner's: `POST ?op=mail_event`, Resend's word on
+each mail (below); `api/plans.js` one public read, `GET ?op=notice`, the
+notice of the deployment it is asked on (a minute at the CDN).
 
 ### The owner's other ops
 
@@ -78,10 +129,17 @@ Part B's four are reads: not kept in the audit, like the other GETs.
 - `api/_console_plans.js`, `_console_mail.js`, `_console_connector.js`,
   `_console_site.js`: part B's reads; `_console_mail.js` also Resend's
   webhook.
+- `api/_console_switches.js`, `_console_data.js`, `_console_people.js`,
+  `_console_challenges.js`: part C's; `api/_erase.js` an account's
+  deletion, shared by Settings' Delete account and the console's.
 
 ### The deployment's switches (process.env)
 
 Read by the API; each set in Vercel per environment (tools/deploy.sh).
+Since part C, Switches lists each by name with whether this deployment has
+it and which of Vercel's environments do (`site_env`, written by the
+release train's `tools/release/env_names.sh` from `vercel env ls`, names and
+environments only), and flags one Vercel has that nothing reads.
 
 | Variable | What it switches |
 |---|---|
@@ -160,27 +218,36 @@ px (a row of pills on a phone), and the section beside it.
 
 | Section | Address | What it holds | Acts |
 |---|---|---|---|
-| Overview | `#overview` | Needs you now (reports open, applications new, feedback unread, the borrowed sender); how things stand (accounts, sign-ups today and this week, signed in this week, testers of 100, models published, reports open, feedback unread, mail sent and failed, the live release and since when); the switches; the latest acts | Each card goes where it is done |
+| Overview | `#overview` | Needs you now (reports open, applications new, feedback unread, the borrowed sender, a failed or late cron, Supabase refusing, the OMR's finds, no challenge ahead, a notice showing); how things stand (accounts, sign-ups today and this week, signed in this week, testers of 100, models published, reports open, feedback unread, mail sent and failed, the live release and since when); the switches; the latest acts | Each card goes where it is done |
 | People | `#people`, `#people/<account>` | Every account: address, handle, joined, last sign-in, plan, beta, models, connectors, taken out. Search; Everyone, Testers, With models, With a connector, Taken out | A row opens the account whole in a panel: Take out the account, Let back in, its models, its acts |
-| Gallery | `#gallery/reported`, `comments`, `listed`, `pick`, `challenges`, `tested`, `barred` | Reported, Comments, In the gallery, This week's pick, Challenges, Tested, Taken out | Take out, Take out the account, Remove the comment, Take the photo or the picture out, Take the list down, Let it go, Make it the pick, End, Set a challenge, Set the year, End it now, Clear the mark, Let back in |
+| Moderation | `#moderation/queue`, `comments`, `barred` | The one queue of every report, oldest first, by kind; Comments; Taken out, accounts and models | Take out, Take out the account, Take it down, Let the model back, Remove the comment, Take the photo or the picture out, Take the list down, Let it go, Let back in |
+| Gallery | `#gallery/listed`, `pick`, `tested` | In the gallery, This week's pick, Tested | Take out, Make it the pick, End, Clear the mark |
+| Challenges | `#challenges`, `#challenges/<id>` | The running one; every challenge by state; a challenge whole in a panel (entries by group, rule failures, winners); the set form and the year's plan, each with its preview | Set a challenge, Set the year, End it now |
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
 | Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
 | Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
-| Site | `#site` | The live release and since when; Supabase's auth, rest and storage; each cron's last runs; the releases before with their units | None |
+| Site | `#site` | The live release and since when; Supabase's auth, rest and storage; each cron's last runs; the releases before with their units | Run now, on the four safe crons |
+| Data | `#data` | The set catalogue and its pictures, Rebrickable's tables, the parts library's index, what the OMR's look found, the database and storage by bucket, why egress is read at Supabase | None |
+| Switches | `#switches` | The notice with its preview and history; the settings by scope; every deployment variable by name | Show the notice, Clear it; the beta's switch |
 | Audit log | `#audit` | Every act: when, what, on what, the outcome, by whom | Filter by act, search |
 
+The bar holds Find: one search over people, models, lists, reports and the
+audit, its results grouped, each going where it is managed.
+
 A reported list (a list of sets and models, or a wishlist) shows in
-Reported with its name and words as the owner typed them, whether it is
+Moderation's queue, kind List, with its name and words as the owner typed them, whether it is
 public, and its owner's address. **Take the list down** makes it private
 for good: its page and its place in the directory go at once, its owner
 still sees it on Your lists marked *taken down*, and it cannot be made
 public again (`model_collections.taken_down_at`, docs/LISTS.md).
 
 The old addresses land: `/beta-admin` redirects to `/admin#beta` (and
-`?tests=1` with it), `#report-N` opens Reported with that report marked,
-`#comment-N` Comments with that comment, `#feedback-N` that report.
+`?tests=1` with it), `#report-N` opens Moderation's queue with that report
+marked, `#comment-N` Comments with that comment, `#feedback-N` that report;
+part A's `#gallery/reported`, `#gallery/comments`, `#gallery/barred` and
+`#gallery/challenges` are replaced by their new addresses as they open.
 
 Every word a person typed is put on the page as text, never as markup. The
 page follows docs/DESIGN_SYSTEM.md: the site's controls, tables
@@ -312,3 +379,119 @@ dark.
 Still to do: the webhook made at Resend and its secret in production's env
 (`tools/web/resend_webhook.sh`, after the release), and an
 `ADMISSION_READ_TOKEN` for production's revenue once billing is on.
+
+## Part C: in the console now
+
+Moderation, Challenges, Data and Switches; Run now in Site; People's
+export, sign-out and delete; Find; the notice on every page. Every new op
+is one of api/admin.js (still 12 functions), behind part A's gate: 401
+signed out, 404 to anybody else, closed when the gate cannot tell. Reads are
+not audited; every POST is, refusals too. The tables are additive
+(`supabase/console3.sql`): `site_notices` and `site_env`, each reached only
+through functions the server alone may call.
+
+- **Moderation** (web/admin-moderation.js): the default report's reports,
+  oldest first (api/admin.js asks `order=at.asc`), each by its kind
+  (`reportKind`: model, comment, photo, profile, list, takedown,
+  counter-notice). A kind is one entry of `KINDS`: its name, what its row
+  says and the acts it has besides Let it go, which every report has; an
+  unknown kind is drawn plainly, with Let it go. The acts are part A's
+  (`unlist`, `bar`, `uncomment`, `remove_photo`, `remove_avatar`,
+  `dismiss`), now in one place. Taken out lists the accounts and, new, the
+  models barred by fingerprint, each let back with `unbar_model`.
+- **Lists' reports** (lists1, merged into console3 before it was ready):
+  `report()` in api/admin.js gives a reported list's name, words, state and
+  owner as `report.list`, and `KINDS.list` in web/admin-moderation.js draws
+  them and offers **Take the list down** (`list_down`) while the list is
+  still shown. console3_flow reports a throwaway's list and takes it down.
+  An account's export finds its tables by their key to auth.users, so lists
+  come with it unasked.
+- **Challenges** (web/admin-challenges.js, api/_console_challenges.js): the
+  one running and every challenge, from the default report; a challenge's
+  panel reads `challenge_admin_entries` (entries with their models' parts,
+  grouped by hand and assistant, each that fails the rules marked) and
+  says what visitors see now. Set, End and the year are the existing ops
+  (`challenge`, `end_challenge`, `plan`); the forms preview the card as
+  /challenge will show it, and each month of the plan with the day it is
+  told (a month before it opens). This week's pick stays in Gallery.
+- **Data** (api/_console_data.js): the catalogue and Rebrickable's tables as
+  the deploy found them (`tools/web/data_facts.mjs` writes
+  `_data_facts.json` beside the function: sets, with and without a
+  picture, each table's fetch time), flagged when older than a week;
+  the parts store's index; `library_arrivals` and the OMR's runs; and
+  `admin_usage` (the database's size, its 15 biggest tables, each bucket's
+  files and bytes from `storage.objects`). Egress is not read: Supabase's
+  Management API has no read-only or project-only token, so the only key
+  that reads it could delete the organization's projects. The section says
+  so and links to the organization's usage page.
+- **Switches** (api/_console_switches.js): the notice (below); every
+  `site_settings` key by scope, the beta's flipped here with Beta's own act;
+  every variable the code reads, by name, with whether this deployment has
+  it (`process.env`, a yes or no), which of production and preview have it
+  (`site_env`), what it switches and where it is changed, a link to Vercel
+  for most. Never a value, never its length. One Vercel has that the code
+  does not read is named so it can be taken out.
+- **The notice** (web/notice.js, site.css `.site-notice`): set and cleared in
+  Switches (`notice_set`, `notice_clear`, audited), one at a time a
+  deployment (a preview's is its own, never brickworks.diy's), every one
+  kept. Its English is needed, and German, French and Spanish shown only
+  where the owner typed them: no machine translation. web/theme.js loads it
+  on every page but an embed's card and the connector's consent page; it
+  floats at the window's foot (above the beta's bar on a phone) so nothing
+  in the page moves, is drawn at once from the last one heard and asked
+  again (`/api/plans?op=notice`, a minute at the CDN), and its × hides that
+  notice in that browser. info or warn, in the site's tokens.
+- **Run now** (Site): `run_cron` calls the cron's own path at this
+  deployment's own address (brickworks.diy, this project's previews,
+  this deployment, a test's loopback; never PUBLIC_ORIGIN, which on a
+  preview is live's) with CRON_SECRET on the server, waits up to four
+  minutes, and the run is written down as by-hand. Only the front's choice,
+  the OMR's look, the sweep and the canary, each safe to run twice; never
+  the beta's daily round, which mails testers. One Run now of a cron at a
+  time: a second asked while it runs (two tabs) is refused with 409 and
+  never reaches the cron, held by the crons' own lock (`cron_begin`) under
+  `run_now_<job>`, which lapses after five minutes if the function is cut
+  off.
+- **People, finished** (api/_console_people.js): an account's panel lists its
+  lists, comments, photos and challenge entries (`admin_person_more`).
+  Export downloads every row the account owns (`admin_export`: each table
+  with a key to auth.users found in the catalogue, at most 1000 rows a
+  table with the rest counted, a value over 8 KB named by its size, never a
+  secret column, nor oauth_codes, oc_sessions or the audit). Who follows
+  the account is counted (`followers`), never named: a follow is its
+  follower's act. The hidden columns are never read, so a busy connector
+  account exports in a fraction of a second (console3b.sql, after the
+  review, 2026-11-15). The file holds the owner's own notes on the person
+  (feedback, beta application and decision notes, signals), and the
+  console says so. Sign out
+  everywhere ends its sessions and its Claudes' grants (`admin_sign_out`);
+  a token already given lasts its hour. Delete, at its person's request:
+  the dialog says it is irreversible and what goes; the button wakes only
+  once its address is typed again, and the server checks it too; never the
+  owner's own; the same deletion as Settings' (api/_erase.js); the audit
+  keeps its address, since the account is nowhere else afterwards.
+- **Find** (the bar): from two characters, `admin_find` (people, models,
+  lists, reports by their words) with the accounts' addresses and the
+  audit's acts; the checks' own on `?tests=1`. Arrow keys and Escape.
+- **Needs you now** gathers every queue and failure: reports, applications,
+  feedback, the borrowed sender, a failed or late cron, Supabase refusing,
+  the OMR's finds to look at, no challenge set ahead (or the last ending
+  within a week), and a notice showing.
+
+Proven by `tests/test_console3.py` (console3.sql against a real Postgres:
+the notice, the variables, usage, sign-out, the export's caps and secrets,
+Find, nothing reachable but by the server; and api/admin.js's new ops: the
+gate, reads unaudited and writes audited, Run now's address and one at a
+time, the typed deletion (untyped, mistyped, the owner's own, twice), an
+export of an account with nothing and of the sets in its lists, a notice
+of markup kept as typed, the switches holding no value) and, on a
+deployment, `tools/web/console3_flow.mjs` (preview check `console3`, run
+alone): the gate on every new op; a throwaway's report and its list's in
+the one queue, the list taken down; Challenges' previews and panel; Data's
+and Switches' real rows with no value in the page; Find; the front's
+choice run now and its run written down, and refused when asked twice at
+once; the notice (its words written as markup) set, seen signed out in
+English and German as words, nothing run, and dismissed, then cleared
+(never on brickworks.diy); an export downloaded, a throwaway signed out
+everywhere and another deleted by its typed address and found in the
+audit; each section at 390 and 1280, light and dark.

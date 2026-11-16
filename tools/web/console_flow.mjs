@@ -15,8 +15,9 @@
 //      /admin?tests=1, the checks' own: the Overview's needs, numbers and
 //      switches.
 //   4. Gallery: In the gallery, M's first model, Take out, and it leaves
-//      the gallery; Reported, M's report, Let it go; every other tab opens
-//      with its rows or its own words.
+//      the gallery; Moderation's queue (at Reported's old address, which
+//      leads there since console3), M's report, Let it go; every other tab
+//      and Challenges open with their rows or their own words.
 //   5. People: M found by search, the panel opened, Take out the account,
 //      every model of it out of the gallery; Let back in, and M lists again.
 //   6. Beta: A approved (unless billing here is test: approving one of the
@@ -334,21 +335,28 @@ try {
   const listedNow = (await api(`/api/share?op=list&page=1&tests=1&q=${rand}`)).json?.models || [];
   check(`...and out of the gallery itself: ${listedNow.map((one) => one.id).join(", ")}`, !listedNow.some((one) => one.id === first)
     && listedNow.some((one) => one.id === second));
+  // The old address of the reports, as the owner's emails named it: Moderation's queue now.
   await go(page, "gallery/reported");
+  check("Reported's old address leads to Moderation's queue", await until(page, () => location.hash === "#moderation/queue"
+    && !document.getElementById("reports").closest("[data-tab]").hidden));
   const reportRow = page.locator("#reports tr").filter({ has: page.locator(`a[href="/m/${second}"]`) }).first();
   check("Reported: M's second model, with what was said", await reportRow.waitFor({ timeout: 30000 }).then(() => true, () => false)
     && /spam/.test(await reportRow.innerText()));
   await reportRow.locator("button", { hasText: "Let it go" }).click();
   check("Let it go: the report leaves the queue", await until(page, (id) => /Let go/.test(document.getElementById("reports-note").textContent)
     && ![...document.querySelectorAll("#reports a")].some((a) => a.getAttribute("href") === `/m/${id}`), second));
-  for (const [tab, body, none] of [["comments", "comments", "comments-note"], ["pick", "week", "pick-note"], ["challenges", "challenges", "challenge-note"],
-    ["tested", "tested", "tested-note"], ["barred", "barred", "barred-note"]]) {
-    await page.click(`a[data-tab-link="${tab}"]`);
-    // The tab is shown by the address it sets, once the page hears it.
-    await until(page, (id) => document.getElementById(id).closest("[data-tab]").hidden === false, body, 10000);
-    const said = await page.evaluate(([id, note]) => ({ shown: !document.getElementById(id).closest("[data-tab]").hidden,
+  // Every other tab, at its address: Moderation's (console3) and Gallery's,
+  // and Challenges, a section of its own since console3.
+  for (const [hash, body, none] of [["moderation/comments", "comments", "comments-note"], ["gallery/pick", "week", "pick-note"],
+    ["challenges", "challenges", "challenges-note"], ["gallery/tested", "tested", "tested-note"], ["moderation/barred", "barred", "barred-note"]]) {
+    await go(page, hash);
+    // Its section, and its tab where it has tabs, shown once the page hears the address.
+    await until(page, (id) => !document.getElementById(id).closest("[data-section]").hidden
+      && !document.getElementById(id).closest("[data-tab]")?.hidden, body, 10000);
+    const said = await page.evaluate(([id, note]) => ({ shown: !document.getElementById(id).closest("[data-section]").hidden
+      && !document.getElementById(id).closest("[data-tab]")?.hidden,
       rows: document.getElementById(id).rows.length, note: document.getElementById(note)?.textContent || "" }), [body, none]);
-    check(`${tab}: shown, ${said.rows} rows${said.note ? ` ("${said.note.slice(0, 50)}")` : ""}`, said.shown && (said.rows > 0 || said.note.length > 0));
+    check(`${hash}: shown, ${said.rows} rows${said.note ? ` ("${said.note.slice(0, 50)}")` : ""}`, said.shown && (said.rows > 0 || said.note.length > 0));
   }
 
   // --- 5. People -----------------------------------------------------------------
@@ -511,8 +519,8 @@ try {
   console.log("10. Pictures");
   const SECTIONS = [["overview", () => document.querySelectorAll("#needs li").length > 0],
     ["people", () => document.querySelectorAll("#people tr[data-account]").length > 0],
-    ["gallery/reported", () => document.querySelectorAll("#reports tr").length > 0 || document.getElementById("reports-note").textContent],
-    ["gallery/challenges", () => document.querySelectorAll("#challenges tr").length > 0 || document.getElementById("challenge-note").textContent],
+    ["moderation/queue", () => document.querySelectorAll("#reports tr").length > 0 || document.getElementById("reports-note").textContent],
+    ["challenges", () => document.querySelectorAll("#challenges tr").length > 0 || document.getElementById("challenges-note").textContent],
     ["beta", () => document.getElementById("months").textContent.length > 0],
     ["beta/testers", () => document.querySelectorAll("#testers tr.tester").length > 0],
     ["feedback", () => /shown/.test(document.getElementById("fb-note").textContent)],

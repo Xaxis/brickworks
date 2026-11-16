@@ -575,7 +575,7 @@
       "kind": "ui",
       "label": "admin page",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address, Find in its bar (?op=find&q=W): #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with its lists, comments, photos and entries, Take out the account, Let back in, Export their data, Sign out everywhere and Delete by its address typed again; ?op=people, ?op=person&account=U), #moderation/<tab> (queue, comments, barred), #gallery/<tab> (listed, pick, tested), #challenges (and #challenges/<id>), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #plans, #mail, #connector, #site (Run now), #data, #switches, #audit (every act, newest first; ?op=audit&act&q&before); the old #gallery/reported, comments, barred and challenges replaced by their new addresses",
       "area": "account"
     },
     {
@@ -709,27 +709,6 @@
       "label": "replace part",
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select, hold another part, Edit, Replace with the part in hand)",
-      "area": "building"
-    },
-    {
-      "kind": "ui",
-      "label": "find and replace everywhere",
-      "entry": "src/ui/find_replace_bar.gd",
-      "reach": "godot --path .  (Edit, Find and replace… or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "swapfind probe",
-      "entry": "src/dev/swapfind_probe.gd",
-      "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "swapfind phone probe",
-      "entry": "src/dev/swapfind_phone_probe.gd",
-      "reach": "tools/probe.sh swapfind_phone_probe   (windowed, 390x844 by its header; no sign-in)",
       "area": "building"
     },
     {
@@ -1115,13 +1094,6 @@
       "label": "collection sums",
       "entry": "src/collection/collection.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
-      "area": "collection"
-    },
-    {
-      "kind": "lib",
-      "label": "every set ranked",
-      "entry": "src/collection/set_ranking.gd",
-      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
       "area": "collection"
     },
     {
@@ -5039,20 +5011,6 @@
     },
     {
       "kind": "ui",
-      "label": "lift by a part",
-      "entry": "src/assembly/lift_test.gd",
-      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "loadtest probe",
-      "entry": "src/dev/loadtest_probe.gd",
-      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
       "label": "moving renders kept as a GIF",
       "entry": "src/render/animated_gif.gd",
       "reach": "tools/probe.sh video2   (by hand: File, Render…, Kept as GIF, then Render turntable, Render animation or Render building: one 256-colour palette for the whole video, an ordered dither, at most 640 px across and made to fit 8 MB by fewer frames a second then a smaller picture; render_model format=gif over MCP; node tools/web/gif_plays.mjs FILE.gif says what Chromium decodes)",
@@ -5382,20 +5340,6 @@
     },
     {
       "kind": "ui",
-      "label": "page editor motions and simulate by finger",
-      "entry": "src/ui/page_editor.gd",
-      "reach": "on a phone or a tablet: the timeline's Lay out the page… (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "phonepanels probe",
-      "entry": "src/dev/phonepanels_probe.gd",
-      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
       "label": "the console's plans and revenue",
       "entry": "web/admin-plans.js",
       "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
@@ -5458,6 +5402,69 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "the console's moderation",
+      "entry": "web/admin-moderation.js",
+      "reach": "<deployment>/admin#moderation/queue as MASTER_EMAIL (?tests=1 the checks' own): every open report of every kind in one list, oldest first (the default GET /api/admin, reportKind), sifted by kind (KINDS) and searched, each with its kind's acts and Let it go; #moderation/comments; #moderation/barred, the accounts (Let back in) and the models taken out (Let back, POST ?op=unbar_model&id=X)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's challenges",
+      "entry": "web/admin-challenges.js",
+      "reach": "<deployment>/admin#challenges as MASTER_EMAIL: the running one, every challenge by state with End it now, the set form and the year's plan each with a preview as visitors will see it; #challenges/<id> its panel (GET ?op=challenge_view&challenge=N, api/_console_challenges.js: entries by group, rule failures, winners)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's data",
+      "entry": "web/admin-data.js",
+      "reach": "<deployment>/admin#data as MASTER_EMAIL: GET /api/admin?op=data (api/_console_data.js): the set catalogue and its pictures and Rebrickable's tables as the deploy found them (tools/web/data_facts.mjs), the parts library's index, what the OMR's look found, the database's size, biggest tables and storage by bucket (admin_usage); egress said to be read at Supabase, and why",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's switches section",
+      "entry": "web/admin-switches.js",
+      "reach": "<deployment>/admin#switches as MASTER_EMAIL: GET /api/admin?op=switches (api/_console_switches.js): the notice with its preview and history (POST ?op=notice_set {words, tone}, ?op=notice_clear), every site_settings key by scope, every deployment variable by name (here, Vercel's environments from site_env, what it switches, where it changes; never a value)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the site notice",
+      "entry": "web/notice.js",
+      "reach": "<deployment>/ any page but an embed and the consent page (web/theme.js asks for it): the notice the owner set in /admin#switches (GET /api/plans?op=notice, a minute at the CDN), in the page's language where the owner typed it, else English; floating at the window's foot, info or warn; its x hides it in that browser",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's part C",
+      "entry": "supabase/console3.sql",
+      "reach": "python3 tools/minitest.py tests/test_console3.py   (console3.sql and api/admin.js's data, find, challenge_view, switches, unbar_model, notice_set, notice_clear, run_cron, export, delete_account and sign_out against a real Postgres: the gate, reads unaudited and writes audited, Run now's address, the typed deletion, the export's caps, no value in switches)",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "an account's deletion",
+      "entry": "api/_erase.js",
+      "reach": "POST /api/account?op=delete (its person) and POST /api/admin?op=delete_account&account=U {confirm} (the owner, at their request): Admission first, orangecheck, photos, pictures, feedback's files, then the account; tests/test_account_erase.py, tests/test_console3.py",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "console3 browser flow",
+      "entry": "tools/web/console3_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console3_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate on every part C op, Moderation's queue, Challenges' previews and panel, Data, Switches with no value in the page, Find, Run now, the notice set, seen signed out in English and German and cleared (never on brickworks.diy), an export, a sign-out everywhere and a typed delete found in the audit, each at 390/1280 light/dark; preview check [console3], run alone)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "deployment variables written down",
+      "entry": "tools/release/env_names.sh",
+      "reach": "tools/release/env_names.sh   (ship.sh, after release_live.sh: vercel env ls's names and environments, never a value, into site_env for /admin#switches; never fails a ship)",
+      "area": "release"
+    },
+    {
       "kind": "lib",
       "label": "your sets and lists",
       "entry": "api/_mylists.js",
@@ -5493,6 +5500,34 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "lift by a part",
+      "entry": "src/assembly/lift_test.gd",
+      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "loadtest probe",
+      "entry": "src/dev/loadtest_probe.gd",
+      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "page editor motions and simulate by finger",
+      "entry": "src/ui/page_editor.gd",
+      "reach": "on a phone or a tablet: the timeline's Lay out the page… (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "phonepanels probe",
+      "entry": "src/dev/phonepanels_probe.gd",
+      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "mcpreach probe",
       "entry": "src/dev/mcpreach_probe.gd",
@@ -5525,6 +5560,34 @@
       "label": "smalls2 probe",
       "entry": "src/dev/smalls2_probe.gd",
       "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "every set ranked",
+      "entry": "src/collection/set_ranking.gd",
+      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "find and replace everywhere",
+      "entry": "src/ui/find_replace_bar.gd",
+      "reach": "godot --path .  (Edit, Find and replace… or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "swapfind probe",
+      "entry": "src/dev/swapfind_probe.gd",
+      "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "swapfind phone probe",
+      "entry": "src/dev/swapfind_phone_probe.gd",
+      "reach": "tools/probe.sh swapfind_phone_probe   (windowed, 390x844 by its header; no sign-in)",
       "area": "building"
     },
     {

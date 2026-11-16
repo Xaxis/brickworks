@@ -537,4 +537,4 @@ def test_the_copy_is_served_kept_and_deleted_with_its_photo() -> None:
     assert '{ card: String(request.query?.size || "") === "card" }' in PEOPLE
     assert "await putFile(PHOTOS, cardName(id), made.card.bytes" in builds
     assert builds.count("deleteFiles(PHOTOS, [photoName(id), cardName(id)])") == 2
-    assert "${one.id}.card.jpg" in (ROOT / "api/account.js").read_text()
+    assert "${one.id}.card.jpg" in (ROOT / "api/_erase.js").read_text()

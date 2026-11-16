@@ -170,8 +170,8 @@ async function signIn(page, email) {
   await page.fill("dialog.sign-in input", email);
   await page.click('dialog.sign-in button[type="submit"]');
   await until(page, () => /The code sent to/.test(document.querySelector("dialog.sign-in label")?.textContent || ""), "a code asked for");
-  await page.fill("dialog.sign-in input", standIn ? "123456" : await session.mintCode(email));
-  await page.click('dialog.sign-in button[type="submit"]');
+  // One digit a box (signinux): the whole code in the first goes by itself.
+  await page.fill("dialog.sign-in .code-boxes input:first-child", standIn ? "12345678" : await session.mintCode(email));
 }
 
 /// The age question, answered: 30 years old.

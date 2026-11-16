@@ -5,15 +5,23 @@
 // panel, and the Audit log. The Gallery is admin-gallery.js, the Beta
 // admin-beta.js, Feedback admin-feedback.js; part B (console2) Plans
 // admin-plans.js, Mail admin-mail.js, Connector admin-connector.js (and an
-// account's panel at #connector/<account>), Site admin-site.js.
+// account's panel at #connector/<account>), Site admin-site.js; part C
+// (console3) Moderation admin-moderation.js, Challenges admin-challenges.js
+// (and one challenge's panel at #challenges/<id>), Data admin-data.js,
+// Switches admin-switches.js, and here an account's Export, Sign out
+// everywhere and Delete, and the bar's Find.
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
-import { email as signedInAs } from "/account.js";
+import { askToSignIn, email as signedInAs, signedIn } from "/account.js";
 import { $, TESTS, act, adminJson, ago, cell, count, day, emptyRow, make, post, resort, rowAct, say, segmented, sift, sortable, timeCell,
   when }
   from "/admin-kit.js";
-import { keepInView, loadGallery, whenChanged as galleryChanged } from "/admin-gallery.js";
+import { keepInView, loadReport, whenChanged as galleryChanged } from "/admin-gallery.js";
+import "/admin-moderation.js";
+import { challengeOf } from "/admin-challenges.js";
+import { loadData } from "/admin-data.js";
+import { loadSwitches, whenChanged as switchesChanged } from "/admin-switches.js";
 import { loadBeta, whenChanged as betaChanged } from "/admin-beta.js";
 import { loadFeedback } from "/admin-feedback.js";
 import { loadPlans } from "/admin-plans.js";
@@ -23,19 +31,29 @@ import { loadSite, releaseOf, versionOf } from "/admin-site.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "gallery", "beta", "feedback", "plans", "mail", "connector", "site", "audit"];
-const TABS = { gallery: ["reported", "comments", "listed", "pick", "challenges", "tested", "barred"],
-  beta: ["applications", "testers"] };
+const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "plans", "mail", "connector", "site",
+  "data", "switches", "audit"];
+const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"] };
+// The sections drawn from the one report (admin-gallery.js loadReport).
+const REPORTED = ["moderation", "gallery", "challenges"];
+// Where the Gallery's tabs went (console3): their old addresses still land.
+const MOVED = { "gallery/reported": "moderation/queue", "gallery/comments": "moderation/comments", "gallery/barred": "moderation/barred",
+  "gallery/challenges": "challenges" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /// Where the address points: {section, tab, account, asked}.
 function route() {
-  const hash = location.hash.slice(1);
-  if (/^report-\d+$/.test(hash)) return { section: "gallery", tab: "reported", asked: hash };
-  if (/^comment-\d+$/.test(hash)) return { section: "gallery", tab: "comments", asked: hash };
+  let hash = location.hash.slice(1);
+  if (MOVED[hash]) {
+    hash = MOVED[hash];
+    history.replaceState(null, "", `${location.pathname}${location.search}#${hash}`);
+  }
+  if (/^report-\d+$/.test(hash)) return { section: "moderation", tab: "queue", asked: hash };
+  if (/^comment-\d+$/.test(hash)) return { section: "moderation", tab: "comments", asked: hash };
   if (/^feedback(-\d+)?$/.test(hash)) return { section: "feedback" };
   const [section, rest = ""] = hash.split("/");
   if (section === "people" || section === "connector") return { section, account: UUID.test(rest) ? rest.toLowerCase() : null };
+  if (section === "challenges") return { section, challenge: /^\d{1,12}$/.test(rest) ? Number(rest) : null };
   if (TABS[section]) return { section, tab: TABS[section].includes(rest) ? rest : TABS[section][0] };
   return { section: SECTIONS.includes(section) ? section : "overview" };
 }
@@ -44,13 +62,17 @@ function route() {
 const loaders = {
   overview: () => loadOverview(),
   people: () => loadPeople(),
-  gallery: () => loadGallery(),
+  moderation: () => loadReport(),
+  gallery: () => loadReport(),
+  challenges: () => loadReport(),
   beta: () => loadBeta(),
   feedback: () => loadFeedback(),
   plans: () => loadPlans(),
   mail: () => loadMail(),
   connector: () => loadConnector(),
   site: () => loadSite(),
+  data: () => loadData(),
+  switches: () => loadSwitches(),
   audit: () => loadAudit(),
 };
 const loaded = new Set();
@@ -73,9 +95,11 @@ async function show() {
   document.title = `${part.querySelector("h2")?.textContent || "Console"} · Console · Brickworks`;
   let went = true;
   if (!loaded.has(at.section)) {
-    loaded.add(at.section);
+    // One read draws Moderation, the Gallery and Challenges together.
+    const together = REPORTED.includes(at.section) ? REPORTED : [at.section];
+    for (const one of together) loaded.add(one);
     went = await loaders[at.section]().then(() => true, (problem) => {
-      loaded.delete(at.section);
+      for (const one of together) loaded.delete(one);
       say("note", problem.message, true);
       return problem;
     });
@@ -90,6 +114,7 @@ async function show() {
   }
   if (at.section === "people") await person(at.account);
   if (at.section === "connector") await connectorPanel(at.account);
+  if (at.section === "challenges") await challengePanel(at.challenge);
   return went === true;
 }
 
@@ -111,20 +136,31 @@ function failedIn(part, words) {
 // ---------------------------------------------------------------------------
 // The gate: the overview answers only the owner.
 
+// Shut: the gate shown, with Sign in in the bar while nobody is.
+function gate(words) {
+  $("view").classList.add("hide");
+  $("view").hidden = true;
+  $("gate").hidden = false;
+  say("gate-note", words, true);
+  $("sign-in").hidden = signedIn();
+  $("again").hidden = !signedIn();
+  $("meta-who").textContent = "Owner console";
+}
+
 async function start() {
   try {
     await loadOverview();
     loaded.add("overview");
   } catch (problem) {
-    $("view").classList.add("hide");
-    $("view").hidden = true;
-    $("gate").hidden = false;
-    say("gate-note", problem.message, true);
+    gate(problem.message);
     return;
   }
   $("gate").hidden = true;
+  $("sign-in").hidden = true;
+  $("again").hidden = false;
   $("view").classList.remove("hide");
   $("view").hidden = false;
+  $("find").hidden = false;
   $("meta-who").textContent = `Signed in as ${signedInAs() || "the owner"}${TESTS ? " · the checks' own (?tests=1)" : ""}`;
   addEventListener("hashchange", show);
   if (await show()) say("note", `Updated ${new Date().toLocaleTimeString()}`);
@@ -141,6 +177,7 @@ $("again").addEventListener("click", async () => {
     })]);
     if (at === "people" && route().account) await person(route().account, true);
     if (at === "connector" && route().account) await connectorPanel(route().account, true);
+    if (at === "challenges" && route().challenge) await challengePanel(route().challenge, true);
     say("note", `Updated ${new Date().toLocaleTimeString()}`);
   } catch (problem) {
     say("note", problem.message, true);
@@ -152,11 +189,12 @@ $("again").addEventListener("click", async () => {
 // After an act elsewhere, the overview's counts again, and the sections
 // that show the same things read afresh when next opened.
 async function changed(except) {
-  for (const one of ["people", "audit", "gallery", "beta"]) if (one !== except) loaded.delete(one);
+  for (const one of ["people", "audit", "beta", "switches", ...(except === "gallery" ? [] : REPORTED)]) if (one !== except) loaded.delete(one);
   await loadOverview().catch(() => null);
 }
 galleryChanged(() => changed("gallery"));
 betaChanged(() => changed("beta"));
+switchesChanged(() => changed("switches"));
 
 // ---------------------------------------------------------------------------
 // The Overview.
@@ -171,7 +209,7 @@ async function loadOverview() {
   const o = await adminJson({ op: "overview" });
   const needs = [];
   const need = (n, words, href, warn = false) => { if (n) needs.push({ n, words, href, warn }); };
-  need(o.reports?.open, o.reports?.open === 1 ? "report open" : "reports open", "#gallery/reported", true);
+  need(o.reports?.open, o.reports?.open === 1 ? "report open" : "reports open", "#moderation/queue", true);
   need(o.beta?.applications?.new, o.beta?.applications?.new === 1 ? "application for a month of Pro" : "applications for a month of Pro",
     "#beta/applications");
   need(o.feedback?.new, o.feedback?.new === 1 ? "feedback report unread" : "feedback reports unread", "#feedback");
@@ -191,13 +229,27 @@ async function loadOverview() {
   }
   const trouble = (o.delivery?.bounced || 0) + (o.delivery?.complained || 0);
   need(trouble, trouble === 1 ? "email bounced or marked as spam this week" : "emails bounced or marked as spam this week", "#mail", true);
+  // Part C (console3): what the OMR's look found, a challenge to set, the notice showing.
+  need(o.library?.found, o.library?.found === 1 ? "model found at LDraw's repository, to look at" : "models found at LDraw's repository, to look at",
+    "#data");
+  const ch = o.challenges;
+  if (ch && !ch.open && !ch.upcoming) {
+    needs.push({ n: "!", words: TESTS ? "None of the checks' own challenges is running or set to come"
+      : "No challenge is running or set to come", href: "#challenges" });
+  }
+  else if (ch && ch.through && Date.parse(`${ch.through}T00:00:00Z`) - Date.now() < 7 * 86400000) {
+    needs.push({ n: "!", words: `The last challenge set ends ${day(`${ch.through}T00:00:00Z`)}: set the next`, href: "#challenges" });
+  }
+  if (o.notice) needs.push({ n: "!", words: `A notice is on every page, since ${ago(o.notice.set_at)}: “${String(o.notice.words?.en || "").slice(0, 80)}”`,
+    href: "#switches" });
   $("needs").replaceChildren(...needs.map((one) => {
     const to = make(one.href ? "a" : "div", "", make("b", "", String(one.n)), make("span", "", one.words));
     if (one.href) to.href = one.href;
     return make("li", one.warn ? "warn" : "", to);
   }));
   say("needs-said", needs.length ? "What is waiting on you, each a press from where it is done." : "Nothing needs you now.");
-  badge("nav-gallery", o.reports?.open);
+  badge("nav-moderation", o.reports?.open);
+  badge("nav-data", o.library?.found);
   badge("nav-beta", o.beta?.applications?.new);
   badge("nav-feedback", o.feedback?.new);
   badge("nav-mail", trouble);
@@ -275,7 +327,9 @@ const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Le
   challenge: "Set a challenge", end_challenge: "Ended a challenge", plan: "Set a year of themes",
   beta_decide: "Decided an application", beta_waitlist: "Put an application on the waitlist",
   beta_grant: "Gave the months still to give", beta_switch: "Flipped the beta", feedback_triage: "Marked feedback",
-  feedback_reply: "Answered feedback" };
+  feedback_reply: "Answered feedback", unbar_model: "Let a model back", notice_set: "Set the site's notice",
+  notice_clear: "Cleared the site's notice", run_cron: "Ran a cron now", export: "Exported an account's data",
+  delete_account: "Deleted an account", sign_out: "Signed an account out everywhere" };
 
 function opSaid(row) {
   const asked = row.detail?.asked || {};
@@ -289,13 +343,16 @@ function targetOf(row) {
   const t = String(row.target ?? "");
   const to = (href, text) => { const a = make("a", "", text); a.href = href; return a; };
   switch (row.target_kind) {
-    case "account": return UUID.test(t) ? to(`#people/${t}`, row.email || t) : row.email || t;
+    // A deleted account's address is only in what its act kept (detail.said.email).
+    case "account": return UUID.test(t) && row.email ? to(`#people/${t}`, row.email) : row.detail?.said?.email || row.email || t;
     case "model": return to(`/m/${encodeURIComponent(t)}`, t);
     case "report": return to(`#report-${encodeURIComponent(t)}`, `report ${t}`);
     case "comment": return to(`#comment-${encodeURIComponent(t)}`, `comment ${t}`);
     case "feedback": return to(`#feedback-${encodeURIComponent(t)}`, `feedback #${t}`);
     case "profile": return to(`/u/${encodeURIComponent(t)}`, `@${t}`);
-    case "setting": return t === "beta" ? `the beta, on ${row.scope === "live" ? "brickworks.diy" : row.scope}` : t;
+    case "setting": return t === "beta" || t === "notice" ? `the ${t === "beta" ? "beta" : "notice"}, on ${row.scope === "live"
+      ? "brickworks.diy" : row.scope}` : t;
+    case "cron": return to("#site", `the cron ${t}`);
     case "challenge": return `challenge ${t}`;
     case "photo": return `photo ${t}`;
     case "pick": return `pick ${t}`;
@@ -539,6 +596,23 @@ async function person(account, again = false, told = "") {
   }
   parts.push(models);
 
+  // Their lists, comments, photos and challenge entries (console3).
+  const listed = (title, list, line, none) => {
+    if (list === null || list === undefined) return;
+    const box = make("div", "part", make("h3", "", `${title} (${list.length})`));
+    box.append(list.length ? make("ul", "models-of", ...list.map(line)) : make("p", "note", none));
+    parts.push(box);
+  };
+  const linkTo = (href, text) => { const a = make("a", "", text); a.href = href; return a; };
+  listed("Lists", one.lists, (l) => make("li", "", linkTo(`/c/${encodeURIComponent(l.id)}`, l.name || l.id),
+    make("small", "faint", `${l.public ? "public" : "private"} · ${day(l.updated_at)}`)), "None.");
+  listed("Comments", one.comments, (c) => make("li", "", linkTo(`/m/${encodeURIComponent(c.model)}#comment-${c.id}`, c.body),
+    make("small", "faint", `${c.state} · ${day(c.at)}`)), "None.");
+  listed("Photos of builds", one.photos, (f) => make("li", "", linkTo(`/m/${encodeURIComponent(f.model)}#photo-${encodeURIComponent(f.id)}`,
+    f.words || `a photo of ${f.model}`), make("small", "faint", `${f.state} · ${day(f.at)}`)), "None.");
+  listed("Challenge entries", one.entries, (e) => make("li", "", linkTo(`#challenges/${e.challenge}`, e.title || `challenge ${e.challenge}`),
+    make("small", "faint", `${e.name || e.model} · ${e.way === "hand" ? "by hand" : "with the assistant"} · ${day(e.at)}`)), "None.");
+
   if (one.feedback.length) {
     parts.push(make("div", "part", make("h3", "", `Feedback (${one.feedback.length})`), make("ul", "models-of",
       ...one.feedback.map((f) => {
@@ -547,6 +621,8 @@ async function person(account, again = false, told = "") {
         return make("li", "", to, make("small", "faint", `${f.status} · ${day(f.at)} · ${f.words}`));
       }))));
   }
+
+  parts.push(dataActs(one, account));
 
   const acts = make("div", "part", make("h3", "", "Acts on this account"));
   if (one.audit?.length) {
@@ -557,6 +633,116 @@ async function person(account, again = false, told = "") {
   }
   parts.push(acts);
   openSheet(one.email || "no address", parts, { kind: "person", account });
+}
+
+/// What is done with an account's data at its person's request (console3):
+/// Export (a JSON file of every row of it), Sign out everywhere, and Delete,
+/// behind its address typed again; each kept in the audit.
+function dataActs(one, account) {
+  const box = make("div", "part", make("h3", "", "At their request"));
+  const said = make("p", "note");
+  said.setAttribute("role", "status");
+  const row = make("div", "acts-row");
+  row.append(act("Export their data", async () => {
+    say(said, "Gathering every row of the account…");
+    try {
+      const data = await adminJson({ op: "export", account }, { method: "POST" });
+      const file = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: "application/json" });
+      const link = make("a");
+      link.href = URL.createObjectURL(file);
+      link.download = `brickworks-${String(one.email || account).replace(/[^A-Za-z0-9._-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+      const more = Object.entries(data.more || {});
+      say(said, `Exported ${data.rows} rows from ${Object.keys(data.tables || {}).length} tables, as ${link.download}.${more.length
+        ? ` Over a thousand in ${more.map(([name, n]) => `${name} (${n})`).join(", ")}: the newest thousand of each.` : ""}`
+        + " It holds your own private notes on them too, where there are any (feedback.note, beta_applications.note and "
+        + "signals, beta_decisions.note): read it before you send it on.");
+      loaded.delete("audit");
+      return false;
+    } catch (problem) {
+      say(said, problem.message, true);
+      return false;
+    }
+  }, "cta ghost small"));
+  if (!one.owner) {
+    row.append(act("Sign out everywhere", () => (confirm(`Sign ${one.email || "this account"} out on every device, and end every `
+      + "Claude it let in? A page it has open keeps working until its sign-in would renew, within the hour; then it asks to sign in.")
+      ? post({ op: "sign_out", account }, said, (a) => `Signed out: ${a.sessions ?? 0} ${a.sessions === 1 ? "sign-in" : "sign-ins"} ended, `
+        + `${a.claudes ?? 0} ${a.claudes === 1 ? "Claude" : "Claudes"} let go.`, { after: () => { loaded.delete("audit"); } })
+      : Promise.resolve(false)), "cta ghost small"));
+  }
+  box.append(row, said);
+  if (one.owner) {
+    box.append(make("p", "note", "Your own account holds this console: it is not signed out or deleted from here."));
+    return box;
+  }
+  // Delete, as Settings' own Delete account: what goes, that it cannot be
+  // undone, and the address typed again before the button wakes.
+  const zone = make("details", "danger-zone");
+  const summary = make("summary", "cta ghost small", "Delete this account…");
+  const form = make("form");
+  const typed = make("input");
+  typed.type = "email";
+  typed.autocomplete = "off";
+  typed.spellcheck = false;
+  typed.id = "delete-confirm";
+  const why = make("input");
+  why.maxLength = 200;
+  why.id = "delete-why";
+  const go = make("button", "cta ghost danger", "Delete the account");
+  go.type = "submit";
+  go.disabled = true;
+  const done = make("p", "note");
+  done.setAttribute("role", "status");
+  form.append(
+    make("p", "", "Only at its person's request. Its models come out of the gallery and their links stop working; its profile, "
+      + "favourites, lists, comments, follows, photos, the sets it owns and its AI apps' connections are deleted with it, exactly as "
+      + "when they delete it themselves. "),
+    make("p", "", make("b", "", "This is irreversible: nothing of it can be brought back.")),
+    make("label", "", `Type ${one.email || "its address"} to confirm`, typed),
+    make("label", "", "Why ", make("small", "", "for the audit"), why),
+    make("div", "row", go), done);
+  const matches = () => typed.value.trim().toLowerCase() === String(one.email || "").trim().toLowerCase() && Boolean(one.email);
+  typed.addEventListener("input", () => { go.disabled = !matches(); });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!matches()) return;
+    go.disabled = true;
+    say(done, "Deleting…");
+    try {
+      const gone = await adminJson({ op: "delete_account", account }, { method: "POST",
+        body: { confirm: typed.value.trim(), reason: why.value.trim() } });
+      for (const one of ["people", "audit", ...REPORTED]) loaded.delete(one);
+      closeSheet();
+      await Promise.all([loadPeople(), loadOverview()]).catch(() => null);
+      say("people-note", `Deleted ${gone.email}: ${gone.photos ?? 0} photos and ${gone.avatars ?? 0} pictures with it. Kept in the audit.`);
+    } catch (problem) {
+      say(done, problem.message, true);
+      go.disabled = !matches();
+    }
+  });
+  zone.append(summary, form);
+  box.append(zone);
+  return box;
+}
+
+/// One challenge whole, in the panel: when the address names one.
+async function challengePanel(id, again = false) {
+  if (!id) {
+    if ($("sheet").open && $("sheet").dataset.kind === "challenge") $("sheet").close();
+    return;
+  }
+  if (!again && $("sheet").open && $("sheet").dataset.kind === "challenge" && $("sheet").dataset.account === String(id)) return;
+  openSheet("Looking…", make("p", "note", "Reading the challenge…"), { kind: "challenge", account: String(id) });
+  try {
+    const { title, parts } = await challengeOf(id);
+    openSheet(title, parts, { kind: "challenge", account: String(id) });
+  } catch (problem) {
+    openSheet("Not read", make("p", "note bad", problem.message), { kind: "challenge", account: String(id) });
+  }
 }
 
 /// An account's connector whole, in the panel: when the address names one.
@@ -578,11 +764,107 @@ async function connectorPanel(account, again = false) {
 /// After an act on an account: the list, the counts and its panel again,
 /// saying what came of it.
 async function afterPerson(account, told) {
-  loaded.delete("gallery");
-  loaded.delete("audit");
+  for (const one of ["audit", ...REPORTED]) loaded.delete(one);
   await Promise.all([loadPeople(), loadOverview()]);
   await person(account, true, told);
 }
+
+// ---------------------------------------------------------------------------
+// Find anything (console3): the bar's search across people, models, lists,
+// reports and the audit (/api/admin?op=find), each a press from its place.
+
+let findTimer = 0;
+let findAsked = 0;
+
+/// The results shown or not; shown, the status says how many, read out
+/// by a screen reader (the box's own description), and the down arrow
+/// goes into them.
+function findShown(open) {
+  $("find-list").hidden = !open;
+  if (!open) return say("find-said", "");
+  const n = $("find-list").querySelectorAll("a").length;
+  say("find-said", n ? `${n} found: the down arrow goes to them.` : $("find-list").textContent);
+}
+
+async function find() {
+  const q = $("find-q").value.trim();
+  const asked = ++findAsked;
+  if (q.length < 2) return findShown(false);
+  let found;
+  try {
+    found = await adminJson({ op: "find", q });
+  } catch (problem) {
+    found = { error: problem.message };
+  }
+  if (asked !== findAsked) return;
+  const list = $("find-list");
+  list.replaceChildren();
+  const to = (href, text, small) => {
+    const a = make("a", "", make("span", "", text), small ? make("small", "", small) : "");
+    a.href = href;
+    if (!href.startsWith("#")) a.target = "_blank";
+    return a;
+  };
+  const group = (title, items) => {
+    if (!items.length) return;
+    list.append(make("h3", "", title), ...items);
+  };
+  if (found.error) {
+    list.append(make("p", "state", found.error));
+  } else {
+    const accounts = new Map();
+    for (const one of found.accounts) accounts.set(one.id, to(`#people/${one.id}`, one.email || one.id,
+      one.last_sign_in ? `last signed in ${ago(one.last_sign_in)}` : "never signed in"));
+    for (const one of found.people) {
+      if (!accounts.has(one.account)) accounts.set(one.account, to(`#people/${one.account}`, `@${one.handle}${one.name ? ` · ${one.name}` : ""}`,
+        one.email || ""));
+    }
+    group("People", [...accounts.values()]);
+    group("Models", found.models.map((one) => to(`/m/${encodeURIComponent(one.id)}`, one.name || one.id,
+      `${one.state}${one.email ? ` · ${one.email}` : ""}`)));
+    group("Lists", found.lists.map((one) => to(`/c/${encodeURIComponent(one.id)}`, one.name || one.id,
+      `${one.public ? "public" : "private"}${one.email ? ` · ${one.email}` : ""}`)));
+    group("Reports", found.reports.map((one) => to(one.open ? `#report-${one.id}` : `#audit`, `${one.reason}: ${one.about}`,
+      `${one.open ? "open" : `settled${one.resolution ? `, ${one.resolution}` : ""}`} · ${day(one.at)}${one.note ? ` · ${one.note}` : ""}`)));
+    group("Acts", found.acts.map((one) => {
+      const a = to("#audit", opSaid(one), `${when(one.at)} · ${one.target_kind ? `${one.target_kind} ` : ""}${one.email || one.target || ""}`);
+      a.addEventListener("click", (event) => { event.preventDefault(); findShown(false); openAct(one); });
+      return a;
+    }));
+    if (!list.childElementCount) list.append(make("p", "state", `Nothing holds “${found.query}”${TESTS ? " among the checks' own" : ""}.`));
+  }
+  findShown(true);
+}
+
+$("find").addEventListener("submit", (event) => { event.preventDefault(); clearTimeout(findTimer); find(); });
+$("find-q").addEventListener("input", () => {
+  clearTimeout(findTimer);
+  findTimer = setTimeout(find, 250);
+});
+$("find-q").addEventListener("keydown", (event) => {
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    $("find-list").querySelector("a")?.focus();
+  } else if (event.key === "Escape") {
+    findShown(false);
+  }
+});
+$("find-list").addEventListener("keydown", (event) => {
+  const links = [...$("find-list").querySelectorAll("a")];
+  const at = links.indexOf(document.activeElement);
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const next = links[at + (event.key === "ArrowDown" ? 1 : -1)];
+    if (next) next.focus();
+    else if (event.key === "ArrowUp") $("find-q").focus();
+  } else if (event.key === "Escape") {
+    findShown(false);
+    $("find-q").focus();
+  }
+});
+$("find-list").addEventListener("click", (event) => { if (event.target.closest("a[href^='#']")) findShown(false); });
+document.addEventListener("click", (event) => { if (!$("find").contains(event.target)) findShown(false); });
+$("find-q").addEventListener("focus", () => { if ($("find-list").childElementCount && $("find-q").value.trim().length > 1) findShown(true); });
 
 // ---------------------------------------------------------------------------
 // The panel (dialog.sheet): an account or an act, over the list it is in.
@@ -596,16 +878,47 @@ function openSheet(title, body, { kind = "act", account = "" } = {}) {
   if (!sheet.open) sheet.showModal();
 }
 
-$("sheet-close").addEventListener("click", () => $("sheet").close());
-$("sheet").addEventListener("click", (event) => { if (event.target === $("sheet")) $("sheet").close(); });
-$("sheet").addEventListener("close", () => {
-  // Closed, an account's address goes back to the list's.
-  if ($("sheet").dataset.kind === "person" && route().account) history.replaceState(null, "", `${location.pathname}${location.search}#people`);
-  if ($("sheet").dataset.kind === "connector" && route().account) {
-    history.replaceState(null, "", `${location.pathname}${location.search}#connector`);
-  }
-  $("sheet").dataset.account = "";
-});
+/// Closed, an account's or a challenge's address goes back to the list's, at
+/// once as it closes. Not on its close event: that comes a task later, and an
+/// address set in between (a link, a script) was put back to the list's then,
+/// so the panel it asked for never opened (console2_flow's Escape then
+/// #people/C, 15 times in 20 in a page of its own; console3, 2026-11-14).
+function listAddress() {
+  const kind = $("sheet").dataset.kind;
+  const at = route();
+  const list = (kind === "person" && at.account) ? "people" : (kind === "connector" && at.account) ? "connector"
+    : (kind === "challenge" && at.challenge) ? "challenges" : "";
+  if (list) history.replaceState(null, "", `${location.pathname}${location.search}#${list}`);
+}
+function closeSheet() {
+  listAddress();
+  $("sheet").close();
+}
+$("sheet-close").addEventListener("click", closeSheet);
+$("sheet").addEventListener("click", (event) => { if (event.target === $("sheet")) closeSheet(); });
+// Escape (and a phone's back): its cancel comes at once, before the close.
+$("sheet").addEventListener("cancel", listAddress);
+$("sheet").addEventListener("close", () => { $("sheet").dataset.account = ""; });
 
 for (const table of document.querySelectorAll("table[data-sortable]")) sortable(table);
+
+// Signing in here, in place (sifix, 2026-11-15, the owner: sign-in must just
+// work where you are): the bar's Sign in and the gate's open the site's
+// sign-in dialog over the console, and signed in it opens, still on /admin
+// and the section asked for. Their /profile?sign-in is for a click meant
+// for a new tab. Signed in or out in another tab (web/account.js), the
+// console follows: opened, or shut behind its gate.
+for (const link of [$("sign-in"), $("gate-sign-in")]) {
+  link.addEventListener("click", (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    askToSignIn().catch(() => { location.href = link.href; });
+  });
+}
+addEventListener("brickworks:signed-in-done", () => start());
+addEventListener("brickworks:signed-out", (event) => {
+  event.preventDefault();
+  loaded.clear();
+  gate("You are not signed in to Brickworks in this browser.");
+});
 start();

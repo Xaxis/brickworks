@@ -68,6 +68,11 @@ function see(root = document) {
   }
 }
 
+// Signed in on this page (the header's Sign in, or another button's;
+// signinux, 2026-11-14): what they own, want and keep in lists drawn on
+// every button at once.
+addEventListener("brickworks:signed-in-done", () => see());
+
 /// [keys] asked of the server, 60 sets and 60 models at a time.
 async function ask(keys) {
   for (const key of keys) waiting.delete(key);
