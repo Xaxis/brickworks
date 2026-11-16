@@ -358,6 +358,10 @@ async function pointing(listening) {
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
   await once;
   const seen = JSON.parse(first.ended).seen;
+  // Each read 20 ms (pollreads): every step then begins over POLL_MS after
+  // the last, so a poll not listening reads who is in it at each, not at
+  // those its timer's rounding lets it.
+  store.readMs = 20;
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
   await sleep(300);

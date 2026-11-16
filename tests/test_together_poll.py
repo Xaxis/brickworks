@@ -106,8 +106,10 @@ def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
         where = (case["joinMs"], case["readMs"], case["joined"])
         log = case["log"]
         assert case["writes"] == 0 and len(_times(log, "PATCH together_people")) == 1, (where, log)
-        people, sessions = _times(log, "GET together_people"), _times(log, "GET together_sessions")
-        assert people and sessions and abs(people[0] - sessions[0]) <= 1, (where, log)
+        people = _times(log, "GET together_people")
+        # The session and who is in it read together, first: one beside the other.
+        kinds = [what for what, _ in log if what.startswith("GET together_") and what != "GET together_ops"]
+        assert people and kinds[:2] == ["GET together_sessions", "GET together_people"], (where, log)
         _no_more_often(log, where)
         if case["joinMs"] < PEOPLE_MS:
             assert case["joined"] is not None and people[0] >= case["joined"], (where, log)
@@ -139,14 +141,14 @@ def test_somebody_pointing_reads_no_more_than_nobody():
     # when nobody points.
     assert listening["people"] >= 1, listening
     _no_more_often(listening["log"], "listening")
-    # Not listening, it reads them at every step as before: a step more than
-    # POLL_MS after the last read of them reads them again (its own rule, so
-    # a busy box's longer steps read them at each).
-    people = _times(unheard["log"], "GET together_people")
-    for at in _times(unheard["log"], "GET together_ops"):
-        before = [one for one in people if one <= at + 1]
-        assert not before or at - before[-1] <= POLL_MS + 2, (at, unheard["log"])
-    assert len(people) >= 2, unheard
+    # Not listening, it reads them at every step as before (each read takes
+    # 20 ms, so every step is over POLL_MS from the last): a step's reads go
+    # out together, so each read of the changes is followed by one of them.
+    # By order, not by time: a busy box has paused the fixture between two.
+    log = unheard["log"]
+    steps = [n for n, (what, _) in enumerate(log) if what == "GET together_ops"]
+    assert len(steps) >= 2, unheard
+    assert all(n + 1 < len(log) and log[n + 1][0] == "GET together_people" for n in steps), log
 
 
 # -- pointat (APP_UX8 #17): a part pointed out, with the pointer ------------------
