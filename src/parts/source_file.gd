@@ -1165,6 +1165,13 @@ func _step_lines(section: String, step: int) -> Array:
 
 
 static func _is_step(line: String) -> bool:
+	# A save keys every line of two texts by this, so a line whose first
+	# character is neither a space nor "0", another first word, goes before it
+	# is split (stfix: 8466-1's 311k lines took 1.9 s a save; findn is dearer
+	# than the split).
+	var first: int = line.unicode_at(0) if not line.is_empty() else 0
+	if first > 32 and first != 48:
+		return false
 	# Any run of spaces and tabs between the words, as LDraw reads them.
 	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
 	return words.size() >= 2 and words[0] == "0" \
@@ -1234,6 +1241,11 @@ const MOVE := 2
 const NEW := 3
 ## A line of a text the gate is given that is none of the patch's.
 const FOREIGN := 4
+## A "0 STEP" a layout put in ([method _relaid]).
+const STEPS := 5
+## A STEP line of the patch's the booklet's looks wrote again: a step's turn
+## is said on the line ending the step before it (BookletLooks._ending).
+const RESTEP := 6
 ## A section key no section has: the lines before an MPD's first FILE line.
 const NOWHERE := "\n"
 
@@ -1254,6 +1266,14 @@ class Plan extends RefCounted:
 	## The file's lines taken out, and those rewritten or moved.
 	var gone: Dictionary = {}
 	var changed: Dictionary = {}
+	## The file's STEP lines a layout took out, the lines it moved
+	## ([method SourceFile._relaid]), and each section it laid out.
+	var steps_gone: Dictionary = {}
+	var shifted: Dictionary = {}
+	var relaid: Dictionary = {}
+	## The step of each line of a part the app cannot show, or one on its
+	## way, now ([method SourceFile.held_steps]).
+	var held_steps: Dictionary = {}
 
 
 # The file read for patching once, as it is made ([method make]), before
@@ -1542,7 +1562,6 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	if not renumbered.is_empty():
 		return _no(plan, "a copy of %s taken off and a later one left, which opens again numbered one less" % renumbered)
 	var rewrites: Dictionary = {}   ## line -> its text now
-	var moves: Dictionary = {}      ## line -> the step it goes to
 	var recolour: Dictionary = {}   ## a copy's line -> the colour a flexible part in it is now
 	for line: int in placing:
 		var says: Array = placing[line]
@@ -1565,14 +1584,21 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				return _no(plan, "a mirrored copy moved")
 			rewrites[line] = "1 %s %s %s" % [words[1], _numbers_for(words, local),
 				LdrModel.reference_of(lines[line])]
-	# A copy put in another step: its line moved to the end of that step.
-	for path: String in steps_now:
-		if int(steps_now[path]) == int(unit_steps.get(path, -1)) or dead_copies.has(path):
-			continue
-		var line: int = int(unit_lines[path])
-		if moves.has(line) and int(moves[line]) != int(steps_now[path]):
-			return _no(plan, "copies placed by one line went to two steps")
-		moves[line] = int(steps_now[path])
+	# The step each line is in now, changed or not: a line placing a copy
+	# its copy's ([method _relaid] lays out a section's steps from them all).
+	var targets: Dictionary = {}    ## a line -> the step it is in now
+	var fixed: Dictionary = {}      ## a line with a step that no step edit may move
+	if authored:
+		for path: String in unit_lines:
+			if dead_copies.has(path):
+				continue
+			var line: int = int(unit_lines[path])
+			var step: int = int(steps_now.get(path, unit_steps.get(path, -1)))
+			if step < 0:
+				continue
+			if targets.has(line) and int(targets[line]) != step:
+				return _no(plan, "copies placed by one line went to two steps")
+			targets[line] = step
 
 	# Each part's line.
 	for line: int in by_line:
@@ -1602,8 +1628,18 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return _no(plan, "a part was taken off one copy of a sub-model and not another (line %d)" % (line + 1))
 		if said.is_empty():
 			continue
+		# Its step, in every copy one: a step edit is in every copy of a
+		# sub-model (AuthorSteps._moved), a mirrored one's too.
+		if authored:
+			for item: Array in said:
+				if targets.has(line) and int(targets[line]) != int(item[3]):
+					return _no(plan, "copies of a sub-model are in two steps (line %d)" % (line + 1))
+				targets[line] = int(item[3])
+			if not _is_placing(lines[line]):
+				fixed[line] = true
 		# A part of a mirrored copy is in its other hand (Assemblies.unmirror):
-		# it agrees with the line only as it was opened.
+		# it agrees with the line only as it was opened, but for its step,
+		# which its line moving says as it is (stepops).
 		var mirrored: bool = false
 		for item: Array in said:
 			var was: Read = item[4]
@@ -1613,7 +1649,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			var opened: Transform3D = (unit_frames.get(was.unit, Transform3D.IDENTITY) as Transform3D) \
 				.affine_inverse() * was.at
 			if str(item[0]) != was.part_id or int(item[1]) != was.colour \
-					or authored and int(item[3]) != was.step or not _same(item[2] as Transform3D, opened):
+					or not _same(item[2] as Transform3D, opened):
 				return _no(plan, "a part of a mirrored copy changed")
 		said = said.filter(func(item: Array) -> bool: return not (item[4] as Read).mirrored)
 		if said.is_empty():
@@ -1634,8 +1670,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			.affine_inverse() * read.at if not read.unit.is_empty() else read.at
 		var changed: bool = str(first[0]) != read.part_id or painted \
 			or not _same(first[2] as Transform3D, was_local)
-		var stepped: bool = authored and int(first[3]) != read.step
-		if (changed or stepped) and waits > 0:
+		if changed and waits > 0:
 			return _no(plan, "a part still on its way is on a line that changed")
 		if changed and not _is_placing(lines[line]):
 			# A flexible part, on the line LDCad marks its path with: its
@@ -1652,17 +1687,13 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				return _no(plan, "two flexible parts of one path painted apart")
 			recolour[giving] = int(first[1])
 			changed = false
-		if (changed or stepped) and mirrored:
+		if changed and mirrored:
 			return _no(plan, "a part of a mirrored copy changed")
 		if changed:
 			var text: Variant = _line_for(line, str(first[0]), int(first[1]), painted, first[2], library)
 			if text == null:
 				return _no(plan, "a part's line could not be written (line %d)" % (line + 1))
 			rewrites[line] = text
-		if stepped:
-			if not _is_placing(lines[line]):
-				return _no(plan, "a flexible part's step changed")
-			moves[line] = int(first[3])
 
 	for line: int in recolour:
 		var text: String = str(rewrites[line]) if rewrites.has(line) else lines[line].trim_suffix("\r")
@@ -1671,60 +1702,27 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	# places any more, and a pair left with nothing in it.
 	_taken_with(plan.gone)
 	for line: int in plan.gone:
-		if rewrites.has(line) or moves.has(line):
+		if rewrites.has(line):
 			return _no(plan, "a line both taken out and kept")
 	var unplaced: String = _left_unplaced(plan.gone, plan.fresh.size())
 	if not unplaced.is_empty():
 		return _no(plan, unplaced)
-	# A part the app cannot show, or one still on its way, stays on its line:
-	# one a step edit put in another step (AuthorSteps numbers its step with
-	# the rest) is live's write, which moves its line (_restep). Up to
-	# 2026-11-11 it had no step to follow, and where every other part of its
-	# step went to one other step it was left behind alone (keeptext5).
+	# A part the app cannot show, or one still on its way, is in the step
+	# the model numbers it in (AuthorSteps numbers it with the rest), and its
+	# line goes with it as any part's does. Up to 2026-11-11 it had no step
+	# to follow, and where every other part of its step went to one other
+	# step it was left behind alone (keeptext5); up to stepops one put in
+	# another step was live's write (_restep).
 	var steps_held: Dictionary = held_steps(waiting, held_at)
+	plan.held_steps = steps_held
 	for line: int in steps_held:
-		if line < _sec.size() and int(steps_held[line]) != _step_at[line]:
-			return _no(plan, "a part the app cannot show is in another step now (line %d)" % (line + 1))
-	# A step of the file every part went out of, and none came into: the
-	# steps numbered again (a merge, a step emptied), which moving lines
-	# cannot say. Each later part moved up a step left the file's STEP lines
-	# where no step ends: 106-1's merge took the car's first STEP out and put
-	# one after its last part. Live's write takes the emptied step's line out.
-	if not moves.is_empty():
-		var kept: Dictionary = {}       ## "section|step" -> a part line is in it
-		var left: Dictionary = {}       ## "section|step" -> a part line went out of it
-		for line: int in _stack_at:
-			if plan.gone.has(line):
-				continue
-			var key: String = "%s|%d" % [_sec[line], _step_at[line]]
-			if moves.has(line):
-				left[key] = true
-				kept["%s|%d" % [_sec[line], int(moves[line])]] = true
-			else:
-				kept[key] = true
-		for key: String in left:
-			if not kept.has(key):
-				return _no(plan, "a step's every part went to another step: the steps numbered again")
+		if line >= _sec.size() or plan.gone.has(line):
+			continue
+		var step: int = int(steps_held[line])
+		if step == -2 or targets.has(line) and int(targets[line]) != step:
+			return _no(plan, "copies of a sub-model are in two steps (line %d)" % (line + 1))
+		targets[line] = step
 
-	# Where each moved line goes: the end of its step, the pairs round it the
-	# same there.
-	var inserts: Dictionary = {}    ## line -> [[text, how, from, bricks]]
-	var away: Dictionary = {}
-	var moved_lines: Array = moves.keys()
-	moved_lines.sort()
-	for line: int in moved_lines:
-		var section: String = _sec[line]
-		var to: int = _end_of_step(section, int(moves[line]))
-		if to < 0:
-			return _no(plan, "a part went to a step the file has not got")
-		if _stack_before(section, to) != (_stack_at.get(line, []) as Array):
-			return _no(plan, "a step edit would cross a pair (line %d)" % (line + 1))
-		for k: int in range(_bound_from[line], line + 1):
-			if k == to or (k < to and to <= line):
-				return _no(plan, "a part moved within its own lines")
-			away[k] = true
-			var text: String = str(rewrites.get(k, "")) + _eol() if rewrites.has(k) else lines[k]
-			_add_to(inserts, to, [text, MOVE, k, []])
 	# The parts with no line: one line for one in every copy of its sub-model.
 	# Each in its colour; or, where that takes a line for each copy, in 16
 	# where it is in the colour its copy hands its parts of 16: a plate put
@@ -1740,26 +1738,79 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		return _no(plan, str(groups[""]))
 	if not _one_each(groups, dead_copies):
 		return _no(plan, "a new part in one copy of a sub-model and not another")
+	var fresh_steps: Dictionary = {}    ## section -> the steps of its new lines
+	for key: String in groups:
+		_add_to(fresh_steps, str(groups[key][0]), int(groups[key][2]))
+
+	# The steps: each section a step edit changed laid out again, its STEP
+	# lines kept, taken out or put in and the fewest of its lines moved
+	# ([method _relaid]). A step put in, taken out, split or merged is one
+	# STEP line, and a part moved to another step its own line: every other
+	# line stays where it was. Up to stepops each line of a step numbered
+	# again moved to its new step's end, and a step put in rewrote every line
+	# after it (kt5review #8); a step taken out was live's write.
+	var laid_out: Dictionary = {}       ## section -> its layout ([method _relaid])
+	for line: int in targets:
+		if line < _sec.size() and not plan.gone.has(line) and int(targets[line]) != _step_at[line]:
+			laid_out[_sec[line]] = true
+	for section: String in fresh_steps:
+		for step: int in fresh_steps[section]:
+			if _end_of_step(section, step) < 0:
+				laid_out[section] = true
+	var inserts: Dictionary = {}    ## line -> [[text, how, from, bricks, order]]
+	var away: Dictionary = {}
+	for section: String in laid_out.keys():
+		if not sections.has(section):
+			return _no(plan, "a line outside every section is in another step")
+		var laid: Variant = _relaid(section, targets, fixed, plan.gone, fresh_steps.get(section, []))
+		if laid is String:
+			return _no(plan, str(laid))
+		laid_out[section] = laid
+		plan.steps_gone.merge((laid as Dictionary)["drop"])
+		for put: Array in (laid as Dictionary)["puts"]:
+			var at: int = put[0]
+			var from: int = put[2]
+			if from < 0:
+				_add_to(inserts, at, ["0 STEP" + _eol(), STEPS, -1, [], float(put[1])])
+				continue
+			for k: int in range(_bound_from[from], from + 1):
+				away[k] = true
+				plan.shifted[k] = true
+				var text: String = str(rewrites.get(k, "")) + _eol() if rewrites.has(k) else lines[k]
+				_add_to(inserts, at, [text, MOVE, k, [], float(put[1])])
+	plan.relaid = laid_out.duplicate()
 	var keys: Array = groups.keys()
 	keys.sort()
 	for key: String in keys:
 		var group: Array = groups[key]
 		var section: String = group[0]
-		var to: int = _end_of_step(section, int(group[2]))
+		var step: int = int(group[2])
+		var to: int = _end_of_step(section, step)
+		var order: float = 0.0
+		if laid_out.has(section):
+			var end: Array = _laid_end(laid_out[section], section, step)
+			to = int(end[0])
+			order = float(end[1]) + 0.25
 		if to < 0:
 			return _no(plan, "a new part is in a step the file has not got")
 		if not _stack_before(section, to).is_empty():
 			return _no(plan, "a new part's step ends inside a pair")
-		_add_to(inserts, to, [str(group[1]) + _eol(), NEW, -1, group[3]])
+		_add_to(inserts, to, [str(group[1]) + _eol(), NEW, -1, group[3], order])
 
-	# The lines, in order.
+	# The lines, in order: those put before a line in the order their steps
+	# give, each step's parts before the STEP line put in to end it.
 	var count: int = lines.size()
 	for n: int in count + 1:
-		for put: Array in inserts.get(n, []):
+		var puts: Array = inserts.get(n, [])
+		for k: int in puts.size():
+			(puts[k] as Array).append(k)
+		puts.sort_custom(func(a: Array, b: Array) -> bool:
+			return float(a[4]) < float(b[4]) or float(a[4]) == float(b[4]) and int(a[5]) < int(b[5]))
+		for put: Array in puts:
 			_emit(plan, str(put[0]), int(put[1]), int(put[2]), put[3])
 		if n == count:
 			break
-		if plan.gone.has(n) or away.has(n):
+		if plan.gone.has(n) or away.has(n) or plan.steps_gone.has(n):
 			continue
 		if rewrites.has(n):
 			_emit(plan, str(rewrites[n]) + _eol(), REWRITE, n, [])
@@ -1767,9 +1818,309 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			_emit(plan, lines[n], KEEP, n, [])
 	plan.out = _ended_as_begun(plan.out, plan.from.find(count - 1), lines, _eol())
 	plan.changed = rewrites.duplicate()
-	for line: int in moves:
+	for line: int in plan.shifted:
 		plan.changed[line] = true
 	return plan
+
+
+## What a line moved costs a layout ([method _relaid]): a line taken out and
+## put in, two lines of a diff; a STEP line put in or taken out, one. A part
+## the edit left with most of its step costs three times as much to move as
+## one it moved, and a STEP line a little more than half a part's line, so
+## the layout written is the one the person made: the part they moved, with
+## its notes, not the two step-mates past it (stepops: a part of the next
+## step made a step of its own moved the note and brick before it), nor the
+## STEP line past it, which keeps a step's notes and LPub's lines in their
+## step.
+const _MOVE_LINE := 2000
+const _MOVE_KEPT := 6000
+const _STEP_LINE := 1001
+const _NEVER := 1 << 40
+
+
+## [param section]'s steps laid out for the step each of its lines with one
+## is in now ([param targets], line -> step), a section's own lines taken
+## out aside ([param gone]): the most of its lines kept where they are, the
+## STEP lines between two of them kept, taken out or put in to number them
+## so, and each line that cannot stay moved to the end of its step. Lines
+## [param fixed] (a flexible part's) are never moved. [param fresh] are the
+## steps of new lines put in it. A step put in is one STEP line, a step
+## taken out or two merged one STEP line taken out, a split one STEP line
+## between the halves where the halves are in their order, a part moved to
+## another step its own line moved, and every other line where it was.
+##
+## The lines kept are those of the cheapest run in the file's order whose
+## steps never go down: a dynamic program over the lines by each one's step
+## less its step in the file (its shift), a few runs a shift, so a section of
+## thousands of parts is read once. Between two lines kept, the STEP lines
+## the file has are kept as far as the steps now between them need, the
+## plain ones taken out first and the earliest first (a step ended by the
+## line that ended the last of the file's steps in it, as live's write
+## ends it); where more are needed, "0 STEP" goes above the later line's own
+## lines, outside any pair the two lines are not both in. Returns {"drop":
+## STEP lines taken out, "puts": [[before which line, order, the line moved
+## or -1 for a STEP put in]], "ends": step -> [line, order] a line of the
+## step goes before, "tail"}, or why there is none.
+func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dictionary,
+		fresh: Array) -> Variant:
+	var span: Array = sections[section]
+	var start: int = int(span[0])
+	var stop: int = int(span[1])
+	var chunks := PackedInt32Array()
+	var step_lines := PackedInt32Array()
+	for n: int in range(start, stop):
+		if gone.has(n):
+			continue
+		if _is_step(original[n]):
+			step_lines.append(n)
+		elif targets.has(n) and int(targets[n]) >= 0:
+			chunks.append(n)
+	# The step most of each step's lines went to: a line that went elsewhere
+	# is one the edit moved.
+	var votes: Dictionary = {}      ## a step in the file -> {step now: lines}
+	for line: int in chunks:
+		var was: int = _step_at[line]
+		if not votes.has(was):
+			votes[was] = {}
+		var now: int = int(targets[line])
+		(votes[was] as Dictionary)[now] = int((votes[was] as Dictionary).get(now, 0)) + 1
+	var stays: Dictionary = {}
+	var origin_of: Dictionary = {}  ## a step now -> the file's step most of its lines were in
+	var origin_count: Dictionary = {}
+	var even: Dictionary = {}       ## the file's steps whose lines went most to two steps alike
+	for was: int in votes:
+		var best: int = -1
+		for now: int in votes[was]:
+			if best < 0 or int(votes[was][now]) > int(votes[was][best]):
+				best = now
+			if int(votes[was][now]) > int(origin_count.get(now, 0)):
+				origin_count[now] = int(votes[was][now])
+				origin_of[now] = was
+		stays[was] = best
+		for now: int in votes[was]:
+			if now != best and int(votes[was][now]) == int(votes[was][best]):
+				even[was] = true
+				break
+	# A step whose lines went two ways alike stays the step no other of the
+	# file's steps stays, else the one holding its earliest line (votes[was]
+	# holds its steps in the order of their first lines): the part moved on
+	# into the next step is the one moved (kt3r_emptystep), and a step put in
+	# of the middle part of the next, whose last part then went, leaves its
+	# LPub INSERT PAGE above the first, as with the last there (stfix).
+	var stayed: Dictionary = {}
+	for was: int in votes:
+		if not even.has(was):
+			stayed[int(stays[was])] = true
+	for was: int in even:
+		var most: int = int(votes[was][stays[was]])
+		var best: int = -1
+		for now: int in votes[was]:
+			if int(votes[was][now]) == most and (best < 0 or stayed.has(best) and not stayed.has(now)):
+				best = now
+		stays[was] = best
+	# The cheapest runs kept, for each shift those no other is both cheaper
+	# and lower in step than: [cost, the last kept line's step, its node]; a
+	# node is a line kept and the node before it. One run a shift lost the
+	# dearer one ending lower, which a later line kept may need (stepops:
+	# kt3r_emptystep, a part moved on past a page closed up moved its
+	# step-mate instead, and the looks rewrote both STEP lines round it).
+	var node_at := PackedInt32Array()
+	var node_before := PackedInt32Array()
+	var states: Dictionary = {0: [[0, 0, -1]]}
+	# A turning ROTSTEP above the section's first part is its first step's
+	# turn, which the looks write there again (BookletLooks.written_into),
+	# so the run may start with it taken out at no cost: an edit after which
+	# the app let that empty first step go keeps the parts where they are,
+	# not the first moved above it (stepops: 8028-1's m-1a split).
+	for n: int in range(start, stop):
+		if gone.has(n):
+			continue
+		var words: PackedStringArray = LdrModel._fields(original[n].strip_edges())
+		if words.is_empty() or words[0] == "0" and not _is_step(original[n]):
+			continue
+		if words[0] != "0" or words.size() < 3 or words[1].to_upper() != "ROTSTEP" \
+				or words[2].to_upper() == "END":
+			break
+		states[-states.size()] = [[0, 0, -1]]
+	var old_last: int = 0
+	var new_last: int = 0
+	for i: int in chunks.size():
+		var line: int = chunks[i]
+		var was: int = _step_at[line]
+		var now: int = int(targets[line])
+		old_last = maxi(old_last, was)
+		new_last = maxi(new_last, now)
+		var shift: int = now - was
+		var move: int = _NEVER if fixed.has(line) else (line - _bound_from[line] + 1) \
+			* (_MOVE_KEPT if now == int(stays[was]) else _MOVE_LINE)
+		var next: Dictionary = {}
+		for from_shift: int in states:
+			for state: Array in states[from_shift]:
+				_cheaper(next, from_shift, int(state[0]) + move, int(state[1]), int(state[2]))
+				if int(state[1]) <= now:
+					node_at.append(i)
+					node_before.append(int(state[2]))
+					_cheaper(next, shift, int(state[0]) + absi(shift - from_shift) * _STEP_LINE,
+						now, node_at.size() - 1)
+		states = next
+	for step: Variant in fresh:
+		new_last = maxi(new_last, int(step))
+	var end_shift: int = new_last - old_last
+	var end_step: int = step_lines.size() + end_shift
+	var best_cost: int = -1
+	var best_node: int = -1
+	for from_shift: int in states:
+		for state: Array in states[from_shift]:
+			if int(state[1]) > end_step:
+				continue
+			var cost: int = int(state[0]) + absi(end_shift - from_shift) * _STEP_LINE
+			if best_cost < 0 or cost < best_cost:
+				best_cost = cost
+				best_node = int(state[2])
+	if best_cost < 0 or best_cost >= _NEVER:
+		return "a flexible part's step changed"
+	var kept: Array = []
+	var node: int = best_node
+	while node >= 0:
+		kept.push_front(chunks[node_at[node]])
+		node = node_before[node]
+	# Between each two lines kept (the section's start and end too): its
+	# STEP lines kept or taken out, or one put in, and the steps they end.
+	var drop: Dictionary = {}
+	var puts: Array = []
+	var ends: Dictionary = {}       ## step -> [the line before which a line of it goes, order]
+	var bounds: Array = [[start - 1, 0]]
+	for line: int in kept:
+		bounds.append([line, int(targets[line])])
+	bounds.append([stop, end_step])
+	var next_step: int = 0
+	for b: int in range(1, bounds.size()):
+		var low: int = int(bounds[b - 1][0])
+		var high: int = int(bounds[b][0])
+		var need: int = int(bounds[b][1]) - int(bounds[b - 1][1])
+		var have := PackedInt32Array()
+		for n: int in step_lines:
+			if n > low and n < high:
+				have.append(n)
+		# A STEP line says the look of the step after it (BookletLooks: a
+		# ROTSTEP turns the steps it starts, and the looks write a turn only
+		# where it changes): where fewer are needed the earliest go, and the
+		# last stays beside the step it starts; where more, each kept starts
+		# the first step whose lines its step had (a step put in of the next
+		# one's part is started by the ROTSTEP that turned that part, and the
+		# STEP put in after it starts the rest, as it was seen), else the
+		# last it can, and one put in goes right below the kept line before
+		# it, else above the first kept, else below the earlier line.
+		for k: int in maxi(have.size() - need, 0):
+			drop[have[k]] = true
+		var kept_lines: Array = []
+		for n: int in have:
+			if not drop.has(n):
+				kept_lines.append(n)
+		var first_step: int = int(bounds[b - 1][1])
+		var slot_line: Dictionary = {}  ## a step -> the kept STEP line that ends it
+		var last_slot: int = first_step - 1
+		for i: int in kept_lines.size():
+			var latest_slot: int = first_step + need - 1 - (kept_lines.size() - 1 - i)
+			var pick: int = latest_slot
+			for slot: int in range(last_slot + 1, latest_slot):
+				if int(origin_of.get(slot + 1, -1)) == _step_at[kept_lines[i]] + 1:
+					pick = slot
+					break
+			slot_line[pick] = kept_lines[i]
+			last_slot = pick
+		var before: int = -1            ## the kept STEP line before a step put in
+		for slot: int in range(first_step, first_step + need):
+			if slot_line.has(slot):
+				before = int(slot_line[slot])
+				ends[next_step] = [before, float(next_step)]
+			else:
+				var at: int = _put_step_at(section, low, high, start, before + 1 if before >= 0
+					else kept_lines[0] if not kept_lines.is_empty() else -1)
+				if at < 0:
+					return "a step put in would go inside a pair"
+				ends[next_step] = [at, float(next_step)]
+				puts.append([at, float(next_step) + 0.5, -1])
+			next_step += 1
+	var tail: int = int(_tail.get(section, stop))
+	# Each line not kept, at the end of its step.
+	var keeping: Dictionary = {}
+	for line: int in kept:
+		keeping[line] = true
+	var laid: Dictionary = {"drop": drop, "puts": puts, "ends": ends, "tail": tail}
+	for line: int in chunks:
+		if keeping.has(line):
+			continue
+		var end: Array = _laid_end(laid, section, int(targets[line]))
+		if _round_parts(_stack_before(section, int(end[0]))) \
+				!= _round_parts(_stack_at.get(line, []) as Array):
+			return "a step edit would cross a pair (line %d)" % (line + 1)
+		puts.append([int(end[0]), float(end[1]), line])
+	return laid
+
+
+## Where a line of step [param step] goes in a section laid out
+## ([method _relaid]): [the line it goes before, its order there].
+static func _laid_end(laid: Dictionary, _section: String, step: int) -> Array:
+	var ends: Dictionary = laid["ends"]
+	if ends.has(step):
+		return ends[step]
+	return [int(laid["tail"]), float(step)]
+
+
+## The runs a shift keeps at most ([method _relaid]): the cheapest of them.
+const _RUNS := 6
+
+
+## [param states]' runs for [param shift] with one costing [param cost] and
+## ending at step [param last] put in, unless one there is as cheap and as
+## low; those it is cheaper and lower than go.
+static func _cheaper(states: Dictionary, shift: int, cost: int, last: int, node: int) -> void:
+	var runs: Array = states.get(shift, [])
+	for run: Array in runs:
+		if int(run[0]) <= cost and int(run[1]) <= last:
+			return
+	var kept: Array = []
+	for run: Array in runs:
+		if cost > int(run[0]) or last > int(run[1]):
+			kept.append(run)
+	kept.append([cost, last, node])
+	if kept.size() > _RUNS:
+		kept.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
+		kept.resize(_RUNS)
+	states[shift] = kept
+
+
+## Where a STEP line goes between lines [param low] and [param high] of
+## [param section] (whose first line is [param start]): above [param first],
+## the first STEP line kept between them, which stays beside the step it
+## starts; else right below the earlier line (a note above a part is said
+## of it, and goes with it into its step), or, at the section's start,
+## above the later line's own lines; the nearest place after that, then
+## before it, inside no pair the two lines are not both in. -1 for none.
+func _put_step_at(section: String, low: int, high: int, start: int, first: int) -> int:
+	var stop: int = int(sections[section][1])
+	var latest: int = int(_tail.get(section, high)) if high >= stop else _bound_from[high]
+	var earliest: int = low + 1 if low >= start else latest
+	var from: int = first if first >= 0 else earliest
+	if low < start:
+		earliest = from
+	var both: Array = []
+	var low_stack: Array = _stack_at.get(low, []) if low >= start else []
+	var high_stack: Array = _stack_at.get(high, []) if high < stop else []
+	for begin: Variant in low_stack:
+		if high_stack.has(begin):
+			both.append(begin)
+	var order: Array = range(from, latest + 1) + range(from - 1, earliest - 1, -1)
+	for at: int in order:
+		var inside: bool = true
+		for begin: Variant in _round_parts(_stack_before(section, at)):
+			if not both.has(begin):
+				inside = false
+				break
+		if inside:
+			return at
+	return -1
 
 
 ## [param text], the file as the patch of its own parts wrote it ([param
@@ -1789,6 +2140,10 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 ## (im2review real, lodge).
 func grafted(text: String, plan: Plan, roots: Dictionary, whole_text: String,
 		steps_now: Dictionary, known: Dictionary) -> String:
+	# Its line goes at the end of its step as the file had its steps: a model
+	# whose steps a step edit laid out again ([method _relaid]) is live's.
+	if plan.relaid.has(main_key) and not roots.is_empty():
+		return "why: the model's steps were laid out again"
 	var whole: SubmodelFile.Whole = SubmodelFile.read(whole_text.replace("\r\n", "\n"), known)
 	var eol: String = _eol()
 	var refs: Dictionary = {}       ## out index -> [lines placing a model put in]
@@ -2285,7 +2640,8 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 		var from: int = plan.from[n]
 		var how: int = plan.how[n]
 		var at_end: bool = ends_bare and n == plan.out.size() - 1 and text.ends_with(said)
-		if how != NEW and how != FOREIGN and (from < 0 or from >= original.size() or used.has(from)):
+		if how != NEW and how != FOREIGN and how != STEPS and not (how == RESTEP and from < 0) \
+				and (from < 0 or from >= original.size() or used.has(from)):
 			return "a line of the file written twice, or one it has not got"
 		match how:
 			KEEP, REWRITE:
@@ -2303,7 +2659,7 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 					if not why.is_empty():
 						return why
 			MOVE:
-				if not _may_change(plan, from, true, steps_now):
+				if not plan.shifted.has(from) and not _may_change(plan, from, true, steps_now):
 					return "line %d of the file moved, and nothing on it changed step" % (from + 1)
 				if said != original[from] and not (from == last and said == original[from] + _eol()) \
 						and not (_is_placing(said) and _is_placing(original[from])
@@ -2313,6 +2669,20 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 					var why: String = _rewritten_as_written(plan, from, said, may_say, at_end)
 					if not why.is_empty():
 						return why
+			RESTEP:
+				# Read back, every part is in its step; the turns are the
+				# booklet's looks'.
+				if not _is_step(said) or from >= 0 and not _is_step(original[from]):
+					return "a STEP line written as another line (%s)" % said.strip_edges().left(60)
+				if from >= 0:
+					if from <= last_kept:
+						return "line %d of the file out of its order" % (from + 1)
+					last_kept = from
+			STEPS:
+				# A STEP line a layout put in ([method _relaid]): read back,
+				# every part is in its step.
+				if said.trim_suffix("\r") != "0 STEP" or said.ends_with("\r") != _crlf and not at_end:
+					return "a STEP line put in is not one (%s)" % said.strip_edges().left(60)
 			NEW:
 				if not _is_placing(said) or (plan.new_bricks.get(n, []) as Array).is_empty():
 					return "a new line places no new part (%s)" % said.strip_edges().left(60)
@@ -2452,15 +2822,36 @@ static func _app_said(line: String) -> String:
 func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) -> Plan:
 	var wrote := PackedStringArray()
 	var wrote_at := PackedInt32Array()
+	# Matched with every STEP and ROTSTEP line alike: the booklet's looks
+	# write each step's ending line as its turn says, in its place, and a
+	# ROTSTEP said in many steps matched the first like it, lines on
+	# (stepops: 20019-1's twelve).
+	# Most lines are a part's or a shape's, which a look at the first
+	# character tells from the app's and the STEP lines with no call: a save
+	# of 8466-1's 311k lines costs what it did before the keys (stfix).
+	var wrote_keys := PackedStringArray()
 	for k: int in plan.out.size():
-		if not _is_app_line(plan.out[k]):
-			wrote.append(plan.out[k])
+		var line: String = plan.out[k]
+		var first: int = line.unicode_at(0) if not line.is_empty() else 0
+		if first > 32 and first != 48:
+			wrote.append(line)
 			wrote_at.append(k)
+			wrote_keys.append(line)
+		elif not _is_app_line(line):
+			wrote.append(line)
+			wrote_at.append(k)
+			wrote_keys.append(_STEP_KEY if _is_step(line) else line)
 	var said := PackedStringArray()
+	var said_keys := PackedStringArray()
 	for line: String in final:
-		if not _is_app_line(line):
+		var first: int = line.unicode_at(0) if not line.is_empty() else 0
+		if first > 32 and first != 48:
 			said.append(line)
-	var matched: PackedInt32Array = _aligned(said, wrote)
+			said_keys.append(line)
+		elif not _is_app_line(line):
+			said.append(line)
+			said_keys.append(_STEP_KEY if _is_step(line) else line)
+	var matched: PackedInt32Array = _aligned(said_keys, wrote_keys)
 	var taken: Dictionary = {}
 	var next_matched := PackedInt32Array()  ## each line of said -> the patch's line the next matched one is
 	next_matched.resize(said.size() + 1)
@@ -2474,6 +2865,10 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 	seen.fresh = plan.fresh
 	seen.gone = plan.gone
 	seen.changed = plan.changed
+	seen.steps_gone = plan.steps_gone
+	seen.shifted = plan.shifted
+	seen.relaid = plan.relaid
+	seen.held_steps = plan.held_steps
 	map.resize(final.size())
 	var j: int = 0
 	var gap: int = 0
@@ -2486,7 +2881,7 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 		var how: int = FOREIGN
 		var from: int = -1
 		if k >= 0:
-			how = plan.how[wrote_at[k]]
+			how = plan.how[wrote_at[k]] if said[j] == wrote[k] else RESTEP
 			from = plan.from[wrote_at[k]]
 			if plan.new_bricks.has(wrote_at[k]):
 				seen.new_bricks[seen.out.size()] = plan.new_bricks[wrote_at[k]]
@@ -2499,6 +2894,30 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 					how = MOVE if plan.how[at] == MOVE else REWRITE
 					from = plan.from[at]
 					break
+		elif _is_step(final[n]):
+			for g: int in range(gap, next_matched[j]):
+				var at: int = wrote_at[g]
+				if not taken.has(g) and _is_step(wrote[g]):
+					taken[g] = true
+					how = RESTEP
+					from = plan.from[at]
+					break
+			if how == FOREIGN:
+				# The file's own line a layout took out ([method _relaid]),
+				# written back by the looks where it was: a ROTSTEP at a
+				# sub-model's head, before its first part, turns its first
+				# step (BookletLooks.written_into), which the edit numbered 0.
+				from = _gone_step_between(plan, final[n], _from_before(plan, wrote_at, gap),
+					_from_after(plan, wrote_at, next_matched[j]))
+				if from >= 0:
+					how = KEEP if original[from] == final[n] else RESTEP
+				else:
+					# One the looks put where the patch has none: a turn
+					# carried to a step that starts elsewhere now (stepops:
+					# two steps merged whose second turned has its ROTSTEP
+					# above the first's parts). Read back, every part is in
+					# its step.
+					how = RESTEP
 		seen.out.append(final[n])
 		seen.from.append(from)
 		seen.how.append(how)
@@ -2506,9 +2925,82 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 	return seen
 
 
+## Each section's first step with anything in it, read back ([param
+## placements], [param read_steps]) into [param lead_file] and in the model
+## ([param plan], [param steps_now]) into [param lead_world]
+## ([method _read_back_kept]).
+func _leads(placements: Array, read_steps: Dictionary, plan: Plan, steps_now: Dictionary,
+		lead_file: Dictionary, lead_world: Dictionary) -> void:
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		_least(lead_file, _section_of(placement.unit), placement.step)
+	for path: String in read_steps:
+		_least(lead_file, _section_of(Assemblies.parent_of(path)), int(read_steps[path]))
+	for origin: String in plan.now:
+		var brick: BrickWorld.Brick = (plan.now[origin] as Array)[0]
+		_least(lead_world, _section_of(brick.unit), brick.step)
+	for entry: Array in plan.fresh:
+		var brick: BrickWorld.Brick = entry[0]
+		_least(lead_world, _section_of(brick.unit), brick.step)
+	for line: int in plan.held_steps:
+		if line < _sec.size():
+			_least(lead_world, _sec[line], int(plan.held_steps[line]))
+	for path: String in steps_now:
+		_least(lead_world, _section_of(Assemblies.parent_of(path)), int(steps_now[path]))
+
+
+static func _least(leads: Dictionary, section: String, step: int) -> void:
+	if step >= 0 and (not leads.has(section) or step < int(leads[section])):
+		leads[section] = step
+
+
+## Whether step [param mine] of the model is [param read], read back, in
+## [param section]: alike from each one's first step with anything in it.
+static func _same_step(mine: int, read: int, section: String, lead_world: Dictionary,
+		lead_file: Dictionary) -> bool:
+	if mine < 0 or read < 0:
+		return mine == read
+	return mine - int(lead_world.get(section, 0)) == read - int(lead_file.get(section, 0))
+
+
+## The file's line of the last line of the patch before its [param before]th
+## line not the app's ([method _as_written]) that is one, or -1.
+static func _from_before(plan: Plan, wrote_at: PackedInt32Array, before: int) -> int:
+	for g: int in range(mini(before, wrote_at.size()) - 1, -1, -1):
+		if plan.from[wrote_at[g]] >= 0:
+			return plan.from[wrote_at[g]]
+	return -1
+
+
+## The file's line of the first line of the patch from its [param from]th
+## line not the app's on that is one, or past the file's last.
+func _from_after(plan: Plan, wrote_at: PackedInt32Array, from: int) -> int:
+	for g: int in range(from, wrote_at.size()):
+		if plan.from[wrote_at[g]] >= 0:
+			return plan.from[wrote_at[g]]
+	return original.size()
+
+
+## A STEP line of the file a layout took out between its lines [param low]
+## and [param high], the first that says [param said] as it was, else the
+## first; -1 for none.
+func _gone_step_between(plan: Plan, said: String, low: int, high: int) -> int:
+	var any: int = -1
+	for line: int in plan.steps_gone:
+		if line <= low or line >= high:
+			continue
+		if original[line] == said:
+			return line
+		if any < 0 or line < any:
+			any = line
+	return any
+
+
 ## How far past a line two texts differ on [method _aligned] looks for them
 ## to meet again.
 const LOOK := 400
+## What a STEP or ROTSTEP line is matched as ([method _as_written]).
+const _STEP_KEY := "\u0001STEP"
 
 
 ## Each line of [param a] -> the line of [param b] it is, or -1: the two
@@ -2538,7 +3030,9 @@ static func _aligned(a: PackedStringArray, b: PackedStringArray) -> PackedInt32A
 			if a[j + d] == b[i]:
 				dj = d
 				break
-		if di > 0 and (dj < 0 or di <= dj):
+		# As far either way: the line of [param a] is the one put in (the
+		# looks write a ROTSTEP at a sub-model's head, before its first part).
+		if di > 0 and (dj < 0 or di < dj):
 			i += di
 		elif dj > 0:
 			j += dj
@@ -2598,6 +3092,8 @@ func _may_change(plan: Plan, line: int, moved: bool, steps_now: Dictionary) -> b
 ## the model or on its way is read through ([param alive]) that is a part's
 ## or a copy's, one bound to such a line, or a pair left with nothing in it.
 func _may_go(plan: Plan, line: int, alive: Dictionary) -> bool:
+	if plan.steps_gone.has(line):
+		return _is_step(original[line])
 	if not plan.gone.has(line) or alive.has(line):
 		return false
 	if _is_placing(original[line]) or by_line.has(line):
@@ -2653,6 +3149,11 @@ func _pairs_kept(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 			stack.append_array(open[kind])
 		stack.sort()
 		var wanted: Array = [] if from < 0 else _stack_at.get(from, [])
+		# A part a step edit moved goes into its new step's group of steps
+		# (LPub's MULTI_STEP) as any part of that step is in it.
+		if from >= 0 and plan.shifted.has(from):
+			stack = _round_parts(stack)
+			wanted = _round_parts(wanted)
 		if stack != wanted:
 			return "line %d is no longer in the pairs it was in" % ((from if from >= 0 else n) + 1)
 	return ""
@@ -2677,7 +3178,16 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 	var fresh_at: Dictionary = {}
 	for entry: Array in plan.fresh:
 		fresh_at[(entry[0] as BrickWorld.Brick).id] = entry
-	for item: Variant in model.flatten(library.parts if library != null else {}):
+	var placements: Array = model.flatten(library.parts if library != null else {})
+	# Each section's steps as numbers from its first with anything in it,
+	# read back and in the model: a ROTSTEP at a sub-model's head, before its
+	# first part, turns its first step and is read as a step of its own
+	# (BookletLooks), which a step edit numbers away (AuthorSteps._tidy).
+	var lead_file: Dictionary = {}
+	var lead_world: Dictionary = {}
+	if authored:
+		_leads(placements, model.unit_steps, plan, steps_now, lead_file, lead_world)
+	for item: Variant in placements:
 		var placement: LdrModel.Placement = item
 		var origin := PackedStringArray()
 		var leaf_new: int = -1
@@ -2697,7 +3207,10 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 			# A part of a mirrored copy is never edited in a patch: its
 			# lines as the file had them, read as the open read them.
 			for written: String in placement.origin.split("/", false):
-				if plan.how[map[written.to_int()]] != KEEP:
+				var at: int = map[written.to_int()]
+				# Moved as it was, for its step (stepops).
+				if plan.how[at] != KEEP and not (plan.how[at] == MOVE
+						and plan.out[at].trim_suffix("\r") == original[plan.from[at]].trim_suffix("\r")):
 					return "read back, a mirrored part's line changed"
 			var was: Read = by_origin.get("/".join(origin))
 			if was == null:
@@ -2716,7 +3229,8 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 				var entry: Array = fresh_at[mine.id]
 				if mine.part_id == placement.part_id and mine.color_code == placement.color_code \
 						and _close_to(entry[1] as Transform3D, placement.transform) \
-						and (mine.step < 0 or mine.step == placement.step):
+						and (mine.step < 0 or _same_step(mine.step, placement.step,
+							_section_of(mine.unit), lead_world, lead_file)):
 					fresh_left.erase(mine.id)
 					matched = true
 					break
@@ -2728,6 +3242,13 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 			return "read back, one line is two parts (%s)" % key
 		seen[key] = true
 		if waiting.has(key) or unshown_origins.has(key):
+			# In the step the model numbers it in, on its line (stepops).
+			var on: int = int(origin[origin.size() - 1])
+			if authored and plan.held_steps.has(on) and int(plan.held_steps[on]) >= 0 \
+					and not _same_step(int(plan.held_steps[on]), placement.step,
+					_sec[on] if on < _sec.size() else "\n", lead_world, lead_file):
+				return "read back, line %d is in step %d, not %d" % [on + 1, placement.step,
+					int(plan.held_steps[on])]
 			continue
 		if not plan.now.has(key):
 			return "read back, a part taken off is there (line %d)" % (int(origin[origin.size() - 1]) + 1)
@@ -2744,7 +3265,8 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		# numbered again is another copy (kt5review #5, [method _renumbered]).
 		if placement.unit != brick.unit:
 			return "read back, line %d is in another copy" % (int(origin[origin.size() - 1]) + 1)
-		if authored and placement.step != brick.step:
+		if authored and not _same_step(brick.step, placement.step, _section_of(brick.unit),
+				lead_world, lead_file):
 			return "read back, line %d is in step %d, not %d" % [int(origin[origin.size() - 1]) + 1,
 				placement.step, brick.step]
 	for origin: String in plan.now:
@@ -2754,7 +3276,9 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		return "read back without %d new part%s" % [fresh_left.size(), "" if fresh_left.size() == 1 else "s"]
 	if authored:
 		for path: String in steps_now:
-			if model.unit_steps.has(path) and int(model.unit_steps[path]) != int(steps_now[path]):
+			if model.unit_steps.has(path) and not _same_step(int(steps_now[path]),
+					int(model.unit_steps[path]), _section_of(Assemblies.parent_of(path)),
+					lead_world, lead_file):
 				return "read back, the copy %s is in step %d, not %d" % [path, int(model.unit_steps[path]),
 					int(steps_now[path])]
 	return ""
@@ -2877,6 +3401,23 @@ static func _pair_of(line: String) -> Array:
 			return [" ".join(kind) + (" SKIP" if word.begins_with("SKIP") else ""), 1 if opens else -1]
 		kind.append(word)
 	return []
+
+
+## Of the pairs begun on the file's lines [param begins], those round parts:
+## not LPub's MULTI_STEP, which is round steps, so a part a step edit
+## moves into a step of another goes into that one (stepops: 5540-1).
+func _round_parts(begins: Array) -> Array:
+	var out: Array = []
+	for begin: Variant in begins:
+		var at: int = int(begin)
+		if at < 0 or at >= original.size() or not _round_steps(original[at]):
+			out.append(begin)
+	return out
+
+
+static func _round_steps(line: String) -> bool:
+	var pair: Array = _pair_of(line)
+	return not pair.is_empty() and str(pair[0]) == "LPUB MULTI_STEP"
 
 
 ## The pairs of lines other programs write round parts, by a pair's first

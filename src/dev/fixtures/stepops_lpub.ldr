@@ -1,0 +1,39 @@
+0 Tower With Notes
+0 Name: stepops_lpub.ldr
+0 Author: Ann Other [aother]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 !LPUB ASSEM MODEL_SCALE GLOBAL 1.0000
+0 !LPUB PLI CONSTRAIN GLOBAL AREA
+0 // the first course
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 40 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !LPUB ASSEM CAMERA_ANGLES LOCAL 30.0000 45.0000
+0 STEP
+0 // the second course
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !LPUB PLI BEGIN IGN
+1 15 80 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !LPUB PLI END
+0 ROTSTEP 0 90 0 REL
+0 !LPUB PAGE SIZE LOCAL 210 297
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 40 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 80 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+0 STEP
+0 !LPUB INSERT PAGE
+1 14 0 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 14 40 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 14 80 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 0 0 -96 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 0 40 -96 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !LPUB CALLOUT BEGIN
+1 0 80 -96 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !LPUB CALLOUT END
+0 STEP
+1 4 0 -120 0 1 0 0 0 1 0 0 0 1 3004.dat
+1 4 40 -120 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 STEP
