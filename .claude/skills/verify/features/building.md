@@ -2691,7 +2691,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   halves); `pose_model` with nothing to pose, and the reply to a design or a
   placement, name each part on a ball and the `move_part` that turns it
   (`JointSnap.balls_said`); `move_part` with `picture: true` answers with the
-  whole model pictured, what moved edged. Probe: `balljoints_probe`.
+  whole model pictured, what moved edged. A part attached on a ball with
+  `align` end for end (`["-z", "+z"]`) turns half round about up, studs up
+  (`Attach._arc`). Probe: `balljoints_probe` (`--only=app` runs its handle,
+  Pose and session parts in one app).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes

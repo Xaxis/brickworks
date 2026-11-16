@@ -596,6 +596,26 @@ func _session() -> void:
 	_check("...and -30° about it says so, and takes it back (%.2f°)" % _angle(_world.get_brick(int(arm["socket"])).transform.basis, was.basis),
 		back.contains("turned -30° about [-1, 0, 0] (asked -30°)")
 		and _angle(_world.get_brick(int(arm["socket"])).transform.basis, was.basis) < TURN)
+	await _aligned_end_for_end()
+
+
+## A session's socket put on a ball by its connectors (edit_model's attach,
+## Attach.pose), aligned end for end, its own -z along the model's +z, as
+## f1's last walk had it: half a turn about up, studs up, and its -z along
+## +z; not half a turn about a level line, studs down.
+func _aligned_end_for_end() -> void:
+	var a: Attach.Point = Attach.pick(Attach.points_of(_library, "15456"), "ball", 0)
+	var b: Attach.Point = Attach.pick(Attach.points_of(_library, "3730"), "ball", 0)
+	var posed: Dictionary = Attach.pose(Transform3D.IDENTITY, a, b,
+		{"align": [Vector3(0, 0, -1), Vector3(0, 0, 1)]}) if a != null and b != null else {}
+	var up_kept: float = -1.0
+	var along: float = -1.0
+	if posed.has("at"):
+		var at: Basis = (posed["at"] as Transform3D).basis
+		up_kept = (at * Vector3.UP).dot(Vector3.UP)
+		along = (at * Vector3(0, 0, -1)).dot(Vector3(0, 0, 1))
+	_check("a socket put on a ball aligned end for end (-z along +z): its -z along +z (%.3f), its up kept (%.3f)"
+		% [along, up_kept], along > 0.999 and up_kept > 0.999)
 
 
 ## f1's model: a stand of bricks on a baseplate, 15456 on top with its ball
