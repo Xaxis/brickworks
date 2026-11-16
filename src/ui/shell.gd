@@ -2811,6 +2811,11 @@ func handle_key(key: InputEventKey) -> bool:
 			# Ctrl+Shift+P for a private window.
 			if held and key.shift_pressed and not key.alt_pressed and not OS.has_feature("web"):
 				return run("palette")
+		KEY_H:
+			# Find and replace (EditVerbs leaves Ctrl-Shift-H here): Shift-H
+			# alone shows only the selection, Ctrl-H hides.
+			if held and key.shift_pressed and not key.alt_pressed:
+				return run("find_replace")
 		KEY_F2:
 			if can("rename_assembly"):
 				run("rename_assembly")
