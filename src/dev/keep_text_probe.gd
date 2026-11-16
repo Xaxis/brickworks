@@ -2362,6 +2362,13 @@ func _step_attacks() -> void:
 		for op: String in ["merge", "remove"]:
 			row.append(await _emptied_op(str(entry[0]), text, op))
 		rows.append(row)
+	for entry: Array in STEP_EMPTIED:
+		if not _ops_wanted("%s, a step put in, a part taken off" % entry[0]):
+			continue
+		var text: String = FileAccess.get_file_as_string(str(entry[1]))
+		print("\n%s, a step put in, a part taken off (%s)" % [entry[0], str(entry[1]).get_file()])
+		rows.append(["%s, a step put in, a part taken off" % entry[0],
+			await _insert_then_delete(str(entry[0]), text)])
 	print("\nstep edits the thirty do not make: lines changed / lines moved")
 	for row: Array in rows:
 		print("  %-44s %s" % [str(row[0]).left(44), " ".join(row.slice(1).map(
@@ -2443,6 +2450,67 @@ func _emptied_op(name: String, text: String, op: String) -> String:
 	await _frames(4)
 	ok = _check("...redone twice: the step edit's file again", _store.saved_text() == edited) and ok
 	var mark: String = "%d/%d" % [changed, moved]
+	return mark if ok else "FAIL " + mark
+
+
+## A step put in after a step, holding the middle part of the next of three
+## parts or more; then that step's last part taken off (streview). The file's
+## step now went two ways, one part each: the half with its first part stays
+## its step, so the lines above that part (LPub's INSERT PAGE) stay with it,
+## and the take-off changes its own line alone. Undone twice, as opened.
+func _insert_then_delete(name: String, text: String) -> String:
+	await _open(text, name)
+	_live_flow = false
+	_own_flow = false
+	var depth: int = _builder.history_depth()
+	var unedited: String = _store.saved_text()
+	var steps: Array = _ops_steps("")
+	var at: int = -1
+	for d: int in steps.size():
+		for k: int in [steps.size() / 2 - 1 - d, steps.size() / 2 - 1 + d]:
+			if at < 0 and k >= 0 and k + 1 < steps.size() and (steps[k + 1][1] as Array).size() >= 3 \
+					and _only_parts("", int(steps[k + 1][0])):
+				at = k
+	if at < 0:
+		print("  --  %d steps, none fit" % steps.size())
+		return "--"
+	var b1: Array = steps[at + 1][1]
+	# Its first part's line, as the file has it (Placement.line counts from 0).
+	var read: PackedStringArray = text.split("\n")
+	var first: String = read[_line_of(int(b1[0]))] if _line_of(int(b1[0])) < read.size() else ""
+	if not first.begins_with("1 "):
+		first = ""
+	var said: String = _shell.change_steps("new", [b1[b1.size() / 2]], _ops_step("", steps[at]))
+	await _frames(4)
+	var inserted: String = _store.saved_text()
+	var deep: int = _builder.history_depth()
+	_select_only([b1[b1.size() - 1]])
+	var taken: int = _builder.remove_selection()
+	await _frames(4)
+	var edited: String = _store.saved_text()
+	var whole: String = str(_store.get("last_whole"))
+	var changed: int = _diff_size(_own_lines(inserted), _own_lines(edited))
+	var above: Callable = func(saved: String) -> String:
+		var lines: PackedStringArray = _own_lines(saved)
+		var n: int = lines.find(first)
+		return lines[n - 1] if n > 0 else "(none)"
+	var ok: bool = _check("a step put in after step %d (\"%s\"), then %d part of the next taken off: %s, "
+		% [int(steps[at][0]), said.get_slice("\n", 0).left(60), taken]
+		+ "%d lines changed for 1; above its first part (%s) \"%s\", was \"%s\"" % [changed,
+		first.left(30), str(above.call(edited)).left(40), str(above.call(unedited)).left(40)],
+		taken == 1 and whole.is_empty() and changed <= 1 and not first.is_empty()
+		and above.call(edited) == above.call(unedited))
+	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
+		print("        " + "\n        ".join(_lines_unlike(inserted, edited)))
+	await _back_to(deep)
+	ok = _hard("...undone: the step put in, as before the take-off", _store.saved_text() == inserted) and ok
+	await _back_to(depth)
+	ok = _hard("...undone again: the file as it was opened", _store.saved_text() == unedited) and ok
+	_builder.redo()
+	_builder.redo()
+	await _frames(4)
+	ok = _check("...redone twice: the take-off's file again", _store.saved_text() == edited) and ok
+	var mark: String = "%d/1" % changed
 	return mark if ok else "FAIL " + mark
 
 

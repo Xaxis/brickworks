@@ -1165,6 +1165,10 @@ func _step_lines(section: String, step: int) -> Array:
 
 
 static func _is_step(line: String) -> bool:
+	# A save keys every line of two texts by this, so a line with no STEP
+	# in it goes before it is split (stfix: 8466-1's 311k lines, +1.9 s).
+	if line.findn("STEP") < 0:
+		return false
 	# Any run of spaces and tabs between the words, as LDraw reads them.
 	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
 	return words.size() >= 2 and words[0] == "0" \
@@ -1882,9 +1886,11 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 	var origin_count: Dictionary = {}
 	for was: int in votes:
 		var best: int = -1
+		# votes[was] holds its steps in the order of their first lines, so on
+		# a tie the step that holds the file step's earliest line stays: the
+		# lines above it, an LPub INSERT PAGE say, stay with it (stfix).
 		for now: int in votes[was]:
-			if best < 0 or int(votes[was][now]) > int(votes[was][best]) \
-					or int(votes[was][now]) == int(votes[was][best]) and now < best:
+			if best < 0 or int(votes[was][now]) > int(votes[was][best]):
 				best = now
 			if int(votes[was][now]) > int(origin_count.get(now, 0)):
 				origin_count[now] = int(votes[was][now])
