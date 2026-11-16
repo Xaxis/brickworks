@@ -24,6 +24,10 @@
 //     --phone                     a phone's window, 390 x 844 at 3x, by touch: a
 //                                 phone keeps the bin behind a button, so the load
 //                                 is timed to its first frame, not to the bin
+//     --after=URL                 each cold load a return after a release: its
+//                                 profile visits URL (relative to --url: another
+//                                 build of the same deployment) to its goal first,
+//                                 so what the two builds share is in its cache
 //
 // Each load then says what the start waited for, file by file (the start's
 // files): the engine's script, its wasm and its pack, which the engine
@@ -107,9 +111,13 @@ if (!args.url) {
 const bypass = args.bypass && args.bypass !== true ? String(args.bypass) : (process.env.BW_BYPASS || "");
 const assistant = Boolean(args.assistant);
 const asked = assistant ? withAssistant(String(args.url)) : String(args.url);
-const url = bypass
-  ? `${asked}${asked.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
-  : asked;
+const bypassed = (u) => (bypass
+  ? `${u}${u.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : u);
+const url = bypassed(asked);
+// --after: the build visited before each cold load, as a person who came
+// before a release comes back after it (tools/web/place_build.py).
+const before = args.after && args.after !== true ? new URL(String(args.after), String(args.url)).href : "";
 const PROFILES = {
   broadband: { down: 20, up: 5, rtt: 40 },
   slow: { down: 5, up: 1, rtt: 100 },
@@ -327,7 +335,7 @@ async function saveTrace(cdp, path, extra) {
 }
 
 // One load of [url] in [context]: what came and when, and the marks.
-async function load(context, profile, label) {
+async function load(context, profile, label, at = url) {
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   await cdp.send("Network.enable");
@@ -384,7 +392,7 @@ async function load(context, profile, label) {
     await cdp.send("Tracing.start", { transferMode: "ReturnAsStream", streamFormat: "json",
       traceConfig: { recordMode: "recordAsMuchAsPossible", includedCategories: TRACED } });
   }
-  await page.goto(url, { waitUntil: "commit", timeout: 120000 });
+  await page.goto(at, { waitUntil: "commit", timeout: 120000 });
   // Counted from the page's own process, which the navigation may have
   // changed: what it had spent as it began.
   const cpu0 = await cpuNow(cdp);
@@ -607,10 +615,16 @@ const results = [];
 let failed = false;
 for (const profile of profiles) {
   const held = PROFILES[profile] ? `${PROFILES[profile].down} Mbps, ${PROFILES[profile].rtt} ms` : "not held";
-  console.log(`load_check: ${asked}, ${profile} (${held}), ${phone ? "a phone's window, " : ""}${runs} cold${warm ? " and warm" : ""}`);
+  console.log(`load_check: ${asked}, ${profile} (${held}), ${phone ? "a phone's window, " : ""}${runs} cold${warm ? " and warm" : ""}`
+    + `${before ? `, each cold load after a visit to ${before}` : ""}`);
   for (let n = 1; n <= runs; n++) {
     const { context, done } = await visitor();
     try {
+      if (before) {
+        const first = await load(context, profile, `before ${n}`, bypassed(before));
+        const reached = goal(first.marks);
+        console.log(`  before ${n}: ${Number.isFinite(reached) ? `${goalSaid} ${sec(reached)} s` : `never ${goalSaid}`}, ${mb(first.bytes)} MB`);
+      }
       const cold = await load(context, profile, `cold ${n}`);
       results.push(cold);
       sayRun(cold);

@@ -23,7 +23,21 @@ plan with Claude as the client.
   are in [account](account.md). **The person's own key never reaches the
   server** — there is nothing on it that could take one.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
-  under `/b/<sha>/`, serves its page at `/app` and then proves it in a browser. With
+  under `/b/<sha>/`, serves its page at `/app` and then proves it in a browser.
+  The engine's own files (`index.js`, `index.wasm` and the audio worklets) go
+  to `/e/<hash of their bytes>/` instead (`tools/web/place_build.py`, which
+  also makes the page's names absolute and gives its `GODOT_CONFIG` an
+  `engine` the shell starts from), so a person back after a release keeps
+  the 6.9 MB wasm while the engine is the same, as every release of one Godot
+  is (webstart10, 2026-11-16): before, every release was a new `/b/<sha>/`
+  and a return after it fetched the whole engine again. `/e/` is sent as
+  `/b/` is: the app's policy and isolation (each engine thread runs by the
+  policy its script came with), cached for good, brotli. Proves it: the
+  deploy log's "deploy: the engine at /e/<hash>/, the build at /b/<sha>/";
+  `site_check.mjs` HEADs `/e/<hash>/index.js` and `index.wasm` (200,
+  immutable, `Content-Encoding: br`, the app's policy, COEP); the page's
+  `<script src="/e/...">`; `python3 tools/minitest.py tests/test_place_build.py`
+  (5 passed). With
   `--prod` it ends only once brickworks.diy/app names the new sha: the domain
   lagged `vercel promote` by up to a minute, twice, and checks run on "done"
   measured the previous build. It first runs `tools/storage_parts.py`, which
@@ -263,6 +277,11 @@ plan with Claude as the client.
   it came over the wire, when it was handed to the page (the page's thread
   is the compile's until it ends) and how long Main waited for it; the rest
   of the parts, which nothing waits for; and the rest.
+  `--after=URL` makes each cold load a return after a release: its profile
+  first visits URL (relative to `--url`, another build of the same
+  deployment) to its goal, so what the two builds share comes from the
+  cache, as the engine at `/e/<hash>/` does (`place_build.py`); the run says
+  "each cold load after a visit to ...", and "before N" for each first visit.
   `--trace=DIR` writes a Chrome trace of each load (V8's sampled CPU
   profile of every thread, GC, wasm tiers) with its marks beside it, and
   `tools/web/trace_window.py TRACE --compile` (or `--later=NAME`, or
