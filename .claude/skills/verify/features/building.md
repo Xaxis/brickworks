@@ -1618,7 +1618,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`, answered by
   `Shell.handle_key`, which `EditVerbs` leaves it to; under LDCad's keys, whose
   Ctrl-Shift-H shows everything, `Ctrl-Shift-F`; Shift-H stays Show only the
-  selection, Ctrl-H Hide, smalls4) opens a bar over the view. A part's number or name (3023 finds 3023a
+  selection, Ctrl-H Hide, smalls4) opens a bar over the view, across the top of the
+  model's room and seated again whenever that room moves or narrows
+  (`Main._seat_find_replace`; binrow's binstay opens Stress beside it). A part's number or name (3023 finds 3023a
   and 3023b) and/or a colour to find, as it is seen: a copy placed by a
   mirror shows the other hand of a handed part, and is found as that. It
   lists where they are (the model's own parts, each sub-model with its

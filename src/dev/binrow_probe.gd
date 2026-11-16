@@ -350,6 +350,8 @@ func _put_brick() -> int:
 
 ## binstay: the bin open, a 2 x 4 on the baseplate, Stress opened, then the
 ## brick clicked, as the walk's round7 does it: the bin stays where it was.
+## And Find and replace's bar, opened before Stress, inside the narrower
+## room after (it stayed where it was and lay over Stress's Lift and Close).
 func _binstay(tag: String) -> void:
 	await _as_first_opened()
 	_main.call("clear_model")
@@ -364,9 +366,23 @@ func _binstay(tag: String) -> void:
 	var scroll: Control = _bin.get("_scroll")
 	var before: float = (_bin as Control).size.x
 	var was: bool = bin_dock.is_open()
+	# Find and replace open first, as round eight's walk had it: the bar is
+	# over the top of the model's room, and stays inside it as Stress opens.
+	_shell.run("find_replace")
+	await _settle()
 	_shell.run("stress")
 	await _settle()
 	var opened: bool = bin_dock.is_open() and scroll.is_visible_in_tree()
+	var find_bar: Control = _main.get("_find_replace_made")
+	var stress_rect: Rect2 = _shell.stress.panel.get_global_rect()
+	var bar_rect: Rect2 = find_bar.get_global_rect() if find_bar != null else Rect2()
+	var model_room: Rect2 = _main.call("_model_rect")
+	_check("%s ...Find and replace's bar, open before Stress, inside the model's room after it (%s in %s), clear of Stress's panel (%s)"
+		% [tag, bar_rect, model_room, stress_rect], find_bar != null and find_bar.visible
+		and model_room.grow(1.0).encloses(bar_rect) and not bar_rect.intersects(stress_rect))
+	if find_bar != null:
+		find_bar.call("close")
+		await _settle()
 	var beside: float = (_bin as Control).size.x
 	await _click(_camera.unproject_position(where.origin + Vector3(0, -2, 0)))
 	await _settle()

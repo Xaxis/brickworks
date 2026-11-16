@@ -8160,7 +8160,13 @@ func _find_replace() -> void:
 		if _touch != null:
 			_touch.place_panel(bar, Vector2(520.0, 480.0))
 		else:
-			get_viewport().size_changed.connect(_seat_find_replace)
+			# Seated again whenever the model's room moves or narrows, a
+			# column opened beside it as much as the window resized: seated
+			# only as the window changed, it stayed where it was when Stress
+			# opened beside the bin and lay over Stress's Lift and Close.
+			# The room's column too: it moves as a column opens to its left.
+			_over_model.item_rect_changed.connect(_seat_find_replace)
+			_over_model.get_parent().item_rect_changed.connect(_seat_find_replace)
 	if _touch == null:
 		_seat_find_replace()
 	_find_replace_made.call("open")
