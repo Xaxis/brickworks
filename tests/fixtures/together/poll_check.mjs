@@ -22,6 +22,14 @@
 //            says at 5 s, is taken back by a point without it, and a look
 //            not of its shape is refused; with none, the signature is the
 //            one it always was
+//   begins   pollreads (2026-11-16): a poll's reads from the moment it
+//            begins, its channel joining slower than a read on purpose, and
+//            slower than PEOPLE_MS: who is in it read once as it begins
+//
+// Each read is logged with its time ([what, ms]), so a test bars how often
+// a poll reads, not how many reads fit in a second of a busy box; and each
+// time a test bars is said with what this process could not run for in it
+// (stalled), so a busy box is not taken for a slow relay.
 import { createHash, webcrypto } from "node:crypto";
 
 process.env.SUPABASE_URL = "http://db.test";
@@ -47,6 +55,19 @@ async function tokenOf(sub) {
 }
 const tokens = { [ME]: await tokenOf(ME), [OTHER]: await tokenOf(OTHER), [STRANGER]: await tokenOf(STRANGER) };
 
+// What this process could not run for, the box being busy: a timer asked for
+// every millisecond, and each gap of more than 2 ms between two of them. A
+// time a test bars is said beside how much of it was that (stalledIn), as
+// the pointat flow's bar is less the frames the box took.
+const stalls = [];
+let tickAt = Date.now();
+const ticker = setInterval(() => {
+  const now = Date.now();
+  if (now - tickAt > 2) stalls.push([tickAt + 1, now]);
+  tickAt = now;
+}, 1);
+const stalledIn = (from, to) => stalls.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(b, to) - Math.max(a, from)), 0);
+
 // The session: the owner (OTHER) and this person (ME), and its changes.
 let store;
 const reset = () => {
@@ -59,6 +80,12 @@ const reset = () => {
     ],
     ops: [],
     reads: [],
+    // Each request to the database as [what, when], and when a channel last
+    // joined; each read held readMs, a channel's join joinMs (pollreads).
+    log: [],
+    joinedAt: null,
+    readMs: 0,
+    joinMs: 5,
     broadcasts: 0,
   };
 };
@@ -81,7 +108,9 @@ class StandInSocket extends EventTarget {
     // Broadcasts reach it once it has joined, as Realtime's do: what is
     // told before is not heard (joining, below, waits longer for it).
     setTimeout(() => {
+      if (!sockets.has(this)) return;
       this.topics.add(said.topic);
+      store.joinedAt = Date.now();
       this.said({ topic: said.topic, event: "phx_reply", ref: said.ref,
         payload: { status: "ok", response: { postgres_changes: [] } } });
     }, store?.joinMs ?? 5);
@@ -110,6 +139,8 @@ globalThis.fetch = async (url, options = {}) => {
   const table = where.pathname.replace("/rest/v1/", "");
   const q = where.searchParams;
   store.reads.push(`${method} ${table}`);
+  store.log.push([`${method} ${table}`, Date.now()]);
+  if (store.readMs) await sleep(store.readMs);
   if (table === "together_sessions") return answer([store.session]);
   if (table === "together_people") {
     const account = (q.get("account") || "").replace("eq.", "");
@@ -171,6 +202,7 @@ async function lines() {
     type: response.headers["content-type"], status: response.statusCode,
     more: said.map((one) => one.more === true), at: said.map((one) => one.people.find((p) => !p.me)?.at ?? null),
     moved_ms: moved >= 0 ? response.writes[moved].at - movedAt : null,
+    stalled: moved >= 0 ? stalledIn(movedAt, response.writes[moved].at) : null,
     last: JSON.parse(response.ended), seen_last: said.at(-1)?.seen,
   };
 }
@@ -178,10 +210,11 @@ async function lines() {
 async function whole() {
   reset();
   const response = responseOf();
+  const began = Date.now();
   const done = handler(ask({ s: SECRET, after: 0, seen: "" }), response);
   await done;
   return { type: response.headers["content-type"], writes: response.writes.length, last: JSON.parse(response.ended),
-    ms: response.ms };
+    ms: response.ms, stalled: stalledIn(began, Date.now()) };
 }
 
 async function refused() {
@@ -194,7 +227,10 @@ async function refused() {
   return { writes: response.writes.length, status: response.statusCode, last: JSON.parse(response.ended) };
 }
 
-async function reads(stream) {
+// The database's requests logged from [from], each [what, ms after from].
+const loggedSince = (from) => store.log.filter(([, at]) => at >= from).map(([what, at]) => [what, at - from]);
+
+async function reads(stream, slow = false) {
   reset();
   // Seen already: nothing to say, so it waits.
   const first = responseOf();
@@ -203,17 +239,48 @@ async function reads(stream) {
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
   await once;
   const seen = JSON.parse(first.ended).seen;
+  // pollreads: its channel joins slower than a read, on purpose.
+  if (slow) Object.assign(store, { joinMs: 120, readMs: 20 });
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream }), response);
   await sleep(300);
   store.reads = [];
+  const from = Date.now();
   await sleep(1000);
   const counted = store.reads.slice();
+  const log = loggedSince(from);
+  const ms = Date.now() - from;
   store.ops.push({ seq: 2, author: OTHER, client: "abcdef", cid: 1, changes: {} });
   await done;
+  Object.assign(store, { joinMs: 5, readMs: 0 });
   const count = (what) => counted.filter((one) => one === what).length;
   return { writes: response.writes.length, ops: count("GET together_ops"), people: count("GET together_people"),
-    sessions: count("GET together_sessions") };
+    sessions: count("GET together_sessions"), log, ms };
+}
+
+// pollreads: a poll's requests to the database from the moment it is asked,
+// its channel joining in [joinMs] and each read taking [readMs], for 1.5 s
+// of waiting with nobody pointing; and when its channel joined.
+async function begins(joinMs, readMs) {
+  reset();
+  const first = responseOf();
+  const once = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), first);
+  await sleep(100);
+  store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
+  await once;
+  const seen = JSON.parse(first.ended).seen;
+  Object.assign(store, { joinMs, readMs, joinedAt: null, log: [] });
+  const from = Date.now();
+  const response = responseOf();
+  const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
+  await sleep(1500);
+  const log = loggedSince(from);
+  const ms = Date.now() - from;
+  const joined = store.joinedAt === null ? null : store.joinedAt - from;
+  store.ops.push({ seq: 2, author: OTHER, client: "abcdef", cid: 1, changes: {} });
+  await done;
+  Object.assign(store, { joinMs: 5, readMs: 0 });
+  return { joinMs, readMs, joined, writes: response.writes.length, log, ms };
 }
 
 // The other's pointer sent as their page sends it.
@@ -256,8 +323,8 @@ async function told(stream) {
   await done;
   const said = [...response.writes.map((one) => JSON.parse(one.text)), JSON.parse(response.ended)];
   const atOf = (one) => one.people?.find((p) => !p.me)?.at ?? null;
-  return { stranger_status: stranger.statusCode, quiet, ms: outAt - sentAt, reads_between: readsBetween,
-    shown: said.map(atOf).filter(Boolean), broadcasts: store.broadcasts,
+  return { stranger_status: stranger.statusCode, quiet, ms: outAt - sentAt, stalled: stalledIn(sentAt, outAt),
+    reads_between: readsBetween, shown: said.map(atOf).filter(Boolean), broadcasts: store.broadcasts,
     strangers_shown: said.some((one) => (one.people || []).length !== 2) };
 }
 
@@ -297,17 +364,20 @@ async function pointing(listening) {
   await pointAs(OTHER, [0, 0, 0]);
   await sleep(300);
   store.reads = [];
+  const from = Date.now();
   for (let n = 1; n <= 4; n++) {
     await pointAs(OTHER, [n, 0, 0]);
     await sleep(250);
   }
   const counted = store.reads.slice();
+  const log = loggedSince(from);
+  const ms = Date.now() - from;
   store.ops.push({ seq: 2, author: OTHER, client: "abcdef", cid: 1, changes: {} });
   await done;
   globalThis.WebSocket = StandInSocket;
   const count = (what) => counted.filter((one) => one === what).length;
   return { ops: count("GET together_ops"), people: count("GET together_people"), sessions: count("GET together_sessions"),
-    lines: response.writes.length };
+    lines: response.writes.length, log, ms };
 }
 
 // pointat: the other's point with a part pointed out ([look]), as their page
@@ -362,7 +432,8 @@ async function looked() {
   // and how, this poll did.
   const firstLine = said.find((one) => one.people?.find((p) => !p.me)?.look?.n === 1763000000000);
   const who = firstLine?.people?.find((p) => !p.me)?.who;
-  return { always: always === seen, sent: sent.statusCode, ms: outAt === null ? null : outAt - sentAt, looks,
+  return { always: always === seen, sent: sent.statusCode, ms: outAt === null ? null : outAt - sentAt,
+    stalled: outAt === null ? null : stalledIn(sentAt, outAt), looks,
     kept: store.people[0].pointer, refused, pointed: firstLine?.pointed?.[who] ?? null, sentAt, lineAt: firstLine?.at ?? null };
 }
 
@@ -412,11 +483,14 @@ async function joining() {
   const line = response.writes.map((one) => JSON.parse(one.text))
     .find((one) => one.people?.find((p) => !p.me)?.look?.n === 1763000000010);
   const who = line?.people?.find((p) => !p.me)?.who;
-  return { sentMs: sentAt - began, ms: outAt === null ? null : outAt - sentAt, via: line?.pointed?.[who]?.[2] ?? null };
+  return { sentMs: sentAt - began, ms: outAt === null ? null : outAt - sentAt,
+    stalled: outAt === null ? null : stalledIn(sentAt, outAt), via: line?.pointed?.[who]?.[2] ?? null };
 }
 
 const result = { looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),
-  reads: { lines: await reads(true), whole: await reads(false) },
+  reads: { lines: await reads(true), whole: await reads(false), lines_slow_join: await reads(true, true) },
+  begins: [await begins(5, 0), await begins(120, 20), await begins(400, 20)],
   told: { lines: await told(true), whole: await told(false), taken_out: await takenOut() },
   pointing: { listening: await pointing(true), not: await pointing(false) } };
 console.log(JSON.stringify(result));
+clearInterval(ticker);

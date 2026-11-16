@@ -70,7 +70,11 @@ app, joined by a link (docs/TOGETHER.md).
   session's Realtime channel (`channelOf`, `tell`, `listen` in
   api/together.js), and a poll answers with it; it also reads who is in
   it every 250 ms, and every 100 ms while another's pointer moved in the
-  last 2 s if it is not listening yet. A browser's poll asks
+  last 2 s if it is not listening yet. A poll listens first and reads who
+  is in it once its channel has joined (at most 250 ms after it began),
+  once: what was told before is in that read (pollreads; the `begins`
+  case barring its reads by how often, a join slower than a read on
+  purpose). A browser's poll asks
   `stream: true` and reads its answer a line at a time (`_ask_page`,
   `_on_page_heard`): who is in it comes as a line
   `{more: true, people, seen, at}` the moment it changes and the poll
@@ -314,7 +318,11 @@ signed in as someone else.
   (`ordered`: the database's guard, `pointer_at.lt.<now>`); a point told
   while a new poll's channel is still joining goes out the moment it has
   joined (`joining`: 77 ms, against 275 before), the stand-in channel
-  hearing only once joined, as Realtime does.
+  hearing only once joined, as Realtime does; it is in the poll's one
+  first read of who is in it, taken once the channel has joined, so a
+  poll reads no more than before pointfix (pollreads: `begins`, read
+  counts barred by the gap between two reads, and timed bars less what
+  the busy box held the fixture for, `stalled`).
 - The desktop pair probe's B8 part (sections 4c to 4e and 6 of
   `together_probe.gd`, run with the relay holding
   `together_snapshot_parts`): selection outlined in e8590c, pointer p95

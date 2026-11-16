@@ -24,14 +24,34 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+# api/together.js's: a step of a poll's wait, and how often in it who is in
+# it and the session are read again.
+POLL_MS, PEOPLE_MS, SESSION_MS = 100, 250, 1000
 
 
 @functools.cache
 def _run() -> dict:
     done = subprocess.run(["node", "tests/fixtures/together/poll_check.mjs"], cwd=ROOT, capture_output=True,
-                          text=True, timeout=120)
+                          text=True, timeout=300)
     assert done.returncode == 0, done.stderr[-3000:]
     return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+def _times(log: list, what: str) -> list[int]:
+    return [at for kind, at in log if kind == what]
+
+
+def _no_more_often(log: list, where) -> None:
+    """Who is in it read no sooner after the last read of them than
+    PEOPLE_MS, the changes POLL_MS, the session SESSION_MS: barred by how
+    often, not by how many reads fit in a second, which a busy box makes
+    fewer, never more (rel-m305's gate, 4 reads of the changes in one second
+    against 10 in the next, failed on that, pollreads 2026-11-16). 2 ms for
+    a timer's and a clock's rounding."""
+    for what, every in (("GET together_people", PEOPLE_MS), ("GET together_ops", POLL_MS),
+                        ("GET together_sessions", SESSION_MS)):
+        times = _times(log, what)
+        assert all(b - a >= every - 2 for a, b in zip(times, times[1:])), (where, what, times)
 
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
@@ -43,7 +63,8 @@ def test_a_pointer_moved_while_the_poll_waits_goes_out_as_a_line():
     # Who is in it at once, then the other's pointer, each a line of its own.
     assert lines["more"] == [True, True]
     assert lines["at"] == [None, [1, 2, 3]]
-    assert lines["moved_ms"] is not None and lines["moved_ms"] < 600
+    # Less what the box did not let the fixture run for (poll_check.mjs).
+    assert lines["moved_ms"] is not None and lines["moved_ms"] - lines["stalled"] < 600, lines
     # The poll waited on, and ended with the change, as before.
     assert [op["seq"] for op in lines["last"]["ops"]] == [1]
     assert lines["last"]["seen"] == lines["seen_last"]
@@ -53,7 +74,7 @@ def test_a_poll_asked_plainly_is_answered_whole_as_before():
     whole = _run()["whole"]
     assert whole["type"] == "application/json" and whole["writes"] == 0
     assert whole["last"]["ops"] == [] and len(whole["last"]["people"]) == 2
-    assert whole["ms"] < 1000
+    assert whole["ms"] - whole["stalled"] < 1000, whole
 
 
 def test_a_refusal_after_the_first_line_is_said_in_the_last():
@@ -64,16 +85,40 @@ def test_a_refusal_after_the_first_line_is_said_in_the_last():
 
 
 def test_waiting_with_nobody_pointing_reads_no_more():
-    reads = _run()["reads"]
-    assert reads["lines"]["writes"] == 0
-    for kind in ("ops", "people", "sessions"):
-        assert abs(reads["lines"][kind] - reads["whole"][kind]) <= 1, reads
+    # Asked a line at a time, asked plainly, and a line at a time with its
+    # channel joining slower than a read: each waits, and reads no more often
+    # than its steps allow. (Each against the other in turn, one second each,
+    # it failed under load before pointfix as after: bugbar's gate, 11-13.)
+    for asked, reads in _run()["reads"].items():
+        assert reads["writes"] == 0, (asked, reads)
+        assert reads["ops"] >= 1 and reads["people"] >= 1, (asked, reads)
+        _no_more_often(reads["log"], asked)
+
+
+def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
+    # pollreads (2026-11-16): who is in it read once as a poll begins, once
+    # its channel listens; not read, then read again the moment it joined
+    # (pointfix's first way), which on Vercel was every poll that waited:
+    # Realtime's join takes longer than a read. Its channel joining in 5 ms;
+    # in 120, slower than a read of 20 ms, on purpose; and in 400, slower
+    # than PEOPLE_MS, so not waited for.
+    for case in _run()["begins"]:
+        where = (case["joinMs"], case["readMs"], case["joined"])
+        log = case["log"]
+        assert case["writes"] == 0 and len(_times(log, "PATCH together_people")) == 1, (where, log)
+        people, sessions = _times(log, "GET together_people"), _times(log, "GET together_sessions")
+        assert people and sessions and abs(people[0] - sessions[0]) <= 1, (where, log)
+        _no_more_often(log, where)
+        if case["joinMs"] < PEOPLE_MS:
+            assert case["joined"] is not None and people[0] >= case["joined"], (where, log)
+        else:
+            assert case["joined"] is None or people[0] <= case["joined"], (where, log)
 
 
 def test_a_pointer_sent_goes_out_at_once_without_a_read():
     for asked in ("lines", "whole"):
         told = _run()["told"][asked]
-        assert told["ms"] < 50 and told["reads_between"] == 0, (asked, told)
+        assert told["ms"] - told["stalled"] < 50 and told["reads_between"] == 0, (asked, told)
         assert [4, 5, 6] in told["shown"]
 
 
@@ -89,12 +134,19 @@ def test_nobody_outside_the_session_is_shown_by_the_channel():
 
 def test_somebody_pointing_reads_no_more_than_nobody():
     run = _run()
-    listening, idle, unheard = run["pointing"]["listening"], run["reads"]["lines"], run["pointing"]["not"]
-    # Listening on the channel, a poll reads who is in it as often as when
-    # nobody points; not listening, it reads at every step as before.
-    assert abs(listening["people"] - idle["people"]) <= 1, (listening, idle)
-    assert unheard["people"] > listening["people"]
-    assert listening["ops"] <= idle["ops"] + 1 and listening["sessions"] <= idle["sessions"] + 1
+    listening, unheard = run["pointing"]["listening"], run["pointing"]["not"]
+    # Listening on the channel, a poll reads who is in it no more often than
+    # when nobody points.
+    assert listening["people"] >= 1, listening
+    _no_more_often(listening["log"], "listening")
+    # Not listening, it reads them at every step as before: a step more than
+    # POLL_MS after the last read of them reads them again (its own rule, so
+    # a busy box's longer steps read them at each).
+    people = _times(unheard["log"], "GET together_people")
+    for at in _times(unheard["log"], "GET together_ops"):
+        before = [one for one in people if one <= at + 1]
+        assert not before or at - before[-1] <= POLL_MS + 2, (at, unheard["log"])
+    assert len(people) >= 2, unheard
 
 
 # -- pointat (APP_UX8 #17): a part pointed out, with the pointer ------------------
@@ -102,10 +154,10 @@ def test_somebody_pointing_reads_no_more_than_nobody():
 
 def test_a_part_pointed_out_goes_out_at_once_with_its_age():
     looked = _run()["looked"]
-    assert looked["sent"] == 200 and looked["ms"] is not None and looked["ms"] < 50, looked
+    assert looked["sent"] == 200 and looked["ms"] is not None and looked["ms"] - looked["stalled"] < 50, looked
     first = next(look for look in looked["looks"] if look and look["n"] == 1763000000000)
     assert first["sel"] == ["ab12.3"] and first["at"] == [1, 2, 3] and first["claude"] is False
-    assert 40 <= first["age"] < 400
+    assert 40 <= first["age"] < 400 + looked["stalled"], looked
 
 
 def test_a_part_pointed_out_ages_out_at_5_s_and_is_taken_back_without_it():
@@ -144,7 +196,7 @@ def test_a_part_pointed_out_while_the_poll_joins_its_channel_is_read_once_joined
     # the moment it has joined (~70 ms on), not at the next read of who is in
     # it (PEOPLE_MS, ~220 ms on).
     assert joining["via"] == "read", joining
-    assert joining["ms"] is not None and joining["ms"] < 150, joining
+    assert joining["ms"] is not None and joining["ms"] - joining["stalled"] < 150, joining
 
 
 def test_a_part_pointed_out_beside_a_pointer_on_its_way_is_kept():

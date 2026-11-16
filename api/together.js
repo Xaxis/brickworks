@@ -215,11 +215,12 @@ async function tell(id, said) {
 }
 
 // Session [id]'s channel, [heard] called with each pointer told on it, until
-// closed. joined() is whether it is listening yet; [joining] is called once
-// it is.
-function listen(id, heard, joining = () => {}) {
+// closed. joined() is whether it is listening yet; ready(ms) waits until it
+// is, or cannot be (refused, or its socket failed or closed), or [ms] have
+// passed.
+function listen(id, heard) {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  const none = { joined: () => false, close() {} };
+  const none = { joined: () => false, ready: async () => {}, close() {} };
   if (typeof WebSocket !== "function" || !key) return none;
   let socket;
   try {
@@ -229,6 +230,8 @@ function listen(id, heard, joining = () => {}) {
   }
   const topic = `realtime:${channelOf(id)}`;
   let joined = false;
+  let settle;
+  const settled = new Promise((done) => { settle = done; });
   socket.addEventListener("open", () => socket.send(JSON.stringify({ topic, event: "phx_join", ref: "1", join_ref: "1",
     payload: { config: { broadcast: { self: false, ack: false }, presence: { key: "" }, postgres_changes: [],
       private: false } } })));
@@ -238,11 +241,19 @@ function listen(id, heard, joining = () => {}) {
     if (said?.topic !== topic) return;
     if (said.event === "phx_reply" && said.ref === "1") {
       joined = said.payload?.status === "ok";
-      if (joined) joining();
+      settle();
     } else if (said.event === "broadcast" && said.payload?.event === "point") heard(said.payload.payload);
   });
-  socket.addEventListener("error", () => {});
-  return { joined: () => joined, close: () => { try { socket.close(); } catch {} } };
+  socket.addEventListener("error", () => settle());
+  socket.addEventListener("close", () => settle());
+  const ready = (ms) => new Promise((done) => {
+    const timer = setTimeout(done, ms);
+    settled.then(() => {
+      clearTimeout(timer);
+      done();
+    });
+  });
+  return { joined: () => joined, ready, close: () => { settle(); try { socket.close(); } catch {} } };
 }
 
 function secretOf(body) {
@@ -670,15 +681,17 @@ async function poll(request, me, response = null) {
     learned.set(account, [at, Date.now(), via]);
   };
   let wake = null;
-  // Listened on from the start, beside the two trips below, and who is in it
-  // read again the moment it has joined: what was told before then is in
-  // that read. Read first and listened on after, a pointer told in between
-  // was heard by neither, and waited for the next read of who is in it: a
-  // point 356 ms from the server to the poll, against 20-50 told (the
-  // preview's round 15, pointfix, 2026-11-15). A poll begins again after
-  // every change it gives, so a room at work was often between the two.
-  let rejoin = false;
-  let nudge = null;
+  // Listened on from the start, and who is in it read once it listens: what
+  // was told before then is in that read, and what is told after is heard.
+  // Read first and listened on after, a pointer told in between was heard
+  // by neither, and waited for the next read of who is in it: a point 356
+  // ms from the server to the poll, against 20-50 told (the preview's round
+  // 15, pointfix, 2026-11-15). A poll begins again after every change it
+  // gives, so a room at work was often between the two. Read at once and
+  // again when it joined, as pointfix first had it, each poll that waited
+  // read who is in it twice as it began: Realtime's join takes longer than
+  // a read (pollreads, 2026-11-16).
+  const opened = Date.now();
   const channel = listen(id, (said) => {
     if (typeof said?.account !== "string" || typeof said.pointer_at !== "string" || !Date.parse(said.pointer_at)) return;
     const was = moved.get(said.account);
@@ -686,14 +699,14 @@ async function poll(request, me, response = null) {
     moved.set(said.account, said);
     learn(said.account, said.pointer_at, "told");
     wake?.();
-  }, () => {
-    rejoin = true;
-    nudge?.();
   });
   // Two trips before it waits, not four: this person heard from (their row,
   // if they are in it and not taken out), then the session and who is in it
   // at once. A poll begins again after every change it gives, so what it
-  // costs to begin is in every change.
+  // costs to begin is in every change. The second waits for the channel, the
+  // first beside it, but never past when who is in it would have been read
+  // again (PEOPLE_MS): a channel slower than that is not waited for, and
+  // what is told before it joins is read then, as before pointfix.
   let mine;
   let all;
   let session;
@@ -701,8 +714,7 @@ async function poll(request, me, response = null) {
     [mine] = (await db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
       method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null }, prefer: "return=representation",
     })) || [];
-    // Joined already, the channel told all this read does not have.
-    rejoin = false;
+    await channel.ready(opened + PEOPLE_MS - Date.now());
     [session, all] = await Promise.all([sessionRow(id), peopleRows(id)]);
     if (!mine || !session || session.ended_at) session = await inSession(id, me);
   } catch (error) {
@@ -733,7 +745,8 @@ async function poll(request, me, response = null) {
     return { ...row, pointer: said.pointer, pointer_at: said.pointer_at,
       seen_at: Date.parse(row.seen_at) >= Date.parse(said.pointer_at) ? row.seen_at : said.pointer_at };
   });
-  for (const row of all) learn(row.account, row.pointer_at, "began");
+  // Had before the poll began, or told while its channel joined and read.
+  for (const row of all) learn(row.account, row.pointer_at, Date.parse(row.pointer_at) < opened ? "began" : "read");
   const pointed = () => {
     const out = {};
     for (const row of withMoved(all)) {
@@ -767,7 +780,6 @@ async function poll(request, me, response = null) {
   const rest = () => new Promise((done) => {
     const timer = setTimeout(() => {
       wake = null;
-      nudge = null;
       done(false);
     }, POLL_MS);
     wake = () => {
@@ -778,15 +790,7 @@ async function poll(request, me, response = null) {
       if (streams) return say(signature);
       clearTimeout(timer);
       wake = null;
-      nudge = null;
       done(true);
-    };
-    // The channel joined: read at once (rejoin), not at the next read.
-    nudge = () => {
-      clearTimeout(timer);
-      wake = null;
-      nudge = null;
-      done(false);
     };
   });
   try {
@@ -804,12 +808,9 @@ async function poll(request, me, response = null) {
       // database asked no more. Read at every step while somebody else
       // points, unless the channel tells this poll where they are.
       const quick = lively(withMoved(all), me) && !channel.joined();
-      const due = rejoin || Date.now() - checked > (quick ? POLL_MS : PEOPLE_MS);
+      const due = Date.now() - checked > (quick ? POLL_MS : PEOPLE_MS);
       const sessionDue = due && Date.now() - looked > SESSION_MS;
-      if (due) {
-        checked = Date.now();
-        rejoin = false;
-      }
+      if (due) checked = Date.now();
       if (sessionDue) looked = Date.now();
       const [rows, fresh, standing] = await Promise.all([
         db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
@@ -836,7 +837,6 @@ async function poll(request, me, response = null) {
     }
   } finally {
     wake = null;
-    nudge = null;
     channel.close();
   }
 }
