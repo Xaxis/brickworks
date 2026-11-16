@@ -173,9 +173,18 @@ async function context(width, theme, { touch = false } = {}) {
 
 const browser = await launch({ signedOut: true });
 const person = deployed ? `delivered+bw-signin-${randomBytes(4).toString("hex")}@resend.dev` : "builder@example.org";
+// A code is sent an address four times in any fifteen minutes, no more
+// (api/otp.js may_ask_for_code): the header's three sizes ask three for
+// [person], so the two tabs and /admin ask theirs for [second]. All five
+// for one address, /admin's was refused, and it read as the console never
+// asked again (rel-m305, 10:02:37Z, the fifth in five minutes).
+const second = deployed ? `delivered+bw-signin2-${randomBytes(4).toString("hex")}@resend.dev` : person;
 const session_ = deployed ? await import("./session.mjs") : null;
-if (deployed) await session_.mintSession(person, { age: true, welcome: true });
-const codeFor = async () => (deployed ? session_.mintCode(person) : RIGHT);
+if (deployed) {
+  await session_.mintSession(person, { age: true, welcome: true });
+  await session_.mintSession(second, { age: true, welcome: true });
+}
+const codeFor = async (who = person) => (deployed ? session_.mintCode(who) : RIGHT);
 /// A sign-in as this browser keeps it (localStorage brickworks.session):
 /// on a deployment a new one each time, by the password grant (a refresh
 /// token used twice ends the whole session).
@@ -241,8 +250,8 @@ async function headerSignIn(page, phone) {
 }
 
 /// The address typed and Email me a code pressed: true once the code is asked for.
-async function toCode(page) {
-  await page.locator("dialog.sign-in input[type=email]").fill(person);
+async function toCode(page, who = person) {
+  await page.locator("dialog.sign-in input[type=email]").fill(who);
   await page.locator("dialog.sign-in button[type=submit]").click();
   return until(page, () => document.querySelector("dialog.sign-in .code-boxes input")?.checkVisibility(), null, 30000);
 }
@@ -496,16 +505,16 @@ try {
     if (typed) await words.fill("Half a note, not sent yet.");
     check("tab C: words typed into a field of its page", typed);
     await headerSignIn(a, false);
-    const signed = await until(a, () => document.querySelector("dialog.sign-in")?.open, null, 6000) && await toCode(a);
+    const signed = await until(a, () => document.querySelector("dialog.sign-in")?.open, null, 6000) && await toCode(a, second);
     if (signed) {
       await a.locator("dialog.sign-in .code-boxes input").first().focus();
-      await a.keyboard.type(await codeFor());
+      await a.keyboard.type(await codeFor(second));
     }
     const inA = signed && await until(a, () => !document.querySelector("dialog.sign-in"), null, 45000);
     const inB = await until(b, () => [...document.querySelectorAll(".site-head .account-btn")].some((one) => one.checkVisibility())
       && window.__kept === true, null, 15000);
     check("tab A signed in: tab B's header is the avatar at once, no reload", inA && inB,
-      JSON.stringify({ inA, b: await avatar(b) }));
+      JSON.stringify({ inA, a: (await saidIn(a)).said, b: await avatar(b) }));
     if (inA) await signOutHere(a);
     const outB = await until(b, () => [...document.querySelectorAll(".site-head a[data-account]")].some((one) => one.checkVisibility())
       && ![...document.querySelectorAll(".site-head .account-btn")].some((one) => one.checkVisibility()), null, 15000);
@@ -557,15 +566,16 @@ try {
       await pressAt(page, "#sign-in", false);
       opened = await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000);
     }
-    const coded = opened && await toCode(page);
+    const coded = opened && await toCode(page, second);
     if (coded) {
       await page.locator("dialog.sign-in .code-boxes input").first().focus();
-      await page.keyboard.type(await codeFor());
+      await page.keyboard.type(await codeFor(second));
     }
     const asked = coded && await until(page, () => !document.querySelector("dialog.sign-in")
       && /cannot see this page/.test(document.getElementById("gate-note")?.textContent || ""), null, 45000);
     const after = await page.evaluate(() => ({ url: location.pathname + location.hash, kept: window.__kept === true,
-      bar: Boolean(document.getElementById("sign-in")?.checkVisibility()), note: document.getElementById("gate-note")?.textContent || "" }));
+      bar: Boolean(document.getElementById("sign-in")?.checkVisibility()), note: document.getElementById("gate-note")?.textContent || "",
+      dialog: document.querySelector("dialog.sign-in form .said")?.textContent ?? null }));
     check("/admin: signed in from its bar in place, the console asked again with the sign-in, still on /admin#people, no reload",
       asked && after.url === "/admin#people" && after.kept && !after.bar, JSON.stringify(after));
     await made.close();
@@ -905,7 +915,10 @@ try {
 } finally {
   await browser.close();
   served?.close();
-  if (deployed) await session_.deleteAccount(person).catch(() => null);
+  if (deployed) {
+    await session_.deleteAccount(person).catch(() => null);
+    await session_.deleteAccount(second).catch(() => null);
+  }
 }
 
 check("no script errors on any page", errors.length === 0, errors.slice(0, 3).join(" | "));
