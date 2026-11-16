@@ -656,7 +656,8 @@ func definitions() -> Array:
 		{
 			"name": "pose_model",
 			"description": ("Swing a part about its joint, as Build, Pose does: a sub-assembly "
-				+ "on a hinge, a turntable or a clip on a bar. With no joint it lists them, "
+				+ "on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its "
+				+ "turns about x, y and z through the ball). With no joint it lists them, "
 				+ "numbered, with the angle each is at. joint= (number or name) and degrees= "
 				+ "(from where it was built, -180 to 180) swings it as far as it has room; the "
 				+ "answer says where it stopped if something is in the way."),
@@ -2549,7 +2550,7 @@ static func _nearest(anchors: Array, near: Vector3) -> Flex.Anchor:
 # -- posing ------------------------------------------------------------------------
 
 
-const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable or a clip on a bar. "
+const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable, a clip on a bar or a ball. "
 	+ "Name the part that turns as an assembly (edit_model's assemblies), standing on its hinge. "
 	+ "Parts on pins, axles, studs and steering move without one, as a drag moves them: "
 	+ "move_part with no part= lists them, and animate_model takes them by part (#14).")
@@ -2587,7 +2588,7 @@ func _pose(input: Dictionary) -> String:
 			if held:
 				stuck += 1
 			said.append("  %d. %s, on its %s, at %d° (%d parts)%s" % [n + 1,
-				Assemblies.label(one.path), one.kind(), roundi(one.angle), one.ids.size(),
+				one.label(), one.kind(), roundi(one.angle), one.ids.size(),
 				", with no room to turn 10° or 90° either way" if held else ""])
 		if stuck > 0:
 			said.append("A joint with no room is often not what moves: move_part with no part= "
@@ -2599,14 +2600,13 @@ func _pose(input: Dictionary) -> String:
 	if joint == null:
 		return "No joint %s: there are %d, numbered in pose_model's list." % [asked, joints.size()]
 	if not input.has("degrees"):
-		return "%s is at %d°. Give degrees= to swing it." % [Assemblies.label(joint.path),
-			roundi(joint.angle)]
+		return "%s is at %d°. Give degrees= to swing it." % [joint.label(), roundi(joint.angle)]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
 	var reached: float = panel.set_angle(joint.path, wanted)
 	if absf(reached - wanted) > 0.5:
 		return "%s stops at %d°: any further and it runs into something." % [
-			Assemblies.label(joint.path), roundi(reached)]
-	return "%s at %d°." % [Assemblies.label(joint.path), roundi(reached)]
+			joint.label(), roundi(reached)]
+	return "%s at %d°." % [joint.label(), roundi(reached)]
 
 
 ## The motion animate_model keeps its keys as.
@@ -2689,7 +2689,7 @@ static func _joint_named(joints: Array[Poser.Joint], asked: String) -> Poser.Joi
 	if asked.is_valid_int() and int(asked) >= 1 and int(asked) <= joints.size():
 		return joints[int(asked) - 1]
 	for one: Poser.Joint in joints:
-		if one.path == asked or Assemblies.label(one.path).to_lower() == asked.to_lower():
+		if one.path == asked or one.label().to_lower() == asked.to_lower():
 			return one
 	return null
 
@@ -2722,6 +2722,12 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		var given: Dictionary = key.get("angles", {}) as Dictionary
 		for name: Variant in given.keys():
 			var joint: Poser.Joint = _joint_named(joints, str(name))
+			if joint != null and joint.kind() == "ball":
+				# A motion keeps a turn about one line, and a ball's is about
+				# three: kept, it would be a new kind of line in the file.
+				return ("%s is a ball's turn: pose_model sets it; a motion turns a joint about one "
+					% joint.label() + "line, so animate_model takes hinges, turntables, clips and "
+					+ "parts on pins and axles.")
 			var path: String = joint.path if joint != null else ""
 			if joint == null and grabbing != null:
 				var turning_part: Variant = grabbing.turning_for_session(str(name))

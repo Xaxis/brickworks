@@ -2,8 +2,9 @@
 ## already down: a pin into a pin hole, an axle into an axle hole or a
 ## round one, a beam's hole onto a pin or an axle, a clip onto a bar and a
 ## bar into a clip, a tyre round a rim (and a rim into a tyre), and a door,
-## a shutter or a window's pane on its frame's hinge. BrickLink
-## Studio does this. Until it was done here a
+## a shutter or a window's pane on its frame's hinge, and a socket on a
+## ball (a towball's, a Joint-8's, a Technic ball's) and a ball into a
+## socket. BrickLink Studio does this. Until it was done here a
 ## part by hand went on studs or against a face, so a pin could not be put
 ## into a hole at all, and nothing Technic could be built by hand.
 ##
@@ -48,14 +49,26 @@ const TAKES: Dictionary = {
 	"tyre": ["rim"],
 	"rim": ["tyre"],
 	"hinge": ["hinge"],
+	"ball": ["socket"],
+	"socket": ["ball"],
 }
 
 ## What the words for each kind of end are, as a person says them.
 const SAID: Dictionary = {
 	"pin": "pin", "axle": "axle", "pin_hole": "pin hole",
 	"axle_hole": "axle hole", "shaft": "bar", "bore": "clip",
-	"tyre": "tyre", "rim": "rim", "hinge": "hinge",
+	"tyre": "tyre", "rim": "rim", "hinge": "hinge", "ball": "ball", "socket": "socket",
 }
+
+## BrickNet's subtype of a towball and a Joint-8 ball (16 LDU across), which
+## the catalogue's balls and sockets all are, and of a Technic ball (about
+## 26 across, a Bionicle's and a 2 x 2 brick's with a ball): one goes only
+## in a socket of its own subtype.
+const BALL_SUB := 101
+const TECHNIC_BALL_SUB := 100
+## How near a catalogue ball or socket and an exact shape's are to be the
+## same one, LDU: Joints.BALL_SLACK, as a ball is read in its socket.
+const SAME_BALL := 2.0
 
 ## A round wider than this, in LDU, is a tyre's inside or a rim's outside:
 ## narrower ones are a pin's, a hole's or a bar's, matched by their own. Past
@@ -74,14 +87,16 @@ const WRAP_SLACK := 2.0
 class End extends RefCounted:
 	## pin, axle, pin_hole, axle_hole, shaft (a bar), bore (a clip), tyre
 	## (the inside of a part that goes round a round: a tyre's) or rim (the
-	## outside of one that goes into a round: a rim's barrel).
+	## outside of one that goes into a round: a rim's barrel), ball or socket.
 	var kind: String
 	## A pin or an axle: where its connector is, a collar or a tip. A
 	## hole: its middle. A bar or a clip: where it starts. A tyre or a rim:
-	## the middle of its round, on its axis.
+	## the middle of its round, on its axis. A ball or a socket: its centre.
 	var at: Vector3
 	## Unit. A pin or an axle: out of the part. A bar or a clip: the way
-	## it runs from [member at]. A tyre or a rim: along its axis.
+	## it runs from [member at]. A tyre or a rim: along its axis. A ball:
+	## out along its stem, from the part to the ball; a socket: out of its
+	## mouth, from the part to the socket ([method JointSnap._stem]).
 	var axis: Vector3
 	## A pin or an axle: how far the part goes on past [member at] along
 	## [member axis]. A hole: half its depth. A bar or a clip: its length.
@@ -97,7 +112,8 @@ class End extends RefCounted:
 	## A hinge's half (BrickNet's label): its frame, whose y is [member
 	## axis] and whose x a turn about the hinge is counted from; its
 	## subtype; and which half it is, in (0) or on (1). One half goes on
-	## the other of its subtype, as Exact.meets pairs them.
+	## the other of its subtype, as Exact.meets pairs them. A ball's or a
+	## socket's subtype too ([constant BALL_SUB]).
 	var frame := Basis.IDENTITY
 	var sub: int = 0
 	var pol: int = 0
@@ -124,6 +140,11 @@ class End extends RefCounted:
 	func is_hinge() -> bool:
 		return kind == "hinge"
 
+	## A ball or a socket: one goes in the other, their centres one, at any
+	## turn.
+	func is_ball() -> bool:
+		return kind == "ball" or kind == "socket"
+
 	## The same end on a part placed at [param where].
 	func placed(where: Transform3D, brick_id: int) -> End:
 		var out := End.new()
@@ -134,6 +155,7 @@ class End extends RefCounted:
 		out.radius = radius
 		out.back = back
 		out.brick = brick_id
+		out.sub = sub
 		if kind == "hinge":
 			out.frame = (where.basis * frame).orthonormalized()
 			out.sub = sub
@@ -146,7 +168,7 @@ class End extends RefCounted:
 	## a pin or an axle has left to go into something, a bar's or a
 	## clip's middle.
 	func middle() -> Vector3:
-		if is_wrap() or is_hinge():
+		if is_wrap() or is_hinge() or is_ball():
 			return at
 		if is_round():
 			return at + axis * (reach * 0.5)
@@ -159,7 +181,7 @@ class End extends RefCounted:
 	## or where along a bar the line [param from] → [param way] passes
 	## nearest.
 	func aimed(from: Vector3, way: Vector3) -> Vector3:
-		if is_hole() or is_wrap():
+		if is_hole() or is_wrap() or is_ball():
 			return at
 		if is_hinge():
 			return at + axis * clampf(along_nearest(from, way), -reach, reach)
@@ -227,9 +249,43 @@ static func ends_of(part: Lbm.PartMesh) -> Array:
 				end.at = connector.position
 				end.reach = connector.length
 				end.radius = connector.radius
+			"ball", "socket":
+				# The catalogue's way for a ball says nothing (it is always up):
+				# the stem is read off the part ([method _stem]).
+				end.at = connector.position
+				end.radius = Joints.BALL_RADIUS
+				end.axis = _stem(part, end.at, end.radius)
+				end.sub = BALL_SUB
 			_:
 				continue
 		if not _repeats(out, end):
+			out.append(end)
+	# A socket drawn as plain rounds, a bore a ball's size and no longer than
+	# the ball, as Joints.balls reads one: 2739a's two ends, each on a
+	# towball, 2851's piston round its rod's ball. Half the ball deep at
+	# least: a ring 2 LDU deep is a pin hole's rim (2738's, 32195a's twelve),
+	# not a socket, and a towball offered one went into a beam's hole. Its
+	# centre is on the bore level with the part's origin, as LDraw draws a
+	# part round its socket, where the bore reaches it, else the bore's
+	# middle: the real sets put 2852's ball at 2851's origin all 312 times,
+	# 1.5 LDU from its bore's middle, and 2738's and 32195a's at theirs, 1.7
+	# and 2 from it. Its stem goes out along the bore, the way a ring opens:
+	# a steering link lies across its ball's stem, as every set has 2739a.
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind != "bore" or absf(connector.radius - Joints.BALL_RADIUS) > Joints.ROUND_FIT * 0.5 \
+				or connector.length < Joints.BALL_RADIUS or connector.length > Joints.BALL_RADIUS * 2.0:
+			continue
+		var way: Vector3 = connector.axis.normalized()
+		var level: float = -connector.position.dot(way)
+		var end := End.new()
+		end.kind = "socket"
+		end.at = connector.position + way * (level if level >= 0.0 and level <= connector.length
+			else connector.length * 0.5)
+		end.radius = Joints.BALL_RADIUS
+		end.axis = way
+		end.sub = BALL_SUB
+		if not out.any(func(other: End) -> bool:
+				return other.is_ball() and other.at.distance_to(end.at) < SAME_BALL):
 			out.append(end)
 	# A round hole a pin's size that LDraw draws as a plain cylinder, not a
 	# Technic hole: the steering ends of 4262 (8841-1 hangs its pan from
@@ -318,12 +374,101 @@ static func hinges_of(library: PartLibrary, part_id: String) -> Array:
 	return out
 
 
-## A part's ends ([method ends_of]) and its hinge halves ([method
-## hinges_of]): what the hand puts a part on by, and what it is put on.
+## A part's ends ([method ends_of]), its hinge halves ([method hinges_of])
+## and the balls and sockets its exact shape has that the catalogue does not
+## ([method balls_of]): what the hand puts a part on by, and what it is put
+## on.
 static func ends_for(library: PartLibrary, part_id: String) -> Array:
 	var ends: Array = ends_of(library.mesh_for(part_id))
 	var hinges: Array = hinges_of(library, part_id)
-	return ends if hinges.is_empty() else ends + hinges
+	var balls: Array = balls_of(library, part_id)
+	if hinges.is_empty() and balls.is_empty():
+		return ends
+	return ends + hinges + balls
+
+
+## Each shape's balls and sockets the catalogue does not have ([method
+## balls_of]), by its id, kept under the lock [member _ends] is.
+static var _balls: Dictionary = {}
+
+
+## A part's balls and sockets from its exact shape's labels (BrickNet's ball
+## halves: in a ball, on a socket, each with its subtype) that its catalogue
+## entry does not name within [constant SAME_BALL]: a towball socket drawn as
+## a solid ring (3730's, 3183's, 3491's), a Technic ball (32474) and a 2 x 2
+## brick's (57908, 57910). The catalogue reads 62 parts with a ball and 9
+## with a socket; the shapes have 191 parts with one or the other, and
+## 3730 on a towball was "lodged" in it: nothing turned it, by hand or by a
+## person's Claude (docs/APP_UX9.md, MCP f1). [] for a part with no shape,
+## or none yet in a browser. Main thread or not, as Exact.shape_for is.
+static func balls_of(library: PartLibrary, part_id: String) -> Array:
+	var shape: Exact.Shape = Exact.shape_for(library, part_id)
+	if shape == null or not shape.kind.has(Exact.BALL):
+		return []
+	_ends_lock.lock()
+	var known: Variant = _balls.get(shape.id)
+	_ends_lock.unlock()
+	if known != null:
+		return known
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	var listed: Array = ends_of(mesh)
+	var out: Array = []
+	for k: int in shape.kind.size():
+		if shape.kind[k] != Exact.BALL or shape.pol[k] == Exact.NO_POLARITY:
+			continue
+		var end := End.new()
+		end.kind = "ball" if shape.pol[k] == 0 else "socket"
+		end.at = shape.frames[k].origin
+		end.sub = shape.sub[k]
+		end.radius = Joints.BALL_RADIUS if end.sub != TECHNIC_BALL_SUB else TECHNIC_BALL_RADIUS
+		if listed.any(func(other: End) -> bool:
+				return other.kind == end.kind and other.at.distance_to(end.at) < SAME_BALL):
+			continue
+		end.axis = _stem(mesh, end.at, end.radius) if mesh != null else Vector3.UP
+		out.append(end)
+	_ends_lock.lock()
+	_balls[shape.id] = out
+	_ends_lock.unlock()
+	return out
+
+
+## A Technic ball's radius, LDU (32474's, a 2 x 2 brick's with a ball).
+const TECHNIC_BALL_RADIUS := 12.8
+
+
+## The way out of a ball's stem, or out of a socket's mouth, for the ball or
+## the socket centred at [param at], [param radius] round: from the middle
+## of the rest of the part (its cover's boxes beyond the ball) to the
+## centre. Neither the catalogue nor BrickNet says it (the catalogue's is
+## always up, BrickNet's frames are all square), and it is what R turns a
+## part on a ball about, and what a socket is lined up against. Up for a
+## part that is all ball.
+static func _stem(part: Lbm.PartMesh, at: Vector3, radius: float) -> Vector3:
+	var sum := Vector3.ZERO
+	var weight: float = 0.0
+	for cells: AABB in part.boxes:
+		var box := AABB(cells.position * part.cell_ldu, cells.size * part.cell_ldu)
+		var middle: Vector3 = box.get_center()
+		if middle.distance_to(at) <= radius + part.cell_ldu:
+			continue
+		var volume: float = maxf(box.size.x * box.size.y * box.size.z, 0.001)
+		sum += middle * volume
+		weight += volume
+	var from: Vector3 = sum / weight if weight > 0.0 else part.bounds.get_center()
+	var way: Vector3 = at - from
+	if way.length() < 1.0:
+		way = at - part.bounds.get_center()
+	if way.length() < 1.0:
+		return Vector3.UP
+	# Square to the part where it nearly is: a stem along a side, not a
+	# hair off it because one side of the part is a cell longer.
+	way = way.normalized()
+	for n: int in 3:
+		if absf(way[n]) > 0.97:
+			var square := Vector3.ZERO
+			square[n] = signf(way[n])
+			return square
+	return way
 
 
 ## A part's tyres and rims: the rounds wider than a pin across the stud axis
@@ -498,6 +643,8 @@ static func mates(held: End, site: End) -> bool:
 		return absf(held.radius - site.radius) <= Joints.ROUND_FIT
 	if held.is_hinge():
 		return held.sub == site.sub and held.pol != site.pol
+	if held.is_ball():
+		return held.sub == site.sub or held.sub == 0 or site.sub == 0
 	return true
 
 
@@ -535,6 +682,12 @@ static func ways(held: End, site: End, from: Vector3, way: Vector3) -> Array:
 		var slide_on: float = clampf(roundf(wanted), 1.0 - held.reach, site.back - held.reach)
 		return [[1, slide_on], [-1, slide_on]]
 	if held.is_hole() or held.is_wrap():
+		return [[1, 0.0], [-1, 0.0]]
+	if held.is_ball():
+		# As it is held, which a ball takes at any turn (LDCad's ball snap
+		# moves a part and leaves its turn); then lined up, its socket's mouth
+		# against the ball's stem, the straight way Studio seats one ([method
+		# pose]).
 		return [[1, 0.0], [-1, 0.0]]
 	if held.is_hinge():
 		# Along the line the way that keeps the part's own up the higher
@@ -604,9 +757,18 @@ static func _pushed(held: End, site: End, side: int, from: Vector3, way: Vector3
 ## line it up, so a part keeps the turn it was given. A hinge's half is
 ## laid on the other as BrickAgent lays one (Attach.pose): their frames one,
 ## flipped end for end on side -1, turned about the line by its slide, the
-## turn it hangs shut at, and the roll.
+## turn it hangs shut at, and the roll. A ball and its socket: their centres
+## one, the part as it is held (side 1) or lined up straight (side -1), and
+## turned [param roll] about the stem of the part down.
 static func pose(held: End, site: End, side: int, slide: float, roll: float,
 		basis: Basis) -> Transform3D:
+	if held.is_ball():
+		var as_held: Basis = basis if side == 1 \
+			else _turned_onto(basis, held.axis, -site.axis)
+		var rolled: Basis = _tidy(Basis(site.axis, deg_to_rad(roll)) * as_held)
+		var centred: Vector3 = site.at - rolled * held.at
+		return Transform3D(rolled, Vector3(snappedf(centred.x, 0.001), snappedf(centred.y, 0.001),
+			snappedf(centred.z, 0.001)))
 	if held.is_hinge():
 		var turn := Basis(Vector3.UP, deg_to_rad(slide + roll))
 		if side == -1:
@@ -769,7 +931,13 @@ static func aimed_at(sites: Array, held: Array, from: Vector3, way: Vector3,
 		if along <= 0.0 or along > before:
 			continue
 		var off: float = ((point - from) - way * along).length()
-		if off < best_off - 0.5 or (off <= best_off + 0.5 and along < best_along):
+		# A ball or a socket, a point, over a line through it as near: a
+		# steering link's socket is on its axle hole's line (32005), and a
+		# ball part aimed at the socket went into the axle hole from every
+		# side.
+		var point_first: bool = site.is_ball() and best != null and not best.is_ball() \
+			and along <= best_along + 0.5
+		if off < best_off - 0.5 or (off <= best_off + 0.5 and (along < best_along or point_first)):
 			best = site
 			best_off = minf(off, best_off)
 			best_along = along
@@ -843,3 +1011,59 @@ static func describe(site: End, name: String) -> String:
 	if site.kind == "bore" and not name.to_lower().contains("clip"):
 		said = "hollow"
 	return "the %s of %s" % [said, name]
+
+
+## The ball some parts hang from, or that hang from one of them: a ball or a
+## socket of one of [param ids] in a socket or on a ball of a part outside
+## them, their centres within [constant SAME_BALL]. {"point": the centre, as
+## the part outside has it; "axis": the stem of the end outside, the way the
+## ball's own axis runs ([method _stem]); "partners": {outside id: true};
+## "inside": the part of theirs on it}, or {} for none, or for more than one
+## ball apart (two balls hold a part on the line through them, not about
+## either). What the rotate handle turns a selection about, what Pose turns
+## a sub-assembly about, three ways (Poser), and what grab and move_part
+## read as a ball joint (Bodies, by Joints.balls).
+static func ball_hung(world: BrickWorld, library: PartLibrary, lattice: BrickLattice,
+		ids: PackedInt64Array) -> Dictionary:
+	var inside: Dictionary = {}
+	var mine: Array = []   ## [End placed, brick id]
+	for brick_id: int in ids:
+		inside[brick_id] = true
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		for end: End in ends_for(library, brick.part_id):
+			if end.is_ball():
+				mine.append(end.placed(brick.transform, brick_id))
+	if mine.is_empty():
+		return {}
+	var found: Dictionary = {}
+	var partners: Dictionary = {}
+	for held: End in mine:
+		var reach := AABB(held.at, Vector3.ZERO).grow(SAME_BALL + BrickLattice.CELL)
+		var cells := PackedInt32Array([floori(reach.position.x / BrickLattice.CELL),
+			floori(reach.position.y / BrickLattice.CELL), floori(reach.position.z / BrickLattice.CELL),
+			ceili(reach.end.x / BrickLattice.CELL), ceili(reach.end.y / BrickLattice.CELL),
+			ceili(reach.end.z / BrickLattice.CELL)])
+		for other: int in lattice.near_bounds(cells):
+			if inside.has(other):
+				continue
+			var brick: BrickWorld.Brick = world.get_brick(other)
+			if brick == null:
+				continue
+			for end: End in ends_for(library, brick.part_id):
+				if not end.is_ball() or not mates(held, end):
+					continue
+				var site: End = end.placed(brick.transform, other)
+				if site.at.distance_to(held.at) > SAME_BALL:
+					continue
+				if not found.is_empty() and (found["point"] as Vector3).distance_to(site.at) > SAME_BALL:
+					return {}
+				if found.is_empty():
+					found = {"point": site.at, "axis": site.axis, "inside": held.brick}
+				partners[other] = true
+	if found.is_empty():
+		return {}
+	found["partners"] = partners
+	return found

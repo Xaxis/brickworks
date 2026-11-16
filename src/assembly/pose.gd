@@ -1,5 +1,7 @@
 ## Posing: each sub-assembly that hangs from a hinge, a clip or a turntable
-## turned about that real joint, by an angle a slider sets.
+## turned about that real joint, by an angle a slider sets, and each that
+## hangs from a ball turned about the ball's centre three ways: about the
+## model's x, y and z.
 ##
 ## J swings a selection a step at a time about the joint it hangs from
 ## (Builder.swing_selection); this holds every such joint in the model at
@@ -12,6 +14,14 @@
 ## one part in a bore of another outside it (Joints.rounds). One inside
 ## another turns with it: the inner is turned about its rest axis first and
 ## the outer then carries both, so a hook on an arm stays on the arm.
+##
+## A ball is found as the rotate handle finds one (JointSnap.ball_hung): a
+## ball or a socket of the sub-assembly's on a socket or a ball outside it.
+## Its three turns are three joints side by side, about x, y and z through
+## the centre, z turned first and x last: the ball's turn is Rx · Ry · Rz,
+## which [method read_back] reads back as Basis.get_euler's XYZ. A session
+## asked to raise an arm 30 degrees on its ball found nothing that turned
+## and seated the socket already turned (docs/APP_UX9.md, MCP f1).
 class_name Poser
 extends RefCounted
 
@@ -34,10 +44,25 @@ class Joint extends RefCounted:
 	var depth: int = 0
 	## Degrees from rest.
 	var angle: float = 0.0
+	## The sub-assembly that turns: [member path], but for a ball's turn,
+	## whose path is the sub-assembly's with "@x", "@y" or "@z" after it.
+	var assembly: String = ""
+	## A ball's turn: "x", "y" or "z", the model's axis it turns about;
+	## empty for a hinge or a turntable.
+	var turn: String = ""
 
-	## "turntable" about the upright, "hinge" otherwise.
+	## "turntable" about the upright, "ball" for a ball's turn, "hinge"
+	## otherwise.
 	func kind() -> String:
+		if not turn.is_empty():
+			return "ball"
 		return "turntable" if absf(axis.y) > 0.9 else "hinge"
+
+	## In words: the sub-assembly's name, and for a ball's turn which one:
+	## "Arm (about x)".
+	func label() -> String:
+		var named: String = Assemblies.label(assembly if not assembly.is_empty() else path)
+		return named if turn.is_empty() else "%s (about %s)" % [named, turn]
 
 
 var joints: Array[Joint] = []
@@ -72,24 +97,40 @@ func find() -> int:
 		if not Flex.kind_of(parts).is_empty():
 			continue
 		var found: Dictionary = builder._joint_of(ids)
+		var turns: Array = [""]
+		if found.is_empty():
+			found = JointSnap.ball_hung(world, library, builder.lattice, ids)
+			turns = ["x", "y", "z"]
 		if found.is_empty():
 			continue
-		var joint := Joint.new()
-		joint.path = path
-		joint.point = found["point"]
-		joint.axis = (found["axis"] as Vector3).normalized()
-		joint.partners = found["partners"]
-		joint.ids = ids
-		joint.depth = Assemblies.segments(path).size()
-		joints.append(joint)
+		for turn: String in turns:
+			var joint := Joint.new()
+			joint.path = path if turn.is_empty() else "%s@%s" % [path, turn]
+			joint.assembly = path
+			joint.turn = turn
+			joint.point = found["point"]
+			joint.axis = (found["axis"] as Vector3).normalized() if turn.is_empty() \
+				else BALL_AXES[turn]
+			joint.partners = found["partners"]
+			joint.ids = ids
+			joint.depth = Assemblies.segments(path).size()
+			joints.append(joint)
 		for brick_id: int in ids:
 			rest[brick_id] = world.get_brick(brick_id).transform
 			rest_cells[brick_id] = builder.lattice.boxes_of(brick_id)
+	# A ball's three turns side by side, x first: z is turned first
+	# ([method transforms_for] turns the last first).
 	joints.sort_custom(func(a: Joint, b: Joint) -> bool:
 		if a.depth != b.depth:
 			return a.depth < b.depth
-		return a.path.naturalnocasecmp_to(b.path) < 0)
+		if a.assembly != b.assembly:
+			return a.assembly.naturalnocasecmp_to(b.assembly) < 0
+		return a.turn < b.turn)
 	return joints.size()
+
+
+## The model's axes a ball's three turns are about.
+const BALL_AXES: Dictionary = {"x": Vector3.RIGHT, "y": Vector3.UP, "z": Vector3.BACK}
 
 
 func joint(path: String) -> Joint:
@@ -179,7 +220,7 @@ func settle(path: String, degrees: float, was: float) -> float:
 		builder.lattice.release(brick_id)
 		builder.lattice.occupy_boxes(brick_id, builder.boxes_for(library.mesh_for(brick.part_id), to))
 	if not is_equal_approx(reached, was):
-		builder.record(steps, "posed %s at %d°" % [Assemblies.label(path), roundi(reached)])
+		builder.record(steps, "posed %s at %d°" % [one.label(), roundi(reached)])
 	return reached
 
 
@@ -265,6 +306,15 @@ func read_back() -> bool:
 		# now = outer · own turn · rest, and carried = outer · rest.
 		var turn: Basis = at_rest * carried.inverse() * world.get_brick(own).transform.basis \
 			* at_rest.inverse()
+		if one.kind() == "ball":
+			# All three of the ball's at once, from the first of them.
+			if one.turn != "x":
+				continue
+			var euler: Vector3 = turn.orthonormalized().get_euler(EULER_ORDER_XYZ)
+			for other: Joint in joints:
+				if other.assembly == one.assembly and not other.turn.is_empty():
+					other.angle = rad_to_deg(euler[["x", "y", "z"].find(other.turn)])
+			continue
 		var across: Vector3 = (Vector3.UP if absf(one.axis.y) < 0.9 else Vector3.RIGHT) \
 			.cross(one.axis).normalized()
 		var turned: Vector3 = turn * across
@@ -276,7 +326,7 @@ func read_back() -> bool:
 func _own_brick(one: Joint) -> int:
 	var inner: Dictionary = {}
 	for other: Joint in joints:
-		if other.depth > one.depth and other.path.begins_with(one.path + "/"):
+		if other.depth > one.depth and other.assembly.begins_with(one.assembly + "/"):
 			for brick_id: int in other.ids:
 				inner[brick_id] = true
 	for brick_id: int in one.ids:
@@ -324,7 +374,7 @@ func sweep(animation: PoseAnimation = null, step: float = 15.0) -> Array:
 				var placed: Dictionary = transforms_for(wanted)
 				if not _has_room(one, placed, start):
 					break
-				out.append({"label": "%s at %d°" % [Assemblies.label(one.path),
+				out.append({"label": "%s at %d°" % [one.label(),
 					roundi(wrapf(one.angle + way * turned, -180.0, 180.0))],
 					"angles": wanted, "transforms": placed})
 				turned += step

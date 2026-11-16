@@ -790,6 +790,13 @@
     },
     {
       "kind": "ui",
+      "label": "ball joints by hand",
+      "entry": "src/assembly/joint_snap.gd",
+      "reach": "godot --headless --path . --script src/dev/balljoints_probe.gd  (a socket held, aimed at a ball, clicked, or a ball onto a socket; the rotate handle stands on the ball's centre; R turns it about the ball; Pose lists a ball as three turns; move_part turns a part about its ball)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "grab and move on a joint",
       "entry": "src/ui/grab_drag.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd   (by hand: Select tool, drag a part that hangs on a hinge, clip, turntable, pin, axle, ball or round stud)",
