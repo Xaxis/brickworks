@@ -165,6 +165,8 @@ func _steps() -> void:
 	print("    by hand, the parts both have: %s" % ", ".join(shared.map(func(key: String) -> String:
 		return "%s %d+%d" % [key, int(by_hand_loose[key]), int(by_hand_set[key])])))
 	var ranking: SetRanking = await _store.inventories.ranking()
+	_check("What can I build?'s index of every set read%s" % ("" if ranking != null
+		else ": " + _store.inventories.trouble), ranking != null)
 	var ranked_all: SetRanking.Ranked = ranking.rank(by_hand_all) if ranking != null else null
 	var ranked_loose: SetRanking.Ranked = ranking.rank(by_hand_loose) if ranking != null else null
 	var only_set: String = _only_in_set(by_hand_set, by_hand_loose)
