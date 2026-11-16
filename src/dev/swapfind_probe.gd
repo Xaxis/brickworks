@@ -181,7 +181,9 @@ func _case_key() -> void:
 	await _neighbour("ldcad: then Ctrl-Shift-H shows everything", CTRL | SHIFT | KEY_H, [some],
 		func() -> bool: return _builder.lattice.unseen.is_empty())
 	Keymap.use("brickworks")
-	var parts: int = _world.bricks().size()
+	# The model's parts: the baseplate is never hidden (EditVerbs.isolate).
+	var parts: int = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
+		return not _store.scenery.has(brick.id)).size()
 	await _neighbour("Shift-H shows only the selection", SHIFT | KEY_H, [some], func() -> bool:
 		return _builder.lattice.unseen.size() == parts - 1 and not _builder.lattice.unseen.has(some))
 	await _neighbour("then Alt-H shows everything", ALT | KEY_H, [some], func() -> bool:

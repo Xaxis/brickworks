@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 226 | 115 | 110 | 112 | 109 |
-| Studio | 226 | 118 | 113 | 115 | 112 |
-| Mecabricks | 226 | 116 | 111 | 113 | 110 |
-| LDCad | 226 | 118 | 114 | 116 | 113 |
+| Brickworks | 232 | 115 | 110 | 112 | 112 |
+| Studio | 232 | 118 | 113 | 115 | 115 |
+| Mecabricks | 232 | 116 | 111 | 113 | 113 |
+| LDCad | 232 | 118 | 114 | 116 | 116 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -33,8 +33,12 @@ with none: 222, 106 without a key under the app's keys. View › Edges and studs
 (edges, APP_UX6 #19) added two, Edges and Studs, each with none: 224, 108 without a key
 under the app's keys. File › Export › Each sub-model as its own file (subexport, APP_UX7
 #19) added one more with none: 225, 109 without a key. Report a bug… (bugreport, 2026-11-09)
-added one with a key under every preset: 226 now, 109 without a key under the app's keys,
-117 with one.
+added one with a key under every preset: 226, 109 without a key under the app's keys,
+117 with one. Six came after: Name the step… (stepnames, Shift-F2), Point it out to the others
+(pointat, Alt-W) and Find and replace… (swapfind, Ctrl-Shift-H; LDCad's Ctrl-Shift-F since
+smalls4), each with a key under every preset, and File › Import › Into this model…
+(intomodel3), View › Panels › Colour and Reset panel layout (panelfold), each with none: 232
+now, 112 without a key under the app's keys, 120 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -162,6 +166,7 @@ Ctrl-Shift-F.
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
 | `compare_sets` | File › Compare › Compare two sets or models | — | — | — | rarely | all | two sets or models side by side, now and then |
+| `import_into` | File › Import › Into this model… | — | — | — | once a model | all | a model chosen once, from File › Import, beside the other imports |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
 | `export_io` | File › Export › BrickLink Studio model (.io) | — | — | — | once a model | all | made once a model is done |
 | `export_3d` | File › Export › 3D model (.glb, .gltf, .obj, .stl) | — | — | — | once a model | all | made once a model is done |
@@ -250,6 +255,8 @@ Ctrl-Shift-F.
 | `evaluate_section` | Build › Evaluate the section | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
 | `put_back` | Build › Put every section back | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
 | `panel_outliner` | View › Panels › Model tree | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_colour` | View › Panels › Colour | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `reset_panels` | View › Panels › Reset panel layout | — | — | — | rarely | all | every panel back as it was at first, after a layout has gone wrong |
 | `minifig` | Make › Minifigure builder | — | — | — | a few times a model | Mecabricks, LDCad | under Mecabricks' and LDCad's keys M is their Move |
 | `mosaic` | Make › Mosaic from a picture | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `part_maker` | Make › Part maker | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
