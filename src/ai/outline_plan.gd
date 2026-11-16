@@ -934,7 +934,7 @@ func _said_storeys() -> String:
 		+ "Its face is %s plates as read, so it is stretched %s times, to %s plates, and every "
 			% [_n(read_), _n(snappedf(stretch, 0.1)), _n(built)]
 		+ "height up to it with it")
-	if mode == "heights" and most() * unit * PLATES_PER_STUD > face + 0.5:
+	if _rises_above_face():
 		said += ("; what stands above its face (a dome, a tower, a pediment) keeps its own height "
 			+ "and stands on it, %s %s higher than read") % [_n(built - read_),
 				"plate" if is_equal_approx(built - read_, 1.0) else "plates"]
@@ -945,6 +945,23 @@ func _said_storeys() -> String:
 		said += (" That is the most an expert stretches it: build each storey %d plates (a brick "
 			+ "and a plate) to fit them.") % LEAST_STOREY
 	return said
+
+
+## Whether a long thing's levels, as the answer says them, or a break rise
+## above its face: a tenth merged into the face's level does not.
+func _rises_above_face() -> bool:
+	if mode != "heights":
+		return false
+	var above: float = face + 0.5
+	for piece: Dictionary in levels(values):
+		var high: float = float(piece["high"]) if piece.get("slope", false) else float(
+			piece["level"])
+		if high * unit * PLATES_PER_STUD > above:
+			return true
+	for one: Dictionary in breaks:
+		if float(one["top"]) * unit * PLATES_PER_STUD > above:
+			return true
+	return false
 
 
 func _said_heights() -> String:
@@ -1139,7 +1156,8 @@ func _plan_said() -> String:
 		return "a %s" % plan
 	if plan == "round":
 		return "round"
-	return "an %s" % plan if plan in ["H", "L", "U"] else "a %s" % plan
+	# "an H", "an L", but "a U", "a T", "a Y".
+	return "an %s" % plan if plan in ["H", "L"] else "a %s" % plan
 
 
 static func _n(value: float) -> String:

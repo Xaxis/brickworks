@@ -362,6 +362,16 @@ func _height_for_storeys() -> void:
 		"That is the most an expert stretches it: build each storey 4 plates"),
 		"a stretch is at most 2, then each storey a brick and a plate: %s"
 			% _line_with(answer, "the most"))
+	# Buckingham Palace as the screen read it, its centre a tenth within the
+	# level of its face: nothing stands above the face, and its plan is a U.
+	answer = _text(await _assistant.use_tool("plan_scale", {"subject": "a palace",
+		"longest_metres": 108, "studs": {"box": [24, 26]}, "outline": {"from": "front",
+			"heights": [0.2, 0.21, 0.19, 0.19, 0.2, 0.23, 0.2, 0.19, 0.19, 0.21, 0.2],
+			"storeys": 3, "deep": 0.6, "plan": "U"}}))
+	_ok(answer.contains("  x 0 to 26: 19 plates (13 read)") and not answer.contains(
+		"what stands above its face") and answer.contains("a U plan") and answer.contains(
+			"Its plan from above: a U,"), "a face read as one level has nothing above it to "
+		+ "keep, and a U is \"a U\": %s" % _line_with(answer, "Height for"))
 	answer = _text(await _assistant.use_tool("plan_scale", {"subject": "a hall",
 		"longest_metres": 60, "studs": {"box": [16, 12]}, "outline": {"from": "front",
 			"heights": [0.08, 0.38, 0.38, 0.38, 0.38, 0.38, 0.38, 0.38, 0.38, 0.38, 0.08],
