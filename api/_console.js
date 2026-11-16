@@ -137,8 +137,8 @@ export async function overview(request, tests = false) {
   const now = Date.now();
   const since = (days) => new Date(now - days * DAY).toISOString();
   const test = tests ? "true" : "false";
-  const [users, published, listed, fresh, reportsOpen, feedback, queue, testers, mail, audit, set, site, delivery]
-    = await Promise.all([
+  const [users, published, listed, fresh, reportsOpen, feedback, queue, testers, mail, audit, set, site, delivery, arrivals,
+    challenges, notice] = await Promise.all([
     // The accounts may not be read (Supabase's sign-in refusing, 2026-11-12):
     // the rest is shown, with the backend's health saying why.
     known(allUsers()),
@@ -158,6 +158,11 @@ export async function overview(request, tests = false) {
     // mail (api/_console_mail.js).
     known(siteSummary()),
     known(mailTrouble(tests)),
+    // Part C (console3): what the OMR's look found that waits to be brought
+    // in, whether a challenge is open or set to come, and the notice showing.
+    known(db("rpc/library_arrivals_in", { method: "POST", body: { state: "found" } })),
+    known(db("rpc/challenge_list", { method: "POST", body: { tests } })),
+    known(db("rpc/site_notice", { method: "POST", body: { p_scope: scopeOf(request) } })),
   ]);
   const mine = (users || []).filter((user) => isTestAddress(user.email) === tests);
   const after = (iso, days) => iso && Date.parse(iso) > now - days * DAY;
@@ -183,6 +188,15 @@ export async function overview(request, tests = false) {
     site,
     audit: audit ? audit.rows : null,
     switches: set,
+    library: arrivals === null ? null : { found: arrivals.length },
+    challenges: challenges === null ? null : {
+      open: challenges.filter((one) => one.state === "open" && Boolean(one.test) === tests).length,
+      upcoming: challenges.filter((one) => one.state === "upcoming" && Boolean(one.test) === tests).length,
+      // The last day of what is open or set to come: the owner sets the next before it.
+      through: challenges.filter((one) => one.state !== "ended" && Boolean(one.test) === tests).map((one) => String(one.ends_on).slice(0, 10))
+        .sort().pop() || null,
+    },
+    notice: notice ? { id: notice.id, words: notice.words, tone: notice.tone, set_at: notice.set_at } : null,
   };
 }
 
@@ -389,11 +403,23 @@ const TARGETS = {
   beta_switch: () => ["setting", "beta"],
   feedback_triage: (q) => ["feedback", q.id],
   feedback_reply: (q) => ["feedback", q.id],
+  // Part C (console3).
+  unbar_model: (q) => ["model", q.id],
+  notice_set: () => ["setting", "notice"],
+  notice_clear: () => ["setting", "notice"],
+  run_cron: (q) => ["cron", q.job],
+  export: (q) => ["account", q.account],
+  delete_account: (q) => ["account", q.account],
+  sign_out: (q) => ["account", q.account],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
-  "ends_on", "most_parts", "set_number", "tested"];
+  "ends_on", "most_parts", "set_number", "tested", "tone", "job"];
+// Part C's answers too: whose account an act was on is kept by its address,
+// since a deleted one's is nowhere else afterwards; an export's counts, never
+// its rows; a cron's outcome.
 const ANSWERED = ["listed", "barred", "file_barred", "unlisted", "files_barred", "resolution", "cleared", "removed", "ended",
-  "pick", "until", "challenge", "granted", "pending", "mail", "was", "value", "scope", "refused", "again"];
+  "pick", "until", "challenge", "granted", "pending", "mail", "was", "value", "scope", "refused", "again", "email", "deleted",
+  "photos", "avatars", "sessions", "claudes", "rows", "ran", "seconds", "outcome", "notice", "languages", "account_out"];
 
 /// What the audit keeps of an act: {kind, target, detail, test}.
 export function describe(op, request, answer) {
@@ -406,6 +432,11 @@ export function describe(op, request, answer) {
     if (given !== undefined && given !== null && given !== "" && !(key === "id" && kind === "model")) asked[key] = clip(given);
   }
   if (op === "plan" && Array.isArray(b.themes)) asked.themes = b.themes.map((one) => clip(one?.month, 7)).join(", ");
+  // A notice's words: its English, and which languages were typed.
+  if (op === "notice_set" && b.words && typeof b.words === "object") {
+    asked.words = clip(b.words.en);
+    asked.languages = Object.keys(b.words).filter((lang) => String(b.words[lang] || "").trim()).join(", ");
+  }
   const said = {};
   if (answer && typeof answer === "object" && !Array.isArray(answer)) {
     for (const key of ANSWERED) if (answer[key] !== undefined && answer[key] !== null) said[key] = clip(answer[key], 120);

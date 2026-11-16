@@ -130,6 +130,36 @@
 //                                        and the backend's health
 //                                        (api/_console_site.js)
 //
+// Part C (console3, 2026-11-13; docs/ADMIN.md), the rest of what the owner
+// manages:
+//   GET  /api/admin?op=switches          as above, with every variable by
+//                                        name (here or not, Vercel's
+//                                        environments, never a value), the
+//                                        settings and the notice
+//                                        (api/_console_switches.js)
+//   GET  /api/admin?op=data              the catalogue, the library, the
+//                                        OMR's finds and the project's
+//                                        usage (api/_console_data.js)
+//   GET  /api/admin?op=find&q=W          accounts, people, models, lists,
+//                                        reports and acts holding W
+//                                        (api/_console_people.js)
+//   GET  /api/admin?op=challenge_view&challenge=N  one challenge whole: its
+//                                        entries by group, what fails its
+//                                        rules, what visitors see
+//                                        (api/_console_challenges.js)
+//   POST /api/admin?op=unbar_model&id=X  a model taken out let back: its
+//                                        owner may list it again
+//   POST /api/admin?op=notice_set        {words: {en, de?, fr?, es?}, tone}:
+//                                        a notice on every page here
+//   POST /api/admin?op=notice_clear      the notice taken down
+//   POST /api/admin?op=run_cron&job=J    a safe cron run now, with
+//                                        CRON_SECRET, on the server
+//   POST /api/admin?op=export&account=U  every row of the account, as JSON
+//   POST /api/admin?op=delete_account&account=U  {confirm: its address,
+//                                        reason}: deleted at its person's
+//                                        request, as they would (api/_erase.js)
+//   POST /api/admin?op=sign_out&account=U  every session and Claude of it ended
+//
 // Part B (console2, 2026-11-12): those four read, and are not audited, as
 // no read is; none of them changes anything anywhere.
 //
@@ -165,6 +195,10 @@ import { plansRead } from "./_console_plans.js";
 import { mailRead } from "./_console_mail.js";
 import { connectorRead } from "./_console_connector.js";
 import { siteRead, supabaseHealth } from "./_console_site.js";
+import { noticeClear, noticeSet, switchesRead } from "./_console_switches.js";
+import { dataRead, runCron, withRunNow } from "./_console_data.js";
+import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
+import { challengeView } from "./_console_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -230,34 +264,57 @@ export default async function handler(request, response) {
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
     beta_decide: betaDecide, beta_grant: betaGrant, beta_waitlist: betaWaitlist, beta_switch: betaSwitchRoute,
-    feedback_triage: feedbackTriage, feedback_reply: feedbackReply };
-  // A reported list's name and words taken down (lists1, docs/ADMIN.md).
-  acts.list_down = takeListDown;
-  if (request.method === "POST" && acts[op]) {
-    return audited(op, acts[op], request, response, claims, (error) => (error instanceof AuthError
+    feedback_triage: feedbackTriage, feedback_reply: feedbackReply,
+    // A reported list's name and words taken down (lists1, docs/ADMIN.md).
+    list_down: takeListDown,
+    // Part C (console3).
+    unbar_model: unbarModel, notice_set: noticeSet, notice_clear: noticeClear, run_cron: runCron, export: exportAccount,
+    delete_account: deleteAccount, sign_out: signOut };
+  // An op is one of these tables' own names, never one Object's prototype
+  // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
+  // nobody made, answered 404 and never audited as an act (c3review).
+  const act = Object.hasOwn(acts, op) ? acts[op] : null;
+  if (request.method === "POST" && act) {
+    return audited(op, act, request, response, claims, (error) => (error instanceof AuthError
       || error instanceof BuildRefusal || error instanceof AvatarRefusal ? error.status : 502));
-  }
-  if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide, beta_grant, beta_waitlist, beta_switch, "
-      + "feedback_triage or feedback_reply" });
   }
   const tests = String(request.query?.tests || "") === "1";
   const reads = {
     overview: () => overview(request, tests),
     people: () => people(tests),
-    switches: () => switches(request),
+    switches: async () => switchesRead(request, await switches(request)),
     plans: () => plansRead(),
     mail: () => mailRead(request, tests),
     connector: () => connectorRead(tests, request.query?.account ? String(request.query.account).toLowerCase() : null),
-    site: () => siteRead(),
+    site: async () => withRunNow(await siteRead()),
+    data: () => dataRead(),
+    find: () => findRead(String(request.query?.q || ""), tests),
+    challenge_view: () => {
+      const id = Number(request.query?.challenge);
+      if (!Number.isInteger(id) || id < 1) throw new AuthError("name a challenge: ?challenge=<number>", 400);
+      return challengeView(id, tests).then((one) => {
+        if (!one) throw new AuthError("no such challenge", 404);
+        return one;
+      });
+    },
   };
-  if (reads[op] || op === "person" || op === "audit") {
+  const readable = Object.hasOwn(reads, op);
+  const routes = ["person", "audit", "beta", "beta_testers", "feedback", "feedback_file", "photo"];
+  if (op && !act && !readable && !routes.includes(op)) {
+    return response.status(404).json({ error: `unknown op ${op.slice(0, 40)}` });
+  }
+  if (request.method !== "GET") {
+    return response.status(405).json({ error: `GET, or POST ?op=${Object.keys(acts).join(", ")}` });
+  }
+  // An act asked by GET is not done, nor answered with the report.
+  if (act && !readable && !routes.includes(op)) return response.status(405).json({ error: `POST ?op=${op}, not GET` });
+  if (readable || op === "person" || op === "audit") {
     try {
       if (op === "audit") return await auditRoute(request, response);
       if (op === "person") {
         const one = await person(String(request.query?.account || ""), tests);
-        return one ? response.status(200).json(one) : response.status(404).json({ error: "no such account" });
+        return one ? response.status(200).json({ ...one, ...(await personMore(one.id)) })
+          : response.status(404).json({ error: "no such account" });
       }
       const read = await reads[op]();
       return read === null ? response.status(404).json({ error: "no such account" }) : response.status(200).json(read);
@@ -428,6 +485,20 @@ async function unbar(request, response) {
   if (!UUID.test(account)) return response.status(400).json({ error: "name an account: ?account=<id>" });
   await db(`barred_accounts?account=eq.${account}`, { method: "DELETE" });
   return response.status(200).json({ account, barred: false });
+}
+
+/// A model taken out let back (console3): its owner may list it again, and
+/// its file is no longer refused at another link. Not listed again here: its
+/// owner lists it, if its account is not taken out too.
+async function unbarModel(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a link: ?id=<ten characters>" });
+  const rows = await db(`shared_models?id=eq.${id}`, { method: "PATCH", body: { barred: false },
+    prefer: "return=representation" });
+  if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "no model at that link" });
+  await db(`barred_models?model=eq.${id}`, { method: "DELETE" });
+  const out = await db(`barred_accounts?account=eq.${rows[0].owner}&select=account`);
+  return response.status(200).json({ id, barred: false, account_out: out.length > 0 });
 }
 
 async function dismiss(request, response) {
@@ -726,8 +797,9 @@ async function commentsShown(reported) {
   }
 }
 
+// Oldest first (console3): Moderation's one queue is worked from its oldest.
 const REPORTS = "/rest/v1/reports?resolved_at=is.null&select=id,model,handle,collection,reason,note,contact,at,"
-  + "shared_models(name,owner,listed,published)&order=at.desc&limit=300";
+  + "shared_models(name,owner,listed,published)&order=at.asc&limit=300";
 
 async function report(tests = false) {
   const [listed, tabs, gallery, reports, barred, tested, pickNow, challenges, year] = await Promise.all([
@@ -745,6 +817,14 @@ async function report(tests = false) {
     challengesListed(tests),
     yearReady(),
   ]);
+  // The models taken out one by one (console3), each with since when its
+  // file has been refused, for Moderation's Taken out and its Let back in.
+  const barredModels = await asServer(`/rest/v1/shared_models?barred=is.true&select=id,name,owner,created_at&order=created_at.desc`
+    + `&limit=200${tests ? "&test=is.true" : "&test=is.false"}`).catch(() => asServer("/rest/v1/shared_models?barred=is.true"
+    + "&select=id,name,owner,created_at&order=created_at.desc&limit=200")).catch(() => []);
+  const barredAt = barredModels.length ? await asServer(`/rest/v1/barred_models?model=in.(${barredModels.map((m) => m.id)
+    .filter((id) => ID.test(id)).join(",")})&select=model,at`).catch(() => []) : [];
+  const since = new Map(barredAt.map((one) => [one.model, one.at]));
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
   const comments = await commentsShown([...new Set(reports.map((one) => one.comment).filter(Boolean))]);
@@ -797,6 +877,7 @@ async function report(tests = false) {
     })),
     // Each open report with what it is about; the reporter is never named.
     reports: reports.map((report) => ({
+      kind: reportKind(report, photos.has(report.id)),
       id: report.id, model: report.model, handle: report.handle, collection: report.collection,
       reason: report.reason, note: report.note, contact: report.contact, at: report.at,
       name: report.shared_models?.name ?? null, listed: report.shared_models?.listed ?? null,
@@ -815,6 +896,8 @@ async function report(tests = false) {
     comments: comments.map((one) => commentOf(one, emails)),
     barred: barred.map((one) => ({ account: one.account, at: one.at, reason: one.reason,
       email: emails.get(one.account) || null })),
+    barred_models: barredModels.map((one) => ({ id: one.id, name: one.name, at: since.get(one.id) ?? null,
+      email: emails.get(one.owner) || null, account: one.owner })),
     tested,
     // This week's pick (supabase/discovery.sql); null before it.
     picks: pickNow,
@@ -823,6 +906,21 @@ async function report(tests = false) {
     // Whether a year of themes can be set (supabase/challenge_year.sql).
     year,
   };
+}
+
+/// What a report is about, as Moderation's queue sorts its acts (console3):
+/// model, comment, photo, profile, list, or a takedown request from /takedown
+/// (a copyright notice, signed, or a counter-notice). A new kind is a word
+/// here and an entry in web/admin-moderation.js KINDS.
+export function reportKind(report, isPhoto = false) {
+  const note = String(report.note || "");
+  if (report.comment) return "comment";
+  if (isPhoto) return "photo";
+  if (/^Counter-notice\b/.test(note)) return "counter_notice";
+  if (report.reason === "copied" && /\bSigned:/.test(note)) return "takedown";
+  if (report.handle) return "profile";
+  if (report.collection) return "list";
+  return "model";
 }
 
 function commentOf(one, emails) {
