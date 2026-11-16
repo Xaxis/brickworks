@@ -529,8 +529,13 @@ export async function showFeedCount({ ask = true } = {}) {
   const kept = keptState() || { email: email(), me: undefined, count: 0, notifications: null, feed: null };
   drawSignedIn(kept);
   if (!ask) return kept;
+  const who = email();
   await followsSent();
   const answer = await call("/api/people?op=feed_count").catch(() => null);
+  // Signed out, or in as somebody else, while it was asked (in another
+  // tab, m305fix: the count answered after it and drew the avatar back on
+  // a tab kept for its typed words): the header as that left it.
+  if (!signedIn() || email() !== who) return null;
   if (!answer || answer.status !== 200 || answer.body.signed_in === false) return kept;
   const state = { email: email(), me: answer.body.me || null, count: Number(answer.body.count) || 0,
     notifications: answer.body.notifications ?? null, feed: answer.body.feed ?? null,
