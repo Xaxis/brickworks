@@ -4305,14 +4305,6 @@
       "tests": []
     },
     {
-      "id": "lib:the outline read as sizes",
-      "kind": "lib",
-      "entry": "src/ai/outline_plan.gd",
-      "reach": "tools/probe.sh outline_sizes_probe   (plan_scale outline=: asked for before the first build; answered as sizes, never a solid: the outline in levels, a step only where read, slopes said as slopes; the brief's box a bound with the depth the plan's own; a building's height stretched for its storeys with the read beside it; setbacks on the side read with each tier's height, breaks as masses of their own, a vehicle's body over its wheels, studs= naming what it measures; wrong readings refused)",
-      "area": "assistant",
-      "tests": []
-    },
-    {
       "id": "lib:shells of hinged panels",
       "kind": "lib",
       "entry": "src/ai/shells.gd",
