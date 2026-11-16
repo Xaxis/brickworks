@@ -76,7 +76,9 @@ def test_the_sql_only_adds() -> None:
 
 def test_every_act_is_audited_and_every_op_is_behind_the_owner_check() -> None:
     # The acts go through audited(); the owner check comes before any op.
-    assert "return audited(op, acts[op], request, response, claims" in ADMIN
+    # An act is one of acts' own names, never one Object's prototype lends it (c3review).
+    assert "const act = Object.hasOwn(acts, op) ? acts[op] : null;" in ADMIN
+    assert "return audited(op, act, request, response, claims" in ADMIN
     assert ADMIN.index("if (!isMaster(claims))") < ADMIN.index("const op = String(request.query?.op")
     for op in ("beta_waitlist: betaWaitlist", "beta_switch: betaSwitchRoute"):
         assert op in ADMIN

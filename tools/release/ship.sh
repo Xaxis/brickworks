@@ -329,6 +329,9 @@ serves || { sleep 120; serves; } || {
 # Written down for the owner's console (/admin#site): which release is live,
 # since now, with its train's title and units. Never fails a ship.
 "$HERE/release_live.sh" "$TAG" "$LIVE" "$S/$TAG.train" 2>&1 | sed 's/^/SHIP: /'
+# And which deployment variables are set in which environments, by name only,
+# for its Switches (/admin#switches). Never fails a ship either.
+"$HERE/env_names.sh" 2>&1 | sed 's/^/SHIP: /'
 # canary: sign-up still shut and a new person still signs in by a code, on
 # production's own route and settings (api/_canary.js, 2026-10-24).
 # Cleared first, as run_checks clears: an attempt before may have left its own.

@@ -41,6 +41,13 @@ declare -A CMD=(
   # and /app still isolated; the server refusing nothing, junk and a GET.
   # A finished sign-in is tools/web/oc_live_flow.mjs, on brickworks.diy.
   [oc]="tools/web/oc_flow.mjs --url=$P --out=$S/${TAG}_oc"
+  # Signing in where the person is (signinux, 2026-11-14): the header's Sign
+  # in opens the dialog in one click at 1280, 430 and 390 (the phone's Menu),
+  # Not now leaves the page as it was; the emailed code a box per digit
+  # (typed, Backspace, arrows, pasted, filled, a wrong one emptied); signed in
+  # on the same page with no reload; a signed-out /profile opens it by
+  # itself. A throwaway at a Resend test address, its code minted.
+  [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
   # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).
@@ -502,6 +509,16 @@ declare -A CMD=(
   # Plans off where billing is; each at 390 and 1280, light and dark.
   # Read only; the throwaways deleted after.
   [console2]="tools/web/console2_flow.mjs --url=$P --out=$S/${TAG}_console2"
+  # The console's part C (console3, docs/ADMIN.md): every op it added
+  # refused signed out (401) and to anybody else (404); a throwaway's
+  # report in Moderation's one queue; Challenges' previews and a panel;
+  # Data's and Switches' rows with no secret's value in them; Find; Run now
+  # on the front's choice and its run written down; the notice set on this
+  # deployment (never brickworks.diy), seen signed out in English and German
+  # and cleared; an export downloaded, a throwaway signed out everywhere and
+  # another deleted by its address typed again, found in the audit; each at
+  # 390 and 1280, light and dark. Throwaways deleted after.
+  [console3]="tools/web/console3_flow.mjs --url=$P --out=$S/${TAG}_console3"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -783,8 +800,10 @@ run() {
 # a minute, and every page here reads that switch: beside it, betahome took
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
-# pointat times a part pointed out crossing between two tabs, as together does.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console pointat "
+# console3 sets a notice that floats over every page of the deployment for a
+# few minutes, over the controls a check beside it would press. pointat times
+# a part pointed out crossing between two tabs, as together does.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

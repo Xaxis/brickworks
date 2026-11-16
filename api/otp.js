@@ -166,6 +166,14 @@ export async function deliver(email, code) {
   return reply.ok;
 }
 
+// The limit, as supabase/schema.sql may_ask_for_code's defaults set it (it
+// is asked with them, and these read when it lifts): four codes an address,
+// twenty from one machine, in any fifteen minutes. It protects people: a
+// stranger cannot bury an inbox in codes on our bill, nor walk a list.
+const PER_EMAIL = 4;
+const PER_IP = 20;
+const WINDOW_MINUTES = 15;
+
 async function allowed(email, ip) {
   const reply = await reach("database POST rpc/may_ask_for_code", 8, `${project()}/rest/v1/rpc/may_ask_for_code`, {
     method: "POST",
@@ -181,6 +189,25 @@ async function allowed(email, ip) {
     return null;
   }
   return await reply.json() === true;
+}
+
+/// When [email], refused a code, may ask again, from [ip]: the moment the
+/// oldest of the requests that hold it at the limit leaves the window, as an
+/// ISO time; the later of the address's and the machine's when both are at
+/// theirs. A refused request is not counted, so asking again does not put
+/// it off. Null when that cannot be read: the words then say a few minutes.
+export async function freeAt(email, ip) {
+  const since = new Date(Date.now() - WINDOW_MINUTES * 60000).toISOString();
+  const held = async (column, value, limit) => {
+    const asked = new URLSearchParams({ select: "asked_at", [column]: `eq.${value}`, asked_at: `gte.${since}`,
+      order: "asked_at.desc", limit: String(limit) });
+    const reply = await reach("database GET otp_requests", 8, `${project()}/rest/v1/otp_requests?${asked}`, { headers: asServer() });
+    if (!reply.ok) throw new Error(`otp_requests: ${reply.status}`);
+    const rows = await reply.json();
+    return rows.length >= limit ? Date.parse(rows[limit - 1].asked_at) + WINDOW_MINUTES * 60000 : 0;
+  };
+  const free = Math.max(await held("email", email, PER_EMAIL), ip ? await held("ip", ip, PER_IP) : 0);
+  return free > Date.now() ? new Date(free).toISOString() : null;
 }
 
 /// Any of the three calls below, with a network that failed or timed
@@ -263,8 +290,13 @@ export default async function handler(request, response) {
     });
   }
   if (!may) {
+    // When it may ask again, by the clock, for the site and the app to say
+    // in the person's own time ("Try again after 14:32", sifix 2026-11-15);
+    // the words alone, for a client from before, as they always were.
+    const retry = await attempt(() => freeAt(email, ip), null);
     return response.status(429).json({
       error: "Too many codes asked for. Wait a few minutes and try again.",
+      ...(retry ? { retry_at: retry } : {}),
     });
   }
 
@@ -294,5 +326,8 @@ export default async function handler(request, response) {
       error: "We could not send the email just now. Try again in a minute.",
     });
   }
-  return response.status(200).json({ ok: true, expires_in_minutes: TTL_MINUTES });
+  // How many digits the code has, for the boxes it is typed into
+  // (web/code-boxes.js, the app's CodeBoxes): Supabase's length, the same
+  // for every address, so it says nothing of whose this one is.
+  return response.status(200).json({ ok: true, expires_in_minutes: TTL_MINUTES, digits: code.length });
 }

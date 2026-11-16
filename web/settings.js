@@ -12,12 +12,19 @@
 // word goes on the page as text, never as markup. Each part asks for its
 // own and draws what came, so one that cannot be read leaves the others.
 import {
-  age, askAgeIfAsked, askToSignIn, betaOpen, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
+  age, askAgeIfAsked, askToSignIn, betaOpen, call, codeLength, email, madeUp, orangecheckButton, redeem, sendCode, signOut,
+  signedIn,
 } from "/account.js";
 import { langAt, say, told } from "/card.js";
+import { codeBoxes } from "/code-boxes.js";
 import { showFeedCount } from "/follow.js";
 
 const $ = (id) => document.getElementById(id);
+// The codes emailed from here, a box per digit (web/code-boxes.js, signinux
+// 2026-11-13): the one confirming Link or Unlink orangecheck goes by its
+// last digit; deleting the account never goes by itself.
+const ocCode = codeBoxes({ field: $("oc-code-field"), say, onFilled: () => $("oc-code").requestSubmit() });
+const deleteCode = codeBoxes({ field: $("delete-code"), say });
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 // A date as the page's language writes one: "30 October 2026".
 const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
@@ -153,8 +160,8 @@ async function askForCode(unlinking, button) {
     const to = await sendCode(email());
     $("oc-code-said").textContent = say("The code we emailed to {to}", { to });
     $("oc-code").hidden = false;
-    $("oc-code-field").value = "";
-    $("oc-code-field").focus();
+    ocCode.size(codeLength());
+    ocCode.clear();
     $("oc-status").textContent = unlinking ? say("Confirm it is you, then press Unlink.")
       : say("Confirm it is you, then press Link orangecheck.");
   } catch (trouble) {
@@ -213,16 +220,22 @@ $("oc-unlink").addEventListener("click", async () => {
 
 $("oc-code").addEventListener("submit", async (event) => {
   event.preventDefault();
+  // Every digit first, as the sign-in asks: a code short of some is never sent.
+  if (!ocCode.complete((words) => { $("oc-status").textContent = words; })) return;
   $("oc-code-go").disabled = true;
+  ocCode.busy(true);
   try {
     await redeem(email(), $("oc-code-field").value);
+    ocCode.busy(false);
     $("oc-code").hidden = true;
     await orangecheck();
     $("oc-status").textContent = !(ocState && ocState.fresh) ? say("That did not confirm it just now. Try again.")
       : ocState.did ? say("Thank you. Now press Unlink.") : say("Thank you. Now press Link orangecheck.");
     $(ocState && ocState.did ? "oc-unlink" : "oc-go").focus();
   } catch (trouble) {
+    ocCode.busy(false);
     $("oc-status").textContent = trouble.message;
+    if (trouble.wrong) ocCode.refuse();
   } finally {
     $("oc-code-go").disabled = false;
   }
@@ -499,11 +512,11 @@ $("shows-likes").addEventListener("change", async () => {
     : say("Not shown: nobody sees which models you liked.");
 });
 
-$("sign-in").addEventListener("click", async () => {
-  if (await askToSignIn()) {
-    showFeedCount().catch(() => null);
-    load();
-  }
+$("sign-in").addEventListener("click", () => askToSignIn());
+// Signed in by any dialog on this page (its own Sign in, the header's):
+// drawn for them, where they are (signinux, 2026-11-13).
+addEventListener("brickworks:signed-in-done", () => {
+  if (document.documentElement.dataset.settings === "signed-out") load();
 });
 $("sign-out").addEventListener("click", () => {
   signOut();
@@ -537,9 +550,8 @@ async function deleteAccount(body) {
       const to = await sendCode(email());
       $("delete-code-said").textContent = say("The code we emailed to {to}", { to });
       $("delete-code-part").hidden = false;
-      $("delete-code").required = true;
-      $("delete-code").value = "";
-      $("delete-code").focus();
+      deleteCode.size(codeLength());
+      deleteCode.clear();
       $("delete-said").textContent = say("Confirm it is you with the code, then press Delete my account again.");
     } catch (trouble) {
       $("delete-said").textContent = trouble.message;
@@ -594,13 +606,14 @@ $("delete-form").addEventListener("submit", async (event) => {
   // Asked for below, when this browser signed in with orangecheck: the
   // code redeemed is a sign-in of its own, by email, just now.
   if (!$("delete-code-part").hidden) {
+    if (!deleteCode.complete((words) => { $("delete-said").textContent = words; })) return;
     $("delete-go").disabled = true;
     try {
       await redeem(email(), $("delete-code").value);
       $("delete-code-part").hidden = true;
-      $("delete-code").required = false;
     } catch (trouble) {
       $("delete-said").textContent = trouble.message;
+      if (trouble.wrong) deleteCode.refuse();
       return;
     } finally {
       $("delete-go").disabled = false;

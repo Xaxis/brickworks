@@ -1299,6 +1299,7 @@
   "Email is not configured here.": "El correo no está configurado aquí.",
   "We could not start a sign-in just now. Try again in a minute.": "No hemos podido iniciar la sesión ahora mismo. Vuelve a intentarlo en un minuto.",
   "Too many codes asked for. Wait a few minutes and try again.": "Se han pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo.",
+  "Too many codes asked for. Try again after {time}.": "Se han pedido demasiados códigos. Vuelve a intentarlo después de las {time}.",
   "We could not send the email just now. Try again in a minute.": "No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en un minuto.",
   "Choose the month you were born in.": "Elige el mes en que naciste.",
   "Type the year you were born, as four digits.": "Escribe el año en que naciste, con cuatro cifras.",
@@ -1462,6 +1463,7 @@
   "Copy code": "Copiar código",
   "Share with another app": "Compartir con otra aplicación",
   "Close": "Cerrar",
+  "Site notice": "Aviso del sitio",
   "Like {name}": "Dar me gusta a {name}",
   "Like it": "Dale me gusta",
   "A model": "Un modelo",
@@ -2878,6 +2880,19 @@
   "Beta bar hidden. Show it again in {settings}.": "Barra de la beta oculta. Vuelve a mostrarla en {settings}.",
   "Undo": "Deshacer",
   "Hide the beta bar": "Ocultar la barra de la beta",
-  "Admin": "Administración"
+  "Admin": "Administración",
+  "It works once and expires in ten minutes. Not there? Look in spam.": "Sirve una vez y caduca en diez minutos. ¿No está? Mira en spam.",
+  "Send a new code": "Enviar un código nuevo",
+  "Use a different address": "Usar otra dirección",
+  "or": "o",
+  "Show the orangecheck window": "Mostrar la ventana de orangecheck",
+  "Finish signing in in the orangecheck window": "Termina de iniciar sesión en la ventana de orangecheck",
+  "It opened in a window of its own.": "Se abrió en una ventana aparte.",
+  "Signing you in…": "Iniciando tu sesión…",
+  "Sending a new code…": "Enviando un código nuevo…",
+  "Sent a new code. Use the newest one.": "Código nuevo enviado. Usa el más reciente.",
+  "Enter all {count} digits of the code.": "Escribe los {count} dígitos del código.",
+  "Digit {n} of {count}": "Dígito {n} de {count}",
+  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Inicia sesión con orangecheck: su botón abre su ventana y luego vuelves a la aplicación con la sesión iniciada."
  }
 }

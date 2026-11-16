@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe -->
 
 ## Sub-features
 
@@ -365,7 +365,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Return hands exactly it to the run (a stand-in, so no file dialog,
   browser or network) or, greyed, nothing; Render opens for real in five
   presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
-  Edit at most 25 rows and 60% of the window, and the menu on a part's
+  Edit at most 25 rows and 63% of the window, and the menu on a part's
   Duplicate, Replace, Select the same part and colour, the step moves and
   Swing on its hinge (`swing`, J), each run from the menu. `palette in a
   browser` (preview check `palette`) drives it by keys in a browser
@@ -1608,6 +1608,40 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   of its own (it was 0.6 to 1.1 s), every try the same save byte for byte and
   the same words, each undo the file before it; `--into=DIR` writes the save
   to diff against another checkout's.
+- `find and replace everywhere` (`src/ui/find_replace_bar.gd`, `src/assembly/find_replace.gd`;
+  APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`; Ctrl-H stays
+  Hide) opens a bar over the view. A part's number or name (3023 finds 3023a
+  and 3023b) and/or a colour to find, as it is seen: a copy placed by a
+  mirror shows the other hand of a handed part, and is found as that. It
+  lists where they are (the model's own parts, each sub-model with its
+  count and copies, a row selecting them) and each colour, a part in two
+  colours flagged ("Used in 2 colours: each keeps its own"). Replace with a
+  part, a colour or both, everywhere, in the sub-model being edited and its
+  copies, or in the selection: one undo step (`Builder.replace_bricks`, then
+  `Assemblies.after_edit` for the copies, folded by `fold_since`). Said
+  before: "Changes all 2 copies of Sill", and where the new part won't sit
+  the same (another box or other connection points, `FindReplace._points`),
+  would hold onto nothing (`SelectBy._joined_to`), or has no room (left as
+  it is). A part in a copy goes with its twin in every other copy
+  (`FindReplace._twins`, laid as `Assemblies.copies_follow` lays them): one
+  twin with no room, or locked, keeps them all ("Pl has no room in 1 of its
+  2 copies, so all 2 stay", "1 left out: locked in one copy of Sill, so its
+  2 copies stay"), so no follow lays a part through another; two new parts
+  that would meet each other are refused too. Each found part counted once
+  (changed, no room, locked or "All 4 are that already", Replace then off);
+  the undo step says what changed after the copies followed
+  (`Builder.name_newest`), the status what stayed. Under Replace with, the
+  part it puts in is named ("Puts in: Brick 1 x 2 (3004)", or "No part
+  3023x" and Replace off). A printed version of the
+  same mould goes exactly where the plain one stood. A session's
+  `replace_parts` (`AppTools._replace_parts`) gives the same file in one
+  call, `preview: true` lists and says the fit and changes nothing; it takes
+  a part only by a number the library has (`FindReplace.known_part`, named in
+  the answer), a direct colour (0x2RRGGBB), and refuses 16, 24, colours
+  below -1 and a find= or replace= that is no object, showing the shape to
+  give. Locked parts are left and said. On a phone More, Edit lists it and
+  the bar is laid out for a finger (`TouchSizing.place_panel`), its list
+  scrolled by a finger's drag.
 - `undo history`: History (on the toolbar, and Edit, History) lists the steps in words, newest first ("swapped 2
   parts for Brick 2 x 3", "painted 2 parts"); choosing one goes back to before
   it (`Builder.undo_steps`).
@@ -2986,6 +3020,43 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   them, Select ending it. `line`: "opened Car" not left over Motions.
   `words`: Simulate's and Measure's lines drawn without click, names kept, no
   visible label saying click with Simulate open. `--only=` any of those.
+- `swapfind probe` (`src/dev/swapfind_probe.gd`): headless, about four
+  minutes; `SWAPFIND_CASES=car,mcp` for some. The car
+  (`src/dev/fixtures/swapfind_car.mpd`, the app's own settled save: each side
+  a Side, the left one placed by a mirror, a Sill in each; each axle an
+  Axle of two Wheels) opens and saves to the byte, so every undo is held to
+  the save before, to the byte. `car`: its every Black 3023, the model's and
+  its sub-models', made Dark Bluish Grey from the bar in one undo step, the
+  bar's list and copies note read, the save's 3 colour lines changed and
+  each sub-model written once, opened again as shown, a redo the save after.
+  `mcp`: `replace_parts` in one call the bar's file. `two_colours`, `mirror`
+  (a 3822 door and the mirrored side's 3821, both ways round: the same
+  file), `three_deep` (a cap in a post placed 3 times), `wheels` (4 copies 2
+  deep), `printed` (3068bdx0 where the 3068b stood), `footprint` (3623 and
+  3794b said before, those with no room left, a mirrored copy with them),
+  `crlf` (CRLF and a tab kept through the replace and its undo), `live`
+  (LIVE_SAVED: the car as live's build saved it, replaced here; LIVE_OURS
+  writes ours; LIVE_READ: live's save of ours, opened here as shown; it
+  skips without them), `together` (a Build together room's sent parts and
+  its own undo), `words` (de, fr, es), `room_selection` (one copy selected,
+  its twin crowded, then locked: nothing changes, said), `big_room` (10179's
+  every 3023 a 3069b: each counted once, nothing laid through another part,
+  the step said by what changed, the undo to the byte). `swreview_probe`
+  (`SWREVIEW_CASES=room_copies,big`) holds the review's attacks: a copy with
+  no room, a sub-model in two parents, colour 16 and 24, direct colours, a
+  locked twin, what a typed part resolves to, a session's wrong shapes.
+  `swapfind_phone_probe` also scrolls a 37-row list by finger at 390 x 844
+  and taps its last row. For the live round trip, a worktree
+  at the live sha opens and saves a file with a one-off script
+  (`godot --headless --script` that opens through `ModelBar.open_text_with_progress`
+  and writes `ModelStore.to_text(title, true)`).
+- `swapfind phone probe` (`src/dev/swapfind_phone_probe.gd`): windowed, 390 x
+  844 laid out for a phone at a browser's scale, no sign-in, about a
+  minute. More, Edit, Find and replace… in 3 taps; the bar inside the
+  screen and every button and field in it 44 points or more, its rows too
+  once filled; 3023 typed, Black and Dark Bluish Grey picked from the lists
+  a tap opens, Replace tapped: all 4 changed in one undo step; Close tapped;
+  the undo the file opened, to the byte.
 - `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,

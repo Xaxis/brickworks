@@ -7569,6 +7569,93 @@ msgstr "Leur donner ces couleurs, en une étape : %s"
 msgid "%s puts them back"
 msgstr "%s les rétablit"
 
+msgid "Missing and moved parts"
+msgstr "Pièces manquantes et déplacées"
+
+msgid "Replace checked"
+msgstr "Remplacer les cochées"
+
+msgid "Keep as is"
+msgstr "Laisser tel quel"
+
+msgid "Search"
+msgstr "Chercher"
+
+msgid "Look for %s among the parts"
+msgstr "Chercher %s parmi les pièces"
+
+msgid "1 number LDraw has moved or made an alias, drawn as the part it points to: Replace checked writes that part's number in every sub-model, in one undo."
+msgstr "1 numéro que LDraw a déplacé ou fait alias, dessiné comme la pièce vers laquelle il renvoie : Remplacer les cochées écrit le numéro de cette pièce dans chaque sous-modèle, en une seule annulation."
+
+msgid "%d numbers LDraw has moved or made aliases, drawn as the parts they point to: Replace checked writes those parts' numbers in every sub-model, in one undo."
+msgstr "%d numéros que LDraw a déplacés ou faits alias, dessinés comme les pièces vers lesquelles ils renvoient : Remplacer les cochées écrit les numéros de ces pièces dans chaque sous-modèle, en une seule annulation."
+
+msgid "1 number with no file in the library, kept in the file and not shown."
+msgstr "1 numéro sans fichier dans la bibliothèque, conservé dans le fichier et non affiché."
+
+msgid "%d numbers with no file in the library, kept in the file and not shown."
+msgstr "%d numéros sans fichier dans la bibliothèque, conservés dans le fichier et non affichés."
+
+msgid "moved to %s, %s"
+msgstr "déplacé vers %s, %s"
+
+msgid "an alias of %s, %s"
+msgstr "un alias de %s, %s"
+
+msgid "no file: the library has no part of this number"
+msgstr "aucun fichier : la bibliothèque n'a aucune pièce de ce numéro"
+
+msgid "%d used in the model"
+msgstr "%d utilisées dans le modèle"
+
+msgid "%d used in the model and %s"
+msgstr "%d utilisées dans le modèle et dans %s"
+
+msgid "%d used in %s"
+msgstr "%d utilisées dans %s"
+
+msgid "%d used in the model and %d sub-models"
+msgstr "%d utilisées dans le modèle et dans %d sous-modèles"
+
+msgid "%d used in %d sub-models"
+msgstr "%d utilisées dans %d sous-modèles"
+
+msgid "1 part has a new number in the LDraw library"
+msgstr "1 pièce a un nouveau numéro dans la bibliothèque LDraw"
+
+msgid "%d parts have new numbers in the LDraw library"
+msgstr "%d pièces ont de nouveaux numéros dans la bibliothèque LDraw"
+
+msgid "Update all"
+msgstr "Tout mettre à jour"
+
+msgid "Review…"
+msgstr "Examiner…"
+
+msgid "Leave Build together first to update their numbers"
+msgstr "Quittez d'abord Construire ensemble pour mettre à jour leurs numéros"
+
+msgid "could not replace them: %s"
+msgstr "impossible de les remplacer : %s"
+
+msgid "none of their lines is in the file now"
+msgstr "aucune de leurs lignes n'est plus dans le fichier"
+
+msgid "none of those is a moved or alias part of this model"
+msgstr "aucune n'est une pièce déplacée ou un alias de ce modèle"
+
+msgid "the model is still being laid"
+msgstr "le modèle est encore en cours de pose"
+
+msgid "this model is only looked at"
+msgstr "ce modèle est seulement consulté"
+
+msgid "replaced 1 moved part number (%s)"
+msgstr "1 numéro de pièce déplacée remplacé (%s)"
+
+msgid "replaced %d moved part numbers (%s)"
+msgstr "%d numéros de pièces déplacées remplacés (%s)"
+
 msgid "Leave it"
 msgstr "Laisser"
 
@@ -8634,6 +8721,21 @@ msgstr "Saisissez le code reçu par e-mail."
 msgid "Finish signing in with orangecheck in your browser."
 msgstr "Terminez la connexion avec orangecheck dans votre navigateur."
 
+msgid "or"
+msgstr "ou"
+
+msgid "Digit %d of %d"
+msgstr "Chiffre %d sur %d"
+
+msgid "The code sent to %s"
+msgstr "Le code envoyé à %s"
+
+msgid "Enter all %d digits of the code."
+msgstr "Saisissez les %d chiffres du code."
+
+msgid "Taking you to brickworks.diy to sign in with orangecheck…"
+msgstr "Direction brickworks.diy pour vous connecter avec orangecheck…"
+
 msgid "Could not reach Brickworks to send a code. Check your connection."
 msgstr "Impossible de joindre Brickworks pour envoyer un code. Vérifiez votre connexion."
 
@@ -8699,6 +8801,9 @@ msgstr "Nous n'avons pas pu lancer la connexion pour le moment. Réessayez dans 
 
 msgid "Too many codes asked for. Wait a few minutes and try again."
 msgstr "Trop de codes demandés. Attendez quelques minutes et réessayez."
+
+msgid "Too many codes asked for. Try again after %s."
+msgstr "Trop de codes demandés. Réessayez après %s."
 
 msgid "We could not send the email just now. Try again in a minute."
 msgstr "Nous n'avons pas pu envoyer l'e-mail pour le moment. Réessayez dans une minute."
@@ -14510,3 +14615,160 @@ msgstr "Ouvrir son modèle LDraw officiel et voir ce qui manque"
 
 msgid "%s's parts could not be read: %s"
 msgstr "Les pièces de %s n'ont pas pu être lues : %s"
+
+# Edit › Find and replace…: a part or a colour found everywhere, inside every sub-model too, and replaced in one undo step (APP_UX8 #9, swapfind)
+
+msgid "Find and replace…"
+msgstr "Rechercher et remplacer…"
+
+msgid "Find a part or a colour anywhere in the model, inside every sub-model too, and replace it"
+msgstr "Trouver une pièce ou une couleur partout dans le modèle, dans chaque sous-modèle aussi, et la remplacer"
+
+msgid "Find and replace"
+msgstr "Rechercher et remplacer"
+
+msgid "Put the bar away"
+msgstr "Fermer la barre"
+
+msgid "Find"
+msgstr "Rechercher"
+
+msgid "Any part: its number or name"
+msgstr "Toute pièce : son numéro ou son nom"
+
+msgid "Replace with"
+msgstr "Remplacer par"
+
+msgid "The same part"
+msgstr "La même pièce"
+
+msgid "Where"
+msgstr "Où"
+
+msgid "Select them"
+msgstr "Les sélectionner"
+
+msgid "Select every part found"
+msgstr "Sélectionner chaque pièce trouvée"
+
+msgid "Replace"
+msgstr "Remplacer"
+
+msgid "Replace every part found, as one undo step"
+msgstr "Remplacer chaque pièce trouvée, en une seule étape d'annulation"
+
+msgid "Any colour"
+msgstr "Toute couleur"
+
+msgid "The same colour"
+msgstr "La même couleur"
+
+msgid "Everywhere, every sub-model too"
+msgstr "Partout, dans chaque sous-modèle aussi"
+
+msgid "In the model's own parts"
+msgstr "Dans les pièces propres au modèle"
+
+msgid "In %s and its copies"
+msgstr "Dans %s et ses copies"
+
+msgid "In the selection"
+msgstr "Dans la sélection"
+
+msgid "Select the parts found here"
+msgstr "Sélectionner les pièces trouvées ici"
+
+msgid "%d found in the selection"
+msgstr "%d trouvées dans la sélection"
+
+msgid "%d found in the model's own parts"
+msgstr "%d trouvées dans les pièces propres au modèle"
+
+msgid "%d found in %s and its copies"
+msgstr "%d trouvées dans %s et ses copies"
+
+msgid "%d found everywhere, every sub-model too"
+msgstr "%d trouvées partout, dans chaque sous-modèle aussi"
+
+msgid "Nothing like that here"
+msgstr "Rien de tel ici"
+
+msgid "Only locked parts are like that: unlock them to change them"
+msgstr "Seules des pièces verrouillées sont ainsi : déverrouillez-les pour les modifier"
+
+msgid "Type a part's number or name, or choose a colour, to find it."
+msgstr "Tapez le numéro ou le nom d'une pièce, ou choisissez une couleur, pour la trouver."
+
+msgid "The model's own parts: %d"
+msgstr "Les pièces propres au modèle : %d"
+
+msgid "%s: %d in each of %d copies"
+msgstr "%s : %d dans chacune des %d copies"
+
+msgid "%s: %d in %d copies"
+msgstr "%s : %d dans %d copies"
+
+msgid "Used in %d colours: each keeps its own"
+msgstr "Utilisée en %d couleurs : chacune garde la sienne"
+
+msgid "Used in %d colours: all will be %s"
+msgstr "Utilisée en %d couleurs : toutes seront %s"
+
+msgid "Changes all %d copies of %s"
+msgstr "Modifie les %d copies de %s"
+
+msgid "Won't sit the same in %d of %d places: another footprint or other connection points"
+msgstr "Ne se posera pas pareil à %d endroits sur %d : autre empreinte ou autres points de connexion"
+
+msgid "%d would hold onto nothing"
+msgstr "%d ne tiendraient à rien"
+
+msgid "%d have no room and stay as they are"
+msgstr "%d n'ont pas la place et restent telles quelles"
+
+msgid "1 has no room and stays as it is"
+msgstr "1 n'a pas la place et reste telle quelle"
+
+msgid "The part to find"
+msgstr "La pièce à trouver"
+
+msgid "The colour to find"
+msgstr "La couleur à trouver"
+
+msgid "The part to put in its place"
+msgstr "La pièce à mettre à sa place"
+
+msgid "The colour to give it"
+msgstr "La couleur à lui donner"
+
+msgid "Where to look"
+msgstr "Où chercher"
+
+# Find and replace: the part it puts in, named; a part kept with its twins in every copy when one has no room or is locked; every one that already (swfix)
+
+msgid "Puts in: %s (%s)"
+msgstr "Met à la place : %s (%s)"
+
+msgid "No part %s"
+msgstr "Aucune pièce %s"
+
+msgid "All %d are that already"
+msgstr "Les %d le sont déjà"
+
+msgid "%s has no room in %d of its %d copies, so all %d stay"
+msgstr "%s n'a pas la place dans %d de ses %d copies, donc les %d restent"
+
+msgid "%s has no room for %d of its parts in some of its %d copies, so all %d stay"
+msgstr "%s n'a pas la place pour %d de ses pièces dans certaines de ses %d copies, donc les %d restent"
+
+msgid "1 left out: locked in one copy of %s, so its %d copies stay"
+msgstr "1 laissée de côté : verrouillée dans une copie de %s, donc ses %d copies restent"
+
+msgid "%d left out: locked in copies of %s, so all %d of them stay"
+msgstr "%d laissées de côté : verrouillées dans des copies de %s, donc les %d restent"
+
+msgid "1 locked, left out: unlock it to change it"
+msgstr "1 verrouillée, laissée de côté : déverrouillez-la pour la modifier"
+
+msgid "%d locked, left out: unlock them to change them"
+msgstr "%d verrouillées, laissées de côté : déverrouillez-les pour les modifier"

@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down -->
 
 ## Sub-features
 
@@ -23,6 +23,29 @@ they have. A Claude connector belongs to the account that switched it on.
   `window.brickworksControls` names only its own controls (`signin_email`,
   `signin_send`, `signin_code`, `signin_go`, `signin_retry`), and
   `window.brickworksAccount` says `{state, email, offline, renewing, gated}`.
+  The code is typed one digit to a box (`src/ui/code_boxes.gd` `CodeBoxes`,
+  signinux 2026-11-14), as many as `/api/otp` answers in `digits`
+  (`Account.code_digits`, eight): `signin_code` is the first box (a flow
+  clicks it and types the whole code), `signin_code_row` the row; the last
+  digit in signs in by itself (the one that fills the row, or one typed into
+  its last box; one changed mid-row waits), a wrong code
+  (`Account.WRONG_CODE`) shakes and empties the row, a limit keeps the
+  digits. A paste or fill is read by one rule, the site's too
+  (`CodeBoxes.read_code`, `web/code-boxes.js` `readCode`, sifix
+  2026-11-15): an exact run of eight digits, one space or dash inside, the
+  email's words around it or not, is sent; anything else ("123456789") is
+  laid from the first box and waits. Four codes asked for an address in 15
+  minutes lock it, and `/api/otp`'s 429 carries `retry_at`, said "Try again
+  after 14:32" by the person's clock (`Account.local_clock`). Email me a code, "or" and Sign
+  in with orangecheck are each 44 px and the form's width; on the desktop
+  the orangecheck wait has Cancel (`Account.cancel_orangecheck`). Probe:
+  `code_boxes_probe` (windowed: type, Backspace, arrows, Ctrl+V paste,
+  a whole code in one box, wrong, limit, the last digit) and `sirev_boxes`
+  (headless: the paste rule's texts by both ways in, the last digit in);
+  the site's dialog, the connector's page and Settings take the same row
+  from `web/code-boxes.js`, each refusing a code short of digits with
+  "Enter all 8 digits of the code." (`complete()`) (`signin_flow.mjs`,
+  `sirev_standin.mjs`; `tests/test_otp_retry.py` for `retry_at`).
   **Not shown** when nobody is in front of the window (`Main._gate_wanted`): a
   probe (`--script`), a headless run, or a command line that renders, exports
   or designs and quits (`--shot --booklet --out --ask --ask-claude-code --bench
@@ -177,6 +200,73 @@ they have. A Claude connector belongs to the account that switched it on.
   and revenue, Mail, Connector and Site below, and the Overview's live
   release, a failed or late cron, the week's bounces and Supabase refusing
   the project under Needs you now; proven by the console2 browser flow.
+  Part C (console3, 2026-11-13) moves Reported, Comments and Taken out into
+  Moderation and Challenges into its own section, adds Data and Switches,
+  Run now in Site, an account's export, sign-out and deletion in its panel,
+  and Find in the bar; the old `#gallery/reported`, `comments`, `barred`
+  and `challenges` are replaced by their new addresses as they open. Proven
+  by the console3 browser flow.
+- `the console's moderation` (`web/admin-moderation.js`): `#moderation/queue`,
+  every open report of the default GET in one list, oldest first, each by
+  `reportKind` (model, comment, photo, profile, list, takedown,
+  counter_notice); a kind is one entry of `KINDS` (its name, row and acts
+  beside Let it go); an unknown kind is drawn plainly. Sifted by kind and
+  searched. `#moderation/comments` as before; `#moderation/barred` the
+  accounts and the models taken out (`POST ?op=unbar_model&id=X`).
+- `the console's challenges` (`web/admin-challenges.js`,
+  `api/_console_challenges.js`): `#challenges`: the running one, every
+  challenge by state, End it now, the set form and the year's plan each
+  with a preview as visitors will see it; `#challenges/<id>` its panel
+  (`GET ?op=challenge_view&challenge=N`: entries by group, rule failures,
+  winners, what visitors see; 400 for no number, `ready: false` before
+  console3.sql).
+- `the console's data` (`web/admin-data.js`, `api/_console_data.js`):
+  `GET ?op=data`: `_data_facts.json` written beside the function at deploy
+  (`tools/web/data_facts.mjs`: the catalogue's sets and pictures,
+  Rebrickable's tables' fetch times), the parts store's index,
+  `library_arrivals_in` and the OMR's runs, `admin_usage`; egress
+  `{read: false, why, href}`. Also `POST ?op=run_cron&job=J`: the four in
+  `RUNNABLE` only, by its own names (409 beta_daily, 400 any other,
+  `constructor` and `__proto__` among them), 503 without
+  CRON_SECRET, at `ownOrigin(request)` alone (brickworks.diy, www, this
+  deployment, this project's previews, loopback; else 400 and the key sent
+  nowhere).
+- `the console's switches section` (`web/admin-switches.js`,
+  `api/_console_switches.js`): `GET ?op=switches` adds `variables` (every
+  name the code reads, `here` a yes or no, `environments` from `site_env`,
+  what and where; never a value or a length; one Vercel has that nothing
+  reads is `unread`), `settings` (`site_settings_list`) and the notice with
+  its history; `POST ?op=notice_set {words: {en, de?, fr?, es?}, tone}`
+  (English needed, 300 characters a language, a language the site lacks
+  dropped) and `?op=notice_clear` (404 when none shows), each audited.
+- `the console's part C` (`supabase/console3.sql`, then
+  `supabase/console3b.sql`'s admin_export): `site_notices`, `site_env` and
+  thirteen functions only the server may call. An op of `/api/admin` is
+  one of its tables' own names: any other (`constructor`, `__proto__`)
+  is 404 and never audited; an act asked by GET is 405. Prove:
+  `python3 tools/minitest.py tests/test_console3.py` (a real Postgres:
+  db3_check.mjs and api3_check.mjs), and on a preview
+  `node tools/web/c3attack.mjs <preview>` (the review's attacks: forged
+  tokens, lookalike addresses, a follower's id, the notice, the grants,
+  prototype names) and `node tools/web/c3export_one.mjs <preview> 3d2df783`
+  (the busy test account's export: 200 in under 3 s).
+- `an account's deletion` (`api/_erase.js`): `erase(account)`, the one
+  deletion: Admission first (a plan not ended holds it all, 503), the
+  orangecheck account Connect made, photos, pictures, feedback's files,
+  then the auth user and everything keyed to it. `POST /api/account?op=delete`
+  for its person; `POST /api/admin?op=delete_account&account=U {confirm,
+  reason}` for the owner at their request: `confirm` must be its address
+  (case and spaces aside, else 422), never the owner's own (403), 404 when
+  it is gone; the audit keeps its address. `POST ?op=export&account=U`
+  (`admin_export`: at most 1000 rows a table and `more` for the rest, values
+  over 8 KB named by size, no secret column nor the connector's tool lists,
+  never read; who follows the account a count, `followers`, never their
+  accounts) and `?op=sign_out&account=U`
+  (`admin_sign_out`: sessions and Claudes' grants).
+- `deployment variables written down` (`tools/release/env_names.sh`, from
+  ship.sh after release_live.sh): `vercel env ls --format json` (vercel@61)
+  read in-process for each key and target only, posted to `site_env_note`;
+  prints a count, never a value; exits 0 whatever happens.
 - `the console's reads and audit` (`api/_console.js`, `supabase/console.sql`
   admin_audit): `GET /api/admin?op=overview` (counts, what needs the owner,
   the switches, the newest acts), `?op=people` (every account with its
@@ -447,7 +537,15 @@ they have. A Claude connector belongs to the account that switched it on.
   `exchangeOrangecheck`, `supabase/orangecheck.sql`): the site's sign-in
   dialog has **Sign in with orangecheck** under the email code ("A Bitcoin
   wallet, email, Google or GitHub. Brickworks gets an id for you, not your
-  address."). Since step 4 (2026-10-24, oc225) every such button (the
+  address."). Since signinux (2026-11-14) the two are equal ways in, each a
+  `.cta.wide` the form's width and 44 px, "or" between (`dialog .or`), and
+  orangecheck's window is followed (`orangecheckButton`'s `onOpen` and
+  `onOutcome`, its `popup.signal` to cancel): while it is open the dialog
+  shows `.waiting` ("Finish signing in in the orangecheck window", Show the
+  orangecheck window, Cancel); closed unfinished, blocked or failed, the two
+  ways come back with `.oc-said` under the button in orangecheck's words
+  (`data-tone` calm, blocked or bad), the focus on the button. Proven by
+  `tools/web/signin_flow.mjs --only=orangecheck` (its window stood in). Since step 4 (2026-10-24, oc225) every such button (the
   dialog's, /settings' Link orangecheck, an orangecheck account's delete) is
   our own `.cta.ghost` with `data-oc-sign-in`, made orangecheck's by its own
   code: its mono mark, its busy state, its window opened from the click, and
