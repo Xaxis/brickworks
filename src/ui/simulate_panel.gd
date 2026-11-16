@@ -97,8 +97,9 @@ var _driving: bool = false
 ## The body a click chose while a drive was still turning, weighing and
 ## checking where it stops, driven as soon as that gives way; -1 for none.
 ## A phone draws a frame slowly, and the stop check, a slice a frame, ran for
-## seconds after Simulate opened: a tap then was dropped, and phonewalk's
-## driver took 3 taps where the tablet's took 2 (smalls4).
+## seconds after Simulate opened: a tap then was dropped (smalls4,
+## phonepanels' busy tap). phonewalk's 3 taps for a driver were not this:
+## its first two landed on the orrery's frame, which does not turn.
 var _wanted: int = -1
 ## The body the drive under way is turning.
 var _driving_to: int = -1

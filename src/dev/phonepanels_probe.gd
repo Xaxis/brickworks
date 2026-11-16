@@ -641,8 +641,8 @@ func _simulate() -> void:
 ## on a gear train, src/dev/fixtures), Simulate opened turns its first
 ## driver and then looks for where it stops, a slice a frame, which on a
 ## phone's slow frames ran for seconds; a tap on another gear then was
-## dropped, and the driver took 3 taps where the tablet took 2 (APP_UX9,
-## smalls4 item 7). Here another gear is tapped while that first drive is
+## dropped (APP_UX9, smalls4 item 7; phonewalk's 3 taps were its own two on
+## the orrery's frame, not this). Here another gear is tapped while that first drive is
 ## still under way: it is kept (SimulatePanel._wanted) and is the driver
 ## once the first gives way, in the one tap.
 func _tap_while_busy(panel: SimulatePanel) -> void:

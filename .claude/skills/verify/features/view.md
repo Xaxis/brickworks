@@ -3416,8 +3416,10 @@ picture the assistant is shown.
   part tapped while Simulate still drives the last tap (turning, weighing,
   finding where it stops) is kept and made the driver once that is done
   (`SimulatePanel._wanted`, smalls4, APP_UX9 #7): on a phone's slow frames
-  the stop search outlasted the tap, which was dropped, so a phone took 3
-  taps where a tablet took 2.
+  the stop search outlasted the tap, which was dropped. phonewalk's 3 taps
+  for a new driver are its own: its first two land on the orrery's frame
+  (Grab's handles list it; Simulate rightly refuses it), and a tap on a part
+  that turns drives at once.
   A part dragged by a finger (a Grab on its joint, or a part dragged) stops
   the phone's hold timer (`Main._on_phone_hold`): a door swung while Motions
   records no longer opens 152 parts' actions over the panel. Measure's words
