@@ -219,6 +219,19 @@ func touch() -> void:
 		emptied = false
 
 
+## An edit made and taken back whole at once, a copy of its sub-model unable
+## to take it (Assemblies.after_edit): heard as no change. The history is as
+## the watch ([method _hear]) last heard it, and only the world's revision
+## moved, by the edit and its taking back; heard so, the model is not marked
+## changed, nor written again by the autosave (flreview F2).
+func unchanged() -> void:
+	if _heard.is_empty() or world == null:
+		return
+	var now: Array = _model_now()
+	if now[1] == _heard[1] and is_same(now[2], _heard[2]):
+		_heard = now
+
+
 ## The model on screen is now what somebody meant it to be. Called when
 ## they place, remove or change a brick: their own edit taking the last
 ## part off is them emptying it ([member emptied]).

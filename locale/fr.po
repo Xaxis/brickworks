@@ -14772,3 +14772,20 @@ msgstr "1 verrouillée, laissée de côté : déverrouillez-la pour la modifier"
 
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d verrouillées, laissées de côté : déverrouillez-les pour les modifier"
+
+# An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy (named), or no room in one, with the menu command round it (followfix, flfix)
+
+msgid "Locked in one copy of %s: unlock it, or use Build › Make this copy unique"
+msgstr "Verrouillée dans une copie de %s : déverrouillez-la, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "Locked in one copy of %s: %s. Unlock it, or use Build › Make this copy unique"
+msgstr "Verrouillée dans une copie de %s : %s. Déverrouillez-la, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "No room in %s: %s is in the way there. Move it, or use Build › Make this copy unique"
+msgstr "Pas de place dans %s : %s gêne à cet endroit. Déplacez-la, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "No room in %s: move what is in the way there, or use Build › Make this copy unique"
+msgstr "Pas de place dans %s : déplacez ce qui gêne à cet endroit, ou utilisez Construire › Rendre cette copie unique"
+
+msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
+msgstr "Pas de place dans %s : elle passerait sous le sol. Montez cette copie, ou utilisez Construire › Rendre cette copie unique"
