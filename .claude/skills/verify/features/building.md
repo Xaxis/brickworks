@@ -1609,8 +1609,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the same words, each undo the file before it; `--into=DIR` writes the save
   to diff against another checkout's.
 - `find and replace everywhere` (`src/ui/find_replace_bar.gd`, `src/assembly/find_replace.gd`;
-  APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`; Ctrl-H stays
-  Hide) opens a bar over the view. A part's number or name (3023 finds 3023a
+  APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`, answered by
+  `Shell.handle_key`, which `EditVerbs` leaves it to; under LDCad's keys, whose
+  Ctrl-Shift-H shows everything, `Ctrl-Shift-F`; Shift-H stays Show only the
+  selection, Ctrl-H Hide, smalls4) opens a bar over the view. A part's number or name (3023 finds 3023a
   and 3023b) and/or a colour to find, as it is seen: a copy placed by a
   mirror shows the other hand of a handed part, and is found as that. It
   lists where they are (the model's own parts, each sub-model with its
@@ -3068,7 +3070,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its own undo), `words` (de, fr, es), `room_selection` (one copy selected,
   its twin crowded, then locked: nothing changes, said), `big_room` (10179's
   every 3023 a 3069b: each counted once, nothing laid through another part,
-  the step said by what changed, the undo to the byte). `swreview_probe`
+  the step said by what changed, the undo to the byte), `key` (the bar's
+  key pressed as an input event under each preset, nothing and a part
+  selected: the bar up, nothing hidden, the selection kept; Edit's row and
+  the keys sheet name LDCad's Ctrl-Shift-F; Shift-H, Ctrl-H, Alt-H and
+  LDCad's H and Ctrl-Shift-H still do theirs). Every case opens the bar by
+  its key, not the menu. `swreview_probe`
   (`SWREVIEW_CASES=room_copies,big`) holds the review's attacks: a copy with
   no room, a sub-model in two parents, colour 16 and 24, direct colours, a
   locked twin, what a typed part resolves to, a session's wrong shapes.

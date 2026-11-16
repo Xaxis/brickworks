@@ -17,7 +17,9 @@
 ## part of another footprint and one of other connection points, said before;
 ## CRLF and tabs; a file as live saves it, replaced and read back as live
 ## reads it; undo then redo; a replace while a Build together room is open;
-## and the words in German, French and Spanish. The car is the app's own
+## and the words in German, French and Spanish. The bar is opened by its key,
+## pressed as a person presses it, and the key is checked under every preset
+## beside Shift-H, Ctrl-H and Alt-H (key). The car is the app's own
 ## settled save of it, so it opens and saves to the byte (copyorder's S2),
 ## and every undo is held to the save before the replace, to the byte.
 ##
@@ -31,8 +33,11 @@
 extends "res://src/dev/copyfaults_probe.gd"
 
 const FIND_CASES: Array = ["car", "mcp", "two_colours", "mirror", "three_deep", "wheels", "printed",
-	"footprint", "crlf", "live", "together", "words", "room_selection", "big_room", "puts"]
+	"footprint", "crlf", "live", "together", "words", "room_selection", "big_room", "puts", "key"]
 const CAR := "swapfind_car.mpd"
+const CTRL := KEY_MASK_CMD_OR_CTRL
+const SHIFT := KEY_MASK_SHIFT
+const ALT := KEY_MASK_ALT
 const BLACK := 0
 const DARK_BLUISH_GREY := 72
 
@@ -79,6 +84,7 @@ func _run() -> void:
 			"room_selection": await _case_room_selection()
 			"big_room": await _case_big_room()
 			"puts": await _case_puts()
+			"key": await _case_key()
 			_: _check("no such case %s" % name, false)
 	print("\nswapfind probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -90,14 +96,148 @@ func _run() -> void:
 # -- the bar ------------------------------------------------------------------------
 
 
-## Edit › Find and replace…, as the menu runs it, over [param text] opened.
+## Edit › Find and replace… by its key, as a person presses it (Ctrl-Shift-H
+## under the app's keys), over [param text] opened: the menu's way is the
+## phone probe's, and a probe that only ran the menu never pressed the key
+## it named (smalls4).
 func _bar_on(text: String) -> PanelContainer:
 	await _open(text)
 	_builder.clear_selection()
-	_shell.run("find_replace")
-	await _frames(4)
-	_bar = _main.get("_find_replace_made")
+	_bar = await _by_key()
 	return _bar
+
+
+## Find and replace's key pressed as the window delivers it, nothing focused
+## and the pointer over the model; the bar once it is up, or null.
+func _by_key() -> PanelContainer:
+	var made: PanelContainer = _main.get("_find_replace_made")
+	if made != null:
+		made.call("close")
+	root.gui_release_focus()
+	var over := InputEventMouseMotion.new()
+	over.position = root.get_visible_rect().get_center()
+	Input.parse_input_event(over)
+	await _frames(2)
+	await _press(Keymap.key_of("find_replace"))
+	return await _bar_up()
+
+
+## The bar, once it is in sight (a few frames: Shell.attend, then its first
+## build), or null after a second.
+func _bar_up() -> PanelContainer:
+	for _n: int in 60:
+		var made: PanelContainer = _main.get("_find_replace_made")
+		if made != null and made.is_visible_in_tree():
+			return made
+		await process_frame
+	return null
+
+
+## A key and its modifiers, down and up, as the window delivers them.
+func _press(accel: int) -> void:
+	for down: bool in [true, false]:
+		var event: InputEventKey = Keymap.press_of(accel)
+		event.pressed = down
+		Input.parse_input_event(event)
+		await process_frame
+	await _frames(6)
+
+
+## Find and replace's key under every preset (smalls4, item 1): with nothing
+## selected and with a part, the key opens the bar, hides nothing and keeps
+## the selection. Its neighbours still do theirs: Shift-H shows only the
+## selection, Ctrl-H hides it, Alt-H shows everything. Under LDCad's keys,
+## whose Ctrl-Shift-H shows everything, the bar has Ctrl-Shift-F, and the
+## Edit menu's row and the keys sheet (F1) say so.
+func _case_key() -> void:
+	await _open(_fixture(CAR))
+	var some: int = int(_world.bricks()[0].id)
+	for preset: String in Keymap.PRESETS:
+		Keymap.use(preset)
+		var key: int = Keymap.key_of("find_replace")
+		var want: int = CTRL | SHIFT | (KEY_F if preset == "ldcad" else KEY_H)
+		_check("key %s: Find and replace is %s (%s)" % [preset, Keymap.listed("find_replace"),
+			Keymap.listed_key(want)], key == want)
+		var popup: PopupMenu = _shell.menu("Edit").get_popup()
+		popup.about_to_popup.emit()
+		var row: int = popup.get_item_index(_shell.menu_id("find_replace"))
+		_check("key %s: ...Edit's row shows it" % preset,
+			row >= 0 and popup.get_item_accelerator(row) == Shell.menu_accel(want))
+		for picked: Array in [[], [some]]:
+			_select(picked)
+			await _frames(2)
+			var bar: PanelContainer = await _by_key()
+			_check("key %s, %s: %s opens the bar, nothing hidden, the selection kept (%d hidden, %d selected)"
+				% [preset, "a part selected" if picked.size() > 0 else "nothing selected",
+				Keymap.listed("find_replace"), _builder.lattice.unseen.size(), _builder.selection.size()],
+				bar != null and _builder.lattice.unseen.is_empty()
+				and _builder.selection.keys() == picked)
+		if preset == "ldcad":
+			await _sheet_says()
+	# LDCad's own: H hides, Ctrl-Shift-H shows everything and opens no bar.
+	Keymap.use("ldcad")
+	await _neighbour("ldcad: H hides the part", KEY_H, [some], func() -> bool:
+		return _builder.lattice.unseen.keys() == [some])
+	await _neighbour("ldcad: then Ctrl-Shift-H shows everything", CTRL | SHIFT | KEY_H, [some],
+		func() -> bool: return _builder.lattice.unseen.is_empty())
+	Keymap.use("brickworks")
+	# The model's parts: the baseplate is never hidden (EditVerbs.isolate).
+	var parts: int = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
+		return not _store.scenery.has(brick.id)).size()
+	await _neighbour("Shift-H shows only the selection", SHIFT | KEY_H, [some], func() -> bool:
+		return _builder.lattice.unseen.size() == parts - 1 and not _builder.lattice.unseen.has(some))
+	await _neighbour("then Alt-H shows everything", ALT | KEY_H, [some], func() -> bool:
+		return _builder.lattice.unseen.is_empty())
+	await _neighbour("Ctrl-H hides the selection", CTRL | KEY_H, [some], func() -> bool:
+		return _builder.lattice.unseen.keys() == [some])
+	_verbs_show_all()
+	await _frames(4)
+
+
+## [param accel] pressed over [param picked] selected with the bar shut and
+## nothing focused: [param done] holds, and no bar came up.
+func _neighbour(what: String, accel: int, picked: Array, done: Callable) -> void:
+	var made: PanelContainer = _main.get("_find_replace_made")
+	if made != null:
+		made.call("close")
+	root.gui_release_focus()
+	_select(picked)
+	await _frames(2)
+	await _press(accel)
+	await _frames(4)
+	var up: bool = made != null and made.is_visible_in_tree()
+	_check("key: %s, no bar (%d hidden)" % [what, _builder.lattice.unseen.size()],
+		bool(done.call()) and not up)
+
+
+func _verbs_show_all() -> void:
+	(_main.get("_verbs") as EditVerbs).show_all()
+
+
+## The keys sheet (F1) lists Find and replace with its words and its key.
+func _sheet_says() -> void:
+	var made: PanelContainer = _main.get("_find_replace_made")
+	if made != null:
+		made.call("close")
+	root.gui_release_focus()
+	await _press(KEY_F1)
+	await _frames(10)
+	var sheet: ControlsDialog = _main.get("_controls")
+	var chip: Control = sheet.controls_by_name().get("key_find_replace") if sheet != null else null
+	var said: String = chip.accessibility_name if chip != null else "no row"
+	_check("key %s: the keys sheet says \"%s\"" % [Keymap.preset(), said],
+		chip != null and said.begins_with(Keymap.words("find_replace"))
+		and said.contains(Keymap.listed("find_replace")))
+	if sheet != null:
+		sheet.visible = false
+	await _frames(4)
+
+
+func _select(ids: Array) -> void:
+	_builder.clear_selection()
+	for brick_id: Variant in ids:
+		_builder.selection[int(brick_id)] = true
+	_builder.selection_changed.emit(ids.size())
 
 
 ## The bar's words as a person reads them: every line of its list and notes.
@@ -159,7 +299,8 @@ func _undone() -> String:
 func _case_car() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
-	if not _check("Edit › Find and replace… opens the bar", _bar != null and _bar.visible):
+	if not _check("Find and replace's key (%s) opens the bar" % Keymap.listed("find_replace"),
+			_bar != null and _bar.visible):
 		return
 	var before: String = _save()
 	_check("car: the app's own file, opened and saved, to the byte (%s)" % _diff(text, before),

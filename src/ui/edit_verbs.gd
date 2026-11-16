@@ -132,8 +132,12 @@ func handle_key(key: InputEventKey) -> bool:
 				return true
 		KEY_H:
 			# H alone is the Pan tool (the owner's hand), so hiding is Ctrl-H.
+			# Ctrl-Shift-H is Find and replace, the shell's (Shell.handle_key):
+			# taken here for Shift-H, it showed only the selection (smalls4).
 			if key.alt_pressed:
 				show_all()
+			elif held and key.shift_pressed:
+				return false
 			elif key.shift_pressed:
 				isolate()
 			elif held:
