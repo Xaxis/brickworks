@@ -218,8 +218,9 @@ try {
     await page.waitForTimeout(1500);
     // Your reports and your place in the beta are read from
     // /api/plans?op=feedback and ?op=beta (api/_feedback.js, api/_beta.js),
-    // neither of which is paying.
-    const ofPlans = (p) => (p.startsWith("/api/plans") && !/[?&]op=(feedback|beta)(&|$)/.test(p)) || p === "/plan.js";
+    // and the owner's site notice from ?op=notice on every page
+    // (web/notice.js, api/_console_switches.js): none of them is paying.
+    const ofPlans = (p) => (p.startsWith("/api/plans") && !/[?&]op=(feedback|beta|notice)(&|$)/.test(p)) || p === "/plan.js";
     check(`/settings asked nothing of plans: ${asked.filter(ofPlans).join(" ") || "nothing"}`,
       !asked.some(ofPlans));
     await shot(page, "settings-off-1280-light.png", true);
