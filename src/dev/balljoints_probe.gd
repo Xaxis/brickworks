@@ -38,7 +38,8 @@
 ##  4. Pose: pose_model lists a sub-assembly on a ball as three joints, its
 ##     turns about x, y and z, and one swings it about the ball's centre.
 ##  5. The session's half: f1's arm (15456 on a stand, 3730 on its ball, the
-##     arm on 3730) raised 30° by move_part about the ball, the stand still.
+##     arm on 3730) raised 30° by move_part about the ball, the stand still;
+##     pose_model, with no sub-assembly to pose, names the ball and the turn.
 ##  6. --picture: a ball joint seated by hand, at the window's size, in
 ##     shots/balljoints/.
 extends SceneTree
@@ -572,6 +573,13 @@ func _session() -> void:
 	var stand_was: Transform3D = _world.get_brick(int(arm["ball"])).transform
 	var was: Transform3D = _world.get_brick(int(arm["socket"])).transform
 	var arm_was: Transform3D = _world.get_brick(int(arm["arm"])).transform
+	# Asked what turns, with no sub-assembly, the answer names the ball and
+	# how to turn it: f1's session asked, then asked move_part with no
+	# degrees, before it turned the arm.
+	var listed: String = await _say("pose_model", {})
+	print("    pose_model: %s" % listed.replace("\n", " | "))
+	_check("pose_model with nothing to pose names the socket on its ball and move_part's turn",
+		listed.contains("#%d 3730 on #%d 15456's ball" % [arm["socket"], arm["ball"]]) and listed.contains("move_part {\"part\""))
 	var said: String = await _say("move_part", {"part": str(arm["socket"]), "degrees": 30, "axis": [-1, 0, 0]})
 	var now: Transform3D = _world.get_brick(int(arm["socket"])).transform
 	var arm_now: Transform3D = _world.get_brick(int(arm["arm"])).transform
@@ -581,6 +589,11 @@ func _session() -> void:
 		absf(_angle(now.basis, was.basis) - 30.0) < 0.5 and (now * mine.at).distance_to(centre) <= PLACE
 		and _angle(arm_now.basis * arm_was.basis.inverse(), now.basis * was.basis.inverse()) < TURN)
 	_check("...the stand where it was", _world.get_brick(int(arm["ball"])).transform.is_equal_approx(stand_was))
+	_check("...and says the turn with its sign about the axis asked", said.contains("turned 30° about [-1, 0, 0] (asked 30°)"))
+	var back: String = await _say("move_part", {"part": str(arm["socket"]), "degrees": -30, "axis": [-1, 0, 0]})
+	_check("...and -30° about it says so, and takes it back (%.2f°)" % _angle(_world.get_brick(int(arm["socket"])).transform.basis, was.basis),
+		back.contains("turned -30° about [-1, 0, 0] (asked -30°)")
+		and _angle(_world.get_brick(int(arm["socket"])).transform.basis, was.basis) < TURN)
 
 
 ## f1's model: a stand of bricks on a baseplate, 15456 on top with its ball

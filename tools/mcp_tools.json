@@ -4769,6 +4769,10 @@
           "description": "a part's number, or a sub-assembly's name; leave it out to list what moves",
           "type": "string"
         },
+        "picture": {
+          "description": "true: the whole model pictured after the move (a ball's turn seen along its axis), what moved edged; left out, words alone",
+          "type": "boolean"
+        },
         "spin": {
           "description": "let go turning this many degrees a second about its joint (after degrees=, if given): it coasts",
           "type": "number"

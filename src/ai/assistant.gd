@@ -21607,6 +21607,9 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	var said := PackedStringArray()
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
+	var on_balls: String = JointSnap.balls_said(world, library, builder.lattice, _placed_ids)
+	if not on_balls.is_empty():
+		said.append(on_balls)
 	var counted: String = parts_said()
 	if past_count():
 		said.append(counted + ": the passes after this one add their detail only inside "
@@ -21676,6 +21679,9 @@ func _placed_said(design: Model, report: Dictionary) -> String:
 	if not bricks.is_empty():
 		said.append("Each part by its number, the span it takes in studs (x, z) and "
 			+ "plates (y), and what holds it:\n" + "\n".join(_holds_rows(bricks)))
+	var on_balls: String = JointSnap.balls_said(world, library, builder.lattice, _placed_ids)
+	if not on_balls.is_empty():
+		said.append(on_balls)
 	var apart: String = str(report.get("pieces_said", ""))
 	if not apart.is_empty():
 		said.append(apart)

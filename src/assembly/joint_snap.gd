@@ -1013,6 +1013,61 @@ static func describe(site: End, name: String) -> String:
 	return "the %s of %s" % [said, name]
 
 
+## The ball joints of [param ids] with any part, once a pair: [[the part
+## with the socket, the part with the ball], ...], a ball or a socket of one
+## of them in a socket or on a ball of another part, their centres within
+## [constant SAME_BALL].
+static func ball_pairs(world: BrickWorld, library: PartLibrary, lattice: BrickLattice,
+		ids: PackedInt64Array) -> Array:
+	var out: Array = []
+	var seen: Dictionary = {}
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		for end: End in ends_for(library, brick.part_id):
+			if not end.is_ball():
+				continue
+			var held: End = end.placed(brick.transform, brick_id)
+			var reach := AABB(held.at, Vector3.ZERO).grow(SAME_BALL + BrickLattice.CELL)
+			var cells := PackedInt32Array([floori(reach.position.x / BrickLattice.CELL),
+				floori(reach.position.y / BrickLattice.CELL), floori(reach.position.z / BrickLattice.CELL),
+				ceili(reach.end.x / BrickLattice.CELL), ceili(reach.end.y / BrickLattice.CELL),
+				ceili(reach.end.z / BrickLattice.CELL)])
+			for other: int in lattice.near_bounds(cells):
+				var key := Vector2i(mini(brick_id, other), maxi(brick_id, other))
+				if other == brick_id or seen.has(key):
+					continue
+				var them: BrickWorld.Brick = world.get_brick(other)
+				if them == null:
+					continue
+				for theirs: End in ends_for(library, them.part_id):
+					if theirs.is_ball() and mates(held, theirs) \
+							and (them.transform * theirs.at).distance_to(held.at) <= SAME_BALL:
+						seen[key] = true
+						out.append([brick_id, other] if held.kind == "socket" else [other, brick_id])
+						break
+	return out
+
+
+## What a reply says of the ball joints of [param ids] ([method ball_pairs]):
+## the two parts of each and how a session turns one, or "" for none. f1's
+## session, its arm on 3730 on 15456's towball, asked pose_model and then
+## move_part with no degrees before it turned the arm (APP_UX9, MCP f1).
+static func balls_said(world: BrickWorld, library: PartLibrary, lattice: BrickLattice,
+		ids: PackedInt64Array) -> String:
+	var pairs: Array = ball_pairs(world, library, lattice, ids)
+	if pairs.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for pair: Array in pairs.slice(0, 8):
+		named.append("#%d %s on #%d %s's ball" % [pair[0], world.get_brick(pair[0]).part_id, pair[1],
+			world.get_brick(pair[1]).part_id])
+	return ("On a ball: %s%s. move_part {\"part\": the side that turns, \"degrees\": ..., "
+		+ "\"axis\": [x, y, z]} turns that side, and what is on it, about the ball's centre.") % [
+		"; ".join(named), "; and %d more" % (pairs.size() - 8) if pairs.size() > 8 else ""]
+
+
 ## The ball some parts hang from, or that hang from one of them: a ball or a
 ## socket of one of [param ids] in a socket or on a ball of a part outside
 ## them, their centres within [constant SAME_BALL]. {"point": the centre, as

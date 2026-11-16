@@ -703,6 +703,7 @@ func definitions() -> Array:
 					"description": "a ball's turn about this way (x y z), with degrees="},
 				"to": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
 					"description": "a point in studs (x y z, as move_part says where a joint is): the part drawn there by its chain of joints"},
+				"picture": {"type": "boolean", "description": "true: the whole model pictured after the move (a ball's turn seen along its axis), what moved edged; left out, words alone"},
 			}},
 		},
 		{
@@ -1451,7 +1452,29 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				return "This app cannot move parts on their joints."
 			if str(input.get("part", "")).strip_edges().is_empty():
 				return _what_moves(grabbing)
-			return await grabbing.for_session(input)
+			# Asked to show it as well, the move answered pictured as
+			# edit_model's change is: f1's session raised an arm on its ball
+			# and then asked view_board to show the person.
+			if not (input.get("picture") is bool and bool(input["picture"])):
+				return await grabbing.for_session(input)
+			var world: BrickWorld = app.get("_world")
+			var was: Dictionary = {}
+			for brick: BrickWorld.Brick in world.bricks():
+				was[brick.id] = brick.transform
+			var moved_said: String = await grabbing.for_session(input)
+			var moved := PackedInt64Array()
+			for brick: BrickWorld.Brick in world.bricks():
+				if not was.has(brick.id) or not (was[brick.id] as Transform3D).is_equal_approx(brick.transform):
+					moved.append(brick.id)
+			if moved.is_empty():
+				return moved_said
+			# A ball's turn seen along its axis, where the swing shows whole.
+			var view: String = "corner"
+			var way: Array = input.get("axis", []) as Array
+			if way.size() == 3:
+				var along := Vector3(absf(float(way[0])), absf(float(way[1])), absf(float(way[2])))
+				view = "top" if along.y > maxf(along.x, along.z) else "right" if along.x >= along.z else "front"
+			return await _seeing().pictured(moved_said, moved, true, view, "moved")
 		"simulate_mechanism":
 			return await _simulate(input, work)
 		"animate_model":
@@ -2569,7 +2592,13 @@ func _pose(input: Dictionary) -> String:
 		assistant._tag_assemblies()
 	var joints: Array[Poser.Joint] = panel.joints_now()
 	if joints.is_empty():
-		return "Nothing here turns: " + NO_JOINTS
+		var world: BrickWorld = app.get("_world")
+		var builder: Builder = app.get("_builder")
+		var ids := PackedInt64Array()
+		for brick: BrickWorld.Brick in world.bricks():
+			ids.append(brick.id)
+		var on_balls: String = JointSnap.balls_said(world, app.get("_library"), builder.lattice, ids)
+		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls)
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0

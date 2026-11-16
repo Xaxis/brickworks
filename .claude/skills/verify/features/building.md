@@ -2660,7 +2660,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   centre for a part on one (`Handles.pivot_is() == "ball"`); Pose lists a
   sub-assembly on a ball as three joints, its turns about x, y and z;
   `move_part` with `axis` turns a part about its ball (Bodies reads the exact
-  halves). Probe: `balljoints_probe`.
+  halves); `pose_model` with nothing to pose, and the reply to a design or a
+  placement, name each part on a ball and the `move_part` that turns it
+  (`JointSnap.balls_said`); `move_part` with `picture: true` answers with the
+  whole model pictured, what moved edged. Probe: `balljoints_probe`.
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
