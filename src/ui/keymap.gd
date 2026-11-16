@@ -93,7 +93,8 @@ const DONE_AS: Dictionary = {"part_left": SHIFT | KEY_R, "part_right": KEY_R,
 ## Mecabricks': W selects, D clones, M moves, F reshapes a flexible part;
 ## its S, snap, is Connect's. LDCad's (melkert.net/LDCad/docs/keys): M the
 ## move pin, C centres on the selection, Z fits, V switches the projection,
-## H hides, Ctrl-Shift-H shows all, Insert the part again.
+## H hides, Ctrl-Shift-H shows all, Insert the part again; Find and replace,
+## the app's Ctrl-Shift-H, is Ctrl-Shift-F there.
 ##
 ## Connect is the app's N; Studio's keep that, having none of their own.
 ## LDCad's Space swaps its split views for one large one, and Space is kept
@@ -192,6 +193,13 @@ const PRESET_KEYS: Dictionary = {
 		"hide": KEY_H, "show_all": CTRL | SHIFT | KEY_H, "select_none": CTRL | SHIFT | KEY_A,
 		"leave_assembly": SHIFT | KEY_N, "mode_place": KEY_INSERT,
 		"step_close": CTRL | KEY_INSERT,
+		# LDCad's Ctrl-Shift-H shows all and its Ctrl-H brings back the last
+		# hidden, so Find and replace (the app's Ctrl-Shift-H) takes
+		# Ctrl-Shift-F. LDCad has none of its own; its people write LDraw
+		# in Notepad++ and VS Code, whose Ctrl-Shift-F finds across every
+		# file with Replace beside it, as this does across every sub-model,
+		# and Ctrl-F here finds a part in the model (smalls4).
+		"find_replace": CTRL | SHIFT | KEY_F,
 	},
 }
 

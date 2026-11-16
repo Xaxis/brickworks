@@ -75,6 +75,14 @@ ui:newer build banner
 lib:newer build
 -->
 
+## A notice at the foot of the page {#notice}
+
+Now and then a short notice floats at the foot of every page of the site: a time Brickworks will be down for upkeep, or news. It is in your page's language when one was written for it, else in English, and nothing on the page moves for it. Press **×** to put it away: it stays away in that browser until there is a new one.
+
+<!-- covers
+ui:the site notice
+-->
+
 ## The desktop app, coming soon {#desktop}
 
 > [!NOTE]

@@ -151,16 +151,16 @@ async function connectSignIn(name, { tick, cut = false }) {
     return route.fulfill({ response: reply });
   });
   const tab = await made.newPage();
-  await tab.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await tab.locator("#sign-in").click({ timeout: 60000 });
-  await tab.locator("dialog.sign-in #oc-connect").waitFor({ state: "visible", timeout: 30000 });
+  // Signed out, /profile?sign-in opens the sign-in by itself (signinux, sifix).
+  await tab.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await tab.locator("dialog.sign-in #oc-connect").waitFor({ state: "visible", timeout: 60000 });
   check(`${name}: the box is there, unticked`, !(await tab.locator("dialog.sign-in #oc-connect").isChecked()));
   if (tick) await tab.locator("dialog.sign-in #oc-connect").check();
   await tab.fill("dialog.sign-in form input", email);
   await tab.click('dialog.sign-in button[type="submit"]');
   await tab.waitForFunction(() => /The code sent to/.test(document.querySelector("dialog.sign-in label")?.textContent || ""), null, { timeout: 60000 });
-  await tab.fill("dialog.sign-in form input", await mintCode(email));
-  await tab.click('dialog.sign-in button[type="submit"]');
+  // One digit a box: the whole code in the first goes by itself.
+  await tab.fill("dialog.sign-in .code-boxes input:first-child", await mintCode(email));
   const kept = await tab.waitForFunction((name) => {
     try {
       return JSON.parse(localStorage.getItem(name) || "null");
@@ -178,9 +178,9 @@ async function connectSignIn(name, { tick, cut = false }) {
 try {
   if (connectOnly) throw Object.assign(new Error("connect only"), { connectOnly: true });
   // 1. Through orangecheck's window, offered to everybody.
-  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await page.locator("#sign-in").click({ timeout: 60000 });
-  await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+  // Signed out, /profile?sign-in opens the sign-in by itself (signinux, sifix).
+  await page.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 60000 });
   const answered = nextAnswer();
   // orangecheck's button script dresses the button after the dialog opens:
   // on brickworks.diy its mark was drawn 184 ms in (2026-10-24), and asked

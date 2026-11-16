@@ -6298,6 +6298,217 @@ Why it fell short:
 - The change is taken back out on this branch (`8e2954cc1`), so nothing of
   it ships. `7b8321b5b` holds it.
 
+### Build to the outline: the first mass laid to the real thing's outline (2026-11-15, design21, `51876e09e`, NO-GO)
+
+**Why.** design18 to design20 handed the session a measure and waited for
+an edit, and each lost at the edit: a session keeps the model it has.
+design20's next was to act before the first build. The outline is asked
+for with `plan_scale`, and the app's shapes take it as their profile, so
+the first mass already has it and no edit is needed. Read the steps and the
+plan from above too, the judge's words where design20's tenths matched.
+
+**The change** (`6423214fd`, `f0a3b891f`, `51876e09e`):
+
+- `plan_scale` takes `outline=` read off a photograph taken square from one
+  side, as design20's `review_model` did: heights along a long thing (and
+  undersides), or widths up a tall one. New: `steps` (where each setback
+  is, as shares), `plan` (rectangle, square, round, Y, T, L, H, U, cross,
+  triangle) and `deep` (depth over width). `studs=` gives the size to build.
+- `src/ai/outline_plan.gd` (`OutlinePlan`) holds the reading for the
+  subject and lays it at that size. Its answer gives the outline at each
+  tenth in studs and plates, the steps along or up, and the first mass as
+  one line to send as it is: an extrude whose `profile` and `under` are
+  the outline, or `tiers` whose `levels` are.
+- `tiers` is a new Shapes solid: levels of [y, wide, deep] stood one on
+  another, in the plan's shape. Each setback is a stud each side, so every
+  tier keeps its base's parity and stays centred on the one under it.
+  Read smooth (no steps), it narrows a stud each side course by course.
+  Equal tiers merge. An extrude, a loft, a revolve and a prism's storeys
+  also take `"outline"` as their profile.
+- The ask rides where a session reads first: the connector METHOD's first
+  two steps, `how_real_sets_build_this`'s first line, `find_reference`,
+  `clear_model`, and under the first bare build's first line. Once a
+  subject.
+- Decided as an expert would, and said in the answer: a setback a stud
+  each side (a set's tower steps evenly so its studs stay on the grid);
+  the widest tier is the given width rounded to a whole stud; heights in
+  whole plates; the plan's depth from `deep`, or the width.
+- A design whose patterns all came to nothing says why, not only "no
+  parts".
+- **The holdout.** The session reads a photograph that `find_reference`
+  finds. No set's picture or model is read, so none can leak.
+
+**Proof in the app.** `outline_build_probe` (headless), 60 checks, all
+passed at `51876e09e`, from a locked snapshot:
+
+- Five sets from LDraw's model repository read off their own models, each
+  as heights and as widths: the mass laid follows the outline it was given
+  (heights 100% of studs' tops within 2 plates; widths 88-97% of plates
+  within a stud, the rest the inset Shapes gives a tier's foot for its
+  flank panels), and stands like the set (80-95% of their two sides
+  shared).
+- 6 steps read give 7 tiers 14, 12, 10, 8, 6, 4, 2 studs wide, and the
+  mass follows them (97%). Smooth gives 12 widths, a stud at a time.
+- Y, round and T plans cover the studs they should (98, 128 and 80 of
+  144).
+- `"outline"` in an extrude over a given length, a loft, a revolve and a
+  prism's storeys each lay it at the size said.
+- 11 wrong readings refused, each saying what is wrong. The asks come once
+  a subject, and stop once an outline is held.
+
+**The screen.** Two locked snapshots, each imported first: `snapd21base` at
+`574545532` (pre261's code) and `snapd21lev2` at `51876e09e`. Owner's path
+(`--via relay --no-claude-code --instructions none`), 2 sessions at a time,
+the arms one after the other, on 16 tune-half subjects: 12 first, then
+4 skylines so that at least 8 were reached. A first lever arm at
+`6423214fd` was stopped 7 minutes in: its first two sessions were asked
+three times each, at the foot of long answers, and built without an
+outline. `51876e09e` moved the ask to where a session reads first.
+
+- **Reach** (`design21-2026-11-15/py/reach21.py`): asked in 16 of 16.
+  Given before the first build in 8 of 16, never after. Of the 8: 6 read
+  heights and 2 widths; 7 read steps (3 to 6); 5 named a plan (4
+  rectangles, 1 H).
+- **Sent as is: 0 of 8.** 4 built the solid the answer named with their own
+  numbers off the reading (Rockefeller tiers; the Ducati, combine and dozer
+  an extrude). The other 4 built their own way with the reading in hand.
+- **The holdout held.** `held_out_said` is true for all 32 designs, and no
+  answer carried a set's own file or number (`py/leak21.py`, 0 hits in each
+  arm). Two base sessions searched the library for their own set's number
+  ("21018 United Nations", "42107") and found nothing. No lever session did.
+- **The build check** (realset's audit): nothing floats in any of the 32.
+  15 of 16 lever designs have no overlapping pair. Its San Francisco has
+  208, every one between a string's own segments (71149k01 and k02, the
+  Golden Gate's cables): a string drawn segment by segment, a gap
+  `tools/connection_audit.py` already names. The base's San Francisco has
+  64 of the same, and its dozer 4 (32007 in 3873).
+
+The screen, as set before it ran: the lever preferred to its base overall,
+head to head in both orders, on the subjects it reached, with likeness and
+technique no worse. Each arm against the set is beside it
+(`py/screen21.py`, realset's own shares and intervals, on the subjects
+named).
+
+| subjects | head to head: lever preferred, overall | likeness | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|
+| reached, 8 | 44% (17-74) | 50% | 56% | 12%, 44%, +31 (+0, +62) |
+| not reached, 8 | 44% (17-74) | 62% | 38% | 31%, 25%, -6 (-25, +12) |
+| all 16 | 44% (23-67) | 56% | 47% | 22%, 34%, +12 (-6, +31) |
+| reached, built their own way, 4 | 7 of 8 verdicts | 8 of 8 | 7 of 8 | 0 of 8, 5 of 8 |
+| reached, built the named solid, 4 | 0 of 8 verdicts | 0 of 8 | 2 of 8 | 2 of 8, 2 of 8 |
+
+Each subject: the reading, the first build, overall verdicts won against the
+set (base, lever, of 2), and the lever's overall wins head to head (of 2).
+
+| subject | read before the first build | first build | vs the set | head to head |
+|---|---|---|---|---|
+| Rockefeller Center | widths, 4 steps, rectangle | tiers, its own levels | 2, 2 | 0 |
+| Buckingham Palace | heights, 4 steps | its own fills | 0, 1 | 2 |
+| Capitol | heights, 6 steps, H | its own boxes and a revolve | 0, 2 | 2 |
+| Arc de Triomphe | widths, 3 steps, rectangle | its own fills | 0, 2 | 1 |
+| Shanghai | heights, 4 steps | its own | 0, 0 | 2 |
+| Ducati Panigale | heights, rectangle | an extrude, its own profile | 0, 0 | 0 |
+| Combine Harvester | heights, 3 steps | an extrude, its own profile | 0, 0 | 0 |
+| Dozer | heights, 3 steps, rectangle | an extrude, its own profile | 0, 0 | 0 |
+| Guggenheim | none | | 2, 2 | 1 |
+| United Nations | none | | 1, 0 | 0 |
+| Lincoln Memorial | none | | 0, 0 | 1 |
+| London | none | | 1, 2 | 1 |
+| San Francisco | none | | 0, 0 | 2 |
+| Tokyo | none | | 0, 0 | 2 |
+| Heavy Duty Forklift | none | | 0, 0 | 0 |
+| Tractor | none | | 1, 0 | 0 |
+
+The judge's words where the lever built the named solid:
+- Ducati: "a tall, boxy red slab with a vertical flank"; "one tall box,
+  which makes it look like a hulking block on wheels".
+- Combine: "a long green box with a thin yellow frame"; "a green box truck
+  ... a yellow rail where the header should be".
+- Dozer: "a long boxy body sitting on flat brick tracks behind a plain
+  yellow wall"; "a yellow box on fake tracks".
+- Rockefeller: "square, evenly stepped wedding-cake tower"; the base's
+  "thin slab ... recessed vertical piers and offset setbacks reads as 30
+  Rockefeller Plaza".
+
+Where it built its own way:
+- Capitol: "long, low wings with pedimented colonnades and a tall dome on a
+  colonnaded drum"; the base's "wings are tall, boxy blocks".
+- Buckingham Palace: "a long colonnaded facade on a rusticated base, with a
+  central portico and end pavilions".
+- Shanghai: "an Oriental Pearl Tower with round spheres, the bottle-opener
+  World Financial Center, a tiered Jin Mao and a tall tapering Shanghai
+  Tower".
+
+Each subject, front, corner and close, set then base then lever (contact
+sheets in `design21-2026-11-15/sheets/`), all 16 looked at:
+
+- **Capitol.** The lever's wings are long and low with grey roofs, the dome
+  on a stepped drum: the set's proportion. The base's wings stand tall.
+- **Buckingham Palace.** Both are white palaces. The lever's front is one
+  long symmetric facade with a portico; the base's is broken by black
+  window blocks.
+- **Arc de Triomphe.** Both tan where the set is white. The lever's arch is
+  taller with a deep cornice, nearer the set's heavy-topped square.
+- **Shanghai.** The lever's Pearl Tower has round spheres and its Shanghai
+  Tower is the tallest, in pale glass. The base's Pearl Tower has flat
+  magenta discs and its Shanghai Tower is a plain grey cylinder.
+- **Rockefeller Center.** The lever's tower is stubbier, a square stack of
+  even setbacks. Its session gave `studs=[6]`, the face's width, and the
+  answer laid the outline 25 studs tall where the scale had said 67: its
+  "studs= is the size to build" overrode the scale.
+- **Ducati.** The lever's body is a red block down to the stand, with
+  small wheels. The base's has big wheels and a fairing with air under it.
+- **Combine.** The lever's is a tall green box on big wheels, with a
+  yellow rail where the reel should be. The base's has the yellow reel
+  header.
+- **Dozer.** The lever's is a long box on brick tracks with the blade at
+  one end. The base's faces its blade forward over link tracks.
+- The 8 not reached look alike in kind between the arms. The lever's
+  forklift and tractor lost head to head: its forklift has a closed cab and
+  short forks, its tractor even wheels and a trailer.
+
+**NO-GO.** The screen is not won:
+- overall head to head on the 8 reached: 44%, under half. It fails;
+- likeness 50%, technique 56% head to head. These hold.
+
+Against the set, the lever's reached subjects won more overall (2 to 7 of
+16), but that gain is the 4 built their own way, and the head to head shows
+the 4 built to the named solid were worse. So the paired 44 was not run.
+`51876e09e` holds the lever.
+
+Why it fell short:
+- **The solid is the slab.** A vehicle's outline from the side, filled as
+  one extrude down to its underside, is the "block on wheels" the judge
+  names: it hides what makes the thing read (the reel, the tracks' loops,
+  the air under the fairing). The 3 vehicles reached all lost both orders.
+  The forklift and tractor, not reached, lost head to head too, so not all
+  of the vehicles' loss is the solid.
+- **Even setbacks are a choice an expert would not make here.** A stud
+  each side keeps every tier centred. The judge named the base's offset
+  setbacks as what reads as 30 Rockefeller Plaza, and the lever's even ones
+  a wedding cake.
+- **The reading is a measure, and a measure is where it helped.** The 4
+  that read it and built their own way won 7 of 8 head to head. It is
+  confounded with kind: all 4 are buildings. Rockefeller is the one
+  building built to the named solid, and it lost.
+- **studs= means two things.** A session gives the part it is looking at
+  (Rockefeller's face, 6 studs) and the answer took it as the model's size.
+- **Reach is half.** 8 of 16 read an outline before the first build. None
+  sent the mass as is.
+- **Next.**
+  - Ask for the reading before the first build, and answer with it as
+    sizes to build to (studs and plates at each tenth, where each setback
+    is and how tall, the plan), with no solid to send.
+  - Read the body's outline over the wheels, not down to the ground, and
+    name what breaks a vehicle's outline (wheels, tracks, header, guard)
+    as its own masses.
+  - Setbacks where the reading puts them, not centred: say which side each
+    steps in on.
+  - `studs=` names what it measures: the model's longest side, or the
+    part read.
+- The change is taken back out on this branch (`f4b01283c`), so nothing of
+  it ships. `51876e09e` holds it.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
