@@ -137,8 +137,19 @@ func _whole() -> void:
 	var world: BrickWorld = _main.get("_world")
 	var store: ModelStore = _main.get("_store")
 	var all: int = world.brick_count() - store.scenery.size()
-	_check("the numbered points are on %d of the %d parts, not one plate's" % [parts.size(), all],
-		parts.size() >= mini(all, 6))
+	# Every part with a free point has its numbers (all 40 fit), and no
+	# other: the bottom plates' only free-looking points face the ground.
+	var holders: Dictionary = {}
+	var ids: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not store.scenery.has(brick.id):
+			ids.append(brick.id)
+	for point: OpenPoints.Point in OpenPoints.read(_main.get("_assistant")).points_of(ids):
+		if point.by == 0:
+			holders[point.brick] = true
+	_check("the numbered points are on the %d of the %d parts with a free point: %s" % [holders.size(), all,
+		parts.keys()], holders.size() > 1 and parts.size() == holders.size()
+		and parts.keys().all(func(id: int) -> bool: return holders.has(id)))
 	_check("the caption says the whole model, numbered and dots", said.contains("The whole model from the"))
 	var one: int = int(parts.keys()[0]) if not parts.is_empty() else -1
 	var named: String = (await _called("where_to_attach", {"parts": [one]}))[0]
