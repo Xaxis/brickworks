@@ -1921,6 +1921,10 @@
           ],
           "type": "string"
         },
+        "marks": {
+          "description": "true marks every connection point in the picture, as View › Connection points does in the window: filled for what goes in (studs, pins, axles, bars, balls), hollow for what takes one (anti-studs, pin and axle holes, clips, sockets), each at its own size. To find a beam's third hole or where a ball goes without counting.",
+          "type": "boolean"
+        },
         "view": {
           "description": "A view the person saved with the model (View › Viewpoint), by its name, in place of from: the picture from exactly there, as their window draws it. A name it does not keep is answered with those it does.",
           "type": "string"

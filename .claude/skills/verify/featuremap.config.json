@@ -1188,6 +1188,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "connection points",
+      "entry": "src/ui/joint_marks.gd",
+      "reach": "tools/probe.sh jointmarks   (by hand: View, Connection points, on to start with: pick a 2780 pin and point it at a beam's hole, or hover a part with Select; a session: view_model marks=true)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "jointmarks probe",
+      "entry": "src/dev/jointmarks_probe.gd",
+      "reach": "tools/probe.sh jointmarks [-- --only=menu,beam,kinds,cost,written,session --orthanc --shots=DIR]   (windowed, on the GPU, 1280 x 720: on out of the box and View, Connection points off and on; a 2780 pin aimed at a 32524 beam's third hole, each hole's ring within 1 px of its mouth, hollow, a pin's size, the pin's end amber; eleven parts' studs, anti-studs, clips, bars, balls, sockets, hinges, axles, pin and axle holes each at its own size, studs and anti-studs as the catalogue counts them; the car's frame with the marks within 10% of without; the saved file, Export picture, a session's picture and a Render the same bytes; view_model marks=true in 1 call over tools/call; PROBE_COMPAT=1 for the web's renderer)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "see inside in a browser",
       "entry": "tools/web/see_inside_flow.mjs",

@@ -12117,6 +12117,15 @@ msgstr "dirección de las espigas: cada pieza coloreada según hacia dónde apun
 msgid "stud directions off"
 msgstr "dirección de las espigas desactivada"
 
+# View, Connection points (APP_UX9 jointmarks): where a part connects, marked
+# while one is in hand and on the part under the pointer.
+
+msgid "Connection points"
+msgstr "Puntos de conexión"
+
+msgid "Mark where parts connect, on the parts near the one in hand and on the part under the pointer: studs, pins, axles, bars and balls filled, what takes them hollow"
+msgstr "Marca dónde se conectan las piezas, en las piezas cerca de la que tienes en la mano y en la pieza bajo el puntero: espigas, pasadores, ejes, barras y rótulas rellenos, lo que los recibe hueco"
+
 # Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
 # Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
 

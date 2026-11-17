@@ -12117,6 +12117,15 @@ msgstr "orientation des tenons : chaque pièce colorée selon l'orientation de s
 msgid "stud directions off"
 msgstr "orientation des tenons désactivée"
 
+# View, Connection points (APP_UX9 jointmarks): where a part connects, marked
+# while one is in hand and on the part under the pointer.
+
+msgid "Connection points"
+msgstr "Points de connexion"
+
+msgid "Mark where parts connect, on the parts near the one in hand and on the part under the pointer: studs, pins, axles, bars and balls filled, what takes them hollow"
+msgstr "Marque où les pièces se connectent, sur les pièces proches de celle en main et sur la pièce sous le pointeur : tenons, connecteurs, axes, barres et rotules pleins, ce qui les reçoit creux"
+
 # Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
 # Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
 

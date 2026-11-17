@@ -220,6 +220,11 @@ var edged: Dictionary = {}
 ## session's view_board {"studs": true}. The stage's copy is painted, never
 ## the model.
 var painted: Dictionary = {}
+## Drawn in the picture over the model, for this picture only, then taken
+## out again (the caller frees it): a session's view_model marks=true, the
+## connection points as View › Connection points marks them
+## (JointMarks.for_picture). Never in a drawer elsewhere (LeasedShots).
+var drawn_with: Node3D = null
 ## The edge's colour: [constant PICKED_OUT]'s magenta, at full strength.
 const EDGE := Color(1.0, 0.0, 1.0)
 ## Half the edge's width, px of a picture [constant SIZE] across.
@@ -499,6 +504,9 @@ func _take(world: BrickWorld, from: String,
 	var frames: int = 0
 	var taken: Image = null
 	var until: float = Time.get_unix_time_from_system() + give_up_after
+	var with: Node3D = drawn_with
+	if with != null:
+		_viewport.add_child(with)
 	while frames < MOST_FRAMES and Time.get_unix_time_from_system() < until:
 		# Re-staged every time round but the first, which staged it
 		# already to work out where to point the camera. The viewport
@@ -541,6 +549,8 @@ func _take(world: BrickWorld, from: String,
 			taken = image
 			break
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	if with != null and is_instance_valid(with) and with.get_parent() == _viewport:
+		_viewport.remove_child(with)
 	if taken != null and not edged.is_empty():
 		taken = await _edges_on(taken, world, skip)
 	return taken
