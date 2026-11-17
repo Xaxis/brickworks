@@ -478,7 +478,14 @@ const BALL_RADIUS := 8.0
 ## asks a ball to line up with its socket's axis, which a ball turned in its
 ## socket, as a towball on a trailer always is, does not: 3184's 2508
 ## towballs in 98263's sockets held nothing, and 235 parts floated.
-static func balls(entries: Array) -> Dictionary:
+##
+## With [param library], and each entry's part id fourth, the balls and
+## sockets the catalogue has no connector for are read too, from the part's
+## exact shape (JointSnap.balls_of): 3730's towball socket, drawn as a solid
+## ring, on 15456's towball was read as lodged, and nothing turned the arm
+## on it (docs/APP_UX9.md, MCP f1). What turns asks so (Bodies); what holds
+## (Stability, Sections, the check) reads the catalogue's alone, as it did.
+static func balls(entries: Array, library: PartLibrary = null) -> Dictionary:
 	var sockets: Dictionary = {}   ## bucket -> Array of [key, middle]
 	var found: Array = []          ## [key, middle]
 	for entry: Array in entries:
@@ -505,6 +512,17 @@ static func balls(entries: Array) -> Dictionary:
 				if not sockets.has(box):
 					sockets[box] = []
 				(sockets[box] as Array).append([entry[0], middle])
+		if library == null or entry.size() < 4:
+			continue
+		for end: JointSnap.End in JointSnap.balls_of(library, str(entry[3])):
+			var middle: Vector3 = at * end.at
+			if end.kind == "ball":
+				found.append([entry[0], middle])
+				continue
+			var box: Vector3i = _bucket(middle)
+			if not sockets.has(box):
+				sockets[box] = []
+			(sockets[box] as Array).append([entry[0], middle])
 	var held: Dictionary = {}
 	for ball: Array in found:
 		var home: Vector3i = _bucket(ball[1])

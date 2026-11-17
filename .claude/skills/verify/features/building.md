@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
 
 ## Sub-features
 
@@ -2669,6 +2669,36 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   pointer, pictures in shots/placing/door_ghost_*.png. In a browser: `tools/web/technic_flow.mjs`, which
   aims each part at the connector where the page says it is
   (`brickworksState.joints`, with `on_joint` and `can_place`).
+- `ball joints by hand` (`JointSnap` ball and socket ends, `Builder._balled_clear`,
+  `JointSnap.ball_hung`, APP_UX9 balljoints, 2026-11-16): a ball takes a socket
+  of its size (a towball or Joint-8, 8 LDU; a Technic ball, sub 100), at any
+  turn. Ends come from the catalogue's ball and socket connectors, its 8 LDU
+  bores of a ball's depth (a steering link's ring, its stem along the bore),
+  and BrickNet's ball labels (`JointSnap.balls_of`: a towball socket drawn as
+  a solid ring, 3730, 3183a), each with its stem's way (`JointSnap._stem`).
+  Aimed at a ball, the socket goes on as held when it has room (as LDCad
+  keeps the turn), lined up on the ball second (as Studio does); `T` steps
+  between them and a link's other end, `R` turns it about the ball's own
+  line. Of a ball and a hole on one line as near, the hand takes the ball
+  (`JointSnap.aimed_at`: 32005's socket is on its axle hole's line). A socket meets its ball's part only
+  inside the joint, by check_design's rule (`ExactCheck.at_joint`, 9.5 LDU of
+  the centre), or by the covers where one has no exact shape
+  (`Builder._balled_clear`, in `room_for` after the hinge's): 3730 tilts 40°
+  on a towball and swings 60° across. The rotate handle stands on the ball's
+  centre for a part on one (`Handles.pivot_is() == "ball"`); Pose lists a
+  sub-assembly on a ball as three joints, its turns about x, y and z;
+  `move_part` with `axis` turns a part about its ball (Bodies reads the exact
+  halves); `pose_model` with nothing to pose, and the reply to a design or a
+  placement, name each part on a ball and the `move_part` that turns it
+  (`JointSnap.balls_said`); `move_part` with `picture: true` answers with the
+  whole model pictured, what moved edged. A part attached on a ball with
+  `align` end for end (`["-z", "+z"]`) turns half round about up, studs up
+  (`Attach._arc`). A design's named assemblies tag its parts once, by where
+  they stand as they are named; a posed or dragged part keeps its assembly
+  (`Assistant._tag_assemblies`), so a ball swung by `pose_model` swings again;
+  each swing's answer says how many plates the parts' middle went higher or
+  lower. Probe: `balljoints_probe` (`--only=app` runs its handle, Pose and
+  session parts in one app).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
@@ -3538,6 +3568,24 @@ bash tools/probe.sh panel_room_probe; PROBE_SIZE=1400x900 bash tools/probe.sh pa
 # there and by a fresh app (a second process, nothing built or kept).
 # Pictures and the saved file in shots/springs/
 bash tools/probe.sh springs_probe; PROBE_SIZE=1280x720 bash tools/probe.sh springs_probe
+# ball joints by hand: every ball in its socket the stability reads in the
+# real sets' files (src/dev/balljoints_real.json, written by
+# src/dev/balljoints_scan.gd) seated by hand both ways round, the socket held
+# onto the ball and the ball onto the socket, T and R for a link's other end
+# or a turn with room, the rest of the set's turn by a drag about the ball:
+# at the set's place and turn to 0.01 LDU and 0.1° (1,109 of 1,111; the two
+# 9396-1 links whose own file meets past the ball's round, which
+# check_design refuses, counted apart). Eleven catalogue pairs the same, at
+# a turn check_design builds; f1's arm and a
+# Technic socket turned 30° about two axes by the rotate handle's rings, which
+# stand on the ball's centre; R about the ball's own line; Pose's three turns
+# of a sub-assembly on a ball; move_part raising f1's arm 30° about its ball.
+# --only=real|catalogue|turn|pose|session runs one part; --only=real
+# --set=NAME the joints of those sets, each refusal said
+bash tools/probe.sh balljoints_probe
+# the picture: 3730 in hand aimed at f1's towball, then seated, in
+# shots/balljoints/1280x720/
+~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1280x720x24" godot --path . --resolution 1280x720 --script src/dev/balljoints_probe.gd -- --only=picture --picture
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
@@ -3548,6 +3596,9 @@ none of it", `panel_room` says "panel room: Motions, Colour the hidden parts,
 Stress's legend beside the model and over none of it" (look at `shots/flex_room/*.png`: the panel in a dark column at the
 left, the gears and bricks to its right),
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
+`balljoints` says "balljoints: a ball joint is seated by hand as the real sets
+seat it, ..." (look at `shots/balljoints/1280x720/2_seated.png`: the red
+socket plate on the towball out in front of the grey stand, lined up),
 `handbuild` says "by hand: ... all work as a person uses them", `outline` says
 "a selection is drawn as a line round its silhouette, never over it, ..." (look
 at `shots/outline/<tag>/*.png`: a thin yellow line hugging each selection, the

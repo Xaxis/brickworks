@@ -5631,6 +5631,13 @@
       "entry": "src/dev/followfix_probe.gd",
       "reach": "tools/probe.sh followfix_probe   (headless, about 3 minutes; FOLLOWFIX_CASES=paint,mcp_move,mirror for some)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "ball joints by hand",
+      "entry": "src/assembly/joint_snap.gd",
+      "reach": "godot --headless --path . --script src/dev/balljoints_probe.gd  (a socket held, aimed at a ball, clicked, or a ball onto a socket; the rotate handle stands on the ball's centre; R turns it about the ball; Pose lists a ball as three turns; move_part turns a part about its ball)",
+      "area": "building"
     }
   ]
 }

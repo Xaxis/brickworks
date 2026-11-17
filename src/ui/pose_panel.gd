@@ -258,7 +258,7 @@ func joints_now() -> Array[Poser.Joint]:
 	poser.builder = builder
 	poser.library = library
 	poser.assemblies = assemblies
-	if poser.joints.is_empty() or not (poser.holds() or poser.read_back()):
+	if poser.joints.is_empty() or poser.outdated() or not (poser.holds() or poser.read_back()):
 		poser.find()
 	return poser.joints
 

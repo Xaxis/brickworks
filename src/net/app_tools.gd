@@ -656,7 +656,8 @@ func definitions() -> Array:
 		{
 			"name": "pose_model",
 			"description": ("Swing a part about its joint, as Build, Pose does: a sub-assembly "
-				+ "on a hinge, a turntable or a clip on a bar. With no joint it lists them, "
+				+ "on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its "
+				+ "turns about x, y and z through the ball). With no joint it lists them, "
 				+ "numbered, with the angle each is at. joint= (number or name) and degrees= "
 				+ "(from where it was built, -180 to 180) swings it as far as it has room; the "
 				+ "answer says where it stopped if something is in the way."),
@@ -702,6 +703,7 @@ func definitions() -> Array:
 					"description": "a ball's turn about this way (x y z), with degrees="},
 				"to": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
 					"description": "a point in studs (x y z, as move_part says where a joint is): the part drawn there by its chain of joints"},
+				"picture": {"type": "boolean", "description": "true: the whole model pictured after the move (a ball's turn seen along its axis), what moved edged; left out, words alone"},
 			}},
 		},
 		{
@@ -1450,7 +1452,29 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				return "This app cannot move parts on their joints."
 			if str(input.get("part", "")).strip_edges().is_empty():
 				return _what_moves(grabbing)
-			return await grabbing.for_session(input)
+			# Asked to show it as well, the move answered pictured as
+			# edit_model's change is: f1's session raised an arm on its ball
+			# and then asked view_board to show the person.
+			if not (input.get("picture") is bool and bool(input["picture"])):
+				return await grabbing.for_session(input)
+			var world: BrickWorld = app.get("_world")
+			var was: Dictionary = {}
+			for brick: BrickWorld.Brick in world.bricks():
+				was[brick.id] = brick.transform
+			var moved_said: String = await grabbing.for_session(input)
+			var moved := PackedInt64Array()
+			for brick: BrickWorld.Brick in world.bricks():
+				if not was.has(brick.id) or not (was[brick.id] as Transform3D).is_equal_approx(brick.transform):
+					moved.append(brick.id)
+			if moved.is_empty():
+				return moved_said
+			# A ball's turn seen along its axis, where the swing shows whole.
+			var view: String = "corner"
+			var way: Array = input.get("axis", []) as Array
+			if way.size() == 3:
+				var along := Vector3(absf(float(way[0])), absf(float(way[1])), absf(float(way[2])))
+				view = "top" if along.y > maxf(along.x, along.z) else "right" if along.x >= along.z else "front"
+			return await _seeing().pictured(moved_said, moved, true, view, "moved")
 		"simulate_mechanism":
 			return await _simulate(input, work)
 		"animate_model":
@@ -2549,7 +2573,7 @@ static func _nearest(anchors: Array, near: Vector3) -> Flex.Anchor:
 # -- posing ------------------------------------------------------------------------
 
 
-const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable or a clip on a bar. "
+const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable, a clip on a bar or a ball. "
 	+ "Name the part that turns as an assembly (edit_model's assemblies), standing on its hinge. "
 	+ "Parts on pins, axles, studs and steering move without one, as a drag moves them: "
 	+ "move_part with no part= lists them, and animate_model takes them by part (#14).")
@@ -2568,7 +2592,13 @@ func _pose(input: Dictionary) -> String:
 		assistant._tag_assemblies()
 	var joints: Array[Poser.Joint] = panel.joints_now()
 	if joints.is_empty():
-		return "Nothing here turns: " + NO_JOINTS
+		var world: BrickWorld = app.get("_world")
+		var builder: Builder = app.get("_builder")
+		var ids := PackedInt64Array()
+		for brick: BrickWorld.Brick in world.bricks():
+			ids.append(brick.id)
+		var on_balls: String = JointSnap.balls_said(world, app.get("_library"), builder.lattice, ids)
+		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls)
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0
@@ -2587,7 +2617,7 @@ func _pose(input: Dictionary) -> String:
 			if held:
 				stuck += 1
 			said.append("  %d. %s, on its %s, at %d° (%d parts)%s" % [n + 1,
-				Assemblies.label(one.path), one.kind(), roundi(one.angle), one.ids.size(),
+				one.label(), one.kind(), roundi(one.angle), one.ids.size(),
 				", with no room to turn 10° or 90° either way" if held else ""])
 		if stuck > 0:
 			said.append("A joint with no room is often not what moves: move_part with no part= "
@@ -2599,14 +2629,34 @@ func _pose(input: Dictionary) -> String:
 	if joint == null:
 		return "No joint %s: there are %d, numbered in pose_model's list." % [asked, joints.size()]
 	if not input.has("degrees"):
-		return "%s is at %d°. Give degrees= to swing it." % [Assemblies.label(joint.path),
-			roundi(joint.angle)]
+		return "%s is at %d°. Give degrees= to swing it." % [joint.label(), roundi(joint.angle)]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
+	var world: BrickWorld = app.get("_world")
+	var before: Vector3 = _middle_of(world, joint.ids)
 	var reached: float = panel.set_angle(joint.path, wanted)
+	# Which way it went, in the plates look_at_model counts: a turn goes by
+	# the right hand about its axis, so +30° about x takes a +z end down.
+	# f1's session read edit_model's pitch (+ lifts the +z end) into it,
+	# swung its arm down, and looked at a picture to find out.
+	var rose: float = (_middle_of(world, joint.ids).y - before.y) / BrickLattice.PLATE
+	var went: String = "" if absf(rose) < 0.25 else ", its parts' middle %s plates %s" % [
+		Balance.studs(absf(rose)), "higher" if rose > 0.0 else "lower"]
 	if absf(reached - wanted) > 0.5:
-		return "%s stops at %d°: any further and it runs into something." % [
-			Assemblies.label(joint.path), roundi(reached)]
-	return "%s at %d°." % [Assemblies.label(joint.path), roundi(reached)]
+		return "%s stops at %d°%s: any further and it runs into something." % [
+			joint.label(), roundi(reached), went]
+	return "%s at %d°%s." % [joint.label(), roundi(reached), went]
+
+
+## The middle of where these parts stand.
+static func _middle_of(world: BrickWorld, ids: PackedInt64Array) -> Vector3:
+	var sum := Vector3.ZERO
+	var count: int = 0
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			sum += brick.transform.origin
+			count += 1
+	return sum / maxi(count, 1)
 
 
 ## The motion animate_model keeps its keys as.
@@ -2689,7 +2739,7 @@ static func _joint_named(joints: Array[Poser.Joint], asked: String) -> Poser.Joi
 	if asked.is_valid_int() and int(asked) >= 1 and int(asked) <= joints.size():
 		return joints[int(asked) - 1]
 	for one: Poser.Joint in joints:
-		if one.path == asked or Assemblies.label(one.path).to_lower() == asked.to_lower():
+		if one.path == asked or one.label().to_lower() == asked.to_lower():
 			return one
 	return null
 
@@ -2722,6 +2772,12 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		var given: Dictionary = key.get("angles", {}) as Dictionary
 		for name: Variant in given.keys():
 			var joint: Poser.Joint = _joint_named(joints, str(name))
+			if joint != null and joint.kind() == "ball":
+				# A motion keeps a turn about one line, and a ball's is about
+				# three: kept, it would be a new kind of line in the file.
+				return ("%s is a ball's turn: pose_model sets it; a motion turns a joint about one "
+					% joint.label() + "line, so animate_model takes hinges, turntables, clips and "
+					+ "parts on pins and axles.")
 			var path: String = joint.path if joint != null else ""
 			if joint == null and grabbing != null:
 				var turning_part: Variant = grabbing.turning_for_session(str(name))
