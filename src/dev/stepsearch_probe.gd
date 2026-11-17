@@ -207,8 +207,26 @@ func _car() -> void:
 	var chips: Array = _steps.get("_found_chips")
 	if _check("“3024” lists more than one step to go between (%d)" % hits.size(), hits.size() >= 2):
 		var second: Button = chips[1]
+		# What lets the outline go after the click, if anything does.
+		var heard_after: Array[String] = []
+		var count_frames: Array[int] = [0]
+		var hear: Callable = func(what: String) -> void:
+			heard_after.append("%s@%d%s" % [what, count_frames[0],
+				" lit" if bool(_main.get("_step_lit")) else ""])
+		var on_upto: Callable = func(_o: PackedInt64Array, _c: int, _k: int) -> void: hear.call("reveal_upto")
+		var on_reveal: Callable = func(_ids: Dictionary) -> void: hear.call("reveal")
+		var on_stepped: Callable = func() -> void: hear.call("stepped")
+		_steps.reveal_upto.connect(on_upto)
+		_steps.reveal.connect(on_reveal)
+		_steps.stepped.connect(on_stepped, CONNECT_DEFERRED)
 		await _click(second.get_global_rect().get_center())
-		await _frames(6)
+		for _n: int in 6:
+			count_frames[0] += 1
+			await process_frame
+		_steps.reveal_upto.disconnect(on_upto)
+		_steps.reveal.disconnect(on_reveal)
+		_steps.stepped.disconnect(on_stepped)
+		print("    after the click: %s" % ", ".join(heard_after))
 		var on: int = int(_steps.row_state()["lit"])
 		_check("a click on the second listed step (%s) shows it: the timeline on it (%d, place %d), its button lit (%s), its new parts outlined (%s)"
 			% [second.text, on, int(hits[1][0]), second.button_pressed, _main.get("_step_lit")],
@@ -230,6 +248,12 @@ func _car() -> void:
 		field.text.is_empty() and _listed().is_empty() and not (_steps.get("_found_line") as Control).visible
 		and _steps.is_playing_back() and (_steps.row_state()["found"] as Array).is_empty()
 		and field.has_focus())
+
+	# For comparison: the timeline's own Next, clicked.
+	var next_button: Button = _steps.controls_by_name().get("steps_next")
+	await _click(next_button.get_global_rect().get_center())
+	await _frames(6)
+	print("    Next clicked, for comparison: its new parts outlined %s" % _main.get("_step_lit"))
 
 	# Over MCP, refused where it cannot be.
 	heard = await _say("edit_steps", {"op": "to", "find": "3024", "bricks": [1], "step": 1})
