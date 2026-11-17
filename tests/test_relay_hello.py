@@ -204,24 +204,28 @@ def test_a_slow_guidance_lookup_is_not_waited_for() -> None:
         return
     stuck = out["stuck"]
     assert "result" in stuck["said"], stuck["said"]
-    assert stuck["ms"] < 1000, stuck["ms"]
+    # The relay waits GUIDANCE_WAIT_MS (500) and answers. Waited for, the
+    # lookup would take its ten seconds; the bar sits halfway, so a loaded
+    # box's slower handshake (1017 ms at load 53, rel-m306's gate) is not
+    # read as waiting.
+    assert stuck["ms"] < 5000, stuck["ms"]
     assert stuck["said"]["result"]["instructions"] == ""
 
     out = run(LOOKUP + """
       w.tab({ owner: "stranger", hello: { instructions: "this build's guidance", tools: own } });
       const token = w.connect("fresh");
-      w.trouble = (call) => (lookup(call) ? { ms: 1500 } : null);
+      w.trouble = (call) => (lookup(call) ? { ms: 4000 } : null);
       const began = Date.now();
       const first = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
       const ms = Date.now() - began;
-      await new Promise((resolve) => setTimeout(resolve, 1700));
+      await new Promise((resolve) => setTimeout(resolve, 4200));
       const second = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
       return { ms, first: first.result && first.result.instructions,
         second: second.result && second.result.instructions, lookups: w.calls.filter(lookup).length };
     """)
     if out is None:
         return
-    assert out["ms"] < 1000, out["ms"]
+    assert out["ms"] < 2500, out["ms"]
     assert out["first"] == ""
     assert out["second"] == "this build's guidance"
     assert out["lookups"] == 1, out["lookups"]
