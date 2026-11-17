@@ -86,6 +86,10 @@ var _covers: Dictionary = {}
 var _frame: Transform3D = Transform3D.IDENTITY
 var _valid: bool = false
 var _aimed: bool = false
+## Whether the one part carried was last aimed on by the joint it was picked
+## up by (Builder.seat_carried): its frame is then any turn, not quarters
+## about up, and its cover is its own where it goes.
+var _posed: bool = false
 
 ## Where the cover is worked out from: a point of the same kind as the
 ## pivot (a stud centre or corner), on cell 0. Any other place the group
@@ -200,6 +204,7 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	brought_units = {}
 	brought_data = {}
 	_pinned = false
+	_posed = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
 		if not items.is_empty() else 10.0
@@ -222,6 +227,7 @@ func drop() -> void:
 	brought_units = {}
 	brought_data = {}
 	_pinned = false
+	_posed = false
 	_base = []
 	_covers.clear()
 	_aimed = false
@@ -406,7 +412,7 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	# paste aimed it): as it was. Each look at a group as big as Orthanc
 	# is a quarter of a second.
 	var asked: Array = [origin, direction, turns, lattice.revision, builder.snap_across,
-		_pinned]
+		_pinned, builder.grip_stamp()]
 	if asked == _last_asked and _aimed:
 		return _last_hit
 	_last_asked = asked
@@ -425,6 +431,21 @@ func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	# Kept where it is while a number is typed.
 	if _pinned:
 		return hit.brick_id
+	# One part dragged off the model alone: on by the joint it was picked up
+	# by, where something it points at takes that joint (grabseat).
+	_posed = false
+	var seat: Variant = builder.seat_carried(str(items[0]["part"]), origin, direction, hit) \
+		if lifted and items.size() == 1 else null
+	if seat != null:
+		_posed = true
+		_frame = (seat[0] as Transform3D) * (items[0]["at"] as Transform3D).affine_inverse()
+		_valid = bool(seat[1])
+		_aimed = true
+		_ghost.transform = _frame
+		_ghost.visible = true
+		for material: ShaderMaterial in _materials:
+			material.set_shader_parameter("valid", _valid)
+		return int(seat[2])
 	var target: Vector3
 	if hit.is_valid():
 		target = BrickLattice.to_ldu(hit.adjacent())
@@ -588,6 +609,12 @@ func is_aimed() -> bool:
 	return _aimed and _ghost != null and _ghost.visible
 
 
+## Whether the one part carried is aimed on by the joint it was picked up by:
+## R turns it about that joint, not about up (Builder.rotate_held).
+func is_posed() -> bool:
+	return _posed and _aimed
+
+
 func can_place() -> bool:
 	return is_aimed() and _valid
 
@@ -626,6 +653,9 @@ func moved() -> Transform3D:
 ## drawn bottoms say less: a tyre's is a little over the floor it stands on.
 func stands_on_ground(builder: Builder) -> bool:
 	var whole: PackedInt32Array = _covers_for(builder)[1]
+	if _posed:
+		whole = (placements(builder)[0] as Dictionary)["boxes"]
+		return _aimed and not whole.is_empty() and _lowest(whole) == Builder.GROUND_CELL
 	return _aimed and not whole.is_empty() \
 		and _lowest(whole) + roundi(_frame.origin.y / BrickLattice.CELL) == Builder.GROUND_CELL
 
@@ -646,7 +676,9 @@ func placements(builder: Builder) -> Array:
 			"step": item.get("step", -1),
 			"origin": item.get("origin", ""),
 			"at": _frame * (item["at"] as Transform3D),
-			"boxes": BrickLattice.moved_by(covers[0][n], shift),
+			"boxes": builder.boxes_for(library.mesh_for(str(item["part"])),
+				_frame * (item["at"] as Transform3D)) if _posed
+				else BrickLattice.moved_by(covers[0][n], shift),
 		})
 	return out
 

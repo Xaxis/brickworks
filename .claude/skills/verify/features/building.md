@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
 
 ## Sub-features
 
@@ -2714,6 +2714,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   each swing's answer says how many plates the parts' middle went higher or
   lower. Probe: `balljoints_probe` (`--only=app` runs its handle, Pose and
   session parts in one app).
+- `on by the joint it was picked up by` (`src/assembly/grip.gd`,
+  `Builder.grip` / `carry_grip` / `_onto_by_grip` / `seat_carried`, APP_UX9
+  grabseat, 2026-11-17): X over a part (`lift_brick` with the pointer's line)
+  or a Select drag begun on one part alone (`lift_selection` with the press's
+  line, `Carry._posed`) holds it by the joint nearest the pointer's line where
+  it met the part (`Grip.picked`): a stud or a stud's hole facing the line, a
+  pin, an axle, a hole, a bar, a clip, a ball or a socket at the face struck,
+  within 10 LDU; a hollow stud is its stud and its clip, a Technic hole's mouth
+  its pin hole and its stud's hole. Aimed at something that takes that joint,
+  the part goes on by it alone: its ends through `_onto_a_joint`'s `only`,
+  its studs and holes on the stud or hole nearest the line of the part
+  pointed at (`_onto_studs_by`, `Grip.pose`: the two at one place, one way, as
+  `Exact.meets` joins them), turned least from how it stood, red where it has
+  no room. Where nothing there takes it, it goes on as from the bin. `R` turns
+  it about the joint, `T` lets go of it. A part from the bin, a copy, a group
+  and Connect seat as before (`held_part`'s setter clears the grip). Probe:
+  `grabseat_probe` (`--only=PART,PART`, `--debug`; `--out=DIR` writes every
+  case, `--bin-was=FILE` holds the bin's seats to a run on today's code).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
@@ -3602,6 +3620,13 @@ bash tools/probe.sh balljoints_probe
 # the picture: 3730 in hand aimed at f1's towball, then seated, in
 # shots/balljoints/1280x720/
 ~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1280x720x24" godot --path . --resolution 1280x720 --script src/dev/balljoints_probe.gd -- --only=picture --picture
+# on by the joint it was picked up by: 20 parts with joints on more than one
+# face, each stood in the model and picked up by each of its joints, by X and
+# by a Select drag, aimed at a target that takes that joint and put down: the
+# joint held lands on the target's to 0.01 LDU. Run first on today's code
+# with --out=DIR (the gap: which joint each went on by), then on the change
+# with --bin-was=DIR/bin.json: the same parts from the bin seat as today's did
+bash tools/probe.sh grabseat_probe
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
@@ -3612,6 +3637,8 @@ none of it", `panel_room` says "panel room: Motions, Colour the hidden parts,
 Stress's legend beside the model and over none of it" (look at `shots/flex_room/*.png`: the panel in a dark column at the
 left, the gears and bricks to its right),
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
+`grabseat` says "grabseat: passed" (the gap run on code without a grip says
+"grabseat: gap run done" and fails nothing),
 `balljoints` says "balljoints: a ball joint is seated by hand as the real sets
 seat it, ..." (look at `shots/balljoints/1280x720/2_seated.png`: the red
 socket plate on the towball out in front of the grey stand, lined up),

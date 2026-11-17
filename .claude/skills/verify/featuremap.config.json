@@ -5638,6 +5638,13 @@
       "entry": "src/assembly/joint_snap.gd",
       "reach": "godot --headless --path . --script src/dev/balljoints_probe.gd  (a socket held, aimed at a ball, clicked, or a ball onto a socket; the rotate handle stands on the ball's centre; R turns it about the ball; Pose lists a ball as three turns; move_part turns a part about its ball)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "on by the joint it was picked up by",
+      "entry": "src/assembly/grip.gd",
+      "reach": "godot --path .  (X over a part's side stud, or a Select drag begun on it, then the pointer at a plate's hole: the part goes on by that stud, not its foot; a beam picked up by its end hole goes onto a pin by that hole; R turns it about the joint, T lets go of it; a part from the bin as before; tools/probe.sh grabseat_probe)",
+      "area": "building"
     }
   ]
 }

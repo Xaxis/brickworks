@@ -5814,6 +5814,14 @@
       "tests": []
     },
     {
+      "id": "ui:on by the joint it was picked up by",
+      "kind": "ui",
+      "entry": "src/assembly/grip.gd",
+      "reach": "godot --path .  (X over a part's side stud, or a Select drag begun on it, then the pointer at a plate's hole: the part goes on by that stud, not its foot; a beam picked up by its end hole goes onto a pin by that hole; R turns it about the joint, T lets go of it; a part from the bin as before; tools/probe.sh grabseat_probe)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:open a shared model at a step",
       "kind": "ui",
       "entry": "src/main.gd",
