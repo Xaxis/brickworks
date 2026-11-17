@@ -1003,6 +1003,9 @@ class Model extends RefCounted:
 	## Where each feature goes, where the design said: name in lower case ->
 	## {x, y, z, facing} (FeaturePass.read_spots).
 	var feature_spots: Dictionary = {}
+	## The form each feature is known by, where the design said: name in
+	## lower case -> its words (FeaturePass.read_forms).
+	var feature_forms: Dictionary = {}
 	## What it stands on, as floor_chosen says it; empty when not said.
 	var stands_on: Dictionary = {}
 
@@ -2138,7 +2141,7 @@ func _on_response(result: Array) -> void:
 			_to_detail = _queue_features(_pending.features)
 			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
 			_features = _pending.features
-			feature_pass().reset(_pending.feature_spots)
+			feature_pass().reset(_pending.feature_spots, _pending.feature_forms)
 			_declared = _pending.assemblies
 			_pending = null
 			progress.emit("looking at the finished model: %s"
@@ -2206,7 +2209,7 @@ func _on_response(result: Array) -> void:
 			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
 			if not _pending.features.is_empty():
 				_features = _pending.features
-				feature_pass().reset(_pending.feature_spots)
+				feature_pass().reset(_pending.feature_spots, _pending.feature_forms)
 			_declared = _pending.assemblies
 		_pending = null
 		if await _detail_next():
@@ -3397,7 +3400,11 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
+			# design24: asked here, before the first build, while no feature
+			# has its form; every session asks this before it builds.
+			var ask: String = FORM_ASK + "\n\n" if feature_pass().forms.is_empty() else ""
+			return [{"type": "text", "text": ask
+				+ str(_how_real_sets_build_this(subject)["content"])}] \
 				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
@@ -7668,6 +7675,7 @@ func _read_model(args: Dictionary) -> Model:
 	model.assemblies = _read_assemblies(args)
 	model.features = _read_features(args)
 	model.feature_spots = FeaturePass.read_spots(args)
+	model.feature_forms = FeaturePass.read_forms(args)
 	_current_parts(model)
 	_made_colours(model)
 	return model
@@ -11469,6 +11477,9 @@ static func _subject_words(text: String) -> String:
 ## nothing fits, the pieces it tried and the worked technique, to build it.
 ## [param picture] adds the picture where one can be taken.
 func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant:
+	var form: String = feature_pass().form_of(name)
+	if not form.is_empty():
+		return await _form_brief(name, of, count, form, picture)
 	var said := PackedStringArray()
 	said.append("The %s — feature %d of %d." % [name, of, count])
 	var one: FeaturePass.Proposal = null
@@ -11502,6 +11513,122 @@ func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant
 	if shown.is_empty():
 		return text
 	return [{"type": "text", "text": text}, shown]
+
+
+## A feature the design gave its form, handed back as built: no real set's
+## piece is laid (the design built it, or builds it now), only the feature
+## close up from where it faces, beside the form said, with one question:
+## does the picture show that form, or a block? design24 read the judge's
+## reasons on the base's 46 likeness verdicts lost to real sets (d21base,
+## d22base): in 41 the feature was named and built and its form was not
+## there (a solid disc for an open wheel, a stack for splayed legs, a flat
+## wall for a curved blade). The session's own fresh look named that form in
+## 18 of the 23 sessions, and in 11 its final look found it still there: the
+## fixes were tiles and slopes on the block. [param picture] adds the close
+## look where one can be taken.
+func _form_brief(name: String, of: int, count: int, form: String, picture: bool) -> Variant:
+	var where: Dictionary = _feature_box(name)
+	var inside: Array[BrickWorld.Brick] = _bricks_inside(where)
+	var facing: String = str(feature_pass().spot_for(name).get("facing", "+z"))
+	var from: String = str({"+z": "front", "-z": "back", "+x": "right", "-x": "left"}.get(
+		facing, "front"))
+	var said := PackedStringArray()
+	said.append("The %s — feature %d of %d. Its form, as you gave it: %s." % [name, of, count,
+		form])
+	if inside.is_empty():
+		said.append(("Nothing stands where it goes yet (%s). Build it now, whole, as its own "
+			% _box_said(where)) + "piece, by the parts that make that form, then view_model "
+			+ "where= it from the %s and settle it." % from)
+	else:
+		said.append(("Here it is as built, close up from the %s (%s, %d parts). " % [from,
+			_box_said(where), inside.size()]) + FORM_LOOK.replace("{name}", name))
+	var text: String = "\n".join(said)
+	if not picture or inside.is_empty() or not ModelShot.possible():
+		return text
+	var box: AABB = _bounds_of(inside).grow(2.0 * STUD)
+	var image: Image = await _ensure_shot().take(world, from, scenery, box)
+	if image == null:
+		return text
+	var shown: Dictionary = await _shot.encode(image)
+	if shown.is_empty():
+		return text
+	return [{"type": "text", "text": text}, shown]
+
+
+const FORM_LOOK := """Does the picture show that form at a glance — open where \
+it is open, at its angle, curved where it curves, tapering where it tapers — \
+or does it read as a block, a slab or a stack of bricks? If it shows it, \
+settle_feature {"feature": "{name}", "verdict": "built", "reason": "what the \
+picture shows"}. If it reads as a block, take its parts off and build it \
+again now, whole, by the parts that make its form (bars, round plates, \
+slopes and curves, hinges and clips, an open frame), not tiles or slopes \
+laid on the block; view_model where= it from the same side, then settle it. \
+A subject is known by these, so they come before any detail."""
+
+
+## Asked before the first build, at the head of how_real_sets_build_this's
+## answer, while no feature has its form (design24). Kept from design22 and
+## design23, which won where the reading named it: a vehicle's breaks as
+## features, each built in the first build as its own piece.
+const FORM_ASK := """BEFORE THE FIRST BUILD — the features this subject is \
+known by: what a person sees first and names it by, read off the reference \
+picture (find_reference). Give each in submit_design's features with its \
+form, in a builder's words: open (sky shows through it: a wheel's spokes, a \
+lattice, a frame), at an angle (legs splayed, an arm raked or cranked), \
+curved (a blade, a hood, a dome, an arch), twisted, tapering or slender — and \
+the parts that make that form at this scale. On a vehicle, its wheels or \
+tracks and each thing that breaks its outline (a blade, a mast with its \
+forks, an auger, a boom) are features too. Build each in that first build as \
+its own piece, by those parts, never as a fill or a stack of bricks: a block \
+where the real one is open, angled or curved is what loses a likeness. Each \
+comes back to you close up as built, to check it shows its form."""
+
+## Said under find_reference's pictures while no feature has its form.
+const FORM_READ := """Read off these the form of each feature the subject is \
+known by (open, at an angle, curved, twisted, tapering, slender), for \
+submit_design's features."""
+
+
+## The box a feature is looked at in, in studs and plates as look_at_model
+## takes one: the assembly whose name shares a word with it, when that is a
+## part of the model and not most of it; else round where it goes (said, or
+## read off its name), four studs each way across and five bricks up and
+## down.
+func _feature_box(name: String) -> Dictionary:
+	var words: PackedStringArray = RealSnippets.words(name)
+	var whole: AABB = _bounds_of(_bricks_inside({}))
+	var named: Array[Dictionary] = _outside_assemblies if not _busy else _declared
+	for one: Dictionary in named:
+		var shared: bool = false
+		for word: String in RealSnippets.words(str(one.get("name", ""))):
+			if words.has(word):
+				shared = true
+		var where: Dictionary = one.get("where", {})
+		if not shared or where.is_empty():
+			continue
+		var inside: Array[BrickWorld.Brick] = _bricks_inside(where)
+		if inside.is_empty():
+			continue
+		var box: AABB = _bounds_of(inside)
+		if whole.get_volume() <= 0.0 or box.get_volume() <= 0.5 * whole.get_volume():
+			return where
+	var spot: Dictionary = feature_pass().spot_for(name)
+	var x: float = float(spot.get("x", 0.0))
+	var y: float = float(spot.get("y", 0.0))
+	var z: float = float(spot.get("z", 0.0))
+	return {"x_from": x - 4.0, "x_to": x + 4.0, "y_from": maxf(0.0, y - 15.0),
+		"y_to": y + 15.0, "z_from": z - 4.0, "z_to": z + 4.0}
+
+
+## A box in studs and plates in a few words: "x 3..9, z 0..6, plates 0..24".
+static func _box_said(where: Dictionary) -> String:
+	var parts := PackedStringArray()
+	for axis: Array in [["x", "x_from", "x_to"], ["z", "z_from", "z_to"],
+			["plates", "y_from", "y_to"]]:
+		if where.has(axis[1]) or where.has(axis[2]):
+			parts.append("%s %s..%s" % [axis[0], _studs(float(where.get(axis[1], 0.0))),
+				_studs(float(where[axis[2]])) if where.has(axis[2]) else "top"])
+	return ", ".join(parts)
 
 
 const SETTLE_HOW := """Settle it with settle_feature {"feature": "{name}", \
@@ -21354,7 +21481,8 @@ func _find_reference(subject: String) -> Variant:
 			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
 			+ "is the thing you were asked for before you build to it: "
 			+ "Commons carries what is free to use, so a name can bring "
-			+ "back something else that shares it." + _colours_seen(pictures))}]
+			+ "back something else that shares it." + _colours_seen(pictures)
+			+ ("" if not feature_pass().forms.is_empty() else "\n" + FORM_READ))}]
 	for one: Variant in pictures:
 		var picture: Dictionary = one
 		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
@@ -21546,7 +21674,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_features = design.features.duplicate()
 		_feature_now = ""
 		# The model is new, so whatever the pass laid is gone with the old one.
-		feature_pass().reset(design.feature_spots)
+		feature_pass().reset(design.feature_spots, design.feature_forms)
 		# A new design, so its surface and creative passes are still to come;
 		# parts placed for a person have none (FreshEyes asks only of a design).
 		_outside_designed = designing
@@ -21923,8 +22051,9 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		# was read and put down, and the run went on to save.
 		var left: Array[String] = _features_left()
 		if not left.is_empty():
-			said.append("Once the silhouette is right, the first feature, the %s — the app "
-				% left[0] + "has laid a real set's piece for it:")
+			said.append(("Once the silhouette is right, the first feature, the %s — " % left[0])
+				+ ("close up as built, to check its form:" if not feature_pass().form_of(
+					left[0]).is_empty() else "the app has laid a real set's piece for it:"))
 			return _joined("\n\n".join(said), await _review_feature(left[0]))
 		return "\n\n".join(said)
 	var one: Dictionary = {}
@@ -22311,13 +22440,17 @@ func _features_to_review() -> String:
 	for name: String in _outside_features:
 		var record: String = _feature_said(name)
 		var line: String = "  %s: %s" % [name, record]
-		if record == "not worked yet" and RealSnippets.available():
+		var form: String = feature_pass().form_of(name)
+		if record == "not worked yet" and not form.is_empty():
+			line += " — its form, %s: shown to you close up as built, in turn" % form
+		elif record == "not worked yet" and RealSnippets.available():
 			var offered: Array = feature_pass().candidates_for(name)
 			line += (" — real sets have %s, %s" % [str((offered[0] as Dictionary)["id"]),
 				str((offered[0] as Dictionary).get("text", "")).get_slice(":", 0)]
 				if not offered.is_empty() else " — no real set's piece is one")
 		said.append(line)
-	return ("Its features, each laid by the app and settled in turn (settle_feature):\n%s"
+	return ("Its features, each settled in turn (settle_feature): one given its form shown "
+		+ "close up as built, the others with a real set's piece laid by the app:\n%s"
 		% "\n".join(said))
 
 
@@ -24295,7 +24428,10 @@ func _tools() -> Array:
 				+ "its piece laid and a picture): accept it — moved, turned "
 				+ "or recoloured first if it needs it — ask for the next-best "
 				+ "piece instead, reject it with a reason, say you built "
-				+ "it yourself, or skip it. Saving waits until every feature "
+				+ "it yourself, or skip it. A feature given its form in "
+				+ "submit_design is handed close up as built instead, with no "
+				+ "piece laid: built, with what the picture shows, once it "
+				+ "shows that form. Saving waits until every feature "
 				+ "listed in submit_design is settled."),
 			"input_schema": {
 				"type": "object",
@@ -24927,6 +25063,16 @@ func _tools() -> Array:
 							"facing": {"type": "string",
 								"enum": ["+z", "-z", "+x", "-x", "up"],
 								"description": "the way it faces out; the front is +z"},
+							"form": {"type": "string", "description":
+								"the form a glance knows it by, read off the "
+								+ "reference picture, and the parts that make it "
+								+ "at this scale: open (sky through it: spokes, a "
+								+ "lattice, a frame), at an angle (legs splayed, "
+								+ "an arm raked or cranked), curved (a blade, a "
+								+ "hood, a dome, an arch), twisted, tapering or "
+								+ "slender. Given it, you build the feature "
+								+ "yourself, in this build, and it comes back "
+								+ "close up as built, to check it shows that form"},
 						},
 						"required": ["name"],
 						"additionalProperties": false},
@@ -24934,14 +25080,22 @@ func _tools() -> Array:
 							"what the subject is known by, a few words "
 							+ "each: an owl's facial disc, eyes, beak, ear "
 							+ "tufts, wings, talons; a car's wheel arches, "
-							+ "headlamps, grille, windscreen, spoiler — and "
-							+ "where each goes: x, y, z on the model's surface "
-							+ "and the way it faces out (one of a pair; the "
-							+ "other is mirrored). Once the shape stands and "
+							+ "headlamps, grille, windscreen, spoiler; a "
+							+ "vehicle's wheels or tracks and each thing that "
+							+ "breaks its outline (a blade, a mast with its "
+							+ "forks, an auger, a boom) — and where each goes: "
+							+ "x, y, z on the model's surface and the way it "
+							+ "faces out (one of a pair; the other is "
+							+ "mirrored), and its form. A feature with a form "
+							+ "is built in this first build as its own piece, "
+							+ "by the parts that make that form, never a fill "
+							+ "or a stack of bricks. Once the shape stands and "
 							+ "you have looked at it whole, each comes back to "
-							+ "you in turn with the best real set's piece for "
-							+ "it laid there by the app, to accept, adjust or "
-							+ "reject with settle_feature."},
+							+ "you in turn: one with a form close up as built, "
+							+ "to check it shows that form; one without, with "
+							+ "the best real set's piece for it laid there by "
+							+ "the app, to accept, adjust or reject with "
+							+ "settle_feature."},
 					"sketch": {"type": "boolean", "description":
 						"true for a sketch: massing only, under 150 parts, checked "
 						+ "and pictured but not built. Three are made to choose "
