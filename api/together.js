@@ -724,22 +724,24 @@ async function poll(request, me, response = null) {
   let all;
   let session;
   let early = [];
-  let opsAt = 0;
+  // When the changes were last read: the next read is due POLL_MS after it
+  // ended, as live's poll has always read them, the trip and then the wait.
+  let opsDone = 0;
   try {
     [mine] = (await db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
       method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null }, prefer: "return=representation",
     })) || [];
     for (const until = opened + PEOPLE_MS; ;) {
-      opsAt = Date.now();
       early = await readOps();
+      opsDone = Date.now();
       if (early.length > 0 || channel.over() || Date.now() >= until) break;
-      await channel.ready(Math.min(opsAt + POLL_MS, until) - Date.now());
+      await channel.ready(Math.min(opsDone + POLL_MS, until) - Date.now());
       // Woken by its channel, or by when it waits no longer, not for the
       // next read of the changes: who is in it read now. (By the clock, a
       // timer to [until] can end a millisecond before it: the changes were
       // read again 30 ms after the last, 3 runs in 20, pollreads.) Less 2 ms
       // for a timer's and a clock's rounding.
-      if (channel.over() || Date.now() - opsAt < POLL_MS - 2) break;
+      if (channel.over() || Date.now() - opsDone < POLL_MS - 2) break;
     }
     [session, all] = await Promise.all([sessionRow(id), peopleRows(id)]);
     if (!mine || !session || session.ended_at) session = await inSession(id, me);
@@ -803,11 +805,11 @@ async function poll(request, me, response = null) {
   };
   // Until the next read; a pointer told meanwhile goes out at once: a line,
   // or the answer (true).
-  const rest = () => new Promise((done) => {
+  const rest = (ms) => new Promise((done) => {
     const timer = setTimeout(() => {
       wake = null;
       done(false);
-    }, POLL_MS);
+    }, ms);
     wake = () => {
       const now = peopleOut(id, session, withMoved(all), me);
       const signature = signatureOf(now);
@@ -839,15 +841,15 @@ async function poll(request, me, response = null) {
       // The changes no sooner than POLL_MS after they were last read (as
       // the channel joined, just before), and those found then given now.
       // Less 2 ms for a timer's and a clock's rounding.
-      const opsDue = early.length === 0 && Date.now() - opsAt >= POLL_MS - 2;
+      const opsDue = early.length === 0 && Date.now() - opsDone >= POLL_MS - 2;
       if (due) checked = Date.now();
       if (sessionDue) looked = Date.now();
-      if (opsDue) opsAt = Date.now();
       const [rows, fresh, standing] = await Promise.all([
         opsDue ? readOps() : early,
         due ? peopleRows(id) : null,
         sessionDue ? sessionRow(id) : null,
       ]);
+      if (opsDue) opsDone = Date.now();
       early = [];
       if (due) {
         if (sessionDue) {
@@ -864,7 +866,12 @@ async function poll(request, me, response = null) {
       const signature = signatureOf(people);
       if (streams && signature !== told && rows.length === 0) say(signature);
       if (rows.length > 0 || signature !== told || Date.now() > until) return await answer(rows, signature);
-      if (await rest()) return await answer([], signatureOf(people));
+      // Until the changes are due again: a step that did not read them (who
+      // is in it read as the channel joined) rests what is left of POLL_MS,
+      // not all of it. Resting all of it, a change made as a poll began
+      // waited up to two of them (pollreads: browser to browser p50 830 and
+      // 843 ms on the preview, 2026-11-17).
+      if (await rest(Math.max(0, opsDone + POLL_MS - Date.now()))) return await answer([], signatureOf(people));
     }
   } finally {
     wake = null;

@@ -325,7 +325,9 @@ signed in as someone else.
   first read of who is in it, taken once the channel has joined, so a
   poll reads no more than before pointfix (pollreads: `begins`, read
   counts barred by the gap between two reads, less what the box held the
-  fixture for in the 20 ms before the earlier, each log's third field, and
+  fixture for in the 20 ms before the earlier, each log's third field; the
+  changes POLL_MS after the last read of them ended, as live reads them,
+  and a step that skipped them rests only until then; and
   timed bars less what the busy box held the fixture for, `stalled`; a point's timed from the
   server telling the channel, `relay_ms`, since a send's own sign-in
   check waits on the thread pool a busy box keeps, and `joining`'s

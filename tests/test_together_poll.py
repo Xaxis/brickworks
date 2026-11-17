@@ -41,16 +41,20 @@ def _times(log: list, what: str) -> list[int]:
     return [at for kind, at, _ in log if kind == what]
 
 
-def _no_more_often(log: list, where) -> None:
+def _no_more_often(log: list, where, read_ms: int = 0) -> None:
     """Who is in it read no sooner after the last read of them than
-    PEOPLE_MS, the changes POLL_MS, the session SESSION_MS: barred by how
+    PEOPLE_MS, the session SESSION_MS, and the changes no sooner than POLL_MS
+    after the last read of them ended ([read_ms] each), as live's poll has
+    always read them; read POLL_MS apart from when each began, a channel
+    slow to join had them read more often than live (pollreads,
+    2026-11-17). Barred by how
     often, not by how many reads fit in a second, which a busy box makes
     fewer, never more (rel-m305's gate, 4 reads of the changes in one second
     against 10 in the next, failed on that, pollreads 2026-11-16). 2 ms for
     a timer's and a clock's rounding, and what the box held the fixture's
     process for just before the earlier read, which can only have made it
     reach the log later than the poll asked."""
-    for what, every in (("GET together_people", PEOPLE_MS), ("GET together_ops", POLL_MS),
+    for what, every in (("GET together_people", PEOPLE_MS), ("GET together_ops", POLL_MS + read_ms),
                         ("GET together_sessions", SESSION_MS)):
         reads = [(at, held) for kind, at, held in log if kind == what]
         assert all(b - a >= every - 2 - held for (a, held), (b, _) in zip(reads, reads[1:])), (where, what, reads)
@@ -94,7 +98,7 @@ def test_waiting_with_nobody_pointing_reads_no_more():
     for asked, reads in _run()["reads"].items():
         assert reads["writes"] == 0, (asked, reads)
         assert reads["ops"] >= 1 and reads["people"] >= 1, (asked, reads)
-        _no_more_often(reads["log"], asked)
+        _no_more_often(reads["log"], asked, 20 if asked == "lines_slow_join" else 0)
 
 
 def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
@@ -112,7 +116,7 @@ def test_a_poll_reads_who_is_in_it_once_as_it_begins_however_slow_its_channel():
         # The session and who is in it read together, first: one beside the other.
         kinds = [what for what, *_ in log if what.startswith("GET together_") and what != "GET together_ops"]
         assert people and kinds[:2] == ["GET together_sessions", "GET together_people"], (where, log)
-        _no_more_often(log, where)
+        _no_more_often(log, where, case["readMs"])
         if case["joinMs"] < PEOPLE_MS:
             assert case["joined"] is not None and people[0] >= case["joined"], (where, log)
         else:
@@ -161,7 +165,7 @@ def test_somebody_pointing_reads_no_more_than_nobody():
     # Listening on the channel, a poll reads who is in it no more often than
     # when nobody points.
     assert listening["people"] >= 1, listening
-    _no_more_often(listening["log"], "listening")
+    _no_more_often(listening["log"], "listening", 20)
     # Not listening, it reads them at every step as before (each read takes
     # 20 ms, so every step is over POLL_MS from the last): a step's reads go
     # out together, so each read of the changes is followed by one of them.
