@@ -649,13 +649,16 @@ function beganIn(tab, picks, key) {
 // count, and what the session itself knows decides: whether its conversation
 // called Brickworks before. One still calling after this chat began is
 // another chat for certain, and is said as such (header).
+// The rerun's t3 still looked at the model before its change, as the walk's
+// had for "two other chats": so it says too that none has called since this
+// chat began, and that any that does will be said.
 function quietWords(before) {
   const one = before.length === 1;
   return `Before this chat's first call here, ${one ? "another chat" : "other chats"} called in this tab, `
-    + `last heard ${ago(lastOf(before[0]))}. Brickworks counts a conversation as a new chat each time it `
-    + `connects again (resumed or restarted), so if this conversation called Brickworks earlier, `
-    + `${one ? "that was" : "those were"} its own calls. If not, the tab shows the chats working in it and `
-    + "the person can keep one.";
+    + `last heard ${ago(lastOf(before[0]))}; none has called since. Brickworks counts a conversation as a `
+    + "new chat each time it connects again (resumed or restarted), so if this conversation called "
+    + `Brickworks earlier, ${one ? "that was its own call" : "those were its own calls"}. Should another `
+    + "chat call in this tab while this one works, every answer says so.";
 }
 
 // The open tabs, one line each, newest use first, with which chat holds each.

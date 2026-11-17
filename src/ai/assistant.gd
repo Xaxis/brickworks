@@ -5069,6 +5069,10 @@ func _attachment_points(args: Dictionary) -> String:
 		prefix = "#%d." % brick_id
 	else:
 		part_id = str(args.get("part", ""))
+		if part_id.is_empty():
+			return ("attachment_points takes brick= (a part standing, by its number) or part= "
+				+ "with x, y and z (one not yet put down); where_to_attach reads the whole model's "
+				+ "open points.")
 		if not library.parts.has(part_id):
 			return "No part '%s' exists." % part_id
 		var hypothetical := Placement.from_dict(args)
@@ -5120,7 +5124,7 @@ func _attachment_points(args: Dictionary) -> String:
 	# all. A Technic beam has no studs, so this said "no studs — nothing
 	# clutches to it. Tiles and most sloped surfaces are like this" about
 	# the part the whole of Technic is built from.
-	var holes: String = _output_said(part_id, part, at) + _holes_in(part, at, part_id) \
+	var holes: String = _output_said(part_id, part, at, prefix) + _holes_in(part, at, part_id) \
 		+ _connectors_said(part_id, at, prefix, args.get("near"))
 
 	if found > MOST_STUDS:
@@ -5153,7 +5157,11 @@ func _attachment_points(args: Dictionary) -> String:
 ## twelve side holes and none of the hub's, and the session of APP_UX9's y6,
 ## its arm pinned into the ring, read the app as counting those holes as the
 ## case's and spent 29 calls. "" for a part that is not a motor with an output.
-func _output_said(part_id: String, part: Lbm.PartMesh, at: Transform3D) -> String:
+## With [param prefix] ("#85.") each hole is named by the address attach
+## takes too, so a pin goes into the output by it: the rerun's y6 session,
+## told only where the holes were, tried the motor's sockets by number and
+## spent four calls on which (mcpreach2).
+func _output_said(part_id: String, part: Lbm.PartMesh, at: Transform3D, prefix: String = "") -> String:
 	var motor: String = Simulation.motor_of(library, part_id)
 	if motor.is_empty():
 		return ""
@@ -5162,6 +5170,7 @@ func _output_said(part_id: String, part: Lbm.PartMesh, at: Transform3D) -> Strin
 		return ""
 	var holes: Lbm.PartMesh = output["mesh"]
 	var way: Vector3 = (at.basis * (output["way"] as Vector3)).normalized()
+	var points: Array = Attach.points_of(library, part_id)
 	var lines := PackedStringArray()
 	var seen: Array = []
 	for connector: Lbm.Connector in holes.connectors:
@@ -5175,9 +5184,21 @@ func _output_said(part_id: String, part: Lbm.PartMesh, at: Transform3D) -> Strin
 		if again:
 			continue
 		seen.append(middle)
-		lines.append("  %s at x=%s y=%s z=%s" % ["axle hole: an axle keyed in it turns with the output"
+		# The attach point on this hole's line, nearest its middle.
+		var address: String = ""
+		var best: float = 3.0
+		for point: Attach.Point in points:
+			var from: Vector3 = point.frame.origin - connector.position
+			var along: float = clampf(from.dot(connector.axis.normalized()), 0.0, connector.length)
+			var off: float = (from - connector.axis.normalized() * along).length()
+			if off < best:
+				best = off
+				address = point.address()
+		lines.append("  %s at x=%s y=%s z=%s%s" % ["axle hole: an axle keyed in it turns with the output"
 			if kind == "axle" else "pin hole: a pin in it, and what it holds, turns with the output",
-			Placement._num(middle.x / STUD), Placement._num(middle.y / PLATE), Placement._num(middle.z / STUD)])
+			Placement._num(middle.x / STUD), Placement._num(middle.y / PLATE), Placement._num(middle.z / STUD),
+			"" if address.is_empty() else ", attach to \"%s%s\"" % [prefix if not prefix.is_empty()
+				else "<its name>.", address]])
 	if lines.is_empty():
 		return ""
 	var centre: Vector3 = at * (output["point"] as Vector3)

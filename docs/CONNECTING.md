@@ -143,8 +143,9 @@ first for ..." and "every chat" for more than one; the time is the
 longest there's). One heard from only before this chat began, within the
 10 minutes, may be this conversation's own earlier self, so it is not
 counted: "Before this chat's first call here, another chat called in this
-tab, last heard 2 min ago", and that if this conversation called
-Brickworks earlier, those were its own calls. In APP_UX9's walk, where
+tab, last heard 2 min ago; none has called since", that if this
+conversation called Brickworks earlier, that was its own call, and that
+any chat calling while this one works is said in every answer. In APP_UX9's walk, where
 each task was one `claude -p --resume` turn, every answer by y8 began "19
 other chats have been working in it", and sessions looked at the model
 for them or told the person of "25 other chats" that were their own turns.

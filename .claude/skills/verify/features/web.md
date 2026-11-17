@@ -607,8 +607,8 @@ plan with Claude as the client.
   One heard from only before this chat began may be its own earlier self (a
   resumed Claude Code chat is a new session, and nothing says so), so it is
   not counted: "Before this chat's first call here, another chat called in
-  this tab, last heard …", and that if this conversation called Brickworks
-  earlier those were its own calls (`header`, `quietWords`;
+  this tab, last heard …; none has called since", and that if this
+  conversation called Brickworks earlier that was its own call (`header`, `quietWords`;
   `python3 tools/minitest.py "$PWD/tests/test_relay_chats.py"` holds the
   words to fabricated picks, mcpreach2). With more than one tab open, `select_tab`'s answer
   and `target`'s description ask Claude to pass `target` on every call

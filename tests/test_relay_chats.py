@@ -97,7 +97,7 @@ def test_a_resumed_chats_earlier_turns_are_not_counted_or_said_to_be_working_in_
         return
     assert "Careful" not in said and "working in it for" not in said, said
     assert "12" not in said and "13" not in said, said
-    assert "Before this chat's first call here, other chats called in this tab, last heard 25 s ago." in said, said
+    assert "Before this chat's first call here, other chats called in this tab, last heard 25 s ago; none has called since." in said, said
     assert "if this conversation called Brickworks earlier, those were its own calls" in said, said
 
 
@@ -108,7 +108,7 @@ def test_a_chats_first_call_with_one_chat_before_it_says_that_was_and_no_count()
     if said is None:
         return
     assert said.startswith("Tab k2abc, “Wall”. Before this chat's first call here, other chats called in "
-                           "this tab, last heard just now."), said
+                           "this tab, last heard just now; none has called since."), said
     assert "2 " not in said, said
     one = header([{"key": "session:t2", "picked": 20, "called": 4}])
-    assert "another chat called in this tab" in one and "that was its own calls" in one, one
+    assert "another chat called in this tab" in one and "that was its own call." in one, one
