@@ -93,6 +93,10 @@ class Risk extends RefCounted:
 	var carrying_grams: float
 	var studs: int
 	var message: String
+	## A "tips": how far its weight is past the edge, in studs, and which
+	## edge ("right", "front"…).
+	var past: float = 0.0
+	var edge: String = ""
 
 
 class Report extends RefCounted:
@@ -122,15 +126,47 @@ class Report extends RefCounted:
 		return risks.is_empty()
 
 	## The verdict, as the status bar says it after the counts: "stands up",
-	## or "2 weak joints (levered)". Not the weight, which the status bar
-	## says itself, of the model as it is in that frame (StatusBar._weight):
-	## said here, it was the weight of the model this was weighed on, up to
-	## a second before, and of the parts whose shapes had come by then.
+	## "2 weak joints (levered)", or what is wrong with its balance, the
+	## whole model's tip first: "tips over, 0.7 studs past the right edge".
+	## Not the weight, which the status bar says itself, of the model as it
+	## is in that frame (StatusBar._weight): said here, it was the weight of
+	## the model this was weighed on, up to a second before, and of the parts
+	## whose shapes had come by then.
+	##
+	## A balance is not a joint. The walk's tower on one corner stud, which
+	## tips whole, read "2 weak joints (tips)" (its tip, and its lean, the
+	## same weight past the same edge) beside Stress's "0 past working load":
+	## a person looked in Stress for two joints it did not list (APP_UX9,
+	## smalls4). The joints counted are those Stress lists red.
 	func summary() -> String:
 		if risks.is_empty():
 			return "stands up"
-		var worst: String = weakest.kind if weakest else "weak"
-		return "%d weak joint%s (%s)" % [risks.size(), "" if risks.size() == 1 else "s", worst]
+		var whole: Risk = null
+		var joints: Array[Risk] = []
+		for risk: Risk in risks:
+			if not risk.kind in BALANCE_KINDS:
+				joints.append(risk)
+			elif whole == null or BALANCE_KINDS.find(risk.kind) < BALANCE_KINDS.find(whole.kind):
+				whole = risk
+		var said := PackedStringArray()
+		if whole != null:
+			match whole.kind:
+				"tips":
+					said.append("tips over, %s studs past the %s edge" % [Balance.studs(whole.past),
+						whole.edge])
+				"leaning":
+					said.append("leans past what holds it")
+				_:
+					said.append(whole.kind)
+		if not joints.is_empty():
+			said.append("1 weak joint (%s)" % joints[0].kind if joints.size() == 1
+				else "%d weak joints (%s)" % [joints.size(), joints[0].kind])
+		return "; ".join(said)
+
+
+## The risks that are the balance of the whole, or of all above a level, and
+## not a joint: the worst first, as the verdict names one of them.
+const BALANCE_KINDS: Array[String] = ["tips", "leaning", "top-heavy"]
 
 
 var library: PartLibrary
@@ -328,6 +364,8 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 	risk.kind = "tips"
 	risk.margin = 0.0
 	risk.carrying_grams = grams
+	risk.past = past
+	risk.edge = str(standing["edge"])
 	risk.message = "its weight is %s studs past the %s edge of what it stands on" % [
 		Balance.studs(past), standing["edge"]]
 	report.risks.append(risk)

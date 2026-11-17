@@ -209,8 +209,8 @@ const MENUS: Array = [
 		"-", "share", "together", "together_point",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
-		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
+		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", ">show_hide",
+		"lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
 		"ortho", "grid", ">floor",
@@ -276,6 +276,11 @@ const SUBMENUS: Dictionary = {
 		"export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
+	# Hide, Show only the selection and Show everything, folded as Blender's
+	# Show/Hide is (smalls4, APP_UX9 #3): with Find and replace, Edit was 486
+	# units tall at 1280 x 720, past the 470 a menu has there (keys3). Each
+	# keeps its key (Ctrl+H, Shift+H and Alt+H by default), which most use.
+	"show_hide": ["hide", "isolate", "show_all"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right",
 		# savedviews: the views kept with the model (SavedViews), each row
@@ -321,6 +326,7 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
+	"show_hide": "Show and hide",
 	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
 	"floor": "Floor", "floor_colour": "Baseplate colour",
@@ -1554,7 +1560,8 @@ func _define() -> void:
 	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
 	_add("show_properties", "Properties", 0, func() -> void:
 		SideDock.of(inspector).set_open(true)
-		inspector.set_open(true), selected,
+		inspector.set_open(true)
+		inspector.show_place(), selected,
 		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
@@ -2180,10 +2187,17 @@ func _check_stability() -> void:
 	if report == null:
 		report = stability.check(world)
 	var said: String = "it stands up — no joint is carrying more than it can hold"
-	# The joints Stability finds weak, apart from tipping, which the
-	# balance says better.
+	# The joints Stability finds weak, apart from the balance of the whole
+	# (a tip, a lean, top-heavy), which is no joint and no part to select:
+	# the walk's tower on one corner stud, which tips whole, read "1 weak
+	# joint, selected" of its lean, with nothing selected (smalls4). A lean
+	# is said as itself, and a tip as the balance says it.
 	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
-		return risk.kind != "tips")
+		return not risk.kind in Stability.BALANCE_KINDS)
+	var leans: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind in ["leaning", "top-heavy"])
+	if weak.is_empty() and not leans.is_empty():
+		said = (leans[0] as Stability.Risk).message
 	if not weak.is_empty():
 		builder.selection.clear()
 		for risk: Stability.Risk in weak:
@@ -2198,7 +2212,8 @@ func _check_stability() -> void:
 	var balance: Balance.Report = await weigh_balance(poses, true, true,
 		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
-		bar.say(balance.words() if weak.is_empty() else "%s. %s" % [said, balance.words()])
+		bar.say(balance.words() if weak.is_empty() and leans.is_empty()
+			else "%s. %s" % [said, balance.words()])
 
 
 var _balance_mark: BalanceMark = null

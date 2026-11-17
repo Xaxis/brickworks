@@ -105,8 +105,8 @@ func _run() -> void:
 
 	_flex.leave()
 	await _frames(20)
-	_check("Done: the panel goes, the parts column is as it was (%s) and the model's room too (%s)"
-		% ["open" if bin.is_open() else "folded", _rect_words(_room())],
+	_check("Done: the panel goes, the parts column is as it was (%s) and the model's room too (%s, was %s)"
+		% ["open" if bin.is_open() else "folded", str(_room()), str(room_was)],
 		not _flex.panel.is_visible_in_tree() and bin.is_open() == bin_was
 		and _room().is_equal_approx(room_was))
 

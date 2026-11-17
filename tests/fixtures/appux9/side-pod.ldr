@@ -1,0 +1,71 @@
+0 FILE side_pod.ldr
+0 Side pod
+0 !BRICKWORKS MADE assistant
+0 Name: side_pod.ldr
+0 Author: Brickworks
+0 !BRICKWORKS FLOOR NONE
+
+0 !BRICKWORKS COPY 1
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 side_pod_.ldr
+0 STEP
+1 4 160 -8 -60 0 0 -1 0 1 0 1 0 0 3032.dat
+1 72 140 -16 -60 1 0 0 0 1 0 0 0 1 41769a.dat
+1 4 170 -32 -30 -1 0 0 0 1 0 0 0 -1 3040b.dat
+1 4 170 -32 -110 1 0 0 0 1 0 0 0 1 4070.dat
+0 STEP
+1 4 170 -32 -110 1 0 0 0 1 0 0 0 1 54200.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 blue_slope.ldr
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 motor_arm.ldr
+0
+0 NOFILE
+0 FILE side_pod_.ldr
+0 side pod
+0 Name: side_pod_.ldr
+0 Author: Brickworks
+
+1 4 40 -8 -60 0 0 -1 0 1 0 1 0 0 3032.dat
+1 72 60 -16 -60 1 0 0 0 1 0 0 0 1 41770a.dat
+1 4 30 -32 -30 -1 0 0 0 1 0 0 0 -1 3040b.dat
+1 4 30 -32 -110 1 0 0 0 1 0 0 0 1 4070.dat
+0 STEP
+1 4 30 -32 -110 1 0 0 0 1 0 0 0 1 54200.dat
+0
+0 NOFILE
+0 FILE blue_slope.ldr
+0 blue slope
+0 Name: blue_slope.ldr
+0 Author: Brickworks
+
+1 1 270 -24 -10 1 0 0 0 1 0 0 0 1 3040b.dat
+1 1 290 -24 -10 1 0 0 0 1 0 0 0 1 3040b.dat
+1 1 280 -32 -10 1 0 0 0 1 0 0 0 1 3023b.dat
+0
+0 NOFILE
+0 FILE motor_arm.ldr
+0 motor arm
+0 Name: motor_arm.ldr
+0 Author: Brickworks
+
+1 0 500 -10 -10 -1 0 0 0 1 0 0 0 -1 2780.dat
+1 0 500 -10 -50 -1 0 0 0 1 0 0 0 -1 2780.dat
+1 72 390 -10 -70 0 1 0 -1 0 0 0 0 1 32524.dat
+1 72 510 -10 -70 0 1 0 -1 0 0 0 0 1 32524.dat
+0 STEP
+1 0 400 -10 -10 -1 0 0 0 1 0 0 0 -1 2780.dat
+1 0 400 -10 -50 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 STEP
+1 0 470 -150 -100 0 0 -1 0 1 0 1 0 0 2780.dat
+1 0 450 -150 -90 0 0 1 0 1 0 -1 0 0 4519.dat
+1 322 450 -150 -30 -1 0 0 0 0 1 0 1 0 54675.dat
+1 72 450 -150 -106 0 0 1 -1 0 0 0 -1 0 6632.dat
+0 STEP
+1 71 510 -150 -90 0 0 1 -1 0 0 0 -1 0 40490.dat
+0 STEP
+1 4 590 -150 -100 0 0 1 0 1 0 -1 0 0 89678.dat
+1 4 600 -160 -124 1 0 0 0 0 -1 0 1 0 3003.dat
+0
+0 NOFILE

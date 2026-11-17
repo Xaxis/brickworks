@@ -429,22 +429,28 @@
 					"line": true
 				},
 				{
-					"name": "hide",
-					"words": "Hide",
-					"key": "Ctrl+H",
-					"tip": "Hide the selection, to reach what is behind it"
-				},
-				{
-					"name": "isolate",
-					"words": "Show only the selection",
-					"key": "Shift+H",
-					"tip": "Hide everything else, to work on just this"
-				},
-				{
-					"name": "show_all",
-					"words": "Show everything",
-					"key": "Alt+H",
-					"tip": "Bring back whatever is hidden"
+					"submenu": "show_hide",
+					"words": "Show and hide",
+					"items": [
+						{
+							"name": "hide",
+							"words": "Hide",
+							"key": "Ctrl+H",
+							"tip": "Hide the selection, to reach what is behind it"
+						},
+						{
+							"name": "isolate",
+							"words": "Show only the selection",
+							"key": "Shift+H",
+							"tip": "Hide everything else, to work on just this"
+						},
+						{
+							"name": "show_all",
+							"words": "Show everything",
+							"key": "Alt+H",
+							"tip": "Bring back whatever is hidden"
+						}
+					]
 				},
 				{
 					"name": "lock",

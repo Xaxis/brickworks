@@ -395,7 +395,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
-  less room than it needs.
+  less room than it needs. Asked for from a part's actions or its More
+  (Shell `show_properties`), its place and turn are scrolled into sight
+  (`Inspector.show_place`): a tablet's drawer, 1024 x 768, has it over the
+  colours with Z, Turn, Tilt and Roll under its fold, and phonewalk's typed
+  turn tapped the bar under it three runs of three (smalls4 item 6). Probes:
+  `typedturn_probe` (tablet) and `typedturn_phone_probe` (phone): the brick
+  tapped, held, Properties tapped; Turn in sight, a tap gives it the keys,
+  15 typed and Enter turn it 15°.
 - `properties under the bin` (`Inspector.compact`, `Main._bin_props`,
   2026-10-30, docs/APP_UX2.md gap 5): where the columns take turns (a
   laptop's 1280 x 720 and 1400 x 900, and 1920 x 1080), opening the properties folded the bin
@@ -538,7 +545,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the other and the tools' column that would leave it less folds the other
   side's, as where they take turns (`Main.MODEL_LEAST`, `_room_beside`, in
   `_column_opening`; at 1400 x 900 the bin, Stress and the assistant together
-  left it 393 px). On a tablet on its side the tools' column goes under the
+  left it 393 px). The tools' column opening beside an open bin keeps the
+  bin, narrowed, while the model keeps that least; the right-hand column
+  folds first where that keeps it, and the bin only where even that leaves
+  too little; closing it puts back what it folded (`Main._tool_column_shown`,
+  `_room_with_bin`; binstay, APP_UX9 #2: it folded the bin every time, and
+  round eight's walk lost the bin it was picking from as Stress opened).
+  On a tablet on its side the tools' column goes under the
   model while, beside it, it would leave the model less than that, with a
   drawer or the parts out, and back beside it when they go
   (`Main._place_tool_column`, `_tool_crowds_model`): Stress and the
@@ -1612,7 +1625,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`, answered by
   `Shell.handle_key`, which `EditVerbs` leaves it to; under LDCad's keys, whose
   Ctrl-Shift-H shows everything, `Ctrl-Shift-F`; Shift-H stays Show only the
-  selection, Ctrl-H Hide, smalls4) opens a bar over the view. A part's number or name (3023 finds 3023a
+  selection, Ctrl-H Hide, smalls4) opens a bar over the view, across the top of the
+  model's room and seated again whenever that room moves or narrows
+  (`Main._seat_find_replace`; binrow's binstay opens Stress beside it). A part's number or name (3023 finds 3023a
   and 3023b) and/or a colour to find, as it is seen: a copy placed by a
   mirror shows the other hand of a handed part, and is found as that. It
   lists where they are (the model's own parts, each sub-model with its
@@ -3218,8 +3233,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel in a column
   beside the model's (main's `_tool_column`, Simulate's too), never over it:
   over the model's left edge it covered the left one of two gears a chain was
-  to go round at 1400 x 900 (keys3). Opening it folds the parts column, Done
-  puts it back; where nothing folds and the column would take a part in sight
+  to go round at 1400 x 900 (keys3). Opening it keeps the parts column beside
+  it where the model keeps its least room and folds it where it would not
+  (binstay, smalls4), Done puts back what it folded; where nothing folds and the column would take a part in sight
   out of the model's room, the view steps back by as much as the room
   narrowed. In the panel, what to lay (pneumatic tube, ribbed hose, flex-system
   hose, flexible axle, string with end studs, Technic chain, tread) and how long

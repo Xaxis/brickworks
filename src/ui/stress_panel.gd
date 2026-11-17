@@ -16,7 +16,10 @@
 ## parts that make it hold (Strengthen): a plate across the seam, a brick
 ## under it or a second pin, shown as a ghost where it would go, and put
 ## down by Strengthen as one step to undo. With From my bricks, from the
-## parts the person owns, as the parts bin counts them.
+## parts the person owns, as the parts bin counts them. A model that tips
+## over whole, which no joint's fix stands up, is offered a foot under the
+## side it tips toward (Strengthen.find_tip) when no row past or near its
+## working load is stepped to, or says plainly why there is none.
 ##
 ## Its Lift (loadtest): pressed, the part chosen next (or the one selected)
 ## is the one the model is lifted by, off the floor (StressView.set_lift).
@@ -37,6 +40,8 @@ const FOOT := 72.0
 ## Each colour as the legend shows it: the view's red and amber, and a part
 ## drawn faded, as clay.
 const SAFE := Color(0.78, 0.76, 0.72)
+## Strengthen's tooltip for a joint's fix.
+const HOLDS_TIP := "Put the parts shown down: the joint then holds. One step to undo"
 
 var view: StressView
 ## Main's: [param ids] selected, and framed with [param around] (part ids).
@@ -191,6 +196,10 @@ func _say_chosen() -> void:
 	_previous.disabled = entries.size() < 2
 	_next.disabled = entries.is_empty()
 	_at.text = "%d of %d" % [chosen + 1, entries.size()] if one != null else ""
+	if one == null and _lift_rows.is_empty() and _tips.visible:
+		_look_for_fix(null)
+		_fit_later()
+		return
 	if one == null or not _lift_rows.is_empty():
 		_forget_fix()
 		_offer.visible = false
@@ -319,10 +328,16 @@ func _key(into: Control, rows: Array) -> VBoxContainer:
 
 
 ## Look for [param one]'s fix, past its working load or near it: the one
-## found for it is kept while the model is as it was.
+## found for it is kept while the model is as it was. With none such
+## stepped to ([param one] null, or one that holds), a model that tips
+## whole is looked at for a foot.
 func _look_for_fix(one: StressView.Weak) -> void:
-	var wanted: bool = make_fixer.is_valid() and view != null and view.report != null \
-		and one.margin < StressView.CLOSE
+	var can: bool = make_fixer.is_valid() and view != null and view.report != null
+	if can and (one == null or one.margin >= StressView.CLOSE) and _tips.visible:
+		_look_for_foot()
+		return
+	_strengthen.tooltip_text = HOLDS_TIP
+	var wanted: bool = can and one != null and one.margin < StressView.CLOSE
 	var theirs: Dictionary = owned.call() if wanted else {}
 	_mine.visible = wanted and not theirs.is_empty()
 	_offer.visible = wanted
@@ -359,6 +374,46 @@ func _look_for_fix(one: StressView.Weak) -> void:
 	_fit_later()
 
 
+## The foot that stands a model that tips whole (Strengthen.find_tip), or
+## why there is none: the walk's tower of 2 x 4s on one corner stud said
+## "the whole model tips over" here, and Strengthen offered nothing
+## (APP_UX9, smalls4).
+func _look_for_foot() -> void:
+	var theirs: Dictionary = owned.call()
+	_mine.visible = not theirs.is_empty()
+	_offer.visible = true
+	_strengthen.visible = true
+	_strengthen.tooltip_text = "Put the parts shown down: the model then stands. One step to undo"
+	if fix != null and fix.kind == "foot" and fix.revision == view.world.revision:
+		return
+	_forget_fix()
+	_looking += 1
+	var asked: int = _looking
+	_finding = true
+	_offer.text = "Looking for the fewest parts that stand it up…"
+	_strengthen.disabled = true
+	fixer_now()
+	fixer.scenery = view.scenery
+	fixer.owned = theirs if _mine.visible and _mine.button_pressed else {}
+	var found: RefCounted = await fixer.find_tip(view.report)
+	if asked != _looking:
+		return
+	_finding = false
+	fix = found
+	if found == null:
+		var why: String = str(fixer.get("tip_why"))
+		_offer.text = why + "." if not why.is_empty() else ""
+		_offer.visible = not why.is_empty()
+		_fit_later()
+		return
+	_offer.text = "Strengthen adds %s. %s.%s" % [found.what, Later.script(&"Strengthen").held_words(found),
+		"" if fixer.owned.is_empty() else (" All from your bricks." if found.mine
+			else " Not all from your bricks: you have none of one left.")]
+	_strengthen.disabled = false
+	_show_ghost(found)
+	_fit_later()
+
+
 ## The Strengthen that finds the fixes, made the first time one is wanted;
 ## null where the panel has none.
 func fixer_now() -> RefCounted:
@@ -377,7 +432,7 @@ func strengthen() -> void:
 	if made.is_empty():
 		view.say.call("the model changed: its fix is looked for again")
 		var one: StressView.Weak = entries[chosen] if chosen >= 0 and chosen < entries.size() else null
-		if one != null:
+		if one != null or _tips.visible:
 			_look_for_fix(one)
 		return
 	fixer.builder.selection.clear()
@@ -542,8 +597,7 @@ func _build() -> void:
 	var fixing := HBoxContainer.new()
 	fixing.add_theme_constant_override("separation", 10)
 	column.add_child(fixing)
-	_strengthen = _button(fixing, "Strengthen", strengthen,
-		"Put the parts shown down: the joint then holds. One step to undo")
+	_strengthen = _button(fixing, "Strengthen", strengthen, HOLDS_TIP)
 	_strengthen.visible = false
 	_strengthen.disabled = true
 	_mine = CheckBox.new()
@@ -555,7 +609,7 @@ func _build() -> void:
 	_mine.toggled.connect(func(_on: bool) -> void:
 		_forget_fix()
 		var one: StressView.Weak = entries[chosen] if chosen >= 0 and chosen < entries.size() else null
-		if one != null:
+		if one != null or _tips.visible:
 			_look_for_fix(one))
 	fixing.add_child(_mine)
 	var steps := HBoxContainer.new()
