@@ -142,7 +142,7 @@ ui:stud directions
 
 ## Connection points {#connection-points}
 
-**View › Connection points** marks where parts connect. With a part in hand it marks the parts near it, and with nothing in hand the part under the pointer. What goes in is filled: studs, pins, axles (a cross), bars and balls. What takes one is hollow, a ring the size of what goes in it: anti-studs, pin holes, axle holes (a cross), clips and sockets. Blue is what the part in hand can go onto, faint grey what it cannot, and the end of the part in hand that goes onto the joint it is aimed at is amber, so the third hole of a beam is found without counting. It is on to start with; the menu item turns it off. The marks are never saved, rendered, put in a picture or drawn in instructions.
+**View › Connection points** marks where parts connect. With a part in hand it marks the parts near it, and with nothing in hand the part under the pointer. What goes in is filled: studs, pins, axles (a cross), bars and balls. What takes one is hollow, a ring the size of what goes in it: anti-studs, pin holes, axle holes (a cross), clips, the mouth of a hollow a bar fits, and sockets. A pin or an axle is marked at its ends. Blue is what the part in hand can go onto, faint grey what it cannot, and the end of the part in hand that goes onto the joint it is aimed at is amber, so the third hole of a beam is found without counting. It is on to start with; the menu item turns it off. The marks are never saved, rendered, put in a picture or drawn in instructions.
 
 <!-- covers
 ui:connection points

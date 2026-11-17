@@ -400,7 +400,16 @@ func _rows_for(ids: Array, held: String, focus: Vector3) -> PackedFloat32Array:
 				or builder.lattice.unseen.has(brick_id) or builder.lattice.see_through.has(brick_id) \
 				or builder.lattice.ahead.has(brick_id):
 			continue
+		# A part's first marks work out its joints (JointSnap.ends_for), up to
+		# 30 ms on the car's first frame with the hand: two a frame past the
+		# first, the rest on the frames after.
+		var cold: bool = not _local.has(brick.part_id)
+		if cold and fresh >= BUDGET / 2:
+			_short = true
+			break
 		var marks: Array = marks_of(library, brick.part_id)
+		if cold:
+			fresh += BUDGET / 4
 		if marks.is_empty():
 			continue
 		var rows: PackedFloat32Array
@@ -506,12 +515,18 @@ static func marks_of(library: PartLibrary, part_id: String) -> Array:
 	for socket: Vector2 in part.sockets:
 		out.append(_mark("anti-stud", null, Shape.RING, Facing.FLAT, PULL,
 			Vector3(socket.x, bottom, socket.y), Vector3.DOWN, STUD_R + BAND))
-	for end: JointSnap.End in JointSnap.ends_for(library, part_id):
+	var ends: Array = JointSnap.ends_for(library, part_id)
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	var clip: bool = info != null and info.name.to_lower().contains("clip")
+	for end: JointSnap.End in ends:
+		if end.kind == "bore" and not clip:
+			continue
 		_end_marks(end, out, false)
 	# A Technic hole's mouth underneath is an anti-stud too (a stud fits it):
 	# one mark, the hole's, taken by a pin or by a stud, at the hole's own
-	# middle (the part's record of its anti-studs is to the lattice's 2 LDU:
-	# a 32524's are 2 LDU along from its holes).
+	# middle (the part's record of its anti-studs is to the lattice's 2 LDU,
+	# on each way: a 32524's are 2 LDU along from its holes, a 15100's 2
+	# across and 2 along).
 	var anti: Array = []
 	for mark: Array in out:
 		if mark[4] == "anti-stud":
@@ -520,14 +535,69 @@ static func marks_of(library: PartLibrary, part_id: String) -> Array:
 		if mark[4] != "pin_hole":
 			continue
 		for under: Array in anti:
-			if (under[6] as Vector3).distance_to(mark[6]) < BrickLattice.CELL + 0.5 \
+			if (under[6] as Vector3).distance_to(mark[6]) < BrickLattice.CELL * 1.5 + 0.5 \
 					and (under[3] as Transform3D).basis.z.dot((mark[3] as Transform3D).basis.z) > 0.9:
 				mark[7] = true
 				out.erase(under)
 				anti.erase(under)
 				break
+	# Where a pin or an axle would lie between studs, the part's record has
+	# anti-studs along its round's side: marked, they stood off a pin put
+	# upright as rings in the air, and the MCP walk's session took them for
+	# a fault. A pin or an axle is marked by its ends.
+	for under: Array in anti:
+		if on_round(ends, under[6]):
+			out.erase(under)
+	# A bore on a part that is not a clip is a hollow a bar goes into by its
+	# end (a hollow stud's, a pin's middle): a ring at each open mouth, on
+	# the part's face, but where a stud, a pin or an axle ends there, whose
+	# mark it is already.
+	if not clip:
+		for end: JointSnap.End in ends:
+			if end.kind != "bore":
+				continue
+			for side: float in [0.0, 1.0]:
+				var mouth: Vector3 = end.at + end.axis * end.reach * side
+				var out_of: Vector3 = -end.axis if side == 0.0 else end.axis
+				if not _on_face(part.bounds, mouth, out_of) or _male_at(out, mouth):
+					continue
+				out.append(_mark("hollow", end, Shape.RING, Facing.FLAT, PULL, mouth, out_of,
+					end.radius + BAND))
 	_local[part_id] = out
 	return out
+
+
+## Whether [param at] lies along the side of one of [param ends]' pins or
+## axles, within a pin's round and a lattice step of its shaft.
+static func on_round(ends: Array, at: Vector3) -> bool:
+	for end: JointSnap.End in ends:
+		if not end.is_male():
+			continue
+		var from: Vector3 = end.at - end.axis * end.back
+		var to: Vector3 = end.at + end.axis * end.reach
+		var run: Vector3 = to - from
+		var along: float = 0.0 if run.length_squared() < 0.001 \
+			else clampf((at - from).dot(run) / run.length_squared(), 0.0, 1.0)
+		if at.distance_to(from + run * along) < JointSnap.PIN_ROUND + BrickLattice.CELL + 0.5:
+			return true
+	return false
+
+
+## Whether [param at] is on [param box]'s face that [param way] looks out of.
+static func _on_face(box: AABB, at: Vector3, way: Vector3) -> bool:
+	var reach: float = -INF
+	for corner: int in 8:
+		reach = maxf(reach, box.get_endpoint(corner).dot(way))
+	return absf(at.dot(way) - reach) < BrickLattice.CELL * 0.75
+
+
+## Whether one of [param marks] is a stud, a pin or an axle ending at [param at].
+static func _male_at(marks: Array, at: Vector3) -> bool:
+	for mark: Array in marks:
+		if mark[4] in ["stud", "pin", "axle"] and (mark[6] as Vector3).distance_to(at) \
+				< BrickLattice.CELL + 0.5:
+			return true
+	return false
 
 
 ## [param end]'s marks onto [param out]: a hole at each of its mouths, a pin
@@ -754,5 +824,6 @@ static func for_picture(world: BrickWorld, library: PartLibrary, skip: Dictionar
 static func said(count: int) -> String:
 	return ("Connection points marked, %d, as View › Connection points draws them: filled blue "
 		+ "for what goes in (studs, pins, axles as a cross, bars, balls), hollow blue for what "
-		+ "takes one (anti-studs, pin holes, axle holes as a cross, clips, sockets), each at its "
+		+ "takes one (anti-studs, pin holes, axle holes as a cross, clips, a hollow's mouth, "
+		+ "sockets), each at its "
 		+ "own size; a hollow ring's inside is the size of what goes in it.") % count

@@ -835,8 +835,13 @@ picture the assistant is shown.
   (`JointSnap.ends_for`, the stud connectors, `PartMesh.sockets`): filled for
   what goes in (stud, pin, axle as a cross, bar, ball, hinge pin), hollow
   for what takes one (anti-stud, pin hole, axle hole as a cross, clip,
-  socket), whose inside is the size of what goes in; a hole's mouth
-  underneath is its anti-stud too, one mark. Blue what the part in hand can
+  a hollow's mouth, socket), whose inside is the size of what goes in; a
+  hole's mouth underneath is its anti-stud too, one mark. A pin or an axle
+  is marked by its ends only: its record's anti-studs along its round's side
+  (`JointMarks.on_round`) and its hollow middle drew rings in the air round
+  an upright pin (the MCP walk's session, 11-17). A bore is a clip's bar
+  line only on a part named for a clip; elsewhere a ring at each open mouth
+  where no stud, pin or axle ends. Blue what the part in hand can
   take, faint grey what it cannot (`JointSnap.mates`; studs and anti-studs
   by the hand's own), amber the hand's own end on the joint it is aimed at,
   over everything. Drawn as one MultiMesh of quads, the shapes worked out in

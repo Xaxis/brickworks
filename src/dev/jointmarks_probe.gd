@@ -50,7 +50,7 @@ const SAMPLES: Array = [
 	["87994", "a bar", ["bar"]],
 	["14417", "a ball plate", ["stud", "anti-stud", "ball"]],
 	["14418", "a socket plate", ["stud", "anti-stud", "socket"]],
-	["3937", "a hinge", ["anti-stud", "clip", "hinge"]],
+	["3937", "a hinge", ["anti-stud", "hollow", "hinge"]],
 	["3705", "an axle", ["axle"]],
 	["3700", "a Technic brick with a pin hole", ["stud", "anti-stud", "pin_hole"]],
 	["32064", "a Technic brick with an axle hole", ["stud", "anti-stud", "axle_hole"]],
@@ -356,6 +356,7 @@ func _beam() -> void:
 	var end: JointSnap.End = _builder.joint_end()
 	_check("the pin is on the third hole's joint, its end a pin (%s)" % (end.kind if end != null else "none"),
 		_builder.is_on_joint() and end != null and end.kind == "pin")
+	var seated: Transform3D = _builder.ghost_transform()
 	var shown: Image = await _shot("beam_marks_on")
 	await _set_marks(false)
 	var plain: Image = await _shot("beam_marks_off")
@@ -468,6 +469,28 @@ func _beam() -> void:
 	_check("a brick in hand: the mouths underneath blue (a stud fits), the top's grey (%d blue, %d grey)" % [
 		takes, not_taken], takes == 7 and not_taken == 7)
 	await _empty_hand()
+	# The pin put down in the third hole, as the MCP walk's session had it:
+	# marked by its two ends, filled, and nothing along its sides (its
+	# record's anti-studs and its hollow middle drew rings in the air there).
+	var pin: int = await _put(PIN, 0, seated)
+	_move_to(_camera.screen_of(seated * Vector3(12.0, 0.0, 0.0)))
+	await _frames(10)
+	var pin_marks: Array = _marks().call("shown")
+	var ends_only: bool = pin_marks.size() == 2
+	for mark: Dictionary in pin_marks:
+		ends_only = ends_only and int(mark["shape"]) == 0
+	await _shot("beam_pin_down")
+	_check("a pin down in the third hole, under the pointer: its two ends filled and nothing else (%d marks, shapes %s)"
+		% [pin_marks.size(), pin_marks.map(func(m: Dictionary) -> int: return int(m["shape"]))],
+		pin != 0 and int(_shell.get("stress").hovered.call()) == pin and ends_only)
+	var pictured: Dictionary = await _rpc("tools/call", {"name": "view_model",
+		"arguments": {"marks": true}})
+	var pin_images: Array[Image] = _images(pictured)
+	if pin_images.size() == 1:
+		pin_images[0].save_png(_shots.path_join("beam_pin_session.png"))
+	var counted: String = _text(pictured).get_slice(",", 1).strip_edges()
+	_check("its picture over MCP: the beam's 14 mouths and the pin's 2 ends, 16 marks (%s)" % counted,
+		pin_images.size() == 1 and counted == "16")
 
 
 # -- kinds -------------------------------------------------------------------------------
@@ -500,6 +523,13 @@ func _kinds() -> void:
 				studs += 1
 			if mark[4] == "anti-stud" or mark[7]:
 				anti += 1
+		# The record's anti-studs along a pin's or an axle's side, left
+		# unmarked by design (JointMarks.on_round), counted as such.
+		var on_round: int = 0
+		var ends: Array = JointSnap.ends_for(_library, part_id)
+		for socket: Vector2 in part.sockets:
+			if JointMarks.on_round(ends, Vector3(socket.x, part.bounds.position.y, socket.y)):
+				on_round += 1
 		var seen: Dictionary = {}
 		var drawn_rows: Array = []
 		var all_drawn: Array = []
@@ -566,13 +596,14 @@ func _kinds() -> void:
 			if not kinds.has(kind):
 				missing.append(kind)
 		_check("%s: shows %s" % [sample[1], ", ".join(PackedStringArray(sample[2]))], missing.is_empty())
-		_check("%s: %d stud marks against the catalogue's %d, %d anti-stud against %d" % [sample[1],
-			studs, info.stud_count, anti, info.socket_count],
-			studs == info.stud_count and anti == info.socket_count)
+		_check("%s: %d stud marks against the catalogue's %d, %d anti-stud against %d%s" % [sample[1],
+			studs, info.stud_count, anti, info.socket_count,
+			"" if on_round == 0 else " (and %d along its round's side, left unmarked)" % on_round],
+			studs == info.stud_count and anti + on_round == info.socket_count)
 		_say("%s %s: %d marks, %d seen in the window from above or below" % [part_id, info.name,
 			marks.size(), seen.size()])
-	var every: PackedStringArray = ["stud", "anti-stud", "clip", "bar", "ball", "socket", "hinge",
-		"axle", "pin_hole", "axle_hole"]
+	var every: PackedStringArray = ["stud", "anti-stud", "clip", "hollow", "bar", "ball", "socket",
+		"hinge", "axle", "pin_hole", "axle_hole"]
 	var unseen: PackedStringArray = []
 	for kind: String in every:
 		if not sized_kinds.has(kind):
