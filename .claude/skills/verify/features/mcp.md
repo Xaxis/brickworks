@@ -141,6 +141,13 @@ asking for an API key.
   pull takes the step's brick numbers and refuses a part not in the step,
   naming the step's parts (`AppTools._pulled_parts`).
   `src/dev/seeing2_probe.gd` checks each, windowed.
+  APP_UX9 jointmarks (2026-11-17): `view_model {"marks": true}` draws every
+  connection point of the model's parts into its picture, as View ›
+  Connection points marks them in the window, and says what the marks are
+  first (`Assistant._with_marks`, `JointMarks.for_picture` set on
+  `ModelShot.drawn_with` for that picture alone; `where=` marks only the
+  parts in its box). A drawer elsewhere (`LeasedShots`) draws none and says
+  so. `tools/probe.sh jointmarks -- --only=session` checks it over tools/call.
   APP_UX6 mcpsee3 (2026-11-07): a part number, colour, step or view's name
   sent in quotes (`"\"4070\""`, `"'4070'"`, `“Plan”`) is taken without them
   (`Quotes.off`, in `_selected`, `_pulled_parts` and

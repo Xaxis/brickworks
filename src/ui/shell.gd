@@ -82,6 +82,8 @@ var stud_map: Node:
 			_make_stud_map()
 		return _stud_map
 var _stud_map: Node = null
+## View, Connection points' marks (JointMarks), null till first needed.
+var joint_marks: Node3D = null
 # The dialogs below are each made the first time something asks for it
 # (Later), and null in its _ field until then: their 0.1 MB of code was
 # compiled before a first visit's window was drawn (leaves2, 2026-11-05).
@@ -216,7 +218,7 @@ const MENUS: Array = [
 		"ortho", "grid", ">floor",
 		# edges (APP_UX6 #19): the parts' seams and their studs, each drawn or not.
 		">edges_studs",
-		"-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		"-", "cut", ">cut_away", "xray", "stress", "stud_map", "joint_marks", "-",
 		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
@@ -592,6 +594,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	verbs.turn_step = float(ShellPrefs.value("turn_step"))
 	set_key_strip(bool(ShellPrefs.value("key_strip")))
 	grid.visible = bool(ShellPrefs.value("grid"))
+	set_process(bool(ShellPrefs.value("joint_marks")))
 	inspector.set_open(bool(ShellPrefs.value("inspector_open")))
 	outliner.set_open(bool(ShellPrefs.value("outliner_open")))
 
@@ -1529,6 +1532,13 @@ func _define() -> void:
 		func() -> bool: return _stud_map_on() or world.brick_count() > store.scenery.size(),
 		"Every part coloured by where its studs point: up, down, or to the front, back, left or right")
 	_ticked("stud_map", _stud_map_on)
+	# View, Connection points (APP_UX9 jointmarks): where a part connects,
+	# marked while a part is in hand and on the part under the pointer.
+	_add("joint_marks", "Connection points", 0,
+		func() -> void: set_joint_marks(not bool(ShellPrefs.value("joint_marks"))), Callable(),
+		"Mark where parts connect, on the parts near the one in hand and on the part under the "
+		+ "pointer: studs, pins, axles, bars and balls filled, what takes them hollow")
+	_ticked("joint_marks", func() -> bool: return bool(ShellPrefs.value("joint_marks")))
 	# Shift: Q alone takes the last part back into hand (Tools, Place).
 	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
 		func() -> void: app.call("_turn_model", -1), something)
@@ -3903,6 +3913,35 @@ func _make_stud_map() -> void:
 ## Whether Stud directions is on, asked by the menu without making it.
 func _stud_map_on() -> bool:
 	return _stud_map != null and _stud_map.on
+
+
+## View, Connection points: on or off, kept for the next time (ShellPrefs).
+func set_joint_marks(on: bool) -> void:
+	ShellPrefs.put("joint_marks", on)
+	if joint_marks != null:
+		joint_marks.set_on(on)
+	set_process(on and joint_marks == null)
+
+
+## The marks (JointMarks) are made the first time a part is in hand or under
+## the pointer with them on: their code is not compiled for the first screen
+## (Later), and nothing here runs once they are made or while they are off.
+func _process(_delta: float) -> void:
+	if builder == null or library == null or stress == null or store == null:
+		return
+	var under: int = int(stress.hovered.call())
+	if builder.has_preview() or (under > 0 and not store.scenery.has(under)):
+		set_process(false)
+		var marks: Node3D = Later.make(&"JointMarks")
+		marks.builder = builder
+		marks.world = world
+		marks.library = library
+		marks.camera = camera
+		marks.scenery = store.scenery
+		marks.hovered = func() -> int: return int(stress.hovered.call())
+		joint_marks = marks
+		# In the builder, which a picture puts aside (Picture.aside).
+		builder.add_child(marks)
 
 
 ## Sections (SectionsUi over Sections), made the first time something asks
