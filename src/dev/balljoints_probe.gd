@@ -597,6 +597,35 @@ func _session() -> void:
 		back.contains("turned -30° about [-1, 0, 0] (asked -30°)")
 		and _angle(_world.get_brick(int(arm["socket"])).transform.basis, was.basis) < TURN)
 	await _aligned_end_for_end()
+	await _posed_twice()
+
+
+## f1's fifth walk, as its session built it (submit_design with a stand and an
+## arm as sub-assemblies, the arm's socket on the stand's ball): pose_model
+## swung the arm 30° about x, then said "Nothing here turns" to the next
+## swing of the same joint. A posed ball keeps its three turns.
+func _posed_twice() -> void:
+	_main.call("clear_model")
+	var model: Dictionary = JSON.parse_string(F1_ARM)
+	var built: String = await _say("submit_design", model)
+	if not built.contains("Tab"):
+		print("    submit_design: %s" % built.left(400).replace("\n", " | "))
+	var listed: String = await _say("pose_model", {})
+	print("    pose_model: %s" % listed.left(300).replace("\n", " | "))
+	var first: String = await _say("pose_model", {"joint": "1", "degrees": 30})
+	var second: String = await _say("pose_model", {"joint": "1", "degrees": -30})
+	var again: String = await _say("pose_model", {})
+	print("    then: %s | %s | %s" % [first.left(200), second.left(300), again.left(300)])
+	_check("a ball posed once still poses: the arm's turn about x to 30°, then -30°, still listed",
+		listed.contains("arm (about x)") and first.contains("at 30°") and second.contains("at -30°")
+		and again.contains("arm (about x), on its ball, at -30°"))
+	# +30° about x takes the arm's +z end down, by the right hand; the
+	# answer says so, so a session that meant up need not look.
+	_check("...each swing says which way the arm went: 30° lower, -30° higher",
+		first.contains("plates lower") and second.contains("plates higher"))
+
+
+const F1_ARM := '{"name": "Ball-shoulder robot arm", "floor": "grid", "bricks": [{"part": "3036", "color": 72, "x": -1, "y": 0, "z": -1, "rot": 1}, {"part": "3003", "color": 71, "x": 1, "y": 1, "z": 0}, {"part": "3003", "color": 71, "x": 1, "y": 4, "z": 0}, {"part": "3003", "color": 71, "x": 1, "y": 7, "z": 0}, {"part": "3003", "color": 71, "x": 1, "y": 10, "z": 0}, {"part": "3023", "color": 72, "x": 1, "y": 13, "z": 0, "rot": 0}, {"part": "14417", "color": 72, "x": 1, "y": 12.5, "z": 1}, {"part": "14704", "color": 72, "x": 1, "y": 12.5, "z": 2, "rot": 2}, {"part": "3795", "color": 4, "x": 1, "y": 14, "z": 3, "rot": 1}, {"part": "3001", "color": 4, "x": 1, "y": 15, "z": 3, "rot": 1}, {"part": "3795", "color": 4, "x": 1, "y": 18, "z": 5, "rot": 1}, {"part": "3710", "color": 71, "x": 1, "y": 19, "z": 9, "rot": 1}, {"part": "3710", "color": 71, "x": 2, "y": 19, "z": 9, "rot": 1}], "assemblies": [{"name": "stand", "x_from": -1, "x_to": 5, "z_from": -1, "z_to": 7, "y_from": 0, "y_to": 14}, {"name": "arm", "x_from": 1, "x_to": 3, "z_from": 2, "z_to": 13, "y_from": 12.5, "y_to": 21}]}'
 
 
 ## A session's socket put on a ball by its connectors (edit_model's attach,

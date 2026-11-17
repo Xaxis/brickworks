@@ -295,6 +295,8 @@ var _to_detail: Array[Dictionary] = []
 ## Every assembly the design named, which the bricks are tagged with when
 ## the run ends. See [method _tag_assemblies].
 var _declared: Array[Dictionary] = []
+## The assemblies the bricks were last tagged with ([method _tag_assemblies]).
+var _tagged_from: Array[Dictionary] = []
 var _detailing: Dictionary = {}
 var _detail_turns: int = 0
 ## The features the design listed, worked before the assemblies, and
@@ -2481,6 +2483,18 @@ func _tag_assemblies() -> void:
 	# no step (pullkept).
 	var stepped: bool = AuthorSteps.any(world, scenery)
 	var paths_before: Dictionary = AuthorSteps.paths_in(world, scenery) if stepped else {}
+	# A part takes its assembly from where it stands as the assemblies are
+	# named, and keeps it as a pose or a drag moves it, as a sub-model's
+	# part does; a part new since, or every part when they are named anew,
+	# goes by where it stands. Tagged afresh by every pose_model, f1's arm
+	# swung 30° on its ball left the box it was named by, its parts went to
+	# the stand, neither side hung on the ball, and the next swing said
+	# nothing here turns.
+	var kept: Dictionary = {}
+	if named == _tagged_from:
+		for one: Dictionary in named:
+			kept[str(one["name"])] = true
+	_tagged_from = named.duplicate(true)
 	# A figure is its own sub-model wherever it stands; renamed after the
 	# tower it is in, it would be three arms and a hat in "tower".
 	var members: Dictionary = {}
@@ -2493,6 +2507,8 @@ func _tag_assemblies() -> void:
 		if scenery.has(brick.id):
 			continue
 		if members.has(brick.group) and Minifig.is_figure(members[brick.group], library):
+			continue
+		if kept.has(brick.group):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:

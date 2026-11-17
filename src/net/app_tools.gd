@@ -2631,11 +2631,32 @@ func _pose(input: Dictionary) -> String:
 	if not input.has("degrees"):
 		return "%s is at %d°. Give degrees= to swing it." % [joint.label(), roundi(joint.angle)]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
+	var world: BrickWorld = app.get("_world")
+	var before: Vector3 = _middle_of(world, joint.ids)
 	var reached: float = panel.set_angle(joint.path, wanted)
+	# Which way it went, in the plates look_at_model counts: a turn goes by
+	# the right hand about its axis, so +30° about x takes a +z end down.
+	# f1's session read edit_model's pitch (+ lifts the +z end) into it,
+	# swung its arm down, and looked at a picture to find out.
+	var rose: float = (_middle_of(world, joint.ids).y - before.y) / BrickLattice.PLATE
+	var went: String = "" if absf(rose) < 0.25 else ", its parts' middle %s plates %s" % [
+		Balance.studs(absf(rose)), "higher" if rose > 0.0 else "lower"]
 	if absf(reached - wanted) > 0.5:
-		return "%s stops at %d°: any further and it runs into something." % [
-			joint.label(), roundi(reached)]
-	return "%s at %d°." % [joint.label(), roundi(reached)]
+		return "%s stops at %d°%s: any further and it runs into something." % [
+			joint.label(), roundi(reached), went]
+	return "%s at %d°%s." % [joint.label(), roundi(reached), went]
+
+
+## The middle of where these parts stand.
+static func _middle_of(world: BrickWorld, ids: PackedInt64Array) -> Vector3:
+	var sum := Vector3.ZERO
+	var count: int = 0
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			sum += brick.transform.origin
+			count += 1
+	return sum / maxi(count, 1)
 
 
 ## The motion animate_model keeps its keys as.
