@@ -209,9 +209,10 @@ func _car() -> void:
 		var second: Button = chips[1]
 		await _click(second.get_global_rect().get_center())
 		await _frames(6)
-		_check("a click on the second listed step (%s) shows it: the timeline on it, its button lit, its new parts outlined"
-			% second.text, _steps.row_state()["lit"] == int(hits[1][0]) and second.button_pressed
-			and bool(_main.get("_step_lit")))
+		var on: int = int(_steps.row_state()["lit"])
+		_check("a click on the second listed step (%s) shows it: the timeline on it (%d, place %d), its button lit (%s), its new parts outlined (%s)"
+			% [second.text, on, int(hits[1][0]), second.button_pressed, _main.get("_step_lit")],
+			on == int(hits[1][0]) and second.button_pressed and bool(_main.get("_step_lit")))
 		await _click(field.get_global_rect().get_center())
 		await _press(KEY_ENTER)
 		var after: int = int(hits[2][0]) if hits.size() > 2 else int(hits[0][0])
