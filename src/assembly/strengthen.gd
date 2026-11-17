@@ -14,6 +14,9 @@
 ##   ground, the baseplate or a part below, up into the part past the joint;
 ## - a pin ("pin"): a friction pin through the next two holes in line beside
 ##   a joint that pins hold on one line, which then cannot turn.
+## And for a model that tips over whole, which no joint's fix stands up, a
+## foot ("foot", [method find_tip]): a column of up to three parts from the
+## floor up under the side it tips toward, as a leg under a crane's jib.
 ##
 ## Each is checked for room as a part put down is (Builder.room_for), weighed
 ## as one with the joint by Balance's rule (M = Σ F·dᵢ about the edge it
@@ -80,16 +83,19 @@ var _tree_revision: int = -1
 
 ## One fix: its parts, where they go, and what it does.
 class Fix extends RefCounted:
-	## "tie", "prop" or "pin".
+	## "tie", "prop", "pin", or "foot" for a model that tips whole.
 	var kind: String = ""
 	## {part, color, at: Transform3D} each, in the order they go down.
 	var parts: Array = []
 	## The part past the joint it fixes (StressView.Weak.id).
 	var weak: int = 0
 	## The joint's margin before, and as one with the fix after (INF: nothing
-	## levers it, or held square).
+	## levers it, or held square). A foot's: how far the model's weight is
+	## inside the edge of what it stands on, studs, negative past it.
 	var before: float = 0.0
 	var held: float = INF
+	## A foot's: the edge the model's weight is then nearest ("right").
+	var edge: String = ""
 	## Every part one the person owns, with one left over the model's own.
 	var mine: bool = true
 	## What it is, for the panel and a session: "a Plate 1 x 4 across the
@@ -205,11 +211,179 @@ static func ghost_mesh(parts: Array, from: PartLibrary) -> ArrayMesh:
 ## 3.1 times its working load", "Then it is held square, on pins on two
 ## lines", "Then nothing levers it".
 static func held_words(fix: Fix) -> String:
+	if fix.kind == "foot":
+		return "Then it stands, its weight %s studs inside its %s edge" % [Balance.studs(fix.held),
+			fix.edge]
 	if fix.kind == "pin":
 		return "Then it is held square, on pins on two lines"
 	if fix.held >= 100.0:
 		return "Then nothing levers it"
 	return "Then it holds about %s times its working load" % Balance.studs(fix.held)
+
+
+# -- a foot, for a model that tips whole ---------------------------------------------
+
+
+## Why [method find_tip] found no foot, a sentence a person reads: what
+## stopped it, and what to do by hand. Empty when it found one.
+var tip_why: String = ""
+
+
+## A foot for a model that tips over whole: Stability's "tips", its weight
+## past the edge of what it stands on. No joint holds that, so no tie, prop
+## or pin stands it up; a builder puts a leg under the overhang. This is the
+## column of up to three parts, from the floor up into the open sockets of a
+## part out past that edge, that brings the weight [constant Balance.SPARE]
+## studs inside what the model then stands on, measured as Stability
+## measures a tip, with no joint past its working load that was not before
+## (Balance.measure, as [method find]). Null when the model does not tip,
+## or with [member tip_why] saying why there is none. A coroutine.
+##
+## The walk's tower of 2 x 4s on one corner stud read "2 weak joints (tips)"
+## and Strengthen offered nothing (APP_UX9, smalls4).
+func find_tip(weighed: Stability.Report) -> Fix:
+	tip_why = ""
+	var tip: Stability.Risk = null
+	if weighed != null:
+		for risk: Stability.Risk in weighed.risks:
+			if risk.kind == "tips":
+				tip = risk
+	if tip == null:
+		return null
+	var revision: int = world.revision
+	var side: Dictionary = {}
+	var boxes: Dictionary = {}
+	for item: Variant in world.bricks():
+		var brick: BrickWorld.Brick = item
+		if scenery.has(brick.id):
+			continue
+		side[brick.id] = true
+		var packed: PackedInt32Array = builder.lattice.boxes_of(brick.id)
+		if not packed.is_empty():
+			boxes[brick.id] = packed
+	var mass: Array = _mass_of(side)
+	var floor_cell: int = 0x7FFFFFFF if scenery.is_empty() \
+		else roundi(_floor_top() / BrickLattice.CELL)
+	var hull: PackedVector2Array = Balance.support_of(boxes, 0x7FFFFFFF, floor_cell)["hull"]
+	if float(mass[0]) <= 0.0 or hull.size() < 3:
+		return null
+	var centre: Vector3 = (mass[1] as Vector3) / float(mass[0])
+	var middle := Vector2(centre.x, centre.z)
+	var way: Vector2 = Balance.margin_in(hull, middle)["way"]
+	# The parts farthest out that way first: a foot goes under the overhang.
+	var ids: Array = side.keys()
+	var out_by: Dictionary = {}
+	for id: int in ids:
+		var at: Vector3 = _box(id).get_center()
+		out_by[id] = Vector2(at.x, at.z).dot(way)
+	ids.sort_custom(func(a: int, b: int) -> bool: return float(out_by[a]) > float(out_by[b]))
+	var sockets: Dictionary = _studs_by_level(ids.slice(0, PROP_PARTS), false)
+	var found: Array = []
+	var seen: Dictionary = {}
+	for level: Variant in sockets:
+		var free: Dictionary = {}
+		for one: Array in sockets[level]:
+			free[_cell_key(one[0])] = one
+		for one: Array in sockets[level]:
+			var at: Vector3 = one[0]
+			for size: Vector2i in [Vector2i(2, 2), Vector2i(1, 2), Vector2i(2, 1), Vector2i(1, 1)]:
+				var under: Array = []
+				for i: int in size.x:
+					for k: int in size.y:
+						var cell: String = _cell_key(Vector3(at.x + i * 20.0, at.y, at.z + k * 20.0))
+						if free.has(cell):
+							under.append(free[cell])
+				if under.size() != size.x * size.y:
+					continue
+				# Its footprint added to what the model stands on, first: a
+				# column that would not stand it is not looked for.
+				var foot := PackedVector2Array()
+				for corner: Vector2 in [Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, size.y),
+						Vector2(0, size.y)]:
+					foot.append(Vector2(at.x - 10.0, at.z - 10.0) + corner * 20.0)
+				var grown: PackedVector2Array = Geometry2D.convex_hull(hull + foot)
+				if grown.size() > 1 and grown[0].is_equal_approx(grown[grown.size() - 1]):
+					grown.resize(grown.size() - 1)
+				var guess: float = float(Balance.margin_in(grown, middle)["margin"]) / BrickLattice.STUD
+				if guess < Balance.SPARE:
+					continue
+				# Standing on the floor alone: a column on the model's own
+				# parts comes over with it.
+				var made: Variant = _prop(at, size, int(level), under, side)
+				if made == null:
+					continue
+				var key: String = _key_of(made["parts"])
+				if seen.has(key):
+					continue
+				seen[key] = true
+				made["kind"] = "foot"
+				made["edge"] = tip.edge
+				made["guess"] = guess
+				found.append(made)
+	# The fewest parts, then the one that stands it best.
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if (a["parts"] as Array).size() != (b["parts"] as Array).size():
+			return (a["parts"] as Array).size() < (b["parts"] as Array).size()
+		return float(a["guess"]) > float(b["guess"]))
+	var reds: int = _past(weighed.margins, weighed.tipping)
+	var tried: int = 0
+	for one: Dictionary in found:
+		if tried >= TRIES:
+			break
+		if not _room(one["parts"]) or not _colour(one):
+			continue
+		tried += 1
+		var stands: Dictionary = _standing_with(one["parts"], boxes, mass, floor_cell)
+		if float(stands["margin"]) / BrickLattice.STUD < Balance.SPARE:
+			continue
+		var after: Balance.Report = await _weigh_with(one["parts"])
+		if world.revision != revision:
+			return null
+		if after == null or after.empty:
+			continue
+		var margins: Dictionary = {}
+		for joint: Balance.JointLoad in after.joints:
+			margins[joint.beyond] = joint
+		if _past(margins, after.tipping) > reds:
+			continue
+		var fix := Fix.new()
+		fix.kind = "foot"
+		fix.parts = one["parts"]
+		fix.before = -tip.past
+		fix.held = float(stands["margin"]) / BrickLattice.STUD
+		fix.edge = str(stands["edge"])
+		fix.mine = one["mine"]
+		fix.what = one["what"]
+		fix.revision = revision
+		return fix
+	tip_why = ("No foot of up to three parts has room under its %s side to stand it: widen its base that way, or move weight back over it, by hand"
+		if not found.is_empty() else "No foot of up to three parts reaches the floor under its %s side far enough out to stand it: widen its base that way, or move weight back over it, by hand") % tip.edge
+	return null
+
+
+## Where the model's weight is with [param parts] put down, as Stability
+## weighs a tip (Balance.support_of, Balance.margin_in): [param boxes] the
+## model's own parts' and [param mass] their [grams, Σ g·middle].
+func _standing_with(parts: Array, boxes: Dictionary, mass: Array, floor_cell: int) -> Dictionary:
+	var all: Dictionary = boxes.duplicate()
+	var grams: float = float(mass[0])
+	var moment: Vector3 = mass[1]
+	var number: int = -1
+	for item: Dictionary in parts:
+		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
+		var info: PartLibrary.PartInfo = library.parts.get(library.resolve(str(item["part"])))
+		if part == null or info == null:
+			continue
+		all[number] = builder.boxes_for(part, item["at"])
+		number -= 1
+		var g: float = Stability.grams(info)
+		grams += g
+		moment += ((item["at"] as Transform3D) * part.bounds.get_center()) * g
+	var hull: PackedVector2Array = Balance.support_of(all, 0x7FFFFFFF, floor_cell)["hull"]
+	if hull.size() < 3 or grams <= 0.0:
+		return {"margin": -INF, "edge": ""}
+	var centre: Vector3 = moment / grams
+	return Balance.margin_in(hull, Vector2(centre.x, centre.z))
 
 
 # -- the side that comes off ------------------------------------------------------
@@ -1098,6 +1272,15 @@ func _what(one: Dictionary) -> String:
 	match str(one["kind"]):
 		"pin":
 			return "a %s through the next two holes in line" % _named(PIN)
+		"foot":
+			var names: Array = parts.map(func(item: Dictionary) -> String:
+				return _named(str(item["part"])))
+			names.reverse()
+			var listed: String = ["a %s", "a %s and a %s", "a %s, a %s and a %s"][names.size() - 1]
+			var down_to: String = "the ground" if int(one.get("standing", 0)) == 0 \
+				and scenery.is_empty() else "the baseplate"
+			return ("%s under its %s side, down to %s" % [listed, "%s", down_to]) % (names
+				+ [str(one["edge"])])
 		"prop":
 			var names: Array = parts.map(func(item: Dictionary) -> String:
 				return _named(str(item["part"])))

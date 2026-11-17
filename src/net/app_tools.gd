@@ -6105,13 +6105,18 @@ func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
 	var wanted: Array = StressView.ranked(report, world, store.scenery, count).filter(
 		func(one: StressView.Weak) -> bool:
 			return one.margin < StressView.CLOSE and (part == 0 or one.id == part))
-	if wanted.is_empty():
+	# A model that tips over whole, which no joint's fix stands up: the foot
+	# Stress offers for it (Strengthen.find_tip), or why there is none.
+	var tips: bool = part == 0 and report.risks.any(func(risk: Stability.Risk) -> bool:
+		return risk.kind == "tips")
+	if wanted.is_empty() and not tips:
 		return ""
 	var theirs: Dictionary = panel.owned.call() if bool(input.get("mine", false)) else {}
 	var lines := PackedStringArray(["Strengthen, as View, Stress offers it: for each joint past "
 		+ "or near its working load, the fewest parts that make it hold (a plate across the "
-		+ "seam, a brick under it, a second pin), checked for room and weighed with the model, "
-		+ "and the edit_model call that puts them down as one undo step:"])
+		+ "seam, a brick under it, a second pin), and for a model that tips over whole, a foot "
+		+ "from the floor under the side it tips toward; each checked for room and weighed with "
+		+ "the model, and the edit_model call that puts it down as one undo step:"])
 	if bool(input.get("mine", false)):
 		lines.append("  From your bricks: %s." % ("each part one you own with one left over the "
 			+ "model's own" if not theirs.is_empty() else "you have no collection yet (Parts, My "
@@ -6119,6 +6124,19 @@ func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
 	fixer.scenery = store.scenery
 	fixer.owned = theirs
 	var revision: int = world.revision
+	if tips:
+		var foot: RefCounted = await fixer.find_tip(report)
+		if world.revision != revision:
+			lines.append("  The model changed while its fixes were looked for; ask again.")
+			return "\n" + "\n".join(lines)
+		if foot == null:
+			var why: String = str(fixer.get("tip_why"))
+			lines.append("  The whole model tips over: %s." % (why.left(1).to_lower() + why.substr(1)))
+		else:
+			lines.append("  The whole model tips over: %s. %s.%s Call edit_model %s" % [foot.what,
+				Later.script(&"Strengthen").held_words(foot), "" if theirs.is_empty() else (
+					" All from your bricks." if foot.mine
+					else " Not all from your bricks: you have none of one left."), _fix_call(foot)])
 	var given: Dictionary = {}
 	for one: StressView.Weak in wanted:
 		var fix: RefCounted = await fixer.find(report, one)

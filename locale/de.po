@@ -181,6 +181,9 @@ msgstr "Nichts auswählen"
 msgid "Select by"
 msgstr "Auswählen nach"
 
+msgid "Show and hide"
+msgstr "Zeigen und ausblenden"
+
 msgid "Same colour"
 msgstr "Gleiche Farbe"
 
@@ -13667,6 +13670,9 @@ msgstr "%s große Sterne"
 msgid "Far corner cut flat"
 msgstr "Hintere Ecke flach abgeschnitten"
 
+msgid "At the tip"
+msgstr "An der Spitze"
+
 msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
 msgstr "Wie bei LEGO® Keilplatten wie 54383 und 41770b: die spitze Ecke, in der die schräge Seite endet, auf 1,2 mm Länge abgeschnitten"
 
@@ -14781,6 +14787,66 @@ msgstr "1 gesperrt, ausgelassen: entsperre es, um es zu ändern"
 
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d gesperrt, ausgelassen: entsperre sie, um sie zu ändern"
+
+# smalls4 (APP_UX9 #4): a model that tips whole is named as a tip, a lean or top-heavy,
+# not "weak joints"; Stress offers a foot from the floor under the side it tips toward.
+
+msgid "tips over, %s studs past the %s edge"
+msgstr "kippt, %s Noppen jenseits der Kante %s"
+
+msgid "leans past what holds it"
+msgstr "neigt sich über das hinaus, was es hält"
+
+msgid "top-heavy"
+msgstr "kopflastig"
+
+msgid "levered"
+msgstr "abgehebelt"
+
+msgid "rests on a touch"
+msgstr "liegt nur auf"
+
+msgid "1 weak joint (%s)"
+msgstr "1 schwache Verbindung (%s)"
+
+msgid "%d weak joints (%s)"
+msgstr "%d schwache Verbindungen (%s)"
+
+msgid "Looking for the fewest parts that stand it up…"
+msgstr "Die wenigsten Teile werden gesucht, mit denen es steht…"
+
+msgid "Put the parts shown down: the model then stands. One step to undo"
+msgstr "Die gezeigten Teile setzen: dann steht das Modell. Ein Schritt zum Rückgängigmachen"
+
+msgid "a %s under its %s side, down to the ground"
+msgstr "%s unter seiner Seite %s, bis zum Boden"
+
+msgid "a %s and a %s under its %s side, down to the ground"
+msgstr "%s und %s unter seiner Seite %s, bis zum Boden"
+
+msgid "a %s, a %s and a %s under its %s side, down to the ground"
+msgstr "%s, %s und %s unter seiner Seite %s, bis zum Boden"
+
+msgid "a %s under its %s side, down to the baseplate"
+msgstr "%s unter seiner Seite %s, bis zur Grundplatte"
+
+msgid "a %s and a %s under its %s side, down to the baseplate"
+msgstr "%s und %s unter seiner Seite %s, bis zur Grundplatte"
+
+msgid "a %s, a %s and a %s under its %s side, down to the baseplate"
+msgstr "%s, %s und %s unter seiner Seite %s, bis zur Grundplatte"
+
+msgid "Then it stands, its weight %s studs inside its %s edge"
+msgstr "Dann steht es, sein Gewicht %s Noppen innerhalb der Kante %s"
+
+msgid "Then it stands, its weight %s studs inside its %s edge."
+msgstr "Dann steht es, sein Gewicht %s Noppen innerhalb der Kante %s."
+
+msgid "No foot of up to three parts has room under its %s side to stand it: widen its base that way, or move weight back over it, by hand."
+msgstr "Kein Fuß aus bis zu drei Teilen hat unter seiner Seite %s Platz, um es aufzustellen: verbreitere seine Basis dorthin oder verlagere Gewicht zurück darüber, von Hand."
+
+msgid "No foot of up to three parts reaches the floor under its %s side far enough out to stand it: widen its base that way, or move weight back over it, by hand."
+msgstr "Kein Fuß aus bis zu drei Teilen reicht unter seiner Seite %s weit genug draußen bis zum Boden, um es aufzustellen: verbreitere seine Basis dorthin oder verlagere Gewicht zurück darüber, von Hand."
 
 # An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy (named), or no room in one, with the menu command round it (followfix, flfix)
 
