@@ -2882,6 +2882,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepsearch probe",
+      "kind": "cli",
+      "entry": "src/dev/stepsearch_probe.gd",
+      "reach": "tools/probe.sh stepsearch_probe; tools/probe.sh stepsearch_phone_probe   (the car's finds by number, name, colour and both against the bricks themselves, the row marking the same, every key's list on screen within 100 ms; a click, Enter, Shift+Enter, Escape; edit_steps find= the same steps in 1 call, refused with another op, and no find changing the model; 7140-1's engines found in their own steps, every copy counted; Orthanc's keys within 100 ms; the phone's (390 x 844): Find\u2026's sheet above the keyboard, a tap going there; pictures in shots/stepsearch/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:strengthen probe",
       "kind": "cli",
       "entry": "src/dev/strengthen_probe.gd",
@@ -5418,6 +5426,14 @@
       "entry": "src/net/brickognize.gd",
       "reach": "godot --path .  (the camera in the parts bin's search field; the photo goes to Brickognize, said before the first)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:find a step by what it places",
+      "kind": "ui",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, its new parts outlined; Escape clears; on a phone or a tablet Find\u2026 opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",
+      "area": "view",
       "tests": []
     },
     {

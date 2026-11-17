@@ -1488,8 +1488,14 @@ func _build_find(row: Container, column: Container) -> void:
 		+ "(brick 2 x 4), its colour (red) or both (red 3001). Enter goes to each in turn, "
 		+ "Escape clears it")
 	_find.clear_button_enabled = true
-	# Enter again goes to the next, so the field stays being typed in.
+	# Enter again goes to the next, so the field stays being typed in (and
+	# keeps the keys: FocusGuard lets a field go on Enter).
 	_find.keep_editing_on_text_submit = true
+	_find.set_meta("keep_focus_on_enter", true)
+	# Escape empties it and keeps the keys for the next words, as the
+	# library's search does, and empty is any field's Escape (FocusGuard:
+	# given on, the first Escape had put the timeline away with the find).
+	_find.set_meta(FocusGuard.CLEAR_ON_ESCAPE, true)
 	_find.custom_minimum_size = Vector2(200, 0)
 	_find.add_theme_font_size_override("font_size", 11)
 	_find.text_changed.connect(func(_text: String) -> void: _find_now())
@@ -1546,19 +1552,11 @@ func clear_find() -> void:
 	_find_now()
 
 
-## Escape clears what is typed, and with nothing typed lets go of the field;
-## Shift+Enter goes back to the step found before.
+## Shift+Enter goes back to the step found before (Escape is FocusGuard's).
 func _find_key(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key == null or not key.pressed:
-		return
-	if key.keycode == KEY_ESCAPE:
-		if _find.text.is_empty():
-			_find.release_focus()
-		else:
-			clear_find()
-		_find.accept_event()
-	elif key.keycode in [KEY_ENTER, KEY_KP_ENTER] and key.shift_pressed:
+	if key != null and key.pressed and key.shift_pressed \
+			and key.keycode in [KEY_ENTER, KEY_KP_ENTER]:
 		find_next(-1)
 		_find.accept_event()
 
@@ -1581,7 +1579,12 @@ func _find_now() -> void:
 	if not _library.search_ready():
 		_library.prepare_search(true)
 		_find_waiting = true
+		_hits = []
+		_hit_set = {}
 		_say_found("Reading the parts…", false)
+		for chip: Button in _found_chips:
+			chip.visible = false
+		_row.queue_redraw()
 		return
 	if _lots.is_empty():
 		_lots = step_lots(_steps, _world)

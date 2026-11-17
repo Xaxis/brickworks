@@ -4423,6 +4423,20 @@
     },
     {
       "kind": "ui",
+      "label": "find a step by what it places",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, its new parts outlined; Escape clears; on a phone or a tablet Find… opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "stepsearch probe",
+      "entry": "src/dev/stepsearch_probe.gd",
+      "reach": "tools/probe.sh stepsearch_probe; tools/probe.sh stepsearch_phone_probe   (the car's finds by number, name, colour and both against the bricks themselves, the row marking the same, every key's list on screen within 100 ms; a click, Enter, Shift+Enter, Escape; edit_steps find= the same steps in 1 call, refused with another op, and no find changing the model; 7140-1's engines found in their own steps, every copy counted; Orthanc's keys within 100 ms; the phone's (390 x 844): Find…'s sheet above the keyboard, a tap going there; pictures in shots/stepsearch/)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "the booklet's Studio extras",
       "entry": "src/render/booklet_maker.gd",
       "reach": "godot --path .  (B opens the timeline; on a step, Build, Booklet page: Pull out the selected parts, Colour guide, 1:1 guide, Sub-model preview; then Instructions; a straight Technic axle's or beam's first step gets its 1:1 guide unasked; edit_booklet pull=, colours=, colours_all=, actual_size=, preview= over MCP)",

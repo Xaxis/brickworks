@@ -4,7 +4,7 @@
 ##     xvfb-run -a -s '-screen 0 1400x900x24' godot --path . --resolution 1280x720 \
 ##     --script src/dev/stepsearch_probe.gd
 ##   tools/probe.sh stepsearch_probe
-##   PROBE_SIZE=390x844 tools/probe.sh stepsearch_probe --phone      a phone's
+##   tools/probe.sh stepsearch_phone_probe      a phone's, 390 x 844
 ##
 ## A builder hunting the step that put on a red 2 x 4 paged through every
 ## step: no step could be found by what it places, here or in LPub3D or
@@ -31,9 +31,10 @@
 ##   never in the step that puts the engines on.
 ## - the largest model the probes open (models/orthanc.ldr, 10,119 parts):
 ##   every key of a number, a name, a colour and both within 100 ms.
-## --phone: the car in a phone's layout, Find… opening the field in a sheet
-## that stays above the on-screen keyboard, a tap on a listed step going
-## there and Done leaving its steps marked on the row.
+## On a phone (stepsearch_phone_probe, or --phone): the car in a phone's
+## layout, Find… opening the field in a sheet that stays above the on-screen
+## keyboard, each listed step a fingertip tall, a tap on one going there and
+## Done leaving its steps marked on the row.
 ## Pictures in shots/stepsearch/.
 extends SceneTree
 
@@ -63,6 +64,11 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
+## Whether to lay the window out for a phone: stepsearch_phone_probe's.
+func _on_a_phone_wanted() -> bool:
+	return false
+
+
 func _check(what: String, ok: bool) -> bool:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
@@ -76,7 +82,7 @@ func _run() -> void:
 		quit(1)
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	_phone = OS.get_cmdline_user_args().has("--phone")
+	_phone = OS.get_cmdline_user_args().has("--phone") or _on_a_phone_wanted()
 	if _phone:
 		Phone._on = 1
 		Phone._wide = false
@@ -182,7 +188,7 @@ func _car() -> void:
 
 	# Nothing answers.
 	await _find_typed("car", "blue 3024", field)
-	var said: String = str(_steps.page_state()["found"])
+	var said: String = str(_steps.page_state().get("found", "(the timeline is away)"))
 	_check("“blue 3024”, where the 3024s are other colours: none listed, and it says in how many (%s)"
 		% said, _listed().is_empty() and said == "No step places “blue 3024”: the model has it in %d other colours"
 			% colours_3024.size())
@@ -190,7 +196,7 @@ func _car() -> void:
 	_check("...edit_steps says the same: %s" % heard.get_slice("\n", 1), heard.get_slice("\n", 1)
 		== said + ".")
 	await _find_typed("car", "zzzq", field)
-	said = str(_steps.page_state()["found"])
+	said = str(_steps.page_state().get("found", "(the timeline is away)"))
 	_check("“zzzq”: none listed, said so (%s), no step marked" % said, _listed().is_empty()
 		and said == "No step places “zzzq”" and (_steps.row_state()["found"] as Array).is_empty())
 	await _shot("none")
@@ -218,9 +224,11 @@ func _car() -> void:
 		_check("the arrows move in the words while typing, not the timeline (on %d)"
 			% _steps.row_state()["lit"], _steps.row_state()["lit"] == int(hits[1][0]))
 	await _press(KEY_ESCAPE)
-	_check("Escape clears it: nothing typed, nothing listed or marked",
+	_check("Escape clears it: nothing typed, nothing listed or marked, the timeline up and the keys still in the find (%s)"
+		% ("up" if _steps.is_playing_back() else "put away"),
 		field.text.is_empty() and _listed().is_empty() and not (_steps.get("_found_line") as Control).visible
-		and (_steps.row_state()["found"] as Array).is_empty() and _steps.is_playing_back())
+		and _steps.is_playing_back() and (_steps.row_state()["found"] as Array).is_empty()
+		and field.has_focus())
 
 	# Over MCP, refused where it cannot be.
 	heard = await _say("edit_steps", {"op": "to", "find": "3024", "bricks": [1], "step": 1})
