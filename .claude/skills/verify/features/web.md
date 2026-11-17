@@ -5557,7 +5557,7 @@ Tower, Barn; no grant on the five tables to any key, row security on, only
 the service role executing; three pages of 25 the same as one list; the
 timings (docs/COMMUNITY.md, Discovery: Top builds about 170 ms and Parts I
 own 125 to 360 ms on 5,000 models and 300,000 need rows); "rolled back,
-nothing kept". `owned_probe` ends "owned_probe: 11 checks, all ok".
+nothing kept". `owned_probe` ends "owned_probe: 17 checks, all ok" (the last four: a pool kept by an older rule counted again, one kept by `POOL_RULE` or with no rule kept, a keep with a rule refused 404 kept the older way).
 `needs_backfill --dry` names the seven real models' parts and lots, keeping
 nothing.
 
