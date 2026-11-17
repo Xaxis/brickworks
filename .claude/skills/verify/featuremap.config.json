@@ -5529,6 +5529,13 @@
     },
     {
       "kind": "cli",
+      "label": "mcpreach2 probe",
+      "entry": "src/dev/mcpreach2_probe.gd",
+      "reach": "tools/probe.sh mcpreach2_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach2_probe.gd. APP_UX9 #10: where_to_attach with nothing selected is the whole model, a picture in 1 call, its numbered points over every part and the rest as dots, parts= the parts named; render_model turntable says the camera goes once round a model that stands still; attachment_points on the walk's y6 SPIKE motor names its output's axle and pin holes apart from the case's, simulate_mechanism driver=<motor> turns the output, move_part names the motor; submit_design pool=31058-1 all in the set, over by part, 31058 read as 31058-1, two sets pooled, an unknown number said so. The relay's other-chats words: python3 tools/minitest.py tests/test_relay_chats.py)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
       "label": "mcpreach probe",
       "entry": "src/dev/mcpreach_probe.gd",
       "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext, its cover pictured in the answer (shots/mcpreach/pdf_cover.png or MCPREACH_OUT); every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File › Export with its save dialog still writes over when the person says so)",

@@ -122,8 +122,8 @@ signal chats_changed(chats: Array)
 ## chats editing one model, which the tab says plainly ([method keep_chat]).
 var chats: Array = []
 ## How long a chat that has said nothing still counts as working here: the
-## relay's HELD_MS (api/mcp.js).
-const HELD_S := 30 * 60
+## relay's HELD_MS (api/mcp.js), ten minutes since mcpreach2.
+const HELD_S := 10 * 60
 
 ## Claude (claude.ai, the Claude apps, Claude Code) signed in to this
 ## account, as the deployment last said; empty until it has been asked.
@@ -619,11 +619,12 @@ static func _who_said(request: Dictionary) -> String:
 ## its subject, and whether it opened on changing the model standing
 ## ([method _begin]); the assistant keeps which sizes it was told
 ## (_sizes_once), and a new sitting is told them again. A chat quiet for
-## longer than [constant QUIET_MS] begins a new sitting, as the relay stops
-## counting it in the tab then (api/mcp.js HELD_MS): claude.ai is reported to
-## share one session between two of its conversations
+## longer than [constant QUIET_MS] begins a new sitting: claude.ai is
+## reported to share one session between two of its conversations
 ## (claudeissues.com/issue/41836), and the second would otherwise never be
-## told.
+## told. Half an hour, longer than the relay counts a quiet chat in the tab
+## (HELD_MS, ten minutes): a person reading or thinking for a quarter of an
+## hour is still in the same sitting, and is not told the method again.
 var _sittings: Dictionary = {}
 const QUIET_MS := 30 * 60 * 1000
 ## The calls that say what is being designed, with the words that say it.

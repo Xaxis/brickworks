@@ -235,8 +235,21 @@ check(`the castle's calls carry chat A's name for the tab: ${JSON.stringify(meta
 console.log("\n3. a second chat in a held tab, and keeping one");
 const c = await chat(token);
 const intoHeld = await c.call("select_tab", { tab: "castle" });
-check(`chat C chooses the castle anyway, and is told another chat works there: "${intoHeld.words.slice(0, 200)}"`,
-  intoHeld.words.includes("Careful: another chat has been working in it"));
+// Chat A last called before C began: to the relay that is also what a
+// resumed chat's earlier self looks like, so C is told of it with no count,
+// and how to tell (api/mcp.js quietWords, mcpreach2).
+check(`chat C chooses the castle anyway, and is told another chat called there before it: "${intoHeld.words.slice(0, 200)}"`,
+  intoHeld.words.includes("Before this chat's first call here, another chat called in this tab")
+  && intoHeld.words.includes("if this conversation called Brickworks earlier, that was its own calls")
+  && !intoHeld.words.includes("Careful"));
+const aOn = await a.call("edit_model", { add: [] });
+check(`chat A calls again, and is told C is working there since it began, "both" for two: "${aOn.words.slice(0, 220)}"`,
+  aOn.words.includes("Careful: another chat has been working in it for")
+  && aOn.words.includes("on this same model since this chat began; the tab shows both chats"));
+const cLook = await c.call("look_at_model");
+check(`...and C's next call is told A is working there for certain: "${cLook.words.slice(0, 220)}"`,
+  cLook.words.includes("Careful: another chat has been working in it for")
+  && !cLook.words.includes("Before this chat's first call here"));
 await wait(2500);
 const [, inCastle] = await castle.ask("chats");
 check(`the castle tab hears two chats working in it: ${(inCastle.chats || []).map((x) => x.chat).join(", ")}`,

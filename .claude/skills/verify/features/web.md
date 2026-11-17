@@ -593,13 +593,24 @@ plan with Claude as the client.
   `plain`, `named`; two matches are listed, never guessed), and a target binds
   a chat that had not chosen. Each chat's pick keeps `called_at`, `did` and
   `moved_at` (`relay_picks`, `supabase/relay.sql`, additive); a chat holds its
-  tab for 30 min after its last call (`HELD_MS`). The tab is told its chats
+  tab for 10 min after its last call (`HELD_MS`; 30 until mcpreach2, when
+  each resumed `claude -p` turn of a walk was still "working" half an hour on,
+  and the window's `ClaudeConnector.HELD_S` the same). The tab is told its chats
   (`brickworks/chats`, sent when one chooses or leaves it; the chat on each
   call's `_meta` as `brickworks/chat`; `op=chats` as it switches on), and
   `op=keep&chat=` moves every other chat off: the other's next untargeted call
   is answered "The person moved this chat off tab …", nothing done, until it
-  chooses. An answer in a tab another chat holds says "Careful: another chat
-  has been working in it…". With more than one tab open, `select_tab`'s answer
+  chooses. An answer in a tab another chat has called in since this chat
+  began says "Careful: another chat has been working in it…, on this same
+  model since this chat began; the tab shows both chats" ("N other chats …,
+  the first for …", "every chat" for more; the time the longest there's).
+  One heard from only before this chat began may be its own earlier self (a
+  resumed Claude Code chat is a new session, and nothing says so), so it is
+  not counted: "Before this chat's first call here, another chat called in
+  this tab, last heard …", and that if this conversation called Brickworks
+  earlier those were its own calls (`header`, `quietWords`;
+  `python3 tools/minitest.py "$PWD/tests/test_relay_chats.py"` holds the
+  words to fabricated picks, mcpreach2). With more than one tab open, `select_tab`'s answer
   and `target`'s description ask Claude to pass `target` on every call
   (`SAY_TARGET`): claude.ai is reported to reuse one `Mcp-Session-Id` across
   chats, and two chats on one key are one chat here. Real Claude Code
