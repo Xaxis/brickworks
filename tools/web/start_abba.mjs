@@ -29,6 +29,24 @@
 // than half its runs. A13's target (10 s cold, 4 s warm) is said beside,
 // not judged: on this box it is out of reach at any load over ~10.
 //
+// --pairs=N times them at the same moments instead (webstart10, 2026-11-16;
+// memory same-moment-pairs): each pair starts every arm at once, each in a
+// browser of its own, the second a quarter second after the first, which
+// side goes first alternating by pair. In turn, on a box whose load swings
+// with the release train's jobs, three runs a side landed on opposite modes
+// and read a build 2.6x slower that pairs read 0.78x (kinefast, 2026-11-13).
+// With --phone each pair runs again in a phone's window (load_check
+// --phone), timed to its first frame. Each pair is a block of the pairing
+// below, and each arm is said against webstart10's target (APP_UX9: the bin
+// usable 12 s cold and 6.5 s warm, a phone's first frame 11 s cold): in how
+// many pairs it met it. And the start's account of its files (load_check's
+// startAccount), each arm's medians: what the engine, Main and nothing
+// waited for, and when it came.
+//
+//   ~/.claude/claude-core/bin/heavy node tools/web/start_abba.mjs \
+//     --arm=live=https://brickworks.diy/app --arm=mine=../snap/build/web \
+//     --pairs=2 --phone --out=DIR
+//
 // For a build folder in a checkout, the first screen's source is said too
 // (tools/web/start_closure.py, this checkout's reading of the arm's tree):
 // the compile is about 0.37 s a MB of it (webstart2, 2026-11-05), so a
@@ -44,13 +62,23 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "../..");
-const TARGET = { cold: 10, warm: 4 };
-// What is judged: [label, kind (cold/warm), the run's value].
-const MEASURES = [
-  ["bin usable", "cold", (s) => s.interactive], ["bin usable", "warm", (s) => s.interactive],
-  ["compile", "cold", (s) => s.split?.compile], ["compile", "warm", (s) => s.split?.compile],
-];
-const SHOWN = [...MEASURES, ["main thread", "cold", (s) => s.cpu], ["main thread", "warm", (s) => s.cpu]];
+// webstart10's target (APP_UX9), in seconds: said beside each arm, in how
+// many runs it was met, never judged (the ratio is).
+const TARGET = { "bin usable": { cold: 12, warm: 6.5 }, "first frame": { cold: 11 } };
+// What is judged, by window: [label, kind (cold/warm), the run's value]. A
+// phone keeps the bin behind a button: its load is timed to its first frame.
+const MEASURES = {
+  desktop: [
+    ["bin usable", "cold", (s) => s.interactive], ["bin usable", "warm", (s) => s.interactive],
+    ["compile", "cold", (s) => s.split?.compile], ["compile", "warm", (s) => s.split?.compile],
+  ],
+  phone: [
+    ["first frame", "cold", (s) => s.firstFrame], ["first frame", "warm", (s) => s.firstFrame],
+    ["compile", "cold", (s) => s.split?.compile], ["compile", "warm", (s) => s.split?.compile],
+  ],
+};
+const SHOWN = Object.fromEntries(Object.entries(MEASURES).map(([view, list]) =>
+  [view, [...list, ["main thread", "cold", (s) => s.cpu], ["main thread", "warm", (s) => s.cpu]]]));
 
 let arms = [];
 let opt = {};
@@ -94,6 +122,20 @@ export function order(names, blocks) {
   return runs.map((r, i) => ({ n: i + 1, ...r }));
 }
 
+// Same-moment pairs: in each, every arm at once (the one asked first
+// alternating), on the desktop's window and then, with [phone], a phone's.
+export function pairs(names, count, phone = false) {
+  const runs = [];
+  for (let p = 1; p <= count; p++) {
+    for (const view of phone ? ["desktop", "phone"] : ["desktop"]) {
+      const first = names[(p - 1) % names.length];
+      const together = [first, ...names.filter((x) => x !== first)];
+      runs.push({ block: p, view, together });
+    }
+  }
+  return runs.map((r, i) => ({ n: i + 1, ...r }));
+}
+
 function load() {
   const [one, five, fifteen, runnable] = readFileSync("/proc/loadavg", "utf8").trim().split(/\s+/);
   return { one: Number(one), five: Number(five), fifteen: Number(fifteen), runnable: runnable.split("/")[0] };
@@ -134,10 +176,11 @@ async function serve(arm, port) {
   throw new Error(`serve.py did not answer on ${port} for ${arm.folder}: ${said.trim().split("\n").pop() || "no word"}`);
 }
 
-function loadCheck(url, dir, log, preview) {
+function loadCheck(url, dir, log, preview, view = "desktop") {
   const env = { ...process.env };
   if (!preview) delete env.BW_BYPASS;
-  const args = [join(ROOT, "tools/web/load_check.mjs"), `--url=${url}`, "--runs=1", "--warm", `--out=${dir}`, ...passed];
+  const args = [join(ROOT, "tools/web/load_check.mjs"), `--url=${url}`, "--runs=1", "--warm", `--out=${dir}`,
+    ...(view === "phone" ? ["--phone"] : []), ...passed];
   return new Promise((done) => {
     const child = spawn("node", args, { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"] });
     const chunks = [];
@@ -171,6 +214,7 @@ async function run() {
   }
   if (!process.env.SUPABASE_URL) console.log("start_abba: no SUPABASE_URL in the environment (. ./.env): each visitor is shown the sign-in, not the app");
   mkdirSync(out, { recursive: true });
+  if (opt.pairs) return runPairs(Number(opt.pairs));
   const blocks = Number(opt.blocks || 4);
   const plan = order(arms.map((a) => a.name), blocks);
   writeFileSync(join(out, "arms.json"), JSON.stringify({ arms, blocks, bar, passed, plan }, null, 1));
@@ -202,6 +246,47 @@ async function run() {
   }
 }
 
+// Each pair: every arm served and its load_check begun at once (the next a
+// quarter second after), each in a browser of its own; a line a run.
+async function runPairs(count) {
+  const plan = pairs(arms.map((a) => a.name), count, Boolean(opt.phone));
+  writeFileSync(join(out, "arms.json"), JSON.stringify({ arms, blocks: count, bar, passed, plan, together: true }, null, 1));
+  writeFileSync(join(out, "runs.jsonl"), "");
+  sayArms(arms);
+  for (const step of plan) {
+    const before = load();
+    const started = new Date().toISOString();
+    const servers = [];
+    const exits = {};
+    try {
+      for (const arm of arms) if (arm.folder) servers.push(await serve(arm, arm.port));
+      await Promise.all(step.together.map((name, i) => new Promise((r) => setTimeout(r, i * 250)).then(() => {
+        const arm = arms.find((a) => a.name === name);
+        return loadCheck(arm.url, join(out, `${step.n}_${name}`), join(out, `${step.n}_${name}.log`), arm.preview, step.view)
+          .then((exit) => { exits[name] = exit; });
+      })));
+    } catch (trouble) {
+      for (const name of step.together) exits[name] ??= String(trouble.message || trouble).slice(0, 300);
+    } finally {
+      for (const server of servers) {
+        server.kill();
+        await new Promise((r) => (server.exitCode !== null ? r() : server.once("exit", r)));
+      }
+    }
+    const after = load();
+    for (const name of step.together) {
+      const line = { n: step.n, block: step.block, arm: name, view: step.view, first: name === step.together[0], started, before, after, exit: exits[name] };
+      appendFileSync(join(out, "runs.jsonl"), `${JSON.stringify(line)}\n`);
+    }
+    const said = step.together.map((name) => {
+      const got = readRun({ n: step.n, arm: name, view: step.view });
+      const f = step.view === "phone" ? (x) => x?.firstFrame : (x) => x?.interactive;
+      return `${name} ${got ? `cold ${s2(f(got.cold))} warm ${s2(f(got.warm))}` : `no result (exit ${exits[name]})`}`;
+    });
+    console.log(`  pair ${step.block} ${step.view.padEnd(7)} load ${before.one.toFixed(1)} -> ${after.one.toFixed(1)}  ${said.join("  |  ")}`);
+  }
+}
+
 function sayArms(list) {
   for (const a of list) {
     const c = a.closure;
@@ -214,52 +299,68 @@ function readRun(step) {
   const path = join(out, `${step.n}_${step.arm}`, "load.json");
   if (!existsSync(path)) return null;
   const s = JSON.parse(readFileSync(path, "utf8")).summary || {};
+  const done = step.view === "phone" ? (x) => x && Number.isFinite(x.firstFrame) : (x) => x && Number.isFinite(x.interactive);
   const cold = s["broadband cold"];
-  if (!cold || !Number.isFinite(cold.interactive)) return null;
-  const warm = s["broadband warm"] && Number.isFinite(s["broadband warm"].interactive) ? s["broadband warm"] : null;
+  if (!done(cold)) return null;
+  const warm = done(s["broadband warm"]) ? s["broadband warm"] : null;
   return { cold, warm };
 }
 
 function summarise() {
-  const { arms: list, bar: barWas } = JSON.parse(readFileSync(join(out, "arms.json"), "utf8"));
+  const { arms: list, bar: barWas, together } = JSON.parse(readFileSync(join(out, "arms.json"), "utf8"));
   const limit = opt.bar === undefined ? barWas : bar;
   const steps = readFileSync(join(out, "runs.jsonl"), "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  for (const step of steps) step.view ||= "desktop";
   const lines = [];
   const say = (s) => { lines.push(s); console.log(s); };
-  say(`start_abba: ${list.slice(1).map((a) => a.name).join(" and ")} against ${list[0].name}, ${steps.length} runs`);
+  say(`start_abba: ${list.slice(1).map((a) => a.name).join(" and ")} against ${list[0].name}, ${steps.length} runs`
+    + (together ? `, ${new Set(steps.map((x) => x.block)).size} same-moment pairs` : ""));
   for (const a of list) {
     const c = a.closure;
     say(`  ${a.name}: ${a.target}${a.sha ? ` at ${a.sha}` : ""}${c && c.bytes ? `, first screen ${(c.bytes / 1e6).toFixed(2)} MB of source in ${c.scripts} of ${c.of} scripts` : ""}`);
   }
-  say("");
-  say(" n  arm         block  load (1 min)    cold: usable  compile  main  |  warm: usable  compile  main  |  MB cold");
+  const views = [...new Set(steps.map((x) => x.view))];
   const runs = [];
-  for (const step of steps) {
-    const got = readRun(step);
-    const loadSaid = `${step.before.one.toFixed(1).padStart(5)} -> ${step.after.one.toFixed(1).padStart(5)}`;
-    if (!got) {
-      say(`${String(step.n).padStart(2)}  ${step.arm.padEnd(11)} ${String(step.block).padStart(3)}    ${loadSaid}   no result: exit ${step.exit}`);
-      continue;
+  for (const view of views) {
+    const goal = view === "phone" ? "first frame" : "usable";
+    const at = view === "phone" ? (x) => x?.firstFrame : (x) => x?.interactive;
+    say("");
+    say(`${together ? "pair" : "  n"}  arm         ${together ? "  " : "block"}  load (1 min)    cold: ${goal}  compile  main  |  warm: ${goal}  compile  main  |  MB cold   (${view})`);
+    for (const step of steps.filter((x) => x.view === view)) {
+      const got = readRun(step);
+      const loadSaid = `${step.before.one.toFixed(1).padStart(5)} -> ${step.after.one.toFixed(1).padStart(5)}`;
+      const tag = together ? `${String(step.block).padStart(3)} ${step.first ? "*" : " "}` : `${String(step.n).padStart(3)} `;
+      if (!got) {
+        say(`${tag} ${step.arm.padEnd(11)} ${together ? "" : String(step.block).padStart(3)}    ${loadSaid}   no result: exit ${step.exit}`);
+        continue;
+      }
+      runs.push({ ...step, ...got });
+      const { cold, warm } = got;
+      say(`${tag} ${step.arm.padEnd(11)} ${together ? "  " : String(step.block).padStart(3)}    ${loadSaid}   `
+        + `${s2(at(cold)).padStart(11)}  ${s2(cold.split?.compile).padStart(7)}  ${s2(cold.cpu).padStart(5)}  |  `
+        + `${s2(at(warm)).padStart(12)}  ${s2(warm?.split?.compile).padStart(7)}  ${s2(warm?.cpu).padStart(5)}  |  ${(cold.bytes / 1e6).toFixed(2)}`);
     }
-    runs.push({ ...step, ...got });
-    const { cold, warm } = got;
-    say(`${String(step.n).padStart(2)}  ${step.arm.padEnd(11)} ${String(step.block).padStart(3)}    ${loadSaid}   `
-      + `${s2(cold.interactive).padStart(11)}  ${s2(cold.split?.compile).padStart(7)}  ${s2(cold.cpu).padStart(5)}  |  `
-      + `${s2(warm?.interactive).padStart(12)}  ${s2(warm?.split?.compile).padStart(7)}  ${s2(warm?.cpu).padStart(5)}  |  ${(cold.bytes / 1e6).toFixed(2)}`);
   }
-  say("");
+  if (together) say("  (* the arm begun first in its pair)");
   const value = (r, kind, f) => (r[kind] ? f(r[kind]) : NaN);
   let failed = false;
   for (const a of list) {
+    say("");
+    const planned = steps.filter((x) => x.arm === a.name).length;
     const mine = runs.filter((r) => r.arm === a.name);
-    const planned = steps.filter((s) => s.arm === a.name).length;
-    const loads = steps.filter((s) => s.arm === a.name).map((s) => (s.before.one + s.after.one) / 2);
+    const loads = steps.filter((x) => x.arm === a.name).map((x) => (x.before.one + x.after.one) / 2);
     say(`${a.name}: ${mine.length} of ${planned} runs, load ${Math.min(...loads).toFixed(0)} to ${Math.max(...loads).toFixed(0)} (median ${median(loads).toFixed(1)})`);
-    for (const [label, kind, f] of SHOWN) {
-      const v = mine.map((r) => value(r, kind, f)).filter(Number.isFinite);
-      const target = label === "bin usable" ? ` (A13's target ${TARGET[kind]} s)` : "";
-      say(`  ${`${label}, ${kind}`.padEnd(19)} ${s2(median(v))} s (${s2(Math.min(...v))} to ${s2(Math.max(...v))})${target}`);
+    for (const view of views) {
+      const these = mine.filter((r) => r.view === view);
+      for (const [label, kind, f] of SHOWN[view]) {
+        const v = these.map((r) => value(r, kind, f)).filter(Number.isFinite);
+        const target = TARGET[label]?.[kind];
+        const met = target ? v.filter((x) => x <= target * 1000).length : 0;
+        say(`  ${`${label}, ${kind}${views.length > 1 ? ` (${view})` : ""}`.padEnd(29)} ${s2(median(v))} s (${s2(Math.min(...v))} to ${s2(Math.max(...v))})`
+          + (target ? `  target ${target} s: met in ${met} of ${v.length}` : ""));
+      }
     }
+    sayAccount(a.name, mine.filter((r) => r.view === "desktop"), say);
     if (mine.length * 2 < planned) {
       say(`  FAIL ${a.name}: ${mine.length} of ${planned} runs gave a result`);
       failed = true;
@@ -268,28 +369,45 @@ function summarise() {
   const base = list[0].name;
   for (const a of list.slice(1)) {
     say("");
-    say(`${a.name} against ${base}, paired by block (each block's mean over the base's), then the plain medians:`);
-    for (const [label, kind, f] of SHOWN) {
-      const ratios = [];
-      for (const block of [...new Set(runs.map((r) => r.block))]) {
-        const mineB = runs.filter((r) => r.block === block && r.arm === a.name).map((r) => value(r, kind, f)).filter(Number.isFinite);
-        const baseB = runs.filter((r) => r.block === block && r.arm === base).map((r) => value(r, kind, f)).filter(Number.isFinite);
-        if (mineB.length && baseB.length) ratios.push(mean(mineB) / mean(baseB));
+    say(`${a.name} against ${base}, paired by ${together ? "pair" : "block"} (each ${together ? "pair's" : "block's mean"} over the base's), then the plain medians:`);
+    for (const view of views) {
+      for (const [label, kind, f] of SHOWN[view]) {
+        const ratios = [];
+        const inView = runs.filter((r) => r.view === view);
+        for (const block of [...new Set(inView.map((r) => r.block))]) {
+          const mineB = inView.filter((r) => r.block === block && r.arm === a.name).map((r) => value(r, kind, f)).filter(Number.isFinite);
+          const baseB = inView.filter((r) => r.block === block && r.arm === base).map((r) => value(r, kind, f)).filter(Number.isFinite);
+          if (mineB.length && baseB.length) ratios.push(mean(mineB) / mean(baseB));
+        }
+        const paired = median(ratios);
+        const plain = median(inView.filter((r) => r.arm === a.name).map((r) => value(r, kind, f)))
+          / median(inView.filter((r) => r.arm === base).map((r) => value(r, kind, f)));
+        const judged = MEASURES[view].some(([l, k]) => l === label && k === kind) && limit > 0;
+        const over = judged && !(paired <= 1 + limit / 100);
+        failed ||= over;
+        say(`  ${judged ? (over ? "FAIL" : "ok  ") : "    "} ${`${label}, ${kind}${views.length > 1 ? ` (${view})` : ""}`.padEnd(29)} x${Number.isFinite(paired) ? paired.toFixed(3) : "-"}`
+          + ` (${together ? "pairs" : "blocks"} ${ratios.map((x) => x.toFixed(2)).join(", ") || "none"}; medians x${Number.isFinite(plain) ? plain.toFixed(3) : "-"})`
+          + (judged ? `, bar x${(1 + limit / 100).toFixed(2)}` : ""));
       }
-      const paired = median(ratios);
-      const plain = median(runs.filter((r) => r.arm === a.name).map((r) => value(r, kind, f)))
-        / median(runs.filter((r) => r.arm === base).map((r) => value(r, kind, f)));
-      const judged = MEASURES.some(([l, k]) => l === label && k === kind) && limit > 0;
-      const over = judged && !(paired <= 1 + limit / 100);
-      failed ||= over;
-      say(`  ${judged ? (over ? "FAIL" : "ok  ") : "    "} ${`${label}, ${kind}`.padEnd(19)} x${Number.isFinite(paired) ? paired.toFixed(3) : "-"}`
-        + ` (blocks ${ratios.map((x) => x.toFixed(2)).join(", ") || "none"}; medians x${Number.isFinite(plain) ? plain.toFixed(3) : "-"})`
-        + (judged ? `, bar x${(1 + limit / 100).toFixed(2)}` : ""));
     }
   }
   say(failed ? "start_abba: FAIL" : "start_abba: ok");
   writeFileSync(join(out, "summary.txt"), `${lines.join("\n")}\n`);
   return failed;
+}
+
+// The start's account of its files (load_check's startAccount), the arm's
+// medians cold and warm: each kind's bytes, when it came, and what waited.
+function sayAccount(name, runs, say) {
+  for (const kind of ["cold", "warm"]) {
+    const these = runs.map((r) => r[kind]?.start).filter(Boolean);
+    if (!these.length) continue;
+    const m = (f) => median(these.map(f));
+    const mb = (b) => (Number.isFinite(b) ? (b / 1e6).toFixed(2) : "-");
+    say(`  what the start waited for, ${kind}: the engine's files ${mb(m((a) => a.engine.bytes))} MB to ${s2(m((a) => a.engine.to))} s, banner ${s2(m((a) => a.banner))} s; `
+      + `the data pack ${mb(m((a) => a.data.bytes))} MB ${s2(m((a) => a.data.from))}-${s2(m((a) => a.data.to))} s, handed ${s2(m((a) => a.data.handed))} s, Main waited ${s2(m((a) => a.data.waited))} s; `
+      + `the rest of the parts ${mb(m((a) => a.parts.bytes))} MB to ${s2(m((a) => a.parts.to))} s; the rest ${mb(m((a) => a.rest.bytes))} MB`);
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

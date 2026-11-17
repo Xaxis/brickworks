@@ -25,6 +25,11 @@
 ##   the chips' window, unscrolled, inside the bin's column and the window;
 ## - at 1400 x 900 as it first opens, 42 parts wholly in sight, as roomfit
 ##   counts them;
+## - at 1400 x 900 and at 1280 x 720, binstay (APP_UX9 #2, smalls4): the
+##   bin open as a first visit has it, a 2 x 4 brick on the baseplate,
+##   Stress opened from its command, then the brick clicked in the model:
+##   the bin open and in sight where it was, every shelf in sight, with no
+##   rail clicked (round eight's walk lost it, and its rail brought it back);
 ## - at 1400 x 900 and at 1280 x 720 with Stress open, the walk's Like this
 ##   (appux_walk round3): "1x4 brick" typed, a 2 x 4 brick clicked in the
 ##   model, the chip clicked; Plate 2 x 4 seventh.
@@ -221,6 +226,8 @@ func _at(size: Vector2i) -> void:
 
 	# The walk's Like this, Stress's panel open, at the walk's two sizes.
 	if size == Vector2i(1400, 900) or size == Vector2i(1280, 720):
+		await _close_columns()
+		await _binstay(tag)
 		await _walk_like_this(tag)
 	await _close_columns()
 
@@ -280,9 +287,10 @@ func _every_column() -> String:
 	return ", ".join(open)
 
 
-## Stress's panel open, and the bin by its rail beside it: Stress's column
-## folds the bin (main._tool_column_shown, "the bin is a click on its rail
-## away"), and a person who wants a part clicks it back.
+## Stress's panel open, and the bin by its rail beside it where Stress's
+## column folded it (main._tool_column_shown: only where the model would
+## have less than its least beside them), as a person who wants a part
+## clicks it back.
 func _stress_beside_bin() -> void:
 	if _shell.stress != null and not _shell.stress.on:
 		_shell.run("stress")
@@ -338,6 +346,59 @@ func _put_brick() -> int:
 		await _click(_camera.unproject_position(where.origin + Vector3(0, -2, 0)))
 	await _settle()
 	return brick
+
+
+## binstay: the bin open, a 2 x 4 on the baseplate, Stress opened, then the
+## brick clicked, as the walk's round7 does it: the bin stays where it was.
+## And Find and replace's bar, opened before Stress, inside the narrower
+## room after (it stayed where it was and lay over Stress's Lift and Close).
+func _binstay(tag: String) -> void:
+	await _as_first_opened()
+	_main.call("clear_model")
+	await _frames(10)
+	var where := Transform3D(Basis.IDENTITY, Vector3(0, 24, 0))
+	var brick: int = _world.add_brick(BRICK, RED, where)
+	_builder.register(brick, BRICK, where)
+	_builder.clear_selection()
+	_camera.frame(AABB(Vector3(-120, 0, -80), Vector3(240, 60, 160)))
+	await _frames(30)
+	var bin_dock: SideDock = _main.get("_bin_dock")
+	var scroll: Control = _bin.get("_scroll")
+	var before: float = (_bin as Control).size.x
+	var was: bool = bin_dock.is_open()
+	# Find and replace open first, as round eight's walk had it: the bar is
+	# over the top of the model's room, and stays inside it as Stress opens.
+	_shell.run("find_replace")
+	await _settle()
+	_shell.run("stress")
+	await _settle()
+	var opened: bool = bin_dock.is_open() and scroll.is_visible_in_tree()
+	var find_bar: Control = _main.get("_find_replace_made")
+	var stress_rect: Rect2 = _shell.stress.panel.get_global_rect()
+	var bar_rect: Rect2 = find_bar.get_global_rect() if find_bar != null else Rect2()
+	var model_room: Rect2 = _main.call("_model_rect")
+	_check("%s ...Find and replace's bar, open before Stress, inside the model's room after it (%s in %s), clear of Stress's panel (%s)"
+		% [tag, bar_rect, model_room, stress_rect], find_bar != null and find_bar.visible
+		and model_room.grow(1.0).encloses(bar_rect) and not bar_rect.intersects(stress_rect))
+	if find_bar != null:
+		find_bar.call("close")
+		await _settle()
+	var beside: float = (_bin as Control).size.x
+	await _click(_camera.unproject_position(where.origin + Vector3(0, -2, 0)))
+	await _settle()
+	var kept: bool = bin_dock.is_open() and scroll.is_visible_in_tree()
+	var out: Array[String] = _shelves_out_of_sight()
+	var room: Rect2 = _main.call("_model_rect")
+	_check("%s binstay: the bin open (%s, %d wide), Stress opened beside it keeps it (%s, %d wide), and a 2 x 4 clicked (selected %s) keeps it where it is (%s), every shelf in sight (%s); the model %d wide"
+		% [tag, was, before, opened, beside, _builder.selection.has(brick), kept,
+		"all" if out.is_empty() else "out of sight: " + ", ".join(out), room.size.x],
+		was and opened and kept and _builder.selection.has(brick) and out.is_empty()
+		and _shell.stress.panel.is_visible_in_tree())
+	await _shot("%s_binstay" % tag)
+	_shell.run("stress")
+	await _settle()
+	_check("%s ...and Stress closed, the bin as it was (%s)" % [tag, bin_dock.is_open()],
+		bin_dock.is_open())
 
 
 ## appux_walk's round3: "1x4 brick" typed in the bin, a 2 x 4 brick clicked

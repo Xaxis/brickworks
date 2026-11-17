@@ -457,9 +457,12 @@ static func _arc(from: Vector3, to: Vector3) -> Basis:
 	if axis.length() < 1e-6:
 		if d > 0.0:
 			return Basis.IDENTITY
-		# Opposite: half a turn about any line across it.
+		# Opposite: half a turn about a line across it, up where it runs
+		# level, so a part turned end for end stays the right way up. About
+		# a.cross(up), f1's session aligning a towball socket's -z with +z
+		# got it studs down, and spent six calls on the arm built on it.
 		var across: Vector3 = Vector3.UP if absf(a.dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
-		return Basis(a.cross(across).normalized(), PI)
+		return Basis((across - a * a.dot(across)).normalized(), PI)
 	return Basis(axis.normalized(), acos(d))
 
 

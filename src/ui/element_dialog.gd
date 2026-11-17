@@ -291,6 +291,21 @@ func _build() -> void:
 			_spec.way = str(_way.get_item_metadata(index))
 			_changed())
 	way_row.add_child(_way)
+	# A wedge plate's far corner, cut flat as LEGO's own are cut: beside
+	# Left or right, the grid's other column there. Below Studs on top it
+	# was under the fold of a 1280 x 720 window, reached only by a scroll
+	# (APP_UX8 makerfold).
+	var chamfer_row := _row(grid, "At the tip")
+	_rows["chamfer"] = chamfer_row.get_parent()
+	_chamfer = CheckBox.new()
+	_chamfer.text = "Far corner cut flat"
+	_chamfer.tooltip_text = ("As LEGO® wedge plates such as 54383 and 41770b are: the sharp "
+		+ "corner the cut ends in, cut off 1.2 mm along")
+	_chamfer.toggled.connect(func(on: bool) -> void:
+		if not _filling:
+			_spec.chamfer = on
+			_changed())
+	chamfer_row.add_child(_chamfer)
 
 	var angle_row := _row(column, "Standard angles")
 	_rows["angles"] = angle_row.get_parent()
@@ -313,17 +328,6 @@ func _build() -> void:
 			_spec.studs = on
 			_changed())
 	column.add_child(_studs)
-
-	# A wedge plate's far corner, cut flat as LEGO's own are cut.
-	_chamfer = CheckBox.new()
-	_chamfer.text = "Far corner cut flat"
-	_chamfer.tooltip_text = ("As LEGO® wedge plates such as 54383 and 41770b are: the sharp "
-		+ "corner the cut ends in, cut off 1.2 mm along")
-	_chamfer.toggled.connect(func(on: bool) -> void:
-		if not _filling:
-			_spec.chamfer = on
-			_changed())
-	column.add_child(_chamfer)
 
 	# A part being changed keeps its studs, or has them taken off, or put
 	# on wherever its top is flat.
@@ -607,7 +611,7 @@ func _show_spec() -> void:
 	_rows["studs_top"].visible = false
 	_rows["cut"].visible = false
 	_studs.visible = true
-	_chamfer.visible = _spec.family == "wedge"
+	_rows["chamfer"].visible = _spec.family == "wedge"
 	_rows["plates"].get_child(0).text = "Height, plates (3 = a brick)"
 	_filling = true
 	var shown: Button = _family_buttons.get(_spec.family)
@@ -682,7 +686,6 @@ func _show_edit() -> void:
 		_cut[n].value = [cut_values[0], cut_values[2], cut_values[1], cut_values[3],
 			cut_values[4], cut_values[5]][n]
 	_studs.visible = false
-	_chamfer.visible = false
 	(_rows["across"].get_child(0) as Label).text = "Length, studs"
 	(_rows["deep"].get_child(0) as Label).text = "Width, studs"
 	(_rows["plates"].get_child(0) as Label).text = "Height, plates"

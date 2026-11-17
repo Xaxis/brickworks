@@ -1199,6 +1199,9 @@ function person(page, cdp, width, height, size, choosers) {
       if (!(await pressRow("phone_row_show_properties"))) return { why: "the part's actions have no Properties" };
       const field = await where("prop_turn", 15);
       if (!field) return { why: "Properties shows no Turn field a finger reaches" };
+      // The app says when a field is cut off by the list it is in: a tap
+      // there lands on what is beside it (a tablet's drawer, smalls4).
+      if (field.clipped) note("Properties' Turn is cut off by its scroller, out of a finger's sight");
       const want = String(Math.round(before + 15));
       const typed = await typeOver(field, want);
       await key("Enter");

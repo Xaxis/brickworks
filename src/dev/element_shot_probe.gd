@@ -33,7 +33,8 @@
 ## clip, each taken as a click on a tile takes it and clicked on where it
 ## goes: shots/element_clip.png. With -- only=copies, only that. And
 ## APP_UX7 #16's: a 3 x 6 wedge plate with "Far corner cut flat" clicked,
-## its dialog kept as shots/element_chamfer_dialog.png, beside 54383, the
+## the box in sight with the form unscrolled here and at 1280 x 720 (APP_UX8
+## makerfold), its dialog kept as shots/element_chamfer_dialog.png, beside 54383, the
 ## part it copies, in element_clip.png, and the two from overhead, their
 ## corners cut flat: shots/element_chamfer.png.
 ##
@@ -387,10 +388,7 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 			_ok(chamfer != null and chamfer.is_visible_in_tree() and not chamfer.button_pressed,
 				"a wedge plate's dialog shows \"Far corner cut flat\", not ticked")
 			if chamfer != null:
-				# Scrolled to, as a person scrolls to it in a short window.
-				(dialog.get("_scroll") as ScrollContainer).ensure_control_visible(chamfer)
-				for _n: int in 3:
-					await process_frame
+				await _chamfer_in_sight(dialog, chamfer)
 				await _press(chamfer)
 				_ok(chamfer.button_pressed and dialog.spec().get("chamfer") == true,
 					"...and a click on it ticks it and the part's corner is cut")
@@ -631,6 +629,34 @@ func _finish() -> void:
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
+
+
+## APP_UX8 makerfold: "Far corner cut flat" in sight with no scroll, judged
+## against the scroll's own rectangle, in this window and in a laptop's
+## 1280 x 720. Below Studs on top, it was under the fold there and reached
+## only by scrolling the form; at 1400 x 900 its top edge was a sliver.
+func _chamfer_in_sight(dialog: ElementDialog, chamfer: CheckBox) -> void:
+	var scroll: ScrollContainer = dialog.get("_scroll")
+	var was: Vector2i = root.size
+	for size: Vector2i in [was, Vector2i(1280, 720)]:
+		if root.size != size:
+			root.size = size
+			for _n: int in 30:
+				await process_frame
+		var found: int = scroll.scroll_vertical
+		scroll.scroll_vertical = 0
+		for _n: int in 3:
+			await process_frame
+		var window: Rect2 = scroll.get_global_rect()
+		var box: Rect2 = chamfer.get_global_rect()
+		_ok(DisplayServer.window_get_size() == size and chamfer.is_visible_in_tree()
+				and window.grow(0.5).encloses(box),
+			"at %d x %d (the window %s), \"Far corner cut flat\" in sight with the form unscrolled (found at %d): %s inside the form's %s"
+			% [size.x, size.y, DisplayServer.window_get_size(), found, box, window])
+	if root.size != was:
+		root.size = was
+		for _n: int in 30:
+			await process_frame
 
 
 func _ok(passed: bool, said: String) -> void:

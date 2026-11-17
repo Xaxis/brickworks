@@ -232,6 +232,7 @@
       "area": "together",
       "tests": [
         "tests/test_flows_for.py",
+        "tests/test_start_abba.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -1428,7 +1429,7 @@
       "id": "cli:first visit load check",
       "kind": "cli",
       "entry": "tools/web/load_check.mjs",
-      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=\u2026 for a preview; --profiles=broadband,slow --runs=3 --warm; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
+      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=\u2026 for a preview; --profiles=broadband,slow --runs=3 --warm; --phone for a phone's window, timed to its first frame; --after=URL for a return after a release, URL visited first; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
       "area": "web",
       "tests": []
     },
@@ -3134,7 +3135,7 @@
       "id": "cli:two builds' first visits at an equal load",
       "kind": "cli",
       "entry": "tools/web/start_abba.mjs",
-      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
+      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --pairs=N [--phone] for same-moment pairs, each arm in a browser of its own at once, a phone's first frame too; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
       "area": "web",
       "tests": []
     },
@@ -3628,6 +3629,7 @@
       "area": "together",
       "tests": [
         "tests/test_flows_for.py",
+        "tests/test_start_abba.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -4992,6 +4994,14 @@
       "entry": "src/render/balance_mark.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "ui:ball joints by hand",
+      "kind": "ui",
+      "entry": "src/assembly/joint_snap.gd",
+      "reach": "godot --headless --path . --script src/dev/balljoints_probe.gd  (a socket held, aimed at a ball, clicked, or a ball onto a socket; the rotate handle stands on the ball's centre; R turns it about the ball; Pose lists a ball as three turns; move_part turns a part about its ball)",
+      "area": "building",
       "tests": []
     },
     {

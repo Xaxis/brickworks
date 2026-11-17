@@ -139,8 +139,8 @@ func _gear_train() -> void:
 		Working.current().words if Working.current() != null else "nothing"), Working.is_busy())
 	await _settled()
 	_check("the panel is open with the mechanism read", _panel.visible and _panel.sim != null)
-	# Docked beside the model, not over it: the parts column folded for it,
-	# and every part of the train on screen inside the model's column.
+	# Docked beside the model, not over it, the parts column beside them or
+	# folded, and every part of the train on screen inside the model's column.
 	var model_rect: Rect2 = _main.call("_model_rect")
 	var inside: bool = true
 	for id: int in [axle_a, axle_b, small, large, idle]:
@@ -149,10 +149,19 @@ func _gear_train() -> void:
 		for n: int in 8:
 			var corner: Vector3 = box.position + box.size * Vector3(n & 1, (n >> 1) & 1, (n >> 2) & 1)
 			inside = inside and model_rect.has_point(_camera.unproject_position(corner))
-	_check("the panel is docked beside the model (%s), the parts column folded for it, and the "
-		% str(_panel.get_global_rect()) + "whole train on screen in the model's column (%s)"
+	# The parts column stays beside it where the model keeps its least room
+	# (binstay, APP_UX9 smalls4 item 2: it was folded whenever the column
+	# opened), as it does at 1600 x 900; where it would not, it folds.
+	var least: float = float((_main.get_script() as GDScript).get_script_constant_map()["MODEL_LEAST"])
+	var bin_rect: Rect2 = bin.get_global_rect()
+	var bin_ok: bool = not bin.is_open() or (model_rect.size.x >= least
+		and not bin_rect.intersects(model_rect) and not bin_rect.intersects(_panel.get_global_rect()))
+	_check("the panel is docked beside the model (%s), the parts column %s, and the "
+		% [str(_panel.get_global_rect()), ("kept beside them (%s), the model's room %d wide, %d at least"
+			% [str(bin_rect), roundi(model_rect.size.x), roundi(least)]) if bin.is_open() else "folded for it"]
+		+ "whole train on screen in the model's column (%s)"
 		% str(model_rect), not _panel.get_global_rect().intersects(model_rect)
-		and not bin.is_open() and inside)
+		and bin_ok and inside)
 	var sim: Simulation = _panel.sim
 	var a: int = sim.model.body_of(axle_a)
 	var b: int = sim.model.body_of(axle_b)

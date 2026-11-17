@@ -974,7 +974,8 @@ the mechanism…", on a worker from 600 parts), drives the part a sub-assembly n
 Crank, Motor, Handle or Driver marks, else the one selected, else the one that turns
 most of the train; a click on an axle or a crank (the Select tool is put in hand)
 drives that. The panel is docked in a column beside the model's (main's
-`_tool_column`, the hose tool's too), the parts column folded while it is open and put back after,
+`_tool_column`, the hose tool's too), the parts column kept beside it where the model keeps its
+least room (`MODEL_LEAST`; binstay, smalls4) and folded where it would not, and put back after,
 so the lens centres the model on what is left and no gear is under the panel (over
 the model's left edge, at 1600 x 900 at 2x it covered half the train and a click
 meant for the 8's axle selected the 24). The base is the baseplate and what stands

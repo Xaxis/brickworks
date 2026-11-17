@@ -195,7 +195,8 @@ body {
   engine's script has come and run and this tab has chosen its session
   (claimTab): Godot's loader fetches these very addresses the same way
   (fetch, same-origin) and is handed what is already on its way.
-  deploy.sh points them at /b/<sha>/ with the rest.
+  deploy.sh points the pack at /b/<sha>/ with the rest, and the wasm at the
+  engine's own /e/<hash>/ (tools/web/place_build.py).
 -->
 <link rel="preload" href="index.wasm" as="fetch" crossorigin>
 <link rel="preload" href="index.pck" as="fetch" crossorigin>
@@ -1312,8 +1313,12 @@ const loaderSays = (function () {
 		engine.config.update(override);
 		const pack = engine.config.mainPack || engine.config.executable + ".pck";
 		engine.config.args = ["--main-pack", pack].concat(engine.config.args);
+		// The engine's own script and wasm from where deploy.sh put them, an
+		// address of their bytes that the next release with the same engine
+		// shares, so a return after a release does not fetch it again
+		// (tools/web/place_build.py); a local export has them beside the page.
 		return Promise.all([
-			engine.init(engine.config.executable),
+			engine.init(GODOT_CONFIG.engine || engine.config.executable),
 			engine.preloadFile(pack, pack),
 		]).then(function () {
 			return dataInTime(pack);

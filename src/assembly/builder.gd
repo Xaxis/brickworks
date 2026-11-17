@@ -3691,6 +3691,11 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		# 60596 had no room, nor did any door swung open on its frame's hinge.
 		if _hinged_clear(mine, at, theirs, there):
 			continue
+		# So do a ball and the socket on it, round the ball: 3730 on
+		# 15456's towball had no room at any turn, the socket's cover a
+		# whole cell round a ball inside it.
+		if _balled_clear(mine, at, theirs, there, packed, lattice.boxes_of(other)):
+			continue
 		# So do a part and the one whose studs it is on, where both have
 		# exact shapes and the shapes are clear, as check_design clears them:
 		# a saddle on a horse's back had no room where every set has it.
@@ -3738,6 +3743,63 @@ func _hinged_clear(mine: String, at: Transform3D, theirs: String, there: Transfo
 	var a := Exact.Item.new(one, at)
 	var b := Exact.Item.new(other, there)
 	return not Exact.hinge_between(a, b).is_empty() and Exact.clash(a, b, true).is_empty()
+
+
+## Whether one of two parts has its ball in the other's socket, the two
+## centres together (JointSnap's ball ends), and they meet only inside the
+## joint, by check_design's rule (ExactCheck.at_joint): their exact shapes
+## clear, or every piece of the one that overlaps a piece of the other within
+## the ball's round of its centre. A socket closes round its ball, and
+## BrickNet's convex pieces fill a socket's mouth: 2736 on 2739a's ball, as
+## 9396-1 has it, meets it by 1.4 LDU there. Where either has no exact shape,
+## by their covers ([param cover] and [param their_cover], lattice boxes):
+## every cell the two share within that round, as far as a cell's half
+## reaches.
+func _balled_clear(mine: String, at: Transform3D, theirs: String, there: Transform3D,
+		cover: PackedInt32Array, their_cover: PackedInt32Array) -> bool:
+	var centre := Vector3.INF
+	for one: JointSnap.End in JointSnap.ends_for(library, mine):
+		if not one.is_ball():
+			continue
+		for other: JointSnap.End in JointSnap.ends_for(library, theirs):
+			if other.is_ball() and JointSnap.mates(one, other) \
+					and (at * one.at).distance_to(there * other.at) <= JointSnap.SAME_BALL:
+				centre = (at * one.at + there * other.at) * 0.5
+				break
+		if centre != Vector3.INF:
+			break
+	if centre == Vector3.INF:
+		return false
+	var round: float = float((Later.script(&"ExactCheck").get_script_constant_map()["JOINT_ROUND"]
+		as Dictionary)["ball"])
+	var a: Exact.Shape = Exact.shape_for(library, mine)
+	var b: Exact.Shape = Exact.shape_for(library, theirs)
+	if a == null or b == null or not a.has_pieces() or not b.has_pieces():
+		var reach: float = round + BrickLattice.CELL * 0.87
+		var i: int = 0
+		while i < cover.size():
+			var j: int = 0
+			while j < their_cover.size():
+				var from := Vector3i(maxi(cover[i], their_cover[j]), maxi(cover[i + 1], their_cover[j + 1]),
+					maxi(cover[i + 2], their_cover[j + 2]))
+				var to := Vector3i(mini(cover[i + 3], their_cover[j + 3]),
+					mini(cover[i + 4], their_cover[j + 4]), mini(cover[i + 5], their_cover[j + 5]))
+				for x: int in range(from.x, to.x):
+					for y: int in range(from.y, to.y):
+						for z: int in range(from.z, to.z):
+							if (Vector3(x + 0.5, y + 0.5, z + 0.5) * BrickLattice.CELL).distance_to(centre) > reach:
+								return false
+				j += 6
+			i += 6
+		return true
+	var ia := Exact.Item.new(a, at)
+	var ib := Exact.Item.new(b, there)
+	if Exact.clash(ia, ib, true).is_empty():
+		return true
+	for hit: Array in Exact.overlaps(ia, ib):
+		if Exact.overlap_reach(ia, int(hit[1]), ib, int(hit[2]), centre) > round:
+			return false
+	return true
 
 
 ## Whether one of two parts is on the other's studs by BrickNet's labels (a

@@ -1073,6 +1073,7 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 			if held.mode == "turn" and not held.link.holds else ""])
 		return "\n".join(lines)
 	var asked_for: String = ""
+	var ball_about := Vector3.ZERO
 	if input.has("along"):
 		if not held.can_slide():
 			return "%s\nIt does not slide: nothing it is on is longer than the hole it is in." % lines[0]
@@ -1087,7 +1088,8 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 		var about := Vector3(float(way[0]), float(way[1]), float(way[2]))
 		if about.length() < 0.001:
 			return "axis= must not be [0, 0, 0]."
-		var turned := Basis(about.normalized(), deg_to_rad(float(input.get("degrees", 0.0))))
+		ball_about = about.normalized()
+		var turned := Basis(ball_about, deg_to_rad(float(input.get("degrees", 0.0))))
 		await _worked(func() -> Variant: return held.ball_to(turned), "turn a part on its ball")
 		asked_for = "%s°" % Balance.tidy(float(input.get("degrees", 0.0)))
 	else:
@@ -1135,8 +1137,21 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 	var slid: String = slid_words(held)
 	if slid.is_empty():
 		slid = _swept_words(held)
+	var went: String = held.position_words()
+	# A ball's turn said about the axis asked, with its sign: f1's session
+	# asked -30° about x and was told "turned 30° (asked -30°)".
+	if ball_about != Vector3.ZERO:
+		var q := Quaternion(held.twist.orthonormalized())
+		var signed: float = rad_to_deg(q.get_angle())
+		if signed > 0.01 and q.get_axis().dot(ball_about) < 0.0:
+			signed = -signed
+		var way := PackedStringArray()
+		for along: float in [ball_about.x, ball_about.y, ball_about.z]:
+			var near: float = snappedf(along, 0.01)
+			way.append(str(roundi(near)) if is_equal_approx(near, roundf(near)) else str(near))
+		went = "turned %d° about [%s]" % [roundi(signed), ", ".join(way)]
 	lines.append("Moved %d part%s: %s%s (asked %s)%s%s%s%s." % [moved, "" if moved == 1 else "s",
-		{"turn": "turned ", "slide": "slid "}.get(held.mode, ""), held.position_words(), asked_for,
+		{"turn": "turned ", "slide": "slid "}.get(held.mode, ""), went, asked_for,
 		("; it stopped where %s holds it, pulled to its full length" % held.stretch_words)
 			if stopped and not held.stretch_words.is_empty()
 			else ("; it stopped where %s" % (_met_words(held) if not _met_words(held).is_empty()

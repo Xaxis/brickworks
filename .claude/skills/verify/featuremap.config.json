@@ -1450,7 +1450,7 @@
       "kind": "cli",
       "label": "first visit load check",
       "entry": "tools/web/load_check.mjs",
-      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=… for a preview; --profiles=broadband,slow --runs=3 --warm; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
+      "reach": "node tools/web/load_check.mjs --url=<origin>/app   (with .env sourced; --bypass=… for a preview; --profiles=broadband,slow --runs=3 --warm; --phone for a phone's window, timed to its first frame; --after=URL for a return after a release, URL visited first; --max-bytes=MB --max-interactive=S to gate; a local export: tools/web/serve.py build/web PORT --compressed --parts-url \"$PARTS_URL\")",
       "area": "web"
     },
     {
@@ -5370,7 +5370,7 @@
       "kind": "cli",
       "label": "two builds' first visits at an equal load",
       "entry": "tools/web/start_abba.mjs",
-      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
+      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --pairs=N [--phone] for same-moment pairs, each arm in a browser of its own at once, a phone's first frame too; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
       "area": "web"
     },
     {
@@ -5645,6 +5645,13 @@
       "entry": "tools/release/env_names.sh",
       "reach": "tools/release/env_names.sh   (ship.sh, after release_live.sh: vercel env ls's names and environments, never a value, into site_env for /admin#switches; never fails a ship)",
       "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "ball joints by hand",
+      "entry": "src/assembly/joint_snap.gd",
+      "reach": "godot --headless --path . --script src/dev/balljoints_probe.gd  (a socket held, aimed at a ball, clicked, or a ball onto a socket; the rotate handle stands on the ball's centre; R turns it about the ball; Pose lists a ball as three turns; move_part turns a part about its ball)",
+      "area": "building"
     }
   ]
 }
