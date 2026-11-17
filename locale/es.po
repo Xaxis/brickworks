@@ -14772,3 +14772,20 @@ msgstr "1 bloqueada, apartada: desbloquéala para cambiarla"
 
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d bloqueadas, apartadas: desbloquéalas para cambiarlas"
+
+# An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy (named), or no room in one, with the menu command round it (followfix, flfix)
+
+msgid "Locked in one copy of %s: unlock it, or use Build › Make this copy unique"
+msgstr "Bloqueada en una copia de %s: desbloquéala, o usa Construir › Hacer única esta copia"
+
+msgid "Locked in one copy of %s: %s. Unlock it, or use Build › Make this copy unique"
+msgstr "Bloqueada en una copia de %s: %s. Desbloquéala, o usa Construir › Hacer única esta copia"
+
+msgid "No room in %s: %s is in the way there. Move it, or use Build › Make this copy unique"
+msgstr "No hay sitio en %s: %s estorba ahí. Muévela, o usa Construir › Hacer única esta copia"
+
+msgid "No room in %s: move what is in the way there, or use Build › Make this copy unique"
+msgstr "No hay sitio en %s: mueve lo que estorba ahí, o usa Construir › Hacer única esta copia"
+
+msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
+msgstr "No hay sitio en %s: quedaría bajo el suelo. Sube esa copia, o usa Construir › Hacer única esta copia"

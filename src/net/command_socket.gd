@@ -880,7 +880,8 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			# Said of the model as the copies that followed it left it, as
 			# _run's answers are: a review lays a piece with edit_model.
 			assistant.chat = chat
-			said = await assistant.followed_answer(said, int(followed[0]), int(followed[1]))
+			said = followed[2] if followed.size() > 2 \
+				else await assistant.followed_answer(said, int(followed[0]), int(followed[1]))
 			assistant.chat = ""
 			_hand_and_view_back(held)
 			return said, doing, entry), true]
@@ -946,7 +947,8 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# Counted and judged as the copies that followed it left the model; its
 	# sizes as told to the chat that asked.
 	assistant.chat = chat
-	answer = await assistant.followed_answer(answer, int(followed[0]), int(followed[1]))
+	answer = followed[2] if followed.size() > 2 \
+		else await assistant.followed_answer(answer, int(followed[0]), int(followed[1]))
 	assistant.chat = ""
 	# A design held to the person's own parts: what it uses against what
 	# they own, said with it (AppTools.held_to_mine, ownlimit).
@@ -1014,6 +1016,8 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 			int(before["depth"]))
 		builder.fold_since(int(before["depth"]))
 		var followed: Array = _copies_follow()
+		if followed.size() > 2:
+			return followed
 		_mark(builder, chat)
 		_laid(builder.last_step())
 		_looks_follow()
@@ -1029,6 +1033,8 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 	builder.record(steps, "%s's %s (%s)" % [who, name.replace("_", " "),
 		SelectionScope.words_for(steps)])
 	var followed: Array = _copies_follow()
+	if followed.size() > 2:
+		return followed
 	_mark(builder, chat)
 	_laid(builder.last_step())
 	_looks_follow()
@@ -1040,13 +1046,35 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 ## here after the edit, the step was never one after_edit saw: a session's
 ## edit_model to one of two posts left the other as it was (copyfaults2).
 ## Returns how many copies followed and the parts they put down less those
-## they took off, for the call's reply (Assistant.recounted).
+## they took off, for the call's reply (Assistant.recounted); and a third,
+## the reply itself, where a copy could not take the call's change and the
+## whole of it was taken back (Assemblies.refused): a lock or no room in one
+## copy refuses it in all, as by hand.
 func _copies_follow() -> Array:
 	if assistant.assemblies == null:
 		return [0, 0]
 	var had: int = assistant.world.brick_count()
 	var followed: int = assistant.assemblies.after_edit()
+	if not assistant.assemblies.refused.is_empty():
+		# Nothing the call's edit said of the model stands, and nothing of it
+		# is written (ModelStore.unchanged), as by hand.
+		assistant._judged_said = {}
+		var store: ModelStore = app.get("_store") if app != null else null
+		if store != null:
+			store.unchanged()
+		return [0, 0, refused_answer(assistant.assemblies.refused)]
 	return [followed, assistant.world.brick_count() - had]
+
+
+## A session's change no copy of its sub-model could take, answered: nothing
+## of it was made, why in the words the person's window says it
+## (Assemblies.refused), and what the session can do: the make_unique tool
+## is the window's Build › Make this copy unique.
+static func refused_answer(why: String) -> String:
+	return ("Not done, and nothing changed: %s. A sub-model's copies are one definition, "
+		+ "so a change to one is made in every copy or in none. The make_unique tool makes one "
+		+ "copy its own sub-model (the window's Build › Make this copy unique), to change it "
+		+ "alone; a part the person locked is theirs to unlock.") % why
 
 
 ## A step the call took the last part off goes with its booklet look, in the

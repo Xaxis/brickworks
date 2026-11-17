@@ -1,6 +1,8 @@
 // Can a person who relies on a screen reader, or on the keyboard, use the
 // site? (docs/COMPETITIVE.md item 14, docs/DESIGN_SYSTEM.md)
 //
+// flows_for: every page
+//
 //   node tools/web/a11y_flow.mjs [--out=DIR]               this checkout's web/ and api/, served here
 //   node tools/web/a11y_flow.mjs --url=<deployment>        a deployment's pages, the API answered here
 //   [--only=gallery,model] [--widths=390,1280] [--themes=light,dark]

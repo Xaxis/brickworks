@@ -6509,6 +6509,527 @@ Why it fell short:
 - The change is taken back out on this branch (`f4b01283c`), so nothing of
   it ships. `51876e09e` holds it.
 
+### Build to the outline's sizes: the real thing's outline read before the first build, answered as studs and plates (2026-11-16, design22, `46311cbd6`, NO-GO)
+
+**Why.** design21 laid the outline as a solid. The four sessions that built
+that solid lost every verdict head to head; the four that read the outline
+and built their own way won 7 of 8. So the outline becomes a measure: asked
+for before the first build and answered as sizes, with no solid to send.
+design21's Next also asked:
+- a vehicle's body read over its wheels, with what breaks its outline read
+  as masses of their own;
+- setbacks on the side the reading puts them;
+- `studs=` that names what it measures.
+
+**The change** (`46311cbd6`):
+
+- `plan_scale outline=` answers with sizes, not a shape:
+  - the outline at each tenth in studs and plates;
+  - a long thing's stretches between its steps, each level;
+  - a tall thing's tiers, ground first, each setback on the side the
+    reading puts it (`steps` take `{"at", "side": left|right|both}`) and by
+    how many studs;
+  - each break (`breaks=`: wheels, tracks, a header, a blade, a boom, a
+    spire) as a mass of its own, with its studs and plates;
+  - the plan from above, with its arms' thickness.
+
+  It ends: build each mass your own way to these studs and plates.
+- `studs=` names its measure: `{"longest": n}`, `{"footprint": [w, d]}` as
+  the brief gives it, or `{"read": n}` for the part read. A bare number is
+  not taken. When it and the scale differ by more than 1.5 times, the answer
+  gives both.
+- `src/ai/outline_plan.gd` (`OutlinePlan`) reads and sizes. design21's
+  solids are not in it: no `tiers`, and no `"outline"` as a profile.
+- The ask leads `how_real_sets_build_this`. It also sits in `find_reference`,
+  `clear_model`, `plan_scale`, and under the first line of the first bare
+  build: once each per subject, while no outline is held. The connector
+  METHOD's first two steps say the same.
+- Decided as an expert would, and said in the answer:
+  - setbacks in whole studs and heights in whole plates;
+  - a setback under a stud is a band, not a step;
+  - "both" splits evenly, and a single stud goes on one side;
+  - an unsided setback is taken as both sides and flagged;
+  - a footprint's seen face is its wide side unless the reading says it is
+    deeper;
+  - a body read down to the ground over a break is told to read its
+    underside there.
+- **The holdout.** The session reads a photograph that `find_reference`
+  finds. No set's picture or model is read.
+
+**Proof in the app.** `outline_sizes_probe` (headless) passed all 45 of its
+checks at `46311cbd6`, from a locked snapshot:
+- five sets from LDraw's model repository, read off their own models, give
+  their heights within a plate and their widths within a stud;
+- setbacks left, right, both, from the back, unsided, under a stud and by
+  one stud;
+- a loader's wheels and boom as breaks, with the ground notes;
+- a motorbike read from the back, and a hall's roofline in stretches;
+- each `studs=` form is taken; a bare number and none are not;
+- 16 wrong readings are refused, each saying what is wrong.
+
+`connector_method`, `mcp_sync`, `part_choice`, `holdout`, `read_only` and
+`cad_sitting` passed beside it.
+
+**The screen.** Two locked snapshots, each imported first: `snapd22base` at
+`4ba7d52a1` and `snapd22lev` at `46311cbd6`. The base is a fresh one on the
+same night, since design21's base ran older code. The owner's path
+(`--via relay --no-claude-code --instructions none`), 2 sessions at a time,
+the arms one after the other, on design21's 16 tune-half subjects.
+
+- **Reach** (`design22-2026-11-16/py/reach22.py`): asked in 16 of 16.
+  - Read before the first build in 9 of 16, never after (design21: 8).
+  - Of the 9, 8 read heights and 1 widths.
+  - All 4 vehicles named their wheels or tracks as breaks, with the forks,
+    an auger, a blade and a ripper. The Capitol named its dome and stairs.
+  - Rockefeller's 4 setbacks each said a side.
+  - One reading was refused (the combine's: a break's share ran past the
+    outline) and taken on the next call.
+- **Built their own way: 9 of 9.** No solid was offered. Three vehicles'
+  first builds used their own extrudes; the rest used fills, repeats and
+  rounds.
+- **`studs=` was the brief's box in 8 of 9.** Each of those gave
+  `{"footprint": [w, d]}` with the two numbers of the brief's "fitting in
+  about W x D". The combine gave `{"read": 28}`. The answer laid the model's
+  long side to the larger number and its depth to the other.
+- **The holdout held.** `held_out_said` is true for all 32 designs, and no
+  answer carried a set's own file or number (`py/leak22.py`, 0 hits in each
+  arm). One base session searched the library for its own set's number
+  ("21018 United Nations") and found nothing. No lever session did.
+- **The build check** (realset's audit):
+  - Nothing floats in any of the 31 models. The base's Ducati ran its 45
+    minutes with 7 features unsettled and left no model. The lever's London
+    ran its 45 minutes and kept its model.
+  - The lever's San Francisco has 138 overlaps and its Tokyo 37, every one
+    at a string (71149k01 and k02): 170 between its own segments and 5 with
+    a plate under it. That is the gap `tools/connection_audit.py` already
+    names; the base's San Francisco has 64 of the same.
+  - The lever's dozer has 1: a door in its frame (60623 in 60596).
+
+The screen, as design21 set it before it ran: the lever preferred to its
+base overall, head to head in both orders, on the subjects it reached, with
+likeness and technique no worse. The base's Ducati has no model, so 8 of
+the 9 reached are paired. Each arm against the set is beside it
+(`py/screen22.py`, realset's own shares and intervals, on the subjects
+named).
+
+| subjects | head to head: lever preferred, overall | likeness | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|
+| reached, 8 | 56% (26-83) | 44% | 50% | 31%, 25%, -6 (-19, +0) |
+| not reached, 7 | 57% (25-84) | 64% | 64% | 36%, 21%, -14 (-29, +0) |
+| all 15 | 57% (33-78) | 53% | 57% | 33%, 23%, -10 (-20, +0) |
+| reached buildings, 5 | 5 of 10 verdicts | 4 of 10 | 5 of 10 | 5 of 10, 4 of 10 |
+| reached vehicles, 3 | 4 of 6 verdicts | 3 of 6 | 3 of 6 | 0 of 6, 0 of 6 |
+
+Counting the base's missing Ducati as a lever win in both orders would make
+the reached 61% overall, 50% on likeness and 56% on technique. Against the
+set it changes nothing: both arms' Ducatis win 0 of 2, since a design with
+no model gives every verdict to the set.
+
+Each subject: the reading, `studs=`, overall verdicts won against the set
+(base, lever, of 2), and the lever's overall wins head to head (of 2).
+
+| subject | read before the first build | `studs=` | vs the set | head to head |
+|---|---|---|---|---|
+| Rockefeller Center | widths, 4 setbacks, each sided | footprint 12 x 13 | 2, 2 | 1 |
+| Lincoln Memorial | heights, 2 steps | footprint 16 x 12 | 0, 0 | 2 |
+| Buckingham Palace | heights, 4 steps, U | footprint 26 x 24 | 1, 0 | 0 |
+| Capitol | heights, dome and stairs as breaks, H | footprint 56 x 18 | 0, 0 | 0 |
+| Arc de Triomphe | heights, 2 steps | footprint 18 x 12 | 2, 2 | 2 |
+| Heavy Duty Forklift | heights, wheels and forks as breaks | footprint 41 x 19 | 0, 0 | 2 |
+| Combine Harvester | heights, wheels and auger as breaks | read 28 | 0, 0 | 1 |
+| Dozer | heights, tracks, blade, ripper as breaks | footprint 33 x 30 | 0, 0 | 1 |
+| Ducati Panigale | heights, wheels as breaks | footprint 43 x 13 | 0, 0 | base: no model |
+| Guggenheim | none | | 2, 2 | 2 |
+| United Nations | none | | 1, 1 | 1 |
+| London | none | | 1, 0 | 0 |
+| Shanghai | none | | 0, 0 | 2 |
+| San Francisco | none | | 0, 0 | 2 |
+| Tokyo | none | | 0, 0 | 1 |
+| Tractor | none | | 1, 0 | 0 |
+
+The judge's words where the reading was taken:
+- **Capitol** (lost both orders). The lever "breaks the roofline into stepped
+  blocks and sets a squatter dome on a single drum"; it "looks more like a
+  generic government block". The base has "the Capitol's long, low wings
+  topped with balustrades".
+- **Buckingham Palace** (lost both orders). The lever's is "a low
+  single-storey colonnade that reads more like a generic pavilion", "long
+  and correctly proportioned but ... generic". The base's is "the palace's
+  multi-storey east front ... a central pediment over the balcony and the
+  Victoria Memorial out in front".
+- **Dozer** (split). The lever's is "a squat, very wide slab whose tracks
+  are plain black bricks with gears stuck on", but in the other order its
+  "working dozer details, playable cab and richer colour accents" won.
+- **Forklift** (won both orders). The lever has "large drive wheels at the
+  front, small steer wheels at the rear, a tall overhead guard and a slim
+  chain mast". The base has "equal-sized wheels and blocky, wide mast".
+- **Lincoln Memorial** (won both orders). The lever's "tall three-segment
+  colonnade under a stepped attic gives the Memorial's proportions". The
+  base has "short two-segment columns ... under a heavy, overhanging stack".
+- **Rockefeller Center** (split). The base won likeness in both orders: its
+  "narrow front steps down through several setback wings". The lever's is
+  "a plain shaft topped by an antenna and a white cylinder 30 Rock does not
+  have".
+
+Each subject, front, corner and close, set then base then lever (contact
+sheets in `design22-2026-11-16/sheets/`), all 16 looked at:
+
+- **Capitol.** The lever's wings stand nearly as tall as its drum, in blocks
+  at three heights. The base's are long, low and level.
+- **Buckingham Palace.** Both are white where the set is tan. The lever's is
+  long, low and deep in a U, its front a row of columns. The base's is
+  taller, with rows of windows, a balcony and a portico.
+- **Lincoln Memorial.** The lever's columns are taller, under a two-step
+  attic with skylights. The base's are short, under a stacked entablature.
+- **Arc de Triomphe.** Both are tan. The lever's has a deeper attic with
+  roundels, and statue groups on pedestals.
+- **Rockefeller Center.** Both are a slab that steps back. The lever's has
+  an antenna and a low tan block either side. The base's steps back in more
+  setbacks, with grey flanks.
+- **Forklift.** The lever's is orange where the set is yellow. It is long,
+  with big front wheels, small rear ones and a slim mast. The base's is
+  yellow, with equal wheels and a wide mast.
+- **Combine.** Both are green with yellow stripes. The lever's has an auger
+  and a grain tank, its header off to one side. The base's header is ahead
+  of its cab.
+- **Dozer.** The lever's is as wide as it is long, the blade at one end,
+  with tracks of wheels in links. The base's is compact, its blade in front.
+- **Ducati.** The lever's is a red fairing over two wheels on a grey stand,
+  with the engine a block under it. The base has none.
+- The 7 not reached look alike in kind between the arms. The lever's London
+  used its whole 45 minutes (154 calls). Its London and its tractor lost
+  head to head.
+
+**NO-GO.** The screen is not won:
+- overall head to head on the 8 reached: 56% (26-83), above half by one
+  verdict;
+- likeness head to head: 44%. It is worse, so the screen fails. Technique,
+  at 50%, holds;
+- against the set on the 8 reached, the lever won 4 verdicts of 16 to the
+  base's 5. Over all 15 it is 23% to 33%, -10 (-20, +0).
+
+The proof's bar is that gap's lower edge above 0, and the screen says it
+would not be met. So the paired 44 was not run. `46311cbd6` holds the lever.
+
+Why it fell short:
+- **The brief's box is not the model's foot.**
+  - "Fitting in about W x D" bounds a set: its stand, its scene and its
+    figures. The ask said `{"footprint": [w, d]}` as the brief gives it, 8
+    of 9 sessions gave it, and the answer laid the body's depth to the box's
+    other side.
+  - The dozer filled 33 by 30 studs where the scale said 18 long: "a squat,
+    very wide slab". Buckingham Palace was laid as a U 24 studs deep, its
+    front low across the whole box.
+  - Where the box is the thing's own foot (the forklift, the Ducati, the
+    Lincoln Memorial, the Arc), the sizes held.
+- **The tenths carried the reading's noise.** Answered to the plate, a
+  level roofline read as 0.16, 0.17, 0.14, 0.17 and 0.19 of the length
+  became blocks of 20 to 27 plates. The session built them, and the judge
+  saw a roofline broken "into stepped blocks". Buckingham's steps were a
+  plate each.
+- **The real thing's proportion is not the set's.**
+  - At microscale, a set stretches a long low building's height so its
+    storeys, balcony and portico fit. Buckingham, at a fifth as tall as it
+    is long, had no room for them.
+  - The Capitol's wings were read at 0.14 to 0.19 of its length, against
+    0.41 for its dome. That made them taller than the base's long, low wings,
+    which the judge preferred both times.
+  - A measure of the real thing helped where a subject is known by its
+    proportion (the Memorial's colonnade, the forklift's wheels). It hurt
+    where a subject is known by its features.
+- **Breaks helped.** The forklift's front and rear wheels, each read at its
+  own size, won both orders. The 3 reached and paired vehicles won 4 of 6
+  head to head, though none won against the set.
+- **The scale note misled.** The answer compared `studs=` with the scale's
+  size and gave both in 7 of 9. That scale was minifig scale for microscale
+  Architecture sets (52 to 87 studs) and 6 to 18 studs for the vehicles:
+  wrong for both, so the note was noise.
+- **Reach rose to 9 of 16, and all 9 built their own way.** Reading the
+  outline is no longer the obstacle.
+- **Next.**
+  - Size from the brief's box as a bound: the long side fits it, and the
+    depth comes from the real thing's own plan (`deep`), never from the
+    box's other side.
+  - Round the outline to levels: tenths within a few plates of their
+    neighbours are one level, and a step is only where the reading puts
+    one.
+  - Height for the features. A building's storeys, balcony and portico need
+    their plates, and at microscale an expert stretches the height before
+    losing them. The answer should give the height the features need beside
+    the one read.
+  - Keep the breaks: a vehicle's wheels and tracks as masses of their own,
+    each at its own size.
+  - Drop the comparison with the scale when a brief gives its box.
+- The change is taken back out on this branch (`905c99d6c`), so nothing of
+  it ships. `46311cbd6` holds it.
+
+### The brief's box as a bound, the outline in levels, height for storeys (2026-11-16, design23, `1f994cf7f`, NO-GO)
+
+**Why.** design22's Next, all five: the box as a bound with the depth from
+the real thing's own plan, the outline rounded to levels, the height a
+building's features need, the breaks kept, and no comparison with the scale
+beside a box.
+
+**The change** (`1f1c8a2b0`, then `1f994cf7f` before the screen), on
+design22's `46311cbd6`:
+
+- `studs= {"box": [w, d]}` is a bound (`{"footprint"}` the same). The
+  plan's long side is the box's long side. Its depth is `deep=`, the real
+  thing's own width across read off a photograph, held to the box's short
+  side and never taken from it. Along a long thing with no `deep=` it is 0.4,
+  with an ask for it, and a `deep=` that is the box's own shape is said.
+  With a box, the scale table and the comparison are left out.
+- The outline comes back in levels. Tenths within 4% of the measure, and at
+  least a brick up or a stud across, are one level. A level ends only at a
+  step read, or where the reading jumps when none is. A stretch that moves
+  more is a slope or a curve, with its ends and its highest. Steps under a
+  brick are bands.
+- `storeys=` (a building's) gives the plates its face needs at microscale:
+  a plinth of 2, 5 a storey (a brick of windows with its sill and its
+  floor's line) and 2 over it. These are measured on the tune half's
+  Architecture sets: Buckingham Palace's facade is 22 to 24 plates, the
+  Capitol's wings 18. A face lower than that is stretched, at most 2 times,
+  with the height read beside each. Past 6 storeys they are a tower's floors
+  and texture.
+- `1f994cf7f`, from the first start's two answers:
+  - Only the face stretches. What stands above it (a dome, a tower) keeps
+    its own height on top. The Capitol's set has wings of 18 plates where 14
+    are read, and a dome of 48 where 52 are, but the first answer stretched
+    its dome to 70; it now gives 57.
+  - The face is the main block, the highest level running a quarter of the
+    length or more. The Guggenheim's annex had been taken.
+  - A building's steps on the ground are not told to be read as its
+    underside.
+- The breaks stay, as design22 had them.
+- The asks are design22's, now asking for `deep=` and `storeys=` too. The
+  connector's METHOD is design22's.
+
+**Proof in the app.** `outline_sizes_probe` (headless) passed all 62 of its
+checks at `1f994cf7f`, run in the worktree. At `1f1c8a2b0` its 59 passed
+through `tools/probe.sh` from the locked snapshot. Among them:
+- five sets read off their own models, held by their levels and tiers;
+- a dozer in a 33 x 30 box comes out 33 by 18, and a slab tower 13 by 6;
+- a noisy roofline is one level with its dome a curve;
+- a palace is stretched 1.5 times for 3 storeys, and the Capitol's dome
+  stays at 57 plates, not 70;
+- the Guggenheim's storeys are counted on its rotunda;
+- 18 wrong readings are refused.
+
+`connector_method` passed beside it at `1f1c8a2b0`. The rest of
+`featuremap affected`'s list was not run, since the change is out.
+
+**The first start** (`realset-2026-11-16-d23try1`, at `1f1c8a2b0`) was
+stopped 13 minutes in, at its first answer: the Capitol's dome stretched to
+70 plates with its three storeys. Its two sessions are kept and not counted.
+
+**The screen.** The base is design22's: `d22base`, at `4ba7d52a1`, on the
+same night. From there to this unit's start (`13aef3401`), nothing changed
+in `src/ai`, `tools/mcp_tools.json`, `tools/bench` or the command socket;
+only `together.gd` changed in `src/net`. The lever ran from a locked
+snapshot, `snapd23lev` at `1f994cf7f`, imported first. The owner's path
+(`--via relay --no-claude-code --instructions none`), 2 sessions at a time,
+on design21's 16 tune-half subjects.
+
+- **Reach** (`design23-2026-11-16/py/reach23.py`): asked in 16 of 16.
+  - Read before the first build in 10 of 16, never after (design22: 9).
+  - 7 read heights and 3 widths.
+  - All 10 gave the brief's box and a `deep=`. Each answer's depth came from
+    that `deep=`, not the box. The Ducati's 16.5 was held to the box's 13.
+  - All 6 reached buildings gave `storeys=`.
+    - The Capitol (18 plates read, so 1.1 times) and Buckingham Palace
+      (13 read, so 1.5 times) were stretched to 19 plates.
+    - The Lincoln Memorial and the Arc had room as read.
+    - Rockefeller Center (70) and the United Nations (39) are towers.
+  - All 4 vehicles named their wheels or tracks as breaks, along with a mast
+    and forks, an auger, a blade, a ripper and handlebars.
+  - Rockefeller's 5 setbacks each said a side; 2 were under a stud and
+    merged.
+  - No reading was refused.
+- **The levels cost a vehicle its shape.** The Ducati's top, read from
+  0.44 to 0.52 of its length (a dip of 6 to 9 plates at its seat), came
+  back as one level of 52 plates.
+- **The holdout held.** `held_out_said` is true for all 16. No answer
+  carried a set's own file or number (`py/leak23.py`, 0 hits). The combine
+  searched the library for "combine harvester".
+- **The build check** (realset's audit):
+  - All 16 lever sessions left a model, in 9 to 24 minutes.
+  - Nothing floats in any of them.
+  - The lever's San Francisco has 64 overlaps, every one at its string
+    (71149k01 and k02): the gap `tools/connection_audit.py` already names.
+    The base's has the same 64.
+  - No other lever model has an overlap.
+
+The screen, as design21 set it: the lever preferred to its base overall,
+head to head in both orders, on the subjects it reached, with likeness and
+technique no worse. The base's Ducati has no model, so 9 of the 10 reached
+are paired (`py/screen23.py`, realset's own shares and intervals).
+
+| subjects | head to head: lever preferred, overall | likeness | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|
+| reached, 9 | 22% (6-55) | 22% | 22% | 33%, 22%, -11 (-28, +0) |
+| not reached, 6 | 42% (14-76) | 42% | 42% | 33%, 25%, -8 (-25, +0) |
+| all 15 | 30% (13-55) | 30% | 30% | 33%, 23%, -10 (-20, +0) |
+| reached buildings, 6 | 2 of 12 verdicts | 2 of 12 | 3 of 12 | 6 of 12, 4 of 12 |
+| reached vehicles, 3 | 2 of 6 verdicts | 2 of 6 | 1 of 6 | 0 of 6, 0 of 6 |
+
+Counting the base's missing Ducati as a lever win in both orders would make
+the reached 30% on all three dimensions.
+
+**Against design22's lever** (`d22lev`, same 16 subjects, judged the same
+way):
+- Overall, 50% (28-72); likeness 44%; technique 44%.
+- On the 10 reached, 45%.
+- The buildings design23 aimed at moved its way, 2 of 2 each: the Capitol,
+  Buckingham Palace and Rockefeller Center. So did the combine. Against the
+  base, the Capitol and the palace still lost both orders and Rockefeller
+  split.
+- The forklift, the Ducati, the dozer, the Lincoln Memorial and the Arc went
+  the other way, 0 of 2 each.
+- Against the set, both levers win 22% overall.
+
+Each subject: the reading, `studs=`, overall verdicts won against the set
+(base, lever, of 2), and the lever's overall wins head to head (of 2).
+
+| subject | read before the first build | `studs=` | vs the set | head to head |
+|---|---|---|---|---|
+| Rockefeller Center | widths, 5 setbacks, each sided, 70 storeys | box 12 x 13 | 2, 2 | 1 |
+| United Nations | widths, the Secretariat alone, 39 storeys | box 26 x 18 | 1, 0 | 0 |
+| Lincoln Memorial | heights, 1 storey, room as read | box 16 x 12 | 0, 0 | 0 |
+| Buckingham Palace | heights, one level, the Victoria Memorial as a break, 3 storeys, stretched 1.5, U | box 24 x 26 | 1, 1 | 0 |
+| Capitol | heights, the dome a curve, dome and steps as breaks, 3 storeys | box 56 x 18 | 0, 0 | 0 |
+| Arc de Triomphe | widths, one level, 1 storey | box 12 x 18 | 2, 1 | 1 |
+| Heavy Duty Forklift | heights, wheels, mast and forks as breaks | box 19 x 41 | 0, 0 | 0 |
+| Combine Harvester | heights, wheels and auger as breaks | box 35 x 36 | 0, 0 | 2 |
+| Dozer | heights, tracks, blade, ripper, exhaust as breaks | box 30 x 33 | 0, 0 | 0 |
+| Ducati Panigale | heights, wheels and handlebars as breaks | box 43 x 13 | 0, 0 | base: no model |
+| Guggenheim | none | | 2, 2 | 2 |
+| London | none | | 1, 0 | 0 |
+| Shanghai | none | | 0, 0 | 2 |
+| San Francisco | none | | 0, 0 | 1 |
+| Tokyo | none | | 0, 0 | 0 |
+| Tractor | none | | 1, 1 | 0 |
+
+The judge's words where the reading was taken:
+- **Capitol** (lost both orders). The lever's "wings are tall boxy blocks and
+  its squat dome over a dark drum looks like a generic domed civic
+  building". The base has "the long, low wings and a tall, tiered colonnaded
+  drum under a ribbed dome".
+- **Buckingham Palace** (lost both orders). The lever's "long white facade
+  with three pediments is believable, but its oversized Victoria Memorial
+  blocks the middle of the front view". The lever had "the more faithful
+  width-to-height ratio". The base has "the columned central portico, the
+  famous balcony and a grey rusticated ground floor".
+- **United Nations** (lost both orders). The lever's tower "is squat and
+  looks like an ordinary office block with a grey window grid". The base's
+  "tall, slim slab has white marble end walls and a blue-green glass curtain
+  wall".
+- **Lincoln Memorial** (lost both orders). The lever has "only a narrow
+  strip of steps" and "bulging baluster-like columns". The base has "the
+  memorial's broad central staircase".
+- **Forklift** (lost both orders). The lever's "enclosed yellow-roofed cab
+  and single bare mast frame read more like a truck with forks". The base
+  has "an open overhead guard over a visible seat and steering wheel, a
+  twin-rail mast with carriage".
+- **Dozer** (lost both orders). The lever's "huge grey slab of a blade hides
+  the whole front and its cab sits back on a boxy hull".
+- **Combine** (won both orders). The lever "has the unloading auger arm
+  swung along the grain tank ... so it reads at once as a combine". The
+  auger was a break it read.
+
+Each subject, front, corner and close, set then base then lever (contact
+sheets in `design23-2026-11-16/sheets/`), all 16 looked at. Measured off the
+models (`measure_designs.py` in the unit's scratch, as the sets were):
+
+- **Capitol.** The lever's is 56 by 18, its dome 62 plates over wings of 23
+  (19 told), with a flagpole at each wing's end. The base's dome is 56 over
+  wings of 19 to 20. The set's is 48 over 18. The dome stands 2.7 times its
+  wings in the lever's and the set's, 2.9 in the base's. The base's wings
+  are long and low under a balustrade. The lever's are taller white blocks
+  of windows, and its dome sits on a dark drum.
+- **Buckingham Palace.** Both are white where the set is tan. The lever's
+  front is long and level, with three pediments and rows of windows. Its
+  Victoria Memorial, read at 16 plates and raised to 22 by the stretch,
+  stands in the middle of the front. The base's has a balcony with figures
+  and a portico.
+- **United Nations.** The lever's Secretariat is 62 plates tall and wider,
+  with a grey window grid, beside a low General Assembly. The base's is 47
+  tall and slim, with blue glass between white end walls.
+- **Lincoln Memorial.** Both are white colonnades under an attic. The
+  lever's has skylights and a narrow stair; the base's stair runs the full
+  width.
+- **Rockefeller Center.** The lever's is a wide tan slab with one setback
+  and an antenna. The base's steps back in more setbacks with grey flanks.
+- **Arc de Triomphe.** The lever's is white, as the set is, with figures at
+  its piers. The base's is tan, with roundels and a tricolour in its arch.
+- **Forklift.** The lever's has an enclosed cab, and its mast is a single
+  black frame well ahead of the body. The base's has an open guard and a
+  two-rail mast with a carriage and pallet.
+- **Combine.** The lever's has its auger along the grain tank and a striped
+  header. The base's header is ahead of a box-sided body.
+- **Dozer.** The lever's is 23 by 18 with a grey blade as wide and tall as
+  its front. The base's is 30 by 18 with a low yellow blade.
+- **Ducati.** The lever's is a red mass over two wheels, its engine a grey
+  block under it, with no seat or tail line. The base has none.
+- The 6 not reached are alike in kind between the arms. The lever's
+  Guggenheim and Shanghai won both orders. Its London, Tokyo and tractor
+  lost both.
+
+**NO-GO.** The screen is not won:
+- overall head to head on the 9 reached: 22% (6-55);
+- likeness 22% and technique 22%, both worse;
+- against the set on the 9 reached, the lever won 4 verdicts of 18 to the
+  base's 6. Over all 15 it is 23% to 33%, -10 (-20, +0).
+
+So the paired 44 was not run.
+
+Why it fell short:
+- **The sizes are no longer what loses.** The fixes did what they were for:
+  - the depth came from the plan in 10 of 10;
+  - the Capitol's dome stands to its wings as the set's does;
+  - the palace's front was level;
+  - against design22's lever, the Capitol, the palace and Rockefeller won
+    both orders.
+
+  The base, which reads no outline, still beat the Capitol and the palace
+  in both orders, and Rockefeller split.
+- **What the judge names is a feature.** Every reached loss names what the
+  thing is known by, and the base had it:
+  - a tall, tiered drum over long, low wings;
+  - a portico and a balcony with figures;
+  - a staircase the width of the front;
+  - a glass curtain wall between marble end walls;
+  - an open overhead guard and a two-rail mast;
+  - a blade below the hood.
+
+  The one reached win, the combine, won on a feature its reading named, the
+  auger. Sizes say where the masses go and how big. They say nothing of
+  these, and the sessions that read them spent their builds on the masses.
+- **A size can cost a feature.**
+  - The Victoria Memorial, a break raised by the palace's stretch, hid the
+    palace's front.
+  - The dozer's blade, read a fifth of its length tall, came out a grey wall.
+  - The Ducati's seat and tail went into one level, since the levels were
+    set for a building's noisy roofline.
+- **Reach is not the obstacle** (10 of 16, all before the first build), and
+  over two screens the outline as sizes has not won likeness.
+- **Next.** Stop lifting the outline as sizes. The next lever should be the
+  features the thing is known by:
+  - read off the reference photograph before the first build;
+  - named as a builder would name them (a portico, a balcony, an overhead
+    guard, a mast with its carriage, an auger);
+  - each checked as built and seen from the front before the design is
+    called done.
+
+  design22's record pointed the same way: a measure of the real thing hurt
+  where a subject is known by its features. Keep a vehicle's breaks as
+  features: the forklift's wheels in design22 and the combine's auger here
+  won.
+- The change is taken back out on this branch (`b073908e0`), so nothing of
+  design22 or design23 ships. `1f994cf7f` holds what the screen ran.
+  `dd02f0f7b` adds three fixes to its words found during the screen: "1
+  plates", something "above its face" said of a face read as one level,
+  and "an U".
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

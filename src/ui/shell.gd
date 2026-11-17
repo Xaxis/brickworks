@@ -204,7 +204,9 @@ const MENUS: Array = [
 		">import", "-", "save", "save_as", "versions",
 		# subexport: Compare with… and Compare two sets or models… (APP_UX6 #7).
 		">compares",
-		"-", "share", "together",
+		# smalls3: Point it out to the others under Build together…, greyed
+		# with why outside a session (pointat put it on a part's menu alone).
+		"-", "share", "together", "together_point",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
@@ -350,6 +352,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	assemblies.scenery = store.scenery
 	assemblies.lift = store.lift
 	verbs.assemblies = assemblies
+	# An edit no copy of its sub-model could take, taken back: why, over
+	# whatever the edit's own command says of it.
+	assemblies.edit_refused.connect(bar.say_over)
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
 	# A model put into this one comes in hand as a paste does (intomodel).
@@ -1914,9 +1919,6 @@ func _shown(items: Array) -> Array:
 		if item in DESKTOP_ONLY and OS.has_feature("web"):
 			continue
 		if EARLY_COMMANDS.has(item) and not str(EARLY_COMMANDS[item]) in early:
-			continue
-		# pointat: Point it out to the others, only in a session.
-		if item == "together_point" and not _in_together():
 			continue
 		if item == "-" and (out.is_empty() or out.back() == "-"):
 			continue
