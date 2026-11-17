@@ -22896,10 +22896,13 @@ func _where_to_attach(args: Dictionary) -> Variant:
 	var wanted_kind: String = str(args.get("kind", "")).strip_edges()
 	var free: Array = []
 	var taken: int = 0
+	var grounded: int = 0
 	for point: OpenPoints.Point in all:
 		if not wanted_kind.is_empty() and OpenPoints.NAMES[point.kind] != wanted_kind:
 			continue
-		if point.by != 0:
+		if point.by == OpenPoints.GROUND:
+			grounded += 1
+		elif point.by != 0:
 			taken += 1
 		else:
 			free.append(point)
@@ -22938,8 +22941,9 @@ func _where_to_attach(args: Dictionary) -> Variant:
 	for n: int in shown.size():
 		(shown[n] as OpenPoints.Point).number = n + 1
 	var lines := PackedStringArray()
-	lines.append("%s open connection points%s: %d free, %d taken by the parts on them."
-		% [of_whom, "" if wanted_kind.is_empty() else " (%ss)" % wanted_kind, free.size(), taken])
+	lines.append("%s open connection points%s: %d free, %d taken by the parts on them%s."
+		% [of_whom, "" if wanted_kind.is_empty() else " (%ss)" % wanted_kind, free.size(), taken,
+			"" if grounded == 0 else ", %d facing the ground, which nothing goes under" % grounded])
 	if whole:
 		lines.append("Nothing is selected, so this is the whole model. parts= names some parts; "
 			+ "when the person has a selection, it is read instead.")

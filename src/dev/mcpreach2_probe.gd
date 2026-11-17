@@ -123,7 +123,14 @@ func _whole() -> void:
 	_check("one call, and a picture with it", int(calls_said[1]) == 1 and _seen != null)
 	_check("of the whole model, said so", said.begins_with("The model's open connection points:")
 		and said.contains("Nothing is selected, so this is the whole model."))
-	_check("every free one counted by kind", said.contains("Every free one, by kind:"))
+	var free: int = int(RegEx.create_from_string("open connection points: (\\d+) free").search(said).get_string(1)) \
+		if RegEx.create_from_string("open connection points: (\\d+) free").search(said) != null else -1
+	var numbered: int = RegEx.create_from_string("\\n  \\[\\d+\\] ").search_all(said).size()
+	_check("its %d free points every one numbered, none facing the ground under it: %d" % [free, numbered],
+		free > 0 and numbered == mini(free, 40)
+		and RegEx.create_from_string("anti-stud on #\\d+ \\(\\w+\\) at x=\\S+ y=0 ").search(said) == null)
+	_check("...and the ground's said: %s" % _line_with(said, "facing the ground"),
+		said.contains("facing the ground, which nothing goes under"))
 	var parts: Dictionary = {}
 	for found: RegExMatch in RegEx.create_from_string("\\] \\S+ on #(\\d+) ").search_all(said):
 		parts[int(found.get_string(1))] = true
@@ -138,8 +145,15 @@ func _whole() -> void:
 	_check("parts=[#%d] reads that part alone" % one, named.begins_with("Parts #%d' open connection points" % one)
 		and not named.contains("Nothing is selected"))
 	var seated: String = (await _called("where_to_attach", {"part": "3001", "color": 1}))[0]
-	_check("given part=, it seats one on the whole model, in edit_model's add",
-		seated.contains("edit_model") and not seated.contains("select"))
+	_check("given part=, it seats one on the whole model, in edit_model's add: %s"
+		% _line_with(seated, "seated on the points").left(140), seated.contains("Put them in edit_model's add"))
+	# A model with more free points than are numbered: the rest counted by
+	# kind and drawn as dots.
+	await _say("edit_model", {"add": [{"part": "3958", "color": 2, "x": 8, "y": 0, "z": 0}], "picture": false})
+	var big: String = (await _called("where_to_attach", {}))[0]
+	_check("past 40 free points, every one counted by kind: %s" % _line_with(big, "Every free one").left(160),
+		big.contains("Every free one, by kind:") and big.contains("drawn as dots on the picture") and _seen != null)
+	await _say("edit_model", {"remove": [_last_id()], "picture": false})
 	builder.select_brick(one, false)
 	await _frames(2)
 	var selected: String = (await _called("where_to_attach", {}))[0]
@@ -247,7 +261,7 @@ func _pool() -> void:
 	var pooled: String = await _say("submit_design", {"name": "Black pair", "description": "two bricks",
 		"floor": "none", "bricks": black, "pool": "31058-1, 7140-1"})
 	_check("two sets pooled: %s" % _line_with(pooled, "(pool)").left(160), pooled.contains(
-		"From 31058-1 Mighty Dinosaurs and 7140-1 X-wing Fighter's parts alone (pool): every one of its 2 pieces is in the sets"))
+		"From 31058-1 Mighty Dinosaurs and 7140-1 X-wing Fighter's parts alone (pool): every one of its 2 pieces is in the sets in its colour, 454 pieces left of the sets' 456."))
 	var unknown: String = await _say("submit_design", {"name": "Black pair", "description": "two bricks",
 		"floor": "none", "bricks": black, "pool": "99999999"})
 	_check("a number in no inventory is said so", unknown.contains("no set 99999999-1 is in Rebrickable's inventories"))
@@ -258,6 +272,14 @@ func _pool() -> void:
 
 
 # -- helpers -----------------------------------------------------------------------------
+
+
+func _last_id() -> int:
+	var world: BrickWorld = _main.get("_world")
+	var last: int = -1
+	for brick: BrickWorld.Brick in world.bricks():
+		last = maxi(last, brick.id)
+	return last
 
 
 static func _line_with(text: String, words: String) -> String:

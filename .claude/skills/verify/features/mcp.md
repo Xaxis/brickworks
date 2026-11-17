@@ -705,7 +705,9 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   parts, else the 2,000 put down last or those nearest near=), parts= the
   parts named; forty numbered points spread over every kind, facing and part,
   the rest counted by kind and drawn as up to 400 dots: f5 was asked to select
-  everything first. A turntable's answer says the camera goes once round a
+  everything first. A point facing the ground at the ground is not free
+  (`OpenPoints.GROUND`; nothing goes under the ground), only counted: the f5
+  car's numbers were half hollows under its own bricks. A turntable's answer says the camera goes once round a
   model that stands still, its lights and backdrop with it (it is drawn by
   turning the model before a still camera, which makes the same frames): f4
   said "I can't tell". attachment_points on a motor with an output (SPIKE,

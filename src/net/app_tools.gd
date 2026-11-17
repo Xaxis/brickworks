@@ -4198,9 +4198,9 @@ func _pool_said(pool: String) -> String:
 	var not_found: String = "" if trouble.is_empty() else " (%s)" % "; ".join(trouble)
 	if rows.is_empty():
 		return ("From %s's parts alone (pool): every one of its %s is in the set%s in its colour, "
-			+ "%s of the set's %s.%s") % [sets, Counted.of(pieces, "piece"), "s" if named.size() > 1 else "",
-			Counted.of(maxi(0, pieces_had - pieces), "piece left", "pieces left"), Working.comma(pieces_had),
-			not_found]
+			+ "%s of the %s %s.%s") % [sets, Counted.of(pieces, "piece"), "s" if named.size() > 1 else "",
+			Counted.of(maxi(0, pieces_had - pieces), "piece left", "pieces left"),
+			"sets'" if named.size() > 1 else "set's", Working.comma(pieces_had), not_found]
 	var short: int = 0
 	var lines := PackedStringArray()
 	for row: Dictionary in rows:
