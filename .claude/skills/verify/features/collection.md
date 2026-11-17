@@ -695,6 +695,13 @@ A deployment carries the numbers once `colors.json` is rebuilt
 ## Gotchas
 
 - **Godot exits 0 on a parse error**: read the probe for `SCRIPT ERROR`.
+- Each page sits in a scroll of its own (`Whole_own`, ...). Where its
+  controls leave its list under `LIST_LEAST` (a 390 x 844 phone's What I
+  own), the list stops scrolling and the page scrolls whole
+  (`scrolls_whole("own")`); elsewhere the list scrolls alone. A probe that
+  scrolls to a row finds the nearest scroll that still scrolls. The phone
+  case is checked by the web's `dialogs` check at 390 (a Label off the
+  screen there was this, keptbuilt 11-16).
 - New classes here (`Collection`, `CollectionStore`, `SetInventories`,
   `RebrickableAccount`, `CollectionDialog`, `TextFilePicker`) are not known to a
   `--script` run until `godot --headless --path . --import --quit` has scanned
