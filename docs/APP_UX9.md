@@ -831,6 +831,17 @@ The bar:
 - **Kept.** The mark survives a reload, the account's round trip and the CSV and XML exports. An older build keeps the set and drops only the mark, and says so.
 - **Over MCP,** `edit_collection {"built": ["7140-1"]}` in 1 call. The MCP walk's v10 and n5 still pass.
 - **Checks:** `collection`, `mybricks` and `ownlimit` pass, and one review before merge.
+- **After its review (kbfix, 2026-11-17).** A set is counted once by its number, all its entries together, in the
+  app (`Collection.pool`) and on the site (`api/_owned.js` `poolOf`). Which entry holds a Built mark or a missing one
+  changes nothing: two copies, one built, three 3001s missing count 7 whichever way they are kept (it was 7 or 10).
+  - The site's pool now leaves out the parts marked missing, as the app's does. Before, it counted them, live too:
+    17 in the app and 20 on the site.
+  - A kept `built` counts only as a whole number, up to the copies. That is one rule in the app
+    (`Collection.built_count`), the site and the API's ops (`builtCount`).
+  - A kept site pool says the rule it was counted by (`supabase/pool_rule.sql`), so one counted by an older rule
+    is counted again. Until that file is applied, pools are kept as before.
+  - The exports' tooltips say that reading a file back adds to what is there, and that the XML does not carry
+    Includes Spares.
 
 **smalls4, in full.** Eight faults this round's runs found, each with its file,
 item 1 first and on its own commit, so it can ride the next release:

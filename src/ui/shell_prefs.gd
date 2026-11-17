@@ -73,6 +73,9 @@ const DEFAULTS: Dictionary = {
 	"bricklink_notify": false,
 	"key_strip": true,
 	"grid": false,
+	# View, Connection points (JointMarks): where a part connects, marked
+	# while one is in hand and on the part under the pointer.
+	"joint_marks": true,
 	"snap": "stud",
 	"turn_step": 90.0,
 	# What a new model stands on (ModelFloor, Settings): the words after

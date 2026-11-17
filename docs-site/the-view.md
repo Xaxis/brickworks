@@ -1,11 +1,12 @@
 ---
 tools: view_model, set_floor, in_view, view_board, save_view
-ai: Turning, sliding and zooming the camera, navigation presets, the view cube, views saved with the model, the split view, cutting away and X-ray, stress colours, stud directions, edges and studs, and the floor the model stands on. An assistant looks at the model as the person does, and changes nothing by looking. view_model draws it from one side; view_board draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, and can edge named parts in magenta and ghost the rest, draw parts see-through as X-ray does, show the model built to a step with that step's new parts edged, or with "studs": true colour it as Stud directions does. in_view says the views kept, the step the timeline is at, the part in hand, and the reference picture. set_floor sets the floor.
+ai: Turning, sliding and zooming the camera, navigation presets, the view cube, views saved with the model, the split view, cutting away and X-ray, stress colours, stud directions, connection points, edges and studs, and the floor the model stands on. An assistant looks at the model as the person does, and changes nothing by looking. view_model draws it from one side; view_board draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, and can edge named parts in magenta and ghost the rest, draw parts see-through as X-ray does, show the model built to a step with that step's new parts edged, or with "studs": true colour it as Stud directions does. view_model with "marks": true marks every connection point in its picture as View › Connection points does. in_view says the views kept, the step the timeline is at, the part in hand, and the reference picture. set_floor sets the floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
   - view_model view=NAME looks from a view the person saved with the model, exactly as their window draws it; a name it does not keep is answered with those it does.
   - save_view name=NAME keeps where the person's window looks from now with the model, as Save this view… does; in_view lists the views kept, each with its key.
   - Floors are a baseplate (16, 32 or 48 studs, or any size in eights to 192), a grid, or none.
+  - view_model marks=true marks where the parts connect, filled for what goes in (studs, pins, axles, bars, balls) and hollow for what takes one (anti-studs, pin and axle holes, clips, sockets), each at its own size; the marks are in that picture alone.
   - view_model and view_board change nothing, and always draw every edge and stud, whatever the person's window shows.
 title: The view
 nav: The view
@@ -137,6 +138,14 @@ ui:lift by a part
 
 <!-- covers
 ui:stud directions
+-->
+
+## Connection points {#connection-points}
+
+**View › Connection points** marks where parts connect. With a part in hand it marks the parts near it, and with nothing in hand the part under the pointer. What goes in is filled: studs, pins, axles (a cross), bars and balls. What takes one is hollow, a ring the size of what goes in it: anti-studs, pin holes, axle holes (a cross), clips, the mouth of a hollow a bar fits, and sockets. A pin or an axle is marked at its ends. Blue is what the part in hand can go onto, faint grey what it cannot, and the end of the part in hand that goes onto the joint it is aimed at is amber, so the third hole of a beam is found without counting. It is on to start with; the menu item turns it off. The marks are never saved, rendered, put in a picture or drawn in instructions.
+
+<!-- covers
+ui:connection points
 -->
 
 ## Edges and studs {#edges-studs}

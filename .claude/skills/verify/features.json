@@ -1586,6 +1586,14 @@
       "tests": []
     },
     {
+      "id": "cli:jointmarks probe",
+      "kind": "cli",
+      "entry": "src/dev/jointmarks_probe.gd",
+      "reach": "tools/probe.sh jointmarks [-- --only=menu,beam,kinds,cost,written,session --orthanc --shots=DIR]   (windowed, on the GPU, 1280 x 720: on out of the box and View, Connection points off and on; a 2780 pin aimed at a 32524 beam's third hole, each hole's ring within 1 px of its mouth, hollow, a pin's size, the pin's end amber; eleven parts' studs, anti-studs, clips, bars, balls, sockets, hinges, axles, pin and axle holes each at its own size, studs and anti-studs as the catalogue counts them; the car's frame with the marks within 10% of without; the saved file, Export picture, a session's picture and a Render the same bytes; view_model marks=true in 1 call over tools/call; PROBE_COMPAT=1 for the web's renderer)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:judge design rounds in pairs",
       "kind": "cli",
       "entry": "tools/bench/pairwise.py",
@@ -1609,6 +1617,22 @@
       "entry": "src/dev/mcp_sync_probe.gd",
       "reach": "godot --headless --path . --script src/dev/mcp_sync_probe.gd   (-- --write writes tools/mcp_tools.json again from the app)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:keptbuilt api test",
+      "kind": "cli",
+      "entry": "tools/web/keptbuilt_api.mjs",
+      "reach": "node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op built idempotent and refused with words, the mark kept through every other change, a replace import and an older app's PUT, fewer copies unmark and say so, the CSV's Built column and the XML's Built remarks read back, the older collection lot for lot)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:keptbuilt probe",
+      "kind": "cli",
+      "entry": "src/dev/keptbuilt_probe.gd",
+      "reach": "tools/relay_probe.sh keptbuilt   (a window, 1280x720; -- --shots=DIR: 7140-1 and 12 loose lots, the counts by hand (341 pieces); its Built mark pressed once: the pool, the bin's My bricks, What can I build? and submit_design mine=true all the 12 lots alone (56), pressed again all back; edit_collection {\"built\": [\"7140-1\"]} in 1 call and {set, copies: 0}, refusals changing nothing; kept through a restart and another device; Save sets as CSV and XML read back built; rel-m304's Collection keeps the set and drops only the mark; two copies Built 1 of 2, 2 of 2, none; the words in de/fr/es)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -3601,7 +3625,7 @@
       "id": "lib:build with what I own",
       "kind": "lib",
       "entry": "api/_owned.js",
-      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool); the SQL in tools/discovery_try.sql; the page in the discovery browser flow, signed in with a collection",
+      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool, a kept pool counted again by its rule); the SQL in tools/discovery_try.sql and tools/pool_rule_try.sql; the page in the discovery browser flow, signed in with a collection",
       "area": "web",
       "tests": []
     },
@@ -5236,6 +5260,14 @@
       "entry": "src/net/assistants.gd",
       "reach": "godot --path .  (the assistant's column, Connect your AI: Your AI chooses Claude, ChatGPT, Gemini, Le Chat, Perplexity, Grok, Claude Code, Codex, Gemini CLI, Cursor, VS Code or another app, from assets/assistants.json; Connect does its own way with its steps beside)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "ui:connection points",
+      "kind": "ui",
+      "entry": "src/ui/joint_marks.gd",
+      "reach": "tools/probe.sh jointmarks   (by hand: View, Connection points, on to start with: pick a 2780 pin and point it at a beam's hole, or hover a part with Select; a session: view_model marks=true)",
+      "area": "view",
       "tests": []
     },
     {

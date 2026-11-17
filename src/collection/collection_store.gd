@@ -261,6 +261,14 @@ func remove_set(entry: Dictionary) -> Dictionary:
 	return await change(body)
 
 
+## Sets marked as kept built, or taken apart (keptbuilt): each of
+## [param asked] is {"set", "was": how many of its copies were shown built,
+## "built": how many are now}, every copy of the number together. Refused,
+## changing nothing, when any is not as shown (api/collection.js op "built").
+func set_built(asked: Array) -> Dictionary:
+	return await change({"op": "built", "sets": asked})
+
+
 ## Forget all of it, at the account and here: what was shown, if it is
 ## still so.
 func clear() -> Dictionary:
@@ -378,6 +386,16 @@ static func marks_words(body: Variant) -> String:
 		else:
 			said.append("%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
 				% named)
+	# keptbuilt: copies marked Built that the list no longer has as many of.
+	var unbuilt: Array = done["unbuilt"] if done.get("unbuilt") is Array else []
+	if not unbuilt.is_empty():
+		var named := PackedStringArray()
+		for one: Variant in unbuilt.slice(0, 3):
+			if one is Dictionary:
+				named.append("%s (%d)" % [str(one.get("set", "")), int(one.get("copies", 0))])
+		var sets: int = int(done.get("unbuilt_sets", unbuilt.size()))
+		said.append("fewer copies came back than were marked Built, so those are no longer marked: %s%s"
+			% [", ".join(named), "" if sets <= named.size() else ", …"])
 	return " — ".join(said)
 
 

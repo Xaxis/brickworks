@@ -91,6 +91,20 @@
 //       missing from the count the person saw ("was", 0 for none) to qty
 //       (0: none missing). Kept on the set as "missing": [{part, colour,
 //       qty}], in LDraw's numbers as the set's inventory has them.
+//   {"op": "built", "sets": [{"set": "7140-1", "was": 0, "built": 1}]}
+//       how many copies of each set stand built on a shelf (keptbuilt,
+//       APP_UX9 #6), every copy of the number together, from the count the
+//       person saw ("was") to built (0: all apart, at most the copies
+//       owned). Kept on the set's entries as "built", in the order kept,
+//       each up to its own count. The app leaves a built copy's parts out of
+//       what can be built; its spares stay in. Fewer copies (an Own down, a
+//       Remove of one entry) take the copies kept apart first, so a mark
+//       stays while there is a copy for it; a replace that lists the set
+//       again carries its marks as missing's are carried, and says the
+//       copies it could not ("unbuilt"). A Rebrickable CSV's Built column
+//       and a BrickLink XML item's REMARKS of Built bring the mark in (the
+//       app's own exports write them); a file that says nothing of it
+//       leaves the marks as they were.
 //
 // A set as it really is (mysets, 2026-11-07), additive: a set entry may
 // carry "missing", the lots it is short of, and a minifigure is kept among
@@ -107,6 +121,9 @@
 // remove_set takes a figure out by its number, from an older app too. An
 // older app reads every set and lot as
 // before and counts a set with parts missing as whole, as it always has.
+// "built" is additive the same way: an older app reads the set and its
+// copies and counts a built one's parts, as it always has, and its bin
+// says that every set counts, built or not.
 //
 // What was seen and is no longer so (a count moved on, a lot gone, the rev
 // moved on) is refused with 409 and the collection as it is now, changing
@@ -152,7 +169,7 @@ import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
-import { plainColour, readShard, resolvePart, shardOf } from "./_owned.js";
+import { builtCount, plainColour, readShard, resolvePart, shardOf } from "./_owned.js";
 
 export const MAX_BYTES = 1_000_000;
 /// Keep them and Take back name every lot a session added, up to MAX_LOTS.
@@ -306,6 +323,7 @@ const HEADINGS = {
   qty: ["quantity", "qty", "count", "quantity owned"],
   set: ["set number", "set_num", "set", "set no", "set_number", "setnumber"],
   spares: ["includes spares", "include_spares", "include spares", "includes_spares"],
+  built: ["built", "copies built", "kept built", "built copies"],
 };
 
 function column(headings, kind) {
@@ -314,7 +332,10 @@ function column(headings, kind) {
 
 /// A Rebrickable export: a sets list (Set Number, Quantity, Includes
 /// Spares) or a parts list (Part, Color, Quantity), in Rebrickable's
-/// numbers. Anything else is refused with the line it went wrong on.
+/// numbers. Anything else is refused with the line it went wrong on. A sets
+/// list may say how many of each set's copies are kept built (Built: a
+/// count, or yes for all of them), as the app's own export writes it
+/// (keptbuilt); "builtKnown" says the file has the column.
 export function rebrickableCsv(text) {
   const rows = csvRows(String(text || "").replace(/^﻿/, ""));
   if (rows.length === 0) throw new Refusal(400, "the file is empty");
@@ -329,7 +350,8 @@ export function rebrickableCsv(text) {
       const set = setNumber(row[at.set]);
       if (!set) throw new Refusal(400, `${line}: "${row[at.set] ?? ""}" is not a set number`);
       const spares = at.spares >= 0 && /^(true|yes|1)$/i.test(String(row[at.spares]).trim());
-      sets.push([set, quantity(row[at.qty], line), spares]);
+      const qty = quantity(row[at.qty], line);
+      sets.push([set, qty, spares, at.built >= 0 ? builtCell(row[at.built], qty, line) : 0]);
     });
   } else if (at.part >= 0 && at.colour >= 0) {
     rows.slice(1).forEach((row, n) => {
@@ -344,7 +366,18 @@ export function rebrickableCsv(text) {
     throw new Refusal(400, "line 1: neither a sets list (Set Number, Quantity) nor a parts list (Part, Color, Quantity)");
   }
   if (sets.length + parts.length === 0) throw new Refusal(400, "the file has a heading and nothing under it");
-  return { sets, parts };
+  return { sets, parts, builtKnown: at.set >= 0 && at.part < 0 && at.built >= 0 };
+}
+
+/// A sets list's Built cell: how many of the row's [qty] copies are kept
+/// built. Empty, no or 0 is none; yes (true, y, x) is every copy; a count
+/// is that many, at most the copies.
+function builtCell(raw, qty, line) {
+  const text = String(raw ?? "").trim();
+  if (text === "" || /^(0|false|no|n)$/i.test(text)) return 0;
+  if (/^[0-9]{1,9}$/.test(text)) return Math.min(qty, Number(text));
+  if (YES.test(text)) return qty;
+  throw new Refusal(400, `${line}: Built "${text}" is neither a count nor yes or no`);
 }
 
 /// Yes in a spreadsheet's words: 1, true, yes, y, x.
@@ -410,7 +443,9 @@ function tag(block, name) {
 /// A BrickLink XML: a wanted list (MINQTY) or an inventory upload (QTY),
 /// in BrickLink's numbers. Parts and sets are kept; minifigures, books
 /// and gear are counted and left out, since nothing here can say what is
-/// in a BrickLink minifigure.
+/// in a BrickLink minifigure. A set item whose REMARKS are Built alone is that
+/// many copies kept built, as the app's own export writes them (keptbuilt);
+/// "builtKnown" says any item did.
 export function bricklinkXml(text) {
   const source = String(text || "");
   if (!/<INVENTORY>/i.test(source)) throw new Refusal(400, "not a BrickLink XML: there is no <INVENTORY>");
@@ -419,6 +454,7 @@ export function bricklinkXml(text) {
   const sets = [];
   const parts = [];
   let otherKinds = 0;
+  let builtKnown = false;
   items.forEach((item, n) => {
     const line = `item ${n + 1}`;
     const type = (tag(item, "ITEMTYPE") || "").toUpperCase();
@@ -427,7 +463,12 @@ export function bricklinkXml(text) {
     if (type === "S") {
       const set = setNumber(id);
       if (!set) throw new Refusal(400, `${line}: "${id}" is not a set number`);
-      sets.push([set, quantity(qty, line), false]);
+      const copies = quantity(qty, line);
+      // Only a remark that is the word alone, as the app's export writes it:
+      // "Built once, box opened" is a person's note, not the mark.
+      const built = /^\s*built\s*$/i.test(tag(item, "REMARKS") || "");
+      builtKnown ||= built;
+      sets.push([set, copies, false, built ? copies : 0]);
     } else if (type === "P") {
       const part = partNumber(id);
       if (!part) throw new Refusal(400, `${line}: "${id}" is not a part number`);
@@ -438,7 +479,7 @@ export function bricklinkXml(text) {
       otherKinds++;
     }
   });
-  return { sets, parts, otherKinds };
+  return { sets, parts, otherKinds, builtKnown };
 }
 
 /// Set numbers typed or pasted: separated by commas, spaces or lines.
@@ -478,11 +519,12 @@ function mapped(parsed, numbering, index) {
     parts.push({ part, colour: code, qty });
   }
   if (parsed.otherKinds) leave("BrickLink minifigures, books and gear, which are not expanded", parsed.otherKinds);
-  const sets = parsed.sets.map(([set, qty, spares]) => ({ set, qty, spares: Boolean(spares) }));
+  const sets = parsed.sets.map(([set, qty, spares, built]) => (built > 0
+    ? { set, qty, spares: Boolean(spares), built: Math.min(qty, built) } : { set, qty, spares: Boolean(spares) }));
   for (const [fig, qty, name] of parsed.figs || []) {
     sets.push(name ? { set: fig, qty, spares: false, fig: true, name } : { set: fig, qty, spares: false, fig: true });
   }
-  return { sets, parts, leftOut };
+  return { sets, parts, leftOut, builtKnown: Boolean(parsed.builtKnown) };
 }
 
 // --- lots and sets, as kept ---------------------------------------------------
@@ -602,13 +644,20 @@ class Keyed {
   /// lot that would have held more noted in [clamped].
   add(one, qty) {
     const held = this.get(one);
-    if (!held) return this.keep({ ...one, qty: Math.min(MAX_QTY, qty) });
+    if (!held) {
+      const made = { ...one, qty: Math.min(MAX_QTY, qty) };
+      if (made.built !== undefined) made.built = builtCount(made) || undefined;
+      if (made.built === undefined) delete made.built;
+      return this.keep(made);
+    }
     const sum = held.qty + qty;
     if (sum > MAX_QTY && one.part !== undefined) {
       this.clamped.push({ part: held.part, colour: held.colour, over: sum - MAX_QTY });
     }
     held.qty = Math.min(MAX_QTY, sum);
     if (one.spares) held.spares = true;
+    // A set's copies kept built, added as its copies are (keptbuilt).
+    if (builtCount(one) > 0) held.built = Math.min(held.qty, builtCount(held) + builtCount(one));
     return held;
   }
 
@@ -651,6 +700,11 @@ function merged(have, add, mode, src, books = new Map()) {
   // part by the app's key whatever number and colour code each was marked
   // under (lb2check M1: 6141 and its old 4073 were capped apart).
   const marked = new Map();
+  // The copies kept built of the entries it takes out, by set (keptbuilt).
+  const built = new Map();
+  for (const s of have.sets) {
+    if (builtCount(s) > 0 && !sets.get(s)) built.set(s.set, (built.get(s.set) || 0) + builtCount(s));
+  }
   for (const s of have.sets) {
     if (!Array.isArray(s.missing) || !s.missing.length || sets.get(s)) continue;
     const both = new Keyed(lotKey, marked.get(s.set) || []);
@@ -712,7 +766,42 @@ function merged(have, add, mode, src, books = new Map()) {
     if (!held.missing.length) delete held.missing;
   }
   for (const p of add.parts) parts.add({ ...p, src }, p.qty);
-  return { next: { sets: sets.list, parts: parts.list }, parts, unkept, unread, gone };
+  // Their marks carried onto the copies the replace puts back, then onto
+  // the person's other copies of the set, as far as there are copies; the
+  // copies past that are said ("unbuilt"). A set put back by none goes with
+  // its mark. A file that says how many are built (the app's own export)
+  // is taken as it says, for the copies it brings.
+  const unbuilt = [];
+  if (!add.builtKnown) {
+    for (const [set, was] of built) {
+      const room = sets.list.filter((s) => s.set === set && !s.fig).reduce((n, s) => n + copies(s), 0);
+      if (room === 0) continue;
+      const total = builtOf(sets.list, set) + was;
+      spreadBuilt(sets.list, set, Math.min(total, room));
+      if (total > room) unbuilt.push({ set, copies: total - room });
+    }
+  }
+  return { next: { sets: sets.list, parts: parts.list }, parts, unkept, unread, gone, unbuilt };
+}
+
+/// How many copies of [set] are kept built in [list], every entry of it,
+/// each as builtCount reads it.
+function builtOf(list, set) {
+  return list.filter((s) => s.set === set && !s.fig).reduce((n, s) => n + builtCount(s), 0);
+}
+
+/// [total] copies of [set] marked built over its entries in [list], in the
+/// order kept, each up to its own count: the copies are alike, so where a
+/// mark sits among one number's entries is the account's to choose.
+function spreadBuilt(list, set, total) {
+  let left = total;
+  for (const s of list) {
+    if (s.set !== set || s.fig) continue;
+    const put = Math.min(left, copies(s));
+    if (put > 0) s.built = put;
+    else delete s.built;
+    left -= put;
+  }
 }
 
 // A set's marks, counted as the app counts them. One rule, read from one
@@ -934,7 +1023,13 @@ export function applyOp(have, body) {
     // Taken out already, elsewhere: what the person asked for is so.
     if (!held) return { next: null, done: { removed_sets: 0 } };
     if (held.qty !== was) throw new Conflict(`${set} is ${held.qty} now, not the ${was} shown`, have);
+    // The copies kept apart go first: a mark stays on a copy left (keptbuilt).
+    const builtBefore = held.fig ? 0 : builtOf(sets.list, held.set);
     sets.take(id);
+    if (builtBefore > 0) {
+      const left = sets.list.filter((s) => s.set === held.set && !s.fig).reduce((n, s) => n + copies(s), 0);
+      spreadBuilt(sets.list, held.set, Math.min(builtBefore, left));
+    }
     return { next: next(), done: { removed_sets: 1 } };
   }
 
@@ -970,6 +1065,8 @@ export function applyOp(have, body) {
       return { next: next(), done: { owned: qty, ...(away ? { spent: away.id } : {}) } };
     }
     const before = structuredClone(copiesOf());
+    // The copies kept apart go first: a mark stays on a copy left (keptbuilt).
+    const builtBefore = builtOf(copiesOf(), set);
     let off = now - qty;
     // Their own copy first, then the others from the last kept back.
     const copies = copiesOf();
@@ -980,6 +1077,7 @@ export function applyOp(have, body) {
       else held.qty -= take;
       off -= take;
     }
+    if (builtBefore > 0) spreadBuilt(sets.list, set, Math.min(builtBefore, qty));
     // What it took down from, remembered with the change (never sent):
     // an Own back to that count puts these back.
     const away = { set, before, after: structuredClone(copiesOf()) };
@@ -1023,6 +1121,38 @@ export function applyOp(have, body) {
     return { next: next(), done: { marked: ids.length, missing: missing.list.reduce((sum, p) => sum + p.qty, 0) } };
   }
 
+  if (op === "built") {
+    // How many copies of each set stand built (keptbuilt): every copy of
+    // the number together, from the count shown to the count asked.
+    const changes = listed(body, "sets", MOST_LOT_CHANGES, "sets");
+    if (changes.length === 0) throw new Refusal(400, "no sets to mark built or apart");
+    const named = changes.map((one, n) => {
+      const set = setNumber(one?.set);
+      if (!set) throw new Refusal(400, `set ${n + 1}: "${one?.set}" is not a set number`);
+      return set;
+    });
+    named.forEach((set, n) => {
+      if (named.indexOf(set) !== n) throw new Refusal(400, `set ${n + 1}: ${set} is named twice`);
+    });
+    const counts = changes.map((one, n) => [counted(one?.was, named[n], 0, "count seen"),
+      counted(one?.built, named[n], 0, "count built")]);
+    const list = sets.list;
+    named.forEach((set, n) => {
+      const owned = list.filter((s) => s.set === set && !s.fig).reduce((sum, s) => sum + copies(s), 0);
+      if (owned === 0) throw new Conflict(`${set} is not in your collection any more`, have);
+      const now = builtOf(list, set);
+      if (now !== counts[n][0]) throw new Conflict(`${set} has ${now} kept built now, not the ${counts[n][0]} shown`, have);
+      if (counts[n][1] > owned) {
+        throw new Refusal(400, `${set}: ${counts[n][1]} built, but ${owned === 1 ? "one copy is" : `${owned} copies are`} owned`);
+      }
+    });
+    if (named.every((set, n) => counts[n][0] === counts[n][1])) {
+      return { next: null, done: { built: named.map((set, n) => ({ set, was: counts[n][0], built: counts[n][1] })) } };
+    }
+    named.forEach((set, n) => spreadBuilt(list, set, counts[n][1]));
+    return { next: next(), done: { built: named.map((set, n) => ({ set, was: counts[n][0], built: counts[n][1] })) } };
+  }
+
   if (op === "start_over") {
     const seen = body?.rev === undefined || body?.rev === null ? null : Number(body.rev);
     const now = have.rev === undefined || have.rev === null ? null : Number(have.rev);
@@ -1031,7 +1161,7 @@ export function applyOp(have, body) {
     return { next: { sets: [], parts: [] }, done: { started_over: true } };
   }
 
-  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing or start_over, "
+  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing, built or start_over, "
     + "or from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
 }
 
@@ -1090,7 +1220,7 @@ function keptAway(recent) {
 /// in [done], so a resend is told the same.
 function importing(have, body, imported, books = new Map()) {
   const mode = body?.mode === "replace" ? "replace" : "add";
-  const { next, parts, unkept, unread, gone } = merged(have, imported, mode, SOURCE_OF[String(body.from)], books);
+  const { next, parts, unkept, unread, gone, unbuilt } = merged(have, imported, mode, SOURCE_OF[String(body.from)], books);
   return {
     next,
     done: withClamped({
@@ -1103,6 +1233,7 @@ function importing(have, body, imported, books = new Map()) {
       ...(unkept.length ? { unkept: unkept.slice(0, 50), unkept_lots: unkept.length } : {}),
       ...(unread.length ? { unread: unread.slice(0, 50), unread_sets: unread.length } : {}),
       ...(gone.length ? { gone: gone.slice(0, 50), gone_sets: gone.length } : {}),
+      ...(unbuilt.length ? { unbuilt: unbuilt.slice(0, 50), unbuilt_sets: unbuilt.length } : {}),
     }, parts),
   };
 }

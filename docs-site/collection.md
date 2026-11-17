@@ -1,7 +1,7 @@
 ---
 tools: parts_list, edit_collection
 panels: CollectionDialog#my-collection
-ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= puts how many of each named part a set they own is missing to a count, all its copies together, and says each change as was N, now M so it can be put back; none=true says a set has nothing missing only while nothing is marked, and is refused otherwise, naming what is: the lots are named to unmark them, or none=true is sent again with marked= the number of lots it named; missing= is sent alone, not with add= or remove=.
+ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= puts how many of each named part a set they own is missing to a count, all its copies together, and says each change as was N, now M so it can be put back; none=true says a set has nothing missing only while nothing is marked, and is refused otherwise, naming what is: the lots are named to unmark them, or none=true is sent again with marked= the number of lots it named; missing= is sent alone, not with add= or remove=. edit_collection built= marks sets kept built on a shelf (["7140-1"], or {set, copies} for how many copies, 0 to take them apart), each said as was N; a built copy's parts, its spares apart, are left out of what can be built, the bin and mine=true; built= is sent alone.
 rules:
   - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection
@@ -21,6 +21,8 @@ On the **What I own** page, any of these:
 - **Photo…** finds a set from a photo of its box, its booklet's cover or a minifigure, and offers the three it thinks most likely. The photo goes to Brickognize, a third party, and Brickworks says so the first time. A minifigure is kept by its BrickLink number, its parts not counted.
 - **Rebrickable CSV…** or **BrickLink XML…** reads a list you exported there.
 - From your Rebrickable account: your own **Rebrickable API key** and **User token** (or username and password), then **Fetch**. The key goes only to Rebrickable and is not kept. Fetching again replaces what came from Rebrickable before. A set's missing parts stay marked, as far as the copies Rebrickable lists hold them; Brickworks says if any could not be.
+
+**Save sets as CSV** and **Save sets as XML** save your sets as a Rebrickable sets list and a BrickLink XML, each saying which you keep built. The XML does not say which sets' spare parts you kept; the CSV does. Read back into Brickworks, a file adds to what is there, as every file does: to restore your collection from one, read it into an empty collection (**Start over** first).
 
 Each set is counted out into its parts.
 
@@ -64,6 +66,12 @@ ui:a set from a photo
 ui:a set's missing parts
 -->
 
+## Sets you keep built {#built}
+
+A set standing built on your shelf is not loose parts. Press **Built** beside it on *What I own*, and its parts leave What can I build?, Build from my bricks and a design your AI makes from your parts; its spares still count. Press **Built** again when you take it apart, and they come back. With two or more copies, each press marks one more copy built (*Built 1 of 2*), and after the last, none. The summary at the top says how many pieces stand built.
+
+The mark is kept with your account and in the files Save sets as CSV and as XML make. Your AI can mark a set too: tell it which sets you keep built, or took apart, and it says each as it was, so it can be put back. An older Brickworks keeps the set but not the mark, and counts every set.
+
 ## What do I need? {#need}
 
 ![The car's parts list, 61 pieces in 32 lots: each with how many, its picture, number, name and colour; along the top What do I need?, Save as CSV, and the BrickLink, Rebrickable and LEGO® Pick a Brick lists.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")
@@ -99,10 +107,10 @@ Where the LDraw community has a model of the set, the bin follows its booklet: t
 Build from everything you own, so a model never needs a part you do not have:
 
 1. Choose **Build from my bricks** at the top of *What I own*.
-2. The bin becomes your own parts: your sets' parts, less any you marked missing, and your loose parts, a tile for each part in each colour with how many you have left. Each part you put down takes one; undo or a delete gives it back. The status bar says when you put down the last one you own.
+2. The bin becomes your own parts: your sets' parts, less any you marked missing and those of [sets you keep built](#built), and your loose parts, a tile for each part in each colour with how many you have left. Each part you put down takes one; undo or a delete gives it back. The status bar says when you put down the last one you own.
 3. A part with none left is greyed but still yours to use. One more than you own is marked over on its tile, on the line at the top of the bin and in the parts list ([[P]]).
 
-Every set you own counts, built or not: My collection cannot mark a set as kept built yet. The choice is saved with the model, and follows your collection as it changes. Ask your own Claude for a design "from my collection" and it is held to the same parts: the app tells it each part the design goes over, and by how many.
+A set you marked **Built** is left out: its parts stand on your shelf, and only its spares count. The choice is saved with the model, and follows your collection as it changes. Ask your own Claude for a design "from my collection" and it is held to the same parts: the app tells it each part the design goes over, and by how many.
 
 ## Compare two sets or models {#compare-sets}
 

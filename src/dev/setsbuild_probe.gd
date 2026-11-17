@@ -206,7 +206,7 @@ func _pool(numbers: Array, loose: Array) -> Dictionary:
 	var found: Dictionary = {}
 	for number: String in numbers:
 		found[number] = _records[number]
-	return OwnCounts.owned(mine.pool(found, _library))
+	return mine.pool(found, _library)
 
 
 static func _count(pool: Dictionary) -> int:

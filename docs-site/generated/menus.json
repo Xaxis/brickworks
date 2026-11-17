@@ -941,6 +941,12 @@
 					"tip": "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
 				},
 				{
+					"name": "joint_marks",
+					"words": "Connection points",
+					"key": "",
+					"tip": "Mark where parts connect, on the parts near the one in hand and on the part under the pointer: studs, pins, axles, bars and balls filled, what takes them hollow"
+				},
+				{
 					"line": true
 				},
 				{
@@ -1962,6 +1968,7 @@
 		"xray": "I",
 		"stress": "",
 		"stud_map": "",
+		"joint_marks": "",
 		"turn_left": "shift-Q",
 		"turn_right": "shift-E",
 		"save_view": "alt-V",

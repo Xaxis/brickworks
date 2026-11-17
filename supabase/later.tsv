@@ -37,3 +37,5 @@ achievements.sql	notification_rows	comment_mentions.sql	'mention'::text
 challenge_notices.sql	notification_rows	comment_mentions.sql	'mention'::text
 feedback.sql	beta_tester	beta_join.sql	public.beta_testers t
 console3.sql	admin_export	console3b.sql	'oc_rh'
+discovery.sql	owned_keep_pool	pool_rule.sql	rule = excluded.rule
+discovery.sql	owned_pool_of	pool_rule.sql	'rule', k.rule
