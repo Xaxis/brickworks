@@ -413,8 +413,10 @@ const ROOM := 40.0
 ## made ([param made]) pictured as edit_model answers: unset [param wanted]
 ## a close look at them from the corner, edged in magenta; true the whole
 ## model so; false the words alone. On the MCP walk three looks in thirteen
-## tasks were only to see what these did (APP_UX4).
-func pictured(said: String, made: PackedInt64Array, wanted: Variant) -> Variant:
+## tasks were only to see what these did (APP_UX4). [param from] is the view
+## (ModelShot.ANGLES), [param did] what was done to them, for the caption.
+func pictured(said: String, made: PackedInt64Array, wanted: Variant, from: String = "corner",
+		did: String = "made") -> Variant:
 	if (wanted is bool and not bool(wanted)) or not ModelShot.possible() \
 			or LeasedShots.in_use():
 		return said
@@ -439,7 +441,7 @@ func pictured(said: String, made: PackedInt64Array, wanted: Variant) -> Variant:
 	shot.see_through = {}
 	for brick_id: int in made:
 		shot.edged[brick_id] = true
-	var image: Image = await shot.take(world, "corner", store.scenery,
+	var image: Image = await shot.take(world, from, store.scenery,
 		AABB() if whole else box.grow(ROOM))
 	shot.edged = {}
 	if image == null:
@@ -447,9 +449,9 @@ func pictured(said: String, made: PackedInt64Array, wanted: Variant) -> Variant:
 	if not whole:
 		image.resize(CLOSE_UP, CLOSE_UP, Image.INTERPOLATE_LANCZOS)
 	return [{"type": "text", "text": said},
-		{"type": "text", "text": ("The whole model from the corner, the %d made edged in magenta:"
-			if whole else "Close up on what changed, from the corner, the %d made edged in "
-			+ "magenta (picture=true shows the whole model):") % made.size()},
+		{"type": "text", "text": ("The whole model from the %s, the %d %s edged in magenta:"
+			if whole else "Close up on what changed, from the %s, the %d %s edged in "
+			+ "magenta (picture=true shows the whole model):") % [from, made.size(), did]},
 		AppTools._picture_block(image),
 		{"type": "text", "text": "The magenta is only in the picture; the parts keep their colours."}]
 

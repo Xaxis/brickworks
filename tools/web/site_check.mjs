@@ -229,12 +229,15 @@ for (const [from, to] of [
 
 console.log("the app");
 const app = await get("/app");
-const sha = ((app.body || "").match(/src="\/b\/([^/"]+)\/index\.js"/) || [])[1] || "";
+// The build's own files under /b/<sha>/, and the engine's under an address
+// of its bytes, /e/<hash>/, kept across releases (tools/web/place_build.py).
+const sha = ((app.body || "").match(/href="\/b\/([^/"]+)\/index\.pck"/) || [])[1] || "";
+const engine = ((app.body || "").match(/src="\/e\/([0-9a-f]{16})\/index\.js"/) || [])[1] || "";
 let appCsp = "";
 if (app.status !== 200) {
   fail(`/app answered ${app.status}${app.headers.get("location") ? " -> " + app.headers.get("location") : ""}, not the app`);
-} else if (!sha) {
-  fail("/app does not name its build's engine under /b/<sha>/");
+} else if (!sha || !engine) {
+  fail(`/app does not name ${!sha ? "its build's pack under /b/<sha>/" : "its engine under /e/<hash>/"}`);
 } else {
   appCsp = app.headers.get("content-security-policy") || "";
   const want = { "cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp" };
@@ -293,14 +296,29 @@ if (app.status !== 200) {
   }
   // The code pack and what the start reads beside it, the parts after it,
   // and what is fetched when wanted (tools/web/pck_split.py).
-  for (const file of ["index.js", "index.wasm", "index.pck", "index.data.pck", "index.parts.bin",
+  for (const file of ["index.pck", "index.data.pck", "index.parts.bin",
       "index.primitives.bin", "index.hdri.bin", "index.fonts.bin", "version.json"]) {
     const r = await get(`/b/${sha}/${file}`, "HEAD");
     const cache = r.headers.get("cache-control") || "";
     if (r.status !== 200) fail(`/b/${sha}/${file} answered ${r.status}`);
     else if (!cache.includes("immutable")) fail(`/b/${sha}/${file} is not cached for good: ${cache}`);
   }
-  ok(`/b/${sha}/ and its files 200, cached for good`);
+  // The engine's: sent as brotli, cached for good, and its script under the
+  // app's own policy, which each of the engine's threads runs by: a worker
+  // takes the policy its script was sent with, and the site's has no wasm.
+  for (const file of ["index.js", "index.wasm"]) {
+    const r = await get(`/e/${engine}/${file}`, "HEAD");
+    const cache = r.headers.get("cache-control") || "";
+    if (r.status !== 200) fail(`/e/${engine}/${file} answered ${r.status}`);
+    else if (!cache.includes("immutable")) fail(`/e/${engine}/${file} is not cached for good: ${cache}`);
+    else if (r.headers.get("content-encoding") !== "br") fail(`/e/${engine}/${file} is not sent as brotli`);
+    else if (!(r.headers.get("content-type") || "").startsWith(file.endsWith(".js") ? "application/javascript" : "application/wasm")) {
+      fail(`/e/${engine}/${file} is sent as ${r.headers.get("content-type")}, where nosniff runs only a script sent as one`);
+    }
+    else if (r.headers.get("content-security-policy") !== appCsp) fail(`/e/${engine}/${file} is sent under another policy than the app's`);
+    else if (r.headers.get("cross-origin-embedder-policy") !== "require-corp") fail(`/e/${engine}/${file} is not sent for a cross-origin-isolated page`);
+  }
+  ok(`/b/${sha}/ and its files 200, cached for good; the engine at /e/${engine}/, as brotli, under the app's policy`);
 }
 
 // -- nothing there ----------------------------------------------------------

@@ -387,6 +387,31 @@ func is_open() -> bool:
 	return _open
 
 
+## Its place, turn and tilt in sight in its scroller, for Properties asked
+## for from a part's actions. In a tablet's drawer, over the colours, the
+## section is too short for all of it, and Z, Turn, Tilt and Roll sat under
+## its fold, where a finger's tap on Turn found the colours: phonewalk's
+## 15° turn on a tablet typed into nothing, every run (APP_UX9, smalls4
+## item 6). Scrolled only as far as it must be, so where all of it is in
+## sight nothing moves.
+func show_place() -> void:
+	# Asked again while the drawer and the column settle: a scroller asked
+	# about a child it has not placed yet scrolls to where the child was,
+	# and the colours under the section take their height a frame later.
+	var steady: int = 0
+	for _n: int in 30:
+		await get_tree().process_frame
+		if _scroll == null or _place == null or not _place.is_visible_in_tree():
+			return
+		if _scroll.get_global_rect().grow(1.0).encloses(_place.get_global_rect()):
+			steady += 1
+			if steady >= 5:
+				return
+		else:
+			steady = 0
+			_scroll.ensure_control_visible(_place)
+
+
 ## Open, with nothing selected to show: as tall as its header. An empty
 ## Properties took 200 px of the column at 1440 x 900, and the parts grid
 ## had room for two rows (brickworks.diy, 2026-10-12).

@@ -750,11 +750,33 @@ picture the assistant is shown.
   `PROBE_SIZE=1280x720`; windowed, through the sign-in screen): ten weak
   models, each's fix offered, put down, weighed, undone to the byte and made
   over MCP to the same bytes; From my bricks; a picture of each ghost.
+  A model that tips over whole (Stability's "tips", which no joint holds)
+  is offered a foot (`Strengthen.find_tip`, smalls4, APP_UX9 #4) when no red
+  or amber row is chosen, or the row chosen holds: a column of up to three
+  parts from the floor (the ground or the baseplate, never a part of the
+  model) up into the open sockets of a part out past the edge it tips over,
+  "Strengthen adds a Brick 2 x 2 under its right side, down to the ground.
+  Then it stands, its weight 1 studs inside its back edge.", kept only when
+  the weight is then 0.5 studs inside what it stands on (measured as
+  Stability measures a tip) and no joint is past its working load that was
+  not; or why there is none ("No foot of up to three parts reaches the floor
+  under its right side far enough out to stand it: widen its base that way,
+  or move weight back over it, by hand."). `weakest_joints` gives the same
+  ("The whole model tips over: ... Call edit_model {...}"). The status bar
+  names a tip as a tip ("tips over, 0.7 studs past the right edge"), a lean
+  ("leans past what holds it") or "top-heavy" first, then the weak joints
+  Stress lists red ("; 1 weak joint (levered)"): the walk's tower of 2 x 4s
+  on one corner stud read "2 weak joints (tips)" beside Stress's "0 past
+  working load". Check stability says a lean as itself and selects only
+  joints' parts. `strengthen_probe` drives the walk's tower (offered with no
+  row chosen and with its first row pressed, put down, "stands up", one undo,
+  the same over MCP) and a pole whose overhang no foot reaches.
   Known gaps: a fix is looked for within two studs of the parts past the
   joint and among the 120 parts nearest it; a tie is a plate or a brick of
   the common rectangles, a prop of 1 x 1 to 2 x 4 columns, a pin a friction
   pin; a joint that only a part across several seams would hold is said to
-  have no fix.
+  have no fix. A foot is a column of 1 x 1 to 2 x 2 under the 120 parts
+  farthest out; a base widened, or a counterweight, is said, not put down.
 - `lift by a part` (`src/assembly/lift_test.gd`, `LiftTest`, Later;
   `Balance.ring_of`; APP_UX8 #13 loadtest): Stress's panel has **Lift**;
   pressed, a part clicked (selected: a click, a tap, a tree row) is the one
@@ -903,7 +925,10 @@ picture the assistant is shown.
   Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
   tilts, this view, usual view and zoom into Build › Booklet page › Step's view
   (19 rows and 9), and View, 482 of 470 units with Stud map, its five panels
-  into View › Panels (menurows, 2026-11-07). `keys3_probe`
+  into View › Panels (menurows, 2026-11-07); Edit, 486 of 470 units once Find
+  and replace joined it, folds Hide, Show only the selection and Show
+  everything into Edit › Show and hide, as Blender's Show/Hide, each with its
+  key (smalls4, APP_UX9 #3). `keys3_probe`
   (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
   palette measures Edit, presses the colour keys as a desktop and a browser
   send them, the four selection keys against their menu rows, Studio's Shift-V,
@@ -3390,7 +3415,14 @@ picture the assistant is shown.
   joints next, then keys, play and timing; a joint's key strip a fingertip
   tall, a key taken within half a fingertip; each view (list, edit,
   sequence) opened at its top. Simulate (`SimulatePanel._for_a_finger`): Play,
-  the cycle's slider and its angle under the title, the driver line after.
+  the cycle's slider and its angle under the title, the driver line after. A
+  part tapped while Simulate still drives the last tap (turning, weighing,
+  finding where it stops) is kept and made the driver once that is done
+  (`SimulatePanel._wanted`, smalls4, APP_UX9 #7): on a phone's slow frames
+  the stop search outlasted the tap, which was dropped. phonewalk's 3 taps
+  for a new driver are its own: its first two land on the orrery's frame
+  (Grab's handles list it; Simulate rightly refuses it), and a tap on a part
+  that turns drives at once.
   A part dragged by a finger (a Grab on its joint, or a part dragged) stops
   the phone's hold timer (`Main._on_phone_hold`): a door swung while Motions
   records no longer opens 152 parts' actions over the panel. Measure's words
@@ -3413,7 +3445,11 @@ picture the assistant is shown.
   joint's slider in sight in a drag at most and dragged. 3: simulate_probe's
   gear train (an 8 driving a 24, put down by the probe: the orrery fixture
   reads locked since kinefuncs): Play in sight and tapped, the cycle
-  scrubbed, the other gear made the driver by a tap. 4: Measure's words.
+  scrubbed, the other gear made the driver by a tap; then phonewalk's orrery
+  (orrery_two_planets.ldr) opened in Simulate and, while its first driver
+  is still being turned and its stops sought, another gear tapped: it is
+  the driver when that is done, in the one tap (smalls4). 4: Measure's
+  words.
   Every target in each panel 44 points or more, those under printed.
   `--only=page,motions,simulate,measure` runs those sections. Pictures in
   `--shots=DIR`.

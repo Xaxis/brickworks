@@ -429,8 +429,9 @@ func _read() -> void:
 
 	if _stopping():
 		return
-	# Balls.
-	var balls: Dictionary = Joints.balls(entries)
+	# Balls, the exact shapes' too: a towball socket drawn as a solid ring
+	# (3730, 3183) turns on its towball.
+	var balls: Dictionary = Joints.balls(entries, library)
 	var seen_balls: Dictionary = {}
 	for one: Variant in balls:
 		for other: Variant in balls[one]:
@@ -3078,6 +3079,8 @@ func _ball_middle(a: int, b: int) -> Vector3:
 				# Not counted, both arms were put on its first ball, and the
 				# parallelogram they make with the chassis read as held.
 				sockets.append(brick.transform * (connector.position + connector.axis * connector.length * 0.5))
+		for end: JointSnap.End in JointSnap.balls_of(library, brick.part_id):
+			(balls if end.kind == "ball" else sockets).append(brick.transform * end.at)
 	var best: Vector3 = balls[0] if not balls.is_empty() else world.get_brick(a).transform.origin
 	var nearest: float = INF
 	for ball: Vector3 in balls:

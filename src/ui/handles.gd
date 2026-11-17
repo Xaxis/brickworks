@@ -14,8 +14,9 @@
 ##   axis, and inside them a trackball that turns it freely, as the pointer
 ##   rolls it (LeoCAD 26.09, 3ds Max's rotate gizmo; docs/APP_UX2.md, 7).
 ## - They stand where the selection hangs from: the pin, hinge or clip it
-##   turns on, else the stud R turns it about (the middle, for a part off the
-##   grid), or a point Alt-clicked.
+##   turns on, the centre of the ball it hangs from (or the ball of its in a
+##   socket: JointSnap.ball_hung), else the stud R turns it about (the
+##   middle, for a part off the grid), or a point Alt-clicked.
 ## - A ring's drag snaps to quarter turns near the middle, to the turn step
 ##   on the ring, 5° past it and 1° further out, as Studio's dial does; an
 ##   arrow's to the snap, and to 2 LDU away from its line; a pane's to the
@@ -230,7 +231,7 @@ func pivot() -> Vector3:
 	return _pivot
 
 
-## What the pivot is: "picked", "joint", "stud" or "middle".
+## What the pivot is: "picked", "joint", "ball", "stud" or "middle".
 func pivot_is() -> String:
 	_known()
 	return _pivot_is
@@ -405,9 +406,17 @@ func _known() -> void:
 		_pivot_is = "picked"
 		return
 	var hung: Dictionary = builder.hung_from()
+	var ball: Dictionary = {} if not hung.is_empty() or bricks.size() > Builder.HINGED_MOST \
+		else JointSnap.ball_hung(world, library, builder.lattice, PackedInt64Array(builder.selection.keys()))
 	if not hung.is_empty():
 		_pivot = hung["point"]
 		_pivot_is = "joint"
+	elif not ball.is_empty():
+		# A socket on a ball turns about the ball's centre whichever way it
+		# is turned, so the centre stays where it is (a 30° turn about two
+		# axes kept it to 0.01 LDU, balljoints_probe).
+		_pivot = ball["point"]
+		_pivot_is = "ball"
 	elif square:
 		_pivot = Carry.pivot_of(bricks, library)
 		_pivot_is = "stud"
