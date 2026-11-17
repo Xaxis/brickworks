@@ -177,15 +177,7 @@ var _outlines: Dictionary = {}
 var _outlined: Dictionary = {}
 var _point_at: int = 0
 var _pointed: Variant = null
-## Sends of this side's point on their way. A part pointed out, or taken
-## back, goes at once beside one still out: behind it, it waited out that
-## send's whole trip, 120-240 ms of the live site's under load, where a
-## person puts the pointer on the part and presses Alt-W at once (pointfix,
-## 2026-11-15). The server keeps the later of two (api/together.js point);
-## sent while another was out, the point is sent once more after both, so
-## whichever the server had last, it has this one's.
-var _pointing: int = 0
-var _overlapped: bool = false
+var _pointing: bool = false
 const POINT_MS := 250
 ## A pointer that leaves the model is said gone only once it has stayed off
 ## it this long. Crossing a gap between two parts, it went out and came back
@@ -1518,8 +1510,6 @@ func _heard_people(body: Dictionary, polled: int) -> void:
 	people = now
 	timing["people_heard"] = polled
 	timing["people_said"] = body.get("at", 0)
-	# Another's doing, drawn as this person's own input is, held or not.
-	GpuFence.answer()
 	_show_presence()
 	# A check reads the page as the dots move, not a frame later.
 	if OS.has_feature("web"):
@@ -2191,8 +2181,7 @@ func _pointer_now() -> Dictionary:
 ## Sent a few times a second while it moves; a part pointed out, or taken
 ## back, at once (pointat).
 func _point() -> void:
-	if _offline or (_pointing > 0 and not _look_due) \
-			or (Time.get_ticks_msec() - _point_at < POINT_MS and not _look_due):
+	if _pointing or _offline or (Time.get_ticks_msec() - _point_at < POINT_MS and not _look_due):
 		return
 	var now: Dictionary = _pointer_now()
 	if now == _pointed:
@@ -2207,9 +2196,7 @@ func _point() -> void:
 			return
 	_off_at = -1
 	_point_at = Time.get_ticks_msec()
-	if _pointing > 0:
-		_overlapped = true
-	_pointing += 1
+	_pointing = true
 	_pointed = now
 	_look_due = false
 	timing["pointed"] = _unix_ms()
@@ -2220,12 +2207,7 @@ func _point() -> void:
 		asked["look"] = (now["look"] as Dictionary).merged({"age": Time.get_ticks_msec() - _look_at})
 		timing["look_sent"] = _unix_ms()
 	await _ask("point", asked)
-	_pointing -= 1
-	# Two were out at once: once both are back, sent again at the pointer's
-	# pace, so the server's last is this side's last.
-	if _pointing == 0 and _overlapped:
-		_overlapped = false
-		_pointed = null
+	_pointing = false
 	# Pointed out or taken back while this one was on its way: sent now,
 	# not at the next frame's.
 	if _look_due:
@@ -2626,8 +2608,6 @@ func _add_look(key: String, who: String, name: String, colour: Color, bricks: Di
 	marker.position = Vector3(box.get_center().x, box.end.y, box.get_center().z)
 	_looks[key] = {"who": who, "name": name, "colour": colour, "bricks": bricks,
 		"ends": Time.get_ticks_msec() + left_ms, "outline": outline, "marker": marker}
-	# Drawn held or not: another's, or Claude's, is no input of this window's.
-	GpuFence.answer()
 	timing["look_shown"] = _unix_ms()
 	if not RenderingServer.frame_post_draw.is_connected(_look_drawn):
 		RenderingServer.frame_post_draw.connect(_look_drawn, CONNECT_ONE_SHOT)
