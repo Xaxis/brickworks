@@ -29,7 +29,8 @@
 #
 # The build goes under /b/<sha>/ and /app serves its page, so every file can be
 # cached forever and a player who comes back after a deploy can never end up
-# running a new pack against an old engine. The threaded build needs the page to
+# running a new pack against an old engine. The engine itself goes under
+# /e/<hash of its bytes>/, so one who comes back keeps it while it is the same. The threaded build needs the page to
 # be cross-origin isolated, so the headers below are not optional: without them
 # the engine refuses to start, which is why the proof at the end loads the real
 # URL in a real browser rather than trusting that we sent them.
@@ -204,42 +205,18 @@ cp ".vercel/output/static/b/$sha/version.json" .vercel/output/static/version.jso
 
 # The app is served at /app itself, not redirected to /b/<sha>/, so the
 # address bar says brickworks.diy/app rather than a build hash. The page
-# Godot exports names its files relative to itself (index.js, and an
-# executable "index" the engine adds .wasm, .pck and .js to), which from
-# /app would mean /index.js. A <base> would fix that in one line, but the
-# security policy below says base-uri 'none' and stays that strict, so the
-# names are made absolute here instead: the same file then works at /app
-# and at /b/<sha>/, and every file it loads is still under /b/<sha>/ and
-# cached forever. Fails rather than ship a page that would load nothing.
-if ! python3 - ".vercel/output/static/b/$sha/index.html" "/b/$sha/" <<'PY'
-import json, os, re, sys
-path, base = sys.argv[1], sys.argv[2]
-here = os.path.dirname(path)
-page = open(path, encoding="utf-8").read()
-
-def absolute(m):
-    name = m.group(2)
-    if "/" in name or ":" in name or not os.path.isfile(os.path.join(here, name)):
-        return m.group(0)
-    return f'{m.group(1)}="{base}{name}"'
-page = re.sub(r'\b(src|href)="([^"]*)"', absolute, page)
-
-found = re.search(r"const GODOT_CONFIG = ", page)
-if not found:
-    sys.exit("no GODOT_CONFIG in the exported page")
-config, end = json.JSONDecoder().raw_decode(page, found.end())
-exe = config["executable"]
-config["executable"] = base + exe
-# The engine looks sizes up by the very path it fetches, so the keys move too.
-config["fileSizes"] = {base + k: v for k, v in config.get("fileSizes", {}).items()}
-page = page[:found.end()] + json.dumps(config, separators=(",", ":")) + page[end:]
-if f'src="{base}{exe}.js"' not in page:
-    sys.exit(f"the engine's script ({exe}.js) is not named from {base}")
-open(path, "w", encoding="utf-8").write(page)
-PY
-then
-  echo "deploy FAILED: could not point the app's page at /b/$sha/"; exit 1
-fi
+# Godot exports names its files relative to itself, which from /app would
+# mean /index.js; a <base> would fix that in one line, but the security
+# policy below says base-uri 'none' and stays that strict, so each name is
+# made absolute instead (tools/web/place_build.py). The engine's own files
+# (its script and its wasm) go to /e/<hash of their bytes>/, the same
+# address every release with the same engine, so a person back after a
+# release fetches only the release's packs, not the 6.9 MB engine again
+# (webstart10, 2026-11-16); the rest stays under /b/<sha>/. Both are cached
+# forever. Fails rather than ship a page that would load nothing.
+engine="$(python3 tools/web/place_build.py .vercel/output/static "$sha")" || {
+  echo "deploy FAILED: could not point the app's page at /b/$sha/ and its engine at /e/"; exit 1; }
+echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 
 # The serverless endpoints, packaged the way the Build Output API wants
 # them. A prebuilt deploy has no build step to discover api/, so each is
@@ -353,14 +330,14 @@ python3 tools/site.py .vercel/output/static | sed 's/^/deploy: /' || {
 pages=""
 # The .br files keep their own file's type: instantiateStreaming takes a
 # wasm only as application/wasm.
-overrides="\"b/$sha/index.wasm.br\": { \"contentType\": \"application/wasm\" },
+overrides="\"e/$engine/index.wasm.br\": { \"contentType\": \"application/wasm\" },
+    \"e/$engine/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" },
     \"b/$sha/index.pck.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.data.pck.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.parts.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.primitives.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.hdri.bin.br\": { \"contentType\": \"application/octet-stream\" },
-    \"b/$sha/index.fonts.bin.br\": { \"contentType\": \"application/octet-stream\" },
-    \"b/$sha/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" }"
+    \"b/$sha/index.fonts.bin.br\": { \"contentType\": \"application/octet-stream\" }"
 for page in .vercel/output/static/*.html; do
   name=$(basename "$page" .html)
   case "$name" in index|404|authorize) continue ;; esac
@@ -619,13 +596,24 @@ $docs_moved
       "dest": "/api/people?op=challenge_page" },
     { "src": "/($langs)/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page&lang=\$1" },
-    { "src": "/(app|b/.*)",
+    { "src": "/(app|b/.*|e/.*)",
       "headers": { "Cross-Origin-Opener-Policy": "same-origin",
         "Content-Security-Policy": "$csp" },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",
       "headers": { "Cache-Control": "public, max-age=31536000, immutable",
         "X-Robots-Tag": "noindex" },
+      "continue": true },
+    { "src": "/e/([^/]+)/(.*)",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Robots-Tag": "noindex" },
+      "continue": true },
+    { "src": "/e/$engine/(index[.](wasm|js))",
+      "has": [ { "type": "header", "key": "accept-encoding", "value": ".*br.*" } ],
+      "dest": "/e/$engine/\$1.br",
+      "headers": { "Content-Encoding": "br", "Vary": "Accept-Encoding" } },
+    { "src": "/e/$engine/(index[.](wasm|js))",
+      "headers": { "Vary": "Accept-Encoding" },
       "continue": true },
     { "src": "/b/$sha/(index[.](wasm|pck|js|data[.]pck|(parts|primitives|hdri|fonts)[.]bin))",
       "has": [ { "type": "header", "key": "accept-encoding", "value": ".*br.*" } ],
