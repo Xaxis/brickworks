@@ -330,8 +330,21 @@ func _build() -> void:
 	_pages["set"] = _set_page()
 	for page: String in _pages:
 		var holder: Control = _pages[page]
-		holder.set_anchors_preset(Control.PRESET_FULL_RECT)
-		stack.add_child(holder)
+		# Each page in a scroll of its own, which scrolls only when the page
+		# is taller than the room (_fit_pages): on a phone What I own's
+		# buttons and fields ran under the screen once Save sets as CSV
+		# and XML took their row, and left its list no room at all
+		# (keptbuilt, dialogs at 390 x 844).
+		var whole := ScrollContainer.new()
+		whole.name = "Whole_" + page
+		whole.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		whole.set_anchors_preset(Control.PRESET_FULL_RECT)
+		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		whole.add_child(holder)
+		stack.add_child(whole)
+		whole.resized.connect(_fit_pages_later)
+		holder.minimum_size_changed.connect(_fit_pages_later)
 
 	_confirm_clear = ConfirmationDialog.new()
 	_confirm_clear.title = "Start over"
@@ -388,6 +401,14 @@ func _own_page() -> Control:
 		_picking = "bricklink_xml"
 		_picker.ask(".xml,.txt"), "collection_xml",
 		"A BrickLink wanted list or inventory, as XML")
+	# keptbuilt: the sets out again, each set's copies kept built with them.
+	_button(files, "Save sets as CSV", save_sets.bind("csv"), "collection_save_csv",
+		"Your sets as a Rebrickable sets list, its Built column the copies you keep built. Read back here, it adds "
+		+ "to what is there: to restore your collection, read it into an empty one (Start over first)")
+	_button(files, "Save sets as XML", save_sets.bind("xml"), "collection_save_xml",
+		"Your sets as a BrickLink XML, the copies you keep built marked Built in their remarks. It does not say "
+		+ "which sets' spare parts you kept, as the CSV's Includes Spares does. Read back here, it adds to what is there: "
+		+ "to restore your collection, read it into an empty one (Start over first)")
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	files.add_child(spacer)
@@ -585,6 +606,57 @@ func _build_page() -> Control:
 	return page
 
 
+## The least height a page's list is to have: a page whose own controls
+## leave it less scrolls whole instead, its list laid out in full in it.
+const LIST_LEAST := 150.0
+
+var _fitting: bool = false
+
+
+func _fit_pages_later() -> void:
+	if not _fitting:
+		_fitting = true
+		_fit_pages.call_deferred()
+
+
+## Each page shown either still, its list scrolling alone (the desktop's
+## and a tablet's, where the controls leave the list room), or scrolled
+## whole with its list at full length (a phone's, where they did not: the
+## list had no height, and What I own's last line ran under the screen). A
+## list in a page that scrolls would have no height of its own, so it
+## stops scrolling and the page does. Decided by the controls' height
+## alone, which the list's mode does not change, so it settles at once.
+func _fit_pages() -> void:
+	_fitting = false
+	for name: String in _pages:
+		var page: Control = _pages[name]
+		var whole := page.get_parent() as ScrollContainer
+		if whole == null or not whole.is_visible_in_tree() or whole.size.y <= 0.0:
+			continue
+		var lists: Array[ScrollContainer] = []
+		var listed: float = 0.0
+		for child: Node in page.get_children():
+			var list := child as ScrollContainer
+			if list != null and list.visible:
+				lists.append(list)
+				listed += list.get_combined_minimum_size().y
+		var controls: float = page.get_combined_minimum_size().y - listed
+		var still: bool = controls + LIST_LEAST * lists.size() <= whole.size.y
+		var mode := ScrollContainer.SCROLL_MODE_AUTO if still else ScrollContainer.SCROLL_MODE_DISABLED
+		for list: ScrollContainer in lists:
+			if list.vertical_scroll_mode != mode:
+				list.vertical_scroll_mode = mode
+
+
+## Whether [param page] ("own", "need", "build", "set") scrolls whole, its
+## list at full length in it, rather than its list alone.
+func scrolls_whole(page: String) -> bool:
+	for child: Node in (_pages[page] as Node).get_children():
+		if child is ScrollContainer:
+			return (child as ScrollContainer).vertical_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED
+	return false
+
+
 func _scrolled(into: Control) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -672,7 +744,12 @@ func _say(text: String) -> void:
 func _show(page: String) -> void:
 	_page = page
 	for name: String in _pages:
-		(_pages[name] as Control).visible = name == page
+		var holder: Control = _pages[name]
+		holder.visible = name == page
+		# The page's scroll with it: a hidden page's, laid over the page
+		# shown, would take its presses.
+		(holder.get_parent() as Control).visible = name == page
+	_fit_pages_later()
 	# A set's missing parts are a page of What I own's, with no tab.
 	for name: String in _tabs:
 		(_tabs[name] as Button).button_pressed = name == page or (page == "set" and name == "own")
@@ -697,16 +774,32 @@ func _fill_own() -> void:
 	if mine.is_empty():
 		_summary.text = ("Nothing here yet. Bring in what you own: your Rebrickable account, "
 			+ "a Rebrickable or BrickLink export, or set numbers typed in.")
-	else:
+	elif _built_pieces() == 0:
 		_summary.text = "%d set%s and %s loose piece%s — %s pieces in all%s" % [
 			sets, "" if sets == 1 else "s", _comma(mine.loose_pieces()),
 			"" if mine.loose_pieces() == 1 else "s", _comma(store.pieces_on_hand()),
+			" (the copy on this device)" if store.offline else ", kept with your account"]
+	else:
+		# keptbuilt: what stands built is not counted as there to build with.
+		var kept: Dictionary = mine.kept_built(store.records)
+		var copies: int = 0
+		for number: String in kept:
+			copies += int(kept[number]["built"])
+		_summary.text = "%d set%s and %s loose piece%s — %s pieces to build with, %s more in %s kept built%s" % [
+			sets, "" if sets == 1 else "s", _comma(mine.loose_pieces()),
+			"" if mine.loose_pieces() == 1 else "s", _comma(store.pieces_on_hand()),
+			_comma(_built_pieces()), Counted.of(copies, "set"),
 			" (the copy on this device)" if store.offline else ", kept with your account"]
 	_build_mine.visible = store.pieces_on_hand() > 0
 	_clear_rows(_own_rows)
 	_controls.erase("collection_build_first")
 	_controls.erase("collection_mark_first")
+	for named: Variant in _controls.keys():
+		if str(named).begins_with("collection_built_"):
+			_controls.erase(named)
 	_closest_rows()
+	# Each set's Built mark goes on its first row, every copy together.
+	var marked_built: Dictionary = {}
 	if sets > 0:
 		var heading := HBoxContainer.new()
 		var named: Label = _label("Sets", 12, 0.6)
@@ -732,6 +825,9 @@ func _fill_own() -> void:
 		for lot: Variant in record.get("p", []):
 			pieces += int((lot as Array)[2])
 		row.add_child(_label("%s pieces" % _comma(pieces) if pieces > 0 else "", 12, 0.6, 90.0))
+		if not marked_built.has(number):
+			marked_built[number] = true
+			_built_mark(row, number)
 		_set_row_marks(row, entry, pieces)
 		if pieces > 0:
 			var copies := PackedStringArray()
@@ -976,8 +1072,8 @@ func _view_build(view: String) -> void:
 #
 # Every set Rebrickable lists, ranked by how much of it the person owns
 # (SetRanking over all_sets.bin), counted as What do I need? and the bin
-# count it (OwnCounts.set_needs against the pool: every set they own counts,
-# built or not). The sets they own are left out, as they have them. Each row
+# count it (OwnCounts.set_needs against the pool: a set kept built is left
+# out, keptbuilt). The sets they own are left out, as they have them. Each row
 # says the share owned in their colours ("92%"), what is short and the share
 # in any colour, with What do I need? for that set, and Open (or See it on
 # the web) for a set with an official LDraw model. parts_list
@@ -1010,7 +1106,7 @@ func _fill_sets() -> void:
 			return
 		# The heading drawn before a count that holds the frame.
 		await get_tree().process_frame
-		_sets_ranked = ranking.rank(OwnCounts.owned(store.on_hand))
+		_sets_ranked = ranking.rank(store.on_hand)
 		_sets_ranked_for = pool
 		_sets_busy = false
 	if _build_view != "sets":
@@ -2170,6 +2266,95 @@ func _set_row_marks(row: HBoxContainer, entry: Dictionary, pieces: int) -> void:
 		mark.add_theme_color_override("font_color", Look.ACCENT)
 	if not _controls.has("collection_mark_first"):
 		_controls["collection_mark_first"] = mark
+
+
+## The pieces in the copies kept built, of the sets whose inventories are known.
+func _built_pieces() -> int:
+	var kept: Dictionary = store.collection.kept_built(store.records)
+	var pieces: int = 0
+	for number: String in kept:
+		pieces += int(kept[number]["pieces"])
+	return pieces
+
+
+## A set's Built mark, on its first row on What I own (keptbuilt): one press
+## marks it kept built on a shelf, so its parts are left out of My bricks,
+## What can I build? and a design from the person's own parts; pressed again,
+## it is taken apart and they count again. With more than one copy, each
+## press marks one more of them built, and after the last none are: every
+## copy of the number together, as edit_collection's built= counts them.
+func _built_mark(row: HBoxContainer, number: String) -> void:
+	var copies: int = store.collection.copies_of(number)
+	if copies <= 0:
+		return
+	var built: int = _built_count(number)
+	var mark := Button.new()
+	mark.toggle_mode = true
+	mark.button_pressed = built > 0
+	mark.focus_mode = Control.FOCUS_NONE
+	mark.text = "Built %d of %d" % [built, copies] if copies > 1 and built > 0 else "Built"
+	mark.tooltip_text = ("Kept built on a shelf: its parts are left out of My bricks, What can I build? "
+		+ "and a design from your parts. Press again when it is taken apart") if copies == 1 \
+		else ("How many of your copies stand built: each press marks one more, and after the last, none. "
+		+ "A built copy's parts are left out of My bricks, What can I build? and a design from your parts")
+	if built > 0:
+		mark.add_theme_color_override("font_color", Look.ACCENT)
+		mark.add_theme_color_override("font_pressed_color", Look.ACCENT)
+	_small(mark)
+	mark.pressed.connect(func() -> void: mark_built(number))
+	row.add_child(mark)
+	_controls["collection_built_" + number] = mark
+	if not _controls.has("collection_built_first"):
+		_controls["collection_built_first"] = mark
+
+
+## How many copies of set [param number] are kept built, as shown.
+func _built_count(number: String) -> int:
+	var built: int = 0
+	for entry: Dictionary in store.collection.entries_of(number):
+		built += Collection.built_of(entry)
+	return built
+
+
+## The Built mark of set [param number] pressed: one copy more kept built, or
+## none once all were (one copy: built, then apart). Made at the account
+## from the count shown; what went wrong is said and returned, "" when done.
+func mark_built(number: String) -> String:
+	await _begin()
+	var copies: int = store.collection.copies_of(number)
+	var was: int = _built_count(number)
+	var now: int = 0 if was >= copies else was + 1
+	var done: Dictionary = await store.set_built([{"set": number, "was": was, "built": now}])
+	_end()
+	if done["kind"] != CollectionStore.DONE:
+		_say(str(done["said"]))
+		_fill_own()
+		return str(done["said"])
+	var record: Dictionary = store.records.get(number, {})
+	var named: String = "%s %s" % [number, str(record["n"])] if record.has("n") else number
+	if now == 0:
+		_say("%s taken apart: its parts count as yours to build with again" % named)
+	elif copies == 1:
+		_say("%s kept built: its parts are left out of what you build with" % named)
+	else:
+		_say("%s: %d of %d copies kept built, their parts left out of what you build with" % [named, now, copies])
+	return ""
+
+
+## Every set in the collection saved as a file a shop reads back: "csv", a
+## Rebrickable sets list, or "xml", a BrickLink XML (Collection.sets_csv,
+## sets_xml), each with the copies kept built. What was done is said and
+## returned.
+func save_sets(kind: String) -> String:
+	var mine: Collection = store.collection
+	if mine.copies_of_all() == 0:
+		_say("no sets to save: add them on What I own first")
+		return "no sets"
+	var text: String = mine.sets_csv() if kind == "csv" else mine.sets_xml()
+	var line: String = await Download.save(text, "brickworks_my_sets." + kind,
+		"text/csv" if kind == "csv" else "application/xml")
+	_say(line)
+	return line
 
 
 ## Closest to whole, first on What I own: the sets with parts missing, the

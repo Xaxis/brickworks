@@ -70,7 +70,14 @@ app, joined by a link (docs/TOGETHER.md).
   session's Realtime channel (`channelOf`, `tell`, `listen` in
   api/together.js), and a poll answers with it; it also reads who is in
   it every 250 ms, and every 100 ms while another's pointer moved in the
-  last 2 s if it is not listening yet. A browser's poll asks
+  last 2 s if it is not listening yet. A poll listens first and reads who
+  is in it once its channel has joined (at most 250 ms after it began),
+  once: what was told before is in that read (pollreads; the `begins`
+  case barring its reads by how often, a join slower than a read on
+  purpose). The changes wait for no channel: read at once and every
+  100 ms while it joins, and a change found then answered at once
+  (`changed`: made 30 ms into a poll whose channel joins at 240, given
+  at its next read of them). A browser's poll asks
   `stream: true` and reads its answer a line at a time (`_ask_page`,
   `_on_page_heard`): who is in it comes as a line
   `{more: true, people, seen, at}` the moment it changes and the poll
@@ -284,11 +291,21 @@ signed in as someone else.
   `--url=<preview>` with `BW_BYPASS` (the bar's own). Expect
   `pointat_flow: all ok`: the owner's panel, grown by
   Start, keeps Close in the window and closes; 20 Alt+W over parts, each
-  shown in the owner's tab at once and drawn in the second within 500 ms
-  at p95 by the owner's name, or (this box drawing in software under load)
-  95 of 100 within it or with their trip, the key handled to the line had,
-  within 500 ms less a frame each side; each round's stages from both
-  pages' `Together.timing` in `DIR/rounds.json`;
+  timed to the WebGL fence of the frame that drew it in each tab (the
+  page's requestAnimationFrame wrapped, a fence after each frame), by the
+  owner's name: drawn in the second within 500 ms at p95, or (this box
+  drawing in software under load) 19 of 20 within it or with the rest
+  within 500 ms less a frame each side, the rest being what is left after
+  the key, the wait for a busy frame to end and the frames that drew it (a
+  frame that ran without drawing it counts against the app). Each round
+  prints its legs: key, send, up (send to the server having it), fan (to
+  the second's poll having it, told or read), say, down, frame, raster
+  (the frame drawn to its fence), from the relay's `pointed` stamps on the
+  line (api/together.js poll); a "legs, p50/p95" line sums them, and
+  `DIR/rounds.json` keeps each round whole. Under load raster holds the
+  p95 (600/1380 ms at load 35, 2026-11-15), the relay 116/424.
+  `--slow-send=600` holds each point's send 600 ms and must FAIL the
+  second-tab line: the bar never passes a real delay;
   the owner's colour off the second tab's pixels; still there at 4.5 s,
   gone by 5.7 s on both; the owner's Esc gone from the second within
   500 ms; the second's Esc there alone; the owner's Claude's `point_at`
@@ -298,7 +315,27 @@ signed in as someone else.
   tests/test_together_poll.py` (the `looked` case of
   `tests/fixtures/together/poll_check.mjs`): a look goes out at once with
   its age, ages out at 5 s, a point without it takes it back, seven
-  shapes refused 400, and the signature with none as it always was.
+  shapes refused 400, and the signature with none as it always was. And
+  (pointfix) the line with it names when the server and the poll had it;
+  a point sent beside an older pointer still on its way is the one kept
+  (`ordered`: the database's guard, `pointer_at.lt.<now>`); a point told
+  while a new poll's channel is still joining goes out the moment it has
+  joined (`joining`: 77 ms, against 275 before), the stand-in channel
+  hearing only once joined, as Realtime does; it is in the poll's one
+  first read of who is in it, taken once the channel has joined, so a
+  poll reads no more than before pointfix (pollreads: `begins`, read
+  counts barred by the gap between two reads, less what the box held the
+  fixture for in the 20 ms before the earlier, each log's third field; the
+  changes POLL_MS after the last read of them ended, as live reads them,
+  and a step that skipped them rests only until then; and
+  timed bars less what the busy box held the fixture for, `stalled`; a point's timed from the
+  server telling the channel, `relay_ms`, since a send's own sign-in
+  check waits on the thread pool a busy box keeps, and `joining`'s
+  channel joins 70 ms after that telling, not by the clock). The fixture
+  acts on a poll's state (begun, listening, its first line out), never a
+  sleep standing for it; it must pass with every sign-in held 0-300 ms:
+  `NODE_OPTIONS="--import ./tests/fixtures/together/slow_sign_in.mjs"
+  python3 tools/minitest.py tests/test_together_poll.py`.
 - The desktop pair probe's B8 part (sections 4c to 4e and 6 of
   `together_probe.gd`, run with the relay holding
   `together_snapshot_parts`): selection outlined in e8590c, pointer p95

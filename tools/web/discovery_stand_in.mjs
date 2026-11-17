@@ -146,12 +146,13 @@ const FUNCTIONS = {
     return reply(200, pieces);
   },
 
-  async owned_keep_pool({ account, lots: given, unknown = [] }) {
+  // supabase/pool_rule.sql's two: with no rule, an older site's (rule 1).
+  async owned_keep_pool({ account, lots: given, unknown = [], rule = 1 }) {
     if (!account || !Array.isArray(given)) return reply(400, { code: "22023", message: "brickworks: a pool is an account and a list" });
     const held = new Map();
     for (const one of given) held.set(lotKey(one.part, one.colour), (held.get(lotKey(one.part, one.colour)) || 0) + Number(one.qty));
     const pieces = [...held.values()].reduce((a, b) => a + b, 0);
-    pools.set(account, { owner: account, lots: held.size, pieces, unknown: [...unknown], at: new Date().toISOString(), held });
+    pools.set(account, { owner: account, lots: held.size, pieces, unknown: [...unknown], rule, at: new Date().toISOString(), held });
     return reply(200, { lots: held.size, pieces });
   },
 
@@ -161,7 +162,7 @@ const FUNCTIONS = {
 
   async owned_pool_of({ account }) {
     const one = pools.get(account);
-    return reply(200, one ? { lots: one.lots, pieces: one.pieces, unknown: one.unknown, at: one.at } : null);
+    return reply(200, one ? { lots: one.lots, pieces: one.pieces, unknown: one.unknown, rule: one.rule, at: one.at } : null);
   },
 
   async gallery_choices() {
