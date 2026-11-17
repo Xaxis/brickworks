@@ -267,7 +267,7 @@ func _run() -> void:
 	var all_pieces: int = owner.pieces_on_hand()
 	_check("the line: \"%s\"" % _line(), _line() == "%s: %s of %s left" % [OwnCounts.TITLE,
 		PartsBin._comma(all_pieces), PartsBin._comma(all_pieces)])
-	_check("its hint says every set counts, built or not",
+	_check("its hint says a set marked Built is left out",
 		(_bin.controls_by_name()["set words"] as Label).tooltip_text.contains(OwnCounts.BUILT_WORDS))
 	await _shot("mine")
 

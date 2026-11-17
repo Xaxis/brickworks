@@ -180,7 +180,12 @@ func _steps() -> void:
 
 	print("\n4. edit_collection missing=")
 	var read: String = await _call("edit_collection", {})
-	_check("read back: “%s”" % read.get_slice("\n", 0).left(150), read.contains("7140-1") and not read.contains("missing"))
+	# Nothing marked yet: no count on the sets' line and no list of marks.
+	# Not the whole reply: the guidance ending every read-back says "marked
+	# missing" itself (AppTools.MINE_SAID, since ownlimit).
+	var sets_line: String = read.get_slice("\n", 0)
+	_check("read back: “%s”" % sets_line.left(150), sets_line.contains("7140-1")
+		and not sets_line.contains("missing") and not read.contains("Marked missing on their sets"))
 	var pool_before: int = int(_store.call("pieces_on_hand"))
 	var three: Array = singles.map(func(lot: Dictionary) -> Dictionary:
 		return {"part": lot["part"], "color": lot["colour"], "count": 1})

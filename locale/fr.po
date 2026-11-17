@@ -14509,11 +14509,11 @@ msgstr "Construire avec mes briques"
 msgid "My bricks"
 msgstr "Mes briques"
 
-msgid "The bin becomes every part you own, your sets' and your loose parts, each counting how many are left as you build. Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
-msgstr "Le bac devient toutes les pièces que vous possédez, celles de vos sets et vos pièces en vrac, chacune indiquant combien il en reste pendant la construction. Chaque set que vous possédez compte, monté ou non : Ma collection ne permet pas encore de marquer un set comme gardé monté."
+msgid "The bin becomes every part you own, your sets' and your loose parts, each counting how many are left as you build. A set marked Built in My collection is left out: its parts stand on the shelf, and only its spares count."
+msgstr "Le bac devient toutes les pièces que vous possédez, celles de vos sets et vos pièces en vrac, chacune indiquant combien il en reste pendant la construction. Un set marqué Monté dans Ma collection est mis à part : ses pièces sont sur l’étagère, seules ses pièces de rechange comptent."
 
-msgid "Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
-msgstr "Chaque set que vous possédez compte, monté ou non : Ma collection ne permet pas encore de marquer un set comme gardé monté."
+msgid "A set marked Built in My collection is left out: its parts stand on the shelf, and only its spares count."
+msgstr "Un set marqué Monté dans Ma collection est mis à part : ses pièces sont sur l’étagère, seules ses pièces de rechange comptent."
 
 msgid "Building from the parts you own: your sets' parts, less those marked missing, and your loose parts. Each part put down takes one from its count; undo or a delete gives it back. A part with none left can still be used: the bin says how many over what you own the model is."
 msgstr "Construction avec les pièces que vous possédez : celles de vos sets, moins celles marquées manquantes, et vos pièces en vrac. Chaque pièce posée en retire une de son compte ; annuler ou supprimer la rend. Une pièce épuisée reste utilisable : le bac indique de combien le modèle dépasse ce que vous possédez."
@@ -14855,3 +14855,49 @@ msgstr "Pas de place dans %s : déplacez ce qui gêne à cet endroit, ou utilise
 
 msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
 msgstr "Pas de place dans %s : elle passerait sous le sol. Montez cette copie, ou utilisez Construire › Rendre cette copie unique"
+
+# keptbuilt (APP_UX9 #6)
+msgid "Built"
+msgstr "Monté"
+
+msgid "Built %d of %d"
+msgstr "%d sur %d montés"
+
+msgid "Kept built on a shelf: its parts are left out of My bricks, What can I build? and a design from your parts. Press again when it is taken apart"
+msgstr "Gardé monté sur une étagère : ses pièces ne comptent ni pour Mes briques, ni pour Que puis-je construire ?, ni pour une création à partir de vos pièces. Appuyez de nouveau quand il est démonté"
+
+msgid "How many of your copies stand built: each press marks one more, and after the last, none. A built copy's parts are left out of My bricks, What can I build? and a design from your parts"
+msgstr "Combien de vos exemplaires sont montés : chaque appui en marque un de plus, et après le dernier, aucun. Les pièces d’un exemplaire monté ne comptent ni pour Mes briques, ni pour Que puis-je construire ?, ni pour une création à partir de vos pièces"
+
+msgid "%s taken apart: its parts count as yours to build with again"
+msgstr "%s démonté : ses pièces comptent de nouveau parmi celles avec lesquelles vous construisez"
+
+msgid "%s kept built: its parts are left out of what you build with"
+msgstr "%s gardé monté : ses pièces ne comptent pas parmi celles avec lesquelles vous construisez"
+
+msgid "%s: %d of %d copies kept built, their parts left out of what you build with"
+msgstr "%s : %d exemplaires sur %d gardés montés, leurs pièces ne comptent pas parmi celles avec lesquelles vous construisez"
+
+msgid "%s and %s — %s pieces to build with, %s more in %s kept built, kept with your account"
+msgstr "%s et %s — %s pièces pour construire, %s de plus dans %s gardés montés, conservées avec votre compte"
+
+msgid "%s and %s — %s pieces to build with, %s more in %s kept built (the copy on this device)"
+msgstr "%s et %s — %s pièces pour construire, %s de plus dans %s gardés montés (la copie sur cet appareil)"
+
+msgid "Save sets as CSV"
+msgstr "Enregistrer les sets en CSV"
+
+msgid "Save sets as XML"
+msgstr "Enregistrer les sets en XML"
+
+msgid "Your sets as a Rebrickable sets list, its Built column the copies you keep built. Read back here, it adds to what is there: to restore your collection, read it into an empty one (Start over first)"
+msgstr "Vos sets sous forme de liste de sets Rebrickable, sa colonne Built donnant les exemplaires que vous gardez montés. Relue ici, elle s’ajoute à ce qui est déjà là : pour restaurer votre collection, lisez-la dans une collection vide (Tout recommencer d’abord)"
+
+msgid "Your sets as a BrickLink XML, the copies you keep built marked Built in their remarks. It does not say which sets' spare parts you kept, as the CSV's Includes Spares does. Read back here, it adds to what is there: to restore your collection, read it into an empty one (Start over first)"
+msgstr "Vos sets sous forme de XML BrickLink, les exemplaires gardés montés marqués Built dans leurs remarques. Il ne dit pas de quels sets vous avez gardé les pièces de rechange, comme le fait Includes Spares dans le CSV. Relu ici, il s’ajoute à ce qui est déjà là : pour restaurer votre collection, lisez-le dans une collection vide (Tout recommencer d’abord)"
+
+msgid "no sets to save: add them on What I own first"
+msgstr "aucun set à enregistrer : ajoutez-les d’abord dans Ce que je possède"
+
+msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
+msgstr "moins d’exemplaires sont revenus que de marqués Monté, ceux-là ne sont donc plus marqués : %s%s"
