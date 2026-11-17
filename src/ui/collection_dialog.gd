@@ -330,8 +330,21 @@ func _build() -> void:
 	_pages["set"] = _set_page()
 	for page: String in _pages:
 		var holder: Control = _pages[page]
-		holder.set_anchors_preset(Control.PRESET_FULL_RECT)
-		stack.add_child(holder)
+		# Each page in a scroll of its own, which scrolls only when the page
+		# is taller than the room (_fit_pages): on a phone What I own's
+		# buttons and fields ran under the screen once Save sets as CSV
+		# and XML took their row, and left its list no room at all
+		# (keptbuilt, dialogs at 390 x 844).
+		var whole := ScrollContainer.new()
+		whole.name = "Whole_" + page
+		whole.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		whole.set_anchors_preset(Control.PRESET_FULL_RECT)
+		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		whole.add_child(holder)
+		stack.add_child(whole)
+		whole.resized.connect(_fit_pages_later)
+		holder.minimum_size_changed.connect(_fit_pages_later)
 
 	_confirm_clear = ConfirmationDialog.new()
 	_confirm_clear.title = "Start over"
@@ -592,6 +605,57 @@ func _build_page() -> Control:
 	return page
 
 
+## The least height a page's list is to have: a page whose own controls
+## leave it less scrolls whole instead, its list laid out in full in it.
+const LIST_LEAST := 150.0
+
+var _fitting: bool = false
+
+
+func _fit_pages_later() -> void:
+	if not _fitting:
+		_fitting = true
+		_fit_pages.call_deferred()
+
+
+## Each page shown either still, its list scrolling alone (the desktop's
+## and a tablet's, where the controls leave the list room), or scrolled
+## whole with its list at full length (a phone's, where they did not: the
+## list had no height, and What I own's last line ran under the screen). A
+## list in a page that scrolls would have no height of its own, so it
+## stops scrolling and the page does. Decided by the controls' height
+## alone, which the list's mode does not change, so it settles at once.
+func _fit_pages() -> void:
+	_fitting = false
+	for name: String in _pages:
+		var page: Control = _pages[name]
+		var whole := page.get_parent() as ScrollContainer
+		if whole == null or not whole.is_visible_in_tree() or whole.size.y <= 0.0:
+			continue
+		var lists: Array[ScrollContainer] = []
+		var listed: float = 0.0
+		for child: Node in page.get_children():
+			var list := child as ScrollContainer
+			if list != null and list.visible:
+				lists.append(list)
+				listed += list.get_combined_minimum_size().y
+		var controls: float = page.get_combined_minimum_size().y - listed
+		var still: bool = controls + LIST_LEAST * lists.size() <= whole.size.y
+		var mode := ScrollContainer.SCROLL_MODE_AUTO if still else ScrollContainer.SCROLL_MODE_DISABLED
+		for list: ScrollContainer in lists:
+			if list.vertical_scroll_mode != mode:
+				list.vertical_scroll_mode = mode
+
+
+## Whether [param page] ("own", "need", "build", "set") scrolls whole, its
+## list at full length in it, rather than its list alone.
+func scrolls_whole(page: String) -> bool:
+	for child: Node in (_pages[page] as Node).get_children():
+		if child is ScrollContainer:
+			return (child as ScrollContainer).vertical_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED
+	return false
+
+
 func _scrolled(into: Control) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -679,7 +743,12 @@ func _say(text: String) -> void:
 func _show(page: String) -> void:
 	_page = page
 	for name: String in _pages:
-		(_pages[name] as Control).visible = name == page
+		var holder: Control = _pages[name]
+		holder.visible = name == page
+		# The page's scroll with it: a hidden page's, laid over the page
+		# shown, would take its presses.
+		(holder.get_parent() as Control).visible = name == page
+	_fit_pages_later()
 	# A set's missing parts are a page of What I own's, with no tab.
 	for name: String in _tabs:
 		(_tabs[name] as Button).button_pressed = name == page or (page == "set" and name == "own")
