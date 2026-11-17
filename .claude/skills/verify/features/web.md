@@ -5544,6 +5544,9 @@ rolled-back transaction, and the sums alone:
 ```sh
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql \
   --dry --try=tools/discovery_try.sql --table=gallery_picks
+# a kept pool's rule (kbfix): an older site's keep writes rule 1, a newer one's 2, owned_pool_of says it
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/pool_rule.sql \
+  --dry --try=tools/pool_rule_try.sql --table=collection_pools_kept
 node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets
 python3 tools/minitest.py tests/test_discovery.py
 node --env-file=.env tools/web/needs_backfill.mjs --dry --facts=<part_facts.mjs output>
@@ -5565,7 +5568,7 @@ Tower, Barn; no grant on the five tables to any key, row security on, only
 the service role executing; three pages of 25 the same as one list; the
 timings (docs/COMMUNITY.md, Discovery: Top builds about 170 ms and Parts I
 own 125 to 360 ms on 5,000 models and 300,000 need rows); "rolled back,
-nothing kept". `owned_probe` ends "owned_probe: 11 checks, all ok".
+nothing kept". `owned_probe` ends "owned_probe: 17 checks, all ok" (the last four: a pool kept by an older rule counted again, one kept by `POOL_RULE` or with no rule kept, a keep with a rule refused 404 kept the older way).
 `needs_backfill --dry` names the seven real models' parts and lots, keeping
 nothing.
 

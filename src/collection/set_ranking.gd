@@ -274,7 +274,7 @@ class Ranked:
 
 
 ## Every set against [param have], part and colour (Collection.key_of) ->
-## how many: OwnCounts.owned of the window's pool.
+## how many: the window's pool, sets kept built left out (Collection.pool).
 func rank(have: Dictionary) -> Ranked:
 	var started: int = Time.get_ticks_usec()
 	var owned := PackedInt32Array()

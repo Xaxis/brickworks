@@ -966,7 +966,13 @@ func definitions() -> Array:
 				+ "has nothing missing: refused while anything is marked, naming it; then name those lots, "
 				+ "count 0, or send none=true with marked= the number of lots it said, to unmark them all. "
 				+ "Send missing= alone, not with add= or remove=. What do I need?, the pool and a bin built "
-				+ "from the set then count only what is there."),
+				+ "from the set then count only what is there. "
+				# keptbuilt (APP_UX9 #6): a set kept built on a shelf.
+				+ "built=[\"7140-1\"] marks each set they own as kept built on a shelf, every copy of it, as "
+				+ "its Built mark in My collection does: its parts are then left out of What can I build?, "
+				+ "My bricks, parts_list need and submit_design mine=true (its spares still count). "
+				+ "{set, copies} marks that many of its copies; copies 0 takes it apart. The reply says "
+				+ "each as was N, now M, to put back. Send built= alone."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"add": {"type": "array", "description": "loose lots to add", "items": {
 					"type": "object", "additionalProperties": false, "required": ["part", "color", "count"],
@@ -999,6 +1005,13 @@ func definitions() -> Array:
 						"marked": {"type": "integer",
 							"description": "with none=true: how many lots its refusal said were marked; all of them unmarked while that is still so"},
 					}},
+				# keptbuilt (APP_UX9 #6): sets kept built on a shelf, or taken apart.
+				"built": {"type": "array", "description": "sets they keep built on a shelf: a set number marks every copy built; {set, copies} that many (0 takes it apart)",
+					"items": {"anyOf": [{"type": "string", "description": "a set's number, like 7140-1: every copy of it kept built"},
+						{"type": "object", "additionalProperties": false, "required": ["set", "copies"], "properties": {
+							"set": {"type": "string", "description": "the set's number, like 7140-1"},
+							"copies": {"type": "integer", "description": "how many of its copies are kept built; 0 takes it apart"},
+						}}]}},
 			}},
 		},
 		{
@@ -4100,7 +4113,7 @@ func held_to_mine(answer: Variant) -> Variant:
 	var store: ModelStore = app.get("_store")
 	var used: Dictionary = SetBin.used_in(world, store.scenery, library)
 	var paragraphs: PackedStringArray = text.split("\n\n")
-	paragraphs.insert(1, OwnCounts.said(OwnCounts.owned(mine.on_hand), used, library))
+	paragraphs.insert(1, OwnCounts.said(mine.on_hand, used, library))
 	if block.is_empty():
 		return "\n\n".join(paragraphs)
 	block["text"] = "\n\n".join(paragraphs)
@@ -4327,7 +4340,7 @@ func _buildable_sets(mine: CollectionStore, most: int) -> String:
 	var ranking: SetRanking = await mine.inventories.ranking()
 	if ranking == null:
 		return "Real sets: every set's parts could not be read (%s)." % mine.inventories.trouble
-	var ranked: SetRanking.Ranked = ranking.rank(OwnCounts.owned(mine.on_hand))
+	var ranked: SetRanking.Ranked = ranking.rank(mine.on_hand)
 	var own: Dictionary = SetRanking.owned_sets(mine.collection)
 	var listed: PackedInt32Array = ranked.listed(own, SetRanking.FEWEST)
 	var now: int = ranked.at_least(listed, 1.0)
@@ -4405,9 +4418,18 @@ func _edit_collection(input: Dictionary) -> String:
 	if account == null or not account.signed_in():
 		return ("The person is not signed in, and a collection is kept with their account: "
 			+ "they sign in (Account), then it can be read and added to.")
+	# keptbuilt (APP_UX9 #6): sets kept built on a shelf, or taken apart. An
+	# empty list asks nothing, as an empty add= does.
+	var built: Variant = input.get("built")
+	var marking_built: bool = built != null and not (built is Array and (built as Array).is_empty())
+	if marking_built and input.get("missing") != null:
+		return ("Nothing was changed: missing= marks a set's missing parts and built= the sets kept built, "
+			+ "one thing a call: send them in separate calls.")
 	# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
 	if input.get("missing") != null:
 		return await _collection_marks(mine, library, input)
+	if marking_built:
+		return await _collection_built(mine, input)
 	var adding: Variant = input.get("add", [])
 	var removing: Variant = input.get("remove", [])
 	if not adding is Array or not removing is Array:
@@ -4602,6 +4624,7 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 	# Each set once, all its copies together (typed, fetched, a list), and
 	# what it is marked as missing: one count a part (lbfix).
 	var marks: Dictionary = held.marks(library)
+	var kept: Dictionary = held.kept_built(mine.records)
 	var copies: Dictionary = {}
 	var numbers: Array = []
 	for entry: Dictionary in held.sets:
@@ -4617,14 +4640,18 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 		var its: Dictionary = (marks.get(number, {}) as Dictionary).get("missing", {})
 		for key: String in its:
 			gone += int(its[key])
-		sets.append("%s%s%s%s" % [number, " " + str(record["n"]) if record.has("n") else "",
-			" x%d" % int(copies[number]) if int(copies[number]) > 1 else "", ", %d missing" % gone if gone > 0 else ""])
-	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all."
+		var built: int = int((kept.get(number, {}) as Dictionary).get("built", 0))
+		sets.append("%s%s%s%s%s" % [number, " " + str(record["n"]) if record.has("n") else "",
+			" x%d" % int(copies[number]) if int(copies[number]) > 1 else "", ", %d missing" % gone if gone > 0 else "",
+			"" if built == 0 else ", kept built" if built == int(copies[number])
+				else ", %d of %d kept built" % [built, int(copies[number])]])
+	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all%s."
 		% [" (the copy on this device)" if mine.offline else "", Counted.of(numbers.size(), "set"),
 			(" (" + ", ".join(sets.slice(0, 20)) + (", …" if sets.size() > 20 else "") + ")") if not sets.is_empty() else "",
 			Counted.of(own.size(), "loose lot"), Counted.of(ours.size(), "lot"),
 			", %s other chats added" % Counted.of(others.size(), "lot") if not others.is_empty() else "",
-			Counted.of(mine.pieces_on_hand(), "piece")])
+			Counted.of(mine.pieces_on_hand(), "piece"),
+			"" if kept.is_empty() else ", the sets kept built left out (built= marks them)"])
 	var listed: int = 0
 	for group: Array in [[ours, "This chat added (remove= takes any of these off):"],
 			[others, "Other chats added (theirs to take off):"],
@@ -4663,7 +4690,7 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 ## What a session reading the person's collection is told of designing from
 ## it (ownlimit): guidance goes in a tool's result, where a session reads it.
 const MINE_SAID := ("To design from their parts only, give submit_design mine=true: the app holds the "
-	+ "design to what they own (these sets' parts less what is marked missing, and the loose lots), "
+	+ "design to what they own (these sets' parts less what is marked missing and the sets kept built, and the loose lots), "
 	+ "and its answer names each part it uses more of than they own, by how many, with what of theirs "
 	+ "could stand in.")
 
@@ -4944,6 +4971,81 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 		"" if int(whole["loose"]) == 0 else ", %d of them made up by their loose parts" % int(whole["loose"]),
 		"" if int(whole["marked"]) > 0 else ": it is whole"])
 	return "\n".join(said)
+
+
+## edit_collection built=: sets the person keeps built on a shelf, or takes
+## apart (keptbuilt, APP_UX9 #6). Each a set number (every copy of it kept
+## built) or {set, copies} (that many; 0 takes it apart), every copy of the
+## number together, as its Built mark in My collection counts them: all in
+## one change at the account (CollectionStore.set_built, op "built"), from
+## the counts read afresh, all or nothing. Each said "was N, now M", to put
+## back, and the pieces left to build with. A set is never added here: one
+## not in the collection is refused, named.
+func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
+	for other: String in ["add", "remove"]:
+		var also: Variant = input.get(other)
+		if also != null and not (also is Array and (also as Array).is_empty()):
+			return ("Nothing was changed: built= marks sets and %s= changes loose lots, one thing a call: "
+				+ "send them in separate calls.") % other
+	var asked: Variant = input["built"]
+	if not asked is Array or (asked as Array).is_empty():
+		return "built is a list of set numbers, like [\"7140-1\"], or of {set, copies}."
+	if (asked as Array).size() > MOST_LOTS:
+		return "At most %d sets a call; send the rest in another." % MOST_LOTS
+	var trouble_read: String = await mine.load_collection()
+	var held: Collection = mine.collection
+	var changes: Array = []
+	var bad := PackedStringArray()
+	var seen: Dictionary = {}
+	for n: int in (asked as Array).size():
+		var one: Variant = asked[n]
+		var raw: String = str(one) if one is String else str((one as Dictionary).get("set", "")) \
+			if one is Dictionary else ""
+		var number: String = SetInventories.normal(raw.strip_edges())
+		if number.is_empty():
+			bad.append("built %d: a set's number, like 7140-1, or {set, copies}" % (n + 1))
+			continue
+		if seen.has(number):
+			bad.append("built %d: %s is named twice" % [n + 1, number])
+			continue
+		seen[number] = true
+		var copies: int = held.copies_of(number)
+		if copies == 0:
+			bad.append("built %d: %s is not a set in the person's collection (they add it in My collection)"
+				% [n + 1, number])
+			continue
+		var wanted: int = copies
+		if one is Dictionary:
+			var given: Variant = (one as Dictionary).get("copies")
+			if not (given is int or given is float) or float(given) != floorf(float(given)) \
+					or int(given) < 0 or int(given) > copies:
+				bad.append("built %d: copies is a whole number from 0 to %d, the copies of %s they own"
+					% [n + 1, copies, number])
+				continue
+			wanted = int(given)
+		var was: int = 0
+		for entry: Dictionary in held.entries_of(number):
+			was += Collection.built_of(entry)
+		changes.append({"set": number, "was": was, "built": wanted, "copies": copies})
+	if not bad.is_empty():
+		return "Nothing was changed: %s.%s" % ["; ".join(bad),
+			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	var sent: Array = changes.map(func(one: Dictionary) -> Dictionary:
+		return {"set": one["set"], "was": one["was"], "built": one["built"]})
+	var done: Dictionary = await mine.set_built(sent)
+	if done["kind"] != CollectionStore.DONE:
+		return "Nothing was changed: %s." % str(done["said"])
+	var lines := PackedStringArray()
+	for one: Dictionary in changes:
+		var record: Dictionary = mine.records.get(str(one["set"]), {})
+		lines.append("  %s%s: kept built %d of %d (was %d)%s" % [one["set"],
+			" " + str(record["n"]) if record.has("n") else "", int(one["built"]), int(one["copies"]), int(one["was"]),
+			", taken apart" if int(one["built"]) == 0 and int(one["was"]) > 0 else ""])
+	return ("Marked at the person's account, as the Built mark in My collection shows it:\n%s\n"
+		+ "A copy kept built stands on their shelf: its parts are left out of What can I build?, My bricks, "
+		+ "parts_list need and submit_design mine=true, its spares apart; %s are now theirs to build with. "
+		+ "To put any back, send built=[{set, copies: the was}].") % ["\n".join(lines),
+			Counted.of(mine.pieces_on_hand(), "piece")]
 
 
 ## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).

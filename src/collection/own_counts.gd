@@ -11,11 +11,9 @@
 ## down, an undo, a delete, a model opened or the collection changed on
 ## another device all count the same, and nothing can drift.
 ##
-## A set kept built on a shelf is not free to build with, but nothing says
-## which are: My collection keeps a set's copies and what each is missing,
-## not whether it stands built (keptbuilt, docs/APP_UX7.md #7, never landed).
-## So every set owned counts as loose bricks, and the bin says so
-## ([constant BUILT_WORDS]) rather than count a shelf's sets silently.
+## A set kept built on a shelf is not free to build with: a copy marked Built
+## in My collection is left out of the pool, its spares apart (keptbuilt,
+## Collection.pool), and the bin says so ([constant BUILT_WORDS]).
 class_name OwnCounts
 extends RefCounted
 
@@ -25,14 +23,9 @@ extends RefCounted
 const WORD := "mine"
 ## The bin's name on its line, and in a tile's tooltip.
 const TITLE := "My bricks"
-## What the bin's line says of sets kept built.
-const BUILT_WORDS := "Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
-
-
-## What the person has to build with, from the pool ([param on_hand]). A set
-## kept built would come off here, once My collection can say which are.
-static func owned(on_hand: Dictionary) -> Dictionary:
-	return on_hand
+## What the bin's line says of sets kept built. An older build says "Every
+## set you own counts, built or not" here, and counts them.
+const BUILT_WORDS := "A set marked Built in My collection is left out: its parts stand on the shelf, and only its spares count."
 
 
 ## How many of each part and colour are left once [param used] is taken off

@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe -->
+<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test -->
 
 ## Sub-features
 
@@ -221,9 +221,38 @@ which models they could build from what they have. Added 2026-10-12.
   only more used in the same generation of the world, never an undo, an
   open or a collection change). The parts list marks a row "N over" past
   what the bin holds, a set's or the person's (`InventoryPanel.held`,
-  `over_of`). A set kept built still counts: nothing marks one built
-  (keptbuilt never landed), and the line's tooltip says so
-  (`OwnCounts.BUILT_WORDS`). Over MCP, `submit_design` takes `mine=true`:
+  `over_of`). A set kept built is left out (keptbuilt): What I own puts a
+  Built mark on each set's first row (`collection_built_<number>`, one
+  press, again to take it apart; with two copies "Built 1 of 2", "Built 2
+  of 2", then none), sent as op `built` and kept as the set entry's
+  `built` (copies built, never past `qty`). `Collection.pool` counts a
+  built copy's spares and none of its other parts, so the bin, What can I
+  build? (`SetRanking.rank(on_hand)`) and `mine=true` all lose them at once;
+  What I own's summary says how many pieces stand built, and the line's
+  tooltip says so (`OwnCounts.BUILT_WORDS`). A part shared by a built set
+  and a set taken apart counts the taken-apart copy's. Over MCP
+  `edit_collection {"built": ["7140-1"]}` marks it in one call
+  (`{set, copies}` for a number, 0 to take apart; each said "was N"), and
+  its read-back says which are kept built. Save sets as CSV
+  (`Collection.sets_csv`, Rebrickable's sets list with a Built column) and
+  as XML (`sets_xml`, BrickLink's, a built copy's REMARKS `Built`) read
+  back the marks through their imports; a replace import of a file with no
+  Built column keeps the marks it had, and fewer copies than marked unmark
+  the rest and say so. A set is counted once by its number, all its entries
+  together (kbfix): copies less those built, the number's missing marks off
+  the apart copies' lots, spares of every copy whose entry kept them, in the
+  app's `Collection.pool` and the site's `api/_owned.js` `poolOf` alike, so
+  where op `built` puts a mark among a number's entries changes nothing; the
+  site's pool leaves out the parts marked missing as the app's does. A kept
+  `built` counts only as a whole number up to the copies, one rule
+  (`Collection.built_count`, `api/_owned.js` `builtCount`, read by poolOf and
+  the API's ops). A site pool kept in `collection_pools_kept` says its `rule`
+  (`supabase/pool_rule.sql`, `POOL_RULE`), and `freshPool` counts one kept by
+  an older rule again; before that file is applied it keeps them as before.
+  The Save buttons' tooltips say a file read back adds to what is there, and
+  the XML carries no Includes Spares. An older build (rel-m304 and before) reads the set
+  and its copies, drops only the mark, and counts it as its tooltip says,
+  "built or not". Over MCP, `submit_design` takes `mine=true`:
   after a built design the answer's second paragraph is `OwnCounts.said`,
   every piece theirs or each part over by how many with what could stand
   in (`Collection.plan`, the same sums as parts_list need), from
@@ -464,6 +493,9 @@ node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790
 tools/relay_probe.sh mysets -- --shots=DIR        # a window, 1280x720 (PROBE_SIZE=1400x900 too)
 # marks left out of Build from, edit_collection missing=, through the sign-in screen (localbricks), on a relay
 tools/relay_probe.sh localbricks -- --shots=DIR   # a window, 1280x720 (PROBE_SIZE=1400x900 too)
+# a set kept built left out of the counts (keptbuilt): the endpoint's op, then the app by hand and over MCP, on a relay
+node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790
+tools/relay_probe.sh keptbuilt -- --shots=DIR     # a window, 1280x720
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
@@ -604,6 +636,42 @@ Proves it when:
   signed out the screen back and nothing held; the bar's line in de, fr and
   es. Look at `localbricks_gate`, `_marked`, `_build`, `_two_copies`,
   `_signed_out`.
+- `keptbuilt_api.mjs` ends `every check passed`: first with no network, a
+  Built column's cells (yes, a count, empty) and a BrickLink REMARKS of
+  Built alone read as the mark, a person's note that begins with the word
+  ("Built once, box opened") not; then on a throwaway account, an
+  older collection (no `built` anywhere) read as it was; op `built` marks
+  7140-1, the same id again changes nothing, a stale `was`, a set not
+  owned, copies past those owned and a set named twice each refused with
+  words and nothing changed; the mark kept through own, a lot change, a
+  set added, a Rebrickable replace import and an older app's PUT; own
+  down to fewer copies unmarks the rest; Save's CSV (`Built` column) and
+  XML (`<REMARKS>Built</REMARKS>`) read into an empty collection built
+  again, a CSV with no Built column carrying the marks on replace, a Built
+  cell of "maybe" refused; taken apart, the older collection lot for lot.
+  Also with no network: the site's poolOf counts two copies, one built and
+  three 3001s missing, 7 kept as one entry or as two with the marks either
+  way, 17 of 20 with none built, and a kept built of -1, "2", 1.5, true,
+  null, "abc", 2, 5 on 3 copies reads 0, 0, 0, 0, 0, 0, 2, 3.
+- `keptbuilt_probe` (tools/relay_probe.sh keptbuilt, with `-- --shots=DIR`)
+  ends `all good`: 7140 typed and 12 loose lots added, the pool 341 pieces
+  checked by hand part by part against 7140-1's inventory and the lots; the
+  row's Built mark pressed once, kept at the account (built 1), and the pool,
+  the bin's My bricks tile for tile, What can I build?'s whole ranking and
+  `submit_design mine=true` (a part only 7140-1 has, "1 over") all the 12
+  lots alone, 56 pieces; the summary "56 pieces to build with, 285 more in
+  1 set kept built"; pressed again all back to 341; edit_collection
+  `{"built": ["7140-1"]}` in 1 call ("was 0"), refusals changing nothing,
+  `{set, copies: 0}` back; a restart and another device read the mark; Save
+  sets as CSV and as XML read back into an empty collection built; rel-m304's
+  Collection, compiled from git, keeps the set and drops only the mark;
+  two copies Built 1 of 2, 2 of 2, none; the new lines in de, fr and es;
+  a built copy's spares still counted beside a part marked missing (the
+  mark comes off the copies apart alone); missing= with built= refused;
+  two copies, one built, three 3001s missing, counted 7 however the marks
+  sit over the number's entries; a kept built of "2", true, 1.5, 0.5, -1 and
+  null read as none, 2.0 and 2 as 2, 7 as the 3 copies.
+  Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
   found, each first; whole scenes of box, bags and parts 2 of 10.
@@ -646,6 +714,13 @@ A deployment carries the numbers once `colors.json` is rebuilt
 ## Gotchas
 
 - **Godot exits 0 on a parse error**: read the probe for `SCRIPT ERROR`.
+- Each page sits in a scroll of its own (`Whole_own`, ...). Where its
+  controls leave its list under `LIST_LEAST` (a 390 x 844 phone's What I
+  own), the list stops scrolling and the page scrolls whole
+  (`scrolls_whole("own")`); elsewhere the list scrolls alone. A probe that
+  scrolls to a row finds the nearest scroll that still scrolls. The phone
+  case is checked by the web's `dialogs` check at 390 (a Label off the
+  screen there was this, keptbuilt 11-16).
 - New classes here (`Collection`, `CollectionStore`, `SetInventories`,
   `RebrickableAccount`, `CollectionDialog`, `TextFilePicker`) are not known to a
   `--script` run until `godot --headless --path . --import --quit` has scanned
