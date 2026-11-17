@@ -3095,6 +3095,13 @@ func is_on_joint() -> bool:
 	return _joint_site != null
 
 
+## The end of the part in hand that goes onto the joint it is on, in the
+## part's own frame, or null (JointMarks draws it).
+func joint_end() -> JointSnap.End:
+	return null if _joint_site == null or _joint_options.is_empty() \
+		else _joint_options[posmod(_joint_way, _joint_options.size())][0]
+
+
 ## What the ghost is on, in words, or "": "the pin hole of Technic Brick
 ## 1 x 2 with Hole".
 func joint_words() -> String:

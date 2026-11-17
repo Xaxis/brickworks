@@ -3430,6 +3430,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("looking at the %s" % from
 				if close.size.length() <= 0.0
 				else "looking closely at the %s" % from)
+			# jointmarks: where its parts connect, marked as View ›
+			# Connection points marks them, in this picture alone.
+			if bool(args.get("marks", false)):
+				return await _with_marks(from, close)
 			# Of what is in the world, which during a design is the
 			# last draft it checked — so this is its own work, not a
 			# hypothetical.
@@ -4949,7 +4953,7 @@ func _with_a_look(said: String, ask: String,
 
 	var picture: Dictionary = {}
 	if small <= 0 and from == "corner" and only.size == Vector3.ZERO \
-			and _shot.highlight.is_empty() and world != null:
+			and _shot.highlight.is_empty() and _shot.drawn_with == null and world != null:
 		# The whole model from the corner, as the judge first sees it: its
 		# colours counted on the way, for review_model and look_at_model to
 		# say against real sets (ColoursSeen).
@@ -5004,6 +5008,26 @@ func _with_a_look(said: String, ask: String,
 	if not ask.is_empty():
 		blocks.append({"type": "text", "text": ask})
 	return blocks
+
+
+## view_model marks=true: the picture with every connection point of the
+## model's parts marked (JointMarks.for_picture), what the marks are said
+## first. Drawn into this picture only: the model and the window never have
+## them.
+func _with_marks(from: String, close: AABB) -> Variant:
+	var shot: ModelShot = _ensure_shot()
+	if LeasedShots.in_use():
+		return await _with_a_look("No connection points are marked: this picture is drawn "
+			+ "elsewhere, which does not draw them.", "", from, close)
+	var drawn: MultiMeshInstance3D = Later.script(&"JointMarks").for_picture(world, library,
+		scenery, close)
+	shot.drawn_with = drawn
+	var said: String = Later.script(&"JointMarks").said(
+		drawn.multimesh.instance_count if drawn.visible else 0)
+	var answer: Variant = await _with_a_look(said, "", from, close)
+	shot.drawn_with = null
+	drawn.queue_free()
+	return answer
 
 
 ## Of attachment_points' parts=, at most this many are answered in a call.
@@ -24808,6 +24832,17 @@ func _tools() -> Array:
 						"description": "which side to look from. "
 							+ "corner is a three-quarter view and shows "
 							+ "the shape best",
+					},
+					"marks": {
+						"type": "boolean",
+						"description": ("true marks every connection "
+							+ "point in the picture, as View › Connection "
+							+ "points does in the window: filled for what "
+							+ "goes in (studs, pins, axles, bars, balls), "
+							+ "hollow for what takes one (anti-studs, pin "
+							+ "and axle holes, clips, sockets), each at its "
+							+ "own size. To find a beam's third hole or "
+							+ "where a ball goes without counting."),
 					},
 					"view": {
 						"type": "string",

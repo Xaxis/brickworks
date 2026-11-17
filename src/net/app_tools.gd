@@ -103,6 +103,8 @@ const COMMANDS: Dictionary = {
 	"booklet_page_setup": "page_setup",
 	# seeing2: View, Stud directions is view_board's studs=true.
 	"stud_map": "view_board",
+	# jointmarks: View, Connection points is view_model's marks=true.
+	"joint_marks": "view_model",
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
