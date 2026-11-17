@@ -70,7 +70,14 @@ app, joined by a link (docs/TOGETHER.md).
   session's Realtime channel (`channelOf`, `tell`, `listen` in
   api/together.js), and a poll answers with it; it also reads who is in
   it every 250 ms, and every 100 ms while another's pointer moved in the
-  last 2 s if it is not listening yet. A browser's poll asks
+  last 2 s if it is not listening yet. A poll listens first and reads who
+  is in it once its channel has joined (at most 250 ms after it began),
+  once: what was told before is in that read (pollreads; the `begins`
+  case barring its reads by how often, a join slower than a read on
+  purpose). The changes wait for no channel: read at once and every
+  100 ms while it joins, and a change found then answered at once
+  (`changed`: made 30 ms into a poll whose channel joins at 240, given
+  at its next read of them). A browser's poll asks
   `stream: true` and reads its answer a line at a time (`_ask_page`,
   `_on_page_heard`): who is in it comes as a line
   `{more: true, people, seen, at}` the moment it changes and the poll
@@ -314,7 +321,21 @@ signed in as someone else.
   (`ordered`: the database's guard, `pointer_at.lt.<now>`); a point told
   while a new poll's channel is still joining goes out the moment it has
   joined (`joining`: 77 ms, against 275 before), the stand-in channel
-  hearing only once joined, as Realtime does.
+  hearing only once joined, as Realtime does; it is in the poll's one
+  first read of who is in it, taken once the channel has joined, so a
+  poll reads no more than before pointfix (pollreads: `begins`, read
+  counts barred by the gap between two reads, less what the box held the
+  fixture for in the 20 ms before the earlier, each log's third field; the
+  changes POLL_MS after the last read of them ended, as live reads them,
+  and a step that skipped them rests only until then; and
+  timed bars less what the busy box held the fixture for, `stalled`; a point's timed from the
+  server telling the channel, `relay_ms`, since a send's own sign-in
+  check waits on the thread pool a busy box keeps, and `joining`'s
+  channel joins 70 ms after that telling, not by the clock). The fixture
+  acts on a poll's state (begun, listening, its first line out), never a
+  sleep standing for it; it must pass with every sign-in held 0-300 ms:
+  `NODE_OPTIONS="--import ./tests/fixtures/together/slow_sign_in.mjs"
+  python3 tools/minitest.py tests/test_together_poll.py`.
 - The desktop pair probe's B8 part (sections 4c to 4e and 6 of
   `together_probe.gd`, run with the relay holding
   `together_snapshot_parts`): selection outlined in e8590c, pointer p95
