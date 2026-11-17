@@ -22,7 +22,7 @@ On the **What I own** page, any of these:
 - **Rebrickable CSV…** or **BrickLink XML…** reads a list you exported there.
 - From your Rebrickable account: your own **Rebrickable API key** and **User token** (or username and password), then **Fetch**. The key goes only to Rebrickable and is not kept. Fetching again replaces what came from Rebrickable before. A set's missing parts stay marked, as far as the copies Rebrickable lists hold them; Brickworks says if any could not be.
 
-**Save sets as CSV** and **Save sets as XML** save your sets as a Rebrickable sets list and a BrickLink XML, each saying which you keep built; Brickworks, Rebrickable and BrickLink read them back.
+**Save sets as CSV** and **Save sets as XML** save your sets as a Rebrickable sets list and a BrickLink XML, each saying which you keep built. The XML does not say which sets' spare parts you kept; the CSV does. Read back into Brickworks, a file adds to what is there, as every file does: to restore your collection from one, read it into an empty collection (**Start over** first).
 
 Each set is counted out into its parts.
 

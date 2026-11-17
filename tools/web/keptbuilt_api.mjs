@@ -35,7 +35,13 @@
 //      Rebrickable CSV with no Built column carries the marks on a replace
 //   6. taken apart (built 0): the entry as the older shape, no "built" left;
 //      then the whole older collection of step 1, lot for lot
+//
+// And in 0, the site's pool (api/_owned.js poolOf) with no network (kbfix,
+// 2026-11-17): two copies, one built and three 3001s marked missing, count
+// 7 whichever entry holds which mark; with none built, the missing come off
+// (17 of 20); and a kept "built" counts only as a whole number (builtCount).
 import { bricklinkXml, rebrickableCsv } from "../../api/collection.js";
+import { builtCount, poolOf } from "../../api/_owned.js";
 import { deleteAccount, mintSession } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -101,6 +107,28 @@ try {
   const cells = rebrickableCsv("Set Number,Quantity,Built\n7140-1,3,yes\n6020-1,2,1\n10237-1,1,\n");
   check(cells.builtKnown && cells.sets.map((one) => one[3]).join() === "3,1,0",
     `a Built column: yes, a count and empty read as ${cells.sets.map((one) => one[3]).join(", ")} copies`);
+  {
+    const REC = { "1000-1": { n: "Test A", p: [["3001", 4, 10], ["3020", 0, 5]], s: [["3001", 4, 1]] } };
+    const shelf = async () => ({ sets: REC });
+    const brick = async (sets) => ((await poolOf({ sets, parts: [] }, shelf)).lots
+      .find((lot) => lot.part === "3001" && lot.colour === 4) || { qty: 0 }).qty;
+    const missing = [{ part: "3001", colour: 4, qty: 3 }];
+    const A = (extra) => ({ set: "1000-1", qty: 1, spares: false, src: "hand", ...extra });
+    const ways = [
+      [A({ qty: 2, built: 1, missing })],
+      [A({ built: 1, missing }), A({ src: "bricklink_xml" })],
+      [A({ missing }), A({ src: "bricklink_xml", built: 1 })],
+    ];
+    const counted = [];
+    for (const sets of ways) counted.push(await brick(sets));
+    check(counted.join() === "7,7,7", `two copies, one built, three 3001s missing: the site counts 3001 ${counted.join(", ")}`
+      + " as one entry, the mark on the copy marked missing, and on the other (7 each)");
+    const apart = await brick([A({ qty: 2, missing })]);
+    check(apart === 17, `none built, three missing: the site counts 3001 ${apart} of 20 (17)`);
+    const reads = [-1, "2", 1.5, true, null, "abc", 2, 5].map((built) => builtCount(A({ qty: 3, built })));
+    check(reads.join() === "0,0,0,0,0,0,2,3",
+      `a kept built of -1, "2", 1.5, true, null, "abc", 2, 5 on 3 copies reads ${reads.join(", ")} (only a whole number counts)`);
+  }
   const session = await mintSession(EMAIL);
   token = session.access_token;
   check(Boolean(token && session.kept.user_id), "a throwaway account, signed in");

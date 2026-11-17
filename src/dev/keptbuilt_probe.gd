@@ -41,6 +41,12 @@
 ##  10. a built copy's spares still counted beside a part marked missing:
 ##      the mark is against the inventory's lots, so it comes off the
 ##      copies apart alone (the review's finding, 2026-11-16)
+##  11. one count however the marks are spread (kbfix, kbreview A4): two
+##      copies, one built, three 3001s marked missing, count 3001 7 (10 less
+##      3) kept as one entry, as two with the Built mark on the copy marked
+##      missing, and as two with it on the other
+##  12. a kept "built" read one way (kbreview A1): only a whole number counts,
+##      up to the copies; "2", true, 1.5, 0.5 and -1 are none
 ##
 ## On pre261 there is no Built mark, no op "built" and no built=: 2 to 8
 ## fail with words. Writes nothing in the app's own directory: the account's
@@ -364,6 +370,12 @@ func _steps() -> void:
 	print("\n10. a built copy's spares beside a part marked missing")
 	_spares_and_missing()
 
+	print("\n11. one count however the marks are spread over a set's entries")
+	_where_the_marks_sit()
+
+	print("\n12. a kept built read one way")
+	_odd_built()
+
 
 # -- the counts by hand ---------------------------------------------------------------
 
@@ -452,6 +464,38 @@ func _spares_and_missing() -> void:
 		seen.append([int(counted.get(round, 0)), int(counted.get(brick, 0))])
 	_check("apart, 6141 %d and 3001 %d (4 and 2); built, 6141 %d and 3001 %d (the spare, 1, and 0)"
 		% [seen[0][0], seen[0][1], seen[1][0], seen[1][1]], seen == [[4, 2], [1, 0]])
+
+
+## One person's state, two copies of a set, one kept built and three 3001s
+## missing, kept three ways the account can keep it (op built fills a
+## number's entries in the order kept, so the mark can sit on either).
+func _where_the_marks_sit() -> void:
+	var record: Dictionary = {"n": "Test", "p": [["3001", 4, 10], ["3020", 0, 5]], "s": [["3001", 4, 1]]}
+	var brick: String = Collection.key_of("3001", 4, _library)
+	var missing: Array = [{"part": "3001", "colour": 4, "qty": 3}]
+	var ways: Array = [
+		[{"set": "9999-1", "qty": 2, "spares": false, "src": "hand", "built": 1, "missing": missing}],
+		[{"set": "9999-1", "qty": 1, "spares": false, "src": "hand", "built": 1, "missing": missing},
+			{"set": "9999-1", "qty": 1, "spares": false, "src": "bricklink_xml"}],
+		[{"set": "9999-1", "qty": 1, "spares": false, "src": "hand", "missing": missing},
+			{"set": "9999-1", "qty": 1, "spares": false, "src": "bricklink_xml", "built": 1}],
+	]
+	var seen: Array = []
+	for sets: Array in ways:
+		var counted: Dictionary = Collection.from_json({"sets": sets, "parts": []}).pool({"9999-1": record}, _library)
+		seen.append(int(counted.get(brick, 0)))
+	_check("3001 counted %s as one entry, the mark on the copy marked missing, and on the other (7 each)" % str(seen),
+		seen == [7, 7, 7])
+
+
+## A kept "built" of each odd kind, on three copies: what the app reads.
+func _odd_built() -> void:
+	var seen: Array = []
+	for odd: Variant in ["2", true, 1.5, 0.5, -1, null, 2.0, 2, 7]:
+		var one: Collection = Collection.from_json({"sets": [{"set": "9999-1", "qty": 3, "built": odd}], "parts": []})
+		seen.append(Collection.built_of(one.sets[0]))
+	_check("\"2\", true, 1.5, 0.5, -1, null, 2.0, 2, 7 read as %s (0 0 0 0 0 0 2 2 3)" % str(seen),
+		seen == [0, 0, 0, 0, 0, 0, 2, 2, 3])
 
 
 # -- an older build -------------------------------------------------------------------

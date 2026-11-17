@@ -238,7 +238,19 @@ which models they could build from what they have. Added 2026-10-12.
   as XML (`sets_xml`, BrickLink's, a built copy's REMARKS `Built`) read
   back the marks through their imports; a replace import of a file with no
   Built column keeps the marks it had, and fewer copies than marked unmark
-  the rest and say so. An older build (rel-m304 and before) reads the set
+  the rest and say so. A set is counted once by its number, all its entries
+  together (kbfix): copies less those built, the number's missing marks off
+  the apart copies' lots, spares of every copy whose entry kept them, in the
+  app's `Collection.pool` and the site's `api/_owned.js` `poolOf` alike, so
+  where op `built` puts a mark among a number's entries changes nothing; the
+  site's pool leaves out the parts marked missing as the app's does. A kept
+  `built` counts only as a whole number up to the copies, one rule
+  (`Collection.built_count`, `api/_owned.js` `builtCount`, read by poolOf and
+  the API's ops). A site pool kept in `collection_pools_kept` says its `rule`
+  (`supabase/pool_rule.sql`, `POOL_RULE`), and `freshPool` counts one kept by
+  an older rule again; before that file is applied it keeps them as before.
+  The Save buttons' tooltips say a file read back adds to what is there, and
+  the XML carries no Includes Spares. An older build (rel-m304 and before) reads the set
   and its copies, drops only the mark, and counts it as its tooltip says,
   "built or not". Over MCP, `submit_design` takes `mine=true`:
   after a built design the answer's second paragraph is `OwnCounts.said`,
@@ -637,6 +649,10 @@ Proves it when:
   XML (`<REMARKS>Built</REMARKS>`) read into an empty collection built
   again, a CSV with no Built column carrying the marks on replace, a Built
   cell of "maybe" refused; taken apart, the older collection lot for lot.
+  Also with no network: the site's poolOf counts two copies, one built and
+  three 3001s missing, 7 kept as one entry or as two with the marks either
+  way, 17 of 20 with none built, and a kept built of -1, "2", 1.5, true,
+  null, "abc", 2, 5 on 3 copies reads 0, 0, 0, 0, 0, 0, 2, 3.
 - `keptbuilt_probe` (tools/relay_probe.sh keptbuilt, with `-- --shots=DIR`)
   ends `all good`: 7140 typed and 12 loose lots added, the pool 341 pieces
   checked by hand part by part against 7140-1's inventory and the lots; the
@@ -651,7 +667,10 @@ Proves it when:
   Collection, compiled from git, keeps the set and drops only the mark;
   two copies Built 1 of 2, 2 of 2, none; the new lines in de, fr and es;
   a built copy's spares still counted beside a part marked missing (the
-  mark comes off the copies apart alone); missing= with built= refused.
+  mark comes off the copies apart alone); missing= with built= refused;
+  two copies, one built, three 3001s missing, counted 7 however the marks
+  sit over the number's entries; a kept built of "2", true, 1.5, 0.5, -1 and
+  null read as none, 2.0 and 2 as 2, 7 as the 3 copies.
   Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box

@@ -403,11 +403,12 @@ func _own_page() -> Control:
 		"A BrickLink wanted list or inventory, as XML")
 	# keptbuilt: the sets out again, each set's copies kept built with them.
 	_button(files, "Save sets as CSV", save_sets.bind("csv"), "collection_save_csv",
-		"Your sets as a Rebrickable sets list: Rebrickable and Brickworks read it back, "
-		+ "and its Built column keeps which you keep built")
+		"Your sets as a Rebrickable sets list, its Built column the copies you keep built. Read back here, it adds "
+		+ "to what is there: to restore your collection, read it into an empty one (Start over first)")
 	_button(files, "Save sets as XML", save_sets.bind("xml"), "collection_save_xml",
-		"Your sets as a BrickLink XML: BrickLink and Brickworks read it back, "
-		+ "the copies you keep built marked Built in their remarks")
+		"Your sets as a BrickLink XML, the copies you keep built marked Built in their remarks. It does not say "
+		+ "which sets' spare parts you kept, as the CSV's Includes Spares does. Read back here, it adds to what is there: "
+		+ "to restore your collection, read it into an empty one (Start over first)")
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	files.add_child(spacer)

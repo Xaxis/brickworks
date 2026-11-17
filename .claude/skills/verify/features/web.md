@@ -5468,6 +5468,9 @@ rolled-back transaction, and the sums alone:
 ```sh
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql \
   --dry --try=tools/discovery_try.sql --table=gallery_picks
+# a kept pool's rule (kbfix): an older site's keep writes rule 1, a newer one's 2, owned_pool_of says it
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/pool_rule.sql \
+  --dry --try=tools/pool_rule_try.sql --table=collection_pools_kept
 node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets
 python3 tools/minitest.py tests/test_discovery.py
 node --env-file=.env tools/web/needs_backfill.mjs --dry --facts=<part_facts.mjs output>

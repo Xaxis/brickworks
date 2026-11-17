@@ -169,7 +169,7 @@ import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
-import { plainColour, readShard, resolvePart, shardOf } from "./_owned.js";
+import { builtCount, plainColour, readShard, resolvePart, shardOf } from "./_owned.js";
 
 export const MAX_BYTES = 1_000_000;
 /// Keep them and Take back name every lot a session added, up to MAX_LOTS.
@@ -646,7 +646,7 @@ class Keyed {
     const held = this.get(one);
     if (!held) {
       const made = { ...one, qty: Math.min(MAX_QTY, qty) };
-      if (made.built !== undefined) made.built = Math.min(made.qty, Number(made.built) || 0) || undefined;
+      if (made.built !== undefined) made.built = builtCount(made) || undefined;
       if (made.built === undefined) delete made.built;
       return this.keep(made);
     }
@@ -657,7 +657,7 @@ class Keyed {
     held.qty = Math.min(MAX_QTY, sum);
     if (one.spares) held.spares = true;
     // A set's copies kept built, added as its copies are (keptbuilt).
-    if (Number(one.built) > 0) held.built = Math.min(held.qty, (Number(held.built) || 0) + Number(one.built));
+    if (builtCount(one) > 0) held.built = Math.min(held.qty, builtCount(held) + builtCount(one));
     return held;
   }
 
@@ -703,7 +703,7 @@ function merged(have, add, mode, src, books = new Map()) {
   // The copies kept built of the entries it takes out, by set (keptbuilt).
   const built = new Map();
   for (const s of have.sets) {
-    if (!s.fig && Number(s.built) > 0 && !sets.get(s)) built.set(s.set, (built.get(s.set) || 0) + Number(s.built));
+    if (builtCount(s) > 0 && !sets.get(s)) built.set(s.set, (built.get(s.set) || 0) + builtCount(s));
   }
   for (const s of have.sets) {
     if (!Array.isArray(s.missing) || !s.missing.length || sets.get(s)) continue;
@@ -784,9 +784,10 @@ function merged(have, add, mode, src, books = new Map()) {
   return { next: { sets: sets.list, parts: parts.list }, parts, unkept, unread, gone, unbuilt };
 }
 
-/// How many copies of [set] are kept built in [list], every entry of it.
+/// How many copies of [set] are kept built in [list], every entry of it,
+/// each as builtCount reads it.
 function builtOf(list, set) {
-  return list.filter((s) => s.set === set && !s.fig).reduce((n, s) => n + Math.min(copies(s), Number(s.built) || 0), 0);
+  return list.filter((s) => s.set === set && !s.fig).reduce((n, s) => n + builtCount(s), 0);
 }
 
 /// [total] copies of [set] marked built over its entries in [list], in the

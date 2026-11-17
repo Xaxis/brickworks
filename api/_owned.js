@@ -130,6 +130,19 @@ export const plainColour = (code, given = ownedFacts()) => given.plain.get(code)
 const MOULD = /^([ux]?\d+)[a-z]$/;
 export const familyOf = (part) => MOULD.exec(part)?.[1] ?? part;
 
+/// A part and colour in the one spelling: {key, part, colour}, or null for
+/// a colour that is none, or a part the catalogue does not know when there
+/// is a catalogue to ask.
+function spelled(rawPart, rawColour, given = ownedFacts()) {
+  const colour = Number(rawColour);
+  if (!Number.isInteger(colour) || colour < 0) return null;
+  const id = String(rawPart || "").toLowerCase().replace(/\.dat$/, "");
+  if (!id || (given.known && !given.known.has(id))) return null;
+  const part = familyOf(resolvePart(id, given));
+  const code = plainColour(colour, given);
+  return { key: `${part}/${code}`, part, colour: code };
+}
+
 /// [lots] ([part, colour, qty] or {part, colour, qty}) in the one spelling,
 /// the same key counted once: [{part, colour, qty}]. A part the catalogue
 /// does not know is left out, when there is a catalogue to ask.
@@ -138,16 +151,11 @@ export function keyed(lots, given = ownedFacts()) {
   for (const lot of lots) {
     const [rawPart, rawColour, rawQty] = Array.isArray(lot) ? lot : [lot.part, lot.colour, lot.qty];
     const qty = Number(rawQty);
-    const colour = Number(rawColour);
-    if (!Number.isInteger(qty) || qty < 1 || !Number.isInteger(colour) || colour < 0) continue;
-    const id = String(rawPart || "").toLowerCase().replace(/\.dat$/, "");
-    if (!id || (given.known && !given.known.has(id))) continue;
-    const part = familyOf(resolvePart(id, given));
-    const code = plainColour(colour, given);
-    const key = `${part}/${code}`;
-    const held = out.get(key);
+    const at = Number.isInteger(qty) && qty >= 1 ? spelled(rawPart, rawColour, given) : null;
+    if (!at) continue;
+    const held = out.get(at.key);
     if (held) held.qty += qty;
-    else out.set(key, { part, colour: code, qty });
+    else out.set(at.key, { part: at.part, colour: at.colour, qty });
   }
   return [...out.values()];
 }
@@ -178,11 +186,24 @@ export async function readShard(n, origin) {
   return null;
 }
 
+/// How many of a set entry's copies a kept "built" says stand built
+/// (keptbuilt): a whole number, from none to its copies. Anything else (a
+/// string, true, 1.5) is none, as Collection.built_count reads it: one rule
+/// for the app, poolOf and the API's ops.
+export function builtCount(entry) {
+  const value = entry?.built;
+  if (entry?.fig === true || typeof value !== "number" || !Number.isInteger(value)) return 0;
+  return Math.min(Math.max(1, Number(entry.qty) || 1), Math.max(0, value));
+}
+
 /// Everything on hand, as Collection.pool counts it: the loose parts, and
 /// each set's parts (its spares too when the person said they kept them)
 /// times how many of it, less the copies kept built on a shelf, whose spares
-/// stay (keptbuilt). {lots: [{part, colour, qty}], unknown: [set numbers no
-/// inventory has]}. [read] is readShard, or a probe's own.
+/// stay (keptbuilt), and less the parts marked missing, which come off the
+/// copies still apart as far as those hold them (mysets). A set is counted
+/// once by its number, all its entries together, so which entry holds a
+/// mark changes nothing (kbfix). {lots: [{part, colour, qty}], unknown:
+/// [set numbers no inventory has]}. [read] is readShard, or a probe's own.
 export async function poolOf(collection, read) {
   const sets = Array.isArray(collection?.sets) ? collection.sets : [];
   const wanted = [...new Set(sets.map((one) => shardOf(one.set)))];
@@ -194,25 +215,52 @@ export async function poolOf(collection, read) {
   }
   const lots = [...(Array.isArray(collection?.parts) ? collection.parts : [])];
   const unknown = [];
+  // Each number's copies, those kept built, those whose spares were kept,
+  // and its missing marks, every entry's.
+  const numbers = new Map();
   for (const one of sets) {
-    const record = shards.get(shardOf(one.set))?.sets?.[String(one.set).toLowerCase()];
+    const number = String(one.set);
+    const held = numbers.get(number) || { copies: 0, built: 0, spares: 0, missing: [] };
+    const copies = Math.max(1, Number(one.qty) || 1);
+    held.copies += copies;
+    held.built += builtCount(one);
+    if (one.spares) held.spares += copies;
+    for (const lot of Array.isArray(one.missing) ? one.missing : []) if (lot && typeof lot === "object") held.missing.push(lot);
+    numbers.set(number, held);
+  }
+  for (const [number, held] of numbers) {
+    const record = shards.get(shardOf(number))?.sets?.[number.toLowerCase()];
     if (!record) {
-      unknown.push(String(one.set));
+      unknown.push(number);
       continue;
     }
-    const times = Math.max(1, Number(one.qty) || 1);
-    const apart = times - Math.min(times, Math.max(0, Number(one.built) || 0));
-    for (const [part, colour, qty] of record.p || []) lots.push([part, colour, Number(qty) * apart]);
-    for (const [part, colour, qty] of one.spares ? record.s || [] : []) lots.push([part, colour, Number(qty) * times]);
+    const apart = held.copies - held.built;
+    // Marked against the inventory's lots, never its spares: what is missing
+    // past the apart copies' lots is missing from a copy on the shelf.
+    const gone = new Map(keyed(held.missing).map((lot) => [`${lot.part}/${lot.colour}`, lot.qty]));
+    for (const [part, colour, qty] of record.p || []) {
+      const count = Number(qty) * apart;
+      const key = spelled(part, colour)?.key;
+      const taken = Math.min(count, gone.get(key) || 0);
+      if (taken > 0) gone.set(key, gone.get(key) - taken);
+      lots.push([part, colour, count - taken]);
+    }
+    for (const [part, colour, qty] of record.s || []) lots.push([part, colour, Number(qty) * held.spares]);
   }
   return { lots: keyed(lots), unknown };
 }
 
+/// The rule poolOf counts by, kept with each pool (supabase/pool_rule.sql):
+/// 1 the sets' parts, 2 less the copies kept built and the parts marked
+/// missing (kbfix). A pool kept by an older rule is counted again.
+export const POOL_RULE = 2;
+
 const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
 
 /// [account]'s pool as the gallery counts it, counted again first when
-/// their collection changed since it was (or it never was): {lots, pieces,
-/// unknown, at}, or null for nobody with a collection, and before
+/// their collection changed since it was, when it was counted by an older
+/// rule ([POOL_RULE]), or when it never was: {lots, pieces, unknown, rule,
+/// at}, or null for nobody with a collection, and before
 /// supabase/discovery.sql. A collection deleted takes its pool with it.
 export async function freshPool(account, origin) {
   const [kept, rows] = await Promise.all([
@@ -224,8 +272,12 @@ export async function freshPool(account, origin) {
     if (kept) await db("rpc/owned_forget_pool", { method: "POST", body: { account } }).catch(() => null);
     return null;
   }
-  if (kept && Date.parse(kept.at) >= Date.parse(collection.updated_at)) return kept;
+  // A pool with no rule is from before pool_rule.sql was applied, which
+  // can tell no rule from another: it is kept as it was.
+  const ruled = !kept || kept.rule === undefined || Number(kept.rule) >= POOL_RULE;
+  if (kept && ruled && Date.parse(kept.at) >= Date.parse(collection.updated_at)) return kept;
   const { lots, unknown } = await poolOf(collection, (n) => readShard(n, origin));
-  const made = await db("rpc/owned_keep_pool", { method: "POST", body: { account, lots, unknown } }).catch(notYet);
-  return made ? { ...made, unknown, at: new Date().toISOString() } : null;
+  const keep = (body) => db("rpc/owned_keep_pool", { method: "POST", body }).catch(notYet);
+  const made = await keep({ account, lots, unknown, rule: POOL_RULE }) ?? await keep({ account, lots, unknown });
+  return made ? { ...made, unknown, rule: POOL_RULE, at: new Date().toISOString() } : null;
 }
