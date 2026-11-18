@@ -331,6 +331,39 @@ try {
   const pmPosted = await admin("social_posted", { body: { id: pm.id, url: "" } });
   out.message_reply = { handed: pmSend.json?.outcome, posted: pmPosted.json?.send?.status, url: pmPosted.json?.send?.url };
 
+  // 12d. A reply by hand to any post or comment, by its address (redditway:
+  //      no inbox without Reddit's API, and its RSS ended 2026-11-13).
+  const byAddress = (address, words = "Lovely build!") => admin("social_draft", { body: { provider: "reddit", kind: "reply", address,
+    body: words } });
+  const toComment = await byAddress("https://old.reddit.com/r/lego/comments/abc777/a_castle/def888/?context=3#x");
+  const toPost = await byAddress("https://www.reddit.com/r/legomoc/comments/abc999/", "Which bricks? https://brickworks.diy/gallery");
+  const refusedTo = {};
+  for (const [name, address] of [["share", "https://www.reddit.com/r/lego/s/AbCdEf12"], ["redd_it", "https://redd.it/abc777"],
+    ["subreddit", "https://www.reddit.com/r/lego/"], ["other", "https://example.com/r/lego/comments/abc777/"],
+    ["script", "javascript:alert(1)"], ["none", ""]]) {
+    const got = await byAddress(address);
+    refusedTo[name] = got.status;
+  }
+  const comment = toComment.json?.send;
+  const handedTo = await admin("social_send", { body: { id: comment?.id, hash: comment?.hash } });
+  const listed = (await admin("social", { method: "GET" })).json?.sends?.find((one) => one.id === comment?.id);
+  // Edited once handed: a draft again, still answering the same comment.
+  const reEdited = await admin("social_draft", { body: { provider: "reddit", kind: "reply", id: comment?.id, address: "https://www.reddit.com/r/x/comments/zzz111/",
+    body: "Lovely build, truly!" } });
+  const handedAgain = await admin("social_send", { body: { id: comment?.id, hash: reEdited.json?.send?.hash } });
+  const replyPosted = await admin("social_posted", { body: { id: comment?.id,
+    url: "https://www.reddit.com/r/lego/comments/abc777/a_castle/ghi999/" } });
+  out.reply_by_address = {
+    comment: { status: toComment.status, parent: comment?.parent, link: comment?.link, community: comment?.community },
+    post: { status: toPost.status, parent: toPost.json?.send?.parent, link: toPost.json?.send?.link,
+      tagged: /utm_campaign=bw-/.test(toPost.json?.send?.body || "") },
+    refused: refusedTo, said: (await byAddress("https://redd.it/abc777")).json?.error,
+    handed: { outcome: handedTo.json?.outcome, hand_off: handedTo.json?.hand_off, filled: handedTo.json?.hand_off_filled, listed: listed?.hand_off },
+    edited: { outcome: reEdited.json?.outcome, parent: reEdited.json?.send?.parent, link: reEdited.json?.send?.link },
+    again: handedAgain.json?.hand_off,
+    posted: { status: replyPosted.json?.send?.status, external_id: rowOf(comment?.id)?.external_id, url: replyPosted.json?.send?.url },
+  };
+
   // 12c. Two Keeps of one new draft at once are one draft, both answered
   //      with it (sdreview's double_keep_new); a schedule older than the
   //      newest 300 is still listed, and what is not listed is counted (L10).

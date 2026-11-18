@@ -3216,7 +3216,10 @@ plan with Claude as the client.
   read answered as the owner's pool answers it: "Posting by hand", no
   Connect, How to connect later opening with the redirect URI, Vercel's
   names, the redeploy and the scopes, its Copy answering, Write a post
-  opening Write), and no token in any answer, page or storage. The
+  opening Write), a reply by hand to a comment by its pasted address
+  (New reply, a Share link refused, its rules beside the box, Reply on
+  Reddit offering that comment's page, the reply's address kept), and no
+  token in any answer, page or storage. The
   checks' pool is emptied after. Locally against `relay_server.mjs PORT
   --hold=social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`
   (restart it between runs: the held rows last as long as it does).
