@@ -52,7 +52,7 @@ three that stay outside, each with why.
 | Supabase's egress | Supabase's dashboard | **Outside**: Supabase's Management API has no token narrower than the whole organization's, which may also delete projects; Data says so and links to the usage page |
 | An account's data, at its person's request | SQL by hand | People › the account › Export their data (JSON, audited) |
 | An account deleted at its person's request | only by its person, in Settings | People › the account › Delete, its address typed again (audited; the same code as Settings' own, api/_erase.js) |
-| An account signed out everywhere | Supabase's dashboard | People › the account › Sign out everywhere (audited) |
+| An account signed out everywhere | Supabase's dashboard | People › the account › Sign out everywhere (audited): every token, every Claude it let in, and every tab's connector address end within about 5 s |
 | An account's lists, comments, photos, challenge entries | each public page | People › the account |
 | Finding anything | each section's own search | Find, in the console's bar: people, models, lists, reports, acts |
 | Beta, feedback, plans' reading, mail, connector, releases, backend health, the audit | the console (parts A and B) | unchanged |

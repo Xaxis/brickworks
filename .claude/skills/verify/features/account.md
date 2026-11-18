@@ -312,7 +312,9 @@ they have. A Claude connector belongs to the account that switched it on.
   (`tools/deploy.sh --unit`), which keeps only mail to resend.dev.
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
-  (403), and work goes only to a tab with an owner.
+  (403), and work goes only to a tab with an owner, and only while the
+  sign-in its hello came with stands (`relay_tabs.session`): Sign out
+  everywhere ends a tab's own address within 5 s too.
 - `Claude's OAuth sign-in` (`api/oauth.js`, `api/_oauth.js`,
   `supabase/oauth.sql`; written up with sources in `docs/CONNECTING.md`):
   one connector address for everybody, `https://brickworks.diy/api/mcp`, that
