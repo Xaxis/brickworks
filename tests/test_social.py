@@ -263,6 +263,26 @@ def test_a_handed_send_can_be_taken_back_or_dropped_and_marked_by_the_right_addr
     assert got["message_reply"] == {"handed": "handed", "posted": "sent", "url": "https://www.reddit.com/message/messages/mk4001"}
 
 
+def test_a_reply_by_hand_answers_any_post_or_comment_by_its_address() -> None:
+    # No inbox without Reddit's API (and Reddit ended RSS on 2026-11-13), so a
+    # reply by hand names what it answers by the address the owner pastes.
+    got = _api()["reply_by_address"]
+    assert got["comment"] == {"status": 200, "parent": "t1_def888",
+                              "link": "https://www.reddit.com/r/lego/comments/abc777/a_castle/def888/", "community": None}
+    assert got["post"] == {"status": 200, "parent": "t3_abc999", "link": "https://www.reddit.com/r/legomoc/comments/abc999/",
+                           "tagged": True}
+    assert got["refused"] == {"share": 400, "redd_it": 400, "subreddit": 400, "other": 400, "script": 400, "none": 400}
+    assert "A Share link (…/s/…) or a redd.it link names nothing" in got["said"]
+    # Handed: Reddit's own page of that comment, where the owner presses Reply.
+    there = "https://www.reddit.com/r/lego/comments/abc777/a_castle/def888/"
+    assert got["handed"] == {"outcome": "handed", "hand_off": there, "filled": False, "listed": there}
+    # An edit keeps what it answers, whatever address comes with it.
+    assert got["edited"] == {"outcome": "redrafted", "parent": "t1_def888", "link": there}
+    assert got["again"] == there
+    assert got["posted"] == {"status": "sent", "external_id": "t1_ghi999",
+                             "url": "https://www.reddit.com/r/lego/comments/abc777/a_castle/ghi999/"}
+
+
 def test_words_of_the_wrong_type_are_refused_and_a_title_counts_characters() -> None:
     assert _api()["types"] == {"body_object": 400, "title_list": 400, "community_list": 400, "hash_list": 400,
                                "emoji_title": 200, "emoji_over": 400}
@@ -278,6 +298,10 @@ def test_the_page_claims_no_more_than_is_true() -> None:
     assert page.index('make("div", "row", copy,') > 0
     # An empty inbox with no Reddit app does not point at a Connect that is off.
     assert "Nothing comes in here until Reddit grants the desk API access" in page
+    # What Reddit ended is said where it matters, and a score by hand is never a zero (redditway).
+    assert "Reddit ended its RSS feeds on 13 November 2026" in page
+    assert "what is left of its public access ends in March 2027" in page
+    assert 'make("h3", "", "Its score")' in page and '$("social-new-reply").addEventListener("click", startReply);' in page
     # No Reddit app: no Connect at all, never one shown off (connectfix,
     # owner 11-18: "clicking Connect Reddit doesn't do anything"). The state,
     # an act that works, and connecting later in the console, not the repo.

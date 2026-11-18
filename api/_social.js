@@ -439,11 +439,23 @@ export async function socialDraft(request, response) {
   const community = field(b, "community").replace(/^\/?r\//i, "").trim();
   if (community && !COMMUNITY.test(community)) throw new AuthError("A community's name is 2 to 21 letters, digits or _.", 400);
   let parent = null;
+  // A reply by an address the owner pasted (no inbox without Reddit's API):
+  // what it answers and that address, kept as its link. Kept as it was on
+  // an edit.
+  let answers = null;
   if (kind === "reply") {
-    parent = field(b, "parent") || before?.parent || "";
-    const items = /^[A-Za-z0-9_:.-]{1,100}$/.test(parent) ? await tables(db(`social_items?provider=eq.${provider.id}&test=eq.${tests}`
-      + `&external_id=eq.${encodeURIComponent(parent)}&select=external_id`)) : [];
-    if (!items?.length) throw new AuthError("a reply answers an item in the inbox", 400);
+    const address = field(b, "address").trim();
+    if (before?.link) [parent, answers] = [before.parent, before.link];
+    else if (address && !before) {
+      const found = provider.answersOf?.(address);
+      if (!found) throw new AuthError(provider.answerHelp || "Paste the address of what it answers.", 400);
+      [parent, answers] = [found.thing, found.url];
+    } else {
+      parent = field(b, "parent") || before?.parent || "";
+      const items = /^[A-Za-z0-9_:.-]{1,100}$/.test(parent) ? await tables(db(`social_items?provider=eq.${provider.id}&test=eq.${tests}`
+        + `&external_id=eq.${encodeURIComponent(parent)}&select=external_id`)) : [];
+      if (!items?.length) throw new AuthError("a reply answers an item in the inbox, or a Reddit address pasted", 400);
+    }
   }
   const hosts = new Set(OURS);
   const origin = ownOrigin(request);
@@ -458,9 +470,9 @@ export async function socialDraft(request, response) {
   // The row as kept under [one]: the site's links tagged with that id.
   const rowAs = (one) => ({ id: one, provider: provider.id, test: tests, kind, community: kind === "post" ? community || null : null,
     parent, title, body: taggedText(words, provider.id, one, hosts),
-    link: kind === "post" && given ? tagged(given, provider.id, one, hosts) : null, status: "draft", route: null, pressed_at: null,
+    link: kind === "post" ? (given ? tagged(given, provider.id, one, hosts) : null) : answers, status: "draft", route: null, pressed_at: null,
     pressed_by: null, pressed_hash: null, send_at: null, said: null, changed_at: now.toISOString() });
-  const twins = [tests, provider.id, kind, community || null, parent, title, words, given || null];
+  const twins = [tests, provider.id, kind, community || null, parent, title, words, kind === "post" ? given || null : answers];
   const row = rowAs(id || twinId(twins, now.getTime()));
   if (lengthOf(title) > provider.most.title) throw new AuthError(`A title is at most ${provider.most.title} characters.`, 400);
   if (lengthOf(row.body) > provider.most.body) throw new AuthError(`At most ${provider.most.body} characters.`, 400);
@@ -571,7 +583,9 @@ async function handOffOf(row, provider, tests) {
   if (row.kind === "post") return provider.handOff(row);
   const items = await db(`social_items?provider=eq.${provider.id}&test=eq.${tests}&external_id=eq.${encodeURIComponent(row.parent)}`
     + "&select=url");
-  return items?.[0]?.url ? { url: items[0].url, filled: false } : null;
+  // An inbox item's address, or the one the owner pasted to answer.
+  const url = items?.[0]?.url || row.link;
+  return url ? { url, filled: false } : null;
 }
 
 /// POST op=social_send {id, hash, at?}: the owner's press of Send (or, with
@@ -771,7 +785,7 @@ export async function socialRead(request) {
       const waiting = row.status === "handed" || (row.status === "scheduled" && row.route === "by_hand");
       const provider = providerOf(row.provider);
       const handOff = !waiting || !provider || provider.later ? null : row.kind === "post" ? provider.handOff(row).url
-        : items.find((one) => one.provider === row.provider && one.external_id === row.parent)?.url ?? null;
+        : items.find((one) => one.provider === row.provider && one.external_id === row.parent)?.url ?? row.link ?? null;
       return { ...sendView(row), hand_off: handOff,
         results: points.map(({ at, score, comments, ratio }) => ({ at, score, comments, ratio })),
         visits: { total: landed.length, by_day: days, last: landed.at(-1)?.at ?? null } };
