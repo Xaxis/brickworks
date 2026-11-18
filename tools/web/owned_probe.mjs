@@ -1,7 +1,8 @@
 // Build with what I own, its sums alone, with no database and no browser:
 // what a model file needs (api/share.js checkModel), both sides spelled the
-// one way (api/_owned.js keyed), which shard a set is in, and a pool made of
-// loose parts and sets (poolOf).
+// one way (api/_owned.js keyed), which shard a set is in, a pool made of
+// loose parts and sets (poolOf), and when a kept pool is counted again
+// (freshPool, its database answered here: POOL_RULE, kbfix).
 //
 //   node tools/web/owned_probe.mjs [--sets=DIR]
 //
@@ -12,7 +13,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkModel } from "../../api/share.js";
-import { deriveOwnedFacts, keyed, poolOf, resolvePart, shardOf } from "../../api/_owned.js";
+import { POOL_RULE, deriveOwnedFacts, freshPool, keyed, poolOf, resolvePart, shardOf } from "../../api/_owned.js";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -119,6 +120,57 @@ check(`two of a set with its spares, and a loose brick: ${sorted(pool.lots)}`,
   sorted(pool.lots) === sorted([["3001", 4, 5], ["3003", 1, 4]]));
 check(`a set no inventory has is said, not guessed: ${pool.unknown.join(", ")}`, pool.unknown.join(",") === "99999999-1");
 check(`each shard read once (${reads.length})`, reads.length === new Set(reads).size);
+
+console.log("a kept pool counted again (freshPool)");
+// The database freshPool asks, answered here: the collection, its kept pool,
+// and each keep. [ruled] says whether owned_keep_pool takes a rule
+// (supabase/pool_rule.sql applied); before it does, a call naming one is
+// PostgREST's 404, as the live project answers (kbfix, 2026-11-17).
+async function fresh({ kept, ruled }) {
+  const keeps = [];
+  const realFetch = globalThis.fetch;
+  const env = { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SECRET_KEY };
+  process.env.SUPABASE_URL = "https://owned-probe.invalid";
+  process.env.SUPABASE_SECRET_KEY = "owned-probe";
+  const json = (status, body) => new Response(body === undefined ? "" : JSON.stringify(body), { status });
+  globalThis.fetch = async (url, init = {}) => {
+    const at = new URL(String(url)).pathname.replace("/rest/v1/", "");
+    const body = init.body ? JSON.parse(init.body) : {};
+    if (at === "rpc/owned_pool_of") return json(200, kept);
+    if (at === "collections") {
+      return json(200, [{ sets: [{ set: "1-1", qty: 1, spares: false }], parts: [], updated_at: "2026-11-17T10:00:00Z" }]);
+    }
+    if (at === "rpc/owned_keep_pool") {
+      if ("rule" in body && !ruled) return json(404, { code: "PGRST202" });
+      keeps.push("rule" in body ? body.rule : "none");
+      return json(200, { lots: body.lots.length, pieces: 2 });
+    }
+    return json(500, {});
+  };
+  try {
+    const pool = await freshPool("00000000-0000-4000-8000-000000000001", null);
+    return { pool, keeps };
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const [name, value] of [["SUPABASE_URL", env.url], ["SUPABASE_SECRET_KEY", env.key]]) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+}
+const later = "2026-11-17T11:00:00Z";
+const older = await fresh({ kept: { lots: 1, pieces: 9, unknown: [], rule: 1, at: later }, ruled: true });
+check(`kept since the collection changed, but by rule 1: counted again and kept by rule ${older.keeps.join(", ")}`,
+  older.keeps.join() === String(POOL_RULE) && older.pool?.rule === POOL_RULE);
+const current = await fresh({ kept: { lots: 1, pieces: 9, unknown: [], rule: POOL_RULE, at: later }, ruled: true });
+check(`kept by rule ${POOL_RULE} since the collection changed: kept, not counted (${current.keeps.length} keeps)`,
+  current.keeps.length === 0 && current.pool?.pieces === 9);
+const before = await fresh({ kept: { lots: 1, pieces: 9, unknown: [], at: later }, ruled: false });
+check(`no rule kept (pool_rule.sql not applied): kept as before (${before.keeps.length} keeps)`,
+  before.keeps.length === 0 && before.pool?.pieces === 9);
+const stale = await fresh({ kept: { lots: 1, pieces: 9, unknown: [], at: "2026-11-17T09:00:00Z" }, ruled: false });
+check(`counted before the collection changed, with no rule to keep: counted again, kept the older way (${stale.keeps.join(", ")})`,
+  stale.keeps.join() === "none" && stale.pool?.pieces === 2);
 
 console.log(failed ? `${failed} FAILED, ${passed} passed` : `owned_probe: ${passed} checks, all ok`);
 process.exit(failed ? 1 : 0);

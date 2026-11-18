@@ -295,6 +295,8 @@ var _to_detail: Array[Dictionary] = []
 ## Every assembly the design named, which the bricks are tagged with when
 ## the run ends. See [method _tag_assemblies].
 var _declared: Array[Dictionary] = []
+## The assemblies the bricks were last tagged with ([method _tag_assemblies]).
+var _tagged_from: Array[Dictionary] = []
 var _detailing: Dictionary = {}
 var _detail_turns: int = 0
 ## The features the design listed, worked before the assemblies, and
@@ -2481,6 +2483,18 @@ func _tag_assemblies() -> void:
 	# no step (pullkept).
 	var stepped: bool = AuthorSteps.any(world, scenery)
 	var paths_before: Dictionary = AuthorSteps.paths_in(world, scenery) if stepped else {}
+	# A part takes its assembly from where it stands as the assemblies are
+	# named, and keeps it as a pose or a drag moves it, as a sub-model's
+	# part does; a part new since, or every part when they are named anew,
+	# goes by where it stands. Tagged afresh by every pose_model, f1's arm
+	# swung 30° on its ball left the box it was named by, its parts went to
+	# the stand, neither side hung on the ball, and the next swing said
+	# nothing here turns.
+	var kept: Dictionary = {}
+	if named == _tagged_from:
+		for one: Dictionary in named:
+			kept[str(one["name"])] = true
+	_tagged_from = named.duplicate(true)
 	# A figure is its own sub-model wherever it stands; renamed after the
 	# tower it is in, it would be three arms and a hat in "tower".
 	var members: Dictionary = {}
@@ -2493,6 +2507,8 @@ func _tag_assemblies() -> void:
 		if scenery.has(brick.id):
 			continue
 		if members.has(brick.group) and Minifig.is_figure(members[brick.group], library):
+			continue
+		if kept.has(brick.group):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
@@ -3414,6 +3430,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("looking at the %s" % from
 				if close.size.length() <= 0.0
 				else "looking closely at the %s" % from)
+			# jointmarks: where its parts connect, marked as View ›
+			# Connection points marks them, in this picture alone.
+			if bool(args.get("marks", false)):
+				return await _with_marks(from, close)
 			# Of what is in the world, which during a design is the
 			# last draft it checked — so this is its own work, not a
 			# hypothetical.
@@ -3641,7 +3661,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"settle_feature":
 			return await _settle_feature(args)
 		"where_to_attach":
-			progress.emit("finding where parts fit on the selection")
+			progress.emit("finding where parts fit")
 			return await _where_to_attach(args)
 		"settle_surface":
 			progress.emit("settling the surface pass: %s %s" % [str(args.get("finding", "")),
@@ -4933,7 +4953,7 @@ func _with_a_look(said: String, ask: String,
 
 	var picture: Dictionary = {}
 	if small <= 0 and from == "corner" and only.size == Vector3.ZERO \
-			and _shot.highlight.is_empty() and world != null:
+			and _shot.highlight.is_empty() and _shot.drawn_with == null and world != null:
 		# The whole model from the corner, as the judge first sees it: its
 		# colours counted on the way, for review_model and look_at_model to
 		# say against real sets (ColoursSeen).
@@ -4988,6 +5008,26 @@ func _with_a_look(said: String, ask: String,
 	if not ask.is_empty():
 		blocks.append({"type": "text", "text": ask})
 	return blocks
+
+
+## view_model marks=true: the picture with every connection point of the
+## model's parts marked (JointMarks.for_picture), what the marks are said
+## first. Drawn into this picture only: the model and the window never have
+## them.
+func _with_marks(from: String, close: AABB) -> Variant:
+	var shot: ModelShot = _ensure_shot()
+	if LeasedShots.in_use():
+		return await _with_a_look("No connection points are marked: this picture is drawn "
+			+ "elsewhere, which does not draw them.", "", from, close)
+	var drawn: MultiMeshInstance3D = Later.script(&"JointMarks").for_picture(world, library,
+		scenery, close)
+	shot.drawn_with = drawn
+	var said: String = Later.script(&"JointMarks").said(
+		drawn.multimesh.instance_count if drawn.visible else 0)
+	var answer: Variant = await _with_a_look(said, "", from, close)
+	shot.drawn_with = null
+	drawn.queue_free()
+	return answer
 
 
 ## Of attachment_points' parts=, at most this many are answered in a call.
@@ -5053,6 +5093,10 @@ func _attachment_points(args: Dictionary) -> String:
 		prefix = "#%d." % brick_id
 	else:
 		part_id = str(args.get("part", ""))
+		if part_id.is_empty():
+			return ("attachment_points takes brick= (a part standing, by its number) or part= "
+				+ "with x, y and z (one not yet put down); where_to_attach reads the whole model's "
+				+ "open points.")
 		if not library.parts.has(part_id):
 			return "No part '%s' exists." % part_id
 		var hypothetical := Placement.from_dict(args)
@@ -5104,8 +5148,8 @@ func _attachment_points(args: Dictionary) -> String:
 	# all. A Technic beam has no studs, so this said "no studs — nothing
 	# clutches to it. Tiles and most sloped surfaces are like this" about
 	# the part the whole of Technic is built from.
-	var holes: String = _holes_in(part, at, part_id) + _connectors_said(part_id, at, prefix,
-		args.get("near"))
+	var holes: String = _output_said(part_id, part, at, prefix) + _holes_in(part, at, part_id) \
+		+ _connectors_said(part_id, at, prefix, args.get("near"))
 
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
@@ -5128,6 +5172,66 @@ func _attachment_points(args: Dictionary) -> String:
 		+ "-x or -z it hangs the other way, so its corner is further "
 		+ "back along that direction by its own thickness: a brick is "
 		+ "three plates, so three plates or one and a half studs.")
+
+
+## A motor's output, which turns in its case, with the holes that turn with
+## it, apart from the case's (mcpreach2). The SPIKE Prime large motor's hub
+## has an axle hole and a ring of pin holes round it; Simulate reads the ring
+## as the output's (Simulation.split_output), but this answer listed the case's
+## twelve side holes and none of the hub's, and the session of APP_UX9's y6,
+## its arm pinned into the ring, read the app as counting those holes as the
+## case's and spent 29 calls. "" for a part that is not a motor with an output.
+## With [param prefix] ("#85.") each hole is named by the address attach
+## takes too, so a pin goes into the output by it: the rerun's y6 session,
+## told only where the holes were, tried the motor's sockets by number and
+## spent four calls on which (mcpreach2).
+func _output_said(part_id: String, part: Lbm.PartMesh, at: Transform3D, prefix: String = "") -> String:
+	var motor: String = Simulation.motor_of(library, part_id)
+	if motor.is_empty():
+		return ""
+	var output: Dictionary = Simulation.split_output(part, (Simulation.MOTORS[motor] as Array)[4])[1]
+	if output.is_empty():
+		return ""
+	var holes: Lbm.PartMesh = output["mesh"]
+	var way: Vector3 = (at.basis * (output["way"] as Vector3)).normalized()
+	var points: Array = Attach.points_of(library, part_id)
+	var lines := PackedStringArray()
+	var seen: Array = []
+	for connector: Lbm.Connector in holes.connectors:
+		var kind: String = Mechanism._hole_kind(connector)
+		if kind.is_empty():
+			continue
+		var middle: Vector3 = at * (connector.position + connector.axis * (connector.length * 0.5))
+		var again: bool = false
+		for one: Vector3 in seen:
+			again = again or one.distance_to(middle) < 1.0
+		if again:
+			continue
+		seen.append(middle)
+		# The attach point on this hole's line, nearest its middle.
+		var address: String = ""
+		var best: float = 3.0
+		for point: Attach.Point in points:
+			var from: Vector3 = point.frame.origin - connector.position
+			var along: float = clampf(from.dot(connector.axis.normalized()), 0.0, connector.length)
+			var off: float = (from - connector.axis.normalized() * along).length()
+			if off < best:
+				best = off
+				address = point.address()
+		lines.append("  %s at x=%s y=%s z=%s%s" % ["axle hole: an axle keyed in it turns with the output"
+			if kind == "axle" else "pin hole: a pin in it, and what it holds, turns with the output",
+			Placement._num(middle.x / STUD), Placement._num(middle.y / PLATE), Placement._num(middle.z / STUD),
+			"" if address.is_empty() else ", attach to \"%s%s\"" % [prefix if not prefix.is_empty()
+				else "<its name>.", address]])
+	if lines.is_empty():
+		return ""
+	var centre: Vector3 = at * (output["point"] as Vector3)
+	return ("\n\nIts output, which the motor turns in its case about the line through x=%s y=%s z=%s "
+		+ "running %s (Simulate drives it; simulate_mechanism driver= the motor's number turns it):\n%s\n"
+		+ "Every other hole is the case's, which stands still. A beam pinned to two of the output's "
+		+ "holes, or keyed on its axle, turns with the output.") % [Placement._num(centre.x / STUD),
+		Placement._num(centre.y / PLATE), Placement._num(centre.z / STUD), _which_axis(way),
+		"\n".join(lines)]
 
 
 ## Where a part's holes, pins and axles are, numbered, and which way each
@@ -21610,6 +21714,9 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	var said := PackedStringArray()
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
+	var on_balls: String = JointSnap.balls_said(world, library, builder.lattice, _placed_ids)
+	if not on_balls.is_empty():
+		said.append(on_balls)
 	var counted: String = parts_said()
 	if past_count():
 		said.append(counted + ": the passes after this one add their detail only inside "
@@ -21679,6 +21786,9 @@ func _placed_said(design: Model, report: Dictionary) -> String:
 	if not bricks.is_empty():
 		said.append("Each part by its number, the span it takes in studs (x, z) and "
 			+ "plates (y), and what holds it:\n" + "\n".join(_holds_rows(bricks)))
+	var on_balls: String = JointSnap.balls_said(world, library, builder.lattice, _placed_ids)
+	if not on_balls.is_empty():
+		said.append(on_balls)
 	var apart: String = str(report.get("pieces_said", ""))
 	if not apart.is_empty():
 		said.append(apart)
@@ -22748,57 +22858,138 @@ var _trial_only: bool = false
 const MOST_POINTS := 40
 ## Placements where_to_attach gives when not told how many.
 const MOST_FITS := 8
+## The parts where_to_attach reads of a whole model, at most: the last put
+## down, or with near= those nearest it. A model this size reads in well
+## under a second; Orthanc's 9,400 would hold the window (mcpreach2).
+const WHOLE_MOST := 2000
+## The free points past the numbered ones drawn as dots on the picture of a
+## whole model or of parts named, at most.
+const MOST_DOTS := 400
 
 
-## where_to_attach: the selection's connection points, the free ones
-## numbered by the way they face and on a picture, and, given a part, the
-## placements of it on them that fit and hold where the model stands.
+## where_to_attach: the connection points of the parts named (parts=), else
+## of the selection, else of the whole model, the free ones numbered by the
+## way they face and on a picture, and, given a part, the placements of it on
+## them that fit and hold where the model stands. With nothing selected it
+## asked the person to select everything and stopped (APP_UX9's f5): the
+## model is what they meant, so it is read whole (mcpreach2).
 func _where_to_attach(args: Dictionary) -> Variant:
 	var selected: Array = builder.selection.keys() if builder != null else []
-	if not _focus_alive():
-		var why: String = focus_on(selected)
-		if not why.is_empty():
-			return why
+	var scope: SelectionScope = null
+	var named: Array = []
+	var whole: bool = false
+	var of_whom: String = "The selection's"
+	var cut_note: String = ""
+	if args.get("parts") is Array and not (args["parts"] as Array).is_empty():
+		for raw: Variant in args["parts"]:
+			if (raw is int or raw is float or (raw is String and str(raw).trim_prefix("#").is_valid_int())) \
+					and world.get_brick(int(str(raw).trim_prefix("#"))) != null:
+				named.append(int(str(raw).trim_prefix("#")))
+		scope = SelectionScope.of(named, world, library, scenery)
+		if scope == null:
+			return ("None of parts=%s stands in the model: give the parts' numbers as look_at_model "
+				+ "lists them, or leave parts= out for the whole model.") % JSON.stringify(args["parts"])
+		of_whom = "Parts %s'" % ", ".join(PackedStringArray(named.slice(0, 8).map(
+			func(id: int) -> String: return "#%d" % id))) + (" and %d more's" % (named.size() - 8)
+				if named.size() > 8 else "")
+	elif _focus_alive() or not selected.is_empty():
+		if not _focus_alive():
+			var why: String = focus_on(selected)
+			if not why.is_empty():
+				return why
+		scope = focus
+	else:
+		var near_at := Vector3.INF
+		if args.get("near") is Dictionary:
+			var asked: Dictionary = args["near"]
+			near_at = Vector3(float(asked.get("x", 0)) * STUD, float(asked.get("y", 0)) * PLATE,
+				float(asked.get("z", 0)) * STUD)
+		var ids: Array = _whole_for_points(near_at)
+		scope = SelectionScope.of(ids, world, library, scenery)
+		if scope == null:
+			return "Nothing is built yet: there is nothing for a part to go on but the baseplate."
+		whole = true
+		of_whom = "The model's"
+		var built: int = world.brick_count() - scenery.size()
+		if ids.size() < built:
+			cut_note = ("The model has %d parts; these are the open points of the %d %s. near= "
+				+ "{x, y, z} reads those nearest a place, parts= names the ones to read.") % [built,
+				ids.size(), "put down last" if near_at == Vector3.INF else "nearest the place asked"]
 	var read: OpenPoints = OpenPoints.read(self)
-	var all: Array[OpenPoints.Point] = read.points_of(focus.ids.keys())
+	var all: Array[OpenPoints.Point] = read.points_of(scope.ids.keys())
 	var wanted_kind: String = str(args.get("kind", "")).strip_edges()
 	var free: Array = []
 	var taken: int = 0
+	var grounded: int = 0
 	for point: OpenPoints.Point in all:
 		if not wanted_kind.is_empty() and OpenPoints.NAMES[point.kind] != wanted_kind:
 			continue
-		if point.by != 0:
+		if point.by == OpenPoints.GROUND:
+			grounded += 1
+		elif point.by != 0:
 			taken += 1
 		else:
 			free.append(point)
-	# Best first: facing the way asked, then nearest the place asked.
+	# Best first: facing the way asked, then nearest the place asked, each
+	# point scored once (a sort that scored at every comparison read a whole
+	# model's thousands of points over and over).
 	var toward: String = str(args.get("toward", "any"))
 	var near := Vector3.INF
 	if args.get("near") is Dictionary:
 		var at: Dictionary = args["near"]
 		near = Vector3(float(at.get("x", 0)) * STUD, float(at.get("y", 0)) * PLATE,
 			float(at.get("z", 0)) * STUD)
-	var middle: Vector3 = _middle_of_model()
-	var score := func(point: OpenPoints.Point) -> float:
-		var facing: float = 0.0
-		if toward == "out":
-			var out := Vector3(point.at.x - middle.x, 0.0, point.at.z - middle.z)
-			facing = point.way.dot(out.normalized()) if out.length() > 0.1 else 0.0
-		elif FACES.has(toward):
-			facing = point.way.dot(FACES[toward])
-		var far: float = 0.0 if near == Vector3.INF else point.at.distance_to(near) / STUD
-		return facing * 100.0 - far
-	free.sort_custom(func(a: OpenPoints.Point, b: OpenPoints.Point) -> bool:
-		return score.call(a) > score.call(b))
+	var ranked: bool = toward != "any" or near != Vector3.INF
+	if ranked or not (whole or not named.is_empty()):
+		var middle: Vector3 = _middle_of_model()
+		var scored: Array = []
+		for point: OpenPoints.Point in free:
+			var facing: float = 0.0
+			if toward == "out":
+				var out := Vector3(point.at.x - middle.x, 0.0, point.at.z - middle.z)
+				facing = point.way.dot(out.normalized()) if out.length() > 0.1 else 0.0
+			elif FACES.has(toward):
+				facing = point.way.dot(FACES[toward])
+			var far: float = 0.0 if near == Vector3.INF else point.at.distance_to(near) / STUD
+			scored.append([facing * 100.0 - far, scored.size(), point])
+		scored.sort_custom(func(a: Array, b: Array) -> bool:
+			return float(a[0]) > float(b[0]) or (float(a[0]) == float(b[0]) and int(a[1]) < int(b[1])))
+		free = scored.map(func(one: Array) -> OpenPoints.Point: return one[2])
+	else:
+		# Nothing asked to put first, of a whole model or parts named: every
+		# kind and way of facing among the numbered, and each spread over the
+		# parts that carry it, so forty numbers show the whole model rather
+		# than one plate's studs.
+		free = _spread_points(free)
 	var shown: Array = free.slice(0, MOST_POINTS)
 	for n: int in shown.size():
 		(shown[n] as OpenPoints.Point).number = n + 1
 	var lines := PackedStringArray()
-	lines.append("The selection's open connection points%s: %d free, %d taken by the parts on them."
-		% ["" if wanted_kind.is_empty() else " (%ss)" % wanted_kind, free.size(), taken])
+	lines.append("%s open connection points%s: %d free, %d taken by the parts on them%s."
+		% [of_whom, "" if wanted_kind.is_empty() else " (%ss)" % wanted_kind, free.size(), taken,
+			"" if grounded == 0 else ", %d facing the ground, which nothing goes under" % grounded])
+	if whole:
+		lines.append("Nothing is selected, so this is the whole model. parts= names some parts; "
+			+ "when the person has a selection, it is read instead.")
+	if not cut_note.is_empty():
+		lines.append(cut_note)
 	if free.is_empty():
 		lines.append("Nothing is free. A part added has to replace one that is there, or "
-			+ "join what stands round the selection.")
+			+ "join what stands round %s." % ("the selection" if scope == focus else "these parts"))
+	# Of a whole model or parts named, every free one counted by kind and
+	# facing, the numbered being a sample of them.
+	if scope != focus and free.size() > shown.size():
+		var counted: Dictionary = {}
+		var heads: Array = []
+		for point: OpenPoints.Point in free:
+			var heading: String = "%ss %s" % [OpenPoints.NAMES[point.kind], OpenPoints.heading(point)]
+			if not counted.has(heading):
+				counted[heading] = 0
+				heads.append(heading)
+			counted[heading] = int(counted[heading]) + 1
+		heads.sort_custom(func(a: String, b: String) -> bool: return int(counted[a]) > int(counted[b]))
+		lines.append("Every free one, by kind: %s." % ", ".join(PackedStringArray(heads.map(
+			func(heading: String) -> String: return "%d %s" % [int(counted[heading]), heading]))))
 	# Grouped by kind and the way they face, in the order they were ranked.
 	var groups: Dictionary = {}
 	var order: Array = []
@@ -22825,21 +23016,35 @@ func _where_to_attach(args: Dictionary) -> Variant:
 			lines.append("  [%d] %s on #%d (%s) at %s" % [point.number,
 				OpenPoints.NAMES[point.kind], point.brick, point.part, OpenPoints.where_of(point)])
 	if free.size() > shown.size():
-		lines.append("  ...and %d more; toward= or near= puts others first." % (
-			free.size() - shown.size()))
+		lines.append("  ...and %d more%s; toward= or near= puts others first." % [
+			free.size() - shown.size(), "" if scope == focus else ", drawn as dots on the picture"])
 	var part_id: String = str(args.get("part", "")).strip_edges()
 	if not part_id.is_empty():
 		lines.append("")
-		lines.append(await _fits_said(read, shown, part_id, args))
+		lines.append(await _fits_said(read, shown, part_id, args, scope.region if scope == focus
+			else scope.region.grow(STUD * 4.0), "edit_selection" if scope == focus else "edit_model"))
 	if not ModelShot.possible() or shown.is_empty():
 		return "\n".join(lines)
 	var marks: Array = []
 	for point: OpenPoints.Point in shown:
 		marks.append([point.at, point.number])
-	_ensure_shot().highlight = focus.ids.duplicate()
+	# The rest as dots, unnumbered: f5 asked for a picture of every place.
+	if scope != focus:
+		for point: OpenPoints.Point in free.slice(shown.size(), shown.size() + MOST_DOTS):
+			marks.append([point.at, ""])
+	_ensure_shot().highlight = scope.ids.duplicate() if not whole else {}
 	_shot.marks = marks
-	var from: String = _facing_view(shown)
-	var image: Image = await _shot.take(world, from, scenery, focus.region)
+	var drawn_points: Array = free.slice(0, shown.size() + MOST_DOTS) if scope != focus else shown
+	var from: String = _facing_view(drawn_points) if scope == focus else _corner_view(drawn_points)
+	var away: int = 0
+	var below: int = 0
+	var seen_from: Vector3 = (ModelShot.ANGLES[from] as Vector3).normalized()
+	for point: OpenPoints.Point in drawn_points:
+		if point.way.dot(seen_from) <= 0.1:
+			away += 1
+			if point.way.y < -0.7:
+				below += 1
+	var image: Image = await _shot.take(world, from, scenery, scope.region)
 	_shot.marks = []
 	_shot.highlight = {}
 	if image == null:
@@ -22847,10 +23052,87 @@ func _where_to_attach(args: Dictionary) -> Variant:
 	var picture: Dictionary = await _shot.encode(image)
 	if picture.is_empty():
 		return "\n".join(lines)
-	return [{"type": "text", "text": "\n".join(lines)},
-		{"type": "text", "text": ("The selection's room from the %s, the selection in magenta and "
-			+ "its free points numbered in cyan as listed (a number may be on the far side of "
-			+ "what it is drawn over):") % from}, picture]
+	var drawn: int = mini(free.size(), shown.size() + MOST_DOTS) if scope != focus else shown.size()
+	var caption: String = ("The selection's room from the %s, the selection in magenta and "
+		+ "its free points numbered in cyan as listed (a number may be on the far side of "
+		+ "what it is drawn over):") % from
+	var hidden: String = "" if away == 0 else ("; %d of them face away from this view%s, each "
+		+ "drawn where it is, over what hides it") % [away, "" if below == 0
+			else ", %d of those under the model, facing down" % below]
+	if whole:
+		caption = ("The whole model from the %s, its free points in cyan, the %d listed numbered and "
+			+ "%d more as dots (%d of %d drawn%s; a mark may be on the far side of what it is drawn "
+			+ "over):") % [from, shown.size(), drawn - shown.size(), drawn, free.size(), hidden]
+	elif scope != focus:
+		caption = ("Those parts from the %s, in magenta, their free points in cyan, the %d listed "
+			+ "numbered and %d more as dots (%s; a mark may be on the far side of what it is drawn "
+			+ "over):") % [from, shown.size(), drawn - shown.size(), hidden.trim_prefix("; ")
+				if not hidden.is_empty() else "all drawn"]
+	return [{"type": "text", "text": "\n".join(lines)}, {"type": "text", "text": caption}, picture]
+
+
+## [param points] (OpenPoints.Point) in turn by kind and facing, the most
+## common first, and within each by the parts that carry them, one a part
+## each time round: the first few are of every kind, over every part.
+static func _spread_points(points: Array) -> Array:
+	var groups: Dictionary = {}   ## heading -> brick id -> its points
+	var sizes: Dictionary = {}
+	for point: OpenPoints.Point in points:
+		var heading: String = "%s %s" % [point.kind, OpenPoints.heading(point)]
+		if not groups.has(heading):
+			groups[heading] = {}
+			sizes[heading] = 0
+		var by_part: Dictionary = groups[heading]
+		if not by_part.has(point.brick):
+			by_part[point.brick] = []
+		(by_part[point.brick] as Array).append(point)
+		sizes[heading] = int(sizes[heading]) + 1
+	var heads: Array = groups.keys()
+	heads.sort_custom(func(a: String, b: String) -> bool:
+		return int(sizes[a]) > int(sizes[b]) or (int(sizes[a]) == int(sizes[b]) and a < b))
+	# Each group's own order: one point a part, round and round.
+	var queues: Array = []
+	for heading: String in heads:
+		var by_part: Dictionary = groups[heading]
+		var bricks: Array = by_part.keys()
+		bricks.sort()
+		var queue: Array = []
+		var round: int = 0
+		while queue.size() < int(sizes[heading]):
+			for brick: int in bricks:
+				var own: Array = by_part[brick]
+				if round < own.size():
+					queue.append(own[round])
+			round += 1
+		queues.append(queue)
+	var out: Array = []
+	var at: int = 0
+	while out.size() < points.size():
+		for queue: Array in queues:
+			if at < queue.size():
+				out.append(queue[at])
+		at += 1
+	return out
+
+
+## The parts a whole model's open points are read from: all of them up to
+## WHOLE_MOST, past that the WHOLE_MOST nearest [param near] (Vector3.INF
+## for none) or else those put down last, where building usually goes on.
+func _whole_for_points(near: Vector3) -> Array:
+	var ids: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			ids.append(brick.id)
+	if ids.size() <= WHOLE_MOST:
+		return ids
+	if near == Vector3.INF:
+		ids.sort()
+		return ids.slice(ids.size() - WHOLE_MOST)
+	var far: Array = []
+	for id: int in ids:
+		far.append([world.get_brick(id).transform.origin.distance_squared_to(near), id])
+	far.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	return far.slice(0, WHOLE_MOST).map(func(one: Array) -> int: return int(one[1]))
 
 
 ## A part's geometry, fetched and waited for where the build does not carry
@@ -22867,7 +23149,8 @@ func _geometry_of(part_id: String) -> Lbm.PartMesh:
 
 ## [param part_id] seated on the points given, best first: each tried as
 ## the check would try it, so what is listed fits and holds as it stands.
-func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictionary) -> String:
+func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictionary, region: AABB,
+		into: String = "edit_selection") -> String:
 	if not library.parts.has(part_id):
 		return "No part '%s' exists; search_parts finds one." % part_id
 	if await _geometry_of(part_id) == null:
@@ -22880,7 +23163,7 @@ func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictiona
 	if OS.has_feature("web"):
 		var shaped: Dictionary = {part_id: true}
 		for other: int in builder.lattice.near_bounds(OpenPoints._box_cells(
-				focus.region.grow(STUD * 2.0))):
+				region.grow(STUD * 2.0))):
 			var standing: BrickWorld.Brick = world.get_brick(other)
 			if standing != null:
 				shaped[standing.part_id] = true
@@ -22898,7 +23181,7 @@ func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictiona
 			continue
 		tried += 1
 		var colour: int = int(args.get("color", world.get_brick(point.brick).color_code))
-		var found: Array[Placement] = read.fits_on(point, part_id, colour, {}, focus.region, 4,
+		var found: Array[Placement] = read.fits_on(point, part_id, colour, {}, region, 4,
 			together)
 		if found.is_empty():
 			continue
@@ -22922,7 +23205,7 @@ func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictiona
 		% [part_id, info.name if info != null else "?"]
 		+ "(nothing in the way, inside the room, holding by the stud it is on), each with "
 		+ "the ones before it, so all of them go down together. Put them in "
-		+ "edit_selection's add as they are:\n" + "\n".join(fits))
+		+ "%s's add as they are:\n" % into + "\n".join(fits))
 
 
 ## The middle of the model, for which way is out.
@@ -22935,6 +23218,26 @@ func _middle_of_model() -> Vector3:
 		middle += brick.transform.origin
 		count += 1
 	return middle / maxf(1.0, float(count))
+
+
+## A whole model or parts named, drawn as a person sees a model: from the
+## corner that faces more of these points, unless neither faces half of
+## them. f5's truck, its free points half on top and half under it, was
+## drawn from straight above, and both sessions made another picture to see
+## it (mcpreach2's walk).
+static func _corner_view(points: Array) -> String:
+	var best: String = "corner"
+	var most: int = -1
+	for name: String in ["corner", "far corner"]:
+		var from: Vector3 = (ModelShot.ANGLES[name] as Vector3).normalized()
+		var seen: int = 0
+		for point: OpenPoints.Point in points:
+			if point.way.dot(from) > 0.1:
+				seen += 1
+		if seen > most:
+			most = seen
+			best = name
+	return best if most * 2 >= points.size() else _facing_view(points)
 
 
 ## The named view that faces most of these points.
@@ -23508,19 +23811,23 @@ func focus_tools() -> Array:
 		},
 		{
 			"name": "where_to_attach",
-			"description": ("Where the selected parts can take another part: every open "
+			"description": ("Where parts can take another part: of the parts named "
+				+ "(parts=), else the person's selection, else the whole model. Every open "
 				+ "stud, anti-stud (the hollow underneath that takes a stud), side stud, "
 				+ "pin hole, bar and clip, grouped by the way it faces, each with the part "
-				+ "that carries it and where it is in the coordinates edit_selection takes "
-				+ "(a section's own, for parts laid turned), and a picture with the free "
-				+ "ones numbered. Give part= (and color=) and it seats that part on them "
-				+ "and tries each against the model as it stands: what comes back fits "
-				+ "and holds, to put in edit_selection's add as it is. toward= puts first "
-				+ "the points facing that way (out: away from the model's middle, for "
-				+ "spikes or detail on an outer face); near= {x, y, z} those nearest a place."),
+				+ "that carries it and where it is in the coordinates edit_selection and "
+				+ "edit_model take (a section's own, for parts laid turned), and a picture "
+				+ "with the free ones marked, the listed ones numbered. Give part= (and "
+				+ "color=) and it seats that part on them and tries each against the model "
+				+ "as it stands: what comes back fits and holds, to put in the add of the "
+				+ "tool it names as it is. toward= puts first the points facing that way "
+				+ "(out: away from the model's middle, for spikes or detail on an outer "
+				+ "face); near= {x, y, z} those nearest a place."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
+					"parts": {"type": "array", "items": {"type": "integer"}, "description":
+						"the parts to read, by number; the selection, or the whole model, when omitted"},
 					"part": {"type": "string", "description":
 						"a part to seat on the open points, e.g. 49668"},
 					"color": {"type": "integer", "description":
@@ -24787,6 +25094,17 @@ func _tools() -> Array:
 							+ "corner is a three-quarter view and shows "
 							+ "the shape best",
 					},
+					"marks": {
+						"type": "boolean",
+						"description": ("true marks every connection "
+							+ "point in the picture, as View › Connection "
+							+ "points does in the window: filled for what "
+							+ "goes in (studs, pins, axles, bars, balls), "
+							+ "hollow for what takes one (anti-studs, pin "
+							+ "and axle holes, clips, sockets), each at its "
+							+ "own size. To find a beam's third hole or "
+							+ "where a ball goes without counting."),
+					},
 					"view": {
 						"type": "string",
 						"description": ("A view the person saved with the "
@@ -24873,6 +25191,13 @@ func _tools() -> Array:
 						+ "(My collection, less what is marked missing), and its answer "
 						+ "names each part it uses more of than they own, by how many, "
 						+ "with what they have that could stand in")},
+					"pool": {"type": "string", "description": ("a real set's number "
+						+ "(\"31058-1\"; \"31058\" is its first version), or several "
+						+ "joined by commas, when the person asked for a design from that "
+						+ "set's parts alone (\"something else from 31058\"): the answer "
+						+ "names each part it uses more of than the set has, by how many, "
+						+ "with what in the set could stand in. gallery library=true q= "
+						+ "finds a set's number from its name")},
 					"brief": {"type": "string", "description": ("the person's request "
 						+ "in their own words, whole and word for word as they gave it: "
 						+ "a fresh pair of eyes judges the model against it")},

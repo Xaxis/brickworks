@@ -322,8 +322,11 @@ for (const [tab, chat, did] of [[castle, a, "changed the model"], [truck, b, "re
 console.log("\n5. a second chat in the castle, and keeping one");
 const c = await newChat(token);
 const intoHeld = await c.call("select_tab", { tab: castle.name });
-check(`C chooses the castle and is told another chat works there: "${intoHeld.words.slice(0, 170)}…"`,
-  intoHeld.words.includes(`go to tab ${castle.id} now`) && intoHeld.words.includes("Careful: another chat"));
+// A called last before C began, as a resumed chat's earlier self does: told
+// with no count, and how to tell (api/mcp.js quietWords, mcpreach2).
+check(`C chooses the castle and is told another chat called there before it: "${intoHeld.words.slice(0, 170)}…"`,
+  intoHeld.words.includes(`go to tab ${castle.id} now`)
+  && intoHeld.words.includes("Before this chat's first call here, another chat called in this tab"));
 const two = await until(async () => (await claude(castle.page)).badge === `2 Claude chats · tab ${castle.id}`, 30);
 await accountOpen(castle.page);
 await wait(1500);

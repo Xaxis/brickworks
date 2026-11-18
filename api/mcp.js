@@ -182,8 +182,13 @@ const SESSION = /^[A-Za-z0-9_-]{16,128}$/;
 // conversation with the tab used most recently, not yesterday's.
 const CONNECTION_PICK_MS = 2 * 60 * 60 * 1000;
 // How long a chat that has said nothing still holds the tab it works in:
-// another chat is kept out of it unless chosen, and the tab shows it.
-const HELD_MS = 30 * 60 * 1000;
+// another chat is kept out of it unless chosen, and the tab shows it. Ten
+// minutes (mcpreach2, APP_UX9): at thirty, each one-turn `claude -p --resume`
+// of the MCP walk was a chat of its own still "working in" the tab half an
+// hour on, and by y8 every answer began "19 other chats have been working in
+// it"; a session spent a call looking at the model for it (t3), and two told
+// the person about "25 other chats" that were their own earlier turns.
+const HELD_MS = 10 * 60 * 1000;
 // A chat's pick, as the tab and the lists read it.
 const PICK = "key,channel,picked_at,called_at,did,moved_at";
 // How long Claude's request waits for the tab, and how long the tab's ask
@@ -613,13 +618,47 @@ function minutes(since) {
 }
 
 // Other chats in a tab, in words: "another chat has been working in it for
-// 25 min, last call 1 min ago".
+// 25 min, last call 1 min ago". How long is the one there longest's, and the
+// last call the newest's ([others] most recent first, as heldBy gives them):
+// the walk's "19 other chats have been working in it for under a minute"
+// gave the newest chat's time for all of them (mcpreach2).
 function heldWords(others) {
   if (!others.length) return "";
-  const first = others[0];
-  const who = others.length === 1 ? "another chat has" : `${others.length} other chats have`;
-  return `${who} been working in it for ${minutes(Date.parse(first.picked_at) || lastOf(first))}, `
-    + `last call ${ago(lastOf(first))}`;
+  const longest = Math.min(...others.map((one) => Date.parse(one.picked_at) || lastOf(one)));
+  const who = others.length === 1 ? "another chat has been working in it"
+    : `${others.length} other chats have been working in it, the first`;
+  return `${who} for ${minutes(longest)}, last call ${ago(lastOf(others[0]))}`;
+}
+
+// When this chat began in [tab]: its pick of it, or now for a chat whose
+// first call there this is (its pick is made as the call goes, after the
+// picks were read).
+function beganIn(tab, picks, key) {
+  const own = (picks || []).find((one) => one.key === key);
+  return own && own.channel === tab.channel && !own.moved_at ? Date.parse(own.picked_at) || Date.now() : Date.now();
+}
+
+// Chats the tab heard from only before this one began, in words. Claude Code
+// starts a new session each time a chat is resumed, and sends nothing that
+// says it is the same chat (measured again with 2.1.326 by mcpreach2: a new
+// Mcp-Session-Id, no conversation id, no DELETE of the old session at exit),
+// so to the relay a resumed chat's earlier self is another chat, one that went
+// quiet as this one began. The two cannot be told apart here, and a chat that
+// was told "19 other chats" of its own earlier turns looked at the model first
+// and passed the count on to the person (APP_UX9's walk, t3, y3 and n7). So no
+// count, and what the session itself knows decides: whether its conversation
+// called Brickworks before. One still calling after this chat began is
+// another chat for certain, and is said as such (header).
+// The rerun's t3 still looked at the model before its change, as the walk's
+// had for "two other chats": so it says too that none has called since this
+// chat began, and that any that does will be said.
+function quietWords(before) {
+  const one = before.length === 1;
+  return `Before this chat's first call here, ${one ? "another chat" : "other chats"} called in this tab, `
+    + `last heard ${ago(lastOf(before[0]))}; none has called since. Brickworks counts a conversation as a `
+    + "new chat each time it connects again (resumed or restarted), so if this conversation called "
+    + `Brickworks earlier, ${one ? "that was its own call" : "those were its own calls"}. Should another `
+    + "chat call in this tab while this one works, every answer says so.";
 }
 
 // The open tabs, one line each, newest use first, with which chat holds each.
@@ -642,14 +681,20 @@ function listing(tabs, current, picks = [], key = null) {
 }
 
 // The line every answer starts with: which tab and model it acted on, that
-// there are others when there are, and that another chat works in this one.
-function header(tab, answered, tabs, picks = [], key = null) {
+// there are others when there are, and that another chat works in this one:
+// one heard from since this chat began, for certain; one heard from only
+// before, as quietWords says. "Both" only for two.
+export function header(tab, answered, tabs, picks = [], key = null) {
   const others = tabs.filter((one) => stateOf(one) !== "closed" && one.channel !== tab.channel).length;
   const shared = heldBy(tab, picks, key);
+  const began = beganIn(tab, picks, key);
+  const along = shared.filter((one) => lastOf(one) > began);
+  const before = shared.filter((one) => lastOf(one) <= began);
   return `Tab ${idOf(tab)}, ${modelOf(tab, answered)}.`
     + (others ? ` ${others} other tab${others === 1 ? " is" : "s are"} open; tabs lists them.` : "")
-    + (shared.length ? ` Careful: ${heldWords(shared)}, on this same model; the tab shows both chats `
-      + "and the person can keep one." : "");
+    + (along.length ? ` Careful: ${heldWords(along)}, on this same model since this chat began; the tab `
+      + `shows ${along.length === 1 ? "both chats" : "every chat"} and the person can keep one.`
+      : before.length ? ` ${quietWords(before)}` : "");
 }
 
 function withHeader(answer, tab, tabs, picks = [], key = null, more = "") {
@@ -835,7 +880,11 @@ async function noteCall(key, name) {
 // The chats working in a tab, as the tab is shown them: a short name each,
 // since when, its last call and what that was. None of a session's own id.
 async function chatsIn(channel) {
-  const rows = await db(`relay_picks?channel=eq.${channel}&select=${PICK}&order=picked_at.asc&limit=20`) || [];
+  // The newest twenty, oldest first: the oldest twenty were read before
+  // (picked_at.asc), and once a tab had had twenty chats, every one resumed
+  // turn of the walk's adding one, the tab was shown only chats long gone.
+  const rows = (await db(`relay_picks?channel=eq.${channel}&select=${PICK}&order=picked_at.desc&limit=20`) || [])
+    .reverse();
   return rows.filter(holds).map((one) => ({
     chat: chatOf(one.key), since: one.picked_at, last: new Date(lastOf(one)).toISOString(),
     did: one.called_at ? one.did || "" : "",

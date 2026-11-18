@@ -124,7 +124,9 @@ connectors and collision the library's own parts have.
   Front/Back/Left/Right for studs on a brick's sides, a bracket's upright and
   which way it goes, a clip's way (vertical or horizontal) and a wedge
   plate's hand (left or right) in the same list, "Far corner cut flat" for
-  a wedge plate, a name, and "Start from a part" — a part number, or the
+  a wedge plate (its own row, "At the tip", beside Left or right in the
+  grid's other column: under Studs on top it was below the fold of a
+  1280 x 720 window, smalls4), a name, and "Start from a part" — a part number, or the
   part in hand when the dialog opens. "Start from it" resizes a part of the
   families as its family and changes any other (a printed part, a grille,
   32000) as itself; "Change it" changes any part as itself, a plain 3001 too.
@@ -321,8 +323,9 @@ it), turned across the hole an overlap; the hole left out of the cover. The
 parts list says "(custom element)", and the saved file carries fourteen
 parts, read strictly by `tools/build_custom.py --check`, and reopened into a
 fresh library 40 of 40 bricks where they were — the changed parts rebuilt from the
-connectors their own text states. `element_shot_probe` ends "the
-dialog makes parts in the window" and leaves `shots/element_dialog.png`,
+connectors their own text states. `element_shot_probe` (which also finds
+"Far corner cut flat" inside the form's scroll, unscrolled, at its window's
+size and at 1280 x 720) ends "the dialog makes parts in the window" and leaves `shots/element_dialog.png`,
 `shots/element_beside.png`, `shots/element_families.png` (made parts
 red, their library cousins grey — 30414, 99781, 99780, 93606, 3701 — and
 what is put on them white) and `shots/element_changed.png` (98283 four long

@@ -181,6 +181,9 @@ msgstr "Ne rien sélectionner"
 msgid "Select by"
 msgstr "Sélectionner par"
 
+msgid "Show and hide"
+msgstr "Afficher et masquer"
+
 msgid "Same colour"
 msgstr "Même couleur"
 
@@ -12117,6 +12120,15 @@ msgstr "orientation des tenons : chaque pièce colorée selon l'orientation de s
 msgid "stud directions off"
 msgstr "orientation des tenons désactivée"
 
+# View, Connection points (APP_UX9 jointmarks): where a part connects, marked
+# while one is in hand and on the part under the pointer.
+
+msgid "Connection points"
+msgstr "Points de connexion"
+
+msgid "Mark where parts connect, on the parts near the one in hand and on the part under the pointer: studs, pins, axles, bars and balls filled, what takes them hollow"
+msgstr "Marque où les pièces se connectent, sur les pièces proches de celle en main et sur la pièce sous le pointeur : tenons, connecteurs, axes, barres et rotules pleins, ce qui les reçoit creux"
+
 # Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
 # Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
 
@@ -13658,6 +13670,9 @@ msgstr "%s grandes étoiles"
 msgid "Far corner cut flat"
 msgstr "Coin arrière coupé droit"
 
+msgid "At the tip"
+msgstr "À la pointe"
+
 msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
 msgstr "Comme sur les plaques biseautées LEGO® telles que 54383 et 41770b : le coin pointu où finit le côté biseauté, coupé sur 1,2 mm"
 
@@ -14503,11 +14518,11 @@ msgstr "Construire avec mes briques"
 msgid "My bricks"
 msgstr "Mes briques"
 
-msgid "The bin becomes every part you own, your sets' and your loose parts, each counting how many are left as you build. Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
-msgstr "Le bac devient toutes les pièces que vous possédez, celles de vos sets et vos pièces en vrac, chacune indiquant combien il en reste pendant la construction. Chaque set que vous possédez compte, monté ou non : Ma collection ne permet pas encore de marquer un set comme gardé monté."
+msgid "The bin becomes every part you own, your sets' and your loose parts, each counting how many are left as you build. A set marked Built in My collection is left out: its parts stand on the shelf, and only its spares count."
+msgstr "Le bac devient toutes les pièces que vous possédez, celles de vos sets et vos pièces en vrac, chacune indiquant combien il en reste pendant la construction. Un set marqué Monté dans Ma collection est mis à part : ses pièces sont sur l’étagère, seules ses pièces de rechange comptent."
 
-msgid "Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
-msgstr "Chaque set que vous possédez compte, monté ou non : Ma collection ne permet pas encore de marquer un set comme gardé monté."
+msgid "A set marked Built in My collection is left out: its parts stand on the shelf, and only its spares count."
+msgstr "Un set marqué Monté dans Ma collection est mis à part : ses pièces sont sur l’étagère, seules ses pièces de rechange comptent."
 
 msgid "Building from the parts you own: your sets' parts, less those marked missing, and your loose parts. Each part put down takes one from its count; undo or a delete gives it back. A part with none left can still be used: the bin says how many over what you own the model is."
 msgstr "Construction avec les pièces que vous possédez : celles de vos sets, moins celles marquées manquantes, et vos pièces en vrac. Chaque pièce posée en retire une de son compte ; annuler ou supprimer la rend. Une pièce épuisée reste utilisable : le bac indique de combien le modèle dépasse ce que vous possédez."
@@ -14773,6 +14788,66 @@ msgstr "1 verrouillée, laissée de côté : déverrouillez-la pour la modifier"
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d verrouillées, laissées de côté : déverrouillez-les pour les modifier"
 
+# smalls4 (APP_UX9 #4): a model that tips whole is named as a tip, a lean or top-heavy,
+# not "weak joints"; Stress offers a foot from the floor under the side it tips toward.
+
+msgid "tips over, %s studs past the %s edge"
+msgstr "bascule, à %s tenons au-delà du bord %s"
+
+msgid "leans past what holds it"
+msgstr "penche au-delà de ce qui le tient"
+
+msgid "top-heavy"
+msgstr "trop lourd en haut"
+
+msgid "levered"
+msgstr "en levier"
+
+msgid "rests on a touch"
+msgstr "posé sans tenir"
+
+msgid "1 weak joint (%s)"
+msgstr "1 liaison faible (%s)"
+
+msgid "%d weak joints (%s)"
+msgstr "%d liaisons faibles (%s)"
+
+msgid "Looking for the fewest parts that stand it up…"
+msgstr "Recherche du moins de pièces qui le font tenir debout…"
+
+msgid "Put the parts shown down: the model then stands. One step to undo"
+msgstr "Poser les pièces montrées : le modèle tient alors debout. Une seule étape à annuler"
+
+msgid "a %s under its %s side, down to the ground"
+msgstr "%s sous son côté %s, jusqu'au sol"
+
+msgid "a %s and a %s under its %s side, down to the ground"
+msgstr "%s et %s sous son côté %s, jusqu'au sol"
+
+msgid "a %s, a %s and a %s under its %s side, down to the ground"
+msgstr "%s, %s et %s sous son côté %s, jusqu'au sol"
+
+msgid "a %s under its %s side, down to the baseplate"
+msgstr "%s sous son côté %s, jusqu'à la plaque de base"
+
+msgid "a %s and a %s under its %s side, down to the baseplate"
+msgstr "%s et %s sous son côté %s, jusqu'à la plaque de base"
+
+msgid "a %s, a %s and a %s under its %s side, down to the baseplate"
+msgstr "%s, %s et %s sous son côté %s, jusqu'à la plaque de base"
+
+msgid "Then it stands, its weight %s studs inside its %s edge"
+msgstr "Il tient alors debout, son poids à %s tenons en deçà du bord %s"
+
+msgid "Then it stands, its weight %s studs inside its %s edge."
+msgstr "Il tient alors debout, son poids à %s tenons en deçà du bord %s."
+
+msgid "No foot of up to three parts has room under its %s side to stand it: widen its base that way, or move weight back over it, by hand."
+msgstr "Aucun pied d'au plus trois pièces n'a la place sous son côté %s pour le faire tenir : élargis sa base de ce côté, ou ramène du poids au-dessus, à la main."
+
+msgid "No foot of up to three parts reaches the floor under its %s side far enough out to stand it: widen its base that way, or move weight back over it, by hand."
+msgstr "Aucun pied d'au plus trois pièces n'atteint le sol sous son côté %s assez loin pour le faire tenir : élargis sa base de ce côté, ou ramène du poids au-dessus, à la main."
+
 # An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy (named), or no room in one, with the menu command round it (followfix, flfix)
 
 msgid "Locked in one copy of %s: unlock it, or use Build › Make this copy unique"
@@ -14789,3 +14864,49 @@ msgstr "Pas de place dans %s : déplacez ce qui gêne à cet endroit, ou utilise
 
 msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
 msgstr "Pas de place dans %s : elle passerait sous le sol. Montez cette copie, ou utilisez Construire › Rendre cette copie unique"
+
+# keptbuilt (APP_UX9 #6)
+msgid "Built"
+msgstr "Monté"
+
+msgid "Built %d of %d"
+msgstr "%d sur %d montés"
+
+msgid "Kept built on a shelf: its parts are left out of My bricks, What can I build? and a design from your parts. Press again when it is taken apart"
+msgstr "Gardé monté sur une étagère : ses pièces ne comptent ni pour Mes briques, ni pour Que puis-je construire ?, ni pour une création à partir de vos pièces. Appuyez de nouveau quand il est démonté"
+
+msgid "How many of your copies stand built: each press marks one more, and after the last, none. A built copy's parts are left out of My bricks, What can I build? and a design from your parts"
+msgstr "Combien de vos exemplaires sont montés : chaque appui en marque un de plus, et après le dernier, aucun. Les pièces d’un exemplaire monté ne comptent ni pour Mes briques, ni pour Que puis-je construire ?, ni pour une création à partir de vos pièces"
+
+msgid "%s taken apart: its parts count as yours to build with again"
+msgstr "%s démonté : ses pièces comptent de nouveau parmi celles avec lesquelles vous construisez"
+
+msgid "%s kept built: its parts are left out of what you build with"
+msgstr "%s gardé monté : ses pièces ne comptent pas parmi celles avec lesquelles vous construisez"
+
+msgid "%s: %d of %d copies kept built, their parts left out of what you build with"
+msgstr "%s : %d exemplaires sur %d gardés montés, leurs pièces ne comptent pas parmi celles avec lesquelles vous construisez"
+
+msgid "%s and %s — %s pieces to build with, %s more in %s kept built, kept with your account"
+msgstr "%s et %s — %s pièces pour construire, %s de plus dans %s gardés montés, conservées avec votre compte"
+
+msgid "%s and %s — %s pieces to build with, %s more in %s kept built (the copy on this device)"
+msgstr "%s et %s — %s pièces pour construire, %s de plus dans %s gardés montés (la copie sur cet appareil)"
+
+msgid "Save sets as CSV"
+msgstr "Enregistrer les sets en CSV"
+
+msgid "Save sets as XML"
+msgstr "Enregistrer les sets en XML"
+
+msgid "Your sets as a Rebrickable sets list, its Built column the copies you keep built. Read back here, it adds to what is there: to restore your collection, read it into an empty one (Start over first)"
+msgstr "Vos sets sous forme de liste de sets Rebrickable, sa colonne Built donnant les exemplaires que vous gardez montés. Relue ici, elle s’ajoute à ce qui est déjà là : pour restaurer votre collection, lisez-la dans une collection vide (Tout recommencer d’abord)"
+
+msgid "Your sets as a BrickLink XML, the copies you keep built marked Built in their remarks. It does not say which sets' spare parts you kept, as the CSV's Includes Spares does. Read back here, it adds to what is there: to restore your collection, read it into an empty one (Start over first)"
+msgstr "Vos sets sous forme de XML BrickLink, les exemplaires gardés montés marqués Built dans leurs remarques. Il ne dit pas de quels sets vous avez gardé les pièces de rechange, comme le fait Includes Spares dans le CSV. Relu ici, il s’ajoute à ce qui est déjà là : pour restaurer votre collection, lisez-le dans une collection vide (Tout recommencer d’abord)"
+
+msgid "no sets to save: add them on What I own first"
+msgstr "aucun set à enregistrer : ajoutez-les d’abord dans Ce que je possède"
+
+msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
+msgstr "moins d’exemplaires sont revenus que de marqués Monté, ceux-là ne sont donc plus marqués : %s%s"

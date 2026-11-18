@@ -38,7 +38,9 @@
 ##    here; the orrery fixture reads locked since kinefuncs, 2026-11-14): Play in sight as it opens, and a
 ##    tap plays it; the cycle's slider in sight in no more than one drag, and
 ##    dragged by a finger it moves the cycle; a tap on another part makes it
-##    the driver in no more than 2. Every target 44 points or more.
+##    the driver in no more than 2; and a tap made while Simulate still turns
+##    the part tapped before it is kept, and drives once that is done (a
+##    phone's slow frames dropped it: smalls4). Every target 44 points or more.
 ## 4. Measure taken out says what a finger does, in taps (edit_verbs).
 ## Pictures in --shots=DIR (else user://phonepanels). Exits non-zero when a
 ## check fails.
@@ -630,8 +632,104 @@ func _simulate() -> void:
 		now != driver and _presses <= 2)
 	_act("Simulate: another part made the driver", 1)
 	_measure_panel(panel, "simulate")
+	await _tap_while_busy(panel)
 	panel.close()
 	await _frames(6)
+
+
+## A tap while Simulate is still busy: on phonewalk's orrery (two planets
+## on a gear train, src/dev/fixtures), Simulate opened turns its first
+## driver and then looks for where it stops, a slice a frame, which on a
+## phone's slow frames ran for seconds; a tap on another gear then was
+## dropped (APP_UX9, smalls4 item 7; phonewalk's 3 taps were its own two on
+## the orrery's frame, not this). Here another gear is tapped while that first drive is
+## still under way: it is kept (SimulatePanel._wanted) and is the driver
+## once the first gives way, in the one tap.
+func _tap_while_busy(panel: SimulatePanel) -> void:
+	panel.close()
+	await _frames(6)
+	if not await _open("res://src/dev/fixtures/orrery_two_planets.ldr"):
+		return
+	_shell.run("simulate")
+	await _until(func() -> bool:
+		return panel.visible and panel.sim != null and not panel._reading and panel._driving, 60.0)
+	if panel.sim == null or not panel._driving:
+		_check("a tap while Simulate is busy: Simulate opened on the orrery, turning its first driver (read %s, turning %s)"
+			% [panel.sim != null, panel._driving], false)
+		return
+	# The view settled first, as a person's eye waits for it: it slides the
+	# model up over the panel as Simulate opens, a gear 280 units in six
+	# frames, and a tap aimed before it settled found the driver.
+	var mark: Vector3 = _world_box().get_center()
+	var was: Vector2 = Vector2.INF
+	var still: int = 0
+	for _n: int in 240:
+		await process_frame
+		var now: Vector2 = _camera.unproject_position(mark)
+		still = still + 1 if now.distance_to(was) < 0.5 else 0
+		was = now
+		if still >= 5 or not panel._driving:
+			break
+	# Another body a drive can turn, by a point in sight above the panel
+	# where the app's own hit test finds a part of it (a gear's middle is
+	# its axle hole, and a tap there finds what is behind).
+	var first: int = panel._driving_to
+	var room: Rect2 = _view().grow(-8.0 * _pt())
+	var top: float = panel.get_global_rect().position.y - 8.0 * _pt()
+	var verbs: EditVerbs = _main.get("_verbs")
+	var library: Variant = _main.get("_library")
+	var target: int = -1
+	var at: Vector2 = Vector2.INF
+	for body: Variant in panel.sim.keys_of:
+		if int(body) == first or not panel.sim.can_drive(int(body)):
+			continue
+		var mine: Array = panel.sim.keys_of[body]
+		for id: Variant in mine:
+			var brick: BrickWorld.Brick = _world.get_brick(int(id))
+			if brick == null:
+				continue
+			var box: AABB = library.mesh_for(brick.part_id).bounds
+			for local: Vector3 in [box.get_center(), box.get_center() + Vector3(box.size.x * 0.35, 0, 0),
+					box.get_center() - Vector3(box.size.x * 0.35, 0, 0),
+					box.get_center() + Vector3(0, 0, box.size.z * 0.35)]:
+				var point: Vector3 = brick.transform * local
+				if _camera.is_position_behind(point):
+					continue
+				var spot: Vector2 = _camera.unproject_position(point)
+				if room.has_point(spot) and spot.y < top and mine.has(verbs.brick_at(spot)):
+					target = int(body)
+					at = spot
+					break
+			if target >= 0:
+				break
+		if target >= 0:
+			break
+	if target < 0 or not panel._driving:
+		_check("a tap while Simulate is busy: another gear of the orrery in sight to tap while its first drive turns (found %s, still turning %s)"
+			% [target >= 0, panel._driving], false)
+		return
+	# The panel hears the tap first; what it kept is read as the selection changes.
+	var queued: Array = []
+	var builder: Builder = _main.get("_builder")
+	var hear: Callable = func(_count: int) -> void: queued.append(panel._wanted)
+	builder.selection_changed.connect(hear)
+	_presses = 0
+	_presses += 1
+	_touch(0, at, true)
+	await _frames(2)
+	var busy: bool = panel._driving and panel._driving_to == first
+	_touch(0, at, false)
+	await _frames(2)
+	builder.selection_changed.disconnect(hear)
+	var picked: bool = (panel.sim.keys_of.get(target, []) as Array).any(func(id: Variant) -> bool:
+		return builder.selection.has(int(id)))
+	await _until(func() -> bool: return not panel._driving, 60.0)
+	await _frames(4)
+	var now: String = str(panel.said().get("driver", ""))
+	_check("the orrery opened in Simulate, another gear tapped while its first driver still turned (%s; the tap picked it %s, kept for after: %s): it drives, in %d: %s"
+		% [busy, picked, queued.has(target), _presses, now.left(60)],
+		busy and queued.has(target) and panel.sim != null and panel.sim.driver == target
+		and _presses == 1)
 
 
 ## simulate_probe's train, put down as it puts it: an 8 on one axle meshing a

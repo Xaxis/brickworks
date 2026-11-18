@@ -102,8 +102,9 @@ Since 2026-10-17:
    tab's first message did so in our test: `select_tab`, then every call
    targeted.
 5. **The tab says who is working in it.** The toolbar shows "Claude
-   working · tab k7qd" while a chat works there (any call in the last 30
-   minutes). The connector's line, "Claude is building — N calls", counts
+   working · tab k7qd" while a chat works there (any call in the last 10
+   minutes: at 30, each resumed turn of a walk was still "working" half an
+   hour on, mcpreach2). The connector's line, "Claude is building — N calls", counts
    the calls of the chat that called last, from its own first call. Account names the chat by when it started and what it did
    last. If two chats work in one tab, both say so: the toolbar reads
    "2 Claude chats", and Account has **Keep this one** beside each. The
@@ -129,7 +130,25 @@ before the resume for another chat's. The person's Undo still takes it
 back. The chat is told both plainly in the answer to its first choice of
 a tab, or in the answer that asks it to choose. It is told only where the
 account has had another chat, since a resumed chat's earlier self always
-leaves one. An `undo` stopped at such a step says so too.
+leaves one. An `undo` stopped at such a step says so too. Measured again
+with Claude Code 2.1.326 on 2026-11-17 (mcpreach2): the same, with no
+DELETE of the old session at exit.
+
+So every answer's first line tells two kinds of other chat apart
+(`header` in `api/mcp.js`). One that has called in the tab since this
+chat began is another chat for certain: "Careful: another chat has been
+working in it for 25 min, last call 1 min ago, on this same model since
+this chat began; the tab shows both chats" ("N other chats ..., the
+first for ..." and "every chat" for more than one; the time is the
+longest there's). One heard from only before this chat began, within the
+10 minutes, may be this conversation's own earlier self, so it is not
+counted: "Before this chat's first call here, another chat called in this
+tab, last heard 2 min ago; none has called since", that if this
+conversation called Brickworks earlier, that was its own call, and that
+any chat calling while this one works is said in every answer. In APP_UX9's walk, where
+each task was one `claude -p --resume` turn, every answer by y8 began "19
+other chats have been working in it", and sessions looked at the model
+for them or told the person of "25 other chats" that were their own turns.
 
 Claude Code's first request is `server/discover`, from a newer protocol
 whose sessions have no `initialize`, and so no session id to keep a chat

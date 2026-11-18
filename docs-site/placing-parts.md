@@ -80,6 +80,26 @@ lib:placing a part by its connectors
 lib:round joints
 -->
 
+## Onto a ball joint {#balls}
+
+A tow ball socket, a Technic ball socket or a Joint-8 socket in hand goes onto the ball it is aimed at, and a ball goes into a socket the same way. It goes on turned as you hold it when there is room, and lined up with the ball when not. [[R]] turns it about the ball's own axis, and [[T]] puts it on by another socket of the part, such as a link's other end.
+
+Once it is on, select it and the **Rotate** tool's rings stand on the ball's centre: drag one, or type a number, to turn it any way about the ball. A sub-assembly on a ball gets three sliders in **Build › Motions…**, one for each way it turns.
+
+<!-- covers
+ui:ball joints by hand
+-->
+
+## By the joint you pick it up by {#grabbed}
+
+A part picked up off the model goes on by the joint you took hold of. Point at a side stud of a brick with studs on its sides and press [[X]], or drag it from there, and that stud goes into the hole you aim at. Pick a beam up by its end hole and that hole goes onto the pin. Studs, stud holes, pins, holes, axles, bars, clips and balls all work this way.
+
+[[R]] turns the part about that joint, and [[T]] lets go of it, so the part snaps as one from the parts bin does. Where the part you aim at has nothing that takes the joint you hold, the part goes on by a joint that fits. A part taken from the parts bin, a copy, or several parts at once go on as before.
+
+<!-- covers
+ui:on by the joint it was picked up by
+-->
+
 ## By the hole you choose {#connect}
 
 ![A Technic beam in hand over the baseplate, its pin holes lit in blue, each a point it can go on by.](/docs/img/placing-parts-connect.webp "Connect (N) lights a part's points: click the one it goes on by, then where it goes.")

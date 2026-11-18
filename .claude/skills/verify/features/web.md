@@ -593,13 +593,24 @@ plan with Claude as the client.
   `plain`, `named`; two matches are listed, never guessed), and a target binds
   a chat that had not chosen. Each chat's pick keeps `called_at`, `did` and
   `moved_at` (`relay_picks`, `supabase/relay.sql`, additive); a chat holds its
-  tab for 30 min after its last call (`HELD_MS`). The tab is told its chats
+  tab for 10 min after its last call (`HELD_MS`; 30 until mcpreach2, when
+  each resumed `claude -p` turn of a walk was still "working" half an hour on,
+  and the window's `ClaudeConnector.HELD_S` the same). The tab is told its chats
   (`brickworks/chats`, sent when one chooses or leaves it; the chat on each
   call's `_meta` as `brickworks/chat`; `op=chats` as it switches on), and
   `op=keep&chat=` moves every other chat off: the other's next untargeted call
   is answered "The person moved this chat off tab …", nothing done, until it
-  chooses. An answer in a tab another chat holds says "Careful: another chat
-  has been working in it…". With more than one tab open, `select_tab`'s answer
+  chooses. An answer in a tab another chat has called in since this chat
+  began says "Careful: another chat has been working in it…, on this same
+  model since this chat began; the tab shows both chats" ("N other chats …,
+  the first for …", "every chat" for more; the time the longest there's).
+  One heard from only before this chat began may be its own earlier self (a
+  resumed Claude Code chat is a new session, and nothing says so), so it is
+  not counted: "Before this chat's first call here, another chat called in
+  this tab, last heard …; none has called since", and that if this
+  conversation called Brickworks earlier that was its own call (`header`, `quietWords`;
+  `python3 tools/minitest.py "$PWD/tests/test_relay_chats.py"` holds the
+  words to fabricated picks, mcpreach2). With more than one tab open, `select_tab`'s answer
   and `target`'s description ask Claude to pass `target` on every call
   (`SAY_TARGET`): claude.ai is reported to reuse one `Mcp-Session-Id` across
   chats, and two chats on one key are one chat here. Real Claude Code
@@ -5533,6 +5544,9 @@ rolled-back transaction, and the sums alone:
 ```sh
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql \
   --dry --try=tools/discovery_try.sql --table=gallery_picks
+# a kept pool's rule (kbfix): an older site's keep writes rule 1, a newer one's 2, owned_pool_of says it
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/pool_rule.sql \
+  --dry --try=tools/pool_rule_try.sql --table=collection_pools_kept
 node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets
 python3 tools/minitest.py tests/test_discovery.py
 node --env-file=.env tools/web/needs_backfill.mjs --dry --facts=<part_facts.mjs output>
@@ -5554,7 +5568,7 @@ Tower, Barn; no grant on the five tables to any key, row security on, only
 the service role executing; three pages of 25 the same as one list; the
 timings (docs/COMMUNITY.md, Discovery: Top builds about 170 ms and Parts I
 own 125 to 360 ms on 5,000 models and 300,000 need rows); "rolled back,
-nothing kept". `owned_probe` ends "owned_probe: 11 checks, all ok".
+nothing kept". `owned_probe` ends "owned_probe: 17 checks, all ok" (the last four: a pool kept by an older rule counted again, one kept by `POOL_RULE` or with no rule kept, a keep with a rule refused 404 kept the older way).
 `needs_backfill --dry` names the seven real models' parts and lots, keeping
 nothing.
 

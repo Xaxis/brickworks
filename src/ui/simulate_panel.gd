@@ -94,6 +94,15 @@ var _frame: TextureRect
 var _quiet: bool = false
 var _reading: bool = false
 var _driving: bool = false
+## The body a click chose while a drive was still turning, weighing and
+## checking where it stops, driven as soon as that gives way; -1 for none.
+## A phone draws a frame slowly, and the stop check, a slice a frame, ran for
+## seconds after Simulate opened: a tap then was dropped (smalls4,
+## phonepanels' busy tap). phonewalk's 3 taps for a driver were not this:
+## its first two landed on the orrery's frame, which does not turn.
+var _wanted: int = -1
+## The body the drive under way is turning.
+var _driving_to: int = -1
 var _recording: bool = false
 var _seen_revision: int = -1
 var _last: Dictionary = {}
@@ -131,6 +140,7 @@ func close() -> void:
 	if shell != null and shell._balance_mark != null:
 		shell._balance_mark.clear()
 	sim = null
+	_wanted = -1
 
 
 func read() -> void:
@@ -237,6 +247,11 @@ func drive(body: int, how: String = "picked") -> void:
 	if sim == null or _driving:
 		return
 	_driving = true
+	_driving_to = body
+	# What was said of the last driver or the last tap goes: a tap on the
+	# frame, then one on the Earth, left "That part does not turn on anything
+	# here" under "Driver: Earth, tapped".
+	_status.text = ""
 	_stop()
 	turns = 0.0
 	var job: Working.Job = Working.begin("Turning the mechanism…")
@@ -253,9 +268,18 @@ func drive(body: int, how: String = "picked") -> void:
 	_show_readout()
 	world.set_drawn({})
 	await weigh()
-	await check_stops()
+	# A part clicked meanwhile is the driver now: where this one stops is
+	# not asked.
+	if _wanted < 0:
+		await check_stops()
 	_driving = false
 	if sim == null:
+		_wanted = -1
+		return
+	var next: int = _wanted
+	_wanted = -1
+	if next >= 0 and next != sim.driver:
+		await drive(next, "clicked")
 		return
 	world.set_tinted(sim.tints())
 	_show_pose()
@@ -329,7 +353,7 @@ func find_stops(simulation: Simulation, panel: bool = false) -> void:
 	simulation.begin_stops(simulation.cycle())
 	while not simulation.stops_step(STOP_SLICE_MS):
 		await get_tree().process_frame
-		if panel and sim != simulation:
+		if panel and (sim != simulation or _wanted >= 0):
 			return
 
 
@@ -460,9 +484,15 @@ func _process(delta: float) -> void:
 
 ## A click on a part while the panel is open: drive its body, when it turns.
 func _on_selection(_count: int) -> void:
-	if not visible or sim == null or _reading or _driving or _quiet:
+	if not visible or sim == null or _reading or _quiet:
 		return
 	var body: int = _selected_body()
+	# Still turning the last driver: this one goes next, and the stop check
+	# under way gives up (drive).
+	if _driving:
+		if body >= 0:
+			_wanted = body if body != _driving_to else -1
+		return
 	if body < 0:
 		if builder != null and not builder.selection.is_empty():
 			_status.text = "That part does not turn on anything here: click an axle or a crank."
@@ -737,6 +767,20 @@ static func _session_driver(simulation: Simulation, asked: String) -> Dictionary
 		if body < 0:
 			return {"refusal": ("No part or sub-assembly %s here. driver= takes a part's number "
 				+ "(look_at_model) or a sub-assembly's name.") % asked}
+		# A motor's number is its output, which is what it drives: its case
+		# is the base it stands in. APP_UX9's y6 session gave the SPIKE
+		# motor's number, was told the motor "is the base", and read the arm
+		# pinned into the hub as held by the case (mcpreach2).
+		var motor: int = int(asked.strip_edges().trim_prefix("#")) \
+			if asked.strip_edges().trim_prefix("#").is_valid_int() else -1
+		if simulation.motors.has(motor):
+			var turned: int = simulation.model.output_body(motor)
+			if turned >= 0:
+				return {"body": turned, "how": "the output of motor #%d, as asked" % motor}
+			return {"refusal": ("#%d is a motor (%s), whose case is part of %s: nothing is keyed or "
+				+ "pinned into its output, so it turns nothing. attachment_points brick=%d names "
+				+ "the output's axle hole and pin holes; a part in one of them turns with it.") % [
+				motor, (Simulation.MOTORS[simulation.motors[motor]] as Array)[0], simulation.named_with_parts(body, 2), motor]}
 		if not simulation.can_drive(body):
 			return {"refusal": ("%s does not turn on anything: it is %s. Give driver= an axle or "
 				+ "a crank that turns in a hole.") % [simulation.named_with_parts(body, 2),

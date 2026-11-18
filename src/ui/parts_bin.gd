@@ -4795,7 +4795,7 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	# The person's own bricks (From my bricks): what they own, made again as
 	# their collection changes (follow_marks).
 	if numbers.size() == 1 and numbers[0] == OwnCounts.WORD:
-		var mine: SetBin = OwnCounts.bin(OwnCounts.owned(owned.call()), library)
+		var mine: SetBin = OwnCounts.bin(owned.call(), library)
 		if mine.have.is_empty():
 			trouble = "nothing is in your collection yet: add your sets and parts in My collection"
 			return 0
@@ -4967,7 +4967,7 @@ func follow_marks() -> void:
 			await build_from(store.bin_sets)
 		return
 	# Their own bricks: what they own now, whatever changed it.
-	var bin: SetBin = OwnCounts.bin(OwnCounts.owned(owned.call()), library) if _set_bin.is_mine() \
+	var bin: SetBin = OwnCounts.bin(owned.call(), library) if _set_bin.is_mine() \
 		else SetBin.make(_set_bin.sets, _set_records, library)
 	if bin == null or (bin.have == _set_bin.have and bin.left_out == _set_bin.left_out):
 		return
@@ -5199,7 +5199,7 @@ func _say_set() -> void:
 		", %s over" % _comma(int(sums["over"])) if int(sums["over"]) > 0 else ""]
 	if _set_bin.is_mine():
 		# The person's own bricks: what they are, and that a set kept built
-		# is counted with the rest (OwnCounts.BUILT_WORDS).
+		# is left out (OwnCounts.BUILT_WORDS, keptbuilt).
 		_set_words.tooltip_text = ("Building from the parts you own: your sets' parts, less those "
 			+ "marked missing, and your loose parts. Each part put down takes one from its count; undo "
 			+ "or a delete gives it back. A part with none left can still be used: the bin says how "

@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:mcpreach2 probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -141,6 +141,13 @@ asking for an API key.
   pull takes the step's brick numbers and refuses a part not in the step,
   naming the step's parts (`AppTools._pulled_parts`).
   `src/dev/seeing2_probe.gd` checks each, windowed.
+  APP_UX9 jointmarks (2026-11-17): `view_model {"marks": true}` draws every
+  connection point of the model's parts into its picture, as View ›
+  Connection points marks them in the window, and says what the marks are
+  first (`Assistant._with_marks`, `JointMarks.for_picture` set on
+  `ModelShot.drawn_with` for that picture alone; `where=` marks only the
+  parts in its box). A drawer elsewhere (`LeasedShots`) draws none and says
+  so. `tools/probe.sh jointmarks -- --only=session` checks it over tools/call.
   APP_UX6 mcpsee3 (2026-11-07): a part number, colour, step or view's name
   sent in quotes (`"\"4070\""`, `"'4070'"`, `“Plan”`) is taken without them
   (`Quotes.off`, in `_selected`, `_pulled_parts` and
@@ -695,6 +702,35 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   441 s, 11 turns, $2.21). Not yet: weighing a model held by a part
   (lifted by its mast), which the session still estimates.
 
+- `mcpreach2 probe` (APP_UX9 #10; `src/ai/assistant.gd` `_where_to_attach`,
+  `_whole_for_points`, `_spread_points`, `_output_said`; `src/net/app_tools.gd`
+  `TURNTABLE_SAID`, `held_to_pool`, `_pool_said`, `_what_moves`;
+  `src/ui/simulate_panel.gd` `_session_driver`; the relay's other-chats words
+  are in web.md's two chats): where the person's Claude stalled or guessed in
+  APP_UX9's MCP walk, each in the answer that would have spared it.
+  where_to_attach with nothing selected reads the whole model (up to 2,000
+  parts, else the 2,000 put down last or those nearest near=), parts= the
+  parts named; forty numbered points spread over every kind, facing and part,
+  the rest counted by kind and drawn as up to 400 dots: f5 was asked to select
+  everything first. A point facing the ground at the ground is not free
+  (`OpenPoints.GROUND`; nothing goes under the ground), only counted: the f5
+  car's numbers were half hollows under its own bricks. Its picture is from
+  the corner facing more of the points (`_corner_view`), and the caption
+  counts those facing away: a truck half up, half under was drawn from
+  straight above, and the session made a second picture to see it. A turntable's answer says the camera goes once round a
+  model that stands still, its lights and backdrop with it (it is drawn by
+  turning the model before a still camera, which makes the same frames): f4
+  said "I can't tell". attachment_points on a motor with an output (SPIKE,
+  Powered Up, Simulation.split_output) names the output's axle hole and pin
+  holes as the output's, which turn, apart from the case's;
+  simulate_mechanism driver=<a motor's number> drives its output (it said the
+  motor "is the base"); move_part's list names the motors and that their
+  outputs turn when driven, not by a drag. y6's session had pinned its arm in
+  the hub's ring, which Simulate reads as the output's: what it missed was
+  being told so. submit_design pool= holds a design to one set's parts, or
+  several sets' pooled, as mine=true does to the collection (OwnCounts.over
+  against OwnCounts.set_needs): a set by its number ("31058" is 31058-1), never
+  its name; a set under test is not given.
 - `mcpreach probe` (APP_UX8 #11; `src/net/app_tools.gd` `PERSONS_OWN`,
   `_booklet_pdf`; `src/net/download.gd` `unused`, `free_stem`, `kept_note`;
   `src/ui/exports.gd` `closed_words`; `ClosedMesh.open_edges`): what the
@@ -765,6 +801,7 @@ PROBE_SIZE=1400x900 tools/probe.sh seeing                           # what a ses
 PROBE_SIZE=1400x900 tools/probe.sh seeing2                          # how parts join and what it made: the stud map read part by part, View, Stud directions, highlight "3024"/"step:3"/"red", check_design's findings pictured, a pull by brick number, six frames of a build and a motion (also PROBE_SIZE=1280x720)
 tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   # a session picks out 4070 however quoted (#6 and #11 of the walk's Pods), save_view in 1 call back by its key and by render_model view= within 0.1° and 0.1 LDU, in_view lists it; pictures in MCPSEE3_SHOTS or user://mcpsee3_probe
 tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   # palettes read-only; edit_palette makes 12 parts + Gatepost in 1 call, the bin's own byte for byte; Gatepost placed whole in another model in 1 call to 0.01 LDU, one undo; take_out/rename/delete, agreed=true; pictures in shots/mcppalettes/
+tools/probe.sh mcpreach2_probe                                      # where_to_attach of the whole model a picture in 1 call, a turntable says the camera circles a still model, a SPIKE motor's output holes named and driven, submit_design pool=31058-1 over by part
 tools/probe.sh mcpreach_probe && PROBE_SIZE=1280x720 tools/probe.sh mcpreach_probe   # Together/Share/Import/Comments named with where, export_model pdf read back as typed in 3 calls, free names keep the first file byte for byte, 3MF/STL closed solids as lib3mf reads them
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
 node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed; step 4's bricks drawn in the picture, and again in --again=4 more openings with Next at once (a local export, .env loaded)

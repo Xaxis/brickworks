@@ -502,6 +502,12 @@ and the files named. Ranked by how much a person building would feel it.
      the pointer" (`builder.gd` 3955 to 3965): the place is the pointer's,
      not the grip's. Felt with SNOT bricks and Technic, and not proven here
      by a run.
+   - grabseat's run on pre261 790bdcf89 (2026-11-17): 20 parts with joints
+     on more than one face picked off the model by each of their 177
+     joints and put on a target that takes that joint. By X, 41 went on by
+     the joint picked up by, 63 by another and 73 by none; by a Select drag,
+     16, 22 and 139. With grabseat, 177 of 177 both ways, to 0.01 LDU, and
+     the same parts from the bin seat where they did (177 of 177).
 4. Smaller:
    - **keys on any object at any step, the camera's among them**
      (StudWorx's Keyframes panel, 11-09 and 11-11). Brickworks keys joints
@@ -694,7 +700,10 @@ because it is not one of them: it is the measure they serve.
    (**pointfast**; the lead started it as pointfix at 01:34Z).
 9. **A part seats by the pointer, not by the stud or hole it was grabbed
    by** (StudWorx 11-13): a SNOT brick or a Technic part picked up by one
-   side goes on by another (**grabseat**).
+   side goes on by another (**grabseat**). Done 2026-11-17: picked up by X
+   or a Select drag, a part goes on by the joint nearest the pointer where
+   it was pressed; 177 of 177 joints of 20 parts, from 41 by X and 16 by a
+   drag.
 10. **Where the person's Claude stalled** in this round's MCP walk: every
     answer warned of up to 25 "other chats" that were its own earlier
     turns, `where_to_attach` stopped for a selection, a turntable's answer
@@ -822,6 +831,17 @@ The bar:
 - **Kept.** The mark survives a reload, the account's round trip and the CSV and XML exports. An older build keeps the set and drops only the mark, and says so.
 - **Over MCP,** `edit_collection {"built": ["7140-1"]}` in 1 call. The MCP walk's v10 and n5 still pass.
 - **Checks:** `collection`, `mybricks` and `ownlimit` pass, and one review before merge.
+- **After its review (kbfix, 2026-11-17).** A set is counted once by its number, all its entries together, in the
+  app (`Collection.pool`) and on the site (`api/_owned.js` `poolOf`). Which entry holds a Built mark or a missing one
+  changes nothing: two copies, one built, three 3001s missing count 7 whichever way they are kept (it was 7 or 10).
+  - The site's pool now leaves out the parts marked missing, as the app's does. Before, it counted them, live too:
+    17 in the app and 20 on the site.
+  - A kept `built` counts only as a whole number, up to the copies. That is one rule in the app
+    (`Collection.built_count`), the site and the API's ops (`builtCount`).
+  - A kept site pool says the rule it was counted by (`supabase/pool_rule.sql`), so one counted by an older rule
+    is counted again. Until that file is applied, pools are kept as before.
+  - The exports' tooltips say that reading a file back adds to what is there, and that the XML does not carry
+    Includes Spares.
 
 **smalls4, in full.** Eight faults this round's runs found, each with its file,
 item 1 first and on its own commit, so it can ride the next release:

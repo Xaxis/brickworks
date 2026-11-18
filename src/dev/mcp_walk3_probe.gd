@@ -33,6 +33,11 @@
 ##    picture showed the telescope out through the shut dome).
 ##  - Saved under a name of the session's own and opened again: no
 ##    "changes that are not saved".
+##  - Round nine's y8 (APP_UX9, smalls4): its side pod, of two assemblies
+##    and a motor arm (tests/fixtures/appux9/side-pod.ldr, as the session
+##    saved it), a part added, saved under a new name, and 7140-1 opened
+##    from the library with no discard_changes, then its moved parts
+##    replaced: 3 calls, where the walk needed a fourth to discard.
 ##  - check_design says a gear in a rack's teeth, and one beside a rack and
 ##    not in them with how far to move it: the session stood a rack on its
 ##    side in thirteen checks that said nothing either way.
@@ -70,6 +75,7 @@ func _run() -> void:
 	await _motions()
 	await _held()
 	await _saved_and_opened()
+	await _saved_then_another()
 	await _racks_in_the_check()
 	_done()
 
@@ -193,6 +199,32 @@ func _saved_and_opened() -> void:
 	_check("...and its motions came with it", said.contains("\"Extend the telescope\"")
 		and said.contains("\"Open the back wall panels\""))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ModelStore.SAVE_DIR + "probe-observatory.ldr"))
+
+
+func _saved_then_another() -> void:
+	print("── round nine's y8: the side pod saved, another model opened ──")
+	_main.call("clear_model")
+	_main.call("_open", ProjectSettings.globalize_path("res://tests/fixtures/appux9/side-pod.ldr"))
+	for _n: int in 10:
+		await process_frame
+	var edited: String = await _say("edit_model", {"add": [{"part": "3023", "color": 1, "x": 0,
+		"y": 0, "z": 20}], "picture": false})
+	_check("the side pod open, a part added: %s" % edited.get_slice("\n", 0).left(100),
+		(_main.get("_store") as ModelStore).has_unsaved_work())
+	var calls: int = 0
+	var said: String = await _say("save_model", {"name": "probe-side-pod.ldr"})
+	calls += 1
+	_check("saved under a new name: %s" % said.get_slice("\n", 0).left(100),
+		said.begins_with("Written to probe-side-pod.ldr"))
+	said = await _say("open_model", {"library": "7140-1"})
+	calls += 1
+	_check("7140-1 opened from the library with no discard_changes: %s" % said.get_slice("\n", 0).left(120),
+		said.begins_with("Opened") and not said.contains("not saved"))
+	said = await _say("open_model", {"replace_moved": true})
+	calls += 1
+	_check("...its moved parts replaced, %d calls in all: %s" % [calls, said.get_slice("\n", 0).left(120)],
+		calls == 3 and not said.contains("not saved") and said.to_lower().contains("replaced"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(ModelStore.SAVE_DIR + "probe-side-pod.ldr"))
 
 
 func _racks_in_the_check() -> void:
