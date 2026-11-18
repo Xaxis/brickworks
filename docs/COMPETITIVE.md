@@ -1340,7 +1340,7 @@ by hand.
 [ldd-ldraw]: https://forums.ldraw.org/thread-4028.html
 [ldd-big]: https://www.eurobricks.com/forum/forums/topic/172319-ldd-4311-max-of-pieces/
 [ldd-requests]: https://www.eurobricks.com/forum/forums/topic/35736-key-topic-ldd-feature-requests
-[ldd-end]: https://www.brothers-brick.com/2022/01/12/lego-fully-discontinuing-lego-digital-designer-in-favor-of-bricklink-studio
+[ldd-end]: https://brickset.com/article/68953/bricklink-studio-replacing-ldd
 [lc-home]: https://www.leocad.org/
 [lc-releases]: https://github.com/leozide/leocad/releases
 [lc-2609]: https://github.com/leozide/leocad/releases/tag/v26.09
