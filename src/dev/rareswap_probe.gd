@@ -44,6 +44,8 @@ const TEN: Array = ["models/orthanc.ldr", "models/corner_shop.ldr",
 	"tools/web/gallery_seeds/maintenance_robot.ldr", "tools/web/gallery_seeds/village_bakery.ldr"]
 const SEEDS := "res://tools/web/gallery_seeds/seeds.json"
 const KEPT := "rareswap_kept.mpd"
+## Its own title line: the name an open of it gives the model.
+const KEPT_TITLE := "A model with lots that are hard to buy"
 
 var _rows_out := PackedStringArray()
 var _part_number: RegEx = RegEx.create_from_string("^[a-z]?\\d+[a-z0-9]*$")
@@ -262,6 +264,7 @@ func _case_gallery() -> void:
 		var name: String = file.get_file().get_basename()
 		var before: String = _save()
 		var rare: Dictionary = _rare_here()
+		var lots: int = Inventory.of(_world, _library, _store.scenery).lot_count()
 		var list: InventoryPanel = await _list_up()
 		var said: String = list.controls_by_name()["parts_rare"].text \
 			if list.controls_by_name().has("parts_rare") else ""
@@ -290,6 +293,9 @@ func _case_gallery() -> void:
 			print("    %s" % (list.get("_swapper") as RareSwap).lot_words(lot))
 			if not lot.offered():
 				none.append(lot.key)
+				var could: String = _a_swap_for(lot, list.get("_swapper"))
+				if not could.is_empty():
+					wrong.append("%s: none offered, but %s" % [lot.key, could])
 				continue
 			var part: String = lot.into_part if not lot.into_part.is_empty() else lot.part
 			var colour: int = lot.into_colour if lot.into_colour >= 0 else lot.colour
@@ -310,9 +316,10 @@ func _case_gallery() -> void:
 				delta += lot.delta_e
 				if lot.into_colour == lot.colour:
 					wrong.append("%s: the same colour" % lot.key)
-		_check("%s swapped: each of %d has a swap in 20 sets or more (%d colours, %d parts; none for %s)%s"
-			% [name, listed.size(), colour_swaps, part_swaps, none, "" if wrong.is_empty()
-			else ": " + "; ".join(wrong)], wrong.is_empty() and none.is_empty())
+		_check("%s swapped: each of %d with a part or colour in 20 sets or more has it (%d colours, %d parts; none for %d, whose part comes in fewer in every colour: %s)%s"
+			% [name, listed.size(), colour_swaps, part_swaps, none.size(), none, "" if wrong.is_empty()
+			else ": " + "; ".join(wrong)], wrong.is_empty() and colour_swaps + part_swaps + none.size()
+			== listed.size())
 		var depth: int = _builder.history_depth()
 		var pressed: bool = await _swap_pressed(list)
 		var after_said: String = list.controls_by_name()["parts_rare"].text \
@@ -325,9 +332,8 @@ func _case_gallery() -> void:
 		_check("%s measured: the row says %d rare before and %d after, as counted here (%d)"
 			% [name, _row_count(said), _row_count(after_said), left],
 			_row_count(after_said) == left and after_said.begins_with("Swapped ")
-			and left == prints_kept)
-		_rows_out.append("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.1f" % [name,
-			Inventory.of(_world, _library, _store.scenery).lot_count(), rare.size(), left,
+			and left == prints_kept + none.size())
+		_rows_out.append("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.1f" % [name, lots, rare.size(), left,
 			colour_swaps, part_swaps, prints_kept, none.size(),
 			delta / maxf(colour_swaps, 1)])
 		list.hide_list()
@@ -339,6 +345,29 @@ func _case_gallery() -> void:
 		var redone: String = _save()
 		_check("%s: a redo, the swap's save to the byte (%s)" % [name, _diff(after, redone)],
 			redone == after)
+
+
+## A swap the bar would take for [param lot], read here from the colours
+## files: a plastic colour of its part in 20 sets or more, or a part of its
+## number or its print's in its colour in 20 or more and of its shape; ""
+## for none.
+func _a_swap_for(lot: RareSwap.Lot, swapper: RareSwap) -> String:
+	var rubber: bool = _library.color(lot.colour).group == "rubber"
+	for code: int in _library.colors:
+		var other: PartLibrary.BrickColor = _library.colors[code]
+		if code == lot.colour or not other.is_plastic() or (other.group == "rubber") != rubber:
+			continue
+		if not rubber and other.plain_code != code:
+			continue
+		if _library.sets_in_colour(lot.part, code) >= 20:
+			return "%s in %d sets" % [other.name, _library.sets_in_colour(lot.part, code)]
+	if lot.flexible:
+		return ""
+	for other: String in swapper.equal_candidates(lot.part):
+		if _library.sets_in_colour(other, lot.colour) >= 20 and RareSwap.same_shape(
+				_library.mesh_for(lot.part), _library.mesh_for(other)):
+			return "%s in %d sets" % [other, _library.sets_in_colour(other, lot.colour)]
+	return ""
 
 
 ## The undo, then the save as it stands.
@@ -402,7 +431,7 @@ func _case_mcp() -> void:
 ## sub-model once, undone and redone to the byte, saved and opened again.
 func _case_kept() -> void:
 	var text: String = _fixture(KEPT)
-	await _open_as(text, KEPT.get_basename())
+	await _open_as(text, KEPT_TITLE)
 	var before: String = _save()
 	_check("kept: someone else's file opened and saved, to the byte (%s %s)" % [_diff(text, before),
 		_first_unlike(text, before)], before == text)
@@ -449,13 +478,13 @@ func _case_kept() -> void:
 		_count("2431p70", 0) == 1)
 	var shown: Array = _looks()
 	var left: int = _rare_here().size()
-	await _open_as(after, KEPT.get_basename())
+	await _open_as(after, KEPT_TITLE)
 	_check("kept: saved and opened again, every part as it was shown%s" % _unlike(shown, _looks()),
 		shown == _looks())
 	_check("kept: ...the same rare count (%d, was %d)" % [_rare_here().size(), shown_before],
 		_rare_here().size() == left and left < shown_before)
 	_check("kept: ...and it saves to itself (%s)" % _diff(after, _save()), _save() == after)
-	await _open_as(text, KEPT.get_basename())
+	await _open_as(text, KEPT_TITLE)
 	list = await _list_up()
 	_check("kept: the rare row opens the swaps again", await _swaps_up(list))
 	_check("kept: Swap pressed again", await _swap_pressed(list))
@@ -477,7 +506,7 @@ func _case_mirror_part() -> void:
 	var text: String = _fixture(KEPT).replace("1 14 -120 -8 0 1 0 0 0 1 0 0 0 1 3070a.dat\n", "") \
 		.replace("1 379 0 -24 0 1 0 0 0 1 0 0 0 1 87087.dat\n",
 			"1 379 0 -24 0 1 0 0 0 1 0 0 0 1 87087.dat\n1 14 0 -32 0 1 0 0 0 1 0 0 0 1 3070a.dat\n")
-	await _open_as(text, KEPT.get_basename())
+	await _open_as(text, KEPT_TITLE)
 	var list: InventoryPanel = await _list_up()
 	_check("mirror_part: the rare row opens the swaps", await _swaps_up(list))
 	var into: String = ""
@@ -494,7 +523,7 @@ func _case_mirror_part() -> void:
 	_check("mirror_part: ...each sub-model written once (wing %d, tip %d)" % [_defined(after,
 		"rareswap_wing.ldr"), _defined(after, "rareswap_tip.ldr")],
 		_defined(after, "rareswap_wing.ldr") == 1 and _defined(after, "rareswap_tip.ldr") == 1)
-	await _open_as(after, KEPT.get_basename())
+	await _open_as(after, KEPT_TITLE)
 	_check("mirror_part: saved and opened again, every part as it was shown%s" % _unlike(shown, _looks()),
 		shown == _looks())
 
