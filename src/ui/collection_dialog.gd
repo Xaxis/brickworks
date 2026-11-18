@@ -328,6 +328,7 @@ func _build() -> void:
 	_pages["need"] = _need_page()
 	_pages["build"] = _build_page()
 	_pages["set"] = _set_page()
+	_pages["places"] = _places_page()
 	for page: String in _pages:
 		var holder: Control = _pages[page]
 		# Each page in a scroll of its own, which scrolls only when the page
@@ -348,7 +349,8 @@ func _build() -> void:
 
 	_confirm_clear = ConfirmationDialog.new()
 	_confirm_clear.title = "Start over"
-	_confirm_clear.dialog_text = "Forget every set and part in your collection? This cannot be undone."
+	_confirm_clear.dialog_text = ("Forget every set and part in your collection, and where each is kept? This cannot be "
+		+ "undone.")
 	_confirm_clear.ok_button_text = "Forget it all"
 	_confirm_clear.confirmed.connect(_on_clear)
 	add_child(_confirm_clear)
@@ -373,6 +375,12 @@ func _own_page() -> Control:
 		+ "many are left as you build. " + OwnCounts.BUILT_WORDS))
 	_build_mine.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_build_mine.visible = false
+	# partplaces: where each part and colour is kept, a page of its own.
+	_places_open = _small(_button(summary, "Where it's kept…", open_places, "collection_places",
+		"Where you keep each part and colour: a drawer, a box, a tray. The parts list sorts by it, and the "
+		+ "booklet's parts boxes say it"))
+	_places_open.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_places_open.visible = false
 
 	var typed := HBoxContainer.new()
 	typed.add_theme_constant_override("separation", 8)
@@ -413,7 +421,7 @@ func _own_page() -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	files.add_child(spacer)
 	_button(files, "Start over…", func() -> void: _confirm_clear.popup_centered(),
-		"collection_clear", "Forget every set and part in your collection")
+		"collection_clear", "Forget every set and part in your collection, and where each is kept")
 
 	var account := HBoxContainer.new()
 	account.add_theme_constant_override("separation", 6)
@@ -752,7 +760,7 @@ func _show(page: String) -> void:
 	_fit_pages_later()
 	# A set's missing parts are a page of What I own's, with no tab.
 	for name: String in _tabs:
-		(_tabs[name] as Button).button_pressed = name == page or (page == "set" and name == "own")
+		(_tabs[name] as Button).button_pressed = name == page or (page in ["set", "places"] and name == "own")
 	match page:
 		"own":
 			_fill_own()
@@ -762,6 +770,8 @@ func _show(page: String) -> void:
 			_fill_build()
 		"set":
 			_fill_set()
+		"places":
+			_fill_places()
 	_tell_page()
 
 
@@ -791,6 +801,7 @@ func _fill_own() -> void:
 			_comma(_built_pieces()), Counted.of(copies, "set"),
 			" (the copy on this device)" if store.offline else ", kept with your account"]
 	_build_mine.visible = store.pieces_on_hand() > 0
+	_places_open.visible = not mine.is_empty()
 	_clear_rows(_own_rows)
 	_controls.erase("collection_build_first")
 	_controls.erase("collection_mark_first")
@@ -1407,6 +1418,10 @@ func _add_typed() -> void:
 
 func _on_file(text: String, file_name: String) -> void:
 	_say("reading %s…" % file_name)
+	# partplaces: a places CSV sets places, and is no import of parts.
+	if _picking == "places_csv":
+		await read_places(text)
+		return
 	await _begin()
 	var result: Dictionary = await store.add({"from": _picking, "text": text, "mode": "add"})
 	_end()
@@ -2794,3 +2809,339 @@ func need_listed() -> Dictionary:
 	for row: Dictionary in _need_plan:
 		rows.append({"part": str(row["part"]), "colour": int(row["colour"]), "short": int(row["short"])})
 	return {"set": str(_need_set.get("set", _need_real.get("set", ""))), "rows": rows}
+
+
+# --- where each part is kept (partplaces, APP_UX9 #14, 2026-11-17) ---------
+#
+# A page of What I own's, with no tab, as a set's missing parts are: every
+# part and colour the collection holds (Collection.held_keys: its loose
+# lots, and its sets' inventories, a set kept built too), each with the
+# place it is kept, typed into its row. Many at once: the find keeps the
+# rows a number, a name, a colour or a place answers ("1x2 plate", "red",
+# "drawer 3"), and Put them there gives every one of them, drawn or not, the
+# place typed beside it, in one change. A places CSV goes out and comes
+# back (Collection.places_csv, read_places_csv), which is how a spreadsheet
+# a builder already keeps of their drawers comes in.
+
+var _places_open: Button
+var _places_title: Label
+var _places_note: Label
+var _places_find: LineEdit
+var _places_sort: OptionButton
+var _places_put: LineEdit
+var _places_put_button: Button
+var _places_rows: VBoxContainer
+var _places_wait: Timer
+## The rows the find keeps, in the order shown: [{"key", "part", "colour",
+## "count", "place", "name"}].
+var _places_shown: Array = []
+
+
+func _places_page() -> Control:
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 8)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	page.add_child(top)
+	_button(top, "‹ What I own", func() -> void: _show("own"), "collection_places_back")
+	_places_title = Label.new()
+	_places_title.add_theme_font_size_override("font_size", 13)
+	_places_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_places_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_places_title)
+	_places_note = _label("", 11, 0.55)
+	_places_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_places_note.clip_text = false
+	page.add_child(_places_note)
+
+	var finding := HBoxContainer.new()
+	finding.add_theme_constant_override("separation", 8)
+	page.add_child(finding)
+	_places_find = LineEdit.new()
+	_places_find.placeholder_text = "Find: a part's number, its name, a colour, or a place"
+	_places_find.clear_button_enabled = true
+	_places_find.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_places_find.add_theme_font_size_override("font_size", 12)
+	_places_find.text_changed.connect(func(_text: String) -> void: _places_wait.start())
+	finding.add_child(_places_find)
+	_controls["collection_places_find"] = _places_find
+	_places_sort = OptionButton.new()
+	_places_sort.add_theme_font_size_override("font_size", 12)
+	_places_sort.add_item("By part")
+	_places_sort.add_item("By place")
+	_places_sort.tooltip_text = "In the order of the parts, or of the places they are kept, as a walk round them takes"
+	_places_sort.item_selected.connect(func(_at: int) -> void: _fill_places())
+	finding.add_child(_places_sort)
+	_controls["collection_places_sort"] = _places_sort
+
+	var putting := HBoxContainer.new()
+	putting.add_theme_constant_override("separation", 8)
+	page.add_child(putting)
+	_places_put = _field(putting, "drawer 3", false, "collection_places_put")
+	_places_put.max_length = Collection.MOST_PLACE
+	_places_put.text_submitted.connect(func(_text: String) -> void: put_places_shown())
+	_places_put.text_changed.connect(func(_text: String) -> void: _say_put())
+	_places_put_button = _button(putting, "Put them there", put_places_shown, "collection_places_put_go",
+		"Every part the find keeps, shown or not, kept in the place typed; with none typed, taken off their places")
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	putting.add_child(spacer)
+	_button(putting, "Save places as CSV", save_places, "collection_places_save",
+		"Every place kept, as a spreadsheet: part, colour, place. Read back here with Places CSV…")
+	_button(putting, "Places CSV…", func() -> void:
+		_picking = "places_csv"
+		_picker.ask(".csv,.txt"), "collection_places_read",
+		"A spreadsheet of where parts are kept, with a Part, a Colour and a Place column: each place it names is "
+		+ "set, and the rest stay")
+	var booklet := CheckBox.new()
+	booklet.text = "Say where each is kept in the booklet"
+	booklet.tooltip_text = ("The booklet's parts boxes name the place under each part (\"from drawer 3\"). "
+		+ "Turn it off for a booklet made for others")
+	booklet.add_theme_font_size_override("font_size", 12)
+	booklet.button_pressed = bool(ShellPrefs.value("booklet_places"))
+	booklet.toggled.connect(func(on: bool) -> void: ShellPrefs.put("booklet_places", on))
+	page.add_child(booklet)
+	_controls["collection_places_booklet"] = booklet
+
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 9)
+	page.add_child(columns)
+	var have: Label = _label("to build", 11, 0.5, 64.0)
+	have.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	columns.add_child(have)
+	columns.add_child(_label("", 11, 0.5, 15.0))
+	columns.add_child(_label("part", 11, 0.5, 74.0))
+	var named: Label = _label("name", 11, 0.5)
+	named.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(named)
+	columns.add_child(_label("colour", 11, 0.5, 150.0))
+	columns.add_child(_label("kept in", 11, 0.5, PLACE_WIDE))
+	_places_rows = _scrolled(page)
+	_places_wait = Timer.new()
+	_places_wait.one_shot = true
+	_places_wait.wait_time = 0.25
+	_places_wait.timeout.connect(_fill_places)
+	add_child(_places_wait)
+	return page
+
+
+## How wide a row's place is.
+const PLACE_WIDE := 150.0
+
+
+## Where it's kept… pressed: the places page.
+func open_places() -> void:
+	_places_find.text = ""
+	_show("places")
+
+
+## Every part and colour the collection holds, with its count to build with
+## and its place: [{"key", "part", "colour", "count", "place", "name"}], by
+## part (name, then colour) or by place ([method Collection.place_less],
+## those with none last).
+func places_listed() -> Array:
+	var mine: Collection = store.collection
+	var rows: Array = []
+	var held: Dictionary = mine.held_keys(store.records, library)
+	for key: String in held:
+		var part: String = Collection.part_of(key)
+		var info: PartLibrary.PartInfo = library.parts.get(part)
+		rows.append({"key": key, "part": part, "colour": Collection.colour_of(key),
+			"count": int(store.on_hand.get(key, 0)), "place": str(mine.places.get(key, "")),
+			"name": Inventory._tidy(info.name) if info != null else part,
+			"sort": Inventory._tidy(info.name).lstrip("=_~ ").to_lower() if info != null else "~" + part})
+	var by_place: bool = _places_sort != null and _places_sort.selected == 1
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if by_place and str(a["place"]) != str(b["place"]):
+			return Collection.place_less(str(a["place"]), str(b["place"]))
+		if str(a["sort"]) != str(b["sort"]):
+			return str(a["sort"]) < str(b["sort"])
+		return str(a["key"]) < str(b["key"]))
+	return rows
+
+
+## The rows [param said] answers: a part's number, name or colour as the
+## parts list's find takes them (SelectBy), or words of the place.
+func _places_kept_by(rows: Array, said: String) -> Array:
+	var words: String = said.strip_edges()
+	if words.is_empty():
+		return rows
+	var colours: Dictionary = {}
+	for row: Dictionary in rows:
+		colours[int(row["colour"])] = true
+	var wanted: SelectBy.Wanted = SelectBy.wanted(library, words, colours)
+	var lower: String = words.to_lower()
+	return rows.filter(func(row: Dictionary) -> bool:
+		return wanted.takes(str(row["part"]), int(row["colour"])) or str(row["place"]).to_lower().contains(lower))
+
+
+func _fill_places() -> void:
+	if _places_rows == null or _page != "places":
+		return
+	var mine: Collection = store.collection
+	var rows: Array = places_listed()
+	_places_shown = _places_kept_by(rows, _places_find.text)
+	var placed: int = 0
+	for row: Dictionary in rows:
+		if not str(row["place"]).is_empty():
+			placed += 1
+	_places_title.text = "Where it's kept — %d of %s placed" % [placed, Counted.of(rows.size(), "part and colour",
+		"parts and colours")]
+	# An older build's copy on this device keeps no places: said, not shown
+	# as none (partplaces' older-build check).
+	_places_note.text = ("Where it's kept is not in the copy on this device: a Brickworks from before places wrote it. "
+		+ "It comes back from your account once Brickworks can be reached.") if store.offline and not mine.places_read \
+		else ("A drawer, a box, a tray: where you keep each part and colour you own, your sets' parts with them. The "
+		+ "parts list sorts by it, and the booklet's parts boxes say it.")
+	_say_put()
+	_clear_rows(_places_rows)
+	for n: int in _places_shown.size():
+		if n >= MOST_ROWS:
+			_places_rows.add_child(_label("…and %d more: find them above, or put them all somewhere at once"
+				% (_places_shown.size() - n), 12, 0.5))
+			break
+		_places_rows.add_child(_place_row(_places_shown[n]))
+	_tell_page()
+
+
+## Put them there's words: how many it puts where.
+func _say_put() -> void:
+	if _places_put_button == null:
+		return
+	var place: String = Collection.place_text(_places_put.text)
+	_places_put_button.text = ("Put the %d shown there" if not place.is_empty() else "Take the %d shown off their places") \
+		% _places_shown.size()
+	_places_put_button.disabled = _places_shown.is_empty()
+
+
+## A part and colour's row: how many there are to build with, its picture's
+## colour, number, name and colour, and its place, typed in and kept when
+## Enter is pressed or the field is left.
+func _place_row(row: Dictionary) -> HBoxContainer:
+	var line: HBoxContainer = _part_row(str(row["part"]), int(row["colour"]), str(int(row["count"])))
+	var place := LineEdit.new()
+	place.text = str(row["place"])
+	place.placeholder_text = "—"
+	place.max_length = Collection.MOST_PLACE
+	place.custom_minimum_size = Vector2(PLACE_WIDE, 0)
+	place.add_theme_font_size_override("font_size", 12)
+	place.select_all_on_focus = true
+	place.tooltip_text = "Where you keep it: a drawer, a box, a tray. Kept with your account"
+	var shown: String = str(row["place"])
+	var keep: Callable = func() -> void:
+		if Collection.place_text(place.text) != shown:
+			set_place(str(row["part"]), int(row["colour"]), shown, place.text)
+	place.text_submitted.connect(func(_text: String) -> void: keep.call())
+	place.focus_exited.connect(keep)
+	line.add_child(place)
+	line.set_meta("place", row)
+	return line
+
+
+## The places' rows, each with its row (meta "place").
+func place_rows() -> Array[HBoxContainer]:
+	var out: Array[HBoxContainer] = []
+	for child: Node in _places_rows.get_children():
+		if child is HBoxContainer and (child as HBoxContainer).has_meta("place"):
+			out.append(child)
+	return out
+
+
+## One part and colour kept in [param place] ("" takes it off), from the
+## place its row showed ([param was]).
+func set_place(part: String, colour: int, was: String, place: String) -> Dictionary:
+	return await _set_places([{"part": part, "colour": colour, "was": was, "place": Collection.place_text(place)}])
+
+
+## Put them there: every row the find keeps, drawn or not, kept in the
+## place typed (none: taken off), in one change.
+func put_places_shown() -> Dictionary:
+	var place: String = Collection.place_text(_places_put.text)
+	var asked: Array = []
+	for row: Dictionary in _places_shown:
+		if str(row["place"]) != place:
+			asked.append({"part": row["part"], "colour": row["colour"], "was": row["place"], "place": place})
+	if asked.is_empty():
+		_say("every one shown is kept there already" if not place.is_empty() else "none shown is kept anywhere")
+		return {"kind": CollectionStore.DONE, "said": ""}
+	return await _set_places(asked)
+
+
+## Places set at the account, a change at a time in turn with the rest
+## (CollectionStore.set_places), [constant MOST_PLACE_CHANGES] a change;
+## what was done or refused, said.
+func _set_places(asked: Array) -> Dictionary:
+	for one: Dictionary in asked:
+		if str(one["place"]).length() > Collection.MOST_PLACE:
+			_say("a place is at most %d characters" % Collection.MOST_PLACE)
+			return {"kind": CollectionStore.REFUSED, "said": "too long"}
+	await _begin()
+	var done: Dictionary = {"kind": CollectionStore.DONE, "said": ""}
+	var made: int = 0
+	for from: int in range(0, asked.size(), MOST_PLACE_CHANGES):
+		done = await store.set_places(asked.slice(from, from + MOST_PLACE_CHANGES))
+		if done["kind"] != CollectionStore.DONE:
+			break
+		made += mini(MOST_PLACE_CHANGES, asked.size() - from)
+	_end()
+	if done["kind"] != CollectionStore.DONE:
+		_say(("%d set, then: " % made if made > 0 else "") + str(done["said"]))
+	elif asked.size() == 1:
+		var one: Dictionary = asked[0]
+		_say("%s in %s kept in “%s”" % [one["part"], _colour(int(one["colour"])), one["place"]]
+			if not str(one["place"]).is_empty() else "%s in %s taken off its place" % [one["part"],
+			_colour(int(one["colour"]))])
+	else:
+		var place: String = str(asked[0]["place"])
+		var counted: String = Counted.of(asked.size(), "part and colour", "parts and colours")
+		_say("%s kept in “%s”" % [counted, place] if not place.is_empty() else "%s taken off their places" % counted)
+	return done
+
+
+## The most places one change sets (api/collection.js MOST_PLACE_CHANGES).
+const MOST_PLACE_CHANGES := 5000
+
+
+## Save places as CSV: every place kept (Collection.places_csv).
+func save_places() -> String:
+	var mine: Collection = store.collection
+	if mine.places.is_empty():
+		_say("no places to save: type where parts are kept first")
+		return "no places"
+	var line: String = await Download.save(mine.places_csv(library), "brickworks_places.csv", "text/csv")
+	_say(line)
+	return line
+
+
+## A places CSV read: each place it names set, from the place shown, for the
+## parts and colours the collection holds; the rest said and left out. What
+## it does not name stays where it is.
+func read_places(text: String) -> Dictionary:
+	var read: Dictionary = Collection.read_places_csv(text, library)
+	var mine: Collection = store.collection
+	var held: Dictionary = mine.held_keys(store.records, library)
+	var asked: Array = []
+	var not_held := PackedStringArray()
+	for one: Dictionary in read["places"]:
+		var key: String = Collection.key_of(str(one["part"]), int(one["colour"]), library)
+		if not held.has(key):
+			not_held.append("%s in %s" % [one["part"], _colour(int(one["colour"]))])
+			continue
+		var was: String = str(mine.places.get(key, ""))
+		if was != str(one["place"]):
+			asked.append({"part": Collection.part_of(key), "colour": Collection.colour_of(key), "was": was,
+				"place": one["place"]})
+	var left := PackedStringArray(read["bad"])
+	if not not_held.is_empty():
+		left.append("%s not in your collection (%s%s)" % [Counted.of(not_held.size(), "part", "parts"),
+			", ".join(not_held.slice(0, 3)), ", …" if not_held.size() > 3 else ""])
+	var done: Dictionary = {"kind": CollectionStore.DONE, "said": ""}
+	if not asked.is_empty():
+		done = await _set_places(asked)
+	var words: String = ("%s read: %s set, the rest as they were" % [Counted.of((read["places"] as Array).size(),
+		"place"), Counted.of(asked.size(), "place")]) if done["kind"] == CollectionStore.DONE else str(done["said"])
+	if not left.is_empty():
+		words += " — left out: " + "; ".join(left.slice(0, 4)) + ("; …" if left.size() > 4 else "")
+	_say(words)
+	return {"done": done, "set": asked.size(), "left": left}
+

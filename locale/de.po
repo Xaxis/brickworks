@@ -14910,3 +14910,154 @@ msgstr "keine Sets zum Speichern: füge sie zuerst unter Was ich habe hinzu"
 
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "es kamen weniger Exemplare zurück als als Aufgebaut markiert waren, also sind diese nicht mehr markiert: %s%s"
+
+# partplaces (APP_UX9 #14)
+msgid "Where it's kept…"
+msgstr "Wo es liegt…"
+
+msgid "Where you keep each part and colour: a drawer, a box, a tray. The parts list sorts by it, and the booklet's parts boxes say it"
+msgstr "Wo du jedes Teil in jeder Farbe aufbewahrst: eine Schublade, eine Kiste, ein Fach. Die Teileliste sortiert danach, und die Teilekästen der Anleitung nennen es"
+
+msgid "Forget every set and part in your collection, and where each is kept? This cannot be undone."
+msgstr "Alle Sets und Teile in deiner Sammlung vergessen, und wo jedes liegt? Das lässt sich nicht rückgängig machen."
+
+msgid "Forget every set and part in your collection, and where each is kept"
+msgstr "Alle Sets und Teile in deiner Sammlung vergessen, und wo jedes liegt"
+
+msgid "Find: a part's number, its name, a colour, or a place"
+msgstr "Suchen: die Nummer eines Teils, sein Name, eine Farbe oder ein Ort"
+
+msgid "By part"
+msgstr "Nach Teil"
+
+msgid "By place"
+msgstr "Nach Ort"
+
+msgid "In the order of the parts, or of the places they are kept, as a walk round them takes"
+msgstr "In der Reihenfolge der Teile oder der Orte, an denen sie liegen, wie ein Rundgang sie abläuft"
+
+msgid "drawer 3"
+msgstr "Schublade 3"
+
+msgid "Put them there"
+msgstr "Dorthin legen"
+
+msgid "Every part the find keeps, shown or not, kept in the place typed; with none typed, taken off their places"
+msgstr "Jedes Teil, das die Suche findet, gezeigt oder nicht, kommt an den eingegebenen Ort; ist keiner eingegeben, verliert es seinen Ort"
+
+msgid "Save places as CSV"
+msgstr "Orte als CSV speichern"
+
+msgid "Every place kept, as a spreadsheet: part, colour, place. Read back here with Places CSV…"
+msgstr "Jeder gespeicherte Ort als Tabelle: Teil, Farbe, Ort. Hier mit Orte-CSV… wieder einlesen"
+
+msgid "Places CSV…"
+msgstr "Orte-CSV…"
+
+msgid "A spreadsheet of where parts are kept, with a Part, a Colour and a Place column: each place it names is set, and the rest stay"
+msgstr "Eine Tabelle, wo Teile liegen, mit einer Spalte Teil, Farbe und Ort (oder Part, Colour und Place): Jeder Ort, den sie nennt, wird gesetzt, der Rest bleibt"
+
+msgid "Say where each is kept in the booklet"
+msgstr "In der Anleitung sagen, wo jedes liegt"
+
+msgid "The booklet's parts boxes name the place under each part (\"from drawer 3\"). Turn it off for a booklet made for others"
+msgstr "Die Teilekästen der Anleitung nennen unter jedem Teil seinen Ort (\"from drawer 3\"). Schalte es für eine Anleitung für andere aus"
+
+msgid "to build"
+msgstr "zum Bauen"
+
+msgid "kept in"
+msgstr "liegt in"
+
+msgid "Where it's kept — %d of %s placed"
+msgstr "Wo es liegt — %d von %s mit Ort"
+
+msgid "%d part and colour"
+msgstr "%d Teil in einer Farbe"
+
+msgid "%d parts and colours"
+msgstr "%d Teile und Farben"
+
+msgid "Where it's kept is not in the copy on this device: a Brickworks from before places wrote it. It comes back from your account once Brickworks can be reached."
+msgstr "Wo alles liegt, steht nicht in der Kopie auf diesem Gerät: Ein Brickworks von vor den Orten hat sie geschrieben. Es kommt aus deinem Konto zurück, sobald Brickworks erreichbar ist."
+
+msgid "A drawer, a box, a tray: where you keep each part and colour you own, your sets' parts with them. The parts list sorts by it, and the booklet's parts boxes say it."
+msgstr "Eine Schublade, eine Kiste, ein Fach: wo du jedes Teil in jeder Farbe aufbewahrst, die Teile deiner Sets mit dabei. Die Teileliste sortiert danach, und die Teilekästen der Anleitung nennen es."
+
+msgid "…and %d more: find them above, or put them all somewhere at once"
+msgstr "…und %d weitere: Finde sie oben, oder lege sie alle auf einmal irgendwohin"
+
+msgid "Put the %d shown there"
+msgstr "Die %d gezeigten dorthin legen"
+
+msgid "Take the %d shown off their places"
+msgstr "Den %d gezeigten ihren Ort nehmen"
+
+msgid "Where you keep it: a drawer, a box, a tray. Kept with your account"
+msgstr "Wo du es aufbewahrst: eine Schublade, eine Kiste, ein Fach. In deinem Konto gespeichert"
+
+msgid "every one shown is kept there already"
+msgstr "jedes gezeigte liegt schon dort"
+
+msgid "none shown is kept anywhere"
+msgstr "keines der gezeigten hat einen Ort"
+
+msgid "a place is at most %d characters"
+msgstr "ein Ort hat höchstens %d Zeichen"
+
+msgid "%d set, then: %s"
+msgstr "%d gesetzt, dann: %s"
+
+msgid "%s in %s kept in “%s”"
+msgstr "%s in %s liegt in „%s“"
+
+msgid "%s in %s taken off its place"
+msgstr "%s in %s hat keinen Ort mehr"
+
+msgid "%s kept in “%s”"
+msgstr "%s liegen in „%s“"
+
+msgid "%s taken off their places"
+msgstr "%s haben keinen Ort mehr"
+
+msgid "no places to save: type where parts are kept first"
+msgstr "keine Orte zum Speichern: gib zuerst ein, wo Teile liegen"
+
+msgid "%s read: %s set, the rest as they were"
+msgstr "%s gelesen: %s gesetzt, der Rest wie zuvor"
+
+msgid "%s not in your collection (%s%s)"
+msgstr "%s nicht in deiner Sammlung (%s%s)"
+
+msgid "%d place"
+msgstr "%d Ort"
+
+msgid "%d places"
+msgstr "%d Orte"
+
+msgid "line %d: no part numbered %s"
+msgstr "Zeile %d: kein Teil mit der Nummer %s"
+
+msgid "line %d: “%s” is not a colour here"
+msgstr "Zeile %d: „%s“ ist hier keine Farbe"
+
+msgid "line %d: a place is at most %d characters"
+msgstr "Zeile %d: ein Ort hat höchstens %d Zeichen"
+
+msgid "line %d: %s in colour %d is named on line %d too"
+msgstr "Zeile %d: %s in Farbe %d steht auch in Zeile %d"
+
+msgid "its first line names no %s column"
+msgstr "seine erste Zeile nennt keine Spalte %s"
+
+msgid "As in the model"
+msgstr "Wie im Modell"
+
+msgid "By where it's kept"
+msgstr "Nach Aufbewahrungsort"
+
+msgid "By where it's kept: the parts in the order of their places, as a walk round them takes, those kept nowhere last (My collection, Where it's kept…)"
+msgstr "Nach Aufbewahrungsort: die Teile in der Reihenfolge ihrer Orte, wie ein Rundgang sie abläuft, die ohne Ort zuletzt (Meine Sammlung, Wo es liegt…)"
+
+msgid "Kept in “%s”"
+msgstr "Liegt in „%s“"

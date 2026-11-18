@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # relay_probe.sh NAME : one of the probes tools/suite/out.txt keeps out of
 # runs for want of the relay (account, connector, tabs, tabpair, together,
-# desktop_cloud, mybricks, mysets, localbricks, keptbuilt), run on a relay of its own: .env's keys, a free port, the
+# desktop_cloud, mybricks, mysets, localbricks, keptbuilt,
+# partplaces), run on a relay of its own: .env's keys, a free port, the
 # relay's address handed the way the probe's header takes it, the live
 # database's lock held (they make accounts in production Supabase), and the
 # relay stopped after. Exits as the probe does.
@@ -27,8 +28,11 @@ case $name in
   # keptbuilt: a set marked Built leaves the counts, kept with the account,
   # in the files and over MCP (APP_UX9 #6).
   keptbuilt) env=("BRICKWORKS_API=$api") ;;
+  # partplaces: where each part is kept, with the account, in the parts list,
+  # the booklet, the CSV and over MCP (APP_UX9 #14).
+  partplaces) env=("BRICKWORKS_API=$api") ;;
   together) hold=("--hold=together_sessions,together_ops,together_people,together_snapshot_parts"); args=("--api=$api") ;;
-  *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets localbricks keptbuilt)" >&2; exit 2 ;;
+  *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets localbricks keptbuilt partplaces)" >&2; exit 2 ;;
 esac
 # The keys are the main checkout's: a worktree has no .env of its own.
 keys=.env
