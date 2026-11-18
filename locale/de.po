@@ -15097,3 +15097,9 @@ msgstr "Nach Aufbewahrungsort: die Teile in der Reihenfolge ihrer Orte, wie ein 
 
 msgid "Kept in “%s”"
 msgstr "Liegt in „%s“"
+
+msgid "Take them off their places"
+msgstr "Von ihren Orten nehmen"
+
+msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
+msgstr "Vergessen, wo diese %d Teile und Farben liegen? Speichere die Orte vorher als CSV, um eine Kopie zu behalten."

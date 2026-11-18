@@ -40,8 +40,9 @@
 ##   8. two tabs at once: two parts placed from two tabs together, both
 ##      kept; one part from both, from the same place shown: one kept, the
 ##      other told, shown it as it is now
-##   9. the CSV: Save places as CSV, every place taken off, Places CSV…
-##      read back, every place as it was; a CSV with a part not held, a
+##   9. the CSV: Save places as CSV, every place taken off (asked first:
+##      nothing goes until the person says yes), Places CSV… read back,
+##      every place as it was; a CSV with a part not held, a
 ##      colour that is none and a place a spreadsheet takes for a formula:
 ##      the first two said and left out, the third kept as words
 ##  10. a place on a lot the collection doesn't own: the store's change is
@@ -488,11 +489,23 @@ func _steps() -> void:
 	put.text_changed.emit("")
 	go = (_dialog.call("controls_by_name") as Dictionary)["collection_places_put_go"]
 	_drawn.append(go.text)
+	var rev_before: int = int((await _account_now())["rev"])
 	go.pressed.emit()
+	await _settled()
+	var asking: ConfirmationDialog = _dialog.get("_confirm_take_off")
+	var untouched: Dictionary = await _account_now()
+	_check("\"%s\" asks first: \"%s\", nothing taken off until %s" % [go.text, asking.dialog_text.left(80),
+		asking.ok_button_text], asking.visible and go.text == "Take the %d shown off their places" % want.size()
+		and asking.dialog_text.contains(str(want.size())) and _same(untouched["places"], want)
+		and int(untouched["rev"]) == rev_before)
+	_drawn.append(asking.title)
+	_drawn.append(asking.dialog_text)
+	_drawn.append(asking.ok_button_text)
+	asking.get_ok_button().pressed.emit()
 	await _changed()
 	await _settled()
 	_drawn.append(str((_dialog.get("_status") as Label).text))
-	_check("Take the %d shown off their places: none left at the account" % want.size(),
+	_check("Take the %d shown off their places, said yes to: none left at the account" % want.size(),
 		((await _account_now())["places"] as Dictionary).is_empty())
 	var back: Dictionary = await _dialog.call("read_places", text)
 	await _settled()

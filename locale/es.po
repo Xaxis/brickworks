@@ -15097,3 +15097,9 @@ msgstr "Por dónde se guarda: las piezas en el orden de sus sitios, como al reco
 
 msgid "Kept in “%s”"
 msgstr "Guardado en «%s»"
+
+msgid "Take them off their places"
+msgstr "Quitarles su sitio"
+
+msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
+msgstr "¿Olvidar dónde se guardan estas %d piezas y colores? Guarda antes los sitios como CSV para conservar una copia."

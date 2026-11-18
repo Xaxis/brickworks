@@ -496,9 +496,11 @@ func _row(lot: Inventory.Lot) -> Button:
 	shade.clip_text = true
 	row.add_child(shade)
 
-	# Where it is kept (partplaces), as the person named it.
+	# Where it is kept (partplaces), as the person named it: a column of
+	# its own while they keep any places, empty for a part kept nowhere, so
+	# the colours stay in one column.
 	var place: String = place_of(lot)
-	if not place.is_empty():
+	if not _places.is_empty():
 		var kept := Label.new()
 		kept.text = place
 		kept.custom_minimum_size = Vector2(110, 0)
@@ -506,9 +508,10 @@ func _row(lot: Inventory.Lot) -> Button:
 		kept.add_theme_font_size_override("font_size", 12)
 		kept.add_theme_color_override("font_color", Look.ACCENT)
 		kept.clip_text = true
-		kept.tooltip_text = "Kept in “%s”" % place
 		row.add_child(kept)
-		button.tooltip_text += "\nKept in “%s”" % place
+		if not place.is_empty():
+			kept.tooltip_text = "Kept in “%s”" % place
+			button.tooltip_text += "\nKept in “%s”" % place
 
 	# More of it than the bin's sets or the person's own bricks hold.
 	var past: int = over_of(lot)

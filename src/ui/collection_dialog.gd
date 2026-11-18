@@ -2830,6 +2830,10 @@ var _places_find: LineEdit
 var _places_sort: OptionButton
 var _places_put: LineEdit
 var _places_put_button: Button
+## Asked before more than one part is taken off its place: one press of
+## the put button with nothing typed would forget them all, and there is
+## no undo for a place.
+var _confirm_take_off: ConfirmationDialog
 var _places_rows: VBoxContainer
 var _places_wait: Timer
 ## The rows the find keeps, in the order shown: [{"key", "part", "colour",
@@ -2879,10 +2883,16 @@ func _places_page() -> Control:
 	page.add_child(putting)
 	_places_put = _field(putting, "drawer 3", false, "collection_places_put")
 	_places_put.max_length = Collection.MOST_PLACE
-	_places_put.text_submitted.connect(func(_text: String) -> void: put_places_shown())
+	_places_put.text_submitted.connect(func(_text: String) -> void: put_pressed())
 	_places_put.text_changed.connect(func(_text: String) -> void: _say_put())
-	_places_put_button = _button(putting, "Put them there", put_places_shown, "collection_places_put_go",
+	_places_put_button = _button(putting, "Put them there", put_pressed, "collection_places_put_go",
 		"Every part the find keeps, shown or not, kept in the place typed; with none typed, taken off their places")
+	_confirm_take_off = ConfirmationDialog.new()
+	_confirm_take_off.title = "Take them off their places"
+	_confirm_take_off.dialog_autowrap = true
+	_confirm_take_off.ok_button_text = "Take them off"
+	_confirm_take_off.confirmed.connect(put_places_shown)
+	add_child(_confirm_take_off)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	putting.add_child(spacer)
@@ -3009,9 +3019,31 @@ func _say_put() -> void:
 	if _places_put_button == null:
 		return
 	var place: String = Collection.place_text(_places_put.text)
-	_places_put_button.text = ("Put the %d shown there" if not place.is_empty() else "Take the %d shown off their places") \
-		% _places_shown.size()
-	_places_put_button.disabled = _places_shown.is_empty()
+	if place.is_empty():
+		var placed: int = _placed_shown()
+		_places_put_button.text = "Take the %d shown off their places" % placed
+		_places_put_button.disabled = placed == 0
+	else:
+		_places_put_button.text = "Put the %d shown there" % _places_shown.size()
+		_places_put_button.disabled = _places_shown.is_empty()
+
+
+## How many of the parts shown are kept somewhere.
+func _placed_shown() -> int:
+	return _places_shown.filter(func(row: Dictionary) -> bool: return not str(row["place"]).is_empty()).size()
+
+
+## The put button, or Enter in its field: the parts shown put in the place
+## typed at once; with none typed, more than one taken off their places
+## only once the person says so (_confirm_take_off).
+func put_pressed() -> void:
+	var placed: int = _placed_shown()
+	if Collection.place_text(_places_put.text).is_empty() and placed > 1:
+		_confirm_take_off.dialog_text = ("Forget where these %d parts and colours are kept? Save places as CSV "
+			+ "first to keep a copy.") % placed
+		_confirm_take_off.popup_centered(Vector2i(420, 0))
+		return
+	put_places_shown()
 
 
 ## A part and colour's row: how many there are to build with, its picture's

@@ -15097,3 +15097,9 @@ msgstr "Par emplacement de rangement : les pièces dans l'ordre de leurs emplace
 
 msgid "Kept in “%s”"
 msgstr "Rangé dans « %s »"
+
+msgid "Take them off their places"
+msgstr "Les retirer de leur emplacement"
+
+msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
+msgstr "Oublier où sont rangées ces %d pièces et couleurs ? Enregistrez d'abord les emplacements en CSV pour en garder une copie."
