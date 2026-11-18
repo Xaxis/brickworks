@@ -150,7 +150,8 @@ func _whole() -> void:
 	_check("the numbered points are on the %d of the %d parts with a free point: %s" % [holders.size(), all,
 		parts.keys()], holders.size() > 1 and parts.size() == holders.size()
 		and parts.keys().all(func(id: int) -> bool: return holders.has(id)))
-	_check("the caption says the whole model, numbered and dots", said.contains("The whole model from the"))
+	_check("the caption says the whole model from a corner, numbered and dots: %s" % _line_with(said,
+		"The whole model from").left(90), RegEx.create_from_string("The whole model from the (far )?corner, its free points").search(said) != null)
 	var one: int = int(parts.keys()[0]) if not parts.is_empty() else -1
 	var named: String = (await _called("where_to_attach", {"parts": [one]}))[0]
 	_check("parts=[#%d] reads that part alone" % one, named.begins_with("Parts #%d' open connection points" % one)

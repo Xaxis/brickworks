@@ -714,7 +714,10 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   the rest counted by kind and drawn as up to 400 dots: f5 was asked to select
   everything first. A point facing the ground at the ground is not free
   (`OpenPoints.GROUND`; nothing goes under the ground), only counted: the f5
-  car's numbers were half hollows under its own bricks. A turntable's answer says the camera goes once round a
+  car's numbers were half hollows under its own bricks. Its picture is from
+  the corner facing more of the points (`_corner_view`), and the caption
+  counts those facing away: a truck half up, half under was drawn from
+  straight above, and the session made a second picture to see it. A turntable's answer says the camera goes once round a
   model that stands still, its lights and backdrop with it (it is drawn by
   turning the model before a still camera, which makes the same frames): f4
   said "I can't tell". attachment_points on a motor with an output (SPIKE,

@@ -23034,7 +23034,16 @@ func _where_to_attach(args: Dictionary) -> Variant:
 			marks.append([point.at, ""])
 	_ensure_shot().highlight = scope.ids.duplicate() if not whole else {}
 	_shot.marks = marks
-	var from: String = _facing_view(free.slice(0, shown.size() + MOST_DOTS) if scope != focus else shown)
+	var drawn_points: Array = free.slice(0, shown.size() + MOST_DOTS) if scope != focus else shown
+	var from: String = _facing_view(drawn_points) if scope == focus else _corner_view(drawn_points)
+	var away: int = 0
+	var below: int = 0
+	var seen_from: Vector3 = (ModelShot.ANGLES[from] as Vector3).normalized()
+	for point: OpenPoints.Point in drawn_points:
+		if point.way.dot(seen_from) <= 0.1:
+			away += 1
+			if point.way.y < -0.7:
+				below += 1
 	var image: Image = await _shot.take(world, from, scenery, scope.region)
 	_shot.marks = []
 	_shot.highlight = {}
@@ -23047,14 +23056,18 @@ func _where_to_attach(args: Dictionary) -> Variant:
 	var caption: String = ("The selection's room from the %s, the selection in magenta and "
 		+ "its free points numbered in cyan as listed (a number may be on the far side of "
 		+ "what it is drawn over):") % from
+	var hidden: String = "" if away == 0 else ("; %d of them face away from this view%s, each "
+		+ "drawn where it is, over what hides it") % [away, "" if below == 0
+			else ", %d of those under the model, facing down" % below]
 	if whole:
 		caption = ("The whole model from the %s, its free points in cyan, the %d listed numbered and "
-			+ "%d more as dots (%d of %d drawn; a mark may be on the far side of what it is drawn "
-			+ "over):") % [from, shown.size(), drawn - shown.size(), drawn, free.size()]
+			+ "%d more as dots (%d of %d drawn%s; a mark may be on the far side of what it is drawn "
+			+ "over):") % [from, shown.size(), drawn - shown.size(), drawn, free.size(), hidden]
 	elif scope != focus:
 		caption = ("Those parts from the %s, in magenta, their free points in cyan, the %d listed "
-			+ "numbered and %d more as dots (a mark may be on the far side of what it is drawn "
-			+ "over):") % [from, shown.size(), drawn - shown.size()]
+			+ "numbered and %d more as dots (%s; a mark may be on the far side of what it is drawn "
+			+ "over):") % [from, shown.size(), drawn - shown.size(), hidden.trim_prefix("; ")
+				if not hidden.is_empty() else "all drawn"]
 	return [{"type": "text", "text": "\n".join(lines)}, {"type": "text", "text": caption}, picture]
 
 
@@ -23205,6 +23218,26 @@ func _middle_of_model() -> Vector3:
 		middle += brick.transform.origin
 		count += 1
 	return middle / maxf(1.0, float(count))
+
+
+## A whole model or parts named, drawn as a person sees a model: from the
+## corner that faces more of these points, unless neither faces half of
+## them. f5's truck, its free points half on top and half under it, was
+## drawn from straight above, and both sessions made another picture to see
+## it (mcpreach2's walk).
+static func _corner_view(points: Array) -> String:
+	var best: String = "corner"
+	var most: int = -1
+	for name: String in ["corner", "far corner"]:
+		var from: Vector3 = (ModelShot.ANGLES[name] as Vector3).normalized()
+		var seen: int = 0
+		for point: OpenPoints.Point in points:
+			if point.way.dot(from) > 0.1:
+				seen += 1
+		if seen > most:
+			most = seen
+			best = name
+	return best if most * 2 >= points.size() else _facing_view(points)
 
 
 ## The named view that faces most of these points.
