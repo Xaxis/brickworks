@@ -11,7 +11,14 @@
 ##
 ## Windowed, on the GPU, under Xvfb: on a display with no monitor the
 ## booklet's pictures were never drawn (each given up after 20 s).
-## --no-booklet judges the file and the edits alone, headless.
+## --no-booklet judges the file and the edits alone, headless:
+##
+##   godot --headless --path . --script src/dev/booklet_edit_probe.gd -- --no-booklet
+##
+## which tools/probe.sh runs given --no-booklet, and the release train as
+## tools/suite/headless.txt lists it (mergekeep: the train runs headless
+## probes alone, and four releases shipped a merge that lost its step's
+## settings at the next open past the windowed whole).
 ##
 ## On two real sets with their designers' steps, 30050-1 (sub-models, and
 ## seven ROTSTEPs, ABS) and 106-1 (a car, a figure and its wheels as
@@ -372,6 +379,7 @@ func _settings_stay(whole: bool) -> void:
 	await _moved("Earlier on the pair's second step", base, func() -> String:
 		return _shell.change_steps("earlier", [], _step_of(PAIR_SECOND)))
 	await _reopened("saved and opened again with nothing moved")
+	var every: String = _kept("every")
 	# t2: a step's parts taken off the model, saved and opened again; then
 	# another's, a part put on and any step edit, which gives the new part a
 	# step and numbers the steps again.
@@ -400,6 +408,91 @@ func _settings_stay(whole: bool) -> void:
 	said = _shell.change_steps("merge", [], _step_of(YELLOW))
 	_stayed("...then Merge with next on the yellow step (\"%s\")" % said)
 	await _reopened("...saved and opened again")
+	await _siblings(every, tools)
+
+
+## The model as it is now, saved into a file of the run's own, named
+## [param what]: its path.
+func _kept(what: String) -> String:
+	var path: String = _out.path_join("%s_%s.mpd" % [_name, what])
+	var writing: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	writing.store_string(_save())
+	writing.close()
+	return path
+
+
+## Each step edit of the kind of the merge that lost the yellow step's
+## settings once saved (mergekeep, 2026-11-18: opened again, they were on a
+## step of no parts before it, and a second save moved the booklet's lines),
+## on a step with settings: saved, opened again and saved again, every
+## setting on its own step still, the second save the first byte for byte.
+## Each from [param every], row.mpd with every setting on; the "first" ones
+## with the red and blue steps' parts taken off first, so the yellow step,
+## turned, is the model's first once the edit numbers the steps again, the
+## booklet's own lines above its parts: there its turn is written above the
+## first part. Each case's saves are kept in the run's folder, named after it.
+func _siblings(every: String, tools: AppTools) -> void:
+	print("")
+	print("%s: each step edit saved, opened again and saved again" % _name)
+	var add := func() -> String:
+		return str(await _main.get("_assistant")._run_tool({"name": "edit_model",
+			"input": {"add": [{"part": "3003", "color": 25, "x": 0, "y": 0, "z": 8}]}}))
+	var cases: Array = [
+		["split: New step from the yellow step's second brick", func() -> String:
+			return _shell.change_steps("new", [_part(YELLOW, true).id], _step_of(YELLOW))],
+		["remove: Delete step on the blue step before the yellow", func() -> String:
+			return _shell.change_steps("delete", [], _step_of(BLUE))],
+		["reorder: Earlier on the yellow step", func() -> String:
+			return _shell.change_steps("earlier", [], _step_of(YELLOW))],
+		["reorder: edit_steps later on the yellow step", func() -> String:
+			return str(await tools.run("edit_steps", {"op": "later",
+				"step": _step_of(YELLOW).number}))],
+		["merge: Merge with next on the yellow step", func() -> String:
+			return _shell.change_steps("merge", [], _step_of(YELLOW))],
+		["merge: the blue step merged into the yellow", func() -> String:
+			return _shell.change_steps("merge", [], _step_of(BLUE))],
+		["merge of the last two: Merge with next on the black step", func() -> String:
+			return _shell.change_steps("merge", [], _step_of(BLACK))],
+		["reorder: Earlier on the pair's second step (its callout off)", func() -> String:
+			return _shell.change_steps("earlier", [], _step_of(PAIR_SECOND))],
+		["add at end: edit_model put a brick on, after the last step", add],
+		["first: Merge with next on the yellow step", func() -> String:
+			return _shell.change_steps("merge", [], _step_of(YELLOW))],
+		["first: split, New step from the yellow step's second brick", func() -> String:
+			return _shell.change_steps("new", [_part(YELLOW, true).id], _step_of(YELLOW))],
+		["first: reorder, Later on the yellow step", func() -> String:
+			return _shell.change_steps("later", [], _step_of(YELLOW))],
+		["first: reorder, Earlier on the green step", func() -> String:
+			return _shell.change_steps("earlier", [], _step_of(GREEN))],
+		["first: remove, Delete step on the green step after it", func() -> String:
+			return _shell.change_steps("delete", [], _step_of(GREEN))],
+		["first: merge of the last two, on the black step", func() -> String:
+			return _shell.change_steps("merge", [], _step_of(BLACK))],
+		["first: add at end, edit_model put a brick on, then Later on the white step",
+			func() -> String:
+				await add.call()
+				return _shell.change_steps("later", [], _step_of(WHITE))]]
+	var n: int = 0
+	for entry: Array in cases:
+		n += 1
+		await _open(every)
+		await _timeline()
+		_steps.set_mode(StepsBar.AUTHORS)
+		await _frames(2)
+		if str(entry[0]).begins_with("first:"):
+			await _main.get("_assistant")._run_tool({"name": "edit_model", "input": {"remove": [
+				_part(4).id, _part(4, true).id, _part(BLUE).id, _part(BLUE, true).id]}})
+			await _frames(2)
+		var history: int = _history()
+		var bricks: int = _world.bricks().size()
+		var said: String = str(await (entry[1] as Callable).call())
+		await _frames(2)
+		# Done: a step in the history, or for edit_model's add alone (whose
+		# step the assistant's turn records) one brick more.
+		_check("%s: \"%s\"" % [entry[0], said.get_slice("\n", 0).left(60)],
+			_history() > history or _world.bricks().size() > bricks)
+		_stayed("...")
+		await _reopened("...saved and opened again", "sibling%02d" % n)
 
 
 ## The yellow step given every setting a step can have, the black step and the
@@ -529,10 +622,12 @@ func _moved(what: String, base: String, edit: Callable) -> void:
 
 
 ## Saved, opened again from the file it saved, and checked; saved again, the
-## same text.
-func _reopened(what: String) -> void:
+## same text. With [param named], the two saves kept as NAME_saved.mpd and
+## NAME_again.mpd in the run's folder.
+func _reopened(what: String, named: String = "") -> void:
 	var text: String = _save()
-	var file: String = _out.path_join("%s_saved.mpd" % _name)
+	var file: String = _out.path_join("%s_%s.mpd" % [_name, "saved" if named.is_empty()
+		else named + "_saved"])
 	var writing: FileAccess = FileAccess.open(file, FileAccess.WRITE)
 	writing.store_string(text)
 	writing.close()
@@ -540,6 +635,11 @@ func _reopened(what: String) -> void:
 	await _timeline()
 	_stayed(what)
 	var again: String = _save()
+	if not named.is_empty():
+		writing = FileAccess.open(_out.path_join("%s_%s_again.mpd" % [_name, named]),
+			FileAccess.WRITE)
+		writing.store_string(again)
+		writing.close()
 	var diff: Array = _diff(text, again)
 	_check("...and saved again, the same text (out %s, in %s)" % [_few(diff[0]), _few(diff[1])],
 		again == text)
@@ -1206,6 +1306,59 @@ func _lines_in_place() -> void:
 	_check("...its zoom changed, on the line the file had it on (%d, was %d)" % [at,
 		text.split("\n").find("0 !BRICKWORKS ZOOM 1.5")], at >= 0
 		and at == text.split("\n").find("0 !BRICKWORKS ZOOM 1.5") and saved.count("ZOOM") == 1)
+	await _page_in_place()
+
+
+## A step's page of its own ("PAGE NEW", "PAGE ALONE") is the booklet's, not
+## the steps a shared link carries ("PAGE {...}", SharedPages): someone
+## else's file with a step's PAGE NEW above its parts, its zoom changed and
+## saved, keeps the line where it was, and a share keeps it and takes the
+## carried ones off. Up to mergekeep (2026-11-18) every save took a step's
+## PAGE line out and the looks put it back by its neighbours, at the step's
+## end here, and a share lost it.
+func _page_in_place() -> void:
+	var text: String = "\n".join(["0 FILE paged.ldr", "0 Paged", "0 Name: paged.ldr",
+		"0 Author: Someone Else", "", "1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 STEP",
+		"0 !BRICKWORKS PAGE NEW", "1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 1 40 -48 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 !BRICKWORKS ZOOM 1.5", "0 STEP",
+		"1 2 0 -72 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 !BRICKWORKS PAGE ALONE", "0 STEP",
+		"0 NOFILE", ""])
+	_main.call("clear_model")
+	await _frames(4)
+	_store.open_text(text, "paged")
+	await _frames(20)
+	var path: String = _out.path_join("page_in_place.ldr")
+	BookletLooks.change(_world, BookletLooks.key("", 1), {"zoom": 2.0})
+	_store.call("_write", path, _store.title, true)
+	var saved: String = FileAccess.get_file_as_string(path)
+	var was: PackedStringArray = text.split("\n")
+	var now: PackedStringArray = saved.split("\n")
+	_check("someone else's file, a step's zoom changed: its PAGE NEW where it was, above the "
+		+ "step's parts (line %d, was %d), PAGE ALONE too (%d, was %d), the zoom on its line (%d)"
+		% [now.find("0 !BRICKWORKS PAGE NEW"), was.find("0 !BRICKWORKS PAGE NEW"),
+			now.find("0 !BRICKWORKS PAGE ALONE"), was.find("0 !BRICKWORKS PAGE ALONE"),
+			now.find("0 !BRICKWORKS ZOOM 2")],
+		now.find("0 !BRICKWORKS PAGE NEW") == was.find("0 !BRICKWORKS PAGE NEW")
+		and now.find("0 !BRICKWORKS PAGE ALONE") == was.find("0 !BRICKWORKS PAGE ALONE")
+		and now.find("0 !BRICKWORKS ZOOM 2") == was.find("0 !BRICKWORKS ZOOM 1.5"))
+	# Merged with the next: the PAGE NEW's step goes on, its line where it was.
+	await _timeline()
+	_steps.set_mode(StepsBar.AUTHORS)
+	await _frames(2)
+	var said: String = _shell.change_steps("merge", [], _step_of(1))
+	await _frames(2)
+	_store.call("_write", path, _store.title, true)
+	saved = FileAccess.get_file_as_string(path)
+	now = saved.split("\n")
+	_check("...then its step merged with the next (\"%s\"): PAGE NEW still on its line (%d, was %d), "
+		% [said.left(40), now.find("0 !BRICKWORKS PAGE NEW"), was.find("0 !BRICKWORKS PAGE NEW")]
+		+ "one STEP fewer (%d, was %d)" % [saved.count("0 STEP"), text.count("0 STEP")],
+		now.find("0 !BRICKWORKS PAGE NEW") == was.find("0 !BRICKWORKS PAGE NEW")
+		and saved.count("PAGE NEW") == 1 and saved.count("0 STEP") == text.count("0 STEP") - 1)
+	var carried: String = text + SharedPages.HEAD + "{\"v\":1}\n" + SharedPages.PAGE \
+		+ "{\"n\":1,\"b\":[0]}\n"
+	_check("...and a share's strip keeps the steps' PAGE lines, the carried ones gone",
+		SharedPages.strip(carried) == text)
 
 
 func _timeline() -> void:

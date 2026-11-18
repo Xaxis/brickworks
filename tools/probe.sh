@@ -56,18 +56,40 @@ file="src/dev/$name.gd"
 if [ -n "${PROBE_LISTED:-}" ] && [ $# -eq 0 ]; then
   listed=$(sed 's/#.*//' tools/suite/windowed.txt tools/suite/headless.txt 2>/dev/null \
     | awk -v n="${name%_probe}" '{ split($1, p, ":"); s = p[1]; sub(/_probe$/, "", s) } s == n && $1 ~ /:/ { print $1; exit }')
-  if [ -n "$listed" ]; then read -r -a listed <<< "${listed#*:}"; set -- "${listed[@]}"; fi
+  if [ -n "$listed" ]; then
+    read -r -a listed <<< "${listed#*:}"; set -- "${listed[@]}"
+    echo "probe.sh: given $* as tools/suite lists it"
+  fi
 fi
 
 # The header's command: the line naming this script, and the lines it
-# continues with a backslash.
-block=$(awk -v s="--script $file" '
+# continues with a backslash. A header may name a headless form besides its
+# window, a command with --headless whose arguments after its `--` are its
+# own: a run given every one of those runs so. booklet_edit is windowed and
+# its file-and-edits half (--no-booklet) headless, which the suite lists as
+# booklet_edit:--no-booklet for the release train, which runs headless
+# probes alone: four releases shipped past the windowed whole (mergekeep,
+# 2026-11-18).
+blocks=$(awk -v s="--script $file" '
   NR > 80 { exit }
   /^##/ { line = $0; sub(/^##[ \t]*/, "", line)
           if (cont) cmd = cmd " " line; else cmd = line
-          if (index(line, s)) { print cmd; exit }
+          if (index(line, s)) print cmd
           cont = (line ~ /\\$/); next }
   { cont = 0 }' "$file")
+block=$(head -n 1 <<< "$blocks")
+while IFS= read -r one; do
+  case " $one " in *" --headless "*) ;; *) continue ;; esac
+  own=${one#*"--script $file"}
+  case "$own" in " -- "?*) own=${own# -- } ;; *) continue ;; esac
+  read -r -a own <<< "$own"
+  given=" $* "
+  for word in "${own[@]}"; do
+    case "$given" in *" $word "*) ;; *) continue 2 ;; esac
+  done
+  block=$one
+  break
+done <<< "$blocks"
 if [ -z "$block" ]; then
   echo "probe.sh: $file's header gives no command (--script $file); write one there first" >&2
   exit 2

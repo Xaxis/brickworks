@@ -42,6 +42,13 @@ whatever page of web/ or the documentation changed (2026-11-07).
 What a session hears through the connector is made in the tab, and reaches
 it at /api/mcp: a script that shapes it (RELAY_FROM) is the relay's address
 too, so it names every flow that drives the relay, as api/mcp.js does.
+
+A few shared files name only the checks of the part of them that changed,
+each reviewed (SPLIT, below), given the lines changed (--diff, a git diff;
+without it, or for any line outside a part named there, the whole file's
+checks, as above). web/theme.js is in every page's head, so the social
+desk's few lines in it named 52 of the 62 checks its train ran, and the lead
+shipped it by hand (fastlane, 2026-11-18).
 """
 
 from __future__ import annotations
@@ -74,6 +81,151 @@ def changed(since: str) -> list[str]:
     out = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", f"{since}...HEAD"],
                          capture_output=True, text=True, check=True).stdout
     return [line for line in out.splitlines() if line]
+
+
+# --- shared files named by the part that changed (fastlane, 2026-11-18) ---
+#
+# web/theme.js: five blocks, each its own (() => { ... })(), each begun by a
+# comment at the line's start after a blank line. A line changed in a block
+# named here names the checks whose flows, or a module they import, quote
+# one of its words. The language block hands every page's scripts
+# window.brickworksLang (20 of web/'s scripts say their words through it), so
+# it stays every page's, as does a line outside the blocks, or a change that
+# adds or takes away a block's start or end. A block broken so that it
+# throws is site's to find (every page in a browser, none may log an
+# error), which every ship runs.
+THEME_BLOCKS = (
+    ("// The theme a person chose", ("data-theme", "data-theme-choice", "brickworksTheme", "brickworks.theme",
+                                      "brickworks:theme", "theme-color")),
+    # The bar it loads on every page (web/betabar.js) by its own words too.
+    ("// The beta (betahome", ("data-beta", "brickworks.beta", "brickworksBeta", "betabar", "beta-bar",
+                               "data-beta-join", "data-beta-hide", "data-beta-report")),
+    ("// The site's notice", ("notice.js", "op=notice", "notice_set", "notice_clear")),
+    ("// A visit a post from the owner's social desk", ("utm_campaign", "social_visit")),
+)
+# web/admin.html, the owner's console: one page of sections, which 22 flows
+# visit. A line changed inside one <section data-section="NAME"> is that
+# section's alone, the address /admin#NAME: the flows that visit /admin and
+# quote NAME after a #, a / or a quote mark, themselves or in a module they
+# import (site_pages.mjs names the sections a11y and design walk). Its head,
+# its styles (a class may be any section's), its navigation and its
+# scripts are the whole page's, as before.
+# And each section's own module, which admin.js only imports, loads as its
+# section opens (NAME: () => loadNAME()) and marks changed: a change to one
+# is its section's. tests/test_flows_for.py holds each of these to that.
+# One that fails to load stops the whole console, which site finds (it
+# loads /admin).
+ADMIN_SECTION_MODULES = {"web/admin-social.js": "social", "web/admin-beta.js": "beta",
+                         "web/admin-feedback.js": "feedback", "web/admin-plans.js": "plans",
+                         "web/admin-mail.js": "mail", "web/admin-data.js": "data",
+                         "web/admin-switches.js": "switches"}
+SPLIT = ("web/theme.js", "web/admin.html", *ADMIN_SECTION_MODULES)
+WHOLE = "the whole file"
+
+
+def hunks(diff: str) -> dict[str, tuple[set[int], list[str]]]:
+    """Each file of a git diff: the lines of its new side changed or beside
+    one taken out, and the lines taken out."""
+    found: dict[str, tuple[set[int], list[str]]] = {}
+    path, at = None, 0
+    for line in diff.splitlines():
+        if line.startswith("+++ "):
+            path = line[6:] if line.startswith("+++ b/") else None
+            if path is not None:
+                found.setdefault(path, (set(), []))
+            continue
+        if line.startswith(("--- ", "diff ", "index ")) or path is None:
+            continue
+        head = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+        if head:
+            at = int(head.group(1))
+            continue
+        lines, out = found[path]
+        # A blank line changes no part: one put in or taken out between two
+        # blocks is neither's.
+        if line.startswith("+"):
+            if line[1:].strip():
+                lines.add(at)
+            at += 1
+        elif line.startswith("-"):
+            # Taken out after line `at - 1` of the new side (zero context
+            # says the line before it): both lines beside where it was.
+            if line[1:].strip():
+                lines.update({max(at - 1, 1), at})
+                out.append(line[1:])
+        elif line.startswith(" "):
+            at += 1
+    return found
+
+
+def parts(path: str, changed_lines: tuple[set[int], list[str]] | None) -> list:
+    """What of a SPLIT file a change reached: ("address", A) or ("words",
+    LABEL, WORDS) each, or [WHOLE] when any of it is the whole file's."""
+    if path in ADMIN_SECTION_MODULES:
+        return [("address", f"/admin#{ADMIN_SECTION_MODULES[path]}")]
+    file = ROOT / path
+    if changed_lines is None or not file.exists():
+        return [WHOLE]
+    lines, out = changed_lines
+    text = file.read_text(errors="ignore").split("\n")
+    if not lines:
+        # In the diff with blank lines alone changed: no part of it.
+        return []
+    found: list = []
+    if path == "web/theme.js":
+        if any(re.match(r"// |\(\(\) => \{|\}\)\(\);", gone) for gone in out):
+            return [WHOLE]
+        starts = [n for n in range(1, len(text) + 1)
+                  if text[n - 1].startswith("// ") and (n == 1 or not text[n - 2].strip())]
+        for n in sorted(lines):
+            begun = [s for s in starts if s <= n]
+            words = next((w for head, w in THEME_BLOCKS if begun and text[begun[-1] - 1].startswith(head)), None)
+            if words is None:
+                return [WHOLE]
+            part = ("words", text[begun[-1] - 1][3:].split(":")[0].split(" (")[0].rstrip("."), words)
+            if part not in found:
+                found.append(part)
+        return found
+    if path == "web/admin.html":
+        if any("<section" in gone or "</section>" in gone for gone in out):
+            return [WHOLE]
+        sections: list[tuple[int, int, str]] = []
+        for n, line in enumerate(text, 1):
+            m = re.search(r'<section data-section="([a-z-]+)"', line)
+            if not m:
+                continue
+            depth, end = 0, len(text)
+            for k in range(n, len(text) + 1):
+                depth += text[k - 1].count("<section") - text[k - 1].count("</section>")
+                if depth <= 0:
+                    end = k
+                    break
+            sections.append((n, end, m.group(1)))
+        for n in sorted(lines):
+            name = next((s for first, last, s in sections if first <= n <= last), None)
+            if name is None:
+                return [WHOLE]
+            part = ("address", f"/admin#{name}")
+            if part not in found:
+                found.append(part)
+        return found
+    return [WHOLE]
+
+
+@functools.cache
+def _with_imports(name: str, seen: frozenset[str] = frozenset()) -> str:
+    """tools/web/[name]'s text and that of every module it imports."""
+    path = FLOWS / name
+    if name in seen or not path.exists():
+        return ""
+    text = path.read_text(errors="ignore")
+    more = [_with_imports(m, seen | {name}) for m in re.findall(r"""(?:from\s+|import\(\s*)["']\./([\w.-]+\.mjs)["']""", text)]
+    return "\n".join([text, *more])
+
+
+def quotes(flow: Path, words: tuple[str, ...]) -> bool:
+    text = _with_imports(flow.name)
+    return any(re.search(rf"(?<![\w-]){re.escape(word)}(?![\w-])", text) for word in words)
 
 
 def page_address(html: Path) -> str:
@@ -465,6 +617,10 @@ def a_page(address: str) -> bool:
 
 
 def visits(flow: Path, address: str) -> bool:
+    section = re.fullmatch(r"(/[a-z-]+)#([a-z-]+)", address)
+    if section:
+        return visits(flow, section.group(1)) and re.search(
+            rf"""[#/"'`]{re.escape(section.group(2))}(?![\w-])""", _with_imports(flow.name)) is not None
     text = flow.read_text(errors="ignore")
     if EVERY_PAGE.search(text) and a_page(address):
         return True
@@ -481,16 +637,35 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("files", nargs="*")
     parser.add_argument("--since", default="main")
+    parser.add_argument("--diff", help="the change as git diff says it, for SPLIT's files: a file, or - for stdin")
     args = parser.parse_args()
     files = args.files or changed(args.since)
+    if args.diff:
+        diff = sys.stdin.read() if args.diff == "-" else Path(args.diff).read_text(errors="ignore")
+    elif not args.files:
+        diff = subprocess.run(["git", "-C", str(ROOT), "diff", "-U0", f"{args.since}...HEAD", "--", *SPLIT],
+                              capture_output=True, text=True, check=True).stdout
+    else:
+        diff = None
+    changed_lines = hunks(diff) if diff is not None else {}
     wanted: dict[str, set[str]] = {}
+    keyed: dict[str, tuple[tuple[str, ...], set[str]]] = {}
     for path in files:
-        for address in addresses(path):
-            wanted.setdefault(address, set()).add(path)
+        # A file the diff says nothing of is the whole file's.
+        split = parts(path, changed_lines.get(path)) if path in SPLIT else [WHOLE]
+        if WHOLE in split:
+            for address in addresses(path):
+                wanted.setdefault(address, set()).add(path)
+            continue
+        for part in split:
+            if part[0] == "address":
+                wanted.setdefault(part[1], set()).add(path)
+            else:
+                keyed.setdefault(part[1], (part[2], set()))[1].add(path)
     modules = [p for p in files if Path(p).parent == Path("tools/web") and p.endswith(".mjs")]
     scripts = {p: controls(p) for p in files}
     scripts = {p: given for p, given in scripts.items() if any(given)}
-    if not wanted and not modules and not scripts:
+    if not wanted and not modules and not scripts and not keyed:
         print("no page, API route, control or browser flow changed: nothing for the browser flows here")
         return 0
     named = checks()
@@ -507,6 +682,14 @@ def main() -> int:
         for name in names:
             found.setdefault(name, set()).update(f"{a} ({', '.join(sorted(wanted[a]))})" for a in hits)
     for flow in sorted(FLOWS.glob("*.mjs")):
+        for label, (words, paths) in keyed.items():
+            if not quotes(flow, words):
+                continue
+            if not named.get(flow.name):
+                unchecked.add(flow.name)
+                continue
+            for name in named[flow.name]:
+                found.setdefault(name, set()).add(f"{label} ({', '.join(sorted(paths))})")
         for path, given in scripts.items():
             hits = reaches(flow, *given)
             if not hits:

@@ -2627,6 +2627,38 @@ var unshown: Dictionary = {}
 const TITLE_META := "0 !BRICKWORKS TITLE "
 
 
+## Why steps [param early] and [param late] of [param section] (AuthorSteps'
+## section) cannot be one step, as the file the model was opened from has
+## them: the line between them that starts the later (SourceFile
+## .retrieve_between), or "".
+func retrieve_between(section: String, early: int, late: int) -> String:
+	var source: SourceFile = _live_source()
+	if source == null or not source.retrieves_in(section):
+		return ""
+	var origins: Array = [[], []]
+	var units: Dictionary = {}       ## a copy put on in one -> which
+	for item: Dictionary in AuthorSteps.items_of(world, section, scenery):
+		var which: int = [early, late].find(int(item["step"]))
+		if which < 0:
+			continue
+		if item.has("brick"):
+			var brick: BrickWorld.Brick = world.get_brick(int(item["brick"]))
+			if brick != null and not brick.origin.is_empty():
+				(origins[which] as Array).append(brick.origin)
+		elif item.has("unit"):
+			units[str(item["unit"])] = which
+	if not units.is_empty():
+		for brick: BrickWorld.Brick in world.bricks():
+			if brick.origin.is_empty():
+				continue
+			var path: String = Assemblies.path_of(brick)
+			while not path.is_empty() and not units.has(path):
+				path = Assemblies.parent_of(path)
+			if not path.is_empty():
+				(origins[int(units[path])] as Array).append(brick.origin)
+	return source.retrieve_between(section, origins[0], origins[1])
+
+
 ## The source the model on the baseplate is still the model of, or null.
 func _live_source() -> SourceFile:
 	if _source == null or world == null or world.generation() != _opened_in:
@@ -2796,9 +2828,15 @@ static func left_out_words(name: String, drops: Dictionary) -> String:
 
 ## The parts put down outside the author's steps in a model with steps of
 ## its own, numbered as the file numbers them (AuthorSteps.numbers_for_file:
-## each in one step after its section's last): {"bricks": id -> step,
-## "sections": section -> that step}, or {} for none.
-func _loose_steps(authored: bool) -> Dictionary:
+## each in one step after its section's last), or by [param numbers], the
+## steps a whole write gave its parts (brick id -> step): {"bricks": id ->
+## step, "sections": section -> the first of those steps}, or {} for none.
+## The whole write numbers them after the worked-out steps' too
+## (_text_into's with_steps), and numbered here without, the step of a
+## sub-model's turned to its end was looked for among the steps written and
+## not found: its "0 ROTSTEP END" was written "0 STEP", and the part put on
+## at its end came back turned (s5review F6, mergekeep).
+func _loose_steps(authored: bool, numbers: Dictionary = {}) -> Dictionary:
 	if not authored:
 		return {}
 	var any: bool = false
@@ -2808,13 +2846,16 @@ func _loose_steps(authored: bool) -> Dictionary:
 			break
 	if not any:
 		return {}
-	var numbers: Dictionary = AuthorSteps.numbers_for_file(world, world.library, scenery)["bricks"]
+	if numbers.is_empty():
+		numbers = AuthorSteps.numbers_for_file(world, world.library, scenery)["bricks"]
 	var loose: Dictionary = {}
 	var sections: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		if brick.step < 0 and numbers.has(brick.id) and not scenery.has(brick.id):
-			loose[brick.id] = int(numbers[brick.id])
-			sections[AuthorSteps.home(world, Assemblies.path_of(brick))] = int(numbers[brick.id])
+			var step: int = int(numbers[brick.id])
+			loose[brick.id] = step
+			var section: String = AuthorSteps.home(world, Assemblies.path_of(brick))
+			sections[section] = mini(int(sections.get(section, step)), step)
 	return {"bricks": loose, "sections": sections}
 
 
@@ -3181,7 +3222,16 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 				str(asked["own_title"]), str(asked.get("said_title", ""))])
 			else PackedStringArray(), MetaIndex.TITLE, _title_read))
 		# The steps a shared link carries (SharedPages) go: a save is no share.
-		out.append(MetaIndex.family(["PAGES", "PAGE"], PackedStringArray(), MetaIndex.TITLE, true))
+		# Its PAGE lines alone, each "PAGE {...}": a step's "PAGE NEW" or
+		# "PAGE ALONE" is the booklet's (BookletLooks), kept where it is. Up
+		# to 2026-11-18 every save of a file took those out too, and the
+		# looks put each back after the line before it: above the first
+		# step's turn once that step was the model's first (mergekeep).
+		var pages := PackedStringArray()
+		for line: MetaIndex.Line in here.anywhere(["PAGE"]):
+			if not line.said.begins_with("{"):
+				pages.append(line.raw)
+		out.append(MetaIndex.family(["PAGES", "PAGE"], pages, MetaIndex.TITLE, true))
 	var ground: ModelFloor = asked["floor"]
 	if ground != null:
 		var said: bool = metas != null and metas.own(["FLOOR"]).any(
@@ -3899,7 +3949,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	metas_asked["own_title"] = title
 	var here: MetaIndex = MetaIndex.of_text(text)
 	text = here.write(text, _meta_families(metas_asked, here, text))
-	text = _with_looks(text, true, steps, here)
+	text = _with_looks(text, true, steps, here, step_of)
 	if model != world:
 		model.free()
 	# In the line ends of the file it was opened from: a model of the app's
@@ -3928,11 +3978,12 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 ## model with no steps of its own is left alone. [param whole]: the text was
 ## written whole, each section's steps [param steps] (LdrModel.steps_written)
 ## one after another (BookletLooks.as_written), not written back over the
-## file it came from.
+## file it came from, its parts in the steps [param numbers] (brick id ->
+## step) gave them.
 func _with_looks(text: String, whole: bool = false, steps: Dictionary = {},
-		here: MetaIndex = null) -> String:
+		here: MetaIndex = null, numbers: Dictionary = {}) -> String:
 	var authored: bool = AuthorSteps.any(world, scenery)
-	var loose: Dictionary = _loose_steps(authored) if whole else {}
+	var loose: Dictionary = _loose_steps(authored, numbers) if whole else {}
 	var written: Callable = func() -> Dictionary:
 		return _looks_with_loose(world, BookletLooks.as_written(world, steps).duplicate(true), loose, steps)
 	return _looks_into(text, world.step_looks, authored, written if whole else Callable(), here)

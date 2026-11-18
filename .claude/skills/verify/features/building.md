@@ -761,7 +761,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   DIR/phonewalk.md and .json. Exit 1 only when an act could not run; `--bar`
   fails on any act not done by finger in twice the presses (phonepanels' and
   fingertools' bar). Its table of 2026-11-13 is
-  `docs/app_ux8/phonewalk.md`.
+  `docs/app_ux8/phonewalk.md`. `--engine=webkit --device="iPhone 13"`,
+  `--cpu=4`, `--net=fast4g` walk it on docs/PHONE.md's stand-ins; as an
+  Apple device it selects all with Command+A, as Godot's web build reads
+  shortcuts there, and a control cut by the top of its panel's list is
+  scrolled down into sight (phonetruth, 2026-11-18).
 - `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
   phone or a tablet (`Phone.on`) every dialog and panel over the model takes
   the layout's sizing, one rule for all as `Access` is for the keys: its text
