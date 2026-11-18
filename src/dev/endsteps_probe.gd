@@ -1,0 +1,318 @@
+## Steps at the end of a model, and groups of steps, written as LPub3D reads
+## them (smalls5, from streview's findings, 2026-11-15).
+##
+##   godot --headless --path . --script src/dev/endsteps_probe.gd
+##   ENDSTEPS_CASES=loose,groups   those cases (the default: both)
+##
+## loose: a part put down on top outside the author's steps (step -1, a page
+## of its own after the last) in a model whose last step has no STEP line to
+## end it, one whose turn (ROTSTEP) holds to the end, and one that is both.
+## Saved, the file is opened again: the pages are as they were shown, the
+## new part in a step of its own and in the usual view, and the saved file
+## has a STEP line (or "0 ROTSTEP END", where a turn held) between the last
+## step's parts and it. Each written as a patch of the file and written
+## whole (ModelStore.patch_files off). On pre261 the patch put it in the
+## last step, or let the turn hold into it (358-1 opened as 29 pages, not
+## 30; "an empty step with a ROTSTEP" opened upside down).
+##
+## groups: steps taken out and merged round LPub's MULTI_STEP BEGIN and END
+## (streview's srmetas): every BEGIN and END the saved file has is right
+## after a STEP line, no part of a step on both sides of one, as LPub3D
+## reads a group of steps; the pages opened again as they were shown. On
+## pre261 the 4th step taken out left "MULTI_STEP END" between the 3rd's
+## parts and the 4th's, and the 1st taken out left "MULTI_STEP BEGIN"
+## inside the step made of the 1st and 2nd. A "BUFEXCHG A STORE" stays where
+## it was, inside a step made of two: LPub3D stores the parts above it, as
+## it did (OMR files write it inside a step); at the step's end it would
+## store the next step's too.
+extends "res://src/dev/keep_text_probe.gd"
+
+## A model whose last step has no STEP line after it.
+const UNCLOSED := """0 Unclosed
+0 Name: unclosed.ldr
+0 Author: A. Builder
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 40 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 40 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+"""
+
+## Turned over from the 2nd step to the end (7140's carts), the last closed.
+const TURNED := """0 Turned
+0 Name: turned.ldr
+0 Author: A. Builder
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 40 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 ROTSTEP 180 0 0 ABS
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 40 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+"""
+
+## Turned to the end, the last step not closed.
+const BOTH := """0 Both
+0 Name: both.ldr
+0 Author: A. Builder
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 40 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 ROTSTEP 0 90 0 REL
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 40 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+"""
+
+## streview's srmetas (bench/results/streview-2026-11-15/srmetas.ldr), its
+## LPub, LDCad and MLCad lines round steps.
+const GROUPS := """0 Review metas
+0 Name: srmetas.ldr
+0 Author: A. Builder [abuilder]
+0 !LDRAW_ORG Unofficial_Model
+0 !LPUB PAGE SIZE GLOBAL 8.2677 11.6929 "A4"
+0 !LDCAD GROUP_DEF [topLevel=true] [LID=7] [GID=srGrp0001] [name=Pair] [center=0 0 0]
+0 // the base
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 0 0 80 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 0 0 160 1 0 0 0 1 0 0 0 1 3001.dat
+0 BUFEXCHG A STORE
+0 STEP
+0 !LPUB MULTI_STEP BEGIN
+0 // the second
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !LDCAD GROUP_NXT [ids=7] [nrs=-1]
+1 1 0 -24 80 1 0 0 0 1 0 0 0 1 3003.dat
+1 1 0 -24 160 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+0 // the third
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 !LDCAD GROUP_NXT [ids=7] [nrs=-1]
+1 2 0 -48 80 1 0 0 0 1 0 0 0 1 3004.dat
+1 2 0 -48 160 1 0 0 0 1 0 0 0 1 3004.dat
+0 STEP
+0 !LPUB MULTI_STEP END
+0 !LPUB PAGE SIZE LOCAL 5.8268 8.2677 "A5"
+0 !LPUB PLI BEGIN IGN
+1 14 0 -72 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 !LPUB PLI END
+1 14 0 -72 80 1 0 0 0 1 0 0 0 1 3020.dat
+1 14 0 -72 160 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+0 BUFEXCHG A RETRIEVE
+0 GHOST 1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BRICKWORKS STEP_NAME Fifth
+1 15 0 -80 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 15 0 -80 80 1 0 0 0 1 0 0 0 1 3023.dat
+1 15 0 -80 160 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+0 !BRICKWORKS STEP_NAME Sixth
+1 0 0 -88 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 0 0 -88 80 1 0 0 0 1 0 0 0 1 3023.dat
+1 0 0 -88 160 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 4 0 -96 0 1 0 0 0 1 0 0 0 1 3024.dat
+1 4 0 -96 80 1 0 0 0 1 0 0 0 1 3024.dat
+0 STEP
+"""
+
+
+func _run() -> void:
+	await process_frame
+	_main = load("res://src/main.tscn").instantiate()
+	root.add_child(_main)
+	for _n: int in 120:
+		await process_frame
+	var playback: BuildPlayback = _main.get("_playback")
+	if playback != null:
+		playback.stop()
+	_world = _main.get("_world")
+	_builder = _main.get("_builder")
+	_store = _main.get("_store")
+	_store.keeps = false
+	_library = _main.get("_library")
+	_shell = _main.get("_shell")
+	var only: PackedStringArray = OS.get_environment("ENDSTEPS_CASES").split(",", false)
+	if only.is_empty() or "loose" in only:
+		await _loose_case()
+	if only.is_empty() or "groups" in only:
+		await _groups_case()
+	ModelStore.patch_files = true
+	print("\nendsteps probe: %s" % ("all checks passed" if _failures == 0 else "%d checks failed" % _failures))
+	_world.clear()
+	await _frames(4)
+	quit(1 if _failures > 0 else 0)
+
+
+func _loose_case() -> void:
+	print("\n== loose: a part put down outside the author's steps, after the last")
+	for whole: bool in [false, true]:
+		ModelStore.patch_files = not whole
+		for entry: Array in [["unclosed", UNCLOSED, "0 STEP"], ["turned", TURNED, "0 ROTSTEP END"],
+				["turned and unclosed", BOTH, "0 ROTSTEP END"]]:
+			var name: String = "%s, %s" % [entry[0], "written whole" if whole else "patched"]
+			await _open(str(entry[1]), str(entry[0]))
+			var steps: Array = _ops_steps("")
+			_select_only([(steps[0][1] as Array)[0]])
+			(_main.get("_verbs") as EditVerbs).duplicate_selection(false)
+			var put: int = await _put_down(true)
+			await _frames(4)
+			var brick: BrickWorld.Brick = _world.get_brick(put)
+			if not _check("%s: a part put down outside the steps (#%d, step %d)" % [name, put,
+					brick.step if brick != null else -9], brick != null and brick.step < 0):
+				continue
+			var shown: Array = _pages()
+			var saved: String = _store.saved_text()
+			var wrote: String = str(_store.get("last_whole"))
+			await _open(saved, str(entry[0]))
+			var again: Array = _pages()
+			var before: String = _line_before_new(str(entry[1]), saved)
+			print("  %s (%s): %d pages shown, %d opened again; the line before it \"%s\"" % [name,
+				"patched" if wrote.is_empty() else "whole: " + wrote.left(50), shown.size(), again.size(), before])
+			print("      shown last: %s\n      opened last: %s" % [str(shown[-1]), str(again[-1])])
+			print("      the saved file's end:\n%s" % _tail(saved, 6))
+			_check("%s: opened again as it was shown, the new part a step of its own, unturned" % name,
+				shown == again and str(shown[-1]).contains("turn[-]") and shown.size() == steps.size() + 1)
+			_check("%s: \"%s\" between the last step's parts and it" % [name, entry[2]], before == str(entry[2]))
+			_check("%s: %s" % [name, "patched, as it was" if not whole else "written whole, as asked"],
+				wrote.is_empty() != whole)
+
+
+## The steps taken out and merged round a group of steps.
+func _groups_case() -> void:
+	print("\n== groups: LPub's MULTI_STEP round steps taken out and merged")
+	ModelStore.patch_files = true
+	# [what, the verb, the step index the timeline is on]
+	for edit: Array in [["take out the 4th (MULTI_STEP END after its STEP)", "delete", 3],
+			["merge the 3rd and 4th", "merge", 2],
+			["take out the 1st (BUFEXCHG STORE, then MULTI_STEP BEGIN)", "delete", 0],
+			["take out the 2nd (the group's first)", "delete", 1],
+			["merge the 2nd and 3rd (inside the group)", "merge", 1],
+			["merge the 4th and 5th (RETRIEVE between)", "merge", 3]]:
+		for whole: bool in [false, true]:
+			ModelStore.patch_files = not whole
+			var name: String = "%s, %s" % [edit[0], "written whole" if whole else "patched"]
+			await _open(GROUPS, "groups")
+			var steps: Array = _ops_steps("")
+			var said: String = _shell.change_steps(str(edit[1]), [], _ops_step("", steps[int(edit[2])]))
+			await _frames(4)
+			var shown: Array = _pages()
+			var saved: String = _store.saved_text()
+			var wrote: String = str(_store.get("last_whole"))
+			await _open(saved, "groups")
+			var again: Array = _pages()
+			var wrong: String = _group_mid_step(saved)
+			print("  %s (\"%s\"; %s): %s" % [name, said.get_slice("\n", 0).left(50),
+				"patched" if wrote.is_empty() else "whole: " + wrote.left(50), "every group line after a STEP"
+				if wrong.is_empty() else wrong])
+			_check("%s: each MULTI_STEP line right after a STEP, as LPub3D reads it, both kept" % name,
+				wrong.is_empty() and saved.count("MULTI_STEP BEGIN") == 1 and saved.count("MULTI_STEP END") == 1)
+			_check("%s: opened again as it was shown (%d pages)" % [name, shown.size()], shown == again)
+			_check("%s: the BUFEXCHG lines kept, as many, \"STORE\" after the same parts (%s)" % [name,
+				_stored(saved)], saved.count("BUFEXCHG A STORE") == 1
+				and saved.count("BUFEXCHG A RETRIEVE") == 1 and _stored(saved) == _stored(GROUPS))
+			if wrong.is_empty() and not whole and edit[2] == 3 and edit[1] == "delete":
+				print("      the file round it:\n%s" % _round(saved, "MULTI_STEP END"))
+
+
+## What the booklet's pages show: each step's number, turn and parts.
+func _pages() -> Array:
+	var out: Array = []
+	var lift: Vector3 = _store.lift()
+	for step: Instructions.Step in Instructions.plan(_world, _library, _store.scenery, {}, true):
+		var parts: Array = []
+		for id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick != null:
+				var o: Vector3 = brick.transform.origin - lift
+				parts.append("%s/%d@%.0f,%.0f,%.0f" % [brick.part_id, brick.color_code, o.x, o.y, o.z])
+		parts.sort()
+		var turn: Dictionary = BookletLooks.turn_at(_world, step.authored_in, step.authored_step)
+		out.append("#%d turn[%s] [%s]" % [step.number, "-" if turn.is_empty()
+			else "%s %s" % [turn.get("how", "REL"), str(turn["turn"])], " ".join(parts)])
+	return out
+
+
+## The first line before the saved file's first part line the opened file
+## has not got, over the lines that place nothing.
+static func _line_before_new(text: String, saved: String) -> String:
+	var had: Dictionary = {}
+	for line: String in text.split("\n"):
+		had[line.strip_edges()] = int(had.get(line.strip_edges(), 0)) + 1
+	var lines: PackedStringArray = saved.split("\n")
+	for n: int in lines.size():
+		var line: String = lines[n].strip_edges()
+		if line.begins_with("1 ") and int(had.get(line, 0)) == 0:
+			for k: int in range(n - 1, -1, -1):
+				var before: String = lines[k].strip_edges()
+				if not before.is_empty():
+					return before
+			return ""
+		if had.has(line):
+			had[line] = int(had[line]) - 1
+	return "(no new line)"
+
+
+## "" when every "!LPUB MULTI_STEP" line of [param text] follows a STEP or a
+## ROTSTEP with no part between, BEGINs and ENDs in turn; else the first
+## that does not.
+static func _group_mid_step(text: String) -> String:
+	var parts: bool = false
+	var open: bool = false
+	var n: int = 0
+	for raw: String in text.split("\n"):
+		n += 1
+		var line: String = raw.strip_edges()
+		var words: PackedStringArray = line.split(" ", false)
+		if words.size() >= 2 and words[0] == "0" and words[1] in ["STEP", "ROTSTEP"]:
+			parts = false
+			continue
+		if line.begins_with("0 FILE"):
+			parts = false
+			open = false
+			continue
+		if line.begins_with("0 !LPUB MULTI_STEP"):
+			if parts:
+				return "line %d, \"%s\", is inside a step" % [n, line]
+			var begins: bool = line.ends_with("BEGIN")
+			if begins == open:
+				return "line %d, \"%s\", %s" % [n, line, "begins inside a group" if begins else "ends no group"]
+			open = begins
+			continue
+		if words.size() >= 15 and words[0] == "1":
+			parts = true
+	return "a group never ended" if open else ""
+
+
+## The parts above "BUFEXCHG A STORE", the ones LPub3D stores (sorted).
+static func _stored(text: String) -> String:
+	var parts: Array = []
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if line.begins_with("0 BUFEXCHG A STORE"):
+			parts.sort()
+			return "%d parts, %s" % [parts.size(), str(" | ".join(parts).hash())]
+		if line.begins_with("1 "):
+			parts.append(line)
+	return "no STORE"
+
+
+static func _tail(text: String, many: int) -> String:
+	var lines: PackedStringArray = text.strip_edges().split("\n")
+	return "\n".join(Array(lines.slice(maxi(lines.size() - many, 0))).map(
+		func(l: String) -> String: return "        | " + l.strip_edges()))
+
+
+static func _round(text: String, words: String) -> String:
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in lines.size():
+		if lines[n].contains(words):
+			return "\n".join(Array(lines.slice(maxi(n - 5, 0), mini(n + 4, lines.size()))).map(
+				func(l: String) -> String: return "        | " + l.strip_edges()))
+	return "        (none)"

@@ -58,6 +58,14 @@ var collection: Control:
 			place_dialogs()
 		return _collection
 var _collection: Control = null
+
+
+## Undo while My collection is open: its last Built press taken back
+## (CollectionDialog.undo_built), "" for the model's own Undo.
+func _panel_undo() -> String:
+	if _collection == null or not _collection.is_visible_in_tree():
+		return ""
+	return await _collection.call("undo_built")
 ## File, Library…: src/ui/library_dialog.gd, made as [member collection] is.
 var library_dialog: Control:
 	get:
@@ -347,6 +355,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	bar = app.get("_bar")
 	builder = app.get("_builder")
 	verbs = app.get("_verbs")
+	if verbs != null:
+		verbs.panel_undo = _panel_undo
 	camera = app.get("_camera")
 	world = app.get("_world")
 	library = app.get("_library")
@@ -1251,7 +1261,7 @@ func _define() -> void:
 	# Edit
 	# An open is the oldest step: Undo past every change since brings back
 	# the model it took off (ModelStore.reopen).
-	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.press("undo"),
+	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.own_undo(),
 		func() -> bool: return builder.history_depth() > 0 or store.can_reopen(),
 		"Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: await verbs.press("redo"),
