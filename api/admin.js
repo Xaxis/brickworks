@@ -160,6 +160,25 @@
 //                                        request, as they would (api/_erase.js)
 //   POST /api/admin?op=sign_out&account=U  every session and Claude of it ended
 //
+// The social desk (socialdesk, 2026-11-18; api/_social.js, docs/SOCIAL_DESK.md):
+//   GET  /api/admin?op=social[&tests=1]  each network, the inbox, every send
+//                                        with its results and visits
+//   GET  /api/admin?op=social_rules&provider=reddit&community=C  a
+//                                        community's rules, and the owner's notes
+//   POST /api/admin?op=social_connect    {provider}: where to let the desk in
+//   POST /api/admin?op=social_connected  {provider, code, state}: the tokens kept
+//   POST /api/admin?op=social_disconnect {provider}: taken back and forgotten
+//   POST /api/admin?op=social_sync       what came in and how sent posts do, read
+//   POST /api/admin?op=social_mark       {provider, external_id, read} or {all}
+//   POST /api/admin?op=social_draft      {id?, provider, kind, community?, parent?,
+//                                        title, body, link?}: kept as a draft
+//   POST /api/admin?op=social_drop       {id}: a draft thrown away
+//   POST /api/admin?op=social_send       {id, hash, at?}: the owner's press of
+//                                        Send or Schedule on those exact words
+//   POST /api/admin?op=social_unschedule {id}
+//   POST /api/admin?op=social_posted     {id, url}: posted by hand, its address
+//   POST /api/admin?op=social_notes      {provider, community, notes}
+//
 // Part B (console2, 2026-11-12): those four read, and are not audited, as
 // no read is; none of them changes anything anywhere.
 //
@@ -199,6 +218,9 @@ import { noticeClear, noticeSet, switchesRead } from "./_console_switches.js";
 import { dataRead, runCron, withRunNow } from "./_console_data.js";
 import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
 import { challengeView } from "./_console_challenges.js";
+import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
+  socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
+import { SocialRefusal } from "./_social_reddit.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -269,14 +291,20 @@ export default async function handler(request, response) {
     list_down: takeListDown,
     // Part C (console3).
     unbar_model: unbarModel, notice_set: noticeSet, notice_clear: noticeClear, run_cron: runCron, export: exportAccount,
-    delete_account: deleteAccount, sign_out: signOut };
+    delete_account: deleteAccount, sign_out: signOut,
+    // The social desk (socialdesk, api/_social.js; docs/SOCIAL_DESK.md). Of
+    // these, only social_send sends anything anywhere, and only what the
+    // owner pressed it on.
+    social_connect: socialConnect, social_connected: socialConnected, social_disconnect: socialDisconnect,
+    social_sync: socialSync, social_mark: socialMark, social_draft: socialDraft, social_drop: socialDrop,
+    social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes };
   // An op is one of these tables' own names, never one Object's prototype
   // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
   // nobody made, answered 404 and never audited as an act (c3review).
   const act = Object.hasOwn(acts, op) ? acts[op] : null;
   if (request.method === "POST" && act) {
     return audited(op, act, request, response, claims, (error) => (error instanceof AuthError
-      || error instanceof BuildRefusal || error instanceof AvatarRefusal ? error.status : 502));
+      || error instanceof BuildRefusal || error instanceof AvatarRefusal || error instanceof SocialRefusal ? error.status : 502));
   }
   const tests = String(request.query?.tests || "") === "1";
   const reads = {
@@ -288,6 +316,8 @@ export default async function handler(request, response) {
     connector: () => connectorRead(tests, request.query?.account ? String(request.query.account).toLowerCase() : null),
     site: async () => withRunNow(await siteRead()),
     data: () => dataRead(),
+    social: () => socialRead(request),
+    social_rules: () => socialRules(request),
     find: () => findRead(String(request.query?.q || ""), tests),
     challenge_view: () => {
       const id = Number(request.query?.challenge);

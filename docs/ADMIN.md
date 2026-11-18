@@ -58,6 +58,7 @@ three that stay outside, each with why.
 | Beta, feedback, plans' reading, mail, connector, releases, backend health, the audit | the console (parts A and B) | unchanged |
 | Prices, trials, comps, promotions, refunds, payouts | Admission | **Outside**: real money stays the owner's yes at Admission; Plans reads it and links to each |
 | Secrets' values (keys, signing secrets, CRON_SECRET) | Vercel, Resend, Supabase | **Outside**: never on a page; Switches names them and says where each is changed |
+| Brickworks' own social accounts: what came in, posts and replies, their results (socialdesk) | each network's own site | Social: the inbox, Write with the community's rules, Sent and scheduled, Accounts (docs/SOCIAL_DESK.md). Posting on Reddit is by hand on Reddit's own page until Reddit grants API access: **outside** for that one press |
 
 ### api/admin.js, every op
 
@@ -108,6 +109,12 @@ it answers.
 | `export` | POST `&account=` | Every row of the account as JSON: at most 1000 a table, the rest counted; no secret column (part C) | auth user, admin_export |
 | `delete_account` | POST `&account=` `{confirm, reason}` | The account deleted at its person's request, its address typed again; never the owner's (part C) | api/_erase.js: Admission, orangecheck, photos, pictures, feedback's files, auth |
 | `sign_out` | POST `&account=` | Every sign-in session ended and every Claude let go (part C) | admin_sign_out |
+| `social` | GET | The social desk whole: each network (connected, by what, what is missing by name), the inbox newest first, every send with its results over time and visits (socialdesk) | social_accounts, social_items, social_sends, social_results, social_visits |
+| `social_rules` | GET `&provider= &community=` | A community's rules from the network (a day at most), with the owner's notes | social_rules, the network |
+| `social_connect`, `social_connected`, `social_disconnect` | POST `{provider}` | Connect by OAuth (a signed state), the code taken for tokens kept here alone; Disconnect revokes and forgets them | social_accounts, social_tokens, the network |
+| `social_sync`, `social_mark` | POST | What came in and how sent posts do, read now; read or unread here (never at the network) | social_items, social_results |
+| `social_draft`, `social_drop`, `social_notes` | POST | A draft kept (the site's links tagged) or thrown away; notes on a community's rules | social_sends, social_rules |
+| `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; a schedule taken back; a post made by hand, its address kept | social_sends, the network |
 
 Part B's four are reads: not kept in the audit, like the other GETs; part
 C's reads are not either, and each of its POSTs is. `api/otp.js` takes one
@@ -153,6 +160,7 @@ environments only), and flags one Vercel has that nothing reads.
 | `RESEND_WEBHOOK_SECRET` | The signing secret of Resend's webhook, for Mail (tools/web/resend_webhook.sh); a unit's preview has the checks' own |
 | `OC_PROJECT_KEY`, `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`, `OC_ME_ORIGIN`, `OC_ISSUER`, `OC_AUDIENCE` | Sign in with orangecheck |
 | `CRON_SECRET` | The crons' own key |
+| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | The social desk's Reddit app (a web app): none can be made since Reddit closed new API apps on 2026-10-31, so posts go by hand (docs/SOCIAL_DESK.md) |
 | `VIEW_SECRET`, `PARTS_URL`, `PUBLIC_ORIGIN` | Shared views, the parts' host, the site's address |
 | `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel's own |
 
@@ -169,6 +177,7 @@ through `cron_noted`), and the canary's are its own `canary_runs`.
 | `/api/share/feature` | 00:07 daily | The gallery's front: this week's pick, today's featured model and set |
 | `/api/share/omr` | 05:37 Mondays | What LDraw's Official Model Repository has that the library has not |
 | `/api/plans/beta-daily` | 05:07 daily | The beta's daily round, and feedback's sweep with it |
+| `/api/plans/social-due` | every 15 minutes | The social desk: scheduled sends whose time came, each only as pressed; then each connected account's inbox and results. Noted when it sent, failed, ran by hand, or first after midnight |
 
 ### Outside services
 
@@ -176,7 +185,7 @@ Supabase (database, sign-in, storage), Vercel (hosting, deployments,
 crons), Resend (mail), Admission (plans and payments, over Stripe),
 orangecheck (sign-in), Rebrickable (sets, daily), the relay (the Claude
 connector's sessions, in relay_tabs), Overlook (visit counts, never on
-/admin).
+/admin), Reddit (the social desk, once an app exists; by hand until then).
 
 ## What the best consoles do
 
@@ -225,6 +234,7 @@ px (a row of pills on a phone), and the section beside it.
 | Challenges | `#challenges`, `#challenges/<id>` | The running one; every challenge by state; a challenge whole in a panel (entries by group, rule failures, winners); the set form and the year's plan, each with its preview | Set a challenge, Set the year, End it now |
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
+| Social | `#social/inbox`, `write`, `sent`, `accounts` | Replies, mentions and messages; a post or a reply with the community's rules beside it, and drafts; what was sent and waits, with score, comments and visits over time; each network, connected or not, and what each still to come costs | Check now, Mark read, Reply…, Keep the draft, Review and send… (Send now, Schedule), Unschedule, Post it on Reddit…, Connect, Disconnect |
 | Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
 | Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
@@ -495,3 +505,36 @@ English and German as words, nothing run, and dismissed, then cleared
 (never on brickworks.diy); an export downloaded, a throwaway signed out
 everywhere and another deleted by its typed address and found in the
 audit; each section at 390 and 1280, light and dark.
+
+## Social (socialdesk): in the console now
+
+The owner's own accounts on the networks, Reddit first (docs/SOCIAL_DESK.md
+has the research, the sources and the choices for X, Facebook and
+Instagram). Reddit closed new API apps on 2026-10-31, so the desk posts by
+hand: Send opens Reddit's own page with the words, the owner presses Post
+there and pastes the address back. The API path is built and proven against
+a stand-in (`api/_social_mock.js`), and turns on with `REDDIT_CLIENT_ID` and
+`REDDIT_CLIENT_SECRET` should Reddit ever grant access.
+
+- **The press.** Nothing leaves without the owner's press of Send on the
+  exact words the sheet shows: the press carries the server's hash of them,
+  words changed since are refused (409), and the database refuses a row past
+  a draft without a press (`social_sends_pressed`). A scheduled send goes at
+  its time only if its words still match. Nothing votes, edits, deletes or
+  marks read at a network.
+- **Tokens** are in `social_tokens`, which only the server's role reads; never
+  in an answer, a page, a log or an address. Disconnect revokes them.
+- **Visits.** The site's links are tagged as a draft is kept
+  (`utm_campaign=bw-<send>`); web/theme.js tells `social_visit` of a landing
+  once, then takes the tags out of the address.
+- **The ops** are api/admin.js's `social*` (still 12 functions) behind the
+  gate: 401 signed out, 404 to anybody else; every POST audited. The cron
+  and the visit are api/plans.js's `social_due` and `social_visit`.
+- **The tables** are `supabase/social.sql` (additive; row security on, no
+  policy, nothing granted but to the server; nothing refers to an account,
+  so no export reaches them). Before it is applied the section says so and
+  every write answers 503.
+
+Proven by `tests/test_social.py` (the handlers against held tables and the
+stand-in; social.sql in a Postgres of its own) and, on a deployment,
+`tools/web/socialdesk_flow.mjs` (preview check `socialdesk`).

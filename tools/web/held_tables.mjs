@@ -396,6 +396,61 @@ const TABLES = {
       },
     },
   },
+  // supabase/social.sql (socialdesk): the owner's social desk, its checks
+  // in social.sql's own words, so a page's refusals read as the database's.
+  social_accounts: {
+    parents: [],
+    key: ["provider", "test"],
+    defaults: () => ({ test: false, scopes: "", connected_at: new Date().toISOString(), synced_at: null, sync_said: null }),
+    check: (row) => (!["reddit", "x", "facebook", "instagram"].includes(row.provider) ? "social_accounts_provider"
+      : !(String(row.handle || "").length >= 1 && String(row.handle).length <= 100) ? "social_accounts_handle" : ""),
+  },
+  social_tokens: {
+    parents: [],
+    key: ["provider", "test"],
+    defaults: () => ({ test: false, refresh_token: null, expires_at: null, changed_at: new Date().toISOString() }),
+    check: (row) => (!(String(row.access_token || "").length >= 1) ? "social_tokens_access" : ""),
+    guard: (row, rows, base, headers) => (held.get("social_accounts")
+      .some((one) => one.provider === row.provider && one.test === row.test) ? "" : "violates foreign key social_tokens_account"),
+  },
+  social_items: {
+    parents: [],
+    key: ["provider", "test", "external_id"],
+    defaults: () => ({ test: false, detail: "", body: "", seen_at: new Date().toISOString(), read_at: null }),
+    check: (row) => (!["reply", "mention", "message"].includes(row.kind) ? "social_items_kind"
+      : row.url && !/^https:\/\//.test(row.url) ? "social_items_url" : !row.made_at ? "social_items_made_at" : ""),
+  },
+  social_sends: {
+    parents: [],
+    key: ["id"],
+    defaults: () => ({ test: false, title: "", body: "", status: "draft", made_at: new Date().toISOString(),
+      changed_at: new Date().toISOString() }),
+    check: (row) => (!/^[a-z0-9]{10}$/.test(String(row.id)) ? "social_sends_id"
+      : !["draft", "scheduled", "sending", "handed", "sent", "failed"].includes(row.status) ? "social_sends_status"
+        : (row.kind === "reply") !== (row.parent !== null && row.parent !== undefined) ? "social_sends_parent_kind"
+          : row.status !== "draft" && row.kind !== "reply" && !row.community ? "social_sends_where"
+            : row.status !== "draft" && !(row.pressed_at && row.pressed_by && row.pressed_hash && row.route) ? "social_sends_pressed"
+              : row.status === "scheduled" && !row.send_at ? "social_sends_scheduled"
+                : row.status === "sent" && !(row.sent_at && row.url) ? "social_sends_sent" : ""),
+  },
+  social_results: {
+    key: ["send", "at"],
+    parents: [{ column: "send", table: "social_sends", on: "id" }],
+    defaults: () => ({ at: new Date().toISOString() }),
+    check: () => "",
+  },
+  social_visits: {
+    key: ["send", "nonce"],
+    parents: [{ column: "send", table: "social_sends", on: "id" }],
+    defaults: () => ({ at: new Date().toISOString(), path: "/" }),
+    check: (row) => (!/^[a-z0-9]{8,24}$/.test(String(row.nonce)) ? "social_visits_nonce" : ""),
+  },
+  social_rules: {
+    parents: [],
+    key: ["provider", "test", "community"],
+    defaults: () => ({ test: false, rules: null, read_at: null, notes: null, noted_at: null }),
+    check: () => "",
+  },
   // supabase/versions.sql
   share_versions: {
     key: ["model", "n"],
@@ -493,12 +548,16 @@ async function answer(real, base, url, init = {}) {
   if (method === "POST") {
     const given = JSON.parse(String(init.body || "null"));
     const merging = params.has("on_conflict") && String(init.headers?.prefer || "").includes("resolution=merge-duplicates");
+    // resolution=ignore-duplicates: a row already there is let be, as
+    // PostgREST's insert ... on conflict do nothing (social_visits).
+    const ignoring = params.has("on_conflict") && String(init.headers?.prefer || "").includes("resolution=ignore-duplicates");
     for (const one of Array.isArray(given) ? given : [given]) {
       const before = merging ? rows.find((other) => table.key.every((column) => other[column] === one[column])) : null;
       const row = { ...table.defaults(), ...(before || {}), ...one };
       const broken = table.check(row);
       if (broken) return json(400, { code: "23514", message: `violates check constraint "${broken}"` });
       if (!before && rows.some((other) => table.key.every((column) => other[column] === row[column]))) {
+        if (ignoring) continue;
         return json(409, { code: "23505", message: `duplicate key value violates unique constraint "${path}_pkey"` });
       }
       for (const { column, table: parentTable, on } of table.parents || [table.parent]) {
