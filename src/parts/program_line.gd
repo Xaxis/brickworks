@@ -4,8 +4,9 @@
 ## Read and written with the model, so it lives here, apart from HubProgram,
 ## which plays it and names Simulation: ModelStore, which the first screen
 ## compiles, naming HubProgram brought Simulation and Linkage into the start
-## (tests/test_later.py). An older build keeps the line as a later build's
-## (MetaIndex.unclaimed) and writes it back as it was.
+## (tests/test_later.py). An older build keeps the model's own line as a later
+## build's (MetaIndex.unclaimed) and writes it back as it was; a sub-model's
+## it drops, as it drops every line it does not read in a sub-model.
 class_name ProgramLine
 extends RefCounted
 
@@ -28,8 +29,13 @@ static func read_from(metas: MetaIndex) -> String:
 
 
 ## The text a line says after its word, or null for one this cannot read.
+## Read by a parser of its own: JSON.parse_string logs an engine error for
+## every line it cannot read, and a malformed line is the file's, kept.
 static func parsed(words: String) -> Variant:
-	var raw: Variant = JSON.parse_string(words)
+	var json := JSON.new()
+	if json.parse(words) != OK:
+		return null
+	var raw: Variant = json.data
 	if not (raw is Dictionary) or not ((raw as Dictionary).get("text") is String):
 		return null
 	var said: String = (raw as Dictionary)["text"]
@@ -38,11 +44,12 @@ static func parsed(words: String) -> Variant:
 
 ## What of the model's program this build cannot run, said where an open says
 ## what it left out: [param unread], the model's PROGRAM lines it could not
-## read (a later build's form of it), or what [param text], the program it
-## read, says that it does not know (a later build's word), and that either
-## is kept in the file as written. "" for nothing. So a build before the one
-## that adds a word names the program it cannot run, and keeps it. A model
-## with a program is one Simulate is for, so its words are read by
+## read (a later build's form of it), or the first line of [param text], the
+## program it read, that does not run, and why; either kept in the file as
+## written. "" for nothing. A line that does not run is named as what it is,
+## with its line and why, whoever wrote it: up to hpreview it was "words this
+## build cannot run", the person's own slip reopened as a later build's. A
+## model with a program is one Simulate is for, so its words are read by
 ## HubProgram, loaded then (Later).
 static func unread_words(text: String, unread: PackedStringArray) -> String:
 	if not unread.is_empty():
@@ -52,4 +59,4 @@ static func unread_words(text: String, unread: PackedStringArray) -> String:
 	var errors: PackedStringArray = Later.script(&"HubProgram").call("parse", text).get("errors")
 	if errors.is_empty():
 		return ""
-	return "its program has words this build cannot run (%s), kept as written" % errors[0]
+	return "its program does not run as written (%s), kept as it is" % errors[0]

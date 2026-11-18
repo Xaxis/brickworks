@@ -533,6 +533,7 @@ func save_as(name: String) -> bool:
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
+		_program_kept = world.program
 		saved.emit(name)
 		return true
 	return false
@@ -548,6 +549,7 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 	if ok:
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
+		_program_kept = world.program
 	# Still watching the model's own file for saves from elsewhere.
 	if path != saved_path(title):
 		_known_path = was[0]
@@ -567,6 +569,10 @@ var _views_kept: Array = []
 ## The lights placed in the model (SceneLights) as it was opened or last saved
 ## to its file, in the window's coordinates: others now are work not saved.
 var _lights_kept: Array = []
+## And the program for its motors (HubProgram), the same: it is in no part's
+## line, so a program typed since a save was no work to lose, and New asked
+## nothing (hpreview F2).
+var _program_kept: String = ""
 ## What the open read of the model's lights (SceneLights.of_model): the lines
 ## it read, those it could not, and its sub-models' own, each as the file has
 ## them, written back with the lights wherever the model is written. The
@@ -762,6 +768,7 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	bin_sets = PackedStringArray()
 	_views_kept = []
 	_lights_kept = []
+	_program_kept = ""
 	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
@@ -790,7 +797,8 @@ func identity() -> Dictionary:
 		"credit": credit.duplicate(true), "from_set": from_set,
 		"hidden_scheme": hidden_scheme.duplicate(true), "pins": pins,
 		"bin_sets": bin_sets.duplicate(), "views_kept": _views_kept,
-		"lights_kept": _lights_kept, "reference": reference.duplicate(true),
+		"lights_kept": _lights_kept, "program_kept": _program_kept,
+		"reference": reference.duplicate(true),
 		"made_with": made_with, "source": _live_source(),
 		"opened": world != null and world.generation() == _opened_in, "lifted_by": _lifted_by,
 		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
@@ -829,6 +837,7 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	pins = kept["pins"]
 	_views_kept = kept["views_kept"]
 	_lights_kept = kept["lights_kept"]
+	_program_kept = str(kept.get("program_kept", ""))
 	reference = (kept["reference"] as Dictionary).duplicate(true)
 	made_with = str(kept["made_with"])
 	# Opened from a file, it stands as that file was lifted to (lift), and is
@@ -960,6 +969,9 @@ func has_unsaved_work() -> bool:
 	# So is a light placed, changed or taken out (SceneLights).
 	if not SceneLights.same(world.scene_lights, _lights_kept) \
 			and world.brick_count() - scenery.size() > 0:
+		return true
+	# And the program for its motors, typed or set (HubProgram).
+	if world.program != _program_kept and world.brick_count() - scenery.size() > 0:
 		return true
 	# An example as it shipped is nobody's work: New on the first visit's
 	# car, untouched, asked whether to save it. Nothing has been done to
@@ -1968,6 +1980,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	reference = read["reference"]
 	# The program for its motors (HubProgram), as written.
 	world.program = read["program"]
+	_program_kept = world.program
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -4683,6 +4696,7 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
+		_program_kept = world.program
 		saved.emit(name)
 		return true
 	return false

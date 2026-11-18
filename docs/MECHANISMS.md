@@ -6291,7 +6291,10 @@ none is said, as SPIKE's own blocks have it. `#` starts a note. Lines run
 one after another, each to its end, as a hub's `run_target` waits by
 default. Pybricks' own names are read too (`run_target 90 at 40%`), and a
 word it does not have, a speed past 100%, a repeat with nothing under it
-or a port past F is refused with its line ("Line 2: ...").
+or a port past F is refused with its line ("Line 2: ..."). A number is read
+whole with its exponent (`wait 1e-3 s`; `turn 1e400°` is refused as more
+than 36000°, as written), and `wait 0 s` waits for nothing, as Pybricks'
+`wait(0)` does.
 
 ### Motors and ports
 
@@ -6304,7 +6307,9 @@ port's motor drives its own reading of the mechanism; two motors whose
 trains turn each other are refused, as one train cannot be driven from two
 places. A Power Functions or 9 V motor plugs into no hub (a battery box or
 an IR receiver runs it), so a program does not drive it: the row says so,
-and Play still turns it. LDraw has no SPIKE Prime hub part, so none is
+and Play still turns it. A seventh hub motor is on no port, and the run
+says so ("The SPIKE Prime large angular motor #19 is on no port: a hub has
+six, A to F."). LDraw has no SPIKE Prime hub part, so none is
 needed in the model.
 
 ### Where it stops
@@ -6315,7 +6320,12 @@ asks more of the motor than it gives, found by the same virtual work. The
 stall going forward is Simulate's own; going back, the torque the weight
 asks on that side is weighed on Simulate's back sweep
 (`Simulation.asked_back`, beside `asked` forward) and found the same way. A
-train that comes round whole is tiled round its cycle. The run ends where a
+train that comes round whole is walked round its cycle from where the move
+begins, a cycle at most: laid out and sorted over each move, 2,000 moves of
+1° held a frame 174 ms and one 600 s run 71. The run is worked out a slice
+a frame (`HubProgram.begin_run`, `run_step`, as the stops are), and where
+each motor is at a moment is found by halves, not read from the first move
+each frame. The run ends where a
 move stops, as a hub's program waits on a motor that cannot get there, and
 the row says where and why: "Line 1: A, the SPIKE Prime large angular
 motor #12 stops at 26.3° on its way to 90°, 0.1 s in: its motor stalls:
@@ -6326,11 +6336,15 @@ the weight it lifts asks more than the 25 N·cm it gives at 7.2 V."
 Under Play, the slider and the stops: "Program" (its words in a tooltip),
 Run (Stop while it runs), a box of four lines and a line saying how far in
 it is ("2.1 s of 4.03 s: line 3") and, at its end, where each motor ended.
-The line running is lit in the box. The run's time is the clock's, so a
+The line running is lit in the box, and the slider goes round with the
+panel's driver as it does with Play. The run's time is the clock's, so a
 slow frame shows where the motors are by then. The box and its example are
 never translated: the program is read in its own words whatever the
 language. On a phone (390 points wide) the row comes right under the
-player, Run a fingertip tall, the box four lines of 14-point type.
+player, Run a fingertip tall, the box four lines of 14-point type, and what
+a run says under Run, above the box, scrolled into the sheet's view as Run
+or Stop is pressed or the run ends: under the box, it was below the fold.
+Undo of the program after a run puts the parts back where they were built.
 
 ### In the file
 
@@ -6338,15 +6352,29 @@ player, Run a fingertip tall, the box four lines of 14-point type.
 at the end of the model's head (`ProgramLine.line_of`, read by
 `MetaIndex.first_read`), written as the file has it while it says the same
 program, so an unedited save, someone else's file's among them, is the file
-byte for byte. Setting it is one step of the history (Run, leaving the box,
-or a session's call), which Undo takes back. A model put into another keeps
-its program in its sub-model, not run; the model it went into runs its own.
-A build before this one keeps the line as a later build's
-(`MetaIndex.unclaimed`). This build names what it cannot run where an open
-says what it left out: a program with a word a later build added ("its
-program has words this build cannot run (Line 1: "beep" is not one of its
-words ...), kept as written") and a PROGRAM line in a form it cannot read,
-each kept byte for byte.
+byte for byte. The box's words are the model's as they are typed, one step
+of the history each time the box is written in (or a session's call), which
+Undo takes back, and a changed program is work not saved. So Ctrl+S, New, an
+open or Quit pressed with the keys still in the box keeps them, and on the
+model they were typed for alone: another model opened meanwhile shows its
+own, and the box left after it writes nothing into it. Up to hpreview the
+words became the model's only as the box was left: Ctrl+S wrote the program
+as it was, and words typed for one model, the box left after a session
+opened another, became that one's program. The model's other fields that
+keep their words as they are left (a booklet page's words, the booklet's
+texts, a motion's name) keep them as Ctrl+S, Ctrl+N, an open or Ctrl+Q is
+pressed in them (`ModelBar.end_typing`). The app's words in a sub-model's
+head are read in any case, as `MetaIndex` reads them: a lower-case
+`0 !BrickWorks program` or `view` there was dropped from every save. A model
+put into another keeps its program in its sub-model, not run; the model it
+went into runs its own. A build before this one keeps the model's own line
+as a later build's (`MetaIndex.unclaimed`); a sub-model's it drops, as an
+older build drops every line of a sub-model it does not read. This build
+names what it cannot run where an open says what it left out: a program
+with a line that does not run, a later build's word or a slip of the
+person's own ("its program does not run as written (Line 1: "beep" is not
+one of its words ...), kept as it is") and a PROGRAM line in a form it
+cannot read, each kept byte for byte.
 
 Over MCP, `simulate_mechanism`'s `program` sets the model's program and runs
 it in one call: the run move by move, where it stopped and why, and a
@@ -6382,6 +6410,17 @@ there. `""` takes it out.
   B -45° each its own beam in 0.2143 s; a Power Functions M motor refused as
   on no hub. Over MCP, `program=` set and ran it in one call (1.34 s, three
   moves, a picture); undo took it out; `spin 3` set nothing.
+
+`tools/probe.sh hpreview_probe` (an independent review's, kept; `-- only=`
+files, history, plays, mcp, extra, again or mcpopen; `hpreview_phone_probe`
+in a phone's 430 x 932) opens twenty-odd files written by hand (a CRLF file, a
+BOM, the line last with no line end, in the body, lower case in the head and
+in a sub-model, malformed, 120,000 characters long, 250 lines) and saves each
+unedited, byte for byte where live writes it so; types into the box and
+presses Ctrl+S with the keys still there, opens another model mid-typing, by
+the window and by a session's `open_model` (refused while the words are not
+saved, then with `discard_changes`); times the frames of five long programs against 16 ms; and
+taps Run and Stop on a phone, the result line and the slider in view.
 
 ### Left
 

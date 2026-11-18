@@ -471,7 +471,7 @@ func _kept() -> void:
 
 	print("  a later build's program: a word this build does not know, and a form it cannot read")
 	for case: Array in [["hp_later_word.ldr", "{\"text\":\"beep 440 for 1 s\\nto 90 at 50%\"}",
-			"its program has words this build cannot run (Line 1: \"beep\" is not one of its words"],
+			"its program does not run as written (Line 1: \"beep\" is not one of its words"],
 			["hp_later_form.ldr", "{\"blocks\":[{\"motor\":\"A\",\"to\":90}]}",
 			"a program for its motors this build cannot read, kept in the file as it is"]]:
 		var later: String = ("0 Arm on a hub\n0 Name: %s\n0 Author: Someone Else\n" % case[0]

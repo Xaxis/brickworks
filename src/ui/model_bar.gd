@@ -543,6 +543,23 @@ func _say(text: String) -> void:
 			_status.text = "")
 
 
+## The words being typed into a field that edits the model kept, as leaving
+## the field keeps them (its focus_exited), and the keys left with it: Ctrl+S,
+## Ctrl+N, an open or Ctrl+Q pressed while typing wrote, or put another model
+## in place of, the model without them (hpreview F2: the words of a booklet
+## page, the booklet's texts, a motion's name). A click on Save or New ends
+## the typing itself (FocusGuard); a key leaves it in the field.
+func end_typing() -> void:
+	if not is_inside_tree():
+		return
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	if not (focused is LineEdit or focused is TextEdit):
+		return
+	focused.release_focus()
+	if is_instance_valid(focused) and focused.is_visible_in_tree():
+		focused.grab_focus()
+
+
 ## Save under the model's name. True when it was saved.
 ##
 ## A big model's build order is worked out a slice at a time, the status
@@ -552,6 +569,7 @@ func _say(text: String) -> void:
 func _on_save() -> bool:
 	if store == null:
 		return false
+	end_typing()
 	if world.brick_count() == 0:
 		_say("nothing to save")
 		return false
@@ -1171,6 +1189,7 @@ func ask_to_replace(opening: String) -> bool:
 	# One question at once: a second open while it is asked waits for none.
 	if _confirm_open.visible:
 		return false
+	end_typing()
 	# Half a model being laid is nothing of anybody's.
 	if store == null or store.laying or not store.has_unsaved_work():
 		return true
@@ -1210,6 +1229,7 @@ func reopen(again: bool = false) -> bool:
 
 ## New, asking first only when there is something it would lose.
 func ask_for_new() -> void:
+	end_typing()
 	if store != null and store.has_unsaved_work():
 		_confirm_new.dialog_text = ("“%s” is not saved as it is now. "
 			% model_name() + "A new model replaces it on the baseplate.")

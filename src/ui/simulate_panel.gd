@@ -21,8 +21,10 @@
 ## The program row (APP_UX9 hubprogram): a program for the model's motors
 ## (HubProgram), kept with the model, run at each motor's rated speed and
 ## stopped where Simulate finds each move stops. Its words are the model's
-## once Run is pressed or the box is left, one step of the history (Undo
-## takes them back), and a save writes them; running it moves nothing.
+## as they are typed, one step of the history each time the box is written
+## in (Undo takes them back), so a save, New, an open or Quit made with the
+## keys still in the box keeps them as any change; and only the model they
+## were typed for (hpreview F1, F2). Running it moves nothing.
 ##
 ## The balance is weighed over the cycle (Balance, through Shell's
 ## weigh_balance, which draws the support polygon and the centre of mass on
@@ -134,9 +136,19 @@ var _program_rows: VBoxContainer
 var _program_box: TextEdit
 var _run: Button
 var _program_said: Label
-## The program as the box last showed the model's, and the line lit.
+## The model's program as the box last showed it or wrote it, the box's
+## words then, the model it was (BrickWorld.generation), and the line lit.
 var _shown_program: String = ""
+var _box_said: String = ""
+var _shown_generation: int = -1
 var _lit_line: int = -1
+## The history step the words being typed are written into while it is the
+## newest; {} for none, as once the box is left.
+var _typing_step: Dictionary = {}
+## Whether the parts are drawn where a program's run left them.
+var _program_posed: bool = false
+## How long a frame gives working out a run (HubProgram.run_step).
+const RUN_SLICE_MS := 6.0
 
 
 func _ready() -> void:
@@ -184,6 +196,7 @@ func read() -> void:
 	_stop()
 	_stop_program()
 	_port_sims.clear()
+	_program_posed = false
 	world.set_drawn({})
 	_status.text = ""
 	_stops.text = ""
@@ -489,6 +502,7 @@ func go_to_worst() -> void:
 func _show_pose() -> void:
 	if sim == null or world == null:
 		return
+	_program_posed = false
 	# No further than where it stops: two parts do not go through each other,
 	# nor a stalled motor turn on.
 	if _stopping() and turns > sim.stop_on():
@@ -521,10 +535,18 @@ func _process(delta: float) -> void:
 		turns += speed * delta
 		_show_pose()
 	# The model's program changed by an undo, a redo, an open or a session:
-	# the box shows it, unless the person is writing in it.
-	if world != null and world.program != _shown_program and _program_box != null \
-			and not _program_box.has_focus():
+	# the box shows it, whether or not the person is writing in it, as the
+	# words typed are the model's already. Another model (an open, New)
+	# shows its own: the words were the last one's, kept there as typed.
+	if world != null and _program_box != null and (world.generation() != _shown_generation
+			or world.program != _shown_program):
 		_show_program_text()
+		# A run's pose drawn for a program taken back (Undo after a stopped
+		# run) goes with it: the parts drawn where they were built.
+		if _program_posed and not running and sim != null:
+			_program_posed = false
+			turns = 0.0
+			_show_pose()
 	_tell_page()
 
 
@@ -557,7 +579,6 @@ func _input(event: InputEvent) -> void:
 		elif _program_box != null and _program_box.has_focus():
 			# Out of the box first: Escape there leaves it, as a field's does.
 			_program_box.release_focus()
-			_commit_program()
 		else:
 			close()
 		get_viewport().set_input_as_handled()
@@ -581,6 +602,7 @@ func run_program() -> void:
 	if program.is_empty():
 		_program_said.text = ("Write a program first, a line each: \"to 90° at 50%\", "
 			+ "\"wait 1 s\", \"repeat 3\" with the lines it repeats under it.")
+		_said_into_view()
 		return
 	_preparing = true
 	_run.disabled = true
@@ -592,6 +614,7 @@ func run_program() -> void:
 	_run.disabled = false
 	if made.has("refusal"):
 		_program_said.text = str(made["refusal"])
+		_said_into_view()
 		return
 	_ran = made["ran"]
 	_ports = made["ports"]
@@ -599,12 +622,15 @@ func run_program() -> void:
 	_port_curves = made["curves"]
 	if not str(_ran.get("refusal", "")).is_empty():
 		_program_said.text = str(_ran["refusal"])
+		_said_into_view()
 		return
 	program_time = 0.0
 	_program_began = Time.get_ticks_usec()
 	running = true
+	_program_posed = true
 	_run.text = "Stop"
 	_show_program_pose()
+	_said_into_view()
 
 
 ## The program [param program] run on the model as [param simulation] reads
@@ -658,7 +684,12 @@ func prepare_run(program: HubProgram, simulation: Simulation, panel: bool) -> Di
 						HubProgram.port_said(port, ports[port]), HubProgram.port_said(other, ports[other])]}
 	var reach := func(port: String, from: float, to: float) -> Dictionary:
 		return HubProgram.reach_in(sims[port], curves[port], from, to)
-	return {"ran": program.run(ports, reach), "ports": ports, "sims": sims, "curves": curves}
+	# A slice a frame, as the stops are found: made in one go, 2,000 moves
+	# held the window 174 ms (hpreview F6).
+	program.begin_run(ports, reach)
+	while not program.run_step(RUN_SLICE_MS):
+		await get_tree().process_frame
+	return {"ran": program.ran, "ports": ports, "sims": sims, "curves": curves}
 
 
 ## The body [param key]'s motor turns in [param simulation], -1 for none.
@@ -693,12 +724,19 @@ func _show_program_pose() -> void:
 			turns = float(angles[port])
 	if sim != null:
 		_at.text = "%s %s" % [sim.names.get(sim.driver, "the driver"), Simulation.turned(maxf(turns, 0.0))]
+		# The slider goes round with it, as with Play: it stayed at 0 while
+		# the arm stood at 42° (hpreview F7).
+		var span: float = sim.cycle()
+		_quiet = true
+		_scrub.set_value_no_signal(fposmod(turns, span) if span > 0.0 else 0.0)
+		_quiet = false
 	_light_line(HubProgram.line_at(_ran, t))
 	if program_time >= seconds:
 		running = false
 		_run.text = "Run"
 		_light_line(int((_ran.get("stopped", {}) as Dictionary).get("line", 0)))
 		_program_said.text = HubProgram.ran_words(_ran, _ports)
+		_said_into_view()
 		return
 	_program_said.text = "%s s of %s s: line %d" % [Simulation.figure(snappedf(t, 0.1)),
 		Simulation.figure(snappedf(seconds, 0.01)), HubProgram.line_at(_ran, t)]
@@ -712,6 +750,7 @@ func _stop_program() -> void:
 	if _run != null:
 		_run.text = "Run"
 		_program_said.text = "Stopped %s s in." % Simulation.figure(snappedf(program_time, 0.1))
+		_said_into_view()
 	_light_line(-1)
 
 
@@ -731,20 +770,58 @@ func _show_program_text() -> void:
 	if _program_box == null or world == null:
 		return
 	_shown_program = world.program
+	_shown_generation = world.generation()
+	_typing_step = {}
 	# A model shared to look at keeps its program as it is (set_program).
 	_program_box.editable = shell == null or not shell.read_only
 	if _program_box.text != world.program:
 		_program_box.text = world.program
 		_lit_line = -1
+	_box_said = _program_box.text
 
 
-## The box's words made the model's program when the person changed them
-## since it showed the model's: as Run and leaving the box do. A box no one
-## typed in never puts back a program set since (an undo, a session's).
+## The person's typing, the model's program at once (the box's text_changed,
+## which comes at the frame's end): one step of the history for each time the
+## box is written in, its words the newest typed while it is the newest step.
+## So a save, New, an open or Quit made with the keys in the box keeps them
+## (hpreview F2: Ctrl+S wrote the program as it was), and on the model they
+## were typed for alone (F1: typed for one model and the box left after a
+## session opened another, they became that one's).
+func _typed() -> void:
+	_commit_program()
+
+
+## The box left: the next words typed are a step of their own.
+func _left_box() -> void:
+	_commit_program()
+	_typing_step = {}
+
+
+## The box's words made the model's program where they are not yet: as
+## they are typed, as Run is pressed, as the box is left (and so before a
+## save, New, an open or Quit: ModelBar.end_typing), at once, not at the
+## frame's end. Typed for a model no longer here, they are dropped, never
+## another's: that one's own is shown.
 func _commit_program() -> void:
-	if _program_box == null or world == null or _program_box.text == _shown_program:
+	if _program_box == null or world == null:
 		return
-	set_program(_program_box.text)
+	if world.generation() != _shown_generation:
+		_show_program_text()
+		return
+	if _program_box.text == _box_said:
+		return
+	_box_said = _program_box.text
+	if shell != null and shell.read_only:
+		return
+	var words: String = _box_said if not _box_said.strip_edges().is_empty() else ""
+	if words != world.program:
+		if builder != null and not _typing_step.is_empty() and is_same(builder.last_step(), _typing_step):
+			world.program = words
+			if shell != null and shell.store != null:
+				shell.store.touch()
+		else:
+			set_program(words)
+			_typing_step = builder.last_step() if builder != null else {}
 	_shown_program = world.program
 
 
@@ -758,6 +835,7 @@ func set_program(words: String) -> bool:
 		return false
 	var had: String = world.program
 	world.program = words
+	_typing_step = {}
 	if builder != null:
 		builder.record([{"undo": "program", "program": had}],
 			"took the program out" if words.is_empty() else "set the program")
@@ -1067,6 +1145,7 @@ func _program_for_session(simulation: Simulation, words: String) -> Variant:
 		program_time = 0.0
 		_program_began = Time.get_ticks_usec()
 		running = true
+		_program_posed = true
 		_run.text = "Stop"
 		lines.append("Simulate is open in the window, and plays it there.")
 	var text: String = "\n".join(lines)
@@ -1280,6 +1359,21 @@ func _for_a_finger(column: VBoxContainer, playing: Control) -> void:
 		Phone.px(get_viewport(), Phone.TARGET))
 	_program_box.add_theme_font_size_override("font_size", 14)
 	_program_box.custom_minimum_size = Vector2(0, 4 * 22 + 12)
+	# What a run says under Run, above the box: below it, Stop's words were
+	# under the sheet's fold (hpreview F7).
+	_program_rows.move_child(_program_said, 1)
+
+
+## What the program row says, in the panel's view on a phone once Run or
+## Stop is pressed or the run ends: the sheet scrolls no further than it.
+func _said_into_view() -> void:
+	if _program_said == null or not Phone.on() or not is_inside_tree():
+		return
+	var scroll: Node = _program_said.get_parent()
+	while scroll != null and not scroll is ScrollContainer:
+		scroll = scroll.get_parent()
+	if scroll != null:
+		LaidOut.into_view(scroll as ScrollContainer, _program_said)
 
 
 ## The box, tapped where it shows at the panel's foot on a phone, whole in
@@ -1327,7 +1421,8 @@ func _build_program(column: VBoxContainer) -> void:
 	_program_box.placeholder_text = "repeat 3\n  to 90° at 50%\n  wait 1 s\n  to 0° at 50%"
 	_program_box.add_theme_font_size_override("font_size", 12)
 	_program_box.custom_minimum_size = Vector2(320, 4 * 18 + 10)
-	_program_box.focus_exited.connect(_commit_program)
+	_program_box.text_changed.connect(_typed)
+	_program_box.focus_exited.connect(_left_box)
 	_program_box.focus_entered.connect(_program_into_view)
 	_program_rows.add_child(_program_box)
 	_program_said = _words(_program_rows, 11, 0.8)

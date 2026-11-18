@@ -15025,6 +15025,12 @@ msgstr "Hier ist kein Motor, den ein Programm antreiben kann: Setze einen ein, d
 msgid "The %s #%d plugs into no hub (a battery box or an IR receiver runs it), so a program does not drive it: Play turns it. A SPIKE Prime, Technic or Powered Up motor takes a program."
 msgstr "%s #%d wird an keinen Hub angeschlossen (ein Batteriekasten oder ein IR-Empfänger treibt ihn), also treibt ihn kein Programm an: Abspielen dreht ihn. Ein SPIKE Prime-, Technic- oder Powered Up-Motor nimmt ein Programm."
 
+msgid "The %s #%d is on no port: a hub has six, A to F."
+msgstr "%s #%d ist an keinem Anschluss: Ein Hub hat sechs, A bis F."
+
+msgid "%d motors are on no port (%s): a hub has six, A to F."
+msgstr "%d Motoren sind an keinem Anschluss (%s): Ein Hub hat sechs, A bis F."
+
 msgid "No motor here plugs into a hub (a battery box or an IR receiver runs each), so a program drives none of them: Play turns them. A SPIKE Prime, Technic or Powered Up motor takes a program."
 msgstr "Kein Motor hier wird an einen Hub angeschlossen (ein Batteriekasten oder ein IR-Empfänger treibt jeden), also treibt ein Programm keinen von ihnen an: Abspielen dreht sie. Ein SPIKE Prime-, Technic- oder Powered Up-Motor nimmt ein Programm."
 
@@ -15055,8 +15061,8 @@ msgstr "Simulieren hat seine Drehung nicht weiter geprüft"
 msgid "a program for its motors this build cannot read, kept in the file as it is"
 msgstr "ein Programm für seine Motoren, das diese Version nicht lesen kann, unverändert in der Datei behalten"
 
-msgid "its program has words this build cannot run (%s), kept as written"
-msgstr "sein Programm hat Wörter, die diese Version nicht ausführen kann (%s), so behalten, wie es geschrieben ist"
+msgid "its program does not run as written (%s), kept as it is"
+msgstr "sein Programm läuft nicht so, wie es geschrieben ist (%s), so behalten, wie es ist"
 
 msgid "Find a step by part or colour"
 msgstr "Einen Schritt nach Teil oder Farbe finden"

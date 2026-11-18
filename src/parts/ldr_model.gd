@@ -437,6 +437,10 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			if tokens.size() < 2:
 				continue
 			var keyword: String = tokens[1].to_upper()
+			# The app's word after it, read in any case, as MetaIndex reads it:
+			# a sub-model's lower-case "0 !BrickWorks program" or "view" was
+			# read as nothing and dropped from every save (hpreview F4).
+			var word: String = tokens[2].to_upper() if tokens.size() > 2 else ""
 			if keyword == "NOFILE":
 				section = ""
 				if open != null:
@@ -480,13 +484,13 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model.stepped = true
 				within = ""
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == _AUTHORED_WORD:
+					and word == _AUTHORED_WORD:
 				model.marked_authored = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == _WORKED_WORD:
+					and word == _WORKED_WORD:
 				model.marked_worked = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
-					and tokens[2] == _COPY_WORD:
+					and word == _COPY_WORD:
 				copy_next = copy_number(tokens[3])
 				copies_next = copies_said(tokens.slice(4))
 			elif not within.is_empty() and _kept_within(keyword, tokens):
@@ -494,7 +498,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				# definition's own (within_lines), never this section's.
 				model._within_line(current, current_key, within, raw, index)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == _LIGHT_WORD:
+					and word == _LIGHT_WORD:
 				# The model's own, or the sub-model's being read: a light is
 				# of the model its line is in, as a part is.
 				if current == model.main:
@@ -502,21 +506,21 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				else:
 					model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == _VIEW_WORD and current != model.main:
+					and word == _VIEW_WORD and current != model.main:
 				# A sub-model's view: its own (the model's are SavedViews.read's).
 				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2].begins_with(_MOTION_WORD) and current != model.main:
+					and word.begins_with(_MOTION_WORD) and current != model.main:
 				# A sub-model's motions: its own, as a model put into another
 				# brings them (ModelStore.held_from), written back with it. Read
 				# as nothing, a save and an open of the app's own lost them.
 				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == _PROGRAM_WORD and current != model.main:
+					and word == _PROGRAM_WORD and current != model.main:
 				# A sub-model's program: its own, as its motions are.
 				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == _IN_WORD:
+					and word == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
 				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
 					.substr(tokens[2].length()).strip_edges()
@@ -793,8 +797,9 @@ func _section_line(key: String, raw: String) -> void:
 ## view, a motion, whose it is and on what terms, or a comment ("0 //").
 static func _kept_within(keyword: String, tokens: PackedStringArray) -> bool:
 	if keyword == "!BRICKWORKS":
-		return tokens.size() > 2 and (tokens[2] == _LIGHT_WORD or tokens[2] == _VIEW_WORD
-			or tokens[2].begins_with(_MOTION_WORD) or tokens[2] == _PROGRAM_WORD)
+		var word: String = tokens[2].to_upper() if tokens.size() > 2 else ""
+		return word == _LIGHT_WORD or word == _VIEW_WORD or word.begins_with(_MOTION_WORD) \
+			or word == _PROGRAM_WORD
 	return keyword == "AUTHOR:" or keyword == "!LICENSE" or keyword.begins_with("//")
 
 
