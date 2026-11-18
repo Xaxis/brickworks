@@ -993,27 +993,82 @@ func has_unsaved_work() -> bool:
 	# Saved under another name is saved too: a session's save_model
 	# "small-observatory.ldr" of Small Observatory, and its open_model a
 	# moment later said the model had changes that were not saved.
+	var written: String = ""
 	var now := PackedStringArray()
+	var own_now := PackedStringArray()
 	for kept: String in [saved_path(title) if title != UNTITLED else "", _saved_as]:
 		if kept.is_empty() or not FileAccess.file_exists(kept):
 			continue
-		if now.is_empty():
-			now = _brick_lines(to_text(UNTITLED))
+		if written.is_empty():
+			# As a save writes it, its lines beyond the parts with it
+			# (_with_identity), its build order not worked out again.
+			written = _saving(UNTITLED, false)
+			now = _brick_lines(written)
+			own_now = _app_lines(written)
 		# The picture to build over too (ReferenceImage): changed alone, it is
 		# not what was saved.
 		var text: String = FileAccess.get_file_as_string(kept)
 		if not ReferenceImage.same(ReferenceImage.read(text), reference):
 			continue
-		if _brick_lines(text) == now:
+		# And the app's own lines: a motion kept, a step's look or name, the
+		# floor, each written in no part's line, were nothing to lose, and
+		# New started over without a word (smalls6 item 4).
+		if _brick_lines(text) == now and _app_lines(text) == own_now:
 			return false
 		# A save written in the steps a person sees puts a copy's parts in
 		# the section that places them (AuthorSteps.IN_PARENT), and its
 		# lines are not the copy's own: the observatory saved over MCP said
 		# at once that it had changes that were not saved (mcp_walk3). The
-		# same parts in the same copies are the same model.
-		if text.contains(LdrModel.IN_META) and _placed_lines(text) == _placed_lines(to_text(UNTITLED)):
+		# same parts in the same copies are the same model, and its own lines
+		# the same lines, whichever section has them.
+		if text.contains(LdrModel.IN_META) and _placed_lines(text) == _placed_lines(written) \
+				and _app_lines(text, false) == _app_lines(written, false):
 			return false
 	return true
+
+
+## The app's own lines of [param text] ("0 !BRICKWORKS …", in any case), and
+## in a model of the author's steps each turned step's ROTSTEP, sorted: what
+## an edit that writes no part's line changes. [param placed]: a step's own
+## lines (its look and name, BookletLooks.WORDS) each said with the section
+## and step they are in, so one moved to another step is a change, and the
+## rest with their section, wherever in it the writer puts them. Not the
+## TITLE, which a save under another name writes, nor WORKED_STEPS, a save's
+## worked-out order, which [method has_unsaved_work] does not work out again,
+## nor the copies' COPY and IN, which the parts' own lines are compared for.
+static func _app_lines(text: String, placed: bool = true) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var authored: bool = text.contains(LdrModel.AUTHORED_META)
+	var section: int = 0
+	var step: int = 0
+	for line: String in text.trim_prefix(LdrModel.bom()).split("\n"):
+		var bare: String = line.strip_edges()
+		if not bare.begins_with("0"):
+			continue
+		var fields: PackedStringArray = LdrModel._fields(bare)
+		if fields.size() < 2 or fields[0] != "0":
+			continue
+		var keyword: String = fields[1].to_upper()
+		if keyword == "FILE":
+			section += 1
+			step = 0
+		elif keyword == "STEP":
+			step += 1
+		elif keyword == "ROTSTEP":
+			if authored:
+				lines.append("%d %d %s" % [section, step, bare] if placed else bare)
+			step += 1
+		elif keyword == "!BRICKWORKS" and fields.size() > 2:
+			var word: String = fields[2].to_upper()
+			if word in ["TITLE", "WORKED_STEPS", "COPY", "IN"]:
+				continue
+			if not placed:
+				lines.append(bare)
+				continue
+			lines.append("%d %d %s" % [section, step if authored and word in BookletLooks.WORDS
+				else 0, bare])
+	lines.sort()
+	return lines
 
 
 ## The parts [param text] places, each with its colour, its sub-model copy

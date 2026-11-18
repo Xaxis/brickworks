@@ -323,22 +323,42 @@ func _again() -> void:
 	print("  undo after a kept Clear")
 	_main.call("clear_model")
 	await _frames(6)
-	await _open(MODELS + "hpr_ctrls.ldr")
+	# Opened as File › Open opens it, its floor laid (ModelBar.opened): by
+	# _open (Main._open, the start-up's, whose caller lays the floor after
+	# it) the model stood on no plate though its file says a 32 x 32, and
+	# the Clear's undo laid the plate, 15 parts of 14 (smalls6 item 3).
+	var bar: ModelBar = _main.get("_bar")
+	await bar.open_with_progress(MODELS + "hpr_ctrls.ldr")
+	bar.opened.emit(_world.brick_count())
+	await _settled()
 	var had: String = _program_now()
 	var parts: int = _world.brick_count()
-	var own: int = parts - _store.scenery.size()
+	var plates: int = _store.scenery.size()
+	var saved: String = _store.saved_text()
 	_main.call("clear_model", true)
 	await _frames(6)
-	_note("cleared: %d parts, program %s" % [_world.brick_count(), _program_now().c_escape()])
+	var cleared: int = _world.brick_count()
+	_note("opened: %d parts, %d of them the floor; cleared: %d parts, program %s" % [parts, plates,
+		cleared, _program_now().c_escape()])
 	await _verbs.press("undo")
 	await _settled()
-	# The model's own parts, the floor apart: the floor is Clear's to lay
-	# again, and was counted twice after the undo (15 of 14), hubprogram or
-	# not (main._clear_undone; said, not this feature's).
-	var own_after: int = _world.brick_count() - _store.scenery.size()
-	_check("undo after Clear: the model's %d parts of %d (%d with the floor, of %d), the program back (%s)" % [
-		own_after, own, _world.brick_count(), parts, _program_now().left(30).c_escape()],
-		own_after == own and _program_now() == had)
+	# The whole count, the floor in it, and what Save writes (smalls6 item 3):
+	# it said 15 of 14 here, and hpfix counted the model's own parts alone.
+	_check("undo after Clear: %d parts of %d, %d of them the floor of %d, the program back (%s)" % [
+		_world.brick_count(), parts, _store.scenery.size(), plates, _program_now().left(30).c_escape()],
+		_world.brick_count() == parts and _store.scenery.size() == plates and _program_now() == had)
+	_check("...Save writes the file it would have before the Clear, byte for byte (%s)" % (
+		"same" if _store.saved_text() == saved else _first_difference(_store.saved_text(), saved)),
+		_store.saved_text() == saved)
+	await _verbs.press("redo")
+	await _settled()
+	_check("...redo: the Clear again, %d parts of %d, program %s" % [_world.brick_count(), cleared,
+		_program_now().c_escape()], _world.brick_count() == cleared and _program_now().is_empty())
+	await _verbs.press("undo")
+	await _settled()
+	_check("...undo again: %d parts of %d, %d the floor, the program back, Save the same" % [
+		_world.brick_count(), parts, _store.scenery.size()], _world.brick_count() == parts
+		and _store.scenery.size() == plates and _program_now() == had and _store.saved_text() == saved)
 
 
 func _start() -> void:
