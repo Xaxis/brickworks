@@ -141,7 +141,8 @@ def test_the_page_reads_a_challenges_group_by_its_number() -> None:
     assert "Number.isSafeInteger(body.challenge)" in notices
     page = (ROOT / "web/notifications.js").read_text()
     assert "group.dataset.challenge ? { challenge: Number(group.dataset.challenge) }" in page
-    assert 'one.challenge ? "pic challenge"' in page
+    # Each group is drawn by the page's view, which the console's preview shares (announce).
+    assert 'one.challenge ? "pic challenge"' in (ROOT / "web/notice-view.js").read_text()
     css = (ROOT / "web/directory.css").read_text()
     assert ".notice .pic.challenge .icon" in css
 

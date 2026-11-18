@@ -38,7 +38,7 @@
 // Everything is put on the page as text, said in the visitor's language
 // as the sign-in's dialogs say theirs (web/account.js say): a Follow button
 // is in First steps on any page, a copy or not.
-import { askToSignIn, call, email, madeUp, say, signOut, signedIn } from "/account.js";
+import { askToSignIn, call, email, madeUp, say, signOut, signedIn, tellFeedCount } from "/account.js";
 import { earlyOn } from "/early.js";
 import { alikeSaid, langAt } from "/card.js";
 import { avatarHtml, iconHtml, number } from "/kit.js";
@@ -532,6 +532,8 @@ export async function showFeedCount({ ask = true } = {}) {
   const who = email();
   await followsSent();
   const answer = await call("/api/people?op=feed_count").catch(() => null);
+  // Heard by the site's notice too (web/notice.js: the notices they hid).
+  tellFeedCount(answer?.status === 200 && email() === who ? answer.body : null);
   // Signed out, or in as somebody else, while it was asked (in another
   // tab, m305fix: the count answered after it and drew the avatar back on
   // a tab kept for its typed words): the header as that left it.

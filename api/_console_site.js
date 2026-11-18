@@ -40,6 +40,8 @@ export const CRONS = [
     + "forgotten", job: "tally_daily", every: DAY },
   { path: "/api/plans/owner-notify", when: "every 5 minutes", what: "Your notifications, mailed as you set them in Notifications "
     + "(written down when it mailed, failed, or once a day)", job: "owner_notify", every: DAY },
+  { path: "/api/plans/announce-due", when: "every 15 minutes", what: "Announcements you scheduled whose time came, and the mail "
+    + "of those sent to people who asked for news (written down when it did something, or once a day)", job: "announce_due", every: DAY },
   { path: "/api/share/omr", when: "05:37 Mondays", what: "What LDraw's Official Model Repository has that the library has not",
     job: "omr_watch", every: 7 * DAY },
 ];

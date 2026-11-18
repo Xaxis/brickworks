@@ -109,7 +109,7 @@ const arrivals = process.argv.includes("--arrivals") ? [] : null;
 // at /__held/<table>, on this machine only, and a check may POST a row there.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
-  "notifications", "replies", "feedback"].includes(name));
+  "notifications", "replies", "feedback", "announce"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
@@ -140,6 +140,10 @@ if (heldReplies) heldReplies.hold();
 // Apart from the rest: its functions and bucket are no other stand-in's.
 const heldFeedback = holding.includes("feedback") ? await import("./feedback_stand_in.mjs") : null;
 if (heldFeedback) await heldFeedback.hold();
+// Apart too: announce.sql's functions and tables, and a person's
+// Notifications with what it holds for them (announce_stand_in.mjs).
+const heldAnnounce = holding.includes("announce") ? await import("./announce_stand_in.mjs") : null;
+if (heldAnnounce) await heldAnnounce.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
 const routes = new Map();
@@ -293,7 +297,7 @@ http.createServer(async (incoming, outgoing) => {
     if (arrivals.length > 5000) arrivals.splice(0, 1000);
   }
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
-    || heldNotifications || heldReplies || heldFeedback) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+    || heldNotifications || heldReplies || heldFeedback || heldAnnounce) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   // A row a check puts in a held table (tools/web/adminclaude_flow.mjs's
   // hostile reply), as the server would write it: through the table's own
   // checks, never the project.
@@ -310,7 +314,8 @@ http.createServer(async (incoming, outgoing) => {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
       ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1])
-      ?? (heldFeedback ? await heldFeedback.rowsOf(asked[1]) : null) ?? null;
+      ?? (heldFeedback ? await heldFeedback.rowsOf(asked[1]) : null)
+      ?? (heldAnnounce ? await heldAnnounce.rowsOf(asked[1]) : null) ?? null;
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
   }

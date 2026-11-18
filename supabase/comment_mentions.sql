@@ -139,6 +139,9 @@ $$;
 -- What happened to [viewer]'s models, the replies to them, the levels
 -- they reached and the challenges, as challenge_notices.sql's; and each
 -- comment or reply that names them (kind 'mention').
+-- REPLACED LATER: announce.sql replaces this function (the owner's
+-- announcements). Apply announce.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless --again=supabase/announce.sql.
 create or replace function public.notification_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, model text, item jsonb)
 language sql

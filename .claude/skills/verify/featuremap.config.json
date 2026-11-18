@@ -5946,6 +5946,27 @@
       "entry": "tools/web/ownernotify_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/ownernotify_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose mail goes only to Resend's test inbox; refuses brickworks.diy: the gate on every notify op, the cron's op and the off link; before owner_notify.sql the section says so and a change 503; after it each kind off and on, digest and back, a threshold kept and a wrong one refused, quiet hours, digest time, time zone, cap, Pause all, Send a test and a kind's test, another address and a wrong code, Check now, Sent and Read it, both tabs at 1280/430 light/dark; preview check [ownernotify]. Locally: node tools/web/relay_server.mjs PORT --hold=owner_notify_settings,owner_notify_mails,owner_notify_events,owner_notify_errors, which also proves a test mail's own off link signed out)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "announcements",
+      "entry": "api/_announce.js",
+      "reach": "python3 tools/minitest.py tests/test_announce.py   (api/admin.js's announce ops, api/plans.js's announce_due, notice_hide and notice_hidden, api/people.js's news and news_unsubscribe, against supabase/announce.sql in a Postgres of its own and a mocked Resend (tests/fixtures/announce/api_check.mjs): the gate, each audience counted and reached exactly, two presses one send, stale words refused, an edit unscheduling, the cron sending only as pressed, reads and clicks, edit marked edited, withdraw out of every list, the day's most per deployment, words over refused never cut, mail only to those who chose news before it went with RFC 8058 headers, unsubscribe, the notice's end and its per-person hide carried by feed_count, who it reached as rows of announcement_to and the list from announcement_counts, barred accounts out, the news mails' most a day, the quota stop and the pace beside sign-in codes, a send already gone skipped, the cron off brickworks.diy sending only test ones and mailing nobody, the unsubscribe secret, the footer address, every act audited; the SQL on the project rolled back: tools/apply_sql.mjs supabase/announce.sql --dry --try=tools/announce_try.sql and supabase/announce2.sql --dry --try=tools/announce2_try.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "an announcement on a person's Notifications",
+      "entry": "web/notice-view.js",
+      "reach": "<deployment>/notifications signed in: an announcement the owner sent is a group of its own (#announcement-N) named by its title, From Brickworks (edited when it was), its words, its link; counted on the avatar and in the account menu; opened, it is read, and its link followed, clicked (POST /api/people?op=notifications_read {announcement, clicked}); the console's preview draws it with the same code",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "announce browser flow",
+      "entry": "tools/web/announce_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/announce_flow.mjs --url=<preview> --out=DIR   (never brickworks.diy; the checks' pool: the gate on every announce op; before announce.sql the section says so and Settings hides news; after it, a throwaway turns news on in Settings, the owner sets the day's most, writes one for her by handle with its preview and reach, Enter twice on Send now sends once, her avatar counts it, her Notifications show it and following its link counts read and clicked, edited for everyone, a scheduled one changed is a draft, over the day's most refused in words, withdrawn gone from her page, the notice with an end hidden by her never drawn, not for a moment, in a browser that showed it or one that never did, told by feed_count, and still seen by another; Write and Sent at 1280, 390 and 430x932 light and dark, every control named, Tab alone; the first screen never asks admin-announce.js; preview check [announce], run alone. Locally before the files: node --env-file=<only SUPABASE_URL, the two keys and MASTER_EMAIL> tools/web/relay_server.mjs PORT --hold=announce, never the whole .env)",
+      "area": "web"
     }
   ]
 }

@@ -249,6 +249,8 @@ import { analyticsRead } from "./_analytics.js";
 import { CLAUDE_ACTS, claudeChat, claudeModels, claudeRead } from "./_claude.js";
 import { withClaudeMarks } from "./_claude_social.js";
 import { notifyAddress, notifyConfirm, notifyFlush, notifyRead, notifySet, notifyTest } from "./_notify.js";
+import { announceDrop, announceEdit, announceKeep, announceLimit, announceMailAddress, announceMailMost, announcePreview,
+  announceRead, announceSend, announceUnschedule, announceWithdraw } from "./_announce.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -332,7 +334,11 @@ async function handler(request, response) {
     // notify_test, notify_address and notify_flush mail anything, and only
     // to the pool's own address.
     notify_set: notifySet, notify_address: notifyAddress, notify_confirm: notifyConfirm, notify_test: notifyTest,
-    notify_flush: notifyFlush, ...CLAUDE_ACTS };
+    notify_flush: notifyFlush,
+    // Announcements (announce, api/_announce.js): only announce_send sends, and only the words it was pressed on.
+    announce_keep: announceKeep, announce_send: announceSend, announce_unschedule: announceUnschedule, announce_edit: announceEdit,
+    announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit,
+    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress, ...CLAUDE_ACTS };
   // Claude's answer streams as it comes, so it writes its own audit row (api/_claude.js).
   if (op === "claude_chat") return claudeChat(request, response, claims);
   // An op is one of these tables' own names, never one Object's prototype
@@ -360,6 +366,8 @@ async function handler(request, response) {
     // How the site and the studio are used (insights, api/_analytics.js).
     analytics: () => analyticsRead(request, tests),
     notify: () => notifyRead(request, tests),
+    announce: () => announceRead(request),
+    announce_preview: () => announcePreview(request),
     find: () => findRead(String(request.query?.q || ""), tests),
     challenge_view: () => {
       const id = Number(request.query?.challenge);

@@ -276,6 +276,15 @@
   /* The sheet's name takes focus when its body becomes the next sheet's
      (admin-social.js, openSheet): read, not pressed, so it draws no ring. */
   #social-sheet-title:focus { outline: none; }
+  /* Announcements (admin-announce.js): who it is for, its people's own view, the notice's end. */
+  #announce-form fieldset.audience, #notice-form fieldset.ends { display: grid; gap: var(--s-3); min-width: 0; margin: 0; padding: 0; border: 0; }
+  #announce-form fieldset.audience > legend, #notice-form fieldset.ends > legend { padding: 0; margin: 0 0 var(--s-2); font-size: var(--t-small);
+    color: var(--ink-soft); }
+  .announce-shown { display: grid; gap: var(--s-2); min-width: 0; }
+  .announce-shown > p.note { margin: var(--s-2) 0 0; }
+  [data-section="announcements"] [data-tab] > p.note { margin: 0 0 var(--s-4); }
+  /* Their page's group needs room to read as it will on their page. */
+  @media (width >= 1180px) { [data-section="announcements"] .with-preview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
   /* A link in a row or a sheet's facts, by finger: as tall as a button. */
   @media (width < 600px), (pointer: coarse) {
     table.cards td.text a, #social-sheet dd a { display: inline-flex; align-items: center; min-height: var(--control-h); }
@@ -353,6 +362,7 @@
         <li><a href="#beta" data-go="beta">Beta <span class="badge accent" id="nav-beta" hidden></span></a></li>
         <li><a href="#feedback" data-go="feedback">Feedback <span class="badge accent" id="nav-feedback" hidden></span></a></li>
         <li><a href="#social" data-go="social">Social <span class="badge accent" id="nav-social" hidden></span></a></li>
+        <li><a href="#announcements" data-go="announcements">Announcements</a></li>
         <li><a href="#plans" data-go="plans">Plans</a></li>
         <li><a href="#mail" data-go="mail">Mail <span class="badge accent" id="nav-mail" hidden></span></a></li>
         <li><a href="#notifications" data-go="notifications">Notifications <span class="badge accent" id="nav-notifications" hidden></span></a></li>
@@ -935,6 +945,20 @@
           </div>
         </section>
 
+        <!-- Announcements (announce): the tabs' contents are admin-announce.js's. -->
+        <section data-section="announcements" aria-labelledby="h-announcements" hidden>
+          <div class="lead"><h2 id="h-announcements">Announcements</h2>
+            <p class="note">Tell the site's people something, in their own Notifications, and by email to those who chose news.
+              Nothing goes until you press Send on its exact words.</p></div>
+          <nav class="tabs" aria-label="Announcements">
+            <a href="#announcements/write" data-tab-link="write">Write</a>
+            <a href="#announcements/sent" data-tab-link="sent">Sent and scheduled <span class="n" id="tab-announce-due"></span></a>
+            <a href="#announcements/banner" data-tab-link="banner">Banner</a>
+            <a href="#announcements/settings" data-tab-link="settings">Settings</a>
+          </nav>
+          <div data-tab="write" hidden></div><div data-tab="sent" hidden></div><div data-tab="banner" hidden></div><div data-tab="settings" hidden></div>
+        </section>
+
         <!-- Plans and revenue (console2) ----------------------------------------------->
         <section data-section="plans" aria-labelledby="h-plans" hidden>
           <div class="lead"><h2 id="h-plans">Plans and revenue</h2>
@@ -1323,7 +1347,7 @@
             <div class="with-preview">
               <form id="notice-form" class="card console-form">
                 <p class="note">Shown on every page of <span id="notice-scope">this site</span>, not the studio, until you clear it, at the
-                  window's foot, and hidden by anyone's × in their own browser. In German, French and Spanish only where
+                  window's foot, and hidden by anyone's × for them: in their browser, and on every device once signed in. In German, French and Spanish only where
                   you type them; those pages show the English otherwise.</p>
                 <label>English <small>needed</small>
                   <textarea name="en" maxlength="300" rows="2" required></textarea></label>
@@ -1333,6 +1357,9 @@
                   <label>Français <small>optional</small><textarea name="fr" maxlength="300" rows="2" lang="fr"></textarea></label>
                   <label>Español <small>optional</small><textarea name="es" maxlength="300" rows="2" lang="es"></textarea></label>
                 </details>
+                <fieldset class="ends"><legend>Ends <small>optional: it goes by itself then, in this computer's time</small></legend>
+                  <div class="when-pair"><label><span class="visually-hidden">Ends: day</span><select name="ends_day" id="notice-ends-day"></select></label>
+                    <label><span class="visually-hidden">Ends: time</span><select name="ends_time" id="notice-ends-time"></select></label></div></fieldset>
                 <div class="row">
                   <div class="segmented" role="group" aria-label="Tone" id="notice-tone">
                     <button type="button" data-value="info" aria-pressed="true">News</button>

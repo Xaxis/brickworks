@@ -519,6 +519,18 @@ declare -A CMD=(
   # another deleted by its address typed again, found in the audit; each at
   # 390 and 1280, light and dark. Throwaways deleted after.
   [console3]="tools/web/console3_flow.mjs --url=$P --out=$S/${TAG}_console3"
+  # The owner's announcements (announce, docs/ANNOUNCE.md), in the checks'
+  # pool: only throwaways at resend.dev are reached, nobody is mailed, and
+  # each deployment counts its own. Every op refused signed out (401) and to
+  # anybody else (404). Before supabase/announce.sql: the section says so and
+  # Settings hides news. After it: news chosen in Settings; one written for a
+  # throwaway by handle, its preview and reach; Enter twice on Send now sends
+  # once; her avatar counts it, her Notifications show it, read and clicked;
+  # edited; a scheduled one changed is a draft; over the day's most refused
+  # in words; withdrawn; the notice with an end hidden by her everywhere;
+  # Write and Sent at 1280, 390 and 430x932, light and dark, every control
+  # named. Throwaways deleted after.
+  [announce]="tools/web/announce_flow.mjs --url=$P --out=$S/${TAG}_announce"
   # The social desk (socialdesk, docs/SOCIAL_DESK.md), in the checks' pool
   # (?tests=1), whose Reddit is the stand-in: never reddit.com. Every op
   # refused signed out (401) and to anybody else (404). Before
@@ -872,9 +884,10 @@ run() {
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
 # console3 sets a notice that floats over every page of the deployment for a
-# few minutes, over the controls a check beside it would press. pointat times
+# few minutes, over the controls a check beside it would press; announce
+# does too, and turns this deployment's day's most down. pointat times
 # a part pointed out crossing between two tabs, as together does.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 pointat "
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 announce pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

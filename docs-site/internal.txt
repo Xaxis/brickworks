@@ -92,6 +92,7 @@ lib:the owner's notifications  # mail to the site's owner about what happens on 
 lib:each server error kept  # each 5xx a function answers, kept for the owner's server-errors mail; a visitor never meets it
 lib:work after the answer  # the owner's notifications and kept errors run after a function has answered; a visitor never meets it
 ui:the owner's notifications page  # the owner's, on the admin page (/admin › Notifications)
+lib:announcements  # the owner's sending of news on the admin page (/admin › Announcements, docs/ANNOUNCE.md); a person meets what it sends as the notifications page's group
 ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: the review account's password sign-in (docs/directory/claude.md); everyone else signs in by a code
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
 entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested

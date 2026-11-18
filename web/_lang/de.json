@@ -607,7 +607,7 @@
   "Notifications · Brickworks": "Benachrichtigungen · Brickworks",
   "Notifications": "Benachrichtigungen",
   "Mark all read": "Alle als gelesen markieren",
-  "Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter and each level you reach.": "Kommentare, Fotos von Nachbauten, Remixe und Likes zu deinen Modellen, Antworten auf deine Kommentare, die Wettbewerbe, bei denen du mitmachst, und jede Stufe, die du erreichst.",
+  "Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter, each level you reach and news from Brickworks.": "Kommentare, Fotos von Nachbauten, Remixe und Likes zu deinen Modellen, Antworten auf deine Kommentare, die Wettbewerbe, bei denen du mitmachst, jede Stufe, die du erreichst, und Neuigkeiten von Brickworks.",
   "Sign in to see what happens to your models: comments, photos of people’s builds, remixes, likes and the challenges you enter, and replies to your comments. We email you a code: no password.": "Melde dich an, um zu sehen, was mit deinen Modellen passiert: Kommentare, Fotos von Nachbauten anderer, Remixe, Likes und die Wettbewerbe, bei denen du mitmachst, sowie Antworten auf deine Kommentare. Wir schicken dir einen Code per E-Mail: kein Passwort.",
   "Notifications are not open on Brickworks yet.": "Benachrichtigungen gibt es auf Brickworks noch nicht.",
   "Nothing yet. When somebody comments on one of your models, posts a photo of their build of it, remixes it or likes it, or replies to your comment, it is here, with the model.": "Noch nichts. Wenn jemand eines deiner Modelle kommentiert, es nachbaut und ein Foto davon postet, es remixt oder liket oder auf deinen Kommentar antwortet, steht es hier, beim Modell.",
@@ -1088,7 +1088,8 @@
   "Each count as it was sent is kept for 30 days and then deleted. What is kept after that is each day’s totals (how many visits, how many people, how often something was used), which hold nothing about any one visit. Which days a builder came back, and when they first put down a part and saved, are kept with the account’s code, and deleted when the account is.": "Jede Zählung, wie sie gesendet wurde, wird 30 Tage aufbewahrt und dann gelöscht. Danach bleiben die Summen jedes Tages (wie viele Besuche, wie viele Menschen, wie oft etwas genutzt wurde), die nichts über einen einzelnen Besuch enthalten. An welchen Tagen jemand wiederkam und wann er das erste Teil gesetzt und gespeichert hat, wird mit dem Code des Kontos aufbewahrt und mit dem Konto gelöscht.",
   "Only the owner of Brickworks, in the site’s own console. The visit counter described in the <a href=\"/privacy#your-visit\">privacy policy</a> is a separate one.": "Nur der Betreiber von Brickworks, in der eigenen Konsole der Website. Der in der <a href=\"/privacy#your-visit\">Datenschutzerklärung</a> beschriebene Besuchszähler ist ein anderer.",
   "How Brickworks counts the way its site and studio are used: what is counted, what never is, how you are asked, and how to turn it off.": "Wie Brickworks zählt, wie seine Website und sein Studio genutzt werden: was gezählt wird, was nie, wie du gefragt wirst und wie du es ausschaltest.",
-  "What Brickworks counts of how it is used, and what it never does.": "Was Brickworks davon zählt, wie es genutzt wird, und was nie."
+  "What Brickworks counts of how it is used, and what it never does.": "Was Brickworks davon zählt, wie es genutzt wird, und was nie.",
+  "<input type=\"checkbox\" id=\"mail-news\"> Email me Brickworks news: new features and planned maintenance, a few times a month at most": "<input type=\"checkbox\" id=\"mail-news\"> Schick mir Neuigkeiten von Brickworks per E-Mail: neue Funktionen und geplante Wartungen, höchstens ein paar Mal im Monat"
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -2929,6 +2930,18 @@
   "A big model for a phone": "Ein großes Modell für ein Handy",
   "About {parts} parts: on a phone this may close the tab. A phone gives a tab much less memory than a computer does, and a model this big can use it all.": "Etwa {parts} Teile: Auf einem Handy kann das den Tab schließen. Ein Handy gibt einem Tab viel weniger Speicher als ein Computer, und ein so großes Modell kann ihn ganz aufbrauchen.",
   "{name} opens as it should on a computer.": "{name} öffnet sich auf einem Computer, wie es soll.",
-  "Open it anyway": "Trotzdem öffnen"
+  "Open it anyway": "Trotzdem öffnen",
+  "On: Brickworks' news by email, now and then. Each one has a link to stop them.": "An: Neuigkeiten von Brickworks per E-Mail, ab und zu. Jede hat einen Link, mit dem du sie abbestellst.",
+  "Off: no news by email.": "Aus: keine Neuigkeiten per E-Mail.",
+  "That unsubscribe link was cut short. Turn off Brickworks news under Email below, once signed in.": "Dieser Abmeldelink ist unvollständig. Schalte die Neuigkeiten von Brickworks unten unter E-Mail aus, sobald du angemeldet bist.",
+  "Unsubscribed: Brickworks will email you no more news. You can turn it on again under Email.": "Abgemeldet: Brickworks schickt dir keine Neuigkeiten mehr per E-Mail. Unter E-Mail kannst du sie wieder einschalten.",
+  "That did not work just now. Try the link again in a minute.": "Das hat gerade nicht geklappt. Versuch den Link in einer Minute noch einmal.",
+  "There is no such announcement for you.": "Diese Ankündigung gibt es für dich nicht.",
+  "From {who}, edited": "Von {who}, bearbeitet",
+  "From {who}": "Von {who}",
+  "News": "Neuigkeiten",
+  "Unsubscribe": "Abmelden",
+  "Stop Brickworks news by email to this address?": "Keine Neuigkeiten von Brickworks mehr per E-Mail an diese Adresse?",
+  "That did not work just now. Press Unsubscribe again in a minute.": "Das hat gerade nicht geklappt. Drück in einer Minute noch einmal auf Abmelden."
  }
 }
