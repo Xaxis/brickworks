@@ -211,13 +211,15 @@ try {
   console.log("3. A visit counted, each beacon read as sent");
   const counted = await visitor({ label: "visit" });
   await go(counted.page, `/gallery?utm_source=${TAG}&utm_medium=check&utm_campaign=insights`);
-  await until(counted.page, () => Boolean(window.brickworksTallying), null, 30000);
-  await go(counted.page, "/plans");
-  await until(counted.page, () => Boolean(window.brickworksTallying), null, 30000);
-  await go(counted.page, "/counting");
-  await until(counted.page, () => Boolean(window.brickworksTallying), null, 30000);
-  await leave(counted.page);
-  await wait(2500);
+  // Each page left as a tab is hidden, while it is still there: a beacon
+  // sent as a page unloads is not always seen by the browser's driver.
+  for (const next of ["/plans", "/counting", null]) {
+    await until(counted.page, () => Boolean(window.brickworksTallying), null, 30000);
+    await leave(counted.page);
+    await wait(1500);
+    if (next) await go(counted.page, next);
+  }
+  await wait(1000);
   const read = bodies(counted.sent);
   check(`${read.length} beacons over three pages, each JSON`, read.length >= 2 && read.every(Boolean));
   const visits = new Set(read.map((b) => b?.v));
@@ -228,9 +230,15 @@ try {
   const viewsSent = read.flatMap((b) => (b?.e || []).filter((e) => e[1] === "view").map((e) => e[2]));
   check(`the pages by template: ${[...new Set(viewsSent)].join(", ")}`, ["/gallery", "/plans", "/counting"].every((p) => viewsSent.includes(p)));
   check(`every name one a row may hold (${names.length})`, names.every((name) => NAME.test(String(name))));
-  const pageText = await counted.page.evaluate(() => document.body.innerText.split(/\s+/).filter((w) => w.length > 6).slice(0, 200));
-  const leaks = counted.sent.filter((text) => /@/.test(text) || IP.test(text) || pageText.some((w) => text.includes(w)));
-  check(`no address, IP address or page text in any beacon (${leaks.length})`, leaks.length === 0);
+  // Every word a beacon carries is a name a row may hold (no capital, no
+  // space, so no sentence of the page), its visit or the account's id; no @
+  // and no IP address anywhere in it.
+  const leaves = (value) => (value && typeof value === "object" ? Object.values(value).flatMap(leaves)
+    : typeof value === "string" ? [value] : []);
+  const odd = read.flatMap((b) => leaves(b).filter((word) => !NAME.test(word) && !/^[a-z0-9]{16}$/.test(word)));
+  const leaks = counted.sent.filter((text) => /@/.test(text) || IP.test(text));
+  check(`no address, IP address or page text in any beacon (${leaks.length + odd.length}${odd.length ? `: ${odd.slice(0, 3).map((w) => JSON.stringify(w.slice(0, 40))).join(", ")}` : ""})`,
+    leaks.length === 0 && odd.length === 0);
   check("each marked the check's own (check: true)", read.every((b) => b?.check === true));
   await counted.context.close();
 

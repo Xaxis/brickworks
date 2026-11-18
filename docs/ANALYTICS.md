@@ -136,7 +136,14 @@ app's menu handler (a Godot change, left for its own unit).
 ## Cost
 
 Each beacon is one call of `api/plans` and one `insights_take`, whose
-answer is a number. At 500 visits a day, a third of them in the studio:
+answer is a number. Measured on a preview (tools/web/insights_flow.mjs,
+2026-11-18): a site page's beacon is 320–490 bytes with 1–5 rows; the
+studio's first is 1.9 kB with 92 (its view, its start's timings and the
+controls it shows, which are kept once a name, not once a visit), later
+ones a few hundred bytes. On a studio of 3,000 controls the largest is
+2.0 kB, and no turn of the counter takes over 6 ms
+(tests/fixtures/insights/frame_check.mjs). At 500 visits a day, a third of
+them in the studio:
 
 | | A day | Why |
 |---|---|---|
