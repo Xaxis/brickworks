@@ -13,7 +13,8 @@ Resend tried three times, an erased account's mails emptied, the cron by
 hand on a preview touching nothing of the site's, the database refusing
 told without it, and only Resend's test inboxes mailed.
 tests/fixtures/owner_notify/db_check.mjs applies owner_notify.sql twice in a
-Postgres of its own (pg.mjs; skipped without one, as test_social.py's).
+Postgres of its own (pg.mjs; skipped without one, as test_social.py's), then
+owner_notify2.sql twice over its rows (onfix: the prune's day).
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SQL = (ROOT / "supabase/owner_notify.sql").read_text()
+SQL2 = (ROOT / "supabase/owner_notify2.sql").read_text()
 
 
 @functools.cache
@@ -66,7 +68,7 @@ def _db() -> dict | None:
 # Each part of the bar, by the checks' own names (api_check.mjs).
 PARTS = ["not applied", "gate", "open", "settings", "burst", "batching", "first model", "feedback", "plans", "errors", "each",
          "digest", "quiet", "cap", "pause", "off", "off link", "test", "address", "failing", "sent", "check now", "erase", "cron",
-         "alarm", "no real address"]
+         "alarm", "no real address", "after", "prune"]
 
 
 @pytest.mark.parametrize("part", PARTS)
@@ -90,6 +92,22 @@ def test_the_sql_is_only_additions() -> None:
         assert word not in body, word
     assert body.count("create table if not exists") == 4
     assert "create policy" not in body
+
+
+def test_the_second_sql_only_adds_its_column() -> None:
+    body = " ".join(line for line in SQL2.splitlines() if not line.lstrip().startswith("--")).lower()
+    for word in ["drop ", "truncate", "delete ", "update ", "create policy", "grant ", "revoke ", "not null", "default "]:
+        assert word not in body, word
+    statements = [one.split() for one in body.split(";") if one.strip()]
+    assert statements == [["alter", "table", "public.owner_notify_settings", "add", "column", "if", "not", "exists", "pruned_on", "date"],
+                          ["notify", "pgrst,", "'reload", "schema'"]]
+
+
+def test_the_second_sql_keeps_every_row() -> None:
+    got = _db()
+    if got is None:
+        pytest.skip("no Postgres here (PG_MODULE, PG_BIN)")
+    assert got["second"] == {"column": ["date:YES"], "rows": True, "nulls": 0, "written": "kept"}
 
 
 def test_the_database_keeps_it_for_the_server_alone() -> None:

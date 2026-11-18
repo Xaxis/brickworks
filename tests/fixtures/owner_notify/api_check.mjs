@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { SUPABASE_URL, world } from "../billing/world.mjs";
 import { signWebhook, WEBHOOK_SECRET } from "../billing/fake_admission.mjs";
+import { BOUND, afterHow, settled } from "../../../api/_after.js";
 
 const logged = [];
 for (const level of ["log", "error", "warn", "info"]) {
@@ -52,7 +53,7 @@ const signedIn = new Set();
 const handles = new Map();
 const models = [];
 const flags = { resendDown: false, supabaseDown: false, feedbackDown: false, publishing: false, erasing: false,
-  usage: null };
+  usage: null, both: null };
 let feedbackId = 40;
 const worldFetch = globalThis.fetch;
 const reply = (status, body) => new Response(body === undefined ? "" : JSON.stringify(body), { status,
@@ -120,8 +121,20 @@ globalThis.fetch = async (input, init = {}) => {
         return new Response(null, { status: 200, headers: { "content-range": n ? `0-${n - 1}/${n}` : "*/0" } });
       }
       if (method === "POST") {
-        models.push(body());
+        models.push({ created_at: new Date().toISOString(), ...body() });
+        if (flags.both && models.filter((one) => one.owner === flags.both.owner).length === 2) flags.both.open();
         return new Response(null, { status: 201 });
+      }
+      // api/share.js's first-model test: the owner's other models made
+      // before a time, one at most.
+      const not = /^neq\.(.*)$/.exec(url.searchParams.get("id") || "")?.[1] ?? null;
+      const before = /^lt\.(.*)$/.exec(url.searchParams.get("created_at") || "")?.[1] ?? null;
+      // flags.both: the test waits until both of a pair are written, as a
+      // slow database would let it.
+      if (eq("owner") && not !== null) {
+        if (flags.both && eq("owner") === flags.both.owner) await flags.both.written;
+        return reply(200, models.filter((one) => one.owner === eq("owner") && one.id !== not && (before === null || one.created_at < before))
+          .slice(0, 1).map((one) => ({ id: one.id })));
       }
       return reply(200, []);
     }
@@ -138,8 +151,10 @@ globalThis.fetch = async (input, init = {}) => {
 };
 
 /// One request to api/<route>.js's handler, as Vercel makes one: its
-/// response's statusCode set by status() (api/_noted.js reads it).
-async function call(route, { method = "GET", query = {}, headers = {}, body, raw, token, host = HOST } = {}) {
+/// response's statusCode set by status() (api/_noted.js reads it). [settle]:
+/// and what it began after its answer (api/_after.js) done, as the checks
+/// read what that wrote; ms: how long the answer took.
+async function call(route, { method = "GET", query = {}, headers = {}, body, raw, token, host = HOST, settle = true } = {}) {
   const { default: handle } = await import(`../../../api/${route}.js`);
   const response = { statusCode: 200, headers: {}, body: undefined,
     status(code) { this.statusCode = code; return this; },
@@ -158,12 +173,15 @@ async function call(route, { method = "GET", query = {}, headers = {}, body, raw
     }
     request = Object.assign(Readable.from([Buffer.from(raw)]), { method, query, headers: given, body: parsed });
   }
+  const t0 = performance.now();
   try {
     await handle(request, response);
   } catch (trouble) {
     return { status: 500, threw: String(trouble?.message || trouble).slice(0, 200) };
   }
-  return { status: response.statusCode, json: response.body };
+  const ms = performance.now() - t0;
+  if (settle) await settled();
+  return { status: response.statusCode, json: response.body, ms };
 }
 
 const owner = await w.signIn({ sub: "11111111-1111-4111-8111-111111111111", email: "owner@example.com" });
@@ -342,13 +360,22 @@ try {
   flags.publishing = true;
   const firstPublish = await call("share", { method: "POST", token: maker, body: { name: "Lighthouse", image: PNG, model: model("Lighthouse") } });
   const secondPublish = await call("share", { method: "POST", token: maker, body: { name: "Harbour", image: PNG, model: model("Harbour") } });
+  // Someone who published before the owner's notifications: their next is not a first.
+  const veteranId = randomUUID();
+  models.push({ id: "veteranold01", owner: veteranId, created_at: "2026-10-01T09:00:00.000Z" });
+  const veteran = await w.signIn({ sub: veteranId, email: "veteran@resend.dev" });
+  const veteranPublish = await call("share", { method: "POST", token: veteran, body: { name: "Mill", image: PNG, model: model("Mill") } });
   flags.publishing = false;
-  const firsts = events((row) => row.event === "first_model");
+  check("first model: one who published before raises nothing", veteranPublish.status === 201
+    && events((row) => row.event === "first_model" && row.account === veteranId).length === 0, veteranPublish);
+  const firsts = events((row) => row.event === "first_model" && row.account !== veteranId);
   check("first model: published, and only the first raised", firstPublish.status === 201 && secondPublish.status === 201
     && firsts.length === 1 && firsts[0].account === makerId && firsts[0].detail.name === "Lighthouse" && firsts[0].detail.parts === 2,
   { firstPublish, secondPublish, firsts });
   // A bug report (api/_feedback.js).
-  const reporter = await w.signIn({ sub: randomUUID(), email: "fb@resend.dev" });
+  const reporterId = randomUUID();
+  const reporter = await w.signIn({ sub: reporterId, email: "fb@resend.dev" });
+  handles.set(reporterId, "fbr");
   const report = await call("plans", { method: "POST", query: { op: "feedback" }, token: reporter,
     body: { kind: "bug", words: "The bin forgets my parts after a reload.", source: "site" } });
   check("feedback: sent and raised", report.status === 200 && events((row) => row.event === "feedback").length === 1, report);
@@ -424,8 +451,9 @@ try {
     && sendMail.text.includes("  https://www.reddit.com/r/lego/comments/went/") && sendMail.text.includes(`  ${ADMIN}#social/sent`),
   sendMail?.text);
   const feedbackMail = bySubject["Bug report: “The bin forgets my parts after a reload.”"];
-  check("each: a bug report, its words and its link", feedbackMail?.text.includes(
-    "- Bug report from f•••@resend.dev: “The bin forgets my parts after a reload.”") && feedbackMail.text.includes(`  ${ADMIN}#feedback-41`),
+  check("each: a bug report, its words, its link, and its sender by handle, never an address", feedbackMail?.text.includes(
+    "- Bug report from @fbr: “The bin forgets my parts after a reload.”") && feedbackMail.text.includes(`  ${ADMIN}#feedback-41`)
+    && !/•••|@resend\.dev/.test(feedbackMail.text.split("\nWhat mails you")[0]) && !/fb•••|f•••@/.test(feedbackMail.html || ""),
   feedbackMail?.text);
   const modelMail = bySubject["First model published: “Lighthouse”"];
   check("each: a first model, at its page", modelMail?.text.includes("- @maker published their first model, “Lighthouse” (2 parts), at its link")
@@ -446,6 +474,18 @@ try {
   flags.supabaseDown = false;
   check("each: Supabase refusing the project, mailed at once", mailsSince(n0)[0]?.subject === "Supabase is refusing the project"
     && mailsSince(n0)[0].text.includes("Supabase is refusing the project:"), mailsSince(n0).map((one) => one.subject));
+
+  // 7b. A report sent signed out: said so, with no address in the mail
+  //     (onreview: the sender went in as wi•••@domain).
+  pass(2 * 3600000);
+  const outReport = await call("plans", { method: "POST", query: { op: "feedback" },
+    body: { kind: "question", words: "Can I sign up later?", source: "site", email: "out@resend.dev" } });
+  n0 = sent.length;
+  await flush();
+  const outMail = mailsSince(n0)[0];
+  check("feedback: sent signed out, the mail says so, with no address in it", outReport.status === 200
+    && outMail?.text.includes("- Question from someone signed out: “Can I sign up later?”")
+    && !/ou•••|out@/.test(`${outMail?.text}${outMail?.html}`), outMail?.text);
 
   // 8. The digest, at the owner's time, once a day.
   pass(2 * 3600000);
@@ -574,6 +614,28 @@ try {
   check("test: a kind sent as false is a test of the whole", whole?.status === 200
     && whole.subject === "A test from Brickworks' notifications", whole);
   check("test: at most ten an hour", limited?.tries === 11, limited);
+  // 13b. On a preview, a test in its real pool (no ?tests=1) goes to the
+  //      owner as asked and leaves the pool off: Check now there mails
+  //      nobody (onreview: the test's row made it mail the owner).
+  {
+    const PREVIEW = "brickworks-pv.vercel.app";
+    const ownerWas = process.env.MASTER_EMAIL;
+    process.env.MASTER_EMAIL = "owner-preview@resend.dev";
+    const asOwner = await w.signIn({ sub: "44444444-4444-4444-8444-444444444444", email: "owner-preview@resend.dev" });
+    const tried = await admin("notify_test", { tests: false, host: PREVIEW, token: asOwner, body: {} });
+    const triedTo = sent.at(-1)?.to?.join();
+    const read1 = await admin("notify", { method: "GET", tests: false, host: PREVIEW, token: asOwner });
+    await notify.raise("feedback", { scope: PREVIEW, test: false, key: "pv1", detail: { kind: "bug", words: "Raised on a preview." } });
+    n0 = sent.length;
+    const checkNow = await admin("notify_flush", { tests: false, host: PREVIEW, token: asOwner, body: {} });
+    const read2 = await admin("notify", { method: "GET", tests: false, host: PREVIEW, token: asOwner });
+    process.env.MASTER_EMAIL = ownerWas;
+    check("test: on a preview, a test leaves its pool off, and Check now there mails nobody", tried.status === 200
+      && triedTo === "owner-preview@resend.dev" && read1.json?.active === false && read1.json?.set === false
+      && checkNow.status === 200 && checkNow.json?.mails === 0 && sent.length === n0 && read2.json?.active === false
+      && rows("owner_notify_events").find((one) => one.key === "pv1")?.state === "paused",
+    { tried: tried.status, triedTo, read1: read1.json?.active, checkNow: checkNow.json, sent: sent.length - n0 });
+  }
 
   // 14. Another address: only once its code is typed; the checks' only at resend.dev.
   const realAddress = await admin("notify_address", { body: { address: "me@example.com" } });
@@ -603,7 +665,6 @@ try {
   const backHome = await admin("notify_address", { body: { address: "" } });
   check("address: back to the account's own", backHome.status === 200 && backHome.json?.own === true
     && rows("owner_notify_settings").find((row) => row.test)?.address === null, backHome);
-
   // 15. Resend failing: tried again, three times at most, each audited.
   pass(2 * 3600000);
   flags.resendDown = true;
@@ -631,6 +692,84 @@ try {
     { one: oneMail.status, other: otherPool.status });
   const now = await admin("notify_flush", { body: {} });
   check("check now: the run, answered", now.status === 200 && typeof now.json?.outcome === "string", now);
+
+  // 16b. A digest whose time is inside quiet hours that run past midnight
+  //     (onreview A: 23:00 in 22:00-07:00 never went): sent as they end,
+  //     once a day, across both of 2027's clock changes in the owner's zone,
+  //     run every five minutes. A pool of its own, only feedback on.
+  {
+    const DQ = { scope: "brickworks-dq.vercel.app", test: true };
+    const DAY = 86400000;
+    const only = Object.fromEntries(Object.keys(notify.EVENTS).map((name) => [name, { on: name === "feedback", when: "digest" }]));
+    let k = 0;
+    const days = async ({ tz, quiet, digestAt, start, n, extra = [] }) => {
+      for (const one of held.liveRowsOf("owner_notify_settings")) if (one.scope === DQ.scope) one.digest_on = null;
+      const set = await admin("notify_set", { host: DQ.scope, body: { tz, quiet, digest_at: digestAt, cap: 60, events: only } });
+      const got = [];
+      const t0 = Date.parse(start);
+      for (let t = t0; t < t0 + n * DAY; t += 5 * 60000) {
+        if ((t - t0) % DAY === 0 || extra.includes(t)) {
+          await notify.raise("feedback", { ...DQ, key: `dq${k += 1}`, detail: { kind: "bug", words: `Number ${k}.` } });
+        }
+        const ran = await notify.flush(DQ, { now: t });
+        for (const mail of ran.mails) got.push({ ...notify.localOf(t, tz), subject: mail.subject });
+      }
+      const waiting = rows("owner_notify_events").filter((one) => one.scope === DQ.scope && one.state === "digest").length;
+      return { set: set.status, got, waiting };
+    };
+    // Europe/London springs forward at 01:00 GMT on 28 March 2027.
+    const spring = await days({ tz: "Europe/London", quiet: { on: true, from: "22:00", to: "07:00" }, digestAt: "23:00",
+      start: "2027-03-26T12:00:00Z", n: 4 });
+    const springText = sent.filter((one) => /Your Brickworks day/.test(one.subject || "")).at(-1)?.text || "";
+    check("digest: inside overnight quiet hours, sent at 07:00 as they end, once a day across the spring change",
+      spring.set === 200 && spring.got.length === 4 && spring.got.every((one) => one.hhmm === "07:00")
+      && spring.got.map((one) => one.date).join() === "2027-03-27,2027-03-28,2027-03-29,2027-03-30" && spring.waiting === 0
+      && springText.includes("Your daily digest, at 23:00 (Europe/London), sent at 07:00 when quiet hours end."), spring);
+    const said = await admin("notify", { method: "GET", host: DQ.scope });
+    check("digest: the page says it goes as quiet hours end", said.json?.digest?.held_until === "07:00"
+      && said.json?.digest?.said === "sent at 07:00 when quiet hours end", said.json?.digest);
+    // ... and falls back at 02:00 BST on 31 October 2027: 01:30 comes twice
+    // that night, with a report between the two.
+    const autumn = await days({ tz: "Europe/London", quiet: { on: false }, digestAt: "01:30", start: "2027-10-29T12:00:00Z", n: 4,
+      extra: [Date.parse("2027-10-31T00:45:00Z")] });
+    const dates = autumn.got.map((one) => one.date);
+    check("digest: once a day across the autumn change, though 01:30 came twice", autumn.got.length === 4
+      && new Set(dates).size === 4 && dates.join() === "2027-10-29,2027-10-31,2027-11-01,2027-11-02"
+      && autumn.got.slice(1).every((one) => one.hhmm === "01:30") && autumn.got[2]?.subject === "Your Brickworks day: 2 bug reports and feedback"
+      && autumn.waiting === 0, autumn);
+    // On the night it springs forward, 01:30 is never on the clock: with a
+    // report waiting, it goes at 02:00, the first moment after.
+    const gap = await days({ tz: "Europe/London", quiet: { on: false }, digestAt: "01:30", start: "2027-03-27T12:00:00Z", n: 2,
+      extra: [Date.parse("2027-03-27T20:00:00Z")] });
+    check("digest: a time the clock skips goes the first moment after it", gap.got.length === 3
+      && gap.got[1]?.date === "2027-03-28" && gap.got[1]?.hhmm === "02:00" && gap.got[2]?.date === "2027-03-29"
+      && gap.got[2]?.hhmm === "01:30" && gap.waiting === 0, gap);
+  }
+
+  // 16c. At a cap of 1 the hour's one mail is the hour's own, not "And 2
+  //      more" after nothing (onreview C).
+  pass(2 * 3600000);
+  await admin("notify_set", { body: { cap: 1 } });
+  await raiseOne("feedback", "one1", { kind: "idea", words: "One mail an hour, please." });
+  await raiseOne("signup", "one2", {});
+  n0 = sent.length;
+  const lone = await flush();
+  check("cap: at 1 an hour, the hour's one mail is titled as its own", lone.mails.length === 1
+    && mailsSince(n0)[0]?.subject === "This hour: 1 bug report or feedback, 1 new sign-up"
+    && mailsSince(n0)[0].text.includes("At most 1 mail an hour: what came is here, in one."), mailsSince(n0).map((one) => one.subject));
+  await admin("notify_set", { body: { cap: 6 } });
+
+  // 16d. Codes to another address: at most five an hour, counted as tests
+  //      are (onreview: no limit).
+  {
+    n0 = sent.length;
+    const asks = [];
+    for (let n = 1; n <= 6; n += 1) asks.push(await admin("notify_address", { body: { address: `code${n}@resend.dev` } }));
+    check("address: five codes an hour, the sixth refused in words and not mailed", asks.slice(0, 5).every((one) => one.status === 200)
+      && asks[5].status === 429 && asks[5].json?.error === "5 codes an hour at most: try again later." && sent.length - n0 === 5,
+    { statuses: asks.map((one) => one.status), said: asks[5].json?.error, mailed: sent.length - n0 });
+    await admin("notify_address", { body: { address: "" } });
+  }
 
   // 17. An account deleted: its events go, and the words of the mails of it.
   flags.erasing = true;
@@ -685,10 +824,171 @@ try {
   check("alarm: at most one a day, and never from a preview run by hand", alarms.length === 1
     && refusedRuns[1].json?.alarm === "already today" && refusedRuns[2].json?.alarm === undefined, refusedRuns.map((one) => one.json));
 
+  // 19b. Every hook after the answer (api/_after.js): with owner_notify's
+  //     tables hung, each path answers in under 300 ms, nothing thrown into
+  //     it, and what it raised lands once the tables answer within the bound.
+  {
+    let release = () => {};
+    let gate = null;
+    const hang = () => {
+      gate = new Promise((resolve) => { release = resolve; });
+    };
+    const below = globalThis.fetch;
+    globalThis.fetch = async (input, init = {}) => {
+      const url = new URL(String(input.url || input));
+      if (gate && url.origin === SUPABASE_URL && /^\/rest\/v1\/owner_notify_(events|errors)$/.test(url.pathname)
+        && String(init.method || "GET").toUpperCase() === "POST") {
+        await new Promise((resolve, reject) => {
+          gate.then(resolve);
+          init.signal?.addEventListener?.("abort", () => reject(init.signal.reason));
+        });
+      }
+      return below(input, init);
+    };
+    try {
+      const hungMakerId = randomUUID();
+      const hungMaker = await w.signIn({ sub: hungMakerId, email: "hungmaker@resend.dev" });
+      const errorsBefore = rows("owner_notify_errors").length;
+      hang();
+      const began = performance.now();
+      flags.publishing = true;
+      const paths = {
+        otp: await call("otp", { method: "POST", body: { email: "hung01@resend.dev", came }, settle: false }),
+        share: await call("share", { method: "POST", token: hungMaker, body: { name: "Signal box", image: PNG, model: model("Signal box") },
+          settle: false }),
+      };
+      flags.publishing = false;
+      paths.feedback = await call("plans", { method: "POST", query: { op: "feedback" }, token: reporter,
+        body: { kind: "bug", words: "Sent while the table hung.", source: "site" }, settle: false });
+      paths.webhook = await (async () => {
+        const raw = JSON.stringify({ id: "adm_evt_hung", type: "customer.updated", createdAt: new Date().toISOString(), mode: "test", seq: 2,
+          data: { customerId: payer, reason: "subscription.created", customer: { plan: { key: "pro" },
+            subscription: { plan: "pro", interval: "year", status: "active" } } } });
+        return call("plans", { method: "POST", query: { op: "webhook" }, raw, settle: false,
+          headers: { "content-type": "application/json", "admission-signature": await signWebhook(raw) } });
+      })();
+      flags.feedbackDown = true;
+      paths.error = await call("plans", { method: "POST", query: { op: "feedback" }, token: reporter,
+        body: { kind: "idea", words: "A 503 while the table hung.", source: "site" }, settle: false });
+      flags.feedbackDown = false;
+      const asked = performance.now() - began;
+      const hungAnswers = Object.fromEntries(Object.entries(paths).map(([name, got]) => [name, `${got.status} in ${Math.round(got.ms)} ms`]));
+      check("after: with the tables hung, every path answers as before, each in under 300 ms",
+        paths.otp.status === 200 && paths.share.status === 201 && paths.feedback.status === 200 && paths.webhook.status === 200
+        && paths.error.status === 503 && Object.values(paths).every((got) => got.ms < 300 && !got.threw), hungAnswers);
+      const landedBefore = events((row) => row.key === String(paths.feedback.json?.id)).length;
+      // The tables answer again, within the bound of the first.
+      release();
+      gate = null;
+      await settled();
+      const signupRow = events((row) => row.event === "signup" && row.account === users.get("hung01@resend.dev"))[0];
+      const landed = { before: landedBefore, signup: Boolean(signupRow), came: signupRow?.detail?.came?.source,
+        first_model: events((row) => row.event === "first_model" && row.account === hungMakerId).length,
+        feedback: events((row) => row.key === String(paths.feedback.json?.id)).length,
+        plan: events((row) => row.key === "adm_evt_hung").length, errors: rows("owner_notify_errors").length - errorsBefore, asked };
+      check("after: what each raised lands once the tables answer within the bound", landed.before === 0 && landed.signup
+        && landed.came === "reddit" && landed.first_model === 1 && landed.feedback === 1 && landed.plan === 1 && landed.errors === 1
+        && asked < BOUND, landed);
+      // Hung past the bound: still answered at once, and nobody waits past it.
+      hang();
+      const late = await call("plans", { method: "POST", query: { op: "feedback" }, token: reporter,
+        body: { kind: "bug", words: "Sent while the table hung for good.", source: "site" }, settle: false });
+      const t1 = performance.now();
+      let threw = null;
+      await settled().catch((trouble) => { threw = String(trouble); });
+      const waited = performance.now() - t1;
+      release();
+      gate = null;
+      check("after: hung past the bound, answered at once, and given up at the bound without a throw", late.status === 200 && late.ms < 300
+        && threw === null && waited >= BOUND - 300 && waited < BOUND + 500, { late: late.status, ms: late.ms, waited, threw });
+    } finally {
+      globalThis.fetch = below;
+      flags.publishing = false;
+      flags.feedbackDown = false;
+    }
+  }
+
+  // 19c. On Vercel the work is the request's own: its context's waitUntil
+  //     is given it, called as the context's method, and nothing is kept
+  //     here (the shape @vercel/functions 3.10.6 reads, get-context.js).
+  {
+    const CONTEXT = Symbol.for("@vercel/request-context");
+    const given = [];
+    const context = { waitUntil(promise) { given.push({ promise, self: this === context }); } };
+    globalThis[CONTEXT] = { get: () => context };
+    const how = afterHow();
+    const read = await admin("notify", { method: "GET" });
+    const got = await call("plans", { method: "POST", query: { op: "feedback" }, token: reporter,
+      body: { kind: "bug", words: "Kept alive by Vercel.", source: "site" }, settle: false });
+    delete globalThis[CONTEXT];
+    await Promise.all(given.map((one) => one.promise));
+    check("after: on Vercel, given to the request's waitUntil, and it lands", how === "waitUntil" && read.json?.after === "waitUntil"
+      && got.status === 200 && given.length === 1 && given[0].self === true
+      && events((row) => row.key === String(got.json?.id)).length === 1 && afterHow() === "bounded",
+    { how, after: read.json?.after, given: given.length, status: got.status });
+  }
+
+  // 19d. The old rows pruned once a UTC day at its first run, whenever it
+  //     comes (onreview: only a run at 03:00-03:04 UTC pruned); before
+  //     owner_notify2.sql's pruned_on, in the hour from 03:00 UTC.
+  {
+    await admin("notify_set", { body: { paused: true } });
+    const DAY = 86400000;
+    const site = () => held.liveRowsOf("owner_notify_settings").find((one) => one.scope === "live" && !one.test);
+    const old = async (key) => {
+      await notify.raise("feedback", { scope: "live", test: false, key, detail: { kind: "bug", words: "Ninety-one days ago." } });
+      const row = held.liveRowsOf("owner_notify_events").find((one) => one.key === key);
+      row.at = new Date(Date.now() - 91 * DAY).toISOString();
+    };
+    const there = (key) => held.liveRowsOf("owner_notify_events").some((one) => one.key === key);
+    // Tomorrow: today's was pruned by the cron's runs above.
+    const day0 = Date.parse(`${new Date(Date.now() + DAY).toISOString().slice(0, 10)}T10:17:00Z`);
+    await old("prune1");
+    const first = await notify.notifyDue({ now: day0, scope: "live" });
+    const firstOn = site()?.pruned_on;
+    await old("prune2");
+    const again = await notify.notifyDue({ now: day0 + 5 * 60000, scope: "live" });
+    const nextDay = await notify.notifyDue({ now: day0 + DAY + 6 * 3600000, scope: "live" });
+    check("prune: at a day's first run, any hour, once a day, by pruned_on", first.pruned === true && !there("prune1")
+      && firstOn === new Date(day0).toISOString().slice(0, 10) && again.pruned === false && nextDay.pruned === true && !there("prune2")
+      && site()?.pruned_on === new Date(day0 + DAY).toISOString().slice(0, 10),
+    { first: first.pruned, firstOn, again: again.pruned, nextDay: nextDay.pruned, on: site()?.pruned_on });
+    delete site().pruned_on;
+    await old("prune3");
+    const noColumn = await notify.notifyDue({ now: day0 + 2 * DAY, scope: "live" });
+    const kept3 = there("prune3");
+    const atThree = await notify.notifyDue({ now: Date.parse(`${new Date(day0 + 3 * DAY).toISOString().slice(0, 10)}T03:40:00Z`), scope: "live" });
+    check("prune: before owner_notify2.sql, in the hour from 03:00 UTC, past its first five minutes too", noColumn.pruned === false && kept3
+      && atThree.pruned === true && !there("prune3") && !("pruned_on" in site()), { noColumn: noColumn.pruned, kept3, atThree: atThree.pruned });
+    site().pruned_on = null;
+    await admin("notify_set", { body: { paused: false } });
+  }
+
+  // 19e. A new person's two models published at once: one told of, the
+  //      first made (api/share.js: no model of theirs made before the
+  //      row was written, and once by the owner's key).
+  {
+    const twinId = randomUUID();
+    const twin = await w.signIn({ sub: twinId, email: "twin@resend.dev" });
+    flags.publishing = true;
+    let open = () => {};
+    flags.both = { owner: twinId, written: new Promise((resolve) => { open = resolve; }), open: () => open() };
+    const twins = await Promise.all(["Tower", "Gate"].map((name) => call("share", { method: "POST", token: twin, settle: false,
+      body: { name, image: PNG, model: model(name) } })));
+    await settled();
+    flags.publishing = false;
+    flags.both = null;
+    const twinEvents = events((row) => row.event === "first_model" && row.account === twinId);
+    const twinFirst = models.filter((one) => one.owner === twinId).sort((a, b) => (a.created_at < b.created_at ? -1 : 1))[0];
+    check("first model: two published at once, one told of, the first made", twins.every((one) => one.status === 201)
+      && twinEvents.length === 1 && twinEvents[0].detail?.id === twinFirst?.id,
+    { statuses: twins.map((one) => one.status), told: twinEvents.map((row) => row.detail?.name) });
+  }
+
   // 20. Nobody real was mailed: every mail went to Resend's test inboxes.
   check("no real address: every mail to resend.dev", sent.length > 20 && sent.every((one) => one.to.every((to) => /@resend\.dev$/.test(to))),
     sent.map((one) => one.to).filter((to) => !to.every((one) => /@resend\.dev$/.test(one))));
-  check("no real address: the site's own pool mailed nothing", rows("owner_notify_mails").every((row) => row.test));
+  check("no real address: the site's own pool mailed nothing", rows("owner_notify_mails").every((row) => row.test || row.scope !== "live"));
   out = { checks, sent: sent.length };
 } catch (trouble) {
   out = { checks, threw: String(trouble?.stack || trouble).slice(0, 1200) };

@@ -250,12 +250,43 @@ try {
     await page.locator("#notify-cap").dispatchEvent("change");
     ok = await saidIn(page, "notify-form-said", /At most 1 to 60 mails an hour/);
     check("a cap of 99 refused in words", ok && (await read()).settings.cap === 4);
+    const headline = () => page.evaluate(() => `${document.getElementById("notify-headline")?.textContent || ""}; `
+      + `${document.getElementById("notify-form-said")?.textContent || ""}`);
     await page.locator("#notify-paused").check();
     ok = await saidIn(page, "notify-headline", /Paused/);
-    check("Pause all: kept, and the headline says so", ok && (await read()).settings.paused === true);
+    let keptNow = (await read()).settings;
+    check(`Pause all: kept, and the headline says so ("${await headline()}", paused ${keptNow?.paused})`, ok && keptNow?.paused === true);
     await page.locator("#notify-paused").uncheck();
     ok = await saidIn(page, "notify-headline", /Mailing/);
-    check("...and off again", ok && (await read()).settings.paused === false);
+    keptNow = (await read()).settings;
+    check(`...and off again ("${await headline()}", paused ${keptNow?.paused})`, ok && keptNow?.paused === false);
+    // Two changes in flight, answered out of order (onfix: a field left by
+    // the press on Pause all saved again, and its late answer drew the
+    // settings from before the pause): what was written last is shown.
+    let release = () => {};
+    const held = new Promise((resolve) => { release = resolve; });
+    const setOp = /\/api\/admin\?(?:.*&)?op=notify_set(?:&|$)/;
+    await page.route(setOp, async (route) => {
+      if ("cap" in (route.request().postDataJSON?.() || {})) {
+        const answer = await route.fetch();
+        await held;
+        return route.fulfill({ response: answer });
+      }
+      return route.continue();
+    });
+    await page.fill("#notify-cap", "5");
+    await page.locator("#notify-cap").dispatchEvent("change");
+    await page.locator("#notify-paused").check();
+    const pausedFirst = await saidIn(page, "notify-headline", /Paused/);
+    release();
+    await page.waitForTimeout(1500);
+    keptNow = (await read()).settings;
+    check(`two changes answered out of order: the later one still shown ("${await headline()}", paused ${keptNow?.paused}, cap `
+      + `${keptNow?.cap})`, pausedFirst && /Paused/.test(await headline()) && await page.locator("#notify-paused").isChecked()
+      && keptNow?.paused === true && keptNow?.cap === 5);
+    await page.unroute(setOp);
+    await page.locator("#notify-paused").uncheck();
+    await saidIn(page, "notify-headline", /Mailing/);
 
     // --- 4. Tests, and a mail's own off link ---------------------------------------------------
     console.log("4. Send a test, and its off link");

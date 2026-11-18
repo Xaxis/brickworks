@@ -251,10 +251,14 @@ static func waiting_words(what: String) -> String:
 ## sign-in form that tells them apart is a way of asking whether somebody
 ## is a member. It does say when the email could not be sent.
 func request_code(with_email: String) -> String:
+	var asked := {"email": with_email.strip_edges().to_lower()}
+	var came: Variant = _came()
+	if came is Dictionary:
+		asked["came"] = came
 	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/otp",
 		PackedStringArray(["content-type: application/json"]),
 		HTTPClient.METHOD_POST,
-		JSON.stringify({"email": with_email.strip_edges().to_lower()}))
+		JSON.stringify(asked))
 	var body: Variant = reply.get("body")
 	var code: int = int(reply.get("code", 0))
 	if code == 200:
@@ -272,6 +276,22 @@ func request_code(with_email: String) -> String:
 	if code == 0:
 		return "Could not reach Brickworks to send a code. Check your connection."
 	return "Could not send a code just now (%d). Try again in a minute." % code
+
+
+## How this visit came, as the page keeps it for the tab (web/theme.js:
+## the site that sent it and a link's utm_ tags), for the owner's mail of
+## a new sign-up (api/_notify.js); null off the web, or when nothing is
+## known. The server checks each field (cameOf).
+static func _came() -> Variant:
+	if not OS.has_feature("web"):
+		return null
+	var said: Variant = JavaScriptBridge.eval("JSON.stringify(globalThis.brickworksCame || null)", true)
+	if typeof(said) != TYPE_STRING:
+		return null
+	var json := JSON.new()
+	if json.parse(str(said)) != OK or typeof(json.data) != TYPE_DICTIONARY:
+		return null
+	return json.data
 
 
 ## [param iso] (a UTC time, api/otp.js retry_at) as this computer's clock

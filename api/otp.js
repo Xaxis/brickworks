@@ -33,6 +33,7 @@
 // recycles.
 
 import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { reach } from "./_db.js";
 import { raiseSignup } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
@@ -62,21 +63,21 @@ function asServer() {
 /// canary (api/_canary.js) signs in by this, and by deliver below.
 ///
 /// An account made here is told to the owner (api/_notify.js): for [told]'s
-/// deployment ({scope}), with how the person came ({came}, from the page).
+/// deployment ({scope}), with how the person came ({came}, from the page),
+/// after the answer (api/_after.js), so the code never waits on it.
 export async function mint(email, told = null) {
   const made = await reach("auth POST admin/users", 10, `${project()}/auth/v1/admin/users`, {
     method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
   });
   if (!made.ok && made.status !== 422) return null;
   const account = made.ok ? (await made.json().catch(() => ({})))?.id : null;
-  const raised = account && told ? raiseSignup({ account, email, came: told.came, scope: told.scope }) : null;
+  if (account && told) afterAnswer(() => raiseSignup({ account, email, came: told.came, scope: told.scope }), "otp: sign-up");
   const reply = await reach("auth POST admin/generate_link", 10, `${project()}/auth/v1/admin/generate_link`, {
     method: "POST",
     headers: asServer(),
     // magiclink: a one-time code for the account, and nothing sent.
     body: JSON.stringify({ type: "magiclink", email }),
   });
-  await raised;
   if (!reply.ok) return null;
   const body = await reply.json();
   // Top level in current GoTrue, nested in older ones.

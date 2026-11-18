@@ -456,9 +456,10 @@ const TABLES = {
   owner_notify_settings: {
     parents: [],
     key: ["scope", "test"],
+    // pruned_on: supabase/owner_notify2.sql's.
     defaults: () => ({ test: false, settings: {}, address: null, pending_address: null, pending_code: null, pending_until: null,
       pending_tries: 0, off_key: Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join(""),
-      digest_on: null, set_by: null, set_at: new Date().toISOString(), version: 0 }),
+      digest_on: null, pruned_on: null, set_by: null, set_at: new Date().toISOString(), version: 0 }),
     check: (row) => (!/^[a-z0-9.:-]{1,200}$/.test(String(row.scope)) ? "owner_notify_settings_scope"
       : !row.settings || typeof row.settings !== "object" || Array.isArray(row.settings) ? "owner_notify_settings_settings"
         : row.address !== null && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(row.address)) ? "owner_notify_settings_address"

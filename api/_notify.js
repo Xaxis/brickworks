@@ -42,6 +42,7 @@
 // /admin acts on (api/plans.js ?op=notify_off when the owner is signed out).
 
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { afterHow } from "./_after.js";
 import { AuthError } from "./_auth.js";
 import { db, dbConfigured, dbCount } from "./_db.js";
 import { scopeOf } from "./_settings.js";
@@ -73,6 +74,9 @@ export const LISTED = 10;
 export const TRIES = 3;
 /// The owner's Send a test, at most this many an hour.
 export const TESTS_AN_HOUR = 10;
+/// Codes mailed to another address, at most this many an hour, counted as
+/// tests are (onreview: they had no limit).
+export const CODES_AN_HOUR = 5;
 
 /// Every kind of event, as the console lists it and the mail says it.
 export const EVENTS = Object.freeze({
@@ -133,7 +137,11 @@ const within = (given, { min, max, value }) => (typeof given === "number" && Num
   ? given : value);
 
 /// [row]'s settings whole, each missing or broken one at its default, for
-/// [pool] ({scope, test}). active: whether this pool mails at all.
+/// [pool] ({scope, test}). saved: the owner saved them here (notify_set);
+/// active: whether this pool mails at all, which only that, or being the
+/// site's own pool, makes so. A row made for a test, an address's code or
+/// a mail's off link is not a saving (onreview: a preview's test made its
+/// pool mail the owner on Check now).
 export function settingsOf(row, pool) {
   const given = row?.settings && typeof row.settings === "object" && !Array.isArray(row.settings) ? row.settings : {};
   const quiet = given.quiet && typeof given.quiet === "object" ? given.quiet : {};
@@ -143,6 +151,7 @@ export function settingsOf(row, pool) {
     digest_at: TIME.test(given.digest_at) ? given.digest_at : "08:00",
     cap: Number.isInteger(given.cap) && given.cap >= 1 && given.cap <= 60 ? given.cap : 6,
     paused: given.paused === true,
+    saved: given.saved === true,
     events: {},
   };
   for (const [name, one] of Object.entries(EVENTS)) {
@@ -153,7 +162,7 @@ export function settingsOf(row, pool) {
     for (const [size, range] of Object.entries(one.sizes || {})) event[size] = within(mine[size], range);
     settings.events[name] = event;
   }
-  settings.active = Boolean(row) || (pool.scope === "live" && !pool.test);
+  settings.active = settings.saved || (pool.scope === "live" && !pool.test);
   return settings;
 }
 
@@ -225,7 +234,20 @@ export function changed(body, current) {
       refuse(`There is no setting called ${String(field).slice(0, 40)}.`);
     }
   }
+  // Saved by the owner: this pool mails from now on (settingsOf).
+  next.saved = true;
   return next;
+}
+
+/// The day before [date] ("YYYY-MM-DD"), by the calendar.
+const dayBefore = (date) => new Date(Date.parse(`${date}T00:00:00Z`) - DAY).toISOString().slice(0, 10);
+
+/// When [settings]' digest goes: at its time, or, when that is inside quiet
+/// hours, as they end. {at, held_until, said}.
+export function digestTime(settings) {
+  const held = quietAt(settings, settings.digest_at) ? settings.quiet.to : null;
+  return { at: settings.digest_at, held_until: held,
+    said: held ? `sent at ${held} when quiet hours end` : `sent at ${settings.digest_at}` };
 }
 
 /// The day and the time of day [now] is in [zone]: {date, hhmm}.
@@ -505,9 +527,13 @@ function lineOf(one, ctx) {
     case "first_model":
       return { text: `${who} published their first model, ${quoted(d.name, 60)}${d.parts ? ` (${d.parts} parts)` : ""}, `
         + `${d.listed ? "in the gallery" : "at its link"}`, link: d.id ? `${ctx.origin}/m/${enc(d.id)}` : ctx.admin("gallery") };
-    case "feedback":
-      return { text: `${LABEL[d.kind] || "Feedback"}${d.beta ? " from a tester" : ""} from ${d.from || "someone signed out"}: `
-        + `${quoted(d.words)}`, link: d.id ? ctx.admin(`feedback-${d.id}`) : ctx.admin("feedback") };
+    case "feedback": {
+      // The account by its handle, laid in as the mail is made (named), or
+      // signed out: never an address, even in part (docs/OWNER_NOTIFY.md).
+      const from = d.handle ? `@${d.handle}` : one.account ? "someone signed in, with no handle yet" : "someone signed out";
+      return { text: `${LABEL[d.kind] || "Feedback"}${d.beta ? " from a tester" : ""} from ${from}: ${quoted(d.words)}`,
+        link: d.id ? ctx.admin(`feedback-${d.id}`) : ctx.admin("feedback") };
+    }
     case "plan": {
       const plan = d.plan ? `${String(d.plan).replace(/^./, (c) => c.toUpperCase())}` : "a plan";
       const said = d.how === "bought" ? `bought ${plan}${d.interval ? ` (${d.interval}ly)` : ""}`
@@ -823,17 +849,30 @@ export async function flush(pool, { now = Date.now(), force = false } = {}) {
       const items = await named(taken.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)));
       const quiet = held.length > 0;
       const groupsOf = byKind(items);
-      const title = quiet ? `While quiet hours were on: ${countOf(groupsOf)}` : `And ${items.length} more: ${countOf(groupsOf)}`;
+      // "And N more" follows a mail: this run's, the hour's, or one an
+      // earlier hour's cap held these past. Alone, it is the hour's own
+      // (onreview C: at a cap of 1 the hour's first was "And 2 more").
+      const follows = out.mails.length > 0 || lastHour.length > 0 || capped.length > 0;
+      const title = quiet ? `While quiet hours were on: ${countOf(groupsOf)}`
+        : follows ? `And ${items.length} more: ${countOf(groupsOf)}` : `This hour: ${countOf(groupsOf)}`;
+      const most = `At most ${settings.cap} ${settings.cap === 1 ? "mail" : "mails"} an hour`;
       const foot = quiet ? "Held while your quiet hours were on, and sent as they ended."
-        : `At most ${settings.cap} mails an hour: what came past them is here, in one.`;
+        : follows ? `${most}: what came past them is here, in one.` : `${most}: what came is here, in one.`;
       out.mails.push(await sendKept(pool, row, { kind: "fold", mail: render({ subject: title, title, groups: groupsOf, ctx, foot }),
         events: taken, ctx }));
       room -= 1;
     }
   }
 
-  // The day's digest, at the owner's time, once a day.
-  if (local.hhmm >= settings.digest_at && row?.digest_on !== local.date) {
+  // The day's digest, once a day: that of the last day whose time has come
+  // (today's once it is past, else yesterday's), sent once quiet hours
+  // allow, so a time inside quiet hours goes as they end (onreview A: 23:00
+  // inside 22:00-07:00 never went, its events kept to the 90-day prune). A
+  // pool's first is today's: before it there was no day to tell of.
+  const due = local.hhmm >= settings.digest_at ? local.date : dayBefore(local.date);
+  const last = row?.digest_on ? String(row.digest_on).slice(0, 10) : null;
+  if (!last && due !== local.date) await writeRow(pool, () => ({ digest_on: due }));
+  else if (!last || last < due) {
     if (room <= 0) return { ...out, state: "the digest waits for the hour's cap" };
     const day = await db(`owner_notify_events?${where(pool)}&state=eq.digest&select=id,event,key,account,at,detail,state,tries`
       + "&order=at.asc&limit=1000");
@@ -842,10 +881,12 @@ export async function flush(pool, { now = Date.now(), force = false } = {}) {
       const items = await named(taken);
       const groupsOf = byKind(items);
       const title = `Your Brickworks day: ${countOf(groupsOf)}`;
+      const when = digestTime(settings);
       out.mails.push(await sendKept(pool, row, { kind: "digest", mail: render({ subject: title, title, groups: groupsOf, ctx,
-        foot: `Your daily digest, at ${settings.digest_at} (${settings.tz}).` }), events: taken, ctx }));
+        foot: `Your daily digest, at ${settings.digest_at} (${settings.tz})${when.held_until ? `, ${when.said}` : ""}.` }),
+      events: taken, ctx }));
     }
-    await writeRow(pool, () => ({ digest_on: local.date }));
+    await writeRow(pool, () => ({ digest_on: due }));
   }
   return { ...out, state: "done" };
 }
@@ -861,18 +902,38 @@ async function prune(now) {
   await db(`owner_notify_errors?at=lt.${before(2 * DAY)}`, { method: "DELETE" });
 }
 
+/// The old rows pruned once a UTC day, by the first run of it: the day kept
+/// in [scope]'s own pool's row (pruned_on, supabase/owner_notify2.sql), as
+/// the digest's is. A run that missed 03:00-03:04 UTC missed the day
+/// (onreview). Before that file, or with no row, any run in the hour from
+/// 03:00 UTC prunes, as each prune of a pruned table deletes nothing. Whether
+/// it pruned.
+async function pruneDue(now, scope) {
+  const day = new Date(now).toISOString().slice(0, 10);
+  const pool = { scope, test: false };
+  const row = await rowOf(pool);
+  if (row && "pruned_on" in row) {
+    if (String(row.pruned_on || "").slice(0, 10) >= day) return false;
+    await prune(now);
+    await writeRow(pool, () => ({ pruned_on: day }));
+    return true;
+  }
+  if (new Date(now).getUTCHours() !== 3) return false;
+  await prune(now);
+  return true;
+}
+
 /// The cron's run: [scope]'s two pools (brickworks.diy's, from Vercel's
 /// cron), and once a day the old rows.
 export async function notifyDue({ now = Date.now(), scope = "live" } = {}) {
   const runs = [];
   for (const test of [false, true]) runs.push(await flush({ scope, test }, { now }));
-  const at = new Date(now);
-  if (at.getUTCHours() === 3 && at.getUTCMinutes() < 5) await prune(now);
+  const pruned = await pruneDue(now, scope);
   const mails = runs.flatMap((one) => one.mails);
   return { outcome: mails.length ? `${mails.filter((one) => one.state !== "failed").length} mailed, `
     + `${mails.filter((one) => one.state === "failed").length} failed` : "nothing to mail",
   sent: mails.filter((one) => one.state !== "failed").length, failed: mails.filter((one) => one.state === "failed").length,
-  pools: runs.map((one) => `${one.pool}: ${one.state}`) };
+  pools: runs.map((one) => `${one.pool}: ${one.state}`), pruned };
 }
 
 // ---------------------------------------------------------------------------
@@ -902,7 +963,7 @@ const SAMPLES = {
   signup: [{ account: null, detail: { handle: "ada", came: { referrer: "www.reddit.com", source: "reddit",
     campaign: "launch" }, signed_in: true } }],
   first_model: [{ detail: { handle: "ada", name: "Lighthouse on the rocks", parts: 412, listed: true } }],
-  feedback: [{ detail: { kind: "bug", from: "@ada", words: "The bin forgets my parts after a reload." } }],
+  feedback: [{ detail: { kind: "bug", handle: "ada", words: "The bin forgets my parts after a reload." } }],
   plan: [{ detail: { handle: "ada", how: "bought", plan: "pro", interval: "month" } }],
   errors: [{ detail: { count: 34, threshold: 20, top: [{ what: "share publish", n: 30 }, { what: "people feed_count", n: 4 }] } }],
   quota: [{ detail: { what: "database", percent: 83.4, quota_gb: 8, threshold: 80 } }],
@@ -924,7 +985,7 @@ export async function notifyRead(request, tests) {
   const catalog = Object.entries(EVENTS).map(([id, one]) => ({ id, name: one.name, says: one.says, threshold: one.threshold || null,
     sizes: one.sizes || null, default: { on: one.on, when: one.when } }));
   const base = { scope: pool.scope, test: pool.test, catalog, not_here: NOT_HERE, mail_key: Boolean(process.env.RESEND_API_KEY),
-    cron: "every five minutes, on brickworks.diy" };
+    cron: "every five minutes, on brickworks.diy", after: afterHow() };
   let row;
   try {
     row = await rowOf(pool);
@@ -947,13 +1008,13 @@ export async function notifyRead(request, tests) {
   ]);
   const ctx = contextOf(pool, row);
   return {
-    ...base, applied: true, active: settings.active, set: Boolean(row), set_at: row?.set_at || null,
+    ...base, applied: true, active: settings.active, set: settings.saved, set_at: row?.set_at || null, version: Number(row?.version) || 0,
     settings: { ...settings, active: undefined },
     address: { to: inPart(addressOf(row, pool)), own: !row?.address, account: inPart(accountAddress(pool)),
       pending: row?.pending_address ? inPart(row.pending_address) : null, pending_until: row?.pending_until || null },
     local: { ...local, tz: settings.tz }, quiet_now: quietAt(settings, local.hhmm),
     hour: { sent: lastHour.length, cap: settings.cap },
-    digest: { at: settings.digest_at, last: row?.digest_on || null },
+    digest: { ...digestTime(settings), last: row?.digest_on || null },
     waiting: { new: fresh, held, capped, digest },
     recent: recent.map((one) => ({ id: one.id, at: one.at, event: one.event, state: one.state, mail: one.mail,
       said: lineOf(one, ctx).text })),
@@ -969,7 +1030,10 @@ export async function notifySet(request, response, claims) {
   await applied(() => rowOf(pool));
   const row = await writeRow(pool, (_, now) => ({ settings: changed(bodyOf(request), now) }), claims?.email);
   const settings = settingsOf(row, pool);
+  // version: the row's after this write, so a page with two changes in
+  // flight shows the one written last whichever answer comes last.
   return response.status(200).json({ settings: { ...settings, active: undefined }, active: true, scope: pool.scope,
+    version: Number(row?.version) || 0, digest: { ...digestTime(settings), last: row?.digest_on || null },
     value: clip(JSON.stringify(bodyOf(request)), 120) });
 }
 
@@ -991,6 +1055,9 @@ export async function notifyAddress(request, response, claims) {
   if (pool.test && !TEST_ADDRESS.test(asked)) {
     throw new AuthError("The checks' own mail goes only to Resend's test inbox: an address at resend.dev.", 400);
   }
+  const codes = await db(`owner_notify_mails?${where(pool)}&kind=eq.confirm&at=gte.${new Date(Date.now() - HOUR).toISOString()}`
+    + "&select=id");
+  if (codes.length >= CODES_AN_HOUR) throw new AuthError(`${CODES_AN_HOUR} codes an hour at most: try again later.`, 429);
   const made = await rowMade(pool);
   const code = String(randomInt(0, 1000000)).padStart(6, "0");
   const until = new Date(Date.now() + 30 * MINUTE).toISOString();

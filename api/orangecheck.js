@@ -53,6 +53,7 @@
 // Rate limited per address in the database, as codes are.
 
 import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
@@ -295,7 +296,7 @@ async function signInWith(token, response, request = null) {
     return say(response, 409, "orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.");
   }
   await Promise.all([endToken(token), keepHandle(checked.session)]);
-  if (made) await raiseSignup({ account, email: null, scope: scopeOf(request), via: "orangecheck" });
+  if (made) afterAnswer(() => raiseSignup({ account, email: null, scope: scopeOf(request), via: "orangecheck" }), "orangecheck: sign-up");
 
   const s = minted.session;
   return response.status(200).json({

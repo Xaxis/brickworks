@@ -87,9 +87,9 @@ own docs. **unconfirmed** means no source said it either way.
 
 | Kind | Raised where | Default | Notes |
 |---|---|---|---|
-| A new sign-up | api/otp.js (the account made as its first code is asked for), api/orangecheck.js | on, at once | The handle, and how they came: the referring site or a link's `utm_` tags (web/theme.js reads them on the page; sent only with the sign-in code) |
+| A new sign-up | api/otp.js (the account made as its first code is asked for), api/orangecheck.js | on, at once | The handle, and how they came: the referring site or a link's `utm_` tags. web/theme.js reads them on the visit's first page that has them and keeps them for that tab alone (sessionStorage, gone when it closes), so a page or two later, or in the studio, they are still known. They are sent only with a sign-in code asked for in that tab: the site's form (web/account.js, web/authorize.js) or the studio's (src/account/account.gd) |
 | A first model published | api/share.js | on, at once | Its name, parts, whether listed, a link |
-| A bug report or feedback | api/_feedback.js | on, at once | Its kind and first words; a link to Feedback |
+| A bug report or feedback | api/_feedback.js | on, at once | Its kind and first words, from `@handle`, "someone signed in, with no handle yet" or "someone signed out", never an address; a link to Feedback |
 | Plans and payments | api/plans.js, Admission's signed webhook | on, at once | Bought, changed, cancelling, cancelled, a failed payment; renewals are not mailed |
 | Server errors | api/_noted.js around each of the 12 functions | on, at once, 20 an hour | One row per 5xx; at most one mail an hour |
 | Supabase near its quota | the cron, hourly: `admin_usage`, Supabase's health | on, at once, 80% of 8 GB database, 100 GB storage | At most once a day each; Supabase refusing the project too |
@@ -110,6 +110,15 @@ The social desk's tables are only read, so its files are not changed.
 
 ## The rules (api/_notify.js)
 
+- **Nobody waits for it.** Each raise, and each 5xx's row, runs after the
+  answer has gone (api/_after.js). On Vercel the request's own `waitUntil`
+  keeps the function alive for it. That is the one Vercel's Node runtime
+  keeps at `globalThis[Symbol.for("@vercel/request-context")]`, read as
+  `@vercel/functions` reads it, with no dependency added. Anywhere else the
+  work runs on its own, and nothing waits on it past 1.5 s (`BOUND`). A
+  first model is told apart by asking for one other model of its owner,
+  never by a count. The page's Settings say which way this deployment runs
+  it (`after`).
 - **Each kind** on or off, and at once or in the daily digest (default
   08:00 UTC).
 - **Batching.** A kind waits until none of it came for 2 minutes (`GAP`), and
@@ -117,10 +126,25 @@ The social desk's tables are only read, so its files are not changed.
   listed; the rest are counted, with a link to them all.
 - **The cap** (default 6 mails an hour, 1 to 60). Mails at once, digests and
   folds count; tests and address codes do not. Past it, the rest wait and go
-  as one mail ("And N more"), the hour's last, in order of weight: errors,
-  quota, plans, scheduled posts, feedback, sign-ups, first models, social.
+  as one mail, the hour's last, in order of weight: errors, quota, plans,
+  scheduled posts, feedback, sign-ups, first models, social. It is titled
+  "And N more" after the hour's other mails, and "This hour: ..." when it
+  is the hour's only one (a cap of 1).
 - **Quiet hours** (off by default; 22:00 to 07:00 when on). Nothing goes. What
   came is held and goes as one mail when they end. The digest waits too.
+- **The digest's day.** Each run works out which day's digest is due: today's
+  once the owner's clock is past the digest's time, otherwise yesterday's.
+  It sends that day's digest unless it was sent already or quiet hours are
+  on. So a digest set inside quiet hours (23:00 in 22:00 to 07:00) goes as
+  they end, once a day. A time the clock skips when it springs forward goes
+  at the first moment after it, and a time that comes twice when it falls
+  back goes once. The page says so: "sent at 07:00 when quiet hours end".
+  A pool's first digest is the first day its time comes.
+- **Old rows pruned** (a test's events past a week, the rest and the mails
+  past 90 days, errors past two): at the
+  first run of each UTC day, whenever it comes, by the day kept in
+  `pruned_on` (supabase/owner_notify2.sql). Until that file is applied, they
+  are pruned on every run in the hour from 03:00 UTC.
 - **Pause all.** Nothing is mailed, nor kept to mail later.
 - **A failed send** is tried again, 3 times at most, then marked Not sent.
   The Sent tab and the console's badge show it.
@@ -144,9 +168,13 @@ The social desk's tables are only read, so its files are not changed.
 
 - **The address.** The owner's account address by default, shown in part
   (`ow•••@example.com`). Another is used only once the code mailed to it is
-  typed (6 digits, 30 minutes, 5 tries). Back to my account's address drops
-  a code still waiting.
-- **Quiet hours**, the digest's time, the time zone, the cap.
+  typed (6 digits, 30 minutes, 5 tries). At most 5 codes are mailed an hour,
+  counted from the Sent record as tests are. Back to my account's address
+  drops a code still waiting.
+- **Quiet hours**, the digest's time, the time zone, the cap. Each change is
+  saved as it is made. When two are in flight at once, their answers may
+  come back in either order, so the page shows the one written last, by the
+  row's `version`.
 - **Send a test**, of the whole or of one kind, at most 10 an hour.
 - **Check now** runs the cron for this deployment now.
 - **Pause all.**
@@ -158,7 +186,10 @@ The console's two pools, as everywhere in it:
 - **The site's own** (brickworks.diy, not `?tests=1`): mails from the start,
   with each kind's default.
 - **Any other deployment** (a preview): mails nobody until its settings are
-  saved, and only what happens there.
+  saved (Save, a kind's switch, Pause, the time and the cap), and only what
+  happens there. Send a test, an address code or Check now there leave it
+  off: the saved settings carry `saved: true`, and nothing else turns a
+  pool on.
 - **The checks' own** (`?tests=1`): only Resend's test inbox
   (`delivered+brickworks-tests@resend.dev`), and another address only at
   resend.dev. Never the owner.
@@ -180,14 +211,17 @@ An account deleted at its person's request takes its events with it, and
 the words of each mail that told of it; the mail stays in the record as
 "About an account since deleted".
 
-## The tables (supabase/owner_notify.sql)
+## The tables (supabase/owner_notify.sql, supabase/owner_notify2.sql)
 
 Additive: four tables, row security on, no policies, nothing granted but to
-the server's role. Nothing refers to `auth.users`.
+the server's role. Nothing refers to `auth.users`. owner_notify2.sql adds
+one nullable column, `pruned_on`; its dry run against the live project is in
+bench/results/onfix-2026-11-18/owner_notify2.dry.txt.
 
 - `owner_notify_settings`: one row a pool. The settings, the address and a
-  waiting code (its hash), the off key, the last digest's day, and a
-  `version` every write compares and sets.
+  waiting code (its hash), the off key, the last digest's day, the last
+  prune's day (`pruned_on`), and a `version` every write compares and
+  sets.
 - `owner_notify_events`: one row an event, once by its key, through `new`,
   `held`, `capped`, `digest`, `sending`, `mailed`, `off`, `paused`, `failed`.
 - `owner_notify_mails`: each mail, its words, to whom (in part) and what
@@ -204,14 +238,23 @@ nothing else on the site notices.
   api/_feedback.js, Admission's signed webhook, a 5xx through api/_noted.js,
   the cron's looks at Supabase's size and the desk's tables) against held
   tables and a stand-in Resend. It checks every rule above: a burst as one,
-  10 minutes at most, the digest once a day, quiet hours, the cap and the
-  fold, pause, off, the one-click links, tests, another address, Resend
-  failing 3 times, the erase, the cron on a preview, the alarm, and that only
-  resend.dev addresses are mailed. The orangecheck sign-up's raise is the
+  10 minutes at most, the digest once a day, a digest inside quiet hours
+  across both of 2027's clock changes in Europe/London, quiet hours, the cap
+  and the fold (and its title at a cap of 1), pause, off, the one-click
+  links, tests (and a preview's test leaving its pool off), another address
+  and its 5 codes an hour, Resend failing 3 times, the erase, the cron on a
+  preview, the alarm, the prune once a day, and that only resend.dev
+  addresses are mailed. With the tables hung, every raising path answers in
+  under 300 ms and its event lands once they answer. On a stand-in of
+  Vercel's request context, the work is handed to its `waitUntil`. The orangecheck sign-up's raise is the
   same call and is read, not run: it needs orangecheck's own keys.
 - `tests/fixtures/owner_notify/db_check.mjs` applies the SQL twice to a
   Postgres of its own: no role but the server's reaches a table, and each
-  check refuses in its own name.
+  check refuses in its own name. It then applies owner_notify2.sql twice
+  over the rows already there, which keeps them all.
+- `tools/web/account_flow.mjs` (preview check `account`) starts on the
+  landing page from another site's tagged link, goes into the studio, and
+  checks that the code the studio asks for says how the visit came.
 - `tools/web/ownernotify_flow.mjs` (preview check `ownernotify`) uses the
   page as the owner does, in the checks' pool, at 1280 and 430, light and
   dark. It refuses brickworks.diy.

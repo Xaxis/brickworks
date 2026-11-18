@@ -46,9 +46,14 @@ function zones(select, current) {
 }
 
 /// One of the owner's changes saved: [body] (notify_set), said at [where].
+/// Two in flight at once (a field left by a press on another) may answer
+/// in either order: an answer older than the settings shown is not drawn
+/// over them (the row's version, api/_notify.js notifySet).
 function save(body, where, said) {
   return post({ op: "notify_set" }, where, said, { body, after: (answer) => {
-    state = { ...state, settings: answer.settings, active: true, set: true };
+    if (Number(answer.version) < Number(state.version || 0)) return;
+    state = { ...state, settings: answer.settings, digest: answer.digest || state.digest, version: answer.version, active: true,
+      set: true };
     drawState();
     onChange();
   } });
@@ -131,6 +136,10 @@ function drawEvents() {
 // ---------------------------------------------------------------------------
 // The headline, the address and the rest of the settings.
 
+/// ", sent at 07:00 when quiet hours end" when the digest's time is inside
+/// quiet hours, as the server says (api/_notify.js digestTime); else "".
+const heldDigest = () => (state?.digest?.held_until ? `, ${state.digest.said}` : "");
+
 function drawState() {
   const s = state.settings;
   const missing = [];
@@ -146,7 +155,7 @@ function drawState() {
   const parts = [];
   if (state.applied && state.active && !s.paused) {
     parts.push(`${state.hour.sent} of ${state.hour.cap} mails in the last hour.`);
-    parts.push(`The digest at ${s.digest_at} (${s.tz})${state.digest.last ? `, last on ${state.digest.last}` : ""}.`);
+    parts.push(`The digest at ${s.digest_at} (${s.tz})${heldDigest()}${state.digest.last ? `, last on ${state.digest.last}` : ""}.`);
   }
   if (state.scope !== "live") {
     parts.push(`This deployment (${state.scope}) is not brickworks.diy: it mails only what happens here, and only once a setting is saved.`);
@@ -198,7 +207,7 @@ for (const id of ["notify-quiet-from", "notify-quiet-to"]) {
     .then((went) => { if (!went) drawState(); }));
 }
 $("notify-digest-at").addEventListener("change", () => save({ digest_at: $("notify-digest-at").value }, "notify-form-said",
-  `The digest goes at ${$("notify-digest-at").value}.`).then((went) => { if (!went) drawState(); }));
+  (answer) => `The digest goes at ${answer.settings.digest_at}${heldDigest()}.`).then((went) => { if (!went) drawState(); }));
 $("notify-tz").addEventListener("change", () => save({ tz: $("notify-tz").value }, "notify-form-said",
   `Times are in ${$("notify-tz").value.replaceAll("_", " ")}.`).then((went) => { if (!went) drawState(); }));
 $("notify-cap").addEventListener("change", () => {
@@ -365,7 +374,7 @@ function drawSent() {
   $("n-notify-held").textContent = state.applied ? count(w.held) : "—";
   $("n-notify-capped").textContent = state.applied ? count(w.capped) : "—";
   $("n-notify-digest").textContent = state.applied ? count(w.digest) : "—";
-  say("n-notify-digest-at", state.applied ? `at ${state.settings.digest_at}` : "");
+  say("n-notify-digest-at", state.applied ? `at ${state.settings.digest_at}${heldDigest()}` : "");
   say("notify-sent-note", state.sent === null && state.applied ? "The audit is not kept here yet (supabase/console.sql): the mails "
     + "themselves are shown." : "");
 }

@@ -120,6 +120,7 @@
 // gated download, a signed token the app checked at start) is gone.
 
 import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { createHmac } from "node:crypto";
 import { AdmissionError, AdmissionUnavailable, verifyWebhook, WebhookError } from "./_admission.js";
 import { rawOf } from "./_raw.js";
@@ -324,8 +325,9 @@ async function webhook(request, response) {
     await a.forget(event.data.customerId);
     const told = planTold(event);
     if (told) {
-      await raise("plan", { scope: scopeOf(request), test: event.mode !== "live", key: id.slice(0, 200),
-        account: /^[0-9a-f-]{36}$/.test(event.data.customerId) ? event.data.customerId : null, detail: told });
+      // After the answer (api/_after.js): Admission never waits on it.
+      afterAnswer(() => raise("plan", { scope: scopeOf(request), test: event.mode !== "live", key: id.slice(0, 200),
+        account: /^[0-9a-f-]{36}$/.test(event.data.customerId) ? event.data.customerId : null, detail: told }), "plans: webhook");
     }
   }
   return response.status(200).json({ heard: String(event.type || "") });

@@ -617,7 +617,7 @@
       "kind": "cli",
       "label": "account browser flow",
       "entry": "tools/web/account_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced; begins on the landing page from a tagged link on another site, and checks the studio's code request carries how the visit came, web/theme.js and src/account/account.gd)",
       "area": "account"
     },
     {
@@ -5489,7 +5489,7 @@
       "kind": "lib",
       "label": "the owner's notifications",
       "entry": "api/_notify.js",
-      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day, quiet hours, the cap folded, pause, off, the one-click links, tests, another address by its code, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, only resend.dev mailed; owner_notify.sql applied twice to a Postgres of its own; docs/OWNER_NOTIFY.md)",
+      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
       "area": "web"
     },
     {
@@ -5497,6 +5497,13 @@
       "label": "each server error kept",
       "entry": "api/_noted.js",
       "reach": "tests/test_owner_notify.py's errors checks: each of the 12 functions wrapped by noted(), a 5xx (answered or thrown) kept in owner_notify_errors after the answer is sent, nothing said before owner_notify.sql is applied",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "work after the answer",
+      "entry": "api/_after.js",
+      "reach": "tests/test_owner_notify.py's after checks: with owner_notify's tables hung, a sign-up's code, a first publish, feedback, Admission's webhook and a 5xx each answer in under 300 ms and what each raised lands once the tables answer; hung past BOUND (1.5 s) nothing waits longer or throws; on a stand-in of Vercel's request context (globalThis[Symbol.for('@vercel/request-context')].get().waitUntil) the work is handed to it; /admin › Notifications says which (after: waitUntil or bounded)",
       "area": "web"
     },
     {

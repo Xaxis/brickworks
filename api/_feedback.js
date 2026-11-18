@@ -35,7 +35,8 @@
 import { AuthError, bearer, verify } from "./_auth.js";
 import { framedMail, Refusal, resend, siteOrigin } from "./_beta.js";
 import { db, dbConfigured, reach } from "./_db.js";
-import { inPart, raise } from "./_notify.js";
+import { afterAnswer } from "./_after.js";
+import { raise } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
 
 export const KINDS = Object.freeze({ bug: "Something is wrong", idea: "An idea", question: "A question" });
@@ -268,11 +269,14 @@ async function send(request, response, claims, place) {
   const lost = Object.entries(attached).filter(([, went]) => !went).map(([what]) => what);
   const said = ["Thank you.", THANKS[claims ? "kept" : "mailed"], ...(lost.length ? [THANKS[lost.length > 1 ? "both" : lost[0]]] : [])]
     .join(" ");
-  // Told to the owner (api/_notify.js), the checks' own in their own pool.
-  const from = claims?.email || report.email || "";
-  await raise("feedback", { scope: scopeOf(request), test: /@resend\.dev$/i.test(from), key: String(id),
-    account: claims?.sub ?? null, detail: { id, kind: report.kind, beta: kept.beta === true, from: from ? inPart(from) : null,
-      words: report.words.slice(0, 300), source: report.source } });
+  // Told to the owner (api/_notify.js), the checks' own in their own pool,
+  // after the answer (api/_after.js). Never an address in it: the mail
+  // names the account by its handle, or says it was sent signed out.
+  const test = /@resend\.dev$/i.test(claims?.email || report.email || "");
+  const scope = scopeOf(request);
+  afterAnswer(() => raise("feedback", { scope, test, key: String(id), account: claims?.sub ?? null,
+    detail: { id, kind: report.kind, beta: kept.beta === true, words: report.words.slice(0, 300), source: report.source } }),
+  "feedback: told");
   return response.status(200).json({ id, beta: kept.beta === true, attached, said });
 }
 

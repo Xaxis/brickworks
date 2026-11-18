@@ -2,10 +2,12 @@
 // applied twice: what the database itself keeps of the owner's
 // notifications. No role a page or a visitor has reaches any table; the
 // server's does; an event is kept once by its key; each check refuses in its
-// own name; a mail deleted leaves its events. What tests/test_owner_notify.py
-// asks.
+// own name; a mail deleted leaves its events. supabase/owner_notify2.sql,
+// applied twice more over the rows there, adds its one column and keeps
+// them. What tests/test_owner_notify.py asks.
 //
 //   PG_MODULE=... PG_BIN=... node tests/fixtures/owner_notify/db_check.mjs
+import { readFileSync } from "node:fs";
 import { startPostgres } from "../beta/pg.mjs";
 
 const out = {};
@@ -116,6 +118,21 @@ try {
     await refused("insert into public.owner_notify_errors (scope, fn, status) values ('live', 'share', 404)"),
     await refused("insert into public.owner_notify_errors (scope, fn, status) values ('live', 'Share!', 500)"),
   ];
+
+  // owner_notify2.sql, twice, over the rows above: one date column, null
+  // until the prune writes it, every row and its settings kept.
+  const rowsBefore = Number(await db.one("select count(*) from public.owner_notify_settings"));
+  const second = readFileSync(new URL("../../../supabase/owner_notify2.sql", import.meta.url), "utf8");
+  await db.q(second);
+  await db.q(second);
+  out.second = {
+    column: (await db.q(`select data_type, is_nullable from information_schema.columns
+      where table_schema = 'public' and table_name = 'owner_notify_settings' and column_name = 'pruned_on'`))
+      .map((one) => `${one.data_type}:${one.is_nullable}`),
+    rows: Number(await db.one("select count(*) from public.owner_notify_settings")) === rowsBefore && rowsBefore > 0,
+    nulls: Number(await db.one("select count(*) from public.owner_notify_settings where pruned_on is not null")),
+    written: await refused("update public.owner_notify_settings set pruned_on = '2026-11-18' where scope = 'live' and test"),
+  };
 } catch (trouble) {
   out.error = String(trouble?.stack || trouble).slice(0, 1500);
 } finally {

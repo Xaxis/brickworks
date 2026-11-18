@@ -231,11 +231,12 @@
 // probes expect it.
 
 import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
-import { db, dbConfigured, dbCount, orUnknown, reach } from "./_db.js";
+import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { raise } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
@@ -3266,14 +3267,20 @@ async function publish(request, response) {
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
-  // A person's first model told to the owner (api/_notify.js): the only
-  // link they have ever had. Never in the way of the publish.
+  // A person's first model told to the owner (api/_notify.js): no other
+  // link of theirs made before this one wrote its row (one row at most, by
+  // the owner's index), and once by its owner's key, so two published at
+  // once tell of one. After the answer (api/_after.js): never in the way
+  // of the publish.
   if (!existing) {
-    const theirs = await dbCount(`shared_models?owner=eq.${owner}`).catch(() => null);
-    if (theirs === 1) {
-      await raise("first_model", { scope: scopeOf(request), test: row.test, key: owner, account: owner,
-        detail: { id, name, parts, listed: Boolean(listed) } });
-    }
+    const scope = scopeOf(request);
+    afterAnswer(async () => {
+      const other = await db(`shared_models?owner=eq.${owner}&id=neq.${id}&created_at=lt.${now}&select=id&limit=1`, { seconds: 5 });
+      if (Array.isArray(other) && other.length === 0) {
+        await raise("first_model", { scope, test: row.test, key: owner, account: owner,
+          detail: { id, name, parts, listed: Boolean(listed) } });
+      }
+    }, "share: first model");
   }
 
   const origin = originOf(request);
