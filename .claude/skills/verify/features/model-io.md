@@ -381,7 +381,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (s5review F6, mergekeep; bench s5sub_probe `S5SUB_ONLY=subtwice`). `s5steps_probe` (headless;
   `S5_ALL=1` the big files, `S5_EVERY=1` every step of a grouped file) edits
   each model's end on real files and checks the rest of the file byte for
-  byte when a part is put on top. A
+  byte when a part is put on top. A row base fails too (its `KNOWN`) is
+  said `known` with why, never FAIL: a release fails a probe on any FAIL
+  line whatever its exit, and held rel-m312 on them (m312fix). A
   MULTI_STEP BEGIN or END a step taken out or merged leaves inside the
   step made of two moves to just after that step's end
   (`SourceFile._regroup`; `_grouped_at_steps` for a section written whole),

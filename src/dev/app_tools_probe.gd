@@ -191,24 +191,37 @@ func _pose() -> void:
 	_check("nothing to pose is said, with what makes a joint: %s" % said.left(60),
 		said.begins_with("Nothing here turns"))
 	# The pose probe's crane: a turret on a turntable, an arm on a hinge.
-	_put("3680", Vector3(0, 8, 0), Basis.IDENTITY, "")
-	_put("3679", Vector3(0, 8, 0), Basis.IDENTITY, "Turret#1")
-	_put("3937", Vector3(0, 32, 0), Basis.IDENTITY, "Turret#1")
+	var base: int = _put("3680", Vector3(0, 8, 0), Basis.IDENTITY, "")
+	var on_turret: Array[int] = [_put("3679", Vector3(0, 8, 0), Basis.IDENTITY, "Turret#1"),
+		_put("3937", Vector3(0, 32, 0), Basis.IDENTITY, "Turret#1")]
 	var top: int = _put("3938", Vector3(0, 32, 0), Basis.IDENTITY, "Turret#1/Arm#1")
-	_put("3795", Vector3(0, 40, 50), Basis(Vector3.UP, PI * 0.5), "Turret#1/Arm#1")
+	on_turret.append(top)
+	on_turret.append(_put("3795", Vector3(0, 40, 50), Basis(Vector3.UP, PI * 0.5), "Turret#1/Arm#1"))
+	var stood: Dictionary = {}
+	for id: int in on_turret + [base]:
+		stood[id] = _world.get_brick(id).transform
 	said = await _say("pose_model", {})
 	_check("pose_model lists the turntable and the hinge: %s" % said.replace("\n", " ").left(120),
 		said.contains("turntable") and said.contains("hinge"))
 	var was: Transform3D = _world.get_brick(top).transform
 	var depth: int = _builder.history_depth()
 	said = await _say("pose_model", {"joint": "1", "degrees": 90})
-	_check("the turret swung to 90°: %s" % said,
-		said.ends_with("at 90°.") and not _world.get_brick(top).transform.is_equal_approx(was))
+	# Its first line: whether the pose holds follows it (posehold), the
+	# hinge's here, whose hold no one has published (posehold_probe's).
+	_check("the turret swung to 90°: %s" % said.get_slice("\n", 0),
+		said.get_slice("\n", 0).ends_with("at 90°.")
+		and not _world.get_brick(top).transform.is_equal_approx(was))
+	var left: Array = on_turret.filter(func(id: int) -> bool:
+		return _world.get_brick(id).transform.is_equal_approx(stood[id]))
+	_check("...every part on the turret swung with it, none left behind (%s), its base where it was"
+		% ", ".join(left.map(func(id: int) -> String: return "#%d %s" % [id, _world.get_brick(id).part_id])),
+		left.is_empty() and _world.get_brick(base).transform.is_equal_approx(stood[base]))
 	_check("...one undo step", _builder.history_depth() == depth + 1)
 	said = await _say("pose_model", {"joint": "9"})
 	_check("a joint not in the list is refused: %s" % said, said.begins_with("No joint 9"))
 	await _say("undo", {})
-	_check("undone, it stands where it was", _world.get_brick(top).transform.is_equal_approx(was))
+	_check("undone, it stands where it was, every part of it",
+		stood.keys().all(func(id: int) -> bool: return _world.get_brick(id).transform.is_equal_approx(stood[id])))
 	# And animated: the turret round and the arm up, over a second.
 	var panel: PosePanel = _main.get("_pose")
 	said = await _say("animate_model", {"keys": [{"t": 0, "angles": {"1": 0, "2": 0}},
