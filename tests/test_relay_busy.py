@@ -16,6 +16,7 @@ Played under node through the real handler, against the stand-in database
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -35,7 +36,11 @@ def test_a_tab_silent_a_minute_is_listed_busy_and_one_silent_four_is_not_listed(
     """)
     if out is None:
         return
-    assert "busy: not answered for 50 s" in out, out
+    # The tab's last word is set 50 s back before node and the handler start,
+    # and at load 50 that start takes over a second: 51 s (rel-m308's gate).
+    # Anything from 50 s to the three minutes that make a tab closed is busy.
+    said = re.search(r"busy: not answered for (\d+) s", out)
+    assert said and 50 <= int(said.group(1)) < 180, out
     assert "Old car" not in out, out
 
 
