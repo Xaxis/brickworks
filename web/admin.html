@@ -231,6 +231,56 @@
   .entries li.fails { border-color: var(--bad); }
   .entries small { color: var(--ink-faint); overflow-wrap: anywhere; }
   .entries .failed { color: var(--bad); font-size: var(--t-small); }
+  /* Social (socialdesk): a network's card, the rules beside the box, the
+     exact words before Send. */
+  .networks { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin: 0; padding: 0;
+    list-style: none; }
+  .networks li { display: grid; gap: var(--s-2); align-content: start; }
+  .networks li h3 { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin: 0; }
+  .networks li p { margin: 0; }
+  .networks .row, .social-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .rules-list { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+  .rules-list li { display: grid; gap: 2px; }
+  .rules-list b { font-weight: 600; }
+  .rules-list span { color: var(--ink-soft); font-size: var(--t-small); white-space: pre-line; overflow-wrap: anywhere; }
+  .words { margin: 0; padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-1); background: var(--bg);
+    white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--t-small); }
+  .words b { display: block; margin-bottom: var(--s-2); font-size: var(--t-body); }
+  .when-pair { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .console-form .counted { display: flex; justify-content: space-between; gap: var(--s-3); }
+  .console-form .counted small { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .points { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; font-size: var(--t-small);
+    font-variant-numeric: tabular-nums; }
+  .table td.text { min-width: 220px; max-width: 420px; overflow-wrap: anywhere; }
+  .table td.text small { display: block; color: var(--ink-faint); }
+  tr.unread td.text { font-weight: 600; }
+  .console-form .with-act { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: end; }
+  .console-form .with-act label { flex: 1 1 220px; }
+  .preview label.notes { display: grid; gap: var(--s-1); margin-top: var(--s-4); }
+  .preview label.notes textarea { width: 100%; }
+  .preview .social-acts { margin-top: var(--s-3); }
+  [data-section="social"] [data-tab] > p.note { margin: 0 0 var(--s-4); }
+  [data-section="social"] .with-preview + .part { margin-top: var(--s-7); }
+  table.queue td.acts a.cta { display: block; width: 100%; text-align: center; }
+  table.queue td.acts > a + button { margin-top: var(--s-2); }
+  /* The sheet's name takes focus when its body becomes the next sheet's
+     (admin-social.js, openSheet): read, not pressed, so it draws no ring. */
+  #social-sheet-title:focus { outline: none; }
+  /* A link in a row or a sheet's facts, by finger: as tall as a button. */
+  @media (width < 600px), (pointer: coarse) {
+    table.cards td.text a, #social-sheet dd a { display: inline-flex; align-items: center; min-height: var(--control-h); }
+  }
+  /* The desk's tables as cards on a phone: a row a block, each cell named by
+     its column (data-label, admin-social.js), the acts side by side. */
+  @media (width < 600px) {
+    table.cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    table.cards, table.cards tbody, table.cards tr, table.cards td { display: block; width: auto; }
+    table.cards tr { padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+    .table table.cards td { padding: 2px 0; border: 0; min-width: 0; max-width: none; text-align: start; white-space: normal; }
+    table.cards td[data-label]:not(.acts):not(.text)::before { content: attr(data-label) ": "; color: var(--ink-faint); }
+    .table table.cards td.acts { display: flex; flex-wrap: wrap; gap: var(--s-2); padding-top: var(--s-2); }
+    table.queue.cards td.acts button, table.queue.cards td.acts a.cta { display: inline-flex; width: auto; margin: 0; }
+  }
 </style>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -263,6 +313,7 @@
         <li><a href="#challenges" data-go="challenges">Challenges</a></li>
         <li><a href="#beta" data-go="beta">Beta <span class="badge accent" id="nav-beta" hidden></span></a></li>
         <li><a href="#feedback" data-go="feedback">Feedback <span class="badge accent" id="nav-feedback" hidden></span></a></li>
+        <li><a href="#social" data-go="social">Social <span class="badge accent" id="nav-social" hidden></span></a></li>
         <li><a href="#plans" data-go="plans">Plans</a></li>
         <li><a href="#mail" data-go="mail">Mail <span class="badge accent" id="nav-mail" hidden></span></a></li>
         <li><a href="#connector" data-go="connector">Connector <span class="badge accent" id="nav-connector" hidden></span></a></li>
@@ -710,6 +761,128 @@
           <ol class="fb-list" id="fb-list"></ol>
         </section>
 
+        <!-- Social (socialdesk) --------------------------------------------------------->
+        <section data-section="social" aria-labelledby="h-social" hidden>
+          <div class="lead"><h2 id="h-social">Social</h2>
+            <p class="note">Brickworks' own accounts: what came in, what you write, and what each post brought to the
+              site. Nothing is sent until you press Send on its exact words, and nothing is ever voted on.</p></div>
+          <p class="note bad" id="social-not-yet" role="alert" hidden></p>
+          <nav class="tabs" aria-label="Social">
+            <a href="#social/inbox" data-tab-link="inbox">Inbox <span class="n" id="tab-social-unread"></span></a>
+            <a href="#social/write" data-tab-link="write">Write</a>
+            <a href="#social/sent" data-tab-link="sent">Sent and scheduled <span class="n" id="tab-social-due"></span></a>
+            <a href="#social/accounts" data-tab-link="accounts">Accounts</a>
+          </nav>
+
+          <div data-tab="inbox" hidden>
+            <p class="note">Replies to our posts and comments, mentions of Brickworks found across the network, and
+              private messages, the newest first. Read and unread are kept here; nothing is marked at the network.</p>
+            <div class="tools">
+              <input type="search" id="inbox-q" placeholder="Search what came in" aria-label="Search what came in">
+              <div class="segmented" role="group" aria-label="Show" data-filter="inbox" id="inbox-kinds">
+                <button type="button" data-value="" aria-pressed="true">All</button>
+                <button type="button" data-value="unread" aria-pressed="false">Unread</button>
+                <button type="button" data-value="reply" aria-pressed="false">Replies</button>
+                <button type="button" data-value="mention" aria-pressed="false">Mentions</button>
+                <button type="button" data-value="message" aria-pressed="false">Messages</button>
+              </div>
+              <div class="social-acts push">
+                <button type="button" id="inbox-check">Check now</button>
+                <button type="button" id="inbox-all-read" class="ghost">Mark all read</button>
+              </div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-label="What came in">
+              <table class="queue cards">
+                <caption class="visually-hidden">What came in</caption>
+                <thead><tr><th scope="col">When</th><th scope="col">Kind</th><th scope="col">From</th><th scope="col">Where</th>
+                  <th scope="col">What</th><th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                <tbody id="inbox"></tbody>
+              </table>
+            </div>
+            <p class="note" id="inbox-note" role="status"></p>
+          </div>
+
+          <div data-tab="write" hidden>
+            <div class="with-preview">
+              <form id="social-form" class="card console-form" novalidate>
+                <h3 id="social-form-h">A new post</h3>
+                <p class="note" id="social-replying" hidden></p>
+                <label>Network
+                  <select name="provider" id="social-provider"></select></label>
+                <div class="with-act" id="social-community-l">
+                  <label>Community
+                    <input name="community" id="social-community" maxlength="23" placeholder="r/lego" autocomplete="off" spellcheck="false"></label>
+                  <button type="button" id="social-rules-get" class="ghost">Read its rules</button></div>
+                <label id="social-title-l"><span class="counted">Title <small id="social-title-n"></small></span>
+                  <input name="title" maxlength="300"></label>
+                <label id="social-link-l">Link, for a link post (leave the words empty)
+                  <input name="link" type="url" inputmode="url" placeholder="https://brickworks.diy/gallery" spellcheck="false"></label>
+                <label><span class="counted">Words <small id="social-body-n"></small></span>
+                  <textarea name="body" rows="7" maxlength="40000"></textarea></label>
+                <p class="note">Links to brickworks.diy are tagged as the draft is kept (utm_campaign=bw-…), so the visits each
+                  post brings are counted under Sent. Other links are left as they are.</p>
+                <div class="row">
+                  <button type="submit" class="ghost">Keep the draft</button>
+                  <button type="button" class="cta" id="social-review">Review and send…</button>
+                  <button type="button" class="ghost" id="social-new">New</button>
+                  <span class="note" id="social-note" role="status"></span>
+                </div>
+              </form>
+              <aside class="card preview" aria-labelledby="h-social-rules">
+                <h3 id="h-social-rules">Its rules</h3>
+                <p class="note" id="social-rules-said" role="status">Name a community and read its rules before you post: each community
+                  sets its own on self-promotion, and breaking them gets an account banned.</p>
+                <ol class="rules-list" id="social-rules"></ol>
+                <p class="note" id="social-rules-link"></p>
+                <label class="notes">Your notes on its rules
+                  <textarea id="social-rules-notes" rows="3" maxlength="4000" placeholder="When it allows a link, which flair, its weekly thread"></textarea></label>
+                <div class="social-acts"><button type="button" id="social-notes-keep" class="ghost">Keep the notes</button>
+                  <span class="note" id="social-notes-said" role="status"></span></div>
+              </aside>
+            </div>
+            <div class="part">
+              <div class="lead"><h3 id="h-drafts">Drafts</h3><p class="note">Kept until you send or drop them.</p></div>
+              <div class="table" tabindex="0" role="region" aria-labelledby="h-drafts">
+                <table class="queue cards">
+                  <caption class="visually-hidden">Drafts</caption>
+                  <thead><tr><th scope="col">Kept</th><th scope="col">Where</th><th scope="col">What</th>
+                    <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                  <tbody id="drafts"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div data-tab="sent" hidden>
+            <p class="note">What you sent and what waits to go, with how each post does over time: its score and comments
+              as the network says them, and the visits its links brought to brickworks.diy.</p>
+            <div class="stats">
+              <div class="stat"><b id="n-social-sent">—</b><span>sent</span><small id="n-social-sent-said"></small></div>
+              <div class="stat"><b id="n-social-waiting">—</b><span>scheduled</span><small id="n-social-waiting-said"></small></div>
+              <div class="stat"><b id="n-social-visits">—</b><span>visits brought</span><small id="n-social-visits-said"></small></div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-label="Sent and scheduled">
+              <table class="queue cards">
+                <caption class="visually-hidden">Sent and scheduled</caption>
+                <thead><tr><th scope="col">When</th><th scope="col">State</th><th scope="col">Where</th><th scope="col">What</th>
+                  <th scope="col" class="n">Score</th><th scope="col" class="n">Comments</th><th scope="col" class="n">Visits</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                <tbody id="sends"></tbody>
+              </table>
+            </div>
+            <p class="note" id="sends-older" hidden></p>
+            <p class="note" id="sends-note" role="status"></p>
+          </div>
+
+          <div data-tab="accounts" hidden>
+            <p class="note">Each network the desk knows. Reddit's posts go by its API once it is connected, or by hand: the
+              desk opens Reddit's own page with your words and you press Post there. Its keys are kept on the server
+              alone; Disconnect takes them back.</p>
+            <ul class="networks" id="networks"></ul>
+            <p class="note" id="networks-note" role="status"></p>
+          </div>
+        </section>
+
         <!-- Plans and revenue (console2) ----------------------------------------------->
         <section data-section="plans" aria-labelledby="h-plans" hidden>
           <div class="lead"><h2 id="h-plans">Plans and revenue</h2>
@@ -1096,6 +1269,15 @@
     <button type="button" class="icon-btn" id="sheet-close" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="/icons.svg#close"/></svg></button>
   </div>
   <div class="sheet-body" id="sheet-body"></div>
+</dialog>
+
+<!-- The social desk's own panel: the exact words before Send, a send's detail. -->
+<dialog class="sheet" id="social-sheet" aria-labelledby="social-sheet-title">
+  <div class="sheet-head">
+    <h2 id="social-sheet-title">—</h2>
+    <button type="button" class="icon-btn" id="social-sheet-close" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="/icons.svg#close"/></svg></button>
+  </div>
+  <div class="sheet-body" id="social-sheet-body"></div>
 </dialog>
 
 <script type="module" src="/admin.js"></script>

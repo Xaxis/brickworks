@@ -192,3 +192,35 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
 })();
+
+// A visit a post from the owner's social desk brought (socialdesk,
+// 2026-11-18; api/_social.js, /admin › Social): the desk tags the site's
+// links in what it sends with utm_campaign=bw-<send id>. The landing is told
+// once, with a random number of its own so it is counted once, and nothing
+// else about the visitor; once the page has loaded (the visit counter has
+// read the address too) the tags are taken out of the address, so a reload
+// or a link copied from it does not count again.
+(() => {
+  try {
+    const params = new URLSearchParams(location.search);
+    const campaign = params.get("utm_campaign") || "";
+    if (!/^bw-[a-z0-9]{10}$/.test(campaign)) return;
+    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => (byte % 36).toString(36)).join("");
+    const body = JSON.stringify({ campaign, nonce, path: location.pathname, source: params.get("utm_source") || "" });
+    const told = navigator.sendBeacon && navigator.sendBeacon("/api/plans?op=social_visit", new Blob([body], { type: "application/json" }));
+    if (!told) {
+      fetch("/api/plans?op=social_visit", { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: true })
+        .catch(() => null);
+    }
+    const untag = () => {
+      const now = new URLSearchParams(location.search);
+      for (const key of [...now.keys()]) if (key.startsWith("utm_")) now.delete(key);
+      const rest = now.toString();
+      history.replaceState(history.state, "", `${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`);
+    };
+    if (document.readyState === "complete") untag();
+    else addEventListener("load", untag, { once: true });
+  } catch {
+    // A browser without these counts nothing; the page is as it was.
+  }
+})();

@@ -41,6 +41,7 @@
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete; plans on, a new model past the plan's limit 413 {full: \"plan\", error, pro: \"/plans\"}: python3 tools/minitest.py tests/test_saved_models_plan.py)",
       "area": "model-io",
       "tests": [
+        "tests/test_saved_models_plan.py",
         "tests/test_bench.py",
         "tests/test_booklet_follow.py",
         "tests/test_cadtask.py",
@@ -52,7 +53,12 @@
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_refresh_catalogue.py",
+        "tests/test_release.py",
+        "tests/test_row_cap.py",
+        "tests/test_share_unknowns.py",
+        "tests/test_update_parts.py"
       ]
     },
     {
@@ -89,7 +95,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -107,6 +114,7 @@
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
+        "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -122,16 +130,16 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_site_lang.py",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
-        "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
-        "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
-        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -142,13 +150,13 @@
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
       "tests": [
-        "tests/fixtures/console/api3_check.mjs",
-        "tests/test_console3.py",
         "tests/test_flows_for.py",
-        "tests/test_gallery_builds.py",
-        "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/fixtures/console/api3_check.mjs",
+        "tests/test_console3.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_gallery_crons.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
@@ -184,10 +192,10 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/db3_check.mjs",
-        "tests/fixtures/oauth/world.mjs",
         "tests/fixtures/relay/world.mjs",
         "tests/test_assistant_pages.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/fixtures/oauth/world.mjs"
       ]
     },
     {
@@ -216,6 +224,7 @@
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
       "tests": [
+        "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -272,6 +281,7 @@
       "reach": "https://brickworks.diy/library/set/7985-1.webp (a card's, 640x480) and /library/set/7985-1.page.webp (its page's)   (setpics: Rebrickable's picture of the set, read from the parts bucket's sets/card/ and sets/page/ by ?op=catalog_photo and kept a year; 404 for a set the store has none of; tests/test_sets.py, tools/web/sets_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_model_bases.py",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
@@ -279,7 +289,6 @@
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
-        "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
         "tests/test_sets.py"
@@ -293,17 +302,19 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
-        "tests/fixtures/console/api_check.mjs",
-        "tests/fixtures/console/db_check.mjs",
+        "tests/test_console2.py",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
-        "tests/test_console2.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -320,7 +331,8 @@
         "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -330,15 +342,16 @@
       "reach": "curl -s -X POST '<deployment>/api/plans?op=feedback' -H 'content-type: application/json' -d '{\"kind\":\"idea\",\"words\":\"...\",\"email\":\"delivered@resend.dev\"}'; GET it signed in for your own   (422 with why; 429 past the hour's rate; 503 \"not open here yet\" before supabase/feedback.sql; python3 tools/minitest.py tests/test_feedback.py)",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
-        "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -776,10 +789,10 @@
       "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -930,10 +943,10 @@
       "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -2457,10 +2470,10 @@
       "reach": "tools/release.py publish --draft, then tools/release.py publish",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -2482,8 +2495,8 @@
       "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy; --write writes what the docs make and commit: each tool's doc's copy of its words, src/ai/connector_guide.gd and src/ui/docs_pages.gd, and --check fails while any differs, a tool has no doc or its example breaks its schema)",
       "area": "web",
       "tests": [
-        "tests/test_assistant_pages.py",
-        "tests/test_docs_site.py"
+        "tests/test_docs_site.py",
+        "tests/test_assistant_pages.py"
       ]
     },
     {
@@ -2847,15 +2860,23 @@
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
+    },
+    {
+      "id": "cli:socialdesk browser flow",
+      "kind": "cli",
+      "entry": "tools/web/socialdesk_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/socialdesk_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose Reddit is the stand-in, never reddit.com: the gate on every social op; before social.sql the section says so and writes 503; after it, connect, the inbox and its filters, a reply, a post with its rules and draft, words changed behind the open sheet refused, Send, Schedule and Unschedule, the cron sending one due, results and Details, a tagged visit counted once and its tags gone, Disconnect, a link and words refused, a long post by hand taken back and dropped, a post by hand; each tab at 390/1280 light/dark with every row's acts on screen; no token anywhere; preview check [socialdesk]. Locally: node tools/web/relay_server.mjs PORT --hold=social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "cli:splitmerge probe",
@@ -4624,8 +4645,8 @@
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql --dry --try=tools/challenges_try.sql --table=challenge_entries   (after the live files; the promises around it in tests/test_challenges.py; then the challenges browser flow)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_year.py",
         "tests/test_challenges.py",
+        "tests/test_challenge_year.py",
         "tests/test_release_train.py"
       ]
     },
@@ -4635,6 +4656,22 @@
       "entry": "src/net/updates.gd",
       "reach": "tools/probe.sh updater_probe; python3 tools/release.py latest --check dist/<version>/latest.json",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "lib:the social desk",
+      "kind": "lib",
+      "entry": "api/_social.js",
+      "reach": "python3 tools/minitest.py tests/test_social.py   (api/admin.js's social ops and api/plans.js's social_due and social_visit against supabase/social.sql's tables held in memory and the stand-in Reddit (api/_social_mock.js): the gate on all 13 ops, connect with a signed state, the inbox's replies, mentions and messages, rules, drafts tagged, the press by its hash (changed words 409, nothing sent), send, schedule and the cron, results, visits once each, disconnect, by hand; no token in an answer, a log or a path; social.sql applied twice to a Postgres of its own: no role but the server's reaches a table, a send past a draft refused without a press)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:the social desk's Reddit adapter",
+      "kind": "lib",
+      "entry": "api/_social_reddit.js",
+      "reach": "tests/test_social.py: OAuth (web app, code flow, permanent), /api/v1/me, /message/inbox, /search, /r/X/about/rules and /about, /api/submit, /api/comment, /api/info, revoke; the checks' pool talks to api/_social_mock.js alone; with no REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (none can be made since 2026-10-31) posts go by hand on Reddit's own submit page",
+      "area": "web",
       "tests": []
     },
     {
@@ -4820,10 +4857,10 @@
       "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (the gallery's Sets tab, switched in place: every set, as the gallery's cards: cover, name, number, theme, year, modeller; the gallery's search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; web/library.html written by tools/browse_pages.py; linked from every page's footer as Sets)",
       "area": "web",
       "tests": [
-        "tests/test_browse_pages.py",
-        "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_browse_pages.py",
+        "tests/test_gallery_crons.py",
         "tests/test_sets.py"
       ]
     },
@@ -5001,7 +5038,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -5075,11 +5113,11 @@
       "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub, and #about, \"tell us about you\", the month of Pro's form or where it stands (GET/POST ?op=beta); /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_beta.py",
+        "tests/test_beta_join.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
-        "tests/test_beta.py",
-        "tests/test_beta_join.py",
         "tests/test_console.py",
         "tests/test_console2.py",
         "tests/test_feedback.py",
@@ -5203,7 +5241,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -5213,8 +5252,8 @@
       "reach": "https://brickworks.diy/collections  (?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Collections tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
       "area": "web",
       "tests": [
-        "tests/test_browse_pages.py",
         "tests/test_collections_tab.py",
+        "tests/test_browse_pages.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_share_unknowns.py"
@@ -5291,7 +5330,8 @@
       "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
       "area": "account",
       "tests": [
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -5409,8 +5449,8 @@
       "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation, which opens the page of the panel in front, from the pages' panels: heads (src/ui/docs_pages.gd); /docs/llms.txt is the same for an assistant)",
       "area": "web",
       "tests": [
-        "tests/test_assistant_pages.py",
         "tests/test_docs_site.py",
+        "tests/test_assistant_pages.py",
         "tests/test_release.py",
         "tests/test_release_train.py"
       ]
@@ -5531,12 +5571,14 @@
       "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Collections and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
-        "tests/test_gallery_tabs.py",
         "tests/test_release_train.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6056,7 +6098,8 @@
         "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6331,9 +6374,9 @@
       "reach": "<deployment>/feedback, or Send feedback in any page's footer or the account menu   (web/feedback.html; the dialog: something wrong, an idea or a question, the words, an address signed out, a picture taken or chosen (shown, removable), the page and browser ticked; POST /api/plans?op=feedback; tools/web/feedback_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/fixtures/feedback/api_check.mjs",
-        "tests/test_account_erase.py",
-        "tests/test_feedback.py"
+        "tests/test_account_erase.py"
       ]
     },
     {
@@ -6353,7 +6396,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6767,10 +6811,10 @@
       "reach": "https://brickworks.diy/builds   (?q=, ?page=N, ?tests=1; the gallery's Builds tab, switched in place; web/builds.js reads /api/people?op=builds a page at a time, searched by the model's name, each card web/card.js buildCardHtml; web/builds.html written by tools/browse_pages.py; locally relay_server.mjs serves /builds)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_browse_pages.py",
         "tests/test_designers.py",
         "tests/test_discovery.py",
-        "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_page.py",
@@ -6784,12 +6828,14 @@
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
-        "tests/test_gallery_tabs.py",
         "tests/test_release_train.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6834,6 +6880,14 @@
       "kind": "ui",
       "entry": "web/admin-feedback.js",
       "reach": "<deployment>/admin#feedback as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=feedback&kind&status&beta, ?op=feedback_file&id&file=picture|model, POST ?op=feedback_triage&id {status, note}, ?op=feedback_reply&id {words}",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the owner's social desk",
+      "kind": "ui",
+      "entry": "web/admin-social.js",
+      "reach": "<deployment>/admin?tests=1#social/inbox, #social/write, #social/sent, #social/accounts as the owner: replies, mentions and messages; a post or a reply with the community's rules beside it; Review and send\u2026 shows the exact words, then Send now or Schedule; Sent with score, comments and visits over time; Connect (the stand-in's consent on ?tests=1), Disconnect; X, Facebook and Instagram as not connected yet with their costs (docs/SOCIAL_DESK.md)",
       "area": "web",
       "tests": []
     },
@@ -7144,14 +7198,14 @@
       "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing and Cancel Pro, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
       "area": "web",
       "tests": [
+        "tests/test_plans.py",
+        "tests/test_saved_models_plan.py",
         "tests/test_account_erase.py",
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
-        "tests/test_plans.py",
         "tests/test_realset.py",
-        "tests/test_saved_models_plan.py",
         "tests/test_start_abba.py"
       ]
     },
