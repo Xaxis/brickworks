@@ -1387,8 +1387,8 @@ func _read_for_patch() -> void:
 				open_all.erase(begin)
 			if int(pair[1]) < 0 and kind.begins_with("BUFEXCHG"):
 				if not _retrieves.has(current):
-					_retrieves[current] = PackedInt32Array()
-				(_retrieves[current] as PackedInt32Array).append(n)
+					_retrieves[current] = []
+				(_retrieves[current] as Array).append(n)
 			continue
 		if not _is_placing(raw):
 			continue
