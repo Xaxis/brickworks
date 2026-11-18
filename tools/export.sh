@@ -220,12 +220,16 @@ rm -rf assets/ldraw/p && cp -R vendor/ldraw/p assets/ldraw/p \
   || { echo "export FAILED: could not copy the LDraw primitives"; exit 1; }
 godot --headless --import >/dev/null 2>&1 || true
 # The parts bin's All in order for the web pack's catalogue, worked out here
-# once rather than on every first visit (src/dev/write_all_order.gd, webload).
+# once rather than on every first visit (src/dev/write_all_order.gd, webload);
+# and the catalogue as columns, which the web build reads in the JSON's
+# place (PartLibrary.COLUMNS): the JSON's text and tree grew the page's Wasm
+# memory by about 90 MB for good (webstart11). The presets leave the JSON out.
 case "$target" in
   web|web-nothreads|all)
-    rm -f assets/web/all_order.txt
-    godot --headless --path . --script src/dev/write_all_order.gd 2>&1 | grep -E '^all_order'
-    [ -s assets/web/all_order.txt ] || { echo "export FAILED: no assets/web/all_order.txt (src/dev/write_all_order.gd)"; exit 1; } ;;
+    rm -f assets/web/all_order.txt assets/web/catalogue.bin
+    godot --headless --path . --script src/dev/write_all_order.gd 2>&1 | grep -E '^(all_order|catalogue_columns)'
+    [ -s assets/web/all_order.txt ] || { echo "export FAILED: no assets/web/all_order.txt (src/dev/write_all_order.gd)"; exit 1; }
+    [ -s assets/web/catalogue.bin ] || { echo "export FAILED: no assets/web/catalogue.bin (src/dev/write_all_order.gd)"; exit 1; } ;;
 esac
 case "$target" in
   web) build_web "Web" build/web ;;

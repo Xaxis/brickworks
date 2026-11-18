@@ -26,6 +26,13 @@ WebKit, a phone's CPU speed, a phone's memory or a mobile network.
 - **The owner sets the numbers** in `/admin#switches`, under **Phones**:
   `phone_parts` (10,101) and `phone_start_s` (40 s). Each is per deployment,
   audited, and shown beside the measured value.
+- **The start by phase, and the first cut** (webstart11, below): the
+  scripts' compile is the largest phase on every engine (24.5 s of a 72 s
+  first visit at CPU/4) and fills 432 MB; the catalogue's JSON filled the
+  last 87 MB. The web now reads the catalogue from columns: 519 → 432 MB
+  of Wasm memory, the catalogue's read x0.37 at CPU/4.
+- **Before any ad push**, what breaks first and what it costs:
+  [docs/CAPACITY.md](CAPACITY.md).
 
 ## What works on what
 
@@ -164,6 +171,86 @@ limit to hit, so these are measures of size, not of survival.
 Its Pss carries the drawing's memory, which an iPhone keeps in a separate
 GPU process. So it is an upper bound on what WebKit's own work costs, not
 an iPhone's figure.
+
+## The start, phase by phase
+
+webstart11, 2026-11-18. Each phase of a first visit timed on the build's
+own marks, never a trace: the engine's files (Resource Timing), the Wasm
+compiled and instantiated (timed apart), the engine's own start (its
+Build configuration line), then `main.gd`'s boot marks and the car's 61
+parts drawn. Two builds at the same moment, each in a browser of its own,
+the order alternating (`tools/web/start_phases.mjs`). The box was at load
+60–99 of 24 cores throughout, so the seconds are a loaded box's; the
+ratios between the two builds are what hold. Results:
+`bench/results/webstart11-2026-11-18/`.
+
+**Where a CPU/4 + Fast 4G first visit goes** (Chromium, 5 pairs, the
+base's medians):
+
+| Phase | Lasts | Ends at |
+|---|---|---|
+| The engine's files (9 MB over the wire) | 12.1 s | 12.1 s |
+| Wasm compiled, beside the download | 11.0 s | 12.3 s |
+| The engine's own start | 5.5 s | 18.2 s |
+| **The scripts compiled** | **24.5 s** | 41.2 s |
+| The data pack waited for | 1.9 s | 43.1 s |
+| **The catalogue read** | **10.0 s** | 54.5 s |
+| The window built | 9.3 s | 63.6 s |
+| The car laid and drawn | 8.3 s | 72.4 s |
+
+The main thread is busy 48.5 s of it. On WebKit as an iPhone 13 (full
+speed, no throttle: WebKit takes none) the scripts take 9.4 s and the
+catalogue 2.9 s of a 25 s start.
+
+**What fills the 519 MB of Wasm memory.** A web page's Wasm memory never
+shrinks, so whatever the start needs at its height it keeps.
+- The engine's own start: 48 MB (34 MB without threads).
+- **Compiling the first screen's scripts: to 432 MB.** GDScript holds the
+  parse trees of the whole start's script closure at once; on a desktop
+  debug build the compile peaks at 520 MB and settles at 203 MB. Every
+  engine and build measured reaches 432 MB at the scripts' mark.
+- **The catalogue's JSON: the last 87 MB.** Its 14 MB of text is 4 bytes a
+  character as a Godot String, and its tree of 29,668 parts' Dictionaries
+  rose to +341 MB at its height on a desktop, then kept +198 MB.
+
+**The cut built: the web reads its catalogue from columns.** The export
+writes the pack's catalogue as columns (`assets/web/catalogue.bin`: one
+packed array a field, 11.5 MB) and reads them back field for field, or
+stops (`src/dev/write_all_order.gd`). The web build ships them in the
+JSON's place; desktop still reads the JSON. Every field of every part is
+the JSON's (`catalogue_columns_probe`). On a desktop the read's height is
++139 MB against +341 MB, in 869 ms against 2,019 ms.
+
+| Same moment, base → after (medians) | Chromium, desktop | Chromium, CPU/4 + Fast 4G |
+|---|---|---|
+| Pairs; the box's load | 5; 60–99 | 5; 69–96 |
+| The catalogue read | 2.7 → 1.1 s (x0.45) | 10.0 → 3.7 s (x0.37) |
+| First visit, working | 33.9 → 27.2 s (pairs x0.87) | 72.4 → 68.4 s (pairs x0.91) |
+| A return, working | 31.4 → 24.4 s (pairs x0.91) | not run |
+| Main thread's CPU to working | 10.6 → 9.1 s | 48.5 → 44.3 s |
+| **Wasm memory at its height** | **519 → 432 MB** | **519 → 432 MB** |
+| Content process's Pss at working | 817 → 786 MB | 849 → 772 MB |
+
+The after build was faster than the base in 5 of 5 desktop pairs, both
+visits, and in 4 of 5 at CPU/4. Its Wasm memory was 432 MB in every
+visit: the script compile now sets the height, not the catalogue.
+
+**The next cuts, in order of seconds:**
+1. **The scripts' compile** (24.5 s at CPU/4, and the 432 MB). A smaller
+   first-screen closure: the classes the first window names but does not
+   use until a press (the assistant, Together, the booklet, the forge)
+   loaded on first use, as the Later scripts already are. It is the start's
+   largest phase on every engine and the whole of its memory.
+2. **The Wasm's compiled code kept between visits.** Godot's loader
+   hands `instantiateStreaming` a Response it made itself, to count the
+   download, so V8 cannot keep the module's compiled code for the next
+   visit: a desktop return still compiled the Wasm for 7.3 s. Handing it
+   the fetched Response, and counting a clone, is a few lines in the
+   export's `index.js`; a return on Chromium is where it would show.
+   WebKit has no such cache that this unit found, so iPhones would gain
+   little.
+3. **The window** (9.3 s at CPU/4): what `_ready` builds that the first
+   screen does not show.
 
 ## The faults, each with its cause and fix
 
