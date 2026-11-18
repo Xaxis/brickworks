@@ -267,7 +267,9 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # each under its own lock, each run written down (supabase/gallery_crons.sql).
 # At 05:07 the beta's daily run (/api/plans/beta-daily, api/_beta.js): a
 # tester's month given once Pro launches, a reminder three days before one
-# ends, and declined applications erased after 90 days.
+# ends, and declined applications erased after 90 days. Every quarter hour
+# /api/plans/social-due (api/_social.js): the owner's social desk sends what
+# the owner pressed Schedule on whose time came, and reads what came in.
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
@@ -489,7 +491,8 @@ cat > .vercel/output/config.json <<EOF
              { "path": "/api/otp/canary", "schedule": "47 4 * * *" },
              { "path": "/api/share/feature", "schedule": "7 0 * * *" },
              { "path": "/api/share/omr", "schedule": "37 5 * * 1" },
-             { "path": "/api/plans/beta-daily", "schedule": "7 5 * * *" } ],
+             { "path": "/api/plans/beta-daily", "schedule": "7 5 * * *" },
+             { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -513,6 +516,7 @@ $docs_moved
     { "src": "/api/share/feature", "dest": "/api/share?op=feature" },
     { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
     { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
+    { "src": "/api/plans/social-due", "dest": "/api/plans?op=social_due" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },

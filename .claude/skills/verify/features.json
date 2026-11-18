@@ -95,7 +95,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -114,6 +115,7 @@
       "area": "web",
       "tests": [
         "tests/test_console3.py",
+        "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -224,6 +226,7 @@
       "area": "web",
       "tests": [
         "tests/test_console3.py",
+        "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -313,7 +316,8 @@
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_lang.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -331,7 +335,8 @@
         "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -350,7 +355,8 @@
         "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -2886,6 +2892,14 @@
       ]
     },
     {
+      "id": "cli:socialdesk browser flow",
+      "kind": "cli",
+      "entry": "tools/web/socialdesk_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/socialdesk_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose Reddit is the stand-in, never reddit.com: the gate on every social op; before social.sql the section says so and writes 503; after it, connect, the inbox and its filters, a reply, a post with its rules and draft, words changed behind the open sheet refused, Send, Schedule and Unschedule, the cron sending one due, results and Details, a tagged visit counted once and its tags gone, Disconnect, a link and words refused, a long post by hand taken back and dropped, a post by hand; each tab at 390/1280 light/dark with every row's acts on screen; no token anywhere; preview check [socialdesk]. Locally: node tools/web/relay_server.mjs PORT --hold=social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:splitmerge probe",
       "kind": "cli",
       "entry": "src/dev/splitmerge_probe.gd",
@@ -4674,6 +4688,22 @@
       "tests": []
     },
     {
+      "id": "lib:the social desk",
+      "kind": "lib",
+      "entry": "api/_social.js",
+      "reach": "python3 tools/minitest.py tests/test_social.py   (api/admin.js's social ops and api/plans.js's social_due and social_visit against supabase/social.sql's tables held in memory and the stand-in Reddit (api/_social_mock.js): the gate on all 13 ops, connect with a signed state, the inbox's replies, mentions and messages, rules, drafts tagged, the press by its hash (changed words 409, nothing sent), send, schedule and the cron, results, visits once each, disconnect, by hand; no token in an answer, a log or a path; social.sql applied twice to a Postgres of its own: no role but the server's reaches a table, a send past a draft refused without a press)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:the social desk's Reddit adapter",
+      "kind": "lib",
+      "entry": "api/_social_reddit.js",
+      "reach": "tests/test_social.py: OAuth (web app, code flow, permanent), /api/v1/me, /message/inbox, /search, /r/X/about/rules and /about, /api/submit, /api/comment, /api/info, revoke; the checks' pool talks to api/_social_mock.js alone; with no REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (none can be made since 2026-10-31) posts go by hand on Reddit's own submit page",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the surface pass",
       "kind": "lib",
       "entry": "src/ai/surface_pass.gd",
@@ -5045,7 +5075,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -5247,7 +5278,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -5335,7 +5367,8 @@
       "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
       "area": "account",
       "tests": [
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -5577,10 +5610,12 @@
       "tests": [
         "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6101,7 +6136,8 @@
         "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6398,7 +6434,8 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
-        "tests/test_packaged_facts.py"
+        "tests/test_packaged_facts.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6831,10 +6868,12 @@
       "tests": [
         "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6887,6 +6926,14 @@
       "kind": "ui",
       "entry": "web/admin-feedback.js",
       "reach": "<deployment>/admin#feedback as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=feedback&kind&status&beta, ?op=feedback_file&id&file=picture|model, POST ?op=feedback_triage&id {status, note}, ?op=feedback_reply&id {words}",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the owner's social desk",
+      "kind": "ui",
+      "entry": "web/admin-social.js",
+      "reach": "<deployment>/admin?tests=1#social/inbox, #social/write, #social/sent, #social/accounts as the owner: replies, mentions and messages; a post or a reply with the community's rules beside it; Review and send\u2026 shows the exact words, then Send now or Schedule; Sent with score, comments and visits over time; Connect (the stand-in's consent on ?tests=1), Disconnect; X, Facebook and Instagram as not connected yet with their costs (docs/SOCIAL_DESK.md)",
       "area": "web",
       "tests": []
     },

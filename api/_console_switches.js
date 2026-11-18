@@ -54,6 +54,8 @@ export const VARIABLES = [
   { name: "OC_ME_ORIGIN", what: "orangecheck's own address", where: "vercel" },
   { name: "OC_ISSUER", what: "orangecheck's tokens: who issues them", where: "vercel" },
   { name: "OC_AUDIENCE", what: "orangecheck's tokens: whom they are for", where: "vercel" },
+  { name: "REDDIT_CLIENT_ID", what: "The social desk: the Reddit app's id, to connect by Reddit's API (Social)", where: "vercel" },
+  { name: "REDDIT_CLIENT_SECRET", what: "The social desk: the Reddit app's secret (Social)", where: "vercel" },
   { name: "CRON_SECRET", what: "The crons' own key (Run now in Site uses it here, on the server)", where: "vercel" },
   { name: "VIEW_SECRET", what: "Shared views' signatures", where: "vercel" },
   { name: "PUBLIC_ORIGIN", what: "The site's address, where a request does not say it", where: "vercel" },

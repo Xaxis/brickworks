@@ -52,6 +52,8 @@ export const RUNNABLE = {
   omr_watch: { path: "/api/share/omr", said: "The look at LDraw's OMR: a few pages, a second apart, under its lock" },
   share_sweep: { path: "/api/share/sweep", said: "Files no published model owns: never more than a quarter unasked" },
   canary: { path: "/api/otp/canary", said: "A sign-in code sent to Resend's test inbox and read back" },
+  social_due: { path: "/api/plans/social-due", said: "Sends only what you pressed Schedule on whose time came, then reads "
+    + "what came in" },
 };
 /// What is never run from here, and why.
 export const NOT_RUNNABLE = {

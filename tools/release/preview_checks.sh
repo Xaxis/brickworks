@@ -519,6 +519,22 @@ declare -A CMD=(
   # another deleted by its address typed again, found in the audit; each at
   # 390 and 1280, light and dark. Throwaways deleted after.
   [console3]="tools/web/console3_flow.mjs --url=$P --out=$S/${TAG}_console3"
+  # The social desk (socialdesk, docs/SOCIAL_DESK.md), in the checks' pool
+  # (?tests=1), whose Reddit is the stand-in: never reddit.com. Every op
+  # refused signed out (401) and to anybody else (404). Before
+  # supabase/social.sql is applied: the section says so, writes answer 503,
+  # and Accounts still says what each network needs and costs. After it:
+  # connect through the stand-in's consent (no code left in the address);
+  # the inbox's replies, mentions and messages, newest first, filtered, one
+  # marked read; a reply sent from it; a post with its community's rules,
+  # its draft tagged and nothing sent by keeping it, its words changed
+  # behind the open sheet refused, then sent as shown; Schedule and
+  # Unschedule; one due a minute later sent by the cron's call (CRON_SECRET);
+  # its score in Sent and Details; a visit by its tagged link counted once
+  # and the tags gone from the address; Disconnect; a post by hand (Reddit's
+  # page offered, never opened); each tab at 390 and 1280, light and dark;
+  # no token in any answer, page or storage. The pool emptied after.
+  [socialdesk]="tools/web/socialdesk_flow.mjs --url=$P --out=$S/${TAG}_socialdesk"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):

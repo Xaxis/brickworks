@@ -34,6 +34,8 @@ export const CRONS = [
     job: "canary", every: DAY },
   { path: "/api/plans/beta-daily", when: "05:07 daily", what: "The beta's daily round, and feedback's sweep with it",
     job: "beta_daily", every: DAY },
+  { path: "/api/plans/social-due", when: "every 15 minutes", what: "The social desk: sends you scheduled whose time came, and "
+    + "what came in (written down when it sent, failed, or once a day)", job: "social_due", every: DAY },
   { path: "/api/share/omr", when: "05:37 Mondays", what: "What LDraw's Official Model Repository has that the library has not",
     job: "omr_watch", every: 7 * DAY },
 ];

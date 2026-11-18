@@ -33,6 +33,7 @@ import { db, dbAll, reach } from "./_db.js";
 import { scopeOf } from "./_settings.js";
 import { siteSummary } from "./_console_site.js";
 import { mailTrouble } from "./_console_mail.js";
+import { socialNeeds } from "./_social.js";
 
 const DAY = 864e5;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -138,7 +139,7 @@ export async function overview(request, tests = false) {
   const since = (days) => new Date(now - days * DAY).toISOString();
   const test = tests ? "true" : "false";
   const [users, published, listed, fresh, reportsOpen, feedback, queue, testers, mail, audit, set, site, delivery, arrivals,
-    challenges, notice] = await Promise.all([
+    challenges, notice, social] = await Promise.all([
     // The accounts may not be read (Supabase's sign-in refusing, 2026-11-12):
     // the rest is shown, with the backend's health saying why.
     known(allUsers()),
@@ -163,6 +164,9 @@ export async function overview(request, tests = false) {
     known(db("rpc/library_arrivals_in", { method: "POST", body: { state: "found" } })),
     known(db("rpc/challenge_list", { method: "POST", body: { tests } })),
     known(db("rpc/site_notice", { method: "POST", body: { p_scope: scopeOf(request) } })),
+    // The social desk (socialdesk): what came in unread, and what waits on
+    // the owner's own press at the network. Null before social.sql.
+    known(socialNeeds(tests)),
   ]);
   const mine = (users || []).filter((user) => isTestAddress(user.email) === tests);
   const after = (iso, days) => iso && Date.parse(iso) > now - days * DAY;
@@ -197,6 +201,7 @@ export async function overview(request, tests = false) {
         .sort().pop() || null,
     },
     notice: notice ? { id: notice.id, words: notice.words, tone: notice.tone, set_at: notice.set_at } : null,
+    social: social ?? null,
   };
 }
 
@@ -412,9 +417,23 @@ const TARGETS = {
   export: (q) => ["account", q.account],
   delete_account: (q) => ["account", q.account],
   sign_out: (q) => ["account", q.account],
+  // The social desk (socialdesk): a network, or a send by its id. Never a
+  // code, a state or a token: none is in ASKED or ANSWERED.
+  social_connect: (_, b) => ["social", b.provider],
+  social_connected: (_, b) => ["social", b.provider],
+  social_disconnect: (_, b) => ["social", b.provider],
+  social_sync: () => ["social", "a look"],
+  social_mark: (_, b) => ["social", b.all === true ? "every item" : b.external_id],
+  social_draft: (_, b, a) => ["send", a?.send?.id ?? b.id ?? "new"],
+  social_drop: (_, b) => ["send", b.id],
+  social_send: (_, b) => ["send", b.id],
+  social_unschedule: (_, b) => ["send", b.id],
+  social_posted: (_, b) => ["send", b.id],
+  social_notes: (_, b) => ["social", b.community],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
-  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "phone_parts", "phone_start_s"];
+  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url",
+  "phone_parts", "phone_start_s"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.
