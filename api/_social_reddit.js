@@ -33,11 +33,14 @@ export const SCOPES = "identity history privatemessages read submit";
 // What a search across Reddit looks for: links to the site, and its name.
 const SEARCHES = ["site:brickworks.diy", "\"brickworks.diy\"", "brickworks lego"];
 
-/// A refusal a person can read: Reddit said no, and why.
+/// A refusal a person can read: Reddit said no, and why. [unsure] when the
+/// answer leaves open whether Reddit did it anyway (its own 5xx, an answer
+/// naming nothing): a send then is never taken for "did not go".
 export class SocialRefusal extends Error {
-  constructor(words, status = 502) {
+  constructor(words, status = 502, unsure = false) {
     super(words);
     this.status = status;
+    this.unsure = unsure;
   }
 }
 
@@ -110,7 +113,7 @@ async function ask(session, path, { method = "GET", form } = {}) {
   if (reply.status === 429) throw new SocialRefusal("Reddit says the desk is asking too often: try again in a few minutes.", 429);
   if (reply.status === 403) throw new SocialRefusal("Reddit refused: the account may not do that there.", 403);
   if (reply.status === 404) return null;
-  if (!reply.ok) throw new SocialRefusal(`Reddit said ${reply.status}.`);
+  if (!reply.ok) throw new SocialRefusal(`Reddit said ${reply.status}.`, 502, reply.status >= 500);
   return reply.json();
 }
 
@@ -206,33 +209,66 @@ function refusedBy(answer) {
 /// reply to the item it answers. {external_id, url}. Called only for a send
 /// the owner pressed (api/_social.js).
 export async function send(session, words) {
+  const wrong = refuses(words);
+  if (wrong) throw new SocialRefusal(wrong, 409);
   if (words.kind === "post") {
     const form = { sr: words.community, title: words.title, resubmit: "true", sendreplies: "true",
-      ...(words.link && !words.body ? { kind: "link", url: words.link } : { kind: "self", text: words.body }) };
+      ...(words.link ? { kind: "link", url: words.link } : { kind: "self", text: words.body }) };
     const answer = await ask(session, "/api/submit", { method: "POST", form });
     const refused = refusedBy(answer);
-    if (refused || !answer?.json?.data?.name) throw new SocialRefusal(`Reddit did not take the post: ${refused || "no answer"}.`, 409);
+    if (refused) throw new SocialRefusal(`Reddit did not take the post: ${refused}.`, 409);
+    if (!answer) throw new SocialRefusal(`Reddit has nowhere to post it: r/${words.community} was not found.`, 409);
+    if (!answer.json?.data?.name) throw new SocialRefusal("Reddit answered without naming a post", 502, true);
     return { external_id: answer.json.data.name, url: answer.json.data.url };
   }
   const answer = await ask(session, "/api/comment", { method: "POST", form: { thing_id: words.parent, text: words.body } });
   const refused = refusedBy(answer);
   const thing = answer?.json?.data?.things?.[0]?.data;
-  if (refused || !thing?.name) throw new SocialRefusal(`Reddit did not take the reply: ${refused || "no answer"}.`, 409);
+  if (refused) throw new SocialRefusal(`Reddit did not take the reply: ${refused}.`, 409);
+  if (!answer) throw new SocialRefusal("Reddit has nothing there to answer any more.", 409);
+  if (!thing?.name) throw new SocialRefusal("Reddit answered without naming the reply", 502, true);
   const url = thing.permalink ? `${REDDIT}${thing.permalink}` : `${REDDIT}/message/messages/${thing.id}`;
   return { external_id: thing.name, url };
 }
 
-/// Reddit's own submit page with [words] in it, for the owner to press Post:
-/// how a post leaves by hand.
-export function handOff(words) {
-  const asked = new URLSearchParams({ title: words.title });
-  if (words.link && !words.body) asked.set("url", words.link);
-  else {
-    asked.set("selftext", "true");
-    asked.set("text", words.body);
+/// A Reddit post is a link post or a text post, never both: what Reddit
+/// would not take, in the form's own words, or "".
+export function refuses(words) {
+  if (words.kind === "post" && words.link && words.body) {
+    return "A Reddit post is a link or words, not both: leave the words empty for a link post, or put the link in the words.";
   }
-  return `${REDDIT}/r/${words.community}/submit?${asked}`;
+  return "";
 }
+
+/// The longest address of Reddit's submit page the desk hands over. Read
+/// 2026-11-18 (bench/results/sdreview-2026-11-18/reddit_url_length.txt):
+/// 6,363 characters opened it, 12,363 got 414 URI Too Long.
+export const ADDRESS_MOST = 6000;
+
+/// Reddit's own submit page for [words], for the owner to press Post: how a
+/// post leaves by hand. {url, filled}: filled when the words fit in its
+/// address (the title and a link always do); longer words are copied and
+/// pasted into Reddit's box, the page opened with the title alone.
+export function handOff(words) {
+  const page = `${REDDIT}/r/${words.community}/submit`;
+  const asked = new URLSearchParams({ title: words.title });
+  if (words.link) {
+    asked.set("url", words.link);
+    return { url: `${page}?${asked}`, filled: true };
+  }
+  asked.set("selftext", "true");
+  const whole = new URLSearchParams(asked);
+  whole.set("text", words.body);
+  const full = `${page}?${whole}`;
+  return full.length <= ADDRESS_MOST ? { url: full, filled: true } : { url: `${page}?${asked}`, filled: false };
+}
+
+/// What to paste for a [kind] posted by hand, when the address given is not one.
+export const pasteHelp = (kind) => (kind === "post"
+  ? "Paste the post's own address from the browser's address bar: https://www.reddit.com/r/…/comments/…/. "
+    + "Reddit's Share links (…/s/…) and redd.it links name no post the desk can read."
+  : "Paste your reply's own address: on Reddit, open it by its time and copy the address bar, "
+    + "https://www.reddit.com/r/…/comments/…/…/<the reply>/.");
 
 /// The thing a Reddit address names (a post's /comments/<id>/, a comment
 /// after it): its full name, t3_ or t1_, or null.
@@ -250,5 +286,5 @@ export const reddit = {
   // How long Reddit lets each part be (a title 300, a post or comment 40,000).
   most: { title: 300, body: 40000 },
   where: "community",
-  appOf, authorizeUrl, exchange, refresh, revoke, me, inbox, mentions, rulesOf, results, send, handOff, thingOf,
+  appOf, authorizeUrl, exchange, refresh, revoke, me, inbox, mentions, rulesOf, results, send, refuses, handOff, pasteHelp, thingOf,
 };

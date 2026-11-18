@@ -90,7 +90,7 @@ def test_a_scheduled_send_goes_at_its_time_only_as_pressed() -> None:
     after = _api()["edit_after_press"]
     # Edited after its press it is a draft again; words changed behind the
     # press are never sent, and say why.
-    assert after["status"] == "draft"
+    assert after["status"] == "draft" and after["outcome"] == "unscheduled"
     assert after["cron"] == "0 sent, 1 failed" and after["writes"] == 0
     assert after["tampered"] == "failed" and after["said"] == "Its words are not those pressed: not sent."
     assert _api()["unschedule_draft"] == 409
@@ -167,17 +167,83 @@ def test_rules_and_drafts() -> None:
 def test_results_and_visits_by_utm() -> None:
     got = _api()["results"]
     assert got["points"] >= 1 and got["score"] >= 1
-    # Two landings (one told twice), an unknown campaign and a draft's let go.
+    # Two visitors, as the server sees them (address and browser): the first
+    # told three times with two numbers of its own is still one. An unknown
+    # campaign and a draft's are let go.
     assert got["visit_status"] == 204 and got["visits"] == 2 and got["by_day"] == [2] and got["draft_visits"] == 0
+    assert "nonce: visitorOf(request, id)" in SOCIAL and "VISITS_AN_HOUR" in SOCIAL
 
 
 def test_disconnect_forgets_the_tokens_and_a_post_then_goes_by_hand() -> None:
     got = _api()
-    assert got["disconnect"] == {"status": 200, "revoked": True, "tokens": 0, "accounts": 0, "kept_sends": 4}
+    assert got["disconnect"] == {"status": 200, "revoked": True, "tokens": 0, "accounts": 0, "kept_sends": 9}
     hand = got["by_hand"]
     assert hand["outcome"] == "handed" and hand["hand_off"] == "https://www.reddit.com/r/lego/submit" and hand["writes"] == 0
     assert hand["hand_text"].startswith("Posted by the owner: https://brickworks.diy/?utm_source=reddit")
     assert hand["wrong_url"] == 400 and hand["posted"] == "sent" and hand["external_id"] == "t3_abc123"
+
+
+# --- The review's findings (sdreview, 2026-11-18) -------------------------------
+
+
+def test_a_post_with_a_link_and_words_is_refused_not_sent_without_its_link() -> None:
+    got = _api()["link_and_words"]
+    assert got["status"] == 400 and got["said"].startswith("A Reddit post is a link or words, not both")
+    # The adapter never chooses one for the owner: words go as text, a link as a link.
+    assert '...(words.link ? { kind: "link", url: words.link } : { kind: "self", text: words.body })' in REDDIT
+
+
+def test_a_lost_answer_is_unsure_and_never_sent_again_on_that_press() -> None:
+    got = _api()
+    lost = got["answer_lost"]
+    assert lost["status"] == 502 and "may be up" in lost["said"]
+    assert lost["row"] == "sending" and lost["unsure"] is True
+    # Send, an edit and a drop each refused: one post at Reddit, not two.
+    assert lost["resend"] == lost["edit"] == lost["drop"] == 409 and lost["posts"] == 1
+    assert lost["found"] == "sent"
+    # Not up: back to the drafts, and only a fresh press sends it, once.
+    assert got["not_up"] == {"back": "back to drafts", "status_after_back": "draft", "fresh": "sent", "posts": 1}
+    # Reddit's own no is "did not go", not unsure.
+    assert got["reddit_refused"] == {"status": 409, "row": "failed", "unsure": False}
+    # Cut off mid-send: left alone while it may be in flight, unsure after five minutes.
+    assert got["cut_off"] == {"in_flight": {"unsure": False, "back": 409}, "unsure": True, "back": "back to drafts"}
+
+
+def test_a_long_post_by_hand_opens_reddit_with_the_title_alone() -> None:
+    got = _api()["long_by_hand"]
+    # 15,000 characters would make a 414 at Reddit: the words are copied instead, and the sheet says so before the press.
+    assert got["filled_before"] is False and got["filled"] is False and got["text_in_address"] is False
+    assert got["length"] < 6000 and got["short_filled"] is True
+    assert "export const ADDRESS_MOST = 6000;" in REDDIT
+
+
+def test_a_handed_send_can_be_taken_back_or_dropped_and_marked_by_the_right_address() -> None:
+    got = _api()
+    assert got["handed_back"] == {"back": "back to drafts", "row": "draft", "pressed": None, "drop": 200, "gone": True}
+    paste = got["paste"]
+    assert paste["comment_for_post"] == paste["share_link"] == 400 and paste["post"] == 200
+    assert "Share links" in paste["said"]
+    # A reply to a private message is marked sent with its conversation's address.
+    assert got["message_reply"] == {"handed": "handed", "posted": "sent", "url": "https://www.reddit.com/message/messages/mk4001"}
+
+
+def test_words_of_the_wrong_type_are_refused_and_a_title_counts_characters() -> None:
+    assert _api()["types"] == {"body_object": 400, "title_list": 400, "community_list": 400, "hash_list": 400,
+                               "emoji_title": 200, "emoji_over": 400}
+
+
+def test_the_page_claims_no_more_than_is_true() -> None:
+    page = (ROOT / "web/admin-social.js").read_text()
+    # By hand there is no score: only visits, until Reddit is connected.
+    assert "Its score and comments are read only once Reddit is connected." in page
+    assert "Its score is read only once Reddit is connected." in page
+    # Reddit's page may fill the words; Copy the words comes first.
+    assert "Reddit's page may fill in the title and words" in page
+    assert page.index('make("div", "row", copy,') > 0
+    # An empty inbox with no Reddit app does not point at a Connect that is off.
+    assert "Nothing comes in here until Reddit grants the desk API access" in page
+    # Meta's App Review is not promised away.
+    assert "no App Review for the owner's own Page" not in SOCIAL and "likely needs App Review" in SOCIAL
 
 
 def test_tokens_reach_no_answer_and_no_log() -> None:

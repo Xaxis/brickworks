@@ -30,7 +30,7 @@
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { AuthError } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, dbCount } from "./_db.js";
 import { ownOrigin } from "./_console_data.js";
 import { cronNoted, isCron } from "./_cron.js";
 import { reddit, SocialRefusal } from "./_social_reddit.js";
@@ -49,7 +49,8 @@ export const PROVIDERS = {
     needs: "An X developer app (console.x.com) and OAuth 2.0 with tweet.read, tweet.write, users.read, dm.read, dm.write, offline.access.",
     cost: "Pay per use: $0.015 a post, $0.20 a post with a link, $0.01 a reply when summoned, $0.005 a post read." },
   facebook: { id: "facebook", name: "Facebook", later: true,
-    needs: "A Meta app with the Page's admin as its admin: Standard Access, no App Review for the owner's own Page.",
+    needs: "A Meta app with the Page's admin as its admin. Posting to the Page likely needs App Review for pages_manage_posts "
+      + "(unconfirmed: Meta's Pages overview says every Page permission does), and posts reach the public only from a Live app.",
     cost: "No fee from Meta." },
   instagram: { id: "instagram", name: "Instagram", later: true,
     needs: "A professional account linked to the Facebook Page, through the same Meta app (instagram_business_* permissions).",
@@ -69,6 +70,20 @@ function bodyOf(request) {
 }
 
 const testsOf = (request) => String(request.query?.tests || "") === "1";
+
+/// [b]'s [key] as words: "" when it is not there, refused (400) when it is
+/// anything but a string, so a list or an object is never kept as its
+/// String() ("x,y", "[object Object]").
+function field(b, key) {
+  const given = b?.[key];
+  if (given === undefined || given === null) return "";
+  if (typeof given !== "string") throw new AuthError(`${key} is to be words, not ${Array.isArray(given) ? "a list" : typeof given}.`, 400);
+  return given;
+}
+
+/// How long [words] are as the networks and the database count them: in
+/// characters (code points), so an emoji is one, not two.
+const lengthOf = (words) => [...words].length;
 const text = (given, most) => String(given ?? "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
   .slice(0, most);
 const line = (given, most) => text(given, most).replace(/\s+/g, " ").trim();
@@ -123,11 +138,14 @@ const SEND_COLUMNS = "id,provider,test,kind,community,parent,title,body,link,sta
 /// A send as the page shows it: its words, where, how far it went, and the
 /// hash a press on these words carries.
 function sendView(row) {
+  const provider = providerOf(row.provider);
+  const handOff = row.kind === "post" && row.community && provider?.handOff ? provider.handOff(row) : null;
   return { id: row.id, provider: row.provider, kind: row.kind, community: row.community ?? null, parent: row.parent ?? null,
     title: row.title ?? "", body: row.body ?? "", link: row.link ?? null, status: row.status, route: row.route ?? null,
     pressed_at: row.pressed_at ?? null, pressed_by: row.pressed_by ?? null, send_at: row.send_at ?? null,
     sent_at: row.sent_at ?? null, external_id: row.external_id ?? null, url: row.url ?? null, said: row.said ?? null,
-    made_at: row.made_at ?? null, changed_at: row.changed_at ?? null, campaign: `bw-${row.id}`, hash: hashOf(row) };
+    made_at: row.made_at ?? null, changed_at: row.changed_at ?? null, campaign: `bw-${row.id}`, hash: hashOf(row),
+    unsure: unsure(row), hand_off_filled: handOff ? handOff.filled : false };
 }
 
 async function sendOf(id, tests) {
@@ -354,43 +372,60 @@ export async function socialMark(request, response) {
 // ---------------------------------------------------------------------------
 // Writing: a draft kept, pressed, scheduled, sent, or handed over.
 
+/// A send that may be up at the network or may not: it went to the network
+/// and no clear answer came back (a timeout, the network's own 5xx, an
+/// answer that names no post), or its request was cut off mid-send and it is
+/// still "sending" five minutes on. Never sent again on that press: the
+/// owner looks on the network, then pastes its address (social_posted) or
+/// takes it back to the drafts (social_unschedule) and presses Send afresh.
+const STUCK = 5 * 60000;
+const UNSURE = "Unsure: ";
+const unsure = (row) => row.status === "sending"
+  && (String(row.said || "").startsWith(UNSURE) || Date.now() - Date.parse(row.changed_at) > STUCK);
+
 /// POST op=social_draft {id?, provider, kind, community?, parent?, title,
 /// body, link?}: kept as a draft, its links to the site tagged. A draft that
-/// was scheduled or handed over is a draft again: pressed afresh to go.
+/// was scheduled or handed over is a draft again, and says so: pressed
+/// afresh to go.
 export async function socialDraft(request, response) {
   const tests = testsOf(request);
   const b = bodyOf(request);
-  const provider = providerOf(String(b.provider || ""));
+  const provider = providerOf(field(b, "provider"));
   if (!provider || provider.later) throw new AuthError("write for a network the desk has: reddit", 400);
-  const kind = b.kind === "reply" ? "reply" : b.kind === "post" ? "post" : null;
+  const asked = field(b, "kind");
+  const kind = asked === "reply" ? "reply" : asked === "post" ? "post" : null;
   if (!kind) throw new AuthError("a post or a reply", 400);
-  let id = String(b.id || "");
+  let id = field(b, "id");
   let before = null;
   if (id) {
     before = await sendOf(id, tests);
     if (["sending", "sent"].includes(before.status)) throw new AuthError("It has gone: what was sent is kept as it was.", 409);
     if (before.provider !== provider.id || before.kind !== kind) throw new AuthError("a draft keeps its network and kind", 409);
   } else id = Array.from(randomBytes(10), (byte) => "abcdefghijklmnopqrstuvwxyz0123456789"[byte % 36]).join("");
-  const community = String(b.community || "").replace(/^\/?r\//i, "").trim();
+  const community = field(b, "community").replace(/^\/?r\//i, "").trim();
   if (community && !COMMUNITY.test(community)) throw new AuthError("A community's name is 2 to 21 letters, digits or _.", 400);
   let parent = null;
   if (kind === "reply") {
-    parent = String(b.parent || before?.parent || "");
-    const items = await tables(db(`social_items?provider=eq.${provider.id}&test=eq.${tests}&external_id=eq.${encodeURIComponent(parent)}`
-      + "&select=external_id"));
-    if (!/^[A-Za-z0-9_:.-]{1,100}$/.test(parent) || !items?.length) throw new AuthError("a reply answers an item in the inbox", 400);
+    parent = field(b, "parent") || before?.parent || "";
+    const items = /^[A-Za-z0-9_:.-]{1,100}$/.test(parent) ? await tables(db(`social_items?provider=eq.${provider.id}&test=eq.${tests}`
+      + `&external_id=eq.${encodeURIComponent(parent)}&select=external_id`)) : [];
+    if (!items?.length) throw new AuthError("a reply answers an item in the inbox", 400);
   }
   const hosts = new Set(OURS);
   const origin = ownOrigin(request);
   if (origin) hosts.add(new URL(origin).host.toLowerCase());
-  const title = kind === "post" ? line(b.title, provider.most.title + 1) : "";
-  const body = taggedText(text(b.body, provider.most.body + 1).trim(), provider.id, id, hosts);
-  const given = String(b.link || "").trim();
+  // Cut at twice the most first (a character is at most two UTF-16 units),
+  // then counted in characters, as Reddit and the database count them.
+  const title = kind === "post" ? line(field(b, "title"), provider.most.title * 2 + 2) : "";
+  const body = taggedText(text(field(b, "body"), provider.most.body * 2 + 2).trim(), provider.id, id, hosts);
+  const given = field(b, "link").trim();
   if (given && !/^https?:\/\/[^\s]+$/.test(given)) throw new AuthError("A link is an address that starts https://.", 400);
   const link = kind === "post" && given ? tagged(given, provider.id, id, hosts) : null;
-  if (title.length > provider.most.title) throw new AuthError(`A title is at most ${provider.most.title} characters.`, 400);
-  if (body.length > provider.most.body) throw new AuthError(`At most ${provider.most.body} characters.`, 400);
+  if (lengthOf(title) > provider.most.title) throw new AuthError(`A title is at most ${provider.most.title} characters.`, 400);
+  if (lengthOf(body) > provider.most.body) throw new AuthError(`At most ${provider.most.body} characters.`, 400);
   if (link && link.length > 2000) throw new AuthError("That link is too long.", 400);
+  const wrong = provider.refuses({ kind, link, body });
+  if (wrong) throw new AuthError(wrong, 400);
   const now = new Date().toISOString();
   const row = { id, provider: provider.id, test: tests, kind, community: kind === "post" ? community || null : null, parent,
     title, body, link, status: "draft", route: null, pressed_at: null, pressed_by: null, pressed_hash: null, send_at: null,
@@ -398,17 +433,22 @@ export async function socialDraft(request, response) {
   if (before) {
     const after = await moved(id, before.status, row);
     if (!after) throw new AuthError("It changed while you wrote: look again.", 409);
-    return response.status(200).json({ outcome: "kept", send: sendView(after) });
+    // Edited after a press, it no longer goes: said, never silently.
+    const outcome = before.status === "scheduled" ? "unscheduled" : before.status === "handed" ? "redrafted" : "kept";
+    return response.status(200).json({ outcome, send: sendView(after) });
   }
   await tables(db("social_sends", { method: "POST", body: { ...row, made_at: now } }));
   return response.status(200).json({ outcome: "kept", send: sendView({ ...row, made_at: now }) });
 }
 
-/// POST op=social_drop {id}: a draft thrown away. What went is kept.
+/// POST op=social_drop {id}: a draft thrown away, or one that failed or was
+/// handed to the owner and not posted. What went (or may have) is kept.
 export async function socialDrop(request, response) {
   const tests = testsOf(request);
-  const row = await sendOf(bodyOf(request).id, tests);
-  if (!["draft", "failed"].includes(row.status)) throw new AuthError("Only a draft, or one that failed, is thrown away.", 409);
+  const row = await sendOf(field(bodyOf(request), "id"), tests);
+  if (!["draft", "failed", "handed"].includes(row.status)) {
+    throw new AuthError("Only a draft, one that failed, or one handed to you and not posted is thrown away.", 409);
+  }
   await db(`social_sends?id=eq.${row.id}&status=eq.${row.status}`, { method: "DELETE" });
   return response.status(200).json({ outcome: "dropped" });
 }
@@ -419,32 +459,48 @@ function readyToGo(row, provider) {
     if (!row.title) return "A post needs a title.";
     if (!row.body && !row.link) return "A post needs words or a link.";
   } else if (!row.body) return "A reply needs words.";
-  if (row.title.length > provider.most.title || row.body.length > provider.most.body) return "It is longer than the network takes.";
-  return "";
+  if (lengthOf(row.title) > provider.most.title || lengthOf(row.body) > provider.most.body) return "It is longer than the network takes.";
+  return provider.refuses({ kind: row.kind, link: row.link, body: row.body });
 }
 
-/// What leaves, and how: a post or a reply, at the network ([s] connected)
-/// or handed to the owner (null). The only place anything is sent.
+/// What leaves, and how: a post or a reply at the network, [s] connected.
+/// The only place anything is sent. The network's own no is "failed" (it is
+/// not there, and may be pressed again); anything less clear is unsure.
 async function deliver(row, s, provider) {
+  let went;
   try {
-    const went = await provider.send(s, { kind: row.kind, community: row.community, parent: row.parent, title: row.title,
+    went = await provider.send(s, { kind: row.kind, community: row.community, parent: row.parent, title: row.title,
       body: row.body, link: row.link });
-    return await moved(row.id, "sending", { status: "sent", sent_at: new Date().toISOString(), external_id: went.external_id,
-      url: went.url, said: null });
   } catch (trouble) {
-    const said = String(trouble?.message || trouble).slice(0, 500);
-    await moved(row.id, "sending", { status: "failed", said });
-    throw trouble instanceof SocialRefusal ? new AuthError(said, trouble.status === 409 ? 409 : 502) : trouble;
+    const said = String(trouble?.message || trouble).slice(0, 400);
+    if (trouble instanceof SocialRefusal && !trouble.unsure) {
+      await moved(row.id, "sending", { status: "failed", said });
+      throw new AuthError(said, trouble.status === 409 ? 409 : 502);
+    }
+    await moved(row.id, "sending", { said: `${UNSURE}${said}` }).catch(() => null);
+    throw new AuthError(`${provider.name} gave no clear answer (${said}), so it may be up. Look on ${provider.name} first: `
+      + "if it is there, paste its address under Sent; if not, take it back to the drafts and press Send again.", 502);
   }
+  const done = { status: "sent", sent_at: new Date().toISOString(), external_id: went.external_id, url: went.url, said: null };
+  for (let tries = 0; tries < 2; tries += 1) {
+    try {
+      return await moved(row.id, "sending", done);
+    } catch {
+      // Written once more; then said, with where it went.
+    }
+  }
+  await moved(row.id, "sending", { said: `${UNSURE}it went, as ${went.url}, but was not written down here` }).catch(() => null);
+  throw new AuthError(`It went, as ${went.url}, but could not be written down here: paste that address under Sent.`, 502);
 }
 
-/// Where a send is handed to the owner: the network's own page with its
-/// words (a post), or the item it answers (a reply).
+/// Where a send is handed to the owner: {url, filled}, the network's own
+/// page for a post (filled when its words are in the address), or the item
+/// a reply answers (never filled: the words are copied and pasted there).
 async function handOffOf(row, provider, tests) {
   if (row.kind === "post") return provider.handOff(row);
   const items = await db(`social_items?provider=eq.${provider.id}&test=eq.${tests}&external_id=eq.${encodeURIComponent(row.parent)}`
     + "&select=url");
-  return items?.[0]?.url || null;
+  return items?.[0]?.url ? { url: items[0].url, filled: false } : null;
 }
 
 /// POST op=social_send {id, hash, at?}: the owner's press of Send (or, with
@@ -454,17 +510,19 @@ async function handOffOf(row, provider, tests) {
 export async function socialSend(request, response, claims) {
   const tests = testsOf(request);
   const b = bodyOf(request);
-  const row = await sendOf(b.id, tests);
+  const row = await sendOf(field(b, "id"), tests);
   const provider = providerOf(row.provider);
+  if (unsure(row)) throw new AuthError("It may be up already: look on Reddit, then paste its address or take it back to the drafts.", 409);
   if (!["draft", "failed", "scheduled", "handed"].includes(row.status)) throw new AuthError("It has gone already.", 409);
-  if (String(b.hash || "") !== hashOf(row)) {
+  if (field(b, "hash") !== hashOf(row)) {
     throw new AuthError("These are not the words you pressed Send on: they changed since. Look again and press Send.", 409);
   }
   const wrong = readyToGo(row, provider);
   if (wrong) throw new AuthError(wrong, 400);
   let at = null;
-  if (b.at !== undefined && b.at !== null && b.at !== "") {
-    at = Date.parse(String(b.at));
+  const when = field(b, "at");
+  if (when) {
+    at = Date.parse(when);
     if (!Number.isFinite(at) || at < Date.now() + 60000 || at > Date.now() + 60 * DAY) {
       throw new AuthError("Schedule it at least a minute from now and within 60 days.", 400);
     }
@@ -483,7 +541,8 @@ export async function socialSend(request, response, claims) {
     if (!handOff) throw new AuthError("There is nowhere to hand it to.", 409);
     const after = await moved(row.id, row.status, { ...press, status: "handed", send_at: null });
     if (!after) throw new AuthError("It changed while you pressed: look again.", 409);
-    return response.status(200).json({ outcome: "handed", hand_off: handOff, send: sendView(after) });
+    return response.status(200).json({ outcome: "handed", hand_off: handOff.url, hand_off_filled: handOff.filled,
+      send: sendView(after) });
   }
   const claimed = await moved(row.id, row.status, { ...press, status: "sending", send_at: null });
   if (!claimed) throw new AuthError("It is being sent already.", 409);
@@ -491,30 +550,48 @@ export async function socialSend(request, response, claims) {
   return response.status(200).json({ outcome: "sent", url: after?.url ?? null, send: after ? sendView(after) : null });
 }
 
-/// POST op=social_unschedule {id}: a scheduled send back to a draft.
+/// POST op=social_unschedule {id}: back to the drafts, its press forgotten:
+/// a scheduled send, one handed to the owner and not posted, or one that is
+/// unsure and that the owner found is not on the network. It goes only on a
+/// fresh press.
 export async function socialUnschedule(request, response) {
-  const row = await sendOf(bodyOf(request).id, testsOf(request));
-  if (row.status !== "scheduled") throw new AuthError("It is not scheduled.", 409);
-  const after = await moved(row.id, "scheduled", { status: "draft", route: null, pressed_at: null, pressed_by: null,
-    pressed_hash: null, send_at: null });
+  const row = await sendOf(field(bodyOf(request), "id"), testsOf(request));
+  const from = row.status;
+  if (!(from === "scheduled" || from === "handed" || unsure(row))) throw new AuthError("It is not waiting to go.", 409);
+  const after = await moved(row.id, from, { status: "draft", route: null, pressed_at: null, pressed_by: null,
+    pressed_hash: null, send_at: null, said: null });
   if (!after) throw new AuthError("It went while you pressed.", 409);
-  return response.status(200).json({ outcome: "unscheduled", send: sendView(after) });
+  return response.status(200).json({ outcome: from === "scheduled" ? "unscheduled" : "back to drafts", send: sendView(after) });
 }
 
-/// POST op=social_posted {id, url}: a send handed over, posted by the owner at
-/// the network; its address kept, so its results and visits are counted.
+/// POST op=social_posted {id, url}: a send handed over and posted by the
+/// owner at the network, or an unsure one found there: its address kept, so
+/// the visits it brings are counted (and, once the network is connected,
+/// its score). A reply to a private message has no address of its own: its
+/// conversation's is kept.
 export async function socialPosted(request, response) {
   const tests = testsOf(request);
   const b = bodyOf(request);
-  const row = await sendOf(b.id, tests);
+  const row = await sendOf(field(b, "id"), tests);
   const provider = providerOf(row.provider);
-  if (!(row.status === "handed" || (row.status === "scheduled" && row.route === "by_hand"))) {
-    throw new AuthError("Only a send handed to you is marked posted.", 409);
+  const from = row.status;
+  if (!(from === "handed" || (from === "scheduled" && row.route === "by_hand") || unsure(row))) {
+    throw new AuthError("Only a send handed to you, or one that may be up, is marked posted.", 409);
   }
-  const url = String(b.url || "").trim();
-  const thing = provider.thingOf(url);
-  if (!thing) throw new AuthError(`Paste the address of the ${row.kind} on ${provider.name}.`, 400);
-  const after = await moved(row.id, row.status, { status: "sent", sent_at: new Date().toISOString(), url, external_id: thing });
+  const url = field(b, "url").trim();
+  let thing = provider.thingOf(url);
+  let address = url;
+  if (row.kind === "reply" && /^t4_/.test(String(row.parent))) {
+    const items = await db(`social_items?provider=eq.${provider.id}&test=eq.${tests}&external_id=eq.${encodeURIComponent(row.parent)}`
+      + "&select=url");
+    address = items?.[0]?.url || "";
+    thing = null;
+    if (!/^https:\/\//.test(address)) throw new AuthError("Its message is no longer in the inbox: paste the conversation's address.", 400);
+  } else if (!thing || !thing.startsWith(row.kind === "post" ? "t3_" : "t1_")) {
+    throw new AuthError(provider.pasteHelp(row.kind), 400);
+  }
+  const after = await moved(row.id, from, { status: "sent", sent_at: new Date().toISOString(), url: address, external_id: thing,
+    said: null });
   if (!after) throw new AuthError("It changed while you pressed: look again.", 409);
   return response.status(200).json({ outcome: "posted", send: sendView(after) });
 }
@@ -524,11 +601,11 @@ export async function socialPosted(request, response) {
 export async function socialNotes(request, response) {
   const tests = testsOf(request);
   const b = bodyOf(request);
-  const provider = providerOf(String(b.provider || ""));
-  const community = String(b.community || "").replace(/^\/?r\//i, "");
+  const provider = providerOf(field(b, "provider"));
+  const community = field(b, "community").replace(/^\/?r\//i, "");
   if (!provider || provider.later || !COMMUNITY.test(community)) throw new AuthError("name a community", 400);
   await tables(db("social_rules?on_conflict=provider,test,community", { method: "POST", prefer: "resolution=merge-duplicates",
-    body: { provider: provider.id, test: tests, community: community.toLowerCase(), notes: text(b.notes, 4000).trim() || null,
+    body: { provider: provider.id, test: tests, community: community.toLowerCase(), notes: text(field(b, "notes"), 4000).trim() || null,
       noted_at: new Date().toISOString() } }));
   return response.status(200).json({ outcome: "noted" });
 }
@@ -606,7 +683,7 @@ export async function socialRead(request) {
       // A send waiting on the owner at the network: where they post it.
       const waiting = row.status === "handed" || (row.status === "scheduled" && row.route === "by_hand");
       const provider = providerOf(row.provider);
-      const handOff = !waiting || !provider || provider.later ? null : row.kind === "post" ? provider.handOff(row)
+      const handOff = !waiting || !provider || provider.later ? null : row.kind === "post" ? provider.handOff(row).url
         : items.find((one) => one.provider === row.provider && one.external_id === row.parent)?.url ?? null;
       return { ...sendView(row), hand_off: handOff,
         results: points.map(({ at, score, comments, ratio }) => ({ at, score, comments, ratio })),
@@ -636,11 +713,13 @@ export async function socialNeeds(tests = false) {
   try {
     const [unread, waiting] = await Promise.all([
       db(`social_items?test=eq.${tests}&read_at=is.null&select=external_id&limit=500`),
-      db(`social_sends?test=eq.${tests}&status=in.(handed,scheduled,failed)&select=id,status,route,send_at&limit=500`),
+      db(`social_sends?test=eq.${tests}&status=in.(handed,scheduled,failed,sending)&select=id,status,route,send_at,said,changed_at`
+        + "&limit=500"),
     ]);
     const due = waiting.filter((one) => one.status === "handed"
       || (one.status === "scheduled" && one.route === "by_hand" && Date.parse(one.send_at) <= Date.now())).length;
-    return { unread: unread.length, due, failed: waiting.filter((one) => one.status === "failed").length };
+    // Failed, or unsure whether it is up: each wants the owner's look.
+    return { unread: unread.length, due, failed: waiting.filter((one) => one.status === "failed" || unsure(one)).length };
   } catch (trouble) {
     if (notYet(trouble)) return null;
     throw trouble;
@@ -719,23 +798,42 @@ export async function socialDueRoute(request, response) {
   return response.status(200).json(out);
 }
 
-/// POST /api/plans?op=social_visit {campaign, nonce, path, source}: a page
-/// opened from a sent post's link (web/theme.js). Counted once a landing, for
-/// a send that went; anything else let go. Always 204: it tells nobody what
-/// is counted.
+/// The visitor [request] is, for send [id] today: a key only this server can
+/// make from its address and browser, neither of them kept. A visitor counts
+/// once a day a post, however many times the beacon is sent, and nobody can
+/// add visits by inventing numbers of their own.
+function visitorOf(request, id) {
+  const headers = request.headers || {};
+  const address = String(headers["x-real-ip"] || String(headers["x-forwarded-for"] || "").split(",")[0]).trim()
+    || request.socket?.remoteAddress || "";
+  const agent = String(headers["user-agent"] || "").slice(0, 300);
+  const digest = createHmac("sha256", `social-visit:${process.env.SUPABASE_SECRET_KEY || ""}`)
+    .update(`${id}|${new Date().toISOString().slice(0, 10)}|${address}|${agent}`).digest();
+  return Array.from(digest.subarray(0, 20), (byte) => "abcdefghijklmnopqrstuvwxyz0123456789"[byte % 36]).join("");
+}
+
+/// At most this many visits a post are counted in any hour: the rows stay
+/// bounded whoever sends the beacon (docs/SOCIAL_DESK.md).
+export const VISITS_AN_HOUR = 1000;
+
+/// POST /api/plans?op=social_visit {campaign, path, source}: a page opened
+/// from a sent post's link (web/theme.js). Counted once a visitor a day, for
+/// a send that went, up to VISITS_AN_HOUR; anything else let go. Always 204:
+/// it tells nobody what is counted.
 export async function socialVisit(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const b = bodyOf(request);
-  const campaign = /^bw-([a-z0-9]{10})$/.exec(String(b.campaign || ""));
-  const nonce = String(b.nonce || "");
-  const path = String(b.path || "/").split(/[?#]/)[0].slice(0, 300);
-  const source = /^[a-z0-9_.-]{1,40}$/.test(String(b.source || "")) ? String(b.source) : null;
-  if (campaign && /^[a-z0-9]{8,24}$/.test(nonce) && path.startsWith("/")) {
+  const campaign = /^bw-([a-z0-9]{10})$/.exec(typeof b.campaign === "string" ? b.campaign : "");
+  const path = (typeof b.path === "string" ? b.path : "/").split(/[?#]/)[0].slice(0, 300);
+  const source = typeof b.source === "string" && /^[a-z0-9_.-]{1,40}$/.test(b.source) ? b.source : null;
+  if (campaign && path.startsWith("/")) {
+    const id = campaign[1];
     try {
-      const went = await db(`social_sends?id=eq.${campaign[1]}&status=in.(sent,handed)&select=id`);
-      if (went?.length) {
+      const went = await db(`social_sends?id=eq.${id}&status=in.(sent,handed)&select=id`);
+      const hour = new Date(Date.now() - 3600000).toISOString();
+      if (went?.length && await dbCount(`social_visits?send=eq.${id}&at=gte.${hour}`) < VISITS_AN_HOUR) {
         await db("social_visits?on_conflict=send,nonce", { method: "POST", prefer: "resolution=ignore-duplicates",
-          body: { send: campaign[1], nonce, path, source } });
+          body: { send: id, nonce: visitorOf(request, id), path, source } });
       }
     } catch (trouble) {
       if (!notYet(trouble)) console.error(`social: a visit not counted: ${String(trouble?.message || trouble).slice(0, 120)}`);

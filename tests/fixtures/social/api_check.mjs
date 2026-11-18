@@ -13,6 +13,7 @@
 // Prints one JSON object, each finding by name.
 import { askAdmin, askPlans, world } from "../billing/world.mjs";
 import { calls } from "../../../api/_social_mock.js";
+import { reddit, SocialRefusal } from "../../../api/_social_reddit.js";
 
 const logged = [];
 for (const level of ["log", "error", "warn", "info"]) {
@@ -148,8 +149,9 @@ try {
   const third = (await admin("social_draft", { body: { provider: "reddit", kind: "post", community: "legodesign",
     title: "Designing in the browser", body: "Words." } })).json?.send;
   await admin("social_send", { body: { id: third.id, hash: third.hash, at } });
-  const changed = (await admin("social_draft", { body: { id: third.id, provider: "reddit", kind: "post", community: "legodesign",
-    title: "Designing in the browser, changed", body: "Words." } })).json?.send;
+  const changedAnswer = await admin("social_draft", { body: { id: third.id, provider: "reddit", kind: "post", community: "legodesign",
+    title: "Designing in the browser, changed", body: "Words." } });
+  const changed = changedAnswer.json?.send;
   const fourth = (await admin("social_draft", { body: { provider: "reddit", kind: "post", community: "LegoMOC",
     title: "Scheduled, then tampered with", body: "Words." } })).json?.send;
   await admin("social_send", { body: { id: fourth.id, hash: fourth.hash, at } });
@@ -157,7 +159,7 @@ try {
   const writesBefore = writes();
   const later = await cron("cron-check-secret");
   answers.push(JSON.stringify(later.json));
-  out.edit_after_press = { status: changed?.status, cron: later.json?.outcome, writes: writes() - writesBefore,
+  out.edit_after_press = { status: changed?.status, outcome: changedAnswer.json?.outcome, cron: later.json?.outcome, writes: writes() - writesBefore,
     tampered: rows("social_sends").find((one) => one.id === fourth.id)?.status,
     said: rows("social_sends").find((one) => one.id === fourth.id)?.said };
   const unscheduled = await admin("social_unschedule", { body: { id: third.id } });
@@ -171,10 +173,14 @@ try {
 
   // 11. Results over time, and the visits a sent post's link brought.
   const resynced = await admin("social_sync");
-  const visit = (body) => askPlans({ method: "POST", query: { op: "social_visit" }, headers: { host }, body });
+  // A visitor is who the server sees (address and browser), never a number
+  // the page sends: the same one twice, with two numbers, is one visit.
+  const visit = (body, agent = "Visitor/1") => askPlans({ method: "POST", query: { op: "social_visit" },
+    headers: { host, "user-agent": agent, "x-real-ip": "203.0.113.7" }, body });
   const v1 = await visit({ campaign: `bw-${post.id}`, nonce: "abcdefgh1234", path: "/gallery", source: "reddit" });
   await visit({ campaign: `bw-${post.id}`, nonce: "abcdefgh1234", path: "/gallery", source: "reddit" });
-  await visit({ campaign: `bw-${post.id}`, nonce: "zyxwvuts9876", path: "/m/AbCdEfGhIj", source: "reddit" });
+  await visit({ campaign: `bw-${post.id}`, nonce: "qqqqqqqq0000", path: "/gallery", source: "reddit" });
+  await visit({ campaign: `bw-${post.id}`, nonce: "zyxwvuts9876", path: "/m/AbCdEfGhIj", source: "reddit" }, "Visitor/2");
   await visit({ campaign: "bw-nosuchsend", nonce: "abcdefgh1234", path: "/" });
   await visit({ campaign: `bw-${third.id}`, nonce: "abcdefgh5555", path: "/" });
   const after = await admin("social", { method: "GET" });
@@ -182,6 +188,67 @@ try {
   out.results = { sync: resynced.json?.outcome, points: mine?.results?.length, score: mine?.results?.[0]?.score,
     visit_status: v1.status, visits: mine?.visits?.total, by_day: Object.values(mine?.visits?.by_day || {}),
     draft_visits: rows("social_visits").filter((one) => one.send === third.id).length };
+
+  // 11b. The review's findings on the API route (sdreview, 2026-11-18).
+  const draftOf = async (fields) => (await admin("social_draft", { body: { provider: "reddit", kind: "post", ...fields } })).json?.send;
+  const rowOf = (id) => rows("social_sends").find((one) => one.id === id);
+  const viewOf = async (id) => (await admin("social", { method: "GET" })).json?.sends?.find((one) => one.id === id);
+  // A link and words together: refused, never sent with the link dropped.
+  const both = await admin("social_draft", { body: { provider: "reddit", kind: "post", community: "lego", title: "Both",
+    body: "Words about it.", link: "https://brickworks.diy/gallery" } });
+  out.link_and_words = { status: both.status, said: both.json?.error };
+  // Reddit takes the post and its answer is lost: unsure, and never sent
+  // again on that press, by Send, an edit or a drop.
+  const realSend = reddit.send;
+  const lost = await draftOf({ community: "lego", title: "Answer lost", body: "w" });
+  const writesLost = writes();
+  reddit.send = async (session, words) => {
+    await realSend(session, words);
+    throw new Error("The operation was aborted due to timeout");
+  };
+  const lostSend = await admin("social_send", { body: { id: lost.id, hash: lost.hash } });
+  reddit.send = realSend;
+  const lostView = await viewOf(lost.id);
+  out.answer_lost = { status: lostSend.status, said: lostSend.json?.error, row: rowOf(lost.id)?.status, unsure: lostView?.unsure,
+    resend: (await admin("social_send", { body: { id: lost.id, hash: lost.hash } })).status,
+    edit: (await admin("social_draft", { body: { id: lost.id, provider: "reddit", kind: "post", community: "lego", title: "Answer lost",
+      body: "w" } })).status,
+    drop: (await admin("social_drop", { body: { id: lost.id } })).status, posts: writes() - writesLost };
+  // ...found up: its address kept.
+  const found = await admin("social_posted", { body: { id: lost.id, url: "https://www.reddit.com/r/lego/comments/abc999/answer_lost/" } });
+  out.answer_lost.found = found.json?.send?.status;
+  // ...not up: back to the drafts, and a fresh press sends it once.
+  const lost2 = await draftOf({ community: "lego", title: "Answer lost again", body: "w" });
+  reddit.send = async () => { throw new TypeError("fetch failed"); };
+  await admin("social_send", { body: { id: lost2.id, hash: lost2.hash } });
+  reddit.send = realSend;
+  const writesBack = writes();
+  const back = await admin("social_unschedule", { body: { id: lost2.id } });
+  const fresh = await admin("social_send", { body: { id: lost2.id, hash: back.json?.send?.hash } });
+  out.not_up = { back: back.json?.outcome, status_after_back: back.json?.send?.status, fresh: fresh.json?.outcome,
+    posts: writes() - writesBack };
+  // Reddit's own no is "did not go": nothing is there, and it may be pressed again.
+  const refusedPost = await draftOf({ community: "lego", title: "Refused", body: "w" });
+  reddit.send = async () => { throw new SocialRefusal("Reddit did not take the post: SUBREDDIT_NOTALLOWED.", 409); };
+  const refusal = await admin("social_send", { body: { id: refusedPost.id, hash: refusedPost.hash } });
+  reddit.send = realSend;
+  out.reddit_refused = { status: refusal.status, row: rowOf(refusedPost.id)?.status, unsure: (await viewOf(refusedPost.id))?.unsure };
+  // Cut off mid-send: in flight for five minutes, then unsure, and taken back.
+  const cut = await draftOf({ community: "lego", title: "Cut off", body: "w" });
+  const pressed = { status: "sending", route: "api", pressed_at: new Date().toISOString(), pressed_by: "owner@example.com",
+    pressed_hash: cut.hash };
+  await behind("social_sends", cut.id, { ...pressed, changed_at: new Date().toISOString() });
+  const inFlight = { unsure: (await viewOf(cut.id))?.unsure, back: (await admin("social_unschedule", { body: { id: cut.id } })).status };
+  await behind("social_sends", cut.id, { changed_at: new Date(Date.now() - 6 * 60000).toISOString() });
+  out.cut_off = { in_flight: inFlight, unsure: (await viewOf(cut.id))?.unsure,
+    back: (await admin("social_unschedule", { body: { id: cut.id } })).json?.outcome };
+  // Wrong types refused, not kept as their String(); a title counted in characters.
+  const typed = (fields) => admin("social_draft", { body: { provider: "reddit", kind: "post", community: "lego", title: "t", body: "w",
+    ...fields } }).then((got) => got.status);
+  out.types = { body_object: await typed({ body: { a: 1 } }), title_list: await typed({ title: ["x", "y"] }),
+    community_list: await typed({ community: ["lego"] }),
+    hash_list: (await admin("social_send", { body: { id: cut.id, hash: [cut.hash] } })).status,
+    emoji_title: await typed({ title: "😀".repeat(200) }), emoji_over: await typed({ title: "😀".repeat(301) }) };
 
   // 12. Disconnect: the tokens taken back and gone; a post then goes by hand.
   const left = await admin("social_disconnect", { body: { provider: "reddit" } });
@@ -197,6 +264,31 @@ try {
   out.by_hand = { status: handed.status, outcome: handed.json?.outcome, hand_off: handed.json?.hand_off?.split("?")[0],
     hand_text: new URL(handed.json?.hand_off || "http://x/").searchParams.get("text"), writes: writes() - writesHand,
     wrong_url: wrongUrl.status, posted: posted.json?.send?.status, external_id: posted.json?.send?.external_id };
+
+  // 12b. By hand (sdreview): a long post's address, a handed send taken back
+  //      or dropped, the right kind of address, a reply to a message.
+  const long = await draftOf({ community: "lego", title: "Long", body: "word ".repeat(3000).trim() });
+  const longSend = await admin("social_send", { body: { id: long.id, hash: long.hash } });
+  out.long_by_hand = { filled_before: long.hand_off_filled, filled: longSend.json?.hand_off_filled,
+    length: longSend.json?.hand_off?.length, text_in_address: new URL(longSend.json?.hand_off || "http://x/").searchParams.has("text") };
+  const short = await draftOf({ community: "lego", title: "Short", body: "A few words." });
+  out.long_by_hand.short_filled = short.hand_off_filled;
+  out.handed_back = { back: (await admin("social_unschedule", { body: { id: long.id } })).json?.outcome,
+    row: rowOf(long.id)?.status, pressed: rowOf(long.id)?.pressed_hash ?? null };
+  await admin("social_send", { body: { id: short.id, hash: short.hash } });
+  out.handed_back.drop = (await admin("social_drop", { body: { id: short.id } })).status;
+  out.handed_back.gone = rowOf(short.id) === undefined;
+  const third2 = await draftOf({ community: "lego", title: "Marked", body: "w" });
+  await admin("social_send", { body: { id: third2.id, hash: third2.hash } });
+  const pasted = (url) => admin("social_posted", { body: { id: third2.id, url } }).then((got) => got.status);
+  out.paste = { comment_for_post: await pasted("https://www.reddit.com/r/lego/comments/abc123/x/def456/"),
+    share_link: await pasted("https://www.reddit.com/r/lego/s/AbCdEf12"),
+    said: (await admin("social_posted", { body: { id: third2.id, url: "https://redd.it/abc123" } })).json?.error,
+    post: await pasted("https://www.reddit.com/r/lego/comments/abc124/marked/") };
+  const pm = (await admin("social_draft", { body: { provider: "reddit", kind: "reply", parent: "t4_mk4001", body: "Thanks!" } })).json?.send;
+  const pmSend = await admin("social_send", { body: { id: pm.id, hash: pm.hash } });
+  const pmPosted = await admin("social_posted", { body: { id: pm.id, url: "" } });
+  out.message_reply = { handed: pmSend.json?.outcome, posted: pmPosted.json?.send?.status, url: pmPosted.json?.send?.url };
 
   // 13. Tokens: in no answer and no line logged.
   const text = answers.join("\n");

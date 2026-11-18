@@ -114,7 +114,7 @@ it answers.
 | `social_connect`, `social_connected`, `social_disconnect` | POST `{provider}` | Connect by OAuth (a signed state), the code taken for tokens kept here alone; Disconnect revokes and forgets them | social_accounts, social_tokens, the network |
 | `social_sync`, `social_mark` | POST | What came in and how sent posts do, read now; read or unread here (never at the network) | social_items, social_results |
 | `social_draft`, `social_drop`, `social_notes` | POST | A draft kept (the site's links tagged) or thrown away; notes on a community's rules | social_sends, social_rules |
-| `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; a schedule taken back; a post made by hand, its address kept | social_sends, the network |
+| `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; back to the drafts (a schedule, a hand-off not posted, or a send unsure whether it is up); a post made by hand or found up, its address kept | social_sends, the network |
 
 Part B's four are reads: not kept in the audit, like the other GETs; part
 C's reads are not either, and each of its POSTs is. `api/otp.js` takes one

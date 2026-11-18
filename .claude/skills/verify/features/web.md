@@ -3170,11 +3170,18 @@ plan with Claude as the client.
   words 409); the database refuses a send past a draft without a press.
   Reddit takes no new API apps since 2026-10-31, so with no
   REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET posts go by hand: Reddit's
-  submit page with the words, the address pasted back. The cron
-  `/api/plans/social-due` every 15 minutes sends due presses and reads
-  the inbox and results; web/theme.js counts a tagged landing once
-  (`social_visit`) and takes the tags out of the address. Proven by
-  `tests/test_social.py` and the socialdesk browser flow.
+  submit page (the words in its address up to 6,000 characters, else the
+  title alone and the words copied), the address pasted back; by hand there
+  is no score, only visits. A Reddit post is a link or words, never both
+  (400). Reddit's own no is "Did not go"; a lost answer, its 5xx or a send
+  cut off five minutes ago is unsure: never sent again on that press, found
+  up (paste its address) or back to the drafts (social_unschedule). On a
+  phone the desk's tables are cards. The cron `/api/plans/social-due` every
+  15 minutes sends due presses and reads the inbox and results;
+  web/theme.js tells of a tagged landing (`social_visit`), counted once a
+  visitor a day by the server's own key, at most 1,000 an hour a post, and
+  takes the tags out of the address. Proven by `tests/test_social.py` and
+  the socialdesk browser flow.
 - `socialdesk browser flow` (`tools/web/socialdesk_flow.mjs`, preview
   check `[socialdesk]`): the desk as the owner uses it on `?tests=1`,
   whose Reddit is the stand-in (reddit.com is never reached: the browser
@@ -3187,9 +3194,12 @@ plan with Claude as the client.
   words changed behind the open sheet refused and then sent as shown,
   Schedule and Unschedule, one pressed for a minute later sent by the
   cron's call (CRON_SECRET), its score in Sent and Details, a visit by its
-  tagged link counted once and the tags gone, Disconnect, a post by hand
-  (Reddit's page offered, its address pasted back), each tab at 390 and
-  1280 light and dark, and no token in any answer, page or storage. The
+  tagged link counted once and the tags gone, Disconnect, a link and words
+  refused, a long post by hand (said before the press, the title alone in
+  Reddit's address, Copy the words first, then Back to drafts and Drop), a
+  post by hand (Reddit's page offered, its address pasted back), each tab
+  at 390 and 1280 light and dark with every row's acts on the screen, and
+  no token in any answer, page or storage. The
   checks' pool is emptied after. Locally against `relay_server.mjs PORT
   --hold=social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`
   (restart it between runs: the held rows last as long as it does).

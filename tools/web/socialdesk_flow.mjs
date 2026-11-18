@@ -381,6 +381,43 @@ try {
       .textContent) && /Not connected/.test(document.querySelector("#networks li").textContent)));
     await go(page, "social/write");
     await page.click("#social-new");
+    // A link and words together: refused in the form's words, nothing kept.
+    await page.fill("#social-community", "lego");
+    await page.fill("#social-form input[name='title']", `Both ${rand}`);
+    await page.fill("#social-form input[name='link']", `${site}/gallery`);
+    await page.fill("#social-form textarea[name='body']", "Words about it.");
+    await page.click("#social-form button[type='submit']");
+    check("a link and words together: refused, nothing kept", await until(page, () => /a link or words, not both/
+      .test(document.getElementById("social-note").textContent)) && !(await as("/api/admin?op=social&tests=1")).json.sends
+      .some((one) => one.title === `Both ${rand}`));
+    // A post too long for Reddit's address: said before the press, the page opened with the title alone.
+    await page.click("#social-new");
+    const longTitle = `Long by hand ${rand}`;
+    await page.fill("#social-community", "lego");
+    await page.fill("#social-form input[name='title']", longTitle);
+    await page.fill("#social-form textarea[name='body']", "A long post. ".repeat(600).trim());
+    await page.click("#social-review");
+    await until(page, () => document.querySelector("#social-sheet[open]"));
+    check("a long post by hand: the sheet says before the press that the words go by copying",
+      /too long to go in Reddit's address/.test(await page.locator(sheet).textContent()));
+    await press(page, sheet, "Post it on Reddit…");
+    await until(page, () => document.getElementById("social-sheet-title").textContent === "Post it on Reddit");
+    const longOff = await page.locator(`${sheet} a.cta`).getAttribute("href");
+    check(`...Reddit's page with the title alone (${longOff.length} characters), Copy the words first`,
+      longOff.length < 6000 && !/[?&]text=/.test(longOff)
+      && (await page.locator(`${sheet} .row button, ${sheet} .row a`).first().textContent()) === "Copy the words");
+    await page.click("#social-sheet-close");
+    // Handed and not posted: back to the drafts, then thrown away.
+    await go(page, "social/sent");
+    const longRow = page.locator("#sends tr").filter({ hasText: longTitle });
+    await longRow.getByRole("button", { name: "Back to drafts" }).click();
+    check("a handed post taken back: a draft again", await until(page, ([t]) => [...document.querySelectorAll("#drafts tr")]
+      .some((row) => row.textContent.includes(t)), [longTitle]));
+    await go(page, "social/write");
+    await page.locator("#drafts tr").filter({ hasText: longTitle }).getByRole("button", { name: "Drop" }).click();
+    check("...and dropped", await until(page, ([t]) => ![...document.querySelectorAll("#drafts tr")]
+      .some((row) => row.textContent.includes(t)), [longTitle]));
+    await page.click("#social-new");
     const handTitle = `By hand ${rand}`;
     await page.fill("#social-community", "lego");
     await page.fill("#social-form input[name='title']", handTitle);
@@ -389,7 +426,7 @@ try {
     await until(page, () => document.querySelector("#social-sheet[open]"));
     check("not connected, the sheet says Reddit's page opens and nothing is posted until Post there",
       /Nothing is posted until you press Post there/.test(await page.locator(sheet).textContent()));
-    await press(page, sheet, "Open Reddit with these words");
+    await press(page, sheet, "Post it on Reddit…");
     await until(page, () => document.getElementById("social-sheet-title").textContent === "Post it on Reddit");
     const handOff = await page.locator(`${sheet} a.cta`).getAttribute("href");
     check(`Reddit's own page with the words, offered, not opened: ${handOff.slice(0, 70)}…`,
@@ -425,13 +462,18 @@ try {
             await until(where.page, () => document.querySelectorAll("#social-rules li").length >= 1);
           }
           wide ||= await sideways(where.page);
+          // Every act of a row within the screen: rows are cards on a phone.
+          const off = await where.page.evaluate(() => [...document.querySelectorAll("td.acts button, td.acts a")]
+            .filter((one) => one.offsetParent && one.getBoundingClientRect().right > innerWidth + 1).length);
+          if (off) console.log(`        ${tab} at ${width}: ${off} of its rows' acts past the screen's edge`);
+          wide ||= off > 0;
           await shot(where.page, `10-${tab}-${width}-${theme}.png`);
         }
         await go(where.page, "social/sent");
         await where.page.locator("#sends tr").first().getByRole("button", { name: "Details" }).click();
         await until(where.page, () => document.querySelector("#social-sheet[open]"));
         await shot(where.page, `10-details-${width}-${theme}.png`, false);
-        check(`at ${width} ${theme}: every tab drawn, none wider than the screen`, !wide);
+        check(`at ${width} ${theme}: every tab drawn, none wider than the screen, every row's acts on it`, !wide);
         await where.context.close();
       }
     }

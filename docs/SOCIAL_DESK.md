@@ -35,14 +35,27 @@ So **there is nothing for the owner to click today** that would give the desk
 a Reddit app. The desk does two things instead.
 
 1. **It posts by hand.** The page says so wherever it matters.
-   1. Send opens Reddit's own submit page with the title and words filled in.
-   2. The owner presses Post there.
-   3. The owner pastes the post's address back into the desk.
-   4. From then on, its score, comments and the visits it brings are counted.
+   1. The owner copies the words (Copy the words comes first), and opens
+      Reddit's own submit page. The desk puts the title and words in its
+      address (`submit?title=…&selftext=true&text=…`). No Reddit page documents
+      those parameters, and a 2025 r/help thread says new Reddit does not fill
+      the text from them, so the page says Reddit *may* fill them and to paste
+      the words where a box is empty.
+   2. Words too long for the address go without it. Reddit's submit page
+      answered a 6,363-character address and refused a 12,363-character one
+      with 414 URI Too Long (read 2026-11-18,
+      `bench/results/sdreview-2026-11-18/reddit_url_length.txt`), so above
+      6,000 characters the page opens with the title alone. The sheet says so
+      before the press.
+   3. The owner presses Post there, and pastes the post's own address back
+      into the desk (a Share link or redd.it link is refused: it names no post).
+   4. From then on, the visits it brings are counted. Its score and comments
+      are read only through a connected account, so by hand there is none:
+      Reddit's public JSON answers 403 to a server
+      (`bench/results/sdreview-2026-11-18/reddit_public_rules_json_403.txt`).
 
    This is what Postpone moved to when it lost its access on 2025-11-30
-   (below). The desk also has a "Copy the words" button, because Reddit's new
-   site does not always fill the text from the address (unconfirmed).
+   (below).
 
 2. **It is ready for the API.** The whole API path (connect, inbox, reply,
    post, schedule, results) is built and proven against a stand-in Reddit
@@ -117,9 +130,21 @@ section's badge sums them.
     day and a quarter-hour to Schedule.
 - **Sent and scheduled** (`#social/sent`): every post and reply that went or
   waits. For each: its state, score, comments and the visits it brought, with
-  Unschedule, Post it on Reddit… (by hand), Look again and Drop (failed), and
+  Unschedule; Post it on Reddit…, Back to drafts and Drop (handed to the
+  owner); Look again and Drop (failed); Is it up?… (unsure, below); and
   Details (its words, when and by whom it was pressed, its tag, its score
-  over time, its visits by day).
+  over time, its visits by day). On a phone each row is a card.
+- **A send is never sent twice.** Reddit's own no ("did not take the post")
+  marks it "Did not go", and it may be pressed again. Anything less clear (a
+  timeout, Reddit's 5xx, an answer that names no post, the row not written
+  after) leaves it unsure: still "sending", never sent again on that press,
+  by Send, an edit or a drop. So does a send cut off mid-request, five
+  minutes on. Is it up?… links to the account's posts; the owner pastes its
+  address if it is there, or takes it back to the drafts and presses Send
+  afresh. The open sheet's Send now stays off once pressed.
+- **A Reddit post is a link or words**, never both: the form refuses both
+  rather than send one and drop the other. An edit after Schedule or a
+  hand-off says it undid the press.
 - **Accounts** (`#social/accounts`): Reddit (connected or not, what is
   missing and why, Connect, Check now, Disconnect), and X, Facebook and
   Instagram as "Not connected yet", each with what it needs and costs.
@@ -264,7 +289,7 @@ checks, which already allow it. No table changes.
 |---|---|---|---|
 | What it costs | Pay per use, no plan: **$0.015** a post, **$0.20** a post with a link, **$0.01** a reply when summoned, $0.015 a DM, $0.005 a post read, $0.001 an owned read. A spending cap per cycle | No fee from Meta | No fee from Meta |
 | A month of 30 posts | $6.00 with a link in each ($0.45 without); 1,000 mentions read $5.00 | $0 | $0 |
-| What the owner sets up | An app at console.x.com, OAuth 2.0 with PKCE: `tweet.read tweet.write users.read dm.read dm.write offline.access`. No approval step | A Meta app with the owner as its admin and as the Page's admin. Standard Access, with no App Review and no Business Verification, covers accounts that have a role on the app | The same Meta app; the Instagram account professional and linked to the Page; `instagram_business_basic`, `instagram_business_content_publish`, `instagram_business_manage_comments`, `instagram_business_manage_messages` |
+| What the owner sets up | An app at console.x.com, OAuth 2.0 with PKCE: `tweet.read tweet.write users.read dm.read dm.write offline.access`. No approval step | A Meta app with the owner as its admin and as the Page's admin. Standard Access covers accounts with a role on the app, but posting to the Page likely needs App Review for `pages_manage_posts` (unconfirmed: the Pages overview says every Page permission does), and posts reach the public only from a Live app | The same Meta app; the Instagram account professional and linked to the Page; `instagram_business_basic`, `instagram_business_content_publish`, `instagram_business_manage_comments`, `instagram_business_manage_messages` |
 | What a brand can read | Mentions, replies, DMs | The Page's posts, comments and Messenger conversations | Comments, mentions, DMs |
 | What it can send | Posts; replies only when the author summoned it (an @mention or a quote) since 2026-02-23; DMs. No likes, follows or quote-posts on self-serve | Posts, comment replies, messages within 24 h (7 days for a person replying by hand, the Human Agent tag) | Posts (at most 100 by API a day; one passage says 50), comment replies, DMs only after the person wrote first, within 24 h |
 | Sources | <https://docs.x.com/x-api/getting-started/pricing>, <https://docs.x.com/changelog>, <https://docs.x.com/x-api/fundamentals/rate-limits> (primary) | <https://developers.facebook.com/docs/graph-api/overview/access-levels/>, <https://developers.facebook.com/docs/pages-api/overview/>, <https://developers.facebook.com/docs/messenger-platform/policy/policy-overview/> (primary) | <https://developers.facebook.com/docs/instagram-platform/content-publishing/>, its messaging API page (primary) |
@@ -351,9 +376,12 @@ Where the desk matches the best, and where it does better:
 - **UTM.** When a draft is kept, each link to brickworks.diy (or the console's
   own host) gets `utm_source=<network>&utm_medium=social&utm_campaign=bw-<send
   id>`; other links are left alone. web/theme.js, on every page, sees a
-  campaign of that shape and tells `/api/plans?op=social_visit` once per
-  landing, with a random nonce. It then takes the tags out of the address, so
-  a visitor sharing the page does not carry them on. A visit counts only for
+  campaign of that shape and tells `/api/plans?op=social_visit`. The server
+  counts a visitor once a day a post, by a key only it can make from the
+  address and browser (neither kept), never by a number the page sends, and at
+  most 1,000 visits a post in any hour, so nobody can inflate them. The page
+  then takes the tags out of the address, so a visitor sharing the page does
+  not carry them on. A visit counts only for
   a send that went.
 - **Tables** (`supabase/social.sql`, additive, unapplied until the lead
   applies it): `social_accounts`, `social_tokens`, `social_items`,
@@ -380,7 +408,14 @@ Where the desk matches the best, and where it does better:
     words refused, nothing written to Reddit), send, send twice, schedule
     (too soon, the cron's key, early, due), words changed after the press, a
     row tampered behind the press, results and visits, disconnect, and the
-    by-hand route. Every answer, log line and request path is searched for a
+    by-hand route. And the review's cases (sdreview, 2026-11-18): a link and
+    words refused; Reddit's answer lost (one post, then unsure: Send, an edit
+    and a drop refused; found up, or back to the drafts and sent once on a
+    fresh press); Reddit's own no as "did not go"; a send cut off mid-request,
+    unsure after five minutes; a long post's address; a handed post taken
+    back or dropped; a comment's or Share link's address refused for a post;
+    a reply to a message marked sent; wrong types; a title of emoji; and two
+    visitors counted as two however many numbers the page sends. Every answer, log line and request path is searched for a
     token.
   - `tests/fixtures/social/db_check.mjs` applies social.sql twice to a
     Postgres of its own. It checks that no role but the server's reads any

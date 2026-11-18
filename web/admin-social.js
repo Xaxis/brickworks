@@ -65,6 +65,7 @@ const DETAIL = { comment_reply: "to a comment", post_reply: "to a post", usernam
   message: "" };
 const STATE = { draft: "Draft", scheduled: "Scheduled", sending: "Sending", handed: "Waiting on you at Reddit", sent: "Sent",
   failed: "Did not go" };
+const stateOf = (one) => (one.unsure ? "Unsure: look on Reddit" : STATE[one.status] || one.status);
 const where = (one) => (one.community ? `r/${one.community}` : one.kind === "reply" ? "a reply" : "—");
 const excerpt = (words, most = 160) => (words.length > most ? `${words.slice(0, most - 1)}…` : words);
 
@@ -126,8 +127,8 @@ function drawNetworks() {
     if (!one.api) {
       card.append(make("p", "note", `This deployment has no Reddit app: ${one.missing.join(" and ")} ${one.missing.length === 1 ? "is" : "are"} `
         + "not set in Vercel. Reddit stopped taking new API apps on 31 October 2026 and ends the rest in March 2027, so "
-        + "the desk posts by hand: Send opens Reddit's own page with your words, you press Post there, and paste its address "
-        + "back here so its score and the visits it brings are counted."),
+        + "the desk posts by hand: Send opens Reddit's own page, you paste the words if it has not and press Post there, then paste "
+        + "its address back here so the visits it brings are counted. Its score and comments are read only once Reddit is connected."),
       make("p", "note", "Should Reddit grant Brickworks access, docs/SOCIAL_DESK.md says what to set; Connect then works here."));
     } else card.append(make("p", "note", "Connect to read replies, mentions and messages here and post by Reddit's API. "
       + "You let the desk in on Reddit's own page; its keys stay on the server."));
@@ -187,7 +188,9 @@ function drawInbox() {
   if (!desk.items.length) {
     const account = reddit()?.account;
     emptyRow(body, desk.ready === false ? "Not open yet." : account ? `Nothing yet. Last look ${ago(account.synced_at)}; Check now looks again.`
-      : "Nothing yet. Connect Reddit under Accounts to read replies, mentions and messages here.");
+      : reddit()?.api ? "Nothing yet. Connect Reddit under Accounts to read replies, mentions and messages here."
+        : "Nothing comes in here until Reddit grants the desk API access (it took no new apps from 31 October 2026): "
+          + "replies, mentions and messages reach you on Reddit itself, in its inbox.");
     return;
   }
   for (const one of desk.items) {
@@ -224,6 +227,7 @@ function drawInbox() {
     }, "cta ghost small"));
     body.append(row);
   }
+  labelCells(body);
   siftInbox();
 }
 
@@ -337,25 +341,42 @@ function replyTo(item) {
 
 /// The form kept as a draft: the send as the server holds it (its links to
 /// the site tagged), put back in the form.
-async function keep() {
-  const e = form.elements;
-  const body = { id: editing.id || undefined, provider: e.provider.value, kind: editing.kind, parent: editing.parent || undefined,
-    community: e.community.value.trim(), title: e.title.value, body: e.body.value, link: e.link.value.trim() };
-  const done = await adminJson({ op: "social_draft" }, { method: "POST", body });
-  editing.id = done.send.id;
-  e.body.value = done.send.body;
-  e.link.value = done.send.link || "";
-  fill();
-  await reread();
-  return done.send;
+/// One keep at a time: Keep and Review are held while it runs, so two quick
+/// presses make one draft, not two.
+let keeping = null;
+function keep() {
+  if (!keeping) {
+    const holds = [form.querySelector("button[type=submit]"), $("social-review")];
+    for (const button of holds) button.disabled = true;
+    keeping = (async () => {
+      const e = form.elements;
+      const body = { id: editing.id || undefined, provider: e.provider.value, kind: editing.kind, parent: editing.parent || undefined,
+        community: e.community.value.trim(), title: e.title.value, body: e.body.value, link: e.link.value.trim() };
+      const done = await adminJson({ op: "social_draft" }, { method: "POST", body });
+      editing.id = done.send.id;
+      e.body.value = done.send.body;
+      e.link.value = done.send.link || "";
+      fill();
+      await reread();
+      return { ...done.send, outcome: done.outcome };
+    })().finally(() => {
+      keeping = null;
+      for (const button of holds) button.disabled = desk?.ready === false;
+    });
+  }
+  return keeping;
 }
+
+/// What keeping it did, in words: a press undone by an edit is said.
+const keptWords = (send) => (send.outcome === "unscheduled" ? "Kept, and no longer scheduled: an edit undoes Schedule. "
+  + "Press Review and send to set it going again." : send.outcome === "redrafted" ? "Kept: a draft again, not handed to Reddit." : "Kept.");
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
     const send = await keep();
-    say("social-note", /utm_campaign=/.test(`${send.body} ${send.link || ""}`)
-      ? `Kept. Links to brickworks.diy carry utm_campaign=${send.campaign}.` : "Kept.");
+    say("social-note", `${keptWords(send)}${/utm_campaign=/.test(`${send.body} ${send.link || ""}`)
+      ? ` Links to brickworks.diy carry utm_campaign=${send.campaign}.` : ""}`);
   } catch (problem) {
     say("social-note", problem.message, true);
   }
@@ -364,7 +385,7 @@ form.addEventListener("submit", async (event) => {
 $("social-review").addEventListener("click", async () => {
   try {
     const send = await keep();
-    say("social-note", "");
+    say("social-note", send.outcome === "kept" ? "" : keptWords(send));
     review(send);
   } catch (problem) {
     say("social-note", problem.message, true);
@@ -386,10 +407,15 @@ function review(send) {
   said.setAttribute("role", "status");
   const parts = [
     make("p", "", api ? `This goes to ${target} by Reddit's API, as u/${account.handle}, exactly as it is here.`
-      : `Reddit's own page for ${target} opens with these words. Nothing is posted until you press Post there.`),
+      : send.kind === "post" ? `Reddit's own page for ${target} opens next, with these words to copy. Nothing is posted until you `
+        + "press Post there." : "The item opens on Reddit next, with these words to copy and paste as your reply there."),
     words(send),
   ];
-  const now = act(api ? "Send now" : "Open Reddit with these words", async () => press(send, null, said), "cta");
+  if (!api && send.kind === "post" && !send.hand_off_filled) {
+    parts.push(make("p", "note", "These words are too long to go in Reddit's address, so its page opens with the title alone: "
+      + "copy the words and paste them into its box."));
+  }
+  const now = act(api ? "Send now" : "Post it on Reddit…", async () => press(send, null, said), "cta");
   parts.push(make("div", "row", now));
   // A day (today and the next 60) and a quarter-hour, in this browser's time.
   const dayPick = make("select");
@@ -448,13 +474,16 @@ async function press(send, at, said) {
     } else if (done.outcome === "sent") {
       say("social-note", "Sent.");
       openSheet("Sent", [make("p", "", "It is on Reddit: "), done.url ? linkOut(done.url, done.url) : "—"], send.id);
-    } else if (done.outcome === "handed") handOff({ ...done.send, hand_off: done.hand_off });
+    } else if (done.outcome === "handed") handOff({ ...done.send, hand_off: done.hand_off, hand_off_filled: done.hand_off_filled });
     await reread();
     return true;
   } catch (problem) {
     say(said, problem.message, true);
     await reread().catch(() => null);
-    return false;
+    // A Send that did not go is not pressed again from this sheet: what
+    // became of it is under Sent, which says whether it may be up. A time
+    // refused is chosen again.
+    return !at;
   }
 }
 
@@ -463,11 +492,7 @@ async function press(send, at, said) {
 function handOff(send) {
   const said = make("p", "note");
   said.setAttribute("role", "status");
-  const address = make("input");
-  address.type = "url";
-  address.inputMode = "url";
-  address.placeholder = "https://www.reddit.com/r/…/comments/…";
-  address.spellcheck = false;
+  const address = addressBox();
   const copy = act("Copy the words", async () => {
     try {
       await navigator.clipboard.writeText([send.title, send.link, send.body].filter(Boolean).join("\n\n"));
@@ -477,10 +502,33 @@ function handOff(send) {
     }
     return false;
   }, "ghost");
-  const posted = act("It is posted", async () => {
+  // A reply to a private message has no address of its own: its conversation's is kept.
+  const message = send.kind === "reply" && /^t4_/.test(String(send.parent));
+  const posted = postedButton(send, address, said, "It is posted");
+  const page = send.kind === "post" ? (send.hand_off_filled
+    ? "Copy the words first. Reddit's page may fill in the title and words; where a box is empty, paste them. "
+    : "The words are too long for Reddit's address, so its page opens with the title alone: copy the words and paste them into its box. ")
+    + "Press Post there: nothing is posted from here."
+    : "Copy the words, open the item on Reddit, paste them as your reply and press Reply there: nothing is sent from here.";
+  openSheet(send.kind === "post" ? "Post it on Reddit" : "Reply on Reddit", [
+    make("p", "", page),
+    words(send),
+    make("div", "row", copy, send.hand_off ? linkOut(send.hand_off, send.kind === "post" ? "Open Reddit's page" : "Open it on Reddit", "cta")
+      : make("span", "note", "Its item is no longer in the inbox: find it on Reddit.")),
+    make("div", "part", make("h3", "", "Once it is up"), message
+      ? make("p", "note", "A reply to a message has no address of its own: the conversation's is kept.")
+      : make("label", "", `Paste the address of the ${send.kind} on Reddit`, address), make("div", "row", posted)),
+    said,
+  ], send.id);
+}
+
+/// "It is posted" (or found up): its address sent, the send marked sent.
+function postedButton(send, address, said, words) {
+  return act(words, async () => {
     try {
       await adminJson({ op: "social_posted" }, { method: "POST", body: { id: send.id, url: address.value.trim() } });
-      say("sends-note", "Kept: its score and the visits it brings are counted from now.");
+      say("sends-note", reddit()?.account ? "Kept: its score and the visits it brings are counted from now."
+        : "Kept: the visits it brings are counted from now. Its score is read only once Reddit is connected.");
       closeSheet();
       await reread();
       return true;
@@ -489,17 +537,56 @@ function handOff(send) {
       return false;
     }
   }, "cta");
-  openSheet(send.kind === "post" ? "Post it on Reddit" : "Reply on Reddit", [
-    make("p", "", send.kind === "post" ? "Reddit's page opens with your title and words. Press Post there: nothing is posted from here."
-      : "The item opens on Reddit. Paste the words as a reply and press Reply there: nothing is sent from here."),
+}
+
+function addressBox() {
+  const address = make("input");
+  address.type = "url";
+  address.inputMode = "url";
+  address.placeholder = "https://www.reddit.com/r/…/comments/…";
+  address.spellcheck = false;
+  return address;
+}
+
+/// A send that may be up: look on Reddit, then paste its address, or take
+/// it back to the drafts to press Send afresh. Never sent again from here.
+function unsureSheet(send) {
+  const said = make("p", "note");
+  said.setAttribute("role", "status");
+  const address = addressBox();
+  const handle = reddit()?.account?.handle;
+  const look = handle ? `https://www.reddit.com/user/${handle}/${send.kind === "post" ? "submitted" : "comments"}/`
+    : send.community ? `https://www.reddit.com/r/${send.community}/new/` : "https://www.reddit.com/message/sent/";
+  openSheet("Is it up on Reddit?", [
+    make("p", "", "Reddit gave no clear answer when this went, so it may be up. It is not sent again from here: look first."),
+    send.said ? make("p", "note", send.said) : "",
     words(send),
-    make("div", "row", send.hand_off ? linkOut(send.hand_off, send.kind === "post" ? "Open Reddit's page" : "Open it on Reddit", "cta")
-      : make("span", "note", "Its item is no longer in the inbox: find it on Reddit."), copy),
-    make("div", "part", make("h3", "", "Once it is up"),
-      make("label", "", `Paste the address of the ${send.kind} on Reddit`, address), make("div", "row", posted)),
+    make("div", "row", linkOut(look, handle ? `u/${handle}'s ${send.kind === "post" ? "posts" : "comments"} on Reddit`
+      : `r/${send.community || "…"}'s newest`, "cta ghost")),
+    make("div", "part", make("h3", "", "It is there"),
+      make("label", "", `Paste the address of the ${send.kind} on Reddit`, address), make("div", "row", postedButton(send, address, said,
+        "Keep its address"))),
+    make("div", "part", make("h3", "", "It is not there"), make("p", "note", "Back to the drafts: it goes again only when you press Send."),
+      make("div", "row", backButton(send, said, "Back to the drafts"))),
     said,
   ], send.id);
 }
+
+/// Back to the drafts, its press forgotten: a scheduled send, one handed
+/// to you and not posted, or one that is unsure and not up.
+const backButton = (send, where, words) => act(words, async () => {
+  try {
+    const done = await adminJson({ op: "social_unschedule" }, { method: "POST", body: { id: send.id } });
+    say("sends-note", done.outcome === "unscheduled" ? "Unscheduled: back among the drafts, and it goes only when you press Send again."
+      : "Back among the drafts: it goes only when you press Send again.");
+    if ($("social-sheet").open) closeSheet();
+    await reread();
+    return true;
+  } catch (problem) {
+    say(where, problem.message, true);
+    return false;
+  }
+}, "cta ghost small");
 
 const linkOut = (href, words, className = "") => {
   const a = link(href, words, className);
@@ -573,10 +660,12 @@ function drawDrafts() {
     cell(row, "", "acts").append(act("Edit", async () => { open(one); return false; }, "cta ghost small"), drop(one, "social-note"));
     body.append(row);
   }
+  labelCells(body);
 }
 
 const drop = (one, note) => act("Drop", async () => {
-  if (!confirm(`Throw away this ${one.kind}? It was never sent.`)) return false;
+  if (!confirm(`Throw away this ${one.kind}? ${one.status === "handed" ? "It was handed to you and is not marked posted; "
+    + "if you did post it on Reddit, it stays there." : "It was never sent."}`)) return false;
   try {
     await adminJson({ op: "social_drop" }, { method: "POST", body: { id: one.id } });
     if (editing.id === one.id) startNew();
@@ -614,10 +703,10 @@ function drawSends() {
     row.id = `send-${one.id}`;
     timeCell(row, one.sent_at || one.send_at || one.changed_at);
     const due = one.status === "scheduled" && one.route === "by_hand" && Date.parse(one.send_at) <= Date.now();
-    const state = make("span", one.status === "sent" ? "pill good" : one.status === "failed" ? "pill" : "pill new",
+    const state = make("span", one.status === "sent" ? "pill good" : one.status === "failed" || one.unsure ? "pill" : "pill new",
       due ? "Due: post it on Reddit" : one.status === "scheduled" ? `Scheduled, ${one.route === "api" ? "by the API" : "by hand"}`
-        : STATE[one.status] || one.status);
-    cell(row, make("span", "", state, one.status === "failed" && one.said ? make("small", "faint", ` ${one.said}`) : ""));
+        : stateOf(one));
+    cell(row, make("span", "", state, (one.status === "failed" || one.unsure) && one.said ? make("small", "faint", ` ${one.said}`) : ""));
     cell(row, where(one));
     const what = cell(row, "", "text");
     what.append(one.url ? linkOut(one.url, excerpt(one.title || one.body)) : excerpt(one.title || one.body));
@@ -632,27 +721,25 @@ function drawSends() {
       return false;
     }, "cta small"));
     acts.append(act("Details", async () => { details(one); return false; }, "cta ghost small"));
-    if (one.status === "scheduled") {
-      acts.append(act("Unschedule", async () => {
-        try {
-          await adminJson({ op: "social_unschedule" }, { method: "POST", body: { id: one.id } });
-          say("sends-note", "Back among the drafts: it goes only when you press Send again.");
-          await reread();
-          return true;
-        } catch (problem) {
-          say("sends-note", problem.message, true);
-          return false;
-        }
-      }, "cta ghost small"));
-    }
+    if (one.unsure) acts.append(act("Is it up?…", async () => { unsureSheet(one); return false; }, "cta small"));
+    if (one.status === "scheduled") acts.append(backButton(one, "sends-note", "Unschedule"));
+    if (one.status === "handed") acts.append(backButton(one, "sends-note", "Back to drafts"), drop(one, "sends-note"));
     if (one.status === "failed") acts.append(act("Look again", async () => { open(one); return false; }, "cta ghost small"), drop(one, "sends-note"));
     body.append(row);
   }
+  labelCells(body);
+}
+
+/// Each cell named by its column, for the rows drawn as cards on a phone
+/// (admin.html's table.cards below 600 px).
+function labelCells(body) {
+  const heads = [...(body.closest("table")?.tHead?.rows[0]?.cells || [])].map((th) => th.textContent.trim());
+  for (const row of body.rows) [...row.cells].forEach((td, at) => { if (heads[at] && td.colSpan === 1) td.dataset.label = heads[at]; });
 }
 
 function details(one) {
   const parts = [words(one), facts([
-    ["State", STATE[one.status] || one.status],
+    ["State", stateOf(one)],
     ["Where", where(one)],
     ["Pressed", one.pressed_at ? `${when(one.pressed_at)} by ${one.pressed_by}` : "—"],
     ["Went", one.route === "api" ? "by Reddit's API" : one.route === "by_hand" ? "by hand, posted by you on Reddit" : "—"],

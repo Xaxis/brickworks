@@ -11,7 +11,7 @@
 // is proven against the real database by its file's dry run
 // (tools/apply_sql.mjs --dry --try=FILE), which rolls back.
 //
-// Only what the functions ask of these tables: eq., gt. and in. filters, select
+// Only what the functions ask of these tables: eq., gt., gte. (a time) and in. filters, a HEAD count, select
 // of named columns, order by one column, limit; insert of one row or
 // several, with the table's own refusals (TABLES below); update and delete
 // by filter. Kept for the life of the process.
@@ -521,7 +521,10 @@ async function answer(real, base, url, init = {}) {
     const among = /^in\.\((.*)\)$/.exec(said);
     const is = /^is\.(null|true|false)$/.exec(said);
     const above = /^gt\.(-?\d+)$/.exec(said);
+    // gte. on a time, as social_visits' hour is read: ISO times compare as text.
+    const since = /^gte\.(\d{4}-\d\d-\d\dT[\d:.]+Z)$/.exec(said);
     if (above) filters.push((row) => Number(row[column]) > Number(above[1]));
+    else if (since) filters.push((row) => String(row[column] ?? "") >= since[1]);
     else if (eq) filters.push((row) => String(row[column]) === eq[1]);
     else if (among) filters.push((row) => among[1].split(",").includes(String(row[column])));
     else if (is) filters.push((row) => (is[1] === "null" ? row[column] === null || row[column] === undefined
@@ -530,6 +533,11 @@ async function answer(real, base, url, init = {}) {
   }
   const chosen = () => rows.filter((row) => filters.every((test) => test(row)));
 
+  // HEAD with count=exact, as dbCount asks: the count in content-range.
+  if (method === "HEAD") {
+    const n = chosen().length;
+    return new Response(null, { status: 200, headers: { "content-range": n ? `0-${n - 1}/${n}` : "*/0" } });
+  }
   if (method === "GET") {
     let out = chosen();
     const order = params.get("order");
