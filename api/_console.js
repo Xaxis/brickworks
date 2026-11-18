@@ -429,9 +429,16 @@ const TARGETS = {
   social_unschedule: (_, b) => ["send", b.id],
   social_posted: (_, b) => ["send", b.id],
   social_notes: (_, b) => ["social", b.community],
+  // Claude in the console (adminclaude): never the key, which no list here names.
+  claude_key: () => ["claude", "key"],
+  claude_check: () => ["claude", "key"],
+  claude_forget: () => ["claude", "key"],
+  claude_settings: () => ["claude", "settings"],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
-  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url"];
+  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url",
+  // claude_settings: the model, effort and monthly cap chosen (never the key).
+  "model", "effort", "cap_usd"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.

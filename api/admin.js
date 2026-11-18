@@ -179,6 +179,11 @@
 //   POST /api/admin?op=social_posted     {id, url}: posted by hand, its address
 //   POST /api/admin?op=social_notes      {provider, community, notes}
 //
+// Claude in the console (adminclaude, 2026-11-18; api/_claude.js, docs/ADMIN_CLAUDE.md):
+//   GET  /api/admin?op=claude, claude_models  the settings and the key's models
+//   POST /api/admin?op=claude_key, claude_check, claude_forget, claude_settings
+//   POST /api/admin?op=claude_chat       the answer, streamed; audited by itself
+//
 // Part B (console2, 2026-11-12): those four read, and are not audited, as
 // no read is; none of them changes anything anywhere.
 //
@@ -221,6 +226,8 @@ import { challengeView } from "./_console_challenges.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
+import { CLAUDE_ACTS, claudeChat, claudeModels, claudeRead } from "./_claude.js";
+import { withClaudeMarks } from "./_claude_social.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -297,7 +304,10 @@ export default async function handler(request, response) {
     // owner pressed it on.
     social_connect: socialConnect, social_connected: socialConnected, social_disconnect: socialDisconnect,
     social_sync: socialSync, social_mark: socialMark, social_draft: socialDraft, social_drop: socialDrop,
-    social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes };
+    social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes,
+    ...CLAUDE_ACTS };
+  // Claude's answer streams as it comes, so it writes its own audit row (api/_claude.js).
+  if (op === "claude_chat") return claudeChat(request, response, claims);
   // An op is one of these tables' own names, never one Object's prototype
   // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
   // nobody made, answered 404 and never audited as an act (c3review).
@@ -316,7 +326,9 @@ export default async function handler(request, response) {
     connector: () => connectorRead(tests, request.query?.account ? String(request.query.account).toLowerCase() : null),
     site: async () => withRunNow(await siteRead()),
     data: () => dataRead(),
-    social: () => socialRead(request),
+    social: async () => withClaudeMarks(await socialRead(request), tests),
+    claude: () => claudeRead(request),
+    claude_models: () => claudeModels(request),
     social_rules: () => socialRules(request),
     find: () => findRead(String(request.query?.q || ""), tests),
     challenge_view: () => {
