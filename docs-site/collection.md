@@ -94,6 +94,14 @@ ui:where each part is kept
 
 **Build › What do I need?…** (or **What do I need?** on the parts list, [[P]]) lists what the model uses that you do not own, and what you own that could stand in. Export what is left as a shopping list: see [Buy the parts](/docs/exports#shop-lists).
 
+## Make a model easier to buy {#rare}
+
+A part in a colour that comes in three sets or fewer is one few sellers have. The parts list ([[P]]) says over its rows how many of the model's lots are like that, by Rebrickable's set inventories, and marks each such row "rare: in 2 sets". Press that line and each rare lot is shown with a swap that comes in 20 sets or more: the same shape in its own colour (another mould of the part that holds every connection the old one did, or a print's own plain part where it is still made), or else the nearest colour of the same finish and see-through-ness that its part comes in, its ΔE said. The lots of one colour go to one colour where their parts allow, so a fox stays one orange. Only a swap that keeps the look starts ticked: the same shape in its colour, or a close colour (ΔE 10 or under) of the same finish. Every other says what it changes ("a different colour", "not see-through", "loses its chrome") and waits for you to tick it; a print keeps its print unless you tick it, and a part no colour of which comes in 20 sets says so and has no box. A touch anywhere on a row ticks it. Then **Swap**: a part in your hand goes back where it was first, as Escape puts it, every copy of a sub-model changes with it, a locked part stays, and the whole swap is one undo step. The line then says what changed and what is still rare. Your Claude does the same with replace_parts rare=true, in one call: it swaps those that keep the look, and the others only where it names them with lots=.
+
+<!-- covers
+ui:rare lots swapped for common ones
+-->
+
 ## What can I build? {#build}
 
 **File › What can I build?…** opens on **Real sets**: every LEGO® set Rebrickable lists, the one you could build most of first. Each says how much of it you have in its colours (*92%*), how many pieces are short, and how much you have in any colour; the sets you own are left out. Your sets' parts and your loose parts all count, and another moulding of a part stands in, as What do I need? counts them.

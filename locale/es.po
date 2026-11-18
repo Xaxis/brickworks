@@ -15168,6 +15168,163 @@ msgstr "%d uniones con fricción ceden, en rojo, la peor sostiene el %d % de lo 
 
 msgid "on a Technic ball joint"
 msgstr "en una rótula Technic"
+# rareswap (APP_UX9 #12): the parts list's row for the lots that come in 3 sets or fewer, their swaps for a common part or colour, picked or not, put in as one undo step
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it: swap for common parts…"
+msgstr "1 lote viene en %d sets o menos, así que pocos vendedores lo tienen: intercámbialo por piezas comunes…"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them: swap for common parts…"
+msgstr "%d lotes vienen en %d sets o menos, así que pocos vendedores los tienen: intercámbialos por piezas comunes…"
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it"
+msgstr "1 lote viene en %d sets o menos, así que pocos vendedores lo tienen"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them"
+msgstr "%d lotes vienen en %d sets o menos, así que pocos vendedores los tienen"
+
+msgid "Swapped %s for common ones, %s"
+msgstr "Intercambiados %s por otros comunes, %s"
+
+msgid "1 rare lot"
+msgstr "1 lote raro"
+
+msgid "%d rare lots"
+msgstr "%d lotes raros"
+
+msgid "Still rare: %s"
+msgstr "Aún raros: %s"
+
+msgid "No lot is rare now"
+msgstr "Ya no hay ningún lote raro"
+
+msgid "Counting the sets each part comes in…"
+msgstr "Contando los sets en que viene cada pieza…"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories: each swap is a part or a colour in %d sets or more, picked or not, put in as one undo step"
+msgstr "Cada uno viene en su color en %d sets o menos, según los inventarios de sets de Rebrickable: cada intercambio es una pieza o un color en %d sets o más, elegido o no, aplicado en un solo paso de deshacer"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories"
+msgstr "Cada uno viene en su color en %d sets o menos, según los inventarios de sets de Rebrickable"
+
+msgid "Back to the list"
+msgstr "Volver a la lista"
+
+msgid "The parts list, nothing swapped"
+msgstr "La lista de piezas, sin intercambiar nada"
+
+msgid "Swap 1 lot"
+msgstr "Intercambiar 1 lote"
+
+msgid "Swap %d lots"
+msgstr "Intercambiar %d lotes"
+
+msgid "Put the picked swaps in, as one undo step"
+msgstr "Aplicar los intercambios elegidos, en un solo paso de deshacer"
+
+msgid "Rare lots, and a common swap for each"
+msgstr "Lotes raros, y un intercambio común para cada uno"
+
+msgid "Finding a common part or colour for each…"
+msgstr "Buscando una pieza o un color común para cada uno…"
+
+msgid "A swap is a part or a colour in %d sets or more: the same shape in the lot's colour where there is one, else the nearest colour of its finish"
+msgstr "Un intercambio es una pieza o un color en %d sets o más: la misma forma en el color del lote donde la haya, si no el color más cercano de su acabado"
+
+msgid "Only a swap that keeps the look starts picked: the same shape, or a close colour of the same finish"
+msgstr "Solo un intercambio que mantiene el aspecto empieza elegido: la misma forma, o un color cercano del mismo acabado"
+
+msgid "Swap this lot"
+msgstr "Intercambiar este lote"
+
+msgid "No part or colour of it comes in %d sets"
+msgstr "Ninguna pieza ni color suyo viene en %d sets"
+
+msgid "rare: %s"
+msgstr "raro: %s"
+
+msgid "in 1 set"
+msgstr "en 1 set"
+
+msgid "in %s sets"
+msgstr "en %s sets"
+
+msgid "in no set"
+msgstr "en ningún set"
+
+msgid "%d × %s (%s) in %s, %s → %s"
+msgstr "%d × %s (%s) en %s, %s → %s"
+
+msgid "%d × %s (%s) in %s, %s"
+msgstr "%d × %s (%s) en %s, %s"
+
+msgid "%s, %s (ΔE %s)"
+msgstr "%s, %s (ΔE %s)"
+
+msgid "%s (%s), the same shape and connections in its colour, %s"
+msgstr "%s (%s), la misma forma y conexiones en su color, %s"
+
+msgid "the plain %s (%s), without its print, %s"
+msgstr "la pieza lisa %s (%s), sin su impresión, %s"
+
+msgid "no swap in %d sets or more: %s"
+msgstr "ningún intercambio en %d sets o más: %s"
+
+msgid "%s itself comes in %d sets at most, in any colour"
+msgstr "%s en sí viene en %d sets como mucho, en cualquier color"
+
+msgid "%s itself comes in 1 set at most, in any colour"
+msgstr "%s en sí viene en 1 set como mucho, en cualquier color"
+
+msgid "no colour of its transparency comes in %d sets"
+msgstr "ningún color de su transparencia viene en %d sets"
+
+msgid "Pick any other yourself"
+msgstr "Elige tú los demás"
+
+msgid "no other mould of it sits as it does in %d sets or more"
+msgstr "ningún otro molde suyo encaja igual en %d sets o más"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and 1 more, %s"
+msgstr "%s (%s), la misma forma en su color, con todas sus conexiones y 1 más, %s"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and %d more, %s"
+msgstr "%s (%s), la misma forma en su color, con todas sus conexiones y %d más, %s"
+
+msgid "still made in its colour"
+msgstr "aún se fabrica en su color"
+
+msgid "a close colour"
+msgstr "un color cercano"
+
+msgid "a different colour"
+msgstr "otro color"
+
+msgid "not see-through"
+msgstr "no transparente"
+
+msgid "see-through"
+msgstr "transparente"
+
+msgid "loses its %s"
+msgstr "pierde su acabado %s"
+
+msgid "becomes %s"
+msgstr "toma un acabado %s"
+
+msgid "a part is in hand and cannot go back where it was: put it down or press Escape first"
+msgstr "hay una pieza en la mano que no puede volver a su sitio: suéltala o pulsa Esc primero"
+
+msgid "nothing swapped"
+msgstr "no se intercambió nada"
+
+msgid "nothing swapped: %s"
+msgstr "no se intercambió nada: %s"
+
+msgid "stayed: %s"
+msgstr "se quedaron: %s"
+
+msgid "%s: %s's shape could not be had"
+msgstr "%s: no se pudo obtener la forma de %s"
 
 # partplaces (APP_UX9 #14)
 msgid "Where it's kept…"

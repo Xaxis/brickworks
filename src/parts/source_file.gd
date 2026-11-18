@@ -1721,8 +1721,11 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				fixed[line] = true
 		# A part of a mirrored copy is in its other hand (Assemblies.unmirror):
 		# it agrees with the line only as it was opened, but for its step,
-		# which its line moving says as it is (stepops).
+		# which its line moving says as it is (stepops), and its colour,
+		# which the line says for every copy alike and no reflection changes
+		# (rareswap: a colour replaced in every copy, the mirrored ones too).
 		var mirrored: bool = false
+		var mirror_colours: Array = []      ## [now, as opened] for each mirrored copy
 		for item: Array in said:
 			var was: Read = item[4]
 			if not was.mirrored:
@@ -1730,11 +1733,14 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			mirrored = true
 			var opened: Transform3D = (unit_frames.get(was.unit, Transform3D.IDENTITY) as Transform3D) \
 				.affine_inverse() * was.at
-			if str(item[0]) != was.part_id or int(item[1]) != was.colour \
-					or not _same(item[2] as Transform3D, opened):
+			if str(item[0]) != was.part_id or not _same(item[2] as Transform3D, opened):
 				return _no(plan, "a part of a mirrored copy changed")
+			mirror_colours.append([int(item[1]), was.colour])
 		said = said.filter(func(item: Array) -> bool: return not (item[4] as Read).mirrored)
 		if said.is_empty():
+			for pair: Array in mirror_colours:
+				if int(pair[0]) != int(pair[1]):
+					return _no(plan, "a part of a mirrored copy changed")
 			continue
 		# Its copies alike: one part, place and step, and one colour where
 		# any was painted (a colour of 16 is each copy's own until then).
@@ -1746,6 +1752,10 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if other[0] != first[0] or int(other[3]) != int(first[3]) \
 					or not _same(other[2] as Transform3D, first[2] as Transform3D) \
 					or painted and int(other[1]) != int(first[1]):
+				return _no(plan, "copies of a sub-model no longer agree (line %d)" % (line + 1))
+		# Its mirrored copies the colour the others are, painted or not.
+		for pair: Array in mirror_colours:
+			if int(pair[0]) != (int(first[1]) if painted else int(pair[1])):
 				return _no(plan, "copies of a sub-model no longer agree (line %d)" % (line + 1))
 		var read: Read = first[4]
 		var was_local: Transform3D = (unit_frames.get(read.unit, Transform3D.IDENTITY) as Transform3D) \
@@ -1770,7 +1780,11 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			recolour[giving] = int(first[1])
 			changed = false
 		if changed and mirrored:
-			return _no(plan, "a part of a mirrored copy changed")
+			if str(first[0]) != read.part_id or not _same(first[2] as Transform3D, was_local):
+				return _no(plan, "a part of a mirrored copy changed")
+			# Painted only: the line as the file has it, its colour the new one.
+			rewrites[line] = _with_colour(lines[line].trim_suffix("\r"), _colour_token(int(first[1])))
+			continue
 		if changed:
 			var text: Variant = _line_for(line, str(first[0]), int(first[1]), painted, first[2], library)
 			if text == null:
@@ -2568,6 +2582,18 @@ func _colour_line(origin: String) -> int:
 
 ## Placing line [param line] with its colour [param token], every other
 ## character of it as it was.
+## Whether placing line [param now] is [param was] but for its colour.
+static func _only_colour(was: String, now: String) -> bool:
+	var a: PackedStringArray = _words(was)
+	var b: PackedStringArray = _words(now)
+	if a.size() != b.size() or a.size() < 15 or a[0] != "1" or b[0] != "1" or a[1] == b[1]:
+		return false
+	for k: int in a.size():
+		if k != 1 and a[k] != b[k]:
+			return false
+	return true
+
+
 static func _with_colour(line: String, token: String) -> String:
 	var found: RegExMatch = RegEx.create_from_string("^(\\s*1\\s+)(\\S+)").search(line)
 	if found == null:
@@ -3363,19 +3389,27 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		if not authored:
 			placement.step = -1
 		if placement.mirrored and leaf_new < 0:
-			# A part of a mirrored copy is never edited in a patch: its
-			# lines as the file had them, read as the open read them.
+			# A part of a mirrored copy is edited in a patch only in its
+			# colour: its lines as the file had them, read as the open read
+			# them, but for a colour a line of it now says (rareswap).
+			var recoloured: bool = false
 			for written: String in placement.origin.split("/", false):
 				var at: int = map[written.to_int()]
+				var out: String = plan.out[at].trim_suffix("\r")
+				var was_line: String = original[plan.from[at]].trim_suffix("\r")
 				# Moved as it was, for its step (stepops).
-				if plan.how[at] != KEEP and not (plan.how[at] == MOVE
-						and plan.out[at].trim_suffix("\r") == original[plan.from[at]].trim_suffix("\r")):
-					return "read back, a mirrored part's line changed"
+				if plan.how[at] == KEEP or plan.how[at] == MOVE and out == was_line:
+					continue
+				if plan.how[at] == REWRITE and _only_colour(was_line, out):
+					recoloured = true
+					continue
+				return "read back, a mirrored part's line changed"
 			var was: Read = by_origin.get("/".join(origin))
 			if was == null:
 				return "read back, a mirrored part the file had not got"
 			placement.part_id = was.part_id
-			placement.color_code = was.colour
+			if not recoloured:
+				placement.color_code = was.colour
 			placement.transform = was.at
 		else:
 			_as_opened(placement, library)

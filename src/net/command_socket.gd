@@ -923,6 +923,11 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# design is a model of its own and its Undo leaves that model empty.
 	if name == "submit_design" and assistant != null:
 		assistant.make_room(str(input.get("name", "")))
+	# A part the person lifted, back where it was before the change is
+	# measured (AppTools.put_back_first): put back inside the call, its step
+	# took the part as one the call put down, and its undo took it away.
+	if _the_app_tools().has(name):
+		_the_app_tools().put_back_first(name, input)
 	var before: Dictionary = _before_change(name)
 	var held: Dictionary = _held()
 	var answer: Variant

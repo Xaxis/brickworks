@@ -335,7 +335,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   programs and by hand, each saved unedited byte for byte) are mlcheck's
   attack kept.
   A part of a mirrored copy agrees with its line only as it was opened (an
-  edit to one is (B)); a step edit lays its section out again
+  edit to one is (B)), but for its colour: one painted in every copy alike,
+  the mirrored ones too, is its line's colour token and nothing else of it
+  (`SourceFile._only_colour`, rareswap 2026-11-17; `rareswap_probe` kept and
+  mirror_part); a step edit lays its section out again
   (`SourceFile._relaid`, stepops 2026-11-15): the most lines kept where they
   are, a step put in or split one "0 STEP" put in, a step taken out or two
   merged one STEP line taken out (the earliest of a gap's, so a ROTSTEP stays
