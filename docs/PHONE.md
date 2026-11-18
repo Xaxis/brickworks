@@ -221,19 +221,25 @@ JSON's place; desktop still reads the JSON. Every field of every part is
 the JSON's (`catalogue_columns_probe`). On a desktop the read's height is
 +139 MB against +341 MB, in 869 ms against 2,019 ms.
 
-| Same moment, base → after (medians) | Chromium, desktop | Chromium, CPU/4 + Fast 4G |
-|---|---|---|
-| Pairs; the box's load | 5; 60–99 | 5; 69–96 |
-| The catalogue read | 2.7 → 1.1 s (x0.45) | 10.0 → 3.7 s (x0.37) |
-| First visit, working | 33.9 → 27.2 s (pairs x0.87) | 72.4 → 68.4 s (pairs x0.91) |
-| A return, working | 31.4 → 24.4 s (pairs x0.91) | not run |
-| Main thread's CPU to working | 10.6 → 9.1 s | 48.5 → 44.3 s |
-| **Wasm memory at its height** | **519 → 432 MB** | **519 → 432 MB** |
-| Content process's Pss at working | 817 → 786 MB | 849 → 772 MB |
+| Same moment, base → after (medians) | Chromium, desktop | Chromium, CPU/4 + Fast 4G | WebKit as an iPhone 13 |
+|---|---|---|---|
+| Pairs; the box's load | 5; 60–99 | 5; 69–96 | 5; 51–81 |
+| The catalogue read | 2.7 → 1.1 s (x0.45) | 10.0 → 3.7 s (x0.37) | 2.2 → 0.8 s (x0.35) |
+| First visit, working | 33.9 → 27.2 s (pairs x0.87) | 72.4 → 68.4 s (pairs x0.91) | 18.4 → 18.7 s (pairs x1.02) |
+| A return, working | 31.4 → 24.4 s (pairs x0.91) | not run | not run |
+| Main thread's CPU to working | 10.6 → 9.1 s | 48.5 → 44.3 s | 11.7 → 10.7 s |
+| **Wasm memory at its height** | **519 → 432 MB** | **519 → 432 MB** | **519 → 432 MB** |
+| Content process's Pss at working | 817 → 786 MB | 849 → 772 MB | 1,792 → 1,676 MB |
 
 The after build was faster than the base in 5 of 5 desktop pairs, both
-visits, and in 4 of 5 at CPU/4. Its Wasm memory was 432 MB in every
-visit: the script compile now sets the height, not the catalogue.
+visits, and in 4 of 5 at CPU/4. On WebKit the catalogue's 1.4 s is under
+the box's noise there: its pairs ran 0.59 to 1.80 of each other, the
+slowest from the download on, before the catalogue is read. Its Wasm
+memory was 432 MB in every visit on every engine: the script compile now
+sets the height, not the catalogue. `phonetruth_flow` on the after build
+(CPU/4, load about 50) started the studio in 64.6 s and returned in
+47.5 s, and turned the car at 8.3 frames a second, own work p95 37.6 ms
+(39.1 ms before).
 
 **The next cuts, in order of seconds:**
 1. **The scripts' compile** (24.5 s at CPU/4, and the 432 MB). A smaller
@@ -251,6 +257,50 @@ visit: the script compile now sets the height, not the catalogue.
    little.
 3. **The window** (9.3 s at CPU/4): what `_ready` builds that the first
    screen does not show.
+
+## The no-threads export on WebKit
+
+`Web (no threads)` (`build/web-nothreads`, unshared memory) against the
+threaded build, both base, at the same moments:
+
+| | Threads | No threads |
+|---|---|---|
+| WebKit as an iPhone 13, working (4 pairs, load 73–98) | 25.2 s | **17.7 s** (x0.70; faster in 3 of 4) |
+| … the scripts' compile | 9.4 s | 5.0 s |
+| … all threads' CPU to working | 27.5 s | 22.2 s |
+| … WebProcess Pss at working | 1,779 MB | 1,613 MB |
+| Chromium, CPU/4 + Fast 4G, working (3 pairs, load 60–77) | 65.6 s | 64.9 s (x1.00) |
+| … renderer Pss at working | 853 MB | 791 MB |
+| Wasm memory at its height, both engines | 519 MB | 519 MB |
+| Together, two browsers (`together_flow --desktop=no`, about load 100) | 42 checks passed before its 45 minutes ran out; pointer late, Follow and the outline failed | 71 passed, 5 failed: a change's and the pointer's time, Follow (2), the outline |
+| WebKit's walk: render, a booklet page, Simulate played, scrubbed, driven | done (phonetruth's walk) | done, 5 of 5; Motions' Keep fails on both (fault 6) |
+
+**My judgement: serve it to iPhones, behind the owner's switch, once one
+real iPhone agrees. Android keeps threads.**
+- On WebKit it started in 0.70 of the time, the scripts' compile almost
+  halved, and its process held 166 MB less. On Chromium it was no faster
+  (x1.00): there threads cost nothing and help the work after the start.
+- It does what the threaded build does: Together's edits, undo, comments,
+  reload and the session in 71 checks; render, the booklet and Simulate by
+  finger on WebKit. Its failures in Together are the threaded build's at
+  the same load (the timing bars, Follow, the outline), so they are this
+  box's, not its own.
+- What it costs is the workers. With no threads the engine runs each
+  pool task in the frame that asks for it: weighing a model past 600
+  parts, the booklet's pictures and PDF, the search's index. Such a frame
+  is the whole task long. The app allows for it in three places already
+  (custom_parts, builder, booklet_studio); the rest would need the same.
+- Its Wasm memory reaches the same height (519 MB, 432 MB with the
+  columns). What it changes on iOS is the shared memory's 2 GB maximum,
+  reserved up front, which an iPhone has refused (godot#70621). Only a real
+  iPhone can say how often that happens, so the switch waits on one.
+- **The switch is not built here** (the bound). The two exports' packs are
+  byte for byte the same; only the engine (`index.wasm`, `index.js`)
+  differs. So it is one more engine at its own `/e/<hash>/` (40 MB, 7 MB
+  over the wire), chosen by the page on iOS when `phone_nothreads` is on
+  in `/admin#switches` › Phones (default off), and phonewarn and phonewalk
+  run both ways. A unit of its own.
+
 
 ## The faults, each with its cause and fix
 
@@ -273,6 +323,8 @@ In order of how many people they reach.
      each phase on a throttled phone, then: a smaller Wasm, the catalogue
      read on first use, and the compiled module kept between visits.
      **Built here:** a phone's first visit says how long it will take.
+     **webstart11** timed each phase (above): the scripts' compile is the
+     largest on every engine, then the catalogue, which now reads x0.37.
 
 2. **The studio's memory before any model.**
    - *Measured.* The engine grows its Wasm memory to 519 MB at every start,
@@ -290,6 +342,9 @@ In order of how many people they reach.
      what to do, and the files still coming are let go. Before, the loader
      sat at "Sorting the bin…" for ever: the refusal is thrown outside the
      start's promise, and nothing heard it.
+     **webstart11:** the catalogue's 87 MB kept out of it (519 → 432 MB on
+     every engine), and the no-threads export judged on WebKit (above).
+     The 432 MB left is the scripts' compile.
 
 3. **A model past 10,101 parts grows the tab about 20 MB per 1,000 parts**
    (above). **Built here:** the question before it opens on a phone.
