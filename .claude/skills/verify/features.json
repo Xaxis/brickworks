@@ -2481,6 +2481,14 @@
       "tests": []
     },
     {
+      "id": "cli:rareswap probe",
+      "kind": "cli",
+      "entry": "src/dev/rareswap_probe.gd",
+      "reach": "tools/probe.sh rareswap_probe   (headless, about 6 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:rarity probe",
       "kind": "cli",
       "entry": "src/dev/rarity_probe.gd",
@@ -6125,6 +6133,14 @@
       "entry": "src/ui/parts_bin.gd",
       "reach": "godot --path .  (a part in hand, a swatch's tooltip says in how many sets it comes in that colour, \"3001 comes in it, in 1,011 sets\", and \"rare in this colour\" in three sets or fewer: PartLibrary.sets_in_colour, from assets/generated/sets/colours_NN.json, fetched from the deployment's /sets/ on the web)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:rare lots swapped for common ones",
+      "kind": "ui",
+      "entry": "src/collection/rare_swap.gd",
+      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour, a box each, a print's plain part not picked; Swap N lots, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true does the same; tools/probe.sh rareswap_probe)",
+      "area": "building",
       "tests": []
     },
     {
