@@ -6561,7 +6561,8 @@ func _replace_parts(input: Dictionary) -> String:
 				+ "Grey), or a direct colour as a file writes it (\"0x2FF0000\"), as %s= "
 				+ "{\"color\": 72}.") % [(side[2] as Dictionary).get("color"), side[0], side[0]]
 	if str(find["part"]).is_empty() and int(find["color"]) == -1:
-		return "Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both."
+		return ("Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both; or "
+			+ "rare=true for the lots hard to buy.")
 	var not_a_colour: String = Later.script(&"FindReplace").not_a_part_colour(int(put["color"]))
 	if not not_a_colour.is_empty():
 		return not_a_colour
