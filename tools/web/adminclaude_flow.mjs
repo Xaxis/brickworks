@@ -11,14 +11,19 @@
 //
 // Or on this machine with every table it touches held in the relay, so
 // nothing is applied and the project's own checks' pool is left alone for
-// the desk's checks (--held):
+// the desk's checks (--held). Never with the whole .env (it holds a real
+// Anthropic key): an env file of SUPABASE_URL, SUPABASE_SECRET_KEY and
+// SUPABASE_PUBLISHABLE_KEY alone, with MASTER_EMAIL a shared test account
+// (tools/web/session.mjs's TEST_EMAIL), so the owner is never signed in:
 //
-//   node --env-file=.env tools/web/relay_server.mjs 10690 --hold=admin_claude_settings,admin_claude_holds,\
+//   node --env-file=ENV tools/web/relay_server.mjs 10690 --hold=admin_claude_settings,admin_claude_holds,\
 //     admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules
-//   node --env-file=.env tools/web/adminclaude_flow.mjs --url=http://127.0.0.1:10690 --held
+//   node --env-file=ENV tools/web/adminclaude_flow.mjs --url=http://127.0.0.1:10690 --held
 //
 //   1. The gate: each of Claude's ops answers 401 signed out and 404 to an
-//      account that is not the owner's.
+//      account that is not the owner's. Off brickworks.diy, the owner's own
+//      key (the live pool) is not used, said in words on the page: only
+//      read here, never changed.
 //   2. Before supabase/admin_claude.sql is applied: Claude › Settings says
 //      so, a key and a question answer 503, and the panel is offered on
 //      every section, open on Social at 1280, saying it waits for the file.
@@ -26,7 +31,8 @@
 //   3. Settings: a key that is not one refused with words; the stand-in's
 //      key pasted with spaces, checked and kept, shown only as sk-ant-…AAAA,
 //      the field emptied; the models its key may use, from the Models API,
-//      newest first; a model, an effort and a cap kept, and put back.
+//      newest first; a model, an effort and a cap kept, and put back. On
+//      another section the models are not read until the panel is opened.
 //   4. A question in the panel, Enter pressed twice: one question, its
 //      answer streamed in with the tool it read and what it cost.
 //   5. On the desk (the stand-in Reddit connected, a hostile reply seeded
@@ -40,7 +46,7 @@
 //   7. The panel by keyboard (the toggle, Enter, Escape back to it) and by
 //      its names; Settings and the panel at 390 and 1280, light and dark,
 //      never wider than the screen.
-//   8. Forget key: no key kept, Claude says so.
+//   8. Forget key: no key kept, Claude says so, with where to revoke it.
 //   9. The key in no answer, page, storage or console line.
 //
 // The checks' pool is emptied of Claude's and the desk's rows before and
@@ -123,7 +129,7 @@ async function emptyPool() {
 
 const browser = await launch({ signedOut: true });
 
-async function open(pathname, { width = 1280, theme = "light", who = null, label }) {
+async function open(pathname, { width = 1280, theme = "light", who = null, label, requests = null }) {
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
     extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
@@ -143,6 +149,7 @@ async function open(pathname, { width = 1280, theme = "light", who = null, label
     }, [STORAGE_KEY, JSON.stringify(who.kept), access]);
   }
   const page = await context.newPage();
+  if (requests) page.on("request", (sent) => requests.push(sent.url()));
   page.on("pageerror", (e) => errors.push(`${label}: ${String(e).slice(0, 200)}`));
   page.on("console", (m) => {
     logged.push(m.text());
@@ -226,6 +233,19 @@ try {
   check(`the owner reads Claude's settings: ${first.status}`, first.status === 200 && first.json?.tests === true);
   ready = first.json?.ready === true;
   console.log(`        emptied the checks' pool: ${await emptyPool()}`);
+  // The owner's own key is used on brickworks.diy alone; this run is never
+  // there, so its live pool says so. Only read: nothing of it is changed.
+  const live = await as("/api/admin?op=claude");
+  check(`off brickworks.diy the owner's key is not used, said: "${live.json?.elsewhere}"`, live.status === 200 && live.json?.here === false
+    && live.json?.elsewhere === "Claude uses your key only on brickworks.diy. Checks use ?tests=1.");
+  if (live.json?.ready) {
+    const away = await open("/admin#claude", { who: owner, label: "live pool" });
+    await shown(away.page);
+    const said = await until(away.page, () => !document.getElementById("claude-elsewhere").hidden
+      && /only on brickworks\.diy/.test(document.getElementById("claude-elsewhere").textContent));
+    check("...and on its page, the key's form held", said && await away.page.evaluate(() => document.getElementById("claude-key").disabled));
+    await away.context.close();
+  }
 
   if (!ready) {
     // --- 2. Before the file ------------------------------------------------------------
@@ -304,6 +324,20 @@ try {
     await page.locator("#claude-settings-form").getByRole("button", { name: "Keep", exact: true }).click();
     check("and put back: Opus 5.5, effort high, $25.00", await until(page, () => /effort high, \$25\.00 a month/
       .test(document.getElementById("claude-settings-note").textContent)));
+    // The models are read with the key only once they are wanted: not on
+    // every load of the console, only when Settings or the panel is opened.
+    const sent = [];
+    const listed = () => sent.filter((url) => /[?&]op=claude_models\b/.test(url)).length;
+    const quiet = await open("/admin?tests=1#people", { who: owner, label: "models", requests: sent });
+    await shown(quiet.page);
+    await until(quiet.page, () => /effort high/.test(document.getElementById("claude-said").textContent));
+    await quiet.page.waitForTimeout(1500);
+    const onLoad = listed();
+    await quiet.page.click("#claude-toggle");
+    for (let wait = 0; wait < 40 && !listed(); wait += 1) await quiet.page.waitForTimeout(250);
+    check(`the models read only once the panel is opened: ${onLoad} on a load of People, ${listed()} once opened`, onLoad === 0
+      && listed() === 1);
+    await quiet.context.close();
 
     // --- 4. A question ------------------------------------------------------------------------
     console.log("4. A question in the panel");
@@ -507,6 +541,9 @@ try {
       && /No key yet/.test(document.getElementById("claude-said").textContent));
     const afterForget = await as("/api/admin?op=claude_models&tests=1");
     check(`forgotten: no key kept, Claude says so, the models refused (${afterForget.status})`, gone && afterForget.status === 400);
+    const revoke = await until(last.page, () => /revoke it at console\.anthropic\.com/.test(document.getElementById("claude-key-note")
+      .textContent) && document.querySelector("#claude-key-note a[href='https://console.anthropic.com/settings/keys']") !== null);
+    check("...and where to revoke the key itself, linked", revoke);
     const kept2 = await last.page.evaluate(() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage })
       + document.documentElement.outerHTML);
     check("no key in the page or its storage", !kept2.includes(KEY_BODY));

@@ -22,17 +22,25 @@
 // CLAUDE_KEY_SECRET, a Vercel variable only the deployment has, in a table only
 // the server's role can read (supabase/admin_claude.sql). It is opened for one
 // request to Anthropic at a time and goes in its x-api-key header and nowhere
-// else: not in an answer, a page, the audit or a log. The checks' pool
+// else: not in an answer, a page, the audit or a log. It is opened, and
+// Anthropic asked with it, only for a request that came to brickworks.diy
+// itself: every deployment of the site is a production one, previews too, so
+// each has the secret and the database; a preview refuses in words. The checks' pool
 // (?tests=1) seals with a fixed secret written here, and can hold only the
 // stand-in's key: a key is kept only when the Models API it is sent to accepts
 // it, and that pool's Anthropic is the stand-in (api/_claude_mock.js), which
 // accepts nothing else.
 //
-// The cap: before each call to Anthropic, what it may cost at most (its
-// prompt counted dear, and every token it may write) is held against the
-// month's cap in the database, one hold at a time; when it would not fit, no
-// call is made. After the call, the hold is settled at what its usage says it
-// cost. A call cut off before its usage came is counted at all it held.
+// The cap: before each call to Anthropic, what it may cost at most is held
+// against the month's cap in the database, one hold at a time; when it would
+// not fit, no call is made. The most is every attempt the call may make (with
+// a refusal fallback, the asked model's and then the fallback's, which reads
+// the prompt again with what was written before it), each its prompt counted
+// high and every token it may write, at the dearest model it may run on.
+// After the call, the hold is settled at what its usage says it cost, each
+// attempt at its own model's price. A call Anthropic ended with an error is
+// counted at its prompt and what it may have written by then; one cut off on
+// this side, at all it held.
 //
 // The chat: the system prompt and the tools never change between requests, so
 // the prompt's cache holds and every thinking block sent back stays bound to
@@ -54,8 +62,9 @@ import { AuthError } from "./_auth.js";
 import { db } from "./_db.js";
 import { scopeOf } from "./_settings.js";
 import { claudeStandIn } from "./_claude_mock.js";
-import { ClaudeRefusal, DEFAULT_MODEL, EFFORTS, bodyOf as requestBody, choosable, costOf, modelsOf, priceOf,
-  stream } from "./_claude_api.js";
+import { ClaudeRefusal, DEFAULT_MODEL, EFFORTS, bodyOf as requestBody, chainOf, choosable, costOf, dearestOf, modelsOf, priceOf,
+  stream, tokensAtMost } from "./_claude_api.js";
+import { ownOrigin } from "./_console_data.js";
 import { fitted, redacted, ToolRefusal } from "./_claude_data.js";
 import { SOCIAL_TOOLS } from "./_claude_social.js";
 import { PEOPLE_TOOLS } from "./_claude_people.js";
@@ -69,15 +78,24 @@ export const SECRET_NAME = "CLAUDE_KEY_SECRET";
 const CHECKS_SECRET = "brickworks checks pool: seals the stand-in Anthropic's key, never a real one";
 const NOT_YET = "Not open yet: supabase/admin_claude.sql is not applied to this database.";
 const SECRET_SAID = `${SECRET_NAME} is not set on this deployment: add a random value of 32 characters or more `
-  + "(openssl rand -base64 48) in Vercel › Settings › Environment Variables for Production and Preview, then redeploy. "
-  + "Until then no key can be kept.";
+  + "(openssl rand -base64 48) in Vercel › Settings › Environment Variables for Production only, marked Sensitive, then "
+  + "redeploy. Until then no key can be kept.";
 const NO_KEY = "No key yet: paste your Anthropic API key in Claude › Settings.";
+export const ELSEWHERE = "Claude uses your key only on brickworks.diy. Checks use ?tests=1.";
+const LIVE_ORIGINS = new Set(["https://brickworks.diy", "https://www.brickworks.diy"]);
+const UNPRICED = "no price known to Brickworks yet";
 const KINDS = ["chat", "suggest", "reply", "improve", "overview"];
 const MOST_WORDS = 8000;
 const MOST_HISTORY = 1_500_000;
 const MOST_MESSAGES = 200;
 const MOST_ROUNDS = 10;
 const SECONDS = 240;
+// With less than this left, the next call is the turn's last: it answers.
+const LAST_SECONDS = 40;
+// What an answer Anthropic ended with an error may have written by then, at
+// most, its thinking included, which is not streamed: tokens a second since
+// it was asked, well over any model's rate (fast mode's included).
+const MOST_A_SECOND = 500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const KEY = /^sk-ant-[A-Za-z0-9_-]{16,400}$/;
 const MODEL = /^claude-[a-z0-9.-]{1,60}$/;
@@ -102,7 +120,25 @@ Answer in English, briefly and plainly: short paragraphs or a few lines starting
 
 /// Whether this request is the checks' pool's.
 const testsOf = (request) => String(request.query?.tests || "") === "1";
-const transportOf = (tests) => (tests ? claudeStandIn : fetch);
+/// The request's pool, and whether its key may be used here: the checks'
+/// anywhere (its Anthropic is the stand-in), the owner's live one only on
+/// brickworks.diy: the host the request came to as api/_console_data.js's
+/// ownOrigin reads it, and its Host header too, so a forwarded-host header
+/// alone names no other.
+function poolOf(request) {
+  const tests = testsOf(request);
+  const host = String(request?.headers?.host || "").trim().toLowerCase();
+  return { tests, here: tests || (LIVE_ORIGINS.has(ownOrigin(request) || "") && LIVE_ORIGINS.has(`https://${host}`)) };
+}
+const mustBeHere = (pool) => {
+  if (!pool.here) throw new AuthError(ELSEWHERE, 403);
+};
+/// fetch to Anthropic for [pool]: the stand-in's for the checks', the real one
+/// only where the live key may be used.
+function transportOf(pool) {
+  mustBeHere(pool);
+  return pool.tests ? claudeStandIn : fetch;
+}
 const notYet = (trouble) => /: 404$/.test(String(trouble?.message || ""));
 const money = (usd) => `$${(Math.round(Number(usd || 0) * 100) / 100).toFixed(2)}`;
 const fine = (usd) => Math.round(Number(usd || 0) * 1e6) / 1e6;
@@ -126,30 +162,33 @@ export function plain(given) {
 // ---------------------------------------------------------------------------
 // The key, sealed.
 
-function sealingKey(tests) {
+function sealingKey(pool) {
+  mustBeHere(pool);
+  const tests = pool.tests;
   const secret = tests ? CHECKS_SECRET : String(process.env[SECRET_NAME] || "").trim();
   if (secret.length < 32) throw new AuthError(SECRET_SAID, 503);
   return Buffer.from(hkdfSync("sha256", secret, "brickworks admin claude", `the owner's key, ${tests ? "checks" : "live"} pool`, 32));
 }
 const secretSet = (tests) => tests || String(process.env[SECRET_NAME] || "").trim().length >= 32;
 
-/// [key] sealed for [tests]'s pool: v1.<base64url of iv, ciphertext, tag>.
-export function seal(key, tests) {
+/// [key] sealed for [pool]: v1.<base64url of iv, ciphertext, tag>.
+export function seal(key, pool) {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", sealingKey(tests), iv);
-  cipher.setAAD(Buffer.from(`admin-claude:${tests ? "checks" : "live"}`));
+  const cipher = createCipheriv("aes-256-gcm", sealingKey(pool), iv);
+  cipher.setAAD(Buffer.from(`admin-claude:${pool.tests ? "checks" : "live"}`));
   const sealed = Buffer.concat([cipher.update(key, "utf8"), cipher.final()]);
   return `v1.${Buffer.concat([iv, sealed, cipher.getAuthTag()]).toString("base64url")}`;
 }
 
 /// The key [sealed] holds, or refused with words.
-export function unseal(sealed, tests) {
+export function unseal(sealed, pool) {
+  mustBeHere(pool);
   const raw = /^v1\.([A-Za-z0-9_-]+)$/.exec(String(sealed || ""));
   if (!raw) throw new AuthError(NO_KEY, 400);
   const bytes = Buffer.from(raw[1], "base64url");
   try {
-    const decipher = createDecipheriv("aes-256-gcm", sealingKey(tests), bytes.subarray(0, 12));
-    decipher.setAAD(Buffer.from(`admin-claude:${tests ? "checks" : "live"}`));
+    const decipher = createDecipheriv("aes-256-gcm", sealingKey(pool), bytes.subarray(0, 12));
+    decipher.setAAD(Buffer.from(`admin-claude:${pool.tests ? "checks" : "live"}`));
     decipher.setAuthTag(bytes.subarray(bytes.length - 16));
     return Buffer.concat([decipher.update(bytes.subarray(12, bytes.length - 16)), decipher.final()]).toString("utf8");
   } catch (trouble) {
@@ -188,11 +227,14 @@ async function monthOf(tests) {
   }
 }
 
-/// The settings as the page shows them.
-function viewOf(row, tests, month) {
+/// The settings as the page shows them; [here] whether the key may be used
+/// on this host, and if not, the words that say so.
+function viewOf(row, pool, month) {
+  const tests = pool.tests;
   const model = row?.model || DEFAULT_MODEL;
   const price = priceOf(model);
-  return { ready: true, tests, stand_in: tests, secret: { name: SECRET_NAME, set: secretSet(tests) },
+  return { ready: true, tests, stand_in: tests, here: pool.here, elsewhere: pool.here ? null : ELSEWHERE,
+    secret: { name: SECRET_NAME, set: secretSet(tests) },
     key: row?.key_sealed ? { shown: `sk-ant-…${row.key_last4}`, set_at: row.key_set_at, checked_at: row.key_checked_at,
       said: row.key_said || null } : null,
     model, effort: row?.effort || "high", cap_usd: Number(row?.cap_usd ?? 25), price: { input: price.input, output: price.output,
@@ -202,101 +244,126 @@ function viewOf(row, tests, month) {
 
 /// GET op=claude.
 export async function claudeRead(request) {
-  const tests = testsOf(request);
+  const pool = poolOf(request);
   let row;
   try {
-    row = await rowOf(tests);
+    row = await rowOf(pool.tests);
   } catch (trouble) {
     if (trouble instanceof AuthError && trouble.status === 503) {
-      return { ...viewOf(null, tests, null), ready: false, said: NOT_YET };
+      return { ...viewOf(null, pool, null), ready: false, said: NOT_YET };
     }
     throw trouble;
   }
-  return viewOf(row, tests, await monthOf(tests));
+  return viewOf(row, pool, await monthOf(pool.tests));
 }
 
 const refusedAs = (trouble) => (trouble instanceof ClaudeRefusal ? new AuthError(trouble.message, trouble.status === 499 ? 400
   : trouble.status) : trouble);
 
-/// The models the kept key may use that the console can drive, newest first.
-async function choosableOf(tests, key) {
-  const list = (await modelsOf(transportOf(tests), key)).map(choosable).filter(Boolean);
-  return list.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+/// The models [key] may use that the console can drive, newest first:
+/// {models} those with a price the cap can count, offered; {unavailable} the
+/// rest, each with why.
+async function listOf(pool, key) {
+  const list = (await modelsOf(transportOf(pool), key)).map(choosable).filter(Boolean)
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+  return { models: list.filter((one) => one.price.known),
+    unavailable: list.filter((one) => !one.price.known).map(({ id, name }) => ({ id, name, why: UNPRICED })) };
 }
+
+const worksSaid = (models) => `It works: ${models.length} model${models.length === 1 ? "" : "s"} to choose from.`;
+/// What a key's check says of the model kept: nothing when it is offered.
+const chosenSaid = (models, chosen) => (models.some((one) => one.id === chosen) ? ""
+  : ` ${chosen} is not among them: choose a model in Claude › Settings.`);
 
 /// GET op=claude_models.
 export async function claudeModels(request) {
-  const tests = testsOf(request);
-  const row = await rowOf(tests);
+  const pool = poolOf(request);
+  mustBeHere(pool);
+  const row = await rowOf(pool.tests);
   if (!row?.key_sealed) throw new AuthError(NO_KEY, 400);
-  let models;
+  let listed;
   try {
-    models = await choosableOf(tests, unseal(row.key_sealed, tests));
+    listed = await listOf(pool, unseal(row.key_sealed, pool));
   } catch (trouble) {
     throw refusedAs(trouble);
   }
-  return { models, chosen: row.model || DEFAULT_MODEL, default: DEFAULT_MODEL };
+  return { ...listed, chosen: row.model || DEFAULT_MODEL, default: DEFAULT_MODEL };
 }
 
-/// POST op=claude_key {key}.
+/// POST op=claude_key {key}: checked with the Models API, the model kept
+/// checked against the key's list too, and kept sealed only when it works.
 async function claudeKey(request, response, claims) {
-  const tests = testsOf(request);
+  const pool = poolOf(request);
+  mustBeHere(pool);
+  const tests = pool.tests;
   const key = plain(bodyOf(request).key).replace(/\s+/g, "");
   if (!KEY.test(key)) throw new AuthError("That is not an Anthropic API key: one starts sk-ant- (console.anthropic.com › API keys).", 400);
-  const sealed = seal(key, tests);
-  await rowOf(tests);
+  const sealed = seal(key, pool);
+  const was = await rowOf(tests);
   let models;
   try {
-    models = await choosableOf(tests, key);
+    ({ models } = await listOf(pool, key));
   } catch (trouble) {
     const refused = refusedAs(trouble);
     throw new AuthError(`${refused.message} Nothing was kept.`, refused.status || 400);
   }
   const row = await keep(tests, { key_sealed: sealed, key_last4: key.slice(-4), key_set_at: new Date().toISOString(),
-    key_checked_at: new Date().toISOString(), key_said: `It works: ${models.length} model${models.length === 1 ? "" : "s"} to choose from.` },
+    key_checked_at: new Date().toISOString(), key_said: `${worksSaid(models)}${chosenSaid(models, was?.model || DEFAULT_MODEL)}` },
   claims);
-  return response.status(200).json({ outcome: "kept", claude: viewOf(row, tests, await monthOf(tests)) });
+  return response.status(200).json({ outcome: "kept", claude: viewOf(row, pool, await monthOf(tests)) });
 }
 
 /// POST op=claude_check.
 async function claudeCheck(request, response, claims) {
-  const tests = testsOf(request);
+  const pool = poolOf(request);
+  mustBeHere(pool);
+  const tests = pool.tests;
   const row = await rowOf(tests);
   if (!row?.key_sealed) throw new AuthError(NO_KEY, 400);
-  const key = unseal(row.key_sealed, tests);
+  const key = unseal(row.key_sealed, pool);
   let said;
   let outcome = "checked";
   try {
-    const models = await choosableOf(tests, key);
-    said = `It works: ${models.length} model${models.length === 1 ? "" : "s"} to choose from.`;
+    const { models } = await listOf(pool, key);
+    said = `${worksSaid(models)}${chosenSaid(models, row.model || DEFAULT_MODEL)}`;
   } catch (trouble) {
     if (!(trouble instanceof ClaudeRefusal)) throw trouble;
     said = trouble.message.slice(0, 300);
     outcome = "refused";
   }
   const kept = await keep(tests, { key_checked_at: new Date().toISOString(), key_said: said }, claims);
-  return response.status(200).json({ outcome, claude: viewOf(kept, tests, await monthOf(tests)) });
+  return response.status(200).json({ outcome, claude: viewOf(kept, pool, await monthOf(tests)) });
 }
 
-/// POST op=claude_forget.
+/// POST op=claude_forget: the sealed key deleted (which opens nothing, so it
+/// works on any host). The key itself works at Anthropic until it is
+/// revoked there, which the page says with the link.
 async function claudeForget(request, response, claims) {
-  const tests = testsOf(request);
-  await rowOf(tests);
-  const row = await keep(tests, { key_sealed: null, key_last4: null, key_set_at: null, key_checked_at: null, key_said: null }, claims);
-  return response.status(200).json({ outcome: "forgotten", claude: viewOf(row, tests, await monthOf(tests)) });
+  const pool = poolOf(request);
+  await rowOf(pool.tests);
+  const row = await keep(pool.tests, { key_sealed: null, key_last4: null, key_set_at: null, key_checked_at: null, key_said: null },
+    claims);
+  return response.status(200).json({ outcome: "forgotten", revoke: "https://console.anthropic.com/settings/keys",
+    claude: viewOf(row, pool, await monthOf(pool.tests)) });
 }
 
 /// POST op=claude_settings {model?, effort?, cap_usd?}.
 async function claudeSettings(request, response, claims) {
-  const tests = testsOf(request);
+  const pool = poolOf(request);
+  const tests = pool.tests;
   const b = bodyOf(request);
   const row = await rowOf(tests);
   const change = {};
-  const model = b.model === undefined || b.model === null || b.model === "" ? null : plain(b.model).trim();
-  const effort = b.effort === undefined || b.effort === null || b.effort === "" ? null : String(b.effort);
+  // Left out, null, "" or false: not asked for.
+  const absent = (given) => given === undefined || given === null || given === "" || given === false;
+  const model = absent(b.model) ? null : plain(b.model).trim();
+  const effort = absent(b.effort) ? null : String(b.effort);
   if (model !== null && !MODEL.test(model)) throw new AuthError("That is not a Claude model's id.", 400);
+  if (model !== null && !priceOf(model).known) {
+    throw new AuthError(`${model} is not offered: ${UNPRICED}, so the monthly cap could not be kept. Choose another model.`, 400);
+  }
   if (effort !== null && !EFFORTS.includes(effort)) throw new AuthError(`Effort is one of: ${EFFORTS.join(", ")}.`, 400);
-  if (b.cap_usd !== undefined && b.cap_usd !== null && b.cap_usd !== "") {
+  if (!absent(b.cap_usd)) {
     const cap = Number(String(b.cap_usd).replace(/^\$/, "").trim());
     if (!Number.isFinite(cap) || cap <= 0 || cap > 10000) throw new AuthError("The monthly cap is more than $0 and at most $10,000.", 400);
     change.cap_usd = Math.round(cap * 100) / 100;
@@ -306,9 +373,10 @@ async function claudeSettings(request, response, claims) {
     const wanted = model ?? row?.model ?? DEFAULT_MODEL;
     const level = effort ?? row?.effort ?? "high";
     if (row?.key_sealed) {
+      mustBeHere(pool);
       let models;
       try {
-        models = await choosableOf(tests, unseal(row.key_sealed, tests));
+        ({ models } = await listOf(pool, unseal(row.key_sealed, pool)));
       } catch (trouble) {
         throw refusedAs(trouble);
       }
@@ -324,7 +392,7 @@ async function claudeSettings(request, response, claims) {
   if (!Object.keys(change).length) throw new AuthError("Name a model, an effort or a monthly cap.", 400);
   const kept = await keep(tests, change, claims);
   return response.status(200).json({ outcome: "set",
-    value: `${kept.model}, effort ${kept.effort}, ${money(kept.cap_usd)} a month`, claude: viewOf(kept, tests, await monthOf(tests)) });
+    value: `${kept.model}, effort ${kept.effort}, ${money(kept.cap_usd)} a month`, claude: viewOf(kept, pool, await monthOf(tests)) });
 }
 
 /// The console's acts (api/admin.js audits each).
@@ -450,13 +518,26 @@ function messageOf(ask, now = new Date()) {
 // ---------------------------------------------------------------------------
 // The cap.
 
-/// Dollars a token at the dearest the call may be priced at: the model's, or
-/// a refusal fallback's when it takes one (api/_claude_api.js costOf).
-function dearest(model) {
-  const own = priceOf(model);
-  const by = [own, ...(own.known && /^claude-(opus|sonnet|fable|mythos)-5/.test(model) ? [priceOf("claude-opus-5")] : [])];
-  return { input: Math.max(...by.map((one) => one.cache_write)) / 1e6, output: Math.max(...by.map((one) => one.output)) / 1e6 };
+/// What a call to [model] may cost, at most: [attempts] it may make (two
+/// with a refusal fallback: the asked model, then the one that takes over),
+/// each at [input] and [output] dollars a token, the dearest of every model
+/// it may run on (a prompt token at the cache write's price, the dearest).
+function ratesOf(model) {
+  const chain = chainOf(model);
+  const most = dearestOf(chain);
+  return { attempts: chain.length > 1 ? 2 : 1, input: most.cache_write / 1e6, output: most.output / 1e6 };
 }
+
+/// The most a call of [prompt] tokens writing [maxTokens] may cost: each
+/// attempt reads the prompt and may write maxTokens; a fallback that takes
+/// over mid-answer also reads what was written before it (only its text,
+/// so at most maxTokens more).
+const mostOf = (rates, prompt, maxTokens) => rates.attempts * (prompt * rates.input + maxTokens * rates.output)
+  + (rates.attempts - 1) * maxTokens * rates.input;
+
+/// The most tokens a call may write within [room] dollars: mostOf solved for maxTokens.
+const roomFor = (rates, prompt, room) => Math.floor((room - rates.attempts * prompt * rates.input)
+  / (rates.attempts * rates.output + (rates.attempts - 1) * rates.input));
 
 async function holdOf(tests, model, amount, cap) {
   const got = await db("rpc/admin_claude_hold", { method: "POST", body: { p_test: tests, p_model: model, p_amount: fine(amount),
@@ -474,8 +555,38 @@ async function settle(id, cost) {
   }
 }
 
-const capWords = (spent, cap) => `This month's cap is reached: ${money(spent)} of ${money(cap)} spent. Raise it in Claude › Settings, `
-  + "or wait for the next month (UTC).";
+/// The cap reached, in words: what is spent, and what an answer still
+/// running holds (another tab's), which is not spent yet.
+const capWords = (spent, held, cap) => (held > 0
+  ? `This month's cap is reached for now: ${money(spent)} spent and ${money(held)} held by an answer still running, of `
+    + `${money(cap)}. Ask again when that answer ends, raise the cap in Claude › Settings, or wait for the next month (UTC).`
+  : `This month's cap is reached: ${money(spent)} of ${money(cap)} spent. Raise it in Claude › Settings, `
+    + "or wait for the next month (UTC).");
+
+/// The models that ran [message], in order: the asked model (or the one a
+/// fallback took from), then each that took over (its fallback blocks); with
+/// no fallback block, the one message_start named (a conversation that fell
+/// back is served by the fallback directly for a while).
+function ranOf(message, asked) {
+  const switches = (message.content || []).filter((block) => block?.type === "fallback");
+  return switches.length ? [switches[0].from?.model || asked, ...switches.map((block) => block.to?.model || asked)]
+    : [message.model || asked];
+}
+
+/// What a call Anthropic ended with an error ([trouble], api/_claude_api.js
+/// stream) is counted at: its prompt as message_start gave it (else as
+/// estimated), and what it may have written by then (the most of what it
+/// streamed, a token a byte, and MOST_A_SECOND tokens a second since it was
+/// asked, since its thinking is not streamed), at the dearest model it may
+/// have run on; never more than [held].
+function brokenCost(trouble, rates, prompt, held) {
+  const usage = trouble.usage || {};
+  const read = trouble.usage ? (Number(usage.input_tokens) || 0) + (Number(usage.cache_creation_input_tokens) || 0)
+    + (Number(usage.cache_read_input_tokens) || 0) : prompt;
+  const wrote = Math.max(Number(usage.output_tokens) || 0, Number(trouble.shown) || 0,
+    Math.ceil((Number(trouble.seconds) || 0) * MOST_A_SECOND));
+  return Math.min(held, read * rates.input + wrote * rates.output);
+}
 
 /// Every token [usage] counts, its attempts summed.
 function tokensOf(usage) {
@@ -537,16 +648,24 @@ async function note(request, claims, tests, ask, status, said, detail) {
 
 /// POST op=claude_chat: the answer, streamed.
 export async function claudeChat(request, response, claims) {
-  const tests = testsOf(request);
+  const pool = poolOf(request);
+  const tests = pool.tests;
   if (request.method !== "POST") return response.status(405).json({ error: "POST ?op=claude_chat" });
   let ask;
   let row;
   let key;
+  let transport;
   try {
+    mustBeHere(pool);
     ask = askOf(bodyOf(request));
     row = await rowOf(tests);
     if (!row?.key_sealed) throw new AuthError(NO_KEY, 400);
-    key = unseal(row.key_sealed, tests);
+    const chosen = row.model || DEFAULT_MODEL;
+    if (!priceOf(chosen).known) {
+      throw new AuthError(`${chosen} has ${UNPRICED}, so the monthly cap cannot be kept: choose a model in Claude › Settings.`, 400);
+    }
+    key = unseal(row.key_sealed, pool);
+    transport = transportOf(pool);
   } catch (trouble) {
     const status = trouble instanceof AuthError ? trouble.status : 502;
     await note(request, claims, tests, ask?.kind || "chat", status, trouble.message, { calls: 0 });
@@ -555,7 +674,7 @@ export async function claudeChat(request, response, claims) {
   const model = row.model || DEFAULT_MODEL;
   const effort = row.effort || "high";
   const cap = Number(row.cap_usd) || 0;
-  const transport = transportOf(tests);
+  const rates = ratesOf(model);
   const stop = new AbortController();
   response.on?.("close", () => {
     if (!response.writableFinished) stop.abort();
@@ -591,49 +710,67 @@ export async function claudeChat(request, response, claims) {
         break;
       }
       const left = SECONDS - (Date.now() - started) / 1000;
-      if (left < 20) {
-        stopped = "time";
-        emit("notice", { said: "Stopped: this answer ran out of time. Ask again, more narrowly." });
-        break;
+      // The turn's last call answers from what it read, its tools withheld
+      // (tool_choice none), so what was read is not thrown away. It may take
+      // LAST_SECONDS past SECONDS: the function has 300 s (maxDuration).
+      const last = round > 0 && (round === MOST_ROUNDS - 1 || left < LAST_SECONDS);
+      if (last) {
+        emit("notice", { said: round === MOST_ROUNDS - 1 ? `${MOST_ROUNDS - 1} rounds of reading: Claude answers now from what it read.`
+          : "Little time left: Claude answers now from what it read." });
       }
-      const body = requestBody({ model, effort, system: SYSTEM, tools: TOOL_LIST, messages, maxTokens: 1 });
-      const price = dearest(model);
-      const prompt = Math.ceil(JSON.stringify(body).length / 3) * price.input;
+      const body = requestBody({ model, effort, system: SYSTEM, tools: TOOL_LIST, messages, maxTokens: 1,
+        toolChoice: last ? { type: "none" } : null });
+      const prompt = tokensAtMost(JSON.stringify(body));
       const now = await monthOf(tests);
       if (!now) throw new AuthError(NOT_YET, 503);
-      const room = cap - now.spent - now.held - prompt;
       const most = { low: 16000, medium: 16000, high: 32000, xhigh: 64000, max: 64000 }[effort] || 32000;
-      const maxTokens = Math.min(most, Math.floor(room / price.output));
+      const maxTokens = Math.min(most, roomFor(rates, prompt, cap - now.spent - now.held));
       if (maxTokens < 1024) {
         stopped = "cap";
-        said = capWords(now.spent + now.held, cap);
+        said = capWords(now.spent, now.held, cap);
         status = 402;
-        emit("error", { said, cap: true, spent: now.spent, cap_usd: cap });
+        emit("error", { said, cap: true, spent: now.spent, held: now.held, cap_usd: cap });
         break;
       }
       body.max_tokens = maxTokens;
-      const hold = await holdOf(tests, model, prompt + maxTokens * price.output, cap);
+      const held = mostOf(rates, prompt, maxTokens);
+      const hold = await holdOf(tests, model, held, cap);
       if (!hold.ok) {
         stopped = "cap";
-        said = capWords(hold.spent + hold.held, cap);
+        said = capWords(hold.spent, hold.held, cap);
         status = 402;
-        emit("error", { said, cap: true, spent: hold.spent, cap_usd: cap });
+        emit("error", { said, cap: true, spent: hold.spent, held: hold.held, cap_usd: cap });
         break;
       }
       calls += 1;
       let message;
       try {
-        message = await stream(transport, key, body, { onText: (text) => emit("text", { text }), signal: stop.signal, seconds: left });
+        message = await stream(transport, key, body, { onText: (text) => emit("text", { text }), signal: stop.signal,
+          seconds: last ? Math.max(left, LAST_SECONDS) : left });
       } catch (trouble) {
-        // Refused before it began (an error answer): nothing was spent. Cut
-        // off after it began: what it spent is not known, so all it held.
-        month = await settle(hold.id, trouble?.began ? prompt + maxTokens * price.output : 0);
+        // Refused before it began (an error answer): nothing was spent.
+        // Ended by Anthropic mid-answer (an error event, an overload): its
+        // prompt and what it may have written by then. Cut off on this side
+        // (a stop, a timeout, a broken stream; Anthropic may write on), or
+        // after a fallback took over: not known, so all it held.
+        const charged = !trouble?.began ? 0 : trouble.ended && !trouble.switched ? brokenCost(trouble, rates, prompt, held) : held;
+        cost += charged;
+        month = await settle(hold.id, charged);
         throw trouble;
       }
-      served = message.model || model;
+      const ran = ranOf(message, model);
+      served = ran.at(-1);
       const spent = tokensOf(message.usage);
       for (const key2 of Object.keys(totals)) totals[key2] += spent[key2];
-      const priced = costOf(message.usage, model, served);
+      // A fallback's attempts are in usage.iterations; without them only the
+      // last attempt would be counted, so the call counts all it held.
+      const unsplit = ran.length > 1 && !(Array.isArray(message.usage?.iterations) && message.usage.iterations.length);
+      const counted = unsplit ? held : costOf(message.usage, ran);
+      // The hold is the most the call may cost; were the usage ever over it
+      // (a prompt that read more than estimated), it is said in the log and
+      // the month counts the hold, so it never passes the cap.
+      if (counted > held + 1e-9) console.error(`claude: a call cost $${fine(counted)}, over the $${fine(held)} it held`);
+      const priced = Math.min(counted, held);
       cost += priced;
       month = await settle(hold.id, priced);
       if (message.stop_reason === "refusal") {
@@ -645,6 +782,13 @@ export async function claudeChat(request, response, claims) {
         break;
       }
       const { content, run } = settled(message);
+      if (last && message.stop_reason === "tool_use") {
+        // tool_choice none calls no tool; were one called anyway, the turn
+        // would not end whole, so it stops here, unkept.
+        stopped = "rounds";
+        emit("notice", { said: "Stopped: Claude kept reading when it was asked to answer. Ask again, more narrowly." });
+        break;
+      }
       if (message.stop_reason === "max_tokens") {
         stopped = "max_tokens";
         said = `The answer was cut off at ${maxTokens.toLocaleString("en")} tokens${run.length ? " before its tools ran" : ""}`

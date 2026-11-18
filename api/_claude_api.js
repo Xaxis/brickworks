@@ -22,14 +22,30 @@ export const DEFAULT_MODEL = "claude-opus-5-5";
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
 /// The models whose refusals the API can hand to another model inside the same
-/// call (claude-api skill: fallbacks "default" on these).
-const FALLBACKS = new Set(["claude-fable-5-2", "claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"]);
+/// call (claude-api skill: fallbacks "default" on these), and the models it
+/// may hand them to: the skill's permitted targets for each (Fable and Mythos
+/// 5.2 and 5.1, and Fable 5: Opus 4.8 and Opus 5; Opus 5.5: Opus 5 and Opus
+/// 4.8; Opus 5: Opus 4.8; Sonnet 5.5: Sonnet 5). "default" routes by the
+/// refusal's category to one of them, so a call runs at most twice: the asked
+/// model, then one fallback (or the fallback alone, when a conversation that
+/// fell back is routed straight to it for a while).
+const TO_OPUS = ["claude-opus-4-8", "claude-opus-5"];
+const FALLBACKS = new Map([
+  ["claude-fable-5-2", TO_OPUS], ["claude-mythos-5-2", TO_OPUS], ["claude-fable-5-1", TO_OPUS], ["claude-mythos-5-1", TO_OPUS],
+  ["claude-fable-5", TO_OPUS], ["claude-opus-5-5", ["claude-opus-5", "claude-opus-4-8"]], ["claude-opus-5", ["claude-opus-4-8"]],
+  ["claude-sonnet-5-5", ["claude-sonnet-5"]],
+]);
 export const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+
+/// Every model a call to [model] may run on: [model], then the fallbacks it takes.
+export const chainOf = (model) => [model, ...(FALLBACKS.get(model) || [])];
 
 /// Dollars a million tokens: [input, output, cache read, cache write (5 minutes)],
 /// from the claude-api skill's model table (cached 2026-11-03). A cache write
-/// is 1.25 times the input. A model not here is counted at the dearest here,
-/// so the cap is never under-counted; the page says so.
+/// is 1.25 times the input. Only a model here is offered: the cap cannot be
+/// kept for one whose price is not known. An answer that comes from a model
+/// not here all the same (a fallback Anthropic adds) is counted at the
+/// dearest here.
 const PRICES = {
   "claude-fable-5-2": [8, 40, 0.2, 10],
   "claude-mythos-5-2": [8, 40, 0.2, 10],
@@ -58,20 +74,54 @@ export function priceOf(model) {
   return { input, output, cache_read: cacheRead, cache_write: cacheWrite, known };
 }
 
-/// What [usage] cost in dollars at [model]'s prices. With a fallback that ran,
-/// each attempt (usage.iterations) is counted at the dearer of the asked and
-/// the serving model, so a switch never under-counts.
-export function costOf(usage, asked, served = asked) {
-  const one = (u) => {
-    const a = priceOf(asked);
-    const b = priceOf(served);
-    const at = (key) => Math.max(a[key], b[key]) / 1e6;
-    return (Number(u?.input_tokens) || 0) * at("input") + (Number(u?.output_tokens) || 0) * at("output")
-      + (Number(u?.cache_read_input_tokens) || 0) * at("cache_read")
-      + (Number(u?.cache_creation_input_tokens) || 0) * at("cache_write");
+/// The dearest of [models]' prices, each kind of token on its own.
+export function dearestOf(models) {
+  const all = models.map(priceOf);
+  const most = (key) => Math.max(...all.map((one) => one[key]));
+  return { input: most("input"), output: most("output"), cache_read: most("cache_read"), cache_write: most("cache_write"),
+    known: all.every((one) => one.known) };
+}
+
+/// What [usage] cost in dollars. [ran] the models that ran it, in order:
+/// each of usage.iterations (one an attempt: the asked model, then the
+/// fallback that took over) is counted at the rates of the model that ran
+/// it, the entry's own model when it names one; usage without iterations is
+/// one attempt, by the last model in [ran].
+export function costOf(usage, ran) {
+  const models = (Array.isArray(ran) ? ran : [ran]).filter(Boolean);
+  const one = (u, model) => {
+    const p = priceOf(model);
+    return ((Number(u?.input_tokens) || 0) * p.input + (Number(u?.output_tokens) || 0) * p.output
+      + (Number(u?.cache_read_input_tokens) || 0) * p.cache_read
+      + (Number(u?.cache_creation_input_tokens) || 0) * p.cache_write) / 1e6;
   };
   const iterations = Array.isArray(usage?.iterations) && usage.iterations.length ? usage.iterations : null;
-  return iterations ? iterations.reduce((sum, u) => sum + one(u), 0) : one(usage);
+  if (!iterations) return one(usage, models.at(-1));
+  let attempt = 0;
+  return iterations.reduce((sum, u) => {
+    const named = typeof u?.model === "string" && Object.hasOwn(PRICES, u.model) ? u.model : null;
+    // An attempt is a message, declined or not; anything else the API counts
+    // there (none the console asks for) at the dearest of the chain.
+    const by = named || (["message", "fallback_message"].includes(u?.type) ? models[Math.min(attempt, models.length - 1)] : null);
+    if (["message", "fallback_message"].includes(u?.type)) attempt += 1;
+    return sum + (by ? one(u, by) : Math.max(...models.map((model) => one(u, model))));
+  }, 0);
+}
+
+/// At most how many tokens [text] is: three ASCII characters a token, as
+/// before, and a token for every UTF-8 byte of anything else, since no token
+/// is less than a byte (a CJK character is three bytes, and one to three
+/// tokens). Worked out here rather than asked of count_tokens: no second
+/// request with the key on every round of an answer, and no wait for it.
+export function tokensAtMost(text) {
+  let ascii = 0;
+  let bytes = 0;
+  for (const char of String(text ?? "")) {
+    const code = char.codePointAt(0);
+    if (code < 0x80) ascii += 1;
+    else bytes += code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+  }
+  return Math.ceil(ascii / 3) + bytes;
 }
 
 /// Anthropic's refusal of a request, said in the console's words: [status],
@@ -98,7 +148,7 @@ async function refusalOf(reply) {
     authentication_error: "Anthropic did not accept the key (authentication_error).",
     permission_error: "Anthropic says the key may not do this (permission_error).",
     billing_error: "Anthropic says the account behind the key cannot pay for this (billing_error).",
-    not_found_error: "Anthropic does not know that model or address (not_found_error).",
+    not_found_error: "Anthropic does not know that model (not_found_error): choose a model in Claude › Settings.",
     rate_limit_error: `Anthropic says too many requests (rate_limit_error)${retry ? `: try again in ${retry} s` : ""}.`,
     overloaded_error: "Anthropic is overloaded just now (overloaded_error): try again in a minute.",
     request_too_large: "The conversation is too large for Anthropic (request_too_large): start a new one.",
@@ -164,7 +214,9 @@ export function choosable(model) {
 
 /// The request body: the frozen system prompt and tools first (so the cache
 /// and every thinking block's prefix hold), the conversation, the effort.
-export function bodyOf({ model, effort, system, tools, messages, maxTokens }) {
+/// [toolChoice] {type: "none"} on a turn's last call, so it answers from what
+/// it read (none and auto are the two every current model takes).
+export function bodyOf({ model, effort, system, tools, messages, maxTokens, toolChoice = null }) {
   const body = {
     model,
     max_tokens: maxTokens,
@@ -177,6 +229,7 @@ export function bodyOf({ model, effort, system, tools, messages, maxTokens }) {
     cache_control: { type: "ephemeral" },
   };
   if (effort) body.output_config = { effort };
+  if (toolChoice) body.tool_choice = toolChoice;
   if (FALLBACKS.has(model)) body.fallbacks = "default";
   return body;
 }
@@ -184,6 +237,13 @@ export function bodyOf({ model, effort, system, tools, messages, maxTokens }) {
 /// One streamed Messages call: [onEvent] hears each text delta, and the whole
 /// message comes back as the API built it ({id, model, content, stop_reason,
 /// stop_details, usage}).
+///
+/// Refused once it began, the ClaudeRefusal says what is known of what it
+/// spent: [began]; [ended] when Anthropic itself ended it with an error event
+/// (it stopped writing then); [usage] as far as it came (message_start's
+/// prompt, exact); [shown] the UTF-8 bytes of all it streamed; [seconds]
+/// since it was asked; [model] the model message_start named; [switched]
+/// when a fallback took over before it ended.
 export async function stream(transport, key, body, { onText = () => {}, signal = null, seconds = 240 } = {}) {
   const betas = body.fallbacks ? [FALLBACK_BETA] : [];
   // One deadline for the whole answer, its last byte included, and the
@@ -203,6 +263,10 @@ export async function stream(transport, key, body, { onText = () => {}, signal =
 }
 
 async function streamWithin(transport, key, body, betas, onText, own, signal, seconds) {
+  const asked = Date.now();
+  let shown = 0;
+  let started = false;
+  const bytes = (text) => Buffer.byteLength(String(text || ""), "utf8");
   let reply;
   try {
     reply = await transport(`${API}/v1/messages`, { method: "POST", headers: headersOf(key, betas), body: JSON.stringify(body),
@@ -229,6 +293,7 @@ async function streamWithin(transport, key, body, betas, onText, own, signal, se
     }
     const type = one?.type || name;
     if (type === "message_start") {
+      started = true;
       Object.assign(message, { id: one.message?.id ?? null, model: one.message?.model || body.model });
       message.usage = { ...(one.message?.usage || {}) };
     } else if (type === "content_block_start") {
@@ -243,11 +308,17 @@ async function streamWithin(transport, key, body, betas, onText, own, signal, se
       const delta = one.delta || {};
       if (!block) return;
       if (delta.type === "text_delta") {
+        shown += bytes(delta.text);
         block.text = (block.text || "") + String(delta.text || "");
         onText(String(delta.text || ""));
-      } else if (delta.type === "thinking_delta") block.thinking = (block.thinking || "") + String(delta.thinking || "");
-      else if (delta.type === "signature_delta") block.signature = String(delta.signature || "");
-      else if (delta.type === "input_json_delta") partial.set(one.index, (partial.get(one.index) || "") + String(delta.partial_json || ""));
+      } else if (delta.type === "thinking_delta") {
+        shown += bytes(delta.thinking);
+        block.thinking = (block.thinking || "") + String(delta.thinking || "");
+      } else if (delta.type === "signature_delta") block.signature = String(delta.signature || "");
+      else if (delta.type === "input_json_delta") {
+        shown += bytes(delta.partial_json);
+        partial.set(one.index, (partial.get(one.index) || "") + String(delta.partial_json || ""));
+      }
       else if (delta.type === "citations_delta" && delta.citation) (block.citations ||= []).push(delta.citation);
     } else if (type === "content_block_stop") {
       const block = message.content[one.index];
@@ -268,8 +339,10 @@ async function streamWithin(transport, key, body, betas, onText, own, signal, se
       Object.assign(message.usage, one.usage || {});
     } else if (type === "error") {
       const kind = String(one.error?.type || "api_error");
-      throw new ClaudeRefusal(kind === "overloaded_error" ? "Anthropic is overloaded just now (overloaded_error): try again in a minute."
+      const ended = new ClaudeRefusal(kind === "overloaded_error" ? "Anthropic is overloaded just now (overloaded_error): try again in a minute."
         : `Anthropic stopped mid-answer (${kind}).`, 502, kind);
+      ended.ended = true;
+      throw ended;
     }
   };
   try {
@@ -295,7 +368,8 @@ async function streamWithin(transport, key, body, betas, onText, own, signal, se
     const cut = trouble instanceof ClaudeRefusal ? trouble : signal?.aborted ? new ClaudeRefusal("Stopped.", 499, "stopped")
       : own.aborted ? new ClaudeRefusal(`Anthropic did not finish within ${seconds} s.`, 504, "timeout")
         : new ClaudeRefusal("Anthropic's answer broke off.", 502, "broken");
-    cut.began = true;
+    Object.assign(cut, { began: true, usage: started ? { ...message.usage } : null, model: message.model, shown,
+      seconds: (Date.now() - asked) / 1000, switched: message.content.some((block) => block?.type === "fallback") });
     throw cut;
   }
   message.content = message.content.filter(Boolean);

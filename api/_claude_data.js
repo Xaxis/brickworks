@@ -4,7 +4,9 @@
 //   untrusted(source, text)  words somebody outside wrote (a Reddit reply, a
 //                            feedback report, a mail's subject), wrapped as
 //                            quoted data the system prompt says is never an
-//                            instruction; a tag inside it cannot close it
+//                            instruction; a tag inside it cannot close it,
+//                            however it is written (entities, full-width
+//                            or other look-alike forms, invisible characters)
 //   redacted(value)          every email address taken out of [value], deep:
 //                            nobody's address reaches Claude, whatever a
 //                            section's read holds
@@ -18,11 +20,39 @@
 export class ToolRefusal extends Error {}
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-const TAG = /<\/?\s*untrusted\b[^>]*>/gi;
+// An opening or closing tag, with a space anywhere in it; its attributes and
+// end taken with it when they come (a > within 200 characters), else the
+// start of it alone.
+const TAG = /<\s*\/?\s*untrusted\b(?:[^<>]{0,200}>)?/gi;
+const INVISIBLE = /[\u00ad\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]/g;
+const NAMED = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'", sol: "/", nbsp: " " };
 
-/// [text] from [source], as data. Its own tags made harmless first.
+/// [text]'s HTML entities, named and numbered, read as the characters they stand for.
+function decoded(text) {
+  return text.replace(/&(#x[0-9a-f]{1,6}|#[0-9]{1,7}|[a-z]{2,8});?/gi, (whole, name) => {
+    if (name[0] !== "#") return NAMED[name.toLowerCase()] ?? whole;
+    const code = name[1] === "x" || name[1] === "X" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+    return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : "";
+  });
+}
+
+/// [text] as it reads: no invisible characters, each look-alike form (a
+/// full-width <, a small one) the plain one (NFKC), entities decoded; again
+/// until nothing changes, so an entity of an entity is read too.
+export function canonical(text) {
+  let now = String(text ?? "");
+  for (let round = 0; round < 6; round += 1) {
+    const next = decoded(now.replace(INVISIBLE, "").normalize("NFKC")).replace(INVISIBLE, "");
+    if (next === now) break;
+    now = next;
+  }
+  return now;
+}
+
+/// [text] from [source], as data: read as it reads, then its own tags made
+/// harmless, and any email address taken out.
 export function untrusted(source, text) {
-  const words = String(text ?? "").replace(TAG, "[tag]").replace(EMAIL, "[an address]");
+  const words = canonical(text).replace(TAG, "[tag]").replace(EMAIL, "[an address]");
   return words ? `<untrusted source="${source}">${words}</untrusted>` : "";
 }
 

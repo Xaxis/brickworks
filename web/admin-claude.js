@@ -18,7 +18,7 @@
 // page as text, never as markup: what came in was written by strangers, and
 // Claude's words are not markup either.
 import { signedIn, token } from "/account.js";
-import { $, TESTS, adminJson, ago, day, make, say } from "/admin-kit.js";
+import { $, TESTS, adminJson, ago, day, link, make, say } from "/admin-kit.js";
 import { extras, open as openDraft, reread as rereadDesk } from "/admin-social.js";
 
 // Docked beside the page at this width and wider; over it, closed until
@@ -36,10 +36,15 @@ const TOOL_WORDS = {
 };
 const EFFORT_WORDS = { low: "Low", medium: "Medium", high: "High (suits most asks)", xhigh: "Extra high", max: "Most" };
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const REVOKE = "https://console.anthropic.com/settings/keys";
 
 let claude = null;
 let models = null;
+let unavailable = [];
 let modelsSaid = "";
+// The models are read with the key once Claude › Settings or the panel is
+// first opened by the owner, not on every load of the console.
+let modelsWanted = false;
 let started = false;
 let section = "overview";
 let busy = null;
@@ -76,18 +81,39 @@ function store(where, name, value) {
 // ---------------------------------------------------------------------------
 // Claude › Settings.
 
-/// GET op=claude, and the models the kept key may use: the section drawn.
+/// GET op=claude, and the models the kept key may use once they are wanted:
+/// the section drawn.
 export async function loadClaude() {
   claude = await adminJson({ op: "claude" });
+  if (section === "claude") modelsWanted = true;
+  await readModels();
+  drawSettings();
+  drawDock();
+}
+
+/// The models the kept key may use (op=claude_models), when they are wanted
+/// and the key may be used on this host.
+async function readModels() {
   models = null;
+  unavailable = [];
   modelsSaid = "";
-  if (claude.ready && claude.key) {
-    try {
-      models = (await adminJson({ op: "claude_models" })).models;
-    } catch (problem) {
-      modelsSaid = problem.message;
-    }
+  if (!modelsWanted || !claude?.ready || !claude.key || claude.here === false) return;
+  try {
+    const listed = await adminJson({ op: "claude_models" });
+    models = listed.models;
+    unavailable = listed.unavailable || [];
+  } catch (problem) {
+    modelsSaid = problem.message;
   }
+}
+
+/// The models read the first time they are wanted: Claude › Settings or the
+/// panel opened.
+async function wantModels() {
+  if (modelsWanted) return;
+  modelsWanted = true;
+  if (!claude) return;
+  await readModels();
   drawSettings();
   drawDock();
 }
@@ -98,11 +124,16 @@ function drawSettings() {
   not.hidden = c.ready;
   not.textContent = c.ready ? "" : `${c.said} Nothing can be kept here until it is applied.`;
   $("claude-stand-in").hidden = !c.stand_in;
+  // Off brickworks.diy (a preview, this box) the owner's key is not opened.
+  const elsewhere = c.here === false;
+  const away = $("claude-elsewhere");
+  away.hidden = !elsewhere;
+  away.textContent = elsewhere ? c.elsewhere : "";
   const noSecret = c.ready && !c.secret?.set;
   const secret = $("claude-secret");
   secret.hidden = !noSecret;
   secret.textContent = noSecret ? `To keep a key, this deployment needs ${c.secret.name}: a random string of at least 32 characters `
-    + "(openssl rand -base64 48), added in Vercel › Settings › Environment Variables for Production and Preview, then a redeploy. The key is "
+    + "(openssl rand -base64 48), added in Vercel › Settings › Environment Variables for Production only, marked Sensitive, then a redeploy. The key is "
     + "sealed with it, so the database alone opens nothing. Switches lists it." : "";
   const key = c.key;
   $("claude-key-shown").textContent = key ? `Kept: ${key.shown}, since ${day(key.set_at)}. Checked ${ago(key.checked_at)}: ${key.said || "—"}`
@@ -111,8 +142,9 @@ function drawSettings() {
   $("claude-key-keep").textContent = key ? "Check and use it" : "Check and keep";
   $("claude-check").hidden = !key;
   $("claude-forget").hidden = !key;
-  for (const control of $("claude-key-form").elements) control.disabled = !c.ready || noSecret;
-  // A key is forgotten without the secret; it is checked only with it.
+  for (const control of $("claude-key-form").elements) control.disabled = !c.ready || noSecret || elsewhere;
+  // A key is forgotten without the secret, and on any host; it is checked
+  // only with it, on brickworks.diy.
   $("claude-forget").disabled = !c.ready;
 
   const pick = $("claude-model");
@@ -125,10 +157,15 @@ function drawSettings() {
   pick.value = list.some((one) => one.id === c.model) ? c.model : list[0].id;
   efforts();
   $("claude-cap").value = Number(c.cap_usd).toFixed(2);
+  const notOffered = unavailable.length ? ` Not offered, with ${unavailable[0].why}: `
+    + `${unavailable.slice(0, 10).map((one) => one.id).join(", ")}${unavailable.length > 10 ? ` and ${unavailable.length - 10} more` : ""}.` : "";
   say("claude-models-said", !key ? "With a key kept, the models it may use are listed here, newest first."
-    : modelsSaid ? `The models could not be read: ${modelsSaid}` : models ? `${models.length} model${models.length === 1 ? "" : "s"} your key `
-      + "may use that think as the console asks (adaptive thinking), newest first." : "", Boolean(modelsSaid));
+    : elsewhere ? "The models your key may use are read on brickworks.diy."
+      : modelsSaid ? `The models could not be read: ${modelsSaid}` : models ? `${models.length} model${models.length === 1 ? "" : "s"} your key `
+        + `may use that think as the console asks (adaptive thinking), newest first.${notOffered}` : "", Boolean(modelsSaid));
   for (const control of $("claude-settings-form").elements) control.disabled = !c.ready;
+  // The cap is kept anywhere; a model or effort is checked with the key.
+  if (elsewhere && key) $("claude-model").disabled = $("claude-effort").disabled = true;
   drawMonth();
 }
 
@@ -147,7 +184,7 @@ function efforts() {
   const price = one?.price || (chosen === claude.model ? claude.price : null);
   $("claude-price").textContent = !price ? ""
     : `${nameOf(chosen)}: ${money(price.input)} a million tokens in, ${money(price.output)} out, ${money(price.cache_read)} read from the cache.`
-      + (price.known ? "" : " Its price is not in the console's table, so the cap counts it at the dearest model's.");
+      + (price.known ? "" : " No price known to Brickworks yet, so the cap could not be kept: choose another model.");
 }
 
 function drawMonth() {
@@ -163,7 +200,9 @@ function drawMonth() {
   const held = Number(month.held) || 0;
   $("claude-month").textContent = `${monthOf(month.month)}: ${money(spent)} spent of ${money(cap)}, in ${Number(month.calls) || 0} `
     + `call${Number(month.calls) === 1 ? "" : "s"} to Anthropic${held > 0 ? `, and ${money(held)} held for answers still coming` : ""}. `
-    + "Counted from each answer's own usage; at the cap Claude stops until next month or a higher cap.";
+    + "Counted from each answer's own usage; at the cap Claude stops until next month or a higher cap. An answer Anthropic "
+    + "breaks off (overloaded) counts its prompt and at most what it had time to write; one stopped or cut off here counts all "
+    + "it held.";
   meter.hidden = false;
   meter.max = cap || 1;
   meter.high = (cap || 1) * 0.8;
@@ -210,13 +249,18 @@ $("claude-check").addEventListener("click", async () => {
 
 $("claude-forget").addEventListener("click", async () => {
   if (!confirm(`Forget ${claude.key?.shown}? It is deleted from the server, and Claude stops until you paste a key again. `
-    + "The key itself still works at Anthropic until you delete it there.")) return;
+    + "The key itself still works at Anthropic until you revoke it at console.anthropic.com.")) return;
   const button = $("claude-forget");
   button.disabled = true;
   try {
-    await adminJson({ op: "claude_forget" }, { method: "POST", body: {} });
+    const done = await adminJson({ op: "claude_forget" }, { method: "POST", body: {} });
     await loadClaude();
-    say("claude-key-note", "Forgotten: no key is kept now.");
+    const to = link(done.revoke || REVOKE, "console.anthropic.com");
+    to.target = "_blank";
+    to.rel = "noopener noreferrer";
+    const note = $("claude-key-note");
+    note.classList.remove("bad");
+    note.replaceChildren("Forgotten: no key is kept now. The key itself still works at Anthropic: revoke it at ", to, ".");
   } catch (problem) {
     say("claude-key-note", problem.message, true);
   } finally {
@@ -227,7 +271,10 @@ $("claude-forget").addEventListener("click", async () => {
 $("claude-settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
-  const body = { model: $("claude-model").value, effort: $("claude-effort").value, cap_usd: $("claude-cap").value.trim() };
+  // Off brickworks.diy the model and effort are not offered (they are
+  // checked with the key), so only the cap is sent.
+  const body = { cap_usd: $("claude-cap").value.trim() };
+  if (!$("claude-model").disabled) Object.assign(body, { model: $("claude-model").value, effort: $("claude-effort").value });
   const button = form.querySelector("button[type=submit]");
   button.disabled = true;
   try {
@@ -259,6 +306,7 @@ function shouldOpen() {
 
 function place(open, { focus = false } = {}) {
   dock.hidden = !open;
+  if (open && openedHere) wantModels().catch(() => null);
   dock.classList.toggle("over", !wide.matches);
   document.body.classList.toggle("claude-docked", open && wide.matches);
   toggle.setAttribute("aria-expanded", String(open));
@@ -286,6 +334,7 @@ addEventListener("hashchange", () => {
   const now = location.hash.slice(1).split("/")[0] || "overview";
   if (now === section) return;
   section = now;
+  if (section === "claude") wantModels().catch(() => null);
   if (started) place(shouldOpen());
   drawDeskAsks();
 });
@@ -305,10 +354,11 @@ export async function startClaude(at) {
 function drawDock() {
   if (!claude) return;
   const said = !claude.ready ? claude.said
+    : claude.here === false ? claude.elsewhere
     : !claude.key ? "No key yet."
       : `${nameOf(claude.model)}, effort ${claude.effort}. ${claude.month ? `${money(claude.month.spent)} of ${money(claude.cap_usd)} `
         + `spent in ${monthOf(claude.month.month)}.` : ""}${claude.stand_in ? " The checks' stand-in answers here." : ""}`;
-  say("claude-said", said, !claude.ready);
+  say("claude-said", said, !claude.ready || claude.here === false);
   const how = $("claude-how");
   how.replaceChildren();
   if (!claude.ready) how.append("Claude opens once supabase/admin_claude.sql is applied.");
@@ -473,9 +523,9 @@ async function ask(kind, { text = "", target = {}, label = text } = {}) {
   if (busy) return false;
   if (!started) return false;
   if (!wide.matches || dock.hidden) setOpen(true, { chosen: wide.matches });
-  if (!claude?.ready || !claude.key) {
+  if (!claude?.ready || !claude.key || claude.here === false) {
     add({ who: "note", text: !claude?.ready ? "Claude is not open yet: supabase/admin_claude.sql is not applied."
-      : "No key yet: paste your Anthropic API key in Claude › Settings first." });
+      : claude.here === false ? claude.elsewhere : "No key yet: paste your Anthropic API key in Claude › Settings first." });
     save();
     return false;
   }

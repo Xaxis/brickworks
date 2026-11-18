@@ -283,7 +283,9 @@ try {
 
   // 11. The cap stops calls: room for a few more chats, then none.
   const spentSoFar = (await admin("claude", { method: "GET" })).json?.month?.spent || 0;
-  const cap = Math.ceil((spentSoFar + 0.1) * 100) / 100;
+  // Room for a few chats: each call holds at least $0.10 here (two attempts
+  // of a 3,500-token prompt and 1,024 tokens, at Opus 5's prices).
+  const cap = Math.ceil((spentSoFar + 0.15) * 100) / 100;
   await admin("claude_settings", { body: { cap_usd: cap } });
   const capped = [];
   for (let n = 0; n < 6; n += 1) {

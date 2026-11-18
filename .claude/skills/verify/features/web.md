@@ -3234,9 +3234,16 @@ plan with Claude as the client.
   Claude on the owner's own Anthropic key. Claude › Settings: the key pasted,
   checked with the Models API, sealed with AES-256-GCM under
   CLAUDE_KEY_SECRET and kept in a table only the server reads; the page is
-  told only `sk-ant-…` and its last four; Check key, Forget key. The model
-  from the key's own list (adaptive thinking only), the effort, a monthly
-  cap in dollars and this month's spend. The panel (the bar's Claude
+  told only `sk-ant-…` and its last four; Check key, Forget key (which says
+  to revoke it at console.anthropic.com, linked). The key is opened, and
+  Anthropic asked with it, only on brickworks.diy and www (ownOrigin and the
+  Host header both): on a preview or this box every op that would open it
+  answers 403 "Claude uses your key only on brickworks.diy. Checks use
+  ?tests=1." and the page says so; ?tests=1 works anywhere. The model from
+  the key's own list (adaptive thinking, and a price in PRICES; any other
+  listed as not offered, "no price known to Brickworks yet"), read only
+  once Settings or the panel is first opened; the effort, a monthly cap in
+  dollars and this month's spend. The panel (the bar's Claude
   button, aria-expanded; docked at 1100 px and wider, open on Social by
   default and as last chosen, the desk's tables as cards beside it under
   1,660 px; over the page and closed on a phone; Escape closes it to its
@@ -3248,12 +3255,23 @@ plan with Claude as the client.
   Claude; each draft lands among the desk's drafts marked "by Claude" (Open
   it in Write asks first over words of the owner's own), and nothing is
   sent but by the owner's own Send. Its only write is a draft;
-  inbox, Reddit and feedback words reach it as `<untrusted>` data. The cap
-  is held before each call (the prompt's most and max_tokens at the dearest
-  price) and settled from the answer's usage; a call cut off counts all it
-  held. Every call goes to the audit (op claude_chat, kind claude: model,
-  tokens in and out, cache, cost, tools; never the key, never the words).
-  Proven by `tests/test_adminclaude.py` and the adminclaude browser flow.
+  inbox, Reddit and feedback words reach it as `<untrusted>` data, read as
+  they read first (invisible characters out, NFKC, entities decoded), so no
+  way of writing the tag closes it. The cap is held before each call: every
+  attempt a fallback may make (two), each its prompt (a token for every
+  three ASCII characters and every other UTF-8 byte) and max_tokens, at the
+  dearest model of its chain; settled from the answer's usage, each
+  attempt at its own model's price, never above the hold. A call Anthropic
+  ended with an error counts its prompt and what it may have written; one
+  cut off here, or after a fallback took over, all it held. A turn's tenth
+  call, or one with under 40 s left, is sent with tool_choice none and its
+  answer kept. Every call goes to the audit (op claude_chat, kind claude:
+  model, the model that served it, tokens in and out, cache, cost, tools;
+  never the key, never the words); claude_settings records the model,
+  effort and cap. Proven by `tests/test_adminclaude.py` (33 passed: the
+  checks' pool through `api_check.mjs`, the live pool with a made-up key
+  and a scripted api.anthropic.com through `live_check.mjs`) and the
+  adminclaude browser flow.
 - `Claude's read-only tools` (`api/_claude_social.js` and the other
   `api/_claude_*.js`): see Claude in the owner's console; each reads what
   its console section's own read gives, without an email address.
@@ -3275,13 +3293,19 @@ plan with Claude as the client.
   Overview, a refusal and a 429 left out of the conversation, the cap
   reached and said with a way to raise it, the panel by keyboard and by
   its names at 390 and 1280 light and dark with every desk row's acts in
-  sight beside it, Forget key; the key in no
-  answer, page, storage or console line. Locally, nothing applied and the
-  project's checks' pool untouched: `relay_server.mjs PORT
+  sight beside it, Forget key and where to revoke it; the key in no
+  answer, page, storage or console line. Off brickworks.diy, the live
+  pool's read says the key is not used there and its page holds the key's
+  form (read only, nothing of it changed); on People the models are not
+  read until the panel is opened. Locally, nothing applied and the
+  project's checks' pool untouched, both with `--env-file=ENV`, a file of
+  SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_PUBLISHABLE_KEY alone and
+  MASTER_EMAIL the shared test account (never the whole .env, which holds
+  a real Anthropic key): `relay_server.mjs PORT
   --hold=admin_claude_settings,admin_claude_holds,admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`
   then the flow with `--url=http://127.0.0.1:PORT --held` (restart the
-  relay between runs). Passes on "adminclaude: all ok", or "adminclaude:
-  all ok (before the file)".
+  relay between runs). Passes on "adminclaude: all ok" (49 checks on
+  acfix, 2026-11-18), or "adminclaude: all ok (before the file)".
 - `the site notice` (`web/notice.js`, asked for by `web/theme.js` on every
   page but an embed and the consent page; site.css `.site-notice`): the
   notice the owner sets in `/admin#switches`, read from

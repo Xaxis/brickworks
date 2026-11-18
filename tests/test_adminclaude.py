@@ -9,7 +9,10 @@ to api.anthropic.com is counted, and fails. Every answer, streamed event,
 line logged and audit row is searched for the key. Every write made while
 Claude answers is listed. tests/fixtures/adminclaude/db_check.mjs applies
 admin_claude.sql twice in a Postgres of its own (skipped without one, as
-test_social.py's).
+test_social.py's). tests/fixtures/adminclaude/live_check.mjs drives the
+LIVE pool the same way, with a made-up key and a scripted api.anthropic.com
+(the review's attacks, acreview 2026-11-18): the cap, the price of a
+fallback, a long loop's answer, an overload, the host the key works on.
 """
 
 from __future__ import annotations
@@ -33,6 +36,16 @@ PAGE = (ROOT / "web/admin-claude.js").read_text()
 @functools.cache
 def _api() -> dict:
     done = subprocess.run(["node", "tests/fixtures/adminclaude/api_check.mjs"], cwd=ROOT, capture_output=True, text=True, timeout=240,
+                          stdin=subprocess.DEVNULL)
+    assert done.returncode == 0, done.stderr[-3000:]
+    got = json.loads(done.stdout.strip().splitlines()[-1])
+    assert "error" not in got, got.get("error")
+    return got
+
+
+@functools.cache
+def _live() -> dict:
+    done = subprocess.run(["node", "tests/fixtures/adminclaude/live_check.mjs"], cwd=ROOT, capture_output=True, text=True, timeout=240,
                           stdin=subprocess.DEVNULL)
     assert done.returncode == 0, done.stderr[-3000:]
     got = json.loads(done.stdout.strip().splitlines()[-1])
@@ -279,6 +292,113 @@ def test_the_requests_follow_the_skill() -> None:
         assert stale not in CLIENT.split("export function bodyOf")[1].split("\n}\n")[0]
     assert "eager_input_streaming: true" in CLAUDE and "additionalProperties: false" in CLAUDE
     assert "INVALID_JSON" in CLAUDE
+
+
+# --- The live pool, against the review's attacks (acfix) ---------------------------
+
+
+def test_the_key_is_used_only_on_brickworks_diy() -> None:
+    got = _live()["a10"]
+    said = "Claude uses your key only on brickworks.diy. Checks use ?tests=1."
+    # A preview, this box, and a preview that says it was forwarded from
+    # brickworks.diy: every op that opens the key refuses in words, and
+    # Anthropic is never asked; the cap alone may still be set.
+    for where in ["preview", "local", "forwarded"]:
+        away = got["away"][where]
+        assert away["here"] is False and away["elsewhere"] == said, where
+        for op in ["claude_models", "claude_check", "claude_key", "claude_settings", "claude_chat"]:
+            assert away[op] == "403:true", (where, op, away[op])
+        assert away["cap"] == 200
+    assert got["reached_away"] == 0
+    # The checks' pool works anywhere, on its stand-in.
+    assert got["stand_in"] == 200 and got["stand_in_chat"] == "end_turn"
+    # On brickworks.diy, and www, the key is used.
+    assert got["at_home"] == {"brickworks.diy": {"status": 200, "stop": "end_turn", "reached": 1},
+                              "www.brickworks.diy": {"status": 200, "stop": "end_turn", "reached": 1}}
+    # Forgetting opens nothing, so it works anywhere, and says where to revoke it.
+    assert got["forget"] == {"status": 200, "revoke": "https://console.anthropic.com/settings/keys", "key": None}
+
+
+def test_a_fallback_never_passes_the_cap() -> None:
+    a2 = _live()["a2"]
+    # The worst a fallback may do (both attempts writing all they may, the
+    # second reading the prompt again with all of it) settles within its
+    # hold, and the month never passes the cap; every ask after is refused.
+    runs = a2["runs"]
+    assert runs[0]["cap"] is False and all(run["cap"] for run in runs[1:])
+    assert 0 < runs[0]["settled"] <= runs[0]["held"] <= a2["cap"]
+    assert a2["most"] <= a2["cap"] and a2["over_hold"] == 0
+
+
+def test_a_fallback_is_priced_at_the_models_that_ran_it() -> None:
+    a1 = _live()["a1"]
+    assert a1["served"] == a1["audit_served"] == "claude-opus-5"
+    assert a1["cost"] == a1["settled"] == a1["right"] == a1["cost_of"] == 0.578
+    # And the models that fall back are all there.
+    assert a1["chain"] == ["claude-mythos-5-2", "claude-opus-4-8", "claude-opus-5"]
+    for model in ["claude-mythos-5-2", "claude-mythos-5-1", "claude-fable-5", "claude-fable-5-2", "claude-fable-5-1"]:
+        assert f'"{model}"' in CLIENT.split("const FALLBACKS")[1].split("]);")[0], model
+
+
+def test_a_long_loop_keeps_its_answer() -> None:
+    got = _live()
+    for loop, rounds, why in [(got["a5"], 10, "9 rounds of reading"), (got["a5_slow"], 8, "Little time left")]:
+        # The last call withholds the tools (tool_choice none) and its answer is kept.
+        assert loop["calls"] == rounds and loop["asked"] == ["auto"] * (rounds - 1) + ["none"]
+        assert loop["stop"] == "end_turn" and loop["kept"] == 2 * rounds and loop["final_role"] == "assistant"
+        assert loop["final"].startswith("From what I read") and loop["notices"][0].startswith(why)
+
+
+def test_an_unpriced_model_is_not_offered() -> None:
+    a7 = _live()["a7"]
+    assert a7["offered"] == ["claude-opus-5-5"]
+    assert a7["unavailable"] == [{"id": "claude-mythos-preview", "name": "claude-mythos-preview", "why": "no price known to Brickworks yet"}]
+    assert a7["set"] == 400 and "no price known to Brickworks yet" in a7["set_said"]
+    assert a7["chat"] == 400 and "choose a model in Claude › Settings" in a7["chat_said"]
+    # A key kept while the model kept is not among its models says so.
+    assert _live()["kept_other"].endswith("claude-sonnet-5-5 is not among them: choose a model in Claude › Settings.")
+    assert "choose a model in Claude › Settings" in CLIENT.split("not_found_error:")[1].split("\n")[0]
+
+
+def test_cjk_words_are_counted_high() -> None:
+    a8 = _live()["a8"]
+    # A token for each UTF-8 byte: three for a CJK character, which no
+    # tokenizer counts as more than three tokens.
+    assert a8["cjk"] > 7000 and a8["per_cjk"] >= 3
+
+
+def test_the_cap_says_spent_and_held_apart() -> None:
+    a3 = _live()["a3"]
+    assert a3["first"] == "end_turn" and a3["second"] == "cap"
+    assert "$0.00 spent and $1.50 held by an answer still running, of $1.50" in a3["said"]
+
+
+def test_an_overload_counts_what_it_wrote() -> None:
+    got = _live()
+    # Ended by Anthropic after "hi": its prompt and the two bytes it wrote.
+    assert got["a6"]["settled"] == got["a6"]["streamed"] < got["a6"]["held"]
+    assert "overloaded" in got["a6"]["said"]
+    # Once a fallback had taken over, or cut off on this side: all it held.
+    assert got["a6_switched"]["settled"] == got["a6_switched"]["held"]
+    assert got["a4"]["settled"] == got["a4"]["held"]
+
+
+def test_every_way_of_writing_the_tag_is_defused() -> None:
+    got = _live()
+    assert len(got["tags"]) == 17 and all(got["tags"].values()), [tag for tag, ok in got["tags"].items() if not ok]
+    # Words that only look like markup are kept as they are.
+    assert got["tags_plain"] == '<untrusted source="reddit">積み木 & fine &copy; <b></untrusted>'
+
+
+def test_the_live_pool_keeps_the_key_to_itself() -> None:
+    got = _live()
+    assert got["a9"] == {"whole": False, "body": False, "every_call_keyed": True}
+    assert got["logged_errors"] == []
+    # The settings' audit names what was chosen.
+    assert got["settings_audit"]["asked"] == {"model": "claude-opus-5-5", "effort": "low"}
+    assert got["settings_cap_audited"] is True
+    # A false sent for a setting is as if it were left out.
+    assert got["false_absent"] == {"status": 200, "value": "claude-opus-5-5, effort low, $24.50 a month"}
 
 
 # --- The database ------------------------------------------------------------------

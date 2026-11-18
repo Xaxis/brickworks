@@ -165,7 +165,7 @@ environments only), and flags one Vercel has that nothing reads.
 | `OC_PROJECT_KEY`, `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`, `OC_ME_ORIGIN`, `OC_ISSUER`, `OC_AUDIENCE` | Sign in with orangecheck |
 | `CRON_SECRET` | The crons' own key |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | The social desk's Reddit app (a web app): none can be made since Reddit closed new API apps on 2026-10-31, so posts go by hand (docs/SOCIAL_DESK.md) |
-| `CLAUDE_KEY_SECRET` | Seals the owner's Anthropic key at rest (AES-256-GCM; 32 characters or more, `openssl rand -base64 48`). Without it no key is kept and Claude › Settings says so; changed, the kept key no longer opens and is pasted again (docs/ADMIN_CLAUDE.md) |
+| `CLAUDE_KEY_SECRET` | Seals the owner's Anthropic key at rest (AES-256-GCM; 32 characters or more, `openssl rand -base64 48`). Production only, marked Sensitive, never in the box's .env; the key is opened only on brickworks.diy. Without it no key is kept and Claude › Settings says so; changed, the kept key no longer opens and is pasted again (docs/ADMIN_CLAUDE.md) |
 | `VIEW_SECRET`, `PARTS_URL`, `PUBLIC_ORIGIN` | Shared views, the parts' host, the site's address |
 | `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel's own |
 
@@ -556,14 +556,18 @@ effort, beside every section (docs/ADMIN_CLAUDE.md has the whole of it).
   API, sealed (AES-256-GCM under `CLAUDE_KEY_SECRET`) and kept in
   `admin_claude_settings`, which only the server's role reads. No answer,
   page, log or audit row holds it: the page is told `sk-ant-…` and its last
-  four. Forget key deletes it.
+  four. It is opened, and Anthropic asked with it, only on brickworks.diy:
+  a preview or this box says "Claude uses your key only on brickworks.diy.
+  Checks use ?tests=1." Forget key deletes it, and says to revoke it at
+  console.anthropic.com.
 - **The model** is chosen from the models the key may use (the live list,
-  those with adaptive thinking), `claude-opus-5-5` until chosen; the effort
-  with it.
+  those with adaptive thinking and a price the cap can count),
+  `claude-opus-5-5` until chosen; the effort with it.
 - **The cap.** A monthly cap in dollars, kept by the server: before each call
-  it holds the most the call may cost (`admin_claude_hold`, one at a time),
-  and settles it from the answer's own usage. At the cap Claude stops and
-  says so.
+  it holds the most the call may cost, every attempt a fallback may make
+  included (`admin_claude_hold`, one at a time), and settles it from the
+  answer's own usage, never above the hold. At the cap Claude stops and
+  says what is spent and what an answer still running holds.
 - **What it may do.** Read what the console reads (social: inbox, threads,
   drafts and sends with results, visits by tag, each community's rules;
   people: counts and growth, never an address; plans; mail health; site and

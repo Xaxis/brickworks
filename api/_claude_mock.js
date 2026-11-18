@@ -14,7 +14,8 @@
 //     2026-10-21, as the real API refuses a wrong key (401
 //     authentication_error) or an unknown version;
 //   - no temperature, top_p or top_k (400 on 2026-10-21), no thinking budget
-//     and no disabled thinking (400 on Claude Opus 5.5), no forced tool_choice,
+//     and no disabled thinking (400 on Claude Opus 5.5), no forced tool_choice
+//     (tool_choice none is taken: it answers in words, no tool called),
 //     no assistant prefill, every tool_use answered by its tool_result in the
 //     next user message, fallbacks only with their beta header;
 //   - each thinking block it hands out is signed over the conversation that
@@ -60,7 +61,8 @@ const MODELS = [
   // API, left out by the console.
   model("claude-haiku-4-5", "Claude Haiku 4.5", "2025-10-01T00:00:00Z", { adaptive: false }),
 ];
-const FALLBACK_TAKERS = new Set(["claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-5"]);
+const FALLBACK_TAKERS = new Set(["claude-fable-5-2", "claude-mythos-5-2", "claude-fable-5-1", "claude-mythos-5-1", "claude-fable-5",
+  "claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-5"]);
 
 const json = (status, body, headers = {}) => new Response(JSON.stringify(body), { status,
   headers: { "content-type": "application/json", "request-id": `req_standin_${Date.now()}`, ...headers } });
@@ -330,8 +332,13 @@ function messages(init, call) {
   const created = prefixCached ? 0 : tokens([body.system, body.tools]);
   const usage = { input_tokens: Math.max(1, whole - cached - created), cache_read_input_tokens: cached,
     cache_creation_input_tokens: created, output_tokens: 1 };
-  const plan = /\[stand-in: refuse\]/.test(ask)
+  let plan = /\[stand-in: refuse\]/.test(ask)
     ? { blocks: [{ type: "text", text: "I can help with part of" }], stop: "refusal" } : next(body.messages);
+  // Its tools withheld (tool_choice none): what it read, in words.
+  if (body.tool_choice?.type === "none" && plan.stop === "tool_use") {
+    plan = { blocks: [{ type: "text", text: `From what I read in ${where(body.messages).rounds} rounds: enough to answer. `
+      + "Ask again for more." }], stop: "end_turn" };
+  }
   const thinking = { type: "thinking", thinking: "", signature: sign(serving, [body.system ?? null, body.tools ?? null, body.messages, []]) };
   const blocks = [...(fallback ? [{ type: "fallback", from: { model: body.model }, to: { model: serving } }] : []), thinking, ...plan.blocks];
   // A fallback's thinking is signed over what comes before it in its message.
