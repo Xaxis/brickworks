@@ -382,7 +382,17 @@ What each one guards against, all learned the hard way on 2026-10-13:
   Its files are `$RELEASE_OUT/<branch>_unit_*`; `UNIT_REUSE=1` runs the
   checks again on the preview it last made from the same commit. It runs
   no merge gate, takes no release priority and never touches main. Its
-  deploy and checks are ship.sh's own (`preview_lib.sh`). Four release
+  deploy and checks are ship.sh's own (`preview_lib.sh`). Each deploy
+  writes into a log of its run's own: a preview into
+  `<tag>_preview.<run>.log`, which `<tag>_preview.log` links to while it
+  runs and becomes once it ends, the URL read from that log alone; a ship's
+  promotion and production deploy into `<tag>_prod.<run>.log`, added to
+  `<tag>_prod.log` as each ends. A run stopped by its group or its pid ends
+  its deploy first, heavy's queued job too (`run_owned`).
+  GNU `timeout` makes a process group of its own, so `kill -- -PGID` missed
+  the deploy under it: hubprogram's went on after its run was killed and
+  wrote a second `deploy done` into the next run's log, which took both URLs
+  and ran its checks on neither (2026-11-18). Four release
   previews held on 2026-10-22, about an hour each, and every time on a
   check: digest, moderation, share_flow, builds, share_probe and challenges
   read markup a unit had changed, and a smooth scroll was read mid-way.
