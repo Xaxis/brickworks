@@ -129,6 +129,11 @@ def test_connect_with_no_reddit_app_says_what_is_missing() -> None:
     got = _api()
     assert got["real_reddit"] == {"api": False, "missing": ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"], "route": "by_hand",
                                   "later": ["x", "facebook", "instagram"]}
+    # Connecting later, as the console shows it in place: the names to set,
+    # the one address to register, what Reddit's page will ask for.
+    assert got["real_later"] == {"env": ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"],
+                                 "redirect": "https://brickworks.diy/admin?connected=reddit",
+                                 "scopes": ["identity", "history", "privatemessages", "read", "submit"]}
     assert got["real_connect"]["status"] == 409
     assert "REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET" in got["real_connect"]["said"]
 
@@ -273,6 +278,16 @@ def test_the_page_claims_no_more_than_is_true() -> None:
     assert page.index('make("div", "row", copy,') > 0
     # An empty inbox with no Reddit app does not point at a Connect that is off.
     assert "Nothing comes in here until Reddit grants the desk API access" in page
+    # No Reddit app: no Connect at all, never one shown off (connectfix,
+    # owner 11-18: "clicking Connect Reddit doesn't do anything"). The state,
+    # an act that works, and connecting later in the console, not the repo.
+    assert ".disabled = !one.api" not in page and "docs/SOCIAL_DESK.md says" not in page
+    assert '"Posting by hand: Reddit takes no new API apps (since 31 Oct 2026)."' in page
+    assert ".networks details.later ol li { display: list-item; }" in (ROOT / "web/admin.html").read_text()
+    assert 'link("#social/write", "Write a post", "cta")' in page
+    assert 'make("summary", "cta ghost", "How to connect later")' in page
+    for step in ("code(one.redirect)", "...names,", "Redeploy: Deployments", "Back here, Connect Reddit takes the place"):
+        assert step in page
     # A sheet that becomes the next gives its name the focus; an act that
     # closes it lands focus on what is there (sdreview L6).
     assert "else if (!sheet.contains(document.activeElement)) {\n    heading.tabIndex = -1;\n    heading.focus();" in page

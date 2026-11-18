@@ -71,8 +71,17 @@ a Reddit app. The desk does two things instead.
       `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` to Production.
    5. Redeploy, open /admin › Social › Accounts, and press **Connect Reddit**.
 
-   Until then the Accounts tab names both variables as missing, says why, and
-   keeps Connect asleep. The historic click path is from
+   Until then the Accounts tab shows no Connect at all: a button shown off
+   did nothing when pressed, and the owner took it for broken (11-18,
+   connectfix). Reddit's card says **Posting by hand: Reddit takes no new API
+   apps (since 31 Oct 2026)**, one line on what by hand is, **Write a post**,
+   a link to Reddit's own notice, and **How to connect later**, which opens
+   these steps in the console itself: the redirect URI (with Copy), the two
+   names for Vercel and which of them are missing, the redeploy, and the
+   scopes Reddit's page will ask for. Reddit has no page to ask for access
+   today: its changelog says new requests "will no longer be accepted" from
+   31 October 2026 (above), so the card links nothing that cannot work. The
+   historic click path is from
    <https://www.redditapis.com/blogs/how-to-get-reddit-api-key-2026>
    (secondary); the names `client_id` and `client_secret` are from
    <https://github.com/reddit-archive/reddit/wiki/OAuth2> (primary, archived).
@@ -162,8 +171,10 @@ section's badge sums them.
 - **A Reddit post is a link or words**, never both: the form refuses both
   rather than send one and drop the other. An edit after Schedule or a
   hand-off says it undid the press.
-- **Accounts** (`#social/accounts`): Reddit (connected or not, what is
-  missing and why, Connect, Check now, Disconnect), and X, Facebook and
+- **Accounts** (`#social/accounts`): Reddit (connected, with Check now and
+  Disconnect; with an app but not connected, Connect; with no app, posting
+  by hand and why, Write a post and How to connect later, never a Connect
+  that is off), and X, Facebook and
   Instagram as "Not connected yet", each with what it needs and costs.
 
 ## Reddit, as read
