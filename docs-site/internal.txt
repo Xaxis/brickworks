@@ -78,6 +78,9 @@ ui:the console's challenges  # the owner's, on the admin page (the challenge a p
 ui:the console's data  # the owner's, on the admin page
 ui:the console's switches section  # the owner's, on the admin page (the notice a visitor sees is in web-and-desktop.md)
 lib:the console's part C  # the owner's console's notice, variables, usage, export, sign-out and find, in the database
+lib:the social desk  # the owner's social desk on the admin page: Brickworks' own Reddit account, its inbox, sends and results (docs/SOCIAL_DESK.md)
+lib:the social desk's Reddit adapter  # the social desk's calls to Reddit for Brickworks' own account; a visitor never meets it
+ui:the owner's social desk  # the owner's, on the admin page (/admin › Social)
 ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: the review account's password sign-in (docs/directory/claude.md); everyone else signs in by a code
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
 entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested

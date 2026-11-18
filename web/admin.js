@@ -28,12 +28,14 @@ import { loadPlans } from "/admin-plans.js";
 import { loadMail } from "/admin-mail.js";
 import { connectorOf, loadConnector } from "/admin-connector.js";
 import { loadSite, releaseOf, versionOf } from "/admin-site.js";
+import { loadSocial, whenChanged as socialChanged } from "/admin-social.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "plans", "mail", "connector", "site",
+const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
   "data", "switches", "audit"];
-const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"] };
+const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
+  social: ["inbox", "write", "sent", "accounts"] };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -67,6 +69,7 @@ const loaders = {
   challenges: () => loadReport(),
   beta: () => loadBeta(),
   feedback: () => loadFeedback(),
+  social: () => loadSocial(),
   plans: () => loadPlans(),
   mail: () => loadMail(),
   connector: () => loadConnector(),
@@ -195,6 +198,7 @@ async function changed(except) {
 galleryChanged(() => changed("gallery"));
 betaChanged(() => changed("beta"));
 switchesChanged(() => changed("switches"));
+socialChanged(() => changed("social"));
 
 // ---------------------------------------------------------------------------
 // The Overview.
@@ -240,6 +244,11 @@ async function loadOverview() {
   else if (ch && ch.through && Date.parse(`${ch.through}T00:00:00Z`) - Date.now() < 7 * 86400000) {
     needs.push({ n: "!", words: `The last challenge set ends ${day(`${ch.through}T00:00:00Z`)}: set the next`, href: "#challenges" });
   }
+  // The social desk (socialdesk): what came in unread, and what waits on your press at the network.
+  const social = o.social;
+  need(social?.due, social?.due === 1 ? "post waiting on you at Reddit" : "posts waiting on you at Reddit", "#social/sent", true);
+  need(social?.failed, social?.failed === 1 ? "social post that did not go" : "social posts that did not go", "#social/sent", true);
+  need(social?.unread, social?.unread === 1 ? "reply, mention or message unread" : "replies, mentions and messages unread", "#social/inbox");
   if (o.notice) needs.push({ n: "!", words: `A notice is on every page, since ${ago(o.notice.set_at)}: “${String(o.notice.words?.en || "").slice(0, 80)}”`,
     href: "#switches" });
   $("needs").replaceChildren(...needs.map((one) => {
@@ -252,6 +261,7 @@ async function loadOverview() {
   badge("nav-data", o.library?.found);
   badge("nav-beta", o.beta?.applications?.new);
   badge("nav-feedback", o.feedback?.new);
+  badge("nav-social", (social?.unread || 0) + (social?.due || 0) + (social?.failed || 0));
   badge("nav-mail", trouble);
   badge("nav-site", (health && !health.ok ? 1 : 0) + (o.site?.crons?.length || 0));
 
@@ -329,7 +339,11 @@ const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Le
   beta_grant: "Gave the months still to give", beta_switch: "Flipped the beta", feedback_triage: "Marked feedback",
   feedback_reply: "Answered feedback", unbar_model: "Let a model back", notice_set: "Set the site's notice",
   notice_clear: "Cleared the site's notice", run_cron: "Ran a cron now", export: "Exported an account's data",
-  delete_account: "Deleted an account", sign_out: "Signed an account out everywhere" };
+  delete_account: "Deleted an account", sign_out: "Signed an account out everywhere",
+  social_connect: "Started connecting a network", social_connected: "Connected a network", social_disconnect: "Disconnected a network",
+  social_sync: "Looked at the networks now", social_mark: "Marked what came in", social_draft: "Kept a social draft",
+  social_drop: "Threw a social draft away", social_send: "Pressed Send on a social post", social_unschedule: "Unscheduled a social post",
+  social_posted: "Marked a social post posted by hand", social_notes: "Kept notes on a community's rules" };
 
 function opSaid(row) {
   const asked = row.detail?.asked || {};
@@ -356,6 +370,8 @@ function targetOf(row) {
     case "challenge": return `challenge ${t}`;
     case "photo": return `photo ${t}`;
     case "pick": return `pick ${t}`;
+    case "social": return to("#social/accounts", t === "reddit" ? "Reddit" : t || "the networks");
+    case "send": return to("#social/sent", `social post ${t}`);
     default: return t || "—";
   }
 }
