@@ -186,6 +186,11 @@ export async function verify(token, request = null) {
 // orangecheck session.
 const sessions = new Map();
 export const SESSION_HELD_MS = 5000;
+// How long that read is waited for. It is in the way of every signed-in
+// call: given the 15 s of any other read, a slow database held each one 15 s
+// before the rule below let a read go on (s5review). After it, as when the
+// database is down: reads go on, writes are refused for now (503).
+export const SESSION_READ_S = 3;
 const READS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /// The session [id], as Supabase holds it: {exists, ...}. Throws when the
@@ -195,7 +200,8 @@ export async function sessionOf(id) {
   if (held && (held.gone || Date.now() - held.at < SESSION_HELD_MS)) return held.read;
   const { db } = await import("./_db.js");
   if (sessions.size > 2000) sessions.clear();
-  const entry = { at: Date.now(), gone: false, read: db("rpc/oc_session_of", { method: "POST", body: { session: id } }) };
+  const entry = { at: Date.now(), gone: false, read: db("rpc/oc_session_of", { method: "POST", body: { session: id },
+    seconds: SESSION_READ_S }) };
   sessions.set(id, entry);
   try {
     const value = await entry.read;

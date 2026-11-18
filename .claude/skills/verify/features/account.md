@@ -604,7 +604,8 @@ they have. A Claude connector belongs to the account that switched it on.
   held for good): once its session is gone (Sign out everywhere, the app's
   Sign out, a deletion) it is 401 "You were signed out. Sign in again." on
   every route, within 5 s on every instance; while the database cannot be
-  asked, reads go on and writes are 503; a token with no `session_id` is
+  asked, or takes over 3 s to answer (`SESSION_READ_S`), reads go on and
+  writes are 503, so a slow database holds a call 3 s, not 15; a token with no `session_id` is
   not asked after (`tests/test_signed_out.py`; on a deployment,
   `node tools/web/signed_out_check.mjs <url>` with `.env` sourced signs a
   throwaway out by `admin_sign_out`, expects 401 on 4 app and 4 site

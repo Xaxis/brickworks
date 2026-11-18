@@ -150,6 +150,36 @@ return {{ read, write, unnamed, back }};
         "status": 503, "error": "Brickworks could not check your sign-in just now. Try again in a minute."}
 
 
+def test_a_slow_session_read_holds_a_call_3_s_not_15() -> None:
+    """The session read is in the way of every signed-in call: given the 15 s
+    of any other read, a database slow to answer held each one 15 s
+    (s5review). It gives up after SESSION_READ_S, then the rule above."""
+    got = run(f"""
+sessions.add('{A}');
+const t = await token('{A}');
+const plain = globalThis.fetch;
+globalThis.fetch = (input, init = {{}}) => {{
+  const url = new URL(String(input.url || input));
+  if (url.pathname !== '/rest/v1/rpc/oc_session_of') return plain(input, init);
+  reads += 1;
+  return new Promise((done, fail) => init.signal?.addEventListener('abort', () => fail(init.signal.reason)));
+}};
+const keep = setInterval(() => {{}}, 500);
+let at = Date.now();
+const read = await refused(auth.verify(t, GET));
+const readMs = Date.now() - at;
+at = Date.now();
+const write = await refused(auth.verify(t, POST));
+const writeMs = Date.now() - at;
+clearInterval(keep);
+return {{ read, readMs, write, writeMs }};
+""")
+    if got is None:
+        return
+    assert got["read"] is None and got["write"]["status"] == 503, got
+    assert 2500 <= got["readMs"] < 3500 and 2500 <= got["writeMs"] < 3500, got
+
+
 def test_a_token_without_a_session_id_is_not_asked_after() -> None:
     got = run("const r = await refused(auth.verify(await token(null), POST)); return { r };")
     if got is None:
