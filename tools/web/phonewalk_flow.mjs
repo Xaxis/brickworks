@@ -92,6 +92,11 @@ if (args.device && !DEVICE) {
   console.log(`no device is named ${args.device} (Playwright's devices: "iPhone 13", "Pixel 7", …)`);
   process.exit(1);
 }
+// Select all, as the app reads it here: Godot's web build takes Command
+// for its shortcuts when the browser says it is an Apple one (an iPhone's
+// "like Mac OS X" among them), so Control+A there types an "a" into the
+// field instead (phonetruth: the bin's search read "a3020a3001a1x4 brick").
+const SELECT_ALL = /Mac OS X|iPhone|iPad/.test(DEVICE?.userAgent || "") ? "Meta+a" : "Control+a";
 const CPU = Number(args.cpu || 1);
 // DevTools' own presets (its NetworkManager): a 0.9 of the line's rate, and
 // the round trip a few times the line's, as a real one adds.
@@ -597,7 +602,10 @@ function person(page, cdp, width, height, size, choosers) {
       // list; across, a little further each time a drag moved nothing (it
       // began on a button, which keeps the finger). The panel runs from the
       // screen's left to its Close (on a tablet it is a column at the left).
-      const up = !at || at.y > ceiling;
+      // Under the foot, or not shown: the list goes up. Cut by the top (its
+      // middle may still be under it): down. Up there, Motions' Play went
+      // further up out of sight, and the walk never reached it (phonetruth).
+      const up = !at || at.y + at.h / 2 > floor + 1;
       const right = head ? Math.min(width, head.x + head.w / 2) : first ? Math.min(width, first.x + first.w / 2) : width;
       const from = { x: right * [0.5, 0.2, 0.8][stuck % 3], y: (ceiling + floor) / 2 };
       await drag(from, { x: from.x, y: from.y + (up ? -1 : 1) * height * 0.045 }, 14, 400);
@@ -846,7 +854,7 @@ function person(page, cdp, width, height, size, choosers) {
     const box = await where("part search", 20);
     if (!box) return "";
     await tap(box);
-    await untimed(() => page.keyboard.press("Control+a"));
+    await untimed(() => page.keyboard.press(SELECT_ALL));
     await keys(query);
     // The bin answers as the words come: its first tiles settled (the same
     // twice, a second apart, the box reading the whole query) before a
@@ -986,7 +994,7 @@ function person(page, cdp, width, height, size, choosers) {
       const from = Number(String(field.text).replace(/[^0-9]/g, "")) || 0;
       await tapBox(field.box);
       // The number chosen, as a finger chooses it: held, Select all.
-      await key("Control+a");
+      await key(SELECT_ALL);
       await keys("99");
       await tapBox(move.box);
       const s = await until((now) => /moved \d+ parts? to step/.test(now.said || ""), 15);

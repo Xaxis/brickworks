@@ -553,8 +553,10 @@ function writeTable() {
   lines.push(`| turning the car: frames/s; own work p95 | ${cell((r) => frameCell(r.frames?.car))} |`);
   lines.push(`| turning Orthanc: frames/s; own work p95 | ${cell((r) => frameCell(r.frames?.orthanc))} |`);
   lines.push(`| largest model open and kept | ${cell((r) => largest(r.ladder))} |`);
-  const climbed = [...LADDER, ...[2, 3, 5].map((k) => [towersId(k), ORTHANC * k, `Wizard's Tower ×${k}`])];
-  for (const [id, parts, name] of climbed) {
+  // Each once: a run's beyond step adds its towers to LADDER itself.
+  const climbed = new Map([...LADDER, ...[2, 3, 5].map((k) => [towersId(k), ORTHANC * k, `Wizard's Tower ×${k}`])]
+    .map((rung) => [rung[0], rung]));
+  for (const [id, parts, name] of climbed.values()) {
     if (!rows.some((r) => (r.ladder || []).some((s) => s.id === id))) continue;
     lines.push(`| … ${name} (${parts.toLocaleString("en-US")}) | ${cell((r) => {
       const step = (r.ladder || []).find((s) => s.id === id);

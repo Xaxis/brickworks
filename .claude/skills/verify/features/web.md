@@ -3264,8 +3264,13 @@ plan with Claude as the client.
   a real Postgres (api3_check.mjs's phone block).
 - `phonewarn browser flow` (`tools/web/phonewarn_flow.mjs`, preview check
   `[phonewarn]`): each warning in its case and in no other, at 1280x800,
-  390x844 touch and 820x1180 touch. The big-model question on the phone
-  alone (Escape, Not now, Open it anyway), the 3D view unasked; `--owner`:
+  390x844 touch and 820x1180 touch. The gallery's largest (Wizard's Tower,
+  10,101, the measured default) goes straight on at the number the site
+  serves; then with `--number` (5,000) routed to the page as the owner's:
+  the big-model question on the phone alone (Escape, Not now, Open it
+  anyway), in view at 430x932, the 3D view unasked, the small model, the
+  computer and the tablet straight on, and a press before the owner's
+  number came waited on; `--owner`:
   Switches' Phones set under the small model's parts as the owner, the
   page then asking for it, put back after (never on brickworks.diy); no
   WebGL 2 (taken from the canvas) said on all three within seconds on Fast
@@ -3273,7 +3278,9 @@ plan with Claude as the client.
   told how long, with how close the first estimate came in warn.json, and
   a return, the computer and the tablet told nothing; the engine's memory
   refused (WebAssembly.Memory made to throw Safari's RangeError) said on
-  the phone and the computer, with no time given. Passes on
+  the phone and the computer, still said two seconds on, with no time
+  given. The question, the time to wait and the console's "Kept" are each
+  checked inside the screen. Passes on
   "phonewarn: N passed, 0 failed".
 - `phonetruth measures` (`tools/web/phonetruth_flow.mjs`, local only, under
   heavy; `bench/results/phonetruth-2026-11-18/run_measures.sh`): the studio
