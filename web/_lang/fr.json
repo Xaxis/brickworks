@@ -607,7 +607,7 @@
   "Notifications · Brickworks": "Notifications · Brickworks",
   "Notifications": "Notifications",
   "Mark all read": "Tout marquer comme lu",
-  "Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter and each level you reach.": "Les commentaires, photos de constructions, remix et j’aime sur vos modèles, les réponses à vos commentaires, les défis auxquels vous participez et chaque niveau que vous atteignez.",
+  "Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter, each level you reach and news from Brickworks.": "Les commentaires, photos de constructions, remix et j’aime sur vos modèles, les réponses à vos commentaires, les défis auxquels vous participez, chaque niveau que vous atteignez et les nouvelles de Brickworks.",
   "Sign in to see what happens to your models: comments, photos of people’s builds, remixes, likes and the challenges you enter, and replies to your comments. We email you a code: no password.": "Connectez-vous pour voir ce qui arrive à vos modèles : commentaires, photos des constructions d’autres personnes, remix, j’aime et défis auxquels vous participez, ainsi que les réponses à vos commentaires. Nous vous envoyons un code par e-mail : pas de mot de passe.",
   "Notifications are not open on Brickworks yet.": "Les notifications ne sont pas encore ouvertes sur Brickworks.",
   "Nothing yet. When somebody comments on one of your models, posts a photo of their build of it, remixes it or likes it, or replies to your comment, it is here, with the model.": "Rien pour l’instant. Quand quelqu’un commente l’un de vos modèles, publie une photo de sa construction, le remixe ou l’aime, ou répond à votre commentaire, cela s’affiche ici, avec le modèle.",
@@ -1065,7 +1065,8 @@
   "Groups": "Groupes",
   "Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.": "Brickworks est en bêta ouverte. Sa barre en bas de chaque page propose Signaler un bug et le moyen de rejoindre la bêta. Choisi pour ce navigateur.",
   "<input type=\"checkbox\" data-beta-bar-show checked> Show the beta bar on every page": "<input type=\"checkbox\" data-beta-bar-show checked> Afficher la barre de la bêta sur chaque page",
-  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "La barre en bas de chaque page, avec Signaler un bug. Choisi pour ce navigateur ; Signaler un bug est de toute façon dans le menu de votre compte."
+  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "La barre en bas de chaque page, avec Signaler un bug. Choisi pour ce navigateur ; Signaler un bug est de toute façon dans le menu de votre compte.",
+  "<input type=\"checkbox\" id=\"mail-news\"> Email me Brickworks news: new features and planned maintenance, a few times a month at most": "<input type=\"checkbox\" id=\"mail-news\"> Recevoir par e-mail les nouvelles de Brickworks : nouvelles fonctions et maintenances prévues, quelques fois par mois au plus"
  },
  "scripts": {
   "Copy": "Copier",
@@ -2878,7 +2879,6 @@
   "You have three models in it already: that is the most.": "Vous y avez déjà trois modèles : c’est le maximum.",
   "Beta bar hidden. Show it again in {settings}. Report a bug is in your account menu.": "Barre de la bêta masquée. Affichez-la de nouveau dans les {settings}. Signaler un bug est dans le menu de votre compte.",
   "Beta bar hidden. Show it again in {settings}.": "Barre de la bêta masquée. Affichez-la de nouveau dans les {settings}.",
-  "Undo": "Annuler",
   "Hide the beta bar": "Masquer la barre de la bêta",
   "Admin": "Administration",
   "It works once and expires in ten minutes. Not there? Look in spam.": "Il ne sert qu’une fois et expire au bout de dix minutes. Pas reçu ? Regardez dans les spams.",
@@ -2893,6 +2893,18 @@
   "Sent a new code. Use the newest one.": "Nouveau code envoyé. Utilisez le plus récent.",
   "Enter all {count} digits of the code.": "Saisissez les {count} chiffres du code.",
   "Digit {n} of {count}": "Chiffre {n} sur {count}",
-  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Connectez-vous avec orangecheck : son bouton ouvre sa fenêtre, puis vous revenez à l’app connecté."
+  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Connectez-vous avec orangecheck : son bouton ouvre sa fenêtre, puis vous revenez à l’app connecté.",
+  "On: Brickworks' news by email, now and then. Each one has a link to stop them.": "Activé : les nouvelles de Brickworks par e-mail, de temps en temps. Chacune contient un lien pour ne plus les recevoir.",
+  "Off: no news by email.": "Désactivé : aucune nouvelle par e-mail.",
+  "That unsubscribe link was cut short. Turn off Brickworks news under Email below, once signed in.": "Ce lien de désabonnement est incomplet. Désactivez les nouvelles de Brickworks sous E-mail ci-dessous, une fois connecté.",
+  "Unsubscribed: Brickworks will email you no more news. You can turn it on again under Email.": "Désabonné : Brickworks ne vous enverra plus de nouvelles par e-mail. Vous pouvez les réactiver sous E-mail.",
+  "That did not work just now. Try the link again in a minute.": "Cela n’a pas fonctionné. Réessayez le lien dans une minute.",
+  "There is no such announcement for you.": "Cette annonce n’existe pas pour vous.",
+  "From {who}, edited": "De {who}, modifié",
+  "From {who}": "De {who}",
+  "News": "Nouvelles",
+  "Unsubscribe": "Se désabonner",
+  "Stop Brickworks news by email to this address?": "Ne plus recevoir les nouvelles de Brickworks par e-mail à cette adresse ?",
+  "That did not work just now. Press Unsubscribe again in a minute.": "Cela n’a pas fonctionné. Appuyez à nouveau sur Se désabonner dans une minute."
  }
 }

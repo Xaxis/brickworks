@@ -272,6 +272,8 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # the owner pressed Schedule on whose time came, and reads what came in.
 # Every five minutes /api/plans/owner-notify (api/_notify.js): the owner's
 # notifications mailed as they set them in /admin › Notifications.
+# At 8, 23, 38 and 53 past each hour /api/plans/announce-due (api/_announce.js):
+# the owner's scheduled announcements whose time came, and their mail.
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
@@ -495,7 +497,8 @@ cat > .vercel/output/config.json <<EOF
              { "path": "/api/share/omr", "schedule": "37 5 * * 1" },
              { "path": "/api/plans/beta-daily", "schedule": "7 5 * * *" },
              { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" },
-             { "path": "/api/plans/owner-notify", "schedule": "*/5 * * * *" } ],
+             { "path": "/api/plans/owner-notify", "schedule": "*/5 * * * *" },
+             { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -521,6 +524,7 @@ $docs_moved
     { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
     { "src": "/api/plans/social-due", "dest": "/api/plans?op=social_due" },
     { "src": "/api/plans/owner-notify", "dest": "/api/plans?op=owner_notify" },
+    { "src": "/api/plans/announce-due", "dest": "/api/plans?op=announce_due" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },

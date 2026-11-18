@@ -244,6 +244,8 @@ import { SocialRefusal } from "./_social_reddit.js";
 import { CLAUDE_ACTS, claudeChat, claudeModels, claudeRead } from "./_claude.js";
 import { withClaudeMarks } from "./_claude_social.js";
 import { notifyAddress, notifyConfirm, notifyFlush, notifyRead, notifySet, notifyTest } from "./_notify.js";
+import { announceDrop, announceEdit, announceKeep, announceLimit, announceMailAddress, announceMailMost, announcePreview,
+  announceRead, announceSend, announceUnschedule, announceWithdraw } from "./_announce.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -321,6 +323,10 @@ async function handler(request, response) {
     social_connect: socialConnect, social_connected: socialConnected, social_disconnect: socialDisconnect,
     social_sync: socialSync, social_mark: socialMark, social_draft: socialDraft, social_drop: socialDrop,
     social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes,
+    // Announcements (announce, api/_announce.js): only announce_send sends, and only the words it was pressed on.
+    announce_keep: announceKeep, announce_send: announceSend, announce_unschedule: announceUnschedule, announce_edit: announceEdit,
+    announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit,
+    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress,
     // The owner's notifications (ownernotify, api/_notify.js). Only
     // notify_test, notify_address and notify_flush mail anything, and only
     // to the pool's own address.
@@ -352,6 +358,8 @@ async function handler(request, response) {
     claude_models: () => claudeModels(request),
     social_rules: () => socialRules(request),
     notify: () => notifyRead(request, tests),
+    announce: () => announceRead(request),
+    announce_preview: () => announcePreview(request),
     find: () => findRead(String(request.query?.q || ""), tests),
     challenge_view: () => {
       const id = Number(request.query?.challenge);

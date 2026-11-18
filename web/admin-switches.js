@@ -36,15 +36,72 @@ function previewNotice() {
 segmented($("notice-tone"), (value) => { tone = value === "warn" ? "warn" : "info"; previewNotice(); });
 $("notice-form").addEventListener("input", previewNotice);
 
+// The notice's end: a day (none, or today and the next 60) and a quarter
+// hour, in this browser's time, as the console asks every time.
+function endsPickers() {
+  const dayPick = $("notice-ends-day");
+  const timePick = $("notice-ends-time");
+  if (!dayPick || dayPick.options.length) return;
+  dayPick.append(new Option("None: until it is cleared", ""));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let at = 0; at <= 60; at += 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + at);
+    dayPick.append(new Option(at === 0 ? "Today" : at === 1 ? "Tomorrow" : d.toLocaleDateString(undefined, { weekday: "short", day: "numeric",
+      month: "short" }), d.toISOString()));
+  }
+  for (let minutes = 0; minutes < 24 * 60; minutes += 15) {
+    const t = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
+    timePick.append(new Option(t.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }), String(minutes)));
+  }
+  const pair = () => { timePick.disabled = !dayPick.value; };
+  dayPick.addEventListener("change", pair);
+  pair();
+}
+endsPickers();
+
+/// The end chosen, as an ISO time, or "" for none.
+function endsChosen() {
+  const dayPick = $("notice-ends-day");
+  if (!dayPick?.value) return "";
+  const at = new Date(dayPick.value);
+  at.setMinutes(Number($("notice-ends-time").value) || 0);
+  return at.toISOString();
+}
+
+/// [iso] shown in the end's pickers (its day added if it is past the 60).
+function endsShown(iso) {
+  const dayPick = $("notice-ends-day");
+  if (!dayPick) return;
+  if (!iso) {
+    dayPick.value = "";
+  } else {
+    const at = new Date(iso);
+    const midnight = new Date(at);
+    midnight.setHours(0, 0, 0, 0);
+    const value = midnight.toISOString();
+    if (![...dayPick.options].some((one) => one.value === value)) {
+      dayPick.append(new Option(midnight.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }), value));
+    }
+    dayPick.value = value;
+    $("notice-ends-time").value = String(Math.floor((at.getHours() * 60 + at.getMinutes()) / 15) * 15);
+  }
+  dayPick.dispatchEvent(new Event("change"));
+}
+
 $("notice-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const send = form.querySelector('button[type="submit"]');
   const words = Object.fromEntries(Object.keys(LANGS).map((lang) => [lang, form.elements[lang].value.trim()]).filter(([, w]) => w));
   if (!words.en) return say("notice-note", "Give it its words in English.", true);
+  // Its end, if one is chosen: the time it goes by itself (api/_announce.js).
+  const ends = endsChosen();
   send.disabled = true;
   await post({ op: "notice_set" }, "notice-note", (said) => `Shown on every page of the site, not the studio${said.languages?.length > 1 ? `, in ${said.languages
-    .map((lang) => LANGS[lang]).join(", ")}` : ""}: visitors see it within a minute or two.`, { body: { words, tone },
+    .map((lang) => LANGS[lang]).join(", ")}` : ""}${said.ends_at ? `, until ${when(said.ends_at)}` : ""}: visitors see it within a minute or two.`
+    + `${said.ends_said ? ` ${said.ends_said}` : ""}`, { body: { words, tone, ...(ends ? { ends } : {}) },
     after: async () => { await loadSwitches(); after(); } });
   send.disabled = false;
 });
@@ -68,12 +125,14 @@ function drawNotice(s) {
     form.querySelector('button[type="submit"]').disabled = true;
   } else {
     form.querySelector('button[type="submit"]').disabled = false;
-    say("notice-said", now ? `Showing since ${when(now.set_at)}, set by ${now.set_by}.` : "None is showing.");
+    say("notice-said", now ? `Showing since ${when(now.set_at)}, set by ${now.set_by}${now.ends_at ? `, until ${when(now.ends_at)}`
+      : ", until you clear it"}.` : "None is showing.");
   }
   $("notice-clear").hidden = !now;
   // The form holds what is showing, to change or clear it.
   if (now && !form.dataset.drawn) {
     for (const lang of Object.keys(LANGS)) form.elements[lang].value = now.words?.[lang] || "";
+    endsShown(now.ends_at || "");
     tone = now.tone === "warn" ? "warn" : "info";
     for (const button of $("notice-tone").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.value === tone));
     if (Object.keys(now.words || {}).some((lang) => lang !== "en")) form.querySelector("details.more-langs").open = true;
@@ -89,7 +148,9 @@ function drawNotice(s) {
     cell(row, one.words?.en || "—", "said");
     cell(row, Object.keys(one.words || {}).map((lang) => LANGS[lang] || lang).join(", "));
     cell(row, one.set_by || "—");
-    cell(row, one.cleared_at ? `${when(one.cleared_at)} by ${one.cleared_by}` : "showing", one.cleared_at ? "" : "bad");
+    const ended = !one.cleared_at && one.ends_at && Date.parse(one.ends_at) <= Date.now();
+    cell(row, one.cleared_at ? `${when(one.cleared_at)} by ${one.cleared_by}` : ended ? `ended ${when(one.ends_at)}`
+      : one.ends_at ? `showing until ${when(one.ends_at)}` : "showing", one.cleared_at || ended ? "" : "bad");
     before.append(row);
   }
   if (!before.rows.length) emptyRow(before, s.notice_ready ? "No notice has been set here." : "Not kept yet.");

@@ -61,6 +61,8 @@ three that stay outside, each with why.
 | Brickworks' own social accounts: what came in, posts and replies, their results (socialdesk) | each network's own site | Social: the inbox, Write with the community's rules, Sent and scheduled, Accounts (docs/SOCIAL_DESK.md). Posting on Reddit is by hand on Reddit's own page until Reddit grants API access: **outside** for that one press |
 | Claude on the owner's own Anthropic key: the key, the model, the effort, the month's cap (adminclaude) | console.anthropic.com | Claude › Settings, and the panel beside every section; on Social, Suggest, Suggest a reply, Improve and Overview, each landing as a draft (docs/ADMIN_CLAUDE.md). The key is made, paid for and deleted at console.anthropic.com: **outside** for that |
 | Mail to the owner about what happens: sign-ups, first models, feedback, plans and payments, server errors, Supabase near its quota, the social desk (ownernotify) | nowhere: only reports and comments mailed, always | Notifications: each kind on or off, at once or in the daily digest, the address, quiet hours, the cap an hour, Send a test, Pause all; Sent, every mail sent, held or folded (docs/OWNER_NOTIFY.md). Vercel's and Resend's use and Supabase's egress: **outside**, each said why on the page |
+| Telling the site's people something: in their Notifications, by email to those who chose news (announce) | nowhere | Announcements: Write with its preview and reach, Sent and scheduled with reach, reads and clicks, Banner, Settings (the day's most) (docs/ANNOUNCE.md) |
+| The notice's end, and whether a person hid it (announce) | nowhere: it showed until cleared | Switches › The notice: Ends at a day and time; Announcements › Banner says it. Hidden per person, on every device once signed in |
 
 ### api/admin.js, every op
 
@@ -120,6 +122,13 @@ it answers.
 | `notify_set` | POST `{tz?, quiet?, digest_at?, cap?, paused?, events?}` | A change of the settings, compared and set by its version | owner_notify_settings |
 | `notify_address`, `notify_confirm` | POST `{address}`, `{code}` | Another address: a code mailed there, mail going to it once typed; `{address: ""}` back to the account's own | owner_notify_settings, Resend |
 | `notify_test`, `notify_flush` | POST `{event?}` | A test of the whole or one kind (10 an hour); the cron's run now for this deployment (Check now) | owner_notify_mails, Resend |
+| `announce` | GET | The desk: this deployment's announcements (a test one's only on a preview or ?tests=1) with reach, seen, read, clicked and mail by state; today's count and the most; the plans; the notice (announce) | announce_list, announce_day, site_settings, Admission's plans, site_notice |
+| `announce_preview` | GET `&words=` | A draft drawn by the page's own code (api/_notifications.js noticeGroups), its reach and mail count now | announce_count |
+| `announce_keep`, `announce_drop` | POST `{id?, title, body, link, audience, email}` | A draft kept (a scheduled one edited: a draft again, its press forgotten) or thrown away | announce_keep, announce_drop |
+| `announce_send` | POST `{id, hash, changed_at, at?}` | The owner's press on the exact words and version seen: now, or at a quarter-hour up to 60 days on; two presses make one send; at most the day's most | announce_press, announce_mail_take, Resend's batch |
+| `announce_unschedule`, `announce_withdraw` | POST `{id}` | A scheduled one back to the drafts; a sent one out of every list (mail sent stays sent) | announce_unschedule, announce_withdraw |
+| `announce_edit` | POST `{id, changed_at, title, body, link, hash?}` | A sent one's words looked at, then changed on that look for all it reached, marked edited | announce_edit |
+| `announce_limit` | POST `{most}` | The day's most, 1 to 20 (two until set) | site_settings `announce_limit` |
 | `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; back to the drafts (a schedule, a hand-off not posted, or a send unsure whether it is up); a post made by hand or found up, its address kept | social_sends, the network |
 | `claude`, `claude_models` | GET | Claude's settings (the key only as `sk-ant-…` and its last four, the model, effort, cap, this month's spend); the models the kept key may use, from Anthropic's Models API (adminclaude) | admin_claude_settings, admin_claude_month, Anthropic |
 | `claude_key`, `claude_check`, `claude_forget`, `claude_settings` | POST | A key checked with Anthropic and kept sealed, checked again, deleted; the model, effort and monthly cap | admin_claude_settings, Anthropic |
@@ -191,6 +200,7 @@ through `cron_noted`), and the canary's are its own `canary_runs`.
 | `/api/share/omr` | 05:37 Mondays | What LDraw's Official Model Repository has that the library has not |
 | `/api/plans/beta-daily` | 05:07 daily | The beta's daily round, and feedback's sweep with it |
 | `/api/plans/owner-notify` | every 5 minutes | The owner's notifications: errors, Supabase's size and health (hourly) and the desk's tables looked at; then what waits mailed by the owner's rules (docs/OWNER_NOTIFY.md). Noted when it mailed, failed, ran by hand, or first after midnight; when the database refuses, one alarm a day without it |
+| `/api/plans/announce-due` | 8, 23, 38 and 53 past each hour | Announcements whose time came, each only as pressed (words changed since: held, and why written on it); then their mail, a few batches a round. Noted when it sent, mailed, failed or ran by hand |
 | `/api/plans/social-due` | every 15 minutes | The social desk: scheduled sends whose time came, each only as pressed; then each connected account's inbox and results. Noted when it sent, failed, ran by hand, or first after midnight |
 
 ### Outside services
@@ -633,3 +643,60 @@ Proven by `tests/test_owner_notify.py` (each event by its real path against
 held tables and a stand-in Resend; the SQL in a Postgres of its own) and,
 on a deployment, `tools/web/ownernotify_flow.mjs` (preview check
 `ownernotify`).
+
+## Announcements (announce): in the console now
+
+The owner tells the site's people something (docs/ANNOUNCE.md has the
+research and the choices). /admin › Announcements has four tabs:
+
+- **Write.** A title, plain words and an optional link (a page here, or
+  https). The audience is one of: everyone; a plan; the beta's testers;
+  people who signed up since a day; people who published; one person by
+  handle. Beside it is the announcement as it will show on their
+  Notifications page and in their account menu, drawn by the page's own
+  code in a shadow root with the site's styles, and how many it reaches
+  now. Review and send shows the same again, with Send now, or a day and a
+  quarter-hour to Schedule.
+- **Sent and scheduled.** Each announcement's reach (fixed as it went),
+  seen, read, clicked and mail, and its state. A scheduled one can be
+  changed (a draft again) or unscheduled. A sent one can be edited for
+  everyone (look first, then change; it says edited) or withdrawn.
+- **Banner.** The site notice: whether it shows, until when, and its words.
+  It is set under Switches, with its end.
+- **Settings.** The day's most, and today's count.
+
+How it behaves:
+
+- **The press.** Nothing goes without the owner's press on the exact words.
+  The press carries the server's hash and the version seen, so words changed
+  since are refused (409). A scheduled one goes at its time only if its
+  words still match. Two presses make one send. An edit unschedules.
+- **Delivery.** One row per announcement, its recipients fixed as it goes.
+  Each person's Notifications reads it through `notification_rows`, so the
+  avatar's count, the page and the menu show it, and opening it marks it
+  read (`announcement_reads`, one row each, with any click).
+- **Email.** Only to people who chose Brickworks news in Settings › Email
+  before it went. Choosing news is off until turned on. Each mail has
+  List-Unsubscribe and List-Unsubscribe-Post (RFC 8058) and a link in its
+  words; both go to `/api/people?op=news_unsubscribe`. Resend's batch takes
+  100 at a time, 1.1 s apart, each batch with its own idempotency key; a 429
+  or 5xx is retried once, later.
+- **The checks' pool.** On a preview, and with ?tests=1, every announcement
+  is a test one. It reaches only the checks' accounts at resend.dev, is
+  never mailed, and counts against that deployment's own most and list.
+- **The gate.** The ops are api/admin.js's `announce*` (still 12
+  functions): 401 signed out, 404 to anybody else, and every POST is
+  audited. The cron is api/plans.js's `announce_due`; the notice's per-person
+  hide is `notice_hide` and `notice_hidden`; news is api/people.js's `news`
+  and `news_unsubscribe`.
+- **The tables.** `supabase/announce.sql` is additive: five tables and the
+  notice's `ends_at`. Row security is on, with no policy and no grant, even
+  to the server's role, so every read and write goes through its functions.
+  Before it is applied the section says so, its buttons are off, and
+  Settings hides the news choice.
+
+Proven by `tests/test_announce.py` (`tests/fixtures/announce/api_check.mjs`:
+the handlers against announce.sql in a Postgres of its own, a mocked
+Resend), `tools/announce_try.sql` on the project rolled back, and in a
+browser by `tools/web/announce_flow.mjs` (preview check `announce`; locally
+before the file with `--hold=announce`).

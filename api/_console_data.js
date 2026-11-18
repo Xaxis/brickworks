@@ -56,6 +56,8 @@ export const RUNNABLE = {
     + "what came in" },
   owner_notify: { path: "/api/plans/owner-notify", said: "Mails you only what waits, as Notifications says: its quiet hours, "
     + "its cap and its digest's time" },
+  announce_due: { path: "/api/plans/announce-due", said: "Sends only the announcements you pressed Schedule on whose time came, "
+    + "and their mail to those who asked for news, each person once" },
 };
 /// What is never run from here, and why.
 export const NOT_RUNNABLE = {

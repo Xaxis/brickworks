@@ -12,7 +12,8 @@
 // everywhere and Delete, and the bar's Find. Claude, its Settings and the
 // panel beside every section, is admin-claude.js (adminclaude). Notifications
 // (ownernotify) is admin-notify.js, and a mail's one-click "turn this off"
-// lands here before the gate.
+// lands here before the gate. Announcements is admin-announce.js, asked only
+// once its section is opened.
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
@@ -37,10 +38,11 @@ import { loadNotify, offFromLink, whenChanged as notifyChanged } from "/admin-no
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans",
-  "mail", "notifications", "connector", "site", "data", "switches", "claude", "audit"];
-const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
-  social: ["inbox", "write", "sent", "accounts"], notifications: ["settings", "sent"] };
+const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social",
+  "announcements", "plans", "mail", "notifications", "connector", "site", "data", "switches", "claude", "audit"];
+const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"],
+  beta: ["applications", "testers"], social: ["inbox", "write", "sent", "accounts"],
+  notifications: ["settings", "sent"], announcements: ["write", "sent", "banner", "settings"] };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -75,6 +77,7 @@ const loaders = {
   beta: () => loadBeta(),
   feedback: () => loadFeedback(),
   social: () => loadSocial(),
+  announcements: () => import("/admin-announce.js").then((part) => part.loadAnnouncements()),
   plans: () => loadPlans(),
   mail: () => loadMail(),
   notifications: () => loadNotify(),

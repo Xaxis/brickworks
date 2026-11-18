@@ -86,6 +86,9 @@ revoke all on public.site_env from public, anon, authenticated, service_role;
 -- The notice.
 
 -- The notice showing in [p_scope]: {id, words, tone, set_by, set_at}, or null.
+-- REPLACED LATER: announce.sql replaces this function (a notice's end).
+-- Apply announce.sql again right after this file: tools/apply_sql.mjs
+-- refuses it alone, unless --again=supabase/announce.sql.
 create or replace function public.site_notice(p_scope text)
 returns jsonb
 language sql
@@ -139,6 +142,9 @@ end;
 $$;
 
 -- The notices of [p_scope], the newest first: what was said, when and by whom.
+-- REPLACED LATER: announce.sql replaces this function (a notice's end).
+-- Apply announce.sql again right after this file: tools/apply_sql.mjs
+-- refuses it alone, unless --again=supabase/announce.sql.
 create or replace function public.site_notices_list(p_scope text, p_limit integer)
 returns jsonb
 language sql
