@@ -234,7 +234,8 @@ eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \
 a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
-no op it lists them; "to" puts parts in any step by its number, "next"/"prev" \
+no op it lists them, with find= only those that place a part ("red 3001"); \
+"to" puts parts in any step by its number, "next"/"prev" \
 move them a step, "new" makes a step of them, "earlier"/"later"/"merge"/\
 "delete" act on a step by its number, "name" names one ("Build the cockpit").
  - booklet_layout reads the booklet's pages and how each step is printed, \
@@ -459,7 +460,11 @@ func definitions() -> Array:
 				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
 				+ "off. callout_step= with step= names a step inside the callout step= puts on. "
 				+ "A sub-model placed more than once has one set of steps: a name given to one "
-				+ "of its steps is every copy's."),
+				+ "of its steps is every copy's."
+				# stepsearch: the steps that place a part, as the timeline's find.
+				+ " find= lists only the steps that place a part, by its number, name or "
+				+ "colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; "
+				+ "a part in a sub-model is found in the sub-model's own step that puts it on."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete", "name"]},
@@ -469,6 +474,7 @@ func definitions() -> Array:
 					"description": "part numbers from look_at_model, for to, next, prev and new"},
 				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
+				"find": {"type": "string", "description": "for list: only the steps that place this part: a number (3001), a name (brick 2 x 4), a colour (red) or both (red 3001)"},
 			}},
 		},
 		{
@@ -1785,6 +1791,11 @@ func _edit_steps(input: Dictionary) -> String:
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
+	# stepsearch: find= is the list's, and changes nothing.
+	if input.has("find") and op != "list":
+		return "find= lists the steps that place a part; give it with no op= (or op \"list\")."
+	if input.has("find") and str(input["find"]).strip_edges().is_empty():
+		return "Give find= a part's number, its name or a colour, or both (\"red 3001\")."
 	var steps: Array[Instructions.Step] = []
 	# Worked out a slice a frame on a big model: in one go, the Charger's
 	# 1,083 parts held the window a second on the desktop and several in a
@@ -1800,6 +1811,8 @@ func _edit_steps(input: Dictionary) -> String:
 		return "There is nothing built to have steps."
 	match op:
 		"list":
+			if input.has("find"):
+				return _found_steps(steps, str(input["find"]).strip_edges())
 			return _list_steps(steps, int(input.get("from", 1)))
 		"next", "prev", "new", "to":
 			var ids: Array = []
@@ -2423,31 +2436,16 @@ static func _step_numbered(steps: Array[Instructions.Step], number: int,
 
 
 func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
-	var world: BrickWorld = app.get("_world")
-	var store: ModelStore = app.get("_store")
 	var said := PackedStringArray()
-	var authored: bool = AuthorSteps.any(world, store.scenery)
-	var count: int = steps[steps.size() - 1].number
-	said.append("%d step%s, %s." % [count, "" if count == 1 else "s",
-		"the model's own" if authored
-			else "worked out by the app (the first edit makes them the model's own)"])
-	# The steps of a sub-model built where it stands, not in a callout, are
-	# named as a callout's are: listed bare, the island's rocks read as the
-	# model's own parts, and a session moved them "to" the baseplates' step
-	# (stepsto).
-	var built: Dictionary = {}      ## sub-model's path -> how many steps it is built in
-	for step: Instructions.Step in steps:
-		if _built_in_place(step):
-			built[step.authored_in] = int(built.get(step.authored_in, 0)) + 1
-	if not built.is_empty():
+	said.append(_steps_whose(steps))
+	var wheres: PackedStringArray = _steps_where(steps)
+	if steps.any(func(step: Instructions.Step) -> bool: return _built_in_place(step)):
 		said.append("A sub-model's steps take only its own parts, and a sub-model goes in a "
 			+ "step whole, built in its own steps before that step.")
-	var counted: Dictionary = {}
 	var shown: int = 0
 	var characters: int = 0
-	for step: Instructions.Step in steps:
-		if _built_in_place(step):
-			counted[step.authored_in] = int(counted.get(step.authored_in, 0)) + 1
+	for index: int in steps.size():
+		var step: Instructions.Step = steps[index]
 		if step.number < from:
 			continue
 		var ids: PackedInt64Array = step.brick_ids
@@ -2456,21 +2454,7 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 			numbers.append("#%d" % brick_id)
 		if ids.size() > 12:
 			numbers.append("and %d more" % (ids.size() - 12))
-		var where: String = ""
-		if step.callout_step > 0:
-			where = " (in the %s, %d of %d)" % [step.assembly, step.callout_step,
-				step.callout_steps]
-		elif _built_in_place(step):
-			where = " (in the %s, %d of %d)" % [Instructions._name_of(step.authored_in),
-				int(counted[step.authored_in]), int(built[step.authored_in])]
-		elif not step.copies.is_empty():
-			where = " (puts on the %s%s)" % [step.assembly,
-				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
-		# The step it starts, which has no step of its own to be named in
-		# (Step.within): the model's step that puts the copies on.
-		if not step.within.is_empty():
-			where = where.trim_suffix(")") + ("; " if not where.is_empty() else " (") \
-				+ "starts the step %s)" % Motions.quoted(step.within)
+		var where: String = wheres[index]
 		var line: String = "  %d%s: %s" % [step.number, where, " ".join(numbers)]
 		if not step.name.is_empty():
 			# stepnames: its name, as the timeline says it.
@@ -2485,6 +2469,100 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 	if shown == 0:
 		said.append("  none from step %d." % from)
 	return "\n".join(said)
+
+
+## "24 steps, the model's own." or worked out by the app: the head of
+## edit_steps' list and of its find.
+func _steps_whose(steps: Array[Instructions.Step]) -> String:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var count: int = steps[steps.size() - 1].number
+	return "%d step%s, %s." % [count, "" if count == 1 else "s",
+		"the model's own" if AuthorSteps.any(world, store.scenery)
+			else "worked out by the app (the first edit makes them the model's own)"]
+
+
+## Where each of [param steps] is, as edit_steps says it after the step's
+## number: " (in the Wing, 2 of 3)", " (puts on the Wing x2)", "" for the
+## model's own. The steps of a sub-model built where it stands,
+## not in a callout, are named as a callout's are: listed bare, the island's
+## rocks read as the model's own parts, and a session moved them "to" the
+## baseplates' step (stepsto).
+static func _steps_where(steps: Array[Instructions.Step]) -> PackedStringArray:
+	var built: Dictionary = {}      ## sub-model's path -> how many steps it is built in
+	for step: Instructions.Step in steps:
+		if _built_in_place(step):
+			built[step.authored_in] = int(built.get(step.authored_in, 0)) + 1
+	var counted: Dictionary = {}
+	var out := PackedStringArray()
+	for step: Instructions.Step in steps:
+		var where: String = ""
+		if step.callout_step > 0:
+			where = " (in the %s, %d of %d)" % [step.assembly, step.callout_step,
+				step.callout_steps]
+		elif _built_in_place(step):
+			counted[step.authored_in] = int(counted.get(step.authored_in, 0)) + 1
+			where = " (in the %s, %d of %d)" % [Instructions._name_of(step.authored_in),
+				int(counted[step.authored_in]), int(built[step.authored_in])]
+		elif not step.copies.is_empty():
+			where = " (puts on the %s%s)" % [step.assembly,
+				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
+		# The step it starts, which has no step of its own to be named in
+		# (Step.within): the model's step that puts the copies on.
+		if not step.within.is_empty():
+			where = where.trim_suffix(")") + ("; " if not where.is_empty() else " (") \
+				+ "starts the step %s)" % Motions.quoted(step.within)
+		out.append(where)
+	return out
+
+
+## edit_steps' find=: the steps that place what [param said] names, found
+## as the timeline's find finds them (StepsBar.find_in) and numbered as the
+## list numbers them, each with how many it places and their numbers.
+## Reads, and changes nothing.
+func _found_steps(steps: Array[Instructions.Step], said: String) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var found: Dictionary = StepsBar.find_in(StepsBar.step_lots(steps, world), library, said)
+	var hits: Array = found["hits"]
+	var head: String = _steps_whose(steps)
+	if hits.is_empty():
+		return "%s\n%s." % [head, StepsBar.none_words(library, said, found["other"])]
+	var takes: Dictionary = found["parts"]
+	var colour: int = int(found["colour"])
+	var wheres: PackedStringArray = _steps_where(steps)
+	var placed: int = 0
+	for hit: Array in hits:
+		placed += int(hit[1])
+	var lines := PackedStringArray([head, "“%s”: %d part%s, placed in %d step%s:" % [said, placed,
+		"" if placed == 1 else "s", hits.size(), "" if hits.size() == 1 else "s"]])
+	var characters: int = 0
+	for n: int in hits.size():
+		var hit: Array = hits[n]
+		var step: Instructions.Step = steps[int(hit[0])]
+		var numbers := PackedStringArray()
+		for brick_id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null and takes.has(brick.part_id) \
+					and (colour < 0 or brick.color_code == colour):
+				numbers.append("#%d" % brick_id)
+		if numbers.size() > 12:
+			var more: int = numbers.size() - 12
+			numbers = numbers.slice(0, 12)
+			numbers.append("and %d more" % more)
+		var what := Instructions.Step.new()
+		what.parts = hit[2]
+		var line: String = "  %d%s: %s, %s" % [step.number, wheres[int(hit[0])],
+			what.summary(library), " ".join(numbers)]
+		if not step.name.is_empty():
+			line = "  %d%s %s: %s, %s" % [step.number, wheres[int(hit[0])],
+				Motions.quoted(step.name), what.summary(library), " ".join(numbers)]
+		characters += line.length()
+		if characters > 6000:
+			lines.append("  ... and %d more steps; a narrower find= lists fewer." % (hits.size() - n))
+			break
+		lines.append(line)
+	return "\n".join(lines)
 
 
 ## Whether [param step] is one of a sub-model's own, built where it stands

@@ -87,6 +87,16 @@ A step can have a name, as in Studio: **Name…** in the timeline's **Booklet** 
 ui:a step's name
 -->
 
+### Find a step {#find-step}
+
+Looking for the step that puts on the red 1 x 1 plate? Type it into the find at the end of the timeline's buttons, beside the order button: a part's number (**3024**), its name (**plate 1 x 1**, or **1x1 plate**), a colour (**red**) or both (**red 3024**). As you type, it lists every step that places one, with how many where it is more than one ("7 ×2"), and marks those steps along the top of the row of steps. Click one to go there; [[Enter]] goes to each in turn, and [[Shift+Enter]] back. [[Escape]] clears it, and **Done** takes it away with the timeline.
+
+A part in a sub-model is found in the sub-model's own steps, the step that builds it, with every copy counted: "14 · Support Vehicle - Hose ×48" is step 14, built 48 times. When no step places what you typed, it says so, and where the model has the part in another colour, which: "No step places “blue 3024”: the model has it in 4 other colours". On a phone or a tablet, **Find…** opens it above the keyboard. An assistant finds the same steps with edit_steps' find.
+
+<!-- covers
+ui:find a step by what it places
+-->
+
 ## The booklet {#booklet}
 
 **Build › Instructions…** ([[Alt+B]], or **Instructions** on the toolbar or the timeline) lays the booklet out from the steps and opens it in its own tab.
