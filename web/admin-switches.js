@@ -71,6 +71,9 @@ $("phones-form").addEventListener("submit", async (event) => {
     + `${said.phone_start_s} s. Pages read them within a minute or two.`, { body,
     after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
   send.disabled = false;
+  // Switches drawn again above can push it off a phone's screen: what the
+  // press came to is brought into view.
+  $("phones-note").scrollIntoView({ block: "nearest" });
 });
 
 function drawPhones(s) {

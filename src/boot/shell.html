@@ -457,13 +457,18 @@ const loaderSays = (function () {
 		requestAnimationFrame(tick);
 	})();
 
+	// What went wrong stays said: the files still coming, the start's other
+	// steps and the wall never write over it.
+	let failed = false;
 	function say(text, bad) {
+		if (failed && !bad) return;
 		note.textContent = loaderSays(text);
 		note.classList.toggle("bad", Boolean(bad));
 	}
 
 	function fail(text) {
 		running = false;
+		failed = true;
 		say(text, true);
 		laidLabel.textContent = String(shown);
 	}
@@ -1469,7 +1474,9 @@ const loaderSays = (function () {
 				this.stop();
 				try { if (engineAt) localStorage.setItem("brickworks.engineHad", engineAt); } catch (e) {}
 			},
+			// For good: a start that failed is told no time to wait.
 			stop: function () {
+				state.on = false;
 				if (ticking) clearInterval(ticking);
 				ticking = 0;
 				line.hidden = true;
@@ -1489,6 +1496,8 @@ const loaderSays = (function () {
 		if (refusalSaid || started || !MEMORY_REFUSED.test(why)) return false;
 		refusalSaid = true;
 		eta.stop();
+		// The engine cannot start, so its files still coming are let go.
+		try { window.stop(); } catch (e) {}
 		fail(loaderSays("This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.", { why: why.slice(0, 80) }));
 		return true;
 	}

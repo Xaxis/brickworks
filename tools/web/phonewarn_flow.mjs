@@ -61,7 +61,17 @@ const KINDS = {
   desktop: { viewport: { width: 1280, height: 800 } },
   phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
   tablet: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  // The largest phone (an iPhone Pro Max's), where what a press says must still come into view.
+  phone430: { viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
 };
+/// Whether [selector]'s box is wholly inside the viewport.
+const inView = (page, selector) => page.evaluate((one) => {
+  const el = document.querySelector(one);
+  if (!el) return false;
+  const box = el.getBoundingClientRect();
+  return box.width > 0 && box.height > 0 && box.left >= 0 && box.top >= 0
+    && box.right <= innerWidth && box.bottom <= (visualViewport ? visualViewport.height : innerHeight);
+}, selector);
 const FAST4G = { offline: false, latency: 165, downloadThroughput: (9e6 / 8) * 0.9, uploadThroughput: (1.5e6 / 8) * 0.9 };
 const NO_GL2 = "This browser can't draw the studio in 3D: it has no WebGL 2.";
 const NO_MEMORY = "This browser would not give the studio the memory it needs";
@@ -195,6 +205,12 @@ try {
     seen.picture_phone = picture;
     check("phone, the same model's picture: its 3D view opens in its place, unasked", picture.then && !picture.after.open
       && !/\/app\?/.test(picture.after.url));
+    const large = await press("phone430", BIG.id, BUILD, {
+      then: async (page) => ({ dialog: await inView(page, "dialog.phone-warn"), stay: await inView(page, "dialog.phone-warn button.cta"),
+        go: await inView(page, "dialog.phone-warn a[data-phone-warned]") }) });
+    seen.big_phone430 = large;
+    check("phone at 430x932, the same: asked, with the question and both its ways in view", asked(large)
+      && large.then.dialog && large.then.stay && large.then.go, JSON.stringify(large.then));
     const small = await press("phone", SMALL.id, BUILD);
     seen.small_phone = small;
     check(`phone, ${SMALL.parts} parts: straight on to the studio`, wentOn(small), small.after.url.replace(site, ""));
@@ -270,7 +286,8 @@ try {
       const low = SMALL.parts - 41;
       const set = await keep(one.page, low, before.start);
       seen.console_set = set;
-      check(`… ${low} parts kept`, !set.bad && /^Kept:/.test(set.note), set.note);
+      const noted = await inView(one.page, "#phones-note");
+      check(`… ${low} parts kept, and said where the press is`, !set.bad && /^Kept:/.test(set.note) && noted, `${set.note}${noted ? "" : " (out of view)"}`);
       await one.context.close();
       // The CDN keeps the number's answer a minute, and a stale one once more.
       let small = null;
@@ -330,6 +347,7 @@ try {
         const told = [];
         let up = NaN;
         let gl2 = false;
+        let shown = null;
         for (;;) {
           const now = await tab.evaluate(() => ({ eta: document.getElementById("eta") && !document.getElementById("eta").hidden
             ? document.getElementById("eta").textContent : "", left: window.brickworksEta?.left, on: window.brickworksEta?.on,
@@ -337,6 +355,7 @@ try {
           const ms = Date.now() - began;
           if (now) {
             if (now.eta) told.push({ ms, said: now.eta, left: Math.round(now.left) });
+            if (now.eta && shown === null) shown = await inView(tab, "#eta").catch(() => false);
             if (now.note.startsWith(NO_GL2) || now.note.startsWith(NO_MEMORY)) gl2 = true;
             if (now.up) {
               up = ms;
@@ -350,7 +369,7 @@ try {
         const after = await tab.evaluate(() => !document.getElementById("eta").hidden).catch(() => null);
         const first = told[0];
         visits.push({ visit, up_ms: up, told: told.length, first: first ? { at_s: first.ms / 1000, said: first.said,
-          foresaw_s: first.left + first.ms / 1000 } : null, last: told.at(-1) || null, shown_after: after, gl2_said: gl2 });
+          foresaw_s: first.left + first.ms / 1000 } : null, last: told.at(-1) || null, shown_after: after, gl2_said: gl2, in_view: shown });
         if (visit === "first") await tab.screenshot({ path: join(out, `eta_${kind}.png`), timeout: 30000 }).catch(() => {});
       }
       seen[`eta_${kind}`] = visits;
@@ -359,6 +378,7 @@ try {
       if (kind === "phone") {
         check(`phone, first visit on Fast 4G: told how long (${up(first)})`, first.told > 0 && Number.isFinite(first.up_ms),
           first.first ? `at ${first.first.at_s.toFixed(1)} s "${first.first.said}"; it foresaw ${first.first.foresaw_s.toFixed(0)} s` : "never told");
+        check("… in view while it loads", first.in_view === true);
         check("… and no longer once the studio is up", first.shown_after === false);
         check(`… a return to the same phone told nothing (${up(again)})`, again.told === 0 && Number.isFinite(again.up_ms));
       } else {
@@ -381,8 +401,8 @@ try {
         up: Boolean(window.brickworksBoot?.ui) }));
       await page.screenshot({ path: join(out, `nomemory_${kind}.png`), timeout: 30000 }).catch(() => {});
       seen[`nomemory_${kind}`] = { told_ms: told, ...note };
-      check(`${kind}, the memory refused: said plainly${Number.isFinite(told) ? ` in ${(told / 1000).toFixed(1)} s` : ""}`, Number.isFinite(told) && !note.up,
-        note.note.slice(0, 120));
+      check(`${kind}, the memory refused: said plainly${Number.isFinite(told) ? ` in ${(told / 1000).toFixed(1)} s` : ""}, and still said 2 s on`,
+        Number.isFinite(told) && !note.up && note.note.startsWith(NO_MEMORY), note.note.slice(0, 120));
       check("… and no time to wait given", !note.eta);
       await context.close();
     }
