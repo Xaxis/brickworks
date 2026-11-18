@@ -512,8 +512,8 @@ try {
     const set = await as("/api/admin?op=notice_set", { method: "POST", body: { words: { en: `Flow ${rand}: upkeep at 02:00 UTC.` }, tone: "warn", ends } });
     noticeSet = set.status === 200;
     check(`set with an end: ${set.status}, ends ${set.json?.ends_at}`, noticeSet && set.json?.ends_at === ends);
-    const seen = async (who, label, size = "laptop") => {
-      const at = await open("/gallery", { who, label, size });
+    const seen = async (who, label, size = "laptop", flash = false) => {
+      const at = await open("/gallery", { who, label, size, flash });
       const there = await until(at.page, () => Boolean(document.querySelector(".site-notice")), null, 20000);
       return { ...at, there };
     };
@@ -571,8 +571,11 @@ try {
       }
       await again.context.close();
     }
-    const hers = await seen(bea, "bea notice", "phone");
-    check("Bea still sees it", hers.there);
+    // Bea's counted by the same watch as B's and C's: it sees a notice
+    // that is drawn, so their 0 is a notice never drawn.
+    const hers = await seen(bea, "bea notice", "phone", true);
+    const watched = await hers.page.evaluate(() => (window.__notices || []).length);
+    check(`Bea still sees it, and the watch that counted B and C counts hers (${watched})`, hers.there && watched >= 1);
     await shot(hers.page, "notice_phone_light.png");
     await hers.context.close();
     const banner = await console_("#announcements/banner", { who: owner, label: "console banner" });
