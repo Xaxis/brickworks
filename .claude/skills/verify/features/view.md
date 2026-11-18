@@ -847,6 +847,19 @@ picture the assistant is shown.
   over everything. Drawn as one MultiMesh of quads, the shapes worked out in
   the shader, a dark edge 1.25 px round each; flat on its face and gone from
   behind, balls and sockets to the eye, bars and clips along their length.
+  The card cuts the batch to `REACH` of the hand each frame (the shader's
+  `near_lo`/`near_hi`, set by `_show_near`; a session's picture draws with
+  the shared material, uncut), so the batch holds the parts within `REACH`
+  and a margin (none at first, half `SLACK` then `SLACK` while the parts
+  found stay under a quarter of `MOST`, a step back when they reach it, so
+  Orthanc is found within `REACH` alone) and
+  is worked out again only when the hand has gone the margin (`STEP` at the
+  least) from where they were found, the pointer is on a part not in it, or
+  the part in hand or the model changed; written to the card only when the
+  parts found are not those in it, and never read back from it (`_fill`
+  keeps what it wrote: `MultiMesh.buffer` waits on the card, 0.8 ms a time).
+  The cost check says how many workings out and writes the car took in its
+  frames with the marks on (jmfix).
   A child of the builder, so Export picture's `aside` hides it; ModelShot,
   StudioRender and the booklet draw worlds of their own. `tools/probe.sh
   jointmarks` (pictures in user://jointmarks_probe or --shots=DIR).
