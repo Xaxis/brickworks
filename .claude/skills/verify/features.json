@@ -83,6 +83,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -96,6 +97,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -177,6 +179,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -200,7 +203,9 @@
         "tests/fixtures/relay/world.mjs",
         "tests/test_assistant_pages.py",
         "tests/test_oauth_clients.py",
-        "tests/fixtures/oauth/world.mjs"
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/oauth/world.mjs",
+        "tests/test_insights.py"
       ]
     },
     {
@@ -259,10 +264,12 @@
       "area": "account",
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
         "tests/test_beta.py",
         "tests/test_console.py",
         "tests/test_console2.py",
-        "tests/test_feedback.py"
+        "tests/test_feedback.py",
+        "tests/test_insights.py"
       ]
     },
     {
@@ -277,6 +284,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -727,7 +735,8 @@
       "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
       "area": "web",
       "tests": [
-        "tests/fixtures/console/api2_check.mjs"
+        "tests/fixtures/console/api2_check.mjs",
+        "tests/test_insights.py"
       ]
     },
     {
@@ -834,10 +843,12 @@
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js, the card, and web/viewer3d.js, a model page's 3D view, both from tools/viewer/view.js)",
       "area": "mcp",
       "tests": [
+        "tests/fixtures/insights/names_check.mjs",
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
+        "tests/test_insights.py",
         "tests/test_oauth_clients.py",
         "tests/test_update_parts.py"
       ]
@@ -1591,6 +1602,14 @@
       "kind": "cli",
       "entry": "tools/web/idle_check.mjs",
       "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:insights browser flow",
+      "kind": "cli",
+      "entry": "tools/web/insights_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/insights_flow.mjs --url=<preview> --out=DIR [--no-studio]   (never on brickworks.diy: the read's gate; nothing sent or started with DNT, GPC, after No or driven unasked; a tagged visit's beacons with no address, IP or page text; the ask in German at 430x932, Yes and No; off in Settings; the server's own GPC and DNT drop; the studio's beacon; after supabase/analytics.sql this run's rows in the owner's read; each tab at 390/1280 light/dark; <out>/beacons.json the beacons' sizes; preview check [insights])",
       "area": "web",
       "tests": []
     },
@@ -2537,11 +2556,15 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_console2.py",
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py"
       ]
     },
@@ -2723,10 +2746,14 @@
       "reach": "python3 tools/bench/run.py run --dry-run --subjects bonsai   (the real batch: run, then summary --append docs/DESIGN_SCORES.md)",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
         "tests/test_bench.py",
         "tests/test_booklet_follow.py",
         "tests/test_console3.py",
         "tests/test_elements.py",
+        "tests/test_insights.py",
         "tests/test_release.py"
       ]
     },
@@ -3635,6 +3662,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -4498,6 +4526,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -4654,6 +4683,14 @@
       "entry": "api/_settings.js",
       "reach": "python3 tools/minitest.py tests/test_console.py tests/test_beta.py   (site_settings by scope: brickworks.diy is live, a deployment its host; the beta's switch over BRICKWORKS_BETA)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "lib:the counter's route and its reads",
+      "kind": "lib",
+      "entry": "api/_analytics.js",
+      "reach": "python3 tools/minitest.py tests/test_insights.py   (POST /api/plans?op=tally always 204: DNT, GPC, the EU/UK without a yes, a junk body kept nowhere; rows test unless sent to brickworks.diy or www by a person's account (a preview's host, a check's, an @resend.dev account's); the account only from a bearer that verifies, kept as HMAC(VIEW_SECRET), a beacon's who ignored; only names api/_insights_names.js has (python3 tools/insights_names.py --check), each kind at its most a beacon; one address's bucket; GET /api/admin?op=analytics 401 signed out, 404 to anybody else, ranges and filters, every list bounded (at most 113 kB); the cron /api/plans/tally-daily a day a call, insights_gone deleting a deleted account's rows unless the listing failed; an account's rows gone when it is deleted (api/_erase.js); Claude's tool calls counted in api/mcp.js with no account, refused, failed and relayed ones too; supabase/analytics.sql then analytics2.sql in a Postgres of its own: no role reaches a table, the caps, sampling past the soft cap, a read writes nothing, the rollup equal to the held rows, a person on two devices one visitor, 30 days kept; tests/fixtures/insights/attacks_check.mjs the review's attacks [--big times a flooded day]; dry run tools/analytics2_try.sql; docs/ANALYTICS.md)",
+      "area": "web",
       "tests": []
     },
     {
@@ -5122,6 +5159,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -5326,6 +5364,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -5511,11 +5550,15 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_console2.py",
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py"
       ]
     },
@@ -5658,10 +5701,16 @@
       "tests": [
         "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6493,6 +6542,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -6533,6 +6583,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -6892,6 +6943,18 @@
       "tests": []
     },
     {
+      "id": "ui:the counter and its ask",
+      "kind": "ui",
+      "entry": "web/tally.js",
+      "reach": "every site page and /app, loaded after the first screen (web/theme.js, src/boot/shell.html): beacons to /api/plans?op=tally every 15 s while something happened and on leaving; nothing with Do Not Track or GPC, after No, off in Settings \u203a Privacy (#counting-on) or in a driven browser without localStorage brickworks.counting.check=1, and then tally.js and counting.js never fetched (window.brickworksCountingNo); the sign-in token as the beacon's bearer, the site's or the one the studio's /api/ requests carry, never an id; on a European clock or one naming no place (UTC, Etc/*) the ask at the window's foot (web/counting-ask.js) first, the first Tab stop, Escape closing it unanswered; /counting says it in en, de, fr, es (python3 tools/minitest.py tests/test_insights_page.py)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/test_insights_page.py"
+      ]
+    },
+    {
       "id": "ui:the embed in 3D",
       "kind": "ui",
       "entry": "web/embed.js",
@@ -6928,10 +6991,16 @@
       "tests": [
         "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6943,7 +7012,10 @@
       "entry": "web/landing.js",
       "reach": "<deployment>/ with the beta open   (#beta under the first screen: why to join, three points, the way in for each visitor, the months of Pro left from ?op=beta_spots; held from the first frame by <html data-beta>, else put in only while out of sight; tools/web/betahome_flow.mjs)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/test_insights.py"
+      ]
     },
     {
       "id": "ui:the hover drawn at the device's pace",
@@ -6979,6 +7051,14 @@
       "kind": "ui",
       "entry": "web/room.js",
       "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the owner's Analytics",
+      "kind": "ui",
+      "entry": "web/admin-analytics.js",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
       "area": "web",
       "tests": []
     },
@@ -7061,6 +7141,8 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py"
       ]
@@ -7173,6 +7255,14 @@
       "tests": []
     },
     {
+      "id": "ui:what is counted page",
+      "kind": "ui",
+      "entry": "web/counting.html",
+      "reach": "https://brickworks.diy/counting (and /de, /fr, /es): what is counted, what never is, when you are asked, turning it off, how long it is kept, who sees it; linked from /privacy#your-visit and Settings \u203a Privacy",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:what is set in the booklet kept over an open",
       "kind": "ui",
       "entry": "src/assembly/booklet_looks.gd",
@@ -7235,8 +7325,10 @@
       "reach": "https://brickworks.diy/profile?tab=achievements   (signed in, once supabase/achievements.sql is applied: a tile a track, its level, how far the next is and the way there); the profile browser flow, locally",
       "area": "web",
       "tests": [
+        "tests/fixtures/insights/names_check.mjs",
         "tests/test_achievements.py",
         "tests/test_console3.py",
+        "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
@@ -7314,6 +7406,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
+        "tests/test_insights.py",
         "tests/test_realset.py",
         "tests/test_start_abba.py"
       ]
@@ -7325,8 +7418,10 @@
       "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, Achievements, ?tab=)",
       "area": "web",
       "tests": [
+        "tests/fixtures/insights/names_check.mjs",
         "tests/test_achievements.py",
         "tests/test_console3.py",
+        "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"

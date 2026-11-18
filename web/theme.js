@@ -193,6 +193,37 @@
   else load();
 })();
 
+// Whether counting is said no to here, as web/counting.js's countingState
+// has it, its cheap half: [driven] a browser a program drives that did not
+// ask to be counted (a check's) is a no too. Read before the counter is
+// fetched, so a no costs no request at all (inreview L3), and before the
+// social desk's visit is told (L2).
+window.brickworksCountingNo = (driven = true) => {
+  const kept = (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+  const dnt = String(navigator.doNotTrack ?? window.doNotTrack ?? navigator.msDoNotTrack ?? "");
+  return dnt === "1" || dnt === "yes" || navigator.globalPrivacyControl === true || kept("brickworks.counting") === "no"
+    || (driven && navigator.webdriver === true && kept("brickworks.counting.check") !== "1");
+};
+
+// How the site is used, counted (insights, 2026-11-18; web/tally.js,
+// /counting): asked for once the page has loaded and gone idle, never on an
+// embed's card, the connector's consent page or the console, and never
+// where the browser or the person said no (web/counting.js).
+(() => {
+  if (document.documentElement.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?(?:oauth\/|admin)/.test(location.pathname)) return;
+  if (window.brickworksCountingNo()) return;
+  const idle = (then) => (window.requestIdleCallback ? requestIdleCallback(then, { timeout: 4000 }) : setTimeout(then, 1500));
+  const load = () => idle(() => import("/tally.js").catch(() => null));
+  if (document.readyState === "complete") load();
+  else addEventListener("load", load, { once: true });
+})();
+
 // A visit a post from the owner's social desk brought (socialdesk,
 // 2026-11-18; api/_social.js, /admin › Social): the desk tags the site's
 // links in what it sends with utm_campaign=bw-<send id>. The landing is told
@@ -200,6 +231,11 @@
 // else about the visitor; once the page has loaded (the visit counter has
 // read the address too) the tags are taken out of the address, so a reload
 // or a link copied from it does not count again.
+//
+// It is a count, so it keeps to /counting (inreview L2): never with Do Not
+// Track or GPC, or after a No; where a yes comes first (web/counting.js,
+// fetched for such a landing only), only once it is given on this page. A
+// check's driven browser is told, as the desk's own flow lands one.
 (() => {
   try {
     const params = new URLSearchParams(location.search);
@@ -207,10 +243,27 @@
     if (!/^bw-[a-z0-9]{10}$/.test(campaign)) return;
     const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => (byte % 36).toString(36)).join("");
     const body = JSON.stringify({ campaign, nonce, path: location.pathname, source: params.get("utm_source") || "" });
-    const told = navigator.sendBeacon && navigator.sendBeacon("/api/plans?op=social_visit", new Blob([body], { type: "application/json" }));
-    if (!told) {
-      fetch("/api/plans?op=social_visit", { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: true })
-        .catch(() => null);
+    const tell = () => {
+      const told = navigator.sendBeacon && navigator.sendBeacon("/api/plans?op=social_visit", new Blob([body], { type: "application/json" }));
+      if (!told) {
+        fetch("/api/plans?op=social_visit", { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: true })
+          .catch(() => null);
+      }
+    };
+    let said = null;
+    try {
+      said = localStorage.getItem("brickworks.counting");
+    } catch {
+      said = null;
+    }
+    if (window.brickworksCountingNo(false)) {
+      // Not told.
+    } else if (said === "yes") tell();
+    else {
+      import("/counting.js").then((counting) => {
+        if (counting.countingState() !== "ask") tell();
+        else addEventListener("brickworks:counting", (event) => { if (event.detail?.on) tell(); }, { once: true });
+      }).catch(() => null);
     }
     const untag = () => {
       const now = new URLSearchParams(location.search);

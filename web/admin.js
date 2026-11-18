@@ -21,6 +21,7 @@ import { keepInView, loadReport, whenChanged as galleryChanged } from "/admin-ga
 import "/admin-moderation.js";
 import { challengeOf } from "/admin-challenges.js";
 import { loadData } from "/admin-data.js";
+import { TABS as ANALYTICS_TABS, loadAnalytics } from "/admin-analytics.js";
 import { loadSwitches, whenChanged as switchesChanged } from "/admin-switches.js";
 import { loadBeta, whenChanged as betaChanged } from "/admin-beta.js";
 import { loadFeedback } from "/admin-feedback.js";
@@ -32,10 +33,10 @@ import { loadSocial, whenChanged as socialChanged } from "/admin-social.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
+const SECTIONS = ["overview", "analytics", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
   "data", "switches", "audit"];
 const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
-  social: ["inbox", "write", "sent", "accounts"] };
+  social: ["inbox", "write", "sent", "accounts"], analytics: ANALYTICS_TABS };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -63,6 +64,7 @@ function route() {
 // Each section read once it is first opened, and again on Refresh.
 const loaders = {
   overview: () => loadOverview(),
+  analytics: () => loadAnalytics(),
   people: () => loadPeople(),
   moderation: () => loadReport(),
   gallery: () => loadReport(),
@@ -91,8 +93,13 @@ async function show() {
   if (at.tab) {
     for (const tab of part.querySelectorAll("[data-tab]")) tab.hidden = tab.dataset.tab !== at.tab;
     for (const to of part.querySelectorAll("[data-tab-link]")) {
-      if (to.dataset.tabLink === at.tab) to.setAttribute("aria-current", "true");
-      else to.removeAttribute("aria-current");
+      if (to.dataset.tabLink !== at.tab) to.removeAttribute("aria-current");
+      else {
+        to.setAttribute("aria-current", "true");
+        // Tabs wider than the window (a phone's) scroll sideways: the current one into sight (inreview L7).
+        const [tab, strip] = [to.getBoundingClientRect(), to.parentElement.getBoundingClientRect()];
+        if (tab.left < strip.left || tab.right > strip.right) to.parentElement.scrollLeft += tab.left - strip.left - (strip.width - tab.width) / 2;
+      }
     }
   }
   document.title = `${part.querySelector("h2")?.textContent || "Console"} · Console · Brickworks`;

@@ -225,6 +225,7 @@ import { challengeView } from "./_console_challenges.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
+import { analyticsRead } from "./_analytics.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -324,6 +325,8 @@ export default async function handler(request, response) {
     data: () => dataRead(),
     social: () => socialRead(request),
     social_rules: () => socialRules(request),
+    // How the site and the studio are used (insights, api/_analytics.js).
+    analytics: () => analyticsRead(request, tests),
     find: () => findRead(String(request.query?.q || ""), tests),
     challenge_view: () => {
       const id = Number(request.query?.challenge);

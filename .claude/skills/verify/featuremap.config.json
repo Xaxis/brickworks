@@ -5486,6 +5486,41 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "the counter's route and its reads",
+      "entry": "api/_analytics.js",
+      "reach": "python3 tools/minitest.py tests/test_insights.py   (POST /api/plans?op=tally always 204: DNT, GPC, the EU/UK without a yes, a junk body kept nowhere; rows test unless sent to brickworks.diy or www by a person's account (a preview's host, a check's, an @resend.dev account's); the account only from a bearer that verifies, kept as HMAC(VIEW_SECRET), a beacon's who ignored; only names api/_insights_names.js has (python3 tools/insights_names.py --check), each kind at its most a beacon; one address's bucket; GET /api/admin?op=analytics 401 signed out, 404 to anybody else, ranges and filters, every list bounded (at most 113 kB); the cron /api/plans/tally-daily a day a call, insights_gone deleting a deleted account's rows unless the listing failed; an account's rows gone when it is deleted (api/_erase.js); Claude's tool calls counted in api/mcp.js with no account, refused, failed and relayed ones too; supabase/analytics.sql then analytics2.sql in a Postgres of its own: no role reaches a table, the caps, sampling past the soft cap, a read writes nothing, the rollup equal to the held rows, a person on two devices one visitor, 30 days kept; tests/fixtures/insights/attacks_check.mjs the review's attacks [--big times a flooded day]; dry run tools/analytics2_try.sql; docs/ANALYTICS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the counter and its ask",
+      "entry": "web/tally.js",
+      "reach": "every site page and /app, loaded after the first screen (web/theme.js, src/boot/shell.html): beacons to /api/plans?op=tally every 15 s while something happened and on leaving; nothing with Do Not Track or GPC, after No, off in Settings › Privacy (#counting-on) or in a driven browser without localStorage brickworks.counting.check=1, and then tally.js and counting.js never fetched (window.brickworksCountingNo); the sign-in token as the beacon's bearer, the site's or the one the studio's /api/ requests carry, never an id; on a European clock or one naming no place (UTC, Etc/*) the ask at the window's foot (web/counting-ask.js) first, the first Tab stop, Escape closing it unanswered; /counting says it in en, de, fr, es (python3 tools/minitest.py tests/test_insights_page.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the owner's Analytics",
+      "entry": "web/admin-analytics.js",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what is counted page",
+      "entry": "web/counting.html",
+      "reach": "https://brickworks.diy/counting (and /de, /fr, /es): what is counted, what never is, when you are asked, turning it off, how long it is kept, who sees it; linked from /privacy#your-visit and Settings › Privacy",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "insights browser flow",
+      "entry": "tools/web/insights_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/insights_flow.mjs --url=<preview> --out=DIR [--no-studio]   (never on brickworks.diy: the read's gate; nothing sent or started with DNT, GPC, after No or driven unasked; a tagged visit's beacons with no address, IP or page text; the ask in German at 430x932, Yes and No; off in Settings; the server's own GPC and DNT drop; the studio's beacon; after supabase/analytics.sql this run's rows in the owner's read; each tab at 390/1280 light/dark; <out>/beacons.json the beacons' sizes; preview check [insights])",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "deployment variables written down",
       "entry": "tools/release/env_names.sh",
