@@ -15506,3 +15506,12 @@ msgstr "Du hast jetzt keins mehr davon. Sein Ort bleibt, bis es wiederkommt: lee
 
 msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
 msgstr "%s in %s bekommt keinen neuen Ort: du hast jetzt keins mehr davon. Leere seinen Ort, um ihn zu entfernen"
+
+msgid "Sizing handle"
+msgstr "Griff zum Ändern der Größe"
+
+msgid "Turning handle"
+msgstr "Griff zum Drehen"
+
+msgid "Program for the motors"
+msgstr "Programm für die Motoren"

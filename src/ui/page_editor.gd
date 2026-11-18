@@ -244,6 +244,9 @@ func _ready() -> void:
 	_handle.mouse_filter = Control.MOUSE_FILTER_STOP
 	_handle.size = Vector2(16, 16)
 	_handle.mouse_default_cursor_shape = Control.CURSOR_FDIAGSIZE
+	# Pressed and dragged, so a screen reader names them, as the panels'
+	# headers are named (smalls6): unnamed, each was said as nothing.
+	_handle.accessibility_name = "Sizing handle"
 	_handle.gui_input.connect(_on_handle_input)
 	_handle.draw.connect(_draw_handle)
 	_handle.visible = false
@@ -253,6 +256,7 @@ func _ready() -> void:
 	_knob.size = Vector2(16, 16)
 	_knob.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_knob.tooltip_text = "Drag round to turn it"
+	_knob.accessibility_name = "Turning handle"
 	_knob.gui_input.connect(_on_knob_input)
 	_knob.draw.connect(func() -> void:
 		var dot: float = 1.0 if not _finger else _px(10.0) / 8.0

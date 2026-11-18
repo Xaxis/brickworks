@@ -582,6 +582,11 @@ class Head extends HBoxContainer:
 		about = about_words
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		# The row is pressed too, so a screen reader names it: the section
+		# it heads, and what that is. Unnamed, the four columns' headers
+		# were said as nothing (a11y_names, since panelfold).
+		accessibility_name = name_words
+		accessibility_description = about_words
 		add_theme_constant_override("separation", 2)
 		arrow = Arrow.new()
 		arrow.custom_minimum_size = Vector2(font + 1, font + 1)

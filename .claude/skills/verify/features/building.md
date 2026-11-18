@@ -459,7 +459,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   stacked section folds and sizes one way (panelfold, 2026-11-13,
   `PanelStack.Head`, `PanelStack.Bar`, `PanelStack.Fold`): one header (a
   chevron, the name, its count or state; a click, Enter or Space folds it to
-  that header, its tooltip and screen-reader name saying Fold or Unfold), and
+  that header, its tooltip and screen-reader name saying Fold or Unfold; the
+  row itself, pressed too, named for the section it heads with what that is,
+  smalls6: unnamed, the four headers failed a11y_names_probe), and
   one bar between two open sections (the resize cursor, a grip lit on hover,
   laid over the line and taking no room on a desktop, a 44-point handle in a
   strip of its own on a phone; never a section under its header and a row,
@@ -1164,10 +1166,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   bin's tabs, a selection and the dialogs it asks for, every dialog and
   panel the menus open, the assistant's with it shown, My collection's
   rows with parts owned, a11y_modal_probe's and dialog_look_probe's
-  dialogs and every other dialog in the window, 114 walked; a name a screen
+  dialogs and every other dialog in the window, 116 walked; a name a screen
   reader alone hears with no German is no name, a part's, colour's or
   model's name and words drawn on the control excepted; `-- --shots=DIR`
-  keeps a picture of each walk. 0 of 2,816 without, in either language, at 1400x900; on pre261
+  keeps a picture of each walk. 0 of 2,937 without, in either language, at 1400x900 (smalls6; 4 and 3 in German before it: the panels' header rows and the program box); on pre261
   45 of 2,792 without and 273 without in German, How many among them;
   666 of 1,888 on m166), `a11y_keys_probe` (from
   launch by keys alone: toolbar, a part, put down, a colour, the view cube),

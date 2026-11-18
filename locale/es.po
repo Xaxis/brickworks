@@ -15506,3 +15506,12 @@ msgstr "Ya no tienes nada de ella. Su sitio se guarda para cuando vuelva: vacía
 
 msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
 msgstr "%s en %s no admite un sitio nuevo: ya no tienes nada de ella. Vacía su sitio para quitarlo"
+
+msgid "Sizing handle"
+msgstr "Tirador para cambiar el tamaño"
+
+msgid "Turning handle"
+msgstr "Tirador para girar"
+
+msgid "Program for the motors"
+msgstr "Programa para los motores"
