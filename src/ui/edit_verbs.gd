@@ -185,13 +185,24 @@ func _say_first(count: int, words: String) -> Working.Job:
 	return job
 
 
-## A button on the edit bar, by name: the same thing its key does.
-func press(name: String) -> void:
-	if name == "undo":
+## The person's own Undo or Redo (Edit's Undo, Ctrl+Z): with a panel open
+## over the model that keeps its own undo (My collection's Built presses,
+## [member panel_undo]), Undo is that panel's; else [method press]. The
+## person's Claude undoes by [method press] alone, so its undo takes back the
+## model's change it says it did, never a Built press behind it (s5review:
+## undo with My collection open took back the press at the account, and the
+## motion check's put-back loop would have taken every one).
+func own_undo(again: bool = false) -> void:
+	if not again:
 		var taken: String = await panel_undo.call()
 		if not taken.is_empty():
 			say.call(taken)
 			return
+	await press("redo" if again else "undo")
+
+
+## A button on the edit bar, by name: the same thing its key does.
+func press(name: String) -> void:
 	if together != null and together.live and (name == "undo" or name == "redo"):
 		var words: String = together.undo(name == "redo")
 		if not words.is_empty():

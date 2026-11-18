@@ -51,6 +51,11 @@
 ##      the account (the op the other way round), counts and all, one press
 ##      at a time, the model's history untouched; refused, said, when the
 ##      marks moved on at another device since (kbreview finding 4, smalls5)
+##  14. your Claude's undo (MCP undo) with My collection open and a Built
+##      press made: the model's last change taken back, as it says, and the
+##      press left at the account; only the person's own Undo asks the panel
+##      (s5review F1: Claude's undo took back the press and said it undid
+##      the model's change)
 ##
 ## On pre261 there is no Built mark, no op "built" and no built=: 2 to 8
 ## fail with words. Writes nothing in the app's own directory: the account's
@@ -383,6 +388,9 @@ func _steps() -> void:
 	print("\n13. Ctrl+Z takes back a Built press (kbreview finding 4)")
 	await _undo_built()
 
+	print("\n14. your Claude's undo with My collection open: the model's change, not a Built press (s5review F1)")
+	await _claude_undo()
+
 
 ## With My collection open, Ctrl+Z (a key pressed in the window, as a person
 ## presses it) takes back the last Built press at the account, counts and
@@ -443,6 +451,35 @@ func _undo_built() -> void:
 	await _call("edit_collection", {"built": [{"set": SET, "copies": 0}]})
 	print("    what the undo said, in de, fr and es, with every line drawn before:")
 	_languages()
+
+
+## With My collection open and a Built press made there, the person's
+## Claude's undo takes back the model's last change, as it says it does, and
+## leaves the press at the account as it was: only the person's own Undo
+## (EditVerbs.own_undo) asks the panel. Two copies, none built, from 13.
+func _claude_undo() -> void:
+	_dialog.call("open", "own")
+	await _settled()
+	var builder: Builder = _main.get("_builder")
+	var world: BrickWorld = _main.get("_world")
+	var laid: int = world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
+	builder.record([{"undo": "remove", "brick": laid}], "a part laid by the probe")
+	var depth: int = builder.history_depth()
+	var parts: int = world.bricks().size()
+	_press_built()
+	await _changed()
+	await _settled()
+	var before: int = _set_built_at(await _account_now())
+	var said: String = await _call("undo", {})
+	await _settled()
+	var after: int = _set_built_at(await _account_now())
+	_check(("Claude's undo, My collection open (%s), a press made (%d built): the model's change taken back "
+		+ "(history %d, was %d; %d parts, was %d), the press left at the account (%d built), said \"%s\"")
+		% [_dialog.is_visible_in_tree(), before, builder.history_depth(), depth, world.bricks().size(), parts,
+		after, said.left(120)],
+		_dialog.is_visible_in_tree() and before == 1 and after == 1 and builder.history_depth() == depth - 1
+		and world.bricks().size() == parts - 1 and said.begins_with("Undid a part laid by the probe"))
+	await _call("edit_collection", {"built": [{"set": SET, "copies": 0}]})
 
 
 ## SET's Built mark clicked: focused, as a click leaves it, and pressed.

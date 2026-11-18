@@ -1257,7 +1257,7 @@ func _define() -> void:
 	# Edit
 	# An open is the oldest step: Undo past every change since brings back
 	# the model it took off (ModelStore.reopen).
-	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.press("undo"),
+	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.own_undo(),
 		func() -> bool: return builder.history_depth() > 0 or store.can_reopen(),
 		"Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: await verbs.press("redo"),

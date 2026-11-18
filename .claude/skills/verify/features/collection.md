@@ -236,7 +236,9 @@ which models they could build from what they have. Added 2026-10-12.
   its read-back says which are kept built. With My collection open, Ctrl+Z
   (or Edit › Undo, the touch bar's Undo) takes back the last Built press,
   one at a time (`CollectionDialog.undo_built`, reached by
-  `EditVerbs.panel_undo` from `Shell`): the same op the other way round,
+  `EditVerbs.panel_undo` from `Shell`, asked by `EditVerbs.own_undo` alone:
+  your Claude's undo, `EditVerbs.press`, takes back the model's change, never
+  a Built press, keptbuilt_probe step 14): the same op the other way round,
   `{was: now, built: was}`, so the counts are as before it ("undid: 7140-1
   … taken apart: …"); a press whose marks moved on at another device since
   is refused ("undid nothing: somebody else changed 7140-1 … since") and

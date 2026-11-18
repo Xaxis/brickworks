@@ -11346,7 +11346,7 @@ func _key_pressed(key: InputEventKey) -> void:
 		KEY_Z:
 			# The same undo as Edit's, which says what it took back.
 			if key.ctrl_pressed or key.meta_pressed:
-				await _verbs.press("redo" if key.shift_pressed else "undo")
+				await _verbs.own_undo(key.shift_pressed)
 				_refresh_preview()
 		KEY_COMMA:
 			# Where a preferences panel lives in every app on this
