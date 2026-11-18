@@ -248,6 +248,9 @@ which models they could build from what they have. Added 2026-10-12.
   when the collection moved on since that rev; a minifigure's number the
   collection holds (sw0001) is refused by built, own and missing as "a
   minifigure in your collection, not a set", never read as set sw0001-1;
+  one in a BrickLink figure's shape with no -N, held or not (sw0002,
+  cty0001a), as "a minifigure's number, not a set's: a set is named with
+  its -N", and a part's file name (3001.dat) as one (s5review);
   a list that is not one is named for what it lists ("sets is a list of
   sets", smalls5). Save sets as CSV
   (`Collection.sets_csv`, Rebrickable's sets list with a Built column) and

@@ -97,6 +97,34 @@ def test_a_figures_number_is_refused_as_a_figure_never_read_as_a_set() -> None:
     assert got["as_a_set"]["status"] == 400 and "sw0001-1 is not in your collection" in got["as_a_set"]["error"]
 
 
+def test_a_figures_number_not_held_and_a_part_file_are_refused_never_made_sets() -> None:
+    """s5review: the check above covered only a figure the collection holds.
+    Own "sw0002", not held, made set sw0002-1; built "3001.dat" said
+    "3001.dat-1 is not in your collection"."""
+    got = ops({
+        "own": {"op": "own", "set": "sw0002", "was": 0, "qty": 1},
+        "built": {"op": "built", "sets": [{"set": "cty0001a", "was": 0, "built": 1}]},
+        "missing": {"op": "missing", "set": "hp001", "lots": [{"part": "3001", "colour": 4, "was": 0, "qty": 1}]},
+        "file": {"op": "built", "sets": [{"set": "3001.dat", "was": 0, "built": 1}]},
+        "own_file": {"op": "own", "set": "3001.DAT", "was": 0, "qty": 1},
+        # A set numbered in a figure's shape, named with its -N, is a set;
+        # so is a number of digits alone, given without it.
+        "shaped_set": {"op": "own", "set": "hp2113-1", "was": 0, "qty": 1},
+        "digits": {"op": "own", "set": "10237", "was": 0, "qty": 1},
+    })
+    if got is None:
+        return
+    assert got["own"] == {"status": 400,
+                          "error": "sw0002 is a minifigure's number, not a set's: a set is named with its -N, as sw0002-1"}
+    assert got["built"] == {"status": 400, "error": "set 1: cty0001a is a minifigure's number, not a set's: "
+                            "a set is named with its -N, as cty0001a-1"}
+    assert got["missing"]["status"] == 400 and got["missing"]["error"].startswith("hp001 is a minifigure's number")
+    assert got["file"] == {"status": 400, "error": 'set 1: "3001.dat" is a part\'s file name, not a set number'}
+    assert got["own_file"] == {"status": 400, "error": '"3001.DAT" is a part\'s file name, not a set number'}
+    assert got["shaped_set"]["done"]["owned"] == 1, got["shaped_set"]
+    assert got["digits"]["done"]["owned"] == 1 and any(s["set"] == "10237-1" for s in got["digits"]["sets"])
+
+
 def test_built_and_its_undo_the_same_op_the_other_way_round() -> None:
     got = ops({
         "press": {"op": "built", "rev": 7, "sets": [{"set": "7140-1", "was": 1, "built": 2}]},

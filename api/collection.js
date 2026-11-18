@@ -913,15 +913,30 @@ function listed(body, field, most, where = field, noun = "lots") {
   return list;
 }
 
+/// A BrickLink minifigure's number as BrickLink gives most of them: a
+/// theme's letters, three or four digits and a letter at most (sw0002,
+/// cty0001a, hp001). A few sets are numbered so too (hp2113-1, lmg001-1),
+/// and are named with their -N.
+const FIG_SHAPE = /^[a-z]{2,5}[0-9]{3,4}[a-z]?$/;
+/// A part's file name (3001.dat), which SET_NUMBER's "." lets through.
+const FILE_NAME = /\.(dat|ldr|mpd)$/;
+
 /// [raw] read as a set's number for an op on [sets], [where] its place in
 /// the request ("set 2: ", or ""); refused, said, when it is none. A
-/// minifigure the collection holds by its number with no -N (sw0001) is
-/// refused as the figure it is: read as a set it would be set sw0001-1,
-/// which nobody has (kbreview, finding 6).
+/// minifigure's number with no -N (sw0001) is refused as the figure it is,
+/// held or not: read as a set it would be set sw0001-1, which nobody has
+/// (kbreview, finding 6; s5review: one not held was made a set). So is a
+/// part's file name, which read as 3001.dat-1 (s5review).
 function setOf(sets, raw, where = "") {
   const fig = figNumber(raw);
   if (fig && sets.list.some((s) => s.fig === true && s.set === fig)) {
     throw new Refusal(400, `${where}${fig} is a minifigure in your collection, not a set`);
+  }
+  if (fig && FIG_SHAPE.test(fig)) {
+    throw new Refusal(400, `${where}${fig} is a minifigure's number, not a set's: a set is named with its -N, as ${fig}-1`);
+  }
+  if (FILE_NAME.test(String(raw ?? "").trim().toLowerCase())) {
+    throw new Refusal(400, `${where}"${raw}" is a part's file name, not a set number`);
   }
   const set = setNumber(raw);
   if (!set) throw new Refusal(400, `${where}"${raw}" is not a set number`);
