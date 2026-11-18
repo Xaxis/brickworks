@@ -459,10 +459,31 @@ try {
         ]);
         check(`...its parts named for a screen reader: ${names.join(" ")}`, names.every((n) => n === 1));
         wide ||= await sideways(at);
-        const off = await at.evaluate(() => [...document.querySelectorAll("td.acts button, td.acts a, #claude-dock button")]
-          .filter((one) => one.offsetParent && one.getBoundingClientRect().right > innerWidth + 1).length);
+        // Every act of the desk's rows in sight beside the docked panel (not
+        // under it, nor scrolled out of its table), on each tab with rows.
+        let off = 0;
+        for (const tab of ["inbox", "write", "sent"]) {
+          await go(at, `social/${tab}`);
+          off += await at.evaluate(() => {
+            const dock = document.getElementById("claude-dock");
+            const edge = !dock.hidden && !dock.classList.contains("over") ? dock.getBoundingClientRect().left : innerWidth;
+            const inSight = (one) => {
+              const box = one.getBoundingClientRect();
+              if (box.right > edge + 1) return false;
+              for (let up = one.parentElement; up; up = up.parentElement) {
+                if (!/auto|scroll|hidden/.test(getComputedStyle(up).overflowX)) continue;
+                const frame = up.getBoundingClientRect();
+                if (box.right > frame.right + 1 || box.left < frame.left - 1) return false;
+              }
+              return true;
+            };
+            return [...document.querySelectorAll("td.acts button, td.acts a")].filter((one) => one.offsetParent && !inSight(one)).length
+              + [...document.querySelectorAll("#claude-dock button")].filter((one) => one.offsetParent
+                && one.getBoundingClientRect().right > innerWidth + 1).length;
+          });
+          if (tab === "inbox") await shot(at, `7-social-${width}-${theme}.png`);
+        }
         wide ||= off > 0;
-        await shot(at, `7-social-${width}-${theme}.png`);
         await at.focus("#claude-q");
         await at.keyboard.press("Escape");
         state = await docked(at);

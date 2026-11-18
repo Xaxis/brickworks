@@ -16,7 +16,9 @@ how it is proven.
 - **The panel**, from the bar's Claude button on every section. At 1100 px
   and wider it is docked at the right edge and the page narrows beside it;
   narrower, it opens over the page. With no choice made it is open on Social
-  and closed elsewhere; a wide window remembers the owner's choice. Escape
+  and closed elsewhere; a wide window remembers the owner's choice. Beside
+  it, under 1,660 px, the desk's tables are the cards they are on a phone,
+  so no row's acts are scrolled out of sight. Escape
   closes it to its button. One conversation, kept in the tab (sessionStorage)
   until New chat, streamed in as it is written, with each tool it read, and
   under each answer what it cost, its tokens and cache reads.
@@ -24,7 +26,8 @@ how it is proven.
   (each inbox row), Improve (each draft), Overview by Claude (above the
   desk's tabs). Each lands as a draft among the desk's drafts marked "by
   Claude", or as words in the panel; nothing goes out by itself. The owner
-  opens a draft, edits it, and sends it with the desk's own Review and send.
+  opens a draft (Open it in Write, which asks first when Write holds other
+  words), edits it, and sends it with the desk's own Review and send.
 
 ## The key
 

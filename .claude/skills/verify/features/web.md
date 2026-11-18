@@ -3235,14 +3235,16 @@ plan with Claude as the client.
   from the key's own list (adaptive thinking only), the effort, a monthly
   cap in dollars and this month's spend. The panel (the bar's Claude
   button, aria-expanded; docked at 1100 px and wider, open on Social by
-  default and as last chosen; over the page and closed on a phone; Escape
-  closes it to its toggle): one conversation kept in the tab, streamed
+  default and as last chosen, the desk's tables as cards beside it under
+  1,660 px; over the page and closed on a phone; Escape closes it to its
+  toggle): one conversation kept in the tab, streamed
   (SSE) with each tool it read and what the answer cost; Enter asks once,
   Shift+Enter a new line, over 8,000 characters refused with words. On the
   desk: Suggest a post (beside Write's community), Suggest a reply (each
   inbox row), Improve (each draft, the owner's left as it is), Overview by
-  Claude; each draft lands among the desk's drafts marked "by Claude", and
-  nothing is sent but by the owner's own Send. Its only write is a draft;
+  Claude; each draft lands among the desk's drafts marked "by Claude" (Open
+  it in Write asks first over words of the owner's own), and nothing is
+  sent but by the owner's own Send. Its only write is a draft;
   inbox, Reddit and feedback words reach it as `<untrusted>` data. The cap
   is held before each call (the prompt's most and max_tokens at the dearest
   price) and settled from the answer's usage; a call cut off counts all it
@@ -3265,10 +3267,12 @@ plan with Claude as the client.
   answer 503; after it, a key that is none and one refused not kept, the
   stand-in's kept and shown as sk-ant-…AAAA, the models, a model, effort
   and cap kept, Enter twice asking once, Suggest a post and Open it in
-  Write, a hostile reply at most a draft, Suggest a reply, Improve,
+  Write (asking first over the owner's own words, No keeping them), a
+  hostile reply at most a draft, Suggest a reply, Improve,
   Overview, a refusal and a 429 left out of the conversation, the cap
   reached and said with a way to raise it, the panel by keyboard and by
-  its names at 390 and 1280 light and dark, Forget key; the key in no
+  its names at 390 and 1280 light and dark with every desk row's acts in
+  sight beside it, Forget key; the key in no
   answer, page, storage or console line. Locally, nothing applied and the
   project's checks' pool untouched: `relay_server.mjs PORT
   --hold=admin_claude_settings,admin_claude_holds,admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`

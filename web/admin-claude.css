@@ -70,6 +70,24 @@ p.claude-note { margin: 0; }
 @media (width < 1280px) {
   body.claude-docked .groups { grid-template-columns: minmax(0, 1fr); }
 }
+/* Beside the panel, the section's column is under the width the desk's
+   tables were made for (a 1280 window's), so they become the cards they
+   are on a phone (admin.html's `table.cards` rules, repeated here for the
+   docked page): no row's acts scrolled out of sight behind the panel. */
+@media (width < 1660px) {
+  body.claude-docked table.cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    white-space: nowrap; }
+  body.claude-docked table.cards, body.claude-docked table.cards tbody, body.claude-docked table.cards tr,
+  body.claude-docked table.cards td { display: block; width: auto; }
+  body.claude-docked table.cards tr { padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+  body.claude-docked .table table.cards td { padding: 2px 0; border: 0; min-width: 0; max-width: none; text-align: start;
+    white-space: normal; }
+  body.claude-docked table.cards td[data-label]:not(.acts):not(.text)::before { content: attr(data-label) ": ";
+    color: var(--ink-faint); }
+  body.claude-docked .table table.cards td.acts { display: flex; flex-wrap: wrap; gap: var(--s-2); padding-top: var(--s-2); }
+  body.claude-docked table.queue.cards td.acts button, body.claude-docked table.queue.cards td.acts a.cta { display: inline-flex;
+    width: auto; margin: 0; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .claude-dock.over { animation: claude-in 160ms ease-out; }
   @keyframes claude-in { from { transform: translateX(16px); } }
