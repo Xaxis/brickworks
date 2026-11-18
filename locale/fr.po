@@ -14946,3 +14946,72 @@ msgstr "Aucune étape ne pose « %s » : le modèle l'a en %d autres couleurs"
 
 msgid "No step places “%s”"
 msgstr "Aucune étape ne pose « %s »"
+
+# posehold: whether a posed joint holds (PoseHold.pose_words, the Pose panel's lines and
+# its rows' marks), a droop in Check stability, a drag's status and Balance's words
+
+msgid "Joints that droop: %d"
+msgstr "Liaisons qui s'affaissent : %d"
+
+msgid "%s on %s, %s g past it: its Technic ball joint holds %d% of what hangs on it"
+msgstr "%s sur %s, %s g au-delà : sa rotule Technic tient %d % de ce qui y pend"
+
+msgid "%s on %s, %s g past it: its %d friction pins hold %d% of what hangs on them"
+msgstr "%s sur %s, %s g au-delà : ses %d connecteurs à friction tiennent %d % de ce qui y pend"
+
+msgid "%s on %s, %s g past it: its friction pin holds %d% of what hangs on it"
+msgstr "%s sur %s, %s g au-delà : son connecteur à friction tient %d % de ce qui y pend"
+
+msgid "And %d more."
+msgstr "Et %d de plus."
+
+msgid "Friction joints weighed: %d, and none droops."
+msgstr "Liaisons à friction pesées : %d, aucune ne s'affaisse."
+
+msgid "%s on %s holds, but a loose joint of its kind may not: the loosest measured held %d% of this."
+msgstr "%s sur %s tient, mais une liaison lâche de ce type peut-être pas : la plus lâche mesurée tenait %d % de ceci."
+
+msgid "Small ball joints here: %d, not weighed: no one has published what one holds."
+msgstr "Petites rotules ici : %d, non pesées : personne n'a publié ce qu'une rotule tient."
+
+msgid "Click hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Charnières à crans ici : %d, non pesées : personne n'a publié ce qu'une charnière tient."
+
+msgid "Hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Charnières ici : %d, non pesées : personne n'a publié ce qu'une charnière tient."
+
+msgid "Turntables here: %d, not weighed: no one has published what one holds."
+msgstr "Plateaux tournants ici : %d, non pesés : personne n'a publié ce qu'un plateau tient."
+
+msgid "Clips on bars here: %d, not weighed: no one has published what one holds."
+msgstr "Clips sur barres ici : %d, non pesés : personne n'a publié ce qu'un clip tient."
+
+msgid "Droops: it holds %d% of what hangs on it."
+msgstr "S'affaisse : elle tient %d % de ce qui y pend."
+
+msgid "%s droops on %s on a Technic ball joint with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s s'affaisse sur %s sur une rotule Technic, avec %s g au-delà : elle tient %d % de ce qui y pend"
+
+msgid "%s droops on %s on a friction pin with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s s'affaisse sur %s sur un connecteur à friction, avec %s g au-delà : il tient %d % de ce qui y pend"
+
+msgid "%s droops on %s on %d friction pins in a line with %s g past it: they hold %d% of what hangs on them"
+msgstr "%s s'affaisse sur %s sur %d connecteurs à friction alignés, avec %s g au-delà : ils tiennent %d % de ce qui y pend"
+
+msgid "the %s droops on a Technic ball joint: it holds %d% of what hangs on it"
+msgstr "%s s'affaisse sur une rotule Technic : elle tient %d % de ce qui y pend"
+
+msgid "the %s droops on a friction pin: it holds %d% of what hangs on it"
+msgstr "%s s'affaisse sur un connecteur à friction : il tient %d % de ce qui y pend"
+
+msgid "the %s droops on %d friction pins in a line: they hold %d% of what hangs on them"
+msgstr "%s s'affaisse sur %d connecteurs à friction alignés : ils tiennent %d % de ce qui y pend"
+
+msgid "1 friction joint droops, in red, holding %d% of what hangs on it."
+msgstr "1 liaison à friction s'affaisse, en rouge, et tient %d % de ce qui y pend."
+
+msgid "%d friction joints droop, in red, the worst holding %d% of what hangs on it."
+msgstr "%d liaisons à friction s'affaissent, en rouge, la pire tient %d % de ce qui y pend."
+
+msgid "on a Technic ball joint"
+msgstr "sur une rotule Technic"

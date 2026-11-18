@@ -871,6 +871,12 @@ func _standing_words(weighed: Balance.Report, live: bool) -> String:
 				Balance.tidy(one.ratio)]
 		elif one.holds_nothing():
 			out += "; the %s turns %s with nothing holding it" % [name, one.held_on()]
+		elif one.droops():
+			# A friction joint past what one of its kind holds (PoseHold).
+			out += ("; the %s droops %s: they hold %d%% of what hangs on them"
+				if one.pins > 1 and one.hold == PoseHold.FRICTION_PIN
+				else "; the %s droops %s: it holds %d%% of what hangs on it") % [name, one.held_on(),
+				PoseHold.percent(one.share())]
 		else:
 			out += "; the %s carries about %sx its working load %s" % [name, Balance.tidy(one.ratio),
 				one.held_on()]
@@ -1395,6 +1401,16 @@ func keep_held(grabs: Array, words: String) -> int:
 	if moved > 0:
 		edited.call()
 	return moved
+
+
+## The model weighed with [param placed] (brick id -> Transform3D) where it
+## says and the rest where it stands, every joint with it: each friction
+## joint at that pose (PoseHold), for Pose. Null until the model's joints are
+## read as it stands.
+func weigh_with(placed: Dictionary) -> Balance.Report:
+	if _judge == null or not is_ready():
+		return null
+	return _judge.weigh_pose(placed)
 
 
 ## How the model stands with [param placed] where it says, in words ("it

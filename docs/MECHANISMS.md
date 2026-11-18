@@ -454,7 +454,9 @@ taken at rest only.
 | Stud pull-off, simulated | 53.1 N for a 2×4 on a 2×4 (6.6 N per stud). FEM, not a bench test. Stud shear yield ~311 N, so shear never governs. | [Faria 2018, Porto MSc](https://repositorio-aberto.up.pt/bitstream/10216/116072/2/291826.pdf) |
 | Moment a stud joint holds | Not measured anywhere found. Rigid-plastic bound: M = Σ F·dᵢ about the compressed edge. A 2×2 joint at 1 N per stud holds about 3.2 N·cm. | derived from StableLego's force model |
 | Where a stud lets go, on that bound | **1.92 N a stud into a part two studs wide or more, 3.07 N into one a stud wide**, set between what StableLego's built structures needed where they stood and where they came apart (stairs 1.84 / 2.06 N, 200 g on stairs 2.00 N, sticks 2.93 / 3.21 N). On their contact layout, levered our way for a joint two studs deep (every joint the builds broke at), both are 1.02 N per contact point, against their 0.98 N. | [RESEARCH.md](RESEARCH.md) unit 3, `src/dev/stabletruth_probe.gd` (2026-11-09) |
-| Friction pin 2780 | No torque published. Arm-hanging test: 4.5 vs 3 bricks before slipping (old vs new pin), lever unreported. Placeholder 0.5–1 N·cm, to measure. | [Rambling Brick](https://ramblingbrick.com/2021/01/27/what-if-they-introduced-a-new-technic-pin-and-nobody-noticed/) |
+| Friction pin 2780 | **1.04 N·cm where the median pin lets go; every one of 18 held 0.60, every one gave by 1.64.** No maker publishes one. Worked from the Rambling Brick's arm-hanging test (2 x 3 bricks added to a carrier on an 11-module liftarm, 80 mm out, until it fell; 10 old pins and 8 new; the carrier's parts as its text lists them, at BrickLink's weights): the count each pin fell at, one brick fewer held. The old pin held about a brick more than the new. Balance weighs a pin at the median, since a posed pin holds or droops. | [Rambling Brick 2021](https://ramblingbrick.com/2021/01/27/what-if-they-introduced-a-new-technic-pin-and-nobody-noticed/); `data/joint_hold.json`, `tools/joint_hold_table.py` (posehold, 2026-11-18) |
+| Technic ball 10.2 mm in its socket | **2.85 N·cm; it held 2.58 and gave by 3.12.** One joint (17114's ball in 92013's socket) on a lever of two 1 x 16s, 2 x 4s added at 16.95 studs: steady at 5, buckled at 6. One joint, so its spread is unknown; new joints hold more. | [Rambling Brick 2017](https://ramblingbrick.com/2017/02/17/its-new-to-me-stiffening-the-joints-with-element-742616106472/), [Eurobricks](https://www.eurobricks.com/forum/forums/topic/138001-question-about-ball-joints/); `data/joint_hold.json` |
+| Small ball (towball, Mixel), click hinge, friction hinge, turntable, clip on a bar | **Not known.** Searched 2026-11-17 (Philohome, BrickNerd, New Elementary, Brick Architect, Eurobricks, BrickLink's forum, Brick Experiment Channel, papers, LEGO's patents): no measurement published. One builder hung weights on a click hinge's 32L lever and found the tipping point varied too much to report. Named with what they carry, never given a number. | [BrickLink forum](https://www.bricklink.com/message.asp?ID=1451115); `data/joint_hold.json` |
 | Axle in torsion | twists from 30 N·cm, permanent at 50, breaks at 70 | [Brick Experiment Channel](https://brickexperimentchannel.wordpress.com/2023/11/15/characteristics-of-lego-parts/) |
 | Gear teeth | 8t fails at 40–60 N·cm, 40t at ~200 N·cm. 24t clutch gear slips at 3.9–4.7 N·cm (stamped 2.5–5). | same; [TechnicBricks](http://www.technicbricks.com/2008/02/tbs-technugets-01-inside-technic-clutch.html) |
 | ABS | E 2.1–2.8 GPa, yield 35–50 MPa, 1.03–1.06 g/cm³ | [Faria 2018](https://repositorio-aberto.up.pt/bitstream/10216/116072/2/291826.pdf) |
@@ -576,9 +578,11 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
 - **Statics (S1) is honest to about a factor of two to four.** Per-stud
   clutch is unpublished, and the best numbers range from 0.78 N (ours) to
   3–4 N (StableLego's ultimate per stud). So the check shows margins, names its
-  numbers and says when a margin is within that band. Friction pins are
-  unmeasured. A small bench rig (a known arm, a known mass, a protractor) would
-  pin them down, and is worth more than any model.
+  numbers and says when a margin is within that band. Friction pins and
+  Technic balls are worked from builders' arm-hanging tests since posehold
+  (the table above); small balls, click hinges, hinges, turntables and clips
+  are still unmeasured. A small bench rig (a known arm, a known mass, a
+  protractor) would pin them down, and is worth more than any model.
 - **Dynamics (S2, P3) is as good as what it is made of.**
   - Friction and damping in the joints of LEGO® parts are unmeasured.
   - Jolt is tuned for metres, and is deterministic only per binary.

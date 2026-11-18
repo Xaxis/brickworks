@@ -1,0 +1,184 @@
+{
+ "about": "How much turning load each friction joint holds, N·mm, as builders measured it by hanging bricks on a lever until the joint gave; written by tools/joint_hold_table.py, read by PoseHold. A kind with no number is not known: it is left unweighed, never guessed.",
+ "kinds": {
+  "technic_ball": {
+   "said": "Technic ball joint",
+   "parts": "a 10.2 mm Technic ball in its socket",
+   "measured_on": "17114's ball in 92013's socket, the pair 31058-1 uses",
+   "joints_measured": 1,
+   "every_held_n_mm": 25.8,
+   "holds_n_mm": 28.5,
+   "every_gave_n_mm": 31.2,
+   "how": "held 5 2 x 4 bricks on a lever of two 1 x 16 bricks and buckled at 6: the joint lets go between those two loads, levered from the ball's middle, the lever's own weight with them",
+   "sum": {
+    "grams": {
+     "3001": 2.32,
+     "2465": 6.2,
+     "92013": 1.98,
+     "3020": 1.2
+    },
+    "levers_studs": {
+     "92013": 1.95,
+     "3020": 2.95,
+     "2465": 10.95,
+     "load": 16.95
+    },
+    "lever_slack_studs": 0.5,
+    "held": 5,
+    "gave": 6
+   },
+   "spread": "one joint; friction varies from piece to piece and with wear, new joints holding more [eurobricks-balls]",
+   "sources": [
+    "rambling-2017",
+    "eurobricks-balls",
+    "bricklink-weights"
+   ]
+  },
+  "friction_pin": {
+   "said": "friction pin",
+   "parts": "a pin with friction ridges turning in a round Technic hole (2780, 61332, 4459; the same ridges on 6558, 43093 and their kin)",
+   "measured_on": "2780 (10 pins of various ages) and 61332 (8 new pins), one thick liftarm each",
+   "joints_measured": 18,
+   "every_held_n_mm": 6.0,
+   "holds_n_mm": 10.4,
+   "every_gave_n_mm": 16.4,
+   "how": "fell at the count of 2 x 3 bricks in the article's histogram, each pin holding one fewer; both designs together, since a file's 2780 does not say which a builder has",
+   "sum": {
+    "grams": {
+     "3002": 1.92,
+     "32525": 2.8,
+     "32073": 0.66,
+     "3713": 0.14,
+     "3700": 0.82,
+     "3004": 0.83,
+     "3021": 0.93
+    },
+    "carrier_grams": {
+     "1": 4.34,
+     "2": 5.17,
+     "3": 6.0
+    },
+    "lever_mm": 80.0,
+    "falls_at": {
+     "old (2780, 4121715)": {
+      "3": 2,
+      "4": 3,
+      "5": 3,
+      "6": 1,
+      "7": 1
+     },
+     "new (61332, 6279875)": {
+      "2": 1,
+      "3": 4,
+      "4": 2,
+      "5": 1
+     }
+    },
+    "median_falls_at": 4.0,
+    "by_design": {
+     "old (2780, 4121715)": {
+      "pins": 10,
+      "median_falls_at": 4.5,
+      "holds_n_mm": 11.2
+     },
+     "new (61332, 6279875)": {
+      "pins": 8,
+      "median_falls_at": 3.0,
+      "holds_n_mm": 8.9
+     }
+    }
+   },
+   "spread": "18 pins; the old design held about a brick more than the new (p = 0.03)",
+   "sources": [
+    "rambling-2021",
+    "bricklink-weights"
+   ]
+  },
+  "small_ball": {
+   "said": "small ball joint",
+   "parts": "a 5.9 mm towball or Mixel ball in its socket (14417, 14418, 14419, 14704, 3184 ...)",
+   "why": "no measurement published",
+   "holds_n_mm": null,
+   "sources": [
+    "searched"
+   ]
+  },
+  "click_hinge": {
+   "said": "click hinge",
+   "parts": "a locking hinge's teeth (44301, 44302, 30383, 30364, 30365, 54657 ...), a click rotation joint's (47455 in 48170 or 48171 ...)",
+   "why": "no measurement published: one builder hung weights on a 32L lever and found the tipping point varied too much to report [bricklink-hinges]",
+   "holds_n_mm": null,
+   "sources": [
+    "searched"
+   ]
+  },
+  "hinge": {
+   "said": "hinge",
+   "parts": "a friction hinge's pin in its eye (2429 with 2430, 3937 with 3938 ...)",
+   "why": "no measurement published",
+   "holds_n_mm": null,
+   "sources": [
+    "searched"
+   ]
+  },
+  "turntable": {
+   "said": "turntable",
+   "parts": "a turntable's top on its base (3679 with 3680, 61485, 99009 with 99010 ...)",
+   "why": "no measurement published",
+   "holds_n_mm": null,
+   "sources": [
+    "searched"
+   ]
+  },
+  "clip": {
+   "said": "clip on a bar",
+   "parts": "a clip round a bar or a handle",
+   "why": "no measurement published",
+   "holds_n_mm": null,
+   "sources": [
+    "searched"
+   ]
+  }
+ },
+ "sources": {
+  "rambling-2017": {
+   "title": "Its new to me: stiffening the joints with Element 74261/6106472 (Element Exposition)",
+   "author": "The Rambling Brick",
+   "date": "2017-02-17",
+   "url": "https://ramblingbrick.com/2017/02/17/its-new-to-me-stiffening-the-joints-with-element-742616106472/",
+   "quote": "2 1×16 bricks are attached to the brick with the ball, and a load is progressively added to the end of the lever. I used standardised 2×4 bricks as my load. [...] The 'naked' ball joint was fairly steady up until the fifth brick was loaded on the lever. When six bricks were loaded onto the lever, the joint rapidly buckled under the load, with virtually no drag."
+  },
+  "rambling-2021": {
+   "title": "What if they introduced a new Technic pin, and nobody noticed?",
+   "author": "The Rambling Brick",
+   "date": "2021-01-27",
+   "url": "https://ramblingbrick.com/2021/01/27/what-if-they-introduced-a-new-technic-pin-and-nobody-noticed/",
+   "quote": "I inserted it at the proximal hole of an 11 module lift arm, and fashioned a freely rotating weight, consiting of a 5 module long bar, 2 stoppers and 1×2 bricks – 2 with technic hols. The bottom was stabilised using a 2×3 plate. The load was increased, by a 2×3 brick at a time until the arm was unable to resist gravity. [...] A total of 10 'older' and 8 of the newer pins were tested [...] the Older design – 4.5, the newer pin: 3."
+  },
+  "eurobricks-balls": {
+   "title": "Question about ball joints (LEGO Action Figures)",
+   "author": "Eurobricks forum",
+   "date": "2016-07",
+   "url": "https://www.eurobricks.com/forum/forums/topic/138001-question-about-ball-joints/",
+   "quote": "The friction of a ball joint/ball socket piece usually varies from piece to piece and often depends on how much it was used."
+  },
+  "bricklink-hinges": {
+   "title": "Re: Variants Thread - January 26",
+   "author": "BrickLink forum",
+   "date": "2024-01-28",
+   "url": "https://www.bricklink.com/message.asp?ID=1451115",
+   "quote": "hanging some kitchen weights from the end of a Technic brick attached to another one attached to the hinge, so 32L long [...] Either there is huge variability between hinges or variability comes through the connections between all the parts."
+  },
+  "bricklink-weights": {
+   "title": "BrickLink catalogue weights",
+   "date": "2026-11-17",
+   "url": "https://www.bricklink.com/v2/catalog/catalogitem.page?P=3001",
+   "quote": "Weight: 2.32g (and each part's own page)"
+  },
+  "searched": {
+   "title": "Searched, nothing measured",
+   "date": "2026-11-17",
+   "quote": "Philohome, BrickNerd, New Elementary, Brickset, Brick Architect, Hackaday, Eurobricks (about 12 threads on pins, hinges, ball joints and turntables), BZPower, LUGNET, BrickLink's forum, Brick Experiment Channel, Crossref and web searches for theses and robotics or posable-figure papers, LEGO and Interlego patents (US10065128, US6447358: holding force named, never measured), toy-safety testing; 2026-11-17"
+  }
+ }
+}

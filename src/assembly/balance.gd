@@ -196,10 +196,35 @@ class JointLoad extends RefCounted:
 	## pins and axles.
 	var kind: String = "studs"
 	var pins: int = 0
+	## A friction joint weighed against what its kind was measured to hold
+	## (PoseHold: "friction_pin", "technic_ball"), "" for any other. A posed
+	## joint holds or droops, with no margin to design to: its working load
+	## ([member capacity]) is where it lets go ([member ultimate]), what the
+	## median one measured held, so past its working load, red, it droops.
+	var hold: String = ""
+	## What every one of its kind measured held, N·cm: past it a loose one
+	## may droop, though the median holds.
+	var loose: float = 0.0
+
+	## Whether it droops: a friction joint turned past what one of its kind
+	## holds.
+	func droops() -> bool:
+		return not hold.is_empty() and moment > ultimate
+
+	## Whether a loose one of its kind would: past what every one measured
+	## held, but not past the median's.
+	func may_droop() -> bool:
+		return not hold.is_empty() and moment > loose and moment <= ultimate
+
+	## What it holds over what hangs on it: under 1 it droops.
+	func share() -> float:
+		return ultimate / moment if moment > 0.000001 else INF
 
 	## What it is held on, in words: "on 4 studs", "on a friction pin", "on 2
 	## frictionless pins or axles in a line".
 	func held_on() -> String:
+		if hold == PoseHold.TECHNIC_BALL:
+			return "on a Technic ball joint"
 		match kind:
 			"studs":
 				if studs == 0:
@@ -260,6 +285,12 @@ class Report extends RefCounted:
 	var joints: Array = []
 	## How many are past the working load.
 	var over: int = 0
+	## The friction joints whose hold nobody has measured (PoseHold: a small
+	## ball, a click hinge, a hinge, a turntable, a clip), each alone holding
+	## what is past it, as the model stands: {beyond, held_by, kind, grams,
+	## moment}, its turning load in N·cm about its line, -1 where its line
+	## is not known. Named, never weighed.
+	var unweighed: Array = []
 	## Parts the graph does not reach from the floor (held by something it
 	## does not read): weighed, but in no joint.
 	var adrift: int = 0
@@ -309,8 +340,17 @@ class Report extends RefCounted:
 				widen_toward]
 		# Joints, not stud joints: a pin or an axle among them has no studs
 		# (drvrecheck F4).
-		if over > 0:
-			out += " %d joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
+		# A friction joint that droops is over too, and said on its own, once.
+		var droops: Array = PoseHold.drooping(self)
+		var others: int = over - droops.size()
+		if others > 0:
+			out += " %d joint%s overloaded, in red." % [others, "" if others == 1 else "s"]
+		if droops.size() == 1:
+			out += " 1 friction joint droops, in red, holding %d%% of what hangs on it." % PoseHold.percent(
+				(droops[0] as JointLoad).share())
+		elif droops.size() > 1:
+			out += " %d friction joints droop, in red, the worst holding %d%% of what hangs on it." % [
+				droops.size(), PoseHold.percent((droops[0] as JointLoad).share())]
 		return out
 
 	## How to make the joints past their working load hold, by their kind:
@@ -319,13 +359,19 @@ class Report extends RefCounted:
 	func over_words() -> String:
 		var on_studs: int = 0
 		var on_pins: int = 0
+		var on_balls: int = 0
 		for one: JointLoad in joints:
 			if one.ratio > 1.0:
 				if one.kind == "studs":
 					on_studs += 1
+				elif one.hold == PoseHold.TECHNIC_BALL:
+					on_balls += 1
 				else:
 					on_pins += 1
 		var them: String = "it" if over == 1 else "them"
+		if on_balls > 0 and on_studs == 0 and on_pins == 0:
+			# A ball has no second line to tie it in by: it turns any way.
+			return "brace %s, shorten or lighten what hangs on %s, or pose %s nearer upright" % [them, them, them]
 		if on_pins == 0:
 			return "brace %s, give %s more studs, or move weight back over what holds %s" % [them, them, them]
 		if on_studs == 0:
@@ -387,6 +433,12 @@ class Report extends RefCounted:
 						", %s N·cm about its line" % Balance.tidy(one.moment) if one.moment > 0.0 else ""]
 				elif is_inf(one.capacity):
 					line = "%s %s: it does not turn there" % [who, one.held_on()]
+				elif not one.hold.is_empty():
+					# A friction joint against what its kind was measured to hold.
+					line = "%s %s: %s N·cm; the median one measured holds %s, the loosest %s: %s, it %s" % [
+						who, one.held_on(), Balance.tidy(one.moment), Balance.tidy(one.ultimate),
+						Balance.tidy(one.loose), "DROOPS" if one.droops() else (
+							"may droop" if one.may_droop() else "holds"), PoseHold.share_words(one.share())]
 				else:
 					line = "%s %s: %s N·cm against %s (%sx; lets go at %s)" % [who, one.held_on(),
 						Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
@@ -405,6 +457,10 @@ class Report extends RefCounted:
 				+ "; ".join(shown) + ".")
 			if over > 0:
 				lines.append("%d past the working load: %s." % [over, over_words()])
+		var hold_lines: String = PoseHold.pose_words(self, namer if namer.is_valid()
+			else func(id: int) -> String: return "#%d" % id, 8)
+		if not hold_lines.is_empty():
+			lines.append("Pose: " + hold_lines.replace("\n  ", " ").replace("\n", " "))
 		return "\n".join(lines)
 
 
@@ -537,6 +593,7 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 	var weighed: Array = []         ## [centre, margin, edge index, ...] per pose
 	var worst_at: Dictionary = {}   ## joint index -> JointLoad
 	var rest: Dictionary = _weigh({}, "", worst_at)
+	report.unweighed = rest["unweighed"]
 	weighed.append(rest)
 	report.rest_centre = rest["centre"]
 	report.rest_margin = float(rest["margin"]) / BrickLattice.STUD
@@ -548,7 +605,10 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 			report.unreachable += 1
 			continue
 		report.poses += 1
-		var here: Dictionary = _weigh(placed, str(pose.get("label", "pose %d" % (n + 1))), worst_at)
+		# A ball is weighed as the model stands: it holds the pose it is put
+		# in, and a sweep through its reach is no pose it is left in.
+		var here: Dictionary = _weigh(placed, str(pose.get("label", "pose %d" % (n + 1))), worst_at,
+			false)
 		weighed.append(here)
 		if float(here["margin"]) < float(worst["margin"]):
 			worst = here
@@ -670,6 +730,7 @@ func weigh_pose(placed: Dictionary, label: String = "") -> Report:
 	report.grams = _weight()
 	var worst_at: Dictionary = {}
 	var here: Dictionary = _weigh(placed, label, worst_at)
+	report.unweighed = here["unweighed"]
 	report.centre = here["centre"]
 	report.rest_centre = here["centre"]
 	report.margin = float(here["margin"]) / BrickLattice.STUD
@@ -1291,16 +1352,28 @@ static func _lowest(boxes: PackedInt32Array) -> int:
 ## Each bridge that is a stud joint, with where its studs are; and the parts
 ## past each that is not, held by what it is.
 var _held_otherwise: Dictionary = {}
+## The bridges a friction joint whose hold is not known makes: {child,
+## lower, hold (PoseHold.joint_between)}.
+var _unweighed_bridges: Array = []
 ## ...and of those, the parts past a touch that carries what stands on it.
 var _held_resting: Dictionary = {}
 
 
 func _find_bridges(boxes: Dictionary) -> void:
 	_bridges.clear()
+	_unweighed_bridges.clear()
 	_held_otherwise.clear()
 	_held_resting.clear()
 	for e: Variant in _bridge_edges:
 		if _touch_edges.has(int(e)):
+			# A ball in its socket is a ball joint, though their covers only
+			# touch: 5764-1's arms, each a 57909 in a 62712, read as resting.
+			var seated: Dictionary = _friction_joint(int(e), true)
+			if not seated.is_empty() and PoseHold.known(str(seated["kind"])):
+				var ball_child: int = _bridge_edges[e]
+				_bridges.append({"child": ball_child, "upper": ball_child, "hold": seated,
+					"lower": _edge_a[int(e)] if _edge_b[int(e)] == ball_child else _edge_b[int(e)]})
+				continue
 			_held_resting[_bridge_edges[e]] = true
 			continue
 		if _edge_stud[int(e)] == 0:
@@ -1313,10 +1386,31 @@ func _find_bridges(boxes: Dictionary) -> void:
 				var b: int = _ids[_edge_b[int(e)]]
 				on = _pin_lines.get(Vector2i(mini(a, b), maxi(a, b)), [])
 			if on.is_empty():
-				_held_otherwise[_bridge_edges[e]] = true
+				# A ball, a hinge, a turntable or a clip: weighed where its kind's
+				# hold is measured (PoseHold), named where it is not, and held
+				# otherwise as before either way but the first.
+				var friction: Dictionary = _friction_joint(int(e))
+				var held_child: int = _bridge_edges[e]
+				var held_lower: int = _edge_a[int(e)] if _edge_b[int(e)] == held_child else _edge_b[int(e)]
+				if not friction.is_empty() and PoseHold.known(str(friction["kind"])):
+					_bridges.append({"child": held_child, "lower": held_lower, "upper": held_child,
+						"hold": friction})
+					continue
+				if not friction.is_empty():
+					_unweighed_bridges.append({"child": held_child, "lower": held_lower,
+						"hold": friction})
+				_held_otherwise[held_child] = true
 				continue
 			var pin_child: int = _bridge_edges[e]
 			var pin_lower: int = _edge_a[int(e)] if _edge_b[int(e)] == pin_child else _edge_b[int(e)]
+			# A click rotation joint's pin (47455 in 48171) turns on its teeth, not
+			# its ridges: a click joint, whose hold nobody has measured. Weighed
+			# as a friction pin, 21303-1's neck read 3 times over on the shelf.
+			if PoseHold.clicks(_name_of(int(_edge_a[int(e)])), _name_of(int(_edge_b[int(e)]))):
+				_unweighed_bridges.append({"child": pin_child, "lower": pin_lower, "hold": {
+					"kind": PoseHold.CLICK_HINGE, "at": on[0][1], "way": on[0][2]}})
+				_held_otherwise[pin_child] = true
+				continue
 			_bridges.append({"child": pin_child, "lower": pin_lower, "upper": pin_child,
 				"pins": on})
 			continue
@@ -1427,7 +1521,7 @@ func _through_floor(placed: Dictionary) -> bool:
 
 ## The centre of mass and the margin in one pose, and each bridge's load,
 ## kept in [param worst_at] where it is the worst yet.
-func _weigh(placed: Dictionary, label: String, worst_at: Dictionary) -> Dictionary:
+func _weigh(placed: Dictionary, label: String, worst_at: Dictionary, friction: bool = true) -> Dictionary:
 	var count: int = _ids.size()
 	var at: Array[Transform3D] = []
 	at.resize(count)
@@ -1475,12 +1569,37 @@ func _weigh(placed: Dictionary, label: String, worst_at: Dictionary) -> Dictiona
 			continue
 		var carried := Vector3(sum_x[child], sum_y[child], sum_z[child]) / grams
 		var moved: Transform3D = at[lower] * _rest[lower].affine_inverse()
-		var one: JointLoad = _pin_load(bridge, moved, grams, carried) if bridge.has("pins") \
-			else _load(bridge, moved, grams, carried)
+		var one: JointLoad
+		if bridge.has("hold"):
+			if not friction:
+				continue
+			one = _hold_load(bridge, moved, grams, carried)
+		elif bridge.has("pins"):
+			one = _pin_load(bridge, moved, grams, carried)
+		else:
+			one = _load(bridge, moved, grams, carried)
 		one.pose = label
 		var kept: JointLoad = worst_at.get(b)
 		if kept == null or one.ratio > kept.ratio:
 			worst_at[b] = one
+	# The friction joints nobody has measured: what each carries, named.
+	var unweighed: Array = []
+	for bridge: Dictionary in _unweighed_bridges if friction else []:
+		var child: int = bridge["child"]
+		var grams: float = sum_m[child]
+		if grams <= 0.0:
+			continue
+		var carried := Vector3(sum_x[child], sum_y[child], sum_z[child]) / grams
+		var lower: int = bridge["lower"]
+		var moved: Transform3D = at[lower] * _rest[lower].affine_inverse()
+		var hold: Dictionary = bridge["hold"]
+		var moment: float = -1.0
+		if not hold.get("lineless", false):
+			moment = _turning(moved * (hold["at"] as Vector3), moved.basis * (hold["way"] as Vector3),
+				grams, carried)
+		unweighed.append({"beyond": _ids[child], "held_by": _ids[lower], "beyond_part": _parts[child],
+			"held_part": _parts[lower], "kind": hold["kind"], "grams": grams, "moment": moment})
+	out["unweighed"] = unweighed
 	return out
 
 
@@ -1549,11 +1668,13 @@ static func lets_go(mesh: Lbm.PartMesh) -> float:
 ## A joint pins or axles alone make, weighed as one fails (docs/MECHANISMS.md
 ## §4): by bearing a pin is no weak point, so a joint keyed (an axle in an
 ## axle hole) or on two lines does not turn and holds; on one line it turns
-## unless its friction pins hold the turning moment about that line. A
-## friction pin's torque is not measured: [constant PIN_N_CM] a pin working
-## and [constant PIN_LETS_GO_N_CM] where it slips, the middle and the top of
-## the 0.5 to 1 N·cm the docs place it at. A pin with no friction ridges, or
-## an axle in a round hole, holds nothing about its line.
+## unless its friction pins hold the turning moment about that line: each
+## [member PIN_N_CM], what the median of 18 pins measured held (PoseHold;
+## data/joint_hold.json), working and where it slips at once, since a posed
+## pin holds or droops. Until posehold they were 0.75 working and 1 where it
+## slips, the middle and the top of a range no one had measured. A pin with
+## no friction ridges, or an axle in a round hole, holds nothing about its
+## line.
 func _pin_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3) -> JointLoad:
 	var lines: Array = bridge["pins"]
 	var child: int = bridge["child"]
@@ -1592,6 +1713,66 @@ func _pin_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Ve
 	one.capacity = PIN_N_CM * friction
 	one.ultimate = PIN_LETS_GO_N_CM * friction
 	one.ratio = one.moment / maxf(one.capacity, 0.000001) if one.moment > 0.000001 else 0.0
+	if friction > 0:
+		one.hold = PoseHold.FRICTION_PIN
+		one.loose = PIN_LOOSE_N_CM * friction
+	return one
+
+
+## The friction joint edge [param e] is, between two parts no stud and no
+## pin joins (PoseHold.joint_between), its point and line where they stand;
+## {} for none, and for the floor's edge.
+func _friction_joint(e: int, balls_only: bool = false) -> Dictionary:
+	var a: int = _edge_a[e]
+	var b: int = _edge_b[e]
+	if a >= _ids.size() or b >= _ids.size() or library == null:
+		return {}
+	var one: Array = [_parts[a], _rest[a], _meshes[a]]
+	var other: Array = [_parts[b], _rest[b], _meshes[b]]
+	return PoseHold.ball_between(one, other, library) if balls_only \
+		else PoseHold.joint_between(one, other, library)
+
+
+## Part [param n]'s name, "" for the floor's node and a part not in the library.
+func _name_of(n: int) -> String:
+	if n >= _ids.size() or library == null:
+		return ""
+	var info: PartLibrary.PartInfo = library.parts.get(_parts[n])
+	return info.name if info != null else ""
+
+
+## A turning load about a joint at [param at], N·cm: the weight [param
+## grams] at [param carried] levered about [param way], or about the point
+## whichever way where [param way] is zero (a ball).
+static func _turning(at: Vector3, way: Vector3, grams: float, carried: Vector3) -> float:
+	var force := Vector3(0.0, -grams / 1000.0 * GRAVITY, 0.0)
+	var turning: Vector3 = (carried - at).cross(force)
+	var to_cm: float = MM_PER_LDU / 10.0
+	if way.length() < 0.000001:
+		return turning.length() * to_cm
+	return absf(turning.dot(way.normalized())) * to_cm
+
+
+## A friction joint weighed against what its kind holds (PoseHold): a
+## Technic ball turned by what is past it, any way.
+func _hold_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3) -> JointLoad:
+	var hold: Dictionary = bridge["hold"]
+	var child: int = bridge["child"]
+	var lower: int = bridge["lower"]
+	var one := JointLoad.new()
+	one.beyond = _ids[child]
+	one.held_by = _ids[lower]
+	one.beyond_part = _parts[child]
+	one.held_part = _parts[lower]
+	one.grams = grams
+	one.hold = str(hold["kind"])
+	one.kind = PoseHold.said(one.hold)
+	one.at = moved * (hold["at"] as Vector3)
+	one.moment = _turning(one.at, moved.basis * (hold["way"] as Vector3), grams, carried)
+	one.capacity = PoseHold.holds(one.hold)
+	one.ultimate = one.capacity
+	one.loose = PoseHold.every_held(one.hold)
+	one.ratio = one.moment / maxf(one.capacity, 0.000001) if one.moment > 0.000001 else 0.0
 	return one
 
 
@@ -1606,8 +1787,13 @@ func _friction_pin(id: int) -> bool:
 	return info != null and Bodies._has_friction(info.name)
 
 
-const PIN_N_CM := 0.75
-const PIN_LETS_GO_N_CM := 1.0
+## A friction pin's working load and where it slips, N·cm a pin: one, what
+## the median of 18 pins measured held (PoseHold), since a posed pin holds or
+## droops. And what every one of them held, past which a loose one may.
+## Read when the class loads.
+static var PIN_N_CM: float = PoseHold.holds(PoseHold.FRICTION_PIN)
+static var PIN_LETS_GO_N_CM: float = PIN_N_CM
+static var PIN_LOOSE_N_CM: float = PoseHold.every_held(PoseHold.FRICTION_PIN)
 ## The pins and axles between two parts, by their lines (Joints.through):
 ## Vector2i(lower id, higher id) -> [[how, a point on it, its way, the
 ## shaft's brick id]].
