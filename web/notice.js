@@ -11,17 +11,23 @@
 // asked again (/api/plans?op=notice, kept a minute by the CDN): a notice
 // cleared goes, a new one comes. Hidden by its ×, that notice stays hidden
 // in this browser; a new one shows. Signed in, it is hidden for the person
-// too (api/_announce.js noticeHide), so each of their browsers hides it once
-// it has asked (announce, 2026-11-18). And it goes by itself at its end, the
-// owner's choice (supabase/announce.sql), from a page left open too.
+// too (api/_announce.js noticeHide), in every browser of theirs: before it
+// is drawn on any page, the avatar's count says which notices they hid
+// (op=feed_count's notice_hidden, asked by web/follow.js on every page with
+// the header's account), so a browser that showed it before stops at its
+// next page, and one that never did shows it not even for a moment; on a
+// page without the header, or a server from before supabase/announce2.sql,
+// the page asks of its own (op=notice_hidden) (anfix, 2026-11-18). And it
+// goes by itself at its end, the owner's choice (supabase/announce.sql),
+// from a page left open too.
 //
 // The words are put on the page as text.
 import { iconHtml, say } from "/card.js";
 
 const KEPT = "brickworks.notice";
 const HIDDEN = "brickworks.notice.hidden";
-// The notice and account this browser asked about last: asked once each.
-const ASKED = "brickworks.notice.asked";
+// How long a notice waits for the avatar's count before it asks of its own.
+const COUNT_WAIT_MS = 4000;
 const root = document.documentElement;
 
 function read(key) {
@@ -58,7 +64,7 @@ let ending = 0;
 const ended = (notice) => Boolean(notice?.ends_at) && Date.parse(notice.ends_at) <= Date.now();
 
 /// The person signed in in this browser, if one is, as account.js keeps
-/// them: asked of it only once a notice is showing.
+/// them: asked of it only once there is a notice to show.
 const account = () => import("/account.js").catch(() => null);
 
 /// [notice] hidden for the person signed in, in every browser of theirs.
@@ -68,20 +74,36 @@ async function hideForThem(notice) {
   kept.call("/api/plans?op=notice_hide", { method: "POST", body: { id: Number(notice.id) }, keepalive: true }).catch(() => null);
 }
 
-/// Whether the person signed in hid [notice] in another browser: asked once
-/// a notice and an account, then hidden here too.
+/// Whether the person signed in hid [notice], in any browser: on every page,
+/// never kept, since they may hide it elsewhere at any moment. False signed
+/// out; null when it could not be known (shown, as before they could hide
+/// it for themselves).
 async function hiddenByThem(notice) {
   const kept = await account();
-  if (!kept?.signedIn()) return;
-  const asked = `${Number(notice.id)}:${kept.email()}`;
-  if (read(ASKED) === asked) return;
-  const answer = await kept.call(`/api/plans?op=notice_hidden&id=${Number(notice.id)}`).catch(() => null);
-  if (!answer || answer.status !== 200) return;
-  write(ASKED, asked);
-  if (answer.body?.hidden === true) {
-    write(HIDDEN, notice.id);
-    draw(notice);
+  if (!kept?.signedIn()) return false;
+  // The avatar's count, which this page asks anyway (web/follow.js).
+  if (document.querySelector(".site-head a[data-account]") && kept.feedCountHeard) {
+    const heard = await kept.feedCountHeard(COUNT_WAIT_MS);
+    if (Array.isArray(heard?.notice_hidden)) return heard.notice_hidden.map(Number).includes(Number(notice.id));
   }
+  const answer = await kept.call(`/api/plans?op=notice_hidden&id=${Number(notice.id)}`).catch(() => null);
+  if (!answer || answer.status !== 200) return null;
+  return answer.body?.hidden === true;
+}
+
+let showing = 0;
+
+/// [notice] shown once it is known the person did not hide it (signed out:
+/// at once), so it never shows only to go again.
+async function show(notice) {
+  const mine = ++showing;
+  if (notice && !ended(notice) && Number(read(HIDDEN)) !== Number(notice.id)) {
+    const hid = await hiddenByThem(notice);
+    // A newer notice heard while this one was asked about: that one's.
+    if (mine !== showing) return;
+    if (hid === true) write(HIDDEN, notice.id);
+  }
+  draw(notice);
 }
 
 /// [notice] shown, or none when it is null, hidden here, or past its end.
@@ -128,7 +150,6 @@ function draw(notice) {
   root.dataset.notice = want.tone === "warn" ? "warn" : "info";
   // Risen in after the page is drawn, as the beta's bar is.
   requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add("shown")));
-  hiddenByThem(want);
 }
 
 async function ask() {
@@ -145,8 +166,8 @@ async function ask() {
   write(KEPT, notice);
   // A hidden one cleared: nothing to keep hidden.
   if (!notice) write(HIDDEN, null);
-  draw(notice);
+  show(notice);
 }
 
-draw(read(KEPT));
+show(read(KEPT));
 ask();

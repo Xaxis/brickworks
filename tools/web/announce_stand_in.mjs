@@ -3,13 +3,17 @@
 // proving the console's Announcements, the Notifications page, Settings'
 // news and the site's notice in a real browser before the file is applied:
 //
-//   set -a; . ./.env; set +a
-//   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js PG_BIN=<postgres's bin> \
-//     node tools/web/relay_server.mjs 10701 --hold=announce
-//   node --env-file=.env tools/web/announce_flow.mjs --url=http://127.0.0.1:10701 --out=DIR
+//   grep -E '^(SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_PUBLISHABLE_KEY|MASTER_EMAIL)=' .env > $SCRATCH/flow.env
+//   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js PG_BIN=<postgres's bin> NEWS_UNSUB_SECRET=<made up> \
+//     node --env-file=$SCRATCH/flow.env tools/web/relay_server.mjs 10701 --hold=announce
+//   node --env-file=$SCRATCH/flow.env tools/web/announce_flow.mjs --url=http://127.0.0.1:10701 --out=DIR
+//
+// Never the whole .env (anfix, 2026-11-18): with its mail key and cron
+// secret this machine's server could mail and run the site's crons, and a
+// local flow with it once deleted the project's own test rows.
 //
 // As feedback_stand_in.mjs does, nothing is written again in JavaScript:
-// every announce_*, announcement_*, news_choice, site_notice*, site_setting*
+// every announce_*, announcement_*, news_*, site_notice*, site_setting*
 // and admin_audit_* function the server asks is the file's own, answered by
 // that Postgres, so the console's acts, its settings and its audit are held
 // here, apart from the project's. An account a function names is copied
@@ -29,7 +33,7 @@ import { announceWorld } from "../../tests/fixtures/announce/world.mjs";
 const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const RPC = /\/rest\/v1\/rpc\/([a-z_]+)$/;
-const HERE = /^(announce_[a-z_]*|announcement_[a-z_]*|news_choice|site_notice[a-z_]*|site_setting[a-z_]*|admin_audit_[a-z_]*)$/;
+const HERE = /^(announce_[a-z_]*|announcement_[a-z_]*|news_[a-z_]*|site_notice[a-z_]*|site_setting[a-z_]*|admin_audit_[a-z_]*)$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DAY = 864e5;
 

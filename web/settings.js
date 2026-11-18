@@ -642,8 +642,10 @@ $("delete-form").addEventListener("submit", async (event) => {
 });
 
 /// Opened from a news mail's Unsubscribe (/settings?unsubscribe=<account>.<token>,
-/// api/_announce.js): no more news by email, asked by this page, signed in
-/// or not, so a link checker that only opens the address changes nothing.
+/// api/_announce.js): an Unsubscribe button, signed in or not, which asks.
+/// Never on opening: a mail's link scanner opens every link in it, and
+/// would unsubscribe the person (anreview L4). A mail client's own one
+/// click is the POST its List-Unsubscribe-Post header names (RFC 8058).
 async function unsubscribed() {
   const asked = new URLSearchParams(location.search).get("unsubscribe") || "";
   const found = /^([0-9a-f-]{36})\.([A-Za-z0-9_-]{20,64})$/.exec(asked);
@@ -657,12 +659,31 @@ async function unsubscribed() {
     note.textContent = say("That unsubscribe link was cut short. Turn off Brickworks news under Email below, once signed in.");
     return;
   }
-  const answer = await fetch("/api/people?op=news_unsubscribe", { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ a: found[1], t: found[2] }) }).then(async (reply) => ({ status: reply.status,
-    body: await reply.json().catch(() => ({})) }), () => null);
-  note.textContent = answer && answer.status === 200
-    ? say("Unsubscribed: Brickworks will email you no more news. You can turn it on again under Email.")
-    : told(answer?.body?.error, say("That did not work just now. Try the link again in a minute."));
+  note.textContent = say("Stop Brickworks news by email to this address?");
+  const actions = document.createElement("div");
+  actions.className = "actions unsubscribe-actions";
+  const go = document.createElement("button");
+  go.type = "button";
+  go.className = "cta";
+  go.id = "unsubscribe-go";
+  go.textContent = say("Unsubscribe");
+  actions.append(go);
+  note.after(actions);
+  go.addEventListener("click", async () => {
+    go.disabled = true;
+    const answer = await fetch("/api/people?op=news_unsubscribe", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a: found[1], t: found[2] }) }).then(async (reply) => ({ status: reply.status,
+      body: await reply.json().catch(() => ({})) }), () => null);
+    go.disabled = false;
+    if (answer && answer.status === 200) {
+      actions.remove();
+      note.textContent = say("Unsubscribed: Brickworks will email you no more news. You can turn it on again under Email.");
+      // Signed in as them, the Email choice below says so too.
+      if (signedIn()) load();
+      return;
+    }
+    note.textContent = told(answer?.body?.error, say("That did not work just now. Press Unsubscribe again in a minute."));
+  });
 }
 
 unsubscribed().catch(() => null).finally(() => load());

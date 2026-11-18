@@ -3,9 +3,10 @@
 // (api/_announce.js, supabase/announce.sql). Four tabs: Write (the words, who
 // it is for, and beside them the exact group their page will show and the
 // menu's line, with how many it reaches now; drafts), Sent and scheduled
-// (each one's reach, who saw, read and followed it, its mail; Edit,
-// Withdraw, Unschedule), the Banner (the site notice, set under Switches),
-// and Settings (the most a day).
+// (each one's reach, who read and followed it, its mail; Edit, Withdraw,
+// Unschedule), the Banner (the site notice, set under Switches), and
+// Settings (the most a day; the news mail's most a day, whether Resend
+// stopped it, and the postal address at its foot).
 //
 // Nothing goes by itself. A send is the owner's press of Send now (or
 // Schedule) in the sheet that shows the words kept on the server, and the
@@ -88,14 +89,14 @@ function build() {
       </div>
     </div>`;
   tab("sent").innerHTML = `
-    <p class="note">Each one's reach is who it was put before as it went; seen is who has opened their Notifications
-      since, read who opened it, clicked who followed its link. Withdrawn, it leaves every list; edited, it says so.</p>
+    <p class="note">Each one's reach is who it was put before as it went; read is who opened it, clicked who followed
+      its link. Withdrawn, it leaves every list; edited, it says so.</p>
     <div class="stats" id="announce-stats"></div>
     <div class="table" tabindex="0" role="region" aria-labelledby="h-announce-sent">
       <table class="queue cards">
         <caption id="h-announce-sent" class="visually-hidden">Sent and scheduled</caption>
         <thead><tr><th scope="col">When</th><th scope="col">Title</th><th scope="col">For</th><th scope="col">State</th>
-          <th scope="col" class="num">Reach</th><th scope="col" class="num">Seen</th><th scope="col" class="num">Read</th>
+          <th scope="col" class="num">Reach</th><th scope="col" class="num">Read</th>
           <th scope="col" class="num">Clicked</th><th scope="col">Email</th>
           <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
         <tbody id="announce-sent"></tbody>
@@ -121,6 +122,19 @@ function build() {
         <span class="note" id="announce-most-note" role="status"></span></div>
       <p class="note" id="announce-today"></p>
       <p class="note" id="announce-mail-said"></p>
+    </form>
+    <form id="announce-news-form" class="card console-form" novalidate>
+      <h3>News by email</h3>
+      <p class="note">The Resend team that sends these also sends every site's sign-in codes. So news mail stops at
+        this many a day, stops until the next day when Resend says the team's quota is used, and always waits its turn
+        behind a sign-in code.</p>
+      <label>At most this many news mails a day (UTC), every announcement's together; 0 for none
+        <input name="most" type="number" min="0" max="10000" step="1" inputmode="numeric" required></label>
+      <p class="note" id="announce-news-today" role="status"></p>
+      <label>The postal address at the foot of each news mail, up to four lines (none until you give one)
+        <textarea name="address" rows="4" autocomplete="street-address"></textarea></label>
+      <div class="row"><button type="submit">Keep these</button>
+        <span class="note" id="announce-news-note" role="status"></span></div>
     </form>`;
   const kind = $("announce-kind");
   kind.append(...KINDS.map(([value, words]) => new Option(words, value)));
@@ -134,6 +148,7 @@ function build() {
     if (await keptFirst()) startNew();
   });
   $("announce-most-form").addEventListener("submit", (event) => { event.preventDefault(); keepMost(); });
+  $("announce-news-form").addEventListener("submit", (event) => { event.preventDefault(); keepNews(); });
   sheet();
 }
 
@@ -210,7 +225,9 @@ function draw() {
   }
   line.hidden = ready;
   line.textContent = ready ? "" : state?.said || "Not open yet.";
-  for (const button of section().querySelectorAll("#announce-form button, #announce-most-form button")) button.disabled = !ready;
+  for (const button of section().querySelectorAll("#announce-form button, #announce-most-form button, #announce-news-form button")) {
+    button.disabled = !ready;
+  }
   if (!ready) return;
   drawPlans();
   drawEmail();
@@ -243,7 +260,7 @@ function drawEmail() {
   box.disabled = state.test === true || !state.mail;
   if (box.disabled) box.checked = false;
   say("announce-email-note", state.test ? "Never by email here: this is the checks' own pool (a preview, or ?tests=1), which mails nobody."
-    : !state.mail ? "Never by email here: this site has no mail key."
+    : !state.mail ? `Never by email here: this site has no ${missingWords()}.`
       : "Off unless you tick it. In-app reaches everyone it is for; the email only those who chose news, with one-click unsubscribe.");
 }
 
@@ -304,7 +321,6 @@ function drawSent() {
     cell(row, one.status === "scheduled" ? `Scheduled for ${when(one.send_at)}`
       : one.status === "withdrawn" ? `Withdrawn ${when(one.withdrawn_at)}` : STATE[one.status] || one.status);
     num(row, one.reach);
-    num(row, one.seen);
     num(row, one.read);
     num(row, one.clicked);
     const mails = one.mails || {};
@@ -377,8 +393,66 @@ function drawSettings() {
   say("announce-today", `Today (UTC): ${count(state.today?.sent)} sent and ${count(state.today?.scheduled)} scheduled, of ${state.most}.`
     + `${state.set_by ? ` The most was set by ${state.set_by}, ${when(state.set_at)}.` : " The most is the default."}`);
   say("announce-mail-said", state.test ? "Mail: never from here, the checks' own pool." : state.mail
-    ? "Mail: through Resend from brickworks.diy, a hundred to a batch and a batch a second, only to those who chose news."
-    : "Mail: none, this site has no mail key.");
+    ? "Mail: through Resend from brickworks.diy, a hundred to a batch and a batch every 1.1 seconds at most, only to those who chose news."
+    : `Mail: none, this site has no ${missingWords()}.`);
+  drawNews();
+}
+
+/// What this deployment lacks to mail news, in words (api/_announce.js
+/// mailMissing): "mail key", "unsubscribe secret (NEWS_UNSUB_SECRET)".
+function missingWords() {
+  const missing = Array.isArray(state.mail_missing) ? state.mail_missing : [];
+  return missing.map((one) => `${one.words.replace(/^(a|its) /, "")} (${one.name})`).join(" or ") || "mail key";
+}
+
+/// News mail's most a day, today's count, whether Resend stopped it, and
+/// the address at its foot.
+function drawNews() {
+  const form = $("announce-news-form");
+  const news = state.news_mail;
+  if (!news) {
+    form.elements.most.disabled = true;
+    form.querySelector("button").disabled = true;
+    say("announce-news-today", "Not kept yet: supabase/announce2.sql is not applied, so news mail has no most a day here.", true);
+    return;
+  }
+  form.elements.most.disabled = false;
+  if (document.activeElement !== form.elements.most) form.elements.most.value = String(news.most);
+  if (document.activeElement !== form.elements.address) form.elements.address.value = state.address || "";
+  const stopped = news.stopped?.until
+    ? ` Stopped until ${when(news.stopped.until)}: Resend said the team's ${news.stopped.why === "monthly_quota_exceeded" ? "monthly"
+      : "daily"} quota is used, so what is left goes to sign-in codes. It starts again by itself.`
+    : "";
+  say("announce-news-today", `Today (UTC): ${count(news.today)} of ${count(news.most)} news mails.`
+    + `${news.most_by ? ` The most was set by ${news.most_by}, ${when(news.most_at)}.` : " The most is the default."}${stopped}`,
+  Boolean(stopped));
+}
+
+async function keepNews() {
+  const form = $("announce-news-form");
+  const most = Number(form.elements.most.value);
+  if (!Number.isInteger(most) || most < 0 || most > 10000) return say("announce-news-note", "A whole number from 0 to 10,000.", true);
+  const address = form.elements.address.value;
+  if (address.split("\n").filter((line) => line.trim()).length > 4) return say("announce-news-note", "An address is at most four lines.", true);
+  if ([...address.trim()].length > 200) {
+    return say("announce-news-note", `The address is ${[...address.trim()].length} characters: at most 200.`, true);
+  }
+  const button = form.querySelector("button");
+  if (button.disabled) return;
+  button.disabled = true;
+  try {
+    if (most !== state.news_mail?.most) await adminJson({ op: "announce_mail_most" }, { method: "POST", body: { most } });
+    if (address.trim() !== (state.address || "")) {
+      await adminJson({ op: "announce_mail_address" }, { method: "POST", body: { address } });
+    }
+    await reread();
+    say("announce-news-note", `Kept: at most ${count(most)} a day${$("announce-news-form").elements.address.value.trim()
+      ? ", with the address at each one's foot" : ", with no address"}.`);
+  } catch (problem) {
+    say("announce-news-note", problem.message, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function keepMost() {

@@ -2902,6 +2902,9 @@
   "There is no such announcement for you.": "Diese Ankündigung gibt es für dich nicht.",
   "From {who}, edited": "Von {who}, bearbeitet",
   "From {who}": "Von {who}",
-  "News": "Neuigkeiten"
+  "News": "Neuigkeiten",
+  "Unsubscribe": "Abmelden",
+  "Stop Brickworks news by email to this address?": "Keine Neuigkeiten von Brickworks mehr per E-Mail an diese Adresse?",
+  "That did not work just now. Press Unsubscribe again in a minute.": "Das hat gerade nicht geklappt. Drück in einer Minute noch einmal auf Abmelden."
  }
 }

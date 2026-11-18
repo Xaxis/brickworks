@@ -1,5 +1,5 @@
-// supabase/announce.sql in a test's Postgres (tests/fixtures/beta/pg.mjs),
-// after the console's own files, for api_check.mjs here and the local
+// supabase/announce.sql and announce2.sql in a test's Postgres
+// (tests/fixtures/beta/pg.mjs), after the console's own files, for api_check.mjs here and the local
 // server's stand-in (tools/web/announce_stand_in.mjs): the files themselves
 // answer, as PostgREST calls them.
 //
@@ -18,6 +18,16 @@ export const MARKS = `
     seen_at timestamptz);
 `;
 
+/// What announce2.sql reads besides: moderation.sql's barred accounts and
+/// schema.sql's sign-in codes asked for, as those files make them.
+export const ALSO2 = `
+  create table if not exists public.barred_accounts (account uuid primary key references auth.users (id) on delete cascade,
+    at timestamptz not null default now(), reason text check (reason is null or char_length(reason) <= 200));
+  create table if not exists public.otp_requests (id bigserial primary key, email text not null, ip text not null default '',
+    asked_at timestamptz not null default now());
+  create index if not exists otp_requests_recent on public.otp_requests (asked_at desc);
+`;
+
 const file = (name) => readFileSync(new URL(`../../../${name}`, import.meta.url), "utf8");
 
 /// The world: pg.mjs's, with db.call(name, args) answering any public
@@ -31,6 +41,9 @@ export async function announceWorld() {
   await db.q("set check_function_bodies = off");
   await db.q(file("supabase/announce.sql"));
   await db.q("set check_function_bodies = on");
+  // The review's fixes (anfix), after it, as the project has them.
+  await db.q(ALSO2);
+  await db.q(file("supabase/announce2.sql"));
   const pool = [];
   for (let at = 0; at < 4; at += 1) pool.push(await db.connect());
   let next = 0;

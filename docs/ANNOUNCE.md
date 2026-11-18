@@ -87,7 +87,11 @@ Brickworks has a few hundred people, one owner, and a Notifications page they al
    - Each announcement is one row. Who it reached is fixed as it goes, like Intercom's *fixed*
      audience: someone who signs up afterwards does not get last month's news. This also makes the
      reach count honest.
-   - Each person's read and click is one row of `announcement_reads`.
+   - Who it reached is one row of `announcement_to` per person, written by the same statement as
+     the send; its reach is the count of those rows. A person's Notifications read their own rows
+     by account; the mail walks them by announcement.
+   - Each person's read and click is one row of `announcement_reads`. The console's list reads only
+     `announcement_counts`, kept as reads, clicks and mails happen: never a row per person.
 2. **Audiences anyone can reason about:** everyone; a plan; the beta's testers; people who signed up
    since a day; people who published; one person by handle. The count shows before sending.
 3. **The owner's own press on the exact words.** The review shows exactly what goes out and to whom,
@@ -108,8 +112,20 @@ Brickworks has a few hundred people, one owner, and a Notifications page they al
 7. **Email only for those who asked.** It is a "Brickworks news" choice in Settings › Email, off
    until turned on.
    - Each mail is optional per announcement, and in-app is the default.
-   - It is sent through Resend from brickworks.diy, 100 to a batch, one batch every 1.1 s. That
-     stays well under the team's 10 a second, which other sites share.
+   - It is sent through Resend from brickworks.diy, 100 to a batch, at most one request every
+     1.1 s, and never within 1.5 s of a sign-in code Brickworks sent. That stays well under the
+     team's 10 a second. Other sites on the same Resend team send codes too, and those cannot be
+     known here; the 10 a second leaves room for them.
+   - At most a number of news mails a day, which the owner sets in /admin › Announcements (200
+     until changed, Resend's free daily quota being 100). It is counted inside the take, so two
+     crons together cannot pass it.
+   - When Resend answers 429 for its daily or monthly quota, news mail stops until the next UTC
+     day, and the console says so in words. Sign-in codes come first.
+   - Barred accounts are never mailed, and are in no audience but "one person".
+   - The mail can carry a postal address the owner sets in /admin › Announcements (CAN-SPAM asks
+     for one in commercial mail).
+   - The link in the mail asks before it unsubscribes: Settings shows an Unsubscribe button. The
+     RFC 8058 POST stays one-click, since a mail program sends it only when the person asks.
    - Each mail carries RFC 8058 headers and the same link in its words.
    - Someone who turns news on after an announcement went out is not mailed that older one.
 8. **The checks never reach a real person.** On a preview, or with ?tests=1, every announcement is a
@@ -117,6 +133,8 @@ Brickworks has a few hundred people, one owner, and a Notifications page they al
    - it reaches only the checks' own accounts at resend.dev;
    - it is never mailed;
    - it counts against that deployment's own daily limit and list.
+   - The cron on any host but brickworks.diy (a preview, a machine's own server) sends only test
+     ones and mails nobody; the site's own wait for the live cron.
 
 **Not built, on purpose:**
 - **Popups and full-screen posts.** They interrupt building.
@@ -125,12 +143,44 @@ Brickworks has a few hundred people, one owner, and a Notifications page they al
 
 ## The bar it is held to
 
-These pass against `supabase/announce.sql` in a Postgres of the test's own:
+These pass against `supabase/announce.sql` and `supabase/announce2.sql` in a Postgres of the
+test's own:
 - `tests/test_announce.py` and `tests/fixtures/announce/api_check.mjs`;
-- the same SQL on the project, rolled back: `tools/announce_try.sql` with `tools/apply_sql.mjs
-  --dry`.
+- the same SQL on the project, rolled back: `tools/announce_try.sql` and `tools/announce2_try.sql`
+  with `tools/apply_sql.mjs --dry`;
+- the review's `bench/results/anreview-2026-11-18/tools/attack.mjs --scale=50000` (50,000 accounts,
+  one announcement to all): a person's rows under 3 ms, the console's list under 50 ms (anfix: 1.9
+  ms and 2.3 ms, from 23-33 ms and 905 ms).
 
 These pass in a real browser:
 - `tools/web/announce_flow.mjs`;
 - before the file is applied, with `node tools/web/relay_server.mjs PORT --hold=announce`
   (`tools/web/announce_stand_in.mjs`).
+
+## After the review (`supabase/announce2.sql`)
+
+The review (anreview, 2026-11-18) found these before anyone was reached; anfix fixed each:
+- **A hidden notice drawn for a moment** on a second browser. The avatar's count (`feed_count`) now
+  carries the ids of the notices the person hid, and the notice waits for it before drawing. No
+  request is added.
+- **Every person's row read by every list.** Who it reached was an array on the announcement,
+  read whole by each Notifications page and the console. It is now `announcement_to`, with
+  `announcement_counts` for the console. `recipients` is no longer written: new sends keep it
+  empty, and old ones keep what they had, copied once into `announcement_to`. Nothing is dropped.
+- **No daily most for news mail**, no stop on Resend's quota, and a pace that shared the second
+  with sign-in codes: see 7 above.
+- **A run that found a send already gone** counted as a failed cron. It is now skipped, with no
+  audit note.
+- **A preview's cron could mail the site's own announcements.** Off brickworks.diy it sends only
+  test ones and mails nobody.
+- **Barred accounts** were in audiences and mail. They no longer are.
+- **The mail link unsubscribed on a visit**, as link scanners make. It now asks.
+- **The unsubscribe token was signed with the database key.** It is now signed with its own
+  `NEWS_UNSUB_SECRET`; tokens already sent still verify with the old key. The lead sets
+  `NEWS_UNSUB_SECRET` in Vercel (production and preview) when this ships. Without it, no news
+  mail goes out, and the console says what is missing.
+- **No postal address** in the mail: the owner can now set one.
+
+`announce2.sql` only adds tables and replaces functions with the same arguments; applying it before
+or after the site's deploy is safe in either order (the server reads its new answers as absent until
+it is applied).

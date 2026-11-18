@@ -3245,12 +3245,15 @@ plan with Claude as the client.
   flow; `tests/test_console3.py` holds it to text, never markup.
   Since announce it can carry an end (Switches' Ends day and time;
   `site_notice_ends`), past which it shows nowhere, and its x hides it for
-  the person signed in on every device of theirs (`notice_hide`, asked
-  again in another browser by `notice_hidden`). Proven by the announce
-  browser flow.
+  the person signed in on every device of theirs (`notice_hide`; another
+  browser of theirs is told by the avatar's `feed_count`, whose
+  `notice_hidden` lists the ids they hid, and waits for it before drawing,
+  so it never shows for a moment; a page without the avatar asks
+  `notice_hidden`). Proven by the announce browser flow.
 - `announcements` (`api/_announce.js`, `/admin#announcements/…` drawn by
   `web/admin-announce.js`, asked only once the section opens;
-  `supabase/announce.sql`; docs/ANNOUNCE.md): the owner tells the site's
+  `supabase/announce.sql`, then `supabase/announce2.sql`; docs/ANNOUNCE.md):
+  the owner tells the site's
   people something. A title, plain words and an optional link (a page
   here or https) for everyone, a plan, the beta's testers, people who
   signed up since a day, people who published, or one person by handle;
@@ -3258,21 +3261,35 @@ plan with Claude as the client.
   shadow root with the site's styles) with its reach now; sent only by the
   owner's press on the words' hash and the version seen (changed words
   409; two presses one send; an edit unschedules); at most the day's most
-  (two until set; a test one's counted per deployment); one row each, its
-  recipients fixed as it goes, read through `notification_rows`; edited
-  (marked edited) or withdrawn (out of every list). Email only to those who
-  chose news in Settings before it went (off until chosen), Resend's batch
-  of 100 every 1.1 s with List-Unsubscribe and List-Unsubscribe-Post and a
-  link in the words to `/api/people?op=news_unsubscribe` (GET to Settings,
-  which asks; POST unsubscribes). The cron `/api/plans/announce-due` at 8,
-  23, 38 and 53 past each hour sends what is due only as pressed, then its
-  mail. On a preview or `?tests=1` only the checks' accounts at resend.dev
-  are reached and nobody is mailed. Before the file the section says so,
-  its buttons are off and Settings hides news. Proven by
-  `python3 tools/minitest.py tests/test_announce.py` (announce.sql in a
+  (two until set; a test one's counted per deployment); one row each, who
+  it reached fixed as it goes as rows of `announcement_to` written by the
+  send's own statement (reach is their count; `recipients` stays empty),
+  read by account through `notification_rows`; the console's list reads
+  only `announcement_counts`; edited (marked edited) or withdrawn (out of
+  every list). Barred accounts are in no audience but one person, and never
+  mailed. Email only to those who chose news in Settings before it went
+  (off until chosen): Resend's batch of 100, at most one request every
+  1.1 s and never within 1.5 s of a sign-in code, at most the news mails a
+  day the owner sets under the section's News by email (200 until set,
+  counted inside the take), stopped until the next UTC day by a quota 429
+  (the console says why), with List-Unsubscribe and List-Unsubscribe-Post,
+  the footer address when set, and a link in the words to
+  `/api/people?op=news_unsubscribe` (GET to Settings, whose Unsubscribe
+  button posts; the POST itself unsubscribes), its token signed with
+  `NEWS_UNSUB_SECRET` (the old key's still verify; no mail without it).
+  The cron `/api/plans/announce-due` at 8, 23, 38 and 53 past each hour
+  sends what is due only as pressed, then its mail; a send already gone is
+  skipped quietly; off brickworks.diy it sends only test ones and mails
+  nobody. On a preview or `?tests=1` only the checks' accounts at
+  resend.dev are reached and nobody is mailed. Before the file the section
+  says so, its buttons are off and Settings hides news. Proven by
+  `python3 tools/minitest.py tests/test_announce.py` (both files in a
   Postgres of its own, a mocked Resend) and the announce browser flow; the
   SQL on the project rolled back by `node tools/apply_sql.mjs
-  supabase/announce.sql --dry --try=tools/announce_try.sql`.
+  supabase/announce.sql --dry --try=tools/announce_try.sql` and
+  `supabase/announce2.sql --dry --try=tools/announce2_try.sql`; at 50,000
+  people by the review's `bench/results/anreview-2026-11-18/tools/attack.mjs
+  --scale=50000` (rows under 3 ms, the list under 50 ms).
 - `an announcement on a person's Notifications` (`web/notice-view.js`, for
   `web/notifications.js` and the console's preview): a group of its own,
   `#announcement-N`, named by its title, "From Brickworks" (", edited"
@@ -3296,11 +3313,15 @@ plan with Claude as the client.
   draft; withdrawn, gone from her page; Write and Sent at 1280, 390 and
   430x932 in light and dark with nothing sideways and every control named;
   the console's first screen never asks admin-announce.js; the notice with
-  an end hidden by Ann stays hidden in another browser of hers, Bea still
-  sees it, the Banner tab says its end; cleared after, throwaways deleted.
-  Locally before the file: `node tools/web/relay_server.mjs PORT
-  --hold=announce` (`tools/web/announce_stand_in.mjs`: announce.sql in a
-  Postgres of this machine's own; restart it between runs). Passes on
+  an end hidden by Ann is never drawn, not for a moment, in her browser
+  that showed it before nor in a phone that never did, each told by
+  `feed_count` with no notice request of its own; Bea still sees it, the
+  Banner tab says its end; cleared after, throwaways deleted. Locally
+  before the files: `node --env-file=<only SUPABASE_URL, the two keys and
+  MASTER_EMAIL> tools/web/relay_server.mjs PORT --hold=announce`
+  (`tools/web/announce_stand_in.mjs`: both files in a Postgres of this
+  machine's own; restart it between runs; never the whole .env, and the
+  flow refuses this machine's server without the hold). Passes on
   "announce: all ok".
 - `Resend's webhook set up` (`tools/web/resend_webhook.sh`): run once a
   release with `?op=mail_event` is live, with the full-access key of the

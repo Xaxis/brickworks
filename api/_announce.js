@@ -28,7 +28,14 @@
 // a request through Resend's batch, paced well under its limit, each with a
 // one-click unsubscribe (RFC 8058: List-Unsubscribe and List-Unsubscribe-Post)
 // and the same link in its words. Sent by the cron (/api/plans/announce-due)
-// and, for the first few hundred, at once after Send.
+// and, for the first few hundred, at once after Send. The Resend team is
+// shared: it also sends every site's sign-in codes, job.rip's among them.
+// So news mail has a most a day, the owner's (200 until set), and a quota
+// Resend says is used up stops it until the next UTC day; each take comes
+// at least 1.1 s after the one before, from any instance, and not in the
+// 1.5 s after this site's own code was asked for (supabase/announce2.sql).
+// Only the site sends it (brickworks.diy): a preview's unreviewed code
+// never mails, and its cron sends only the checks' own announcements.
 //
 //   GET  /api/admin?op=announce                 the desk: announcements, today's count, the limit
 //   GET  /api/admin?op=announce_preview         a draft as people will see it, and who it reaches
@@ -39,13 +46,16 @@
 //   POST /api/admin?op=announce_withdraw        a sent one taken out of every list
 //   POST /api/admin?op=announce_drop            a draft thrown away
 //   POST /api/admin?op=announce_limit           the day's most
+//   POST /api/admin?op=announce_mail_most       the most news mails a day
+//   POST /api/admin?op=announce_mail_address    the postal address at a news mail's foot
 //   GET  /api/plans?op=announce_due             the cron: what is due, and mail
 //   POST /api/plans?op=notice_hide              (session) the site's notice hidden for this person
 //   GET  /api/plans?op=notice_hidden&id=N       (session) whether they hid it
 //   GET  /api/people?op=me                      .news: whether they asked for news by email
 //   POST /api/people?op=news                    (session) {news: true | false}
 //   POST /api/people?op=news_unsubscribe        a mail's one-click unsubscribe (a, t)
-//   GET  /api/people?op=news_unsubscribe        the same opened in a browser: to Settings, which asks
+//   GET  /api/people?op=news_unsubscribe        the same opened in a browser: to Settings, whose
+//                                               Unsubscribe button asks (a scanner that opens it changes nothing)
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
@@ -67,13 +77,20 @@ export const MOST_A_DAY = 2;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SENDER = "Brickworks <noreply@brickworks.diy>";
-/// A batch is Resend's most (100); one at a time, this far apart: Resend's
+/// A batch is Resend's most (100); one at a time, at least 1.1 s apart from
+/// any instance, as the take paces them (supabase/announce2.sql): Resend's
 /// limit is per team, and the team sends for other sites too.
 export const BATCH = 100;
-export const PACE_MS = 1100;
 /// A round's most batches: the cron's, and the one at once after Send.
 const ROUND = 8;
 const AT_ONCE = 2;
+/// The most news mails a day until the owner sets it, and the most they may.
+export const NEWS_A_DAY = 200;
+export const MOST_NEWS_A_DAY = 10000;
+/// The longest postal address a mail's foot shows (site_settings keeps 200).
+export const MOST_ADDRESS = 200;
+/// Resend's words for a quota used up: news stops until the next UTC day.
+const QUOTA = /^(daily|monthly)_quota_exceeded$/;
 
 /// The words a request carried, parsed.
 function bodyOf(request) {
@@ -272,14 +289,17 @@ export async function announceRead(request) {
     if (notYet(trouble)) return { ready: false, said: NOT_YET, test: tests, scope };
     throw trouble;
   }
-  const [most, today, plans, banner] = await Promise.all([
+  const [most, today, plans, banner, news, address] = await Promise.all([
     mostOf(request),
     rpc("announce_day", { p_test: tests, p_day: new Date().toISOString(), p_scope: tests ? scope : null }),
     plansOf(),
     db("rpc/site_notice", { method: "POST", body: { p_scope: scope } }).catch(() => null),
+    // Before announce2.sql: no most, no stop, said so.
+    db("rpc/news_mail_state", { method: "POST", body: { p_scope: scope } }).catch(() => null),
+    addressOf(scope),
   ]);
   return { ready: true, test: tests, scope, preview: scope !== "live", ...most, today, plans, billing: billingMode(),
-    banner, mail: Boolean(process.env.RESEND_API_KEY), announcements: (list || []).map(view) };
+    banner, mail: mailReady(), mail_missing: mailMissing(), news_mail: news, address, announcements: (list || []).map(view) };
 }
 
 /// A draft as its people will see it, from the same code their page is
@@ -436,12 +456,46 @@ export async function announceLimit(request, response, claims) {
   return response.status(200).json({ value: Number(made.value), scope: made.scope, was: made.was ?? null, test: testsOf(request) });
 }
 
+/// POST op=announce_mail_most {most}: at most this many news mails a UTC
+/// day, 0 to 10,000 (0: none). Counted from the mail kept today, inside the
+/// take (announce2.sql), so no round, instance or retry goes past it.
+export async function announceMailMost(request, response, claims) {
+  const most = bodyOf(request).most;
+  if (!Number.isInteger(most) || most < 0 || most > MOST_NEWS_A_DAY) {
+    throw new AuthError(`The most news mails a day is a whole number from 0 to ${MOST_NEWS_A_DAY.toLocaleString("en-US")}.`, 400);
+  }
+  const made = await setSetting("news_mail_most", String(most), request, claims?.email);
+  return response.status(200).json({ value: Number(made.value), scope: made.scope, was: made.was ?? null, test: testsOf(request) });
+}
+
+/// POST op=announce_mail_address {address}: the postal address a news
+/// mail's foot shows, up to four lines; "" for none.
+export async function announceMailAddress(request, response, claims) {
+  const typed = field(bodyOf(request), "address");
+  const address = plain(typed).split("\n").map((line) => line.trim()).filter(Boolean).join("\n");
+  if (lengthOf(address) > MOST_ADDRESS) throw new AuthError(`The address is ${lengthOf(address)} characters: at most ${MOST_ADDRESS}.`, 400);
+  if (address.split("\n").length > 4) throw new AuthError("An address is at most four lines.", 400);
+  // site_settings keeps no empty value: none is kept as one space.
+  const made = await setSetting("news_mail_address", address || " ", request, claims?.email);
+  return response.status(200).json({ value: made.value.trim(), scope: made.scope, was: made.was?.trim() ?? null, test: testsOf(request) });
+}
+
+/// The postal address the owner gave for [scope]'s news mail, or "".
+async function addressOf(scope) {
+  const kept = await db("rpc/site_setting", { method: "POST", body: { p_name: "news_mail_address", p_scope: scope } }).catch(() => null);
+  return String(kept?.value || "").trim();
+}
+
 // ---------------------------------------------------------------------------
 // The cron: what is due, and mail.
 
 /// One run: each scheduled one whose time came sent, if its words are still
-/// those pressed; then the mail of those sent, a round of batches.
+/// those pressed; then the mail of those sent, a round of batches. Only the
+/// site (brickworks.diy) sends the site's own and mails: anywhere else (a
+/// preview's code, which nobody reviewed yet, or this machine) it sends
+/// only the checks' own announcements, and mails nobody.
 export async function announceDue(request) {
+  const live = scopeOf(request) === "live";
   let due;
   try {
     due = await db("rpc/announce_due", { method: "POST", body: {} });
@@ -452,6 +506,7 @@ export async function announceDue(request) {
   let sent = 0;
   let held = 0;
   for (const row of due || []) {
+    if (!live && row.test !== true) continue;
     const ok = row.pressed_hash && row.pressed_hash === hashOf(row);
     // The day's limit was counted as it was pressed (scheduled ones count).
     const said = ok ? await db("rpc/announce_press", { method: "POST", body: { p_id: row.id, p_test: row.test,
@@ -459,6 +514,9 @@ export async function announceDue(request) {
     if (said?.announcement?.status === "sent") {
       sent += 1;
       await noted(request, "announce_send", row, 200, { outcome: "sent", reach: said.announcement.reach });
+    } else if (said?.refused === "gone") {
+      // Another run, at the same moment, sent it: nothing to do or say.
+      continue;
     } else {
       held += 1;
       const why = said?.refused === "pressed" ? "Its words are not those pressed: not sent." : "It could not be sent at its time.";
@@ -468,14 +526,22 @@ export async function announceDue(request) {
   }
   let mailed = 0;
   let batches = 0;
-  const mailing = await db("rpc/announce_mail_due", { method: "POST", body: {} }).catch(() => []);
+  const mailing = live ? await db("rpc/announce_mail_due", { method: "POST", body: {} }).catch(() => []) : [];
+  let stopped = null;
   for (const id of mailing || []) {
     if (batches >= ROUND) break;
     const round = await mailRound(Number(id), ROUND - batches);
     mailed += round.sent;
     batches += round.batches;
+    // Resend's quota is used: no other announcement's mail is tried today.
+    if (round.stopped) {
+      stopped = round.stopped;
+      break;
+    }
   }
-  return { outcome: sent || held || mailed ? `${sent} sent, ${held} held, ${mailed} mailed` : "nothing due", sent, held, mailed };
+  const outcome = sent || held || mailed ? `${sent} sent, ${held} held, ${mailed} mailed` : "nothing due";
+  return { outcome: stopped ? `${outcome}; news mail stopped until ${stopped.until} (${stopped.why})` : outcome,
+    sent, held, mailed, ...(stopped ? { stopped } : {}) };
 }
 
 /// The audit's line for what the schedule did on the owner's behalf.
@@ -512,21 +578,38 @@ export async function announceDueRoute(request, response) {
 // ---------------------------------------------------------------------------
 // Mail.
 
-/// The key an unsubscribe link is signed with: this server's alone.
-const signing = () => `news-unsubscribe:${process.env.SUPABASE_SECRET_KEY || ""}`;
+/// The key an unsubscribe link is signed with: a secret of its own
+/// (NEWS_UNSUB_SECRET, set in Vercel), so no other key's rotation or leak
+/// touches it. Until it is set nothing is mailed (mailReady).
+const signing = () => process.env.NEWS_UNSUB_SECRET || "";
+/// The key the first links were signed with (announce, SUPABASE_SECRET_KEY):
+/// only ever checked, for a link already sent, never signed with again.
+const signedBefore = () => (process.env.SUPABASE_SECRET_KEY ? `news-unsubscribe:${process.env.SUPABASE_SECRET_KEY}` : "");
+const tokenWith = (key, account) => createHmac("sha256", key).update(String(account)).digest("base64url").slice(0, 32);
 
 /// [account]'s unsubscribe token: only this server makes it, and it names
 /// nothing but the account.
 export function unsubscribeToken(account) {
-  return createHmac("sha256", signing()).update(String(account)).digest("base64url").slice(0, 32);
+  const key = signing();
+  if (!key) throw new Error("NEWS_UNSUB_SECRET is not set: no unsubscribe link can be made");
+  return tokenWith(key, account);
 }
 
 function tokenHolds(account, token) {
   if (!UUID.test(String(account)) || typeof token !== "string") return false;
-  const want = Buffer.from(unsubscribeToken(account));
   const given = Buffer.from(token);
-  return want.length === given.length && timingSafeEqual(want, given);
+  return [signing(), signedBefore()].filter(Boolean).some((key) => {
+    const want = Buffer.from(tokenWith(key, account));
+    return want.length === given.length && timingSafeEqual(want, given);
+  });
 }
+
+/// What this deployment lacks to mail news: [] when it can.
+export function mailMissing() {
+  return [["RESEND_API_KEY", "a mail key"], ["NEWS_UNSUB_SECRET", "its unsubscribe secret"]]
+    .filter(([name]) => !process.env[name]).map(([name, words]) => ({ name, words }));
+}
+const mailReady = () => mailMissing().length === 0;
 
 /// Where [account] unsubscribes: the mail client's one click (POST, RFC
 /// 8058), and the page a person opens from the mail's words.
@@ -536,42 +619,58 @@ export function unsubscribeLinks(account, origin = siteOrigin()) {
     page: `${origin}/settings?unsubscribe=${account}.${t}#email-part` };
 }
 
-/// The mail of announcement [row] to [account]: its words, its link, and how
-/// to stop them, with the one-click headers.
-export function announceMail(row, account, origin = siteOrigin()) {
+const escaped = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/// The mail of announcement [row] to [account]: its words, its link, how to
+/// stop them, with the one-click headers, and the owner's postal address at
+/// its foot when they gave one (/admin › Announcements › Settings).
+export function announceMail(row, account, origin = siteOrigin(), address = "") {
   const links = unsubscribeLinks(account, origin);
   const link = row.link ? (row.link.startsWith("/") ? `${origin}${row.link}` : row.link) : `${origin}/notifications`;
   const mail = framedMail({ subject: row.title, paragraphs: [row.title, ...(row.body ? [row.body] : [])],
     action: { label: row.link ? "Open it" : "See it on Brickworks", href: link } }, origin);
   const why = "You get this because you asked for news from Brickworks by email (Settings, Email).";
-  const html = mail.html.replace(/<\/div>\s*$/, `<p style="font:13px/1.5 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;`
-    + `color:#5b6472;max-width:520px;margin:8px auto 0;text-align:center">${why} <a href="${links.page.replace(/&/g, "&amp;")}"`
-    + ` style="color:#5b6472">Unsubscribe</a></p>\n</div>`);
-  return { subject: row.title, text: `${mail.text}\n\n${why}\nUnsubscribe: ${links.page}\n`, html,
-    headers: { "List-Unsubscribe": `<${links.post}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } };
+  const lines = String(address || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  const foot = "font:13px/1.5 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;color:#5b6472;max-width:520px;"
+    + "margin:8px auto 0;text-align:center";
+  const html = mail.html.replace(/<\/div>\s*$/, `<p style="${foot}">${why} <a href="${links.page.replace(/&/g, "&amp;")}"`
+    + ` style="color:#5b6472">Unsubscribe</a></p>\n${lines.length ? `<p style="${foot}">${lines.map(escaped).join("<br>")}</p>\n` : ""}</div>`);
+  return { subject: row.title, text: `${mail.text}\n\n${why}\nUnsubscribe: ${links.page}\n${lines.length ? `\n${lines.join("\n")}\n` : ""}`,
+    html, headers: { "List-Unsubscribe": `<${links.post}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } };
 }
 
-const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+/// The start of the next UTC day after [now].
+const nextUtcDay = (now = Date.now()) => {
+  const at = new Date(now);
+  return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate() + 1));
+};
 
 /// Up to [most] batches of announcement [id]'s mail sent: {sent, failed,
-/// batches}. Never throws on Resend's answer; each mail's state kept.
+/// batches, stopped?}. Never throws on Resend's answer; each mail's state
+/// kept. A quota Resend says is used up stops news mail until the next UTC
+/// day ([stopped]); being too fast, or down, leaves the batch for a later
+/// round.
 export async function mailRound(id, most = ROUND) {
   const out = { sent: 0, failed: 0, batches: 0 };
   const row = await db("rpc/announce_one", { method: "POST", body: { p_id: id, p_test: false } }).catch(() => null);
   if (!row || row.status !== "sent" || !row.email || row.test) return out;
-  // No key here: nobody is taken, so the mail goes once one is set.
+  // No key or no unsubscribe secret here: nobody is taken, so the mail goes
+  // once both are set.
   const key = process.env.RESEND_API_KEY;
-  if (!key) return { ...out, said: "no mail key here" };
+  if (!mailReady()) return { ...out, said: `no ${mailMissing().map((one) => one.name).join(" or ")} here` };
+  const address = await addressOf("live");
+  // The words in the key too: a batch Resend refused, taken again after an
+  // edit, is new mail to it, never the same request with another body.
+  const words = createHash("sha256").update(JSON.stringify([row.title, row.body, row.link])).digest("hex");
   for (let batch = 0; batch < most; batch += 1) {
     const taken = await db("rpc/announce_mail_take", { method: "POST", body: { p_id: id, p_limit: BATCH } });
     if (!Array.isArray(taken) || taken.length === 0) break;
-    if (batch > 0) await pause(PACE_MS);
     out.batches += 1;
     let results;
     {
       const mails = taken.map((one) => ({ from: process.env.EMAIL_FROM || SENDER, to: [one.email],
-        ...announceMail(row, one.account), tags: [{ name: "kind", value: "announcement" }] }));
-      const ids = createHash("sha256").update(taken.map((one) => one.account).join(",")).digest("hex").slice(0, 32);
+        ...announceMail(row, one.account, siteOrigin(), address), tags: [{ name: "kind", value: "announcement" }] }));
+      const ids = createHash("sha256").update(`${words}:${taken.map((one) => one.account).join(",")}`).digest("hex").slice(0, 32);
       let reply = null;
       let said = null;
       try {
@@ -590,7 +689,17 @@ export async function mailRound(id, most = ROUND) {
         // Refused before it took any: taken again by a later round.
         await db("rpc/announce_mail_done", { method: "POST", body: { p_id: id,
           p_results: taken.map((one) => ({ account: one.account, state: "again" })) } });
-        console.error(`announce: mail ${id}: Resend said ${reply ? reply.status : "nothing"}; again later`);
+        const quota = reply?.status === 429 ? String(said?.name || said?.type || "") : "";
+        if (QUOTA.test(quota)) {
+          // The team's quota is used: news waits for the next UTC day, so
+          // what is left of it goes to the sign-in codes.
+          const until = nextUtcDay();
+          await db("rpc/announce_mail_stop", { method: "POST", body: { p_until: until.toISOString(), p_why: quota } }).catch(() => null);
+          out.stopped = { until: until.toISOString(), why: quota };
+          console.error(`announce: mail ${id}: Resend said ${quota}; news mail stops until ${until.toISOString()}`);
+        } else {
+          console.error(`announce: mail ${id}: Resend said ${reply ? reply.status : "nothing"}; again later`);
+        }
         break;
       } else {
         console.error(`announce: mail ${id}: Resend refused the batch: ${reply.status}`);

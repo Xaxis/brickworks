@@ -17,7 +17,11 @@
 //                                what is new for the avatar (the two
 //                                together, as the app's Account says it),
 //                                each apart for the account menu, and who
-//                                the caller is, for their avatar
+//                                the caller is, for their avatar; and
+//                                notice_hidden, the ids of the site's
+//                                notices they hid (supabase/announce2.sql),
+//                                so every browser they use stops showing
+//                                one at its next page (web/notice.js)
 //
 // A comment, a photo of a build, a remix, likes (a number a model a day,
 // never who) and a challenge's end; and since replies.sql, a reply to your
@@ -44,6 +48,7 @@
 import { bearer, isMaster, verify } from "./_auth.js";
 import { db, dbAll } from "./_db.js";
 import { withFaces } from "./_faces.js";
+import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
 
@@ -367,8 +372,11 @@ export async function feedCount(request, response) {
   const claims = bearer(request) ? await verify(bearer(request), request) : null;
   const asker = claims?.sub || null;
   if (!asker) return response.status(200).json({ count: 0, signed_in: false });
-  const [counts, people] = await Promise.all([newCounts(asker),
-    db(`people?account=eq.${asker}&select=handle,name`).catch(() => [])]);
+  const [counts, people, hidden] = await Promise.all([newCounts(asker),
+    db(`people?account=eq.${asker}&select=handle,name`).catch(() => []),
+    // Never the count's trouble: without it, the page asks about a notice
+    // itself (web/notice.js), as before announce2.sql.
+    call("site_notice_hidden_ids", { p_account: asker, p_scope: scopeOf(request) }, () => null).catch(() => null)]);
   const person = people[0] || null;
   // Their own picture, for the avatar in the header (api/_faces.js). And
   // for the site's owner alone, admin: the account menu's way to /admin
@@ -376,5 +384,6 @@ export async function feedCount(request, response) {
   // false: api/admin.js answers them as if there were no console, and this
   // says nothing different (bugbar, 2026-11-13).
   return response.status(200).json(await withFaces({ ...counts, signed_in: true,
-    me: person ? { handle: person.handle, name: person.name } : null, ...(isMaster(claims) ? { admin: true } : {}) }));
+    me: person ? { handle: person.handle, name: person.name } : null, ...(isMaster(claims) ? { admin: true } : {}),
+    ...(Array.isArray(hidden) ? { notice_hidden: hidden.filter((id) => Number.isSafeInteger(id) && id > 0) } : {}) }));
 }

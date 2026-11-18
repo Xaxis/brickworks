@@ -221,8 +221,8 @@ import { challengeView } from "./_console_challenges.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
-import { announceDrop, announceEdit, announceKeep, announceLimit, announcePreview, announceRead, announceSend, announceUnschedule,
-  announceWithdraw } from "./_announce.js";
+import { announceDrop, announceEdit, announceKeep, announceLimit, announceMailAddress, announceMailMost, announcePreview,
+  announceRead, announceSend, announceUnschedule, announceWithdraw } from "./_announce.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -302,7 +302,8 @@ export default async function handler(request, response) {
     social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes,
     // Announcements (announce, api/_announce.js): only announce_send sends, and only the words it was pressed on.
     announce_keep: announceKeep, announce_send: announceSend, announce_unschedule: announceUnschedule, announce_edit: announceEdit,
-    announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit };
+    announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit,
+    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress };
   // An op is one of these tables' own names, never one Object's prototype
   // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
   // nobody made, answered 404 and never audited as an act (c3review).

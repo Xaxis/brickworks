@@ -9,6 +9,7 @@
 //   PG_MODULE=... PG_BIN=... node tests/fixtures/announce/api_check.mjs
 //
 // Prints one JSON object, each finding by name.
+import { createHmac } from "node:crypto";
 import { Readable } from "node:stream";
 import { askAdmin, askPlans, SUPABASE_URL, world } from "../billing/world.mjs";
 import { announceWorld } from "./world.mjs";
@@ -40,24 +41,27 @@ async function ask(route, { method = "GET", query = {}, headers = {}, body } = {
 const askPeople = (asked) => ask("people", asked);
 
 const n = async (sql, args = []) => Number((await db.q(sql, args))[0].n);
-const recipients = async (id) => (await db.q("select coalesce(array(select unnest(recipients) order by 1), '{}') as r from public.announcements where id = $1",
-  [id]))[0].r.map(String).sort();
+// Who it was put before: its rows of announcement_to (announce2.sql), the
+// one place that says so since; recipients is left empty.
+const recipients = async (id) => (await db.q("select account::text as a from public.announcement_to where announcement = $1 order by 1",
+  [id])).map((row) => row.a).sort();
 
 try {
   const w = await world({ billing: "test" });
   const fromWorld = globalThis.fetch;
   // Resend's batch endpoint: each batch kept, answered as [answers] says
-  // next (200 with an id each, else that status).
+  // next (200 with an id each, else that status, or {status, body}).
   const batches = [];
   const answers = [];
   globalThis.fetch = async (input, init = {}) => {
     const url = new URL(String(input));
     if (url.origin === "https://api.resend.com") {
-      const status = answers.shift() || 200;
+      const next = answers.shift() || 200;
+      const status = typeof next === "object" ? next.status : next;
       const mails = JSON.parse(String(init.body || "[]"));
-      batches.push({ path: url.pathname, status, key: init.headers?.["idempotency-key"] || null, mails });
+      batches.push({ path: url.pathname, status, key: init.headers?.["idempotency-key"] || null, mails, at: Date.now() });
       return status === 200 ? new Response(JSON.stringify({ data: mails.map((_, at) => ({ id: `re_${batches.length}_${at}` })) }), { status })
-        : new Response(JSON.stringify({ message: "stand-in refusal" }), { status });
+        : new Response(JSON.stringify(typeof next === "object" ? next.body : { message: "stand-in refusal" }), { status });
     }
     const call = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
     if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "admission_snapshot_get", "admission_snapshot_put"].includes(call[1])) {
@@ -104,7 +108,7 @@ try {
   out.gate = {};
   for (const [op, method] of [["announce", "GET"], ["announce_preview", "GET"], ["announce_keep", "POST"], ["announce_send", "POST"],
     ["announce_unschedule", "POST"], ["announce_edit", "POST"], ["announce_withdraw", "POST"], ["announce_drop", "POST"],
-    ["announce_limit", "POST"]]) {
+    ["announce_limit", "POST"], ["announce_mail_most", "POST"], ["announce_mail_address", "POST"]]) {
     const query = { op, words: JSON.stringify({ title: "x", audience: { kind: "everyone" } }) };
     const body = { title: "A stranger's", body: "", audience: { kind: "everyone" }, id: 1, most: 5 };
     out.gate[op] = [(await askAdmin({ method, query, headers: as(null), body })).status,
@@ -325,6 +329,14 @@ try {
     await act("announce_drop", { id: pooled.json.announcement.id });
   }
 
+  // --- No unsubscribe secret of its own (NEWS_UNSUB_SECRET): nobody is
+  // mailed, and the console says what is missing.
+  {
+    const said = (await read({ op: "announce" }, live)).json;
+    out.no_secret = { mail: said?.mail, missing: (said?.mail_missing || []).map((one) => one.name), news_mail: said?.news_mail };
+  }
+  process.env.NEWS_UNSUB_SECRET = "news-unsub-secret-for-this-test-only";
+
   // --- News by email: off until chosen; only those who chose it are mailed,
   // in batches with one-click unsubscribe; the link stops them.
   {
@@ -417,6 +429,260 @@ try {
       changed: changed.status, new_notice_hidden: t1New, old_still_hidden: t1Old, with_end: withEnd.status, gone_at_end: gone,
       history_ends: (switches?.notices || []).some((one) => one.id === endId && one.ends_at),
       audited: await n("select count(*)::int as n from public.admin_audit where op = 'notice_set' and status = 200") };
+  }
+
+  // --- The review's fixes (anfix, bench/results/anreview-2026-11-18).
+  out.fix = {};
+  const cron = (host = live) => askPlans({ query: { op: "announce_due" }, headers: { host, authorization: `Bearer ${process.env.CRON_SECRET}`,
+    "user-agent": "vercel-cron/1.0" } });
+  // M1: the avatar's count says which of the site's notices the person hid.
+  {
+    await act("notice_set", { words: { en: "Upkeep tonight." }, tone: "info" });
+    const id = (await askPlans({ query: { op: "notice" }, headers: { host: preview } })).json?.notice?.id;
+    const count = async (who, host = preview) => (await askPeople({ query: { op: "feed_count" }, headers: as(token[who], host) })).json;
+    const before = await count(t2);
+    await askPlans({ method: "POST", query: { op: "notice_hide" }, headers: as(token[t2]), body: { id } });
+    const after = await count(t2);
+    const other = await count(t3);
+    const elsewhere = await count(t2, live);
+    await act("notice_clear", {});
+    out.fix.m1 = { id, before: before?.notice_hidden, after: after?.notice_hidden, other: other?.notice_hidden,
+      elsewhere: elsewhere?.notice_hidden, cleared: (await count(t2))?.notice_hidden,
+      signed_out: (await askPeople({ query: { op: "feed_count" }, headers: as(null) })).json };
+  }
+  // M2: who it reached is rows of announcement_to; recipients stays empty;
+  // the list reads one row of counts an announcement.
+  {
+    const kept = (await act("announce_keep", { title: "Rows", audience: { kind: "everyone" } })).json.announcement;
+    const sent = await act("announce_send", { id: kept.id, hash: kept.hash, changed_at: kept.changed_at });
+    const row = (await db.q("select recipients, reach from public.announcements where id = $1", [kept.id]))[0];
+    await askPeople({ method: "POST", query: { op: "notifications_read" }, headers: as(token[t1]), body: { announcement: kept.id, clicked: true } });
+    await askPeople({ method: "POST", query: { op: "notifications_read" }, headers: as(token[t1]), body: { announcement: kept.id, clicked: true } });
+    const listed = (await read({ op: "announce" })).json.announcements.find((one) => one.id === kept.id);
+    const truth = (await db.q(`select count(*) filter (where read_at is not null)::int as reads, count(*) filter (where clicked_at is not null)::int as clicks
+      from public.announcement_reads where announcement = $1`, [kept.id]))[0];
+    const counted = (await db.q("select reads, clicks from public.announcement_counts where announcement = $1", [kept.id]))[0];
+    const tables = (await db.q(`select array_agg(distinct t.relname order by t.relname) as t from pg_proc p, unnest(array['announcement_to',
+      'announcement_reads','announcement_mails','announcement_counts']) t(relname) where p.proname = 'announce_list' and p.prosrc like '%' || t.relname || '%'`))[0].t;
+    const sentAll = await n(`select count(*)::int as n from public.announcements a where a.status <> 'draft' and a.sent_at is not null
+      and a.reach = (select count(*) from public.announcement_to t where t.announcement = a.id)`);
+    const sentEvery = await n("select count(*)::int as n from public.announcements where sent_at is not null");
+    out.fix.m2 = { reach: sent.json?.reach, to_rows: (await recipients(kept.id)).length, recipients: row.recipients, row_reach: row.reach,
+      listed: { read: listed?.read, clicked: listed?.clicked, seen: listed?.seen ?? null, recipients: listed?.recipients ?? null }, truth, counted,
+      list_reads: tables, reach_is_rows: sentAll === sentEvery, sent_every: sentEvery };
+    await act("announce_drop", { id: kept.id }).catch(() => null);
+  }
+  // L3: a barred account is in no audience but "one person", and never mailed.
+  {
+    const gil = await db.user("gil@example.com", { made: ago(30) });
+    await db.q("insert into public.people (account, handle) values ($1, 'gil')", [gil]);
+    await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [gil]);
+    const before = (await read({ op: "announce_preview", words: JSON.stringify({ title: "x", audience: { kind: "everyone" }, email: true }) }, live)).json;
+    await db.q("insert into public.barred_accounts (account) values ($1)", [gil]);
+    const after = (await read({ op: "announce_preview", words: JSON.stringify({ title: "x", audience: { kind: "everyone" }, email: true }) }, live)).json;
+    const one = (await read({ op: "announce_preview", words: JSON.stringify({ title: "x", audience: { kind: "person", handle: "gil" }, email: true }) }, live)).json;
+    const kept = (await act("announce_keep", { title: "To Gil alone", audience: { kind: "person", handle: "gil" }, email: true }, live)).json.announcement;
+    const from = batches.length;
+    const sent = await act("announce_send", { id: kept.id, hash: kept.hash, changed_at: kept.changed_at }, live);
+    await cron();
+    out.fix.l3 = { everyone: [before.count, after.count], mail: [before.mail, after.mail], person: [one.count, one.mail], reach: sent.json?.reach,
+      mailed_gil: batches.slice(from).some((b) => b.mails.some((m) => m.to.includes("gil@example.com"))),
+      rows: (await db.call("announcement_rows", { viewer: gil, since: ago(1), until: new Date(Date.now() + 1000).toISOString() })).length };
+  }
+  // M3: news mail's most a day, counted inside the take; a quota Resend
+  // names stops it until the next UTC day; each take paced.
+  {
+    const people = [];
+    for (const name of ["hal", "ivy", "jo"]) {
+      const id = await db.user(`${name}@example.com`, { made: ago(30) });
+      await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [id]);
+      people.push(id);
+    }
+    const state0 = (await read({ op: "announce" }, live)).json.news_mail;
+    const refused = [(await act("announce_mail_most", { most: -1 }, live)).status, (await act("announce_mail_most", { most: 10001 }, live)).status,
+      (await act("announce_mail_most", { most: "5" }, live)).status];
+    const today = Number(state0.today);
+    const set = await act("announce_mail_most", { most: today + 1 }, live);
+    const kept = (await act("announce_keep", { title: "Most a day", audience: { kind: "everyone" }, email: true }, live)).json.announcement;
+    const from = batches.length;
+    const sent = await act("announce_send", { id: kept.id, hash: kept.hash, changed_at: kept.changed_at }, live);
+    const firstTo = batches.slice(from).flatMap((b) => b.mails.map((m) => m.to[0]));
+    const again = await cron();
+    const state1 = (await read({ op: "announce" }, live)).json.news_mail;
+    await act("announce_mail_most", { most: 1000 }, live);
+    // The team's daily quota used: Resend's 429 names it.
+    answers.push({ status: 429, body: { statusCode: 429, name: "daily_quota_exceeded", message: "You have reached your daily email sending quota." } });
+    const quotaFrom = batches.length;
+    const quota = await cron();
+    const stopped = (await read({ op: "announce" }, live)).json.news_mail;
+    const afterStop = batches.length;
+    const stillStopped = await cron();
+    const states = await db.q("select state, count(*)::int as n from public.announcement_mails where announcement = $1 group by state order by 1", [kept.id]);
+    const next = new Date();
+    const midnight = Date.UTC(next.getUTCFullYear(), next.getUTCMonth(), next.getUTCDate() + 1);
+    out.fix.m3 = { default_most: state0.most, refused, set: set.status, set_value: set.json?.value, first_mailed: sent.json?.mail?.sent,
+      first_to: firstTo.length, cron_mailed: again.json?.mailed, today_at_most: state1.today === today + 1,
+      quota_batches: batches.length - quotaFrom, quota_outcome: quota.json?.outcome, stopped: stopped.stopped,
+      stopped_until_midnight: Date.parse(stopped.stopped?.until) === midnight, stopped_why: stopped.stopped?.why,
+      batches_while_stopped: batches.length - afterStop, still: stillStopped.json?.mailed, states };
+    // Stopped no more (as the next day): the rest go, paced.
+    await db.q("delete from public.site_settings where name = 'news_mail_stopped'");
+    const resumedFrom = batches.length;
+    const resumed = await cron();
+    out.fix.m3.resumed = resumed.json?.mailed;
+    // Paced from any instance: two announcements' mail in one round go at
+    // least 1.1 s apart; one after a sign-in code was asked for, 1.5 s after it.
+    const waiting = async (name) => {
+      const id = await db.user(`${name}@example.com`, { made: ago(30) });
+      await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [id]);
+      await db.q("insert into public.people (account, handle) values ($1, $2)", [id, name]);
+      const one = (await act("announce_keep", { title: `For ${name}`, audience: { kind: "person", handle: name }, email: true }, live)).json.announcement;
+      answers.push(503);
+      await act("announce_send", { id: one.id, hash: one.hash, changed_at: one.changed_at }, live);
+      return one.id;
+    };
+    await waiting("pat");
+    await waiting("quin");
+    const paceFrom = batches.length;
+    await cron();
+    const round = batches.slice(paceFrom).map((b) => b.at);
+    await waiting("rae");
+    await db.q("insert into public.otp_requests (email) values ('someone@example.com')");
+    const codeAt = Date.now();
+    const codeFrom = batches.length;
+    await cron();
+    const afterCode = batches.slice(codeFrom).map((b) => b.at - codeAt);
+    // Nobody to take: no wait at all.
+    const t0 = Date.now();
+    await db.call("announce_mail_take", { p_id: kept.id, p_limit: 1 });
+    out.fix.pace = { round_batches: round.length, round_gaps_ms: round.slice(1).map((at, i) => at - round[i]), after_code_ms: afterCode,
+      empty_take_ms: Date.now() - t0 };
+  }
+  // L1: two cron runs at once on one due announcement: one sends it, the
+  // other says nothing; no hold in the audit, no failed run.
+  {
+    const kept = (await act("announce_keep", { title: "Overlap", audience: { kind: "everyone" } }, live)).json.announcement;
+    const at = new Date(Date.now() + 2 * 3600000).toISOString();
+    await act("announce_send", { id: kept.id, hash: kept.hash, changed_at: kept.changed_at, at }, live);
+    await db.q("update public.announcements set send_at = now() - interval '1 minute' where id = $1", [kept.id]);
+    const failedBefore = await n("select count(*)::int as n from public.cron_runs where job = 'announce_due' and outcome = 'failed'").catch(() => -1);
+    const [c1, c2] = await Promise.all([cron(), cron()]);
+    // The other run's view, made sure of: due as it was read, sent by then.
+    const kept2 = (await act("announce_keep", { title: "Overlap, made sure", audience: { kind: "everyone" } }, live)).json.announcement;
+    await act("announce_send", { id: kept2.id, hash: kept2.hash, changed_at: kept2.changed_at, at }, live);
+    await db.q("update public.announcements set send_at = now() - interval '1 minute' where id = $1", [kept2.id]);
+    const due = await db.call("announce_due", {});
+    const row = due.find((one) => Number(one.id) === kept2.id);
+    await db.call("announce_press", { p_id: row.id, p_test: false, p_changed: row.changed_at, p_by: "the schedule", p_hash: row.pressed_hash,
+      p_at: null, p_most: 1000 });
+    const { announceDue } = await import("../../../api/_announce.js");
+    const before = await auditCount();
+    const late = await (async () => {
+      // announce_due as the second run read it, before the first sent it.
+      const q = globalThis.fetch;
+      globalThis.fetch = async (input, init = {}) => (/\/rpc\/announce_due$/.test(String(input))
+        ? new Response(JSON.stringify([row]), { status: 200 }) : q(input, init));
+      try {
+        return await announceDue({ headers: { host: "www.brickworks.diy" } });
+      } finally {
+        globalThis.fetch = q;
+      }
+    })();
+    out.fix.l1 = { runs: [c1.json?.held, c2.json?.held].sort(), sent: [c1.json?.sent, c2.json?.sent].sort(),
+      status: (await db.q("select status from public.announcements where id = $1", [kept.id]))[0].status,
+      held_audits: await n("select count(*)::int as n from public.admin_audit where op = 'announce_send' and target in ($1, $2) and status = 409",
+        [String(kept.id), String(kept2.id)]),
+      failed_runs: (await n("select count(*)::int as n from public.cron_runs where job = 'announce_due' and outcome = 'failed'").catch(() => -1))
+        - failedBefore,
+      late: { held: late.held, sent: late.sent }, late_audits: (await auditCount()) - before,
+      still: (await db.q("select status from public.announcements where id = $1", [kept2.id]))[0].status };
+  }
+  // L2: off the site (a preview, this machine), the cron sends only the
+  // checks' own and mails nobody.
+  {
+    const theirs = (await act("announce_keep", { title: "The site's, due", audience: { kind: "everyone" }, email: true }, live)).json.announcement;
+    const at = new Date(Date.now() + 2 * 3600000).toISOString();
+    await act("announce_send", { id: theirs.id, hash: theirs.hash, changed_at: theirs.changed_at, at }, live);
+    const pool = (await act("announce_keep", { title: "The checks', due", audience: { kind: "everyone" } })).json.announcement;
+    await act("announce_send", { id: pool.id, hash: pool.hash, changed_at: pool.changed_at, at });
+    await db.q("update public.announcements set send_at = now() - interval '1 minute' where id = any($1)", [[theirs.id, pool.id]]);
+    // Mail of a sent one waiting too, for someone who chose news.
+    const kim = await db.user("kim@example.com", { made: ago(30) });
+    await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [kim]);
+    await db.q("insert into public.people (account, handle) values ($1, 'kim')", [kim]);
+    const w2 = (await act("announce_keep", { title: "Waiting mail", audience: { kind: "person", handle: "kim" }, email: true }, live)).json.announcement;
+    // Sent with no mail at once: as a send whose round Resend refused.
+    answers.push(503);
+    await act("announce_send", { id: w2.id, hash: w2.hash, changed_at: w2.changed_at }, live);
+    const status = (await db.q("select count(*)::int as n from public.announcement_mails where announcement = $1", [w2.id]))[0].n;
+    const from = batches.length;
+    const off = await cron(preview);
+    const local = await cron("127.0.0.1:10751");
+    const after = (await db.q("select id, status from public.announcements where id = any($1) order by id", [[theirs.id, pool.id]]));
+    const offBatches = batches.length - from;
+    const on = await cron();
+    out.fix.l2 = { mails_waiting: status, off: { sent: off.json?.sent, mailed: off.json?.mailed, held: off.json?.held }, local: local.json?.sent,
+      statuses: Object.fromEntries(after.map((one) => [Number(one.id) === theirs.id ? "site" : "checks", one.status])), off_batches: offBatches,
+      on: { sent: on.json?.sent, mailed: on.json?.mailed },
+      site_after_on: (await db.q("select status from public.announcements where id = $1", [theirs.id]))[0].status };
+  }
+  // L5: the link is signed with its own secret; one signed with the key
+  // before it still holds; any other refused.
+  {
+    const lee = await db.user("lee@example.com", { made: ago(30) });
+    await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [lee]);
+    const { unsubscribeToken } = await import("../../../api/_announce.js");
+    const mine = unsubscribeToken(lee);
+    const old = createHmac("sha256", `news-unsubscribe:${process.env.SUPABASE_SECRET_KEY}`).update(lee).digest("base64url").slice(0, 32);
+    const other = createHmac("sha256", "some-other-key").update(lee).digest("base64url").slice(0, 32);
+    const withSecret = createHmac("sha256", process.env.NEWS_UNSUB_SECRET).update(lee).digest("base64url").slice(0, 32);
+    const post = (t) => askPeople({ method: "POST", query: { op: "news_unsubscribe", a: lee, t }, headers: { host: live } });
+    const refusedOther = (await post(other)).status;
+    const byOld = await post(old);
+    await db.q("update public.news_mail set news = true where account = $1", [lee]);
+    const byNew = await post(mine);
+    out.fix.l5 = { own_secret: mine === withSecret, not_old: mine !== old, other: refusedOther, old: byOld.status, now: byNew.status,
+      news: (await db.call("news_choice", { p_account: lee }))?.news };
+  }
+  // L6: the owner's postal address at the foot of each news mail.
+  {
+    const long = await act("announce_mail_address", { address: "x".repeat(201) }, live);
+    const five = await act("announce_mail_address", { address: "a\nb\nc\nd\ne" }, live);
+    const set = await act("announce_mail_address", { address: "Brickworks\n1 <Main> St\nSpringfield" }, live);
+    const shown = (await read({ op: "announce" }, live)).json.address;
+    const { announceMail } = await import("../../../api/_announce.js");
+    const mail = announceMail({ title: "T", body: "B", link: null }, adaId, "https://brickworks.diy", shown);
+    const bare = announceMail({ title: "T", body: "B", link: null }, adaId, "https://brickworks.diy", "");
+    // As the round reads it: the next mail carries it.
+    const mo = await db.user("mo@example.com", { made: ago(30) });
+    await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [mo]);
+    await db.q("insert into public.people (account, handle) values ($1, 'moe')", [mo]);
+    const kept = (await act("announce_keep", { title: "With an address", audience: { kind: "person", handle: "moe" }, email: true }, live)).json.announcement;
+    const from = batches.length;
+    await act("announce_send", { id: kept.id, hash: kept.hash, changed_at: kept.changed_at }, live);
+    const sentMail = batches.slice(from).flatMap((b) => b.mails)[0];
+    const cleared = await act("announce_mail_address", { address: "" }, live);
+    out.fix.l6 = { long: long.status, five: five.status, set: set.status, shown, html: mail.html.includes("Brickworks<br>1 &lt;Main&gt; St<br>Springfield"),
+      text: mail.text.includes("Brickworks\n1 <Main> St\nSpringfield"), bare: !bare.html.includes("Springfield") && !bare.text.includes("Springfield"),
+      sent_has: Boolean(sentMail?.html.includes("Springfield")), cleared: [cleared.status, (await read({ op: "announce" }, live)).json.address] };
+  }
+  // A batch Resend refused, then the words edited: the next try is a new key.
+  {
+    const nia = await db.user("nia@example.com", { made: ago(30) });
+    await db.q("insert into public.news_mail (account, news, at) values ($1, true, now() - interval '1 day')", [nia]);
+    await db.q("insert into public.people (account, handle) values ($1, 'nia')", [nia]);
+    const kept = (await act("announce_keep", { title: "Mail one", body: "first words", audience: { kind: "person", handle: "nia" }, email: true }, live)).json
+      .announcement;
+    answers.push(429);
+    const from = batches.length;
+    const sent = await act("announce_send", { id: kept.id, hash: kept.hash, changed_at: kept.changed_at }, live);
+    const looked = await act("announce_edit", { id: kept.id, changed_at: sent.json.announcement.changed_at, title: "Mail one, corrected", body: "first words" }, live);
+    await act("announce_edit", { id: kept.id, changed_at: sent.json.announcement.changed_at, title: "Mail one, corrected", body: "first words",
+      hash: looked.json?.hash }, live);
+    await cron();
+    const tries = batches.slice(from).filter((b) => b.mails.some((m) => m.to.includes("nia@example.com")));
+    out.fix.key_after_edit = { statuses: tries.map((b) => b.status), keys_differ: tries.length === 2 && tries[0].key !== tries[1].key,
+      subjects: tries.map((b) => b.mails[0].subject) };
   }
 
   // --- The audit: every act the owner made, and what the schedule did.

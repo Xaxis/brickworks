@@ -34,7 +34,7 @@ ADMIN = (ROOT / "api/admin.js").read_text()
 CONSOLE = (ROOT / "web/admin-announce.js").read_text()
 TABLES = {"announcements", "announcement_reads", "announcement_mails", "news_mail", "site_notice_hides"}
 OPS = ["announce", "announce_preview", "announce_keep", "announce_send", "announce_unschedule", "announce_edit", "announce_withdraw",
-       "announce_drop", "announce_limit"]
+       "announce_drop", "announce_limit", "announce_mail_most", "announce_mail_address"]
 
 
 def _postgres() -> dict | None:
@@ -293,6 +293,166 @@ def test_every_act_is_audited() -> None:
     got = _checked()
     if got is None:
         return
-    for op in ("announce_keep", "announce_send", "announce_unschedule", "announce_edit", "announce_withdraw", "announce_drop", "announce_limit"):
+    for op in ("announce_keep", "announce_send", "announce_unschedule", "announce_edit", "announce_withdraw", "announce_drop", "announce_limit",
+               "announce_mail_most", "announce_mail_address"):
         assert got["audit"].get(op, 0) > 0, op
     assert set(got["audit_targets"]) == {"announcement", "setting"}
+
+
+# --- The review's fixes (anfix, 2026-11-18; bench/results/anreview-2026-11-18) ---------
+
+SQL2 = (ROOT / "supabase/announce2.sql").read_text()
+TABLES2 = {"announcement_to", "announcement_counts"}
+REPLACED = ["announce_audience", "announce_count", "announce_press", "announce_list", "announcement_rows", "announcement_read",
+            "announce_mail_take", "announce_mail_done", "announce_mail_due"]
+
+
+def _body(sql: str, name: str) -> str:
+    at = sql.index(f"create or replace function public.{name}(")
+    return sql[at:sql.index("$$;", at)]
+
+
+def test_the_second_file_only_adds_and_leaves_notification_rows() -> None:
+    lowered = SQL2.lower()
+    outside = re.sub(r"\$\$.*?\$\$", "", re.sub(r"--[^\n]*", "", lowered), flags=re.S).replace("on delete cascade", "")
+    for word in ("drop ", "truncate", "alter column", "delete ", "update ", "rename", "add column"):
+        assert word not in outside, word
+    assert set(re.findall(r"create table if not exists public\.([a-z_]+)", lowered)) == TABLES2
+    for table in TABLES2:
+        assert f"alter table public.{table} enable row level security" in lowered, table
+        assert f"revoke all on public.{table} from public, anon, authenticated, service_role" in lowered, table
+    assert "create or replace function public.notification_rows" not in lowered
+    # Each replaced function keeps its arguments, and a later.tsv row guards it.
+    later = (ROOT / "supabase/later.tsv").read_text().splitlines()
+    for name in REPLACED:
+        old = re.search(rf"create or replace function public\.{name}\(([^)]*)\)", SQL).group(1)
+        new = re.search(rf"create or replace function public\.{name}\(([^)]*)\)", SQL2).group(1)
+        assert re.sub(r"\s+", " ", old) == re.sub(r"\s+", " ", new), name
+        row = next(line.split("\t") for line in later if line.startswith(f"announce.sql\t{name}\tannounce2.sql\t"))
+        assert row[3] in _body(SQL2, name) and row[3] not in _body(SQL, name), name
+    made = set(re.findall(r"create or replace function public\.([a-z_]+)\(", SQL2))
+    for name in made - {"announce_tally"}:
+        assert re.search(rf"revoke all on function public\.{name}\([^)]*\) from public, anon, authenticated;", SQL2), name
+        assert re.search(rf"grant execute on function public\.{name}\([^)]*\) to service_role;", SQL2), name
+    assert "revoke all on function public.announce_tally(bigint, integer, integer, jsonb) from public, anon, authenticated, service_role;" in SQL2
+    assert "to anon" not in SQL2 and "to authenticated" not in SQL2
+
+
+def test_who_it_reached_is_rows_written_with_the_send() -> None:
+    press = _body(SQL2, "announce_press")
+    # One statement: the rows, and the reach as their count; recipients no longer written.
+    assert "put as (\n        insert into public.announcement_to" in press and "reach = (select count(*) from put)" in press
+    assert "recipients = '{}'::uuid[]" in press
+    assert "from public.announcement_to t" in _body(SQL2, "announcement_rows") and "t.account = viewer" in _body(SQL2, "announcement_rows")
+    for name in ("announce_mail_take", "announce_mail_due"):
+        assert "join public.announcement_to t on t.announcement = a.id" in _body(SQL2, name) or \
+            "from public.announcement_to t" in _body(SQL2, name), name
+        assert "recipients" not in _body(SQL2, name), name
+    listing = _body(SQL2, "announce_list")
+    for per_person in ("announcement_reads", "announcement_mails", "announcement_to", "notification_marks", "unnest"):
+        assert per_person not in listing, per_person
+    assert "create index if not exists announcement_to_announcement on public.announcement_to (announcement, account);" in SQL2
+
+
+def test_news_mail_has_a_most_a_stop_and_waits_for_sign_in_codes() -> None:
+    take = _body(SQL2, "announce_mail_take")
+    assert "pg_advisory_xact_lock(hashtext('announce_mail_take'))" in take and "public.news_mail_stopped() is not null" in take
+    assert "public.news_mail_most('live') - public.news_mail_today()" in take
+    assert "interval '1.1 seconds'" in take and "public.otp_requests" in take and "interval '1.5 seconds'" in take
+    assert "for update of n skip locked" in take and "barred_accounts" in take
+    assert "'news_mail_most' and s.scope = p_scope and s.value ~ '^[0-9]{1,5}$'), 200)" in SQL2
+    assert 'const QUOTA = /^(daily|monthly)_quota_exceeded$/;' in API and 'rpc/announce_mail_stop' in API
+    assert "pause(PACE_MS)" not in API
+
+
+def test_the_notice_asks_the_avatars_count_before_it_draws() -> None:
+    notice = (ROOT / "web/notice.js").read_text()
+    follow = (ROOT / "web/follow.js").read_text()
+    account = (ROOT / "web/account.js").read_text()
+    # Never an answer kept forever (anreview M1): asked on every page.
+    assert "ASKED" not in notice and "brickworks.notice.asked" not in notice
+    assert "kept.feedCountHeard(COUNT_WAIT_MS)" in notice and "heard.notice_hidden" in notice
+    assert "show(read(KEPT));" in notice and "\ndraw(read(KEPT));" not in notice
+    assert "export function tellFeedCount(" in account and "export function feedCountHeard(" in account
+    assert "tellFeedCount(answer?.status === 200" in follow
+    notes = (ROOT / "api/_notifications.js").read_text()
+    assert '"site_notice_hidden_ids", { p_account: asker, p_scope: scopeOf(request) }' in notes
+
+
+def test_settings_unsubscribes_only_when_pressed() -> None:
+    js = (ROOT / "web/settings.js").read_text()
+    part = js[js.index("async function unsubscribed()"):]
+    part = part[:part.index("\n}\n")]
+    # The POST is in the button's press, never on opening (anreview L4).
+    assert part.index('go.addEventListener("click"') < part.index('fetch("/api/people?op=news_unsubscribe"')
+    for code in ("de", "fr", "es"):
+        words = json.loads((ROOT / f"web/_lang/{code}.json").read_text())["scripts"]
+        for english in ("Unsubscribe", "Stop Brickworks news by email to this address?",
+                        "That did not work just now. Press Unsubscribe again in a minute."):
+            assert words.get(english), (code, english)
+
+
+def test_the_console_shows_the_news_mails_most_and_its_stop() -> None:
+    assert "announce-news-form" in CONSOLE and 'op: "announce_mail_most"' in CONSOLE and 'op: "announce_mail_address"' in CONSOLE
+    assert "one.seen" not in CONSOLE and ">Seen<" not in CONSOLE
+    assert "Resend said the team's" in CONSOLE
+    for op in ("announce_mail_most", "announce_mail_address"):
+        assert f"{op}:" in ADMIN, op
+        assert op in (ROOT / "api/_console.js").read_text(), op
+
+
+def test_fix_feed_count_carries_the_hidden_notices() -> None:
+    got = _checked()
+    if got is None:
+        return
+    m = got["fix"]["m1"]
+    assert m["before"] == [] and m["after"] == [m["id"]] and m["other"] == [] and m["elsewhere"] == [] and m["cleared"] == []
+    assert "notice_hidden" not in m["signed_out"]
+
+
+def test_fix_reach_is_rows_and_the_list_reads_counts() -> None:
+    got = _checked()
+    if got is None:
+        return
+    m = got["fix"]["m2"]
+    assert m["reach"] == m["to_rows"] == m["row_reach"] == 3 and m["recipients"] == []
+    assert m["listed"] == {"read": 1, "clicked": 1, "seen": None, "recipients": None}
+    assert m["truth"] == m["counted"] == {"reads": 1, "clicks": 1}
+    assert m["list_reads"] == ["announcement_counts"] and m["reach_is_rows"] is True and m["sent_every"] > 10
+
+
+def test_fix_news_mails_most_quota_stop_and_pace() -> None:
+    got = _checked()
+    if got is None:
+        return
+    m = got["fix"]["m3"]
+    assert m["default_most"] == 200 and m["refused"] == [400, 400, 400] and m["set"] == 200
+    # At the day's most: one of three mailed, none by the next round, the count at the most.
+    assert m["first_mailed"] == 1 and m["first_to"] == 1 and m["cron_mailed"] == 0 and m["today_at_most"] is True
+    # Resend's daily quota: stopped until the next UTC day, said, nothing tried while stopped, nothing lost.
+    assert m["quota_batches"] == 1 and "news mail stopped until" in m["quota_outcome"]
+    assert m["stopped_until_midnight"] is True and m["stopped_why"] == "daily_quota_exceeded"
+    assert m["batches_while_stopped"] == 0 and m["still"] == 0 and m["states"] == [{"state": "sent", "n": 1}]
+    assert m["resumed"] == 3
+    p = got["fix"]["pace"]
+    assert p["round_batches"] == 2 and all(gap >= 1090 for gap in p["round_gaps_ms"])
+    assert len(p["after_code_ms"]) == 1 and p["after_code_ms"][0] >= 1450 and p["empty_take_ms"] < 500
+    assert got["no_secret"]["mail"] is False and got["no_secret"]["missing"] == ["NEWS_UNSUB_SECRET"]
+    assert got["fix"]["key_after_edit"] == {"statuses": [429, 200], "keys_differ": True, "subjects": ["Mail one", "Mail one, corrected"]}
+
+
+def test_fix_overlapping_crons_previews_barred_secret_and_address() -> None:
+    got = _checked()
+    if got is None:
+        return
+    f = got["fix"]
+    assert f["l1"]["sent"] == [0, 1] and f["l1"]["runs"] == [0, 0] and f["l1"]["held_audits"] == 0 and f["l1"]["failed_runs"] == 0
+    assert f["l1"]["late"] == {"held": 0, "sent": 0} and f["l1"]["late_audits"] == 0 and f["l1"]["still"] == "sent"
+    # Off the site: only the checks' own sent, nobody mailed; the site's own wait for the site.
+    assert f["l2"]["off"] == {"sent": 1, "mailed": 0, "held": 0} and f["l2"]["off_batches"] == 0 and f["l2"]["local"] == 0
+    assert f["l2"]["statuses"] == {"site": "scheduled", "checks": "sent"} and f["l2"]["site_after_on"] == "sent" and f["l2"]["on"]["mailed"] >= 1
+    assert f["l3"]["everyone"] == [4, 3] and f["l3"]["mail"] == [2, 1] and f["l3"]["person"] == [1, 0]
+    assert f["l3"]["reach"] == 1 and f["l3"]["rows"] == 1 and f["l3"]["mailed_gil"] is False
+    assert f["l5"] == {"own_secret": True, "not_old": True, "other": 400, "old": 200, "now": 200, "news": False}
+    assert f["l6"]["long"] == 400 and f["l6"]["five"] == 400 and f["l6"]["set"] == 200 and f["l6"]["html"] and f["l6"]["text"]
+    assert f["l6"]["bare"] and f["l6"]["sent_has"] and f["l6"]["cleared"] == [200, ""]

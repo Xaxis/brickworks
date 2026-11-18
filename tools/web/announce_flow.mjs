@@ -3,6 +3,11 @@
 //
 //   node --env-file=.env tools/web/announce_flow.mjs --url=<a deployment> --out=DIR
 //
+// On this machine (tools/web/announce_stand_in.mjs says how), only over a
+// server that holds the announcements itself, and with only the project's
+// address, its keys and the owner's address, never the whole .env: no mail
+// key, no cron secret.
+//
 // Never on brickworks.diy: its visitors would see the check's notice. On a
 // preview, and on this machine's server, everything here is the checks' own
 // pool: an announcement reaches only throwaways at resend.dev and mails
@@ -30,8 +35,12 @@
 //      a screen reader says; the form is walked by Tab alone; the
 //      console's first screen never asks admin-announce.js; and at 430x932
 //      New keeps what was typed as a draft, saying so where it can be seen.
-//  10. The site notice with an end: Ann hides it and it stays hidden in a
-//      browser of hers that never saw it; Bea still sees it. Cleared after.
+//  10. The site notice with an end: Ann hides it in one browser (A); in a
+//      browser of hers that showed it before (B) it is gone at the next
+//      page, and in one that never saw it (C) it never shows, not even for
+//      a moment, both told by the avatar's count (feed_count's
+//      notice_hidden) and asking nothing more; Bea still sees it. Cleared
+//      after (anfix).
 //
 // Throwaways deleted after; announcements left in the pool are its own.
 // Prints "announce: all ok".
@@ -54,6 +63,15 @@ const host = new URL(site).host;
 if (/^(?:www\.)?brickworks\.diy$/.test(host)) {
   console.error("announce_flow: never on brickworks.diy (a notice there is seen by everyone)");
   process.exit(2);
+}
+// On this machine, only over the stand-in (--hold=announce): a relay
+// without it writes the project's own announcements, notices and audit.
+if (/^(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(host)) {
+  const held = await fetch(`${site}/__held/announcements`).then((reply) => reply.status, () => 0);
+  if (held !== 200) {
+    console.error("announce_flow: this machine's server is to hold announcements itself (relay_server.mjs PORT --hold=announce)");
+    process.exit(2);
+  }
 }
 const out = args.out || "shots/announce";
 mkdirSync(out, { recursive: true });
@@ -92,7 +110,7 @@ const browser = await launch({ signedOut: true });
 const SIZES = { laptop: { width: 1280, height: 900 }, phone: { width: 390, height: 844 }, tall: { width: 430, height: 932 } };
 
 /// [pathname] in a browser of its own at [size] in [theme], signed in as [who] (a mintSession) or out.
-async function open(pathname, { size = "laptop", theme = "light", who = null, label, requests = null }) {
+async function open(pathname, { size = "laptop", theme = "light", who = null, label, requests = null, flash = false, heard = null }) {
   const view = SIZES[size];
   const phone = view.width < 600;
   const context = await browser.newContext({ viewport: view, colorScheme: theme, extraHTTPHeaders: headers,
@@ -112,8 +130,11 @@ async function open(pathname, { size = "laptop", theme = "light", who = null, la
       } catch { /* a browser that keeps nothing */ }
     }, [STORAGE_KEY, JSON.stringify(who.kept), access]);
   }
+  // Every site notice ever put on a page, however briefly (window.__notices).
+  if (flash) await context.addInitScript(noticeWatch);
   const page = await context.newPage();
   if (requests) page.on("request", (one) => requests.push(one.url().replace(/^https?:\/\/[^/]+/, "")));
+  if (heard) countsHeard(page, heard);
   page.on("pageerror", (e) => errors.push(`${label}: ${String(e).slice(0, 200)}`));
   page.on("console", (m) => {
     if (m.type() === "error" && /Content Security Policy|Refused to|SyntaxError|TypeError|ReferenceError/.test(m.text())) {
@@ -123,6 +144,25 @@ async function open(pathname, { size = "laptop", theme = "light", who = null, la
   page.on("dialog", (dialog) => dialog.accept());
   await page.goto(site + pathname, { waitUntil: "load", timeout: 120000 });
   return { page, context };
+}
+function noticeWatch() {
+  window.__notices = [];
+  new MutationObserver((changes) => {
+    for (const change of changes) {
+      for (const node of change.addedNodes) {
+        if (node.nodeType === 1 && node.matches?.(".site-notice")) window.__notices.push(node.dataset.id || "?");
+      }
+    }
+  }).observe(document, { childList: true, subtree: true });
+}
+/// What op=feed_count said of the notices hidden, as [page] heard it: [[ids]].
+function countsHeard(page, heard = []) {
+  page.on("response", async (reply) => {
+    if (!/\/api\/people\?op=feed_count/.test(reply.url())) return;
+    const body = await reply.json().catch(() => null);
+    heard.push(Array.isArray(body?.notice_hidden) ? body.notice_hidden : null);
+  });
+  return heard;
 }
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 const shown = (page) => until(page, () => document.getElementById("view")?.hidden === false, null, 60000);
@@ -339,7 +379,7 @@ try {
         counts = ((await as("/api/admin?op=announce")).json?.announcements || []).find((one) => one.id === first?.id);
         if (!(counts?.read >= 1 && counts?.clicked >= 1)) await new Promise((done) => setTimeout(done, 1000));
       }
-      check(`followed: read ${counts?.read}, clicked ${counts?.clicked}, seen ${counts?.seen}`, counts?.read === 1 && counts?.clicked === 1);
+      check(`followed: read ${counts?.read}, clicked ${counts?.clicked}`, counts?.read === 1 && counts?.clicked === 1);
       for (const [size, theme] of [["phone", "dark"], ["tall", "light"]]) {
         const phone = await open("/notifications", { size, theme, who: ann, label: `ann ${size}` });
         await until(phone.page, (id) => Boolean(document.getElementById(`announcement-${id}`)), first?.id, 30000);
@@ -470,22 +510,47 @@ try {
       const there = await until(at.page, () => Boolean(document.querySelector(".site-notice")), null, 20000);
       return { ...at, there };
     };
+    // B: a browser of Ann's that shows it before she hides it elsewhere.
+    const before = await seen(ann, "ann B");
+    check("Ann's browser B shows it", before.there);
+    const noticeId = await before.page.evaluate(() => document.querySelector(".site-notice")?.dataset.id || "");
     const first1 = await seen(ann, "ann notice");
-    check("Ann sees it", first1.there && (await textOf(first1.page, ".site-notice")).includes(`Flow ${rand}`));
+    check("Ann sees it in browser A", first1.there && (await textOf(first1.page, ".site-notice")).includes(`Flow ${rand}`));
     await shot(first1.page, "notice_laptop_light.png");
     await first1.page.locator('.site-notice button[aria-label="Close"]').click();
     check("her × hides it", await until(first1.page, () => !document.querySelector(".site-notice") || document.querySelector(".site-notice").hidden, null, 10000));
     await first1.page.waitForTimeout(1500);
     await first1.context.close();
-    const elsewhere = [];
-    const again = await open("/gallery", { who: ann, label: "ann elsewhere", size: "phone", requests: elsewhere });
-    await again.page.waitForTimeout(4000);
-    check(`hidden in a browser of hers that never saw it (asked: ${elsewhere.some((one) => one.includes("op=notice_hidden"))})`,
-      elsewhere.some((one) => one.includes("op=notice_hidden")) && !(await again.page.evaluate(() => {
-      const notice = document.querySelector(".site-notice");
-      return Boolean(notice && !notice.hidden && notice.offsetParent);
-    })));
-    await again.context.close();
+    // B's next page: never drawn, told by the avatar's count alone.
+    {
+      const asked = [];
+      await before.context.addInitScript(noticeWatch);
+      const next = await before.context.newPage();
+      next.on("request", (one) => asked.push(one.url().replace(/^https?:\/\/[^/]+/, "")));
+      const heard = countsHeard(next);
+      await next.goto(`${site}/guidelines`, { waitUntil: "load", timeout: 120000 });
+      await until(next, () => document.documentElement.dataset.notice !== undefined || performance.now() > 6000, null, 15000);
+      await next.waitForTimeout(2500);
+      const ever = await next.evaluate(() => window.__notices || []);
+      const told = heard.some((ids) => Array.isArray(ids) && ids.map(String).includes(noticeId));
+      check(`B, which showed it, at its next page: never drawn (${ever.length} times), told by feed_count (${JSON.stringify(heard)}), `
+        + `no notice request of its own (${asked.filter((one) => one.includes("op=notice_hidden")).length})`,
+      ever.length === 0 && told && !asked.some((one) => one.includes("op=notice_hidden")));
+    }
+    await before.context.close();
+    // C: a browser of hers that never saw it, on a phone.
+    {
+      const elsewhere = [];
+      const heard = [];
+      const again = await open("/gallery", { who: ann, label: "ann elsewhere", size: "phone", requests: elsewhere, flash: true, heard });
+      await again.page.waitForTimeout(4000);
+      const ever = await again.page.evaluate(() => window.__notices || []);
+      const told = heard.some((ids) => Array.isArray(ids) && ids.map(String).includes(noticeId));
+      check(`C, which never saw it: never drawn, not even for a moment (${ever.length} times), told by feed_count (${told}), `
+        + `no notice request of its own (${elsewhere.filter((one) => one.includes("op=notice_hidden")).length})`,
+      ever.length === 0 && told && !elsewhere.some((one) => one.includes("op=notice_hidden")));
+      await again.context.close();
+    }
     const hers = await seen(bea, "bea notice", "phone");
     check("Bea still sees it", hers.there);
     await shot(hers.page, "notice_phone_light.png");
