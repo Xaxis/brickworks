@@ -1477,6 +1477,28 @@ const loaderSays = (function () {
 		};
 	})();
 
+	// The engine's memory refused: a 2 GB shared one, which this build asks
+	// for, is more than iOS Safari would make on some iPhones
+	// (godotengine/godot#70621; docs/PHONE.md). index.js makes it as its
+	// script runs, outside the start's promise, so the refusal is heard
+	// from the window too until the engine is up; else the loader would sit
+	// at its last words for ever. Said once, as what it is.
+	const MEMORY_REFUSED = /out of memory|could not allocate|WebAssembly\.Memory/i;
+	let refusalSaid = false;
+	function memoryRefused(why) {
+		if (refusalSaid || started || !MEMORY_REFUSED.test(why)) return false;
+		refusalSaid = true;
+		eta.stop();
+		fail(loaderSays("This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.", { why: why.slice(0, 80) }));
+		return true;
+	}
+	window.addEventListener("error", function (event) {
+		memoryRefused(String((event.error && event.error.message) || event.message || ""));
+	});
+	window.addEventListener("unhandledrejection", function (event) {
+		memoryRefused(String((event.reason && event.reason.message) || event.reason || ""));
+	});
+
 	const engine = new Engine(GODOT_CONFIG);
 	claimTab().catch(function (trouble) {
 		console.error("could not choose this tab's session", trouble);
@@ -1521,15 +1543,7 @@ const loaderSays = (function () {
 		});
 	}, function (error) {
 		eta.stop();
-		// The engine's memory refused: a 2 GB shared one, which this build
-		// asks for, is more than iOS Safari would make on some iPhones
-		// (godotengine/godot#70621; docs/PHONE.md). Said as what it is.
-		const why = String(error && error.message || error);
-		if (/out of memory|could not allocate|WebAssembly\.Memory/i.test(why)) {
-			fail(loaderSays("This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.", { why: why.slice(0, 80) }));
-		} else {
-			fail(String(error));
-		}
+		if (!memoryRefused(String((error && error.message) || error)) && !refusalSaid) fail(String(error));
 		console.error(error);
 	});
 })();

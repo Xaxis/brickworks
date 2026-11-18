@@ -38,20 +38,33 @@ export function guardPhoneOpens(root = document) {
   const parts = Number(counted?.dataset.parts) || 0;
   if (!parts || !isPhone()) return;
   let most = PHONE_PARTS;
-  fetch("/api/plans?op=phone").then((reply) => (reply.ok ? reply.json() : null)).then((rules) => {
+  let heard = false;
+  const hearing = fetch("/api/plans?op=phone").then((reply) => (reply.ok ? reply.json() : null)).then((rules) => {
     const told = Number(rules?.phone_parts);
     if (Number.isInteger(told) && told > 0) most = told;
-  }).catch(() => { /* the measured default stands */ });
+  }).catch(() => { /* the measured default stands */ }).finally(() => { heard = true; });
   root.addEventListener("click", (event) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
     // The picture as start3d made it a button, and the dialog's own way on.
-    if (!link || parts <= most || link.getAttribute("role") === "button" || link.dataset.phoneWarned) return;
+    if (!link || link.getAttribute("role") === "button" || link.dataset.phoneWarned) return;
     const at = new URL(link.href, location.href);
     if (at.origin !== location.origin || !MODEL_LINK.test(`${at.pathname}${at.search}`)) return;
+    if (heard && parts <= most) return;
     event.preventDefault();
     event.stopPropagation();
-    ask(parts, root.querySelector("h1")?.textContent?.trim() || "", at.href);
+    const name = root.querySelector("h1")?.textContent?.trim() || "";
+    if (heard) {
+      ask(parts, name, at.href);
+      return;
+    }
+    // A press before the owner's number came: it is waited on (two seconds
+    // at most, then the measured one), and the same choice made with it.
+    document.documentElement.dataset.phoneWarnWaited = "1";
+    Promise.race([hearing, new Promise((done) => { setTimeout(done, 2000); })]).then(() => {
+      if (parts > most) ask(parts, name, at.href);
+      else location.assign(at.href);
+    });
   }, true);
 }
 

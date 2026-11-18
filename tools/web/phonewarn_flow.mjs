@@ -128,17 +128,26 @@ const warned = (page) => page.evaluate(() => {
 });
 
 /// [id]'s page in [kind]: [press] (a link's selector) pressed, and what came of it.
-async function press(kind, id, selector, { then = null } = {}) {
+/// With [early], the owner's number is [early] parts and comes 1.2 s late
+/// (a slow phone's reply), and the press is made before it has come.
+async function press(kind, id, selector, { then = null, early = 0 } = {}) {
   const { context, page } = await fresh(kind, { studio: false });
+  if (early) {
+    await context.route(/\/api\/plans\?op=phone/, async (route) => {
+      await new Promise((done) => { setTimeout(done, 1200); });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ phone_parts: early, phone_start_s: 25 }) });
+    });
+  }
   await page.goto(`${site}/m/${id}`, { waitUntil: "load", timeout: 120000 });
-  await page.waitForTimeout(1200);
+  if (!early) await page.waitForTimeout(1200);
   const how = await pointer(page);
   const link = page.locator(selector).first();
   const href = await link.getAttribute("href").catch(() => null);
   if (KINDS[kind].hasTouch) await link.tap({ timeout: 20000 });
   else await link.click({ timeout: 20000 });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(early ? 4000 : 1500);
   const after = { url: page.url(), ...(await warned(page).catch(() => ({ open: false, said: "", state: "" }))) };
+  after.waited = await page.evaluate(() => document.documentElement.dataset.phoneWarnWaited === "1").catch(() => null);
   const result = { kind, id, selector, href, pointer: how, after };
   if (then) result.then = await then(page);
   await page.screenshot({ path: join(out, `${kind}_${id}_${selector.replace(/\W+/g, "_")}.png`), timeout: 30000 }).catch(() => {});
@@ -189,6 +198,16 @@ try {
     const small = await press("phone", SMALL.id, BUILD);
     seen.small_phone = small;
     check(`phone, ${SMALL.parts} parts: straight on to the studio`, wentOn(small), small.after.url.replace(site, ""));
+    // Pressed before the owner's number has come: it is waited on. Past the
+    // measured default, the big one going on is the owner's number used.
+    const lateHigh = await press("phone", BIG.id, BUILD, { early: BIG.parts + 1000 });
+    seen.late_high_phone = lateHigh;
+    check(`phone, pressed before the owner's ${BIG.parts + 1000} came: ${BIG.parts} parts straight on`, wentOn(lateHigh),
+      lateHigh.after.url.replace(site, ""));
+    const lateLow = await press("phone", SMALL.id, BUILD, { early: SMALL.parts - 41 });
+    seen.late_low_phone = lateLow;
+    check(`phone, pressed before the owner's ${SMALL.parts - 41} came: ${SMALL.parts} parts asked, the number waited on`, asked(lateLow) && lateLow.after.waited,
+      lateLow.after.said.slice(0, 60));
     for (const kind of ["desktop", "tablet"]) {
       const r = await press(kind, BIG.id, BUILD);
       seen[`big_${kind}`] = r;

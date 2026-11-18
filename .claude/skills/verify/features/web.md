@@ -3176,8 +3176,10 @@ plan with Claude as the client.
   `phone_parts`: "About N parts: on a phone this may close the tab". Not now
   and Escape stay; Open it anyway goes on. The picture, when it opens the 3D
   view in its place, is never asked; nor are a computer, a tablet, a
-  smaller model or a click with a key held. Proven by the phonewarn browser
-  flow; `html[data-phone-warn]` says asked, stayed or opened.
+  smaller model or a click with a key held. A press before the owner's
+  number has come waits for it (two seconds at most, then the measured one;
+  `html[data-phone-warn-waited]`). Proven by the phonewarn browser flow;
+  `html[data-phone-warn]` says asked, stayed or opened.
 - `the loader's words for a phone and a browser without WebGL 2`
   (`src/boot/shell.html`): without WebGL 2 the loader says at once, in
   plain words, that this browser cannot draw the studio and what to do
@@ -3190,8 +3192,9 @@ plan with Claude as the client.
   (`localStorage brickworks.engineHad` is this engine's `/e/<hash>/`), a
   computer and a tablet are told nothing. A start the browser refuses its
   memory ("Out of memory", as iOS Safari refuses the 2 GB shared one on
-  some iPhones) is said as that, with what to do. Proven by the phonewarn
-  browser flow.
+  some iPhones) is said as that, with what to do, from the start's promise
+  or the window's error (index.js makes the memory as its script runs,
+  outside the promise). Proven by the phonewarn browser flow.
 - `the numbers a phone is warned by` (`api/_phone.js`): `phone_parts` and
   `phone_start_s`, site_settings switches for one scope (brickworks.diy's,
   or a preview's own), the measured defaults until set. GET
@@ -3220,7 +3223,9 @@ plan with Claude as the client.
   CDP), and Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and
   a return, peak memory (the content process's Pss, the Wasm memory, the JS
   heap), frames turning the car and Orthanc by two fingers, and the largest
-  gallery model that opens and stays. `--table` writes DIR/phonetruth.md,
+  gallery model that opens and stays; with `--steps=…,beyond`, Wizard's
+  Tower 2, 3 and 5 times over (the share API's reply for `Towers000K`
+  routed to the page) past the gallery's largest. `--table` writes DIR/phonetruth.md,
   docs/PHONE.md's table. `tools/web/phonewalk_flow.mjs --engine=webkit
   --device="iPhone 13"` or `--cpu=4 --net=fast4g` walks the studio by
   finger on the same.

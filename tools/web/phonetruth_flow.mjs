@@ -30,6 +30,10 @@
 //            model's page leads), smallest first: each held open 20 s and
 //            turned, until one does not open within --model-s or the tab
 //            dies; the largest that opened and stayed open is the finding
+//   beyond   past the gallery's largest: Wizard's Tower --beyond times over
+//            (2,3,5 by default), side by side, as one shared model whose
+//            reply is handed to the page, on the same ladder, so what a
+//            bigger model costs is measured rather than guessed
 //
 // Memory throughout, every 2 s, its peak in each: the Wasm memory's size (the
 // engine's heap, from the WebAssembly.Memory the page made), the JS heap
@@ -41,8 +45,8 @@
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR \
-//     [--configs=chromium,iphone13,iphone15,cpu4,cpu6] [--steps=load,frames,ladder]
-//     [--ladder=ID:PARTS,…] [--model-s=360]
+//     [--configs=chromium,iphone13,iphone15,cpu4,cpu6] [--steps=load,frames,ladder,beyond]
+//     [--ladder=ID:PARTS,…] [--beyond=2,3,5] [--model-s=360]
 //   node tools/web/phonetruth_flow.mjs --table --out=DIR
 //     the table from DIR/<config>.json and the walks' DIR/walk-<config>/phonewalk.json
 //
@@ -91,7 +95,12 @@ const ladder = args.ladder ? String(args.ladder).split(",").map((one) => {
   return [id, Number(parts), id];
 }) : LADDER;
 const MODEL_MS = Number(args["model-s"] || 360) * 1000;
-const ORTHANC = 9429;
+// Orthanc is the gallery's Wizard's Tower: models/orthanc.ldr lays 10,101.
+const ORTHANC = 10101;
+// Towers0002…: Wizard's Tower K times over (step beyond).
+const TOWER = "EzEXhtXE2C";
+const TOWERS = /^Towers(\d{4})$/;
+const towersId = (k) => `Towers${String(k).padStart(4, "0")}`;
 // The most a first visit or a return may take: a phone held to a sixth of
 // this box on Fast 4G is given a quarter of an hour.
 const VISIT_MS = 15 * 60 * 1000;
@@ -118,6 +127,27 @@ const withBypass = (u) => (bypass
 const app = (query = "") => new URL(`${new URL(base).pathname}${query}`, base).href;
 const names = String(args.configs || Object.keys(CONFIGS).join(",")).split(",");
 const steps = new Set(String(args.steps || "load,frames,ladder").split(","));
+if (steps.has("beyond")) {
+  steps.add("ladder");
+  for (const k of String(args.beyond || "2,3,5").split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 2 && n < 10000)) {
+    ladder.push([towersId(k), ORTHANC * k, `Wizard's Tower ×${k}`]);
+  }
+}
+// The tower's own reply, the towers made from it (step beyond).
+const towerReply = ladder.some(([id]) => TOWERS.test(id))
+  ? await fetch(`${new URL(base).origin}/api/share?id=${TOWER}`, { headers: bypass ? { "x-vercel-protection-bypass": bypass } : {} })
+    .then((reply) => (reply.ok ? reply.json() : null)).catch(() => null)
+  : null;
+/// Wizard's Tower [k] times over, 2,000 LDU apart in a row: one model
+/// whose first file places the tower's own (wizard's_tower.ldr) [k] times.
+function towers(k) {
+  const model = String(towerReply.model);
+  const main = /^0 FILE (.+)$/m.exec(model)[1].trim();
+  const head = [`0 FILE wizard's_towers_x${k}.ldr`, `0 Wizard's Tower x${k}`, `0 Name: wizard's_towers_x${k}.ldr`, "0 Author: Brickworks"];
+  for (let i = 0; i < k; i += 1) head.push(`1 16 ${i * 2000} 0 0 1 0 0 0 1 0 0 0 1 ${main}`);
+  return { ...towerReply, id: towersId(k), name: `Wizard's Tower ×${k}`, parts: ORTHANC * k, versions: [], builds: 0,
+    model: `${head.join("\n")}\n0 NOFILE\n${model}` };
+}
 let broken = 0;
 for (const name of names) {
   const config = CONFIGS[name];
@@ -154,6 +184,13 @@ async function measure(config, result) {
   const context = await type.launchPersistentContext(dir, { ...options, ...config.context });
   try {
     await signInContext(context);
+    if (towerReply) {
+      await context.route((url) => url.pathname === "/api/share" && TOWERS.test(url.searchParams.get("id") || "")
+        && !url.searchParams.get("op"), (route) => {
+        const k = Number(TOWERS.exec(new URL(route.request().url()).searchParams.get("id"))[1]);
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(towers(k)) });
+      });
+    }
     await context.addInitScript(instrument);
     // WebKit's MiniBrowser ends with its last page, so its first is kept
     // (blank; the sampler reads the biggest content process alone).
@@ -511,12 +548,14 @@ function writeTable() {
   lines.push(`| … over the wire | ${cell((r) => mb(r.cold?.bytes))} |`);
   lines.push(`| a return, to working | ${cell((r) => seconds(r.back?.working))} |`);
   lines.push(`| peak memory, first visit (Pss / Wasm / JS heap) | ${cell((r) => memSaid(r.cold?.peak))} |`);
-  lines.push(`| Orthanc (9,429 parts) opened | ${cell((r) => (r.orthanc ? Number.isFinite(r.orthanc.working) ? seconds(r.orthanc.working) : `no: ${r.orthanc.why}` : null))} |`);
+  lines.push(`| Orthanc (10,101 parts) opened | ${cell((r) => (r.orthanc ? Number.isFinite(r.orthanc.working) ? seconds(r.orthanc.working) : `no: ${r.orthanc.why}` : null))} |`);
   lines.push(`| peak memory, Orthanc | ${cell((r) => memSaid(r.orthanc?.peak))} |`);
   lines.push(`| turning the car: frames/s; own work p95 | ${cell((r) => frameCell(r.frames?.car))} |`);
   lines.push(`| turning Orthanc: frames/s; own work p95 | ${cell((r) => frameCell(r.frames?.orthanc))} |`);
-  lines.push(`| largest gallery model open and kept | ${cell((r) => largest(r.ladder))} |`);
-  for (const [id, parts, name] of LADDER) {
+  lines.push(`| largest model open and kept | ${cell((r) => largest(r.ladder))} |`);
+  const climbed = [...LADDER, ...[2, 3, 5].map((k) => [towersId(k), ORTHANC * k, `Wizard's Tower ×${k}`])];
+  for (const [id, parts, name] of climbed) {
+    if (!rows.some((r) => (r.ladder || []).some((s) => s.id === id))) continue;
     lines.push(`| … ${name} (${parts.toLocaleString("en-US")}) | ${cell((r) => {
       const step = (r.ladder || []).find((s) => s.id === id);
       if (!step) return null;
