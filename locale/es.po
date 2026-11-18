@@ -14910,3 +14910,39 @@ msgstr "no hay sets que guardar: añádelos primero en Lo que tengo"
 
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "volvieron menos copias de las que estaban marcadas como Montado, así que esas ya no están marcadas: %s%s"
+
+msgid "Find a step by part or colour"
+msgstr "Buscar un paso por pieza o color"
+
+msgid "The steps that place a part, found by its number (3001), its name (brick 2 x 4), its colour (red) or both (red 3001). Enter goes to each in turn, Escape clears it"
+msgstr "Los pasos que colocan una pieza, encontrados por su número (3001), su nombre (ladrillo 2 x 4), su color (rojo) o ambos (rojo 3001). Enter va a cada uno por turno, Escape lo borra"
+
+msgid "Find…"
+msgstr "Buscar…"
+
+msgid "Find the steps that place a part, by its number, its name or its colour"
+msgstr "Buscar los pasos que colocan una pieza, por su número, su nombre o su color"
+
+msgid "Find a step"
+msgstr "Buscar un paso"
+
+msgid "Reading the parts…"
+msgstr "Leyendo las piezas…"
+
+msgid "“%s” is placed in 1 step"
+msgstr "«%s» se coloca en 1 paso"
+
+msgid "“%s” is placed in %d steps: Enter goes to each in turn"
+msgstr "«%s» se coloca en %d pasos: Enter va a cada uno por turno"
+
+msgid "“%s” is placed in %d steps, the first %d here: Enter goes to each in turn"
+msgstr "«%s» se coloca en %d pasos, los %d primeros aquí: Enter va a cada uno por turno"
+
+msgid "No step places “%s”: the model has it in %s"
+msgstr "Ningún paso coloca «%s»: el modelo lo tiene en %s"
+
+msgid "No step places “%s”: the model has it in %d other colours"
+msgstr "Ningún paso coloca «%s»: el modelo lo tiene en %d colores más"
+
+msgid "No step places “%s”"
+msgstr "Ningún paso coloca «%s»"
