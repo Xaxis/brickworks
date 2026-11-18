@@ -395,7 +395,7 @@ def test_the_numbers_a_phone_is_warned_by_are_the_owners_and_their_sites() -> No
     got = _run("api3_check.mjs")
     if got is None:
         return
-    measured = {"phone_parts": 2500, "phone_start_s": 25}
+    measured = {"phone_parts": 10101, "phone_start_s": 40}
     assert got["phone_before"] == measured
     # Nobody but the owner, and nothing kept of the attempts.
     assert got["phone_gate"] == [401, 404] and got["phone_audit_gate"] == 0
@@ -414,7 +414,7 @@ def test_the_numbers_a_phone_is_warned_by_are_the_owners_and_their_sites() -> No
     # One named alone leaves the other as it was.
     assert got["phone_one"]["phone_start_s"] == 30 and "phone_parts" not in got["phone_one"]
     rules = {one["name"]: one for one in got["phone_switches"]}
-    assert rules["phone_parts"]["value"] == 1200 and rules["phone_parts"]["set"] and rules["phone_parts"]["fallback"] == 2500
+    assert rules["phone_parts"]["value"] == 1200 and rules["phone_parts"]["set"] and rules["phone_parts"]["fallback"] == 10101
     assert rules["phone_parts"]["set_by"] == "owner@example.com" and rules["phone_start_s"]["value"] == 30
     # Every act kept, refused ones too, each on the setting, with what was asked.
     assert [one["status"] for one in got["phone_audit"]] == [400, 400, 400, 400, 200, 200]

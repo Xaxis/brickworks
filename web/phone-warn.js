@@ -17,7 +17,7 @@
 import { number, say } from "/card.js";
 
 /// api/_phone.js's measured default, until the site's own number comes.
-export const PHONE_PARTS = 2500;
+export const PHONE_PARTS = 10101;
 
 /// Whether this is a phone: touch only, and narrow whichever way it is held.
 export function isPhone() {

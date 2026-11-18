@@ -32,14 +32,20 @@ export const PHONE_RULES = {
   phone_parts: {
     said: "Parts a phone opens without a warning",
     unit: "parts",
-    fallback: 2500,
+    // Measured (docs/PHONE.md): up to Wizard's Tower, the gallery's largest
+    // at 10,101, a model costs a phone no memory past the studio's own (the
+    // engine's 519 MB, the tab's 0.86 GB); twice it, 20,202, grew them to
+    // 722 MB and 1.04 GB, past 70% of the 1.4 GB an iPhone's tab is killed at.
+    fallback: 10101,
     least: 50,
     most: 100000,
   },
   phone_start_s: {
     said: "Seconds a phone takes to start the studio once it has its files",
     unit: "seconds",
-    fallback: 25,
+    // Measured: a phone at a quarter of this box's speed (Lighthouse's
+    // mid-tier phone) started the studio 42 s after its files had come.
+    fallback: 40,
     least: 1,
     most: 600,
   },

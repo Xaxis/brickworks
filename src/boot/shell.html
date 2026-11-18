@@ -1429,7 +1429,7 @@ const loaderSays = (function () {
 				&& Math.min(screen.width, screen.height) < 600;
 		} catch (e) {}
 		const state = window.brickworksEta = { on: phone && Boolean(engineAt) && had !== engineAt, phone: phone,
-			start_s: 25, from: 0, got: 0, current: 0, total: 0, rate: 0, end: 0, left: NaN, said: "" };
+			start_s: 40, from: 0, got: 0, current: 0, total: 0, rate: 0, end: 0, left: NaN, said: "" };
 		if (state.on) {
 			fetch("/api/plans?op=phone").then(function (reply) { return reply.ok ? reply.json() : null; }).then(function (rules) {
 				const told = Number(rules && rules.phone_start_s);

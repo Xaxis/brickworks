@@ -6,12 +6,17 @@
 //   phone    390x844 at 3x, touch only (as an iPhone 13 or a Pixel 7 is)
 //   tablet   820x1180 at 2x, touch only (an iPad Air's size)
 //
-//   1. A model too big for a phone (web/phone-warn.js): on its page, Build it
-//      and Open in Brickworks ask first on the phone alone ("About N parts:
-//      on a phone this may close the tab"); Not now and Escape stay, Open it
-//      anyway goes on. The picture still opens the 3D view in its place,
+//   1. A model too big for a phone (web/phone-warn.js). The gallery's
+//      largest is the measured default (docs/PHONE.md), so it goes straight
+//      on at the number the site serves, as every gallery model does today.
+//      Then with a number under it handed to the page as the owner's
+//      (--number, 5,000): Build it and Open in Brickworks ask first on the
+//      phone alone ("About N parts: on a phone this may close the tab"),
+//      with the question in view at 430x932; Not now and Escape stay, Open
+//      it anyway goes on. The picture still opens the 3D view in its place,
 //      unasked. A model under the number, and the computer and the tablet
-//      with the big one, go straight on.
+//      with the big one, go straight on. A press before the owner's number
+//      came waits for it.
 //   2. The console's number is the one pages use (--owner, previews only,
 //      never brickworks.diy): Switches' Phones form, as the owner, set to
 //      under the small model's parts; the small model then asks on the
@@ -29,7 +34,7 @@
 //      given. The other cases above never say it.
 //
 //   node tools/web/phonewarn_flow.mjs --url=https://<preview>/app [--bypass=SECRET] [--owner]
-//     [--big=ID:PARTS] [--small=ID:PARTS] [--only=1,2,3,4,5] [--out=DIR]
+//     [--big=ID:PARTS] [--small=ID:PARTS] [--number=5000] [--only=1,2,3,4,5] [--out=DIR]
 //
 // Exit 0 when every check passed. The pictures, and warn.json with what
 // each case saw, go to --out.
@@ -57,6 +62,8 @@ const pair = (given, fallback) => {
 // Gallery models of the live site's (tools/web/phonetruth_flow.mjs LADDER).
 const BIG = pair(args.big, "EzEXhtXE2C:10101");
 const SMALL = pair(args.small, "XqW6brmPQs:741");
+// The owner's number a page is handed in section 1: under BIG, over SMALL.
+const NUMBER = Number(args.number || 5000);
 const KINDS = {
   desktop: { viewport: { width: 1280, height: 800 } },
   phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
@@ -138,14 +145,15 @@ const warned = (page) => page.evaluate(() => {
 });
 
 /// [id]'s page in [kind]: [press] (a link's selector) pressed, and what came of it.
-/// With [early], the owner's number is [early] parts and comes 1.2 s late
-/// (a slow phone's reply), and the press is made before it has come.
-async function press(kind, id, selector, { then = null, early = 0 } = {}) {
+/// With [number], the page is handed it as the owner's number; with
+/// [early], the owner's number is [early] parts and comes 1.2 s late (a slow
+/// phone's reply), and the press is made before it has come.
+async function press(kind, id, selector, { then = null, early = 0, number = 0 } = {}) {
   const { context, page } = await fresh(kind, { studio: false });
-  if (early) {
+  if (early || number) {
     await context.route(/\/api\/plans\?op=phone/, async (route) => {
-      await new Promise((done) => { setTimeout(done, 1200); });
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ phone_parts: early, phone_start_s: 25 }) });
+      if (early) await new Promise((done) => { setTimeout(done, 1200); });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ phone_parts: early || number, phone_start_s: 40 }) });
     });
   }
   await page.goto(`${site}/m/${id}`, { waitUntil: "load", timeout: 120000 });
@@ -172,7 +180,13 @@ const COPY = ".actions a.cta[href*='/app?copy=']";
 try {
   if (wanted(1)) {
     console.log(`1. A model too big for a phone  [${at()}]`);
-    const big = await press("phone", BIG.id, BUILD, {
+    const served = await fetch(`${site}/api/plans?op=phone`, { headers }).then((r) => r.json()).catch(() => ({}));
+    const measured = await press("phone", BIG.id, BUILD);
+    seen.big_phone_served = { served, ...measured };
+    const over = BIG.parts > Number(served.phone_parts);
+    check(`phone, ${BIG.parts} parts at the number served (${served.phone_parts}): ${over ? "asked first" : "straight on"}`,
+      over ? asked(measured) : wentOn(measured), measured.after.url.replace(site, ""));
+    const big = await press("phone", BIG.id, BUILD, { number: NUMBER,
       then: async (page) => {
         await page.keyboard.press("Escape");
         await page.waitForTimeout(400);
@@ -191,7 +205,7 @@ try {
       },
     });
     seen.big_phone = big;
-    check(`phone, ${BIG.parts} parts, Build it: asked first, the page kept (${big.pointer.coarse ? "coarse" : "fine"}, short side ${big.pointer.short})`,
+    check(`phone, ${BIG.parts} parts past the owner's ${NUMBER}, Build it: asked first, the page kept (${big.pointer.coarse ? "coarse" : "fine"}, short side ${big.pointer.short})`,
       asked(big), big.after.said.slice(0, 90));
     check("… it says about how many parts and that the tab may close",
       /About 10,100 parts: on a phone this may close the tab\./.test(big.after.said) || (BIG.parts !== 10101 && /About [\d,]+ parts/.test(big.after.said)),
@@ -200,34 +214,30 @@ try {
     check("… Open in Brickworks asks too", big.then.copy.open);
     check("… Not now stays on the page", big.then.notNow.state === "stayed" && !/\/app\?/.test(big.then.notNow.url));
     check("… Open it anyway goes on to the studio with the model", big.then.anyway.includes(`view=${BIG.id}`), big.then.anyway.replace(site, ""));
-    const picture = await press("phone", BIG.id, "a.picture", {
+    const picture = await press("phone", BIG.id, "a.picture", { number: NUMBER,
       then: (page) => page.evaluate(() => Boolean(document.querySelector(".view3d"))) });
     seen.picture_phone = picture;
     check("phone, the same model's picture: its 3D view opens in its place, unasked", picture.then && !picture.after.open
       && !/\/app\?/.test(picture.after.url));
-    const large = await press("phone430", BIG.id, BUILD, {
+    const large = await press("phone430", BIG.id, BUILD, { number: NUMBER,
       then: async (page) => ({ dialog: await inView(page, "dialog.phone-warn"), stay: await inView(page, "dialog.phone-warn button.cta"),
         go: await inView(page, "dialog.phone-warn a[data-phone-warned]") }) });
     seen.big_phone430 = large;
     check("phone at 430x932, the same: asked, with the question and both its ways in view", asked(large)
       && large.then.dialog && large.then.stay && large.then.go, JSON.stringify(large.then));
-    const small = await press("phone", SMALL.id, BUILD);
+    const small = await press("phone", SMALL.id, BUILD, { number: NUMBER });
     seen.small_phone = small;
-    check(`phone, ${SMALL.parts} parts: straight on to the studio`, wentOn(small), small.after.url.replace(site, ""));
-    // Pressed before the owner's number has come: it is waited on. Past the
-    // measured default, the big one going on is the owner's number used.
-    const lateHigh = await press("phone", BIG.id, BUILD, { early: BIG.parts + 1000 });
-    seen.late_high_phone = lateHigh;
-    check(`phone, pressed before the owner's ${BIG.parts + 1000} came: ${BIG.parts} parts straight on`, wentOn(lateHigh),
-      lateHigh.after.url.replace(site, ""));
+    check(`phone, ${SMALL.parts} parts, under the owner's ${NUMBER}: straight on to the studio`, wentOn(small), small.after.url.replace(site, ""));
+    // Pressed before the owner's number has come: it is waited on. Under
+    // the measured default, the small one asked is the owner's number used.
     const lateLow = await press("phone", SMALL.id, BUILD, { early: SMALL.parts - 41 });
     seen.late_low_phone = lateLow;
     check(`phone, pressed before the owner's ${SMALL.parts - 41} came: ${SMALL.parts} parts asked, the number waited on`, asked(lateLow) && lateLow.after.waited,
       lateLow.after.said.slice(0, 60));
     for (const kind of ["desktop", "tablet"]) {
-      const r = await press(kind, BIG.id, BUILD);
+      const r = await press(kind, BIG.id, BUILD, { number: NUMBER });
       seen[`big_${kind}`] = r;
-      check(`${kind}, ${BIG.parts} parts: straight on to the studio (${r.pointer.coarse ? "coarse" : "fine"}, short side ${r.pointer.short})`,
+      check(`${kind}, ${BIG.parts} parts past the owner's ${NUMBER}: straight on to the studio (${r.pointer.coarse ? "coarse" : "fine"}, short side ${r.pointer.short})`,
         wentOn(r), r.after.url.replace(site, ""));
     }
   }
