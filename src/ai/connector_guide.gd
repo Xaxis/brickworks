@@ -80,18 +80,13 @@ whole, and read_guide any section a step names):
 for anything that exists, how_real_sets_build_this with the subject: real \
 sets' parts, and the faults found in our own designs of it, to design out.
  2. submit_design the silhouette first: the main masses, with its \
-assemblies and its features (what the subject is known by, a vehicle's \
-wheels and what breaks its outline among them, each with where it goes and \
-its form: open, at an angle, curved, twisted, tapering; built in this build \
-by the parts that make that form, never a fill or a stack). A hull, a car \
-body or a building is a shape pattern (read_guide "shapes"); a figure or a \
-creature is shaped parts on joints (read_guide "figures"). Pass the \
-person's request, word for word, as brief, and a part count they named as \
-parts.
+assemblies and its features (what the subject is known by, each with where \
+it goes). A hull, a car body or a building is a shape pattern (read_guide \
+"shapes"); a figure or a creature is shaped parts on joints (read_guide \
+"figures"). Pass the person's request, word for word, as brief, and a part \
+count they named as parts.
  3. review_model: fix the silhouette and proportions before any detail.
- 4. Each feature: one with a form comes back close up as built (rebuild it \
-whole if it reads as a block), one without with a real set's piece laid; \
-settle_feature it.
+ 4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with \
 edit_model.
  6. review_model {"surface": true}, settle_surface each; 7. review_model \

@@ -110,12 +110,6 @@ class Proposal extends RefCounted:
 var assistant: Assistant
 ## Feature name in lower case -> the spot the design gave it.
 var spots: Dictionary = {}
-## Feature name in lower case -> the form the design gave it, in its own
-## words: "open: a ring of curved parts round an empty middle, bars for
-## spokes". A feature given its form is built by the design, so the app
-## lays it no real set's piece: it shows the feature close up, as built, to
-## be checked against that form (Assistant._form_brief).
-var forms: Dictionary = {}
 ## Feature name in lower case -> its Proposal.
 var proposals: Dictionary = {}
 
@@ -124,39 +118,10 @@ func _init(of: Assistant) -> void:
 	assistant = of
 
 
-## A new design: its features' spots and forms, and nothing proposed yet.
-func reset(given: Dictionary, given_forms: Dictionary = {}) -> void:
+## A new design: its features' spots, and nothing proposed yet.
+func reset(given: Dictionary) -> void:
 	spots = given.duplicate(true)
-	forms = given_forms.duplicate(true)
 	proposals = {}
-
-
-## The forms a submission gives its features: name in lower case -> the
-## form said, for each that says one. design24, from the judge's reasons
-## on the base's losses to real sets (docs/DESIGN_SCORES.md): the feature
-## was named and built in nearly every loss, and its form was not there: a
-## solid disc for an open wheel, a stack for splayed legs, a flat wall for
-## a curved blade.
-static func read_forms(args: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	var given: Variant = args.get("features", [])
-	if not given is Array:
-		return out
-	for raw: Variant in given:
-		if not raw is Dictionary:
-			continue
-		var one: Dictionary = raw
-		var name: String = str(one.get("name", "")).strip_edges().to_lower()
-		var form: String = str(one.get("form", "")).strip_edges()
-		if name.is_empty() or form.is_empty():
-			continue
-		out[name] = form
-	return out
-
-
-## The form the design gave a feature, or "".
-func form_of(name: String) -> String:
-	return str(forms.get(name.to_lower(), ""))
 
 
 ## The spots a submission gives its features: {"name", "x", "y", "z",

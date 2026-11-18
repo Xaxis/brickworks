@@ -2422,28 +2422,6 @@ fixing what it got wrong.
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.
   Needs the index; SKIP without.
-  A feature's form (design24, 2026-11-16): `submit_design`'s features take
-  `form` (open, at an angle, curved, twisted, tapering or slender, and the
-  parts that make it; `FeaturePass.read_forms`, `Model.feature_forms`,
-  `FeaturePass.forms`/`form_of`). While no feature has one,
-  `how_real_sets_build_this`'s answer leads with `Assistant.FORM_ASK`
-  ("BEFORE THE FIRST BUILD": each feature's form read off the reference
-  picture, a vehicle's wheels and outline breaks among them, each built in
-  the first build as its own piece, never a fill or a stack) and
-  `find_reference`'s pictures end with `FORM_READ`. A feature given a form
-  is handed by `_form_brief`, not `_feature_brief`: no real set's piece is
-  laid; the feature's box (`_feature_box`: the assembly sharing a word with
-  its name when that is at most half the model, else round its spot) is
-  said, and its parts close up from the way it faces (none headless), with
-  `FORM_LOOK` (show the form, or take it off and build it again whole by
-  the parts that make it); nothing in the box asks it built now. One
-  without a form goes the old way. `feature_form_probe` (windowed) checks
-  each: the forms read, the schema's `form`, the method's words, the
-  instructions' head unchanged, the ask before and not after a formed
-  submit and again after a submit with none, the mast handed close up in
-  its assembly's box from the front with no piece laid, the headlamps (no
-  form) the real-piece way, the wheel (nothing built) asked to be built,
-  the frame looked at round its spot, and every feature settled.
   The surface pass, before the creative pass (`src/ai/surface_pass.gd`,
   `SurfacePass`, 2026-10-13): the app reads the model's open up-facing studs
   exactly (nothing on the stud — `BrickLattice.standing_on`, the question a

@@ -972,7 +972,7 @@
       "readOnlyHint": false,
       "title": "Settle a feature's piece"
     },
-    "description": "Say what a feature is to be, once the app has laid a real set's piece for it where it goes (the whole review, each settle and saving hand the next feature with its piece laid and a picture): accept it — moved, turned or recoloured first if it needs it — ask for the next-best piece instead, reject it with a reason, say you built it yourself, or skip it. A feature given its form in submit_design is handed close up as built instead, with no piece laid: built, with what the picture shows, once it shows that form. Saving waits until every feature listed in submit_design is settled.",
+    "description": "Say what a feature is to be, once the app has laid a real set's piece for it where it goes (the whole review, each settle and saving hand the next feature with its piece laid and a picture): accept it — moved, turned or recoloured first if it needs it — ask for the next-best piece instead, reject it with a reason, say you built it yourself, or skip it. Saving waits until every feature listed in submit_design is settled.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2208,7 +2208,7 @@
           "type": "string"
         },
         "features": {
-          "description": "what the subject is known by, a few words each: an owl's facial disc, eyes, beak, ear tufts, wings, talons; a car's wheel arches, headlamps, grille, windscreen, spoiler; a vehicle's wheels or tracks and each thing that breaks its outline (a blade, a mast with its forks, an auger, a boom) — and where each goes: x, y, z on the model's surface and the way it faces out (one of a pair; the other is mirrored), and its form. A feature with a form is built in this first build as its own piece, by the parts that make that form, never a fill or a stack of bricks. Once the shape stands and you have looked at it whole, each comes back to you in turn: one with a form close up as built, to check it shows that form; one without, with the best real set's piece for it laid there by the app, to accept, adjust or reject with settle_feature.",
+          "description": "what the subject is known by, a few words each: an owl's facial disc, eyes, beak, ear tufts, wings, talons; a car's wheel arches, headlamps, grille, windscreen, spoiler — and where each goes: x, y, z on the model's surface and the way it faces out (one of a pair; the other is mirrored). Once the shape stands and you have looked at it whole, each comes back to you in turn with the best real set's piece for it laid there by the app, to accept, adjust or reject with settle_feature.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -2221,10 +2221,6 @@
                   "-x",
                   "up"
                 ],
-                "type": "string"
-              },
-              "form": {
-                "description": "the form a glance knows it by, read off the reference picture, and the parts that make it at this scale: open (sky through it: spokes, a lattice, a frame), at an angle (legs splayed, an arm raked or cranked), curved (a blade, a hood, a dome, an arch), twisted, tapering or slender. Given it, you build the feature yourself, in this build, and it comes back close up as built, to check it shows that form",
                 "type": "string"
               },
               "name": {
