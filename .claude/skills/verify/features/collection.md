@@ -233,7 +233,15 @@ which models they could build from what they have. Added 2026-10-12.
   and a set taken apart counts the taken-apart copy's. Over MCP
   `edit_collection {"built": ["7140-1"]}` marks it in one call
   (`{set, copies}` for a number, 0 to take apart; each said "was N"), and
-  its read-back says which are kept built. Op
+  its read-back says which are kept built. With My collection open, Ctrl+Z
+  (or Edit › Undo, the touch bar's Undo) takes back the last Built press,
+  one at a time (`CollectionDialog.undo_built`, reached by
+  `EditVerbs.panel_undo` from `Shell`): the same op the other way round,
+  `{was: now, built: was}`, so the counts are as before it ("undid: 7140-1
+  … taken apart: …"); a press whose marks moved on at another device since
+  is refused ("undid nothing: somebody else changed 7140-1 … since") and
+  shown as the account has it; with nothing pressed, or another account
+  signed in since, Undo is the model's. Op
   `built` takes the `rev` the view was shown at: a set not in the
   collection is a 400 "set N: X is not in your collection: only a set you
   own is kept built", and a 409 "not in your collection any more" only
@@ -679,7 +687,12 @@ Proves it when:
   mark comes off the copies apart alone); missing= with built= refused;
   two copies, one built, three 3001s missing, counted 7 however the marks
   sit over the number's entries; a kept built of "2", true, 1.5, 0.5, -1 and
-  null read as none, 2.0 and 2 as 2, 7 as the 3 copies.
+  null read as none, 2.0 and 2 as 2, 7 as the 3 copies; with My
+  collection open, two presses taken back by two Ctrl+Z pressed in the
+  window, each at the account, counts and all (56+570, 341, 56 back to
+  341 and 626), the model's own history and parts untouched, and one whose
+  marks another device moved on since refused, said, as the account has it;
+  every line said, the undo's too, in de, fr and es.
   Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
 - `tests/test_collection_words.py` (minitest): op built's, own's and
   missing's refusals in words, run under node on api/collection.js.

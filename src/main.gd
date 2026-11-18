@@ -10317,7 +10317,11 @@ func _on_touch_tool(what: String) -> void:
 			_refresh_preview()
 			_bar.say("on its %s" % _builder.held_face)
 		"undo":
-			if _builder.undo():
+			# My collection open: its last Built press, as Ctrl+Z takes it.
+			var taken: String = await _verbs.panel_undo.call()
+			if not taken.is_empty():
+				_bar.say(taken)
+			elif _builder.undo():
 				_refresh_preview()
 				_on_model_edited()
 			elif not await _bar.reopen():

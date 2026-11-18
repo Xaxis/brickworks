@@ -28,6 +28,10 @@ var reopen: Callable = func(_again: bool) -> bool: return false
 ## What that would take back, or do again, in words; "" for nothing
 ## (ModelStore.reopen_words).
 var reopen_words: Callable = func(_again: bool) -> String: return ""
+## Undo of a panel open over the model that keeps its own (My collection's
+## Built presses, CollectionDialog.undo_built): what it took back in words,
+## said, and the model's history is left alone; "" when it had nothing.
+var panel_undo: Callable = func() -> String: return ""
 ## Building together (Together): while in a session, Undo and Redo are this
 ## person's own, and take back none of anybody else's parts. Null until the
 ## session is made (Main._together, Later): then nobody is in one.
@@ -183,6 +187,11 @@ func _say_first(count: int, words: String) -> Working.Job:
 
 ## A button on the edit bar, by name: the same thing its key does.
 func press(name: String) -> void:
+	if name == "undo":
+		var taken: String = await panel_undo.call()
+		if not taken.is_empty():
+			say.call(taken)
+			return
 	if together != null and together.live and (name == "undo" or name == "redo"):
 		var words: String = together.undo(name == "redo")
 		if not words.is_empty():

@@ -47,6 +47,10 @@
 ##      missing, and as two with it on the other
 ##  12. a kept "built" read one way (kbreview A1): only a whole number counts,
 ##      up to the copies; "2", true, 1.5, 0.5 and -1 are none
+##  13. Ctrl+Z with My collection open takes back the last Built press at
+##      the account (the op the other way round), counts and all, one press
+##      at a time, the model's history untouched; refused, said, when the
+##      marks moved on at another device since (kbreview finding 4, smalls5)
 ##
 ## On pre261 there is no Built mark, no op "built" and no built=: 2 to 8
 ## fail with words. Writes nothing in the app's own directory: the account's
@@ -375,6 +379,100 @@ func _steps() -> void:
 
 	print("\n12. a kept built read one way")
 	_odd_built()
+
+	print("\n13. Ctrl+Z takes back a Built press (kbreview finding 4)")
+	await _undo_built()
+
+
+## With My collection open, Ctrl+Z (a key pressed in the window, as a person
+## presses it) takes back the last Built press at the account, counts and
+## all, one press at a time, and leaves the model's own history alone; a
+## press whose marks moved on at another device since is refused, said, the
+## collection shown as it is. Two copies, none built, from 8.
+func _undo_built() -> void:
+	_dialog.call("open", "own")
+	await _settled()
+	var builder: Builder = _main.get("_builder")
+	var world: BrickWorld = _main.get("_world")
+	var laid: int = world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
+	builder.record([{"undo": "remove", "brick": laid}], "a part laid by the probe")
+	var model_depth: int = builder.history_depth()
+	var parts: int = world.bricks().size()
+	var pools: Array = [_store.pieces_on_hand()]
+	for n: int in 2:
+		_press_built()
+		await _changed()
+		await _settled()
+		pools.append(_store.pieces_on_hand())
+	_check("two presses: Built 2 of 2 at the account, pools %s" % str(pools),
+		int(_set_built_at(await _account_now())) == 2 and pools == [626, 341, 56])
+	var back: Array = []
+	for n: int in 2:
+		await _ctrl_z()
+		var mark: Button = (_dialog.call("controls_by_name") as Dictionary).get("collection_built_" + SET)
+		_drawn.append(str((_dialog.get("_status") as Label).text))
+		back.append([mark.text if mark != null else "none", _store.pieces_on_hand(), _set_built_at(await _account_now()),
+			str((_dialog.get("_status") as Label).text).left(60)])
+	_check("Ctrl+Z, then Ctrl+Z: each the last press taken back at the account, counts and all: %s" % str(back),
+		back.size() == 2 and back[0][0] == "Built 1 of 2" and back[0][1] == 341 and back[0][2] == 1
+		and back[1][0] == "Built" and back[1][1] == 626 and back[1][2] == 0
+		and str(back[0][3]).begins_with("undid: 7140-1"))
+	_check("...and the model's history and parts as they were: depth %d (was %d), %d parts (was %d)"
+		% [builder.history_depth(), model_depth, world.bricks().size(), parts],
+		model_depth > 0 and builder.history_depth() == model_depth and world.bricks().size() == parts)
+	# Another device marks both built after a press here: the undo is refused.
+	_press_built()
+	await _changed()
+	await _settled()
+	var elsewhere := CollectionStore.new()
+	elsewhere.library = _library
+	elsewhere.account = _account
+	root.add_child(elsewhere)
+	await elsewhere.load_collection()
+	var there: Dictionary = await elsewhere.set_built([{"set": SET, "was": 1, "built": 2}])
+	elsewhere.queue_free()
+	await _ctrl_z()
+	var said: String = str((_dialog.get("_status") as Label).text)
+	_drawn.append(said)
+	_check("a press moved on at another device since: refused, said, shown as it is (built %d here and %d at the account): \"%s\""
+		% [_store.collection.entries_of(SET).reduce(func(sum: int, e: Dictionary) -> int: return sum + Collection.built_of(e), 0),
+		_set_built_at(await _account_now()), said.left(140)],
+		there["kind"] == CollectionStore.DONE and said.begins_with("undid nothing: somebody else changed 7140-1") and _set_built_at(await _account_now()) == 2
+		and _store.collection.entries_of(SET).reduce(func(sum: int, e: Dictionary) -> int: return sum + Collection.built_of(e), 0) == 2)
+	builder.undo()
+	await _call("edit_collection", {"built": [{"set": SET, "copies": 0}]})
+	print("    what the undo said, in de, fr and es, with every line drawn before:")
+	_languages()
+
+
+## SET's Built mark clicked: focused, as a click leaves it, and pressed.
+func _press_built() -> void:
+	var mark: Button = (_dialog.call("controls_by_name") as Dictionary)["collection_built_" + SET]
+	mark.grab_focus()
+	mark.pressed.emit()
+
+
+## How many copies of SET [param at] (an account's collection) keeps built.
+func _set_built_at(at: Dictionary) -> int:
+	var built: int = 0
+	for entry: Dictionary in at.get("sets", []):
+		if str(entry["set"]) == SET and not Collection.is_fig(entry):
+			built += Collection.built_of(entry)
+	return built
+
+
+## Ctrl+Z pressed and let go in the window, and what it set going done.
+func _ctrl_z() -> void:
+	for down: bool in [true, false]:
+		var key := InputEventKey.new()
+		key.keycode = KEY_Z
+		key.physical_keycode = KEY_Z
+		key.ctrl_pressed = true
+		key.pressed = down
+		Input.parse_input_event(key)
+		await _frames(2)
+	await _changed()
+	await _settled()
 
 
 # -- the counts by hand ---------------------------------------------------------------
