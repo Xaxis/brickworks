@@ -2659,6 +2659,69 @@ func retrieve_between(section: String, early: int, late: int) -> String:
 	return source.retrieve_between(section, origins[0], origins[1])
 
 
+## The first of the file's buffer RETRIEVEs beginning a step that the model
+## now has in one step with the step before it (SourceFile.retrieve_joined),
+## in the sections of [param paths] (the paths an edit moved parts in) and
+## those they are put on in: [the line, the parts of the step before it, of
+## the step it begins (brick ids; a copy's by one of its parts)]; [] for
+## none. Read after Previous, Next or To step, before it is kept: two steps
+## made one across a RETRIEVE are refused as a merge is (Shell.change_steps),
+## or what the earlier put on is never shown in LPub3D (mkreview M1). Asks
+## nothing of a file without one, nor reads the model for a section without.
+func retrieve_joined(paths: Array) -> Array:
+	var source: SourceFile = _live_source()
+	if source == null or not source.has_retrieves():
+		return []
+	var sections: Array = []
+	for path: String in paths:
+		var at: String = path
+		while true:
+			var section: String = AuthorSteps.home(world, at)
+			if not sections.has(section) and source.retrieves_in(section):
+				sections.append(section)
+			if at.is_empty():
+				break
+			at = Assemblies.parent_of(at)
+	if sections.is_empty():
+		return []
+	var by_section: Dictionary = AuthorSteps.items_in(world, sections, scenery)
+	var first: Dictionary = {}      ## a path -> its first part, in the model's order
+	for section: String in sections:
+		var items: Array = []
+		var units: Dictionary = {}      ## a copy put on in this section -> its step
+		for item: Dictionary in by_section[section]:
+			if item.has("brick"):
+				var brick: BrickWorld.Brick = world.get_brick(int(item["brick"]))
+				if brick != null and not brick.origin.is_empty():
+					items.append([brick.origin, int(item["step"]), brick.id])
+			elif item.has("unit"):
+				units[str(item["unit"])] = int(item["step"])
+		if not units.is_empty():
+			if first.is_empty():
+				for brick: BrickWorld.Brick in world.bricks():
+					if not brick.origin.is_empty():
+						var path: String = Assemblies.path_of(brick)
+						if not first.has(path):
+							first[path] = brick
+			var given: Dictionary = {}
+			for path: String in first:
+				var up: String = path
+				while not up.is_empty() and not units.has(up):
+					up = Assemblies.parent_of(up)
+				if not up.is_empty() and not given.has(up):
+					given[up] = true
+					var brick: BrickWorld.Brick = first[path]
+					items.append([brick.origin, int(units[up]), brick.id])
+		var joined: Array = source.retrieve_joined(section, items)
+		if not joined.is_empty():
+			var sides: Array = [[], []]
+			for which: int in 2:
+				for index: int in joined[which + 1]:
+					(sides[which] as Array).append(int(items[index][2]))
+			return [joined[0], sides[0], sides[1]]
+	return []
+
+
 ## The source the model on the baseplate is still the model of, or null.
 func _live_source() -> SourceFile:
 	if _source == null or world == null or world.generation() != _opened_in:

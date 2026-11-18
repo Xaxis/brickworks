@@ -396,9 +396,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `SourceFile.retrieve_between`, the file's lines between the two steps'
   parts): refused with why, nothing to undo, as LPub3D would show the stored
   model where it stands and the earlier step's parts never (mergekeep).
-  `endsteps_probe` (headless;
-  `ENDSTEPS_CASES=loose,groups`) checks both, the RETRIEVE at its step's head
-  in every save and the two refusals, patched and written whole;
+  Nor by parts moved: Previous, Next and To step (Shift-[, Shift-], a drop
+  on the timeline, edit_steps prev/next/to) that put the two of the file's
+  steps a RETRIEVE starts the later of into one step, each read as live's
+  write would move them (`ModelStore.retrieve_joined` →
+  `SourceFile.retrieve_joined`, after the edit and before it is kept), are
+  refused in the merge's or the step taken out's words; one part moved
+  across is written below the RETRIEVE in the step it starts, or above it in
+  the step before (`SourceFile._restep`; a patch that would drop the STEP
+  line above it keeps that one instead, `_retrieve_kept_heading`, or goes
+  to live's write) (mkreview M1). `endsteps_probe` (headless;
+  `ENDSTEPS_CASES=loose,groups,moves`) checks all, the RETRIEVE at its step's head
+  in every save, the refusals by keys, drop and MCP, patched and written whole;
   `streview_probe` (bench/results/streview-2026-11-15, `SR_CASES=addturn,metas`)
   the reviewer's cases.
   Written whole, a copy is placed on its definition's first copy by the fit
