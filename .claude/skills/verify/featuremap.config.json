@@ -5757,6 +5757,13 @@
       "entry": "src/dev/stepsearch_probe.gd",
       "reach": "tools/probe.sh stepsearch_probe; tools/probe.sh stepsearch_phone_probe   (the car's finds by number, name, colour and both against the bricks themselves, the row marking the same, every key's list on screen within 100 ms; a click, Enter, Shift+Enter, Escape; edit_steps find= the same steps in 1 call, refused with another op, and no find changing the model; 7140-1's engines found in their own steps, every copy counted; Orthanc's keys within 100 ms; the phone's (390 x 844): Find…'s sheet above the keyboard, a tap going there; pictures in shots/stepsearch/)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "a pose that holds its own weight",
+      "entry": "src/assembly/pose_hold.gd",
+      "reach": "godot --path .  (an arm posed on a Technic ball or a friction pin with weight at its end: Check stability, Pose's hold lines and the pin's row, a drag's status, Stress's list and pose_model name each joint past what one of its kind was measured to hold (data/joint_hold.json), red, with the share it holds, and the mark goes when the pose holds; small balls, click hinges, hinges, turntables and clips named, never given a number; tools/probe.sh posehold_probe)",
+      "area": "building"
     }
   ]
 }

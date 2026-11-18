@@ -366,7 +366,8 @@ func lift(bricks: Array, by: int) -> Result:
 				if one.beyond == by or cut.has(one.beyond):
 					continue
 				result.joints.append(one)
-				if one.kind in ["friction pin", "free pin"] and one.moment > one.ultimate:
+				# A pin, or a ball joint past what one holds (posehold), swings.
+				if one.kind in ["friction pin", "free pin"] and one.moment > one.ultimate or one.droops():
 					result.swings.append(one)
 			result.joints.sort_custom(func(a: Balance.JointLoad, b: Balance.JointLoad) -> bool:
 				var ga: float = LiftTest.give_of(a)

@@ -43,7 +43,9 @@ export function orUnknown(where, read) {
 
 /// One PostgREST request. Throws on anything but a success, naming the
 /// table and the status and nothing else (no row ever ends up in a log).
-export async function db(path, { method = "GET", body, prefer } = {}) {
+/// Given up after [seconds]: a read in the way of every call (the session
+/// behind a token, api/_auth.js) gives up sooner than one asked for itself.
+export async function db(path, { method = "GET", body, prefer, seconds = 15 } = {}) {
   const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
   const key = process.env.SUPABASE_SECRET_KEY;
   const headers = {
@@ -53,7 +55,7 @@ export async function db(path, { method = "GET", body, prefer } = {}) {
   };
   if (prefer) headers.prefer = prefer;
   const what = `database ${method} ${path.split("?")[0]}`;
-  const answer = await reach(what, 15, `${base}/rest/v1/${path}`, {
+  const answer = await reach(what, seconds, `${base}/rest/v1/${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),

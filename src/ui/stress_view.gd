@@ -248,7 +248,10 @@ static func fix_words(weak: Weak, library: PartLibrary) -> String:
 		return ("Nothing holds it there: give it studs to stand on, or hold up what it carries."
 			if one.kind == "studs" else "It turns with nothing holding it: tie it in with a second "
 			+ "pin off its line, or hold up what it carries.")
-	var more: String = "give it more studs" if one.kind == "studs" else "tie it in with a second pin off its line"
+	# A ball turns any way: no second line ties it in (posehold).
+	var more: String = "give it more studs" if one.kind == "studs" else (
+		"shorten or lighten what hangs on it" if one.hold == PoseHold.TECHNIC_BALL
+		else "tie it in with a second pin off its line")
 	var how: String = "hold it up from below, or hang it from more studs" if one.hangs and one.kind == "studs" \
 		else "brace it, %s, or move weight back over the %s" % [more, _named(library, one.held_part)]
 	if weak.margin < WEAK:
@@ -481,7 +484,8 @@ func brace_words(id: int) -> String:
 		_name(one.beyond_part), "hangs" if one.hangs else "carries", Balance.tidy(one.grams),
 		"from" + one.held_on().trim_prefix("on") if one.hangs else one.held_on(),
 		_name(one.held_part), how,
-		"more studs" if one.kind == "studs" else "a second pin off its line"]
+		"more studs" if one.kind == "studs" else (
+			"a second joint beside it" if one.hold == PoseHold.TECHNIC_BALL else "a second pin off its line")]
 
 
 ## A margin as said: one decimal, and a joint pressed straight down, with
@@ -555,6 +559,12 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 			else:
 				said = "it turns with nothing holding it, %s N·cm about its line, red" % Balance.tidy(one.moment)
 			lines.append(who + said)
+			continue
+		# A friction joint holds its pose or droops (posehold): by the share
+		# of what hangs on it that one of its kind holds.
+		if not one.hold.is_empty():
+			lines.append(who + ("droops: it %s, red" if one.droops() else "holds its pose: it %s")
+				% PoseHold.share_words(one.share()))
 			continue
 		var how: String
 		if margin < WEAK:

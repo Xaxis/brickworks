@@ -238,6 +238,15 @@
   .networks li { display: grid; gap: var(--s-2); align-content: start; }
   .networks li h3 { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin: 0; }
   .networks li p { margin: 0; }
+  /* Reddit by hand, with its steps for connecting later: the whole row. */
+  .networks li.by-hand { grid-column: 1 / -1; }
+  .networks li.by-hand p, .networks details.later ol { max-width: 75ch; }
+  .networks details.later summary { list-style: none; width: max-content; max-width: 100%; }
+  .networks details.later summary::-webkit-details-marker { display: none; }
+  .networks details.later ol { display: grid; gap: var(--s-2); margin: var(--s-3) 0 var(--s-2); padding-left: 1.4em;
+    font-size: var(--t-small); overflow-wrap: anywhere; }
+  .networks details.later ol li { display: list-item; }
+  .networks details.later code { overflow-wrap: anywhere; }
   .networks .row, .social-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
   .rules-list { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
   .rules-list li { display: grid; gap: 2px; }

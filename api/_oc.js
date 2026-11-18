@@ -35,7 +35,7 @@
 // the token is taken as the window's is: checkToken, then the same
 // sign-in.
 
-import { isTestAccount } from "./_auth.js";
+import { forgetSessions, isTestAccount, sessionEnded, sessionOf } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, nativeOffered, ocConfigured, ocHosts } from "./_oc_config.js";
 import {
@@ -123,7 +123,7 @@ async function whoMaySignIn() {
 export function forgetForTests() {
   rule = { at: 0, tried: 0, value: undefined };
   ended = null;
-  standings.clear();
+  forgetSessions();
   _resetJwksCachesForTests();
 }
 
@@ -368,21 +368,11 @@ export async function endToken(token) {
   }
 }
 
-// What a session was found to be, for a few seconds an instance: a page
-// asks several routes at once, and an ended session must still be refused
-// within seconds of being found ended.
-const standings = new Map();
-const HELD_MS = 5000;
+// What a session was found to be is api/_auth.js's sessionOf, which every
+// account's sign-in asks: read once in a few seconds an instance, since a
+// page asks several routes at once, and an ended session must still be
+// refused within seconds of being found ended.
 const READS = new Set(["GET", "HEAD", "OPTIONS"]);
-
-async function sessionOf(id) {
-  const held = standings.get(id);
-  if (held && Date.now() - held.at < HELD_MS) return held.value;
-  const value = await db("rpc/oc_session_of", { method: "POST", body: { session: id } });
-  if (standings.size > 2000) standings.clear();
-  standings.set(id, { at: Date.now(), value });
-  return value;
-}
 
 /// [claims]'s session ended here, refused in [words]: Supabase's row
 /// deleted, so it cannot be renewed either.
@@ -392,7 +382,7 @@ async function endHere(claims, session, words) {
   } catch (trouble) {
     console.error(`orangecheck: a session was not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
   }
-  standings.set(claims.session_id, { at: Date.now(), value: { ...session, exists: false } });
+  sessionEnded(claims.session_id, session);
   return { refused: words, status: 401 };
 }
 

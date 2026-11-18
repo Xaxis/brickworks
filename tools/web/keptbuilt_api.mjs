@@ -21,8 +21,9 @@
 //      every other set, mark and lot as it was; read again, the same; sent
 //      again with its id, made once
 //   3. refused, changing nothing: from a count no longer shown (409, the
-//      collection as it is), more than the copies owned (400), a set not
-//      owned (409), a set named twice (400)
+//      collection as it is), more than the copies owned (400), a set never
+//      owned (400), one shown at an older rev and gone (409), a set named
+//      twice (400)
 //   4. every other change keeps the mark: a lot added, a count set, the
 //      missing mark changed, a second copy typed (built 1 of 2), an Own
 //      down to 1 (the copy kept apart goes: built 1 of 1), an Own back up,
@@ -164,7 +165,12 @@ try {
   const past = await built([{ set: "7140-1", was: 1, built: 2 }]);
   check(past.status === 400 && /one copy/.test(past.body?.error || ""), `2 built of 1 owned: ${past.status} "${past.body?.error}"`);
   const notOwned = await built([{ set: "9493-1", was: 0, built: 1 }]);
-  check(notOwned.status === 409, `a set not owned: ${notOwned.status} "${notOwned.body?.error}"`);
+  check(notOwned.status === 400 && /9493-1 is not in your collection: only a set you own/.test(notOwned.body?.error || ""),
+    `a set never owned: ${notOwned.status} "${notOwned.body?.error}"`);
+  const rev = (await call(token)).body.rev;
+  const goneSince = await built([{ set: "9493-1", was: 0, built: 1 }], { rev: Number(rev) - 1 });
+  check(goneSince.status === 409 && Array.isArray(goneSince.body?.sets),
+    `a set shown at an older rev and not there now: ${goneSince.status} "${goneSince.body?.error}", the collection as it is`);
   const twice = await built([{ set: "7140-1", was: 1, built: 0 }, { set: "7140", was: 1, built: 1 }]);
   check(twice.status === 400 && /twice/.test(twice.body?.error || ""), `named twice: ${twice.status} "${twice.body?.error}"`);
   const after3 = (await call(token)).body;

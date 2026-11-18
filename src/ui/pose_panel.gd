@@ -140,8 +140,17 @@ var _frame: TextureRect
 ## Each motion row's buttons, by the row's number, for a browser test.
 var _row_buttons: Array = []
 var _keep_buttons: Array = []
-## The joint rows: [{joint, slider, readout, strip}], as listed.
+## The joint rows: [{joint, slider, readout, strip, droop}], as listed.
 var _joint_parts: Array = []
+
+## Whether the pose shown holds (posehold), a label a line, and what it was
+## last weighed of: the model, the pose drawn over it and when.
+var _hold: VBoxContainer
+var _hold_report: Balance.Report = null
+var _hold_key: Array = []
+var _hold_at: int = 0
+## At most this often, ms: a slider dragged draws a pose a frame.
+const HOLD_EVERY_MS := 120
 
 ## "list", "edit" or "sequence".
 var _view: String = "list"
@@ -226,6 +235,9 @@ func open() -> void:
 	_draft = null
 	_editing_name = ""
 	_suggested = player.suggest() if player != null else []
+	# Weighed at once, as it stands.
+	_hold_key = []
+	_hold_at = 0
 	_refresh()
 	if _motions().is_empty():
 		_say("Keep a suggestion, or press New motion to make one." if not _offered().is_empty()
@@ -824,7 +836,17 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	strip.timed.connect(func(t: float) -> void: set_time(t))
 	strip.visible = track != null
 	row.add_child(strip)
-	_joint_parts.append({"joint": joint, "slider": slider, "readout": readout, "strip": strip})
+	# Where the joint it turns droops (posehold): how far over, by the row.
+	var droop := Label.new()
+	droop.add_theme_font_size_override("font_size", 11)
+	droop.add_theme_color_override("font_color", BalanceMark.TIPS.lerp(Color.WHITE, 0.35))
+	droop.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	droop.custom_minimum_size = Vector2(WIDE - 24, 0)
+	droop.visible = false
+	row.add_child(droop)
+	var listed := {"joint": joint, "slider": slider, "readout": readout, "strip": strip, "droop": droop}
+	_joint_parts.append(listed)
+	_mark_row(listed)
 
 
 static func _place_words(value: float, joint: Motions.Joint) -> String:
@@ -1764,7 +1786,106 @@ func _process(delta: float) -> void:
 				_look = null
 				_undraw()
 			_refresh()
+	if not _recording and not _working:
+		_weigh_hold()
 	_tell_page()
+
+
+# -- whether the pose holds ------------------------------------------------------------
+
+
+## The pose shown weighed whenever it changes: the model as it stands, or
+## the pose a slider, a key or a frame draws over it (the model unmoved),
+## each against what Grab read of the model (GrabDrag.weigh_with), a few
+## milliseconds a pose. Not until Grab has read the model as it stands.
+func _weigh_hold() -> void:
+	if grabbing == null:
+		return
+	var placed: Dictionary = world.drawn_ids() if _drawn else {}
+	var key: Array = [world.generation(), world.revision, placed.hash()]
+	var now: int = Time.get_ticks_msec()
+	if key == _hold_key or now - _hold_at < HOLD_EVERY_MS:
+		return
+	var report: Balance.Report = grabbing.weigh_with(placed)
+	if report == null:
+		return
+	_hold_key = key
+	_hold_at = now
+	show_hold(report)
+
+
+## [param report]'s friction joints in the hold line, and each joint row
+## that droops marked with how far over (PoseHold.pose_words).
+func show_hold(report: Balance.Report) -> void:
+	_hold_report = report
+	var words: String = PoseHold.pose_words(report, _part_name)
+	if words != hold_words():
+		_clear(_hold)
+		var droops: bool = not PoseHold.drooping(report).is_empty()
+		for n: int in words.split("\n").size() if not words.is_empty() else 0:
+			var line := Label.new()
+			line.text = words.split("\n")[n]
+			line.add_theme_font_size_override("font_size", 12 if n == 0 else 11)
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line.custom_minimum_size = Vector2(WIDE, 0)
+			line.mouse_filter = Control.MOUSE_FILTER_PASS
+			# What droops in the tint Stress marks red with; the rest quieter.
+			if droops and n <= mini(PoseHold.drooping(report).size(), 3):
+				line.add_theme_color_override("font_color", BalanceMark.TIPS.lerp(Color.WHITE, 0.35))
+			else:
+				line.modulate = Color(1, 1, 1, 0.8)
+			_hold.add_child(line)
+		_fit_later()
+	_hold.visible = not words.is_empty()
+	for row: Dictionary in _joint_parts:
+		_mark_row(row)
+
+
+## The hold lines as they read, one a line, for a probe and a session.
+func hold_words() -> String:
+	var lines := PackedStringArray()
+	for line: Node in _hold.get_children():
+		if line is Label and not line.is_queued_for_deletion():
+			lines.append((line as Label).text)
+	return "\n".join(lines)
+
+
+## A joint row's droop mark: the friction joint that joint turns, past what
+## one of its kind holds, with how far over.
+func _mark_row(row: Dictionary) -> void:
+	var mark: Label = row.get("droop")
+	if mark == null:
+		return
+	var one: Balance.JointLoad = _droop_of(row["joint"])
+	mark.visible = one != null
+	if one != null:
+		mark.text = "Droops: it holds %d%% of what hangs on it." % PoseHold.percent(one.share())
+
+
+## The drooping friction joint [param joint] turns: the one whose part past
+## it moves with the joint and whose part holding it does not.
+func _droop_of(joint: Motions.Joint) -> Balance.JointLoad:
+	var droops: Array = PoseHold.drooping(_hold_report)
+	if droops.is_empty() or player == null:
+		return null
+	var moving: Dictionary = {}
+	var parts: Array = player.parts_of(joint)
+	var bodies: Bodies = grabbing.read_bodies() if grabbing != null and joint.by != "assembly" else null
+	if bodies != null and not parts.is_empty() and bodies.body_of.has(int(parts[0])):
+		parts = Array(bodies.members.get(bodies.body_of[int(parts[0])], PackedInt64Array()))
+	for id: Variant in parts:
+		moving[int(id)] = true
+	for one: Balance.JointLoad in droops:
+		if moving.has(one.beyond) and not moving.has(one.held_by):
+			return one
+	return null
+
+
+## A part as the hold line names it: "#12 (Technic Ball Joint)".
+func _part_name(id: int) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(id)
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+	return "#%d (%s)" % [id, Inventory._tidy(info.name)] if info != null else "#%d" % id
 
 
 ## The history as it stands: its depth and its newest step, the same
@@ -1846,6 +1967,12 @@ func _build() -> void:
 		header.move_child(_making, 1)
 	_build_editor(inner)
 	_build_sequence(inner)
+	# Whether the pose holds: in sight in every view, below what moves, and
+	# on a phone the same line wrapped, since nothing there hovers.
+	_hold = VBoxContainer.new()
+	_hold.add_theme_constant_override("separation", 2)
+	_hold.visible = false
+	column.add_child(_hold)
 	column.add_child(HSeparator.new())
 	var rendering := HBoxContainer.new()
 	rendering.add_theme_constant_override("separation", 6)
@@ -2521,6 +2648,7 @@ func _tell_page() -> void:
 		"at": _at, "time": ends.call(_time), "time_max": _time.max_value, "joints": joints,
 		"recording": _recording, "playing": _playing, "working": _working,
 		"fraction": snappedf(_fraction, 0.01), "status": _status.text,
+		"hold": hold_words() if _hold.visible else "",
 		"frames_planned": roundi(_motions().seconds_of(chosen) * fps) + 1 if chosen != null else 0}
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)

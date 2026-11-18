@@ -668,7 +668,10 @@ func definitions() -> Array:
 				+ "turns about x, y and z through the ball). With no joint it lists them, "
 				+ "numbered, with the angle each is at. joint= (number or name) and degrees= "
 				+ "(from where it was built, -180 to 180) swings it as far as it has room; the "
-				+ "answer says where it stopped if something is in the way."),
+				+ "answer says where it stopped if something is in the way, and whether the pose "
+				+ "holds its own weight: each friction joint (a Technic ball, a friction pin) "
+				+ "that droops under what hangs on it, with the share it holds, and the joints "
+				+ "whose hold nobody has measured."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"joint": {"type": "string", "description": "its number or name in the list"},
 				"degrees": {"type": "number"},
@@ -864,7 +867,15 @@ func definitions() -> Array:
 				+ "floating parts by number, and weighs the balance over the whole cycle: the "
 				+ "worst frame, the arm furthest past the base's edge, a picture of it there. "
 				+ "record=true also renders turns= turns of the reference (1) in frames= frames "
-				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result)."),
+				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result). "
+				+ "program= sets the program for the model's motors (kept in its file; undo takes "
+				+ "it back; \"\" takes it out) and runs it in the same call, as Simulate's Run "
+				+ "does: each motor at its rated speed, each move stopped where a part meets "
+				+ "another or the motor stalls under its load, said move by move with a picture "
+				+ "where it ended. A line each: to 90° at 50% (to an angle from where it was "
+				+ "built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines "
+				+ "indented under it); with two hub motors or more, each line begins with its "
+				+ "port, A to F."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
@@ -873,6 +884,7 @@ func definitions() -> Array:
 				"frames": {"type": "integer", "description": "frames in a recording, 2 to 240; 24 when omitted"},
 				"turns": {"type": "number", "description": "turns of the reference (or the driver) a recording covers; 1 when omitted"},
 				"record": {"type": "boolean"},
+				"program": {"type": "string", "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out"},
 			}},
 		},
 		{
@@ -1480,7 +1492,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"lay_flex":
 			return await _lay_flex(input)
 		"pose_model":
-			return _pose(input)
+			return await _pose(input)
 		"move_part":
 			var grabbing: GrabDrag = app.get("_grab_drag")
 			if grabbing == null:
@@ -1673,6 +1685,9 @@ static func changes(tool: String, input: Dictionary) -> bool:
 	# rest of edit_palette changes only the person's palettes.
 	if tool == "edit_palette":
 		return str(input.get("action", "")) == "place"
+	# hubprogram: simulate_mechanism's program= sets the model's program.
+	if tool == "simulate_mechanism":
+		return input.has("program")
 	return tool in CHANGES and not _while_looking(tool, input)
 
 
@@ -1692,7 +1707,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not input.has("degrees") and not input.has("along") and not input.has("to") \
 				and not input.has("spin")
 		"simulate_mechanism":
-			return not bool(input.get("record", false))
+			return not bool(input.get("record", false)) and not input.has("program")
 		"export_model":
 			# mcpreach: the booklet's PDF, as its page is.
 			return str(input.get("format", "")) in ["instructions", "pdf"]
@@ -2707,7 +2722,7 @@ func _pose(input: Dictionary) -> String:
 		var on_balls: String = JointSnap.balls_said(world, app.get("_library"), builder.lattice, ids)
 		var motors: String = _motors_driven(world, app.get("_store"), app.get("_library"))
 		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls) \
-			+ ("" if motors.is_empty() else " " + motors)
+			+ ("" if motors.is_empty() else " " + motors) + await _pose_holds()
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0
@@ -2731,8 +2746,8 @@ func _pose(input: Dictionary) -> String:
 		if stuck > 0:
 			said.append("A joint with no room is often not what moves: move_part with no part= "
 				+ "lists what a drag moves, and animate_model takes those by part (#14).")
-		return "Joints:\n%s\npose_model {\"joint\": \"1\", \"degrees\": 45} swings one." \
-			% "\n".join(said)
+		return "Joints:\n%s\npose_model {\"joint\": \"1\", \"degrees\": 45} swings one.%s" \
+			% ["\n".join(said), await _pose_holds()]
 	var asked: String = str(input["joint"]).strip_edges()
 	var joint: Poser.Joint = _joint_named(joints, asked)
 	if joint == null:
@@ -2751,9 +2766,30 @@ func _pose(input: Dictionary) -> String:
 	var went: String = "" if absf(rose) < 0.25 else ", its parts' middle %s plates %s" % [
 		Balance.studs(absf(rose)), "higher" if rose > 0.0 else "lower"]
 	if absf(reached - wanted) > 0.5:
-		return "%s stops at %d°%s: any further and it runs into something." % [
-			joint.label(), roundi(reached), went]
-	return "%s at %d°%s." % [joint.label(), roundi(reached), went]
+		return "%s stops at %d°%s: any further and it runs into something.%s" % [
+			joint.label(), roundi(reached), went, await _pose_holds()]
+	return "%s at %d°%s.%s" % [joint.label(), roundi(reached), went, await _pose_holds()]
+
+
+## Whether the model holds its pose as it stands now (posehold), as Pose
+## says it: each friction joint past what one of its kind was measured to
+## hold (data/joint_hold.json), with how far over, and the joints whose hold
+## nobody has measured. "" for a model with no friction joint.
+func _pose_holds() -> String:
+	if not app.has_method("weigh_joints"):
+		return ""
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var generation: int = world.generation()
+	var report: Stability.Report = await app.call("weigh_joints")
+	if report == null or report.balance == null or world.generation() != generation:
+		return ""
+	var named := func(id: int) -> String:
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+		return "#%d %s" % [id, Inventory._tidy(info.name) if info != null else brick.part_id if brick != null else "?"]
+	var words: String = PoseHold.pose_words(report.balance, named, 8)
+	return "" if words.is_empty() else "\nThe pose, each friction joint against what one of its kind holds: " + words
 
 
 ## The middle of where these parts stand.

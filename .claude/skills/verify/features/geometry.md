@@ -1096,6 +1096,27 @@ one case held with the base. On stage225 before it, 19 checks fail;
 on pre261 (e1c9a8831) the SPIKE, Powered Up L and hub models fail 17: nothing is driven.
 Pictures: `shots/motion/<W>x<H>_*.png`.
 
+A program for the model's motors (docs/MECHANISMS.md section 40, APP_UX9 hubprogram):
+Simulate's row under the player, "Program", Run and a four-line box (`HubProgram`,
+`SimulatePanel.run_program`). Words: `to 90° at 50%`, `turn -45° at 30%`, `run 40% for 2 s`,
+`wait 1 s`, `repeat 3` with its lines indented under it, Pybricks' `run_target`/`run_angle`/
+`run_time` read too; a speed is a share of the motor's no-load rpm (`Simulation.MOTORS`); with two
+hub motors each line begins with its port A to F; a Power Functions or 9 V motor is refused as on
+no hub. Each move goes as far as Simulate's stops let it (meets, the loop's end, the stall forward
+and, by `Simulation.asked_back`, back). Kept in one `0 !BRICKWORKS PROGRAM {"text":...}` line in
+the model's head (`ProgramLine.line_of`/`read_from`, `MetaIndex.as_written` so an unedited save is
+the file), one undo step, a brought model's kept in its sub-model (`ModelStore.held_from`); a
+program or line this build cannot run is named where an open says what it left out
+(`ProgramLine.unread_words`). `simulate_mechanism` `program=` sets and runs it in one call.
+`tools/probe.sh hubprogram_probe` (`-- only=words|plays|kept|stalls|motors|mcp`;
+`PROBE_SIZE=390x844` for the phone row) ends "hubprogram_probe: all passed"; the save-path attacks
+(undo and redo, saved twice, reopened, a copy, someone else's file with the line by hand, a new
+program changing that line alone, a later build's word and form, a model put into another) are its
+section 3, rerunnable alone with `-- only=kept`. `-- only=older` on a snapshot of the build before
+(the probe and `src/dev/fixtures/hubprogram/arm_program.ldr` copied in) opens this build's file and
+saves it: the PROGRAM line kept byte for byte (`MetaIndex.unclaimed`). Pictures:
+`shots/hubprogram/<W>x<H>/`.
+
 Simulate on real sets' functions (docs/APP_UX8.md #7, kinefuncs): `tools/kinefuncs.py
 fetch` takes Kinebrick (github.com/erik-larsen/kinebrick, MIT, its data CC BY-SA) at
 its pinned commit and each set's OMR file into `bench/data/kinebrick`; `jobs` reads

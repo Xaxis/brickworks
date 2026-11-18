@@ -233,7 +233,28 @@ which models they could build from what they have. Added 2026-10-12.
   and a set taken apart counts the taken-apart copy's. Over MCP
   `edit_collection {"built": ["7140-1"]}` marks it in one call
   (`{set, copies}` for a number, 0 to take apart; each said "was N"), and
-  its read-back says which are kept built. Save sets as CSV
+  its read-back says which are kept built. With My collection open, Ctrl+Z
+  (or Edit › Undo, the touch bar's Undo) takes back the last Built press,
+  one at a time (`CollectionDialog.undo_built`, reached by
+  `EditVerbs.panel_undo` from `Shell`, asked by `EditVerbs.own_undo` alone:
+  your Claude's undo, `EditVerbs.press`, takes back the model's change, never
+  a Built press, keptbuilt_probe step 14): the same op the other way round,
+  `{was: now, built: was}`, so the counts are as before it ("undid: 7140-1
+  … taken apart: …"); a press whose marks moved on at another device since
+  is refused ("undid nothing: somebody else changed 7140-1 … since") and
+  shown as the account has it; with nothing pressed, or another account
+  signed in since, Undo is the model's. Op
+  `built` takes the `rev` the view was shown at: a set not in the
+  collection is a 400 "set N: X is not in your collection: only a set you
+  own is kept built", and a 409 "not in your collection any more" only
+  when the collection moved on since that rev; a minifigure's number the
+  collection holds (sw0001) is refused by built, own and missing as "a
+  minifigure in your collection, not a set", never read as set sw0001-1;
+  one in a BrickLink figure's shape with no -N, held or not (sw0002,
+  cty0001a), as "a minifigure's number, not a set's: a set is named with
+  its -N", and a part's file name (3001.dat) as one (s5review);
+  a list that is not one is named for what it lists ("sets is a list of
+  sets", smalls5). Save sets as CSV
   (`Collection.sets_csv`, Rebrickable's sets list with a Built column) and
   as XML (`sets_xml`, BrickLink's, a built copy's REMARKS `Built`) read
   back the marks through their imports; a replace import of a file with no
@@ -695,9 +716,10 @@ Proves it when:
   Built alone read as the mark, a person's note that begins with the word
   ("Built once, box opened") not; then on a throwaway account, an
   older collection (no `built` anywhere) read as it was; op `built` marks
-  7140-1, the same id again changes nothing, a stale `was`, a set not
-  owned, copies past those owned and a set named twice each refused with
-  words and nothing changed; the mark kept through own, a lot change, a
+  7140-1, the same id again changes nothing, a stale `was`, a set never
+  owned (400, saying so), one gone since the rev shown (409, with the
+  collection), copies past those owned and a set named twice each refused
+  with words and nothing changed; the mark kept through own, a lot change, a
   set added, a Rebrickable replace import and an older app's PUT; own
   down to fewer copies unmarks the rest; Save's CSV (`Built` column) and
   XML (`<REMARKS>Built</REMARKS>`) read into an empty collection built
@@ -724,8 +746,15 @@ Proves it when:
   mark comes off the copies apart alone); missing= with built= refused;
   two copies, one built, three 3001s missing, counted 7 however the marks
   sit over the number's entries; a kept built of "2", true, 1.5, 0.5, -1 and
-  null read as none, 2.0 and 2 as 2, 7 as the 3 copies.
+  null read as none, 2.0 and 2 as 2, 7 as the 3 copies; with My
+  collection open, two presses taken back by two Ctrl+Z pressed in the
+  window, each at the account, counts and all (56+570, 341, 56 back to
+  341 and 626), the model's own history and parts untouched, and one whose
+  marks another device moved on since refused, said, as the account has it;
+  every line said, the undo's too, in de, fr and es.
   Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
+- `tests/test_collection_words.py` (minitest): op built's, own's and
+  missing's refusals in words, run under node on api/collection.js.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
   found, each first; whole scenes of box, bags and parts 2 of 10.

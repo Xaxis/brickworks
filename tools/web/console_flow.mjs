@@ -59,6 +59,8 @@ if (!args.url) {
 }
 const site = String(args.url).replace(/\/+$/, "").replace(/\/app$/, "");
 const host = new URL(site).host;
+// brickworks.diy itself: the beta's switch there is the real one, so the flow never flips it (2026-11-18).
+const onLive = host.replace(/^www\./, "") === "brickworks.diy";
 const out = args.out || "shots/console";
 mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
@@ -282,7 +284,7 @@ try {
   Boolean(switchBefore?.mode) && switchBefore?.scope === host);
   // Off here, as a release's preview may be: opened for the run by the
   // switch itself, and put back off at the end.
-  if (switchBefore?.mode === "off" && switchBefore?.ready) {
+  if (switchBefore?.mode === "off" && switchBefore?.ready && !onLive) {
     const opened = await api("/api/admin?op=beta_switch&tests=1", { method: "POST", token: owner.access_token, body: { mode: "open" } });
     flipped = opened.status === 200;
     check(`the beta off here: opened for the run (${opened.status}), and heard`, flipped && await follows("open"));
@@ -424,7 +426,11 @@ try {
   console.log("7. The beta's switch, on this deployment alone");
   await page.click('a[data-tab-link="applications"]');
   const liveBefore = [await spots("https://brickworks.diy"), await heard("https://brickworks.diy")].join("/");
-  if (!switchBefore?.ready) {
+  // Run against brickworks.diy itself (a train's stale check, or by hand), "this deployment" is the live site:
+  // Off would close the beta to real people until Open. It flipped it there once, 2026-11-18.
+  if (onLive) {
+    console.log("  skip  the switch: never flipped on brickworks.diy itself, where it is the real beta's");
+  } else if (!switchBefore?.ready) {
     check("the switch: not open, supabase/console.sql is not applied here", false);
   } else {
     await page.click('#beta-switch button[data-beta="off"]');

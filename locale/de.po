@@ -14911,6 +14911,159 @@ msgstr "keine Sets zum Speichern: füge sie zuerst unter Was ich habe hinzu"
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "es kamen weniger Exemplare zurück als als Aufgebaut markiert waren, also sind diese nicht mehr markiert: %s%s"
 
+msgid "Program"
+msgstr "Programm"
+
+msgid "Run"
+msgstr "Ausführen"
+
+msgid "Run the program for the motors at each one's rated speed (it is kept with the model)"
+msgstr "Das Programm für die Motoren mit der Nenndrehzahl jedes Motors ausführen (es wird mit dem Modell gespeichert)"
+
+msgid "A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30% (by an angle), run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it). With two motors or more, each line begins with its port, A to F."
+msgstr "Eine Zeile je Befehl: to 90° at 50% (auf einen Winkel, von der gebauten Stellung aus), turn -45° at 30% (um einen Winkel), run 40% for 2 s, wait 1 s, repeat 3 (die darunter eingerückten Zeilen). Bei zwei oder mehr Motoren beginnt jede Zeile mit ihrem Anschluss, A bis F."
+
+msgid "Running the program…"
+msgstr "Programm läuft…"
+
+msgid "Write a program first, a line each: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" with the lines it repeats under it."
+msgstr "Schreibe zuerst ein Programm, eine Zeile je Befehl: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" mit den Zeilen, die es wiederholt, darunter."
+
+msgid "%s turns nothing: its output holds no axle or pin here. Put an axle in its hub."
+msgstr "%s dreht nichts: An seinem Abtrieb steckt hier keine Achse und kein Pin. Stecke eine Achse in seine Nabe."
+
+msgid "The model changed as the program began: run it again."
+msgstr "Das Modell hat sich beim Start des Programms geändert: Führe es noch einmal aus."
+
+msgid "%s cannot turn: %s."
+msgstr "%s kann sich nicht drehen: %s."
+
+msgid "%s and %s turn the same train: a program drives only one of them. Take the other's lines out, or part their trains."
+msgstr "%s und %s drehen dasselbe Getriebe: Ein Programm treibt nur einen von beiden an. Nimm die Zeilen des anderen heraus oder trenne ihre Getriebe."
+
+msgid "%s s of %s s: line %d"
+msgstr "%s s von %s s: Zeile %d"
+
+msgid "Stopped %s s in."
+msgstr "Nach %s s angehalten."
+
+msgid "set the program"
+msgstr "Programm festgelegt"
+
+msgid "took the program out"
+msgstr "Programm entfernt"
+
+msgid "%s, the %s #%d"
+msgstr "%s, %s #%d"
+
+msgid "A program has %d lines at most; this one has %d."
+msgstr "Ein Programm hat höchstens %d Zeilen; dieses hat %d."
+
+msgid "Line %d: %s"
+msgstr "Zeile %d: %s"
+
+msgid "Line %d: nothing to repeat; indent the lines it repeats under it."
+msgstr "Zeile %d: nichts zu wiederholen; rücke die Zeilen, die es wiederholt, darunter ein."
+
+msgid "nothing to read."
+msgstr "nichts zu lesen."
+
+msgid "a hub's ports are A to F, not %s."
+msgstr "die Anschlüsse eines Hubs heißen A bis F, nicht %s."
+
+msgid "\"%s\" is not one of its words: to, turn, run, wait, repeat."
+msgstr "\"%s\" ist keines seiner Wörter: to, turn, run, wait, repeat."
+
+msgid "%s takes degrees: \"%s 90° at 50%\"."
+msgstr "%s braucht Grad: \"%s 90° at 50%\"."
+
+msgid "%s° is more than the %d° a line turns at most."
+msgstr "%s° ist mehr als die %d°, die eine Zeile höchstens dreht."
+
+msgid "after the degrees, \"at\" and a speed: \"%s 90° at 50%\"."
+msgstr "nach den Grad \"at\" und eine Geschwindigkeit: \"%s 90° at 50%\"."
+
+msgid "a speed is a share of the motor's: \"at 50%\"."
+msgstr "eine Geschwindigkeit ist ein Anteil der des Motors: \"at 50%\"."
+
+msgid "run takes a speed and a time: \"run 40% for 2 s\"."
+msgstr "run braucht eine Geschwindigkeit und eine Zeit: \"run 40% for 2 s\"."
+
+msgid "wait waits for no motor: \"wait 1 s\"."
+msgstr "wait wartet auf keinen Motor: \"wait 1 s\"."
+
+msgid "repeat repeats the lines under it, for every motor: \"repeat 3\"."
+msgstr "repeat wiederholt die Zeilen darunter, für jeden Motor: \"repeat 3\"."
+
+msgid "repeat takes how many times: \"repeat 3\"."
+msgstr "repeat braucht, wie oft: \"repeat 3\"."
+
+msgid "repeat goes round 1 to %d times."
+msgstr "repeat läuft 1- bis %d-mal."
+
+msgid "a time in seconds: \"1 s\", or \"500 ms\"."
+msgstr "eine Zeit in Sekunden: \"1 s\" oder \"500 ms\"."
+
+msgid "a time from 0 to %d s."
+msgstr "eine Zeit von 0 bis %d s."
+
+msgid "a speed is 100% at most, the motor's speed with no load."
+msgstr "eine Geschwindigkeit ist höchstens 100 %, die des Motors ohne Last."
+
+msgid "a speed of at least 1%, or it never gets there."
+msgstr "eine Geschwindigkeit von mindestens 1 %, sonst kommt er nie an."
+
+msgid "Line %d names no motor, and %d are on the hub's ports: %s. Begin it with its port: \"%s %s\"."
+msgstr "Zeile %d nennt keinen Motor, und %d sind an den Anschlüssen des Hubs: %s. Beginne sie mit ihrem Anschluss: \"%s %s\"."
+
+msgid "Line %d: no motor is on port %s. %s."
+msgstr "Zeile %d: An Anschluss %s ist kein Motor. %s."
+
+msgid "No motor here for a program to drive: put in one that plugs into a hub (a SPIKE Prime, Technic or Powered Up motor) with its output on the axle it turns."
+msgstr "Hier ist kein Motor, den ein Programm antreiben kann: Setze einen ein, der an einen Hub angeschlossen wird (einen SPIKE Prime-, Technic- oder Powered Up-Motor), mit seinem Abtrieb auf der Achse, die er dreht."
+
+msgid "The %s #%d plugs into no hub (a battery box or an IR receiver runs it), so a program does not drive it: Play turns it. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "%s #%d wird an keinen Hub angeschlossen (ein Batteriekasten oder ein IR-Empfänger treibt ihn), also treibt ihn kein Programm an: Abspielen dreht ihn. Ein SPIKE Prime-, Technic- oder Powered Up-Motor nimmt ein Programm."
+
+msgid "The %s #%d is on no port: a hub has six, A to F."
+msgstr "%s #%d ist an keinem Anschluss: Ein Hub hat sechs, A bis F."
+
+msgid "%d motors are on no port (%s): a hub has six, A to F."
+msgstr "%d Motoren sind an keinem Anschluss (%s): Ein Hub hat sechs, A bis F."
+
+msgid "No motor here plugs into a hub (a battery box or an IR receiver runs each), so a program drives none of them: Play turns them. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "Kein Motor hier wird an einen Hub angeschlossen (ein Batteriekasten oder ein IR-Empfänger treibt jeden), also treibt ein Programm keinen von ihnen an: Abspielen dreht sie. Ein SPIKE Prime-, Technic- oder Powered Up-Motor nimmt ein Programm."
+
+msgid "This program runs past %d moves or %d minutes; Simulate plays one that does less. Repeat it fewer times."
+msgstr "Dieses Programm läuft über %d Bewegungen oder %d Minuten hinaus; Simulieren spielt eines ab, das weniger tut. Wiederhole es seltener."
+
+msgid "Line %d: %s stops at %s on its way to %s, %s s in: %s."
+msgstr "Zeile %d: %s hält bei %s auf dem Weg nach %s an, nach %s s: %s."
+
+msgid "Ran to its end in %s s."
+msgstr "In %s s bis zum Ende gelaufen."
+
+msgid "Ran to its end in %s s: %s."
+msgstr "In %s s bis zum Ende gelaufen: %s."
+
+msgid "its motor stalls: the weight it lifts asks more than the %s N·cm it gives at %s V"
+msgstr "sein Motor bleibt stehen: Das Gewicht, das er hebt, verlangt mehr als die %s N·cm, die er bei %s V gibt"
+
+msgid "%s meets %s"
+msgstr "%s trifft auf %s"
+
+msgid "the loop it closes goes no further"
+msgstr "die Schleife, die er schließt, geht nicht weiter"
+
+msgid "Simulate checked its turn no further"
+msgstr "Simulieren hat seine Drehung nicht weiter geprüft"
+
+msgid "a program for its motors this build cannot read, kept in the file as it is"
+msgstr "ein Programm für seine Motoren, das diese Version nicht lesen kann, unverändert in der Datei behalten"
+
+msgid "its program does not run as written (%s), kept as it is"
+msgstr "sein Programm läuft nicht so, wie es geschrieben ist (%s), so behalten, wie es ist"
+
 msgid "Find a step by part or colour"
 msgstr "Einen Schritt nach Teil oder Farbe finden"
 
@@ -14946,6 +15099,75 @@ msgstr "Kein Schritt setzt „%s“: Das Modell hat es in %d anderen Farben"
 
 msgid "No step places “%s”"
 msgstr "Kein Schritt setzt „%s“"
+
+# posehold: whether a posed joint holds (PoseHold.pose_words, the Pose panel's lines and
+# its rows' marks), a droop in Check stability, a drag's status and Balance's words
+
+msgid "Joints that droop: %d"
+msgstr "Verbindungen, die absacken: %d"
+
+msgid "%s on %s, %s g past it: its Technic ball joint holds %d% of what hangs on it"
+msgstr "%s an %s, %s g darüber hinaus: sein Technic-Kugelgelenk hält %d % dessen, was daran hängt"
+
+msgid "%s on %s, %s g past it: its %d friction pins hold %d% of what hangs on them"
+msgstr "%s an %s, %s g darüber hinaus: seine %d Reibungspins halten %d % dessen, was daran hängt"
+
+msgid "%s on %s, %s g past it: its friction pin holds %d% of what hangs on it"
+msgstr "%s an %s, %s g darüber hinaus: sein Reibungspin hält %d % dessen, was daran hängt"
+
+msgid "And %d more."
+msgstr "Und %d weitere."
+
+msgid "Friction joints weighed: %d, and none droops."
+msgstr "Gewogene Reibungsverbindungen: %d, keine sackt ab."
+
+msgid "%s on %s holds, but a loose joint of its kind may not: the loosest measured held %d% of this."
+msgstr "%s an %s hält, eine lockere Verbindung dieser Art vielleicht nicht: die lockerste gemessene hielt %d % davon."
+
+msgid "Small ball joints here: %d, not weighed: no one has published what one holds."
+msgstr "Kleine Kugelgelenke hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Click hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Rastscharniere hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Scharniere hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Turntables here: %d, not weighed: no one has published what one holds."
+msgstr "Drehteller hier: %d, nicht gewogen: niemand hat veröffentlicht, was einer hält."
+
+msgid "Clips on bars here: %d, not weighed: no one has published what one holds."
+msgstr "Clips an Stangen hier: %d, nicht gewogen: niemand hat veröffentlicht, was einer hält."
+
+msgid "Droops: it holds %d% of what hangs on it."
+msgstr "Sackt ab: sie hält %d % dessen, was daran hängt."
+
+msgid "%s droops on %s on a Technic ball joint with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s sackt an %s auf einem Technic-Kugelgelenk ab, mit %s g darüber hinaus: es hält %d % dessen, was daran hängt"
+
+msgid "%s droops on %s on a friction pin with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s sackt an %s auf einem Reibungspin ab, mit %s g darüber hinaus: er hält %d % dessen, was daran hängt"
+
+msgid "%s droops on %s on %d friction pins in a line with %s g past it: they hold %d% of what hangs on them"
+msgstr "%s sackt an %s auf %d Reibungspins in einer Reihe ab, mit %s g darüber hinaus: sie halten %d % dessen, was daran hängt"
+
+msgid "the %s droops on a Technic ball joint: it holds %d% of what hangs on it"
+msgstr "%s sackt auf einem Technic-Kugelgelenk ab: es hält %d % dessen, was daran hängt"
+
+msgid "the %s droops on a friction pin: it holds %d% of what hangs on it"
+msgstr "%s sackt auf einem Reibungspin ab: er hält %d % dessen, was daran hängt"
+
+msgid "the %s droops on %d friction pins in a line: they hold %d% of what hangs on them"
+msgstr "%s sackt auf %d Reibungspins in einer Reihe ab: sie halten %d % dessen, was daran hängt"
+
+msgid "1 friction joint droops, in red, holding %d% of what hangs on it."
+msgstr "1 Reibungsverbindung sackt ab, rot markiert, und hält %d % dessen, was daran hängt."
+
+msgid "%d friction joints droop, in red, the worst holding %d% of what hangs on it."
+msgstr "%d Reibungsverbindungen sacken ab, rot markiert, die schwächste hält %d % dessen, was an ihr hängt."
+
+msgid "on a Technic ball joint"
+msgstr "auf einem Technic-Kugelgelenk"
 
 # partplaces (APP_UX9 #14)
 msgid "Where it's kept…"
