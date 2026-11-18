@@ -599,7 +599,17 @@ they have. A Claude connector belongs to the account that switched it on.
   its did is no longer the account's, and reads but does not write while
   orangecheck cannot be asked; a made-up address's session orangecheck did
   not start is refused and deleted (`api/_auth.js` → `api/_oc.js`
-  `sessionStanding`). Any session signed in by password, but a test
+  `sessionStanding`). Every other account's token is asked after the same
+  way (`stillSignedIn`, one read cache shared with `_oc.js`, a gone session
+  held for good): once its session is gone (Sign out everywhere, the app's
+  Sign out, a deletion) it is 401 "You were signed out. Sign in again." on
+  every route, within 5 s on every instance; while the database cannot be
+  asked, reads go on and writes are 503; a token with no `session_id` is
+  not asked after (`tests/test_signed_out.py`; on a deployment,
+  `node tools/web/signed_out_check.mjs <url>` with `.env` sourced signs a
+  throwaway out by `admin_sign_out`, expects 401 on 4 app and 4 site
+  routes at once, and the same answers as before from a new sign-in).
+  Any session signed in by password, but a test
   account's, is refused (403) and deleted (`api/_auth.js`), and Supabase
   refuses setting a password on any account but a `@resend.dev` test
   account's, and any change of address (`supabase/no_new_ways_in.sql`, a

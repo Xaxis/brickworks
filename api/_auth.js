@@ -6,9 +6,10 @@
 // client sends as "Authorization: Bearer …".
 //
 // Supabase signs its access tokens with ES256 and publishes the public
-// half at a JWKS endpoint, so a token is checked here with no call back
-// to Supabase on the hot path — a signature check against a cached key.
-// The relay (api/mcp.js) asks this on every connector switching on.
+// half at a JWKS endpoint, so a token's signature is checked here against
+// a cached key; whether its session is still there is one read of the
+// database, held a few seconds (sessionOf). The relay (api/mcp.js) asks
+// this on every connector switching on.
 //
 // No libraries. Node's WebCrypto does ECDSA, and a JWT is three
 // base64url segments; pulling in a JWT package to do that would be more
@@ -136,17 +137,6 @@ export async function verify(token, request = null) {
   if (!audience.includes("authenticated")) throw new AuthError("that sign-in is not for a person");
   if (!claims.sub) throw new AuthError("that sign-in names nobody");
 
-  // An account that has orangecheck (2026-10-23, api/orangecheck.js), or
-  // the made-up address of one, has its session asked after: still there,
-  // and if orangecheck started it, not ended everywhere on orangecheck.
-  // Everybody else's never is, so nothing about orangecheck, working or
-  // not, touches them; and its code is loaded only for those who have it.
-  if (claims.app_metadata?.orangecheck === true || /@oc\.brickworks\.diy$/i.test(String(claims.email || ""))) {
-    const { sessionStanding } = await import("./_oc.js");
-    const standing = await sessionStanding(claims, request?.method);
-    if (standing.refused) throw new AuthError(standing.refused, standing.status);
-  }
-
   // Brickworks signs people in with an emailed code or with orangecheck,
   // never a password. Supabase let anybody signed in set one on their
   // account and sign in with it: a session nothing here started, which
@@ -161,7 +151,92 @@ export async function verify(token, request = null) {
       + "Sign in again.", 403);
   }
 
+  // An account that has orangecheck (2026-10-23, api/orangecheck.js), or
+  // the made-up address of one, has its session asked after: still there,
+  // and if orangecheck started it, not ended everywhere on orangecheck.
+  // Its code is loaded only for those who have it.
+  if (claims.app_metadata?.orangecheck === true || /@oc\.brickworks\.diy$/i.test(String(claims.email || ""))) {
+    const { sessionStanding } = await import("./_oc.js");
+    const standing = await sessionStanding(claims, request?.method);
+    if (standing.refused) throw new AuthError(standing.refused, standing.status);
+    return claims;
+  }
+
+  // Everybody else's session is asked whether it is still there. A
+  // signature says only who Supabase gave the token to, for an hour: Sign
+  // out everywhere (/admin, admin_sign_out) deletes the account's sessions,
+  // and before 2026-11-18 every token they had handed out went on working
+  // here until it ran out (c3review). A token is refused once its session
+  // is gone, however that went: signed out everywhere, signed out of that
+  // device (the app's Sign out), deleting the account. One handed out
+  // after, by a new sign-in, has a new session and works.
+  await stillSignedIn(claims, request?.method);
   return claims;
+}
+
+// What Supabase holds of each session (rpc/oc_session_of, supabase/
+// orangecheck.sql: {exists, bound, did, rh, aud, iat, linked}), read at
+// most once in SESSION_HELD_MS an instance: a page asks several routes at
+// once, and most calls then cost no round trip. A session found there is
+// asked again after that; one found gone never comes back (Supabase never
+// makes a session again under its id), so it is held for good. Each
+// instance reads for itself, so a session ended is refused within
+// SESSION_HELD_MS everywhere, and at once by an instance that had not read
+// it in that time. Shared with api/_oc.js, which asks the same of an
+// orangecheck session.
+const sessions = new Map();
+export const SESSION_HELD_MS = 5000;
+const READS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/// The session [id], as Supabase holds it: {exists, ...}. Throws when the
+/// database cannot be asked. Calls made at once share one read.
+export async function sessionOf(id) {
+  const held = sessions.get(id);
+  if (held && (held.gone || Date.now() - held.at < SESSION_HELD_MS)) return held.read;
+  const { db } = await import("./_db.js");
+  if (sessions.size > 2000) sessions.clear();
+  const entry = { at: Date.now(), gone: false, read: db("rpc/oc_session_of", { method: "POST", body: { session: id } }) };
+  sessions.set(id, entry);
+  try {
+    const value = await entry.read;
+    if (value?.exists === false) entry.gone = true;
+    return value;
+  } catch (trouble) {
+    if (sessions.get(id) === entry) sessions.delete(id);
+    throw trouble;
+  }
+}
+
+/// The session [id] known to be gone, as [value] was (ended here).
+export function sessionEnded(id, value = {}) {
+  if (!id) return;
+  sessions.set(id, { at: Date.now(), gone: true, read: Promise.resolve({ ...value, exists: false }) });
+}
+
+/// What this instance has read of sessions, forgotten (for tests).
+export function forgetSessions() {
+  sessions.clear();
+}
+
+/// Throws when the session behind [claims] is gone. While that cannot be
+/// known (the database is not answering), a request of [method] that reads
+/// goes on and one that writes is refused for now, as an orangecheck
+/// session's is (api/_oc.js sessionStanding). A token with no session_id
+/// is not one Supabase hands a person (every sign-in grant writes one), so
+/// it has nothing to ask after.
+async function stillSignedIn(claims, method) {
+  if (!claims.session_id) return;
+  let session;
+  try {
+    session = await sessionOf(claims.session_id);
+  } catch (trouble) {
+    console.error(`auth: a session was not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    session = null;
+  }
+  if (session?.exists === false) throw new AuthError("You were signed out. Sign in again.");
+  if (session?.exists !== true && !READS.has(String(method || "POST").toUpperCase())) {
+    throw new AuthError("Brickworks could not check your sign-in just now. Try again in a minute.", 503);
+  }
 }
 
 function signedInByPassword(claims) {

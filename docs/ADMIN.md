@@ -465,7 +465,9 @@ through functions the server alone may call.
   (feedback, beta application and decision notes, signals), and the
   console says so. Sign out
   everywhere ends its sessions and its Claudes' grants (`admin_sign_out`);
-  a token already given lasts its hour. Delete, at its person's request:
+  every token they had handed out is refused from then on, within 5 s on
+  every instance (`api/_auth.js` asks after each token's session, a read
+  held 5 s; before 2026-11-18 such a token lasted its hour). Delete, at its person's request:
   the dialog says it is irreversible and what goes; the button wakes only
   once its address is typed again, and the server checks it too; never the
   owner's own; the same deletion as Settings' (api/_erase.js); the audit
