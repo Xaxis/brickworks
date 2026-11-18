@@ -162,6 +162,7 @@
 // Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project, and
 // SUPABASE_PUBLISHABLE_KEY for accounts.
 
+import { noted } from "./_noted.js";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, verify } from "./_auth.js";
@@ -1694,7 +1695,7 @@ async function nextForTab(channel, instance, request, response) {
   return response.status(204).end();
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   response.setHeader("cache-control", "no-store");
   if (!dbConfigured()) {
     return response.status(503).json({ error: "the connector is not configured on this deployment" });
@@ -1813,3 +1814,6 @@ export default async function handler(request, response) {
     return response.status(502).json({ error: String(trouble.message || trouble) });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("mcp", handler);

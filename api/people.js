@@ -191,6 +191,7 @@
 // not exist. Every word a person typed is checked here and escaped on every
 // page that shows it.
 
+import { noted } from "./_noted.js";
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode } from "./_billing.js";
@@ -1825,7 +1826,7 @@ async function collections(request, response) {
       followers: Number(list.followers) || 0, by: list.by || null, covers: covers.get(list.id) || [] })) });
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response.status(204)
       .setHeader("Access-Control-Allow-Origin", "*")
@@ -1915,3 +1916,6 @@ export default async function handler(request, response) {
     return response.status(502).json({ error: "Brickworks could not reach its storage just now. Try again in a minute." });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("people", handler);

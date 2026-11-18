@@ -5486,6 +5486,34 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "the owner's notifications",
+      "entry": "api/_notify.js",
+      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day, quiet hours, the cap folded, pause, off, the one-click links, tests, another address by its code, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, only resend.dev mailed; owner_notify.sql applied twice to a Postgres of its own; docs/OWNER_NOTIFY.md)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "each server error kept",
+      "entry": "api/_noted.js",
+      "reach": "tests/test_owner_notify.py's errors checks: each of the 12 functions wrapped by noted(), a 5xx (answered or thrown) kept in owner_notify_errors after the answer is sent, nothing said before owner_notify.sql is applied",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the owner's notifications page",
+      "entry": "web/admin-notify.js",
+      "reach": "<deployment>/admin?tests=1#notifications/settings and #notifications/sent as the owner: each kind on or off, at once or the daily digest, its number; the address in part, another by its code; quiet hours, the digest's time, the time zone, the cap; Pause all; Send a test, Check now; what is not mailed from here and why; Sent with each mail's words; a mail's one-click link at #notifications/off/<kind>/<pool>/<key> acted on signed out (docs/OWNER_NOTIFY.md)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "ownernotify browser flow",
+      "entry": "tools/web/ownernotify_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/ownernotify_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose mail goes only to Resend's test inbox; refuses brickworks.diy: the gate on every notify op, the cron's op and the off link; before owner_notify.sql the section says so and a change 503; after it each kind off and on, digest and back, a threshold kept and a wrong one refused, quiet hours, digest time, time zone, cap, Pause all, Send a test and a kind's test, another address and a wrong code, Check now, Sent and Read it, both tabs at 1280/430 light/dark; preview check [ownernotify]. Locally: node tools/web/relay_server.mjs PORT --hold=owner_notify_settings,owner_notify_mails,owner_notify_events,owner_notify_errors, which also proves a test mail's own off link signed out)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "deployment variables written down",
       "entry": "tools/release/env_names.sh",

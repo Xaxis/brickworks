@@ -230,11 +230,14 @@
 // list asked with tests keeps the pick worked out from the week, as the
 // probes expect it.
 
+import { noted } from "./_noted.js";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
-import { db, dbConfigured, orUnknown, reach } from "./_db.js";
+import { db, dbConfigured, dbCount, orUnknown, reach } from "./_db.js";
+import { raise } from "./_notify.js";
+import { scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -3263,6 +3266,15 @@ async function publish(request, response) {
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
+  // A person's first model told to the owner (api/_notify.js): the only
+  // link they have ever had. Never in the way of the publish.
+  if (!existing) {
+    const theirs = await dbCount(`shared_models?owner=eq.${owner}`).catch(() => null);
+    if (theirs === 1) {
+      await raise("first_model", { scope: scopeOf(request), test: row.test, key: owner, account: owner,
+        detail: { id, name, parts, listed: Boolean(listed) } });
+    }
+  }
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
@@ -3424,7 +3436,7 @@ async function omrWatch(request, response) {
   return response.status(200).json({ ...done, index_at: indexAt ? new Date(indexAt).toISOString() : null });
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response
       .status(204)
@@ -3463,3 +3475,6 @@ export default async function handler(request, response) {
     return response.status(502).json({ error: "Brickworks could not reach its storage just now. Try again in a minute." });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("share", handler);

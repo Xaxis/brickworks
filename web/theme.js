@@ -193,6 +193,27 @@
   else load();
 })();
 
+// How this visit came, for the owner's mail of a new sign-up (ownernotify,
+// 2026-11-18; api/_notify.js): the site that sent the visitor, and a link's
+// utm_ tags, read before they are taken out of the address below. Kept in
+// this page alone, never stored and never sent but with a sign-in code asked
+// for on this page (web/account.js, web/authorize.js).
+(() => {
+  try {
+    const params = new URLSearchParams(location.search);
+    const came = {};
+    for (const name of ["source", "medium", "campaign"]) {
+      const value = String(params.get(`utm_${name}`) || "").trim();
+      if (/^[A-Za-z0-9 ._+-]{1,60}$/.test(value)) came[name] = value;
+    }
+    const from = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : "";
+    if (from && from !== location.hostname && !/(^|\.)brickworks\.diy$/.test(from)) came.referrer = from.slice(0, 100);
+    if (Object.keys(came).length) globalThis.brickworksCame = Object.freeze(came);
+  } catch {
+    // Nothing known of how they came: the mail says so.
+  }
+})();
+
 // A visit a post from the owner's social desk brought (socialdesk,
 // 2026-11-18; api/_social.js, /admin › Social): the desk tags the site's
 // links in what it sends with utm_campaign=bw-<send id>. The landing is told

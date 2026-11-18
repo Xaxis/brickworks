@@ -179,6 +179,20 @@
 //   POST /api/admin?op=social_posted     {id, url}: posted by hand, its address
 //   POST /api/admin?op=social_notes      {provider, community, notes}
 //
+// The owner's notifications (ownernotify, 2026-11-18; api/_notify.js,
+// docs/OWNER_NOTIFY.md), each for this deployment's pool (&tests=1: the
+// checks' own, mailed only to Resend's test inbox):
+//   GET  /api/admin?op=notify[&mail=ID]  the settings, what waits, the
+//                                        mails sent and their audit; or one
+//                                        mail's words
+//   POST /api/admin?op=notify_set        {tz?, quiet?, digest_at?, cap?, paused?,
+//                                        events?: {name: {on?, when?, threshold?}}}
+//   POST /api/admin?op=notify_address    {address}: a code mailed there first;
+//                                        empty: back to the account's own
+//   POST /api/admin?op=notify_confirm    {code}: the new address's code
+//   POST /api/admin?op=notify_test       {event?}: a test mailed now
+//   POST /api/admin?op=notify_flush      the cron's run, now (Check now)
+//
 // Part B (console2, 2026-11-12): those four read, and are not audited, as
 // no read is; none of them changes anything anywhere.
 //
@@ -198,6 +212,7 @@
 // budget the first one managed: those belonged to the proxy that spent
 // the project's key, which has not come back.
 
+import { noted } from "./_noted.js";
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
 import { modelHash } from "./_directory.js";
@@ -221,6 +236,7 @@ import { challengeView } from "./_console_challenges.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
+import { notifyAddress, notifyConfirm, notifyFlush, notifyRead, notifySet, notifyTest } from "./_notify.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -240,7 +256,7 @@ async function asServer(path) {
   return reply.json();
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response
       .status(204)
@@ -297,7 +313,12 @@ export default async function handler(request, response) {
     // owner pressed it on.
     social_connect: socialConnect, social_connected: socialConnected, social_disconnect: socialDisconnect,
     social_sync: socialSync, social_mark: socialMark, social_draft: socialDraft, social_drop: socialDrop,
-    social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes };
+    social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes,
+    // The owner's notifications (ownernotify, api/_notify.js). Only
+    // notify_test, notify_address and notify_flush mail anything, and only
+    // to the pool's own address.
+    notify_set: notifySet, notify_address: notifyAddress, notify_confirm: notifyConfirm, notify_test: notifyTest,
+    notify_flush: notifyFlush };
   // An op is one of these tables' own names, never one Object's prototype
   // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
   // nobody made, answered 404 and never audited as an act (c3review).
@@ -318,6 +339,7 @@ export default async function handler(request, response) {
     data: () => dataRead(),
     social: () => socialRead(request),
     social_rules: () => socialRules(request),
+    notify: () => notifyRead(request, tests),
     find: () => findRead(String(request.query?.q || ""), tests),
     challenge_view: () => {
       const id = Number(request.query?.challenge);
@@ -960,3 +982,6 @@ function commentOf(one, emails) {
     removed: Boolean(one.removed_at), removed_by: one.removed_by ?? null, handle: one.handle ?? null,
     email: emails.get(one.author) || null };
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("admin", handler);

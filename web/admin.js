@@ -9,7 +9,9 @@
 // (console3) Moderation admin-moderation.js, Challenges admin-challenges.js
 // (and one challenge's panel at #challenges/<id>), Data admin-data.js,
 // Switches admin-switches.js, and here an account's Export, Sign out
-// everywhere and Delete, and the bar's Find.
+// everywhere and Delete, and the bar's Find. Notifications (ownernotify)
+// is admin-notify.js, and a mail's one-click "turn this off" lands here
+// before the gate.
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
@@ -29,13 +31,14 @@ import { loadMail } from "/admin-mail.js";
 import { connectorOf, loadConnector } from "/admin-connector.js";
 import { loadSite, releaseOf, versionOf } from "/admin-site.js";
 import { loadSocial, whenChanged as socialChanged } from "/admin-social.js";
+import { loadNotify, offFromLink, whenChanged as notifyChanged } from "/admin-notify.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
-  "data", "switches", "audit"];
+const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail",
+  "notifications", "connector", "site", "data", "switches", "audit"];
 const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
-  social: ["inbox", "write", "sent", "accounts"] };
+  social: ["inbox", "write", "sent", "accounts"], notifications: ["settings", "sent"] };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -72,6 +75,7 @@ const loaders = {
   social: () => loadSocial(),
   plans: () => loadPlans(),
   mail: () => loadMail(),
+  notifications: () => loadNotify(),
   connector: () => loadConnector(),
   site: () => loadSite(),
   data: () => loadData(),
@@ -140,22 +144,25 @@ function failedIn(part, words) {
 // The gate: the overview answers only the owner.
 
 // Shut: the gate shown, with Sign in in the bar while nobody is.
-function gate(words) {
+function gate(words, bad = true) {
   $("view").classList.add("hide");
   $("view").hidden = true;
   $("gate").hidden = false;
-  say("gate-note", words, true);
+  say("gate-note", words, bad);
   $("sign-in").hidden = signedIn();
   $("again").hidden = !signedIn();
   $("meta-who").textContent = "Owner console";
 }
 
 async function start() {
+  // A mail's one-click "turn this off": done first, whoever is signed in.
+  const off = await offFromLink();
   try {
     await loadOverview();
     loaded.add("overview");
   } catch (problem) {
-    gate(problem.message);
+    // A link that turned its kind off is said as done, not as a fault.
+    gate(off ? `${off.words}${off.ok ? " Sign in with the owner's account to change the rest." : ""}` : problem.message, !off?.ok);
     return;
   }
   $("gate").hidden = true;
@@ -167,6 +174,7 @@ async function start() {
   $("meta-who").textContent = `Signed in as ${signedInAs() || "the owner"}${TESTS ? " · the checks' own (?tests=1)" : ""}`;
   addEventListener("hashchange", show);
   if (await show()) say("note", `Updated ${new Date().toLocaleTimeString()}`);
+  if (off) say("notify-acted", off.words, !off.ok);
 }
 
 $("again").addEventListener("click", async () => {
@@ -199,6 +207,7 @@ galleryChanged(() => changed("gallery"));
 betaChanged(() => changed("beta"));
 switchesChanged(() => changed("switches"));
 socialChanged(() => changed("social"));
+notifyChanged(() => loaded.delete("audit"));
 
 // ---------------------------------------------------------------------------
 // The Overview.
@@ -343,7 +352,11 @@ const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Le
   social_connect: "Started connecting a network", social_connected: "Connected a network", social_disconnect: "Disconnected a network",
   social_sync: "Looked at the networks now", social_mark: "Marked what came in", social_draft: "Kept a social draft",
   social_drop: "Threw a social draft away", social_send: "Pressed Send on a social post", social_unschedule: "Unscheduled a social post",
-  social_posted: "Marked a social post posted by hand", social_notes: "Kept notes on a community's rules" };
+  social_posted: "Marked a social post posted by hand", social_notes: "Kept notes on a community's rules",
+  notify_set: "Changed the notifications", notify_address: "Asked for another notifications address",
+  notify_confirm: "Confirmed a notifications address", notify_test: "Sent a test notification", notify_flush: "Checked notifications now",
+  notify_sent: "Mailed you a notification", notify_folded: "Mailed you several notifications in one",
+  notify_held: "Held notifications", notify_failed: "Could not mail a notification", notify_off: "Turned a notification off by its link" };
 
 function opSaid(row) {
   const asked = row.detail?.asked || {};
@@ -372,6 +385,7 @@ function targetOf(row) {
     case "pick": return `pick ${t}`;
     case "social": return to("#social/accounts", t === "reddit" ? "Reddit" : t || "the networks");
     case "send": return to("#social/sent", `social post ${t}`);
+    case "notification": return to("#notifications/sent", t || "notifications");
     default: return t || "—";
   }
 }

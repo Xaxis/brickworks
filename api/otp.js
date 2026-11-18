@@ -32,7 +32,10 @@
 // Resend bill, and a serverless instance forgets everything whenever it
 // recycles.
 
+import { noted } from "./_noted.js";
 import { reach } from "./_db.js";
+import { raiseSignup } from "./_notify.js";
+import { scopeOf } from "./_settings.js";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const TTL_MINUTES = 10;
@@ -57,17 +60,23 @@ function asServer() {
 /// redeemed signs anybody in to it. An address that has its account
 /// already is answered 422, and asked its code all the same. The daily
 /// canary (api/_canary.js) signs in by this, and by deliver below.
-export async function mint(email) {
+///
+/// An account made here is told to the owner (api/_notify.js): for [told]'s
+/// deployment ({scope}), with how the person came ({came}, from the page).
+export async function mint(email, told = null) {
   const made = await reach("auth POST admin/users", 10, `${project()}/auth/v1/admin/users`, {
     method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
   });
   if (!made.ok && made.status !== 422) return null;
+  const account = made.ok ? (await made.json().catch(() => ({})))?.id : null;
+  const raised = account && told ? raiseSignup({ account, email, came: told.came, scope: told.scope }) : null;
   const reply = await reach("auth POST admin/generate_link", 10, `${project()}/auth/v1/admin/generate_link`, {
     method: "POST",
     headers: asServer(),
     // magiclink: a one-time code for the account, and nothing sent.
     body: JSON.stringify({ type: "magiclink", email }),
   });
+  await raised;
   if (!reply.ok) return null;
   const body = await reply.json();
   // Top level in current GoTrue, nested in older ones.
@@ -222,7 +231,7 @@ async function attempt(call, failed) {
   }
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response
       .status(204)
@@ -311,7 +320,7 @@ export default async function handler(request, response) {
   //
   // Both failures below happen identically whether or not the address
   // is known to us, so saying so leaks nothing.
-  const code = await attempt(() => mint(email), null);
+  const code = await attempt(() => mint(email, { scope: scopeOf(request), came: body?.came }), null);
   if (!code) {
     console.error("otp: Supabase would not mint a code");
     return response.status(502).json({
@@ -331,3 +340,6 @@ export default async function handler(request, response) {
   // for every address, so it says nothing of whose this one is.
   return response.status(200).json({ ok: true, expires_in_minutes: TTL_MINUTES, digits: code.length });
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("otp", handler);

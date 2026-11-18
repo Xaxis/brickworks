@@ -11,7 +11,7 @@
 // is proven against the real database by its file's dry run
 // (tools/apply_sql.mjs --dry --try=FILE), which rolls back.
 //
-// Only what the functions ask of these tables: eq., gt., gte. (a time) and in. filters, a HEAD count, select
+// Only what the functions ask of these tables: eq., gt., gte. and lt. (a time), in., is. and not.is.null filters, a HEAD count, select
 // of named columns, order by one column, limit; insert of one row or
 // several, with the table's own refusals (TABLES below); update and delete
 // by filter. Kept for the life of the process.
@@ -451,6 +451,57 @@ const TABLES = {
     defaults: () => ({ test: false, rules: null, read_at: null, notes: null, noted_at: null }),
     check: () => "",
   },
+  // supabase/owner_notify.sql (ownernotify): the owner's notifications, its
+  // checks in the file's own names.
+  owner_notify_settings: {
+    parents: [],
+    key: ["scope", "test"],
+    defaults: () => ({ test: false, settings: {}, address: null, pending_address: null, pending_code: null, pending_until: null,
+      pending_tries: 0, off_key: Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join(""),
+      digest_on: null, set_by: null, set_at: new Date().toISOString(), version: 0 }),
+    check: (row) => (!/^[a-z0-9.:-]{1,200}$/.test(String(row.scope)) ? "owner_notify_settings_scope"
+      : !row.settings || typeof row.settings !== "object" || Array.isArray(row.settings) ? "owner_notify_settings_settings"
+        : row.address !== null && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(row.address)) ? "owner_notify_settings_address"
+          : (row.pending_address === null) !== (row.pending_code === null) ? "owner_notify_settings_pending"
+            : row.pending_code !== null && !/^[0-9a-f]{64}$/.test(String(row.pending_code)) ? "owner_notify_settings_pending_code"
+              : !(row.pending_tries >= 0 && row.pending_tries <= 10) ? "owner_notify_settings_pending_tries" : ""),
+  },
+  owner_notify_mails: {
+    parents: [],
+    key: ["id"],
+    defaults: () => ({ test: false, at: new Date().toISOString(), event: null, body: "", events: 0, resend_id: null, said: null }),
+    check: (row) => (!/^[a-z0-9]{12}$/.test(String(row.id)) ? "owner_notify_mails_id"
+      : !["now", "digest", "fold", "test", "confirm", "alarm"].includes(row.kind) ? "owner_notify_mails_kind"
+        : row.event !== null && !/^[a-z_]{1,40}$/.test(String(row.event)) ? "owner_notify_mails_event"
+          : !(String(row.subject || "").length >= 1 && String(row.subject).length <= 300) ? "owner_notify_mails_subject"
+            : String(row.body).length > 8000 ? "owner_notify_mails_body"
+              : !["sent", "dry", "failed"].includes(row.state) ? "owner_notify_mails_state" : ""),
+  },
+  owner_notify_events: {
+    parents: [],
+    // Its unique (scope, test, event, key); its id is made here, as identity.
+    key: ["scope", "test", "event", "key"],
+    defaults: () => ({ id: (heldIds.events += 1), test: false, account: null, at: new Date().toISOString(), detail: {}, state: "new",
+      mail: null, tries: 0, changed_at: new Date().toISOString() }),
+    check: (row) => (!/^[a-z0-9.:-]{1,200}$/.test(String(row.scope)) ? "owner_notify_events_scope"
+      : !["signup", "first_model", "feedback", "plan", "errors", "quota", "social", "social_send"].includes(row.event)
+        ? "owner_notify_events_event"
+        : !(String(row.key || "").length >= 1 && String(row.key).length <= 200) ? "owner_notify_events_key"
+          : !row.detail || typeof row.detail !== "object" || Array.isArray(row.detail) || JSON.stringify(row.detail).length > 4096
+            ? "owner_notify_events_detail"
+            : !["new", "held", "capped", "digest", "sending", "mailed", "off", "paused", "failed"].includes(row.state) ? "owner_notify_events_state"
+              : !(row.tries >= 0 && row.tries <= 10) ? "owner_notify_events_tries" : ""),
+    guard: (row) => (row.mail === null || held.get("owner_notify_mails").some((one) => one.id === row.mail) ? ""
+      : "violates foreign key owner_notify_events_mail_fkey"),
+  },
+  owner_notify_errors: {
+    parents: [],
+    key: ["id"],
+    defaults: () => ({ id: (heldIds.errors += 1), at: new Date().toISOString(), op: null }),
+    check: (row) => (!/^[a-z0-9.:-]{1,200}$/.test(String(row.scope)) ? "owner_notify_errors_scope"
+      : !/^[a-z_]{1,20}$/.test(String(row.fn)) ? "owner_notify_errors_fn"
+        : !(row.status >= 500 && row.status <= 599) ? "owner_notify_errors_status" : ""),
+  },
   // supabase/versions.sql
   share_versions: {
     key: ["model", "n"],
@@ -478,6 +529,8 @@ const TABLES = {
 };
 
 const held = new Map();
+// The identities of the held tables that number their own rows.
+const heldIds = { events: 0, errors: 0 };
 
 /// Answer [url] for a held table, or null for anything else.
 async function answer(real, base, url, init = {}) {
@@ -521,10 +574,14 @@ async function answer(real, base, url, init = {}) {
     const among = /^in\.\((.*)\)$/.exec(said);
     const is = /^is\.(null|true|false)$/.exec(said);
     const above = /^gt\.(-?\d+)$/.exec(said);
-    // gte. on a time, as social_visits' hour is read: ISO times compare as text.
+    // gte. and lt. on a time, as social_visits' hour is read: ISO times compare as text.
     const since = /^gte\.(\d{4}-\d\d-\d\dT[\d:.]+Z)$/.exec(said);
+    const until = /^lt\.(\d{4}-\d\d-\d\dT[\d:.]+Z)$/.exec(said);
+    const there = said === "not.is.null";
     if (above) filters.push((row) => Number(row[column]) > Number(above[1]));
     else if (since) filters.push((row) => String(row[column] ?? "") >= since[1]);
+    else if (until) filters.push((row) => row[column] !== null && row[column] !== undefined && String(row[column]) < until[1]);
+    else if (there) filters.push((row) => row[column] !== null && row[column] !== undefined);
     else if (eq) filters.push((row) => String(row[column]) === eq[1]);
     else if (among) filters.push((row) => among[1].split(",").includes(String(row[column])));
     else if (is) filters.push((row) => (is[1] === "null" ? row[column] === null || row[column] === undefined
@@ -728,4 +785,10 @@ export function hold(names, { origin = "" } = {}) {
 /// /__held/<table>).
 export function rowsOf(name) {
   return held.has(name) ? held.get(name).map((row) => ({ ...row })) : null;
+}
+
+/// A held table's rows themselves, for a check to make older, as time
+/// passing would (tests/fixtures/owner_notify/api_check.mjs).
+export function liveRowsOf(name) {
+  return held.get(name) || null;
 }
