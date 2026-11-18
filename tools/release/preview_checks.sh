@@ -639,6 +639,21 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # What a phone is told before the studio opens (phonetruth, docs/PHONE.md),
+  # each in its case and in no other, at 1280 x 800, 390 x 844 (touch, three
+  # to the point) and 820 x 1180 (touch): a model past the console's number
+  # asks first from its page on the phone alone, its picture's 3D view
+  # unasked; the number set in Switches' Phones as the owner is the one the
+  # page goes by, put back after (this deployment's, never brickworks.diy's);
+  # no WebGL 2 said plainly at once on all three, the engine's files let go;
+  # a first visit on the phone on Fast 4G told how long it will take, and a
+  # return, the computer and the tablet told nothing.
+  [phonewarn]="tools/web/phonewarn_flow.mjs --url=$P/app $B --owner --out=$S/${TAG}_phonewarn_web"
+  # local only: phonetruth_flow.mjs. The studio measured as phones run it
+  # (phonetruth, docs/PHONE.md): WebKit as an iPhone 13 and 15 and Chromium
+  # at a 4x and 6x CPU on Fast 4G beside its phone emulation, a cold visit,
+  # a return, memory, frames and the largest model kept, against the live
+  # site. A measure with no verdict, and an hour or more a run.
   # local only: phonewalk_flow.mjs. The walk by finger (APP_UX8, phonewalk):
   # every act of the desktop walk at 390 x 844 and 1024 x 768, by touch alone,
   # counted in taps beside the desktop's presses, and what a finger cannot do
@@ -749,7 +764,11 @@ live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/
 #   switch off, as console leaves it for a minute), it writes nothing another run reads.
 # - console: turns this deployment's beta off for a minute, which every
 #   beta check beside it would read, and takes a spot of the checks' pool.
-ALONE_DB=" discovery first_steps challenges console "
+# - socialdesk: the checks' pool holds one stand-in account a network, and
+#   a run empties the pool's desk rows before and after, so a run beside it
+#   loses its account and sends: a local run's emptying did, twice, on
+#   brickworks.diy (cronlive, 2026-11-18).
+ALONE_DB=" discovery first_steps challenges console socialdesk "
 case " $NAMES " in
   *" beta "*)
     curl -s --max-time 20 -H "x-vercel-protection-bypass: $VERCEL_BYPASS" "$P/api/plans?op=beta" \

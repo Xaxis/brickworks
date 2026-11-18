@@ -83,6 +83,27 @@ if [ -z "$URL" ]; then
 fi
 echo "UNIT: checks on $URL: $*"
 run_checks "$URL" "${TAG}_pv" "$@" || exit 1
+# A check that gave way to a release (exit=75) runs again by itself as soon
+# as that release's battery is off the live database, not after the whole
+# release: units were told to wait for a train to serve, and sat two to four
+# hours after its battery had ended (11-18). The wait holds no CPU slot.
+# Its lines replace the gave-way ones; its logs are ${TAG}_pv_again_*.
+# UNIT_RETRY_75=0 leaves them as they are.
+if [ "${UNIT_RETRY_75:-1}" = 1 ]; then
+  . "$HERE/live_db_lib.sh"
+  for round in 1 2 3; do
+    mapfile -t gave < <(sed -n 's/^\([a-z_0-9]*\) exit=75 .*/\1/p' "$S/${TAG}_pv.out" | awk '!seen[$0]++')
+    [ ${#gave[@]} -gt 0 ] || break
+    until=$(( EPOCHSECONDS + ${LIVE_WAIT:-10800} ))
+    echo "UNIT: ${gave[*]} gave way to a release; again once its battery is off the live database (round $round)"
+    while release_waits && [ "$EPOCHSECONDS" -lt "$until" ]; do sleep "${UNIT_RETRY_POLL:-30}"; done
+    [ -n "${UNIT_RETRY_DRY:-}" ] && { echo "UNIT: dry, would run again: ${gave[*]}"; break; }
+    run_checks "$URL" "${TAG}_pv_again" "${gave[@]}" || exit 1
+    keep=$(grep -v -E "^($(IFS='|'; echo "${gave[*]}")) exit=" "$S/${TAG}_pv.out")
+    { [ -n "$keep" ] && printf '%s\n' "$keep"; cat "$S/${TAG}_pv_again.out"; } > "$S/${TAG}_pv.out.new" \
+      && mv "$S/${TAG}_pv.out.new" "$S/${TAG}_pv.out"
+  done
+fi
 for name in "$@"; do
   line=$(grep -m1 "^$name exit=" "$S/${TAG}_pv.out")
   case "$line" in

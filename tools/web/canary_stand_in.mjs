@@ -33,6 +33,9 @@ export function standIn(faults = {}) {
   const mail = [];
   const rows = [];
   const connect = [];
+  // The sessions handed out and not signed out: api/_auth.js asks after
+  // each token's (rpc/oc_session_of).
+  const sessions = new Set();
 
   const json = (status, body) => new Response(body === null ? null : JSON.stringify(body),
     { status, headers: { "content-type": "application/json" } });
@@ -50,9 +53,11 @@ export function standIn(faults = {}) {
   function session(user, method) {
     user.last_sign_in_at = now();
     const at = Math.floor(Date.now() / 1000);
+    const id = randomUUID();
+    sessions.add(id);
     const signed = `${b64({ alg: "ES256", kid: "stand-in", typ: "JWT" })}.${b64({ iss: `${STAND_IN}/auth/v1`,
       aud: "authenticated", sub: user.id, email: user.email, exp: at + 3600, amr: [{ method, timestamp: at }],
-      session_id: randomUUID() })}`;
+      session_id: id })}`;
     const signature = sign("sha256", Buffer.from(signed), { key: privateKey, dsaEncoding: "ieee-p1363" });
     return { access_token: `${signed}.${signature.toString("base64url")}`, refresh_token: randomBytes(8).toString("hex"),
       user: shown(user) };
@@ -135,7 +140,15 @@ export function standIn(faults = {}) {
       if (!faults.totpOn) return refused(422, "mfa_totp_enroll_not_enabled", "MFA enroll is disabled for TOTP");
       return json(200, { id: randomUUID(), type: "totp" });
     }
-    if (path === "/auth/v1/logout") return json(204, null);
+    if (path === "/auth/v1/logout") {
+      try {
+        sessions.delete(JSON.parse(Buffer.from(String(init.headers?.authorization || "").split(".")[1], "base64url")).session_id);
+      } catch {
+        // Not a token of ours: nothing to sign out.
+      }
+      return json(204, null);
+    }
+    if (path === "/rest/v1/rpc/oc_session_of") return json(200, { exists: sessions.has(body.session), bound: false });
     if (path === "/rest/v1/canary_runs" && method === "POST") {
       if (faults.recordDown) return json(404, { code: "PGRST205", message: "stood in: no such table" });
       rows.push(body);

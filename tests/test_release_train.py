@@ -70,6 +70,7 @@ echo "$R/.claude/worktrees/$1 at $(git -C "$R/.claude/worktrees/$1" log --onelin
 # STUB_MERGE_GATE writes GATE.merged once merged, then holds until GATE is
 # there, as the real one's import and gates take a minute or two.
 cd "$1" || exit 1
+echo "MERGE_ONLY=${MERGE_ONLY:-}" >> "$RELEASE_OUT/merge_env"
 if [ -n "${STUB_HALF:-}" ]; then git merge -q --no-ff --no-commit "$2"; exit 0; fi
 git merge -q --no-ff -m "$3" "$2" || exit 2
 if [ -n "${STUB_MERGE_GATE:-}" ]; then
@@ -88,12 +89,15 @@ exit 1
 """,
     "tools/release/parse_gate.sh": "#!/bin/bash\n# stand-in: every script parses\nexit 0\n",
     "tools/release/release_links.sh": "#!/bin/bash\n# stand-in: every download answers\nexit 0\n",
-    "tools/fresh_import.sh": "#!/bin/bash\n# stand-in: the class list is up to date\nexit 0\n",
+    "tools/fresh_import.sh": "#!/bin/bash\n# stand-in: the class list is up to date\necho \"import $PWD\" >> \"$RELEASE_OUT/imports\"\nexit 0\n",
     "tools/deploy.sh": """#!/bin/bash
 # stand-in: a preview of this commit, or that preview promoted (--promote,
 # --prod), which then stands for brickworks.diy/app; when, in promoted. A
 # preview promoted serves the commit it was made from, as the real one does.
 SHA=$(git rev-parse --short HEAD)
+echo "$*" >> "$RELEASE_OUT/deploy_args"
+# Its export in build/web, as tools/export.sh makes it, unless given one (--dir) or promoting.
+case " $* " in *" --dir="*|*" --promote="*) ;; *) mkdir -p build/web && echo "$SHA" > build/web/index.html ;; esac
 case "${1:-}" in --promote=*) SHA=${1##*/} ;; esac
 case "${1:-}" in
   --promote=*|--prod)
@@ -126,6 +130,7 @@ declare -A CMD=(
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [site]="tools/web/site_check.mjs --url=$P"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app"
+  [console]="tools/web/console_flow.mjs --url=$P"
 )
 echo "$P $WT $*" > "$S/${OUT}_args"
 : > "$S/$OUT.out"
@@ -233,7 +238,7 @@ class Yard:
         self.git(where, "init", "-q", "--bare", "--initial-branch=main", str(where / "origin.git"))
         self.git(where, "init", "-q", "--initial-branch=main", str(self.r))
         for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh", "flows_for.py",
-                     "live_ab.sh", "timing_judge.py"):
+                     "live_ab.sh", "timing_judge.py", "live_export.sh"):
             self.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
         for name, text in STUBS.items():
             self.put(name, text)
@@ -241,7 +246,7 @@ class Yard:
         # headless one, here none.
         for name in ("headless", "windowed", "out"):
             self.put("tools/suite/%s.txt" % name, "# the yard's %s probes, one a line\n" % name)
-        self.put(".gitignore", "bench/results/\n.claude/worktrees/\n.env\n")
+        self.put(".gitignore", "bench/results/\n.claude/worktrees/\n.env\nbuild/\n")
         self.put("README", "a release yard\n")
         self.git(self.r, "add", "-A")
         self.git(self.r, "commit", "-q", "-m", "the yard")
@@ -851,6 +856,138 @@ def test_staging_adds_the_checks_whose_flows_reach_what_the_branch_changed(tmp_p
         y.stop()
 
 
+def _web_only(y: Yard, name: str) -> None:
+    """A branch NAME from main that changes a page, its route and a note:
+    nothing a web export is made from."""
+    y.git(y.r, "checkout", "-q", "-b", name, "main")
+    y.put("web/page.html", "<p>a page</p>\n")
+    y.put("api/route.js", "export default () => 1;\n")
+    y.put("docs/NOTES.md", "a note\n")
+    y.git(y.r, "add", "-A")
+    y.git(y.r, "commit", "-q", "-m", "a page and its route")
+    y.git(y.r, "checkout", "-q", "main")
+
+
+def _keep(y: Yard, tag: str, sha: str, where: Path) -> subprocess.CompletedProcess:
+    """An export kept as brickworks.diy's (live_export.sh keep), as a release's ship keeps its own."""
+    where.mkdir(parents=True, exist_ok=True)
+    (where / "index.html").write_text("the build %s serves\n" % tag)
+    return subprocess.run(["bash", str(y.r / "tools/release/live_export.sh"), "keep", tag, sha, str(where)],
+                          cwd=y.r, env={**y.env, "RELEASE_OUT": str(y.ro)}, capture_output=True, text=True, timeout=60)
+
+
+def test_a_branch_that_changes_no_app_file_ships_on_the_live_export_with_no_import_or_probe(tmp_path):
+    """The social desk changed web/ and api/ alone, and its train still ran
+    all 294 probes and made an export, so the lead shipped it by hand on the
+    live release's build/web (fastlane, 2026-11-18). A release that makes an
+    export keeps it as it goes live; a branch that changes nothing an export
+    is made from ships on it after: no import, no probe, the checks named and
+    those its change reaches, and the same preview, promotion and record."""
+    y = Yard(tmp_path)
+    try:
+        # A release with probes and an app change: the export lane, which keeps its export.
+        _lists_on_stage2(y, "beams\nplates\n")
+        staged = y.train("stage", "t-m1", "stage2", "--checks", "io")
+        assert staged.returncode == 0 and "  lane: full: an app file changed: " in staged.stdout, staged.stdout
+        y.until(lambda: y.spec("t-m1", "result"))
+        assert y.spec("t-m1", "result") == "live", y.logs()
+        kept = y.ro / "exports" / "t-m1"
+        assert (kept / "built_from").read_text().strip() == y.git(y.r, "rev-parse", "main")
+        assert (y.ro / "live_web").resolve() == kept and (kept / "web" / "index.html").exists()
+        assert "SHIP: live_export: t-m1's export kept, made from" in y.text("t-m1_lead.out"), y.logs()
+        main = y.git(y.r, "rev-parse", "main")
+        _web_only(y, "webonly")
+        for f in ("probes_run", "imports", "merge_env", "deploy_args"):
+            (y.ro / f).unlink(missing_ok=True)
+
+        # Planned: what it would run, and nothing staged.
+        plan = y.train("stage", "t-m2", "webonly", "--checks", "io", "--plan")
+        assert plan.returncode == 0, plan.stdout + plan.stderr
+        lane = "web: no app file changed; ships on t-m1's export (made from %s), no import or probe" % main[:9]
+        assert "  lane: %s\n" % lane in plan.stdout, plan.stdout
+        assert "  checks: io (and site, frames)\n" in plan.stdout, plan.stdout
+        assert "  probes: none: the web lane, its app the live export's\n" in plan.stdout, plan.stdout
+        assert not (y.ro / "t-m2.train").exists() and not (y.ro / "t-m2_train.out").exists()
+
+        staged = y.train("stage", "t-m2", "webonly", "--checks", "io")
+        assert staged.returncode == 0 and "  lane: %s\n" % lane in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "probes") == "" and y.spec("t-m2", "lane") == lane
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        # No probe, no import in its tree, its merge with none; its preview the kept export.
+        assert not (y.ro / "probes_run").exists(), y.text("probes_run")
+        assert str(y.wt / "t-m2") not in y.text("imports"), y.text("imports")
+        assert y.text("merge_env").split() == ["MERGE_ONLY=1"], y.text("merge_env")
+        deploys = y.text("deploy_args").splitlines()
+        assert deploys[0] == "--dir=%s" % (kept / "web") and deploys[1].startswith("--promote="), deploys
+        assert y.text("t-m2_pv_args").split()[2:] == ["io", "site", "frames"], y.logs()
+        assert "/b/%s/" % y.spec("t-m2", "sha") in y.live.read_text()
+        assert y.git(y.r, "log", "-1", "--format=%s", "main") == "Merge: webonly"
+        assert "t-m2: the web lane: ships on t-m1's export" in y.text("t-m2_train.out"), y.logs()
+        # It made no export of its own: t-m1's is still the one to ship on.
+        assert (y.ro / "live_web").resolve() == kept
+        status = y.train("status", "t-m2").stdout
+        assert "  lane: web: no app file changed" in status and "probes: none run, none: the web lane" in status, status
+    finally:
+        y.stop()
+
+
+def test_the_web_lane_is_refused_where_an_app_file_differs_and_its_merge_is_checked_again(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        _web_only(y, "webonly")
+        none = y.train("stage", "t-m2", "webonly", "--web")
+        assert none.returncode == 2 and "train: not the web lane: no export brickworks.diy serves is kept" in none.stdout, none.stdout
+        assert "  lane: full: no export is kept for the web lane" in y.train("stage", "t-m2", "webonly", "--plan").stdout
+        kept = _keep(y, "t-m1", y.base, tmp_path / "export")
+        assert kept.returncode == 0 and "live_export: t-m1's export kept, made from %s" % y.base[:9] in kept.stdout, kept
+        # stage2 changes a.txt, which is neither a page, the API, a doc, a test, SQL nor a tool.
+        refused = y.train("stage", "t-m2", "stage2", "--web")
+        assert refused.returncode == 2, refused.stdout + refused.stderr
+        assert "train: not the web lane: app files differ from the export brickworks.diy serves: a.txt" in refused.stdout
+        assert not (y.ro / "t-m2.train").exists()
+        assert "  lane: full: an app file changed: a.txt\n" in y.train("stage", "t-m2", "stage2", "--plan").stdout
+        assert "  lane: full: asked (--full)\n" in y.train("stage", "t-m2", "webonly", "--full", "--plan").stdout
+        assert "--web or --full, not both" in y.train("stage", "t-m2", "webonly", "--web", "--full").stdout
+
+        # Staged after a release, it is checked again once its merge is made:
+        # main took an app file meanwhile, which the export was not made from.
+        y.shipping("t-m1x")
+        staged = y.train("stage", "t-m3", "webonly", "--after", "t-m1x", "--web")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        assert ", checked again once t-m1x serves\n" in staged.stdout, staged.stdout
+        y.put("src/app.gd", "extends Node\n")
+        y.git(y.r, "add", "src/app.gd")
+        y.git(y.r, "commit", "-q", "-m", "an app change the export lacks")
+        y.git(y.r, "push", "-q", "origin", "main")
+        y.serves("t-m1x")
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == ("stopped: the web lane, but app files differ from t-m1's export "
+                                            "(made from %s): src/app.gd: stage it again with --full" % y.base[:9]), y.logs()
+        assert not (y.ro / "promoted").exists() and not (y.ro / "t-m3_lead.out").exists()
+    finally:
+        y.stop()
+
+
+def test_a_check_that_changes_what_is_live_never_runs_on_brickworks_diy(tmp_path):
+    """console flipped the real beta's switch there until b66e9044a, and
+    console3's Run now runs the real crons there: failing on a preview, such
+    a check holds the release, never run on brickworks.diy to be shipped past."""
+    y = Yard(tmp_path)
+    try:
+        assert y.train("stage", "t-m2", "stage2", "--checks", "console people", "--accept", "console", "fails there too",
+                       STUB_FAILS="console people", STUB_STALE_FAILS="console people").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result").endswith(
+            "held, failed on the preview: console people (failing on brickworks.diy too: people)"), y.logs()
+        assert y.text("t-m2_stale_args").split()[2:] == ["people"], y.logs()
+        assert "SHIP: never run on brickworks.diy, as each changes what is live there: console" in y.text("t-m2_lead.out")
+        assert "not run there: console" in y.train("status", "t-m2").stdout
+        y.unmoved()
+    finally:
+        y.stop()
+
+
 def _lists_on_stage2(y: Yard, headless: str) -> None:
     """stage2's own probes and lists, as the app's are: HEADLESS, window
     windowed, and spend kept out."""
@@ -891,7 +1028,8 @@ def test_named_no_probes_a_train_runs_every_headless_one_its_branch_lists(tmp_pa
         y.git(y.r, "rm", "-q", "tools/suite/headless.txt")
         y.git(y.r, "commit", "-q", "-m", "no list")
         y.git(y.r, "checkout", "-q", "main")
-        bare = y.train("stage", "t-m3", "bare")
+        # (In the full lane: a web lane runs no probe, and t-m2 kept an export.)
+        bare = y.train("stage", "t-m3", "bare", "--full")
         assert bare.returncode == 2, bare.stdout + bare.stderr
         assert "train: bare has no tools/suite/headless.txt: name the probes" in bare.stdout, bare.stdout
         assert not (y.ro / "t-m3.train").exists()

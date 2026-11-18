@@ -41,6 +41,7 @@
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete; plans on, a new model past the plan's limit 413 {full: \"plan\", error, pro: \"/plans\"}: python3 tools/minitest.py tests/test_saved_models_plan.py)",
       "area": "model-io",
       "tests": [
+        "tests/test_saved_models_plan.py",
         "tests/test_bench.py",
         "tests/test_booklet_follow.py",
         "tests/test_cadtask.py",
@@ -52,7 +53,12 @@
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_refresh_catalogue.py",
+        "tests/test_release.py",
+        "tests/test_row_cap.py",
+        "tests/test_share_unknowns.py",
+        "tests/test_update_parts.py"
       ]
     },
     {
@@ -75,6 +81,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -108,13 +115,14 @@
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
+        "tests/test_console3.py",
+        "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py",
-        "tests/test_social.py"
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -124,16 +132,16 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_site_lang.py",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
-        "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
-        "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
-        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -144,15 +152,17 @@
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
       "tests": [
-        "tests/fixtures/console/api3_check.mjs",
-        "tests/test_console3.py",
         "tests/test_flows_for.py",
-        "tests/test_gallery_builds.py",
-        "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/fixtures/console/api3_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
+        "tests/test_console3.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_gallery_crons.py",
         "tests/test_packaged_facts.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -165,6 +175,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -186,10 +197,10 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/db3_check.mjs",
-        "tests/fixtures/oauth/world.mjs",
         "tests/fixtures/relay/world.mjs",
         "tests/test_assistant_pages.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/fixtures/oauth/world.mjs"
       ]
     },
     {
@@ -218,13 +229,14 @@
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
       "tests": [
+        "tests/test_console3.py",
+        "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_shell.py",
-        "tests/test_social.py"
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -263,6 +275,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -275,17 +288,19 @@
       "reach": "https://brickworks.diy/library/set/7985-1.webp (a card's, 640x480) and /library/set/7985-1.page.webp (its page's)   (setpics: Rebrickable's picture of the set, read from the parts bucket's sets/card/ and sets/page/ by ?op=catalog_photo and kept a year; 404 for a set the store has none of; tests/test_sets.py, tools/web/sets_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_model_bases.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
-        "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
-        "tests/test_sets.py"
+        "tests/test_sets.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -296,17 +311,20 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
-        "tests/fixtures/console/api_check.mjs",
-        "tests/fixtures/console/db_check.mjs",
+        "tests/test_console2.py",
+        "tests/test_flows_for.py",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
-        "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_feedback.py",
-        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_site_shell.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -321,6 +339,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -334,12 +353,13 @@
       "reach": "curl -s -X POST '<deployment>/api/plans?op=feedback' -H 'content-type: application/json' -d '{\"kind\":\"idea\",\"words\":\"...\",\"email\":\"delivered@resend.dev\"}'; GET it signed in for your own   (422 with why; 429 past the hour's rate; 503 \"not open here yet\" before supabase/feedback.sql; python3 tools/minitest.py tests/test_feedback.py)",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
-        "tests/test_feedback.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -781,10 +801,10 @@
       "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -935,10 +955,10 @@
       "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -2302,6 +2322,22 @@
       "tests": []
     },
     {
+      "id": "cli:phonetruth measures",
+      "kind": "cli",
+      "entry": "tools/web/phonetruth_flow.mjs",
+      "reach": "node --env-file=.env tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR --configs=chromium,cpu4,cpu6,iphone13,iphone15 [--steps=load,frames,ladder] [--table]   (under heavy, local only: Chromium phone emulation, Playwright WebKit as an iPhone 13 and 15 (software GL, multi-finger touch by tools/web/fingers.mjs), Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and a return, peak memory (process Pss, Wasm, JS heap), frames turning the car and Orthanc, the largest gallery model kept; DIR/phonetruth.md is docs/PHONE.md's table; tools/web/phonewalk_flow.mjs --engine=webkit --device=\"iPhone 13\" | --cpu=4 --net=fast4g walks it by finger)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:phonewarn browser flow",
+      "kind": "cli",
+      "entry": "tools/web/phonewarn_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/phonewarn_flow.mjs --url=<preview>/app --owner --out=DIR   (at 1280x800, 390x844 touch and 820x1180 touch: the big-model question on the phone alone and its three answers, the 3D view unasked; Switches' Phones number set as the owner and obeyed by the page, then put back (never on brickworks.diy); no WebGL 2 said on all three with the engine's files let go; a phone's first visit on Fast 4G timed, a return, the computer and the tablet told nothing; preview check [phonewarn])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:photographed light in a browser",
       "kind": "cli",
       "entry": "tools/web/light_render_flow.mjs",
@@ -2462,10 +2498,10 @@
       "reach": "tools/release.py publish --draft, then tools/release.py publish",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -2487,8 +2523,8 @@
       "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy; --write writes what the docs make and commit: each tool's doc's copy of its words, src/ai/connector_guide.gd and src/ui/docs_pages.gd, and --check fails while any differs, a tool has no doc or its example breaks its schema)",
       "area": "web",
       "tests": [
-        "tests/test_assistant_pages.py",
-        "tests/test_docs_site.py"
+        "tests/test_docs_site.py",
+        "tests/test_assistant_pages.py"
       ]
     },
     {
@@ -2515,6 +2551,14 @@
       "entry": "src/dev/quit_probe.gd",
       "reach": "godot --headless --path . --script src/dev/quit_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:rareswap probe",
+      "kind": "cli",
+      "entry": "src/dev/rareswap_probe.gd",
+      "reach": "tools/probe.sh rareswap_probe   (headless, about 10 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10, with the defaults alone and with every swap picked)",
+      "area": "building",
       "tests": []
     },
     {
@@ -2622,6 +2666,22 @@
       "entry": "src/dev/roundtrip_probe.gd",
       "reach": "godot --headless --path . --script src/dev/roundtrip_probe.gd -- --out=FILE.jsonl vendor/omr/files/7223-1_Car.mpd tests/fixtures/studio/bay_2025.io   (python3 tools/bench/cadtask.py roundtrip runs it on the sample and judges it)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:rsreview phone probe",
+      "kind": "cli",
+      "entry": "src/dev/rsreview_phone_probe.gd",
+      "reach": "tools/probe.sh rsreview_phone_probe   (windowed, 430x932 by its header; RSR_OUT=DIR keeps its pictures)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:rsreview probe",
+      "kind": "cli",
+      "entry": "src/dev/rsreview_probe.gd",
+      "reach": "tools/probe.sh rsreview_probe   (headless, about 15 minutes; RSR_CASES=lpub,mcp_edges,held,... for some; RSR_OUT=DIR writes lots.tsv and catalogue.tsv)",
+      "area": "building",
       "tests": []
     },
     {
@@ -2852,10 +2912,10 @@
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
       "tests": [
-        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_flows_for.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -3413,6 +3473,14 @@
       "tests": []
     },
     {
+      "id": "endpoint:the numbers a phone is warned by",
+      "kind": "endpoint",
+      "entry": "api/_phone.js",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "lib:3d model files",
       "kind": "lib",
       "entry": "src/parts/mesh_file.gd",
@@ -3565,6 +3633,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -4128,12 +4197,14 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -4425,6 +4496,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -4554,7 +4626,9 @@
       "entry": "supabase/console2.sql",
       "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_flows_for.py"
+      ]
     },
     {
       "id": "lib:the console's part C",
@@ -4562,7 +4636,9 @@
       "entry": "supabase/console3.sql",
       "reach": "python3 tools/minitest.py tests/test_console3.py   (console3.sql and api/admin.js's data, find, challenge_view, switches, unbar_model, notice_set, notice_clear, run_cron, export, delete_account and sign_out against a real Postgres: the gate, reads unaudited and writes audited, Run now's address, the typed deletion, the export's caps, no value in switches)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_flows_for.py"
+      ]
     },
     {
       "id": "lib:the console's reads and audit",
@@ -4637,8 +4713,8 @@
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql --dry --try=tools/challenges_try.sql --table=challenge_entries   (after the live files; the promises around it in tests/test_challenges.py; then the challenges browser flow)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_year.py",
         "tests/test_challenges.py",
+        "tests/test_challenge_year.py",
         "tests/test_release_train.py"
       ]
     },
@@ -4849,10 +4925,10 @@
       "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (the gallery's Sets tab, switched in place: every set, as the gallery's cards: cover, name, number, theme, year, modeller; the gallery's search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; web/library.html written by tools/browse_pages.py; linked from every page's footer as Sets)",
       "area": "web",
       "tests": [
-        "tests/test_browse_pages.py",
-        "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_browse_pages.py",
+        "tests/test_gallery_crons.py",
         "tests/test_sets.py"
       ]
     },
@@ -4941,6 +5017,22 @@
       "entry": "api/_parts.js",
       "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO\u00ae Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a phone asked before a big model opens",
+      "kind": "ui",
+      "entry": "web/phone-warn.js",
+      "reach": "<deployment>/m/<id> or /library/set/<n> on a phone (touch only, shorter side under 600 px): Build it, Open in Brickworks or the 3D view's way into the studio, on a model past phone_parts (/api/plans?op=phone, set in /admin#switches Phones), asks \"About N parts: on a phone this may close the tab\" first; Not now or Escape stays, Open it anyway goes on; the picture's 3D view, a computer, a tablet and a smaller model are never asked (web/model-page.js loads it); preview check [phonewarn]",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a pose that holds its own weight",
+      "kind": "ui",
+      "entry": "src/assembly/pose_hold.gd",
+      "reach": "godot --path .  (an arm posed on a Technic ball or a friction pin with weight at its end: Check stability, Pose's hold lines and the pin's row, a drag's status, Stress's list and pose_model name each joint past what one of its kind was measured to hold (data/joint_hold.json), red, with the share it holds, and the mark goes when the pose holds; small balls, click hinges, hinges, turntables and clips named, never given a number; tools/probe.sh posehold_probe)",
+      "area": "building",
       "tests": []
     },
     {
@@ -5105,14 +5197,15 @@
       "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub, and #about, \"tell us about you\", the month of Pro's form or where it stands (GET/POST ?op=beta); /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_beta.py",
+        "tests/test_beta_join.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
-        "tests/test_beta.py",
-        "tests/test_beta_join.py",
         "tests/test_console.py",
         "tests/test_console2.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_site_lang.py"
       ]
     },
@@ -5244,8 +5337,8 @@
       "reach": "https://brickworks.diy/collections  (?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Collections tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
       "area": "web",
       "tests": [
-        "tests/test_browse_pages.py",
         "tests/test_collections_tab.py",
+        "tests/test_browse_pages.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_share_unknowns.py"
@@ -5441,8 +5534,8 @@
       "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation, which opens the page of the panel in front, from the pages' panels: heads (src/ui/docs_pages.gd); /docs/llms.txt is the same for an assistant)",
       "area": "web",
       "tests": [
-        "tests/test_assistant_pages.py",
         "tests/test_docs_site.py",
+        "tests/test_assistant_pages.py",
         "tests/test_release.py",
         "tests/test_release_train.py"
       ]
@@ -5563,11 +5656,12 @@
       "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Collections and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
-        "tests/test_gallery_tabs.py",
+        "tests/test_flows_for.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -5991,7 +6085,8 @@
       "area": "web",
       "tests": [
         "tests/test_alike.py",
-        "tests/test_bench.py"
+        "tests/test_bench.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -6088,6 +6183,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -6195,6 +6291,14 @@
       "tests": []
     },
     {
+      "id": "ui:rare lots swapped for common ones",
+      "kind": "ui",
+      "entry": "src/collection/rare_swap.gd",
+      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour of its finish and transparency, a box each; only a swap that keeps the look starts picked (the same shape, or a colour within \u0394E 10 of its finish), every other says what it changes; a touch on a row toggles it; Swap N lots, a part in hand put back first, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true swaps the same, lots= names others; tools/probe.sh rareswap_probe; tools/probe.sh rsreview_probe; tools/probe.sh rsreview_phone_probe)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:recent and favourite parts",
       "kind": "ui",
       "entry": "src/ui/part_shelf.gd",
@@ -6297,7 +6401,8 @@
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
       "area": "model-io",
       "tests": [
-        "tests/test_docs_site.py"
+        "tests/test_docs_site.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -6366,9 +6471,9 @@
       "reach": "<deployment>/feedback, or Send feedback in any page's footer or the account menu   (web/feedback.html; the dialog: something wrong, an idea or a question, the words, an address signed out, a picture taken or chosen (shown, removable), the page and browser ticked; POST /api/plans?op=feedback; tools/web/feedback_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/fixtures/feedback/api_check.mjs",
-        "tests/test_account_erase.py",
-        "tests/test_feedback.py"
+        "tests/test_account_erase.py"
       ]
     },
     {
@@ -6426,6 +6531,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -6803,10 +6909,10 @@
       "reach": "https://brickworks.diy/builds   (?q=, ?page=N, ?tests=1; the gallery's Builds tab, switched in place; web/builds.js reads /api/people?op=builds a page at a time, searched by the model's name, each card web/card.js buildCardHtml; web/builds.html written by tools/browse_pages.py; locally relay_server.mjs serves /builds)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_browse_pages.py",
         "tests/test_designers.py",
         "tests/test_discovery.py",
-        "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_page.py",
@@ -6820,11 +6926,12 @@
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
-        "tests/test_gallery_tabs.py",
+        "tests/test_flows_for.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6844,6 +6951,14 @@
       "entry": "src/render/pointer_pace.gd",
       "reach": "tools/probe.sh hover_cost_probe   (on the GPU: Orthanc, Select in hand; -- --model=res://... for another)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:the loader's words for a phone and a browser without WebGL 2",
+      "kind": "ui",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app: no WebGL 2 is said at once in plain words with what to do instead, and the engine's files are let go (window.stop); a first visit on a phone (#eta, window.brickworksEta) says how long it will take as the files come, plus phone_start_s; a return (localStorage brickworks.engineHad is this engine's /e/<hash>/), a computer and a tablet are told nothing; the engine's memory refused is said as that; preview check [phonewarn]",
+      "area": "web",
       "tests": []
     },
     {
@@ -6929,6 +7044,7 @@
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -7133,6 +7249,7 @@
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py"
       ]
@@ -7190,14 +7307,14 @@
       "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing and Cancel Pro, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
       "area": "web",
       "tests": [
+        "tests/test_plans.py",
+        "tests/test_saved_models_plan.py",
         "tests/test_account_erase.py",
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
-        "tests/test_plans.py",
         "tests/test_realset.py",
-        "tests/test_saved_models_plan.py",
         "tests/test_start_abba.py"
       ]
     },

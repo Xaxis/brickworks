@@ -58,6 +58,14 @@ var collection: Control:
 			place_dialogs()
 		return _collection
 var _collection: Control = null
+
+
+## Undo while My collection is open: its last Built press taken back
+## (CollectionDialog.undo_built), "" for the model's own Undo.
+func _panel_undo() -> String:
+	if _collection == null or not _collection.is_visible_in_tree():
+		return ""
+	return await _collection.call("undo_built")
 ## File, Library…: src/ui/library_dialog.gd, made as [member collection] is.
 var library_dialog: Control:
 	get:
@@ -347,6 +355,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	bar = app.get("_bar")
 	builder = app.get("_builder")
 	verbs = app.get("_verbs")
+	if verbs != null:
+		verbs.panel_undo = _panel_undo
 	camera = app.get("_camera")
 	world = app.get("_world")
 	library = app.get("_library")
@@ -1242,12 +1252,16 @@ func _define() -> void:
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),
 		Callable(), "Who is signed in, and Sign out")
-	_add("quit", "Quit", CTRL | KEY_Q, func() -> void: app.get_tree().quit(),
+	# What is being typed kept first: the working model written as the app
+	# goes has it (ModelBar.end_typing).
+	_add("quit", "Quit", CTRL | KEY_Q, func() -> void:
+		bar.end_typing()
+		app.get_tree().quit(),
 		func() -> bool: return not OS.has_feature("web"))
 	# Edit
 	# An open is the oldest step: Undo past every change since brings back
 	# the model it took off (ModelStore.reopen).
-	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.press("undo"),
+	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.own_undo(),
 		func() -> bool: return builder.history_depth() > 0 or store.can_reopen(),
 		"Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: await verbs.press("redo"),
@@ -2949,6 +2963,14 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		if not blocked.is_empty():
 			_take_back(undo)
 			return blocked
+	# Two steps an MLCad buffer's RETRIEVE starts the later of stay two: in
+	# one step LPub3D shows the stored model where the RETRIEVE stands, and
+	# what the earlier put on is never seen (s5review F5, mergekeep).
+	if op in ["merge", "delete"] and int(where[1]) >= 0:
+		var held: String = _held_apart(op, number, str(where[0]), int(where[1]), skip)
+		if not held.is_empty():
+			_take_back(undo)
+			return held
 	# Any step, for the selection (steps3): one of the section they are in.
 	if op == "to" and int(where[1]) < 0:
 		_take_back(undo)
@@ -3050,6 +3072,31 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	store.touch()
 	steps.refresh(number, 0, planned)
 	return words
+
+
+## Why step [param step] of [param section] (booklet step [param number])
+## is not merged with the next or taken out ([param op]): the file starts the
+## later of the two steps that would be one with a buffer's RETRIEVE
+## (ModelStore.retrieve_between); "" when it can be. Taken out, a step's
+## parts join the step before it, the first's the one after
+## (AuthorSteps.remove).
+func _held_apart(op: String, number: int, section: String, step: int, skip: Dictionary) -> String:
+	var seen: Array = AuthorSteps.steps_in(world, section, skip)
+	var after: int = AuthorSteps.neighbour(seen, step, 1)
+	if op == "merge":
+		var line: String = store.retrieve_between(section, step, after) if after >= 0 else ""
+		return "" if line.is_empty() else ("step %d and the next stay apart: the next begins with "
+			+ "“%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown") \
+			% [number, line, number]
+	var before: int = AuthorSteps.neighbour(seen, step, -1)
+	if before >= 0:
+		var line: String = store.retrieve_between(section, before, step)
+		return "" if line.is_empty() else ("step %d stays: it begins with “%s”, so in LPub3D "
+			+ "and MLCad, put in the step before, that step's parts would never be shown") \
+			% [number, line]
+	var line: String = store.retrieve_between(section, step, after) if after >= 0 else ""
+	return "" if line.is_empty() else ("step %d stays: the next begins with “%s”, so in LPub3D "
+		+ "and MLCad, put in it, this step's parts would never be shown") % [number, line]
 
 
 ## The booklet's numbers the steps holding [param ids] have in

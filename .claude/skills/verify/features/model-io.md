@@ -335,7 +335,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   programs and by hand, each saved unedited byte for byte) are mlcheck's
   attack kept.
   A part of a mirrored copy agrees with its line only as it was opened (an
-  edit to one is (B)); a step edit lays its section out again
+  edit to one is (B)), but for its colour: one painted in every copy alike,
+  the mirrored ones too, is its line's colour token and nothing else of it
+  (`SourceFile._only_colour`, rareswap 2026-11-17; `rareswap_probe` kept and
+  mirror_part); a step edit lays its section out again
   (`SourceFile._relaid`, stepops 2026-11-15): the most lines kept where they
   are, a step put in or split one "0 STEP" put in, a step taken out or two
   merged one STEP line taken out (the earliest of a gap's, so a ROTSTEP stays
@@ -356,6 +359,50 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a step edit heard in a Build together room, a step emptied first;
   `KEEP_TEXT_SAVED=DIR` keeps each save, `KEEP_TEXT_OPEN=DIR` opens another
   build's back.
+  A part put down outside the author's steps (step -1, its own page after
+  the last) is written in a step of its own after the last, in a patch as in
+  the whole write (`ModelStore._loose_steps`, AuthorSteps.numbers_for_file),
+  and where a turn held to the end, unturned: "0 ROTSTEP END" ends the step
+  before it, as the booklet shows it (`_looks_with_loose`). Up to smalls5
+  (2026-11-18) a patch wrote it at the end of the last step: after a last
+  step with no STEP line it joined that step (358-1 opened as 29 pages, not
+  30) and after a turned one it opened turned (streview addturn). Where the
+  author already ends the turn after the last step with parts (5540-1: an
+  empty step, then "0 ROTSTEP END" before the back cover's LPub pages), the
+  part goes in the step that line starts, just after it, with a plain
+  "0 STEP" after the part when that step has lines of its own, and no line of
+  the author's is written again (`ModelStore._past_turn_ends`,
+  `SourceFile._head_after_turn_end`; s5fix). Up to s5fix the "0 STEP" before
+  it was written "0 ROTSTEP END" (s5review F2). Written whole, the loose
+  part's step is the one the whole write gave it (`_text_into`'s step_of,
+  passed to `_loose_steps`), the worked-out steps' numbers counted: numbered
+  without them, a sub-model turned to its end and placed twice had its turn
+  end looked for at a step it was never written in, and wrote "0 STEP"
+  (s5review F6, mergekeep; bench s5sub_probe `S5SUB_ONLY=subtwice`). `s5steps_probe` (headless;
+  `S5_ALL=1` the big files, `S5_EVERY=1` every step of a grouped file) edits
+  each model's end on real files and checks the rest of the file byte for
+  byte when a part is put on top. A row base fails too (its `KNOWN`) is
+  said `known` with why, never FAIL: a release fails a probe on any FAIL
+  line whatever its exit, and held rel-m312 on them (m312fix). A
+  MULTI_STEP BEGIN or END a step taken out or merged leaves inside the
+  step made of two moves to just after that step's end
+  (`SourceFile._regroup`; `_grouped_at_steps` for a section written whole),
+  so the step is in the group or out of it whole, as LPub3D draws a group: an
+  END takes it in, a BEGIN starts after it. Only between that step's parts:
+  a page of notes alone taken in by the step after it (5540-1's cover) leaves
+  the BEGIN at that step's start (`_parts_before`; keep_text stepops). A `BUFEXCHG STORE` stays where
+  it was, inside the step: LPub3D stores the parts above it, so moved to the
+  step's end it would store the next step's too. A `BUFEXCHG RETRIEVE` is
+  not: two steps it starts the later of are never made one, by a merge or a
+  step taken out (`Shell._held_apart` → `ModelStore.retrieve_between` →
+  `SourceFile.retrieve_between`, the file's lines between the two steps'
+  parts): refused with why, nothing to undo, as LPub3D would show the stored
+  model where it stands and the earlier step's parts never (mergekeep).
+  `endsteps_probe` (headless;
+  `ENDSTEPS_CASES=loose,groups`) checks both, the RETRIEVE at its step's head
+  in every save and the two refusals, patched and written whole;
+  `streview_probe` (bench/results/streview-2026-11-15, `SR_CASES=addturn,metas`)
+  the reviewer's cases.
   Written whole, a copy is placed on its definition's first copy by the fit
   that lays each part turned as it is (`Assemblies.exact_match`, its
   "bases"), mirrored where only a mirror does: a mirrored copy of parts that

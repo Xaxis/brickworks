@@ -2696,6 +2696,9 @@ func _clear_undone() -> Array:
 		back.append({"undo": "unitstep", "unit": unit, "step": step, "kept": step == -1})
 	if _world.motions != null:
 		back.append({"undo": "motions", "motions": _world.motions.copy()})
+	# And the program for its motors (HubProgram).
+	if not _world.program.is_empty():
+		back.append({"undo": "program", "program": _world.program})
 	for section: String in _world.broken_out:
 		back.append({"undo": "sectionout", "path": section,
 			"record": (_world.broken_out[section] as Dictionary).duplicate(true)})
@@ -6564,6 +6567,8 @@ func _make_inventory() -> void:
 	# Its rows' pictures, and a row clicked: those parts, in the model.
 	list.thumbnails = _thumbnails
 	list.chosen.connect(_show_found)
+	# Its rare lots swapped through Find and Replace (rareswap).
+	list.set("app", self)
 	# And what the collection lacks of it (Shell's collection).
 	list.need_wanted.connect(func() -> void:
 		if _shell != null and _shell.collection != null:
@@ -10317,7 +10322,11 @@ func _on_touch_tool(what: String) -> void:
 			_refresh_preview()
 			_bar.say("on its %s" % _builder.held_face)
 		"undo":
-			if _builder.undo():
+			# My collection open: its last Built press, as Ctrl+Z takes it.
+			var taken: String = await _verbs.panel_undo.call()
+			if not taken.is_empty():
+				_bar.say(taken)
+			elif _builder.undo():
 				_refresh_preview()
 				_on_model_edited()
 			elif not await _bar.reopen():
@@ -11342,7 +11351,7 @@ func _key_pressed(key: InputEventKey) -> void:
 		KEY_Z:
 			# The same undo as Edit's, which says what it took back.
 			if key.ctrl_pressed or key.meta_pressed:
-				await _verbs.press("redo" if key.shift_pressed else "undo")
+				await _verbs.own_undo(key.shift_pressed)
 				_refresh_preview()
 		KEY_COMMA:
 			# Where a preferences panel lives in every app on this

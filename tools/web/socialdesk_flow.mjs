@@ -21,7 +21,11 @@
 //      site's links tagged, nothing sent by keeping it; words changed behind
 //      the open sheet refused at Send; Send now on the words shown.
 //   7. Schedule from the sheet (a day and a quarter-hour), seen in Sent,
-//      Unscheduled; one due in a minute sent by the cron's own call.
+//      Unscheduled; one due in a minute sent by the cron's own call, or by
+//      Vercel's own (*/15 on production) if it ran in the wait. With
+//      SOCIALDESK_VERCEL_CRON=1 (on production) nothing calls it: the row
+//      is watched until Vercel's own cron sends it, up to 17 minutes, and
+//      the cron's runs (cron_runs_of) say it was vercel-cron.
 //   8. Results: each sent post's score and comments read again, over time
 //      in its Details; a visit by its tagged link counted once, the tags
 //      taken from the address the visitor sees.
@@ -39,7 +43,15 @@
 //
 // The checks' pool is emptied of the desk's rows before and after (the
 // secret key, test=true only), and the throwaway stranger deleted. It
-// passes when it ends "socialdesk: all ok".
+// passes when it ends "socialdesk: all ok". The pool is one for every
+// deployment, so a deployed run holds the live database alone
+// (preview_checks.sh ALONE_DB). A relay on this machine must hold the
+// desk's tables itself (relay_server.mjs --hold=social_accounts,
+// social_tokens,social_items,social_sends,social_results,social_visits,
+// social_rules), and the project's pool is then never touched: a local run
+// that emptied it deleted the rows of the run on brickworks.diy beside it,
+// twice (cronlive, 2026-11-18). Against a relay holding them elsewhere it
+// stops at once (exit 2).
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync } from "node:fs";
@@ -62,6 +74,22 @@ const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-
 const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const CRON = process.env.CRON_SECRET || "";
+const VERCEL_CRON = process.env.SOCIALDESK_VERCEL_CRON === "1";
+const DESK_TABLES = ["social_accounts", "social_tokens", "social_items", "social_sends", "social_results", "social_visits",
+  "social_rules"];
+// A relay on this machine answers what it holds at /__held/<table>.
+const LOOPBACK = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(site);
+let heldHere = false;
+if (LOOPBACK) {
+  const asked = await Promise.all(DESK_TABLES.map((table) => fetch(`${site}/__held/${table}`)
+    .then(async (reply) => reply.ok && Array.isArray(await reply.json())).catch(() => false)));
+  heldHere = asked.every(Boolean);
+  if (!heldHere) {
+    console.error(`socialdesk_flow: ${site} reads the project's own ${DESK_TABLES.filter((_, at) => !asked[at]).join(", ")}: `
+      + `start the relay with --hold=${DESK_TABLES.join(",")}. Run here, it would empty the checks' pool a deployed run is using.`);
+    process.exit(2);
+  }
+}
 const rand = randomBytes(4).toString("hex");
 const address = (who) => `delivered+bw-socialdesk-${who}-${rand}@resend.dev`;
 
@@ -100,8 +128,9 @@ async function api(pathname, { method = "GET", token, body, bearer } = {}) {
 }
 
 /// The checks' pool of the desk emptied (test=true rows only), where its
-/// tables are on the project; a deployment holding them elsewhere keeps its own.
+/// tables are on the project; a relay here holds its own, and they start empty.
 async function emptyPool() {
+  if (heldHere) return "held by the relay here, the project's left alone";
   if (!SUPABASE || !SECRET) return "no key";
   const secret = { apikey: SECRET, authorization: `Bearer ${SECRET}` };
   const said = [];
@@ -111,6 +140,19 @@ async function emptyPool() {
   }
   return said.join(", ");
 }
+
+/// The social desk's cron runs as the console's Site reads them, newest
+/// first (supabase/console2.sql cron_runs_of), or [] with no key.
+async function cronRuns() {
+  if (heldHere || !SUPABASE || !SECRET) return [];
+  const reply = await fetch(`${SUPABASE}/rest/v1/rpc/cron_runs_of`, { method: "POST", body: JSON.stringify({ job: "social_due", most: 20 }),
+    headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "application/json" } }).catch(() => null);
+  const rows = reply?.ok ? await reply.json().catch(() => []) : [];
+  return Array.isArray(rows) ? rows : [];
+}
+/// Vercel's own run of the cron that sent one at [at] (within a minute), or null.
+const vercelSent = (runs, at) => runs.find((one) => one.holder === "vercel-cron" && /^[1-9]\d* sent/.test(one.said?.outcome || "")
+  && Math.abs(Date.parse(one.started_at) - Date.parse(at)) < 60000) || null;
 
 const browser = await launch({ signedOut: true });
 
@@ -366,10 +408,33 @@ try {
     check(`the cron: refused without its key (${notCron.status}); before the time, sends nothing (${early.json?.outcome})`, notCron.status === 401
       && early.status === 200 && /^0 sent|^nothing due/.test(early.json?.outcome || ""));
     await wait(70000);
-    const ran = await api("/api/plans?op=social_due", { bearer: CRON });
-    const dueRow = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.id === due.json.send.id);
-    check(`at its time, the cron sent it: "${ran.json?.outcome}", ${dueRow?.status}`, /^1 sent/.test(ran.json?.outcome || "")
-      && dueRow?.status === "sent");
+    const dueOf = async () => (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.id === due.json.send.id);
+    if (VERCEL_CRON) {
+      // Nothing here calls it: Vercel's own cron, every quarter hour.
+      let dueRow = await dueOf();
+      for (const end = Date.now() + 17 * 60000; dueRow?.status !== "sent" && Date.now() < end;) {
+        await wait(20000);
+        dueRow = await dueOf();
+      }
+      const theirs = dueRow?.status === "sent" ? vercelSent(await cronRuns(), dueRow.sent_at) : null;
+      check(`at its time, Vercel's own cron sent it, nothing here calling it: ${dueRow?.status} at ${dueRow?.sent_at}; its run `
+        + `${theirs ? `${theirs.holder} "${theirs.said.outcome}" at ${theirs.started_at}` : "not among the cron's runs"}`, Boolean(theirs));
+    } else {
+      const ran = await api("/api/plans?op=social_due", { bearer: CRON });
+      let dueRow = await dueOf();
+      // Vercel's own cron, taking it at the same moment, leaves it sending a breath.
+      for (let at = 0; at < 5 && dueRow?.status === "sending"; at += 1) {
+        await wait(2000);
+        dueRow = await dueOf();
+      }
+      // Sent, with nothing due at this call: Vercel's own cron (*/15 on
+      // production) sent it in the wait. No other run is beside this one.
+      const before = dueRow?.status === "sent" && /^nothing due/.test(ran.json?.outcome || "");
+      const theirs = before ? vercelSent(await cronRuns(), dueRow.sent_at) : null;
+      check(`at its time, the cron sent it: ${before ? `Vercel's own, before this call (${theirs ? `${theirs.holder} at ${theirs.started_at}`
+        : "not among the cron's runs"})` : `"${ran.json?.outcome}"`}, ${dueRow?.status}`, dueRow?.status === "sent"
+        && (/^1 sent/.test(ran.json?.outcome || "") || Boolean(theirs)));
+    }
 
     // --- 8. Results -----------------------------------------------------------------------------
     console.log("8. Results and visits");

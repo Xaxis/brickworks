@@ -597,6 +597,12 @@ func _held_by(packed: PackedInt32Array, self_id: int, at: Transform3D, sel: Vari
 ## [method plan] made as the model stands now (the bar's, made as it showed
 ## it), else made here; on 10179 a plan is 0.4 s.
 func replace(found: Dictionary, into: Dictionary, made: Dictionary = {}) -> Dictionary:
+	# A part lifted and still in hand goes back where it was first (rsfix,
+	# rsreview F5): this step laid over its lift left Escape nothing to put
+	# it back from, and it was lost, live since swapfind.
+	if put_back_held() < 0:
+		return {"changed": 0, "followed": 0, "room": 0, "locked": 0, "same": 0,
+			"words": "", "stayed": HELD_WORDS}
 	if made.is_empty():
 		made = plan(found, into)
 	var depth: int = builder.history_depth()
@@ -659,6 +665,25 @@ func replace(found: Dictionary, into: Dictionary, made: Dictionary = {}) -> Dict
 		"room": maxi(stayed, 0), "locked": (made["locked"] as Array).size(),
 		"same": int(made["same"]), "words": words,
 		"stayed": "; ".join(stay_words(found, made))}
+
+
+## Why nothing is replaced while a part is in hand that cannot go back.
+const HELD_WORDS := "a part is in hand and cannot go back where it was: put it down or press Escape first"
+
+
+## The parts lifted off the model and still in hand put back where they were,
+## as Escape puts them, before a replace: how many went back, 0 for none in
+## hand (a part from the bin or a paste stays in hand, as the model has not
+## got it), -1 for a lift another step has been laid over since, which
+## Escape would put away rather than back.
+func put_back_held() -> int:
+	if builder == null or not builder.is_carrying() or not builder.carrying.lifted:
+		return 0
+	if not builder._lift_on_top():
+		return -1
+	var count: int = builder.carrying.items.size()
+	builder.cancel_carry()
+	return count
 
 
 static func _sum(counts: Dictionary) -> int:

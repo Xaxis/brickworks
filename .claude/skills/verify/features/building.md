@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, cli:rareswap probe, cli:rsreview probe, cli:rsreview phone probe -->
 
 ## Sub-features
 
@@ -761,7 +761,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   DIR/phonewalk.md and .json. Exit 1 only when an act could not run; `--bar`
   fails on any act not done by finger in twice the presses (phonepanels' and
   fingertools' bar). Its table of 2026-11-13 is
-  `docs/app_ux8/phonewalk.md`.
+  `docs/app_ux8/phonewalk.md`. `--engine=webkit --device="iPhone 13"`,
+  `--cpu=4`, `--net=fast4g` walk it on docs/PHONE.md's stand-ins; as an
+  Apple device it selects all with Command+A, as Godot's web build reads
+  shortcuts there, and a control cut by the top of its panel's list is
+  scrolled down into sight (phonetruth, 2026-11-18).
 - `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
   phone or a tablet (`Phone.on`) every dialog and panel over the model takes
   the layout's sizing, one rule for all as `Access` is for the keys: its text
@@ -1338,6 +1342,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `Working.attend` itself, leaving every later command taken for one inside
   it. A command a browser only lets happen inside the press (a file dialog,
   full screen, a page) is never put off (`Shell.IN_THE_PRESS`).
+  A probe that runs a command (`_shell.run`, a key) and reads the model a
+  frame or two later reads it before a command said first has run: once it
+  has been timed slow there, it runs only after "Undoing…" is drawn, up to
+  three frames on. Read once `Working.is_busy()` is false. flreview's probe
+  (bench/results/flreview-2026-11-15) read 10179 a frame after Undo, where
+  an Undo of a nudge costs 240 to 440 ms (its copies following, the save,
+  the steps): it found #894, #898, #944 and #952 "a plate up after one
+  Undo, put back by the next", and there was no next; the Undo it pressed
+  ran in the next part's turn. `nudge_undo_probe` (headless, 10179;
+  `NUDGE_IDS`, `NUDGE_READ=frames` for the review's reading) presses Ctrl+Z
+  once per nudge and reads once Working is done: each part and its copies'
+  twins back exactly, by transform, the history as deep as before (smalls5,
+  2026-11-18).
   Save, the exports and Share work out a big model's build order a slice at
   a time (`ModelStore.to_text_paced`, `text_for_file`, `save_as_paced`,
   `export_paced`; `ModelBar._on_save` returns whether it saved), with
@@ -2732,6 +2749,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and Connect seat as before (`held_part`'s setter clears the grip). Probe:
   `grabseat_probe` (`--only=PART,PART`, `--debug`; `--out=DIR` writes every
   case, `--bin-was=FILE` holds the bin's seats to a run on today's code).
+- `a pose that holds its own weight` (`src/assembly/pose_hold.gd`,
+  `Balance._hold_load` / `_pin_load`, `PoseHold.pose_words`, APP_UX9 posehold,
+  2026-11-18): each friction joint Balance finds alone holding what is past it
+  is weighed against what one of its kind was measured to hold
+  (`data/joint_hold.json`, written and checked by `tools/joint_hold_table.py`):
+  a Technic ball 2.85 N·cm about its centre, a friction pin 1.04 about its
+  line. Past it, the joint droops: red, with the share it holds ("holds 74% of
+  what hangs on it") in Check stability's message, Stress's list, a drag's
+  status, Pose's hold lines and the pin's row, and `pose_model`'s answer;
+  between what every one measured held and the median, "a loose joint of its
+  kind may not". Small balls, click hinges (47455 click joints too), hinges,
+  turntables and clips are named with what they carry, never given a number.
+  Weighed at the pose as it stands, not over Check stability's sweep. A model
+  with no friction joint is weighed as before. Probe: `posehold_probe`
+  (`--only=table|built|sets|app`).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
@@ -3178,6 +3210,85 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   once filled; 3023 typed, Black and Dark Bluish Grey picked from the lists
   a tap opens, Replace tapped: all 4 changed in one undo step; Close tapped;
   the undo the file opened, to the byte.
+- `rare lots swapped for common ones` (`src/collection/rare_swap.gd`, the
+  parts list's row in `src/ui/inventory_panel.gd`; APP_UX9 #12 rareswap,
+  defaults by rsfix): P, the parts list. Over its rows a row says how many
+  lots come in their colour in 3 sets or fewer (`PartLibrary.sets_in_colour`,
+  Rebrickable's set inventories, `RARE_IN`), "so few sellers have them";
+  each such row is tagged "rare: in 2 sets". A sticker, a custom part, a
+  piece LDraw draws a bigger part with and a part in no set in any colour
+  are left out; on the web, counts still on their way say "Counting the
+  sets each part comes in…" and the row fills when `colour_sets_came`
+  fires. Pressed (not in a shared model's viewer), the rows give way to
+  each rare lot with its swap in 20 sets or more (`RareSwap.COMMON_IN`),
+  every count an offer reads asked for and waited on first (up to
+  `RareSwap.WAIT_MS`, and offered again as a file comes in): the same
+  colour in an equal part first (a print's own plain part, still made in
+  its colour even in fewer, then another mould of its number by
+  `PartLibrary.moulds_of`, still made first, that sits where the old one
+  stood with every connection point of it, `RareSwap.fits`, "holding all
+  its connections and 1 more"), else the nearest colour by CIEDE2000 of the
+  same transparency and finish family (`RareSwap.family`), one colour for a
+  source colour's lots where their parts allow (red_fox's Orange all White),
+  a close one (ΔE `CLOSE_DE` 10 or under) first; a colour across them only
+  where none is (Chrome Black to Black, "loses its chrome"). Only a swap
+  that keeps the look starts picked (`RareSwap.keeps_look`: the same shape
+  in its colour, or a close colour of its finish); every other says what it
+  changes ("a different colour", "not see-through") and is unpicked, a
+  print's plain part too. A box each, named by its lot and described by
+  what it becomes; a touch anywhere on its row toggles it (ROW_TAP_SLOP).
+  Swap N lots puts the picked in through Find and Replace
+  (`FindReplace.replace`, every copy of a sub-model, the mirrored one too),
+  a part in hand put back first (`FindReplace.put_back_held`), folded into
+  one undo step named by what changed; a locked part stays and the status
+  bar says so. The row then says "Swapped 3 rare lots for common ones, 9
+  parts" and what is still rare. A session's `replace_parts rare=true`
+  lists the same lots and swaps those the panel picks, each other listed
+  "kept: it would change how the model looks" (`preview: true` changes
+  nothing; `lots: ["3622/379"]` swaps only those named, whatever they
+  change, a print among them to its plain part) in one call; rare= takes no
+  find=, replace= or where=; rare=false is a plain replace, and lots=
+  without rare=true is refused.
+- `rareswap probe` (`src/dev/rareswap_probe.gd`): headless, about ten
+  minutes; `RARESWAP_CASES=gallery,mcp` for some, `scout` counts the 19
+  gallery seeds. `gallery`: the ten seeds with the most rare lots (TEN),
+  each lot the probe counts in 3 sets or fewer on the row and tagged, each
+  swap re-read in 20 sets or more (a part's fit held to the old one's),
+  picked only where it keeps the look; the defaults swapped (the rare count
+  after them) and undone; then every swap ticked and Swap pressed: one undo
+  step, the row's count before and after the probe's own, what is left the
+  prints kept; the undo the save before and the redo the swap's save, to
+  the byte; `RARESWAP_OUT=DIR` writes `gallery.tsv`. `mcp`: on the kept
+  fixture `replace_parts rare=true` in one call the panel's defaults' file
+  (the moulds only), the others said kept, preview nothing, `lots=` one lot
+  only, a find= refused. `kept` (`src/dev/fixtures/rareswap_kept.mpd`,
+  someone else's file: author, licence, history, comments, a line spaced
+  twice, a wing placed twice, once by a mirror, a tip inside it), every
+  swap ticked: saved as it came, swapped in its swapped lines only, each
+  sub-model once, both wings' parts changed, 3665a to 3665b, the print
+  kept, saved and opened again as shown with the same rare count, undo and
+  redo to the byte. `printed` (2431p70 to 2431 picked alone), `locked` (a
+  locked 3622 stays, said), `picks` (picked at first the two moulds alone;
+  all ticked, one box off: it stays rare), `words` (de, fr, es; each box's
+  description drawn as its row's).
+- `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
+  names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`
+  writes `lots.tsv` and `catalogue.tsv`. `lpub`, `inherit`, `motion`:
+  someone else's file swapped in its lines only, one undo to the byte;
+  `mcp_edges`: a close colour swapped by default (drive's rim to Light
+  Grey), the kept fixture's Sand Blue kept and said, `rare: false` a plain
+  replace, `lots=` alone refused, "3622.DAT/379 " tidied; `held` and
+  `control`: a part in hand put back first, by the panel, a plain replace
+  and rare=true, one step, undo to the byte; `shapes`: 3626cpbb to 3626c,
+  3665a to 3665b; `webshard`: a candidate's colours file late, the same
+  offer; `trans`, `sample` (the ten models: nothing picked over ΔE 10 or
+  across a finish, red_fox one colour), `catalogue` (every rare part colour:
+  none picked across), `speed2` (the first rare row press's worst frame
+  under 50 ms), `attrib`.
+- `rsreview phone probe` (`src/dev/rsreview_phone_probe.gd`): windowed
+  430x932: the rare row and its swaps by finger, 44-point targets inside
+  the window, a touch on a row's words toggles its box, each box named and
+  described, Swap by touch one undo step.
 - `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,
@@ -3627,6 +3738,13 @@ bash tools/probe.sh balljoints_probe
 # with --out=DIR (the gap: which joint each went on by), then on the change
 # with --bin-was=DIR/bin.json: the same parts from the bin seat as today's did
 bash tools/probe.sh grabseat_probe
+# a pose that holds its own weight: the table as the code reads it; arms built
+# on a Technic ball and a friction pin weighed against the hand's sum within 1%
+# (holds, may droop, droops); a small ball and a click hinge named, not
+# weighed; 11 real sets hold at the box's pose, 6 more named; in the app the
+# droop marked with its share in Check stability, pose_model and Pose (the
+# pin's row), gone once swung up 60°
+bash tools/probe.sh posehold_probe
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
@@ -3639,6 +3757,8 @@ left, the gears and bricks to its right),
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
 `grabseat` says "grabseat: passed" (the gap run on code without a grip says
 "grabseat: gap run done" and fails nothing),
+`posehold` says "posehold: each friction joint weighed against its kind's
+measured hold, ..." (exit 0, no `FAIL`),
 `balljoints` says "balljoints: a ball joint is seated by hand as the real sets
 seat it, ..." (look at `shots/balljoints/1280x720/2_seated.png`: the red
 socket plate on the towball out in front of the grey stand, lined up),

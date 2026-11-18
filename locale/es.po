@@ -7386,6 +7386,15 @@ msgstr "ahora es el paso %d"
 msgid "took out step %d; its parts are in step %d"
 msgstr "paso %d quitado; sus piezas están en el paso %d"
 
+msgid "step %d and the next stay apart: the next begins with “%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown"
+msgstr "el paso %d y el siguiente siguen separados: el siguiente empieza con «%s», así que en LPub3D y MLCad, en un solo paso, las piezas del paso %d nunca se verían"
+
+msgid "step %d stays: it begins with “%s”, so in LPub3D and MLCad, put in the step before, that step's parts would never be shown"
+msgstr "el paso %d se queda: empieza con «%s», así que en LPub3D y MLCad, puesto en el paso anterior, las piezas de ese paso nunca se verían"
+
+msgid "step %d stays: the next begins with “%s”, so in LPub3D and MLCad, put in it, this step's parts would never be shown"
+msgstr "el paso %d se queda: el siguiente empieza con «%s», así que en LPub3D y MLCad, puestas en él, las piezas de este paso nunca se verían"
+
 msgid "step %d has no step of the model's own to put them in"
 msgstr "el paso %d no tiene un paso propio del modelo donde ponerlas"
 
@@ -14911,6 +14920,159 @@ msgstr "no hay sets que guardar: añádelos primero en Lo que tengo"
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "volvieron menos copias de las que estaban marcadas como Montado, así que esas ya no están marcadas: %s%s"
 
+msgid "Program"
+msgstr "Programa"
+
+msgid "Run"
+msgstr "Ejecutar"
+
+msgid "Run the program for the motors at each one's rated speed (it is kept with the model)"
+msgstr "Ejecutar el programa de los motores a la velocidad nominal de cada uno (se guarda con el modelo)"
+
+msgid "A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30% (by an angle), run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it). With two motors or more, each line begins with its port, A to F."
+msgstr "Una línea por orden: to 90° at 50% (hasta un ángulo, contado desde la posición construida), turn -45° at 30% (un ángulo más), run 40% for 2 s, wait 1 s, repeat 3 (las líneas sangradas debajo). Con dos motores o más, cada línea empieza por su puerto, de A a F."
+
+msgid "Running the program…"
+msgstr "Ejecutando el programa…"
+
+msgid "Write a program first, a line each: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" with the lines it repeats under it."
+msgstr "Escribe primero un programa, una línea por orden: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" con las líneas que repite debajo."
+
+msgid "%s turns nothing: its output holds no axle or pin here. Put an axle in its hub."
+msgstr "%s no hace girar nada: su salida no sujeta aquí ningún eje ni pasador. Pon un eje en su buje."
+
+msgid "The model changed as the program began: run it again."
+msgstr "El modelo cambió al empezar el programa: ejecútalo de nuevo."
+
+msgid "%s cannot turn: %s."
+msgstr "%s no puede girar: %s."
+
+msgid "%s and %s turn the same train: a program drives only one of them. Take the other's lines out, or part their trains."
+msgstr "%s y %s mueven el mismo tren: un programa solo mueve uno de ellos. Quita las líneas del otro o separa sus trenes."
+
+msgid "%s s of %s s: line %d"
+msgstr "%s s de %s s: línea %d"
+
+msgid "Stopped %s s in."
+msgstr "Detenido a los %s s."
+
+msgid "set the program"
+msgstr "programa definido"
+
+msgid "took the program out"
+msgstr "programa quitado"
+
+msgid "%s, the %s #%d"
+msgstr "%s, %s #%d"
+
+msgid "A program has %d lines at most; this one has %d."
+msgstr "Un programa tiene como mucho %d líneas; este tiene %d."
+
+msgid "Line %d: %s"
+msgstr "Línea %d: %s"
+
+msgid "Line %d: nothing to repeat; indent the lines it repeats under it."
+msgstr "Línea %d: nada que repetir; sangra debajo las líneas que repite."
+
+msgid "nothing to read."
+msgstr "nada que leer."
+
+msgid "a hub's ports are A to F, not %s."
+msgstr "los puertos de un hub van de A a F, no %s."
+
+msgid "\"%s\" is not one of its words: to, turn, run, wait, repeat."
+msgstr "\"%s\" no es una de sus palabras: to, turn, run, wait, repeat."
+
+msgid "%s takes degrees: \"%s 90° at 50%\"."
+msgstr "%s lleva grados: \"%s 90° at 50%\"."
+
+msgid "%s° is more than the %d° a line turns at most."
+msgstr "%s° es más que los %d° que gira una línea como mucho."
+
+msgid "after the degrees, \"at\" and a speed: \"%s 90° at 50%\"."
+msgstr "tras los grados, \"at\" y una velocidad: \"%s 90° at 50%\"."
+
+msgid "a speed is a share of the motor's: \"at 50%\"."
+msgstr "una velocidad es una parte de la del motor: \"at 50%\"."
+
+msgid "run takes a speed and a time: \"run 40% for 2 s\"."
+msgstr "run lleva una velocidad y un tiempo: \"run 40% for 2 s\"."
+
+msgid "wait waits for no motor: \"wait 1 s\"."
+msgstr "wait no espera a ningún motor: \"wait 1 s\"."
+
+msgid "repeat repeats the lines under it, for every motor: \"repeat 3\"."
+msgstr "repeat repite las líneas de debajo, para todos los motores: \"repeat 3\"."
+
+msgid "repeat takes how many times: \"repeat 3\"."
+msgstr "repeat lleva cuántas veces: \"repeat 3\"."
+
+msgid "repeat goes round 1 to %d times."
+msgstr "repeat da de 1 a %d vueltas."
+
+msgid "a time in seconds: \"1 s\", or \"500 ms\"."
+msgstr "un tiempo en segundos: \"1 s\" o \"500 ms\"."
+
+msgid "a time from 0 to %d s."
+msgstr "un tiempo de 0 a %d s."
+
+msgid "a speed is 100% at most, the motor's speed with no load."
+msgstr "una velocidad es como mucho 100 %, la del motor sin carga."
+
+msgid "a speed of at least 1%, or it never gets there."
+msgstr "una velocidad de al menos 1 %, o nunca llega."
+
+msgid "Line %d names no motor, and %d are on the hub's ports: %s. Begin it with its port: \"%s %s\"."
+msgstr "La línea %d no nombra ningún motor, y hay %d en los puertos del hub: %s. Empiézala por su puerto: \"%s %s\"."
+
+msgid "Line %d: no motor is on port %s. %s."
+msgstr "Línea %d: no hay ningún motor en el puerto %s. %s."
+
+msgid "No motor here for a program to drive: put in one that plugs into a hub (a SPIKE Prime, Technic or Powered Up motor) with its output on the axle it turns."
+msgstr "Aquí no hay ningún motor que un programa pueda mover: pon uno que se conecte a un hub (un motor SPIKE Prime, Technic o Powered Up) con su salida en el eje que gira."
+
+msgid "The %s #%d plugs into no hub (a battery box or an IR receiver runs it), so a program does not drive it: Play turns it. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "%s #%d no se conecta a ningún hub (lo mueve una caja de pilas o un receptor IR), así que ningún programa lo mueve: Reproducir lo gira. Un motor SPIKE Prime, Technic o Powered Up admite un programa."
+
+msgid "The %s #%d is on no port: a hub has six, A to F."
+msgstr "%s #%d no está en ningún puerto: un hub tiene seis, de la A a la F."
+
+msgid "%d motors are on no port (%s): a hub has six, A to F."
+msgstr "%d motores no están en ningún puerto (%s): un hub tiene seis, de la A a la F."
+
+msgid "No motor here plugs into a hub (a battery box or an IR receiver runs each), so a program drives none of them: Play turns them. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "Ningún motor de aquí se conecta a un hub (a cada uno lo mueve una caja de pilas o un receptor IR), así que un programa no mueve ninguno: Reproducir los gira. Un motor SPIKE Prime, Technic o Powered Up admite un programa."
+
+msgid "This program runs past %d moves or %d minutes; Simulate plays one that does less. Repeat it fewer times."
+msgstr "Este programa pasa de %d movimientos o %d minutos; Simular reproduce uno que haga menos. Repítelo menos veces."
+
+msgid "Line %d: %s stops at %s on its way to %s, %s s in: %s."
+msgstr "Línea %d: %s se detiene en %s camino de %s, a los %s s: %s."
+
+msgid "Ran to its end in %s s."
+msgstr "Ejecutado hasta el final en %s s."
+
+msgid "Ran to its end in %s s: %s."
+msgstr "Ejecutado hasta el final en %s s: %s."
+
+msgid "its motor stalls: the weight it lifts asks more than the %s N·cm it gives at %s V"
+msgstr "su motor se cala: el peso que levanta pide más que los %s N·cm que da a %s V"
+
+msgid "%s meets %s"
+msgstr "%s choca con %s"
+
+msgid "the loop it closes goes no further"
+msgstr "el lazo que cierra no da más de sí"
+
+msgid "Simulate checked its turn no further"
+msgstr "Simular no comprobó su giro más allá"
+
+msgid "a program for its motors this build cannot read, kept in the file as it is"
+msgstr "un programa para sus motores que esta versión no sabe leer, guardado tal cual en el archivo"
+
+msgid "its program does not run as written (%s), kept as it is"
+msgstr "su programa no funciona tal como está escrito (%s), guardado tal cual"
+
 msgid "Find a step by part or colour"
 msgstr "Buscar un paso por pieza o color"
 
@@ -14946,6 +15108,232 @@ msgstr "Ningún paso coloca «%s»: el modelo lo tiene en %d colores más"
 
 msgid "No step places “%s”"
 msgstr "Ningún paso coloca «%s»"
+
+# posehold: whether a posed joint holds (PoseHold.pose_words, the Pose panel's lines and
+# its rows' marks), a droop in Check stability, a drag's status and Balance's words
+
+msgid "Joints that droop: %d"
+msgstr "Uniones que ceden: %d"
+
+msgid "%s on %s, %s g past it: its Technic ball joint holds %d% of what hangs on it"
+msgstr "%s en %s, %s g más allá: su rótula Technic sostiene el %d % de lo que cuelga de ella"
+
+msgid "%s on %s, %s g past it: its %d friction pins hold %d% of what hangs on them"
+msgstr "%s en %s, %s g más allá: sus %d pasadores con fricción sostienen el %d % de lo que cuelga de ellos"
+
+msgid "%s on %s, %s g past it: its friction pin holds %d% of what hangs on it"
+msgstr "%s en %s, %s g más allá: su pasador con fricción sostiene el %d % de lo que cuelga de él"
+
+msgid "And %d more."
+msgstr "Y %d más."
+
+msgid "Friction joints weighed: %d, and none droops."
+msgstr "Uniones con fricción pesadas: %d, y ninguna cede."
+
+msgid "%s on %s holds, but a loose joint of its kind may not: the loosest measured held %d% of this."
+msgstr "%s en %s sostiene, pero una unión floja de su tipo quizá no: la más floja medida sostuvo el %d % de esto."
+
+msgid "Small ball joints here: %d, not weighed: no one has published what one holds."
+msgstr "Rótulas pequeñas aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Click hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Bisagras de clic aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Bisagras aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Turntables here: %d, not weighed: no one has published what one holds."
+msgstr "Plataformas giratorias aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Clips on bars here: %d, not weighed: no one has published what one holds."
+msgstr "Clips en barras aquí: %d, sin pesar: nadie ha publicado cuánto sostiene uno."
+
+msgid "Droops: it holds %d% of what hangs on it."
+msgstr "Cede: sostiene el %d % de lo que cuelga de ella."
+
+msgid "%s droops on %s on a Technic ball joint with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s cede en %s en una rótula Technic, con %s g más allá: sostiene el %d % de lo que cuelga de ella"
+
+msgid "%s droops on %s on a friction pin with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s cede en %s en un pasador con fricción, con %s g más allá: sostiene el %d % de lo que cuelga de él"
+
+msgid "%s droops on %s on %d friction pins in a line with %s g past it: they hold %d% of what hangs on them"
+msgstr "%s cede en %s en %d pasadores con fricción en línea, con %s g más allá: sostienen el %d % de lo que cuelga de ellos"
+
+msgid "the %s droops on a Technic ball joint: it holds %d% of what hangs on it"
+msgstr "%s cede en una rótula Technic: sostiene el %d % de lo que cuelga de ella"
+
+msgid "the %s droops on a friction pin: it holds %d% of what hangs on it"
+msgstr "%s cede en un pasador con fricción: sostiene el %d % de lo que cuelga de él"
+
+msgid "the %s droops on %d friction pins in a line: they hold %d% of what hangs on them"
+msgstr "%s cede en %d pasadores con fricción en línea: sostienen el %d % de lo que cuelga de ellos"
+
+msgid "1 friction joint droops, in red, holding %d% of what hangs on it."
+msgstr "1 unión con fricción cede, en rojo: sostiene el %d % de lo que cuelga de ella."
+
+msgid "%d friction joints droop, in red, the worst holding %d% of what hangs on it."
+msgstr "%d uniones con fricción ceden, en rojo, la peor sostiene el %d % de lo que cuelga de ella."
+
+msgid "on a Technic ball joint"
+msgstr "en una rótula Technic"
+# rareswap (APP_UX9 #12): the parts list's row for the lots that come in 3 sets or fewer, their swaps for a common part or colour, picked or not, put in as one undo step
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it: swap for common parts…"
+msgstr "1 lote viene en %d sets o menos, así que pocos vendedores lo tienen: intercámbialo por piezas comunes…"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them: swap for common parts…"
+msgstr "%d lotes vienen en %d sets o menos, así que pocos vendedores los tienen: intercámbialos por piezas comunes…"
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it"
+msgstr "1 lote viene en %d sets o menos, así que pocos vendedores lo tienen"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them"
+msgstr "%d lotes vienen en %d sets o menos, así que pocos vendedores los tienen"
+
+msgid "Swapped %s for common ones, %s"
+msgstr "Intercambiados %s por otros comunes, %s"
+
+msgid "1 rare lot"
+msgstr "1 lote raro"
+
+msgid "%d rare lots"
+msgstr "%d lotes raros"
+
+msgid "Still rare: %s"
+msgstr "Aún raros: %s"
+
+msgid "No lot is rare now"
+msgstr "Ya no hay ningún lote raro"
+
+msgid "Counting the sets each part comes in…"
+msgstr "Contando los sets en que viene cada pieza…"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories: each swap is a part or a colour in %d sets or more, picked or not, put in as one undo step"
+msgstr "Cada uno viene en su color en %d sets o menos, según los inventarios de sets de Rebrickable: cada intercambio es una pieza o un color en %d sets o más, elegido o no, aplicado en un solo paso de deshacer"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories"
+msgstr "Cada uno viene en su color en %d sets o menos, según los inventarios de sets de Rebrickable"
+
+msgid "Back to the list"
+msgstr "Volver a la lista"
+
+msgid "The parts list, nothing swapped"
+msgstr "La lista de piezas, sin intercambiar nada"
+
+msgid "Swap 1 lot"
+msgstr "Intercambiar 1 lote"
+
+msgid "Swap %d lots"
+msgstr "Intercambiar %d lotes"
+
+msgid "Put the picked swaps in, as one undo step"
+msgstr "Aplicar los intercambios elegidos, en un solo paso de deshacer"
+
+msgid "Rare lots, and a common swap for each"
+msgstr "Lotes raros, y un intercambio común para cada uno"
+
+msgid "Finding a common part or colour for each…"
+msgstr "Buscando una pieza o un color común para cada uno…"
+
+msgid "A swap is a part or a colour in %d sets or more: the same shape in the lot's colour where there is one, else the nearest colour of its finish"
+msgstr "Un intercambio es una pieza o un color en %d sets o más: la misma forma en el color del lote donde la haya, si no el color más cercano de su acabado"
+
+msgid "Only a swap that keeps the look starts picked: the same shape, or a close colour of the same finish"
+msgstr "Solo un intercambio que mantiene el aspecto empieza elegido: la misma forma, o un color cercano del mismo acabado"
+
+msgid "Swap this lot"
+msgstr "Intercambiar este lote"
+
+msgid "No part or colour of it comes in %d sets"
+msgstr "Ninguna pieza ni color suyo viene en %d sets"
+
+msgid "rare: %s"
+msgstr "raro: %s"
+
+msgid "in 1 set"
+msgstr "en 1 set"
+
+msgid "in %s sets"
+msgstr "en %s sets"
+
+msgid "in no set"
+msgstr "en ningún set"
+
+msgid "%d × %s (%s) in %s, %s → %s"
+msgstr "%d × %s (%s) en %s, %s → %s"
+
+msgid "%d × %s (%s) in %s, %s"
+msgstr "%d × %s (%s) en %s, %s"
+
+msgid "%s, %s (ΔE %s)"
+msgstr "%s, %s (ΔE %s)"
+
+msgid "%s (%s), the same shape and connections in its colour, %s"
+msgstr "%s (%s), la misma forma y conexiones en su color, %s"
+
+msgid "the plain %s (%s), without its print, %s"
+msgstr "la pieza lisa %s (%s), sin su impresión, %s"
+
+msgid "no swap in %d sets or more: %s"
+msgstr "ningún intercambio en %d sets o más: %s"
+
+msgid "%s itself comes in %d sets at most, in any colour"
+msgstr "%s en sí viene en %d sets como mucho, en cualquier color"
+
+msgid "%s itself comes in 1 set at most, in any colour"
+msgstr "%s en sí viene en 1 set como mucho, en cualquier color"
+
+msgid "no colour of its transparency comes in %d sets"
+msgstr "ningún color de su transparencia viene en %d sets"
+
+msgid "Pick any other yourself"
+msgstr "Elige tú los demás"
+
+msgid "no other mould of it sits as it does in %d sets or more"
+msgstr "ningún otro molde suyo encaja igual en %d sets o más"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and 1 more, %s"
+msgstr "%s (%s), la misma forma en su color, con todas sus conexiones y 1 más, %s"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and %d more, %s"
+msgstr "%s (%s), la misma forma en su color, con todas sus conexiones y %d más, %s"
+
+msgid "still made in its colour"
+msgstr "aún se fabrica en su color"
+
+msgid "a close colour"
+msgstr "un color cercano"
+
+msgid "a different colour"
+msgstr "otro color"
+
+msgid "not see-through"
+msgstr "no transparente"
+
+msgid "see-through"
+msgstr "transparente"
+
+msgid "loses its %s"
+msgstr "pierde su acabado %s"
+
+msgid "becomes %s"
+msgstr "toma un acabado %s"
+
+msgid "a part is in hand and cannot go back where it was: put it down or press Escape first"
+msgstr "hay una pieza en la mano que no puede volver a su sitio: suéltala o pulsa Esc primero"
+
+msgid "nothing swapped"
+msgstr "no se intercambió nada"
+
+msgid "nothing swapped: %s"
+msgstr "no se intercambió nada: %s"
+
+msgid "stayed: %s"
+msgstr "se quedaron: %s"
+
+msgid "%s: %s's shape could not be had"
+msgstr "%s: no se pudo obtener la forma de %s"
 
 # partplaces (APP_UX9 #14)
 msgid "Where it's kept…"

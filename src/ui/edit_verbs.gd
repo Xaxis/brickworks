@@ -28,6 +28,10 @@ var reopen: Callable = func(_again: bool) -> bool: return false
 ## What that would take back, or do again, in words; "" for nothing
 ## (ModelStore.reopen_words).
 var reopen_words: Callable = func(_again: bool) -> String: return ""
+## Undo of a panel open over the model that keeps its own (My collection's
+## Built presses, CollectionDialog.undo_built): what it took back in words,
+## said, and the model's history is left alone; "" when it had nothing.
+var panel_undo: Callable = func() -> String: return ""
 ## Building together (Together): while in a session, Undo and Redo are this
 ## person's own, and take back none of anybody else's parts. Null until the
 ## session is made (Main._together, Later): then nobody is in one.
@@ -179,6 +183,22 @@ func _say_first(count: int, words: String) -> Working.Job:
 	var job: Working.Job = Working.begin(words % Working.comma(count))
 	await job.shown()
 	return job
+
+
+## The person's own Undo or Redo (Edit's Undo, Ctrl+Z): with a panel open
+## over the model that keeps its own undo (My collection's Built presses,
+## [member panel_undo]), Undo is that panel's; else [method press]. The
+## person's Claude undoes by [method press] alone, so its undo takes back the
+## model's change it says it did, never a Built press behind it (s5review:
+## undo with My collection open took back the press at the account, and the
+## motion check's put-back loop would have taken every one).
+func own_undo(again: bool = false) -> void:
+	if not again:
+		var taken: String = await panel_undo.call()
+		if not taken.is_empty():
+			say.call(taken)
+			return
+	await press("redo" if again else "undo")
 
 
 ## A button on the edit bar, by name: the same thing its key does.

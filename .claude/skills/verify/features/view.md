@@ -2133,9 +2133,23 @@ picture the assistant is shown.
   mcpwalk t2: a step's parts taken off by `edit_model`, saved and opened
   again, another's taken off, a part put on, `edit_steps later` (the step
   asked moves, not the next) and a merge, saved and opened again (the same
-  settings, and saved again the same text). It does this on the file
+  settings, and saved again the same text). Then every step edit beside the
+  merge (`_siblings`, mergekeep): split, take out, earlier, later, merge of
+  the yellow, the blue and the last two, add at the end, each also with the
+  two steps before the yellow's parts taken off first, so the step with the
+  booklet's per-page and page lines is renumbered: each saved, opened and
+  saved again, the settings on their step, the second save byte for byte the
+  first (`NAME_siblingNN_saved.mpd`, `_again.mpd` in --into). And someone
+  else's file's "PAGE NEW" and "PAGE ALONE" stay on their lines through an
+  edit, and a share's strip keeps them (`_page_in_place`): up to mergekeep a
+  save took every "0 !BRICKWORKS PAGE …" line out as a shared link's
+  (SharedPages) and the looks put it back by its neighbours, after the
+  merged step's parts, so the reopen gave its settings to the step before. It does this on the file
   written back over and on a copy written whole (Author: Brickworks): 181
-  checks, of which 19 fail on the code before stepsettings. Windowed, it
+  checks, of which 19 fail on the code before stepsettings. The file half
+  (`--no-booklet`) is listed headless (tools/suite/headless.txt
+  `booklet_edit:--no-booklet`, the header's second command), so the release
+  train runs it: `PROBE_LISTED=1 tools/probe.sh booklet_edit` runs it so. Windowed, it
   also puts a step earlier with Lay out page… up on its page and checks no
   step there shows a picture drawn of another (`_pictures_follow`), and
   writes `row_before_move.html` and `row_after_earlier.html` to print
@@ -3159,7 +3173,11 @@ picture the assistant is shown.
   on every way in (a file, light_model, Together, Render's Add buttons).
   Only the main model's lines are read (to an MPD's second section: a
   sub-model keeps its own lights and views, `LdrModel.section_lines`, held by
-  its definition in `BrickWorld.section_lines` so a rename, a Make round it
+  its definition in `BrickWorld.section_lines`, those its head had after its
+  `0 Name:` written after its Name and Author again (`LdrModel.NAMED_HERE`,
+  an empty marker line among them; up to mergekeep an unedited save moved a
+  sub-model's PROGRAM, VIEW or LIGHT after its Author above its Name:
+  `hpreview_probe only=extra`, `only=files` sub and lower_sub), so a rename, a Make round it
   or the sub-model it is in taken apart keeps them in its section, undo and
   redo too, `Assemblies.lines_renamed`; the step that leaves a sub-model no
   copy takes them, `Assemblies.lines_follow` after a Delete, Cut, MCP

@@ -63,14 +63,17 @@ static func attach_tested(text: String, library: PartLibrary, store: ModelStore,
 
 ## [param text] without carried steps: their lines alone, not the
 ## booklet's page set up ("0 !BRICKWORKS PAGE_SETUP", which a share took
-## away up to 2026-11-07).
+## away up to 2026-11-07), nor a step's page of its own ("0 !BRICKWORKS PAGE
+## NEW" or "ALONE", which a share took away up to 2026-11-18, mergekeep):
+## a carried step's PAGE line says JSON.
 static func strip(text: String) -> String:
-	if text.find(HEAD) < 0 and text.find(PAGE) < 0:
+	if text.find(HEAD) < 0 and text.find(PAGE + "{") < 0:
 		return text
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
 		var trimmed: String = line.strip_edges(true, false)
-		if not trimmed.begins_with(HEAD) and not trimmed.begins_with(PAGE):
+		if not trimmed.begins_with(HEAD) and not (trimmed.begins_with(PAGE)
+				and trimmed.substr(PAGE.length()).strip_edges(true, false).begins_with("{")):
 			kept.append(line)
 	return "\n".join(kept)
 

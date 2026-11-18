@@ -933,6 +933,28 @@ func sets_in_colour(part_id: String, code: int) -> int:
 	return most
 
 
+## The most sets [param part_id] comes in, in any one colour, by the same
+## inventories as [method sets_in_colour]: 0 when no set is known to have
+## it, -1 while its file is still to come. One read of its row, where asking
+## every colour in turn was 400 reads (rsfix: the parts list's rare count).
+func most_sets(part_id: String) -> int:
+	var info: PartInfo = parts.get(part_id)
+	if info != null and info.is_redirect():
+		part_id = info.moved_to
+	var file: int = colour_shard_of(part_id)
+	var held: Variant = _colour_sets.get(file)
+	if held == null:
+		_read_colour_sets(file)
+		held = _colour_sets.get(file)
+	if not held is Dictionary:
+		return -1 if held == null or _colour_sets_out.has(file) else 0
+	var most: int = 0
+	var row: Dictionary = (held as Dictionary).get(part_id, {})
+	for code: Variant in row:
+		most = maxi(most, int(row[code]))
+	return most
+
+
 ## The colours files still on their way, by number.
 var _colour_sets_out: Dictionary = {}
 
@@ -1003,9 +1025,12 @@ static var MOULD_NUMBER := RegEx.create_from_string("^([ux]?\\d+)[a-z]$")
 
 
 ## Each part's [member PartInfo.mould_colors]: the colours of the parts
-## numbered as it is but for a mould letter, itself among them.
+## numbered as it is but for a mould letter, itself among them. And
+## [method moulds_of]'s index, kept from the same pass (rsfix: RareSwap built
+## its own over every part, 122-178 ms, on the first rare row pressed).
 func _index_moulds() -> void:
 	var by_number: Dictionary = {}
+	_moulds_by_number.clear()
 	for id: String in _ordered_ids:
 		var info: PartInfo = parts[id]
 		info.mould_colors = PackedInt32Array()
@@ -1021,11 +1046,25 @@ func _index_moulds() -> void:
 		if moulds.size() < 2:
 			continue
 		var all: Dictionary = {}
+		var ids := PackedStringArray()
 		for info: PartInfo in moulds:
+			ids.append(info.id)
 			for code: int in info.colors:
 				all[code] = true
 		for info: PartInfo in moulds:
 			info.mould_colors = PackedInt32Array(all.keys())
+		_moulds_by_number[number] = ids
+
+
+## Number -> the parts made in it, by mould letter or none, where there are
+## two or more: "3794" -> 3794a, 3794b. A redirect is left out.
+var _moulds_by_number: Dictionary = {}
+
+
+## The parts numbered [param number] but for a mould letter ("3665" for
+## 3665a and 3665b), in catalogue order; empty where there is only one.
+func moulds_of(number: String) -> PackedStringArray:
+	return _moulds_by_number.get(number, PackedStringArray())
 
 
 ## The assemblies LDraw draws whole that are built on [param id]: 60593c01

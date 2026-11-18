@@ -82,10 +82,13 @@ ui:bands and springs by hand
 
 **Tools › Check stability** ([[Alt+K]]) weighs the model: where its centre of mass is against its footprint, whether it stands, and which joints carry more than they hold. Those parts are selected. [View › Stress](/docs/the-view#stress) shows the same on every part as you build, and with the assistant on, a weak part's right-click menu has **Ask Claude to brace this…**.
 
+A posed arm on a Technic ball joint or a friction pin is weighed against what one of its kind was measured to hold, from builders' tests: 2.85 N·cm for a Technic ball, 1.04 for a friction pin. A joint past that droops. It is tinted red, and Check stability, **Build › Motions…** and Stress say how much it holds, as in "holds 74% of what hangs on it". Pose it nearer upright, or shorten or lighten what hangs on it, and the mark goes. Nobody has published what a small ball joint, a click hinge, a friction hinge, a turntable or a clip holds, so those are named and never given a number.
+
 <!-- covers
 lib:stability
 lib:balance
 ui:balance readout
+ui:a pose that holds its own weight
 -->
 
 ![An arm reaching far past a small base: its footprint drawn in red, the centre of mass marked beyond its edge.](/img/stability-720.webp "Check stability on a model that would tip.")

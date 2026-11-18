@@ -2334,6 +2334,7 @@ func _built_count(number: String) -> int:
 ## The Built mark of set [param number] pressed: one copy more kept built, or
 ## none once all were (one copy: built, then apart). Made at the account
 ## from the count shown; what went wrong is said and returned, "" when done.
+## Each press made is kept to take back ([method undo_built]).
 func mark_built(number: String) -> String:
 	await _begin()
 	var copies: int = store.collection.copies_of(number)
@@ -2345,15 +2346,66 @@ func mark_built(number: String) -> String:
 		_say(str(done["said"]))
 		_fill_own()
 		return str(done["said"])
-	var record: Dictionary = store.records.get(number, {})
-	var named: String = "%s %s" % [number, str(record["n"])] if record.has("n") else number
-	if now == 0:
-		_say("%s taken apart: its parts count as yours to build with again" % named)
-	elif copies == 1:
-		_say("%s kept built: its parts are left out of what you build with" % named)
-	else:
-		_say("%s: %d of %d copies kept built, their parts left out of what you build with" % [named, now, copies])
+	_built_done.append({"set": number, "was": was, "now": now, "account": _account_id()})
+	_say(_built_words(number, now, copies))
 	return ""
+
+
+## The Built presses made here, the last last: {"set", "was", "now",
+## "account"} each. Ctrl+Z with My collection open takes back the last
+## (kbreview finding 4: Built had no undo).
+var _built_done: Array = []
+
+
+## The last Built press taken back, while My collection is open: the same
+## op the other way round at the account ({was: now, built: was}), so the
+## counts are as they were before it, and what it says is returned; "" when
+## there is no press to take back, or the panel is shut, and Undo is the
+## model's. Refused like a press when the marks moved on since (another
+## device): said, and the collection shown as it is.
+func undo_built() -> String:
+	if not is_visible_in_tree() or _built_done.is_empty():
+		return ""
+	var last: Dictionary = _built_done.pop_back()
+	if str(last["account"]) != _account_id():
+		_built_done.clear()
+		return ""
+	var number: String = str(last["set"])
+	await _begin()
+	var done: Dictionary = await store.set_built([{"set": number, "was": int(last["now"]),
+		"built": int(last["was"])}])
+	_end()
+	if done["kind"] != CollectionStore.DONE:
+		var said_back: String = "undid nothing: somebody else changed %s since" % _named(number) \
+			if done["kind"] == CollectionStore.CONFLICT else str(done["said"])
+		_say(said_back)
+		_fill_own()
+		return said_back
+	var words: String = "undid: %s" % _built_words(number, int(last["was"]), store.collection.copies_of(number))
+	_say(words)
+	return words
+
+
+## Who is signed in, so a press is never taken back on another account.
+func _account_id() -> String:
+	return store.account.user_id if store != null and store.account != null else ""
+
+
+## Set [param number] with its name, as the Built words name it.
+func _named(number: String) -> String:
+	var record: Dictionary = store.records.get(number, {})
+	return "%s %s" % [number, str(record["n"])] if record.has("n") else number
+
+
+## What a Built mark now says of set [param number]: [param now] of its
+## [param copies] kept built.
+func _built_words(number: String, now: int, copies: int) -> String:
+	var named: String = _named(number)
+	if now == 0:
+		return "%s taken apart: its parts count as yours to build with again" % named
+	if copies == 1:
+		return "%s kept built: its parts are left out of what you build with" % named
+	return "%s: %d of %d copies kept built, their parts left out of what you build with" % [named, now, copies]
 
 
 ## Every set in the collection saved as a file a shop reads back: "csv", a
