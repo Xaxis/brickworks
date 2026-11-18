@@ -283,6 +283,7 @@ export const reddit = {
   id: "reddit",
   name: "Reddit",
   env: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"],
+  scopes: SCOPES.split(" "),
   // How long Reddit lets each part be (a title 300, a post or comment 40,000).
   most: { title: 300, body: 40000 },
   where: "community",
