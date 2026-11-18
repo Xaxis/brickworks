@@ -363,7 +363,17 @@ Whether what you built is still there tomorrow, and still means the same thing.
   before it, as the booklet shows it (`_looks_with_loose`). Up to smalls5
   (2026-11-18) a patch wrote it at the end of the last step: after a last
   step with no STEP line it joined that step (358-1 opened as 29 pages, not
-  30) and after a turned one it opened turned (streview addturn). A
+  30) and after a turned one it opened turned (streview addturn). Where the
+  author already ends the turn after the last step with parts (5540-1: an
+  empty step, then "0 ROTSTEP END" before the back cover's LPub pages), the
+  part goes in the step that line starts, just after it, with a plain
+  "0 STEP" after the part when that step has lines of its own, and no line of
+  the author's is written again (`ModelStore._past_turn_ends`,
+  `SourceFile._head_after_turn_end`; s5fix). Up to s5fix the "0 STEP" before
+  it was written "0 ROTSTEP END" (s5review F2). `s5steps_probe` (headless;
+  `S5_ALL=1` the big files, `S5_EVERY=1` every step of a grouped file) edits
+  each model's end on real files and checks the rest of the file byte for
+  byte when a part is put on top. A
   MULTI_STEP BEGIN or END a step taken out or merged leaves inside the
   step made of two moves to just after that step's end
   (`SourceFile._regroup`; `_grouped_at_steps` for a section written whole),

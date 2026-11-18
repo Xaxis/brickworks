@@ -2792,6 +2792,43 @@ func _loose_steps(authored: bool) -> Dictionary:
 	return {"bricks": loose, "sections": sections}
 
 
+## [param loose] ([method _loose_steps]) with each section's parts put in
+## the step the author's "0 ROTSTEP END" starts, where a turn in force after
+## the section's last step with parts is ended so by the author: they are
+## written just after that line (SourceFile._head_after_turn_end), in the
+## usual view as the booklet shows them, and no line of the author's is
+## written again. Up to s5fix they went in the empty step before it, and the
+## line ending the last step was written "0 ROTSTEP END" for them (s5review:
+## 5540-1's plane).
+static func _past_turn_ends(world: BrickWorld, loose: Dictionary) -> Dictionary:
+	if loose.is_empty() or world.step_looks.is_empty():
+		return loose
+	var sections: Dictionary = loose["sections"]
+	var moved: Dictionary = {}
+	for section: String in sections:
+		var step: int = int(sections[section])
+		if BookletLooks.turn_at(world, section, step).is_empty():
+			continue
+		var head: String = BookletLooks.definition_of(section) + "|"
+		var ended: int = -1
+		for name: String in world.step_looks:
+			var tail: String = name.substr(head.length())
+			if name.begins_with(head) and tail.is_valid_int() and tail.to_int() > step \
+					and str((world.step_looks[name] as Dictionary).get("turn", "")) == "end" \
+					and (ended < 0 or tail.to_int() < ended):
+				ended = tail.to_int()
+		if ended >= 0 and BookletLooks.turn_at(world, section, ended).is_empty():
+			moved[section] = ended
+	if moved.is_empty():
+		return loose
+	var bricks: Dictionary = (loose["bricks"] as Dictionary).duplicate()
+	for id: int in bricks:
+		var section: String = AuthorSteps.home(world, Assemblies.path_of(world.get_brick(id)))
+		if moved.has(section):
+			bricks[id] = moved[section]
+	return {"bricks": bricks, "sections": sections.merged(moved, true)}
+
+
 ## [param looks] with the step of the parts put down outside the author's
 ## steps ([param loose], [method _loose_steps]) in the usual view, as the
 ## booklet shows it (a page of such parts has no turn, BookletLooks.turn_at):
@@ -2867,7 +2904,7 @@ func _source_asked(title_now: String) -> Dictionary:
 	# a patch wrote it at the end of the file's last step, so after a last
 	# step with no STEP line to end it it joined that step (streview: 358-1,
 	# 30 pages opened again as 29).
-	var loose: Dictionary = _loose_steps(source.authored)
+	var loose: Dictionary = _past_turn_ends(world, _loose_steps(source.authored))
 	if not loose.is_empty():
 		var numbers: Dictionary = loose["bricks"]
 		for home: BrickWorld.Brick in bricks:

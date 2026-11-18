@@ -712,6 +712,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 	# Parts added: at the end of their step, in their copy's sub-model.
 	var added: Dictionary = {}      ## restepped section -> [[step, line]]
+	var heads: Dictionary = {}      ## line -> true: a STEP goes in there ([method _head_after_turn_end])
 	for entry: Array in left:
 		var brick: BrickWorld.Brick = entry[0]
 		var at: Transform3D = entry[1]
@@ -737,10 +738,19 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				added[section] = []
 			(added[section] as Array).append([brick.step, said])
 			continue
+		var head: Array = _head_after_turn_end(section, brick.step)
+		if not head.is_empty():
+			_insert(inserts, int(head[0]), [said])
+			if bool(head[1]):
+				heads[int(head[0])] = true
+			continue
 		var to: Variant = _step_end(section, brick.step)
 		if to == null:
 			return null
 		_insert(inserts, to, _step_lines(section, brick.step) + [said])
+	# Its STEP after every new part of it.
+	for at: int in heads:
+		_insert(inserts, at, ["0 STEP"])
 
 	_unplace_emptied(replace, left, moved_into)
 
@@ -1410,6 +1420,48 @@ func _stack_before(section: String, at: int) -> Array:
 	return out
 
 
+## Where a new part of step [param step] goes in [param section] when the
+## line ending the step before is the author's "0 ROTSTEP END" and no part
+## of the file's is after it: [the line just after that one, whether a STEP
+## goes after the part], or [] for any other. A part put down after a
+## turned last step whose turn the author ends so is numbered into the step
+## that line starts (ModelStore._past_turn_ends): it goes at that step's
+## head, in the usual view, and when the step has lines of its own (5540-1's
+## LPub INSERT MODEL and INSERT PAGE) a plain "0 STEP" after it keeps them a
+## step of their own. No line of the author's is written again: up to s5fix
+## the part went before that line, still turned, and the line ending the
+## last step was written "0 ROTSTEP END" for it (s5review).
+func _head_after_turn_end(section: String, step: int) -> Array:
+	if step <= 0 or not sections.has(section):
+		return []
+	var span: Array = sections[section]
+	var stop: int = int(span[1])
+	var seen: int = 0
+	var head: int = -1
+	for n: int in range(int(span[0]), stop):
+		if not _is_step(lines[n]):
+			continue
+		if seen == step - 1:
+			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+			if words.size() < 3 or words[1].to_upper() != "ROTSTEP" or words[2].to_upper() != "END":
+				return []
+			head = n + 1
+			break
+		seen += 1
+	if head < 0:
+		return []
+	var own: bool = false
+	var in_step: bool = true
+	for n: int in range(head, stop):
+		if _is_placing(lines[n]):
+			return []
+		if in_step and _is_step(lines[n]):
+			in_step = false
+		elif in_step and not lines[n].strip_edges().is_empty():
+			own = true
+	return [head, own]
+
+
 ## Where a part of step [param step] goes at its end in [param section]:
 ## before the line ending that step, or at the section's end for its last
 ## step and for none (-1); -1 when the section has no such step.
@@ -1810,6 +1862,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				var text: String = str(rewrites.get(k, "")) + _eol() if rewrites.has(k) else lines[k]
 				_add_to(inserts, at, [text, MOVE, k, [], float(put[1])])
 	plan.relaid = laid_out.duplicate()
+	var heads: Dictionary = {}      ## line -> true: a STEP put in there ([method _head_after_turn_end])
 	var keys: Array = groups.keys()
 	keys.sort()
 	for key: String in keys:
@@ -1818,6 +1871,13 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		var step: int = int(group[2])
 		var to: int = _end_of_step(section, step)
 		var order: float = 0.0
+		var head: Array = [] if laid_out.has(section) else _head_after_turn_end(section, step)
+		if not head.is_empty():
+			to = int(head[0])
+			# Its STEP, once, after every new part of it.
+			if bool(head[1]) and not heads.has(to):
+				heads[to] = true
+				_add_to(inserts, to, ["0 STEP" + _eol(), STEPS, -1, [], 0.5])
 		if laid_out.has(section):
 			var end: Array = _laid_end(laid_out[section], section, step)
 			to = int(end[0])
