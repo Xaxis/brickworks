@@ -72,6 +72,16 @@ A set standing built on your shelf is not loose parts. Press **Built** beside it
 
 The mark is kept with your account and in the files Save sets as CSV and as XML make. Your AI can mark a set too: tell it which sets you keep built, or took apart, and it says each as it was, so it can be put back. An older Brickworks keeps the set but not the mark, and counts every set.
 
+## Where each part is kept {#places}
+
+A sorted collection lives in drawers, boxes and trays. **Where it's kept…** on *What I own* lists every part and colour you own, your sets' parts with them, each with a place to type: "drawer 3", "B12", "the red tub", up to 40 characters. Press Enter and it is kept with your account, on every device you sign in on. To place many at once, find them (a number, a name, a colour, or a place's own words), type the place under the find, and press **Put them there**; with nothing typed, the parts shown come off their places. **By place** lists them in the order of a walk round the drawers: *drawer 2* before *drawer 10*.
+
+The parts list then offers **By where it's kept**, and each row names its place; typing a place in its find shows what is kept there. The booklet's parts box says under each part's count where to take it from, *from drawer 3*. Turn off **Say where each is kept in the booklet** for a booklet you make for someone else.
+
+**Save places as CSV** writes every place as a spreadsheet (part, colour, colour name, place), and **Places CSV…** reads one back, or one of your own with a Part, a Colour and a Place column: each place it names is set, and anything you do not own is said and left out. Start over forgets the places with everything else.
+
+Your AI can set them too: tell it where you keep your parts, and it places them all in one go, saying where each was, so any can be put back. An older Brickworks shows your collection without its places and leaves them as they are with your account.
+
 ## What do I need? {#need}
 
 ![The car's parts list, 61 pieces in 32 lots: each with how many, its picture, number, name and colour; along the top What do I need?, Save as CSV, and the BrickLink, Rebrickable and LEGO® Pick a Brick lists.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")

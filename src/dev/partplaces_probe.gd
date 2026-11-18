@@ -388,21 +388,29 @@ func _steps() -> void:
 		_check("it keeps every set and lot byte for byte, and drops only the places: %s" % ", ".join(its.keys()),
 			_same(its["sets"], ours["sets"]) and _same(its["parts"], ours["parts"]) and not its.has("places")
 			and ours.has("places"))
-		# The copy it writes on this device, read here with the account out of
-		# reach.
+		# The copy it writes on this device (CollectionStore._take's way:
+		# its to_json and the owner), read here with the account out of reach.
 		var kept: Collection = _store.collection
-		_store.collection = Collection.from_json(its)
-		_store.offline = true
-		await _store.refresh_pool()
+		var written: Dictionary = its.duplicate(true)
+		written["owner"] = _store.call("_who")
+		var file := FileAccess.open(CollectionStore.where, FileAccess.WRITE)
+		file.store_string(JSON.stringify(written))
+		file.close()
+		var api: String = OS.get_environment("BRICKWORKS_API")
+		OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
+		var why: String = await _store.load_collection()
 		_dialog.call("open", "own")
 		await _settled()
 		_dialog.call("open_places")
 		await _settled()
 		var note: String = (_dialog.get("_places_note") as Label).text
 		_drawn.append(note)
-		_check("...its copy on this device, read with the account out of reach, is said to lack them: \"%s\"" % note.left(90),
-			note.contains("not in the copy on this device") and _store.collection.places.is_empty()
-			and _same(_store.collection.parts, kept.parts))
+		_check("...its copy on this device, read with the account out of reach (\"%s\"), is said to lack them: \"%s\"" % [
+			why.left(60), note.left(90)], _store.offline and note.contains("not in the copy on this device")
+			and _store.collection.places.is_empty() and _same(_store.collection.parts, kept.parts)
+			and _same(_store.collection.sets, kept.sets) and CollectionStore.places.is_empty())
+		await _shot("partplaces_older_copy")
+		OS.set_environment("BRICKWORKS_API", api)
 		await _store.load_collection()
 		await _settled()
 		_check("...and they come back from the account: %d" % _store.collection.places.size(),

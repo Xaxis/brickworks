@@ -5654,6 +5654,27 @@
       "area": "collection"
     },
     {
+      "kind": "ui",
+      "label": "where each part is kept",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own, Where it's kept…: type a place in a row and Enter, or find and Put them there; then the parts list's By where it's kept and Make instructions' parts boxes; tools/relay_probe.sh partplaces)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "partplaces probe",
+      "entry": "src/dev/partplaces_probe.gd",
+      "reach": "tools/relay_probe.sh partplaces   (a window, 1280x720; -- --shots=DIR: 7140-1 and 12 loose lots; edit_collection place= on 12 lots in 1 call, refusals changing nothing, the read-back; Where it's kept: a row typed, a find and Put them there in one change, By place; the sets and lots byte for byte, a restart and another device keep every place; the parts list By where it's kept; the booklet's parts box says \"from drawer 3\", none with it turned off; rel-m308's Collection drops only the places and the page says so; two tabs at once; Save places as CSV and Places CSV… read back; a part not owned refused; Start over forgets them; the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "partplaces api test",
+      "entry": "tools/web/partplaces_api.mjs",
+      "reach": "node tools/web/partplaces_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced, supabase/partplaces.sql applied; --pure alone runs step 0 with no network: placeText one line and never cut, placesOf, op place on rows made here held by the lots and a set's inventory; then 12 placed in one op, every set and lot and updated_at as they were, made once with its id; refused changing nothing from a place not shown, a part not held, named twice, 41 characters; two tabs at once; kept through every other change, a replace import and an older app's PUT; taken off; Start over and DELETE forget them)",
+      "area": "collection"
+    },
+    {
       "kind": "cli",
       "label": "keptbuilt api test",
       "entry": "tools/web/keptbuilt_api.mjs",
