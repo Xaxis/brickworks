@@ -141,6 +141,37 @@ def test_connect_takes_a_signed_state_and_keeps_the_tokens_here() -> None:
     assert got["connect"] == {"forged": 400, "status": 200, "handle": "brickworks_checks", "accounts": 1, "tokens": 1}
 
 
+def test_a_connect_is_finished_once_and_comes_back_to_one_address() -> None:
+    got = _api()
+    once = got["state_once"]
+    # Its state again: refused before any code is taken.
+    assert once["replay"] == 409 and once["said"].startswith("That connect is finished already")
+    # Two finishes of one connect at once, both past the first read: one
+    # account, one set of keys, the loser's handed back at Reddit.
+    assert once["both_exchanged"] is True
+    assert once["twins"] == [200, 409] and once["after"] == 409
+    assert once["accounts"] == 1 and once["tokens"] == 1 and once["handed_back"] == 1
+    # Reddit's own app: the one address registered with it, from www too.
+    assert got["redirects"] == {"brickworks.diy": "https://brickworks.diy/admin?connected=reddit",
+                                "www.brickworks.diy": "https://brickworks.diy/admin?connected=reddit"}
+
+
+def test_two_keeps_of_one_new_draft_at_once_are_one_draft() -> None:
+    got = _api()["twin_keeps"]
+    assert got["statuses"] == [200, 200] and got["made"] == 1 and got["same"] is True
+    # The draft kept tags the site's links with its own id, whichever answered.
+    assert got["tagged"] == [True, True]
+    # Other words are another draft. The same words kept again at once (an
+    # answer lost) are the same draft; twenty seconds on, a second.
+    assert got["other_words"] is True and got["retried"] is True and got["later"] is True
+
+
+def test_every_schedule_is_listed_however_old_and_the_rest_are_counted() -> None:
+    got = _api()["listed"]
+    assert got["old_scheduled"] == "scheduled"
+    assert got["listed"] >= 301 and got["unlisted"] == got["total"] - got["listed"] > 0
+
+
 def test_the_inbox_holds_replies_mentions_and_messages_once() -> None:
     got = _api()["sync"]
     assert got["first"] == "5 new" and got["second"] == "0 new"
@@ -242,6 +273,17 @@ def test_the_page_claims_no_more_than_is_true() -> None:
     assert page.index('make("div", "row", copy,') > 0
     # An empty inbox with no Reddit app does not point at a Connect that is off.
     assert "Nothing comes in here until Reddit grants the desk API access" in page
+    # A sheet that becomes the next gives its name the focus; an act that
+    # closes it lands focus on what is there (sdreview L6).
+    assert "else if (!sheet.contains(document.activeElement)) {\n    heading.tabIndex = -1;\n    heading.focus();" in page
+    assert page.count("landed(send.id,") == 3
+    html = (ROOT / "web/admin.html").read_text()
+    # The rules' line is a status; each table has a name; links by finger are tall (L7).
+    assert '<p class="note" id="social-rules-said" role="status">' in html
+    for name in ("What came in", "Drafts", "Sent and scheduled"):
+        assert f'<caption class="visually-hidden">{name}</caption>' in html
+    assert 'make("caption", "visually-hidden", "Its score over time")' in page
+    assert "table.cards td.text a, #social-sheet dd a { display: inline-flex; align-items: center; min-height: var(--control-h); }" in html
     # Meta's App Review is not promised away.
     assert "no App Review for the owner's own Page" not in SOCIAL and "likely needs App Review" in SOCIAL
 

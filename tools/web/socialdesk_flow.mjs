@@ -428,12 +428,17 @@ try {
       /Nothing is posted until you press Post there/.test(await page.locator(sheet).textContent()));
     await press(page, sheet, "Post it on Reddit…");
     await until(page, () => document.getElementById("social-sheet-title").textContent === "Post it on Reddit");
+    check("...the pressed button gone with the old sheet, focus on the new one's name",
+      await until(page, () => document.activeElement?.id === "social-sheet-title"));
     const handOff = await page.locator(`${sheet} a.cta`).getAttribute("href");
     check(`Reddit's own page with the words, offered, not opened: ${handOff.slice(0, 70)}…`,
       /^https:\/\/www\.reddit\.com\/r\/lego\/submit\?title=By\+hand\+/.test(handOff) && /selftext=true/.test(handOff));
     await page.fill(`${sheet} input[type='url']`, "https://www.reddit.com/r/lego/comments/abc123/by_hand/");
     await press(page, sheet, "It is posted");
     await until(page, () => !document.querySelector("#social-sheet[open]"));
+    check("...focus back on Write's Review, not lost to the page, and what became of it said beside it",
+      await until(page, () => document.activeElement?.id === "social-review"
+        && /^Kept: the visits it brings/.test(document.getElementById("social-note").textContent)));
     const hand = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.title === handTitle);
     check(`its address kept, counted from now: ${hand?.status} ${hand?.route} ${hand?.external_id}`, hand?.status === "sent"
       && hand.route === "by_hand" && hand.external_id === "t3_abc123");

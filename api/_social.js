@@ -165,33 +165,47 @@ async function moved(id, from, change) {
 
 // ---------------------------------------------------------------------------
 // Connecting: OAuth's state signed here, so a code is only taken back for a
-// connect the owner started from this console, within ten minutes.
+// connect the owner started from this console, within ten minutes, and
+// once. The state carries when the account was last connected (or that it
+// was not), and the finish writes the account only while that still holds:
+// a connect finished, or its state replayed, finds it changed and is refused.
 
 function stateKey() {
   return createHmac("sha256", String(process.env.SUPABASE_SECRET_KEY || "")).update("socialdesk-oauth-state").digest();
 }
 
-function stateFor(provider, tests) {
-  const payload = `${provider}.${tests ? 1 : 0}.${Date.now() + 10 * 60000}.${randomBytes(9).toString("base64url")}`;
+/// The account as a connect finds it: its connected_at, or "-" with none.
+const epochOf = (account) => (account ? Buffer.from(String(account.connected_at)).toString("base64url") : "-");
+
+function stateFor(provider, tests, epoch) {
+  const payload = `${provider}.${tests ? 1 : 0}.${Date.now() + 10 * 60000}.${randomBytes(9).toString("base64url")}.${epoch}`;
   return `${payload}.${createHmac("sha256", stateKey()).update(payload).digest("base64url")}`;
 }
 
-function stateOk(state, provider, tests) {
+/// The epoch a state was made for, or null when it is not this console's,
+/// not this network's, or over ten minutes old.
+function stateEpoch(state, provider, tests) {
   const parts = String(state || "").split(".");
-  if (parts.length !== 5) return false;
-  const payload = parts.slice(0, 4).join(".");
+  if (parts.length !== 6) return null;
+  const payload = parts.slice(0, 5).join(".");
   const want = Buffer.from(createHmac("sha256", stateKey()).update(payload).digest("base64url"));
-  const given = Buffer.from(parts[4]);
-  if (want.length !== given.length || !timingSafeEqual(want, given)) return false;
-  return parts[0] === provider && parts[1] === (tests ? "1" : "0") && Number(parts[2]) > Date.now();
+  const given = Buffer.from(parts[5]);
+  if (want.length !== given.length || !timingSafeEqual(want, given)) return null;
+  return parts[0] === provider && parts[1] === (tests ? "1" : "0") && Number(parts[2]) > Date.now() ? parts[4] : null;
 }
 
-/// Where the network sends the owner back: this console, which finishes it.
+/// Where the network sends the owner back: one fixed address for the real
+/// network, the one registered with its app (brickworks.diy, whichever host
+/// the console was opened on); the checks' stand-in, this console's own.
+const HOME = "https://brickworks.diy";
 function redirectOf(request, provider, tests) {
-  const origin = ownOrigin(request);
+  const origin = tests ? ownOrigin(request) : HOME;
   if (!origin) throw new AuthError("connect from the site's own address", 400);
   return `${origin}/admin?${tests ? "tests=1&" : ""}connected=${provider}`;
 }
+
+const accountOf = async (provider, tests) => (await tables(db(`social_accounts?provider=eq.${provider}&test=eq.${tests}`
+  + "&select=connected_at")))?.[0] ?? null;
 
 function connectable(name, tests) {
   const provider = providerOf(String(name || ""));
@@ -209,9 +223,9 @@ function connectable(name, tests) {
 export async function socialConnect(request, response) {
   const tests = testsOf(request);
   const { provider, app } = connectable(bodyOf(request).provider ?? request.query?.provider, tests);
-  await tables(db(`social_accounts?test=eq.${tests}&select=provider&limit=1`));
+  const epoch = epochOf(await accountOf(provider.id, tests));
   return response.status(200).json({ provider: provider.id, outcome: "asked",
-    authorize: provider.authorizeUrl(app, stateFor(provider.id, tests), redirectOf(request, provider.id, tests)) });
+    authorize: provider.authorizeUrl(app, stateFor(provider.id, tests, epoch), redirectOf(request, provider.id, tests)) });
 }
 
 /// POST op=social_connected {provider, code, state} (or {error}): the code
@@ -220,18 +234,38 @@ export async function socialConnected(request, response, claims) {
   const tests = testsOf(request);
   const b = bodyOf(request);
   const { provider, app } = connectable(b.provider, tests);
-  if (!stateOk(b.state, provider.id, tests)) {
+  const epoch = stateEpoch(b.state, provider.id, tests);
+  if (epoch === null) {
     throw new AuthError("That connect was not started from this console, or is over ten minutes old: press Connect again.", 400);
   }
+  const before = await accountOf(provider.id, tests);
+  const finished = () => new AuthError("That connect is finished already, or the account changed since it began: press Connect "
+    + "again.", 409);
+  if (epochOf(before) !== epoch) throw finished();
   if (b.error) throw new AuthError(`${provider.name} was not let in (${line(b.error, 60)}).`, 409);
   if (!/^[A-Za-z0-9_.~-]{4,200}$/.test(String(b.code || ""))) throw new AuthError("no code came back", 400);
   const keys = await provider.exchange(app, String(b.code), redirectOf(request, provider.id, tests));
   const who = await provider.me({ transport: app.transport, access_token: keys.access_token, handle: null });
   const now = new Date().toISOString();
-  await tables(db("social_accounts?on_conflict=provider,test", { method: "POST", prefer: "resolution=merge-duplicates",
-    body: { provider: provider.id, test: tests, handle: line(who.handle, 100), external_id: who.external_id,
-      scopes: line(keys.scopes, 1000), connected_by: line(claims?.email || "the owner", 320), connected_at: now,
-      synced_at: null, sync_said: null } }));
+  const account = { provider: provider.id, test: tests, handle: line(who.handle, 100), external_id: who.external_id,
+    scopes: line(keys.scopes, 1000), connected_by: line(claims?.email || "the owner", 320), connected_at: now,
+    synced_at: null, sync_said: null };
+  // Written only as the connect found it: a second finish of the same
+  // connect (two at once, or one replayed) changes nothing, and the keys
+  // it was given are handed back.
+  let won;
+  if (before) {
+    won = await tables(db(`social_accounts?provider=eq.${provider.id}&test=eq.${tests}`
+      + `&connected_at=eq.${encodeURIComponent(before.connected_at)}`, { method: "PATCH", body: account, prefer: "return=representation" }));
+    won = Array.isArray(won) && won.length > 0;
+  } else {
+    won = await tables(db("social_accounts", { method: "POST", body: account })).then(() => true,
+      (trouble) => (/: 409$/.test(String(trouble?.message || "")) ? false : Promise.reject(trouble)));
+  }
+  if (!won) {
+    await provider.revoke(app, keys.refresh_token).catch(() => null);
+    throw finished();
+  }
   await db("social_tokens?on_conflict=provider,test", { method: "POST", prefer: "resolution=merge-duplicates",
     body: { provider: provider.id, test: tests, access_token: keys.access_token, refresh_token: keys.refresh_token,
       expires_at: keys.expires_at, changed_at: now } });
@@ -395,13 +429,13 @@ export async function socialDraft(request, response) {
   const asked = field(b, "kind");
   const kind = asked === "reply" ? "reply" : asked === "post" ? "post" : null;
   if (!kind) throw new AuthError("a post or a reply", 400);
-  let id = field(b, "id");
+  const id = field(b, "id");
   let before = null;
   if (id) {
     before = await sendOf(id, tests);
     if (["sending", "sent"].includes(before.status)) throw new AuthError("It has gone: what was sent is kept as it was.", 409);
     if (before.provider !== provider.id || before.kind !== kind) throw new AuthError("a draft keeps its network and kind", 409);
-  } else id = Array.from(randomBytes(10), (byte) => "abcdefghijklmnopqrstuvwxyz0123456789"[byte % 36]).join("");
+  }
   const community = field(b, "community").replace(/^\/?r\//i, "").trim();
   if (community && !COMMUNITY.test(community)) throw new AuthError("A community's name is 2 to 21 letters, digits or _.", 400);
   let parent = null;
@@ -417,19 +451,22 @@ export async function socialDraft(request, response) {
   // Cut at twice the most first (a character is at most two UTF-16 units),
   // then counted in characters, as Reddit and the database count them.
   const title = kind === "post" ? line(field(b, "title"), provider.most.title * 2 + 2) : "";
-  const body = taggedText(text(field(b, "body"), provider.most.body * 2 + 2).trim(), provider.id, id, hosts);
+  const words = text(field(b, "body"), provider.most.body * 2 + 2).trim();
   const given = field(b, "link").trim();
   if (given && !/^https?:\/\/[^\s]+$/.test(given)) throw new AuthError("A link is an address that starts https://.", 400);
-  const link = kind === "post" && given ? tagged(given, provider.id, id, hosts) : null;
+  const now = new Date();
+  // The row as kept under [one]: the site's links tagged with that id.
+  const rowAs = (one) => ({ id: one, provider: provider.id, test: tests, kind, community: kind === "post" ? community || null : null,
+    parent, title, body: taggedText(words, provider.id, one, hosts),
+    link: kind === "post" && given ? tagged(given, provider.id, one, hosts) : null, status: "draft", route: null, pressed_at: null,
+    pressed_by: null, pressed_hash: null, send_at: null, said: null, changed_at: now.toISOString() });
+  const twins = [tests, provider.id, kind, community || null, parent, title, words, given || null];
+  const row = rowAs(id || twinId(twins, now.getTime()));
   if (lengthOf(title) > provider.most.title) throw new AuthError(`A title is at most ${provider.most.title} characters.`, 400);
-  if (lengthOf(body) > provider.most.body) throw new AuthError(`At most ${provider.most.body} characters.`, 400);
-  if (link && link.length > 2000) throw new AuthError("That link is too long.", 400);
-  const wrong = provider.refuses({ kind, link, body });
+  if (lengthOf(row.body) > provider.most.body) throw new AuthError(`At most ${provider.most.body} characters.`, 400);
+  if (row.link && row.link.length > 2000) throw new AuthError("That link is too long.", 400);
+  const wrong = provider.refuses(row);
   if (wrong) throw new AuthError(wrong, 400);
-  const now = new Date().toISOString();
-  const row = { id, provider: provider.id, test: tests, kind, community: kind === "post" ? community || null : null, parent,
-    title, body, link, status: "draft", route: null, pressed_at: null, pressed_by: null, pressed_hash: null, send_at: null,
-    said: null, changed_at: now };
   if (before) {
     const after = await moved(id, before.status, row);
     if (!after) throw new AuthError("It changed while you wrote: look again.", 409);
@@ -437,8 +474,42 @@ export async function socialDraft(request, response) {
     const outcome = before.status === "scheduled" ? "unscheduled" : before.status === "handed" ? "redrafted" : "kept";
     return response.status(200).json({ outcome, send: sendView(after) });
   }
-  await tables(db("social_sends", { method: "POST", body: { ...row, made_at: now } }));
-  return response.status(200).json({ outcome: "kept", send: sendView({ ...row, made_at: now }) });
+  const kept = await keptNew(row, rowAs, twins, now.getTime());
+  return response.status(200).json({ outcome: "kept", send: sendView(kept) });
+}
+
+/// Two Keeps of one new draft (two tabs at once, presses the page did not
+/// hold, or a Keep pressed again when its answer was lost) are one draft.
+/// A new draft's id is made from its words and the ten seconds it is kept
+/// in, so the second meets the first's id and the database's own key
+/// decides, whatever order they run in; both are answered with the one
+/// kept. A draft of the ten seconds before is found too. The same words
+/// kept again later, or once that draft was edited or sent, take an id of
+/// chance.
+const TWINS = 10000;
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+const chance = () => Array.from(randomBytes(10), (byte) => ALPHABET[byte % 36]).join("");
+function twinId(twins, at) {
+  const digest = createHash("sha256").update(JSON.stringify([...twins, Math.floor(at / TWINS)])).digest();
+  return Array.from(digest.subarray(0, 10), (byte) => ALPHABET[byte % 36]).join("");
+}
+
+async function keptNew(row, rowAs, twins, at) {
+  const twinOf = async (one) => {
+    const [kept] = (await tables(db(`social_sends?id=eq.${one}&status=eq.draft&select=${SEND_COLUMNS}`))) || [];
+    return kept && Date.parse(kept.made_at) >= at - 2 * TWINS && hashOf(kept) === hashOf(rowAs(one)) ? kept : null;
+  };
+  const earlier = await twinOf(twinId(twins, at - TWINS));
+  if (earlier) return earlier;
+  const made = { ...row, made_at: new Date(at).toISOString() };
+  const put = await tables(db("social_sends", { method: "POST", body: made })).then(() => true,
+    (trouble) => (/: 409$/.test(String(trouble?.message || "")) ? false : Promise.reject(trouble)));
+  if (put) return made;
+  const twin = await twinOf(row.id);
+  if (twin) return twin;
+  const other = { ...rowAs(chance()), made_at: made.made_at };
+  await tables(db("social_sends", { method: "POST", body: other }));
+  return other;
 }
 
 /// POST op=social_drop {id}: a draft thrown away, or one that failed or was
@@ -643,22 +714,36 @@ export async function socialRules(request) {
 /// GET op=social: the section whole. Each network (connected, how, what it
 /// needs), the inbox newest first, every send with its results over time and
 /// the visits its links brought.
+/// What Sent lists: the newest sends of every kind, and every one still to
+/// go or waiting on the owner (OPEN_MOST: what Supabase answers a read at most).
+const NEWEST = 300;
+const OPEN = ["scheduled", "sending", "handed", "failed"];
+const OPEN_MOST = 1000;
+
 export async function socialRead(request) {
   const tests = testsOf(request);
   let accounts;
   let items;
   let sends;
+  let open;
+  let total;
   try {
-    [accounts, items, sends] = await Promise.all([
+    [accounts, items, sends, open, total] = await Promise.all([
       db(`social_accounts?test=eq.${tests}&select=provider,handle,connected_at,connected_by,synced_at,sync_said,scopes`),
       db(`social_items?test=eq.${tests}&select=provider,external_id,kind,detail,author,subject,body,url,community,thread,made_at,`
         + "seen_at,read_at&order=made_at.desc&limit=300"),
-      db(`social_sends?test=eq.${tests}&select=${SEND_COLUMNS}&order=changed_at.desc&limit=300`),
+      db(`social_sends?test=eq.${tests}&select=${SEND_COLUMNS}&order=changed_at.desc&limit=${NEWEST}`),
+      // Every send still to go or waiting on the owner, however long ago it
+      // was last changed: a schedule never goes unseen.
+      db(`social_sends?test=eq.${tests}&status=in.(${OPEN.join(",")})&select=${SEND_COLUMNS}&order=changed_at.desc&limit=${OPEN_MOST}`),
+      dbCount(`social_sends?test=eq.${tests}`),
     ]);
   } catch (trouble) {
     if (!notYet(trouble)) throw trouble;
     return { ready: false, said: NOT_YET, networks: networks(tests, []), items: [], sends: [] };
   }
+  const listed = new Set(sends.map((one) => one.id));
+  sends = [...sends, ...open.filter((one) => !listed.has(one.id))];
   const ids = sends.filter((one) => ["sent", "handed"].includes(one.status)).map((one) => one.id);
   const results = new Map();
   const visits = new Map();
@@ -673,6 +758,8 @@ export async function socialRead(request) {
   }
   return {
     ready: true,
+    // Sent, dropped back or failed long ago, past the newest: counted, not listed.
+    unlisted: Math.max(0, total - sends.length),
     networks: networks(tests, accounts),
     items: items.map((one) => ({ ...one, read: Boolean(one.read_at) })),
     sends: sends.map((row) => {
