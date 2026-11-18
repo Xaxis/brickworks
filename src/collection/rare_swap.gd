@@ -13,27 +13,42 @@
 ## sheet and a custom part from the element maker, so neither is a lot to
 ## buy here.
 ##
-## Each is offered one swap that comes in [constant COMMON_IN] sets or more:
-## - the same colour in an equal part, where there is one: another mould of
-##   the same number (3794a for 3794b; 3665 for 3665a, as PartLibrary's
-##   mould index groups them) or, for a print, the plain part it is printed
-##   on (PartInfo.print_of). Equal only where the two shapes' boxes and
-##   every connection point agree, each of its kind and way, to 0.1 LDU
-##   (FindReplace._points): what Find and Replace calls sitting as the old
-##   one did, so nothing it holds or is held by moves. The table is the
-##   catalogue's own numbers, and the shapes are the judge;
-## - else the same part in the nearest colour as an eye judges it
-##   (CIEDE2000), among the colours it comes in 20 sets or more, of the same
-##   transparency (and a tyre's rubber kept rubber): those still in sets
-##   first, as a colour LEGO stopped making is harder to find again.
-## The model's look is kept first: a part in its own colour before a colour.
-## A print keeps its print where the print itself is common in another
-## colour; otherwise its swap is its plain part, and that is offered but not
-## picked: the print was chosen, and only the builder can say it may go.
+## A swap the builder did not choose never changes how the model looks
+## (rsfix, after rsreview found 31 of 54 gallery swaps over ΔE 20, all of
+## them picked: a Tan head of hair made Black, a see-through part opaque).
+## So each lot is offered one swap that comes in [constant COMMON_IN] sets or
+## more, and only one that keeps the look starts picked:
+## - the same colour in an equal part, where there is one: the plain part a
+##   print is on (PartInfo.print_of) first, then another mould of the same
+##   number (3794a for 3794b, as PartLibrary.moulds_of groups them), those
+##   still made in the colour first. Equal where the two shapes' boxes agree
+##   and the new one has every connection point of the old, each of its
+##   kind and way, to 0.1 LDU (FindReplace._points): what Find and Replace
+##   calls sitting as the old one did, so nothing it holds or is held by
+##   moves. One with more points holds all the old one held and more (3665b
+##   for 3665a, its stopper ring), and is said to. A print's own plain part
+##   still made in its colour is offered in more than RARE_IN sets: it is the
+##   same part, and what sets list is the print (3626c for 3626cpbb, not the
+##   1975 mould 3626a). Picked, but for a print's plain part: the print was
+##   chosen, and only the builder can say it may go;
+## - else another colour, which never starts picked unless it is close
+##   ([constant CLOSE_DE] or nearer by CIEDE2000) and of the same
+##   transparency and finish family ([method family]): a see-through part
+##   stays see-through and a chrome one chrome, which are chosen on purpose.
+##   The colours ranked by same transparency, then same finish, then close,
+##   then still made, then nearest; a rubber tyre kept rubber. One source
+##   colour goes to one colour across the model's lots where their parts
+##   allow, the one the most of its pieces come in, so a fox's nine Orange
+##   lots do not go four ways. A swap across transparency or finish is
+##   offered only where no colour of the same comes in 20 sets, and says so.
+## The words say "a close colour" or "a different colour", and "not
+## see-through" or "loses its chrome" where it does.
 ##
 ## The swaps are made through Find and Replace (FindReplace.replace), each
 ## lot's parts as the parts list counts them, sub-models and every copy of
-## one following as an edit by hand does, and folded into one undo step.
+## one following as an edit by hand does, and folded into one undo step. A
+## part lifted and still in hand is put back where it was first, as Escape
+## puts it (FindReplace.put_back_held).
 class_name RareSwap
 extends RefCounted
 
@@ -42,6 +57,26 @@ const RARE_IN := PartLibrary.RARE_IN
 ## And in this many or more, common enough to swap to: twenty sets is twenty
 ## sellers' worth of parted-out stock, and Pick a Brick's shelf for most.
 const COMMON_IN := 20
+## A colour this near (CIEDE2000) or nearer keeps the model's look, and may
+## start picked. Under it are the swaps builders make without a second look:
+## the old greys to the new (Light Grey to Light Bluish Grey 5.7, Dark Grey
+## to Dark Bluish Grey 6.1) and Brown to Reddish Brown (8.3). Just over it
+## the pairs an eye tells apart at a glance: Yellow and Bright Light Orange
+## 10.2, Reddish Brown and Dark Brown 11.3, Black and Dark Blue 12.1, Sand
+## Blue and Light Bluish Grey 13.9 (measured over colors.json's current solid
+## colours, rsfix 2026-11-18).
+const CLOSE_DE := 10.0
+## How long an offer waits for a candidate's colours file (the web fetches
+## one the first time it is asked), as replace_parts waits for a lot's own.
+const WAIT_MS := 20000
+## A frame's share of the offers' work, in µs: the rest goes on in the
+## next frame, so the swaps' list never holds a frame (rsreview F6: 317 ms).
+const SLICE_US := 8000
+
+## The finish families a swap keeps: a solid colour, see-through or not
+## (fluorescent and milky among them), pearl and metallic, chrome, glitter
+## and speckle; opal and glow in the dark each their own.
+enum Family { SOLID, PEARL, CHROME, GLITTER, OPAL, GLOW, RUBBER, FABRIC }
 
 
 ## One rare lot, and its swap.
@@ -69,10 +104,20 @@ class Lot extends RefCounted:
 	var into_sets: int = 0
 	## How far the new colour is from the old, as an eye judges (CIEDE2000).
 	var delta_e: float = 0.0
+	## A part swap's connection points beyond the old part's, all of which it
+	## has: 0 for the same points.
+	var more_points: int = 0
 	## Why there is no swap, when there is none.
 	var none_why: String = ""
-	## Picked to swap: every one with a swap, but a print to its plain part.
+	## Picked to swap: one that keeps the look ([method keeps_look]), or one
+	## the builder or a session's lots= picked.
 	var picked: bool = false
+	## A candidate's set count was still on its way when it was offered (the
+	## web): offered again when it comes.
+	var waited: bool = false
+	## Its colours of 20 sets or more, while the swaps are worked out:
+	## [code, sets, ΔE, still made, same transparency, same finish].
+	var choices: Array = []
 
 	func offered() -> bool:
 		return into_sets > 0
@@ -81,11 +126,12 @@ class Lot extends RefCounted:
 	func drops_print() -> bool:
 		return printed and not into_part.is_empty()
 
+	## A colour swap no more than CLOSE_DE away.
+	func close() -> bool:
+		return into_colour >= 0 and delta_e <= CLOSE_DE
+
 
 var library: PartLibrary
-## The parts a lot's part is made in again, by mould number: built once for
-## the library ([method _moulds]).
-var _by_number: Dictionary = {}
 
 
 func _init(from: PartLibrary = null) -> void:
@@ -116,7 +162,7 @@ func rare_of(stock: Inventory) -> Dictionary:
 			continue
 		if sets > RARE_IN:
 			continue
-		if sets == 0 and not _in_any_set(lot.part_id):
+		if sets == 0 and library.most_sets(lot.part_id) <= 0:
 			out["unknown"] = int(out["unknown"]) + 1
 			continue
 		var rare := Lot.new()
@@ -152,77 +198,191 @@ func _buyable(part: String) -> bool:
 	return Inventory.is_piece(part, library) and Collection.ownable(part, library)
 
 
-## Whether the inventories have [param part] in any set, in any colour: what
-## makes a colour it is in no set in rare, rather than unknown.
-func _in_any_set(part: String) -> bool:
-	for code: int in library.colors:
-		if library.sets_in_colour(part, code) > 0:
-			return true
-	return false
-
-
 # -- the swap -----------------------------------------------------------------------
 
 
 ## [param lot] given its swap ([member Lot.into_part], [member Lot.into_colour],
-## [member Lot.into_sets]) or why it has none, and picked or not. An equal
-## part is judged by its shape, fetched first where it is not here
-## ([param finder]'s FindReplace.shape: the web fetches what it has not got).
+## [member Lot.into_sets]) or why it has none, and picked or not: alone, as
+## [method offer_all] gives a model's.
 func offer(lot: Lot, finder: FindReplace) -> void:
-	lot.into_part = ""
-	lot.into_colour = -1
-	lot.into_sets = 0
-	lot.delta_e = 0.0
-	lot.none_why = ""
-	var equal: Array = [] if lot.flexible else await _equal_part(lot.part, lot.colour, finder)
-	var colour: Array = _nearest_colour(lot.part, lot.colour)
-	# A print keeps its print where it can: its colour before its plain part.
-	var order: Array = [colour, equal] if lot.printed else [equal, colour]
-	for choice: Array in order:
-		if choice.is_empty():
-			continue
-		if choice[0] == "part":
-			lot.into_part = choice[1]
-		else:
-			lot.into_colour = int(choice[1])
-			lot.delta_e = float(choice[3])
-		lot.into_sets = int(choice[2])
-		break
-	if not lot.offered():
-		lot.none_why = _none_why(lot)
-	lot.picked = lot.offered() and not lot.drops_print()
+	await offer_all([lot], finder)
 
 
-## Every lot of [param rare] (rare_of's) given its swap.
+## Every lot of [param rare] (rare_of's) given its swap, picked when it keeps
+## the look. An equal part is judged by its shape, fetched first where it is
+## not here ([param finder]'s FindReplace.shape: the web fetches what it has
+## not got), and every count the offers read is asked for first and waited
+## on, for up to WAIT_MS (rsreview F3: on the web a candidate whose colours
+## file was on its way read as none, and 3070a was offered nothing).
 func offer_all(rare: Array, finder: FindReplace) -> void:
+	await _counts_here(rare)
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var slice: int = Time.get_ticks_usec()
+	var by_colour: Dictionary = {}       ## a colour -> its lots wanting another colour
+	var plain: Dictionary = {}           ## a print -> its plain part, for when no colour keeps it
 	for lot: Lot in rare:
-		await offer(lot, finder)
+		lot.into_part = ""
+		lot.into_colour = -1
+		lot.into_sets = 0
+		lot.delta_e = 0.0
+		lot.more_points = 0
+		lot.none_why = ""
+		lot.waited = _waiting(lot) > 0
+		lot.choices = _colour_choices(lot.part, lot.colour)
+		var equal: Array = [] if lot.flexible else await _equal_part(lot, finder)
+		if not equal.is_empty() and not lot.printed:
+			_take(lot, equal)
+		else:
+			if not equal.is_empty():
+				plain[lot] = equal
+			if not by_colour.has(lot.colour):
+				by_colour[lot.colour] = []
+			(by_colour[lot.colour] as Array).append(lot)
+		if Time.get_ticks_usec() - slice > SLICE_US:
+			await tree.process_frame
+			slice = Time.get_ticks_usec()
+	for colour: int in by_colour:
+		_share_colours(by_colour[colour])
+	for lot: Lot in rare:
+		if not lot.offered() and plain.has(lot):
+			# A print no colour of its own finish keeps: its plain part,
+			# before a colour across a finish.
+			_take(lot, plain[lot])
+		if not lot.offered():
+			_take(lot, _crossing(lot))
+		if not lot.offered():
+			lot.none_why = _none_why(lot)
+		lot.picked = keeps_look(lot)
+		lot.choices = []
 
 
-## ["part", the equal part's number, its sets] for [param part] in
-## [param colour]: the one that comes in it in the most sets, 20 or more; []
-## for none.
-func _equal_part(part: String, colour: int, finder: FindReplace) -> Array:
-	var best: Array = []
-	var was: Lbm.PartMesh = null
-	for other: String in equal_candidates(part):
-		var sets: int = library.sets_in_colour(other, colour)
-		if sets < COMMON_IN or (not best.is_empty() and sets <= int(best[2])):
-			continue
-		if was == null:
-			was = await finder.shape(part)
-			if was == null:
-				return []
-		var shape: Lbm.PartMesh = await finder.shape(other)
-		if same_shape(was, shape):
-			best = ["part", other, sets]
-	return best
+## Whether [param lot]'s swap leaves the model looking as it did, and so may
+## start picked: the same shape in its colour (not a print's plain part), or
+## a close colour of the same transparency and finish.
+func keeps_look(lot: Lot) -> bool:
+	if not lot.offered() or lot.drops_print():
+		return false
+	if not lot.into_part.is_empty():
+		return true
+	var was: PartLibrary.BrickColor = library.color(lot.colour)
+	var now: PartLibrary.BrickColor = library.color(lot.into_colour)
+	return lot.close() and was != null and now != null \
+		and was.is_transparent() == now.is_transparent() and family(was) == family(now)
+
+
+## [param lot] given [param choice]: ["part", id, sets, more points] or
+## ["colour", code, sets, ΔE]; nothing for [].
+static func _take(lot: Lot, choice: Array) -> void:
+	if choice.is_empty():
+		return
+	if choice[0] == "part":
+		lot.into_part = choice[1]
+		lot.more_points = int(choice[3])
+	else:
+		lot.into_colour = int(choice[1])
+		lot.delta_e = float(choice[3])
+	lot.into_sets = int(choice[2])
+
+
+## A colour's finish family: what a swap keeps.
+static func family(colour: PartLibrary.BrickColor) -> int:
+	match colour.drawn_as:
+		PartLibrary.BrickColor.Finish.PEARL, PartLibrary.BrickColor.Finish.METAL:
+			return Family.PEARL
+		PartLibrary.BrickColor.Finish.CHROME:
+			return Family.CHROME
+		PartLibrary.BrickColor.Finish.GLITTER, PartLibrary.BrickColor.Finish.SPECKLE:
+			return Family.GLITTER
+		PartLibrary.BrickColor.Finish.OPAL:
+			return Family.OPAL
+		PartLibrary.BrickColor.Finish.GLOW:
+			return Family.GLOW
+		PartLibrary.BrickColor.Finish.RUBBER:
+			return Family.RUBBER
+		PartLibrary.BrickColor.Finish.FABRIC:
+			return Family.FABRIC
+	return Family.SOLID
+
+
+# -- the counts first --------------------------------------------------------------
+
+
+## How many of the counts [param lot]'s offer reads are still on their way:
+## its own part's, and each equal part's in its colour. Asking is what sends
+## for them.
+func _waiting(lot: Lot) -> int:
+	var waiting: int = 1 if library.most_sets(lot.part) < 0 else 0
+	if not lot.flexible:
+		for other: String in equal_candidates(lot.part):
+			if library.sets_in_colour(other, lot.colour) < 0:
+				waiting += 1
+	return waiting
+
+
+## Every count [param rare]'s offers read asked for, and waited on until none
+## is on its way or WAIT_MS have gone; at once where all are here, as on the
+## desktop, which reads its files from its own disk.
+func _counts_here(rare: Array) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var until: int = Time.get_ticks_msec() + WAIT_MS
+	while true:
+		var waiting: int = 0
+		for lot: Lot in rare:
+			waiting += _waiting(lot)
+		if waiting == 0 or Time.get_ticks_msec() >= until:
+			return
+		await tree.process_frame
+
+
+# -- an equal part --------------------------------------------------------------------
+
+
+## ["part", the equal part's number, its sets, its points beyond the old
+## part's] for [param lot]: the print's own plain part first, then those
+## still made in its colour, then the most sets; [] for none.
+func _equal_part(lot: Lot, finder: FindReplace) -> Array:
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(lot.part))
+	var print_of: String = info.print_of if info != null else ""
+	var ranked: Array = []           ## [part, sets, its print's plain part, still made]
+	for other: String in equal_candidates(lot.part):
+		var sets: int = library.sets_in_colour(other, lot.colour)
+		var made: bool = still_made(other, lot.colour)
+		if sets >= COMMON_IN or other == print_of and made and sets > RARE_IN:
+			ranked.append([other, sets, other == print_of, made])
+	if ranked.is_empty():
+		return []
+	ranked.sort_custom(func(a: Array, b: Array) -> bool:
+		if a[2] != b[2]:
+			return a[2]
+		if a[3] != b[3]:
+			return a[3]
+		if a[1] != b[1]:
+			return a[1] > b[1]
+		return a[0] < b[0])
+	var was: Lbm.PartMesh = await finder.shape(lot.part)
+	if was == null:
+		return []
+	for choice: Array in ranked:
+		var more: int = fits(was, await finder.shape(choice[0]))
+		if more >= 0:
+			return ["part", choice[0], choice[1], more]
+	return []
+
+
+## Whether [param part] is still made in [param colour]: in a set of the
+## last couple of years in it, by the catalogue (PartInfo.colors_recent).
+func still_made(part: String, colour: int) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part))
+	if info == null:
+		return false
+	var color: PartLibrary.BrickColor = library.color(colour)
+	return info.colors_recent.has(colour) or color != null and info.colors_recent.has(color.plain_code)
 
 
 ## The parts that might be [param part] again, by the catalogue's numbers:
-## the plain part a print is on, and every other mould of the part's number
-## and of that plain part's (PartLibrary.MOULD_NUMBER). Its shape decides
-## ([method same_shape]).
+## the plain part a print is on, and every other plain mould of the part's
+## number and of that plain part's (PartLibrary.moulds_of). Its shape
+## decides ([method fits]).
 func equal_candidates(part: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	var id: String = library.resolve(part)
@@ -233,11 +393,14 @@ func equal_candidates(part: String) -> PackedStringArray:
 	if not info.print_of.is_empty():
 		bases.append(info.print_of)
 		out.append(info.print_of)
-	var moulds: Dictionary = _moulds()
 	for base: String in bases:
-		for other: String in moulds.get(_number_of(base), []):
-			if other != id and not out.has(other):
-				out.append(other)
+		for other: String in library.moulds_of(_number_of(base)):
+			if other == id or out.has(other):
+				continue
+			var mould: PartLibrary.PartInfo = library.parts.get(other)
+			if mould == null or mould.custom or mould.decor() != 0 or PartLibrary.is_stale(mould):
+				continue
+			out.append(other)
 	return out
 
 
@@ -247,48 +410,49 @@ static func _number_of(part: String) -> String:
 	return found.get_string(1) if found != null else part
 
 
-## Number -> every plain, current part of it (a mould letter or none),
-## for the library: 3794 -> [3794a, 3794b].
-func _moulds() -> Dictionary:
-	if not _by_number.is_empty():
-		return _by_number
-	for id: String in library.parts:
-		var info: PartLibrary.PartInfo = library.parts[id]
-		if info.is_redirect() or info.custom or info.decor() != 0 or PartLibrary.is_stale(info):
-			continue
-		var number: String = _number_of(id)
-		if not _by_number.has(number):
-			_by_number[number] = []
-		(_by_number[number] as Array).append(id)
-	for number: String in _by_number.keys():
-		if (_by_number[number] as Array).size() < 2:
-			_by_number.erase(number)
-	_by_number[""] = []
-	return _by_number
-
-
-## Whether [param shape] sits where [param was] stands as it does: the same
-## box, so Find and Replace lays it in the old one's place exactly
-## (FindReplace._placed), and every connection point of the same kind,
-## gender, place and way, to 0.1 LDU (FindReplace._points).
-static func same_shape(was: Lbm.PartMesh, shape: Lbm.PartMesh) -> bool:
+## Whether [param shape] sits where [param was] stands as it does: how many
+## connection points it has beyond the old one's, or -1 where it does not
+## sit so. The same box, so Find and Replace lays it in the old one's place
+## exactly (FindReplace._placed), and every connection point of the old one
+## of the same kind, gender, place and way, to 0.1 LDU (FindReplace._points):
+## what the old one held it holds.
+static func fits(was: Lbm.PartMesh, shape: Lbm.PartMesh) -> int:
 	if was == null or shape == null:
-		return false
+		return -1
 	if was.bounds.size.distance_to(shape.bounds.size) >= 1.0 \
 			or was.bounds.get_center().distance_to(shape.bounds.get_center()) >= 1.0:
-		return false
-	return FindReplace._points(was, Transform3D.IDENTITY) \
-		== FindReplace._points(shape, Transform3D.IDENTITY)
+		return -1
+	var has: Dictionary = {}
+	var points: PackedStringArray = FindReplace._points(shape, Transform3D.IDENTITY)
+	for point: String in points:
+		has[point] = int(has.get(point, 0)) + 1
+	var needs: PackedStringArray = FindReplace._points(was, Transform3D.IDENTITY)
+	for point: String in needs:
+		if int(has.get(point, 0)) <= 0:
+			return -1
+		has[point] = int(has[point]) - 1
+	return points.size() - needs.size()
 
 
-## ["colour", code, sets, ΔE] for [param part]: the colour nearest
-## [param colour] that it comes in 20 sets or more, of its transparency
-## (rubber kept rubber), those still in sets first; [] for none.
-func _nearest_colour(part: String, colour: int) -> Array:
+## The same box and every connection point the same: [method fits] with
+## none more.
+static func same_shape(was: Lbm.PartMesh, shape: Lbm.PartMesh) -> bool:
+	return fits(was, shape) == 0
+
+
+# -- a colour -----------------------------------------------------------------------
+
+
+## [param part]'s colours of 20 sets or more but [param colour] itself:
+## [code, sets, ΔE from it, still made, same transparency, same finish
+## family], a rubber tyre's rubber kept rubber.
+func _colour_choices(part: String, colour: int) -> Array:
 	var want: PartLibrary.BrickColor = library.color(colour)
+	if want == null:
+		return []
 	var here: Vector3 = HiddenColours.lab(want.rgb)
 	var rubber: bool = want.group == "rubber"
-	var choices: Array = []          ## [code, sets, ΔE, still made, same transparency]
+	var out: Array = []
 	for code: int in library.colors:
 		if code == colour:
 			continue
@@ -299,29 +463,104 @@ func _nearest_colour(part: String, colour: int) -> Array:
 		var sets: int = library.sets_in_colour(part, code)
 		if sets < COMMON_IN:
 			continue
-		choices.append([code, sets, HiddenColours.de2000(here, HiddenColours.lab(other.rgb)),
-			library.is_current(code), other.is_transparent() == want.is_transparent()])
-	for pass_: int in 3:
-		var best: Array = []
-		for choice: Array in choices:
-			if pass_ < 2 and not bool(choice[4]) or pass_ == 0 and not bool(choice[3]):
-				continue
-			if best.is_empty() or float(choice[2]) < float(best[2]) \
-					or float(choice[2]) == float(best[2]) and int(choice[0]) < int(best[0]):
-				best = choice
-		if not best.is_empty():
-			return ["colour", int(best[0]), int(best[1]), float(best[2])]
-	return []
+		out.append([code, sets, HiddenColours.de2000(here, HiddenColours.lab(other.rgb)),
+			library.is_current(code), other.is_transparent() == want.is_transparent(),
+			family(other) == family(want)])
+	return out
 
 
-## Why [param lot] has no swap: the most sets its part comes in, in any colour.
+## The lots of one colour ([param lots]) each given a colour of the same
+## transparency and finish, one colour for as many of them as their parts
+## allow: a close one first, then the one the most of their pieces come in,
+## then one still made, then the nearest. Those whose parts come in none of
+## the first get the next, so a colour goes as few ways as it must.
+func _share_colours(lots: Array) -> void:
+	var left: Array = lots.filter(func(lot: Lot) -> bool: return not lot.offered())
+	while not left.is_empty():
+		var tally: Dictionary = {}       ## code -> [pieces, ΔE, still made, sets of the first]
+		for lot: Lot in left:
+			for choice: Array in lot.choices:
+				if not bool(choice[4]) or not bool(choice[5]):
+					continue
+				var code: int = int(choice[0])
+				if not tally.has(code):
+					tally[code] = [0, float(choice[2]), bool(choice[3])]
+				tally[code][0] = int(tally[code][0]) + lot.count
+		var best: int = -1
+		for code: int in tally:
+			if best < 0 or _before(code, tally[code], best, tally[best]):
+				best = code
+		if best < 0:
+			return
+		var still: Array = []
+		for lot: Lot in left:
+			var took: bool = false
+			for choice: Array in lot.choices:
+				if int(choice[0]) == best:
+					_take(lot, ["colour", best, int(choice[1]), float(choice[2])])
+					took = true
+			if not took:
+				still.append(lot)
+		left = still
+
+
+## Whether colour [param a] ([pieces, ΔE, still made]) goes before [param b]
+## for a source colour's lots: close first, then the most pieces, then still
+## made, then the nearest, then the lower code.
+static func _before(a: int, of_a: Array, b: int, of_b: Array) -> bool:
+	var close_a: bool = float(of_a[1]) <= CLOSE_DE
+	var close_b: bool = float(of_b[1]) <= CLOSE_DE
+	if close_a != close_b:
+		return close_a
+	if int(of_a[0]) != int(of_b[0]):
+		return int(of_a[0]) > int(of_b[0])
+	if bool(of_a[2]) != bool(of_b[2]):
+		return bool(of_a[2])
+	if float(of_a[1]) != float(of_b[1]):
+		return float(of_a[1]) < float(of_b[1])
+	return a < b
+
+
+## ["colour", code, sets, ΔE] for a lot no colour of its own transparency
+## and finish takes: the best across them, the same transparency first, then
+## the same finish, then still made, then the nearest; [] for none. Offered,
+## never picked, and said ([method into_words]).
+static func _crossing(lot: Lot) -> Array:
+	var best: Array = []
+	for choice: Array in lot.choices:
+		if best.is_empty():
+			best = choice
+			continue
+		var key_a: Array = [bool(choice[4]), bool(choice[5]), bool(choice[3])]
+		var key_b: Array = [bool(best[4]), bool(best[5]), bool(best[3])]
+		var better: bool = false
+		var decided: bool = false
+		for n: int in 3:
+			if key_a[n] != key_b[n]:
+				better = key_a[n]
+				decided = true
+				break
+		if not decided:
+			better = float(choice[2]) < float(best[2]) \
+				or float(choice[2]) == float(best[2]) and int(choice[0]) < int(best[0])
+		if better:
+			best = choice
+	if best.is_empty():
+		return []
+	return ["colour", int(best[0]), int(best[1]), float(best[2])]
+
+
+## Why [param lot] has no swap: the most sets this very part comes in, in any
+## colour, and that no other mould of it sits as it does in 20 sets (the
+## count is its own, not its number's: 3665b holds 3665a's place in 537).
 func _none_why(lot: Lot) -> String:
-	var most: int = 0
-	for code: int in library.colors:
-		most = maxi(most, library.sets_in_colour(lot.part, code))
+	var most: int = maxi(library.most_sets(lot.part), 0)
 	if most < COMMON_IN:
-		return "it comes in %d sets at most, in any colour" % most if most != 1 \
-			else "it comes in 1 set at most, in any colour"
+		var said: String = ("%s itself comes in %d sets at most, in any colour" % [lot.part, most]) \
+			if most != 1 else "%s itself comes in 1 set at most, in any colour" % lot.part
+		if not lot.flexible and not equal_candidates(lot.part).is_empty():
+			said += "; no other mould of it sits as it does in %d sets or more" % COMMON_IN
+		return said
 	return "no colour of its transparency comes in %d sets" % COMMON_IN
 
 
@@ -331,16 +570,22 @@ func _none_why(lot: Lot) -> String:
 ## The picked lots of [param rare] swapped through [param finder]'s Find and
 ## Replace, as one undo step: {"lots": how many lots changed, "changed": how
 ## many parts, "stayed": what stayed and why, a line a lot, "words": the
-## step's}. Each lot's parts are the parts list's own, taken again before
-## each swap: a swap inside a sub-model lays its copies again.
+## step's, "put_back": how many parts in hand went back first}. Each lot's
+## parts are the parts list's own, taken again before each swap: a swap
+## inside a sub-model lays its copies again.
 func swap(rare: Array, finder: FindReplace) -> Dictionary:
 	var builder: Builder = finder.builder
+	# A part in hand, back where it was first: it is then found and swapped
+	# with the rest of its lot, where a step laid over its lift lost it.
+	var put_back: int = finder.put_back_held()
 	var depth: int = builder.history_depth()
 	var lots: int = 0
 	var changed: int = 0
 	var stayed := PackedStringArray()
+	if put_back < 0:
+		stayed.append(FindReplace.HELD_WORDS)
 	for lot: Lot in rare:
-		if not lot.picked or not lot.offered():
+		if put_back < 0 or not lot.picked or not lot.offered():
 			continue
 		var found: Dictionary = found_for(lot, finder)
 		if (found["ids"] as Array).is_empty():
@@ -366,7 +611,8 @@ func swap(rare: Array, finder: FindReplace) -> Dictionary:
 	builder.fold_since(depth, words)
 	if builder.history_depth() == depth + 1:
 		builder.name_newest(words)
-	return {"lots": lots, "changed": changed, "stayed": stayed, "words": words}
+	return {"lots": lots, "changed": changed, "stayed": stayed, "words": words,
+		"put_back": maxi(put_back, 0)}
 
 
 ## "swapped 3 rare lots for common ones, 9 parts": the undo step's words.
@@ -420,9 +666,6 @@ static func narrowed(found: Dictionary, ids: Dictionary, finder: FindReplace) ->
 			if ids.has(brick_id):
 				held[brick_id] = found[side][brick_id]
 		out[side] = held
-	var copies: Dictionary = {}
-	for place: Dictionary in found["places"]:
-		copies[place["name"]] = int(place["copies"])
 	var places: Array = []
 	for place: Dictionary in found["places"]:
 		if by_def.has(place["name"]):
@@ -440,10 +683,11 @@ static func narrowed(found: Dictionary, ids: Dictionary, finder: FindReplace) ->
 
 
 ## What [param lot] is and what it becomes, as the parts list's swap row and
-## a session read it: "4 × Plate 1 x 2 in Sand Blue, in 2 sets → Light Bluish
-## Grey, in 3,412 sets (ΔE 9.2)"; "… → Plate 1 x 2 with Groove (3794b), the
-## same shape and connections in its colour, in 312 sets"; "… → no swap in 20
-## sets or more: it comes in 3 sets at most, in any colour".
+## a session read it: "4 × Plate 1 x 2 (3023) in Sand Blue, in 2 sets → Light
+## Bluish Grey, in 3,412 sets (ΔE 13.9); a different colour"; "… → Plate 1 x
+## 2 with Groove (3794b), the same shape and connections in its colour, in
+## 312 sets"; "… → no swap in 20 sets or more: 3665a itself comes in 2 sets
+## at most, in any colour".
 func lot_words(lot: Lot) -> String:
 	return from_words(lot) + " → " + into_words(lot)
 
@@ -463,7 +707,8 @@ static func sets_words(sets: int) -> String:
 	return "in 1 set" if sets == 1 else "in %s sets" % Working.comma(sets)
 
 
-## What [param lot] becomes: its swap, or why it has none.
+## What [param lot] becomes: its swap, or why it has none. A colour's says
+## whether it is close and what it changes besides, each after "; ".
 func into_words(lot: Lot) -> String:
 	if not lot.offered():
 		return "no swap in %d sets or more: %s" % [COMMON_IN, lot.none_why]
@@ -471,9 +716,27 @@ func into_words(lot: Lot) -> String:
 		var info: PartLibrary.PartInfo = library.parts.get(lot.into_part)
 		var named: String = Inventory._tidy(info.name) if info != null else lot.into_part
 		if lot.drops_print():
-			return "the plain %s (%s), without its print, %s" % [named, lot.into_part,
-				sets_words(lot.into_sets)]
+			return ("the plain %s (%s), without its print, %s" % [named, lot.into_part,
+				sets_words(lot.into_sets)]) + ("; still made in its colour"
+				if lot.into_sets < COMMON_IN else "")
+		if lot.more_points == 1:
+			return "%s (%s), the same shape in its colour, holding all its connections and 1 more, %s" \
+				% [named, lot.into_part, sets_words(lot.into_sets)]
+		if lot.more_points > 1:
+			return "%s (%s), the same shape in its colour, holding all its connections and %d more, %s" \
+				% [named, lot.into_part, lot.more_points, sets_words(lot.into_sets)]
 		return "%s (%s), the same shape and connections in its colour, %s" % [named,
 			lot.into_part, sets_words(lot.into_sets)]
-	return "%s, %s (ΔE %.1f)" % [library.color(lot.into_colour).name.replace("_", " "),
-		sets_words(lot.into_sets), lot.delta_e]
+	var was: PartLibrary.BrickColor = library.color(lot.colour)
+	var now: PartLibrary.BrickColor = library.color(lot.into_colour)
+	var notes := PackedStringArray(["a close colour" if lot.close() else "a different colour"])
+	if was != null and now != null:
+		if was.is_transparent() and not now.is_transparent():
+			notes.append("not see-through")
+		elif now.is_transparent() and not was.is_transparent():
+			notes.append("see-through")
+		if family(was) != family(now):
+			notes.append("loses its %s" % was.finish_name() if family(was) != Family.SOLID
+				else "becomes %s" % now.finish_name())
+	return "%s, %s (ΔE %.1f); %s" % [now.name.replace("_", " ") if now != null else str(lot.into_colour),
+		sets_words(lot.into_sets), lot.delta_e, "; ".join(notes)]

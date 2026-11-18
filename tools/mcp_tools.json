@@ -6346,7 +6346,7 @@
       "readOnlyHint": false,
       "title": "Find and replace parts"
     },
-    "description": "Find and replace parts across the whole model in one call, as the person's Edit › Find and replace… does: find= a part, a colour or a part in a colour; replace= another part, another colour or both, each part keeping what it is not given. where= \"all\" (the default) is every part of the model, inside every sub-model and every copy of one; \"submodel\" the sub-model the person is editing and every copy of it; \"selection\" the parts selected. A sub-model's copies are one definition, so a part replaced in one is replaced in every copy, and a copy placed by a mirror is given the new part's other hand. One call is one undo step, and the model saves as the window's own replace saves it. The answer lists where the part is (the model and each sub-model, with counts and copies) and every colour it is used in, flags a part used in more than one colour, and says where a new part will not sit as the old one did (another footprint, other connection points) or would hold onto nothing, and where it has no room and is left. A part in a copy changes with its twin in every other copy or not at all: where one copy has no room for the new part, or the part is locked in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a number the library has (search_parts finds one), and the answer names the part it puts in. With no replace= or with preview=true it changes nothing and lists only. rare=true, in place of find= and replace=, lists the lots hard to buy (a part in a colour that comes in 3 sets or fewer, by Rebrickable's inventories) each with a swap that comes in 20 or more: the same shape in its colour (another mould, or a print's plain part) or the nearest colour (ΔE), and swaps them all as one undo step, as the parts list's rare row does; a print keeps its print unless lots= names it. lots= [\"3023b/379\", ...] swaps only those; with preview=true it lists and changes nothing.",
+    "description": "Find and replace parts across the whole model in one call, as the person's Edit › Find and replace… does: find= a part, a colour or a part in a colour; replace= another part, another colour or both, each part keeping what it is not given. where= \"all\" (the default) is every part of the model, inside every sub-model and every copy of one; \"submodel\" the sub-model the person is editing and every copy of it; \"selection\" the parts selected. A sub-model's copies are one definition, so a part replaced in one is replaced in every copy, and a copy placed by a mirror is given the new part's other hand. One call is one undo step, and the model saves as the window's own replace saves it. The answer lists where the part is (the model and each sub-model, with counts and copies) and every colour it is used in, flags a part used in more than one colour, and says where a new part will not sit as the old one did (another footprint, other connection points) or would hold onto nothing, and where it has no room and is left. A part in a copy changes with its twin in every other copy or not at all: where one copy has no room for the new part, or the part is locked in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a number the library has (search_parts finds one), and the answer names the part it puts in. With no replace= or with preview=true it changes nothing and lists only. rare=true, in place of find= and replace=, lists the lots hard to buy (a part in a colour that comes in 3 sets or fewer, by Rebrickable's inventories) each with a swap that comes in 20 or more: the same shape in its colour (another mould, or a print's plain part) or the nearest colour of the same transparency and finish (ΔE), one colour for a colour's lots. It swaps, as one undo step, only those that keep the model's look, as the parts list's rare row picks them: the same shape in its colour, or a colour within ΔE 10 of the same finish; every other, a print's plain part among them, is listed as kept, with what it changes, and swaps only where lots= names it. lots= [\"3023b/379\", ...] swaps only those; with preview=true it lists and changes nothing. A part lifted in the person's hand goes back where it was first, as Escape puts it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -6365,7 +6365,7 @@
           "type": "object"
         },
         "lots": {
-          "description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"); a print named here swaps to its plain part",
+          "description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part",
           "items": {
             "type": "string"
           },
@@ -6376,7 +6376,7 @@
           "type": "boolean"
         },
         "rare": {
-          "description": "the lots that come in 3 sets or fewer, each swapped for a common part or colour; no find= or replace= with it",
+          "description": "true: the lots that come in 3 sets or fewer, each offered a common part or colour, those that keep the look swapped; no find= or replace= with it",
           "type": "boolean"
         },
         "replace": {

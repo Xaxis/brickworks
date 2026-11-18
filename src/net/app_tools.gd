@@ -413,7 +413,8 @@ it. Nothing else can be done in the app while a job runs.
 undo step: find= a part, a colour or both, replace= another part, colour or both, where= \
 "all" (every sub-model and every copy of one), "submodel" or "selection". It lists where \
 they are and in which colours, and says where a new part will not sit the same. rare=true \
-swaps the lots hard to buy (3 sets or fewer) for common ones, as the parts list's rare row."""
+lists the lots hard to buy (3 sets or fewer) and swaps those whose common swap keeps the look, \
+as the parts list's rare row; lots= swaps any named."""
 
 
 func definitions() -> Array:
@@ -6621,19 +6622,26 @@ func _point_at(input: Dictionary) -> String:
 ## swap, swapped as one undo step as the parts list's rare row swaps them,
 ## or only the lots= named, or listed with preview=true. Said as the rare
 ## count before and after.
-func _rare_swap(input: Dictionary, finder: RefCounted) -> String:
-	if input.get("rare") != true:
-		return "rare= is true: replace_parts rare=true lists the lots hard to buy and swaps them."
+func _rare_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) -> String:
 	if input.has("find") or input.has("replace") or input.has("where"):
 		return ("rare=true takes no find=, replace= or where=: it finds the lots hard to buy "
 			+ "everywhere itself. Give lots= to swap only some.")
+	var library: PartLibrary = app.get("_library")
 	var named: Dictionary = {}
 	if input.has("lots"):
 		if not input.get("lots") is Array or (input.get("lots") as Array).is_empty():
 			return "lots= is a list of lots as the rare list names them: lots= [\"3794a/19\"]."
 		for key: Variant in input.get("lots"):
-			named[str(key).strip_edges().to_lower().trim_suffix(".dat")] = true
-	var library: PartLibrary = app.get("_library")
+			# The part before the slash tidied as find= tidies one ("3622.DAT"),
+			# and as the library has it where it moved (rsreview F9).
+			var said_key: String = str(key).strip_edges()
+			var slash: int = said_key.rfind("/")
+			var part: String = said_key.substr(0, slash if slash >= 0 else said_key.length()) \
+				.strip_edges().to_lower().trim_suffix(".dat")
+			var colour: String = said_key.substr(slash + 1).strip_edges() if slash >= 0 else ""
+			named["%s/%s" % [part, colour]] = said_key
+			if library.parts.has(part):
+				named["%s/%s" % [library.resolve(part), colour]] = said_key
 	var store: ModelStore = app.get("_store")
 	var swapper: RefCounted = Later.script(&"RareSwap").new(library)
 	var stock: Inventory = Inventory.of(app.get("_world"), library, store.scenery)
@@ -6648,27 +6656,39 @@ func _rare_swap(input: Dictionary, finder: RefCounted) -> String:
 	await swapper.call("offer_all", lots, finder)
 	var known: Dictionary = {}
 	for lot: RefCounted in lots:
-		known[lot.get("key")] = true
+		if named.has(lot.get("key")):
+			known[named[lot.get("key")]] = true
 		if not named.is_empty():
 			lot.set("picked", named.has(lot.get("key")) and lot.call("offered"))
-	var unknown: Array = named.keys().filter(func(key: String) -> bool: return not known.has(key))
+	var unknown: Array = []
+	for key: String in named:
+		if not known.has(named[key]) and not unknown.has(named[key]):
+			unknown.append(named[key])
 	for lot: RefCounted in lots:
 		var tags := PackedStringArray()
 		if lot.call("offered") and not lot.get("picked"):
-			tags.append("kept: " + ("its print stays; name it in lots= to swap it for the plain part"
-				if lot.call("drops_print") else "not named in lots="))
+			if lot.call("drops_print"):
+				tags.append("kept: its print stays; name it in lots= to swap it for the plain part")
+			elif not named.is_empty():
+				tags.append("kept: not named in lots=")
+			else:
+				tags.append("kept: it would change how the model looks; name it in lots= to swap it")
 		said.append("- %s [%s]%s" % [swapper.call("lot_words", lot), lot.get("key"),
 			"" if tags.is_empty() else " (" + "; ".join(tags) + ")"])
 	if not unknown.is_empty():
 		said.append("No rare lot %s here: lots= names them as the list above does." % ", ".join(unknown))
 	if bool(input.get("preview", false)):
-		said.append("Nothing changed (preview): replace_parts rare=true swaps those picked, "
-			+ "lots= [...] only those named.")
+		said.append("Nothing changed (preview): replace_parts rare=true swaps those that keep "
+			+ "the look, lots= [...] only those named.")
 		return "\n".join(said)
 	var done: Dictionary = await swapper.call("swap", lots, finder)
+	if int(done.get("put_back", 0)) + put_back_first > 0:
+		said.append("The part in the person's hand went back where it was first, as Escape puts it.")
 	if int(done["changed"]) == 0:
 		said.append("Nothing changed%s." % (": " + "; ".join(done["stayed"])
-			if not (done["stayed"] as PackedStringArray).is_empty() else ": no lot was picked"))
+			if not (done["stayed"] as PackedStringArray).is_empty()
+			else ": no lot named in lots= has a swap" if not named.is_empty()
+			else ": no swap keeps the look as it is; name one in lots= to swap it"))
 		return "\n".join(said)
 	var after: Inventory = Inventory.of(app.get("_world"), library, store.scenery)
 	var left: Dictionary = swapper.call("rare_of", after)
@@ -6744,10 +6764,14 @@ static func _replace_parts_definition() -> Dictionary:
 			+ "only. rare=true, in place of find= and replace=, lists the lots hard to buy (a "
 			+ "part in a colour that comes in 3 sets or fewer, by Rebrickable's inventories) "
 			+ "each with a swap that comes in 20 or more: the same shape in its colour (another "
-			+ "mould, or a print's plain part) or the nearest colour (ΔE), and swaps them all "
-			+ "as one undo step, as the parts list's rare row does; a print keeps its print "
-			+ "unless lots= names it. lots= [\"3023b/379\", ...] swaps only those; with "
-			+ "preview=true it lists and changes nothing."),
+			+ "mould, or a print's plain part) or the nearest colour of the same transparency "
+			+ "and finish (ΔE), one colour for a colour's lots. It swaps, as one undo step, "
+			+ "only those that keep the model's look, as the parts list's rare row picks them: "
+			+ "the same shape in its colour, or a colour within ΔE 10 of the same finish; "
+			+ "every other, a print's plain part among them, is listed as kept, with what it "
+			+ "changes, and swaps only where lots= names it. lots= [\"3023b/379\", ...] swaps "
+			+ "only those; with preview=true it lists and changes nothing. A part lifted in "
+			+ "the person's hand goes back where it was first, as Escape puts it."),
 		"input_schema": {"type": "object", "additionalProperties": false,
 			"properties": {
 				"find": parts,
@@ -6758,11 +6782,32 @@ static func _replace_parts_definition() -> Dictionary:
 					"description": "list what would change, and change nothing"},
 				# rareswap (APP_UX9 #12)
 				"rare": {"type": "boolean",
-					"description": "the lots that come in 3 sets or fewer, each swapped for a common part or colour; no find= or replace= with it"},
+					"description": "true: the lots that come in 3 sets or fewer, each offered a common part or colour, those that keep the look swapped; no find= or replace= with it"},
 				"lots": {"type": "array", "items": {"type": "string"},
-					"description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"); a print named here swaps to its plain part"},
+					"description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part"},
 			}},
 	}
+
+
+## How many parts in the person's hand went back where they were before this
+## call's change was measured ([method put_back_first]), for its answer.
+var _put_back_first: int = 0
+
+
+## A replace_parts call that changes the model puts what the person lifted
+## back where it was first, as Escape puts it, before CommandSocket measures
+## the call's change: put back inside the call, the call's one step took
+## the part for one the call put down, and its undo took the part away
+## (rsfix, F5). A lift with a step of theirs over it stays, and the call
+## refuses (FindReplace.HELD_WORDS).
+func put_back_first(name: String, input: Dictionary) -> void:
+	_put_back_first = 0
+	if name != "replace_parts" or input.get("preview") == true:
+		return
+	if input.get("rare") != true and not (input.get("replace") is Dictionary
+			and not (input["replace"] as Dictionary).is_empty()):
+		return
+	_put_back_first = maxi(int(Later.script(&"FindReplace").new(app).call("put_back_held")), 0)
 
 
 ## replace_parts: Find and Replace (FindReplace), as the window's bar does it.
@@ -6774,8 +6819,15 @@ static func _replace_parts_definition() -> Dictionary:
 ## guess, and named in the answer (F4).
 func _replace_parts(input: Dictionary) -> String:
 	var finder: RefCounted = Later.script(&"FindReplace").new(app)
-	if input.has("rare") or input.has("lots"):
-		return await _rare_swap(input, finder)
+	var first: int = _put_back_first
+	_put_back_first = 0
+	# Only rare=true is the rare swap: a client that sends every boolean
+	# sends rare=false with a plain find= and replace= (rsreview F4).
+	if input.get("rare") == true:
+		return await _rare_swap(input, finder, first)
+	if input.has("lots"):
+		return ("lots= goes with rare=true: replace_parts rare=true lots= [\"3794a/19\"] swaps "
+			+ "only the rare lots named. A plain replace takes find= and replace=.")
 	for side: String in ["find", "replace"]:
 		if input.has(side) and not input.get(side) is Dictionary:
 			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]
@@ -6809,6 +6861,15 @@ func _replace_parts(input: Dictionary) -> String:
 		puts = "\nPuts in %s (%s)." % [finder.call("part_name", known), known]
 	if where == "selection" and (app.get("_builder") as Builder).selection.is_empty():
 		return "Nothing is selected: where=\"all\" looks in the whole model."
+	# A part lifted and in the person's hand, back where it was before the
+	# find, so it is found and changed with the rest rather than lost (F5).
+	var put_back: int = 0
+	if (not str(put["part"]).is_empty() or int(put["color"]) >= 0) \
+			and not bool(input.get("preview", false)):
+		put_back = finder.call("put_back_held")
+		if put_back < 0:
+			return "Nothing changed: %s." % Later.script(&"FindReplace").HELD_WORDS
+	put_back += first
 	var found: Dictionary = finder.call("find", find, where)
 	var listed: String = finder.call("listed", found)
 	if (found["ids"] as Array).is_empty():
@@ -6822,7 +6883,9 @@ func _replace_parts(input: Dictionary) -> String:
 			+ ("\nNothing changed (preview)." if changes else "\nGive replace= to change them.")
 	var ahead: String = await finder.call("ahead", found, put)
 	var done: Dictionary = finder.call("replace", found, put)
-	var said: String = listed + puts + ("\n" + ahead if not ahead.is_empty() else "")
+	var said: String = listed + puts + ("\n" + ahead if not ahead.is_empty() else "") \
+		+ ("\nThe part in the person's hand went back where it was first, as Escape puts it."
+			if put_back > 0 else "")
 	var stayed: String = str(done.get("stayed", ""))
 	if stayed.begins_with("All "):
 		stayed = "a" + stayed.substr(1)

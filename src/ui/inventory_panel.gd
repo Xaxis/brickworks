@@ -99,6 +99,12 @@ var _swap_note: Label
 var _rare_rows: Dictionary = {}
 ## The swap list is being made or put in.
 var _swapping: bool = false
+## ...made: the offers worked out, which on the web wait for the counts they
+## read (up to RareSwap.WAIT_MS), and Back to the list leaves them.
+var _offering: bool = false
+## The boxes the builder pressed, by lot key: kept when the swaps are worked
+## out again as a colours file comes in (the web).
+var _own_picks: Dictionary = {}
 # end rareswap
 
 signal closed
@@ -641,6 +647,8 @@ func _build_swaps(column: Container) -> void:
 
 ## The colour a rare lot is said in: the "over" mark's amber.
 const RARE_COLOUR := Color(1.0, 0.62, 0.3)
+## How far, in points, a press on a swap's row may move and still be a tap.
+const ROW_TAP_SLOP := 10.0
 
 
 ## The rare lots of the stock shown, counted again (RareSwap.rare_of), and
@@ -656,11 +664,21 @@ func _take_rare() -> void:
 	_say_rare()
 
 
-## A part's colours file came in on the web: the counts it held, said.
+## A part's colours file came in on the web: the counts it held, said, and
+## the swaps shown worked out again where one of theirs was still to come
+## (rsreview F3: a mould's file late, and 3070a was offered nothing).
 func _colour_sets_came() -> void:
-	if visible and _stock != null and _rare_waiting > 0 and not _swapping:
+	if not visible or _stock == null or _swapping:
+		return
+	var again: bool = _swaps_scroll.visible and _rare.any(func(lot: RefCounted) -> bool:
+		return bool(lot.get("waited")))
+	if _rare_waiting > 0:
 		_take_rare()
 		_tag_rare()
+		# The lots taken again are new: the swaps shown were the old ones'.
+		again = again or _swaps_scroll.visible
+	if again:
+		await show_swaps(true)
 
 
 ## The row's words: how many lots are rare and what a press does, what the
@@ -725,7 +743,7 @@ func _tag_rare() -> void:
 
 ## The rows of the model's parts, the swaps closed.
 func _show_rows() -> void:
-	if _swapping:
+	if _swapping and not _offering:
 		return
 	_swaps_scroll.visible = false
 	_swap_bar.visible = false
@@ -739,12 +757,19 @@ func _show_rows() -> void:
 ## The rare lots' swaps, in the rows' place: each with what it is, what it
 ## becomes and in how many sets each comes, picked or not by its box.
 ## Shown at once and filled once every swap is known (an equal part's shape
-## may have to be fetched on the web).
-func show_swaps() -> void:
+## may have to be fetched on the web). Only those that keep the look start
+## picked ([method RareSwap.keeps_look]). [param again]: worked out again as
+## a colours file came in, the builder's own presses kept.
+func show_swaps(again: bool = false) -> void:
+	if again and _rare.is_empty() and not _swapping:
+		_show_rows()
+		return
 	if _rare.is_empty() or not can_swap() or _swapping:
 		return
 	if _finder == null:
 		_finder = FindReplace.new(app)
+	if not again:
+		_own_picks.clear()
 	_swapping = true
 	_scroll.visible = false
 	_find.visible = false
@@ -757,15 +782,31 @@ func show_swaps() -> void:
 		child.queue_free()
 	_swap_note.text = "Finding a common part or colour for each…"
 	_swap_now.disabled = true
+	_offering = true
 	await (_swapper as RareSwap).offer_all(_rare, _finder)
+	# The rows put in a few a frame, as the offers are worked out: each
+	# row's words are shaped in the frame after it goes in (rsfix F6).
+	var slice: int = Time.get_ticks_usec()
+	for lot: RefCounted in _rare:
+		if not _swaps_scroll.visible:
+			break
+		if _own_picks.has(lot.get("key")) and bool(lot.call("offered")):
+			lot.set("picked", bool(_own_picks[lot.get("key")]))
+		_swaps.add_child(_swap_row(lot))
+		if Time.get_ticks_usec() - slice > RareSwap.SLICE_US:
+			await get_tree().process_frame
+			slice = Time.get_ticks_usec()
+	_offering = false
 	_swapping = false
 	if not _swaps_scroll.visible:
+		for child: Node in _swaps.get_children():
+			_swaps.remove_child(child)
+			child.queue_free()
 		return
-	for lot: RefCounted in _rare:
-		_swaps.add_child(_swap_row(lot))
 	_swap_note.text = ("A swap is a part or a colour in %d sets or more: the same shape in "
-		+ "the lot's colour where there is one, else the nearest colour. A print's plain part "
-		+ "is not picked unless you pick it") % RareSwap.COMMON_IN
+		+ "the lot's colour where there is one, else the nearest colour of its finish. Only a "
+		+ "swap that keeps the look starts picked: the same shape, or a close colour of the "
+		+ "same finish. Pick any other yourself") % RareSwap.COMMON_IN
 	_say_picked()
 
 
@@ -782,24 +823,52 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 		% RareSwap.COMMON_IN
 	box.toggled.connect(func(on: bool) -> void:
 		lot.set("picked", on)
+		_own_picks[lot.get("key")] = on
 		_say_picked())
 	box.set_meta("lot", lot)
 	# Named by its lot's words, said through the translation as the row's
 	# label draws them: its tooltip alone is the same on every row, and
-	# read in English.
+	# read in English. What it becomes is its description, read after it
+	# (rsreview F11: a reader heard what a box swapped, never into what).
 	box.accessibility_name = (_swapper as RareSwap).from_words(lot)
+	box.accessibility_description = (_swapper as RareSwap).into_words(lot)
 	row.add_child(box)
+	# A touch anywhere on the row is a touch on its box, as a list row's is
+	# on a phone (rsreview F10: a finger lands on the words). A drag that
+	# scrolls the list is no touch: it lets go away from where it went down.
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.gui_input.connect(func(event: InputEvent) -> void:
+		var button: InputEventMouseButton = event as InputEventMouseButton
+		if button == null or button.button_index != MOUSE_BUTTON_LEFT or box.disabled:
+			return
+		if button.pressed:
+			# A press on the box is the box's: on a touch screen it passes
+			# its presses on to the row too (TouchSizing, so a drag from it
+			# scrolls the list), and the row toggled it back.
+			if box.get_rect().has_point(button.position):
+				row.remove_meta("down_at")
+				return
+			row.set_meta("down_at", button.position)
+		elif row.has_meta("down_at"):
+			var went: float = button.position.distance_to(row.get_meta("down_at"))
+			row.remove_meta("down_at")
+			if went <= ROW_TAP_SLOP * Phone.per_point(get_tree().root):
+				box.button_pressed = not box.button_pressed
+				row.accept_event())
 	row.add_child(_swatch(int(lot.get("colour"))))
 	var into: int = int(lot.get("into_colour"))
 	if bool(lot.call("offered")):
-		var arrow := Label.new()
-		arrow.text = "→"
-		arrow.add_theme_font_size_override("font_size", 12)
+		var arrow := Control.new()
+		arrow.custom_minimum_size = Vector2(12, 15)
+		arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		arrow.draw.connect(_draw_arrow.bind(arrow))
 		row.add_child(arrow)
 		row.add_child(_swatch(into if into >= 0 else int(lot.get("colour"))))
 	# What it is, and below it what it becomes: each one entry of the words.
 	var words := VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.add_theme_constant_override("separation", 0)
 	for said: String in [(_swapper as RareSwap).from_words(lot), (_swapper as RareSwap).into_words(lot)]:
 		var line := Label.new()
@@ -811,6 +880,19 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 		words.add_child(line)
 	row.add_child(words)
 	return row
+
+
+## A swap row's arrow, drawn: a label of "→" cost 8-23 ms a row at load,
+## where a label of the row's words cost under 1 ms (the interface's font has
+## no such glyph, so the system's fonts were searched for one each time), and
+## it was most of the rare row's first press (rsfix F6).
+func _draw_arrow(arrow: Control) -> void:
+	var colour: Color = arrow.get_theme_color("font_color", "Label")
+	var mid: float = arrow.size.y / 2.0
+	var tip := Vector2(arrow.size.x - 1.0, mid)
+	arrow.draw_line(Vector2(1.0, mid), tip, colour, 1.5, true)
+	arrow.draw_polyline(PackedVector2Array([tip + Vector2(-4.0, -4.0), tip, tip + Vector2(-4.0, 4.0)]),
+		colour, 1.5, true)
 
 
 ## A colour's square, as a row shows its lot's.

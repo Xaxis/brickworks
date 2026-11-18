@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:rare lots swapped for common ones, cli:rareswap probe, ui:copies follow only where a person could, cli:followfix probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:rare lots swapped for common ones, cli:rareswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:copies follow only where a person could, cli:followfix probe -->
 
 ## Sub-features
 
@@ -3179,48 +3179,84 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a tap opens, Replace tapped: all 4 changed in one undo step; Close tapped;
   the undo the file opened, to the byte.
 - `rare lots swapped for common ones` (`src/collection/rare_swap.gd`, the
-  parts list's row in `src/ui/inventory_panel.gd`; APP_UX9 #12 rareswap): P,
-  the parts list. Over its rows a row says how many lots come in their
-  colour in 3 sets or fewer (`PartLibrary.sets_in_colour`, Rebrickable's
-  set inventories, `RARE_IN`), "so few sellers have them"; each such row is
-  tagged "rare: in 2 sets". A sticker, a custom part, a piece LDraw draws a
-  bigger part with and a part in no set in any colour are left out; on the
-  web, counts still on their way say "Counting the sets each part comes
-  in…" and the row fills when `colour_sets_came` fires. Pressed (not in a
-  shared model's viewer), the rows give way to each rare lot with its swap
-  in 20 sets or more (`RareSwap.COMMON_IN`): the same colour in an equal
-  part first (a print's plain part, or another mould of its number by
-  `PartLibrary.MOULD_NUMBER`, whose box and connection points are the old
-  one's, `RareSwap.same_shape`), else the nearest colour by CIEDE2000 among
-  plastic colours of its transparency, still made first (ΔE said). A print
-  is offered its own colour first and its plain part last, and the plain
-  part is not picked unless the person picks it. A box each; Swap N lots
-  puts the picked in through Find and Replace (`FindReplace.replace`, every
-  copy of a sub-model, the mirrored one too), folded into one undo step
-  named by what changed; a locked part stays and the status bar says so.
-  The row then says "Swapped 3 rare lots for common ones, 9 parts" and what
-  is still rare. A session's `replace_parts rare=true` lists the same lots
-  and swaps (`preview: true` changes nothing; `lots: ["3622/379"]` swaps
-  only those named, a print among them to its plain part) in one call;
-  rare= takes no find=, replace= or where=.
-- `rareswap probe` (`src/dev/rareswap_probe.gd`): headless, about six
+  parts list's row in `src/ui/inventory_panel.gd`; APP_UX9 #12 rareswap,
+  defaults by rsfix): P, the parts list. Over its rows a row says how many
+  lots come in their colour in 3 sets or fewer (`PartLibrary.sets_in_colour`,
+  Rebrickable's set inventories, `RARE_IN`), "so few sellers have them";
+  each such row is tagged "rare: in 2 sets". A sticker, a custom part, a
+  piece LDraw draws a bigger part with and a part in no set in any colour
+  are left out; on the web, counts still on their way say "Counting the
+  sets each part comes in…" and the row fills when `colour_sets_came`
+  fires. Pressed (not in a shared model's viewer), the rows give way to
+  each rare lot with its swap in 20 sets or more (`RareSwap.COMMON_IN`),
+  every count an offer reads asked for and waited on first (up to
+  `RareSwap.WAIT_MS`, and offered again as a file comes in): the same
+  colour in an equal part first (a print's own plain part, still made in
+  its colour even in fewer, then another mould of its number by
+  `PartLibrary.moulds_of`, still made first, that sits where the old one
+  stood with every connection point of it, `RareSwap.fits`, "holding all
+  its connections and 1 more"), else the nearest colour by CIEDE2000 of the
+  same transparency and finish family (`RareSwap.family`), one colour for a
+  source colour's lots where their parts allow (red_fox's Orange all White),
+  a close one (ΔE `CLOSE_DE` 10 or under) first; a colour across them only
+  where none is (Chrome Black to Black, "loses its chrome"). Only a swap
+  that keeps the look starts picked (`RareSwap.keeps_look`: the same shape
+  in its colour, or a close colour of its finish); every other says what it
+  changes ("a different colour", "not see-through") and is unpicked, a
+  print's plain part too. A box each, named by its lot and described by
+  what it becomes; a touch anywhere on its row toggles it (ROW_TAP_SLOP).
+  Swap N lots puts the picked in through Find and Replace
+  (`FindReplace.replace`, every copy of a sub-model, the mirrored one too),
+  a part in hand put back first (`FindReplace.put_back_held`), folded into
+  one undo step named by what changed; a locked part stays and the status
+  bar says so. The row then says "Swapped 3 rare lots for common ones, 9
+  parts" and what is still rare. A session's `replace_parts rare=true`
+  lists the same lots and swaps those the panel picks, each other listed
+  "kept: it would change how the model looks" (`preview: true` changes
+  nothing; `lots: ["3622/379"]` swaps only those named, whatever they
+  change, a print among them to its plain part) in one call; rare= takes no
+  find=, replace= or where=; rare=false is a plain replace, and lots=
+  without rare=true is refused.
+- `rareswap probe` (`src/dev/rareswap_probe.gd`): headless, about ten
   minutes; `RARESWAP_CASES=gallery,mcp` for some, `scout` counts the 19
   gallery seeds. `gallery`: the ten seeds with the most rare lots (TEN),
   each lot the probe counts in 3 sets or fewer on the row and tagged, each
-  swap re-read in 20 sets or more (a part's shape held to the old one's),
-  Swap pressed: one undo step, the row's count before and after the
-  probe's own, what is left the prints kept; the undo the save before and
-  the redo the swap's save, to the byte; `RARESWAP_OUT=DIR` writes
-  `gallery.tsv`. `mcp`: `replace_parts rare=true` in one call the panel's
-  file, preview nothing, `lots=` one lot only, a find= refused. `kept`
-  (`src/dev/fixtures/rareswap_kept.mpd`, someone else's file: author,
-  licence, history, comments, a line spaced twice, a wing placed twice,
-  once by a mirror, a tip inside it): saved as it came, swapped in its
-  swapped lines only, each sub-model once, both wings' parts changed, the
-  print kept, saved and opened again as shown with the same rare count,
-  undo and redo to the byte. `printed` (2431p70 to 2431 picked alone),
-  `locked` (a locked 3622 stays, said), `picks` (one box off: "Swap 4
-  lots", it stays rare), `words` (de, fr, es).
+  swap re-read in 20 sets or more (a part's fit held to the old one's),
+  picked only where it keeps the look; the defaults swapped (the rare count
+  after them) and undone; then every swap ticked and Swap pressed: one undo
+  step, the row's count before and after the probe's own, what is left the
+  prints kept; the undo the save before and the redo the swap's save, to
+  the byte; `RARESWAP_OUT=DIR` writes `gallery.tsv`. `mcp`: on the kept
+  fixture `replace_parts rare=true` in one call the panel's defaults' file
+  (the moulds only), the others said kept, preview nothing, `lots=` one lot
+  only, a find= refused. `kept` (`src/dev/fixtures/rareswap_kept.mpd`,
+  someone else's file: author, licence, history, comments, a line spaced
+  twice, a wing placed twice, once by a mirror, a tip inside it), every
+  swap ticked: saved as it came, swapped in its swapped lines only, each
+  sub-model once, both wings' parts changed, 3665a to 3665b, the print
+  kept, saved and opened again as shown with the same rare count, undo and
+  redo to the byte. `printed` (2431p70 to 2431 picked alone), `locked` (a
+  locked 3622 stays, said), `picks` (picked at first the two moulds alone;
+  all ticked, one box off: it stays rare), `words` (de, fr, es; each box's
+  description drawn as its row's).
+- `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
+  names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`
+  writes `lots.tsv` and `catalogue.tsv`. `lpub`, `inherit`, `motion`:
+  someone else's file swapped in its lines only, one undo to the byte;
+  `mcp_edges`: a close colour swapped by default (drive's rim to Light
+  Grey), the kept fixture's Sand Blue kept and said, `rare: false` a plain
+  replace, `lots=` alone refused, "3622.DAT/379 " tidied; `held` and
+  `control`: a part in hand put back first, by the panel, a plain replace
+  and rare=true, one step, undo to the byte; `shapes`: 3626cpbb to 3626c,
+  3665a to 3665b; `webshard`: a candidate's colours file late, the same
+  offer; `trans`, `sample` (the ten models: nothing picked over ΔE 10 or
+  across a finish, red_fox one colour), `catalogue` (every rare part colour:
+  none picked across), `speed2` (the first rare row press's worst frame
+  under 50 ms), `attrib`.
+- `rsreview phone probe` (`src/dev/rsreview_phone_probe.gd`): windowed
+  430x932: the rare row and its swaps by finger, 44-point targets inside
+  the window, a touch on a row's words toggles its box, each box named and
+  described, Swap by touch one undo step.
 - `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,

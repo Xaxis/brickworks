@@ -15006,11 +15006,11 @@ msgstr "Lots rares, et un échange courant pour chacun"
 msgid "Finding a common part or colour for each…"
 msgstr "Recherche d’une pièce ou d’une couleur courante pour chacun…"
 
-msgid "A swap is a part or a colour in %d sets or more: the same shape in the lot's colour where there is one, else the nearest colour"
-msgstr "Un échange est une pièce ou une couleur dans %d sets ou plus : la même forme dans la couleur du lot quand il y en a une, sinon la couleur la plus proche"
+msgid "A swap is a part or a colour in %d sets or more: the same shape in the lot's colour where there is one, else the nearest colour of its finish"
+msgstr "Un échange est une pièce ou une couleur dans %d sets ou plus : la même forme dans la couleur du lot quand il y en a une, sinon la couleur la plus proche de même aspect"
 
-msgid "A print's plain part is not picked unless you pick it"
-msgstr "La pièce unie d’une pièce imprimée n’est pas choisie, sauf si vous la choisissez"
+msgid "Only a swap that keeps the look starts picked: the same shape, or a close colour of the same finish"
+msgstr "Seul un échange qui garde l’aspect est déjà choisi : la même forme, ou une couleur proche de même aspect"
 
 msgid "Swap this lot"
 msgstr "Échanger ce lot"
@@ -15048,14 +15048,50 @@ msgstr "la pièce unie %s (%s), sans son impression, %s"
 msgid "no swap in %d sets or more: %s"
 msgstr "aucun échange dans %d sets ou plus : %s"
 
-msgid "it comes in %d sets at most, in any colour"
-msgstr "elle existe dans %d sets au plus, toutes couleurs confondues"
+msgid "%s itself comes in %d sets at most, in any colour"
+msgstr "%s elle-même existe dans %d sets au plus, toutes couleurs confondues"
 
-msgid "it comes in 1 set at most, in any colour"
-msgstr "elle existe dans 1 set au plus, toutes couleurs confondues"
+msgid "%s itself comes in 1 set at most, in any colour"
+msgstr "%s elle-même existe dans 1 set au plus, toutes couleurs confondues"
 
 msgid "no colour of its transparency comes in %d sets"
 msgstr "aucune couleur de sa transparence n’existe dans %d sets"
+
+msgid "Pick any other yourself"
+msgstr "Choisissez vous-même les autres"
+
+msgid "no other mould of it sits as it does in %d sets or more"
+msgstr "aucun autre moule ne se place comme elle dans %d sets ou plus"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and 1 more, %s"
+msgstr "%s (%s), même forme dans sa couleur, avec toutes ses connexions et 1 de plus, %s"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and %d more, %s"
+msgstr "%s (%s), même forme dans sa couleur, avec toutes ses connexions et %d de plus, %s"
+
+msgid "still made in its colour"
+msgstr "encore fabriquée dans sa couleur"
+
+msgid "a close colour"
+msgstr "une couleur proche"
+
+msgid "a different colour"
+msgstr "une autre couleur"
+
+msgid "not see-through"
+msgstr "non transparent"
+
+msgid "see-through"
+msgstr "transparent"
+
+msgid "loses its %s"
+msgstr "perd son aspect %s"
+
+msgid "becomes %s"
+msgstr "prend l’aspect %s"
+
+msgid "a part is in hand and cannot go back where it was: put it down or press Escape first"
+msgstr "une pièce est en main et ne peut pas revenir à sa place : posez-la ou appuyez d’abord sur Échap"
 
 msgid "nothing swapped"
 msgstr "rien d’échangé"

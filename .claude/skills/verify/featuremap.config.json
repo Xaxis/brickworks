@@ -5594,14 +5594,28 @@
       "kind": "ui",
       "label": "rare lots swapped for common ones",
       "entry": "src/collection/rare_swap.gd",
-      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour, a box each, a print's plain part not picked; Swap N lots, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true does the same; tools/probe.sh rareswap_probe)",
+      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour of its finish and transparency, a box each; only a swap that keeps the look starts picked (the same shape, or a colour within ΔE 10 of its finish), every other says what it changes; a touch on a row toggles it; Swap N lots, a part in hand put back first, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true swaps the same, lots= names others; tools/probe.sh rareswap_probe; tools/probe.sh rsreview_probe; tools/probe.sh rsreview_phone_probe)",
       "area": "building"
     },
     {
       "kind": "cli",
       "label": "rareswap probe",
       "entry": "src/dev/rareswap_probe.gd",
-      "reach": "tools/probe.sh rareswap_probe   (headless, about 6 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10)",
+      "reach": "tools/probe.sh rareswap_probe   (headless, about 10 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10, with the defaults alone and with every swap picked)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "rsreview probe",
+      "entry": "src/dev/rsreview_probe.gd",
+      "reach": "tools/probe.sh rsreview_probe   (headless, about 15 minutes; RSR_CASES=lpub,mcp_edges,held,... for some; RSR_OUT=DIR writes lots.tsv and catalogue.tsv)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "rsreview phone probe",
+      "entry": "src/dev/rsreview_phone_probe.gd",
+      "reach": "tools/probe.sh rsreview_phone_probe   (windowed, 430x932 by its header; RSR_OUT=DIR keeps its pictures)",
       "area": "building"
     },
     {

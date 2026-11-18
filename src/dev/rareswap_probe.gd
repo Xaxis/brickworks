@@ -9,15 +9,18 @@
 ##   apart from RareSwap) is on the parts list's rare row, and tagged on its
 ##   own row;
 ## - swapped: each has a swap that comes in 20 or more sets, read here from
-##   the colours files again: the nearest colour (its ΔE said), or the same
-##   colour in an equal part, whose shape is the old one's box and
-##   connection points; the row pressed, Swap pressed, as a person presses
-##   them: one undo step;
-## - measured: the row's rare count before and after, on each of the 10,
-##   written to RARESWAP_OUT (bench/results/rareswap-2026-11-17/gallery.tsv);
-## - over MCP: replace_parts rare=true in 1 call gives the panel's file;
-##   preview changes nothing; lots= swaps only those named, a print among
-##   them to its plain part;
+##   the colours files again: the nearest colour of its finish (its ΔE
+##   said), or the same colour in an equal part, which sits where the old
+##   one stood with every connection point of it (a print's own plain part,
+##   still made, in fewer); picked only where it keeps the look (the same
+##   shape in its colour, or a close colour of its finish: rsfix); the row
+##   pressed, Swap pressed, as a person presses them: one undo step;
+## - measured: the row's rare count before and after, with the defaults
+##   alone and with every swap picked, on each of the 10, written to
+##   RARESWAP_OUT (bench/results/rareswap-2026-11-17/gallery.tsv);
+## - over MCP: replace_parts rare=true in 1 call gives the panel's file
+##   with its defaults; preview changes nothing; lots= swaps only those
+##   named, a print among them to its plain part;
 ## - kept, the save path's attacks on someone else's file
 ##   (fixtures/rareswap_kept.mpd: its author, licence, history and comments,
 ##   a line spaced as nobody else spaces it, a wing placed twice and once by
@@ -91,7 +94,8 @@ func _run() -> void:
 		DirAccess.make_dir_recursive_absolute(out)
 		var file := FileAccess.open(out.path_join("gallery.tsv"), FileAccess.WRITE)
 		file.store_string("model\tlots\trare_before\trare_after\tcolour_swaps\tpart_swaps\t"
-			+ "prints_kept\tno_swap\tmean_delta_e\n" + "\n".join(_rows_out) + "\n")
+			+ "prints_kept\tno_swap\tmean_delta_e\tpicked_by_default\trare_after_defaults\n"
+			+ "\n".join(_rows_out) + "\n")
 		file.close()
 		print("  written %s" % out.path_join("gallery.tsv"))
 	print("\nrareswap probe: %s" % ("all checks passed" if _failures == 0
@@ -221,6 +225,16 @@ static func _box_names(list: InventoryPanel) -> Array:
 	return out
 
 
+## What a screen reader says after each swap box's name: what it becomes.
+static func _box_descriptions(list: InventoryPanel) -> Array:
+	var out: Array = []
+	for row: Node in (list.get("_swaps") as Node).get_children():
+		for child: Node in row.get_children():
+			if child is CheckBox:
+				out.append((child as CheckBox).accessibility_description)
+	return out
+
+
 static func _distinct(names: Array) -> bool:
 	var seen: Dictionary = {}
 	for n: Variant in names:
@@ -318,24 +332,32 @@ func _case_gallery() -> void:
 		var none: Array = []
 		var delta: float = 0.0
 		var wrong: Array = []
+		var picked: int = 0
+		var swapper: RareSwap = list.get("_swapper")
 		for lot: RareSwap.Lot in list.get("_rare"):
-			print("    %s" % (list.get("_swapper") as RareSwap).lot_words(lot))
+			print("    %s%s" % [swapper.lot_words(lot), "" if lot.picked else "  (not picked)"])
+			if lot.picked:
+				picked += 1
 			if not lot.offered():
 				none.append(lot.key)
-				var could: String = _a_swap_for(lot, list.get("_swapper"))
+				var could: String = _a_swap_for(lot, swapper)
 				if not could.is_empty():
 					wrong.append("%s: none offered, but %s" % [lot.key, could])
 				continue
 			var part: String = lot.into_part if not lot.into_part.is_empty() else lot.part
 			var colour: int = lot.into_colour if lot.into_colour >= 0 else lot.colour
 			var sets: int = _library.sets_in_colour(part, colour)
-			if sets < 20 or sets != lot.into_sets:
+			# A print's own plain part, still made in its colour, in fewer
+			# than 20 sets is offered before another mould (rsreview F7).
+			var own_plain: bool = lot.drops_print() and swapper.still_made(part, colour) \
+				and sets > RareSwap.RARE_IN
+			if sets < 20 and not own_plain or sets != lot.into_sets:
 				wrong.append("%s: %s/%d in %d sets" % [lot.key, part, colour, sets])
 			if not lot.into_part.is_empty():
 				part_swaps += 1
-				if lot.into_colour >= 0 or not RareSwap.same_shape(_library.mesh_for(lot.part),
-						_library.mesh_for(lot.into_part)):
-					wrong.append("%s: %s is not its shape in its colour" % [lot.key, lot.into_part])
+				if lot.into_colour >= 0 or RareSwap.fits(_library.mesh_for(lot.part),
+						_library.mesh_for(lot.into_part)) != lot.more_points:
+					wrong.append("%s: %s does not sit as it does in its colour" % [lot.key, lot.into_part])
 				if lot.drops_print():
 					prints_kept += 1
 					if lot.picked:
@@ -345,10 +367,38 @@ func _case_gallery() -> void:
 				delta += lot.delta_e
 				if lot.into_colour == lot.colour:
 					wrong.append("%s: the same colour" % lot.key)
-		_check("%s swapped: each of %d with a part or colour in 20 sets or more has it (%d colours, %d parts; none for %d, whose part comes in fewer in every colour: %s)%s"
-			% [name, listed.size(), colour_swaps, part_swaps, none.size(), none, "" if wrong.is_empty()
-			else ": " + "; ".join(wrong)], wrong.is_empty() and colour_swaps + part_swaps + none.size()
-			== listed.size())
+			# Picked only where it keeps the look (rsreview F1, F2).
+			if lot.picked != swapper.keeps_look(lot) or lot.picked and lot.into_colour >= 0 \
+					and lot.delta_e > RareSwap.CLOSE_DE:
+				wrong.append("%s: picked %s, though %s" % [lot.key, lot.picked, swapper.into_words(lot)])
+		_check("%s swapped: each of %d with a part or colour in 20 sets or more has it, picked only where it keeps the look (%d colours, %d parts, %d picked; none for %d, whose part comes in fewer in every colour: %s)%s"
+			% [name, listed.size(), colour_swaps, part_swaps, picked, none.size(), none,
+			"" if wrong.is_empty() else ": " + "; ".join(wrong)], wrong.is_empty()
+			and colour_swaps + part_swaps + none.size() == listed.size())
+		# What the defaults alone swap: the rare count after them.
+		var left_default: int = rare.size()
+		if picked > 0:
+			var depth_default: int = _builder.history_depth()
+			var swapped: bool = await _swap_pressed(list)
+			left_default = _rare_here().size()
+			_check("%s defaults: the %d picked swapped in one undo step, %d rare left of %d" % [name,
+				picked, left_default, rare.size()], swapped and _builder.history_depth()
+				== depth_default + 1 and left_default == rare.size() - picked)
+			list.hide_list()
+			var back: String = await _undone()
+			_check("%s defaults: undone, the file to the byte (%s)" % [name, _diff(before, back)],
+				back == before)
+			list = await _list_up()
+			if not await _swaps_up(list):
+				_check("%s: the rare row opens the swaps again" % name, false)
+				continue
+		else:
+			var button: Button = list.controls_by_name().get("parts_swap")
+			_check("%s defaults: nothing keeps the look, so nothing is picked and Swap is off" % name,
+				button != null and button.disabled)
+		# Then every swap offered picked, a print's plain part aside, as a
+		# builder ticks them all: what the writer has to get right.
+		await _pick_all(list)
 		var depth: int = _builder.history_depth()
 		var pressed: bool = await _swap_pressed(list)
 		var after_said: String = list.controls_by_name()["parts_rare"].text \
@@ -362,9 +412,9 @@ func _case_gallery() -> void:
 			% [name, _row_count(said), _row_count(after_said), left],
 			_row_count(after_said) == left and after_said.begins_with("Swapped ")
 			and left == prints_kept + none.size())
-		_rows_out.append("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.1f" % [name, lots, rare.size(), left,
+		_rows_out.append("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.1f\t%d\t%d" % [name, lots, rare.size(), left,
 			colour_swaps, part_swaps, prints_kept, none.size(),
-			delta / maxf(colour_swaps, 1)])
+			delta / maxf(colour_swaps, 1), picked, left_default])
 		list.hide_list()
 		var undone: String = await _undone()
 		_check("%s: one undo, the save before to the byte (%s)" % [name, _diff(before, undone)],
@@ -393,10 +443,26 @@ func _a_swap_for(lot: RareSwap.Lot, swapper: RareSwap) -> String:
 	if lot.flexible:
 		return ""
 	for other: String in swapper.equal_candidates(lot.part):
-		if _library.sets_in_colour(other, lot.colour) >= 20 and RareSwap.same_shape(
-				_library.mesh_for(lot.part), _library.mesh_for(other)):
+		if _library.sets_in_colour(other, lot.colour) >= 20 and RareSwap.fits(
+				_library.mesh_for(lot.part), _library.mesh_for(other)) >= 0:
 			return "%s in %d sets" % [other, _library.sets_in_colour(other, lot.colour)]
 	return ""
+
+
+## Every offered swap's box pressed on but a print's plain part's, as a
+## builder ticks each one: the writer under attack, not the defaults. Those
+## of [param leave]'s parts pressed off. How many are on.
+func _pick_all(list: InventoryPanel, leave: Array = []) -> int:
+	var on: int = 0
+	for each: Control in list.call("_swap_boxes"):
+		var lot: RareSwap.Lot = each.get_meta("lot")
+		var box: CheckBox = each as CheckBox
+		var want: bool = lot.offered() and not lot.drops_print() and not leave.has(lot.part)
+		if box.button_pressed != want and not box.disabled:
+			await _press(box)
+		if box.button_pressed:
+			on += 1
+	return on
 
 
 ## The undo, then the save as it stands.
@@ -409,15 +475,19 @@ func _undone() -> String:
 ## replace_parts rare=true in 1 call gives the panel's file; preview changes
 ## nothing; lots= only those named.
 func _case_mcp() -> void:
-	var text: String = FileAccess.get_file_as_string("res://models/corner_shop.ldr")
+	# The kept fixture: two lots whose swaps keep the look (3070a to 3070b,
+	# 3665a to 3665b) and Sand Blue lots whose only swap is another colour.
+	var text: String = _fixture(KEPT)
 	await _open(text)
 	var opened: String = _save()
 	var list: InventoryPanel = await _list_up()
 	_check("mcp: the rare row opens the swaps", await _swaps_up(list))
-	_check("mcp: Swap pressed", await _swap_pressed(list))
+	_check("mcp: Swap pressed, the defaults picked", await _swap_pressed(list))
 	list.hide_list()
 	var by_panel: String = _save()
-	_check("mcp: the panel swapped corner_shop", by_panel != opened)
+	_check("mcp: the panel's defaults swapped the moulds alone (3070a %d, 3665a %d, Sand Blue 3622 %d)"
+		% [_count("3070a", 14), _count("3665a", 0), _count("3622", 379)], by_panel != opened
+		and _count("3070a", 14) == 0 and _count("3665a", 0) == 0 and _count("3622", 379) == 1)
 	await _open(text)
 	var before: String = _save()
 	var preview: String = await _say("replace_parts", {"rare": true, "preview": true})
@@ -434,6 +504,8 @@ func _case_mcp() -> void:
 	_check("mcp: ...as one undo step (%d), its answer the rare count before and after"
 		% (_builder.history_depth() - depth), _builder.history_depth() == depth + 1
 		and said.contains("as one undo step") and said.contains("Rare lots now: "))
+	_check("mcp: ...each lot it kept said, and why: it would change the look; name it in lots=",
+		said.contains("kept: it would change how the model looks; name it in lots= to swap it"))
 	await _say("undo", {})
 	_check("mcp: its undo, the save before to the byte", _save() == before)
 	# One lot named: only it changes.
@@ -468,6 +540,10 @@ func _case_kept() -> void:
 	print("  rare: %s" % rare)
 	var list: InventoryPanel = await _list_up()
 	_check("kept: the rare row opens the swaps", await _swaps_up(list))
+	# 3665a, picked by default (3665b holds all it did), sits in the mirrored
+	# wing: a part changed there is written whole (mirror_part's case), and
+	# the patch is under attack here.
+	await _pick_all(list, ["3665a"])
 	var picked := PackedStringArray()
 	for lot: RareSwap.Lot in list.get("_rare"):
 		print("    %s%s" % [(list.get("_swapper") as RareSwap).lot_words(lot),
@@ -499,8 +575,8 @@ func _case_kept() -> void:
 		"rareswap_wing.ldr"), _defined(after, "rareswap_tip.ldr")],
 		_defined(after, "rareswap_wing.ldr") == 1 and _defined(after, "rareswap_tip.ldr") == 1)
 	# A swap inside the tip, inside each wing, changes both its copies, the
-	# mirrored one too; 3665a, in 2 sets in any colour, has none and stays.
-	_check("kept: the tip's 87087 changed in both wings, the model's 3070a, 3665a kept (%d, %d, %d left)"
+	# mirrored one too; 3665a, unticked, stays.
+	_check("kept: the tip's 87087 changed in both wings, the model's 3070a, 3665a unticked kept (%d, %d, %d left)"
 		% [_count("87087", 379), _count("3070a", 14), _count("3665a", 0)],
 		_count("87087", 379) == 0 and _count("3070a", 14) == 0 and _count("3665a", 0) == 2)
 	_check("kept: the print kept, not picked (%d 2431p70)" % _count("2431p70", 0),
@@ -516,6 +592,7 @@ func _case_kept() -> void:
 	await _open_as(text, KEPT_TITLE)
 	list = await _list_up()
 	_check("kept: the rare row opens the swaps again", await _swaps_up(list))
+	await _pick_all(list, ["3665a"])
 	_check("kept: Swap pressed again", await _swap_pressed(list))
 	list.hide_list()
 	var undone: String = await _undone()
@@ -590,6 +667,7 @@ func _case_locked() -> void:
 	var list: InventoryPanel = await _list_up()
 	list.said.connect(func(line: String) -> void: said.append(line))
 	_check("locked: the rare row opens the swaps", await _swaps_up(list))
+	await _pick_all(list)
 	_check("locked: Swap pressed", await _swap_pressed(list))
 	list.hide_list()
 	print("  said: %s" % said)
@@ -607,6 +685,14 @@ func _case_picks() -> void:
 	var list: InventoryPanel = await _list_up()
 	_check("picks: the rare row opens the swaps", await _swaps_up(list))
 	var rare: int = (list.get("_rare") as Array).size()
+	# Only those that keep the look start picked: the moulds, not Sand Blue
+	# (rsreview F1).
+	var at_first: Array = (list.get("_rare") as Array).filter(func(lot: RareSwap.Lot) -> bool:
+		return lot.picked).map(func(lot: RareSwap.Lot) -> String: return lot.key)
+	at_first.sort()
+	_check("picks: picked at first, only the swaps that keep the look, the three moulds (%s)"
+		% ", ".join(at_first), at_first == ["3070a/14", "3665a/0", "4032b/72"])
+	await _pick_all(list)
 	var picked: int = (list.get("_rare") as Array).filter(func(lot: RareSwap.Lot) -> bool:
 		return lot.picked).size()
 	for each: Control in list.call("_swap_boxes"):
@@ -639,7 +725,16 @@ func _case_words() -> void:
 		"Counting the sets each part comes in…", "Swap 1 lot", "Swap",
 		"Swapped 3 rare lots for common ones, 9 parts. No lot is rare now",
 		"Swapped 1 rare lot for common ones, 1 part. Still rare: 1 lot comes in 3 sets or fewer, so few sellers have it: swap for common parts…",
-		"nothing swapped"]
+		"nothing swapped",
+		# What a swap changes, said after it (rsfix), as other lots say it.
+		"Light Bluish Grey, in 3,412 sets (ΔE 13.9); a different colour; not see-through; loses its chrome",
+		"Black, in 20 sets (ΔE 4.2); a close colour; see-through; becomes pearl",
+		"3665a itself comes in 2 sets at most, in any colour; no other mould of it sits as it does in 20 sets or more",
+		"60748 itself comes in 1 set at most, in any colour",
+		"the plain Tile 2 x 2 (3068b), without its print, in 12 sets; still made in its colour",
+		"Slope 45 2 x 1 Inverted (3665b), the same shape in its colour, holding all its connections and 3 more, in 537 sets",
+		"Slope 45 2 x 1 Inverted (3665b), the same shape in its colour, holding all its connections and 1 more, in 537 sets",
+		"nothing swapped: " + FindReplace.HELD_WORDS]
 	_check("words: the rare row opens the swaps", await _swaps_up(list))
 	texts.append(list.get("_heading").text)
 	for node: Node in [list.get("_swap_note"), list.get("_swap_now"), list.get("_swap_back")]:
@@ -655,7 +750,7 @@ func _case_words() -> void:
 				texts.append((child as CheckBox).tooltip_text)
 	# The library's names, a part's or a colour's, are drawn as the app has
 	# them in each language (in English where it has no other).
-	var names: Array = []
+	var names: Array = ["Light Bluish Grey", "Black", "Tile 2 x 2", "Slope 45 2 x 1 Inverted"]
 	for lot: RareSwap.Lot in list.get("_rare"):
 		texts.append("rare: " + RareSwap.sets_words(lot.sets))
 		names.append_array([lot.name, lot.colour_name])
@@ -669,6 +764,11 @@ func _case_words() -> void:
 		% " | ".join(boxes), boxes.size() == (list.get("_rare") as Array).size()
 		and not boxes.has("") and _distinct(boxes)
 		and boxes.all(func(n: String) -> bool: return _drawn_in(list, n)))
+	# ...and into what, after it, as the row's second line says (rsreview F11).
+	var into: Array = _box_descriptions(list)
+	_check("words: ...and what each becomes, as its row says it (%s)" % " | ".join(into),
+		into.size() == boxes.size() and not into.has("")
+		and into.all(func(n: String) -> bool: return _drawn_in(list, n)))
 	list.hide_list()
 	# ...and in German as the row draws it, not the English it was first.
 	Language.apply("de")
