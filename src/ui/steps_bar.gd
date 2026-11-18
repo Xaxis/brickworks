@@ -1771,12 +1771,17 @@ static func find_in(lots: Array[Dictionary], library: PartLibrary, said: String)
 			ids[part_id] = true
 			for code: int in step_lots[part_id]:
 				colours[code] = true
-	var wanted: SelectBy.Wanted = SelectBy.wanted(library, said, colours)
+	# SelectBy is compiled at its first use, not with the window (Later): the
+	# timeline is on the first screen. Its Wanted read by name.
+	var wanted: RefCounted = Later.script(&"SelectBy").wanted(library, said, colours)
+	var any_part: bool = bool(wanted.get("any_part"))
+	var wanted_parts: Dictionary = wanted.get("parts")
+	var wanted_colour: int = int(wanted.get("colour"))
 	# The model's numbers that answer: as they are, or as the number a part
 	# moved to (a file's 3794 is 15573).
 	var takes: Dictionary = {}
 	for part_id: String in ids:
-		if wanted.any_part or wanted.parts.has(part_id) or wanted.parts.has(library.resolve(part_id)):
+		if any_part or wanted_parts.has(part_id) or wanted_parts.has(library.resolve(part_id)):
 			takes[part_id] = true
 	var hits: Array = []
 	var other: Dictionary = {}
@@ -1788,12 +1793,12 @@ static func find_in(lots: Array[Dictionary], library: PartLibrary, said: String)
 				continue
 			var by_colour: Dictionary = lots[index][part_id]
 			for code: int in by_colour:
-				if wanted.colour < 0 or code == wanted.colour:
+				if wanted_colour < 0 or code == wanted_colour:
 					count += int(by_colour[code])
 					parts[part_id] = int(parts.get(part_id, 0)) + int(by_colour[code])
-				elif not wanted.any_part:
+				elif not any_part:
 					other[code] = int(other.get(code, 0)) + int(by_colour[code])
 		if count > 0:
 			hits.append([index, count, parts])
 	return {"hits": hits, "other": other if hits.is_empty() else {}, "parts": takes,
-		"colour": wanted.colour}
+		"colour": wanted_colour}
