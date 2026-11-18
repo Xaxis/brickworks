@@ -28,7 +28,12 @@
 //   9. Disconnect, and a post by hand: Reddit's own page offered (never
 //      opened here) with the words, its address pasted back, counted.
 //  10. Every tab at 390 and 1280, light and dark, never wider than the
-//      phone; no token in any answer, page, storage or console line.
+//      phone, no button in Accounts shown off; no token in any answer,
+//      page, storage or console line.
+//  10b. With no Reddit app, as on brickworks.diy, at 390 and 1280, light
+//      and dark: "Posting by hand" and why, no Connect at all and no button
+//      shown off, How to connect later opening in place with the redirect
+//      URI, Vercel's names and the redeploy, and Write a post working.
 //
 // The checks' pool is emptied of the desk's rows before and after (the
 // secret key, test=true only), and the throwaway stranger deleted. It
@@ -107,10 +112,30 @@ async function emptyPool() {
 
 const browser = await launch({ signedOut: true });
 
-async function open(pathname, { width = 1280, theme = "light", who = null, label }) {
+// brickworks.diy today has no Reddit app. The checks' pool always has the
+// stand-in's, so with [noApp] its read is answered as the owner's pool
+// answers it (tests/fixtures/social/api_check.mjs real_later; test_social
+// pins every field).
+const NO_APP = { api: false, mock: false, account: null, route: "by_hand", missing: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"],
+  env: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"], redirect: "https://brickworks.diy/admin?connected=reddit",
+  scopes: ["identity", "history", "privatemessages", "read", "submit"] };
+/// Each control a person sees in [scope] that is shown off (disabled).
+const shownOff = (page, scope) => page.evaluate((at) => [...document.querySelectorAll(`${at} button, ${at} summary, ${at} a`)]
+  .filter((one) => one.getClientRects().length > 0 && (one.matches(":disabled") || one.getAttribute("aria-disabled") === "true"))
+  .map((one) => one.textContent.trim()), scope);
+
+async function open(pathname, { width = 1280, theme = "light", who = null, label, noApp = false }) {
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
     extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+  if (noApp) {
+    await context.route((url) => url.pathname === "/api/admin" && url.searchParams.get("op") === "social", async (route) => {
+      const answer = await route.fetch();
+      const json = await answer.json();
+      if (Array.isArray(json?.networks)) json.networks = json.networks.map((one) => (one.id === "reddit" ? { ...one, ...NO_APP } : one));
+      await route.fulfill({ response: answer, json });
+    });
+  }
   await context.route(/\/theme-account\.js(?:\?.*)?$/, (route) => route.fulfill({ status: 200,
     contentType: "text/javascript", body: "export async function follow() {}" }));
   // reddit.com is never reached from here: a link to it is read, not followed.
@@ -472,6 +497,10 @@ try {
             .filter((one) => one.offsetParent && one.getBoundingClientRect().right > innerWidth + 1).length);
           if (off) console.log(`        ${tab} at ${width}: ${off} of its rows' acts past the screen's edge`);
           wide ||= off > 0;
+          if (tab === "accounts") {
+            const offs = await shownOff(where.page, '[data-tab="accounts"]');
+            check(`at ${width} ${theme}: no button in Accounts shown off: ${JSON.stringify(offs)}`, offs.length === 0);
+          }
           await shot(where.page, `10-${tab}-${width}-${theme}.png`);
         }
         await go(where.page, "social/sent");
@@ -479,6 +508,46 @@ try {
         await until(where.page, () => document.querySelector("#social-sheet[open]"));
         await shot(where.page, `10-details-${width}-${theme}.png`, false);
         check(`at ${width} ${theme}: every tab drawn, none wider than the screen, every row's acts on it`, !wide);
+        await where.context.close();
+      }
+    }
+
+    // --- 10b. No Reddit app, as on brickworks.diy ----------------------------------------------
+    console.log("10b. No Reddit app (brickworks.diy today) at 390 and 1280, light and dark");
+    for (const width of [1280, 390]) {
+      for (const theme of ["light", "dark"]) {
+        const where = await open("/admin?tests=1#social/accounts", { width, theme, who: owner, label: `no app ${width} ${theme}`, noApp: true });
+        const p = where.page;
+        await shown(p);
+        const drawn = await until(p, () => /Posting by hand: Reddit takes no new API apps \(since 31 Oct 2026\)\./
+          .test(document.getElementById("networks")?.textContent || ""), null, 30000);
+        const card = p.locator("#networks li").first();
+        const seen = await p.evaluate(() => {
+          const li = document.querySelector("#networks li");
+          const named = [...li.querySelectorAll("button, summary, a")].filter((one) => one.getClientRects().length > 0)
+            .map((one) => one.textContent.trim());
+          return { pill: li.querySelector(".pill")?.textContent, named, notice: li.querySelector("a[target=_blank]")?.href };
+        });
+        const offs = await shownOff(p, '[data-tab="accounts"]');
+        check(`at ${width} ${theme}: "Posting by hand" and why, no Connect, no button shown off: ${JSON.stringify(seen.named)} off ${JSON.stringify(offs)}`,
+          drawn && seen.pill === "Posting by hand" && !seen.named.some((one) => /Connect Reddit/.test(one)) && offs.length === 0
+          && seen.named.includes("Write a post") && seen.named.includes("How to connect later")
+          && seen.notice === "https://support.reddithelp.com/hc/en-us/articles/54353370049684");
+        await card.locator("summary", { hasText: "How to connect later" }).click();
+        const steps = (await card.locator("details.later ol").textContent()) || "";
+        check(`...How to connect later opens in place: the redirect URI, Vercel's two names, the redeploy, the scopes`,
+          /https:\/\/brickworks\.diy\/admin\?connected=reddit/.test(steps) && /REDDIT_CLIENT_ID/.test(steps)
+          && /REDDIT_CLIENT_SECRET/.test(steps) && /Redeploy: Deployments/.test(steps) && /identity, history, privatemessages, read, submit/.test(steps));
+        await card.getByRole("button", { name: "Copy the redirect URI" }).click();
+        const copied = await until(p, () => /Copied the redirect URI|would not copy/.test(document.querySelector("#networks details.later")
+          ?.textContent || ""));
+        const offsOpen = await shownOff(p, '[data-tab="accounts"]');
+        check(`...its Copy answers, and opened nothing is shown off, none wider than the screen: ${JSON.stringify(offsOpen)}`,
+          copied && offsOpen.length === 0 && !(await sideways(p)));
+        await shot(p, `10b-no-app-${width}-${theme}.png`);
+        await card.getByRole("link", { name: "Write a post" }).click();
+        check("...Write a post opens Write", await until(p, () => location.hash === "#social/write"
+          && document.querySelector('[data-tab="write"]')?.hidden === false && !document.querySelector("#social-form [name=title]").disabled));
         await where.context.close();
       }
     }

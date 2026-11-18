@@ -3164,7 +3164,9 @@ plan with Claude as the client.
   messages, newest first, read here only), Write (a post or a reply, the
   community's rules and the owner's notes beside it, drafts; the site's
   links tagged utm_campaign=bw-<send>), Sent and scheduled (score, comments
-  and visits over time), Accounts (Connect, Disconnect; X, Facebook and
+  and visits over time), Accounts (Connect, Disconnect; with no Reddit app,
+  as on brickworks.diy, "Posting by hand" and why, Write a post and How to
+  connect later in place, never a Connect shown off; X, Facebook and
   Instagram not connected yet, with costs). Nothing is sent but by the
   owner's press on the exact words the sheet shows (their hash; changed
   words 409); the database refuses a send past a draft without a press.
@@ -3209,8 +3211,12 @@ plan with Claude as the client.
   Reddit's address, Copy the words first, then Back to drafts and Drop), a
   post by hand (Reddit's page offered with focus on the new sheet's name,
   its address pasted back and focus back on Write's Review), each tab
-  at 390 and 1280 light and dark with every row's acts on the screen, and
-  no token in any answer, page or storage. The
+  at 390 and 1280 light and dark with every row's acts on the screen and
+  no button in Accounts shown off, Accounts again with no Reddit app (the
+  read answered as the owner's pool answers it: "Posting by hand", no
+  Connect, How to connect later opening with the redirect URI, Vercel's
+  names, the redeploy and the scopes, its Copy answering, Write a post
+  opening Write), and no token in any answer, page or storage. The
   checks' pool is emptied after. Locally against `relay_server.mjs PORT
   --hold=social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`
   (restart it between runs: the held rows last as long as it does).

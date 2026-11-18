@@ -788,6 +788,9 @@ function networks(tests, accounts) {
     const app = provider.appOf(tests);
     return { id: provider.id, name: provider.name, later: false, mock: Boolean(app?.mock), api: Boolean(app),
       missing: app ? [] : provider.env.filter((name) => !String(process.env[name] || "").trim()),
+      // What connecting later takes, for the page to show in place: the
+      // names to set (never a value), the one address to register, the scopes.
+      env: provider.env, redirect: app ? null : redirectOf(null, provider.id, false), scopes: provider.scopes,
       account: account && { handle: account.handle, connected_at: account.connected_at, connected_by: account.connected_by,
         synced_at: account.synced_at, sync_said: account.sync_said },
       route: account && app ? "api" : "by_hand", most: provider.most };
