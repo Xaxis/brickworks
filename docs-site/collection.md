@@ -82,6 +82,10 @@ The parts list then offers **By where it's kept**, and each row names its place;
 
 Your AI can set them too: tell it where you keep your parts, and it places them all in one go, saying where each was, so any can be put back. An older Brickworks shows your collection without its places and leaves them as they are with your account.
 
+<!-- covers
+ui:where each part is kept
+-->
+
 ## What do I need? {#need}
 
 ![The car's parts list, 61 pieces in 32 lots: each with how many, its picture, number, name and colour; along the top What do I need?, Save as CSV, and the BrickLink, Rebrickable and LEGO® Pick a Brick lists.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")
