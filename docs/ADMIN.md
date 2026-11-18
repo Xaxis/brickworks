@@ -59,6 +59,7 @@ three that stay outside, each with why.
 | Prices, trials, comps, promotions, refunds, payouts | Admission | **Outside**: real money stays the owner's yes at Admission; Plans reads it and links to each |
 | Secrets' values (keys, signing secrets, CRON_SECRET) | Vercel, Resend, Supabase | **Outside**: never on a page; Switches names them and says where each is changed |
 | Brickworks' own social accounts: what came in, posts and replies, their results (socialdesk) | each network's own site | Social: the inbox, Write with the community's rules, Sent and scheduled, Accounts (docs/SOCIAL_DESK.md). Posting on Reddit is by hand on Reddit's own page until Reddit grants API access: **outside** for that one press |
+| Claude on the owner's own Anthropic key: the key, the model, the effort, the month's cap (adminclaude) | console.anthropic.com | Claude › Settings, and the panel beside every section; on Social, Suggest, Suggest a reply, Improve and Overview, each landing as a draft (docs/ADMIN_CLAUDE.md). The key is made, paid for and deleted at console.anthropic.com: **outside** for that |
 
 ### api/admin.js, every op
 
@@ -115,6 +116,9 @@ it answers.
 | `social_sync`, `social_mark` | POST | What came in and how sent posts do, read now; read or unread here (never at the network) | social_items, social_results |
 | `social_draft`, `social_drop`, `social_notes` | POST | A draft kept (the site's links tagged) or thrown away; notes on a community's rules | social_sends, social_rules |
 | `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; back to the drafts (a schedule, a hand-off not posted, or a send unsure whether it is up); a post made by hand or found up, its address kept | social_sends, the network |
+| `claude`, `claude_models` | GET | Claude's settings (the key only as `sk-ant-…` and its last four, the model, effort, cap, this month's spend); the models the kept key may use, from Anthropic's Models API (adminclaude) | admin_claude_settings, admin_claude_month, Anthropic |
+| `claude_key`, `claude_check`, `claude_forget`, `claude_settings` | POST | A key checked with Anthropic and kept sealed, checked again, deleted; the model, effort and monthly cap | admin_claude_settings, Anthropic |
+| `claude_chat` | POST `{ask, text, target, section, history}` | One ask, its answer streamed (SSE): a question, or on the desk suggest, reply, improve or overview; read-only tools, and drafts its only write; audited itself | admin_claude_hold, admin_claude_settle, admin_claude_drafts, the desk's social_sends, Anthropic |
 
 Part B's four are reads: not kept in the audit, like the other GETs; part
 C's reads are not either, and each of its POSTs is. `api/otp.js` takes one
@@ -161,6 +165,7 @@ environments only), and flags one Vercel has that nothing reads.
 | `OC_PROJECT_KEY`, `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`, `OC_ME_ORIGIN`, `OC_ISSUER`, `OC_AUDIENCE` | Sign in with orangecheck |
 | `CRON_SECRET` | The crons' own key |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | The social desk's Reddit app (a web app): none can be made since Reddit closed new API apps on 2026-10-31, so posts go by hand (docs/SOCIAL_DESK.md) |
+| `CLAUDE_KEY_SECRET` | Seals the owner's Anthropic key at rest (AES-256-GCM; 32 characters or more, `openssl rand -base64 48`). Without it no key is kept and Claude › Settings says so; changed, the kept key no longer opens and is pasted again (docs/ADMIN_CLAUDE.md) |
 | `VIEW_SECRET`, `PARTS_URL`, `PUBLIC_ORIGIN` | Shared views, the parts' host, the site's address |
 | `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel's own |
 
@@ -235,6 +240,7 @@ px (a row of pills on a phone), and the section beside it.
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
 | Social | `#social/inbox`, `write`, `sent`, `accounts` | Replies, mentions and messages; a post or a reply with the community's rules beside it, and drafts; what was sent and waits, with score, comments and visits over time; each network, connected or not, and what each still to come costs | Check now, Mark read, Reply…, Keep the draft, Review and send… (Send now, Schedule), Unschedule, Post it on Reddit…, Connect, Disconnect |
+| Claude | `#claude`, and the panel beside every section | Settings: the key (only its last four), the model from the key's own list, the effort, the monthly cap and this month's spend. The panel: one conversation, streamed, with what each answer read and cost | Check and keep, Check key, Forget key, Keep; Ask, Stop, New chat; on Social: Suggest a post, Suggest a reply, Improve, Overview by Claude |
 | Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
 | Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
@@ -540,3 +546,40 @@ a stand-in (`api/_social_mock.js`), and turns on with `REDDIT_CLIENT_ID` and
 Proven by `tests/test_social.py` (the handlers against held tables and the
 stand-in; social.sql in a Postgres of its own) and, on a deployment,
 `tools/web/socialdesk_flow.mjs` (preview check `socialdesk`).
+
+## Claude (adminclaude): in the console now
+
+Claude on the owner's own Anthropic key, with their choice of model and
+effort, beside every section (docs/ADMIN_CLAUDE.md has the whole of it).
+
+- **The key** is pasted in Claude › Settings, checked with Anthropic's Models
+  API, sealed (AES-256-GCM under `CLAUDE_KEY_SECRET`) and kept in
+  `admin_claude_settings`, which only the server's role reads. No answer,
+  page, log or audit row holds it: the page is told `sk-ant-…` and its last
+  four. Forget key deletes it.
+- **The model** is chosen from the models the key may use (the live list,
+  those with adaptive thinking), `claude-opus-5-5` until chosen; the effort
+  with it.
+- **The cap.** A monthly cap in dollars, kept by the server: before each call
+  it holds the most the call may cost (`admin_claude_hold`, one at a time),
+  and settles it from the answer's own usage. At the cap Claude stops and
+  says so.
+- **What it may do.** Read what the console reads (social: inbox, threads,
+  drafts and sends with results, visits by tag, each community's rules;
+  people: counts and growth, never an address; plans; mail health; site and
+  backend health; feedback), and write one thing: a draft on the social
+  desk, marked "by Claude". It never sends, posts, replies, schedules,
+  deletes, mails, or changes a plan or a switch. What came in from Reddit
+  and feedback reaches it as quoted, untrusted data.
+- **The audit.** Each ask is one row (op `claude_chat`, kind `claude`): the
+  model and the one that answered, effort, calls, tokens in and out, cache
+  reads and writes, cost, the tools used, the drafts made, how it ended.
+  Never the key, never the words.
+- **The tables** are `supabase/admin_claude.sql` (additive; row security on,
+  no policy, nothing granted but to the server; nothing refers to an
+  account). Before it is applied, Claude says so and keeps nothing.
+
+Proven by `tests/test_adminclaude.py` (the handlers against held tables and
+the stand-in Anthropic, `api/_claude_mock.js`; admin_claude.sql in a
+Postgres of its own) and, on a deployment, `tools/web/adminclaude_flow.mjs`
+(preview check `adminclaude`).

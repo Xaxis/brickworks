@@ -42,6 +42,8 @@
       "area": "model-io",
       "tests": [
         "tests/test_saved_models_plan.py",
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_bench.py",
         "tests/test_booklet_follow.py",
         "tests/test_cadtask.py",
@@ -133,6 +135,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py",
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/test_comment_mentions.py",
@@ -252,7 +255,9 @@
       "reach": "POST /api/otp?op=mail_event, signed as Svix signs (svix-id, svix-timestamp, svix-signature) with RESEND_WEBHOOK_SECRET: 404 with no secret, 401 unsigned or stale, 200 {kept:false} for another product's mail, kept once in mail_events; tools/web/resend_webhook.sh sets the webhook up",
       "area": "account",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_beta.py",
         "tests/test_console.py",
         "tests/test_console2.py",
@@ -471,6 +476,14 @@
       "kind": "cli",
       "entry": "tools/web/account_page_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8890 &  node --env-file=.env tools/web/account_page_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>; throwaway accounts, deleted after)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:adminclaude browser flow",
+      "kind": "cli",
+      "entry": "tools/web/adminclaude_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/adminclaude_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose Anthropic and Reddit are stand-ins: the gate on every claude op in both pools; before admin_claude.sql the section and the panel say so and a key and a question answer 503; after it, keys refused and kept, models, settings, Enter twice asks once, Suggest a post, a hostile reply at most a draft, Suggest a reply, Improve, Overview, a refusal and a 429 left out of the conversation, the cap reached, the panel by keyboard and by name at 390/1280 light/dark, Forget key; the key in no answer, page, storage or console line; preview check [adminclaude]. Locally, nothing applied and the project's pool untouched: node tools/web/relay_server.mjs PORT --hold=admin_claude_settings,admin_claude_holds,admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules, then the flow with --url=http://127.0.0.1:PORT --held)",
       "area": "web",
       "tests": []
     },
@@ -715,7 +728,8 @@
       "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
       "area": "web",
       "tests": [
-        "tests/fixtures/console/api2_check.mjs"
+        "tests/fixtures/console/api2_check.mjs",
+        "tests/test_adminclaude.py"
       ]
     },
     {
@@ -3429,6 +3443,22 @@
       "tests": []
     },
     {
+      "id": "lib:Claude in the console",
+      "kind": "lib",
+      "entry": "api/_claude.js",
+      "reach": "python3 tools/minitest.py tests/test_adminclaude.py   (api/admin.js's claude ops against supabase/admin_claude.sql's and social.sql's tables held in memory, the checks' pool talking to the stand-in Anthropic (api/_claude_mock.js: real SSE events, tool_use turns, a refusal, a 429, a fallback) and the stand-in Reddit: the gate on all 7 ops; the key checked with the Models API, sealed (AES-256-GCM, CLAUDE_KEY_SECRET), never in an answer, log or audit row; models from the live list; the cap held before each call and settled from usage; only drafts written; a hostile reply at most a draft; every call audited without words; admin_claude.sql applied twice to a Postgres of its own: no role but the server's reaches it, twelve holds at once never pass the cap)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:Claude's read-only tools",
+      "kind": "lib",
+      "entry": "api/_claude_social.js",
+      "reach": "tests/test_adminclaude.py: social_inbox, social_thread, social_sends, social_overview, social_rules, whats_new and make_draft (the one write: a draft through the desk's own socialDraft, marked by Claude); people_counts (api/_claude_people.js), plans_read (_claude_plans.js), mail_health (_claude_mail.js), site_health (_claude_site.js), feedback_list (_claude_feedback.js), each over what its console section reads, never an email address; inbox, Reddit and feedback words wrapped as <untrusted> data",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:LEGO Art layout",
       "kind": "lib",
       "entry": "src/assembly/mosaic_art.gd",
@@ -3459,6 +3489,7 @@
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -3611,6 +3642,7 @@
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -3832,6 +3864,7 @@
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -4335,6 +4368,7 @@
       "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -4507,6 +4541,14 @@
       "kind": "lib",
       "entry": "api/_admission.js",
       "reach": "UPSTREAM.md   (Admission's packages/client, its types taken out; tests/test_billing.py runs it against tests/fixtures/billing/fake_admission.mjs)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:the Claude API client",
+      "kind": "lib",
+      "entry": "api/_claude_api.js",
+      "reach": "tests/test_adminclaude.py: GET /v1/models paged, POST /v1/messages streamed (anthropic-version 2026-10-21, adaptive thinking, effort, cached prefix, server-side fallback), each answer's usage costed at the dearer of the asked and served model; plain HTTP, as tools/package_api.sh packs no npm module (docs/ADMIN_CLAUDE.md)",
       "area": "web",
       "tests": []
     },
@@ -4843,6 +4885,14 @@
       ]
     },
     {
+      "id": "ui:Claude in the owner's console",
+      "kind": "ui",
+      "entry": "web/admin-claude.js",
+      "reach": "<deployment>/admin?tests=1#claude as the owner (Claude \u203a Settings: the key pasted, checked and kept, shown as sk-ant-\u2026XXXX, Check key, Forget key; the model from the key's own list, the effort, the monthly cap and this month's spend), and the panel beside every section from the bar's Claude button, open on Social by default: a question streamed in with what it read and cost; on the desk Suggest a post (Write), Suggest a reply (each inbox row), Improve (each draft), Overview by Claude; each draft marked by Claude for the owner to edit and send (docs/ADMIN_CLAUDE.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:FAQ page",
       "kind": "ui",
       "entry": "web/faq.html",
@@ -4871,6 +4921,7 @@
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -4882,6 +4933,7 @@
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
@@ -5016,6 +5068,7 @@
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
@@ -6157,6 +6210,7 @@
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
@@ -6906,6 +6960,7 @@
       "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
@@ -7152,6 +7207,7 @@
       "reach": "https://brickworks.diy/settings#feedback signed in   (Your reports: each report with its number (#N, anchored report-N), where it stands, a tester's marked, our answers; never the owner's note)",
       "area": "web",
       "tests": [
+        "tests/test_adminclaude.py",
         "tests/test_billing_pay.py",
         "tests/test_console.py"
       ]
@@ -7201,6 +7257,7 @@
         "tests/test_plans.py",
         "tests/test_saved_models_plan.py",
         "tests/test_account_erase.py",
+        "tests/test_adminclaude.py",
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
@@ -7230,6 +7287,7 @@
       "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web",
       "tests": [
+        "tests/test_adminclaude.py",
         "tests/test_billing_pay.py",
         "tests/test_console.py"
       ]

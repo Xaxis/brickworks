@@ -535,6 +535,19 @@ declare -A CMD=(
   # page offered, never opened); each tab at 390 and 1280, light and dark;
   # no token in any answer, page or storage. The pool emptied after.
   [socialdesk]="tools/web/socialdesk_flow.mjs --url=$P --out=$S/${TAG}_socialdesk"
+  # Claude in the console (adminclaude, docs/ADMIN_CLAUDE.md), in the checks'
+  # pool (?tests=1), whose Anthropic and Reddit are stand-ins: no real key is
+  # spent and neither is reached. Every claude op refused signed out (401)
+  # and to anybody else (404), in both pools. Before supabase/admin_claude.sql
+  # is applied: Settings and the panel say so, a key and a question answer
+  # 503, the panel open beside Social at 1280 and over it from its toggle at
+  # 390. After it: keys refused with words and the stand-in's kept as
+  # sk-ant-…AAAA; models, effort, cap; Enter twice asks once; Suggest a post,
+  # a hostile reply at most a draft, Suggest a reply, Improve, Overview; a
+  # refusal, a 429 and the cap said; by keyboard and name at 390 and 1280,
+  # light and dark; Forget key; the key in no answer, page or log. Run alone:
+  # it empties the checks' pool of the desk as socialdesk does.
+  [adminclaude]="tools/web/adminclaude_flow.mjs --url=$P --out=$S/${TAG}_adminclaude"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -749,7 +762,9 @@ live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/
 #   switch off, as console leaves it for a minute), it writes nothing another run reads.
 # - console: turns this deployment's beta off for a minute, which every
 #   beta check beside it would read, and takes a spot of the checks' pool.
-ALONE_DB=" discovery first_steps challenges console "
+# - adminclaude: empties the checks' pool of the social desk, which
+#   socialdesk beside it would be reading and writing.
+ALONE_DB=" discovery first_steps challenges console adminclaude "
 case " $NAMES " in
   *" beta "*)
     curl -s --max-time 20 -H "x-vercel-protection-bypass: $VERCEL_BYPASS" "$P/api/plans?op=beta" \
