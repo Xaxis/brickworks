@@ -7030,6 +7030,290 @@ Why it fell short:
   plates", something "above its face" said of a face read as one level,
   and "an U".
 
+### Each feature's form, asked before the first build and seen close up as built (2026-11-16, design24, `5fe92412d`, NO-GO)
+
+**Why.** Step 1 read the judge's reason on every likeness verdict the base
+lost to the set on design21's 16 tune-half subjects, in both of the last
+two bases (`d22base` at `4ba7d52a1`, `d21base` at `574545532`): 46
+verdicts. It also read each of those sessions' own looks
+(`design24-2026-11-16/py/base_losses.py`, the rows read by hand).
+
+| what the judge's likeness reason names | verdicts |
+|---|---|
+| a feature the session named (in its features or assemblies) and built, built as a block where the real one is open, at an angle, curved, twisted or slender | 41 |
+| the whole's massing, or what the set takes in (Rockefeller's low blocks and sunken plaza, twice; Buckingham's stubby block for a long, low front) | 3 |
+| no model (`d22base`'s Ducati ran out its 45 minutes) | 2 |
+
+The 41, in the judge's words: London's wheel a solid ring where the set's is
+open and spoked; Tokyo Tower a stubby stack where it is splayed and slender;
+the Skytree a plain white column where it is a lattice that tapers; the
+Golden Gate's towers stubby and its cable slack; the Shanghai Tower a
+straight cylinder where it twists; the Pearl flat rings on a stick where it
+is spheres on angled legs; the dozer's blade a flat wall where it curves;
+the tractor's hood a box where it is curved over arched mudguards; the
+combine's reel wheel rims where it is open; the forklift's mast a square
+block where it is nested stages; the Lincoln Memorial's columns short
+drums; the Capitol's dome squat under a cone; the Ducati's fairing a slab;
+the UN's slab squat.
+
+- Every one of the 41 was a feature the session had named. Missing a
+  feature is not what loses.
+- The session's own fresh look named that same form in 18 of the 23
+  sessions with a form loss (`d22base` 7 of 11, `d21base` 11 of 12). Its
+  final look still found it there in 11 of those 18. Every final look
+  said done=False, and each final change was a patch: tiles, recolours,
+  slopes swapped on the block.
+- Two said they could not do it. London (`d22base`): "it has no spokes. A
+  clean build needs bars set at an angle inside the ring, and I couldn't
+  make that work here." The combine (`d21base`): "no part budget left".
+- The base's feature pass laid a real set's piece matched by name, often
+  the wrong thing, and it was mostly rejected: an Egyptian throne for the
+  Victoria Memorial, a truck's front for a pediment, a train nose's lights
+  for headlamps. Tokyo's features were trinkets (a cherry tree, a
+  nameplate, a clock face), while its landmarks went into fills.
+
+So the lever is design23's Next, made concrete as the form the judge
+names. design17 asked each feature's size against the whole and looked at
+the finished model's front and side. design19 measured boxes' shares off a
+photograph. Both checked size on a model already built, and the sessions
+kept their numbers or patched. This one asks each feature's form (open, at
+an angle, curved, twisted, tapering, slender), which is what the judge
+names and what a close picture shows at a glance. It puts that form into
+the first build, and into the feature pass every session already works one
+feature at a time, in place of the name-matched piece.
+
+**The change** (`5fe92412d`, on pre261 `33f1006dd`):
+
+- `submit_design`'s features take `form`: the form a glance knows the
+  feature by, read off the reference picture, and the parts that make it
+  at this scale (`FeaturePass.read_forms`, `Model.feature_forms`).
+- While no feature has a form, `how_real_sets_build_this`'s answer leads
+  with the ask (`Assistant.FORM_ASK`, "BEFORE THE FIRST BUILD"): the
+  features a person names it by, read off the reference picture, each with
+  its form in a builder's words. A vehicle's wheels or tracks and what
+  breaks its outline are features too, kept from design22 and design23.
+  Each is built in that first build as its own piece, by the parts that
+  make the form, never as a fill or a stack. `find_reference`'s pictures end
+  with the same ask in a line (`FORM_READ`).
+- In the feature pass, a feature given a form gets no real set's piece
+  (`Assistant._form_brief`). It is handed back as built: its form as the
+  session gave it, its box (`_feature_box`: the assembly sharing a word
+  with its name, when that is at most half the model, else round its
+  spot), its parts close up from the way it faces, and one question
+  (`FORM_LOOK`): does the picture show that form, or does it read as a
+  block? If a block, take it off and build it again, whole, by the parts
+  that make its form. Nothing built there yet asks for it to be built now.
+- A feature without a form goes the way it went. The connector's METHOD
+  says the same in steps 2 and 4. The instructions' head is unchanged at
+  3,309 characters.
+
+**Proof in the app.** `feature_form_probe` (windowed, new) passed all 25
+of its checks through `tools/probe.sh` from the locked snapshot
+`snapd24lev`. With it passed `features_probe`, `mcp_detail_probe`,
+`connector_method_probe`, `holdout_probe`, `design_memory_probe` and
+`mcp_sync_probe` (`design24-2026-11-16/probes-5fe92412d/`).
+
+**The screen.** The base is `d22base` (`4ba7d52a1`, 2026-11-16), as
+design23 used it. From there to this unit's start (`33f1006dd`):
+- `src/ai/assistant.gd` changed by 17 lines, a copy-follow refusal in
+  focus edits;
+- `tools/bench`, the judge and `tools/mcp_tools.json` did not change;
+- the rest changed sub-model copies and kept-text saves, which no design
+  session reaches.
+
+The lever ran from the locked snapshot `snapd24lev` at `5fe92412d`,
+imported first, on the owner's path (`--via relay --no-claude-code
+--instructions none`), 2 sessions at a time, on design21's 16 tune-half
+subjects.
+
+- **Reach** (`design24-2026-11-16/py/reach24.py`, `reach24.txt`):
+  - All 16 gave forms in the first `submit_design`: 75 of 93 features.
+  - 15 had heard the ask in `how_real_sets_build_this`'s answer before
+    that build. Rockefeller asked nothing and took it from the schema.
+  - 50 formed features were handed back close up. 20 were built again
+    after the close look; the dozer rebuilt 5 of its 6.
+  - The rest were settled several at once ("built" with a list), with no
+    look.
+  - Every vehicle named its wheels or tracks, and its blade, mast, auger
+    or exhaust, with their forms.
+- **The holdout held.** No answer carried a set's own file or number
+  (`leak24.py`, 0 hits). London searched the library for "21034 London",
+  and Tokyo for "Tokyo"; both found nothing. `held_out_said` is true for
+  13. For the other 3, design memory's hold-out line is in the log:
+  Rockefeller never touched the real-set index, and the UN and Buckingham
+  asked `how_real_sets_build_this` of "skyscraper" and "palace", which
+  never loaded it.
+- **The build check** (realset's audit):
+  - All 16 lever sessions left a model, in 9 to 38 minutes.
+  - In 15 of them nothing floats and nothing overlaps.
+  - The San Francisco string overlap the base has (64) is gone.
+  - The dozer's tracks are real chains: 90 links of 3873 round 32007
+    sprockets. Their lowest run is drawn 7.1 LDU above the ground, so the
+    check reads the whole model, one joined cluster, as standing a little
+    off the ground (its named kind). It counts all 435 parts as floating,
+    and finds 11 overlaps of links into a 3032 plate.
+  - The app's own save check had passed it, after refusing it twice for
+    links in the sprockets.
+
+The screen, as design21 set it: the lever preferred to its base overall,
+head to head in both orders, on the subjects it reached, with likeness and
+technique no worse. Every subject was reached. The base's Ducati has no
+model, so 15 are paired (`py/screen24.py`, realset's own shares and
+intervals).
+
+| subjects | head to head: lever preferred, overall (95%) | likeness | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|
+| reached, all 15 | 63% (39-83) | 67% | 60% | 33%, 43%, +10 (+0, +20) |
+| buildings, 11 | 64% (35-85) | 68% | 55% | 41%, 50%, +9 (+0, +23) |
+| vehicles, 4 | 62% (22-91) | 62% | 75% | 12%, 25%, +12 (+0, +38) |
+
+Against the set, on all 15, likeness rose from 33% to 43%, +10 (-3, +23);
+technique from 20% to 30%; surface from 33% to 50%, +17 (+3, +33).
+
+Each subject: the lever's overall wins head to head (of 2), and what the
+judge said of likeness.
+- **Won both orders (9)**: the Guggenheim, the UN, the Lincoln Memorial,
+  London, the Arc, Shanghai, San Francisco, the combine, the dozer.
+  - London: "A's tall Big Ben and tan Tower Bridge with blue walkways read
+    clearly as London". The lever's Eye is an open wheel of spokes.
+  - Shanghai: the lever has "a twisting Shanghai Tower as the tallest, a
+    bottle-opener SWFC". The base's tallest "looks more like Taipei 101".
+  - The dozer: the lever's "link tracks wrap around visible sprockets and
+    run under a long engine hood". The base's "tracks are flat black
+    bricks with round plates stuck on as wheels".
+  - The combine's reel is open, of yellow wheels across the header.
+- **Split (1)**: the tractor.
+- **Lost both (5)**:
+  - Rockefeller: the base's "sunken plaza with flags" and piers, where
+    the lever's is "a running-bond brick stack with a single window slot
+    per face".
+  - Buckingham Palace: the lever's "facade is a flat white block and its
+    memorial is a plain white cone".
+  - The Capitol: the base's "tiered dome, with its drum, flared
+    peristyle rings and tall tapering lantern". The lever's is "a squat
+    drum topped by a hemisphere", though it had settled its dome and drum
+    as built after the close look.
+  - Tokyo: the lever's Skytree is slender and tapers, and the judge said
+    so in both orders, then gave overall to the base.
+  - The forklift: the lever's "huge orange rear hull and caged roof make
+    it look more like a dump truck with forks bolted on".
+
+All 16, front, corner and close, set then base then lever, were looked at
+(`design24-2026-11-16/sheets/`). What is seen agrees with the judge:
+- the forms asked are there where they won: the Eye's spokes, the
+  Shanghai Tower's twist, the Guggenheim's rings widening as they rise,
+  the dozer's sprung chain tracks under a curved blade, the combine's open
+  reel;
+- where they lost, a whole's massing or a feature the session did not
+  form went the other way: the forklift's colour and hull, the palace's
+  flat front, Rockefeller's plaza, the Capitol's squat dome.
+
+So the screen was won, and the paired 44 was run.
+
+**The proof**, once, on the proof half's 44, paired. Its base is this
+unit's start, pre261 `33f1006dd` (`d24p44base`), from its own locked,
+imported snapshot `snapd24base`. The lever (`d24p44lev`) ran from
+`snapd24lev`. Each arm ran one session at a time, both arms in the same
+hours, on the owner's path (2026-11-17, 02:48 to 18:02).
+
+- **Reach** (`reach24-p44.txt`):
+  - 42 of 44 heard the ask before the first build and gave forms in it:
+    178 of 219 features.
+  - 90 formed features were handed back close up, and 37 were built again
+    after the close look.
+  - Steve & Creeper never called `submit_design`. It built straight with
+    `edit_model`: a yellow-haired figure, a green block with a face and a
+    car. Jack Skellington & Sally never asked how real sets build and gave
+    no forms.
+- **The holdout held** (`leak24-p44.txt`):
+  - No answer carried a set's own file or number.
+  - 71 of 88 designs logged the index's hold-out line, and 13 of the
+    other 17 logged design memory's. The last 4 (Steve & Creeper and Jack
+    & Sally, in both arms) used no real-set tool.
+  - Two library searches by a set's own number, "42072" and "42081",
+    found nothing.
+- **The build check** (realset's audit, `py/check24.py`):
+  - The lever: 36 of 44 clean. Overlaps in 7: the container yard's 36,
+    containers set into each other; Emma's studio 12; WHACK! 8; Chicago
+    and the Bricktober Hotel 2 each; the loader and the Dune Hopper 1
+    each. The Cave has 4 floating parts.
+  - The base: 37 of 44 clean. Overlaps in 6 (the Uruk-hai Army 43, Naida's
+    Spa 7, 1 to 3 in four more), floating in 2 (Gandalf 12, the Cave 2).
+
+| dimension | against the set: base | lever | lever minus base (95%) | head to head: lever preferred (95%) |
+|---|---|---|---|---|
+| likeness | 30% | 27% | -2 (-11, +7) | 62% (48-75) |
+| surface | 42% | 28% | -14 (-25, -1) | 55% (40-68) |
+| colour | 30% | 35% | +6 (-7, +18) | 53% (39-67) |
+| technique | 9% | 19% | +10 (+3, +18) | 62% (48-75) |
+| creativity | 36% | 49% | +12 (+2, +24) | 60% (46-73) |
+| overall | 24% | 26% | +2 (-5, +10) | 61% (47-74) |
+
+Head to head, each subject's overall: the lever won both orders on 20,
+split 14 and lost both on 10 (`persub24-p44.txt`).
+
+All 44, front, corner and close, set then base then lever, were looked at
+(`design24-2026-11-16/sheets-p44/`). What is seen agrees with the judge:
+- the forms asked are there: the Flatiron's thin wedge with a rounded
+  prow, Chicago's Hancock tapering with its X-bracing, the Guggenheim's
+  banded rings, the Louvre's pyramid and pointed pavilions, the loader's
+  wide bucket, the roller's drum in its frame, Gandalf's spoked cart;
+- they are often laid in plates and bricks stepped in, where the set turns
+  them with slopes and curved panels: the Sphinx (a low courtyard of
+  stepped tan round a small head, where the base built the sphinx large),
+  Air Mail's nose, the loader's body, the Dune Hopper's flanks;
+- the 9 Technic sets are studless panels and liftarms, and both arms
+  built them of bricks.
+
+**NO-GO.** The screen was won; the proof is not:
+- overall above the base by its interval's lower edge: against the set
+  +2 (-5, +10). The lower edge is below 0, so this fails. Head to head it
+  is 61% (47-74), its lower edge under half;
+- likeness no worse: 62% head to head, and -2 (-11, +7) against the set,
+  inside its interval. This holds;
+- technique no worse: +10 (+3, +18) against the set, 62% head to head.
+  This holds;
+- every subject valid by the build check: 36 of 44 clean. This fails (the
+  base: 37 of 44).
+
+Why it fell short:
+- **Against the set, the 44 hardly moved.** 38 of 44 subjects scored the
+  same in both arms (`py/vsset24.py`). 29 lost every verdict in both: all
+  9 Technic sets, and 20 more where the set's own parts and figures won.
+  The overall gain is 6 subjects:
+  - the Flatiron +2, Chicago +1, the Bee +1 and Mia's Bedroom +1;
+  - the Level Crossing -1, and Steve & Creeper -2, which the lever never
+    reached.
+- **Head to head the form won, as on the screen**: 61% overall and 62%
+  likeness on the 44, after 63% and 67% on the screen. The form makes a
+  design more like its subject than the base's design. Mostly it does not
+  make it more like it than the set.
+- **Surface was lost, and the forms are why.** The lever lost 12 more
+  surface verdicts to the set (37 won to 25).
+  - Where it lost, the judge's reason names the design's steps in 49 of
+    63, and its stacked bricks in 37. The base's: 31 and 25 of 51
+    (`py/stepped24.py`, `stepped24.txt`).
+  - The forms asked curve, taper and lean. The sessions built them of
+    plates and bricks stepped in, where the set uses slopes, curved
+    panels and SNOT.
+  - The parts did not change: the median design is 4% SNOT in both arms,
+    against the sets' 27%, and 23% shaped parts against the base's 22%.
+- **Neither arm passes the build check on all 44.** 8 lever designs and
+  7 base designs overlap or float. The lever's container yard sets its
+  containers into each other, as the base's Uruk-hai sets its wall pieces.
+- **Next.**
+  - Keep the form. It has won head to head twice (63%, 61%), and against
+    the set it lifted technique (+10) and creativity (+12).
+  - Build a form with the parts real sets make it with. A curve or a taper
+    laid in plates steps. The sets turn it with curved slopes, wedges,
+    SNOT panels and hinges. The close look could hand the parts and the
+    technique real sets of the theme use for that form, found by form,
+    not by name, and say when the close picture shows steps.
+  - The Technic subjects are lost on parts, not form. A Technic brief
+    should be built studless.
+- The change is taken back out on this branch (`5b030e513`), so nothing of
+  it ships. `5fe92412d` holds what the screen and the proof ran.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
