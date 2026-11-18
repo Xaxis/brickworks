@@ -2963,6 +2963,14 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		if not blocked.is_empty():
 			_take_back(undo)
 			return blocked
+	# Two steps an MLCad buffer's RETRIEVE starts the later of stay two: in
+	# one step LPub3D shows the stored model where the RETRIEVE stands, and
+	# what the earlier put on is never seen (s5review F5, mergekeep).
+	if op in ["merge", "delete"] and int(where[1]) >= 0:
+		var held: String = _held_apart(op, number, str(where[0]), int(where[1]), skip)
+		if not held.is_empty():
+			_take_back(undo)
+			return held
 	# Any step, for the selection (steps3): one of the section they are in.
 	if op == "to" and int(where[1]) < 0:
 		_take_back(undo)
@@ -3064,6 +3072,31 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	store.touch()
 	steps.refresh(number, 0, planned)
 	return words
+
+
+## Why step [param step] of [param section] (booklet step [param number])
+## is not merged with the next or taken out ([param op]): the file starts the
+## later of the two steps that would be one with a buffer's RETRIEVE
+## (ModelStore.retrieve_between); "" when it can be. Taken out, a step's
+## parts join the step before it, the first's the one after
+## (AuthorSteps.remove).
+func _held_apart(op: String, number: int, section: String, step: int, skip: Dictionary) -> String:
+	var seen: Array = AuthorSteps.steps_in(world, section, skip)
+	var after: int = AuthorSteps.neighbour(seen, step, 1)
+	if op == "merge":
+		var line: String = store.retrieve_between(section, step, after) if after >= 0 else ""
+		return "" if line.is_empty() else ("step %d and the next stay apart: the next begins with "
+			+ "“%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown") \
+			% [number, line, number]
+	var before: int = AuthorSteps.neighbour(seen, step, -1)
+	if before >= 0:
+		var line: String = store.retrieve_between(section, before, step)
+		return "" if line.is_empty() else ("step %d stays: it begins with “%s”, so in LPub3D "
+			+ "and MLCad, put in the step before, that step's parts would never be shown") \
+			% [number, line]
+	var line: String = store.retrieve_between(section, step, after) if after >= 0 else ""
+	return "" if line.is_empty() else ("step %d stays: the next begins with “%s”, so in LPub3D "
+		+ "and MLCad, put in it, this step's parts would never be shown") % [number, line]
 
 
 ## The booklet's numbers the steps holding [param ids] have in

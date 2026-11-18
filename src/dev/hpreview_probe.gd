@@ -18,16 +18,15 @@ extends SceneTree
 
 const FIX_PATH := "res://src/dev/fixtures/hubprogram/arm_program.ldr"
 ## The writer's ways with a file that live has too, by the file's case: said,
-## and failing nothing here. F3 is hpreview's, a later unit's.
+## and failing nothing here. F3 (a sub-model's app line after its Author
+## went above its Name) was fixed by mergekeep (LdrModel.NAMED_HERE), and its
+## cases fail again.
 const KNOWN := {
-	"sub": "F3: a sub-model's app line after its Author goes above its Name (live too; a later unit's)",
-	"lower_sub": "F3: a sub-model's app line after its Author goes above its Name (live too; a later unit's)",
 	"twosubs": "a sub-model placed twice is written with its copies' numbers (COPY), as live writes it",
 	"metas": "PAGE_SETUP written where the writer keeps it, as live does",
 	"bom": "the byte-order mark is not written back, as live",
 	"nonl": "a line end is written at the file's end, as live",
 	"body": "an app line in the model's body is written in its head (live drops it)",
-	"sub_program": "F3", "sub_view": "F3", "sub_light": "F3", "sub_view_lower": "F3",
 }
 const MODELS := "user://models/"
 const META := "0 !BRICKWORKS PROGRAM "

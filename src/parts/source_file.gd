@@ -1335,6 +1335,8 @@ var _pairs: Array = []
 var _stack_at: Dictionary = {}
 ## The file's lines are CRLF.
 var _crlf: bool = false
+## Each section's "0 BUFEXCHG … RETRIEVE" lines (retrieve_between), by key.
+var _retrieves: Dictionary = {}
 
 
 func _read_for_patch() -> void:
@@ -1383,6 +1385,10 @@ func _read_for_patch() -> void:
 				var begin: int = (open[kind] as Array).pop_back()
 				_pairs.append([begin, n, kind])
 				open_all.erase(begin)
+			if int(pair[1]) < 0 and kind.begins_with("BUFEXCHG"):
+				if not _retrieves.has(current):
+					_retrieves[current] = PackedInt32Array()
+				(_retrieves[current] as PackedInt32Array).append(n)
 			continue
 		if not _is_placing(raw):
 			continue
@@ -3560,6 +3566,53 @@ static func _pair_of(line: String) -> Array:
 			return [" ".join(kind) + (" SKIP" if word.begins_with("SKIP") else ""), 1 if opens else -1]
 		kind.append(word)
 	return []
+
+
+## The file's "0 BUFEXCHG A RETRIEVE" between two of a section's steps, as
+## the file has it, or "": between the last line of the parts [param
+## earlier] and the first of [param later] (each a part's place in the file,
+## Read.origin), in the section the copy [param unit] is of (an Assemblies
+## path, "" the model). MLCad and LPub3D take the model back there to the one
+## a STORE kept, so in the middle of a step what the step put on before it is
+## never shown: two steps a RETRIEVE starts the later of are not made one
+## (Shell.change_steps). A STORE is: it keeps the model as it is where it
+## stands, the same at the end of a step as in the middle of the merged one
+## (s5review F5, mergekeep 2026-11-18).
+func retrieve_between(unit: String, earlier: Array, later: Array) -> String:
+	var section: String = _section_of(unit)
+	if not retrieves_in(unit):
+		return ""
+	var low: int = -1
+	var high: int = -1
+	for origin: Variant in earlier:
+		low = maxi(low, _line_in(section, str(origin)))
+	for origin: Variant in later:
+		var at: int = _line_in(section, str(origin))
+		if at >= 0:
+			high = at if high < 0 else mini(high, at)
+	if low < 0 or high <= low:
+		return ""
+	for n: int in _retrieves[section]:
+		if n > low and n < high:
+			return original[n].strip_edges().left(80)
+	return ""
+
+
+## Whether the section the copy [param unit] is of has a buffer's RETRIEVE
+## at all: read once, as the file opened, so a step edit of any other asks
+## nothing more (retrieve_between).
+func retrieves_in(unit: String) -> bool:
+	return _retrieves.has(_section_of(unit))
+
+
+## The line of [param section] a part's place in the file ([param origin],
+## its chain of lines) has there: its own, or the copy's it is in; -1 for none.
+func _line_in(section: String, origin: String) -> int:
+	for segment: String in origin.split("/", false):
+		var n: int = segment.to_int()
+		if n >= 0 and n < _sec.size() and _sec[n] == section:
+			return n
+	return -1
 
 
 ## Of the pairs begun on the file's lines [param begins], those round parts:
