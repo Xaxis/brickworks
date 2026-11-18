@@ -285,8 +285,10 @@ export async function sendCode(address) {
   const wanted = String(address || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(wanted)) throw new Error(say("That is not an email address."));
   await where();
+  // How this visit came (web/theme.js), for the owner's sign-up mail.
+  const came = globalThis.brickworksCame || null;
   const reply = await fetch("/api/otp", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: wanted }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: wanted, ...(came ? { came } : {}) }),
   });
   if (!reply.ok) {
     const body = await json(reply);

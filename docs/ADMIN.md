@@ -60,6 +60,7 @@ three that stay outside, each with why.
 | Secrets' values (keys, signing secrets, CRON_SECRET) | Vercel, Resend, Supabase | **Outside**: never on a page; Switches names them and says where each is changed |
 | Brickworks' own social accounts: what came in, posts and replies, their results (socialdesk) | each network's own site | Social: the inbox, Write with the community's rules, Sent and scheduled, Accounts (docs/SOCIAL_DESK.md). Posting on Reddit is by hand on Reddit's own page until Reddit grants API access: **outside** for that one press |
 | Claude on the owner's own Anthropic key: the key, the model, the effort, the month's cap (adminclaude) | console.anthropic.com | Claude › Settings, and the panel beside every section; on Social, Suggest, Suggest a reply, Improve and Overview, each landing as a draft (docs/ADMIN_CLAUDE.md). The key is made, paid for and deleted at console.anthropic.com: **outside** for that |
+| Mail to the owner about what happens: sign-ups, first models, feedback, plans and payments, server errors, Supabase near its quota, the social desk (ownernotify) | nowhere: only reports and comments mailed, always | Notifications: each kind on or off, at once or in the daily digest, the address, quiet hours, the cap an hour, Send a test, Pause all; Sent, every mail sent, held or folded (docs/OWNER_NOTIFY.md). Vercel's and Resend's use and Supabase's egress: **outside**, each said why on the page |
 
 ### api/admin.js, every op
 
@@ -115,6 +116,10 @@ it answers.
 | `social_connect`, `social_connected`, `social_disconnect` | POST `{provider}` | Connect by OAuth (a signed state), the code taken for tokens kept here alone; Disconnect revokes and forgets them | social_accounts, social_tokens, the network |
 | `social_sync`, `social_mark` | POST | What came in and how sent posts do, read now; read or unread here (never at the network) | social_items, social_results |
 | `social_draft`, `social_drop`, `social_notes` | POST | A draft kept (the site's links tagged) or thrown away; notes on a community's rules | social_sends, social_rules |
+| `notify` | GET `&mail=` | Notifications whole: each kind and its setting, the address in part, quiet hours, the digest, the hour's mails against the cap, what waits, the mails and Sent's rows; or one mail's words (ownernotify) | owner_notify_settings, owner_notify_events, owner_notify_mails, the audit |
+| `notify_set` | POST `{tz?, quiet?, digest_at?, cap?, paused?, events?}` | A change of the settings, compared and set by its version | owner_notify_settings |
+| `notify_address`, `notify_confirm` | POST `{address}`, `{code}` | Another address: a code mailed there, mail going to it once typed; `{address: ""}` back to the account's own | owner_notify_settings, Resend |
+| `notify_test`, `notify_flush` | POST `{event?}` | A test of the whole or one kind (10 an hour); the cron's run now for this deployment (Check now) | owner_notify_mails, Resend |
 | `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; back to the drafts (a schedule, a hand-off not posted, or a send unsure whether it is up); a post made by hand or found up, its address kept | social_sends, the network |
 | `claude`, `claude_models` | GET | Claude's settings (the key only as `sk-ant-…` and its last four, the model, effort, cap, this month's spend); the models the kept key may use, from Anthropic's Models API (adminclaude) | admin_claude_settings, admin_claude_month, Anthropic |
 | `claude_key`, `claude_check`, `claude_forget`, `claude_settings` | POST | A key checked with Anthropic and kept sealed, checked again, deleted; the model, effort and monthly cap | admin_claude_settings, Anthropic |
@@ -124,7 +129,10 @@ Part B's four are reads: not kept in the audit, like the other GETs; part
 C's reads are not either, and each of its POSTs is. `api/otp.js` takes one
 more op that is not the owner's: `POST ?op=mail_event`, Resend's word on
 each mail (below); `api/plans.js` one public read, `GET ?op=notice`, the
-notice of the deployment it is asked on (a minute at the CDN).
+notice of the deployment it is asked on (a minute at the CDN), and
+since ownernotify `POST ?op=notify_off`, a mail's one-click "turn this off"
+(signed by the pool's own key, 404 otherwise) and `GET ?op=owner_notify`,
+the notifications' cron.
 
 ### The owner's other ops
 
@@ -182,6 +190,7 @@ through `cron_noted`), and the canary's are its own `canary_runs`.
 | `/api/share/feature` | 00:07 daily | The gallery's front: this week's pick, today's featured model and set |
 | `/api/share/omr` | 05:37 Mondays | What LDraw's Official Model Repository has that the library has not |
 | `/api/plans/beta-daily` | 05:07 daily | The beta's daily round, and feedback's sweep with it |
+| `/api/plans/owner-notify` | every 5 minutes | The owner's notifications: errors, Supabase's size and health (hourly) and the desk's tables looked at; then what waits mailed by the owner's rules (docs/OWNER_NOTIFY.md). Noted when it mailed, failed, ran by hand, or first after midnight; when the database refuses, one alarm a day without it |
 | `/api/plans/social-due` | every 15 minutes | The social desk: scheduled sends whose time came, each only as pressed; then each connected account's inbox and results. Noted when it sent, failed, ran by hand, or first after midnight |
 
 ### Outside services
@@ -241,6 +250,7 @@ px (a row of pills on a phone), and the section beside it.
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
 | Social | `#social/inbox`, `write`, `sent`, `accounts` | Replies, mentions and messages; a post or a reply with the community's rules beside it, and drafts; what was sent and waits, with score, comments and visits over time; each network, connected or not, and what each still to come costs | Check now, Mark read, Reply…, Keep the draft, Review and send… (Send now, Schedule), Unschedule, Post it on Reddit…, Connect, Disconnect |
 | Claude | `#claude`, and the panel beside every section | Settings: the key (only its last four), the model from the key's own list, the effort, the monthly cap and this month's spend. The panel: one conversation, streamed, with what each answer read and cost | Check and keep, Check key, Forget key, Keep; Ask, Stop, New chat; on Social: Suggest a post, Suggest a reply, Improve, Overview by Claude |
+| Notifications | `#notifications/settings`, `sent` | What mails the owner: each kind, at once or the digest, its number where it has one; the address; quiet hours, the digest's time, the time zone, the cap; what is not mailed from here and why. Sent: every mail sent, held or folded and every change, with its words | Send a test (of all, or one kind), Check now, Use another address, Pause all |
 | Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
 | Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
@@ -585,3 +595,41 @@ Proven by `tests/test_adminclaude.py` (the handlers against held tables and
 the stand-in Anthropic, `api/_claude_mock.js`; admin_claude.sql in a
 Postgres of its own) and, on a deployment, `tools/web/adminclaude_flow.mjs`
 (preview check `adminclaude`).
+
+## Notifications (ownernotify): in the console now
+
+Mail to the owner about what happens on the site, set at **/admin ›
+Notifications** (docs/OWNER_NOTIFY.md has the research, the sources and the
+rules).
+
+- **What mails.** A new sign-up (its handle and how they came), a first
+  model published, a bug report or feedback, a plan bought, changed or
+  cancelled or a payment failed, server errors past the owner's number in an
+  hour, Supabase past the owner's share of its quota or refusing the
+  project, the social desk's replies, mentions and messages, and a scheduled
+  post that went, failed, may be up or is due by hand. Each on or off, at
+  once or in the daily digest.
+- **Never a flood.** One mail a kind for a burst (2 minutes quiet, 10 at
+  most); at most the cap an hour, the rest in one "And N more"; quiet hours
+  hold mail and send it as one when they end; Pause all.
+- **Mail** through Resend from brickworks.diy with the site's sending key:
+  plain, a link to the right section, and a one-click off link (and
+  `List-Unsubscribe`, RFC 8058). A deployment without `RESEND_API_KEY`
+  says so on the page.
+- **Where.** The owner's account address, shown in part, or another once its
+  code is typed. A preview mails nobody until its settings are saved; the
+  checks' own (`?tests=1`) only Resend's test inbox.
+- **The record.** Every mail sent, held or folded is in the audit (actor
+  `notifications`) and under Notifications › Sent, with its words.
+- **The ops** are api/admin.js's `notify*` (still 12 functions) behind the
+  gate: 401 signed out, 404 to anybody else; every POST audited. The cron
+  and the off link are api/plans.js's `owner_notify` and `notify_off`.
+  Each 5xx is kept by api/_noted.js, around every function.
+- **The tables** are `supabase/owner_notify.sql` (additive; row security on,
+  no policy, nothing granted but to the server). Before it is applied the
+  section says so and every change answers 503.
+
+Proven by `tests/test_owner_notify.py` (each event by its real path against
+held tables and a stand-in Resend; the SQL in a Postgres of its own) and,
+on a deployment, `tools/web/ownernotify_flow.mjs` (preview check
+`ownernotify`).

@@ -434,6 +434,13 @@ const TARGETS = {
   claude_check: () => ["claude", "key"],
   claude_forget: () => ["claude", "key"],
   claude_settings: () => ["claude", "settings"],
+  // The owner's notifications (ownernotify): what was set, never an address
+  // or a code (neither is in ASKED; the answer's address is in part).
+  notify_set: () => ["notification", "settings"],
+  notify_address: () => ["notification", "the address"],
+  notify_confirm: () => ["notification", "the address"],
+  notify_test: (_, b) => ["notification", typeof b.event === "string" && b.event ? b.event : "a test"],
+  notify_flush: () => ["notification", "check now"],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
   "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url",

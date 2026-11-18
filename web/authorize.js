@@ -270,7 +270,8 @@ $("email-form").addEventListener("submit", async (event) => {
     const reply = await fetch("/api/otp", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email }),
+      // How this visit came (web/theme.js), for the owner's sign-up mail.
+      body: JSON.stringify({ email, ...(globalThis.brickworksCame ? { came: globalThis.brickworksCame } : {}) }),
     });
     if (!reply.ok) {
       const body = await json(reply);

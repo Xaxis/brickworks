@@ -182,6 +182,7 @@
 // line). The database's own row security is the second lock
 // (supabase/collection.sql).
 
+import { noted } from "./_noted.js";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
@@ -1644,7 +1645,7 @@ export const UPDATE_WORDS = "This copy of Brickworks read your collection before
   + "device, or by an assistant), so taking the set out from it could undo that, and nothing was changed. Update "
   + "Brickworks (on the web, reload the page), then take the set out again.";
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
   if (request.method === "OPTIONS") {
     return response
@@ -1758,3 +1759,6 @@ export default async function handler(request, response) {
     return response.status(502).json({ error: String(error.message || error).slice(0, 200) });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("collection", handler);

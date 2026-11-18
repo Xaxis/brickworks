@@ -280,6 +280,33 @@
   @media (width < 600px), (pointer: coarse) {
     table.cards td.text a, #social-sheet dd a { display: inline-flex; align-items: center; min-height: var(--control-h); }
   }
+  /* Notifications (ownernotify): a row a kind, its switch and words on the
+     left, when and its number on the right; one under the other on a phone. */
+  .notify-events { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+  .notify-events > li { display: grid; gap: var(--s-3) var(--s-5); grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .notify-events .choice { padding: 0; }
+  .notify-events .choice b { display: block; color: var(--ink); font-size: var(--t-body); font-weight: 600; }
+  .notify-events .choice small { display: block; color: var(--ink-soft); line-height: 1.45; }
+  .notify-events .row { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: center; justify-content: flex-end; }
+  .notify-events label.number { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; font-size: var(--t-small);
+    color: var(--ink-soft); }
+  .notify-events input[type="number"] { width: 7.5em; }
+  .notify-events .said { grid-column: 1 / -1; min-height: 0; }
+  /* A kind with numbers to set: its controls under its words, so the words keep their width. */
+  .notify-events > li.numbers { grid-template-columns: minmax(0, 1fr); }
+  .notify-events > li.numbers .row { justify-content: flex-start; }
+  @media (width < 760px) {
+    .notify-events > li { grid-template-columns: minmax(0, 1fr); }
+    .notify-events .row { justify-content: flex-start; }
+  }
+  /* A tick and its words on one line, as everywhere on the site (site.css .choice). */
+  .notify-form label.choice { display: flex; gap: 10px; align-items: flex-start; color: var(--ink); }
+  .notify-form .row.notify-times { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: end; }
+  .notify-form .notify-times label { flex: 1 1 150px; }
+  .notify-form .notify-times select, .notify-form .notify-times input { width: 100%; }
+  .notify-form .notify-to { margin: 0 0 var(--s-2); overflow-wrap: anywhere; }
+  .notify-address { display: grid; gap: var(--s-3); padding-bottom: var(--s-3); border-bottom: 1px solid var(--line); }
+  #notify-mail-subject:focus { outline: none; }
   /* The desk's tables as cards on a phone: a row a block, each cell named by
      its column (data-label, admin-social.js), the acts side by side. */
   @media (width < 600px) {
@@ -327,6 +354,7 @@
         <li><a href="#social" data-go="social">Social <span class="badge accent" id="nav-social" hidden></span></a></li>
         <li><a href="#plans" data-go="plans">Plans</a></li>
         <li><a href="#mail" data-go="mail">Mail <span class="badge accent" id="nav-mail" hidden></span></a></li>
+        <li><a href="#notifications" data-go="notifications">Notifications <span class="badge accent" id="nav-notifications" hidden></span></a></li>
         <li><a href="#connector" data-go="connector">Connector <span class="badge accent" id="nav-connector" hidden></span></a></li>
         <li><a href="#site" data-go="site">Site <span class="badge accent" id="nav-site" hidden></span></a></li>
         <li><a href="#data" data-go="data">Data <span class="badge accent" id="nav-data" hidden></span></a></li>
@@ -1028,6 +1056,104 @@
               </table>
             </div>
             <p class="note" id="mail-note" role="status"></p>
+          </div>
+        </section>
+
+        <!-- Notifications (ownernotify) -------------------------------------------------->
+        <section data-section="notifications" aria-labelledby="h-notifications" hidden>
+          <div class="lead"><h2 id="h-notifications">Notifications</h2>
+            <p class="note">Mail to you about what happens on the site: each kind on or off, at once or in a daily digest,
+              with quiet hours and a cap an hour, so it never floods. Every mail sent, held or folded is under Sent.</p></div>
+          <p class="note bad" id="notify-not-yet" role="alert" hidden></p>
+          <nav class="tabs" aria-label="Notifications">
+            <a href="#notifications/settings" data-tab-link="settings">Settings</a>
+            <a href="#notifications/sent" data-tab-link="sent">Sent <span class="n" id="tab-notify-failed"></span></a>
+          </nav>
+
+          <div data-tab="settings" hidden>
+            <div class="card live-line" id="notify-state">
+              <h3 id="notify-headline">—</h3>
+              <p class="note" id="notify-said"></p>
+              <div class="acts-row">
+                <button type="button" id="notify-test">Send a test</button>
+                <button type="button" id="notify-flush" class="ghost">Check now</button>
+              </div>
+              <p class="said" id="notify-acted" role="status"></p>
+            </div>
+
+            <div class="part">
+              <div class="lead"><h3 id="h-notify-events">What mails you</h3>
+                <p class="note">Each saves as you change it. At once: within a few minutes, one mail for a burst. Daily
+                  digest: in one mail at the time below.</p></div>
+              <ul class="notify-events" id="notify-events" aria-labelledby="h-notify-events"></ul>
+            </div>
+
+            <div class="part">
+              <div class="lead"><h3 id="h-notify-where">Where and when</h3></div>
+              <form class="console-form notify-form" id="notify-form" novalidate>
+                <div class="notify-address">
+                  <p class="notify-to">Mail goes to <b id="notify-to">—</b> <small class="faint" id="notify-to-said"></small></p>
+                  <div class="acts-row">
+                    <button type="button" class="cta ghost small" id="notify-other">Use another address</button>
+                    <button type="button" class="cta ghost small" id="notify-own" hidden>Back to my account's address</button>
+                  </div>
+                  <div class="with-act" id="notify-new" hidden>
+                    <label>Another address <small>a code goes there first; it changes nothing until you type it</small>
+                      <input type="email" id="notify-new-address" autocomplete="email" spellcheck="false"></label>
+                    <button type="button" id="notify-send-code">Send a code</button>
+                  </div>
+                  <div class="with-act" id="notify-confirm" hidden>
+                    <label>The code sent to <span id="notify-pending">—</span>
+                      <input type="text" id="notify-code" inputmode="numeric" autocomplete="one-time-code"></label>
+                    <button type="button" id="notify-confirm-code">Confirm</button>
+                  </div>
+                  <p class="said" id="notify-address-said" role="status"></p>
+                </div>
+                <label class="choice"><input type="checkbox" id="notify-paused">
+                  <span>Pause all: nothing is mailed, nor kept to mail later</span></label>
+                <label class="choice"><input type="checkbox" id="notify-quiet-on">
+                  <span>Quiet hours: mail is held, and goes as one when they end</span></label>
+                <div class="row notify-times">
+                  <label>Quiet from <select id="notify-quiet-from"></select></label>
+                  <label>until <select id="notify-quiet-to"></select></label>
+                  <label>The daily digest at <select id="notify-digest-at"></select></label>
+                </div>
+                <div class="row notify-times">
+                  <label>Time zone <select id="notify-tz"></select></label>
+                  <label>At most, mails an hour <small>past it, the rest go in one mail</small>
+                    <input type="number" id="notify-cap" min="1" max="60" step="1" inputmode="numeric"></label>
+                </div>
+                <p class="said" id="notify-form-said" role="status"></p>
+              </form>
+            </div>
+
+            <div class="part">
+              <div class="lead"><h3 id="h-notify-not-here">Not mailed from here</h3>
+                <p class="note">What was asked for that no key the site holds can read, why, and where it is watched instead.</p></div>
+              <ul class="acts-list" id="notify-not-here" aria-labelledby="h-notify-not-here"></ul>
+            </div>
+          </div>
+
+          <div data-tab="sent" hidden>
+            <div class="stats">
+              <div class="stat"><b id="n-notify-hour">—</b><span>mailed in the last hour</span><small id="n-notify-cap"></small></div>
+              <div class="stat"><b id="n-notify-held">—</b><span>held for quiet hours</span></div>
+              <div class="stat"><b id="n-notify-capped">—</b><span>waiting past the cap</span></div>
+              <div class="stat"><b id="n-notify-digest">—</b><span>for the next digest</span><small id="n-notify-digest-at"></small></div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-notify-sent">
+              <table class="queue cards">
+                <caption class="visually-hidden" id="h-notify-sent">Mails sent, held and folded, and what you changed</caption>
+                <thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Of</th><th scope="col">Said</th>
+                  <th scope="col">Outcome</th><th scope="col"><span class="visually-hidden">Read it</span></th></tr></thead>
+                <tbody id="notify-sent"></tbody>
+              </table>
+            </div>
+            <div class="part" id="notify-mail" hidden>
+              <div class="lead"><h3 id="notify-mail-subject" tabindex="-1">—</h3><p class="note" id="notify-mail-said"></p></div>
+              <pre class="words" id="notify-mail-body"></pre>
+            </div>
+            <p class="note" id="notify-sent-note" role="status"></p>
           </div>
         </section>
 
