@@ -264,9 +264,14 @@ func remove_set(entry: Dictionary) -> Dictionary:
 ## Sets marked as kept built, or taken apart (keptbuilt): each of
 ## [param asked] is {"set", "was": how many of its copies were shown built,
 ## "built": how many are now}, every copy of the number together. Refused,
-## changing nothing, when any is not as shown (api/collection.js op "built").
+## changing nothing, when any is not as shown (api/collection.js op "built"),
+## with the rev it was shown at: a set gone since is a 409 that shows the
+## collection as it is, not a refusal of a set never owned.
 func set_built(asked: Array) -> Dictionary:
-	return await change({"op": "built", "sets": asked})
+	var body: Dictionary = {"op": "built", "sets": asked}
+	if collection.rev != null:
+		body["rev"] = collection.rev
+	return await change(body)
 
 
 ## Forget all of it, at the account and here: what was shown, if it is

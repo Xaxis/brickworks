@@ -233,7 +233,15 @@ which models they could build from what they have. Added 2026-10-12.
   and a set taken apart counts the taken-apart copy's. Over MCP
   `edit_collection {"built": ["7140-1"]}` marks it in one call
   (`{set, copies}` for a number, 0 to take apart; each said "was N"), and
-  its read-back says which are kept built. Save sets as CSV
+  its read-back says which are kept built. Op
+  `built` takes the `rev` the view was shown at: a set not in the
+  collection is a 400 "set N: X is not in your collection: only a set you
+  own is kept built", and a 409 "not in your collection any more" only
+  when the collection moved on since that rev; a minifigure's number the
+  collection holds (sw0001) is refused by built, own and missing as "a
+  minifigure in your collection, not a set", never read as set sw0001-1;
+  a list that is not one is named for what it lists ("sets is a list of
+  sets", smalls5). Save sets as CSV
   (`Collection.sets_csv`, Rebrickable's sets list with a Built column) and
   as XML (`sets_xml`, BrickLink's, a built copy's REMARKS `Built`) read
   back the marks through their imports; a replace import of a file with no
@@ -641,9 +649,10 @@ Proves it when:
   Built alone read as the mark, a person's note that begins with the word
   ("Built once, box opened") not; then on a throwaway account, an
   older collection (no `built` anywhere) read as it was; op `built` marks
-  7140-1, the same id again changes nothing, a stale `was`, a set not
-  owned, copies past those owned and a set named twice each refused with
-  words and nothing changed; the mark kept through own, a lot change, a
+  7140-1, the same id again changes nothing, a stale `was`, a set never
+  owned (400, saying so), one gone since the rev shown (409, with the
+  collection), copies past those owned and a set named twice each refused
+  with words and nothing changed; the mark kept through own, a lot change, a
   set added, a Rebrickable replace import and an older app's PUT; own
   down to fewer copies unmarks the rest; Save's CSV (`Built` column) and
   XML (`<REMARKS>Built</REMARKS>`) read into an empty collection built
@@ -672,6 +681,8 @@ Proves it when:
   sit over the number's entries; a kept built of "2", true, 1.5, 0.5, -1 and
   null read as none, 2.0 and 2 as 2, 7 as the 3 copies.
   Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
+- `tests/test_collection_words.py` (minitest): op built's, own's and
+  missing's refusals in words, run under node on api/collection.js.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
   found, each first; whole scenes of box, bags and parts 2 of 10.
