@@ -315,8 +315,8 @@ func _steps() -> void:
 
 	print("\n5. sorted")
 	_dialog.call("hide")
-	var model: Array = _tower([["3020", 0], ["3001", 4], ["3021", 4], ["3010", 1], ["3004", 15], ["3023", 15],
-		["3024", 47], ["3062b", 14], ["3069b", 0]])
+	var model: Array = _tower([["3020", 0, 1], ["3001", 4, 3], ["3021", 4, 1], ["3010", 1, 3], ["3004", 15, 3],
+		["3023", 15, 1], ["3024", 47, 1], ["3062b", 14, 3], ["3069b", 0, 1]])
 	var built: String = await _call("submit_design", {"name": "Placed", "description": "a test", "floor": "none",
 		"bricks": model})
 	_check("a model of 9 of the parts built: \"%s\"" % built.get_slice("\n", 0).left(120), built.begins_with("Built"))
@@ -630,14 +630,14 @@ static func _code_of(lot: Booklet.Lot) -> int:
 	return int(lot.key.get_slice(":", 1))
 
 
-## A tower of [param bricks] ([part, colour] each), stacked from one corner.
+## A tower of [param bricks] ([part, colour, its height in plates] each),
+## stacked from one corner.
 func _tower(bricks: Array) -> Array:
 	var out: Array = []
 	var y: int = 0
 	for one: Array in bricks:
 		out.append({"part": one[0], "color": one[1], "x": 0, "y": y, "z": 0, "rot": 0})
-		var info: PartLibrary.PartInfo = _library.parts.get(str(one[0]))
-		y += 1 if info != null and (info.name.begins_with("Plate") or info.name.begins_with("Tile")) else 3
+		y += int(one[2])
 	return out
 
 
