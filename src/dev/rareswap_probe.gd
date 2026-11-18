@@ -33,7 +33,8 @@
 ##   RARESWAP_OUT=DIR             where gallery.tsv goes
 extends "res://src/dev/copyfaults_probe.gd"
 
-const RARE_CASES: Array = ["gallery", "mcp", "kept", "printed", "locked", "picks", "words"]
+const RARE_CASES: Array = ["gallery", "mcp", "kept", "mirror_part", "printed", "locked", "picks",
+	"words"]
 ## The ten gallery models: the seeds (tools/web/gallery_seeds/seeds.json) with
 ## the most rare lots, as the scout case counts them.
 const TEN: Array = ["models/orthanc.ldr", "models/corner_shop.ldr",
@@ -77,6 +78,7 @@ func _run() -> void:
 			"gallery": await _case_gallery()
 			"mcp": await _case_mcp()
 			"kept": await _case_kept()
+			"mirror_part": await _case_mirror_part()
 			"printed": await _case_printed()
 			"locked": await _case_locked()
 			"picks": await _case_picks()
@@ -121,6 +123,17 @@ func _rare_here() -> Dictionary:
 		if any:
 			out["%s/%d" % [lot.part_id, lot.color_code]] = sets
 	return out
+
+
+## [param text] opened as the file [param name] is, as a person opens it
+## from the disk: an unedited save is then the file.
+func _open_as(text: String, name: String) -> void:
+	_main.call("clear_model")
+	await _frames(4)
+	var bar: ModelBar = _main.get("_bar")
+	var opened: Dictionary = await bar.open_text_with_progress(text, name)
+	bar.opened.emit(int(opened.get("placed", 0)))
+	await _frames(10)
 
 
 ## How many times [param text] defines sub-model [param file].
@@ -389,7 +402,7 @@ func _case_mcp() -> void:
 ## sub-model once, undone and redone to the byte, saved and opened again.
 func _case_kept() -> void:
 	var text: String = _fixture(KEPT)
-	await _open(text)
+	await _open_as(text, KEPT.get_basename())
 	var before: String = _save()
 	_check("kept: someone else's file opened and saved, to the byte (%s %s)" % [_diff(text, before),
 		_first_unlike(text, before)], before == text)
@@ -427,21 +440,22 @@ func _case_kept() -> void:
 	_check("kept: each sub-model written once (wing %d, tip %d)" % [_defined(after,
 		"rareswap_wing.ldr"), _defined(after, "rareswap_tip.ldr")],
 		_defined(after, "rareswap_wing.ldr") == 1 and _defined(after, "rareswap_tip.ldr") == 1)
-	# A swap inside the wing changes both its copies, the mirrored one too.
-	_check("kept: the wing's 87087 and 3665a and the tip's 3070a changed in both copies (%d, %d, %d left)"
-		% [_count("87087", 379), _count("3665a", 0), _count("3070a", 14)],
-		_count("87087", 379) == 0 and _count("3665a", 0) == 0 and _count("3070a", 14) == 0)
+	# A swap inside the tip, inside each wing, changes both its copies, the
+	# mirrored one too; 3665a, in 2 sets in any colour, has none and stays.
+	_check("kept: the tip's 87087 changed in both wings, the model's 3070a, 3665a kept (%d, %d, %d left)"
+		% [_count("87087", 379), _count("3070a", 14), _count("3665a", 0)],
+		_count("87087", 379) == 0 and _count("3070a", 14) == 0 and _count("3665a", 0) == 2)
 	_check("kept: the print kept, not picked (%d 2431p70)" % _count("2431p70", 0),
 		_count("2431p70", 0) == 1)
 	var shown: Array = _looks()
 	var left: int = _rare_here().size()
-	await _open(after)
+	await _open_as(after, KEPT.get_basename())
 	_check("kept: saved and opened again, every part as it was shown%s" % _unlike(shown, _looks()),
 		shown == _looks())
 	_check("kept: ...the same rare count (%d, was %d)" % [_rare_here().size(), shown_before],
 		_rare_here().size() == left and left < shown_before)
 	_check("kept: ...and it saves to itself (%s)" % _diff(after, _save()), _save() == after)
-	await _open(text)
+	await _open_as(text, KEPT.get_basename())
 	list = await _list_up()
 	_check("kept: the rare row opens the swaps again", await _swaps_up(list))
 	_check("kept: Swap pressed again", await _swap_pressed(list))
@@ -453,6 +467,36 @@ func _case_kept() -> void:
 	await _frames(6)
 	_check("kept: the redo, the swap's file to the byte (%s)" % _diff(after, _save()),
 		_save() == after)
+
+
+## A part swapped inside a mirrored copy (the model's 3070a moved into the
+## tip, inside each wing): a patch cannot say a part of a mirrored copy
+## without its reflection, so the file is written as live writes it, as Find
+## and Replace's is. Every part reopens as shown, the copies still copies.
+func _case_mirror_part() -> void:
+	var text: String = _fixture(KEPT).replace("1 14 -120 -8 0 1 0 0 0 1 0 0 0 1 3070a.dat\n", "") \
+		.replace("1 379 0 -24 0 1 0 0 0 1 0 0 0 1 87087.dat\n",
+			"1 379 0 -24 0 1 0 0 0 1 0 0 0 1 87087.dat\n1 14 0 -32 0 1 0 0 0 1 0 0 0 1 3070a.dat\n")
+	await _open_as(text, KEPT.get_basename())
+	var list: InventoryPanel = await _list_up()
+	_check("mirror_part: the rare row opens the swaps", await _swaps_up(list))
+	var into: String = ""
+	for lot: RareSwap.Lot in list.get("_rare"):
+		if lot.part == "3070a":
+			into = lot.into_part
+	_check("mirror_part: Swap pressed", await _swap_pressed(list))
+	list.hide_list()
+	var after: String = _save()
+	var shown: Array = _looks()
+	_check("mirror_part: the tip's 3070a a %s in both wings (%d left, %d of it)" % [into,
+		_count("3070a", 14), _count(into, 14)], not into.is_empty() and _count("3070a", 14) == 0
+		and _count(into, 14) == 2)
+	_check("mirror_part: ...each sub-model written once (wing %d, tip %d)" % [_defined(after,
+		"rareswap_wing.ldr"), _defined(after, "rareswap_tip.ldr")],
+		_defined(after, "rareswap_wing.ldr") == 1 and _defined(after, "rareswap_tip.ldr") == 1)
+	await _open_as(after, KEPT.get_basename())
+	_check("mirror_part: saved and opened again, every part as it was shown%s" % _unlike(shown, _looks()),
+		shown == _looks())
 
 
 ## A print is offered its plain part, not picked; picked, it swaps.
@@ -504,20 +548,24 @@ func _case_picks() -> void:
 	await _open(_fixture(KEPT))
 	var list: InventoryPanel = await _list_up()
 	_check("picks: the rare row opens the swaps", await _swaps_up(list))
+	var rare: int = (list.get("_rare") as Array).size()
+	var picked: int = (list.get("_rare") as Array).filter(func(lot: RareSwap.Lot) -> bool:
+		return lot.picked).size()
 	for each: Control in list.call("_swap_boxes"):
 		var lot: RareSwap.Lot = each.get_meta("lot")
 		if lot.part == "3622":
 			_check("picks: its box pressed off", await _press(each) and not lot.picked)
 	var swap: Button = list.controls_by_name()["parts_swap"]
-	print("  button: %s" % swap.text)
-	_check("picks: one box pressed off, the button says one fewer (%s)" % swap.text,
-		swap.text == "Swap 4 lots")
+	print("  button: %s (of %d rare, %d picked)" % [swap.text, rare, picked])
+	_check("picks: one box pressed off, the button says one fewer (%s, %d picked)" % [swap.text, picked],
+		picked >= 3 and swap.text == "Swap %d lots" % (picked - 1))
 	_check("picks: Swap pressed", await _swap_pressed(list))
 	var row: String = list.controls_by_name()["parts_rare"].text
 	print("  row: %s" % row)
 	list.hide_list()
-	_check("picks: the one not picked stays (3622 %d), the row says 2 still rare" % _count("3622", 379),
-		_count("3622", 379) == 1 and _row_count(row) == 2)
+	_check("picks: the one not picked stays (3622 %d), the row says %d still rare (%d)" % [
+		_count("3622", 379), rare - picked + 1, _row_count(row)],
+		_count("3622", 379) == 1 and _row_count(row) == rare - picked + 1)
 
 
 ## The row, the swaps and the button in German, French and Spanish.
@@ -542,12 +590,22 @@ func _case_words() -> void:
 			texts.append(node.get("tooltip_text"))
 	for row: Node in (list.get("_swaps") as Node).get_children():
 		for child: Node in row.get_children():
-			if child is Label and not (child as Label).text.is_empty():
-				texts.append((child as Label).text)
+			for each: Node in [child] + child.get_children():
+				if each is Label and not (each as Label).text.is_empty():
+					texts.append((each as Label).text)
 			if child is CheckBox:
 				texts.append((child as CheckBox).tooltip_text)
+	# The library's names, a part's or a colour's, are drawn as the app has
+	# them in each language (in English where it has no other).
+	var names: Array = []
 	for lot: RareSwap.Lot in list.get("_rare"):
 		texts.append("rare: " + RareSwap.sets_words(lot.sets))
+		names.append_array([lot.name, lot.colour_name])
+		if not lot.into_part.is_empty() and _library.parts.has(lot.into_part):
+			names.append(Inventory._tidy((_library.parts[lot.into_part] as PartLibrary.PartInfo).name))
+		if lot.into_colour >= 0:
+			names.append(_library.color(lot.into_colour).name.replace("_", " "))
+	names.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
 	list.hide_list()
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)
@@ -561,6 +619,8 @@ func _case_words() -> void:
 				if _part_number.search(str(w).strip_edges()) != null:
 					return false
 				var rest: String = str(w)
+				for named: String in names:
+					rest = rest.replace(named, "")
 				for mark: String in "0123456789½¼¾−-.,:×→()ΔE ":
 					rest = rest.replace(mark, "")
 				return not rest.is_empty())

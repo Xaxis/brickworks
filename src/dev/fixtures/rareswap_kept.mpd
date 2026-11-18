@@ -11,6 +11,7 @@
 0 // the Sand Blue 1 x 3 above came in one set
 1 72 240 -8 0 1 0 0 0 1 0 0 0 1 4032b.dat
 1 0  360 -8 0 1 0 0 0 1 0 0 0 1 2431p70.dat
+1 14 -120 -8 0 1 0 0 0 1 0 0 0 1 3070a.dat
 0 STEP
 1 16 0 0 200 1 0 0 0 1 0 0 0 1 rareswap_wing.ldr
 1 16 0 0 -200 -1 0 0 0 1 0 0 0 1 rareswap_wing.ldr
@@ -24,8 +25,7 @@
 
 1 15 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
 1 0 120 0 0 1 0 0 0 1 0 0 0 1 3665a.dat
-1 379 -120 0 0 1 0 0 0 1 0 0 0 1 87087.dat
-1 16 30 0 0 1 0 0 0 1 0 0 0 1 rareswap_tip.ldr
+1 16 -90 0 0 1 0 0 0 1 0 0 0 1 rareswap_tip.ldr
 0 NOFILE
 
 0 FILE rareswap_tip.ldr
@@ -33,5 +33,5 @@
 0 Name: rareswap_tip.ldr
 0 Author: A. Builder [abuilder]
 
-1 14 0 -8 0 1 0 0 0 1 0 0 0 1 3070a.dat
+1 379 0 -24 0 1 0 0 0 1 0 0 0 1 87087.dat
 0 NOFILE

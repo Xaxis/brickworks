@@ -5592,6 +5592,20 @@
     },
     {
       "kind": "ui",
+      "label": "rare lots swapped for common ones",
+      "entry": "src/collection/rare_swap.gd",
+      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour, a box each, a print's plain part not picked; Swap N lots, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true does the same; tools/probe.sh rareswap_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "rareswap probe",
+      "entry": "src/dev/rareswap_probe.gd",
+      "reach": "tools/probe.sh rareswap_probe   (headless, about 6 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "missing and moved parts on open",
       "entry": "src/ui/moved_parts_dialog.gd",
       "reach": "godot --path .  (File, Open a file naming parts by numbers LDraw has moved, made aliases or has no file for, e.g. vendor/omr/files/4349-1_Dragon-Fly.mpd or 6056-1.mpd: moved and alias parts open with no list, only the strip over the model saying \"N parts have new numbers in the LDraw library\" with Update all (every sub-model, one undo, Edit, Undo puts the file back byte for byte and keeps earlier edits undoable), Review… (Missing and moved parts: each number, why, the part it points to and how many in which sub-models; Replace checked) and Keep as is; a part with no file opens the list by itself and offers Search; a sub-model or carried part named as a moved number keeps its name; shown after a person's own open only (File, Open, a file, Recent, the library), never a session's, Together's or an undo's; over MCP open_model names them and replace_moved=true replaces them in 1 call)  (tools/probe.sh movedparts_probe; tools/probe.sh movedparts_phone_probe; tools/probe.sh mvreview_probe)",

@@ -793,13 +793,18 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 		arrow.add_theme_font_size_override("font_size", 12)
 		row.add_child(arrow)
 		row.add_child(_swatch(into if into >= 0 else int(lot.get("colour"))))
-	var words := Label.new()
-	words.text = (_swapper as RareSwap).lot_words(lot)
-	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# What it is, and below it what it becomes: each one entry of the words.
+	var words := VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.add_theme_font_size_override("font_size", 12)
-	if not bool(lot.call("offered")):
-		words.modulate = Color(1, 1, 1, 0.6)
+	words.add_theme_constant_override("separation", 0)
+	for said: String in [(_swapper as RareSwap).from_words(lot), (_swapper as RareSwap).into_words(lot)]:
+		var line := Label.new()
+		line.text = said
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.add_theme_font_size_override("font_size", 12)
+		if not bool(lot.call("offered")):
+			line.modulate = Color(1, 1, 1, 0.6)
+		words.add_child(line)
 	row.add_child(words)
 	return row
 

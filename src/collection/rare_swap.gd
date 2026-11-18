@@ -445,9 +445,15 @@ static func narrowed(found: Dictionary, ids: Dictionary, finder: FindReplace) ->
 ## same shape and connections in its colour, in 312 sets"; "… → no swap in 20
 ## sets or more: it comes in 3 sets at most, in any colour".
 func lot_words(lot: Lot) -> String:
-	var said: String = "%d × %s (%s) in %s, %s" % [lot.count, lot.name, lot.part,
-		lot.colour_name, sets_words(lot.sets)]
-	return said + " → " + into_words(lot)
+	return from_words(lot) + " → " + into_words(lot)
+
+
+## What [param lot] is: "2 × Brick 1 x 3 (3622) in Sand Blue, in 1 set". The
+## parts list draws it apart from [method into_words], so each is one entry
+## of the words in another language.
+func from_words(lot: Lot) -> String:
+	return "%d × %s (%s) in %s, %s" % [lot.count, lot.name, lot.part, lot.colour_name,
+		sets_words(lot.sets)]
 
 
 ## "in 2 sets", "in 1 set", "in no set".

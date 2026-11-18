@@ -14997,6 +14997,9 @@ msgstr "in keinem Set"
 msgid "%d × %s (%s) in %s, %s → %s"
 msgstr "%d × %s (%s) in %s, %s → %s"
 
+msgid "%d × %s (%s) in %s, %s"
+msgstr "%d × %s (%s) in %s, %s"
+
 msgid "%s, %s (ΔE %s)"
 msgstr "%s, %s (ΔE %s)"
 
