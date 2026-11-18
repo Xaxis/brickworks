@@ -3175,8 +3175,18 @@ plan with Claude as the client.
   is no score, only visits. A Reddit post is a link or words, never both
   (400). Reddit's own no is "Did not go"; a lost answer, its 5xx or a send
   cut off five minutes ago is unsure: never sent again on that press, found
-  up (paste its address) or back to the drafts (social_unschedule). On a
-  phone the desk's tables are cards. The cron `/api/plans/social-due` every
+  up (paste its address) or back to the drafts (social_unschedule). Two
+  Keeps of one new draft are one draft (its id is made from its words and
+  its ten seconds, so the database's key decides; both answered with it;
+  later, a second). A connect's state is good once (the account's
+  connected_at in it; of two finishes, one connects and the other's keys
+  are revoked), and Reddit's redirect is always
+  `https://brickworks.diy/admin?connected=reddit`. Sent lists the newest
+  300 and every send still to go, the rest counted (`unlisted`). Each table
+  has a caption, the rules' line is a status, focus goes to a sheet's name
+  when it becomes the next and lands on the row or the tab's place after
+  an act; by finger links are 44 px tall. On a phone the desk's tables are
+  cards. The cron `/api/plans/social-due` every
   15 minutes sends due presses and reads the inbox and results;
   web/theme.js tells of a tagged landing (`social_visit`), counted once a
   visitor a day by the server's own key, at most 1,000 an hour a post, and
@@ -3197,7 +3207,8 @@ plan with Claude as the client.
   tagged link counted once and the tags gone, Disconnect, a link and words
   refused, a long post by hand (said before the press, the title alone in
   Reddit's address, Copy the words first, then Back to drafts and Drop), a
-  post by hand (Reddit's page offered, its address pasted back), each tab
+  post by hand (Reddit's page offered with focus on the new sheet's name,
+  its address pasted back and focus back on Write's Review), each tab
   at 390 and 1280 light and dark with every row's acts on the screen, and
   no token in any answer, page or storage. The
   checks' pool is emptied after. Locally against `relay_server.mjs PORT

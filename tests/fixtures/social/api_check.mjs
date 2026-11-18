@@ -38,9 +38,9 @@ try {
   const host = "brickworks.diy";
 
   /// One request to api/admin.js as [token] (null: signed out).
-  async function admin(op, { method = "POST", body, query = {}, token = owner, tests = true } = {}) {
+  async function admin(op, { method = "POST", body, query = {}, token = owner, tests = true, at = host } = {}) {
     const got = await askAdmin({ method, query: { op, ...(tests ? { tests: "1" } : {}), ...query },
-      headers: { host, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body });
+      headers: { host: at, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body });
     answers.push(JSON.stringify(got.json));
     return got;
   }
@@ -84,6 +84,45 @@ try {
   const connected = await admin("social_connected", { body: { provider: "reddit", code: "mock-code-abcdefgh", state } });
   out.connect = { forged: forged.status, status: connected.status, handle: connected.json?.handle,
     accounts: rows("social_accounts").length, tokens: rows("social_tokens").length };
+
+  // 3b. A connect is finished once (sdreview L9): its state again is
+  //     refused, and two finishes of one connect at once make one account,
+  //     the loser's keys handed back. Reddit's own app comes back to
+  //     brickworks.diy, whichever host the console was on (L8).
+  const replay = await admin("social_connected", { body: { provider: "reddit", code: "mock-code-replay01", state } });
+  const asked2 = await admin("social_connect", { body: { provider: "reddit" } });
+  const state2 = new URL(asked2.json?.authorize || "http://none/").searchParams.get("state");
+  const revokes = () => calls.filter((one) => /revoke_token/.test(one.path)).length;
+  const revoked0 = revokes();
+  // Both held at the exchange until both are there, so both have read the
+  // account as the connect found it: only the write decides.
+  const exchange = reddit.exchange;
+  let reached = 0;
+  let bothThere;
+  const there = new Promise((resolve) => { bothThere = resolve; });
+  reddit.exchange = async (...args) => {
+    reached += 1;
+    if (reached === 2) bothThere();
+    await Promise.race([there, new Promise((resolve) => { setTimeout(resolve, 3000); })]);
+    return exchange(...args);
+  };
+  const finishes = await Promise.all(["mock-code-twinone1", "mock-code-twintwo2"].map((code) => admin("social_connected",
+    { body: { provider: "reddit", code, state: state2 } })));
+  reddit.exchange = exchange;
+  const afterBoth = await admin("social_connected", { body: { provider: "reddit", code: "mock-code-after003", state: state2 } });
+  out.state_once = { replay: replay.status, said: replay.json?.error, twins: finishes.map((one) => one.status).sort(),
+    after: afterBoth.status, accounts: rows("social_accounts").length, tokens: rows("social_tokens").length,
+    both_exchanged: reached === 2, handed_back: revokes() - revoked0 };
+  process.env.REDDIT_CLIENT_ID = "check-only-id";
+  process.env.REDDIT_CLIENT_SECRET = "check-only-secret";
+  const redirects = {};
+  for (const at of ["brickworks.diy", "www.brickworks.diy"]) {
+    const got = await admin("social_connect", { body: { provider: "reddit" }, tests: false, at });
+    redirects[at] = new URL(got.json?.authorize || "http://none/").searchParams.get("redirect_uri");
+  }
+  delete process.env.REDDIT_CLIENT_ID;
+  delete process.env.REDDIT_CLIENT_SECRET;
+  out.redirects = redirects;
 
   // 4. What came in: the inbox's replies, mention and message, and the search.
   const before = writes();
@@ -289,6 +328,34 @@ try {
   const pmSend = await admin("social_send", { body: { id: pm.id, hash: pm.hash } });
   const pmPosted = await admin("social_posted", { body: { id: pm.id, url: "" } });
   out.message_reply = { handed: pmSend.json?.outcome, posted: pmPosted.json?.send?.status, url: pmPosted.json?.send?.url };
+
+  // 12c. Two Keeps of one new draft at once are one draft, both answered
+  //      with it (sdreview's double_keep_new); a schedule older than the
+  //      newest 300 is still listed, and what is not listed is counted (L10).
+  const keptBefore = rows("social_sends").length;
+  const twinKeeps = await Promise.all([1, 2].map(() => admin("social_draft", { body: { provider: "reddit", kind: "post",
+    community: "lego", title: "Twice", body: "Both at once: https://brickworks.diy/gallery" } })));
+  out.twin_keeps = { statuses: twinKeeps.map((one) => one.status), made: rows("social_sends").length - keptBefore,
+    same: twinKeeps[0].json?.send?.id === twinKeeps[1].json?.send?.id,
+    tagged: twinKeeps.map((one) => one.json?.send?.body.includes(`bw-${one.json?.send?.id}`)) };
+  const apart = await admin("social_draft", { body: { provider: "reddit", kind: "post", community: "lego", title: "Twice",
+    body: "Both at once: https://brickworks.diy/gallery!" } });
+  out.twin_keeps.other_words = apart.json?.send?.id !== twinKeeps[0].json?.send?.id;
+  // Kept again at once (its answer lost): the same draft. Twenty seconds on: a second.
+  const keepTwice = () => admin("social_draft", { body: { provider: "reddit", kind: "post", community: "lego", title: "Twice",
+    body: "Both at once: https://brickworks.diy/gallery" } }).then((got) => got.json?.send?.id);
+  out.twin_keeps.retried = (await keepTwice()) === twinKeeps[0].json?.send?.id;
+  await behind("social_sends", twinKeeps[0].json?.send?.id, { made_at: new Date(Date.now() - 25000).toISOString() });
+  out.twin_keeps.later = (await keepTwice()) !== twinKeeps[0].json?.send?.id;
+  const old = await draftOf({ community: "lego", title: "Long ago", body: "w" });
+  await admin("social_send", { body: { id: old.id, hash: old.hash, at: new Date(Date.now() + 864e5).toISOString() } });
+  await behind("social_sends", old.id, { changed_at: "2026-01-01T00:00:00.000Z" });
+  for (let n = 0; n < 300; n += 1) {
+    await admin("social_draft", { body: { provider: "reddit", kind: "post", community: "lego", title: `Many ${n}`, body: "w" } });
+  }
+  const many = await admin("social", { method: "GET" });
+  out.listed = { total: rows("social_sends").length, listed: many.json?.sends?.length, unlisted: many.json?.unlisted,
+    old_scheduled: many.json?.sends?.find((one) => one.id === old.id)?.status ?? null };
 
   // 13. Tokens: in no answer and no line logged.
   const text = answers.join("\n");

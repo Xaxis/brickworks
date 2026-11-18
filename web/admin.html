@@ -263,6 +263,13 @@
   [data-section="social"] .with-preview + .part { margin-top: var(--s-7); }
   table.queue td.acts a.cta { display: block; width: 100%; text-align: center; }
   table.queue td.acts > a + button { margin-top: var(--s-2); }
+  /* The sheet's name takes focus when its body becomes the next sheet's
+     (admin-social.js, openSheet): read, not pressed, so it draws no ring. */
+  #social-sheet-title:focus { outline: none; }
+  /* A link in a row or a sheet's facts, by finger: as tall as a button. */
+  @media (width < 600px), (pointer: coarse) {
+    table.cards td.text a, #social-sheet dd a { display: inline-flex; align-items: center; min-height: var(--control-h); }
+  }
   /* The desk's tables as cards on a phone: a row a block, each cell named by
      its column (data-label, admin-social.js), the acts side by side. */
   @media (width < 600px) {
@@ -786,6 +793,7 @@
             </div>
             <div class="table" tabindex="0" role="region" aria-label="What came in">
               <table class="queue cards">
+                <caption class="visually-hidden">What came in</caption>
                 <thead><tr><th scope="col">When</th><th scope="col">Kind</th><th scope="col">From</th><th scope="col">Where</th>
                   <th scope="col">What</th><th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
                 <tbody id="inbox"></tbody>
@@ -822,7 +830,7 @@
               </form>
               <aside class="card preview" aria-labelledby="h-social-rules">
                 <h3 id="h-social-rules">Its rules</h3>
-                <p class="note" id="social-rules-said">Name a community and read its rules before you post: each community
+                <p class="note" id="social-rules-said" role="status">Name a community and read its rules before you post: each community
                   sets its own on self-promotion, and breaking them gets an account banned.</p>
                 <ol class="rules-list" id="social-rules"></ol>
                 <p class="note" id="social-rules-link"></p>
@@ -836,6 +844,7 @@
               <div class="lead"><h3 id="h-drafts">Drafts</h3><p class="note">Kept until you send or drop them.</p></div>
               <div class="table" tabindex="0" role="region" aria-labelledby="h-drafts">
                 <table class="queue cards">
+                  <caption class="visually-hidden">Drafts</caption>
                   <thead><tr><th scope="col">Kept</th><th scope="col">Where</th><th scope="col">What</th>
                     <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
                   <tbody id="drafts"></tbody>
@@ -854,12 +863,14 @@
             </div>
             <div class="table" tabindex="0" role="region" aria-label="Sent and scheduled">
               <table class="queue cards">
+                <caption class="visually-hidden">Sent and scheduled</caption>
                 <thead><tr><th scope="col">When</th><th scope="col">State</th><th scope="col">Where</th><th scope="col">What</th>
                   <th scope="col" class="n">Score</th><th scope="col" class="n">Comments</th><th scope="col" class="n">Visits</th>
                   <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
                 <tbody id="sends"></tbody>
               </table>
             </div>
+            <p class="note" id="sends-older" hidden></p>
             <p class="note" id="sends-note" role="status"></p>
           </div>
 
