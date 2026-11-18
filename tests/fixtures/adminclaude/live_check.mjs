@@ -245,7 +245,19 @@ try {
   await reset();
   script = () => sse([start("claude-opus-5-5", { input_tokens: 100, output_tokens: 1 }), ...text(0, "hi"),
     { type: "error", error: { type: "overloaded_error", message: "Overloaded" } }]);
-  r = await admin("claude_chat", { body: { ask: "chat", text: "overload" } });
+  // The clock held still: an overload is also charged up to MOST_A_SECOND
+  // tokens for each second since it was asked (thinking is not streamed),
+  // so on a loaded box a few milliseconds would add tokens to the two it
+  // wrote, and "what it wrote" would not be exact (gate, 11-18).
+  {
+    const realNow = Date.now, frozen = realNow();
+    Date.now = () => frozen;
+    try {
+      r = await admin("claude_chat", { body: { ask: "chat", text: "overload" } });
+    } finally {
+      Date.now = realNow;
+    }
+  }
   got.a6 = { held: last().held_usd, settled: last().cost_usd, said: errorOf(r), streamed: round6(100 * 6.25e-6 + 2 * 25e-6) };
   // ...and one that fell back before the overload: all it held.
   await reset();
