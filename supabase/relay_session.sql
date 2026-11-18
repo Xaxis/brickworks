@@ -1,0 +1,27 @@
+-- A tab's connector ends with the sign-in it was switched on with,
+-- 2026-11-18 (smalls6).
+--
+-- Sign out everywhere (/admin, admin_sign_out) deleted the account's
+-- sessions, and from smalls5 every token they had handed out is refused
+-- within about 5 s. A tab's own connector address (/api/mcp?t=<token>) went
+-- on working all the same: the tab's asks for work and its answers carry no
+-- token, so a tab switched on before served its address to whoever held it
+-- for as long as the page stayed open (20 s and counting on brickworks.diy,
+-- bench/results/smalls6-2026-11-18/relay/). One column of relay_tabs
+-- (relay.sql):
+--
+--   session  the sign-in session (its session_id) whose access token came
+--            with the tab's hello. api/mcp.js asks Supabase whether it is
+--            still there, as api/_auth.js asks of every token (rpc/
+--            oc_session_of, held 5 s an instance), on Claude's calls through
+--            the address and on the tab's asks for work; once it is gone the
+--            tab is closed and handed nothing, Claude is told why, and the
+--            tab is told to say hello again, which a new sign-in does. Null
+--            for a row a relay from before wrote: that tab is told to say
+--            hello again, which writes it.
+--
+-- Additive: one nullable column, no key into auth (a session ended must not
+-- take the row and its owner with it, or another account could switch the
+-- address on). Nothing reads it but api/mcp.js; a relay from before neither
+-- reads nor writes it.
+alter table public.relay_tabs add column if not exists session uuid;

@@ -14,7 +14,9 @@
 // writes it beside a hello (helloFromTab, supabase/relay_cost.sql). A test
 // can make the reads it names slow or failing: w.trouble = (call) =>
 // ({ ms, status }) or null, [call] being "GET relay_tabs?query"; a slow
-// one honours the request's own deadline, as the real one would.
+// one honours the request's own deadline, as the real one would. And it can
+// answer any request itself (w.serve, below): Supabase's signing keys and
+// the sessions it holds, for a hello (tests/test_relay_signed_out.py).
 
 import { createHash, randomBytes } from "node:crypto";
 
@@ -65,6 +67,10 @@ export function world() {
     trouble: () => null,
     /// What each write sent, {table, body}.
     written: [],
+    /// A request a test answers itself: (call, init) => a Response, or
+    /// null for the stand-in's own answer (Supabase's signing keys, a
+    /// session asked after, the queue).
+    serve: () => null,
     /// An access token for [owner]'s account.
     connect(owner) {
       const token = `bwa_${randomBytes(32).toString("base64url").slice(0, 43)}`;
@@ -112,6 +118,8 @@ export function world() {
     const table = url.pathname.replace("/rest/v1/", "");
     const call = `${method} ${table}${decodeURIComponent(url.search)}`;
     self.calls.push(call);
+    const served = await self.serve(call, init);
+    if (served) return served;
     const trouble = self.trouble(call);
     if (trouble && trouble.ms) {
       await new Promise((resolve, reject) => {
