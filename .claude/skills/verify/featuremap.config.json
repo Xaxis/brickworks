@@ -5687,6 +5687,27 @@
       "entry": "src/dev/jointmarks_probe.gd",
       "reach": "tools/probe.sh jointmarks [-- --only=menu,beam,kinds,cost,written,session --orthanc --shots=DIR]   (windowed, on the GPU, 1280 x 720: on out of the box and View, Connection points off and on; a 2780 pin aimed at a 32524 beam's third hole, each hole's ring within 1 px of its mouth, hollow, a pin's size, the pin's end amber; eleven parts' studs, anti-studs, clips, bars, balls, sockets, hinges, axles, pin and axle holes each at its own size, studs and anti-studs as the catalogue counts them; the car's frame with the marks within 10% of without; the saved file, Export picture, a session's picture and a Render the same bytes; view_model marks=true in 1 call over tools/call; PROBE_COMPAT=1 for the web's renderer)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "mcpreach2 probe",
+      "entry": "src/dev/mcpreach2_probe.gd",
+      "reach": "tools/probe.sh mcpreach2_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach2_probe.gd. APP_UX9 #10: where_to_attach with nothing selected is the whole model, a picture in 1 call, its numbered points over every part and the rest as dots, parts= the parts named; render_model turntable says the camera goes once round a model that stands still; attachment_points on the walk's y6 SPIKE motor names its output's axle and pin holes apart from the case's, simulate_mechanism driver=<motor> turns the output, move_part names the motor; submit_design pool=31058-1 all in the set, over by part, 31058 read as 31058-1, two sets pooled, an unknown number said so. The relay's other-chats words: python3 tools/minitest.py tests/test_relay_chats.py)",
+      "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "find a step by what it places",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, as Next goes to a step; Escape clears; on a phone or a tablet Find… opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "stepsearch probe",
+      "entry": "src/dev/stepsearch_probe.gd",
+      "reach": "tools/probe.sh stepsearch_probe; tools/probe.sh stepsearch_phone_probe   (the car's finds by number, name, colour and both against the bricks themselves, the row marking the same, every key's list on screen within 100 ms; a click, Enter, Shift+Enter, Escape; edit_steps find= the same steps in 1 call, refused with another op, and no find changing the model; 7140-1's engines found in their own steps, every copy counted; Orthanc's keys within 100 ms; the phone's (390 x 844): Find…'s sheet above the keyboard, a tap going there; pictures in shots/stepsearch/)",
+      "area": "view"
     }
   ]
 }
