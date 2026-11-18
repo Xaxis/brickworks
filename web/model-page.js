@@ -27,6 +27,7 @@ import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, ph
   told } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
+import { guardPhoneOpens } from "/phone-warn.js";
 
 // A date as the page's language writes one: "30 October 2026".
 const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
@@ -82,6 +83,8 @@ if (frame) startPicture(frame);
 // has it). Drawn by /viewer3d.js (tools/viewer/inline.js), asked for only
 // then.
 const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
+// A model too big for a phone said so before the studio opens it (phonetruth).
+guardPhoneOpens();
 // In your room (APP_UX5 #13, arview): where this browser can place a model
 // in a room through the camera (AR Quick Look on an iPhone or iPad, WebXR's
 // immersive AR on an Android phone or a headset), a button on the picture's
