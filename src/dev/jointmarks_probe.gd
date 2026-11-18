@@ -672,6 +672,7 @@ func _cost(model: String, judged: bool) -> void:
 	var counts: Array[int] = []
 	var step: int = 0
 	JointMarks.worked = 0
+	JointMarks.written = 0
 	JointMarks.work_usec = 0
 	JointMarks.most_usec = 0
 	for turn: int in TURNS * 2:
@@ -700,10 +701,10 @@ func _cost(model: String, judged: bool) -> void:
 	counts.sort()
 	var marks_drawn: int = counts[counts.size() / 2] if not counts.is_empty() else 0
 	await _shot("cost_%s" % model.get_file().get_basename())
-	_say("%s: a frame %.3f ms with the marks (%d drawn, middle of the turns) against %.3f ms without, x%.3f; the card's share %.3f against %.3f ms, x%.3f; %d frames each; marks worked out %d times, %.3f ms each on average, %.3f at the most" % [
+	_say("%s: a frame %.3f ms with the marks (%d drawn, middle of the turns) against %.3f ms without, x%.3f; the card's share %.3f against %.3f ms, x%.3f; %d frames each; marks worked out %d times in the %d frames with them on, %d of those written to the card, %.3f ms each on average, %.3f at the most" % [
 		model.get_file(), on_ms, marks_drawn, off_ms, on_ms / maxf(off_ms, 0.001), on_gpu, off_gpu,
-		on_gpu / maxf(off_gpu, 0.001), (times[0] as Array).size(), JointMarks.worked,
-		float(JointMarks.work_usec) / 1000.0 / maxf(float(JointMarks.worked), 1.0),
+		on_gpu / maxf(off_gpu, 0.001), (times[0] as Array).size(), JointMarks.worked, TURNS * BLOCK,
+		JointMarks.written, float(JointMarks.work_usec) / 1000.0 / maxf(float(JointMarks.worked), 1.0),
 		float(JointMarks.most_usec) / 1000.0])
 	if judged:
 		_check("%s at %s: a frame with the marks within %d%% of without (x%.3f)" % [model.get_file(),

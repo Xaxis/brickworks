@@ -28,13 +28,23 @@
 ##   what is in front of it hides it. Balls and sockets face the eye, bars
 ##   and clips lie along their length.
 ##
-## How many: the marks of the parts within REACH of the hand (four studs
-## past the part in hand), nearest first, MOST at most; a part with more
-## than BIG (a baseplate in the model) only those within REACH of where it
-## is pointed at. Drawn as one batch of flat quads (a MultiMesh, the shapes
-## worked out in the shader), worked out again only when the hand moves two
-## studs or the model changes: a frame's own cost is the drawing, measured
-## in jointmarks_probe on the car and on Orthanc.
+## How many: the marks within REACH of the hand (four studs past the part in
+## hand), MOST at most, nearest parts first; a part with more than BIG (a
+## baseplate in the model) only those near where it is pointed at. Drawn as
+## one batch of flat quads (a MultiMesh, the shapes worked out in the
+## shader), and cut to REACH of the hand by the card each frame (near_lo,
+## near_hi). So the batch holds the parts within REACH and a margin more
+## (SLACK, less where the parts are close together), and is worked out again
+## only when what it holds would change: the hand as far from where they were
+## found as the margin (STEP at the least), the pointer onto a part whose
+## marks are not in it, the part in hand, the model or the view's switch
+## changed; written to the card only when the parts found are not the ones in
+## it, and never read back from it. A frame's own cost is the drawing,
+## measured in jointmarks_probe on the car and on Orthanc: worked out round
+## the hand alone, the hand moving over the car took it on 799 of 1040 frames
+## (it crossed a two-stud grid line, or the part under the pointer changed),
+## and read the batch back from the card each time (x1.11-x1.18 a frame at
+## load, jmfix).
 ##
 ## Nothing written: the marks are drawn in the builder (Shell), which a
 ## picture puts aside (Picture.aside); a session's picture has them only
@@ -67,15 +77,26 @@ const HINGE_R := 4.0
 ## How far toward the eye a mark on a face is drawn, LDU, so the face never
 ## covers it; along the eye's own line, so it stays where it is on screen.
 const PULL := 1.5
-## Round the part in hand, LDU (four studs): the parts whose marks are drawn.
+## Round the part in hand, LDU (four studs): the marks drawn, each within it
+## of the part's box (the card leaves out the rest, near_lo and near_hi).
 const REACH := 80.0
 ## The most marks drawn round the hand; nearest parts first.
 const MOST := 2000
 ## A part with more marks than this has only those within REACH of where it
 ## is pointed at drawn: a baseplate in the model has 2,048.
 const BIG := 96
-## How far the hand moves before the parts round it are found again, LDU.
+## The parts round the hand are found within REACH and up to SLACK past it,
+## LDU, and found again only once the hand has gone that far from where they
+## were found (STEP at the least), so whatever comes within REACH of the hand
+## is among them: the card draws those within REACH each frame, and the hand
+## moving over the car worked its marks out on 799 of 1040 frames when they
+## were found within REACH alone, again each time it crossed a grid line two
+## studs apart (jmfix). None past REACH at first, and half SLACK then SLACK
+## only while the parts found come to under a quarter of MOST (_margin): a
+## margin under STEP buys no fewer workings out, and Orthanc has more marks
+## within REACH than MOST, so it is found within REACH alone, as before.
 const STEP := 40.0
+const SLACK := 120.0
 ## The most marks a session's picture draws (view_model marks=true).
 const PICTURE_MOST := 30000
 ## The most marks worked out afresh in a frame: the hand moving fast over a
@@ -83,9 +104,11 @@ const PICTURE_MOST := 30000
 ## the rest over the next frames.
 const BUDGET := 400
 
-## How many times the model's marks were worked out, and how long that took
-## in all and at the longest, microseconds (jointmarks_probe).
+## How many times the model's marks were worked out, how many of those wrote
+## the batch anew (the rest found the same parts round the hand), and how
+## long that took in all and at the longest, microseconds (jointmarks_probe).
 static var worked: int = 0
+static var written: int = 0
 static var work_usec: int = 0
 static var most_usec: int = 0
 
@@ -104,6 +127,10 @@ uniform float band = 1.75;
 uniform float arm = 0.375;
 uniform float margin = 1.5;
 uniform float edge_px = 1.25;
+// The box a mark's middle is drawn in, the part in hand's grown by REACH:
+// what is past it is not drawn, whatever was written (JointMarks._show_near).
+uniform vec3 near_lo = vec3(-100000000.0);
+uniform vec3 near_hi = vec3(100000000.0);
 
 varying flat vec4 v_kind;
 varying flat vec2 v_half;
@@ -145,6 +172,13 @@ void vertex() {
 	v_kind = INSTANCE_CUSTOM;
 	vec3 toward = square ? vec3(0.0, 0.0, 1.0) : normalize(-at);
 	VERTEX = at + toward * INSTANCE_CUSTOM.w;
+	// Past REACH of the part in hand: its corners on one point behind the
+	// eye, so nothing of it is drawn.
+	vec3 middle = MODEL_MATRIX[3].xyz;
+	if (any(lessThan(middle, near_lo)) || any(greaterThan(middle, near_hi))) {
+		VERTEX = vec3(0.0, 0.0, 1.0);
+		v_fade = 0.0;
+	}
 }
 
 float box_sd(vec2 p, vec2 b) {
@@ -226,6 +260,28 @@ var _hand_for: Array = []
 var _rows: Dictionary = {}
 ## Whether the last working out stopped at BUDGET with parts still to mark.
 var _short: bool = false
+## Where the hand was when the parts round it were last found, and the part
+## under the pointer then.
+var _found_at := Vector3.ZERO
+var _under_at: int = 0
+## The parts the last working out went through, by id, each whether it was
+## shown (see [method _unseen]); and the one among them drawn only for being
+## under the pointer (outside the round), or 0.
+var _placed: Dictionary = {}
+var _extra: int = 0
+## Whether what it drew hangs on more than which parts: it stopped at MOST
+## or BUDGET, or a big part's marks are those near where the hand was; and
+## whether it stopped at MOST.
+var _partial: bool = false
+var _capped: bool = false
+## How far past REACH the parts round the hand are found next, and were
+## found last time, LDU: 0, half SLACK or SLACK, a step up while the parts
+## found are few and a step down when they reach MOST.
+var _margin: float = 0.0
+var _found_margin: float = 0.0
+## The box the card draws the model's marks in, as last given it.
+var _near_lo := Vector3.ZERO
+var _near_hi := Vector3.ZERO
 
 ## Each part's marks in its own frame, by part id (see [method marks_of]).
 static var _local: Dictionary = {}
@@ -236,6 +292,9 @@ static var _materials: Array[ShaderMaterial] = []
 
 func _ready() -> void:
 	_model = _batch(false)
+	# Its own, as it is cut to the hand's REACH: a session's picture
+	# (for_picture) draws with the one shared.
+	_model.material_override = (_model.material_override as ShaderMaterial).duplicate()
 	_hand = _batch(true)
 	add_child(_model)
 	add_child(_hand)
@@ -306,36 +365,114 @@ func _follow_model() -> void:
 		if brick != null and marks_of(library, brick.part_id).size() > BIG:
 			focus = _pointed_at(under)
 			near = true
-	var wanted: Array = [on, held, under, Vector3i((focus / STEP).floor()) if near else Vector3i.ZERO,
-		world.get_instance_id(), world.generation(), world.revision, builder.lattice.revision]
-	if wanted == _model_for:
+	# The card draws the marks within REACH of the hand each frame, of the
+	# parts found round it when it was further away.
+	_show_near(_hand_box(focus, held), near)
+	# With nothing in hand the part under the pointer is what is marked; with
+	# a part in hand it counts only when its marks are not drawn already
+	# (_moved): it is nearly always one of the parts round the hand.
+	var wanted: Array = [on, held, under if held.is_empty() else 0, world.get_instance_id(),
+		world.generation(), world.revision, builder.lattice.revision]
+	var same: bool = wanted == _model_for
+	if same and not _moved(near, focus, under, held):
 		return
 	var began: int = Time.get_ticks_usec()
 	_model_for = wanted
+	_found_at = focus
+	_under_at = under
+	_found_margin = _margin if near else 0.0
 	var ids: Array = []
+	_extra = 0
 	if held.is_empty():
 		if under > 0:
 			ids = [under]
 	else:
 		ids = _round(focus, under, held)
-	_fill(_model, _rows_for(ids, held if held != "*" else "", focus))
+	worked += 1
+	# The same parts round the hand as last time, each drawn whole: what is
+	# drawn would not change, so the batch is left as it is.
+	if not same or _partial or not _same_parts(ids):
+		var rows: PackedFloat32Array = _rows_for(ids, held if held != "*" else "", focus)
+		_fill(_model, rows)
+		written += 1
+		# Further past REACH where the parts are few, back where they are
+		# close together.
+		if near and not _short:
+			if _capped:
+				_margin = SLACK * 0.5 if _margin > SLACK * 0.5 else 0.0
+			elif rows.size() / 16 < MOST / 4:
+				_margin = SLACK if _margin > 0.0 else SLACK * 0.5
 	# The rest of what is round the hand next frame, nearest first now.
 	if _short:
 		_model_for = []
 	var took: int = Time.get_ticks_usec() - began
-	worked += 1
 	work_usec += took
 	most_usec = maxi(most_usec, took)
 
 
-## The parts within REACH of the part in hand at [param focus], and the one
-## it is aimed at, nearest first.
-func _round(focus: Vector3, under: int, held: String) -> Array:
+## Whether the hand has gone where the parts held for it would change: as
+## far from where they were found as the margin they were found in (STEP at
+## the least), onto a part whose marks are not held, or off one held only for
+## being under the pointer.
+func _moved(near: bool, focus: Vector3, under: int, held: String) -> bool:
+	if near and focus.distance_to(_found_at) > maxf(STEP, _found_margin):
+		return true
+	if held.is_empty() or under == _under_at:
+		return false
+	return _extra != 0 or (under > 0 and not _placed.has(under))
+
+
+## The box round the part in hand at [param focus] its marks are drawn in:
+## the part's own, or the point where several are carried, REACH past it.
+func _hand_box(focus: Vector3, held: String) -> AABB:
 	var box := AABB(focus, Vector3.ZERO)
-	var part: Lbm.PartMesh = library.mesh_for(held) if held != "*" else null
+	var part: Lbm.PartMesh = library.mesh_for(held) if held != "*" and not held.is_empty() else null
 	if part != null:
 		box = builder.ghost_transform() * part.bounds
-	box = box.grow(REACH)
+	return box.grow(REACH)
+
+
+## The card to draw only the model's marks inside [param box] (every one
+## when not [param near]), told only when it moved: a value written again
+## unchanged draws a frame (IdleDraw).
+func _show_near(box: AABB, near: bool) -> void:
+	var far := Vector3.ONE * 1.0e8
+	var seen: AABB = global_transform * box
+	var lo: Vector3 = seen.position if near else -far
+	var hi: Vector3 = seen.end if near else far
+	if lo == _near_lo and hi == _near_hi:
+		return
+	_near_lo = lo
+	_near_hi = hi
+	var made: ShaderMaterial = _model.material_override
+	made.set_shader_parameter(&"near_lo", lo)
+	made.set_shader_parameter(&"near_hi", hi)
+
+
+## Whether [param ids] are the parts the last working out went through, each
+## shown or not as it was then: hiding a part leaves the model's revision.
+func _same_parts(ids: Array) -> bool:
+	if ids.size() != _placed.size():
+		return false
+	for brick_id: int in ids:
+		var shown: Variant = _placed.get(brick_id)
+		if shown == null or shown == _unseen(brick_id, world.get_brick(brick_id)):
+			return false
+	return true
+
+
+## Whether [param brick] is not drawn, so has no marks: hidden, the floor, or
+## passed through by the pointer (hidden by hand, x-ray, a step ahead).
+func _unseen(brick_id: int, brick: BrickWorld.Brick) -> bool:
+	return brick == null or brick.hidden or scenery.has(brick_id) \
+		or builder.lattice.unseen.has(brick_id) or builder.lattice.see_through.has(brick_id) \
+		or builder.lattice.ahead.has(brick_id)
+
+
+## The parts within REACH and the margin of the part in hand at [param focus],
+## and the one it is aimed at, nearest first.
+func _round(focus: Vector3, under: int, held: String) -> Array:
+	var box: AABB = _hand_box(focus, held).grow(_found_margin)
 	var lo: Vector3i = BrickLattice.to_cell(box.position)
 	var hi: Vector3i = BrickLattice.to_cell(box.end) + Vector3i.ONE
 	var found: Array = []
@@ -346,6 +483,7 @@ func _round(focus: Vector3, under: int, held: String) -> Array:
 			found.append(raw)
 	if under > 0 and not seen.has(under):
 		found.append(under)
+		_extra = under
 	# Nearest first, sorted natively: each key its distance, a sixteenth of
 	# an LDU at a time, over its place in the list (Orthanc has hundreds of
 	# parts round the hand; a sort by a lambda was most of a frame's work).
@@ -384,7 +522,8 @@ func _pointed_at(under: int) -> Vector3:
 
 ## The marks of [param ids], in turn, MOST at most, each blue where the part
 ## [param held] takes it and grey where it does not (blue for all with
-## nothing held); a big part's within REACH of [param focus] alone.
+## nothing held); a big part's within REACH and the margin of [param focus]
+## alone.
 func _rows_for(ids: Array, held: String, focus: Vector3) -> PackedFloat32Array:
 	var takes: Callable = _takes_of(held)
 	var key: String = held
@@ -392,13 +531,16 @@ func _rows_for(ids: Array, held: String, focus: Vector3) -> PackedFloat32Array:
 	var count: int = 0
 	var fresh: int = 0
 	_short = false
+	_partial = false
+	_capped = false
+	_placed = {}
+	var reach: float = REACH + _found_margin
 	if _rows.size() > 4096:
 		_rows.clear()
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick == null or brick.hidden or scenery.has(brick_id) \
-				or builder.lattice.unseen.has(brick_id) or builder.lattice.see_through.has(brick_id) \
-				or builder.lattice.ahead.has(brick_id):
+		if _unseen(brick_id, brick):
+			_placed[brick_id] = false
 			continue
 		# A part's first marks work out its joints (JointSnap.ends_for), up to
 		# 30 ms on the car's first frame with the hand: two a frame past the
@@ -406,16 +548,19 @@ func _rows_for(ids: Array, held: String, focus: Vector3) -> PackedFloat32Array:
 		var cold: bool = not _local.has(brick.part_id)
 		if cold and fresh >= BUDGET / 2:
 			_short = true
+			_partial = true
 			break
 		var marks: Array = marks_of(library, brick.part_id)
 		if cold:
 			fresh += BUDGET / 4
 		if marks.is_empty():
+			_placed[brick_id] = true
 			continue
 		var rows: PackedFloat32Array
 		if marks.size() > BIG:
-			rows = _rows_of(_near_marks(brick.part_id, marks, brick.transform.affine_inverse() * focus),
-				brick.transform, takes, focus)
+			rows = _rows_of(_near_marks(brick.part_id, marks, brick.transform.affine_inverse() * focus,
+				reach), brick.transform, takes, focus, reach)
+			_partial = true
 		else:
 			var kept: Array = _rows.get(brick_id, [])
 			if kept.size() == 4 and kept[0] == brick.part_id and kept[1] == brick.transform \
@@ -423,6 +568,7 @@ func _rows_for(ids: Array, held: String, focus: Vector3) -> PackedFloat32Array:
 				rows = kept[3]
 			elif fresh + marks.size() > BUDGET and fresh > 0:
 				_short = true
+				_partial = true
 				break
 			else:
 				rows = _rows_of(marks, brick.transform, takes)
@@ -430,9 +576,12 @@ func _rows_for(ids: Array, held: String, focus: Vector3) -> PackedFloat32Array:
 				fresh += marks.size()
 		var more: int = rows.size() / 16
 		if count + more > MOST:
+			_partial = true
+			_capped = true
 			break
 		out.append_array(rows)
 		count += more
+		_placed[brick_id] = true
 	return out
 
 
@@ -666,9 +815,9 @@ static func _mark(kind: String, end: JointSnap.End, shape: int, facing: int, pul
 
 
 ## Of a big part's [param marks], those whose REACH-sized box of the part's
-## own is next to [param local]'s (a 48 x 48 baseplate has 4,608): found by
-## the box, not by looking at each.
-static func _near_marks(part_id: String, marks: Array, local: Vector3) -> Array:
+## own is within [param reach] of [param local]'s (a 48 x 48 baseplate has
+## 4,608): found by the box, not by looking at each.
+static func _near_marks(part_id: String, marks: Array, local: Vector3, reach: float = REACH) -> Array:
 	var grid: Dictionary = _cells.get(part_id, {})
 	if grid.is_empty():
 		for n: int in marks.size():
@@ -679,21 +828,22 @@ static func _near_marks(part_id: String, marks: Array, local: Vector3) -> Array:
 		_cells[part_id] = grid
 	var out: Array = []
 	var at := Vector3i((local / REACH).floor())
-	for x: int in range(-1, 2):
-		for y: int in range(-1, 2):
-			for z: int in range(-1, 2):
+	var span: int = ceili(reach / REACH)
+	for x: int in range(-span, span + 1):
+		for y: int in range(-span, span + 1):
+			for z: int in range(-span, span + 1):
 				for n: int in grid.get(at + Vector3i(x, y, z), []):
 					out.append(marks[n])
 	return out
 
 
 ## [param marks] placed at [param where], as a buffer's rows; with
-## [param near] given, only those within REACH of it.
+## [param near] given, only those within [param reach] of it.
 static func _rows_of(marks: Array, where: Transform3D, takes: Callable,
-		near: Variant = null) -> PackedFloat32Array:
+		near: Variant = null, reach: float = REACH) -> PackedFloat32Array:
 	var rows := PackedFloat32Array()
 	for mark: Array in marks:
-		if near != null and (where * (mark[6] as Vector3)).distance_to(near) > REACH:
+		if near != null and (where * (mark[6] as Vector3)).distance_to(near) > reach:
 			continue
 		_row(rows, where * (mark[3] as Transform3D), mark,
 			Role.TAKES if takes.call(mark) else Role.NOT_TAKEN)
@@ -745,7 +895,10 @@ static func _material(over: bool) -> ShaderMaterial:
 
 
 ## [param batch] drawing [param rows], written only when they changed: a
-## value written again unchanged draws a frame (IdleDraw).
+## value written again unchanged draws a frame (IdleDraw). Changed from the
+## rows last written, kept on the batch: reading the buffer back from the
+## card (MultiMesh.buffer) waits for the card to finish its frames, 0.8 ms
+## a time on the car (jmfix).
 static func _fill(batch: MultiMeshInstance3D, rows: PackedFloat32Array) -> void:
 	var count: int = rows.size() / 16
 	if count == 0:
@@ -755,11 +908,12 @@ static func _fill(batch: MultiMeshInstance3D, rows: PackedFloat32Array) -> void:
 	var marks: MultiMesh = batch.multimesh
 	if marks.instance_count != count:
 		marks.instance_count = count
-	elif marks.buffer == rows:
+	elif batch.get_meta(&"rows", PackedFloat32Array()) == rows:
 		if not batch.visible:
 			batch.visible = true
 		return
 	marks.buffer = rows
+	batch.set_meta(&"rows", rows)
 	if not batch.visible:
 		batch.visible = true
 
