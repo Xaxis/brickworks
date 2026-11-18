@@ -228,12 +228,14 @@ static func _distinct(names: Array) -> bool:
 	return seen.size() == names.size()
 
 
-## Whether [param said] is the words a swap row draws for its lot.
+## Whether [param said] is the words a swap row draws for its lot. A label
+## keeps its words in English and draws them through the translation, as a
+## name is said (the property reads through tr()).
 static func _drawn_in(list: InventoryPanel, said: String) -> bool:
 	for row: Node in (list.get("_swaps") as Node).get_children():
 		for child: Node in row.get_children():
 			for each: Node in child.get_children():
-				if each is Label and (each as Label).text == said:
+				if each is Label and each.tr((each as Label).text) == said:
 					return true
 	return false
 

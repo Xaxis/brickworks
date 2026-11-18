@@ -784,8 +784,9 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 		lot.set("picked", on)
 		_say_picked())
 	box.set_meta("lot", lot)
-	# Named by its lot, in the language in use: its tooltip alone is the
-	# same on every row, and in English.
+	# Named by its lot's words, said through the translation as the row's
+	# label draws them: its tooltip alone is the same on every row, and
+	# read in English.
 	box.accessibility_name = (_swapper as RareSwap).from_words(lot)
 	row.add_child(box)
 	row.add_child(_swatch(int(lot.get("colour"))))
