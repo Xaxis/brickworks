@@ -1338,6 +1338,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `Working.attend` itself, leaving every later command taken for one inside
   it. A command a browser only lets happen inside the press (a file dialog,
   full screen, a page) is never put off (`Shell.IN_THE_PRESS`).
+  A probe that runs a command (`_shell.run`, a key) and reads the model a
+  frame or two later reads it before a command said first has run: once it
+  has been timed slow there, it runs only after "Undoing…" is drawn, up to
+  three frames on. Read once `Working.is_busy()` is false. flreview's probe
+  (bench/results/flreview-2026-11-15) read 10179 a frame after Undo, where
+  an Undo of a nudge costs 240 to 440 ms (its copies following, the save,
+  the steps): it found #894, #898, #944 and #952 "a plate up after one
+  Undo, put back by the next", and there was no next; the Undo it pressed
+  ran in the next part's turn. `nudge_undo_probe` (headless, 10179;
+  `NUDGE_IDS`, `NUDGE_READ=frames` for the review's reading) presses Ctrl+Z
+  once per nudge and reads once Working is done: each part and its copies'
+  twins back exactly, by transform, the history as deep as before (smalls5,
+  2026-11-18).
   Save, the exports and Share work out a big model's build order a slice at
   a time (`ModelStore.to_text_paced`, `text_for_file`, `save_as_paced`,
   `export_paced`; `ModelBar._on_save` returns whether it saved), with
