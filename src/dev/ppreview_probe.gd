@@ -21,8 +21,9 @@
 ##
 ## Kept in src/dev by ppfix (2026-11-18), which fixed what it found: R1 a
 ## place of only U+200B or no-break spaces is none; R2 '=x reads back as
-## '=x; R3 Enter sends once and the focus stays in the row; R4 the row
-## being typed in keeps its words and the focus while another is kept; R5
+## '=x; R3 Enter sends once (FocusGuard then lets the field go, which sent
+## it again); R4 the row being typed in keeps its words and the focus while
+## another is kept; R5
 ## 41 characters are said, never cut; R6 a place on a part held no more is
 ## listed, and taken off from its row and by a CSV; R7 300 refusals come
 ## back as 10 and a count. Run on a relay: tools/relay_probe.sh ppreview.
@@ -227,9 +228,12 @@ func _steps() -> void:
 		var after_enter: String = str((_dialog.get("_status") as Label).text)
 		var focus: Control = root.gui_get_focus_owner()
 		var again: LineEdit = _field_of(key3)
-		_check("R3 after Enter: the focus back in its row's field (%s), status \"%s\", %d change(s)" % [
-			focus.get_class() if focus != null else "nothing", after_enter, changes[0]],
-			focus != null and focus == again and again.text == "drawer 7" and changes[0] == 1)
+		# FocusGuard lets a field go after Enter (the owner's rule: Enter ends
+		# the typing); that let-go is what sent the place a second time.
+		_check("R3 after Enter: kept once, its row's field says \"%s\" (focus on %s), status \"%s\", %d change(s)" % [
+			again.text if again != null else "(gone)", focus.get_class() if focus != null else "nothing", after_enter,
+			changes[0]], again != null and again.text == "drawer 7" and (focus == null or focus == again)
+			and changes[0] == 1 and _statuses.size() == 1 and not after_enter.contains("nothing was changed"))
 		# The person moves on: clicks the find.
 		var find: LineEdit = (_dialog.call("controls_by_name") as Dictionary)["collection_places_find"]
 		find.grab_focus()
@@ -304,7 +308,8 @@ func _steps() -> void:
 		_check("R5 41 characters pasted (\"%s\"): the field holds %d (\"%s\"), rejected \"%s\"; kept \"%s\"; said %s" % [
 			pasted, in_field.length(), in_field, rejected[0], kept5, JSON.stringify(_statuses)],
 			in_field == pasted and kept5.is_empty() and _statuses.size() > 0 and str(_statuses[-1]).contains("at most 40")
-			and str(_statuses[-1]).contains("41"))
+			and str(_statuses[-1]).contains("41") and Array(_statuses).filter(func(said: Variant) -> bool:
+				return str(said).begins_with("nothing was kept")).size() == 1)
 
 	print("\nR6 the last lot of a part and colour taken out")
 	var key6: String = _key3001(1)
@@ -334,8 +339,12 @@ func _steps() -> void:
 		_key(KEY_ENTER)
 		await _frames(5)
 		var said6: String = ", ".join(_statuses)
-		_check("R6 ...a new place typed in its row: \"%s\", nothing sent" % said6, said6.contains("you own none of it now")
+		_check("R6 ...a new place typed in its row: \"%s\", said once, nothing sent" % said6,
+			said6.contains("you own none of it now") and _statuses.size() == 1
 			and str((await _account_now())["places"].get(key6, "")) == str(now6["places"].get(key6, "")))
+		# Enter let the field go: the person clicks back into it.
+		f6.grab_focus()
+		await _frames(2)
 		f6.text = ""
 		_key(KEY_ENTER)
 		await _changed()

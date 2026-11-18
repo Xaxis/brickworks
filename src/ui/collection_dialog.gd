@@ -3197,12 +3197,16 @@ func _keep_place(field: LineEdit, row: Dictionary) -> void:
 		return
 	var typed: String = Collection.place_text(field.text)
 	var was: String = str(field.get_meta("shown"))
-	if typed == was:
+	# Enter, then the field let go (FocusGuard), is one try: a place refused
+	# on Enter is not said again as the field is left.
+	if typed == was or str(field.get_meta("refused", "")) == typed:
 		return
 	if typed.length() > Collection.MOST_PLACE:
+		field.set_meta("refused", typed)
 		_say(LONG_REFUSED % [Collection.MOST_PLACE, typed.length()])
 		return
 	if not bool(row["held"]) and not typed.is_empty():
+		field.set_meta("refused", typed)
 		_say("%s in %s takes no new place: you own none of it now. Empty its place to take it off" % [row["part"],
 			_colour(int(row["colour"]))])
 		return
