@@ -1268,6 +1268,11 @@ picture the assistant is shown.
   assistant beside the model it held the layout wider than a 1280 x 720 window,
   Done, Instructions, Account and the status bar's right half past its edge
   (APP_UX6 timelinefit). With room for one line it is one line, as it was.
+  The find among the buttons (`StepsBar.FindSlot`) is 120 to 240 units wide
+  as the line leaves it room, its words cut to "Find a step" where the whole
+  would not show: at a fixed 200 it wrapped Instructions and Done onto a
+  second line at 1280 x 720 with the bin open, as a first visit opens
+  (smalls6; the row's least 859 units of its 817, now 779).
   Probe: `timelinefit_probe` and `timelinefit_tablet_probe`.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it. On the timeline (B) a step, forwards or
@@ -1866,7 +1871,8 @@ picture the assistant is shown.
   model's last step, a wholly unshown sub-model still carried as the file
   has it. `heldsteps_probe` section 6 drives each, own and someone else's.
 - `find a step by what it places` (stepsearch, APP_UX9 #13): the timeline's
-  find (`StepsBar._find`, beside its buttons; on a phone or a tablet Find…
+  find (`StepsBar._find`, beside its buttons, as wide as the row leaves it
+  between 120 and 240 units, `FindSlot`; on a phone or a tablet Find…
   opens it in a sheet `TouchSizing` keeps above the keyboard). A part's
   number, name or colour typed lists, at every key, every step that places
   one, each a button with how many ("12 · Wing 2/3 ×4"), and marks them
@@ -3865,7 +3871,11 @@ tools/probe.sh striproom_phone && tools/probe.sh striproom_tablet
 # menus, the toolbar and the status bar, and every column and rail, inside the
 # window, 0 px past its right edge; Instructions clicked opens its Save dialog,
 # Done clicked puts the timeline away; the model's room in the window 400 px or
-# more; the same in the author's steps; the timeline alone on one line. The
+# more; the same in the author's steps. The timeline alone, and as first met
+# (the columns a first visit gets, then Build › Timeline), at 1280 x 720,
+# 1024 x 768 and 1400 x 900: its row on one line with the find counted in it,
+# Instructions and Done at its right-hand end, the find's field 110 units or
+# wider and typed in where it is drawn. The
 # tablet's: the parts sheet, the tree and properties' drawer, Stress and the
 # assistant, by taps. Pictures in shots/timelinefit/<size>[_tablet]/: look at
 # the foot of the window and its right edge.
