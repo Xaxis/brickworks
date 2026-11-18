@@ -126,13 +126,19 @@ function drawNetworks() {
         }, "ghost")));
       return card;
     }
+    // No Reddit app here (brickworks.diy today): no Connect to press, but
+    // what by hand is, an act that works, and connecting later step by step.
     if (!one.api) {
-      card.append(make("p", "note", `This deployment has no Reddit app: ${one.missing.join(" and ")} ${one.missing.length === 1 ? "is" : "are"} `
-        + "not set in Vercel. Reddit stopped taking new API apps on 31 October 2026 and ends the rest in March 2027, so "
-        + "the desk posts by hand: Send opens Reddit's own page, you paste the words if it has not and press Post there, then paste "
-        + "its address back here so the visits it brings are counted. Its score and comments are read only once Reddit is connected."),
-      make("p", "note", "Should Reddit grant Brickworks access, docs/SOCIAL_DESK.md says what to set; Connect then works here."));
-    } else card.append(make("p", "note", "Connect to read replies, mentions and messages here and post by Reddit's API. "
+      card.querySelector(".pill").textContent = "Posting by hand";
+      card.classList.add("by-hand");
+      card.append(make("p", "", make("strong", "", "Posting by hand: Reddit takes no new API apps (since 31 Oct 2026).")),
+        make("p", "note", "Send opens Reddit's own page with your words; you press Post there and paste its address back here, "
+          + "so the visits it brings are counted. Replies go the same way. Its score and comments are read only once Reddit is connected."),
+        make("div", "row", link("#social/write", "Write a post", "cta"), linkOut(NOTICE, "Reddit's notice", "cta ghost")),
+        connectLater(one));
+      return card;
+    }
+    card.append(make("p", "note", "Connect to read replies, mentions and messages here and post by Reddit's API. "
       + "You let the desk in on Reddit's own page; its keys stay on the server."));
     const go = act("Connect Reddit", async () => {
       try {
@@ -144,10 +150,48 @@ function drawNetworks() {
         return false;
       }
     }, "cta");
-    go.disabled = !one.api;
     card.append(make("div", "row", go));
     return card;
   }));
+}
+
+/// Reddit's own changelog of 2026-10-08: new requests for API access end on
+/// 31 October 2026 (docs/SOCIAL_DESK.md, "What the owner needs to know first").
+const NOTICE = "https://support.reddithelp.com/hc/en-us/articles/54353370049684";
+
+/// Connecting Reddit once it grants Brickworks access, in the console itself:
+/// what Reddit names, what Vercel takes, the redeploy, and the press here.
+function connectLater(one) {
+  const box = make("details", "later");
+  const said = make("p", "note");
+  said.setAttribute("role", "status");
+  const copy = (text, what) => act(`Copy ${what}`, async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      say(said, `Copied ${what}.`);
+    } catch {
+      say(said, "This browser would not copy: select it above.", true);
+    }
+    return false;
+  }, "ghost small");
+  const code = (text) => make("code", "", text);
+  const names = one.env.flatMap((name, at) => [at ? " and " : "", code(name)]);
+  const missing = one.missing.length ? ` Not set here now: ${one.missing.join(" and ")}.` : "";
+  box.append(make("summary", "cta ghost", "How to connect later"),
+    make("ol", "",
+      make("li", "", "Only once Reddit grants Brickworks access to its Data API: it takes no new requests since 31 October 2026, "
+        + "and apps it approved before keep theirs. Nothing here can ask for you."),
+      make("li", "", "Reddit names the app it approves. Signed in to Reddit as Brickworks' own account (not a person's), its id and "
+        + "secret are at ", linkOut("https://www.reddit.com/prefs/apps", "reddit.com/prefs/apps"), ", under its name. It must be a "
+        + "\u201cweb app\u201d whose redirect URI is exactly ", code(one.redirect), " ", copy(one.redirect, "the redirect URI")),
+      make("li", "", "In Vercel, the brickworks project \u203a Settings \u203a Environment Variables: add ", ...names,
+        " for Production, the app's id and its secret.", missing),
+      make("li", "", "Redeploy: Deployments \u203a the newest Production one \u203a \u22ef \u203a Redeploy. A variable reaches no "
+        + "deployment made before it."),
+      make("li", "", "Back here, Connect Reddit takes the place of these steps. Press it, then Allow on Reddit's page, which asks for: "
+        + `${one.scopes.join(", ")}.`)),
+    said);
+  return box;
 }
 
 /// The checks' stand-in for Reddit's consent page: Allow sends the console

@@ -70,6 +70,8 @@ try {
   const realReddit = real.json?.networks?.find((one) => one.id === "reddit");
   out.real_reddit = { api: realReddit?.api, missing: realReddit?.missing, route: realReddit?.route,
     later: real.json?.networks?.filter((one) => one.later).map((one) => one.id) };
+  // What the page shows in place for connecting later: names, never values.
+  out.real_later = { env: realReddit?.env, redirect: realReddit?.redirect, scopes: realReddit?.scopes };
   const refused = await admin("social_connect", { body: { provider: "reddit" }, tests: false });
   out.real_connect = { status: refused.status, said: refused.json?.error };
 
