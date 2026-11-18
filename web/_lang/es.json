@@ -2893,6 +2893,10 @@
   "Sent a new code. Use the newest one.": "Código nuevo enviado. Usa el más reciente.",
   "Enter all {count} digits of the code.": "Escribe los {count} dígitos del código.",
   "Digit {n} of {count}": "Dígito {n} de {count}",
-  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Inicia sesión con orangecheck: su botón abre su ventana y luego vuelves a la aplicación con la sesión iniciada."
+  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Inicia sesión con orangecheck: su botón abre su ventana y luego vuelves a la aplicación con la sesión iniciada.",
+  "A big model for a phone": "Un modelo grande para un teléfono",
+  "About {parts} parts: on a phone this may close the tab. A phone gives a tab much less memory than a computer does, and a model this big can use it all.": "Unas {parts} piezas: en un teléfono esto puede cerrar la pestaña. Un teléfono da a una pestaña mucha menos memoria que un ordenador, y un modelo tan grande puede gastarla toda.",
+  "{name} opens as it should on a computer.": "{name} se abre como debe en un ordenador.",
+  "Open it anyway": "Abrirlo de todos modos"
  }
 }

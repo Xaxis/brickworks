@@ -110,6 +110,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -219,6 +220,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -300,10 +302,10 @@
         "tests/test_billing_pay.py",
         "tests/test_console.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
-        "tests/test_saved_models_plan.py",
-        "tests/test_site_lang.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -318,6 +320,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -335,6 +338,7 @@
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
@@ -2297,6 +2301,22 @@
       "tests": []
     },
     {
+      "id": "cli:phonetruth measures",
+      "kind": "cli",
+      "entry": "tools/web/phonetruth_flow.mjs",
+      "reach": "node --env-file=.env tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR --configs=chromium,cpu4,cpu6,iphone13,iphone15 [--steps=load,frames,ladder] [--table]   (under heavy, local only: Chromium phone emulation, Playwright WebKit as an iPhone 13 and 15 (software GL, multi-finger touch by tools/web/fingers.mjs), Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and a return, peak memory (process Pss, Wasm, JS heap), frames turning the car and Orthanc, the largest gallery model kept; DIR/phonetruth.md is docs/PHONE.md's table; tools/web/phonewalk_flow.mjs --engine=webkit --device=\"iPhone 13\" | --cpu=4 --net=fast4g walks it by finger)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:phonewarn browser flow",
+      "kind": "cli",
+      "entry": "tools/web/phonewarn_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/phonewarn_flow.mjs --url=<preview>/app --owner --out=DIR   (at 1280x800, 390x844 touch and 820x1180 touch: the big-model question on the phone alone and its three answers, the 3D view unasked; Switches' Phones number set as the owner and obeyed by the page, then put back (never on brickworks.diy); no WebGL 2 said on all three with the engine's files let go; a phone's first visit on Fast 4G timed, a return, the computer and the tablet told nothing; preview check [phonewarn])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:photographed light in a browser",
       "kind": "cli",
       "entry": "tools/web/light_render_flow.mjs",
@@ -3397,6 +3417,14 @@
       "entry": "src/dev/worker_first_run_probe.gd",
       "reach": "godot --headless --path . --script src/dev/worker_first_run_probe.gd [-- rounds=N] [-- cold]   (operators run for the first time on every worker at once, through WorkerTasks.first_here, every round right and the engine still up; PartForge.warm's part and skin built all the way; the first carried parts built at once run the forge here first. -- cold skips first_here: the engine as it is, which crashes, rip 0x0)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "endpoint:the numbers a phone is warned by",
+      "kind": "endpoint",
+      "entry": "api/_phone.js",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "area": "account",
       "tests": []
     },
     {
@@ -4915,6 +4943,14 @@
       "tests": []
     },
     {
+      "id": "ui:a phone asked before a big model opens",
+      "kind": "ui",
+      "entry": "web/phone-warn.js",
+      "reach": "<deployment>/m/<id> or /library/set/<n> on a phone (touch only, shorter side under 600 px): Build it, Open in Brickworks or the 3D view's way into the studio, on a model past phone_parts (/api/plans?op=phone, set in /admin#switches Phones), asks \"About N parts: on a phone this may close the tab\" first; Not now or Escape stays, Open it anyway goes on; the picture's 3D view, a computer, a tablet and a smaller model are never asked (web/model-page.js loads it); preview check [phonewarn]",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:a set from a photo",
       "kind": "ui",
       "entry": "src/ui/collection_dialog.gd",
@@ -6054,6 +6090,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -6806,6 +6843,14 @@
       "entry": "src/render/pointer_pace.gd",
       "reach": "tools/probe.sh hover_cost_probe   (on the GPU: Orthanc, Select in hand; -- --model=res://... for another)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:the loader's words for a phone and a browser without WebGL 2",
+      "kind": "ui",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app: no WebGL 2 is said at once in plain words with what to do instead, and the engine's files are let go (window.stop); a first visit on a phone (#eta, window.brickworksEta) says how long it will take as the files come, plus phone_start_s; a return (localStorage brickworks.engineHad is this engine's /e/<hash>/), a computer and a tablet are told nothing; preview check [phonewarn]",
+      "area": "web",
       "tests": []
     },
     {

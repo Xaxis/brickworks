@@ -407,13 +407,14 @@ const TARGETS = {
   unbar_model: (q) => ["model", q.id],
   notice_set: () => ["setting", "notice"],
   notice_clear: () => ["setting", "notice"],
+  phone_rules: () => ["setting", "phone"],
   run_cron: (q) => ["cron", q.job],
   export: (q) => ["account", q.account],
   delete_account: (q) => ["account", q.account],
   sign_out: (q) => ["account", q.account],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
-  "ends_on", "most_parts", "set_number", "tested", "tone", "job"];
+  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "phone_parts", "phone_start_s"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.

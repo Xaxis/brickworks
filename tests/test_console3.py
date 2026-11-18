@@ -390,6 +390,47 @@ def test_the_notice_is_set_shown_on_its_own_site_and_cleared() -> None:
     assert got["notice_cleared"] == 200 and got["notice_cleared_again"] == 404 and got["notice_after"] == {"notice": None}
 
 
+def test_the_numbers_a_phone_is_warned_by_are_the_owners_and_their_sites() -> None:
+    """phonetruth (api/_phone.js, docs/PHONE.md): set in Switches, read by anybody at /api/plans?op=phone."""
+    got = _run("api3_check.mjs")
+    if got is None:
+        return
+    measured = {"phone_parts": 2500, "phone_start_s": 25}
+    assert got["phone_before"] == measured
+    # Nobody but the owner, and nothing kept of the attempts.
+    assert got["phone_gate"] == [401, 404] and got["phone_audit_gate"] == 0
+    # Refused with words, and then none kept: a number named for neither, out of range, not whole, not a number,
+    # even with the other one good (all or none).
+    assert got["phone_none"]["status"] == 400 and "phone_parts or phone_start_s" in got["phone_none"]["json"]["error"]
+    assert got["phone_low"]["status"] == 400 and "from 50 to 100,000 parts" in got["phone_low"]["json"]["error"]
+    assert got["phone_half"]["status"] == 400 and "from 1 to 600 seconds" in got["phone_half"]["json"]["error"]
+    assert got["phone_words"]["status"] == 400
+    assert got["phone_after_refused"] == measured
+    # A zero-width space typed into the number is not part of it.
+    assert got["phone_set"]["status"] == 200 and got["phone_set"]["json"]["phone_parts"] == 1200
+    assert got["phone_shown"]["status"] == 200 and got["phone_shown"]["json"] == {"phone_parts": 1200, "phone_start_s": 40}
+    # A preview's numbers are the preview's alone.
+    assert got["phone_live"] == measured
+    # One named alone leaves the other as it was.
+    assert got["phone_one"]["phone_start_s"] == 30 and "phone_parts" not in got["phone_one"]
+    rules = {one["name"]: one for one in got["phone_switches"]}
+    assert rules["phone_parts"]["value"] == 1200 and rules["phone_parts"]["set"] and rules["phone_parts"]["fallback"] == 2500
+    assert rules["phone_parts"]["set_by"] == "owner@example.com" and rules["phone_start_s"]["value"] == 30
+    # Every act kept, refused ones too, each on the setting, with what was asked.
+    assert [one["status"] for one in got["phone_audit"]] == [400, 400, 400, 400, 200, 200]
+    assert {one["target"] for one in got["phone_audit"]} == {"setting:phone"}
+    assert got["phone_audit"][4]["asked"] == {"phone_parts": "1​200", "phone_start_s": "40"}
+
+
+def test_the_phone_numbers_read_by_the_pages_are_the_apis_measured_ones() -> None:
+    """The fallbacks the pages hold until the site answers are api/_phone.js's own."""
+    phone = (ROOT / "api/_phone.js").read_text()
+    parts = re.search(r"phone_parts: \{[^}]*fallback: (\d+)", phone).group(1)
+    start = re.search(r"phone_start_s: \{[^}]*fallback: (\d+)", phone).group(1)
+    assert f"export const PHONE_PARTS = {parts};" in (ROOT / "web/phone-warn.js").read_text()
+    assert f"start_s: {start}," in (ROOT / "src/boot/shell.html").read_text()
+
+
 def test_run_now_runs_only_a_safe_cron_at_the_sites_own_address() -> None:
     got = _run("api3_check.mjs")
     if got is None:

@@ -18,6 +18,22 @@
 // than twice the desktop's presses, touching no control under 44 points
 // across (phonepanels' and fingertools' bar).
 //
+// On a phone's own engine and speed (phonetruth, docs/PHONE.md), the walk
+// tools/web/phonetruth_flow.mjs runs:
+//   --engine=webkit     Playwright's WebKit, every iPhone browser's engine, in
+//                       software (browser.mjs WEBKIT_SOFTWARE). It speaks no
+//                       CDP: a tap is its own touch, and a finger held or
+//                       dragged is the touch events Godot listens for, made
+//                       in the page (document.createTouch)
+//   --device="iPhone 13"  Playwright's descriptor of the phone: its window
+//                       (Safari's bars taken off, 390 x 664), its ratio, its
+//                       browser's name; the one size walked
+//   --cpu=4             Chromium's main thread held to a quarter of this box's
+//                       speed (Emulation.setCPUThrottlingRate), as a mid-range
+//                       Android phone's; 6 for a slower one
+//   --net=fast4g        Chromium's network held to DevTools' "Fast 4G": 9 Mbps
+//                       down, 1.5 up, 165 ms (slow4g: 1.6, 0.75, 562.5 ms)
+//
 // The run signs in as an account of its own, made for it and deleted at its
 // end or when it is stopped (launch's ownAccount, session.mjs), and each size
 // walks four models:
@@ -55,6 +71,8 @@
 // the app never came up, an act could not run at all (it threw or ran out of
 // time), or, with --bar, an act was not done or took over twice the presses.
 import { askApp, clickStill, launch, START_MS } from "./browser.mjs";
+import { fingersOf } from "./fingers.mjs";
+import { devices } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -68,7 +86,30 @@ const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
   : url;
 const out = resolve(String(args.out || "shots/phonewalk"));
-const SIZES = String(args.sizes || "390x844,1024x768").split(",");
+const ENGINE = String(args.engine || "chromium");
+const DEVICE = args.device ? devices[String(args.device)] : null;
+if (args.device && !DEVICE) {
+  console.log(`no device is named ${args.device} (Playwright's devices: "iPhone 13", "Pixel 7", …)`);
+  process.exit(1);
+}
+const CPU = Number(args.cpu || 1);
+// DevTools' own presets (its NetworkManager): a 0.9 of the line's rate, and
+// the round trip a few times the line's, as a real one adds.
+const NETS = {
+  fast4g: { offline: false, downloadThroughput: 9e6 / 8 * 0.9, uploadThroughput: 1.5e6 / 8 * 0.9, latency: 60 * 2.75 },
+  slow4g: { offline: false, downloadThroughput: 1.6e6 / 8 * 0.9, uploadThroughput: 750e3 / 8 * 0.9, latency: 150 * 3.75 },
+};
+const NET = args.net ? NETS[String(args.net)] : null;
+if (args.net && !NET) {
+  console.log(`no network is named ${args.net}; there are ${Object.keys(NETS).join(", ")}`);
+  process.exit(1);
+}
+if (ENGINE !== "chromium" && (CPU !== 1 || NET)) {
+  console.log("--cpu and --net hold Chromium only (WebKit has no CDP)");
+  process.exit(1);
+}
+const SIZES = DEVICE ? [`${DEVICE.viewport.width}x${DEVICE.viewport.height}`]
+  : String(args.sizes || "390x844,1024x768").split(",");
 const ONLY = args.only ? String(args.only).split(",") : null;
 const BAR = Boolean(args.bar);
 // The most one act may take, setup included: past it the act is said to
@@ -168,11 +209,11 @@ let broken = 0;
 // Signed in as an account of the run's own (session.mjs), deleted when the
 // browser closes or the run is stopped: the walk saves, likes and adds to a
 // collection, which the shared test account should not carry.
-const browser = await launch({ ownAccount: true });
+const browser = await launch({ ownAccount: true, engine: ENGINE });
 try {
   for (const size of SIZES) {
     const [width, height] = size.split("x").map(Number);
-    const ratio = Math.min(width, height) < 600 ? 3 : 2;
+    const ratio = DEVICE ? DEVICE.deviceScaleFactor : Math.min(width, height) < 600 ? 3 : 2;
     console.log(`\n${width} x ${height} at ${ratio}x, by a finger`);
     results[size] = { up: false, rows: {} };
     await walk(width, height, ratio, results[size]).catch((trouble) => {
@@ -189,7 +230,8 @@ const lines = [
   `# The walk by finger`,
   ``,
   `Written by tools/web/phonewalk_flow.mjs on ${new Date().toISOString().slice(0, 16)}Z against ${url}`,
-  `(${SIZES.map((s) => `${s.replace("x", " x ")}`).join(" and ")}, touch alone, SwiftShader).`,
+  `(${SIZES.map((s) => `${s.replace("x", " x ")}`).join(" and ")}, touch alone, ${ENGINE === "webkit" ? "WebKit on llvmpipe" : "SwiftShader"}`
+    + `${args.device ? `, as ${args.device}` : ""}${CPU !== 1 ? `, the CPU at 1/${CPU}` : ""}${NET ? `, ${args.net}` : ""}).`,
   `A tap, a finger held, a drag and a key of the on-screen keyboard each count one;`,
   `a More row is More, its menu and the row. ✓ done by finger, ✗ not; "small": a control it took`,
   `is under ${MIN_POINTS} points across (named, width x height).`,
@@ -260,8 +302,9 @@ process.exit(0);
 
 async function walk(width, height, ratio, result) {
   const size = `${width}x${height}`;
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: ratio,
-    isMobile: true, hasTouch: true, acceptDownloads: true });
+  const { defaultBrowserType, ...device } = DEVICE || {};
+  const context = await browser.newContext(DEVICE ? { ...device, acceptDownloads: true }
+    : { viewport: { width, height }, deviceScaleFactor: ratio, isMobile: true, hasTouch: true, acceptDownloads: true });
   const rows = result.rows;
   try {
     if (!browser.testAccount) throw new Error("no account to sign in (source .env)");
@@ -275,7 +318,12 @@ async function walk(width, height, ratio, result) {
     // listens for one (browser.mjs, openFromFile).
     const choosers = [];
     page.on("filechooser", (chooser) => choosers.push(chooser));
-    const cdp = await context.newCDPSession(page);
+    const cdp = ENGINE === "chromium" ? await context.newCDPSession(page) : null;
+    if (CPU !== 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU });
+    if (NET) {
+      await cdp.send("Network.enable");
+      await cdp.send("Network.emulateNetworkConditions", NET);
+    }
     const P = person(page, cdp, width, height, size, choosers);
 
     await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
@@ -389,8 +437,7 @@ function person(page, cdp, width, height, size, choosers) {
   };
   const ask = () => askApp(page, "Phone");
   const layout = () => askApp(page, "Layout");
-  const touch = (type, points) => cdp.send("Input.dispatchTouchEvent", { type,
-    touchPoints: points.map((p, i) => ({ x: p.x, y: p.y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })) });
+  const touch = fingersOf(page, cdp);
   // A named control a finger takes under 44 points across (the size the
   // phone's own targets keep, TouchSizing): said in the act's row, as a
   // target a person misses.

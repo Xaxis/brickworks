@@ -2,7 +2,8 @@
 // notice, set and cleared here (api/admin.js notice_set, notice_clear, each
 // kept in the audit) with a preview of it as visitors see it (web/notice.js,
 // site.css .site-notice); the settings the console keeps, the beta's
-// flipped here as in Beta (beta_switch, one act); and every variable of the
+// flipped here as in Beta (beta_switch, one act); the numbers a phone is
+// warned by (phone_rules, api/_phone.js; phonetruth); and every variable of the
 // deployment by name: whether this deployment has it, which of Vercel's
 // environments have it, what it switches and where it is changed. Never a
 // value, never its length (/api/admin?op=switches, api/_console_switches.js).
@@ -59,6 +60,38 @@ $("notice-clear").addEventListener("click", async () => {
 
 $("variables-q").addEventListener("input", () => sift($("variables"), $("variables-q").value));
 
+// The numbers a phone is warned by: both kept in one act, or neither.
+$("phones-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const send = form.querySelector('button[type="submit"]');
+  const body = { phone_parts: form.elements.phone_parts.value.trim(), phone_start_s: form.elements.phone_start_s.value.trim() };
+  send.disabled = true;
+  await post({ op: "phone_rules" }, "phones-note", (said) => `Kept: ${Number(said.phone_parts).toLocaleString("en-US")} parts, `
+    + `${said.phone_start_s} s. Pages read them within a minute or two.`, { body,
+    after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
+  send.disabled = false;
+});
+
+function drawPhones(s) {
+  const form = $("phones-form");
+  say("phones-scope", s.scope === "live" ? "brickworks.diy" : `this preview (${s.scope})`);
+  const rules = s.phone || [];
+  form.querySelector('button[type="submit"]').disabled = !rules.length;
+  if (!rules.length) return say("phones-said", "Not read just now: the measured numbers stand.", true);
+  for (const one of rules) {
+    const input = form.elements[one.name];
+    if (!input) continue;
+    // What is typed and not yet kept stays as typed when the page redraws.
+    if (!form.dataset.drawn) input.value = String(one.value);
+    say(`${one.name}-was`, one.set ? `set ${ago(one.set_at)}${one.set_by ? ` by ${one.set_by}` : ""}; measured ${one.fallback.toLocaleString("en-US")}`
+      : `as measured`);
+  }
+  form.dataset.drawn = "yes";
+  const set = rules.filter((one) => one.set).length;
+  say("phones-said", set ? `${set === rules.length ? "Both" : "One"} set here; the rest as measured.` : "As measured: neither is set here yet.");
+}
+
 function drawNotice(s) {
   const now = s.notice;
   const form = $("notice-form");
@@ -104,7 +137,7 @@ function drawSettings(s) {
   for (const one of list) {
     const row = make("tr");
     row.dataset.setting = `${one.name}@${one.scope}`;
-    const name = make("th", "", one.name === "beta" ? "The beta" : one.name);
+    const name = make("th", "", one.name === "beta" ? "The beta" : (s.phone || []).find((rule) => rule.name === one.name)?.said || one.name);
     name.scope = "row";
     row.append(name);
     cell(row, `${one.scope === "live" ? "brickworks.diy" : one.scope}${one.here ? " (here)" : ""}`, "about");
@@ -171,6 +204,7 @@ export async function loadSwitches() {
   const s = await adminJson({ op: "switches" });
   drawNotice(s);
   drawSettings(s);
+  drawPhones(s);
   drawVariables(s);
   return s;
 }
