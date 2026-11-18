@@ -154,11 +154,13 @@
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_packaged_facts.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -283,6 +285,7 @@
       "tests": [
         "tests/test_model_bases.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
@@ -291,7 +294,8 @@
         "tests/test_library_site.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
-        "tests/test_sets.py"
+        "tests/test_sets.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -4160,12 +4164,14 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_social.py"
       ]
     },
     {
