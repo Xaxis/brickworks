@@ -512,9 +512,20 @@ try {
     const set = await as("/api/admin?op=notice_set", { method: "POST", body: { words: { en: `Flow ${rand}: upkeep at 02:00 UTC.` }, tone: "warn", ends } });
     noticeSet = set.status === 200;
     check(`set with an end: ${set.status}, ends ${set.json?.ends_at}`, noticeSet && set.json?.ends_at === ends);
+    // A deployment's CDN keeps the notice's answer a minute, and gives the
+    // stale one once more while it asks again (console3's noticeOn): the
+    // page is asked again until it shows these words, for 200 s at most.
     const seen = async (who, label, size = "laptop", flash = false) => {
       const at = await open("/gallery", { who, label, size, flash });
-      const there = await until(at.page, () => Boolean(document.querySelector(".site-notice")), null, 20000);
+      const words = (want) => document.querySelector(".site-notice .words")?.textContent?.includes(want) === true;
+      let there = false;
+      for (const started = Date.now(); !there && Date.now() - started < 200000;) {
+        there = await until(at.page, words, `Flow ${rand}`, 8000);
+        if (!there) {
+          await at.page.waitForTimeout(7000);
+          await at.page.reload({ waitUntil: "load" });
+        }
+      }
       return { ...at, there };
     };
     // B: a browser of Ann's that shows it before she hides it elsewhere.

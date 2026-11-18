@@ -3130,8 +3130,9 @@ plan with Claude as the client.
   .env), a code delivered and a beta mail bounced shown in Mail with why,
   another product's let go, a forged one 401; a throwaway's tab, a Claude
   let in by OAuth and its conversation's two calls in Connector, its panel
-  at `#connector/<id>` and from People; Site's live release, five crons,
-  releases and Supabase's three parts answering; Plans off where billing
+  at `#connector/<id>` and from People; Site's live release (rel-m312, or
+  rel-m311.2 for one shipped by hand), every cron tools/deploy.sh
+  gives Vercel, releases and Supabase's three parts answering; Plans off where billing
   is; each section and the panel at 390 and 1280, light and dark, nothing
   sideways. Read only; the throwaways deleted after. Passes on
   "console2: all ok".

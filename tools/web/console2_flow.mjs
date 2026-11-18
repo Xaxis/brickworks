@@ -35,7 +35,7 @@
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { STAND_IN_MAIL_SECRET } from "../../api/_console_mail.js";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import path from "node:path";
 
@@ -359,14 +359,20 @@ try {
   // --- 4. Site ---------------------------------------------------------------------
   console.log("4. Site");
   const s = (await as("/api/admin?op=site")).json || {};
+  // The crons as tools/deploy.sh gives them to Vercel (6 since the social desk's social-due, 11-18), and a
+  // release's tag as the train writes it or a lead's hand ship after it (rel-m311.2).
+  const cronsListed = (readFileSync(new URL("../deploy.sh", import.meta.url), "utf8")
+    .match(/\{ "path": "\/api\/[^"]+", "schedule"/g) || []).length;
+  const releaseTag = /^rel-m\d+(\.\d+)?$/;
   check(`op=site: ${s.releases?.length} releases (latest ${s.releases?.[0]?.tag}, since ${s.releases?.[0]?.live_at}), `
     + `${s.crons?.length} crons, Supabase ${s.health?.ok ? "answering" : s.health?.fix}`,
-  s.releases?.length > 0 && /^rel-m\d+$/.test(s.releases[0].tag) && s.crons?.length === 5 && s.health?.ok === true);
+  s.releases?.length > 0 && releaseTag.test(s.releases[0].tag) && cronsListed > 0 && s.crons?.length === cronsListed
+  && s.health?.ok === true);
   await go(page, "site");
-  check("Site: the live line, health answering, every cron, the releases", await until(page, () =>
+  check("Site: the live line, health answering, every cron, the releases", await until(page, (crons) =>
     document.getElementById("site-live-h").textContent.length > 1
     && document.querySelectorAll("#health tr").length === 3 && [...document.querySelectorAll("#health tr")].every((tr) => /Answers/.test(tr.textContent))
-    && document.querySelectorAll("#crons tr[data-job]").length === 5 && document.querySelectorAll("#releases tr[data-release]").length > 0));
+    && document.querySelectorAll("#crons tr[data-job]").length === crons && document.querySelectorAll("#releases tr[data-release]").length > 0, cronsListed));
   // Each release's words at the table's own size: its cell once took the
   // site's .title, a section heading's size.
   const sizes = await page.evaluate(() => {
@@ -377,7 +383,7 @@ try {
   const liveLine = await page.textContent("#site-live-said");
   check(`...the live line says: "${liveLine.slice(0, 140)}"`, /rel-m\d+|commit/.test(liveLine));
   await go(page, "overview");
-  check("the Overview: the live release", await until(page, () => /^rel-m\d+$/.test(document.getElementById("n-release").textContent)));
+  check("the Overview: the live release", await until(page, () => /^rel-m\d+(\.\d+)?$/.test(document.getElementById("n-release").textContent)));
 
   // --- 5. Plans --------------------------------------------------------------------
   console.log("5. Plans and revenue");
