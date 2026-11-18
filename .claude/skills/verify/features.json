@@ -160,11 +160,13 @@
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_packaged_facts.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -296,6 +298,7 @@
         "tests/test_model_bases.py",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
@@ -304,7 +307,8 @@
         "tests/test_library_site.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
-        "tests/test_sets.py"
+        "tests/test_sets.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -2554,6 +2558,14 @@
       "tests": []
     },
     {
+      "id": "cli:rareswap probe",
+      "kind": "cli",
+      "entry": "src/dev/rareswap_probe.gd",
+      "reach": "tools/probe.sh rareswap_probe   (headless, about 10 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10, with the defaults alone and with every swap picked)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:rarity probe",
       "kind": "cli",
       "entry": "src/dev/rarity_probe.gd",
@@ -2658,6 +2670,22 @@
       "entry": "src/dev/roundtrip_probe.gd",
       "reach": "godot --headless --path . --script src/dev/roundtrip_probe.gd -- --out=FILE.jsonl vendor/omr/files/7223-1_Car.mpd tests/fixtures/studio/bay_2025.io   (python3 tools/bench/cadtask.py roundtrip runs it on the sample and judges it)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:rsreview phone probe",
+      "kind": "cli",
+      "entry": "src/dev/rsreview_phone_probe.gd",
+      "reach": "tools/probe.sh rsreview_phone_probe   (windowed, 430x932 by its header; RSR_OUT=DIR keeps its pictures)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:rsreview probe",
+      "kind": "cli",
+      "entry": "src/dev/rsreview_probe.gd",
+      "reach": "tools/probe.sh rsreview_probe   (headless, about 15 minutes; RSR_CASES=lpub,mcp_edges,held,... for some; RSR_OUT=DIR writes lots.tsv and catalogue.tsv)",
+      "area": "building",
       "tests": []
     },
     {
@@ -4174,12 +4202,14 @@
       "area": "web",
       "tests": [
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/social/api_check.mjs",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_social.py"
       ]
     },
     {
@@ -6265,6 +6295,14 @@
       "entry": "src/ui/parts_bin.gd",
       "reach": "godot --path .  (a part in hand, a swatch's tooltip says in how many sets it comes in that colour, \"3001 comes in it, in 1,011 sets\", and \"rare in this colour\" in three sets or fewer: PartLibrary.sets_in_colour, from assets/generated/sets/colours_NN.json, fetched from the deployment's /sets/ on the web)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:rare lots swapped for common ones",
+      "kind": "ui",
+      "entry": "src/collection/rare_swap.gd",
+      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour of its finish and transparency, a box each; only a swap that keeps the look starts picked (the same shape, or a colour within \u0394E 10 of its finish), every other says what it changes; a touch on a row toggles it; Swap N lots, a part in hand put back first, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true swaps the same, lots= names others; tools/probe.sh rareswap_probe; tools/probe.sh rsreview_probe; tools/probe.sh rsreview_phone_probe)",
+      "area": "building",
       "tests": []
     },
     {

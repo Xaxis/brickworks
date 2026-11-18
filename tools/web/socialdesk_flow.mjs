@@ -21,18 +21,37 @@
 //      site's links tagged, nothing sent by keeping it; words changed behind
 //      the open sheet refused at Send; Send now on the words shown.
 //   7. Schedule from the sheet (a day and a quarter-hour), seen in Sent,
-//      Unscheduled; one due in a minute sent by the cron's own call.
+//      Unscheduled; one due in a minute sent by the cron's own call, or by
+//      Vercel's own (*/15 on production) if it ran in the wait. With
+//      SOCIALDESK_VERCEL_CRON=1 (on production) nothing calls it: the row
+//      is watched until Vercel's own cron sends it, up to 17 minutes, and
+//      the cron's runs (cron_runs_of) say it was vercel-cron.
 //   8. Results: each sent post's score and comments read again, over time
 //      in its Details; a visit by its tagged link counted once, the tags
 //      taken from the address the visitor sees.
 //   9. Disconnect, and a post by hand: Reddit's own page offered (never
-//      opened here) with the words, its address pasted back, counted.
+//      opened here) with the words, its address pasted back, counted; a
+//      reply by hand to a comment by its pasted address (a Share link
+//      refused), its own page offered, its reply's address kept.
 //  10. Every tab at 390 and 1280, light and dark, never wider than the
-//      phone; no token in any answer, page, storage or console line.
+//      phone, no button in Accounts shown off; no token in any answer,
+//      page, storage or console line.
+//  10b. With no Reddit app, as on brickworks.diy, at 390 and 1280, light
+//      and dark: "Posting by hand" and why, no Connect at all and no button
+//      shown off, How to connect later opening in place with the redirect
+//      URI, Vercel's names and the redeploy, and Write a post working.
 //
 // The checks' pool is emptied of the desk's rows before and after (the
 // secret key, test=true only), and the throwaway stranger deleted. It
-// passes when it ends "socialdesk: all ok".
+// passes when it ends "socialdesk: all ok". The pool is one for every
+// deployment, so a deployed run holds the live database alone
+// (preview_checks.sh ALONE_DB). A relay on this machine must hold the
+// desk's tables itself (relay_server.mjs --hold=social_accounts,
+// social_tokens,social_items,social_sends,social_results,social_visits,
+// social_rules), and the project's pool is then never touched: a local run
+// that emptied it deleted the rows of the run on brickworks.diy beside it,
+// twice (cronlive, 2026-11-18). Against a relay holding them elsewhere it
+// stops at once (exit 2).
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync } from "node:fs";
@@ -55,6 +74,22 @@ const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-
 const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const CRON = process.env.CRON_SECRET || "";
+const VERCEL_CRON = process.env.SOCIALDESK_VERCEL_CRON === "1";
+const DESK_TABLES = ["social_accounts", "social_tokens", "social_items", "social_sends", "social_results", "social_visits",
+  "social_rules"];
+// A relay on this machine answers what it holds at /__held/<table>.
+const LOOPBACK = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(site);
+let heldHere = false;
+if (LOOPBACK) {
+  const asked = await Promise.all(DESK_TABLES.map((table) => fetch(`${site}/__held/${table}`)
+    .then(async (reply) => reply.ok && Array.isArray(await reply.json())).catch(() => false)));
+  heldHere = asked.every(Boolean);
+  if (!heldHere) {
+    console.error(`socialdesk_flow: ${site} reads the project's own ${DESK_TABLES.filter((_, at) => !asked[at]).join(", ")}: `
+      + `start the relay with --hold=${DESK_TABLES.join(",")}. Run here, it would empty the checks' pool a deployed run is using.`);
+    process.exit(2);
+  }
+}
 const rand = randomBytes(4).toString("hex");
 const address = (who) => `delivered+bw-socialdesk-${who}-${rand}@resend.dev`;
 
@@ -93,8 +128,9 @@ async function api(pathname, { method = "GET", token, body, bearer } = {}) {
 }
 
 /// The checks' pool of the desk emptied (test=true rows only), where its
-/// tables are on the project; a deployment holding them elsewhere keeps its own.
+/// tables are on the project; a relay here holds its own, and they start empty.
 async function emptyPool() {
+  if (heldHere) return "held by the relay here, the project's left alone";
   if (!SUPABASE || !SECRET) return "no key";
   const secret = { apikey: SECRET, authorization: `Bearer ${SECRET}` };
   const said = [];
@@ -105,12 +141,45 @@ async function emptyPool() {
   return said.join(", ");
 }
 
+/// The social desk's cron runs as the console's Site reads them, newest
+/// first (supabase/console2.sql cron_runs_of), or [] with no key.
+async function cronRuns() {
+  if (heldHere || !SUPABASE || !SECRET) return [];
+  const reply = await fetch(`${SUPABASE}/rest/v1/rpc/cron_runs_of`, { method: "POST", body: JSON.stringify({ job: "social_due", most: 20 }),
+    headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "application/json" } }).catch(() => null);
+  const rows = reply?.ok ? await reply.json().catch(() => []) : [];
+  return Array.isArray(rows) ? rows : [];
+}
+/// Vercel's own run of the cron that sent one at [at] (within a minute), or null.
+const vercelSent = (runs, at) => runs.find((one) => one.holder === "vercel-cron" && /^[1-9]\d* sent/.test(one.said?.outcome || "")
+  && Math.abs(Date.parse(one.started_at) - Date.parse(at)) < 60000) || null;
+
 const browser = await launch({ signedOut: true });
 
-async function open(pathname, { width = 1280, theme = "light", who = null, label }) {
+// brickworks.diy today has no Reddit app. The checks' pool always has the
+// stand-in's, so with [noApp] its read is answered as the owner's pool
+// answers it (tests/fixtures/social/api_check.mjs real_later; test_social
+// pins every field).
+const NO_APP = { api: false, mock: false, account: null, route: "by_hand", missing: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"],
+  env: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"], redirect: "https://brickworks.diy/admin?connected=reddit",
+  scopes: ["identity", "history", "privatemessages", "read", "submit"] };
+/// Each control a person sees in [scope] that is shown off (disabled).
+const shownOff = (page, scope) => page.evaluate((at) => [...document.querySelectorAll(`${at} button, ${at} summary, ${at} a`)]
+  .filter((one) => one.getClientRects().length > 0 && (one.matches(":disabled") || one.getAttribute("aria-disabled") === "true"))
+  .map((one) => one.textContent.trim()), scope);
+
+async function open(pathname, { width = 1280, theme = "light", who = null, label, noApp = false }) {
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
     extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+  if (noApp) {
+    await context.route((url) => url.pathname === "/api/admin" && url.searchParams.get("op") === "social", async (route) => {
+      const answer = await route.fetch();
+      const json = await answer.json();
+      if (Array.isArray(json?.networks)) json.networks = json.networks.map((one) => (one.id === "reddit" ? { ...one, ...NO_APP } : one));
+      await route.fulfill({ response: answer, json });
+    });
+  }
   await context.route(/\/theme-account\.js(?:\?.*)?$/, (route) => route.fulfill({ status: 200,
     contentType: "text/javascript", body: "export async function follow() {}" }));
   // reddit.com is never reached from here: a link to it is read, not followed.
@@ -339,10 +408,33 @@ try {
     check(`the cron: refused without its key (${notCron.status}); before the time, sends nothing (${early.json?.outcome})`, notCron.status === 401
       && early.status === 200 && /^0 sent|^nothing due/.test(early.json?.outcome || ""));
     await wait(70000);
-    const ran = await api("/api/plans?op=social_due", { bearer: CRON });
-    const dueRow = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.id === due.json.send.id);
-    check(`at its time, the cron sent it: "${ran.json?.outcome}", ${dueRow?.status}`, /^1 sent/.test(ran.json?.outcome || "")
-      && dueRow?.status === "sent");
+    const dueOf = async () => (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.id === due.json.send.id);
+    if (VERCEL_CRON) {
+      // Nothing here calls it: Vercel's own cron, every quarter hour.
+      let dueRow = await dueOf();
+      for (const end = Date.now() + 17 * 60000; dueRow?.status !== "sent" && Date.now() < end;) {
+        await wait(20000);
+        dueRow = await dueOf();
+      }
+      const theirs = dueRow?.status === "sent" ? vercelSent(await cronRuns(), dueRow.sent_at) : null;
+      check(`at its time, Vercel's own cron sent it, nothing here calling it: ${dueRow?.status} at ${dueRow?.sent_at}; its run `
+        + `${theirs ? `${theirs.holder} "${theirs.said.outcome}" at ${theirs.started_at}` : "not among the cron's runs"}`, Boolean(theirs));
+    } else {
+      const ran = await api("/api/plans?op=social_due", { bearer: CRON });
+      let dueRow = await dueOf();
+      // Vercel's own cron, taking it at the same moment, leaves it sending a breath.
+      for (let at = 0; at < 5 && dueRow?.status === "sending"; at += 1) {
+        await wait(2000);
+        dueRow = await dueOf();
+      }
+      // Sent, with nothing due at this call: Vercel's own cron (*/15 on
+      // production) sent it in the wait. No other run is beside this one.
+      const before = dueRow?.status === "sent" && /^nothing due/.test(ran.json?.outcome || "");
+      const theirs = before ? vercelSent(await cronRuns(), dueRow.sent_at) : null;
+      check(`at its time, the cron sent it: ${before ? `Vercel's own, before this call (${theirs ? `${theirs.holder} at ${theirs.started_at}`
+        : "not among the cron's runs"})` : `"${ran.json?.outcome}"`}, ${dueRow?.status}`, dueRow?.status === "sent"
+        && (/^1 sent/.test(ran.json?.outcome || "") || Boolean(theirs)));
+    }
 
     // --- 8. Results -----------------------------------------------------------------------------
     console.log("8. Results and visits");
@@ -442,6 +534,38 @@ try {
     const hand = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.title === handTitle);
     check(`its address kept, counted from now: ${hand?.status} ${hand?.route} ${hand?.external_id}`, hand?.status === "sent"
       && hand.route === "by_hand" && hand.external_id === "t3_abc123");
+    // A reply by hand to any post or comment, by its address: no inbox
+    // without Reddit's API, and Reddit ended RSS on 13 November 2026.
+    await page.click("#social-new-reply");
+    check("New reply asks for the address it answers, with the focus in it", await until(page, () =>
+      !document.getElementById("social-address-l").hidden && document.activeElement?.name === "address"
+      && document.getElementById("social-form-h").textContent === "A new reply"));
+    const thanks = `Thank you ${rand}`;
+    await page.fill("#social-form input[name='address']", "https://www.reddit.com/r/lego/s/AbCdEf12");
+    await page.fill("#social-form textarea[name='body']", thanks);
+    await page.click("#social-form button[type='submit']");
+    check("...a Share link refused, in words that say what to paste", await until(page, () =>
+      /names nothing the desk can read/.test(document.getElementById("social-note").textContent)));
+    await page.fill("#social-form input[name='address']", "https://old.reddit.com/r/lego/comments/abc777/a_castle/def888/?context=3");
+    await page.click("#social-review");
+    await until(page, () => document.querySelector("#social-sheet[open]"));
+    const there = "https://www.reddit.com/r/lego/comments/abc777/a_castle/def888/";
+    check("...kept answering the comment, in r/lego, its rules beside the box", await until(page, ([to]) =>
+      document.getElementById("social-replying").textContent.includes(to) && document.querySelectorAll("#social-rules li").length >= 1,
+    [there]));
+    check("...the sheet says it opens on Reddit and nothing is sent until Reply there",
+      /Nothing is sent until you press Reply there/.test(await page.locator(sheet).textContent()));
+    await press(page, sheet, "Reply on Reddit…");
+    await until(page, () => document.getElementById("social-sheet-title").textContent === "Reply on Reddit");
+    const replyAt = await page.locator(`${sheet} a.cta`).getAttribute("href");
+    check(`...Reply on Reddit offers that comment's own page, not opened here: ${replyAt}`, replyAt === there
+      && (await page.locator(sheet).getByRole("button", { name: "Copy the words" }).count()) === 1);
+    await page.fill(`${sheet} input[type='url']`, "https://www.reddit.com/r/lego/comments/abc777/a_castle/ghi999/");
+    await press(page, sheet, "It is posted");
+    await until(page, () => !document.querySelector("#social-sheet[open]"));
+    const byHandReply = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.body === thanks);
+    check(`...its reply's address kept: ${byHandReply?.status} ${byHandReply?.parent} ${byHandReply?.external_id}`, byHandReply?.status === "sent"
+      && byHandReply.parent === "t1_def888" && byHandReply.external_id === "t1_ghi999" && byHandReply.link === there);
     const audit = await as("/api/admin?op=audit&tests=1&limit=60");
     const ops = new Set((audit.json?.rows || []).map((one) => one.op));
     check(`each act in the audit as a test's: ${[...ops].filter((op) => op.startsWith("social_")).sort().join(", ")}`,
@@ -472,6 +596,10 @@ try {
             .filter((one) => one.offsetParent && one.getBoundingClientRect().right > innerWidth + 1).length);
           if (off) console.log(`        ${tab} at ${width}: ${off} of its rows' acts past the screen's edge`);
           wide ||= off > 0;
+          if (tab === "accounts") {
+            const offs = await shownOff(where.page, '[data-tab="accounts"]');
+            check(`at ${width} ${theme}: no button in Accounts shown off: ${JSON.stringify(offs)}`, offs.length === 0);
+          }
           await shot(where.page, `10-${tab}-${width}-${theme}.png`);
         }
         await go(where.page, "social/sent");
@@ -479,6 +607,46 @@ try {
         await until(where.page, () => document.querySelector("#social-sheet[open]"));
         await shot(where.page, `10-details-${width}-${theme}.png`, false);
         check(`at ${width} ${theme}: every tab drawn, none wider than the screen, every row's acts on it`, !wide);
+        await where.context.close();
+      }
+    }
+
+    // --- 10b. No Reddit app, as on brickworks.diy ----------------------------------------------
+    console.log("10b. No Reddit app (brickworks.diy today) at 390 and 1280, light and dark");
+    for (const width of [1280, 390]) {
+      for (const theme of ["light", "dark"]) {
+        const where = await open("/admin?tests=1#social/accounts", { width, theme, who: owner, label: `no app ${width} ${theme}`, noApp: true });
+        const p = where.page;
+        await shown(p);
+        const drawn = await until(p, () => /Posting by hand: Reddit takes no new API apps \(since 31 Oct 2026\)\./
+          .test(document.getElementById("networks")?.textContent || ""), null, 30000);
+        const card = p.locator("#networks li").first();
+        const seen = await p.evaluate(() => {
+          const li = document.querySelector("#networks li");
+          const named = [...li.querySelectorAll("button, summary, a")].filter((one) => one.getClientRects().length > 0)
+            .map((one) => one.textContent.trim());
+          return { pill: li.querySelector(".pill")?.textContent, named, notice: li.querySelector("a[target=_blank]")?.href };
+        });
+        const offs = await shownOff(p, '[data-tab="accounts"]');
+        check(`at ${width} ${theme}: "Posting by hand" and why, no Connect, no button shown off: ${JSON.stringify(seen.named)} off ${JSON.stringify(offs)}`,
+          drawn && seen.pill === "Posting by hand" && !seen.named.some((one) => /Connect Reddit/.test(one)) && offs.length === 0
+          && seen.named.includes("Write a post") && seen.named.includes("How to connect later")
+          && seen.notice === "https://support.reddithelp.com/hc/en-us/articles/54353370049684");
+        await card.locator("summary", { hasText: "How to connect later" }).click();
+        const steps = (await card.locator("details.later ol").textContent()) || "";
+        check(`...How to connect later opens in place: the redirect URI, Vercel's two names, the redeploy, the scopes`,
+          /https:\/\/brickworks\.diy\/admin\?connected=reddit/.test(steps) && /REDDIT_CLIENT_ID/.test(steps)
+          && /REDDIT_CLIENT_SECRET/.test(steps) && /Redeploy: Deployments/.test(steps) && /identity, history, privatemessages, read, submit/.test(steps));
+        await card.getByRole("button", { name: "Copy the redirect URI" }).click();
+        const copied = await until(p, () => /Copied the redirect URI|would not copy/.test(document.querySelector("#networks details.later")
+          ?.textContent || ""));
+        const offsOpen = await shownOff(p, '[data-tab="accounts"]');
+        check(`...its Copy answers, and opened nothing is shown off, none wider than the screen: ${JSON.stringify(offsOpen)}`,
+          copied && offsOpen.length === 0 && !(await sideways(p)));
+        await shot(p, `10b-no-app-${width}-${theme}.png`);
+        await card.getByRole("link", { name: "Write a post" }).click();
+        check("...Write a post opens Write", await until(p, () => location.hash === "#social/write"
+          && document.querySelector('[data-tab="write"]')?.hidden === false && !document.querySelector("#social-form [name=title]").disabled));
         await where.context.close();
       }
     }

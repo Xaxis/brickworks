@@ -71,11 +71,59 @@ a Reddit app. The desk does two things instead.
       `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` to Production.
    5. Redeploy, open /admin › Social › Accounts, and press **Connect Reddit**.
 
-   Until then the Accounts tab names both variables as missing, says why, and
-   keeps Connect asleep. The historic click path is from
+   Until then the Accounts tab shows no Connect at all: a button shown off
+   did nothing when pressed, and the owner took it for broken (11-18,
+   connectfix). Reddit's card says **Posting by hand: Reddit takes no new API
+   apps (since 31 Oct 2026)**, one line on what by hand is, **Write a post**,
+   a link to Reddit's own notice, and **How to connect later**, which opens
+   these steps in the console itself: the redirect URI (with Copy), the two
+   names for Vercel and which of them are missing, the redeploy, and the
+   scopes Reddit's page will ask for. Reddit has no page to ask for access
+   today: its changelog says new requests "will no longer be accepted" from
+   31 October 2026 (above), so the card links nothing that cannot work. The
+   historic click path is from
    <https://www.redditapis.com/blogs/how-to-get-reddit-api-key-2026>
    (secondary); the names `client_id` and `client_secret` are from
    <https://github.com/reddit-archive/reddit/wiki/OAuth2> (primary, archived).
+
+## Reddit without its API: what was tried (redditway, 2026-11-18)
+
+The owner asked for the by-hand route to come as near to connected as it
+can. Each idea was checked live first, with read-only GETs from this
+machine (`bench/results/socialdesk-2026-11-18/redditway_live_gets.txt`),
+and dropped where it fails or Reddit's terms rule it out.
+
+| Idea | What was found | Kept? |
+|---|---|---|
+| Ask Reddit for access | New requests "will no longer be accepted" from 31 October 2026 (Reddit's changelog, above, primary). Its app registration, `developers.reddit.com/app-registration`, due 12 January 2027, is for apps Reddit already approved, to move them to its Developer Platform (TechCrunch, below, secondary; the page would not load here). Brickworks has no approved app. | No: there is nothing to ask. Accounts says "Nothing here can ask for you". |
+| The inbox by Reddit's private RSS feeds | `GET www.reddit.com/r/lego/.rss` answered **404**, an Atom "Not Found" from rss.reddit.com (2026-11-18 16:17Z). Reddit ended RSS on 13 November 2026 (TechCrunch, secondary, citing Reddit's r/modnews post). | No. The empty inbox says why. |
+| Finding a post by itself, from the owner's submitted feed | Its `.rss` is gone as above; `GET …/new.json` answered **403**, "blocked by network security", as every JSON read from here has. | No: the post's address is still pasted. |
+| Replying on Reddit | Needs nothing from Reddit's API: the desk opens the post's or the comment's own page. | **Yes**: New reply under Write answers any post or comment by its address (below). |
+| Score and comments by public JSON | 403 to a server (as above, and `bench/results/sdreview-2026-11-18/reddit_public_rules_json_403.txt`); what is left of public access ends in March 2027. | No: Details says so, with a link to see it on Reddit, never a zero. |
+| Driving the owner's signed-in browser, reading signed-in pages, unofficial APIs | Outside Reddit's terms, and never asked of the desk. | Never. |
+| A partner scheduler | Postpone lost its API access on 2025-11-30 and now reminds you to post in Reddit's app, as this desk does, for about $9–12 a month (unconfirmed). Sprout Social and HubSpot do post by API, as Reddit's partners, from $79 a seat and $800 a month (the table below). | None recommended: Postpone does nothing the desk does not, and the partners cost far more than a Reddit by hand needs. |
+
+Sources: TechCrunch, 2026-09-30,
+<https://techcrunch.com/2026/09/30/reddit-is-killing-rss-feeds-ending-public-api-access-because-of-ai-bots/>
+(secondary), which cites
+<https://www.reddit.com/r/modnews/comments/1wubgvt/continuing_our_infrastructure_updates_whats/>
+and <https://www.reddit.com/r/redditdev/comments/1wubcvf/moving_data_api_apps_to_the_developer_platform/>
+(primary; neither would load here).
+
+**A reply by hand, by its address.**
+- New reply (Write) asks for the address of the post or the comment it
+  answers, as the browser's address bar shows it. old.reddit.com and
+  new.reddit.com are taken too. It is kept as Reddit's own page: on
+  www.reddit.com, with no query or fragment.
+- What it answers is its parent (t3_ for a post, t1_ for a comment), as
+  for an inbox item. Its address is kept as the reply's link, the rules of
+  its community are shown beside the box, and an edit keeps both.
+- A Share link (…/s/…), a redd.it link, a community's page, another site
+  and `javascript:` are refused, with what to paste instead.
+- Review and send, then Reply on Reddit: the sheet offers Copy the words
+  and that page. The owner pastes the words, presses Reply there, and
+  pastes the reply's own address back.
+- Connected, the same reply goes by Reddit's API with Send now.
 
 ## What the desk promises
 
@@ -162,8 +210,10 @@ section's badge sums them.
 - **A Reddit post is a link or words**, never both: the form refuses both
   rather than send one and drop the other. An edit after Schedule or a
   hand-off says it undid the press.
-- **Accounts** (`#social/accounts`): Reddit (connected or not, what is
-  missing and why, Connect, Check now, Disconnect), and X, Facebook and
+- **Accounts** (`#social/accounts`): Reddit (connected, with Check now and
+  Disconnect; with an app but not connected, Connect; with no app, posting
+  by hand and why, Write a post and How to connect later, never a Connect
+  that is off), and X, Facebook and
   Instagram as "Not connected yet", each with what it needs and costs.
 
 ## Reddit, as read
@@ -459,3 +509,20 @@ Where the desk matches the best, and where it does better:
   name, then back on Write's Review after It is posted); every tab at 390 and 1280,
   light and dark; and no token in any answer, page or storage. Before the
   file is applied it proves the gate and the "not yet" state.
+  - **One run at a time.** The checks' pool is one for every deployment: one
+    stand-in account a network, emptied before and after each run. So a
+    deployed run holds the live database alone (preview_checks.sh ALONE_DB).
+    A run against a relay on this machine needs the desk's seven tables held
+    there (`--hold=...`, asked of the relay's `/__held/<table>`), never
+    touches the project's pool, and stops at once otherwise. On 11-18 the
+    cron step failed twice on brickworks.diy ("nothing due", the row gone):
+    a local run's emptying of the project's pool had deleted the live run's
+    rows inside its 70 s wait (15:15:13Z and 16:08:20Z, between that run's
+    two calls of the cron in `cron_runs`). The live cron itself was fine.
+  - **Vercel's own cron** also sends the checks' due rows on production,
+    every quarter hour. If it does so inside the wait, the flow's own call
+    finds nothing due; the step then passes only when `cron_runs` holds that
+    vercel-cron run. `SOCIALDESK_VERCEL_CRON=1` on production leaves the
+    send to Vercel's cron alone, watching the row for up to 17 minutes: the
+    proof that an owner's schedule fires on brickworks.diy with nobody
+    calling it.

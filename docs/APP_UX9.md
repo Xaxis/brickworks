@@ -738,6 +738,13 @@ because it is not one of them: it is the measure they serve.
 11. **No program drives the model's motors on screen** (Brickyard; Kinebrick
     Studio's next release builds Pybricks programs) (**hubprogram**).
 12. **Nothing makes a model easier to buy** (past parity, **rareswap**).
+    Done 2026-11-17: the parts list's row lists the lots in 3 sets or
+    fewer, each with its swap in 20 or more (the same shape in its colour,
+    else the nearest colour by ΔE), picked in one undo. On the ten gallery
+    seeds with the most: 79 rare lots, 61 offered a swap, 24 still rare
+    after the default picks (the 6 prints kept and 18 parts that come in
+    fewer than 20 sets in every colour). `replace_parts rare=true` in 1
+    call.
 13. **A step cannot be found by what it places** (round seven's
     **stepsearch**).
 14. **A collection does not say where each part is kept** (round seven's

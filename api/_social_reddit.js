@@ -270,21 +270,42 @@ export const pasteHelp = (kind) => (kind === "post"
   : "Paste your reply's own address: on Reddit, open it by its time and copy the address bar, "
     + "https://www.reddit.com/r/…/comments/…/…/<the reply>/.");
 
+/// A Reddit address of a post (/r/<sub>/comments/<id>/) or a comment after
+/// it: its sub, the post's id, its slug and the comment's id, or null.
+const THING = /^https:\/\/(?:www\.|old\.|new\.)?reddit\.com\/r\/([A-Za-z0-9_]{2,21})\/comments\/([a-z0-9]{1,13})(?:\/([^/?#]*)(?:\/([a-z0-9]{1,13}))?)?\/?(?:[?#].*)?$/;
+
 /// The thing a Reddit address names (a post's /comments/<id>/, a comment
 /// after it): its full name, t3_ or t1_, or null.
 export function thingOf(url) {
-  const at = /^https:\/\/(?:www\.|old\.|new\.)?reddit\.com\/r\/[A-Za-z0-9_]{2,21}\/comments\/([a-z0-9]{1,13})(?:\/[^/?#]*(?:\/([a-z0-9]{1,13}))?)?\/?(?:[?#].*)?$/
-    .exec(String(url || ""));
+  const at = THING.exec(String(url || ""));
   if (!at) return null;
-  return at[2] ? `t1_${at[2]}` : `t3_${at[1]}`;
+  return at[4] ? `t1_${at[4]}` : `t3_${at[2]}`;
 }
+
+/// What a reply by hand answers, from the address the owner pasted: the
+/// thing (t3_ or t1_) and its address as Reddit's own page has it, on
+/// www.reddit.com with no query or fragment. Null for any other address.
+export function answersOf(url) {
+  const at = THING.exec(String(url || "").trim());
+  if (!at) return null;
+  const [, sub, post, slug, comment] = at;
+  const path = comment ? `${post}/${slug || "_"}/${comment}/` : `${post}/${slug ? `${slug}/` : ""}`;
+  return { thing: comment ? `t1_${comment}` : `t3_${post}`, url: `${REDDIT}/r/${sub}/comments/${path}`, community: sub };
+}
+
+/// What to paste to reply by hand, when the address given is not one.
+export const answerHelp = "Paste the address of a post or a comment on Reddit as the browser's address bar shows it: "
+  + "https://www.reddit.com/r/…/comments/…/. A Share link (…/s/…) or a redd.it link names nothing the desk can read: "
+  + "open it first, then copy the address bar.";
 
 export const reddit = {
   id: "reddit",
   name: "Reddit",
   env: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"],
+  scopes: SCOPES.split(" "),
   // How long Reddit lets each part be (a title 300, a post or comment 40,000).
   most: { title: 300, body: 40000 },
   where: "community",
   appOf, authorizeUrl, exchange, refresh, revoke, me, inbox, mentions, rulesOf, results, send, refuses, handOff, pasteHelp, thingOf,
+  answersOf, answerHelp,
 };
