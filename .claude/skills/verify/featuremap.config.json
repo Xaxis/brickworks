@@ -4425,7 +4425,7 @@
       "kind": "ui",
       "label": "find a step by what it places",
       "entry": "src/ui/steps_bar.gd",
-      "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, its new parts outlined; Escape clears; on a phone or a tablet Find… opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",
+      "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, as Next goes to a step; Escape clears; on a phone or a tablet Find… opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",
       "area": "view"
     },
     {

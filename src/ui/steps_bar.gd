@@ -1458,8 +1458,9 @@ func row_state() -> Dictionary:
 # A builder hunting the step that put on a red 2 x 4 paged through every
 # step; LPub3D and Studio's instructions editor find no step by its parts
 # either. Here a part's number, its name or its colour typed in the bar lists
-# every step that places one, as it is typed, each a button that goes there:
-# its new parts outlined and in view, as Next shows a step. The row of steps
+# every step that places one, as it is typed, each a button that goes there
+# as Next goes to a step (on a shared link's timeline its new parts outlined
+# and in view, Main._light_step). The row of steps
 # marks them along their top, and Enter goes to each in turn (Shift+Enter
 # back), Escape clears it.
 #
@@ -1676,8 +1677,8 @@ static func found_words(step: Instructions.Step, count: int) -> String:
 
 
 ## The found step at [param index] in [member _steps] shown, as Next shows a
-## step: the timeline at its end, its new parts outlined and in view (Main
-## lights a step stepped to).
+## step: the model built to its end ([signal stepped]: a shared link's
+## viewer outlines its new parts and frames them).
 func go_to_found(index: int) -> void:
 	if index < 0 or index >= _step_ends.size():
 		return

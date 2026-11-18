@@ -1858,7 +1858,7 @@ picture the assistant is shown.
   number, name or colour typed lists, at every key, every step that places
   one, each a button with how many ("12 · Wing 2/3 ×4"), and marks them
   along the top of the row of steps; a click, Enter or Shift+Enter goes there
-  as Next does (its new parts outlined and in view, `stepped`); Escape
+  as Next does (`stepped`: on a shared link, its new parts outlined); Escape
   clears, and Done takes the find with it. The words are read as Select by
   and the parts list's find read them (`SelectBy.wanted`: a number, 3023
   for 3023b; a name in the catalogue's or a builder's words; a colour the
