@@ -412,6 +412,7 @@ const TARGETS = {
   unbar_model: (q) => ["model", q.id],
   notice_set: () => ["setting", "notice"],
   notice_clear: () => ["setting", "notice"],
+  phone_rules: () => ["setting", "phone"],
   run_cron: (q) => ["cron", q.job],
   export: (q) => ["account", q.account],
   delete_account: (q) => ["account", q.account],
@@ -437,6 +438,7 @@ const TARGETS = {
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
   "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url",
+  "phone_parts", "phone_start_s",
   // claude_settings: the model, effort and monthly cap chosen (never the key).
   "model", "effort", "cap_usd"];
 // Part C's answers too: whose account an act was on is kept by its address,

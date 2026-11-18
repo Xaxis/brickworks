@@ -129,7 +129,9 @@ function drawSettings() {
   const away = $("claude-elsewhere");
   away.hidden = !elsewhere;
   away.textContent = elsewhere ? c.elsewhere : "";
-  const noSecret = c.ready && !c.secret?.set;
+  // Off brickworks.diy no key is opened, so its secret is not asked for there
+  // (a unit's preview goes without it).
+  const noSecret = c.ready && !elsewhere && !c.secret?.set;
   const secret = $("claude-secret");
   secret.hidden = !noSecret;
   secret.textContent = noSecret ? `To keep a key, this deployment needs ${c.secret.name}: a random string of at least 32 characters `

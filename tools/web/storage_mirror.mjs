@@ -26,12 +26,14 @@
 //   BW_STORAGE_MIRROR=off   no mirror: the bucket itself
 //   { realStore: true }     in chromium.launch or launchPersistentContext's
 //                           options: that browser reads the bucket itself
-//                           (load_check times a real first visit)
+//                           (load_check times a real first visit). WebKit's
+//                           launch is mirrored too; its persistent contexts
+//                           never are (phonetruth times first visits there)
 //
 //   node tools/web/storage_mirror.mjs serve [PORT]
 //     the same copy over HTTP for a headless probe: prints its URL, which
 //     stands for PARTS_URL (tools/check.sh --network)
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { pageRoute } from "./page_routes.mjs";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, renameSync, statSync, utimesSync, writeFileSync } from "node:fs";
@@ -228,15 +230,18 @@ export async function mirrored(context) {
 const DONE = Symbol.for("brickworks.storageMirror");
 if (MIRROR && !chromium[DONE]) {
   chromium[DONE] = true;
-  const launch = chromium.launch.bind(chromium);
-  chromium.launch = async ({ realStore = false, ...options } = {}) => {
-    const browser = await launch(options);
-    if (!realStore) {
-      const made = browser.newContext.bind(browser);
-      browser.newContext = async (contextOptions) => mirrored(await made(contextOptions));
-    }
-    return browser;
-  };
+  // WebKit's too (phonetruth), through Playwright's routes (page_routes.mjs).
+  for (const type of [chromium, webkit]) {
+    const launch = type.launch.bind(type);
+    type.launch = async ({ realStore = false, ...options } = {}) => {
+      const browser = await launch(options);
+      if (!realStore) {
+        const made = browser.newContext.bind(browser);
+        browser.newContext = async (contextOptions) => mirrored(await made(contextOptions));
+      }
+      return browser;
+    };
+  }
   const persistent = chromium.launchPersistentContext.bind(chromium);
   chromium.launchPersistentContext = async (dir, { realStore = false, ...options } = {}) => {
     const context = await persistent(dir, options);

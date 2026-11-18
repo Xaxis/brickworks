@@ -2,7 +2,7 @@
 # train.sh : a release staged in one command, which ships when its turn comes.
 #
 #   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..." | --probes none --why "..."]
-#                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]...
+#                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]... [--web | --full] [--plan]
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
 #   train.sh reship TAG [--probes "..."] [--accept CHECK "REASON"]... [CHECK...]
@@ -60,6 +60,22 @@
 # failures and the reason. Given at reship, the merge's message is written
 # again (the trees as they were), so its preview is made afresh.
 #
+# The web lane: a release whose app is the one brickworks.diy runs, as
+# BRANCH changed no file a web export is made from (live_export.sh app:
+# src/, scripts, scenes, assets, project.godot...), ships on the export
+# brickworks.diy serves (live_export.sh, kept as each release goes live):
+# its merge has no import, it runs no probe, and ship.sh makes its preview
+# from that export with this tree's pages and API, then the same checks,
+# live database lock, stale check, accept and promotion, and the same
+# record for /admin › Site. It is chosen when BRANCH changed no such file,
+# none is named with --probes and an export is kept; --web asks for it and
+# is refused otherwise, --full never takes it. Its merge is checked again:
+# an app file that differs from the export's tree stops it, to be staged
+# again with --full. The social desk's train ran all 294 probes and its
+# export for a change to web/ and api/ alone, and the lead shipped it by
+# hand instead (fastlane, 2026-11-18). --plan says what a stage would run
+# and stages nothing.
+#
 # This replaces the chain scripts the lead wrote by hand for each release,
 # rel-m214 to m218, and the promote job beside them that ship.sh now does.
 set -u
@@ -114,9 +130,15 @@ suite_names() { sed -E 's/(^|[[:space:]])#.*//' | awk 'NF { split($1, p, ":"); p
 stage() {
   [ $# -ge 2 ] || usage
   local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid
+  local lane="" plan=""
   shift 2
   case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
   while [ $# -gt 0 ]; do
+    case "$1" in
+      --web|--full) [ -z "$lane" ] || [ "$lane" = "${1#--}" ] || { echo "train: --web or --full, not both"; exit 2; }
+        lane=${1#--}; shift; continue ;;
+      --plan) plan=1; shift; continue ;;
+    esac
     [ $# -ge 2 ] || { echo "train: $1 wants a value"; exit 2; }
     case "$1" in
       --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2; named_probes=1 ;;
@@ -183,10 +205,43 @@ stage() {
     # shellcheck disable=SC2046  # the paths flows_for reads that the branch has
     git -C "$R" archive "$branch" $(git -C "$R" ls-tree --name-only "$branch" -- web api src tools/web tools/release tools/deploy.sh) \
       | tar -x -C "$tree"
-    out=$(cd "$tree" && python3 tools/release/flows_for.py "${files[@]}" 2>&1); code=$?
+    # The lines changed, for the shared files it names by the part that
+    # changed (flows_for.py's SPLIT), where the branch's own takes them.
+    local diffed=()
+    if grep -q -- '"--diff"' "$tree/tools/release/flows_for.py"; then
+      git -C "$R" diff -U0 "$base...$branch" -- web > "$tree/.flows.diff" && diffed=(--diff .flows.diff)
+    fi
+    out=$(cd "$tree" && python3 tools/release/flows_for.py "${diffed[@]}" "${files[@]}" 2>&1); code=$?
     rm -rf "$tree"
     [ "$code" = 0 ] || { echo "train: flows_for.py failed on $branch:"; echo "$out" | tail -3; exit 2; }
     flows=$(sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p' <<< "$out")
+  fi
+  # The lane: web when nothing the export is made from changed, and an
+  # export brickworks.diy serves is kept to ship on (live_export.sh).
+  local app="" kept="" ex_from="" ex_tag="" why_lane="" merged_tree
+  app=$(cd "$R" && bash "$HERE/live_export.sh" app "$base" "$branch" | head -3 | paste -sd' ')
+  kept=$(bash "$HERE/live_export.sh" show) && read -r _ ex_from ex_tag <<< "$kept"
+  if [ -z "$app" ] && [ -n "$kept" ] && [ -z "$after" ]; then
+    # Nothing staged before it: the tree it will ship is main's with BRANCH merged.
+    merged_tree=$(git -C "$R" merge-tree --write-tree main "$branch" 2>/dev/null | head -1)
+    [ -n "$merged_tree" ] && app=$(cd "$R" && bash "$HERE/live_export.sh" app "$ex_from" "$merged_tree" | head -3 | paste -sd' ')
+    [ -z "$app" ] || app="$app (main's, since $ex_tag's export)"
+  fi
+  if [ "$lane" = full ]; then
+    why_lane="full: asked (--full)"
+  elif [ -n "$app" ]; then
+    [ "$lane" = web ] && { echo "train: not the web lane: app files differ from the export brickworks.diy serves: $app"; exit 2; }
+    lane=full; why_lane="full: an app file changed: $app"
+  elif [ -z "$kept" ]; then
+    [ "$lane" = web ] && { echo "train: not the web lane: no export brickworks.diy serves is kept ($RO/live_web): a release with an export makes one, or live_export.sh keep TAG SHA DIR"; exit 2; }
+    lane=full; why_lane="full: no export is kept for the web lane ($RO/live_web)"
+  elif [ -n "$named_probes" ] && [ -n "$probes" ]; then
+    [ "$lane" = web ] && { echo "train: the web lane runs no probe: its app is the live export's (--probes names some)"; exit 2; }
+    lane=full; why_lane="full: --probes named"
+  else
+    lane=web; why_lane="web: no app file changed; ships on $ex_tag's export (made from ${ex_from:0:9}), no import or probe"
+    [ -z "$after" ] || why_lane+=", checked again once $after serves"
+    probes=""; named_probes=1; said="none: the web lane, its app the live export's"
   fi
   # With no --probes, every headless probe the branch lists, as check.sh
   # reads the list: picked by what featuremap affected reaches, three of the
@@ -206,6 +261,16 @@ stage() {
   local -a named=()
   read -r -a named <<< "$checks$added"
   checks="${named[*]}"
+  if [ -n "$plan" ]; then
+    echo "train: $tag, planned (--plan): nothing staged or run"
+    echo "  lane: $why_lane"
+    echo "  merges $branch at $(git -C "$R" rev-parse --short "$branch")${after:+ once $after serves}"
+    echo "  $told since $(git -C "$R" rev-parse --short "$base"): ${#files[@]} files changed, adds${added:- no check} to those named"
+    echo "  checks: ${checks:-none named} (and site, frames)"
+    echo "  probes: ${said}${probes:+: $(wc -w <<< "$probes") ($(cut -d' ' -f1-8 <<< "$probes")...)}"
+    [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
+    return 0
+  fi
   if pid=$(running "$tag"); then
     echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
   fi
@@ -216,6 +281,7 @@ stage() {
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
   echo "$said" > "$SPEC/probes.why"
+  echo "$why_lane" > "$SPEC/lane"
   echo "${title:-$branch}" > "$SPEC/title"
   printf '%s' "$accepts" > "$SPEC/accept"
   echo $(( $(date +%s) + ${TRAIN_WAIT:-21600} )) > "$SPEC/deadline"
@@ -237,6 +303,7 @@ stage() {
   # checks added after the line that added them (2026-11-04).
   if [ -n "$added" ]; then added="adds$added to the checks named"; else added="adds no check to those named"; fi
   echo "  $told since $(git -C "$R" rev-parse --short "$base"), $added"
+  echo "  lane: $why_lane"
   if [ -n "$named_probes" ] && [ -n "$probes" ]; then echo "  probes: $said: $probes"; else echo "  probes: $said"; fi
   [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
 }
@@ -439,6 +506,9 @@ again() {
 }
 
 # --- the train itself (stage starts it as `run TAG`) ---
+
+# Whether TAG ships in the web lane, as staged (TAG.train/lane).
+web_lane() { case "$(cat "$SPEC/lane" 2>/dev/null)" in web:*) return 0 ;; esac; return 1; }
 
 say() { echo "$(date -u +%H:%M:%SZ) $TAG: $*"; }
 
@@ -655,6 +725,20 @@ work() {
     merged
   fi
 
+  # The web lane ships on the export brickworks.diy serves, as it is now:
+  # one an export lane made since staging, if one went live first. Any app
+  # file its merge brings that differs from that export's tree stops it.
+  local ship_export=()
+  if web_lane; then
+    local kept ex_dir ex_from ex_tag app
+    kept=$(bash "$HERE/live_export.sh" show) || stop "the web lane, and no export brickworks.diy serves is kept ($RO/live_web): stage it again with --full"
+    read -r ex_dir ex_from ex_tag <<< "$kept"
+    app=$(cd "$W" && bash "$HERE/live_export.sh" app "$ex_from" HEAD | head -3 | paste -sd' ')
+    [ -z "$app" ] || stop "the web lane, but app files differ from $ex_tag's export (made from ${ex_from:0:9}): $app: stage it again with --full"
+    say "the web lane: ships on $ex_tag's export (made from ${ex_from:0:9}), no import or probe"
+    ship_export=(SHIP_EXPORT="$ex_dir" SHIP_EXPORT_FROM="$ex_from")
+  fi
+
   step "check.sh --lists"
   out=$(cd "$W" && bash tools/check.sh --lists 2>&1) || { echo "$out" | tail -3; stop "check.sh --lists fails in $W"; }
 
@@ -674,7 +758,7 @@ work() {
   echo "$PROBES" > "$SPEC/probes.pid"
   step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
   env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$$" \
-    SHIP_STALE=1 SHIP_ACCEPT="$SPEC/accept" ${reshipping:+SHIP_REUSE=1} \
+    SHIP_STALE=1 SHIP_ACCEPT="$SPEC/accept" ${reshipping:+SHIP_REUSE=1} "${ship_export[@]}" \
     bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
   ship=$!
   wait -n -p ended "$PROBES" "$ship"; code=$?
@@ -751,7 +835,9 @@ merged() {
   TIP=$(git -C "$R" rev-parse -q --verify "$BRANCH^{commit}") || stop "no branch $BRANCH"
   echo "$TIP" > "$SPEC/tip"
   step "merges $BRANCH at ${TIP:0:8}"
-  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$TIP" "$(merge_message)" \
+  # The web lane's merge has no import: its app is the live export's.
+  local only=""; web_lane && only=1
+  if ! env MERGE_GATES=ship ${only:+MERGE_ONLY=1} bash "$HERE/merge_unit.sh" "$W" "$TIP" "$(merge_message)" \
       > "$RO/${TAG}_merge.log" 2>&1; then
     tail -5 "$RO/${TAG}_merge.log"
     git -C "$W" merge --abort 2>/dev/null; git -C "$W" reset -q --hard HEAD
@@ -888,6 +974,7 @@ show() {
   after=$(cat "$d/after" 2>/dev/null)
   if pid=$(runner "$t"); then pid="running (pid $pid)"; else pid="ended"; fi
   echo "$t: $(cat "$d/branch")${after:+ after $after}, $pid"
+  [ -s "$d/lane" ] && echo "  lane: $(cut -c1-160 "$d/lane")"
   res=$(cat "$d/result" 2>/dev/null)
   if [ -n "$res" ]; then
     echo "  result: $res"

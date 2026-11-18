@@ -1335,6 +1335,8 @@ var _pairs: Array = []
 var _stack_at: Dictionary = {}
 ## The file's lines are CRLF.
 var _crlf: bool = false
+## Each section's "0 BUFEXCHG … RETRIEVE" lines (retrieve_between), by key.
+var _retrieves: Dictionary = {}
 
 
 func _read_for_patch() -> void:
@@ -1383,6 +1385,10 @@ func _read_for_patch() -> void:
 				var begin: int = (open[kind] as Array).pop_back()
 				_pairs.append([begin, n, kind])
 				open_all.erase(begin)
+			if int(pair[1]) < 0 and kind.begins_with("BUFEXCHG"):
+				if not _retrieves.has(current):
+					_retrieves[current] = []
+				(_retrieves[current] as Array).append(n)
 			continue
 		if not _is_placing(raw):
 			continue
@@ -1721,8 +1727,11 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				fixed[line] = true
 		# A part of a mirrored copy is in its other hand (Assemblies.unmirror):
 		# it agrees with the line only as it was opened, but for its step,
-		# which its line moving says as it is (stepops).
+		# which its line moving says as it is (stepops), and its colour,
+		# which the line says for every copy alike and no reflection changes
+		# (rareswap: a colour replaced in every copy, the mirrored ones too).
 		var mirrored: bool = false
+		var mirror_colours: Array = []      ## [now, as opened] for each mirrored copy
 		for item: Array in said:
 			var was: Read = item[4]
 			if not was.mirrored:
@@ -1730,11 +1739,14 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			mirrored = true
 			var opened: Transform3D = (unit_frames.get(was.unit, Transform3D.IDENTITY) as Transform3D) \
 				.affine_inverse() * was.at
-			if str(item[0]) != was.part_id or int(item[1]) != was.colour \
-					or not _same(item[2] as Transform3D, opened):
+			if str(item[0]) != was.part_id or not _same(item[2] as Transform3D, opened):
 				return _no(plan, "a part of a mirrored copy changed")
+			mirror_colours.append([int(item[1]), was.colour])
 		said = said.filter(func(item: Array) -> bool: return not (item[4] as Read).mirrored)
 		if said.is_empty():
+			for pair: Array in mirror_colours:
+				if int(pair[0]) != int(pair[1]):
+					return _no(plan, "a part of a mirrored copy changed")
 			continue
 		# Its copies alike: one part, place and step, and one colour where
 		# any was painted (a colour of 16 is each copy's own until then).
@@ -1746,6 +1758,10 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if other[0] != first[0] or int(other[3]) != int(first[3]) \
 					or not _same(other[2] as Transform3D, first[2] as Transform3D) \
 					or painted and int(other[1]) != int(first[1]):
+				return _no(plan, "copies of a sub-model no longer agree (line %d)" % (line + 1))
+		# Its mirrored copies the colour the others are, painted or not.
+		for pair: Array in mirror_colours:
+			if int(pair[0]) != (int(first[1]) if painted else int(pair[1])):
 				return _no(plan, "copies of a sub-model no longer agree (line %d)" % (line + 1))
 		var read: Read = first[4]
 		var was_local: Transform3D = (unit_frames.get(read.unit, Transform3D.IDENTITY) as Transform3D) \
@@ -1770,7 +1786,11 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			recolour[giving] = int(first[1])
 			changed = false
 		if changed and mirrored:
-			return _no(plan, "a part of a mirrored copy changed")
+			if str(first[0]) != read.part_id or not _same(first[2] as Transform3D, was_local):
+				return _no(plan, "a part of a mirrored copy changed")
+			# Painted only: the line as the file has it, its colour the new one.
+			rewrites[line] = _with_colour(lines[line].trim_suffix("\r"), _colour_token(int(first[1])))
+			continue
 		if changed:
 			var text: Variant = _line_for(line, str(first[0]), int(first[1]), painted, first[2], library)
 			if text == null:
@@ -2568,6 +2588,18 @@ func _colour_line(origin: String) -> int:
 
 ## Placing line [param line] with its colour [param token], every other
 ## character of it as it was.
+## Whether placing line [param now] is [param was] but for its colour.
+static func _only_colour(was: String, now: String) -> bool:
+	var a: PackedStringArray = _words(was)
+	var b: PackedStringArray = _words(now)
+	if a.size() != b.size() or a.size() < 15 or a[0] != "1" or b[0] != "1" or a[1] == b[1]:
+		return false
+	for k: int in a.size():
+		if k != 1 and a[k] != b[k]:
+			return false
+	return true
+
+
 static func _with_colour(line: String, token: String) -> String:
 	var found: RegExMatch = RegEx.create_from_string("^(\\s*1\\s+)(\\S+)").search(line)
 	if found == null:
@@ -3363,19 +3395,27 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		if not authored:
 			placement.step = -1
 		if placement.mirrored and leaf_new < 0:
-			# A part of a mirrored copy is never edited in a patch: its
-			# lines as the file had them, read as the open read them.
+			# A part of a mirrored copy is edited in a patch only in its
+			# colour: its lines as the file had them, read as the open read
+			# them, but for a colour a line of it now says (rareswap).
+			var recoloured: bool = false
 			for written: String in placement.origin.split("/", false):
 				var at: int = map[written.to_int()]
+				var out: String = plan.out[at].trim_suffix("\r")
+				var was_line: String = original[plan.from[at]].trim_suffix("\r")
 				# Moved as it was, for its step (stepops).
-				if plan.how[at] != KEEP and not (plan.how[at] == MOVE
-						and plan.out[at].trim_suffix("\r") == original[plan.from[at]].trim_suffix("\r")):
-					return "read back, a mirrored part's line changed"
+				if plan.how[at] == KEEP or plan.how[at] == MOVE and out == was_line:
+					continue
+				if plan.how[at] == REWRITE and _only_colour(was_line, out):
+					recoloured = true
+					continue
+				return "read back, a mirrored part's line changed"
 			var was: Read = by_origin.get("/".join(origin))
 			if was == null:
 				return "read back, a mirrored part the file had not got"
 			placement.part_id = was.part_id
-			placement.color_code = was.colour
+			if not recoloured:
+				placement.color_code = was.colour
 			placement.transform = was.at
 		else:
 			_as_opened(placement, library)
@@ -3560,6 +3600,53 @@ static func _pair_of(line: String) -> Array:
 			return [" ".join(kind) + (" SKIP" if word.begins_with("SKIP") else ""), 1 if opens else -1]
 		kind.append(word)
 	return []
+
+
+## The file's "0 BUFEXCHG A RETRIEVE" between two of a section's steps, as
+## the file has it, or "": between the last line of the parts [param
+## earlier] and the first of [param later] (each a part's place in the file,
+## Read.origin), in the section the copy [param unit] is of (an Assemblies
+## path, "" the model). MLCad and LPub3D take the model back there to the one
+## a STORE kept, so in the middle of a step what the step put on before it is
+## never shown: two steps a RETRIEVE starts the later of are not made one
+## (Shell.change_steps). A STORE is: it keeps the model as it is where it
+## stands, the same at the end of a step as in the middle of the merged one
+## (s5review F5, mergekeep 2026-11-18).
+func retrieve_between(unit: String, earlier: Array, later: Array) -> String:
+	var section: String = _section_of(unit)
+	if not retrieves_in(unit):
+		return ""
+	var low: int = -1
+	var high: int = -1
+	for origin: Variant in earlier:
+		low = maxi(low, _line_in(section, str(origin)))
+	for origin: Variant in later:
+		var at: int = _line_in(section, str(origin))
+		if at >= 0:
+			high = at if high < 0 else mini(high, at)
+	if low < 0 or high <= low:
+		return ""
+	for n: int in _retrieves[section]:
+		if n > low and n < high:
+			return original[n].strip_edges().left(80)
+	return ""
+
+
+## Whether the section the copy [param unit] is of has a buffer's RETRIEVE
+## at all: read once, as the file opened, so a step edit of any other asks
+## nothing more (retrieve_between).
+func retrieves_in(unit: String) -> bool:
+	return _retrieves.has(_section_of(unit))
+
+
+## The line of [param section] a part's place in the file ([param origin],
+## its chain of lines) has there: its own, or the copy's it is in; -1 for none.
+func _line_in(section: String, origin: String) -> int:
+	for segment: String in origin.split("/", false):
+		var n: int = segment.to_int()
+		if n >= 0 and n < _sec.size() and _sec[n] == section:
+			return n
+	return -1
 
 
 ## Of the pairs begun on the file's lines [param begins], those round parts:

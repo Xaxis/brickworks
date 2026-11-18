@@ -7386,6 +7386,15 @@ msgstr "jetzt ist es Schritt %d"
 msgid "took out step %d; its parts are in step %d"
 msgstr "Schritt %d herausgenommen; seine Teile sind in Schritt %d"
 
+msgid "step %d and the next stay apart: the next begins with “%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown"
+msgstr "Schritt %d und der nächste bleiben getrennt: der nächste beginnt mit „%s“, daher wären in LPub3D und MLCad in einem Schritt die Teile von Schritt %d nie zu sehen"
+
+msgid "step %d stays: it begins with “%s”, so in LPub3D and MLCad, put in the step before, that step's parts would never be shown"
+msgstr "Schritt %d bleibt: er beginnt mit „%s“, daher wären in LPub3D und MLCad im Schritt davor dessen Teile nie zu sehen"
+
+msgid "step %d stays: the next begins with “%s”, so in LPub3D and MLCad, put in it, this step's parts would never be shown"
+msgstr "Schritt %d bleibt: der nächste beginnt mit „%s“, daher wären in LPub3D und MLCad darin die Teile dieses Schritts nie zu sehen"
+
 msgid "step %d has no step of the model's own to put them in"
 msgstr "Schritt %d hat keinen eigenen Schritt des Modells, in den sie kommen könnten"
 
@@ -15099,6 +15108,232 @@ msgstr "Kein Schritt setzt „%s“: Das Modell hat es in %d anderen Farben"
 
 msgid "No step places “%s”"
 msgstr "Kein Schritt setzt „%s“"
+
+# posehold: whether a posed joint holds (PoseHold.pose_words, the Pose panel's lines and
+# its rows' marks), a droop in Check stability, a drag's status and Balance's words
+
+msgid "Joints that droop: %d"
+msgstr "Verbindungen, die absacken: %d"
+
+msgid "%s on %s, %s g past it: its Technic ball joint holds %d% of what hangs on it"
+msgstr "%s an %s, %s g darüber hinaus: sein Technic-Kugelgelenk hält %d % dessen, was daran hängt"
+
+msgid "%s on %s, %s g past it: its %d friction pins hold %d% of what hangs on them"
+msgstr "%s an %s, %s g darüber hinaus: seine %d Reibungspins halten %d % dessen, was daran hängt"
+
+msgid "%s on %s, %s g past it: its friction pin holds %d% of what hangs on it"
+msgstr "%s an %s, %s g darüber hinaus: sein Reibungspin hält %d % dessen, was daran hängt"
+
+msgid "And %d more."
+msgstr "Und %d weitere."
+
+msgid "Friction joints weighed: %d, and none droops."
+msgstr "Gewogene Reibungsverbindungen: %d, keine sackt ab."
+
+msgid "%s on %s holds, but a loose joint of its kind may not: the loosest measured held %d% of this."
+msgstr "%s an %s hält, eine lockere Verbindung dieser Art vielleicht nicht: die lockerste gemessene hielt %d % davon."
+
+msgid "Small ball joints here: %d, not weighed: no one has published what one holds."
+msgstr "Kleine Kugelgelenke hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Click hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Rastscharniere hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Scharniere hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Turntables here: %d, not weighed: no one has published what one holds."
+msgstr "Drehteller hier: %d, nicht gewogen: niemand hat veröffentlicht, was einer hält."
+
+msgid "Clips on bars here: %d, not weighed: no one has published what one holds."
+msgstr "Clips an Stangen hier: %d, nicht gewogen: niemand hat veröffentlicht, was einer hält."
+
+msgid "Droops: it holds %d% of what hangs on it."
+msgstr "Sackt ab: sie hält %d % dessen, was daran hängt."
+
+msgid "%s droops on %s on a Technic ball joint with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s sackt an %s auf einem Technic-Kugelgelenk ab, mit %s g darüber hinaus: es hält %d % dessen, was daran hängt"
+
+msgid "%s droops on %s on a friction pin with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s sackt an %s auf einem Reibungspin ab, mit %s g darüber hinaus: er hält %d % dessen, was daran hängt"
+
+msgid "%s droops on %s on %d friction pins in a line with %s g past it: they hold %d% of what hangs on them"
+msgstr "%s sackt an %s auf %d Reibungspins in einer Reihe ab, mit %s g darüber hinaus: sie halten %d % dessen, was daran hängt"
+
+msgid "the %s droops on a Technic ball joint: it holds %d% of what hangs on it"
+msgstr "%s sackt auf einem Technic-Kugelgelenk ab: es hält %d % dessen, was daran hängt"
+
+msgid "the %s droops on a friction pin: it holds %d% of what hangs on it"
+msgstr "%s sackt auf einem Reibungspin ab: er hält %d % dessen, was daran hängt"
+
+msgid "the %s droops on %d friction pins in a line: they hold %d% of what hangs on them"
+msgstr "%s sackt auf %d Reibungspins in einer Reihe ab: sie halten %d % dessen, was daran hängt"
+
+msgid "1 friction joint droops, in red, holding %d% of what hangs on it."
+msgstr "1 Reibungsverbindung sackt ab, rot markiert, und hält %d % dessen, was daran hängt."
+
+msgid "%d friction joints droop, in red, the worst holding %d% of what hangs on it."
+msgstr "%d Reibungsverbindungen sacken ab, rot markiert, die schwächste hält %d % dessen, was an ihr hängt."
+
+msgid "on a Technic ball joint"
+msgstr "auf einem Technic-Kugelgelenk"
+# rareswap (APP_UX9 #12): the parts list's row for the lots that come in 3 sets or fewer, their swaps for a common part or colour, picked or not, put in as one undo step
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it: swap for common parts…"
+msgstr "1 Posten kommt in %d Sets oder weniger vor, also haben ihn wenige Verkäufer: gegen gängige Teile tauschen…"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them: swap for common parts…"
+msgstr "%d Posten kommen in %d Sets oder weniger vor, also haben sie wenige Verkäufer: gegen gängige Teile tauschen…"
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it"
+msgstr "1 Posten kommt in %d Sets oder weniger vor, also haben ihn wenige Verkäufer"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them"
+msgstr "%d Posten kommen in %d Sets oder weniger vor, also haben sie wenige Verkäufer"
+
+msgid "Swapped %s for common ones, %s"
+msgstr "%s gegen gängige getauscht, %s"
+
+msgid "1 rare lot"
+msgstr "1 seltener Posten"
+
+msgid "%d rare lots"
+msgstr "%d seltene Posten"
+
+msgid "Still rare: %s"
+msgstr "Noch selten: %s"
+
+msgid "No lot is rare now"
+msgstr "Jetzt ist kein Posten mehr selten"
+
+msgid "Counting the sets each part comes in…"
+msgstr "Zähle die Sets, in denen jedes Teil vorkommt…"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories: each swap is a part or a colour in %d sets or more, picked or not, put in as one undo step"
+msgstr "Jeder kommt in seiner Farbe in %d Sets oder weniger vor, nach den Set-Inventaren von Rebrickable: Jeder Ersatz ist ein Teil oder eine Farbe in %d Sets oder mehr, ausgewählt oder nicht, eingesetzt in einem einzigen Rückgängig-Schritt"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories"
+msgstr "Jeder kommt in seiner Farbe in %d Sets oder weniger vor, nach den Set-Inventaren von Rebrickable"
+
+msgid "Back to the list"
+msgstr "Zurück zur Liste"
+
+msgid "The parts list, nothing swapped"
+msgstr "Die Teileliste, nichts getauscht"
+
+msgid "Swap 1 lot"
+msgstr "1 Posten tauschen"
+
+msgid "Swap %d lots"
+msgstr "%d Posten tauschen"
+
+msgid "Put the picked swaps in, as one undo step"
+msgstr "Die ausgewählten Ersatzteile einsetzen, in einem einzigen Rückgängig-Schritt"
+
+msgid "Rare lots, and a common swap for each"
+msgstr "Seltene Posten und ein gängiger Ersatz für jeden"
+
+msgid "Finding a common part or colour for each…"
+msgstr "Suche für jeden ein gängiges Teil oder eine gängige Farbe…"
+
+msgid "A swap is a part or a colour in %d sets or more: the same shape in the lot's colour where there is one, else the nearest colour of its finish"
+msgstr "Ein Ersatz ist ein Teil oder eine Farbe in %d Sets oder mehr: dieselbe Form in der Farbe des Postens, wo es eine gibt, sonst die nächste Farbe derselben Oberfläche"
+
+msgid "Only a swap that keeps the look starts picked: the same shape, or a close colour of the same finish"
+msgstr "Nur ein Ersatz, der das Aussehen erhält, ist schon ausgewählt: dieselbe Form oder eine nahe Farbe derselben Oberfläche"
+
+msgid "Swap this lot"
+msgstr "Diesen Posten tauschen"
+
+msgid "No part or colour of it comes in %d sets"
+msgstr "Kein Teil und keine Farbe davon kommt in %d Sets vor"
+
+msgid "rare: %s"
+msgstr "selten: %s"
+
+msgid "in 1 set"
+msgstr "in 1 Set"
+
+msgid "in %s sets"
+msgstr "in %s Sets"
+
+msgid "in no set"
+msgstr "in keinem Set"
+
+msgid "%d × %s (%s) in %s, %s → %s"
+msgstr "%d × %s (%s) in %s, %s → %s"
+
+msgid "%d × %s (%s) in %s, %s"
+msgstr "%d × %s (%s) in %s, %s"
+
+msgid "%s, %s (ΔE %s)"
+msgstr "%s, %s (ΔE %s)"
+
+msgid "%s (%s), the same shape and connections in its colour, %s"
+msgstr "%s (%s), dieselbe Form und dieselben Verbindungen in seiner Farbe, %s"
+
+msgid "the plain %s (%s), without its print, %s"
+msgstr "das unbedruckte %s (%s), ohne seinen Druck, %s"
+
+msgid "no swap in %d sets or more: %s"
+msgstr "kein Ersatz in %d Sets oder mehr: %s"
+
+msgid "%s itself comes in %d sets at most, in any colour"
+msgstr "%s selbst kommt in höchstens %d Sets vor, in jeder Farbe"
+
+msgid "%s itself comes in 1 set at most, in any colour"
+msgstr "%s selbst kommt in höchstens 1 Set vor, in jeder Farbe"
+
+msgid "no colour of its transparency comes in %d sets"
+msgstr "keine Farbe seiner Transparenz kommt in %d Sets vor"
+
+msgid "Pick any other yourself"
+msgstr "Jeden anderen wählst du selbst aus"
+
+msgid "no other mould of it sits as it does in %d sets or more"
+msgstr "keine andere Variante davon sitzt so wie es und kommt in %d Sets oder mehr vor"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and 1 more, %s"
+msgstr "%s (%s), dieselbe Form in seiner Farbe, mit all seinen Verbindungen und 1 weiteren, %s"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and %d more, %s"
+msgstr "%s (%s), dieselbe Form in seiner Farbe, mit all seinen Verbindungen und %d weiteren, %s"
+
+msgid "still made in its colour"
+msgstr "in seiner Farbe noch hergestellt"
+
+msgid "a close colour"
+msgstr "eine nahe Farbe"
+
+msgid "a different colour"
+msgstr "eine andere Farbe"
+
+msgid "not see-through"
+msgstr "nicht durchsichtig"
+
+msgid "see-through"
+msgstr "durchsichtig"
+
+msgid "loses its %s"
+msgstr "verliert die Oberfläche %s"
+
+msgid "becomes %s"
+msgstr "bekommt die Oberfläche %s"
+
+msgid "a part is in hand and cannot go back where it was: put it down or press Escape first"
+msgstr "ein Teil ist in der Hand und kann nicht zurück, wo es war: lege es erst ab oder drücke Esc"
+
+msgid "nothing swapped"
+msgstr "nichts getauscht"
+
+msgid "nothing swapped: %s"
+msgstr "nichts getauscht: %s"
+
+msgid "stayed: %s"
+msgstr "geblieben: %s"
+
+msgid "%s: %s's shape could not be had"
+msgstr "%s: die Form von %s war nicht zu bekommen"
 
 # partplaces (APP_UX9 #14)
 msgid "Where it's kept…"

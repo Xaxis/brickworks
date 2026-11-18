@@ -21,6 +21,7 @@
 
 import { db } from "./_db.js";
 import { scopeOf } from "./_settings.js";
+import { phoneRulesRead } from "./_phone.js";
 
 const notYet = (trouble) => /: 404$/.test(String(trouble?.message || ""));
 const VERCEL = "https://vercel.com/xaxis-projects/brickworks/settings/environment-variables";
@@ -87,11 +88,12 @@ async function vercelSays() {
 /// settings and the notice.
 export async function switchesRead(request, base) {
   const scope = scopeOf(request);
-  const [vercel, settings, notice, notices] = await Promise.all([
+  const [vercel, settings, notice, notices, phone] = await Promise.all([
     vercelSays(),
     db("rpc/site_settings_list", { method: "POST", body: {} }).catch(() => null),
     noticeOf(scope).catch(() => undefined),
     db("rpc/site_notices_list", { method: "POST", body: { p_scope: scope, p_limit: 10 } }).catch(() => null),
+    phoneRulesRead(request).catch(() => null),
   ]);
   const known = new Set(VARIABLES.map((one) => one.name));
   const variables = VARIABLES.map((one) => ({
@@ -122,6 +124,8 @@ export async function switchesRead(request, base) {
     notice: notice === undefined ? null : notice,
     notice_ready: notice !== undefined,
     notices: notices || [],
+    // What a phone is warned by before the studio opens (api/_phone.js).
+    phone,
   };
 }
 

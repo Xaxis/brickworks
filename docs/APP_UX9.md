@@ -630,6 +630,24 @@ learns which only by building it.
 - **Judged:** the most valuable of the three for mech and figure builders,
   but it needs balls seated by hand first (**balljoints**) and a measured
   torque for each joint kind. In Next, after balljoints.
+- **Done 2026-11-18 (posehold):** measured first, from builders'
+  arm-hanging tests (`data/joint_hold.json`, `tools/joint_hold_table.py`).
+  A Technic ball holds 2.85 N·cm: it held 2.58 and gave by 3.12, from one
+  joint. A friction pin holds 1.04: every one of 18 held 0.60, and every
+  one gave by 1.64. Small balls, click hinges, hinges, turntables and clips
+  are not known: they are named with what they carry, never given a number.
+  - Check stability, Pose, a drag and `pose_model` name each friction joint
+    past its hold, in red, with the share it holds ("holds 74% of what
+    hangs on it"). The mark goes when the pose holds. In Pose a pin's row
+    is marked too. A ball has no row, since Pose's rows are Grab's joints
+    and Grab turns no ball; `pose_model` and the rotate handle turn it.
+  - The real sets hold at their box's pose: 11 sets with friction joints
+    weighed, and 6 more whose joints are all of the unmeasured kinds.
+  - Built to droop: two 1 x 16s on one Technic ball, ten 2 x 4s at their
+    end, droop at 74%; Balance agrees with the hand sum within 1%. The
+    10-stud arm with a 2 x 4 holds 7.4 times over on a Technic ball. On a
+    small ball or a click hinge it is named, not weighed; an expert expects
+    a click hinge's teeth to carry that 7 g.
 
 **4. Instructions that say where each part is kept.** A builder with a
 sorted collection walks to the same drawers again and again.
@@ -720,6 +738,13 @@ because it is not one of them: it is the measure they serve.
 11. **No program drives the model's motors on screen** (Brickyard; Kinebrick
     Studio's next release builds Pybricks programs) (**hubprogram**).
 12. **Nothing makes a model easier to buy** (past parity, **rareswap**).
+    Done 2026-11-17: the parts list's row lists the lots in 3 sets or
+    fewer, each with its swap in 20 or more (the same shape in its colour,
+    else the nearest colour by ΔE), picked in one undo. On the ten gallery
+    seeds with the most: 79 rare lots, 61 offered a swap, 24 still rare
+    after the default picks (the 6 prints kept and 18 parts that come in
+    fewer than 20 sets in every colour). `replace_parts rare=true` in 1
+    call.
 13. **A step cannot be found by what it places** (round seven's
     **stepsearch**).
 14. **A collection does not say where each part is kept** (round seven's
@@ -950,7 +975,7 @@ keptbuilt and webstart10. design22 is running ahead of them.
 **Next, once those land:**
 - hubprogram, rareswap, stepsearch and partplaces: ranked 11 to 14 above.
 - **posehold:** a pose that holds its own weight, from measured friction
-  torques, after balljoints (past parity, 3).
+  torques, after balljoints (past parity, 3). Done 2026-11-18 (3 above).
 - **swoosh:** what comes away when a model is swung, after posehold
   (past parity, 5).
 - **camerakeys:** the camera keyed in Motions, as StudWorx keys any object;

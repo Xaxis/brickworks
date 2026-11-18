@@ -308,6 +308,14 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 			# Free to turn on its line: no working load to divide by either.
 			risk.message = "%s turns on %s %s with %s g past it, and nothing holding it" % [
 				one.beyond_part, one.held_part, one.held_on(), Balance.tidy(one.grams)]
+		elif not one.hold.is_empty():
+			# A friction joint past what one of its kind was measured to hold
+			# (PoseHold): it droops, by how much as a share of what hangs on it.
+			risk.message = ("%s droops on %s %s with %s g past it: they hold %d%% of what hangs on them"
+				if one.pins > 1 and one.hold == PoseHold.FRICTION_PIN
+				else "%s droops on %s %s with %s g past it: it holds %d%% of what hangs on it") % [
+				one.beyond_part, one.held_part, one.held_on(), Balance.tidy(one.grams),
+				PoseHold.percent(one.share())]
 		report.risks.append(risk)
 	for piece: Dictionary in weighed.tipping:
 		var risk := Risk.new()

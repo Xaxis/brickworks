@@ -18,11 +18,41 @@ Or all of that in one command, queued behind the release before it:
 tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
   --checks "io gallery" --units "unit1 unit2" --title "…"   # every headless probe
 #   --probes "grab fits" names exactly those; --probes none --why "…" runs none
+#   no app file changed: the web lane, on the live export, with no probe (--full, --web; --plan says which)
 tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
 tools/release/train.sh reship rel-m219 io      # a stopped one again, from its worktree
 tools/release/train.sh reship rel-m219 --accept progress "why"  # past a check failing on brickworks.diy too
 ```
+
+### Which lane
+
+| The branch changed | Lane | What runs | About |
+|---|---|---|---|
+| only `web/`, `api/`, `docs/`, `docs-site/`, `tests/`, `supabase/`, `.claude/`, `*.md`, and tools the export does not run | **web** (chosen by itself; `--web` to insist) | merge with no import; no probe; `ci_gate`; a preview of the live export with this tree's pages and API (`deploy.sh --dir`); the checks named, those `flows_for.py` finds, site and frames; promote | 30 min |
+| anything else (`src/`, scenes, `assets/`, `locale/`, `project.godot`, `export_presets.cfg`, `tools/mcp_tools.json`, `tools/export.sh` and the scripts it runs) | **full** (`--full` to insist) | merge and import, every headless probe, export, the same checks and promotion | 3-4 h |
+
+`tools/release/live_export.sh app FROM TO` is the rule, file by file. The
+export a web lane ships on is the one brickworks.diy serves: ship.sh keeps
+each full release's `build/web` as it goes live (`$RELEASE_OUT/exports/TAG`,
+named by `$RELEASE_OUT/live_web`), and the web lane reuses it until the
+next full release. With none kept (the first time, or after a release
+shipped by hand), keep one by hand: `live_export.sh keep TAG SHA DIR`, SHA
+the commit DIR was exported from. The web lane is checked again once its
+merge is made: an app file that differs from the export's tree (main took
+one meanwhile) stops it, to be staged again with `--full`. The same live
+database lock, stale check, `--accept` and `/admin › Site` record hold in
+both lanes. `--plan` says which lane, which checks and which probes a stage
+would run, and stages nothing. A tag for a web lane release may be
+`rel-mNNN.N`.
+
+A shared file every page loads names only the checks of the part of it
+that changed (`flows_for.py`'s SPLIT, reviewed: `web/theme.js` by block, an
+`/admin` section's markup and its own module by section); a line elsewhere
+in it, or in its styles, still names every check of every page that loads
+it. A check that changes what is live (`NEVER_LIVE` in ship.sh: console,
+console3, discovery) never runs on brickworks.diy as a stale check: failing
+on the preview, it holds the release.
 
 `reship TAG [--probes "..."] CHECK...` is for a train that stopped after its
 ship began, on a check gone stale or a timing probe under load: commit the

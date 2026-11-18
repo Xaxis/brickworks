@@ -57,8 +57,15 @@ const WATCH = Symbol.for("brickworks.pageRoutes.browser");
 const FIND_MS = 3000;
 
 export async function pageRoute(context, patterns, handler) {
-  const held = context[ROUTES] || hold(context);
   const added = { patterns, test: patterns.map(asRegExp), handler };
+  // A browser that speaks no CDP (Playwright's WebKit, phonetruth): its
+  // routes are Playwright's, and its pages keep no HTTP cache, as above.
+  const engine = context.browser()?.browserType().name() || "chromium";
+  if (engine !== "chromium") {
+    await asPlaywrights({ playwright: { route: context.route.bind(context) } }, added);
+    return context;
+  }
+  const held = context[ROUTES] || hold(context);
   held.routes.push(added);
   if (held.playwright.going) {
     await held.playwright.going;

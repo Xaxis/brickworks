@@ -6,6 +6,13 @@
 # and every probe a train runs beside it (SHIP_PROBES): main fast-forwarded
 # and pushed, that very preview promoted, the live site checked. Release
 # jobs take BOX_HEAVY_PRIORITY, as other projects' do.
+#
+# SHIP_EXPORT=DIR SHIP_EXPORT_FROM=SHA: the web lane (train.sh). DIR is the
+# export brickworks.diy serves, made from SHA (live_export.sh), and this
+# commit's app is that one's: no import, no parse gate, no tool-list probe,
+# and the preview is DIR with this tree's pages and API (deploy.sh --dir).
+# Without it, the export this ship made is kept as the live one once
+# brickworks.diy serves it, for the web lane after it.
 set -u
 TAG=$2
 # Absolute: preview_checks runs from a copy and cds to it itself, and a
@@ -91,11 +98,23 @@ set -a; . $R/.env; set +a
 # all of them must pass, as ever.
 URL=""
 [ -n "${SHIP_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
+# The web lane: the app is the live export's, or the ship stops here.
+DEPLOY_DIR=()
+if [ -n "${SHIP_EXPORT:-}" ]; then
+  [ -f "$SHIP_EXPORT/index.html" ] && [ -n "${SHIP_EXPORT_FROM:-}" ] \
+    || { echo "SHIP: held, no export in SHIP_EXPORT ($SHIP_EXPORT), or SHIP_EXPORT_FROM not said"; exit 1; }
+  app=$("$HERE/live_export.sh" app "$SHIP_EXPORT_FROM" HEAD | head -5 | paste -sd' ')
+  [ -z "$app" ] || { echo "SHIP: held, app files differ from the export's tree (${SHIP_EXPORT_FROM:0:9}), so it needs an export of its own: $app"; exit 1; }
+  DEPLOY_DIR=("--dir=$SHIP_EXPORT")
+  echo "SHIP: the web lane: the export made from ${SHIP_EXPORT_FROM:0:9}, no import or probe"
+fi
 if [ -z "$URL" ]; then
   # What CI ran on every push and nobody read: the version, the Python
   # suite, the shell scripts. First, as it needs no import: two minutes in
   # its slot at load 40 (2026-10-26).
   "$HERE/ci_gate.sh" "$W" || { echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh)"; exit 1; }
+fi
+if [ -z "$URL" ] && [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
   import_here || { echo "SHIP: held, the import did not finish (tools/fresh_import.sh)"; exit 1; }
   # The merge gates, here under the release's priority: every GDScript file
   # changed since main parses, and the tool list is the app's. Run per merge
@@ -105,8 +124,10 @@ if [ -z "$URL" ]; then
   sync=$(~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 1200 godot --headless --path . --script src/dev/mcp_sync_probe.gd 2>&1)
   echo "$sync" | grep -q "the MCP is in step with the app" \
     || { echo "SHIP: held, the tool list is not the app's"; echo "$sync" | grep -E "FAIL" | head -3; exit 1; }
+fi
+if [ -z "$URL" ]; then
   probes_failed && exit 1
-  deploy_preview "$TAG" "$SHA" || exit 1
+  deploy_preview "$TAG" "$SHA" "${DEPLOY_DIR[@]}" || exit 1
 fi
 probes_failed && exit 1
 run_checks "$URL" ${TAG}_pv "$@" || exit 1
@@ -187,7 +208,23 @@ if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
       [ -n "$script" ] && [ -n "$built" ] && git cat-file -e "$built^{commit}" 2>/dev/null \
         && ! git diff --quiet "$built" HEAD -- "$script" 2>/dev/null && echo "$name"
     done > $S/${TAG}_stale.changed
-    env -u BOX_HEAVY_PRIORITY "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_stale $other >/dev/null 2>&1
+    # Never run there, as each changes what is live there (NEVER_LIVE): it
+    # holds the release, with no run on brickworks.diy to ship past it by.
+    # console flipped the real beta's switch until b66e9044a, and refuses
+    # that part there now; console3's Run now runs the real crons there (the
+    # gallery's front, api/_console_data.js) and writes the owner's audit
+    # log; discovery chooses the week's pick that every visitor sees.
+    NEVER_LIVE=" console console3 discovery "
+    ran=""; never=""
+    for name in $other; do
+      case "$NEVER_LIVE" in *" $name "*) never="$never $name" ;; *) ran="$ran $name" ;; esac
+    done
+    [ -z "$never" ] || echo "SHIP: never run on brickworks.diy, as each changes what is live there:$never"
+    if [ -n "$ran" ]; then
+      env -u BOX_HEAVY_PRIORITY "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_stale $ran >/dev/null 2>&1
+    else
+      echo "done" > $S/${TAG}_stale.out
+    fi
     for name in $other; do
       case "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out)" in
         ""|*" exit=0 "*|*" exit=75 "*|*" exit=125 "*|*" exit=127 "*) ;;
@@ -308,18 +345,29 @@ if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
     || ! SHIP_DEPLOY=1 timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
   echo "SHIP: $URL not promoted; deploying production afresh"
   LIVE=$SHA
-  SHIP_DEPLOY=1 timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
+  SHIP_DEPLOY=1 timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${DEPLOY_DIR[@]}" >> "$S/${TAG}_prod.log" 2>&1
   deployed=$?
 fi
-grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
 # A failed deploy is a failed ship. m174's lost one size of its start check
 # to a timed-out connection, was never promoted, and still wrote done 0: its
 # live checks passed against m173, and m175's ship began on top of it
 # (2026-10-26).
 if [ $deployed -ne 0 ]; then
-  echo "SHIP: main is $SHA but production is not (deploy exit $deployed): deploy it again with PROD_BY_HAND=\"$TAG's deploy failed\" tools/deploy.sh --prod"
+  grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
+  echo "SHIP: main is $SHA but production is not (deploy exit $deployed): deploy it again with PROD_BY_HAND=\"$TAG's deploy failed\" tools/deploy.sh --prod${DEPLOY_DIR[*]:+ ${DEPLOY_DIR[*]}}"
   exit 1
 fi
+# The export this ship made, kept as the live one for the web lane, before
+# the line a train behind waits for says it serves: a web lane staged
+# after this release reads it once it does. Never fails a ship.
+if [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
+  if [ -f "$W/build/web/index.html" ]; then
+    RELEASE_OUT=$S "$HERE/live_export.sh" keep "$TAG" "$LIVE" "$W/build/web" 2>&1 | sed 's/^/SHIP: /'
+  else
+    echo "SHIP: no export in $W/build/web to keep: a web lane waits for a release that makes one"
+  fi
+fi
+grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
 # The CDN keeps serving the last pages for a minute or so after the promotion.
 sleep "${SHIP_CDN_WAIT:-90}"
 # And the live checks go on only against this build.

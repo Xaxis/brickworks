@@ -92,6 +92,10 @@
 //                                  owner's console (console3,
 //                                  api/_console_switches.js), or null;
 //                                  anybody's, kept a minute at the CDN
+//   GET  /api/plans?op=phone       the numbers a phone is warned by before
+//                                  the studio opens (api/_phone.js): set in
+//                                  the console's Switches, else measured;
+//                                  anybody's, kept a minute at the CDN
 //   GET  /api/plans?op=social_due  Vercel's cron (/api/plans/social-due,
 //                                  every quarter hour): the owner's scheduled
 //                                  sends whose time came, and the desk's look
@@ -121,6 +125,7 @@ import {
 import { betaDaily, betaHub, betaJoin, betaLeave, betaRoute, betaSpots } from "./_beta.js";
 import { feedbackRoute } from "./_feedback.js";
 import { noticeShown } from "./_console_switches.js";
+import { phoneShown } from "./_phone.js";
 import { socialDueRoute, socialVisit } from "./_social.js";
 import { db, dbConfigured } from "./_db.js";
 
@@ -359,6 +364,7 @@ export default async function handler(request, response) {
   if (request.method === "GET" && op === "beta_hub") return betaHub(request, response);
   if (request.method === "GET" && op === "beta_daily") return betaDaily(request, response);
   if (request.method === "GET" && op === "notice") return noticeShown(request, response);
+  if (request.method === "GET" && op === "phone") return phoneShown(request, response);
   if (request.method === "GET" && op === "social_due") return socialDueRoute(request, response);
   if (request.method === "POST" && op === "social_visit") return socialVisit(request, response);
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);

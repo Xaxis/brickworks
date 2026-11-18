@@ -43,7 +43,8 @@ move() {
 }
 for e in *; do
   [ -e "$e" ] || [ -L "$e" ] || continue
-  case "$e" in archive|README.archive|HOLD|*.hold) continue ;; esac
+  # The live export (live_export.sh) is in use however long it sits unchanged.
+  case "$e" in archive|README.archive|HOLD|*.hold|exports|live_web) continue ;; esac
   if [[ $e =~ ^(rel-m([0-9]+)) ]]; then
     n=${BASH_REMATCH[2]}
     { [ -z "$cut" ] || [ "$n" -ge "$cut" ]; } && continue

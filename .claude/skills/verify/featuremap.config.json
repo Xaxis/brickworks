@@ -5792,6 +5792,76 @@
       "entry": "src/dev/stepsearch_probe.gd",
       "reach": "tools/probe.sh stepsearch_probe; tools/probe.sh stepsearch_phone_probe   (the car's finds by number, name, colour and both against the bricks themselves, the row marking the same, every key's list on screen within 100 ms; a click, Enter, Shift+Enter, Escape; edit_steps find= the same steps in 1 call, refused with another op, and no find changing the model; 7140-1's engines found in their own steps, every copy counted; Orthanc's keys within 100 ms; the phone's (390 x 844): Find…'s sheet above the keyboard, a tap going there; pictures in shots/stepsearch/)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "a pose that holds its own weight",
+      "entry": "src/assembly/pose_hold.gd",
+      "reach": "godot --path .  (an arm posed on a Technic ball or a friction pin with weight at its end: Check stability, Pose's hold lines and the pin's row, a drag's status, Stress's list and pose_model name each joint past what one of its kind was measured to hold (data/joint_hold.json), red, with the share it holds, and the mark goes when the pose holds; small balls, click hinges, hinges, turntables and clips named, never given a number; tools/probe.sh posehold_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "rare lots swapped for common ones",
+      "entry": "src/collection/rare_swap.gd",
+      "reach": "godot --path .  (P, the parts list: the row over the rows says how many lots come in 3 sets or fewer, each such row tagged rare; pressed, each with its swap in 20 sets or more, the same shape in its colour or the nearest colour of its finish and transparency, a box each; only a swap that keeps the look starts picked (the same shape, or a colour within ΔE 10 of its finish), every other says what it changes; a touch on a row toggles it; Swap N lots, a part in hand put back first, one undo step, the row then says what changed and what is still rare; a session's replace_parts rare=true swaps the same, lots= names others; tools/probe.sh rareswap_probe; tools/probe.sh rsreview_probe; tools/probe.sh rsreview_phone_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "rareswap probe",
+      "entry": "src/dev/rareswap_probe.gd",
+      "reach": "tools/probe.sh rareswap_probe   (headless, about 10 minutes; RARESWAP_CASES=gallery,mcp,kept,... for some; RARESWAP_OUT=DIR writes gallery.tsv, the rare count before and after on each of the 10, with the defaults alone and with every swap picked)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "rsreview probe",
+      "entry": "src/dev/rsreview_probe.gd",
+      "reach": "tools/probe.sh rsreview_probe   (headless, about 15 minutes; RSR_CASES=lpub,mcp_edges,held,... for some; RSR_OUT=DIR writes lots.tsv and catalogue.tsv)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "rsreview phone probe",
+      "entry": "src/dev/rsreview_phone_probe.gd",
+      "reach": "tools/probe.sh rsreview_phone_probe   (windowed, 430x932 by its header; RSR_OUT=DIR keeps its pictures)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "a phone asked before a big model opens",
+      "entry": "web/phone-warn.js",
+      "reach": "<deployment>/m/<id> or /library/set/<n> on a phone (touch only, shorter side under 600 px): Build it, Open in Brickworks or the 3D view's way into the studio, on a model past phone_parts (/api/plans?op=phone, set in /admin#switches Phones), asks \"About N parts: on a phone this may close the tab\" first; Not now or Escape stays, Open it anyway goes on; the picture's 3D view, a computer, a tablet and a smaller model are never asked (web/model-page.js loads it); preview check [phonewarn]",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the loader's words for a phone and a browser without WebGL 2",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app: no WebGL 2 is said at once in plain words with what to do instead, and the engine's files are let go (window.stop); a first visit on a phone (#eta, window.brickworksEta) says how long it will take as the files come, plus phone_start_s; a return (localStorage brickworks.engineHad is this engine's /e/<hash>/), a computer and a tablet are told nothing; the engine's memory refused is said as that; preview check [phonewarn]",
+      "area": "web"
+    },
+    {
+      "kind": "endpoint",
+      "label": "the numbers a phone is warned by",
+      "entry": "api/_phone.js",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "phonewarn browser flow",
+      "entry": "tools/web/phonewarn_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/phonewarn_flow.mjs --url=<preview>/app --owner --out=DIR   (at 1280x800, 390x844 touch and 820x1180 touch: the big-model question on the phone alone and its three answers, the 3D view unasked; Switches' Phones number set as the owner and obeyed by the page, then put back (never on brickworks.diy); no WebGL 2 said on all three with the engine's files let go; a phone's first visit on Fast 4G timed, a return, the computer and the tablet told nothing; preview check [phonewarn])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "phonetruth measures",
+      "entry": "tools/web/phonetruth_flow.mjs",
+      "reach": "node --env-file=.env tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR --configs=chromium,cpu4,cpu6,iphone13,iphone15 [--steps=load,frames,ladder] [--table]   (under heavy, local only: Chromium phone emulation, Playwright WebKit as an iPhone 13 and 15 (software GL, multi-finger touch by tools/web/fingers.mjs), Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and a return, peak memory (process Pss, Wasm, JS heap), frames turning the car and Orthanc, the largest gallery model kept; DIR/phonetruth.md is docs/PHONE.md's table; tools/web/phonewalk_flow.mjs --engine=webkit --device=\"iPhone 13\" | --cpu=4 --net=fast4g walks it by finger)",
+      "area": "web"
     }
   ]
 }

@@ -14,6 +14,7 @@ on each script reached since, and read names of every shape.
 from __future__ import annotations
 
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -190,3 +191,97 @@ def test_a_changed_page_names_the_flow_that_crawls_every_page() -> None:
     flows_for = _flows_for()
     assert flows_for.a_page("/plans") and flows_for.a_page("/") and flows_for.a_page("/docs")
     assert not flows_for.a_page("/m/") and not flows_for.a_page("/api/share") and not flows_for.a_page("/no-such-page")
+
+
+# --- shared files named by the part that changed (fastlane, 2026-11-18) ---
+# web/theme.js is in every page's head: the social desk's few lines in it
+# named 52 checks, and with the console's 22 its train named 62.
+
+def _line(path: str, text: str) -> tuple[int, str]:
+    """The number and words of the first line of [path] holding [text]."""
+    for n, line in enumerate((ROOT / path).read_text().split("\n"), 1):
+        if text in line:
+            return n, line
+    raise AssertionError(f"no {text!r} in {path}")
+
+
+def _changed(path: str, *texts: str, gone: str = "") -> str:
+    """A zero-context diff that rewrites the lines of [path] holding [texts],
+    and takes out [gone] after the first."""
+    hunks = []
+    for text in texts:
+        n, line = _line(path, text)
+        hunks.append(f"@@ -{n},1 +{n},1 @@\n-{line}\n+{line} // changed\n")
+    if gone:
+        n, _ = _line(path, texts[0])
+        hunks.append(f"@@ -{n + 1},1 +{n},0 @@\n-{gone}\n")
+    return f"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n" + "".join(hunks)
+
+
+def _run_diff(diff: str, *files: str) -> set[str]:
+    out = subprocess.run([sys.executable, str(SCRIPT), "--diff", "-", *files], cwd=ROOT, input=diff,
+                         capture_output=True, text=True, check=True).stdout
+    return _checks(out)
+
+
+def test_a_line_in_one_block_of_theme_js_names_that_blocks_checks_alone() -> None:
+    every = _checks(_run("web/theme.js"))
+    assert {"gallery", "socialdesk", "theme", "beta"} <= every and len(every) > 40, every
+    # The social desk's tag, the theme's choice, the beta's bar: each its own.
+    assert _run_diff(_changed("web/theme.js", "const campaign = params.get"), "web/theme.js") == {"socialdesk"}
+    theme = _run_diff(_changed("web/theme.js", 'const KEY = "brickworks.theme"'), "web/theme.js")
+    assert {"theme", "theme_account"} <= theme and "socialdesk" not in theme and "gallery" not in theme, theme
+    beta = _run_diff(_changed("web/theme.js", 'heard?.beta === "open"'), "web/theme.js")
+    assert {"beta", "betahome"} <= beta and "theme" not in beta and "gallery" not in beta, beta
+    notice = _run_diff(_changed("web/theme.js", 'import("/notice.js")'), "web/theme.js")
+    assert "console3" in notice and "gallery" not in notice, notice
+    # Two blocks: both blocks' checks.
+    both = _run_diff(_changed("web/theme.js", "const campaign = params.get", 'const KEY = "brickworks.theme"'),
+                     "web/theme.js")
+    assert both == theme | {"socialdesk"}, both
+    # The language block hands every page's scripts their words: every page's.
+    assert _run_diff(_changed("web/theme.js", "code: page, chosen, choose, say"), "web/theme.js") == every
+    # A block's start taken out, or a file the diff does not name: every page's.
+    gone = _changed("web/theme.js", "const campaign = params.get", gone="// The site's notice (console3, 2026-11-13)")
+    assert _run_diff(gone, "web/theme.js") == every
+    assert _run_diff(_changed("web/theme.js", "const campaign = params.get"), "web/theme.js", "web/feed.js") \
+        >= {"socialdesk", "feed"}
+    assert _run_diff("", "web/theme.js") == every
+
+
+def test_a_line_inside_one_console_section_names_that_sections_flows() -> None:
+    whole = _checks(_run("web/admin.html"))
+    assert {"socialdesk", "account", "console2"} <= whole, whole
+    n, _ = _line("web/admin.html", '<section data-section="social"')
+    inside = (ROOT / "web/admin.html").read_text().split("\n")[n + 2]
+    assert inside.strip() and "section" not in inside, inside
+    social = _run_diff(_changed("web/admin.html", inside), "web/admin.html")
+    assert "socialdesk" in social and "account" not in social and social < whole, social
+    # Its styles may be any section's: the whole page's.
+    assert _run_diff(_changed("web/admin.html", ".networks li.by-hand {"), "web/admin.html") == whole
+
+
+def test_each_section_module_is_its_sections_alone() -> None:
+    """Only admin.js imports it, and admin.js only loads it as its section
+    opens and marks the section changed: a module used anywhere else is the
+    whole page's, and comes out of ADMIN_SECTION_MODULES."""
+    flows_for = _flows_for()
+    admin_js = (ROOT / "web/admin.js").read_text()
+    page = (ROOT / "web/admin.html").read_text()
+    for path, section in flows_for.ADMIN_SECTION_MODULES.items():
+        name = Path(path).name
+        assert f'data-section="{section}"' in page, (path, section)
+        importers = sorted(p.name for p in (ROOT / "web").glob("*.[jh][st]*")
+                           if p.name != name and f"/{name}" in p.read_text(errors="ignore"))
+        assert importers == ["admin.js"], (path, importers)
+        imported = re.search(rf'^import \{{([^}}]*)\}} from "/{re.escape(name)}";$', admin_js, re.M)
+        assert imported, path
+        for spec in imported.group(1).split(","):
+            local = spec.split(" as ")[-1].strip()
+            uses = [line.strip() for line in admin_js.split("\n")
+                    if re.search(rf"\b{local}\b", line) and not line.startswith("import ")]
+            assert uses and all(re.fullmatch(rf'{section}: \(\) => {local}\(\),', use)
+                                or re.fullmatch(rf'{local}\(\(\) => changed\("{section}"\)\);', use) for use in uses), \
+                (path, local, uses)
+    social = _checks(_run("web/admin-social.js"))
+    assert "socialdesk" in social and "account" not in social, social
