@@ -211,6 +211,33 @@ static func _first_unlike(a: String, b: String) -> String:
 
 
 ## The rare row pressed, and the swaps' list once it is filled (30 s at most).
+## The name a screen reader says for each swap box, in the list's order.
+static func _box_names(list: InventoryPanel) -> Array:
+	var out: Array = []
+	for row: Node in (list.get("_swaps") as Node).get_children():
+		for child: Node in row.get_children():
+			if child is CheckBox:
+				out.append((child as CheckBox).accessibility_name)
+	return out
+
+
+static func _distinct(names: Array) -> bool:
+	var seen: Dictionary = {}
+	for n: Variant in names:
+		seen[n] = true
+	return seen.size() == names.size()
+
+
+## Whether [param said] is the words a swap row draws for its lot.
+static func _drawn_in(list: InventoryPanel, said: String) -> bool:
+	for row: Node in (list.get("_swaps") as Node).get_children():
+		for child: Node in row.get_children():
+			for each: Node in child.get_children():
+				if each is Label and (each as Label).text == said:
+					return true
+	return false
+
+
 func _swaps_up(list: InventoryPanel) -> bool:
 	var row: Control = list.controls_by_name().get("parts_rare")
 	if row == null or not await _press(row):
@@ -635,7 +662,21 @@ func _case_words() -> void:
 		if lot.into_colour >= 0:
 			names.append(_library.color(lot.into_colour).name.replace("_", " "))
 	names.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
+	var boxes: Array = _box_names(list)
+	_check("words: a screen reader says which lot each box swaps, each its own (%s)"
+		% " | ".join(boxes), boxes.size() == (list.get("_rare") as Array).size()
+		and not boxes.has("") and _distinct(boxes)
+		and boxes.all(func(n: String) -> bool: return _drawn_in(list, n)))
 	list.hide_list()
+	# ...and in German as the row draws it, not the English it was first.
+	Language.apply("de")
+	list = await _list_up()
+	var german: Array = _box_names(list) if await _swaps_up(list) else []
+	_check("words: ...in German, as each row draws it (%s)" % " | ".join(german),
+		german.size() == boxes.size() and not german.has("")
+		and german.all(func(n: String) -> bool: return _drawn_in(list, n) and not boxes.has(n)))
+	list.hide_list()
+	Language.apply("en")
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)
 		var missing: Array = []
