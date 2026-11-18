@@ -2662,26 +2662,28 @@ func retrieve_between(section: String, early: int, late: int) -> String:
 ## The first of the file's buffer RETRIEVEs beginning a step that the model
 ## now has in one step with the step before it (SourceFile.retrieve_joined),
 ## in the sections of [param paths] (the paths an edit moved parts in) and
-## those they are put on in: [the line, the parts of the step before it, of
-## the step it begins (brick ids; a copy's by one of its parts)]; [] for
-## none. Read after Previous, Next or To step, before it is kept: two steps
-## made one across a RETRIEVE are refused as a merge is (Shell.change_steps),
-## or what the earlier put on is never shown in LPub3D (mkreview M1). Asks
-## nothing of a file without one, nor reads the model for a section without.
+## those a copy among them goes on in with its parts: [the line, the parts
+## of the step before it, of the step it begins (brick ids; a copy's by one
+## of its parts)]; [] for none. Read after Previous, Next or To step,
+## before it is kept: two steps made one across a RETRIEVE are refused as a
+## merge is (Shell.change_steps), or what the earlier put on is never shown
+## in LPub3D (mkreview M1). Asks nothing of a file without one, nor reads
+## the model for a section without.
 func retrieve_joined(paths: Array) -> Array:
 	var source: SourceFile = _live_source()
 	if source == null or not source.has_retrieves():
 		return []
 	var sections: Array = []
 	for path: String in paths:
-		var at: String = path
+		var at: String = AuthorSteps.home(world, path)
 		while true:
-			var section: String = AuthorSteps.home(world, at)
-			if not sections.has(section) and source.retrieves_in(section):
-				sections.append(section)
-			if at.is_empty():
+			if not sections.has(at) and source.retrieves_in(at):
+				sections.append(at)
+			# A copy given no step goes on with its lowest part, so a part
+			# moved in it can move it in the one above (AuthorSteps.unit_step).
+			if at.is_empty() or world.unit_steps.has(at):
 				break
-			at = Assemblies.parent_of(at)
+			at = AuthorSteps.home(world, Assemblies.parent_of(at))
 	if sections.is_empty():
 		return []
 	var by_section: Dictionary = AuthorSteps.items_in(world, sections, scenery)
