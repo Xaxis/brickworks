@@ -141,7 +141,13 @@ def controls() -> tuple[set[str], dict[str, int], list[list[str]]]:
     files: list[list[str]] = []
     for path in sorted((ROOT / "src").rglob("*.gd")):
         text = path.read_text(encoding="utf-8")
-        found = bodies(text, "controls_by_name") + bodies(text, "face_points")
+        # Main's _page_controls names some of its own, and a body that
+        # merges a helper's names (named.merge(_palette_controls())) has
+        # that helper's too.
+        found = bodies(text, "controls_by_name") + bodies(text, "face_points") + bodies(text, "_page_controls")
+        for body in list(found):
+            for helper in re.findall(r"\.merge\(\s*(_?[a-z][a-z0-9_]*)\(\)", body):
+                found += bodies(text, helper)
         if not found:
             continue
         # The words a family in this file can end in: its own short words,

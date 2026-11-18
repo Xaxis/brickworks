@@ -499,3 +499,21 @@ def test_the_closed_names_are_what_the_code_names() -> None:
     names = json.loads(re.search(r"export const NAMES = (\{.*\});", (ROOT / "api/_insights_names.js").read_text()).group(1))
     assert "/gallery" in names["exact"]["site"]["view"] and "people.like" in names["exact"]["site"]["act"]
     assert "look_at_model" in names["mcp"] and "tabs" in names["mcp"]
+
+
+def test_every_name_the_studio_tells_the_page_is_kept() -> None:
+    # The names a real studio told the page in tools/web/insights_flow.mjs
+    # and the server once dropped: keys with spaces, keys picked from a list
+    # or held in a variable, main's own, a merged helper's, and the bin's
+    # Techniques tiles. A made-up name is still dropped.
+    told = ["all_colours", "all_parts", "colour_find", "first_fold", "first_part", "make_part", "new", "new_parts",
+            "open", "save", "part_search", "photo_search", "parts_list", "only_made_in_it", "tool_select",
+            "offer_close", "offer_show", "palettes", "parts_rail", "properties_rail", "technique_staggered_wall",
+            "tile_picture_#", "motion_pick_#"]  # the page sends a number as #
+    # The server's own test (api/_analytics.js nameKnown), families and all.
+    script = ("const m = await import(process.argv[1] + '/api/_analytics.js'); const sets = await m.namesKnown();"
+              "console.log(JSON.stringify(process.argv.slice(2).filter((n) => !m.nameKnown(sets, 'studio', 'press', n))))")
+    done = subprocess.run(["node", "--input-type=module", "-e", script, str(ROOT), *told, "made_up_control"],
+                          capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+    assert done.returncode == 0, done.stderr
+    assert json.loads(done.stdout) == ["made_up_control"]
