@@ -5862,6 +5862,20 @@
       "entry": "tools/web/phonetruth_flow.mjs",
       "reach": "node --env-file=.env tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR --configs=chromium,cpu4,cpu6,iphone13,iphone15 [--steps=load,frames,ladder] [--table]   (under heavy, local only: Chromium phone emulation, Playwright WebKit as an iPhone 13 and 15 (software GL, multi-finger touch by tools/web/fingers.mjs), Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and a return, peak memory (process Pss, Wasm, JS heap), frames turning the car and Orthanc, the largest gallery model kept; DIR/phonetruth.md is docs/PHONE.md's table; tools/web/phonewalk_flow.mjs --engine=webkit --device=\"iPhone 13\" | --cpu=4 --net=fast4g walks it by finger)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the start by phase",
+      "entry": "tools/web/start_phases.mjs",
+      "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] --out=DIR   (webstart11, local servers only: two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; DIR/phases.md and pairs.json)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the web's catalogue as columns",
+      "entry": "src/parts/part_library.gd",
+      "reach": "godot --headless --path . --script src/dev/catalogue_columns_probe.gd   (webstart11: assets/web/catalogue.bin, written by src/dev/write_all_order.gd at every web export from the pack's catalogue.json (PartLibrary.columns_of) and read back field for field or the export stops; the web presets ship it in the JSON's place; the probe judges every field of 29,668 parts the same, its memory height under half the JSON's, no slower, another format refused)",
+      "area": "parts"
     }
   ]
 }
