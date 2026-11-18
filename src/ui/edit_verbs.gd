@@ -809,8 +809,10 @@ func duplicate_selection(again: bool = true) -> int:
 
 
 ## Pick the selection up to move it with the pointer.
-func lift() -> int:
-	var count: int = builder.lift_selection()
+## [param grab]: the pointer's line a drag began on ([from, way]), which one
+## part dragged alone goes on by the joint of (Builder.lift_selection).
+func lift(grab: Array = []) -> int:
+	var count: int = builder.lift_selection(grab)
 	if count == 0:
 		return 0
 	edited.call()
@@ -1176,8 +1178,10 @@ func pick_at(at: Vector2) -> bool:
 ## the selection, if it is in it) picked up to follow the pointer and be
 ## let go where the drag ends, with what rests on it (Carry.riders), or
 ## alone with Shift held ([param alone]) — or, with Ctrl, a copy of it.
-## False when there was nothing it could take.
-func drag_start(brick_id: int, copy: bool, alone: bool = false) -> bool:
+## False when there was nothing it could take. [param grab]: the pointer's
+## line where the drag began ([from, way]): a part dragged alone goes on by
+## the joint it was picked up by there (grabseat).
+func drag_start(brick_id: int, copy: bool, alone: bool = false, grab: Array = []) -> bool:
 	if builder.is_locked(brick_id):
 		say.call(Keymap.filled("that part is locked — {unlock|unlocks everything}"))
 		return false
@@ -1194,6 +1198,7 @@ func drag_start(brick_id: int, copy: bool, alone: bool = false) -> bool:
 	_riders = found["riders"]
 	_riders_cut = bool(found["cut"])
 	_alone = true
+	_drag_grab = grab
 	return _drag_lift(alone)
 
 
@@ -1207,6 +1212,8 @@ var _dragged: Array = []
 var _riders: Array = []
 var _alone: bool = true
 var _riders_cut: bool = false
+## The pointer's line the drag began on ([from, way]), or [] for none.
+var _drag_grab: Array = []
 ## What the drag's lift put in hand (Carry.items, by reference): whether what
 ## is in hand is still the drag's (put_away).
 var _drag_items: Array = []
@@ -1229,7 +1236,7 @@ func drag_alone(alone: bool) -> void:
 func _drag_lift(alone: bool) -> bool:
 	_select_live(_dragged + ([] if alone else _riders))
 	_alone = alone or _riders.is_empty()
-	var count: int = lift()
+	var count: int = lift(_drag_grab)
 	if count == 0:
 		return false
 	_drag_items = builder.carrying.items
