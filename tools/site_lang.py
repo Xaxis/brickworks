@@ -106,7 +106,7 @@ PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
          "feedback.html": "feedback", "beta.html": "beta", "terms.html": "terms",
-         "privacy.html": "privacy", "guidelines.html": "guidelines", "takedown.html": "takedown",
+         "privacy.html": "privacy", "counting.html": "counting", "guidelines.html": "guidelines", "takedown.html": "takedown",
          "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize"}
 # The page not found has no address of its own: it answers every address
 # there is nothing at, its copy any such address in the language (/de/<it>,

@@ -5486,6 +5486,41 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "the counter's route and its reads",
+      "entry": "api/_analytics.js",
+      "reach": "python3 tools/minitest.py tests/test_insights.py   (POST /api/plans?op=tally always 204: DNT, GPC, the EU/UK without a yes, a junk body kept nowhere; a preview's or a check's rows test; the account only as HMAC(VIEW_SECRET); GET /api/admin?op=analytics 401 signed out, 404 to anybody else, ranges and filters; the cron /api/plans/tally-daily once a day; Claude's tool calls counted in api/mcp.js, refused and failed ones too; supabase/analytics.sql in a Postgres of its own: no role reaches a table, the caps, a read writes nothing, the rollup equal to the held rows, 30 days kept; docs/ANALYTICS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the counter and its ask",
+      "entry": "web/tally.js",
+      "reach": "every site page and /app, loaded after the first screen (web/theme.js, src/boot/shell.html): beacons to /api/plans?op=tally every 15 s while something happened and on leaving; nothing with Do Not Track or GPC, after No, off in Settings › Privacy (#counting-on) or in a driven browser without localStorage brickworks.counting.check=1; on a European clock the ask at the window's foot (web/counting-ask.js) first; /counting says it in en, de, fr, es",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the owner's Analytics",
+      "entry": "web/admin-analytics.js",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never used, sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what is counted page",
+      "entry": "web/counting.html",
+      "reach": "https://brickworks.diy/counting (and /de, /fr, /es): what is counted, what never is, when you are asked, turning it off, how long it is kept, who sees it; linked from /privacy#your-visit and Settings › Privacy",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "insights browser flow",
+      "entry": "tools/web/insights_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/insights_flow.mjs --url=<preview> --out=DIR [--no-studio]   (never on brickworks.diy: the read's gate; nothing sent or started with DNT, GPC, after No or driven unasked; a tagged visit's beacons with no address, IP or page text; the ask in German at 430x932, Yes and No; off in Settings; the server's own GPC and DNT drop; the studio's beacon; after supabase/analytics.sql this run's rows in the owner's read; each tab at 390/1280 light/dark; <out>/beacons.json the beacons' sizes; preview check [insights])",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "deployment variables written down",
       "entry": "tools/release/env_names.sh",

@@ -193,6 +193,18 @@
   else load();
 })();
 
+// How the site is used, counted (insights, 2026-11-18; web/tally.js,
+// /counting): asked for once the page has loaded and gone idle, never on an
+// embed's card, the connector's consent page or the console. It sends
+// nothing where the browser or the person said no (web/counting.js).
+(() => {
+  if (document.documentElement.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?(?:oauth\/|admin)/.test(location.pathname)) return;
+  const idle = (then) => (window.requestIdleCallback ? requestIdleCallback(then, { timeout: 4000 }) : setTimeout(then, 1500));
+  const load = () => idle(() => import("/tally.js").catch(() => null));
+  if (document.readyState === "complete") load();
+  else addEventListener("load", load, { once: true });
+})();
+
 // A visit a post from the owner's social desk brought (socialdesk,
 // 2026-11-18; api/_social.js, /admin › Social): the desk tags the site's
 // links in what it sends with utm_campaign=bw-<send id>. The landing is told

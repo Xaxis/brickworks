@@ -1414,6 +1414,9 @@ const loaderSays = (function () {
 			render(1);
 			say("Ready");
 			boot.classList.add("done");
+			// How the studio is used, counted (web/tally.js, /counting): after
+			// it is up, and nothing sent where the browser or the person said no.
+			setTimeout(function () { import("/tally.js").catch(function () {}); }, 2000);
 			// The canvas wants focus or the first keystroke goes nowhere.
 			setTimeout(function () { GODOT_CONFIG.canvas.focus(); }, 700);
 		});

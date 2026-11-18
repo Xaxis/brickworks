@@ -21,6 +21,7 @@ import { keepInView, loadReport, whenChanged as galleryChanged } from "/admin-ga
 import "/admin-moderation.js";
 import { challengeOf } from "/admin-challenges.js";
 import { loadData } from "/admin-data.js";
+import { TABS as ANALYTICS_TABS, loadAnalytics } from "/admin-analytics.js";
 import { loadSwitches, whenChanged as switchesChanged } from "/admin-switches.js";
 import { loadBeta, whenChanged as betaChanged } from "/admin-beta.js";
 import { loadFeedback } from "/admin-feedback.js";
@@ -32,10 +33,10 @@ import { loadSocial, whenChanged as socialChanged } from "/admin-social.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
+const SECTIONS = ["overview", "analytics", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
   "data", "switches", "audit"];
 const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
-  social: ["inbox", "write", "sent", "accounts"] };
+  social: ["inbox", "write", "sent", "accounts"], analytics: ANALYTICS_TABS };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -63,6 +64,7 @@ function route() {
 // Each section read once it is first opened, and again on Refresh.
 const loaders = {
   overview: () => loadOverview(),
+  analytics: () => loadAnalytics(),
   people: () => loadPeople(),
   moderation: () => loadReport(),
   gallery: () => loadReport(),

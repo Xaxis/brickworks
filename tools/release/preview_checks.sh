@@ -535,6 +535,15 @@ declare -A CMD=(
   # page offered, never opened); each tab at 390 and 1280, light and dark;
   # no token in any answer, page or storage. The pool emptied after.
   [socialdesk]="tools/web/socialdesk_flow.mjs --url=$P --out=$S/${TAG}_socialdesk"
+  # The counter and /admin › Analytics (insights, docs/ANALYTICS.md): the
+  # read 401 signed out and 404 to anybody else; nothing sent or started
+  # with Do Not Track, GPC, after No or in a driven browser not asking;
+  # a tagged visit's beacons with no address, IP or page text; the ask in
+  # German at 430x932, Yes and No; off in Settings; the server's own drop
+  # of GPC and DNT; the studio's beacon; once supabase/analytics.sql is
+  # applied, this run's rows in the read; each tab at 390 and 1280, light
+  # and dark. Never on brickworks.diy; the throwaway deleted after.
+  [insights]="tools/web/insights_flow.mjs --url=$P --out=$S/${TAG}_insights"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
