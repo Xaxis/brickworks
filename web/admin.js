@@ -9,7 +9,8 @@
 // (console3) Moderation admin-moderation.js, Challenges admin-challenges.js
 // (and one challenge's panel at #challenges/<id>), Data admin-data.js,
 // Switches admin-switches.js, and here an account's Export, Sign out
-// everywhere and Delete, and the bar's Find.
+// everywhere and Delete, and the bar's Find. Claude, its Settings and the
+// panel beside every section, is admin-claude.js (adminclaude).
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
@@ -30,11 +31,12 @@ import { loadMail } from "/admin-mail.js";
 import { connectorOf, loadConnector } from "/admin-connector.js";
 import { loadSite, releaseOf, versionOf } from "/admin-site.js";
 import { loadSocial, whenChanged as socialChanged } from "/admin-social.js";
+import { loadClaude, startClaude } from "/admin-claude.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
 const SECTIONS = ["overview", "analytics", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
-  "data", "switches", "audit"];
+  "data", "switches", "claude", "audit"];
 const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
   social: ["inbox", "write", "sent", "accounts"], analytics: ANALYTICS_TABS };
 // The sections drawn from the one report (admin-gallery.js loadReport).
@@ -78,6 +80,7 @@ const loaders = {
   site: () => loadSite(),
   data: () => loadData(),
   switches: () => loadSwitches(),
+  claude: () => loadClaude(),
   audit: () => loadAudit(),
 };
 const loaded = new Set();
@@ -173,6 +176,7 @@ async function start() {
   $("find").hidden = false;
   $("meta-who").textContent = `Signed in as ${signedInAs() || "the owner"}${TESTS ? " · the checks' own (?tests=1)" : ""}`;
   addEventListener("hashchange", show);
+  startClaude(route().section);
   if (await show()) say("note", `Updated ${new Date().toLocaleTimeString()}`);
 }
 

@@ -106,7 +106,7 @@ const arrivals = process.argv.includes("--arrivals") ? [] : null;
 // Tables the live project does not have yet, kept in this process
 // (tools/web/held_tables.mjs): --hold=share_versions proves the code that
 // uses supabase/versions.sql before the file is applied. What they hold is
-// at /__held/<table>, on this machine only.
+// at /__held/<table>, on this machine only, and a check may POST a row there.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
   "notifications", "replies", "feedback"].includes(name));
@@ -294,6 +294,18 @@ http.createServer(async (incoming, outgoing) => {
   }
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
     || heldNotifications || heldReplies || heldFeedback) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+  // A row a check puts in a held table (tools/web/adminclaude_flow.mjs's
+  // hostile reply), as the server would write it: through the table's own
+  // checks, never the project.
+  if (asked && incoming.method === "POST" && heldTables?.rowsOf(asked[1])) {
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+    const said = await fetch(`${base}/rest/v1/${asked[1]}`, { method: "POST", body: Buffer.concat(chunks).toString(),
+      headers: { "content-type": "application/json" } });
+    outgoing.writeHead(said.status, { "content-type": "application/json" });
+    return outgoing.end(await said.text());
+  }
   if (asked) {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
@@ -420,10 +432,26 @@ http.createServer(async (incoming, outgoing) => {
       return this;
     },
     end(text) {
-      outgoing.writeHead(this.statusCode);
+      if (!outgoing.headersSent) outgoing.writeHead(this.statusCode);
       outgoing.end(text);
       return this;
     },
+    // And a stream's, as Vercel streams one (api/_claude.js's answers).
+    write(chunk) {
+      if (!outgoing.headersSent) outgoing.writeHead(this.statusCode);
+      return outgoing.write(chunk);
+    },
+    flushHeaders() {
+      if (!outgoing.headersSent) outgoing.writeHead(this.statusCode);
+      outgoing.flushHeaders();
+    },
+    on(event, then) {
+      outgoing.on(event, then);
+      return this;
+    },
+    get writableEnded() { return outgoing.writableEnded; },
+    get writableFinished() { return outgoing.writableFinished; },
+    get destroyed() { return outgoing.destroyed; },
   };
   try {
     await handler(request, response);

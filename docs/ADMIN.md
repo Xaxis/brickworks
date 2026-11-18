@@ -61,6 +61,7 @@ three that stay outside, each with why.
 | Secrets' values (keys, signing secrets, CRON_SECRET) | Vercel, Resend, Supabase | **Outside**: never on a page; Switches names them and says where each is changed |
 | Brickworks' own social accounts: what came in, posts and replies, their results (socialdesk) | each network's own site | Social: the inbox, Write with the community's rules, Sent and scheduled, Accounts (docs/SOCIAL_DESK.md). Posting on Reddit is by hand on Reddit's own page until Reddit grants API access: **outside** for that one press |
 | How the site and the studio are used: visits, sources, funnels, retention, tools and panels, speed, errors, Claude's calls (insights) | Overlook's own dashboard, visits only | Analytics (docs/ANALYTICS.md); Overlook's dashboard stays **outside** for the visit counter |
+| Claude on the owner's own Anthropic key: the key, the model, the effort, the month's cap (adminclaude) | console.anthropic.com | Claude › Settings, and the panel beside every section; on Social, Suggest, Suggest a reply, Improve and Overview, each landing as a draft (docs/ADMIN_CLAUDE.md). The key is made, paid for and deleted at console.anthropic.com: **outside** for that |
 
 ### api/admin.js, every op
 
@@ -119,6 +120,9 @@ it answers.
 | `social_draft`, `social_drop`, `social_notes` | POST | A draft kept (the site's links tagged) or thrown away; notes on a community's rules | social_sends, social_rules |
 | `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; back to the drafts (a schedule, a hand-off not posted, or a send unsure whether it is up); a post made by hand or found up, its address kept | social_sends, the network |
 | `analytics` | GET `&from= &to= &plan= &device= &lang= &signed=` | How the site and the studio are used, a day at a time: every tab of Analytics, only sums (insights) | insights_read: insights_days, today's insights_visits and insights_events, insights_account_days, insights_account_firsts |
+| `claude`, `claude_models` | GET | Claude's settings (the key only as `sk-ant-…` and its last four, the model, effort, cap, this month's spend); the models the kept key may use, from Anthropic's Models API (adminclaude) | admin_claude_settings, admin_claude_month, Anthropic |
+| `claude_key`, `claude_check`, `claude_forget`, `claude_settings` | POST | A key checked with Anthropic and kept sealed, checked again, deleted; the model, effort and monthly cap | admin_claude_settings, Anthropic |
+| `claude_chat` | POST `{ask, text, target, section, history}` | One ask, its answer streamed (SSE): a question, or on the desk suggest, reply, improve or overview; read-only tools, and drafts its only write; audited itself | admin_claude_hold, admin_claude_settle, admin_claude_drafts, the desk's social_sends, Anthropic |
 
 Part B's four are reads: not kept in the audit, like the other GETs; part
 C's reads are not either, and each of its POSTs is. `api/otp.js` takes one
@@ -168,6 +172,7 @@ environments only), and flags one Vercel has that nothing reads.
 | `OC_PROJECT_KEY`, `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`, `OC_ME_ORIGIN`, `OC_ISSUER`, `OC_AUDIENCE` | Sign in with orangecheck |
 | `CRON_SECRET` | The crons' own key |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | The social desk's Reddit app (a web app): none can be made since Reddit closed new API apps on 2026-10-31, so posts go by hand (docs/SOCIAL_DESK.md) |
+| `CLAUDE_KEY_SECRET` | Seals the owner's Anthropic key at rest (AES-256-GCM; 32 characters or more, `openssl rand -base64 48`). Production only, marked Sensitive, never in the box's .env; the key is opened only on brickworks.diy. Without it no key is kept and Claude › Settings says so; changed, the kept key no longer opens and is pasted again (docs/ADMIN_CLAUDE.md) |
 | `VIEW_SECRET`, `PARTS_URL`, `PUBLIC_ORIGIN` | Shared views, the parts' host, the site's address |
 | `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel's own |
 
@@ -245,6 +250,7 @@ px (a row of pills on a phone), and the section beside it.
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
 | Analytics | `#analytics/overview`, `funnels`, `retention`, `pages`, `studio`, `sources`, `speed`, `errors`, `claude`, `definitions` | Visitors, visits, sign-ups, active builders, published and Claude's calls with sparklines; the sign-up funnel; retention by week; pages; the studio's firsts, tools, panels, commands, runs and what was never used; sources and the desk's campaigns; load and frames by device; errors; Claude's tools; what each number means | Filter by days, plan, device, language, signed in; none else: read only |
 | Social | `#social/inbox`, `write`, `sent`, `accounts` | Replies, mentions and messages; a post or a reply with the community's rules beside it, and drafts; what was sent and waits, with score, comments and visits over time; each network, connected or not, and what each still to come costs | Check now, Mark read, Reply…, Keep the draft, Review and send… (Send now, Schedule), Unschedule, Post it on Reddit…, Connect, Disconnect |
+| Claude | `#claude`, and the panel beside every section | Settings: the key (only its last four), the model from the key's own list, the effort, the monthly cap and this month's spend. The panel: one conversation, streamed, with what each answer read and cost | Check and keep, Check key, Forget key, Keep; Ask, Stop, New chat; on Social: Suggest a post, Suggest a reply, Improve, Overview by Claude |
 | Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
 | Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
@@ -578,3 +584,44 @@ Proven by `tests/test_insights.py` (the SQL in a Postgres of its own, the
 route, the read and the cron through their handlers, the counter's names in
 node) and, on a deployment, `tools/web/insights_flow.mjs` (preview check
 `insights`).
+
+## Claude (adminclaude): in the console now
+
+Claude on the owner's own Anthropic key, with their choice of model and
+effort, beside every section (docs/ADMIN_CLAUDE.md has the whole of it).
+
+- **The key** is pasted in Claude › Settings, checked with Anthropic's Models
+  API, sealed (AES-256-GCM under `CLAUDE_KEY_SECRET`) and kept in
+  `admin_claude_settings`, which only the server's role reads. No answer,
+  page, log or audit row holds it: the page is told `sk-ant-…` and its last
+  four. It is opened, and Anthropic asked with it, only on brickworks.diy:
+  a preview or this box says "Claude uses your key only on brickworks.diy.
+  Checks use ?tests=1." Forget key deletes it, and says to revoke it at
+  console.anthropic.com.
+- **The model** is chosen from the models the key may use (the live list,
+  those with adaptive thinking and a price the cap can count),
+  `claude-opus-5-5` until chosen; the effort with it.
+- **The cap.** A monthly cap in dollars, kept by the server: before each call
+  it holds the most the call may cost, every attempt a fallback may make
+  included (`admin_claude_hold`, one at a time), and settles it from the
+  answer's own usage, never above the hold. At the cap Claude stops and
+  says what is spent and what an answer still running holds.
+- **What it may do.** Read what the console reads (social: inbox, threads,
+  drafts and sends with results, visits by tag, each community's rules;
+  people: counts and growth, never an address; plans; mail health; site and
+  backend health; feedback), and write one thing: a draft on the social
+  desk, marked "by Claude". It never sends, posts, replies, schedules,
+  deletes, mails, or changes a plan or a switch. What came in from Reddit
+  and feedback reaches it as quoted, untrusted data.
+- **The audit.** Each ask is one row (op `claude_chat`, kind `claude`): the
+  model and the one that answered, effort, calls, tokens in and out, cache
+  reads and writes, cost, the tools used, the drafts made, how it ended.
+  Never the key, never the words.
+- **The tables** are `supabase/admin_claude.sql` (additive; row security on,
+  no policy, nothing granted but to the server; nothing refers to an
+  account). Before it is applied, Claude says so and keeps nothing.
+
+Proven by `tests/test_adminclaude.py` (the handlers against held tables and
+the stand-in Anthropic, `api/_claude_mock.js`; admin_claude.sql in a
+Postgres of its own) and, on a deployment, `tools/web/adminclaude_flow.mjs`
+(preview check `adminclaude`).
