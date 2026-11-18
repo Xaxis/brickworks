@@ -21,9 +21,18 @@ var world: BrickWorld
 var lattice: BrickLattice
 var library: PartLibrary
 
-## The part about to be placed, and the colour it will be placed in.
-var held_part: String = "3001"
+## The part about to be placed, and the colour it will be placed in. A
+## part taken in hand any way but off the model by a joint ([method
+## lift_brick]) is held by none ([member grip]).
+var held_part: String = "3001":
+	set(value):
+		held_part = value
+		grip = null
 var held_color: int = 4
+## The joint the part in hand was picked up off the model by, which it goes
+## on by (Grip, grabseat); null for a part from the bin. A drag carries its
+## own ([member carry_grip]).
+var grip: Grip = null
 ## Quarter turns about Y applied to the held part.
 var held_rotation: int = 0
 ## Which way the held part's studs point. Everything used to point up,
@@ -241,6 +250,8 @@ func place() -> int:
 	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
 	# A number typed is spent once it is put down: the next follows the pointer.
 	_typed_from = null
+	# The next of it in hand was picked up by nothing.
+	grip = null
 	placed.emit(brick_id, held_part)
 	return brick_id
 
@@ -335,9 +346,30 @@ func paint_hovered(color_code: int) -> bool:
 ## was, because the removal is an ordinary history step.
 ## lift_hovered for a brick named rather than aimed at: X over a part with
 ## nothing in hand, where no ghost has aimed at anything.
-func lift_brick(brick_id: int) -> bool:
+## [param from] and [param way]: the pointer's line, for the joint it was
+## picked up by (Grip.picked), which it then goes on by; none without one,
+## as Connect lifts a part.
+func lift_brick(brick_id: int, from: Vector3 = Vector3.ZERO, way: Vector3 = Vector3.ZERO) -> bool:
+	var held_by: Grip = _grip_at(brick_id, from, way)
 	_hovered = brick_id
-	return lift_hovered()
+	if not lift_hovered():
+		return false
+	grip = held_by if held_by != null and held_by.part == held_part else null
+	_grip_chosen = false
+	return true
+
+
+## The joint of [param brick_id] the pointer's line from [param from] going
+## [param way] holds it by, where the line meets it; null for none.
+func _grip_at(brick_id: int, from: Vector3, way: Vector3) -> Grip:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id) if world != null else null
+	if brick == null or way.is_zero_approx():
+		return null
+	var hit: BrickLattice.Hit = lattice.raycast(from, way)
+	if hit.brick_id != brick_id:
+		return null
+	return Grip.picked(library, brick.part_id, brick.transform, from, way.normalized(),
+		hit.distance)
 
 
 func lift_hovered() -> bool:
@@ -424,11 +456,15 @@ func forget_history() -> void:
 	# came off is gone.
 	if carrying != null and carrying.lifted:
 		carrying.drop()
+	grip = null
+	carry_grip = null
 
 
 func undo() -> bool:
 	if _history.is_empty():
 		return false
+	# A part lifted off and put back by the undo is no longer held by it.
+	grip = null
 	var step: Dictionary = _history.pop_back()
 	# Said before it is undone, while the brick a step names is still
 	# there to name, and kept with the step that redoes it: the step
@@ -449,6 +485,7 @@ func undo() -> bool:
 func redo() -> bool:
 	if _redo.is_empty():
 		return false
+	grip = null
 	var step: Dictionary = _redo.pop_back()
 	_motions_before = null
 	var again: Dictionary = _apply(step)
@@ -2531,14 +2568,19 @@ func hold_copy(parts: Array) -> int:
 
 ## Pick the selection up off the model to move it: it follows the pointer
 ## until a click puts it down, and picking it up and putting it down are
-## one step to undo. Escape puts it back where it was.
-func lift_selection() -> int:
+## one step to undo. Escape puts it back where it was. [param grab]: the
+## pointer's line a drag began on ([from, way]): one part dragged alone goes
+## on by the joint it was picked up by there ([member carry_grip]).
+func lift_selection(grab: Array = []) -> int:
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
 		return 0
 	var parts: Array = Carry.gather(world, library, Array(alive))
 	if parts.is_empty():
 		return 0
+	carry_grip = _grip_at(alive[0], grab[0], grab[1]) \
+		if alive.size() == 1 and grab.size() == 2 else null
+	_grip_chosen = false
 	var steps: Array = []
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -2564,6 +2606,7 @@ func cancel_carry() -> bool:
 		return false
 	var lifted: bool = carrying.lifted
 	carrying.drop()
+	carry_grip = null
 	if lifted and _lift_on_top():
 		var back: Dictionary = _apply(_history.pop_back())
 		selection.clear()
@@ -2690,6 +2733,7 @@ func _put_carried() -> int:
 	var turned: int = carrying.turns
 	var brought: Array = [carrying.lines, carrying.frames, carrying.held]
 	carrying.drop()
+	carry_grip = null
 	if not again.is_empty():
 		carrying.hold(again, false)
 		carrying.turns = turned
@@ -2834,6 +2878,7 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		return
 	var was: Vector3 = carrying.pivot() if is_carrying() else _ghost_transform.origin
 	_joint_site = null
+	_grip_on = false
 	tracks.on_end = false
 	if is_carrying():
 		_ghost.visible = false
@@ -2870,6 +2915,11 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 		_ghost_valid = room_for(held_part, tracks.at, false, true)
 		_hovered = tracks.target.brick
 		_seated_on = 0
+		_show_ghost(part)
+		return
+	# Picked up off the model by a joint: on by that joint (grabseat).
+	if grip != null and connect_end == null \
+			and _onto_by_grip(part, origin, direction.normalized(), hit, grip):
 		_show_ghost(part)
 		return
 	if _onto_a_joint(part, origin, direction.normalized(), hit):
@@ -3044,6 +3094,146 @@ func _show_ghost(part: Lbm.PartMesh) -> void:
 	preview_changed.emit(held_part, _ghost_valid)
 
 
+# -- by the joint it was picked up by (grabseat) --------------------------------
+
+
+## The joint a part dragged off the model alone was picked up by, while it is
+## carried ([method seat_carried]); null for anything else carried.
+var carry_grip: Grip = null
+## Quarter turns about the stud or hole a part was picked up by, as R leaves
+## them, and whether R has been pressed since the ghost went on the stud or
+## hole it is on: until then, the first quarter with room is found.
+var _grip_roll: int = 0
+var _grip_chosen: bool = false
+## Whether the ghost is on a stud or a hole by the one the part was picked up
+## by: what R turns it about, and T lets go of.
+var _grip_on: bool = false
+## The stud or hole it is on, and the last seat worked out, by what it was
+## worked out from.
+var _grip_key: String = ""
+var _grip_last: String = ""
+var _grip_last_at: Transform3D = Transform3D.IDENTITY
+var _grip_last_fits: bool = false
+
+
+## The ghost on the joint the pointer is aimed at by [param by], the joint
+## the part in hand was picked up by: a pin hole onto a pin, a side stud into
+## a stud's hole. False where nothing there takes that joint, and the part
+## goes on by what does, as one from the bin: a side stud over a brick's top
+## studs, the brick on them by its foot. Where something takes it with no
+## room, the ghost shows it so, red, on the joint held.
+func _onto_by_grip(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
+		hit: BrickLattice.Hit, by: Grip) -> bool:
+	if not by.ends.is_empty() and _onto_a_joint(part, origin, direction, hit, by.ends):
+		return true
+	return not by.studs.is_empty() and _onto_studs_by(by, origin, direction, hit)
+
+
+## The ghost with the stud or stud's hole [param by] holds on the stud or
+## hole that takes it of the part pointed at, nearest the pointer's line,
+## seen from it and within Grip.REACH: the two at one place and pointing one
+## way, as the check joins them (Exact.meets), turned least from how the part
+## is held and then R's quarter turns about them.
+func _onto_studs_by(by: Grip, origin: Vector3, direction: Vector3,
+		hit: BrickLattice.Hit) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(hit.brick_id) if hit.is_valid() else null
+	var mine: Exact.Shape = Exact.shape_for(library, held_part)
+	var theirs: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
+	if mine == null or theirs == null:
+		return false
+	var item := Exact.Item.new(theirs, brick.transform)
+	var target: Array = []
+	var k: int = -1
+	var nearest: float = Grip.REACH
+	for t: int in theirs.connector_count():
+		if not Grip.is_stud_joint(theirs, t):
+			continue
+		var taking: int = -1
+		for one: int in by.studs:
+			if Grip.takes(mine, one, theirs, t):
+				taking = one
+				break
+		if taking < 0:
+			continue
+		var there: Array = item.connector(t)
+		if not Grip.seen(there, theirs.kind[t] == Exact.STUD, direction):
+			continue
+		var met: Array = Grip.from_line(origin, direction, there[1], there[1])
+		if float(met[1]) > hit.distance + Grip.DEEP or float(met[0]) > nearest:
+			continue
+		nearest = met[0]
+		target = there
+		k = taking
+	if target.is_empty():
+		return false
+	var key: String = "%d|%d|%d" % [brick.id, int(target[0]), k]
+	if key != _grip_key:
+		_grip_key = key
+		_grip_chosen = false
+	var start: Basis = BrickLattice.basis_for(held_face, held_rotation)
+	if _grip_asked(key, start) != _grip_last:
+		_grip_last_at = Grip.pose(mine, k, start, target, _grip_roll)
+		_grip_last_fits = room_for(held_part, _grip_last_at, false, true)
+		# Until R is pressed, the next quarter turn about it with room.
+		for q: int in (3 if not _grip_chosen and not _grip_last_fits else 0):
+			var at: Transform3D = Grip.pose(mine, k, start, target, _grip_roll + q + 1)
+			if room_for(held_part, at, false, true):
+				_grip_roll = posmod(_grip_roll + q + 1, 4)
+				_grip_last_at = at
+				_grip_last_fits = true
+				break
+		_grip_last = _grip_asked(key, start)
+	_grip_on = true
+	_hovered = brick.id
+	_seated_on = 0
+	_ghost_transform = _grip_last_at
+	_ghost_valid = _grip_last_fits
+	return true
+
+
+## Everything a seat by a stud or hole held is worked out from, in one string.
+func _grip_asked(key: String, start: Basis) -> String:
+	return "%s|%d|%s|%s|%d|%s" % [key, world.revision, held_part, start, _grip_roll,
+		_grip_chosen]
+
+
+## Where one part dragged off the model alone goes, on by the joint it was
+## picked up by ([member carry_grip]), for the line from [param origin] going
+## [param direction] that met [param hit]: [where, whether it has room there,
+## the part it goes on], as the hand seats one held; null where nothing
+## there takes that joint, and it is carried as any part is (Carry.aim).
+func seat_carried(part_id: String, origin: Vector3, direction: Vector3,
+		hit: BrickLattice.Hit) -> Variant:
+	if carry_grip == null or carry_grip.part != part_id or not is_carrying() \
+			or not carrying.lifted or carrying.count() != 1:
+		return null
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return null
+	# Worked out as for the part in hand, held as it stood: what is in hand
+	# between drags (the bin's part) is put back after.
+	var kept: Array = [held_part, held_face, held_rotation, grip, _ghost_transform, _ghost_valid]
+	held_part = part_id
+	held_face = BrickLattice.face_of(carry_grip.was.basis)
+	held_rotation = BrickLattice.turns_about(carry_grip.was.basis, held_face)
+	var on: bool = _onto_by_grip(part, origin, direction.normalized(), hit, carry_grip)
+	var out: Variant = [_ghost_transform, _ghost_valid, _hovered] if on else null
+	held_part = kept[0]
+	held_face = kept[1]
+	held_rotation = kept[2]
+	grip = kept[3]
+	_ghost_transform = kept[4]
+	_ghost_valid = kept[5]
+	return out
+
+
+## What R and T have left the seat on a joint at: a carry aimed again when
+## it changes (Carry.aim).
+func grip_stamp() -> String:
+	return "%d|%d|%s|%d|%s" % [_joint_way, _joint_roll, _joint_extra, _grip_roll,
+		carry_grip != null]
+
+
 # -- onto a joint: a pin into a hole, a beam onto pins, a clip on a bar --
 
 
@@ -3165,14 +3355,16 @@ func _on_exact_fetched(part_id: String) -> void:
 ## hinge is on (JointSnap.framed), on the first of its hinges, nearest
 ## first, the part has room on some way: a shutter over its window's middle
 ## on the hinge outside it, not a pane's inside it; and a second door held
-## over a frame with one in it on the frame's studs.
+## over a frame with one in it on the frame's studs. [param only]: the ends
+## of the joint the part was picked up off the model by (Grip), alone.
 func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
-		hit: BrickLattice.Hit) -> bool:
+		hit: BrickLattice.Hit, only: Array = []) -> bool:
 	_joint_site = null
 	# Connect's chosen point alone, when there is one: a 1 x 16 on two pins
 	# by the hole the person picked, not by whichever of its 30 ways T is on.
-	var held: Array = JointSnap.ends_for(library, held_part) if connect_end == null \
-		else [connect_end]
+	# The same of the hole a beam was picked up off the model by.
+	var held: Array = only if not only.is_empty() \
+		else JointSnap.ends_for(library, held_part) if connect_end == null else [connect_end]
 	if held.is_empty() or world == null:
 		return false
 	# A little past what the line met: a hole's middle is inside the part
@@ -3197,6 +3389,9 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	var key: String = "%d|%s|%s|%s" % [site.brick, site.kind, site.at, site.axis]
 	var held_key: String = held_part if connect_end == null \
 		else "%s@%s%s" % [held_part, connect_end.at, connect_end.axis]
+	if not only.is_empty():
+		held_key = "%s#%s%s" % [held_part, (only[0] as JointSnap.End).at,
+			(only[0] as JointSnap.End).axis]
 	if held_key != _joint_part:
 		_joint_part = held_key
 		_joint_way = 0
@@ -4940,8 +5135,14 @@ static func _cover_boxes(part: Lbm.PartMesh) -> Array[AABB]:
 ## Turn the part in hand: a quarter about its own up, or, on a joint, a
 ## step about the joint's axis (JointSnap.step_of).
 func rotate_held(quarter_turns: int) -> void:
-	if is_carrying():
+	# One part dragged on by the joint it was picked up by turns about that
+	# joint, as one in hand does (seat_carried).
+	if is_carrying() and not carrying.is_posed():
 		carrying.turn(quarter_turns)
+		return
+	if _grip_on:
+		_grip_roll = posmod(_grip_roll + quarter_turns, 4)
+		_grip_chosen = true
 		return
 	# On a train track's end: its next end to the joint (TrackSnap).
 	if tracks.on_end:
@@ -4957,8 +5158,17 @@ func rotate_held(quarter_turns: int) -> void:
 
 ## Roll the held part onto its next face: up, forward, down, back, and
 ## then over onto each side. On a joint, the next way onto it instead: in
-## from the other face, the other way up, the next hole of a beam.
+## from the other face, the other way up, the next hole of a beam. On a stud
+## or hole by the one it was picked up by, it lets go of that one: the part
+## goes on as one from the bin does, by its foot.
 func tip_held(steps: int = 1) -> void:
+	if _grip_on:
+		_grip_on = false
+		if is_carrying():
+			carry_grip = null
+		else:
+			grip = null
+		return
 	if _joint_site != null:
 		_joint_way += steps
 		_joint_chosen = true

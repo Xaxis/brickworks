@@ -160,6 +160,30 @@ var _ask_ids: Array = []
 var _ask_steps: Array[Instructions.Step] = []
 ## The steps being worked out (start), until they are.
 var _job: Working.Job = null
+## Find a step (stepsearch): the field, the line under it that lists the
+## steps found, its words and its buttons, one a step (made as wanted and
+## kept for the next find). On a phone or a tablet the field and the list
+## are in a sheet Find… opens (_find_sheet).
+var _find: LineEdit
+var _found_line: Container
+var _found_said: Label
+var _found_chips: Array[Button] = []
+var _find_box: VBoxContainer
+var _find_sheet: AcceptDialog
+## What the find found: each step that places it, [its place in [member
+## _steps], how many, part id -> how many], in step order; and by place.
+var _hits: Array = []
+var _hit_set: Dictionary = {}
+## Each step's parts by part and colour (step_lots), made at the first find
+## after the steps are worked out.
+var _lots: Array[Dictionary] = []
+## A find waiting for the parts' search to be made (PartLibrary.search_ready).
+var _find_waiting: bool = false
+## The most steps listed, the rest marked on the row and gone to by Enter:
+## a word every step answers lists hundreds on a big model, a wall of
+## numbers that says less than the row.
+const FOUND_MOST := 40
+const FOUND_MOST_PHONE := 12
 
 
 func _ready() -> void:
@@ -280,6 +304,7 @@ func _build() -> void:
 	_order_button.pressed.connect(func() -> void: set_mode(_next_mode()))
 	row.add_child(_order_button)
 	_named["steps_order"] = _order_button
+	_build_find(row, column)
 
 	# Instructions and Done together at the right-hand end of whichever line
 	# they fall on: the rest of that line is theirs to stand at the end of.
@@ -556,6 +581,9 @@ func stop() -> void:
 	cancel_start()
 	_stop_play()
 	_forget_ghosts()
+	# The find goes with the timeline: opened again, on this model or the
+	# next, it starts empty rather than with a list for steps no longer up.
+	clear_find()
 	visible = false
 	# An empty set means "all of it" — leaving playback has to put the
 	# model back, or the bricks after the current step stay missing.
@@ -585,7 +613,10 @@ func page_state() -> Dictionary:
 	return {"order": MODES[_mode], "caption": _caption.text, "pieces": _pieces.text,
 		"at": [_shown, _length()],
 		# How the booklet prints the step showing, as the Booklet row says.
-		"look": _look_said.text if _looks != null and _looks.visible else ""}
+		"look": _look_said.text if _looks != null and _looks.visible else "",
+		# What the find says, and each step it lists (stepsearch).
+		"find": _find.text, "found": _found_said.text if _found_said.is_visible_in_tree() else "",
+		"found_steps": found_steps()}
 
 
 ## How many places along the timeline there are, and which is showing.
@@ -624,6 +655,13 @@ func _set_mode_quietly(mode: int) -> void:
 	# edit of how a step is printed gives a model the worked-out steps
 	# first, as a step edit does.
 	_show_row(_looks, (mode == AUTHORS or mode == 0) and editable)
+	# A step found by what it places: in the orders that have steps.
+	var stepped: bool = mode == AUTHORS or mode == 0
+	_named["steps_find"].visible = stepped
+	if not stepped:
+		_found_line.visible = false
+		if _find_sheet != null:
+			_find_sheet.hide()
 
 
 ## The order after this one, the author's steps only for a model that has them.
@@ -760,6 +798,11 @@ func _reorder() -> void:
 	_order_key += 1
 	_slider.max_value = _length()
 	_mark()
+	# Found again in the steps as they are now: an edit moves what a step
+	# places, and another order has other steps.
+	_lots.clear()
+	if _find != null and not _find.text.strip_edges().is_empty():
+		_find_now()
 
 
 ## The changes since the baseplate was last cleared, and a brick for every
@@ -906,6 +949,9 @@ func rate() -> float:
 
 
 func _process(delta: float) -> void:
+	# A find typed before the parts' search was made, made now.
+	if _find_waiting and visible and _library != null and _library.search_ready():
+		_find_now()
 	if _playing == 0 or not visible:
 		return
 	_owed += delta * rate()
@@ -967,6 +1013,7 @@ func _show(count: int) -> void:
 				_pieces.text += "  (hold this one in place)"
 	_pieces.tooltip_text = _pieces.text
 	_row.queue_redraw()
+	_light_found()
 	_show_look()
 	# Everything up to here, as a count of the order: going backwards is the
 	# same path as forwards. It was every brick up to here gathered again,
@@ -1124,6 +1171,10 @@ func _draw_row(row: StepRow) -> void:
 		if index == row.over:
 			fill = Look.STRONG
 		row.draw_rect(box, fill)
+		# A step the find found, marked along its top, as the selection's
+		# steps are along their foot.
+		if _hit_set.has(index):
+			row.draw_rect(Rect2(box.position.x, 0.0, box.size.x, 3.0), Look.ACCENT)
 		if _marked.has(index):
 			row.draw_rect(Rect2(box.position.x, tall - 4.0, box.size.x, 4.0), SelectionOutline.SELECTED)
 		if index == row.over:
@@ -1399,4 +1450,355 @@ func _name_asked() -> void:
 ## Its row of steps, for a check: each cell's place, and which are marked.
 func row_state() -> Dictionary:
 	return {"shown": _row.visible and visible, "cells": _steps.size(), "rect": _row.get_global_rect(),
-		"marked": _marked.keys(), "lit": _current_index()}
+		"marked": _marked.keys(), "lit": _current_index(), "found": _hit_set.keys()}
+
+
+# -- find a step by what it places (stepsearch, APP_UX9 #13) -------------------
+#
+# A builder hunting the step that put on a red 2 x 4 paged through every
+# step; LPub3D and Studio's instructions editor find no step by its parts
+# either. Here a part's number, its name or its colour typed in the bar lists
+# every step that places one, as it is typed, each a button that goes there
+# as Next goes to a step (on a shared link's timeline its new parts outlined
+# and in view, Main._light_step). The row of steps
+# marks them along their top, and Enter goes to each in turn (Shift+Enter
+# back), Escape clears it.
+#
+# The words are read as Edit, Select by, Part number or name and the parts
+# list's find read them (SelectBy.wanted): a number ("3001", 3023 for 3023b
+# too), a name in the catalogue's words or a builder's ("brick 2 x 4", "2x4
+# brick"), a colour the model has by LDraw's or LEGO's name ("red", "dark
+# bluish grey"), or a colour and a part together ("red 3001"), every word
+# needed. A part in a sub-model is found in the sub-model's own step that
+# puts it on, in the callout ("12 · Wing 2/3") or built where it stands ("12 ·
+# Wing"), counted for every copy, never in the step that puts the finished
+# sub-model on, which places the sub-model and not the part. Nothing found
+# says so, and where the part is in the model in another colour, which.
+#
+# On a phone or a tablet the on-screen keyboard covers the foot of the
+# screen, where the bar is: there Find… opens the field and its list in a
+# sheet, which the layout for a finger keeps above the keyboard
+# (TouchSizing), as it does Move to step… and Name….
+
+
+func _build_find(row: Container, column: Container) -> void:
+	_find = LineEdit.new()
+	_find.placeholder_text = "Find a step by part or colour"
+	_find.accessibility_name = "Find a step by part or colour"
+	_find.tooltip_text = ("The steps that place a part, found by its number (3001), its name "
+		+ "(brick 2 x 4), its colour (red) or both (red 3001). Enter goes to each in turn, "
+		+ "Escape clears it")
+	_find.clear_button_enabled = true
+	# Enter again goes to the next, so the field stays being typed in (and
+	# keeps the keys: FocusGuard lets a field go on Enter).
+	_find.keep_editing_on_text_submit = true
+	_find.set_meta("keep_focus_on_enter", true)
+	# Escape empties it and keeps the keys for the next words, as the
+	# library's search does, and empty is any field's Escape (FocusGuard:
+	# given on, the first Escape had put the timeline away with the find).
+	_find.set_meta(FocusGuard.CLEAR_ON_ESCAPE, true)
+	_find.custom_minimum_size = Vector2(200, 0)
+	_find.add_theme_font_size_override("font_size", 11)
+	_find.text_changed.connect(func(_text: String) -> void: _find_now())
+	_find.text_submitted.connect(func(_text: String) -> void: find_next(1))
+	_find.gui_input.connect(_find_key)
+	_found_line = HFlowContainer.new()
+	_found_line.add_theme_constant_override("h_separation", 4)
+	_found_line.add_theme_constant_override("v_separation", 4)
+	_found_line.visible = false
+	_found_said = Label.new()
+	_found_said.add_theme_font_size_override("font_size", 11)
+	_found_said.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_found_line.add_child(_found_said)
+	_named["steps_found"] = _found_line
+	if not Phone.on():
+		row.add_child(_find)
+		_named["steps_find"] = _find
+		column.add_child(_found_line)
+		return
+	var open: Button = _button("Find…", "Find the steps that place a part, by its number, "
+		+ "its name or its colour")
+	open.pressed.connect(open_find)
+	row.add_child(open)
+	_named["steps_find"] = open
+	_find.custom_minimum_size = Vector2(260, 0)
+	_find_box = VBoxContainer.new()
+	_find_box.add_theme_constant_override("separation", 6)
+	_find_box.add_child(_find)
+	_find_box.add_child(_found_line)
+
+
+## On a phone or a tablet, Find…: the field and its list in a sheet above the
+## keyboard, the field ready to type in. Done puts it away, and the steps
+## it found stay marked on the row.
+func open_find() -> void:
+	if _find_sheet == null:
+		_find_sheet = AcceptDialog.new()
+		_find_sheet.title = "Find a step"
+		_find_sheet.ok_button_text = "Done"
+		_find_sheet.add_child(_find_box)
+		var holder: Node = self
+		if shell != null:
+			holder = shell
+		holder.add_child(_find_sheet)
+	_find_sheet.popup_centered()
+	_find.grab_focus.call_deferred()
+
+
+## The field emptied, and with it the list and the row's marks.
+func clear_find() -> void:
+	if _find == null:
+		return
+	_find.text = ""
+	_find_now()
+
+
+## Shift+Enter goes back to the step found before (Escape is FocusGuard's).
+func _find_key(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key != null and key.pressed and key.shift_pressed \
+			and key.keycode in [KEY_ENTER, KEY_KP_ENTER]:
+		find_next(-1)
+		_find.accept_event()
+
+
+## The steps that place what the field says, listed and marked: at every key,
+## within the frame it was typed in.
+func _find_now() -> void:
+	_find_waiting = false
+	var said: String = _find.text.strip_edges()
+	if said.is_empty() or _steps.is_empty() or _step_ends.is_empty() or _world == null \
+			or _library == null:
+		_hits = []
+		_hit_set = {}
+		_found_line.visible = false
+		_row.queue_redraw()
+		return
+	# Names are found by the parts' search, made ahead as the app starts (the
+	# bin asks for it); one typed before it is made waits for it, a frame at a
+	# time, rather than hold the window while it is made (_process).
+	if not _library.search_ready():
+		_library.prepare_search(true)
+		_find_waiting = true
+		_hits = []
+		_hit_set = {}
+		_say_found("Reading the parts…", false)
+		for chip: Button in _found_chips:
+			chip.visible = false
+		_row.queue_redraw()
+		return
+	if _lots.is_empty():
+		_lots = step_lots(_steps, _world)
+	var found: Dictionary = find_in(_lots, _library, said)
+	_hits = found["hits"]
+	_hit_set = {}
+	for hit: Array in _hits:
+		_hit_set[int(hit[0])] = true
+	var most: int = FOUND_MOST_PHONE if Phone.on() and not Phone.wide() else FOUND_MOST
+	var words: String = ""
+	if _hits.is_empty():
+		words = none_words(_library, said, found["other"])
+	elif _hits.size() == 1:
+		words = "“%s” is placed in 1 step" % said
+	elif _hits.size() <= most:
+		words = "“%s” is placed in %d steps: Enter goes to each in turn" % [said, _hits.size()]
+	else:
+		words = "“%s” is placed in %d steps, the first %d here: Enter goes to each in turn" % [
+			said, _hits.size(), most]
+	_say_found(words, _hits.is_empty())
+	var last: int = _steps[-1].number
+	var listed: int = mini(_hits.size(), most)
+	for n: int in listed:
+		var hit: Array = _hits[n]
+		var step: Instructions.Step = _steps[int(hit[0])]
+		var chip: Button = _chip(n)
+		chip.text = found_words(step, int(hit[1]))
+		var placed := Instructions.Step.new()
+		placed.parts = hit[2]
+		chip.tooltip_text = "%s: %s. Click to show it" % [step.caption(last), placed.summary(_library)]
+		chip.set_meta("step", int(hit[0]))
+		chip.visible = true
+	for n: int in range(listed, _found_chips.size()):
+		_found_chips[n].visible = false
+	_light_found()
+	_row.queue_redraw()
+
+
+## Nothing found: said so, and where what was asked is in the model in
+## another colour, in which ("red 3001" where the 3001s are blue); [param
+## other] is find_in's.
+static func none_words(library: PartLibrary, said: String, other: Dictionary) -> String:
+	if other.size() == 1:
+		var colour: PartLibrary.BrickColor = library.color(int(other.keys()[0]))
+		if colour != null:
+			return "No step places “%s”: the model has it in %s" % [said,
+				colour.name.replace("_", " ")]
+	if other.size() > 1:
+		return "No step places “%s”: the model has it in %d other colours" % [said, other.size()]
+	return "No step places “%s”" % said
+
+
+func _say_found(words: String, none: bool) -> void:
+	_found_said.text = words
+	_found_said.modulate = Color(1.0, 0.78, 0.6) if none else Color(1, 1, 1, 0.82)
+	_found_line.visible = true
+	if none:
+		for chip: Button in _found_chips:
+			chip.visible = false
+
+
+## The [param n]th of the list's buttons, made the first time it is wanted.
+func _chip(n: int) -> Button:
+	while _found_chips.size() <= n:
+		var chip: Button = _button("", "")
+		chip.toggle_mode = true
+		chip.custom_minimum_size = Vector2(28, 0)
+		chip.pressed.connect(func() -> void: go_to_found(int(chip.get_meta("step", -1))))
+		_found_line.add_child(chip)
+		_found_chips.append(chip)
+	return _found_chips[n]
+
+
+## How the list names a step found: its number as the booklet prints it, a
+## sub-model's step with the sub-model and its place in its own steps, and
+## how many it places where that is more than one: "12 · Wing 2/3 ×4".
+static func found_words(step: Instructions.Step, count: int) -> String:
+	var said: String = str(step.number)
+	if step.in_callout():
+		Language.keep_name(step.assembly)
+		said += " · %s %d/%d" % [step.assembly, step.callout_step, step.callout_steps]
+	elif step.callout == 0 and step.authored_step >= 0 and not step.authored_in.is_empty():
+		var named: String = Instructions._name_of(step.authored_in)
+		Language.keep_name(named)
+		said += " · %s" % named
+	if count > 1:
+		said += " ×%d" % count
+	return said
+
+
+## The found step at [param index] in [member _steps] shown, as Next shows a
+## step: the model built to its end ([signal stepped]: a shared link's
+## viewer outlines its new parts and frames them).
+func go_to_found(index: int) -> void:
+	if index < 0 or index >= _step_ends.size():
+		return
+	_stop_play()
+	_show(_step_ends[index])
+	stepped.emit()
+
+
+## Enter: the next step found after the one showing, round to the first;
+## Shift+Enter ([param direction] -1) the one before it.
+func find_next(direction: int) -> void:
+	if _hits.is_empty():
+		return
+	var at: int = _current_index()
+	var pick: int = int(_hits[0][0]) if direction > 0 else int(_hits[-1][0])
+	if direction > 0:
+		for hit: Array in _hits:
+			if int(hit[0]) > at:
+				pick = int(hit[0])
+				break
+	else:
+		for n: int in range(_hits.size() - 1, -1, -1):
+			if int(_hits[n][0]) < at:
+				pick = int(_hits[n][0])
+				break
+	go_to_found(pick)
+
+
+## The list's button for the step showing pressed in, the rest not.
+func _light_found() -> void:
+	if _found_chips.is_empty():
+		return
+	var lit: int = _current_index()
+	for chip: Button in _found_chips:
+		if chip.visible:
+			chip.set_pressed_no_signal(int(chip.get_meta("step", -1)) == lit)
+
+
+## What the find lists, for a check: each step found, in step order, with
+## its place in the steps, its number, its place in a callout (0 for none),
+## how many it places, and its button's words ("" past those listed).
+func found_steps() -> Array:
+	var out: Array = []
+	for n: int in _hits.size():
+		var hit: Array = _hits[n]
+		var step: Instructions.Step = _steps[int(hit[0])]
+		var chip: Button = _found_chips[n] if n < _found_chips.size() else null
+		out.append({"index": int(hit[0]), "step": step.number, "inside": step.callout_step,
+			"count": int(hit[1]), "words": chip.text if chip != null and chip.visible else ""})
+	return out
+
+
+## The field, or on a phone the sheet's, for a check to type in.
+func find_field() -> LineEdit:
+	return _find
+
+
+## Each of [param steps]' parts by part and colour, a Dictionary a step in
+## their order: part id -> {LDraw colour -> how many}. A callout's step has
+## every copy's (Step.brick_ids); the step that puts a sub-model on, only
+## the parts it puts on beside it.
+static func step_lots(steps: Array[Instructions.Step], world: BrickWorld) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for step: Instructions.Step in steps:
+		var lots: Dictionary = {}
+		for brick_id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick == null:
+				continue
+			if not lots.has(brick.part_id):
+				lots[brick.part_id] = {}
+			var colours: Dictionary = lots[brick.part_id]
+			colours[brick.color_code] = int(colours.get(brick.color_code, 0)) + 1
+		out.append(lots)
+	return out
+
+
+## The steps of [param lots] (step_lots) that place what [param said] asks
+## for, read as SelectBy.wanted reads it with the model's colours: {"hits":
+## each such step, [its place, how many it places, part id -> how many], in
+## their order; "other": where a part was asked in a colour and no step
+## places it in that one, each other colour the model has it in -> how many;
+## "parts": the model's part ids that answer -> true; "colour": the LDraw
+## colour asked, or -1 for any}.
+static func find_in(lots: Array[Dictionary], library: PartLibrary, said: String) -> Dictionary:
+	var colours: Dictionary = {}
+	var ids: Dictionary = {}
+	for step_lots: Dictionary in lots:
+		for part_id: String in step_lots:
+			ids[part_id] = true
+			for code: int in step_lots[part_id]:
+				colours[code] = true
+	# SelectBy is compiled at its first use, not with the window (Later): the
+	# timeline is on the first screen. Its Wanted read by name.
+	var wanted: RefCounted = Later.script(&"SelectBy").wanted(library, said, colours)
+	var any_part: bool = bool(wanted.get("any_part"))
+	var wanted_parts: Dictionary = wanted.get("parts")
+	var wanted_colour: int = int(wanted.get("colour"))
+	# The model's numbers that answer: as they are, or as the number a part
+	# moved to (a file's 3794 is 15573).
+	var takes: Dictionary = {}
+	for part_id: String in ids:
+		if any_part or wanted_parts.has(part_id) or wanted_parts.has(library.resolve(part_id)):
+			takes[part_id] = true
+	var hits: Array = []
+	var other: Dictionary = {}
+	for index: int in lots.size():
+		var count: int = 0
+		var parts: Dictionary = {}
+		for part_id: String in lots[index]:
+			if not takes.has(part_id):
+				continue
+			var by_colour: Dictionary = lots[index][part_id]
+			for code: int in by_colour:
+				if wanted_colour < 0 or code == wanted_colour:
+					count += int(by_colour[code])
+					parts[part_id] = int(parts.get(part_id, 0)) + int(by_colour[code])
+				elif not any_part:
+					other[code] = int(other.get(code, 0)) + int(by_colour[code])
+		if count > 0:
+			hits.append([index, count, parts])
+	return {"hits": hits, "other": other if hits.is_empty() else {}, "parts": takes,
+		"colour": wanted_colour}

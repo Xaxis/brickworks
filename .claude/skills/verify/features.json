@@ -1836,6 +1836,14 @@
       "tests": []
     },
     {
+      "id": "cli:mcpreach2 probe",
+      "kind": "cli",
+      "entry": "src/dev/mcpreach2_probe.gd",
+      "reach": "tools/probe.sh mcpreach2_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach2_probe.gd. APP_UX9 #10: where_to_attach with nothing selected is the whole model, a picture in 1 call, its numbered points over every part and the rest as dots, parts= the parts named; render_model turntable says the camera goes once round a model that stands still; attachment_points on the walk's y6 SPIKE motor names its output's axle and pin holes apart from the case's, simulate_mechanism driver=<motor> turns the output, move_part names the motor; submit_design pool=31058-1 all in the set, over by part, 31058 read as 31058-1, two sets pooled, an unknown number said so. The relay's other-chats words: python3 tools/minitest.py tests/test_relay_chats.py)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:measure brickify against outside models",
       "kind": "cli",
       "entry": "tools/bench/brickify_bench.py",
@@ -2886,6 +2894,14 @@
       "kind": "cli",
       "entry": "src/dev/steps_to_probe.gd",
       "reach": "tools/probe.sh steps_to_probe   (headless: parts of sub-models and of the model's own moved to step 1, a middle step and the last over MCP and by the steps panel's drop, read back off the plan and edit_steps's list)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:stepsearch probe",
+      "kind": "cli",
+      "entry": "src/dev/stepsearch_probe.gd",
+      "reach": "tools/probe.sh stepsearch_probe; tools/probe.sh stepsearch_phone_probe   (the car's finds by number, name, colour and both against the bricks themselves, the row marking the same, every key's list on screen within 100 ms; a click, Enter, Shift+Enter, Escape; edit_steps find= the same steps in 1 call, refused with another op, and no find changing the model; 7140-1's engines found in their own steps, every copy counted; Orthanc's keys within 100 ms; the phone's (390 x 844): Find\u2026's sheet above the keyboard, a tap going there; pictures in shots/stepsearch/)",
       "area": "view",
       "tests": []
     },
@@ -5437,6 +5453,14 @@
       "tests": []
     },
     {
+      "id": "ui:find a step by what it places",
+      "kind": "ui",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, as Next goes to a step; Escape clears; on a phone or a tablet Find\u2026 opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:find and replace everywhere",
       "kind": "ui",
       "entry": "src/ui/find_replace_bar.gd",
@@ -5843,6 +5867,14 @@
       "entry": "web/notifications.html",
       "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:on by the joint it was picked up by",
+      "kind": "ui",
+      "entry": "src/assembly/grip.gd",
+      "reach": "godot --path .  (X over a part's side stud, or a Select drag begun on it, then the pointer at a plate's hole: the part goes on by that stud, not its foot; a beam picked up by its end hole goes onto a pin by that hole; R turns it about the joint, T lets go of it; a part from the bin as before; tools/probe.sh grabseat_probe)",
+      "area": "building",
       "tests": []
     },
     {

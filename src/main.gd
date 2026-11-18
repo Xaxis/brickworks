@@ -9957,7 +9957,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_grabbing = _grab_on_joint(_press_brick)
 			if not _grabbing:
 				_dragging_part = _verbs.drag_start(_press_brick, _press_copies,
-					moved.shift_pressed)
+					moved.shift_pressed, [_camera.ray_origin(_press_at),
+					_camera.ray_normal(_press_at)])
 			# A finger that has taken a part is not held still, however
 			# little it has moved yet: the grab's moves go to it in _input
 			# from here, and none comes back to stop the hold. A door swung
@@ -11295,7 +11296,9 @@ func _key_pressed(key: InputEventKey) -> void:
 				lifting = _builder.hovered_brick()
 			# Off the model and into hand, to put down again where a click
 			# says; undo puts it back where it was.
-			if lifting != 0 and _builder.lift_brick(lifting):
+			# By the joint the pointer is on, which it then goes on by.
+			if lifting != 0 and _builder.lift_brick(lifting, _camera.ray_origin(_pointer()),
+					_camera.ray_normal(_pointer())):
 				_verbs.set_mode("place")
 				_on_model_changed()
 				_bar.say("lifted — click to put it down")

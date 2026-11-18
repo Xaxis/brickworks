@@ -234,7 +234,8 @@ eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \
 a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
-no op it lists them; "to" puts parts in any step by its number, "next"/"prev" \
+no op it lists them, with find= only those that place a part ("red 3001"); \
+"to" puts parts in any step by its number, "next"/"prev" \
 move them a step, "new" makes a step of them, "earlier"/"later"/"merge"/\
 "delete" act on a step by its number, "name" names one ("Build the cockpit").
  - booklet_layout reads the booklet's pages and how each step is printed, \
@@ -459,7 +460,11 @@ func definitions() -> Array:
 				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
 				+ "off. callout_step= with step= names a step inside the callout step= puts on. "
 				+ "A sub-model placed more than once has one set of steps: a name given to one "
-				+ "of its steps is every copy's."),
+				+ "of its steps is every copy's."
+				# stepsearch: the steps that place a part, as the timeline's find.
+				+ " find= lists only the steps that place a part, by its number, name or "
+				+ "colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; "
+				+ "a part in a sub-model is found in the sub-model's own step that puts it on."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete", "name"]},
@@ -469,6 +474,7 @@ func definitions() -> Array:
 					"description": "part numbers from look_at_model, for to, next, prev and new"},
 				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
+				"find": {"type": "string", "description": "for list: only the steps that place this part: a number (3001), a name (brick 2 x 4), a colour (red) or both (red 3001)"},
 			}},
 		},
 		{
@@ -1783,6 +1789,11 @@ func _edit_steps(input: Dictionary) -> String:
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
+	# stepsearch: find= is the list's, and changes nothing.
+	if input.has("find") and op != "list":
+		return "find= lists the steps that place a part; give it with no op= (or op \"list\")."
+	if input.has("find") and str(input["find"]).strip_edges().is_empty():
+		return "Give find= a part's number, its name or a colour, or both (\"red 3001\")."
 	var steps: Array[Instructions.Step] = []
 	# Worked out a slice a frame on a big model: in one go, the Charger's
 	# 1,083 parts held the window a second on the desktop and several in a
@@ -1798,6 +1809,8 @@ func _edit_steps(input: Dictionary) -> String:
 		return "There is nothing built to have steps."
 	match op:
 		"list":
+			if input.has("find"):
+				return _found_steps(steps, str(input["find"]).strip_edges())
 			return _list_steps(steps, int(input.get("from", 1)))
 		"next", "prev", "new", "to":
 			var ids: Array = []
@@ -2421,31 +2434,16 @@ static func _step_numbered(steps: Array[Instructions.Step], number: int,
 
 
 func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
-	var world: BrickWorld = app.get("_world")
-	var store: ModelStore = app.get("_store")
 	var said := PackedStringArray()
-	var authored: bool = AuthorSteps.any(world, store.scenery)
-	var count: int = steps[steps.size() - 1].number
-	said.append("%d step%s, %s." % [count, "" if count == 1 else "s",
-		"the model's own" if authored
-			else "worked out by the app (the first edit makes them the model's own)"])
-	# The steps of a sub-model built where it stands, not in a callout, are
-	# named as a callout's are: listed bare, the island's rocks read as the
-	# model's own parts, and a session moved them "to" the baseplates' step
-	# (stepsto).
-	var built: Dictionary = {}      ## sub-model's path -> how many steps it is built in
-	for step: Instructions.Step in steps:
-		if _built_in_place(step):
-			built[step.authored_in] = int(built.get(step.authored_in, 0)) + 1
-	if not built.is_empty():
+	said.append(_steps_whose(steps))
+	var wheres: PackedStringArray = _steps_where(steps)
+	if steps.any(func(step: Instructions.Step) -> bool: return _built_in_place(step)):
 		said.append("A sub-model's steps take only its own parts, and a sub-model goes in a "
 			+ "step whole, built in its own steps before that step.")
-	var counted: Dictionary = {}
 	var shown: int = 0
 	var characters: int = 0
-	for step: Instructions.Step in steps:
-		if _built_in_place(step):
-			counted[step.authored_in] = int(counted.get(step.authored_in, 0)) + 1
+	for index: int in steps.size():
+		var step: Instructions.Step = steps[index]
 		if step.number < from:
 			continue
 		var ids: PackedInt64Array = step.brick_ids
@@ -2454,21 +2452,7 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 			numbers.append("#%d" % brick_id)
 		if ids.size() > 12:
 			numbers.append("and %d more" % (ids.size() - 12))
-		var where: String = ""
-		if step.callout_step > 0:
-			where = " (in the %s, %d of %d)" % [step.assembly, step.callout_step,
-				step.callout_steps]
-		elif _built_in_place(step):
-			where = " (in the %s, %d of %d)" % [Instructions._name_of(step.authored_in),
-				int(counted[step.authored_in]), int(built[step.authored_in])]
-		elif not step.copies.is_empty():
-			where = " (puts on the %s%s)" % [step.assembly,
-				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
-		# The step it starts, which has no step of its own to be named in
-		# (Step.within): the model's step that puts the copies on.
-		if not step.within.is_empty():
-			where = where.trim_suffix(")") + ("; " if not where.is_empty() else " (") \
-				+ "starts the step %s)" % Motions.quoted(step.within)
+		var where: String = wheres[index]
 		var line: String = "  %d%s: %s" % [step.number, where, " ".join(numbers)]
 		if not step.name.is_empty():
 			# stepnames: its name, as the timeline says it.
@@ -2483,6 +2467,100 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 	if shown == 0:
 		said.append("  none from step %d." % from)
 	return "\n".join(said)
+
+
+## "24 steps, the model's own." or worked out by the app: the head of
+## edit_steps' list and of its find.
+func _steps_whose(steps: Array[Instructions.Step]) -> String:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var count: int = steps[steps.size() - 1].number
+	return "%d step%s, %s." % [count, "" if count == 1 else "s",
+		"the model's own" if AuthorSteps.any(world, store.scenery)
+			else "worked out by the app (the first edit makes them the model's own)"]
+
+
+## Where each of [param steps] is, as edit_steps says it after the step's
+## number: " (in the Wing, 2 of 3)", " (puts on the Wing x2)", "" for the
+## model's own. The steps of a sub-model built where it stands,
+## not in a callout, are named as a callout's are: listed bare, the island's
+## rocks read as the model's own parts, and a session moved them "to" the
+## baseplates' step (stepsto).
+static func _steps_where(steps: Array[Instructions.Step]) -> PackedStringArray:
+	var built: Dictionary = {}      ## sub-model's path -> how many steps it is built in
+	for step: Instructions.Step in steps:
+		if _built_in_place(step):
+			built[step.authored_in] = int(built.get(step.authored_in, 0)) + 1
+	var counted: Dictionary = {}
+	var out := PackedStringArray()
+	for step: Instructions.Step in steps:
+		var where: String = ""
+		if step.callout_step > 0:
+			where = " (in the %s, %d of %d)" % [step.assembly, step.callout_step,
+				step.callout_steps]
+		elif _built_in_place(step):
+			counted[step.authored_in] = int(counted.get(step.authored_in, 0)) + 1
+			where = " (in the %s, %d of %d)" % [Instructions._name_of(step.authored_in),
+				int(counted[step.authored_in]), int(built[step.authored_in])]
+		elif not step.copies.is_empty():
+			where = " (puts on the %s%s)" % [step.assembly,
+				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
+		# The step it starts, which has no step of its own to be named in
+		# (Step.within): the model's step that puts the copies on.
+		if not step.within.is_empty():
+			where = where.trim_suffix(")") + ("; " if not where.is_empty() else " (") \
+				+ "starts the step %s)" % Motions.quoted(step.within)
+		out.append(where)
+	return out
+
+
+## edit_steps' find=: the steps that place what [param said] names, found
+## as the timeline's find finds them (StepsBar.find_in) and numbered as the
+## list numbers them, each with how many it places and their numbers.
+## Reads, and changes nothing.
+func _found_steps(steps: Array[Instructions.Step], said: String) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var found: Dictionary = StepsBar.find_in(StepsBar.step_lots(steps, world), library, said)
+	var hits: Array = found["hits"]
+	var head: String = _steps_whose(steps)
+	if hits.is_empty():
+		return "%s\n%s." % [head, StepsBar.none_words(library, said, found["other"])]
+	var takes: Dictionary = found["parts"]
+	var colour: int = int(found["colour"])
+	var wheres: PackedStringArray = _steps_where(steps)
+	var placed: int = 0
+	for hit: Array in hits:
+		placed += int(hit[1])
+	var lines := PackedStringArray([head, "“%s”: %d part%s, placed in %d step%s:" % [said, placed,
+		"" if placed == 1 else "s", hits.size(), "" if hits.size() == 1 else "s"]])
+	var characters: int = 0
+	for n: int in hits.size():
+		var hit: Array = hits[n]
+		var step: Instructions.Step = steps[int(hit[0])]
+		var numbers := PackedStringArray()
+		for brick_id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null and takes.has(brick.part_id) \
+					and (colour < 0 or brick.color_code == colour):
+				numbers.append("#%d" % brick_id)
+		if numbers.size() > 12:
+			var more: int = numbers.size() - 12
+			numbers = numbers.slice(0, 12)
+			numbers.append("and %d more" % more)
+		var what := Instructions.Step.new()
+		what.parts = hit[2]
+		var line: String = "  %d%s: %s, %s" % [step.number, wheres[int(hit[0])],
+			what.summary(library), " ".join(numbers)]
+		if not step.name.is_empty():
+			line = "  %d%s %s: %s, %s" % [step.number, wheres[int(hit[0])],
+				Motions.quoted(step.name), what.summary(library), " ".join(numbers)]
+		characters += line.length()
+		if characters > 6000:
+			lines.append("  ... and %d more steps; a narrower find= lists fewer." % (hits.size() - n))
+			break
+		lines.append(line)
+	return "\n".join(lines)
 
 
 ## Whether [param step] is one of a sub-model's own, built where it stands
@@ -2625,7 +2703,9 @@ func _pose(input: Dictionary) -> String:
 		for brick: BrickWorld.Brick in world.bricks():
 			ids.append(brick.id)
 		var on_balls: String = JointSnap.balls_said(world, app.get("_library"), builder.lattice, ids)
-		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls)
+		var motors: String = _motors_driven(world, app.get("_store"), app.get("_library"))
+		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls) \
+			+ ("" if motors.is_empty() else " " + motors)
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0
@@ -2734,9 +2814,12 @@ func _what_moves(grabbing: GrabDrag) -> String:
 	for key: Variant in bodies.parent_link:
 		if not bodies.flexible.has(key):
 			moving.append([(bodies.members.get(key, PackedInt64Array()) as PackedInt64Array).size(), int(key)])
+	var motors: String = _motors_driven(world, store, library)
 	if moving.is_empty():
 		lines.append("Nothing in it hangs on a joint: every part is held rigidly to what stays (%s)."
 			% bodies.summary())
+		if not motors.is_empty():
+			lines.append(motors)
 		lines.append("Nothing was changed.")
 		return "\n".join(lines)
 	moving.sort_custom(func(x: Array, y: Array) -> bool: return int(x[0]) > int(y[0]))
@@ -2755,6 +2838,8 @@ func _what_moves(grabbing: GrabDrag) -> String:
 			link.words(), GrabDrag.at_words(link.point), "" if link.holds else ", turning freely"])
 	if moving.size() > MOST_MOVING:
 		lines.append("  and %d more." % (moving.size() - MOST_MOVING))
+	if not motors.is_empty():
+		lines.append(motors)
 	lines.append("Nothing was changed. move_part part=N says what moving it does; degrees= turns it.")
 	return "\n".join(lines)
 
@@ -2945,6 +3030,21 @@ func _list_motions(input: Dictionary) -> String:
 	lines.append("play_motion {\"name\": …} plays one (reverse=true backwards); render_motion renders "
 		+ "it. Nothing was changed.")
 	return "\n".join(lines)
+
+
+## The motors, and that what is on a motor's output turns when the motor
+## drives it, not by a drag or a pose (mcpreach2): a drag holds a motor
+## whole, case and hub, so move_part listed an arm pinned to a SPIKE motor's
+## hub as moving with the case, pose_model said "Nothing here turns", and
+## APP_UX9's y6 session told the person Simulate "doesn't treat the motor's
+## output hub as something that turns" without asking it. "" for none.
+static func _motors_driven(world: BrickWorld, store: ModelStore, library: PartLibrary) -> String:
+	var motors: String = _motors_said(world, store, library)
+	if motors.is_empty():
+		return ""
+	return motors + (" What is keyed or pinned into a motor's output turns when the motor drives "
+		+ "it, not by a drag or a pose: simulate_mechanism driver=<the motor's number> turns it, and "
+		+ "attachment_points brick=<the motor's number> names the output's holes.")
 
 
 # unit spikemotors
@@ -4112,6 +4212,119 @@ func held_to_mine(answer: Variant) -> Variant:
 	return answer
 
 
+## submit_design pool= (mcpreach2, APP_UX9's past parity 1): a design held to
+## one real set's parts, or several sets' together, checked as mine=true is
+## (held_to_mine): the model as it now stands against the set's inventory as
+## What can I build? counts it (OwnCounts.set_needs: no spares, nothing nobody
+## owns alone), each part it uses more of than the set has and by how many,
+## and what in the set could stand in, said after the answer's first
+## paragraph. A set is named by its number as Rebrickable writes it
+## ("31058-1"; "31058" is its first version, SetInventories.normal), never by
+## its name: many sets share one ("Fire Station"), and a session that has only
+## a name finds the number with gallery library=true q=. None of a set under
+## test (DesignMemory.holds): its parts list is a bench session's answer.
+func held_to_pool(answer: Variant, pool: String) -> Variant:
+	var text: String = answer if answer is String else ""
+	var block: Dictionary = {}
+	if answer is Array:
+		for one: Variant in answer:
+			if one is Dictionary and str((one as Dictionary).get("type", "")) == "text":
+				block = one
+				text = str(block.get("text", ""))
+				break
+	if not text.begins_with("Built"):
+		return answer
+	var paragraphs: PackedStringArray = text.split("\n\n")
+	paragraphs.insert(1, await _pool_said(pool))
+	if block.is_empty():
+		return "\n\n".join(paragraphs)
+	block["text"] = "\n\n".join(paragraphs)
+	return answer
+
+
+## What a design held to [param pool] hears: every part in the sets named, or
+## each it goes over.
+func _pool_said(pool: String) -> String:
+	var numbers := PackedStringArray()
+	for raw: String in pool.replace(";", ",").replace(" ", ",").split(",", false):
+		var normal: String = SetInventories.normal(raw)
+		if not normal.is_empty() and not numbers.has(normal):
+			numbers.append(normal)
+	if numbers.is_empty():
+		return "pool= names no set: give a set's number, \"31058-1\" (gallery library=true q= finds one)."
+	var shell: Shell = app.get("_shell")
+	var books: CollectionStore = shell.collection_store if shell != null else null
+	var library: PartLibrary = app.get("_library")
+	if books == null or books.inventories == null:
+		return "pool=%s, but this app has no set inventories: nothing could be held to them." % pool
+	var found: Dictionary = await books.inventories.lookup(numbers)
+	var have: Dictionary = {}
+	var named := PackedStringArray()
+	var trouble := PackedStringArray()
+	var pieces_had: int = 0
+	for number: String in numbers:
+		var record: Variant = found.get(number)
+		if DesignMemory.holds(number, str((record as Dictionary).get("n", "")) if record is Dictionary else ""):
+			trouble.append("set %s is under test in this run, so its parts are not given" % number)
+			continue
+		if not record is Dictionary:
+			trouble.append(books.inventories.trouble if not books.inventories.trouble.is_empty()
+				else "no set %s is in Rebrickable's inventories (gallery library=true q= finds a set's number)" % number)
+			continue
+		named.append("%s %s" % [number, str((record as Dictionary).get("n", ""))])
+		var needs: Dictionary = OwnCounts.set_needs(record, library)
+		for key: String in needs:
+			have[key] = int(have.get(key, 0)) + int(needs[key])
+			pieces_had += int(needs[key])
+	if have.is_empty():
+		return "pool=%s: %s, so nothing could be held to it." % [pool, "; ".join(trouble)]
+	var sets: String = " and ".join(named)
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var used: Dictionary = SetBin.used_in(world, store.scenery, library)
+	var pieces: int = 0
+	for key: String in used:
+		if library == null or Collection.ownable(Collection.part_of(key), library):
+			pieces += int(used[key])
+	var rows: Array = OwnCounts.over(have, used, library)
+	var not_found: String = "" if trouble.is_empty() else " (%s)" % "; ".join(trouble)
+	if rows.is_empty():
+		return ("From %s's parts alone (pool): every one of its %s is in the set%s in its colour, "
+			+ "%s of the %s %s.%s") % [sets, Counted.of(pieces, "piece"), "s" if named.size() > 1 else "",
+			Counted.of(maxi(0, pieces_had - pieces), "piece left", "pieces left"),
+			"sets'" if named.size() > 1 else "set's", Working.comma(pieces_had), not_found]
+	var short: int = 0
+	var lines := PackedStringArray()
+	for row: Dictionary in rows:
+		short += int(row["short"])
+		if lines.size() < 40:
+			lines.append("  " + _pool_row_said(row, library))
+	if rows.size() > 40:
+		lines.append("  and %d more parts." % (rows.size() - 40))
+	return ("Over %s's parts (pool): %s it uses more of than the set%s %s, %s over in all%s:\n%s\n"
+		+ "Change each to a part the set has with edit_model, or tell the person what else they would "
+		+ "need; parts_list which=\"compare\" a=\"open\" b=\"%s\" sets the two side by side.") % [sets,
+		Counted.of(rows.size(), "part"), "s" if named.size() > 1 else "", "have" if named.size() > 1 else "has",
+		Counted.of(short, "piece"), not_found, "\n".join(lines), named[0].get_slice(" ", 0)]
+
+
+## One part over a set's: "3001 Brick 2 x 4 in Red (4): 6 used, the set has 4,
+## 2 over; it has it spare in Black (3)", as OwnCounts says a collection's.
+static func _pool_row_said(row: Dictionary, library: PartLibrary) -> String:
+	var stand_in := PackedStringArray()
+	for swap: Dictionary in row.get("swaps", []):
+		stand_in.append("%d spare in %s" % [int(swap["qty"]), OwnCounts._colour(int(swap["colour"]), library)])
+	for combo: Dictionary in row.get("combos", []):
+		var pieces := PackedStringArray()
+		for piece: Array in combo["parts"]:
+			pieces.append("%d x %s" % [int(piece[1]), OwnCounts._part(str(piece[0]), library)])
+		stand_in.append("%s in its colour for %s" % [" and ".join(pieces),
+			"one of them" if int(combo["qty"]) == 1 else "%d of them" % int(combo["qty"])])
+	return "%s in %s: %d used, the set has %d, %d over%s" % [OwnCounts._part(str(row["part"]), library),
+		OwnCounts._colour(int(row["colour"]), library), int(row["need"]), int(row["have"]), int(row["short"]),
+		"; it has " + ", ".join(stand_in) if not stand_in.is_empty() else ""]
+
+
 func _parts_list(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	var library: PartLibrary = app.get("_library")
@@ -5055,6 +5268,23 @@ static func _sorted_keys(counts: Dictionary) -> Array:
 # -- rendering and exporting ---------------------------------------------------------
 
 
+## What a turntable shows, said with it (mcpreach2). Asked for "the camera
+## circling the model while it stands still", APP_UX9's session had six
+## frames and said "I can't tell you ... the app's render could be turning the
+## car in place in front of a fixed camera". It is drawn so
+## (StudioRender.turntable turns the model, its contact shadow and its own
+## lamps on a pivot before a still camera, studio lights and backdrop), which
+## makes the very frames of a camera going round a model that stands still,
+## its lights and backdrop going round with it: so the video is said as it is
+## seen, and how it is drawn after.
+const TURNTABLE_SAID := ("What happens in it: the camera goes once round the model, a full "
+	+ "circle from the %s view's height, while the model stands still; the studio's lights and "
+	+ "backdrop go round with the camera, so the shadow keeps its side of the frame. No part of "
+	+ "the model moves. The last frame is a step short of the first, so it loops. (It is drawn "
+	+ "by turning the model on a turntable before a still camera and lights, which makes exactly "
+	+ "these frames.)")
+
+
 func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
@@ -5133,6 +5363,9 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var how: String = _best_said(dialog, chosen)
 	if not how.is_empty():
 		said = "%s. %s" % [said.trim_suffix("."), how]
+	if kind == "turntable" and dialog._last.get("output") != was \
+			and str(dialog._last.get("kind", "")) == "turntable":
+		said = "%s.\n%s" % [said.strip_edges().trim_suffix("."), TURNTABLE_SAID % view_asked]
 	if kind != "picture":
 		return _with_frames(said, dialog, was, chosen.fps)
 	if dialog.last_picture() == null:

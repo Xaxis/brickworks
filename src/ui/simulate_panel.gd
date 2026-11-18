@@ -1095,6 +1095,20 @@ static func _session_driver(simulation: Simulation, asked: String) -> Dictionary
 		if body < 0:
 			return {"refusal": ("No part or sub-assembly %s here. driver= takes a part's number "
 				+ "(look_at_model) or a sub-assembly's name.") % asked}
+		# A motor's number is its output, which is what it drives: its case
+		# is the base it stands in. APP_UX9's y6 session gave the SPIKE
+		# motor's number, was told the motor "is the base", and read the arm
+		# pinned into the hub as held by the case (mcpreach2).
+		var motor: int = int(asked.strip_edges().trim_prefix("#")) \
+			if asked.strip_edges().trim_prefix("#").is_valid_int() else -1
+		if simulation.motors.has(motor):
+			var turned: int = simulation.model.output_body(motor)
+			if turned >= 0:
+				return {"body": turned, "how": "the output of motor #%d, as asked" % motor}
+			return {"refusal": ("#%d is a motor (%s), whose case is part of %s: nothing is keyed or "
+				+ "pinned into its output, so it turns nothing. attachment_points brick=%d names "
+				+ "the output's axle hole and pin holes; a part in one of them turns with it.") % [
+				motor, (Simulation.MOTORS[simulation.motors[motor]] as Array)[0], simulation.named_with_parts(body, 2), motor]}
 		if not simulation.can_drive(body):
 			return {"refusal": ("%s does not turn on anything: it is %s. Give driver= an axle or "
 				+ "a crank that turns in a hole.") % [simulation.named_with_parts(body, 2),
