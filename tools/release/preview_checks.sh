@@ -633,6 +633,11 @@ declare -A CMD=(
   # a first visit on the phone on Fast 4G told how long it will take, and a
   # return, the computer and the tablet told nothing.
   [phonewarn]="tools/web/phonewarn_flow.mjs --url=$P/app $B --owner --out=$S/${TAG}_phonewarn_web"
+  # local only: phonetruth_flow.mjs. The studio measured as phones run it
+  # (phonetruth, docs/PHONE.md): WebKit as an iPhone 13 and 15 and Chromium
+  # at a 4x and 6x CPU on Fast 4G beside its phone emulation, a cold visit,
+  # a return, memory, frames and the largest model kept, against the live
+  # site. A measure with no verdict, and an hour or more a run.
   # local only: phonewalk_flow.mjs. The walk by finger (APP_UX8, phonewalk):
   # every act of the desktop walk at 390 x 844 and 1024 x 768, by touch alone,
   # counted in taps beside the desktop's presses, and what a finger cannot do
