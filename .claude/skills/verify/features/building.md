@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
 
 ## Sub-features
 
@@ -2745,6 +2745,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and Connect seat as before (`held_part`'s setter clears the grip). Probe:
   `grabseat_probe` (`--only=PART,PART`, `--debug`; `--out=DIR` writes every
   case, `--bin-was=FILE` holds the bin's seats to a run on today's code).
+- `a pose that holds its own weight` (`src/assembly/pose_hold.gd`,
+  `Balance._hold_load` / `_pin_load`, `PoseHold.pose_words`, APP_UX9 posehold,
+  2026-11-18): each friction joint Balance finds alone holding what is past it
+  is weighed against what one of its kind was measured to hold
+  (`data/joint_hold.json`, written and checked by `tools/joint_hold_table.py`):
+  a Technic ball 2.85 N·cm about its centre, a friction pin 1.04 about its
+  line. Past it, the joint droops: red, with the share it holds ("holds 74% of
+  what hangs on it") in Check stability's message, Stress's list, a drag's
+  status, Pose's hold lines and the pin's row, and `pose_model`'s answer;
+  between what every one measured held and the median, "a loose joint of its
+  kind may not". Small balls, click hinges (47455 click joints too), hinges,
+  turntables and clips are named with what they carry, never given a number.
+  Weighed at the pose as it stands, not over Check stability's sweep. A model
+  with no friction joint is weighed as before. Probe: `posehold_probe`
+  (`--only=table|built|sets|app`).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
@@ -3640,6 +3655,13 @@ bash tools/probe.sh balljoints_probe
 # with --out=DIR (the gap: which joint each went on by), then on the change
 # with --bin-was=DIR/bin.json: the same parts from the bin seat as today's did
 bash tools/probe.sh grabseat_probe
+# a pose that holds its own weight: the table as the code reads it; arms built
+# on a Technic ball and a friction pin weighed against the hand's sum within 1%
+# (holds, may droop, droops); a small ball and a click hinge named, not
+# weighed; 11 real sets hold at the box's pose, 6 more named; in the app the
+# droop marked with its share in Check stability, pose_model and Pose (the
+# pin's row), gone once swung up 60°
+bash tools/probe.sh posehold_probe
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
@@ -3652,6 +3674,8 @@ left, the gears and bricks to its right),
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
 `grabseat` says "grabseat: passed" (the gap run on code without a grip says
 "grabseat: gap run done" and fails nothing),
+`posehold` says "posehold: each friction joint weighed against its kind's
+measured hold, ..." (exit 0, no `FAIL`),
 `balljoints` says "balljoints: a ball joint is seated by hand as the real sets
 seat it, ..." (look at `shots/balljoints/1280x720/2_seated.png`: the red
 socket plate on the towball out in front of the grey stand, lined up),

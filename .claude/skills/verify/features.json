@@ -4952,6 +4952,14 @@
       "tests": []
     },
     {
+      "id": "ui:a pose that holds its own weight",
+      "kind": "ui",
+      "entry": "src/assembly/pose_hold.gd",
+      "reach": "godot --path .  (an arm posed on a Technic ball or a friction pin with weight at its end: Check stability, Pose's hold lines and the pin's row, a drag's status, Stress's list and pose_model name each joint past what one of its kind was measured to hold (data/joint_hold.json), red, with the share it holds, and the mark goes when the pose holds; small balls, click hinges, hinges, turntables and clips named, never given a number; tools/probe.sh posehold_probe)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:a set from a photo",
       "kind": "ui",
       "entry": "src/ui/collection_dialog.gd",

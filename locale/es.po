@@ -15100,6 +15100,75 @@ msgstr "Ningún paso coloca «%s»: el modelo lo tiene en %d colores más"
 msgid "No step places “%s”"
 msgstr "Ningún paso coloca «%s»"
 
+# posehold: whether a posed joint holds (PoseHold.pose_words, the Pose panel's lines and
+# its rows' marks), a droop in Check stability, a drag's status and Balance's words
+
+msgid "Joints that droop: %d"
+msgstr "Uniones que ceden: %d"
+
+msgid "%s on %s, %s g past it: its Technic ball joint holds %d% of what hangs on it"
+msgstr "%s en %s, %s g más allá: su rótula Technic sostiene el %d % de lo que cuelga de ella"
+
+msgid "%s on %s, %s g past it: its %d friction pins hold %d% of what hangs on them"
+msgstr "%s en %s, %s g más allá: sus %d pasadores con fricción sostienen el %d % de lo que cuelga de ellos"
+
+msgid "%s on %s, %s g past it: its friction pin holds %d% of what hangs on it"
+msgstr "%s en %s, %s g más allá: su pasador con fricción sostiene el %d % de lo que cuelga de él"
+
+msgid "And %d more."
+msgstr "Y %d más."
+
+msgid "Friction joints weighed: %d, and none droops."
+msgstr "Uniones con fricción pesadas: %d, y ninguna cede."
+
+msgid "%s on %s holds, but a loose joint of its kind may not: the loosest measured held %d% of this."
+msgstr "%s en %s sostiene, pero una unión floja de su tipo quizá no: la más floja medida sostuvo el %d % de esto."
+
+msgid "Small ball joints here: %d, not weighed: no one has published what one holds."
+msgstr "Rótulas pequeñas aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Click hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Bisagras de clic aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Bisagras aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Turntables here: %d, not weighed: no one has published what one holds."
+msgstr "Plataformas giratorias aquí: %d, sin pesar: nadie ha publicado cuánto sostiene una."
+
+msgid "Clips on bars here: %d, not weighed: no one has published what one holds."
+msgstr "Clips en barras aquí: %d, sin pesar: nadie ha publicado cuánto sostiene uno."
+
+msgid "Droops: it holds %d% of what hangs on it."
+msgstr "Cede: sostiene el %d % de lo que cuelga de ella."
+
+msgid "%s droops on %s on a Technic ball joint with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s cede en %s en una rótula Technic, con %s g más allá: sostiene el %d % de lo que cuelga de ella"
+
+msgid "%s droops on %s on a friction pin with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s cede en %s en un pasador con fricción, con %s g más allá: sostiene el %d % de lo que cuelga de él"
+
+msgid "%s droops on %s on %d friction pins in a line with %s g past it: they hold %d% of what hangs on them"
+msgstr "%s cede en %s en %d pasadores con fricción en línea, con %s g más allá: sostienen el %d % de lo que cuelga de ellos"
+
+msgid "the %s droops on a Technic ball joint: it holds %d% of what hangs on it"
+msgstr "%s cede en una rótula Technic: sostiene el %d % de lo que cuelga de ella"
+
+msgid "the %s droops on a friction pin: it holds %d% of what hangs on it"
+msgstr "%s cede en un pasador con fricción: sostiene el %d % de lo que cuelga de él"
+
+msgid "the %s droops on %d friction pins in a line: they hold %d% of what hangs on them"
+msgstr "%s cede en %d pasadores con fricción en línea: sostienen el %d % de lo que cuelga de ellos"
+
+msgid "1 friction joint droops, in red, holding %d% of what hangs on it."
+msgstr "1 unión con fricción cede, en rojo: sostiene el %d % de lo que cuelga de ella."
+
+msgid "%d friction joints droop, in red, the worst holding %d% of what hangs on it."
+msgstr "%d uniones con fricción ceden, en rojo, la peor sostiene el %d % de lo que cuelga de ella."
+
+msgid "on a Technic ball joint"
+msgstr "en una rótula Technic"
+
 # partplaces (APP_UX9 #14)
 msgid "Where it's kept…"
 msgstr "Dónde se guarda…"

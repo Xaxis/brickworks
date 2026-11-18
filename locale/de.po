@@ -15100,6 +15100,75 @@ msgstr "Kein Schritt setzt „%s“: Das Modell hat es in %d anderen Farben"
 msgid "No step places “%s”"
 msgstr "Kein Schritt setzt „%s“"
 
+# posehold: whether a posed joint holds (PoseHold.pose_words, the Pose panel's lines and
+# its rows' marks), a droop in Check stability, a drag's status and Balance's words
+
+msgid "Joints that droop: %d"
+msgstr "Verbindungen, die absacken: %d"
+
+msgid "%s on %s, %s g past it: its Technic ball joint holds %d% of what hangs on it"
+msgstr "%s an %s, %s g darüber hinaus: sein Technic-Kugelgelenk hält %d % dessen, was daran hängt"
+
+msgid "%s on %s, %s g past it: its %d friction pins hold %d% of what hangs on them"
+msgstr "%s an %s, %s g darüber hinaus: seine %d Reibungspins halten %d % dessen, was daran hängt"
+
+msgid "%s on %s, %s g past it: its friction pin holds %d% of what hangs on it"
+msgstr "%s an %s, %s g darüber hinaus: sein Reibungspin hält %d % dessen, was daran hängt"
+
+msgid "And %d more."
+msgstr "Und %d weitere."
+
+msgid "Friction joints weighed: %d, and none droops."
+msgstr "Gewogene Reibungsverbindungen: %d, keine sackt ab."
+
+msgid "%s on %s holds, but a loose joint of its kind may not: the loosest measured held %d% of this."
+msgstr "%s an %s hält, eine lockere Verbindung dieser Art vielleicht nicht: die lockerste gemessene hielt %d % davon."
+
+msgid "Small ball joints here: %d, not weighed: no one has published what one holds."
+msgstr "Kleine Kugelgelenke hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Click hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Rastscharniere hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Hinges here: %d, not weighed: no one has published what one holds."
+msgstr "Scharniere hier: %d, nicht gewogen: niemand hat veröffentlicht, was eines hält."
+
+msgid "Turntables here: %d, not weighed: no one has published what one holds."
+msgstr "Drehteller hier: %d, nicht gewogen: niemand hat veröffentlicht, was einer hält."
+
+msgid "Clips on bars here: %d, not weighed: no one has published what one holds."
+msgstr "Clips an Stangen hier: %d, nicht gewogen: niemand hat veröffentlicht, was einer hält."
+
+msgid "Droops: it holds %d% of what hangs on it."
+msgstr "Sackt ab: sie hält %d % dessen, was daran hängt."
+
+msgid "%s droops on %s on a Technic ball joint with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s sackt an %s auf einem Technic-Kugelgelenk ab, mit %s g darüber hinaus: es hält %d % dessen, was daran hängt"
+
+msgid "%s droops on %s on a friction pin with %s g past it: it holds %d% of what hangs on it"
+msgstr "%s sackt an %s auf einem Reibungspin ab, mit %s g darüber hinaus: er hält %d % dessen, was daran hängt"
+
+msgid "%s droops on %s on %d friction pins in a line with %s g past it: they hold %d% of what hangs on them"
+msgstr "%s sackt an %s auf %d Reibungspins in einer Reihe ab, mit %s g darüber hinaus: sie halten %d % dessen, was daran hängt"
+
+msgid "the %s droops on a Technic ball joint: it holds %d% of what hangs on it"
+msgstr "%s sackt auf einem Technic-Kugelgelenk ab: es hält %d % dessen, was daran hängt"
+
+msgid "the %s droops on a friction pin: it holds %d% of what hangs on it"
+msgstr "%s sackt auf einem Reibungspin ab: er hält %d % dessen, was daran hängt"
+
+msgid "the %s droops on %d friction pins in a line: they hold %d% of what hangs on them"
+msgstr "%s sackt auf %d Reibungspins in einer Reihe ab: sie halten %d % dessen, was daran hängt"
+
+msgid "1 friction joint droops, in red, holding %d% of what hangs on it."
+msgstr "1 Reibungsverbindung sackt ab, rot markiert, und hält %d % dessen, was daran hängt."
+
+msgid "%d friction joints droop, in red, the worst holding %d% of what hangs on it."
+msgstr "%d Reibungsverbindungen sacken ab, rot markiert, die schwächste hält %d % dessen, was an ihr hängt."
+
+msgid "on a Technic ball joint"
+msgstr "auf einem Technic-Kugelgelenk"
+
 # partplaces (APP_UX9 #14)
 msgid "Where it's kept…"
 msgstr "Wo es liegt…"
