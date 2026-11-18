@@ -467,6 +467,9 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		made.colour = lot.color_name
 		made.element = lot.element
 		made.count = lot.count
+		# Where the person keeps it (partplaces), unless they turned it off.
+		if bool(ShellPrefs.value("booklet_places")) and not lot.custom:
+			made.place = Collection.place_in(CollectionStore.places, lot.part_id, lot.color_code, library)
 		var part: Lbm.PartMesh = library.mesh_for(lot.part_id)
 		if part == null:
 			continue
@@ -706,6 +709,7 @@ func _lots_of(ids: PackedInt64Array, lots: Dictionary, times: int = 1) -> Array[
 		lot.element = source.element
 		lot.size = source.size
 		lot.count = int(counts[key])
+		lot.place = source.place
 		out.append(lot)
 	# Biggest first, as a box is filled: the 2 x 4 before the 1 x 1.
 	out.sort_custom(func(a: Booklet.Lot, b: Booklet.Lot) -> bool:

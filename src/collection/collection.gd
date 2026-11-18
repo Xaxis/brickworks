@@ -45,6 +45,16 @@ var updated_at: String = ""
 ## says it saw. Null when the account keeps none, or for a copy from
 ## before revs were.
 var rev: Variant = null
+## Where each part and colour is kept (partplaces, APP_UX9 #14): key
+## ([method key_of]) -> the place as the person named it ("drawer 3"), one
+## line of at most [constant MOST_PLACE] characters ([method place_text]).
+## Apart from the lots, since a drawer holds a part and colour whatever
+## brought it; kept with the account (api/collection.js op "place").
+var places: Dictionary = {}
+## Whether what this was read from said where things are kept: false for a
+## copy an older build wrote, which keeps no places (it drops them, and
+## says nothing of what it never knew), or one from before places were.
+var places_read: bool = false
 
 ## Where a lot or a set came from, and the words My collection heads it
 ## with. "hand" is My collection's own: a lot added there, a set typed.
@@ -92,6 +102,16 @@ static func from_json(data: Variant) -> Collection:
 	made.updated_at = str(when) if when != null else ""
 	var kept_rev: Variant = body.get("rev")
 	made.rev = int(kept_rev) if kept_rev is float or kept_rev is int else null
+	# partplaces: each place as the account spells it, anything else left out.
+	var kept_places: Variant = body.get("places")
+	if kept_places is Dictionary:
+		made.places_read = true
+		for key: Variant in kept_places:
+			var place: Variant = kept_places[key]
+			if key is String and _PLACE_KEY.search(key) != null and place is String \
+					and not (place as String).is_empty() and place_text(place) == place \
+					and (place as String).length() <= MOST_PLACE:
+				made.places[key] = place
 	return made
 
 
@@ -100,7 +120,7 @@ static func _text(entry: Dictionary, field: String) -> String:
 
 
 func to_json() -> Dictionary:
-	return {"sets": sets, "parts": parts, "updated_at": updated_at, "rev": rev}
+	return {"sets": sets, "parts": parts, "places": places, "updated_at": updated_at, "rev": rev}
 
 
 ## A lot or a set as an op names it (api/collection.js lotId): its part and
@@ -1141,3 +1161,278 @@ static func set_stock(entry: Dictionary, record: Dictionary, library: PartLibrar
 		for _n: int in int(lot[2]) * times:
 			stock._add(by_key, library, str(lot[0]), int(lot[1]))
 	return stock
+
+
+# --- where each part is kept (partplaces, APP_UX9 #14, 2026-11-17) ----------
+#
+# A builder with a sorted collection walks to the same drawers again and
+# again. A place is free text, as the person names it ("drawer 3", "B3",
+# "Technic case, tray 2"): storage differs too much from one person to the
+# next for a container and a number to fit everybody, and a natural sort
+# ([method place_less]) puts "drawer 2" before "drawer 10" all the same. It
+# is kept by part and colour, as a BrickLink lot is, whatever brought it:
+# the drawer holds the 3001 in red, not the set it came in. A person who
+# sorts by part, every colour together, sets one place on all its colours
+# at once (My collection's Where it's kept, edit_collection place=).
+
+## The most characters a place is (api/collection.js MOST_PLACE).
+const MOST_PLACE := 40
+## A key as the account keeps one: a part number, a slash, a colour code.
+static var _PLACE_KEY: RegEx = RegEx.create_from_string("^[a-z0-9][a-z0-9._-]{0,40}/[0-9]{1,9}$")
+
+
+## A place as the person typed it, made one line the account's way
+## (api/collection.js placeText): control characters, line breaks, every
+## space of Unicode's and the marks that turn text round made spaces, the
+## marks that take no room (U+200B, U+2060, U+FEFF) left out, so a place
+## that looks blank is none; spaces run together, trimmed. Not cut: the
+## caller refuses one over [constant MOST_PLACE].
+static func place_text(raw: String) -> String:
+	var out := ""
+	for at: int in raw.length():
+		var c: int = raw.unicode_at(at)
+		if c == 0x200B or c == 0x2060 or c == 0xFEFF:
+			continue
+		var gone: bool = c < 32 or (c >= 127 and c <= 160) or c == 0x1680 or (c >= 0x2000 and c <= 0x200A) \
+			or c == 0x2028 or c == 0x2029 or (c >= 0x202A and c <= 0x202F) or c == 0x205F \
+			or (c >= 0x2066 and c <= 0x2069) or c == 0x3000
+		out += " " if gone else String.chr(c)
+	while out.contains("  "):
+		out = out.replace("  ", " ")
+	return out.lstrip(" ").rstrip(" ")
+
+
+## Where [param part] in [param colour] is kept, or "": by its key, and
+## else by another moulding of the same part in the colour ([method
+## family_of]: a 3794b found in the 3794a's drawer).
+func place_of(part: String, colour: int, library: PartLibrary = null) -> String:
+	return place_in(places, part, colour, library)
+
+
+## [method place_of] in [param kept] (key -> place).
+static func place_in(kept: Dictionary, part: String, colour: int, library: PartLibrary = null) -> String:
+	if kept.is_empty():
+		return ""
+	var key: String = key_of(part, colour, library)
+	if kept.has(key):
+		return str(kept[key])
+	var family: String = family_of(part_of(key))
+	var code: int = colour_of(key)
+	# A print or a pattern (3626bp01) is only itself.
+	if family == part_of(key) and _MOULDED.search(part_of(key)) == null:
+		return ""
+	for other: String in kept:
+		if colour_of(other) == code and family_of(part_of(other)) == family:
+			return str(kept[other])
+	return ""
+
+
+static var _MOULDED: RegEx = RegEx.create_from_string("^[ux]?\\d+$")
+
+
+## Whether place [param a] sorts before [param b] as a person reads them:
+## case apart, and a run of digits as the number it is, so "drawer 2"
+## comes before "drawer 10" and "B3" before "b12". An empty place (none)
+## sorts last.
+static func place_less(a: String, b: String) -> bool:
+	if a.is_empty() != b.is_empty():
+		return b.is_empty()
+	var x: Array = _place_runs(a)
+	var y: Array = _place_runs(b)
+	for at: int in mini(x.size(), y.size()):
+		if x[at] == y[at]:
+			continue
+		if x[at] is int and y[at] is int:
+			return int(x[at]) < int(y[at])
+		if x[at] is int or y[at] is int:
+			return x[at] is int
+		return str(x[at]) < str(y[at])
+	if x.size() != y.size():
+		return x.size() < y.size()
+	return a < b
+
+
+## [param text] lower-cased, as its runs: each run of digits a number (an
+## int; past 18 digits, text), each run of anything else text.
+static func _place_runs(text: String) -> Array:
+	var out: Array = []
+	var run: String = ""
+	var digits: bool = false
+	for c: String in text.to_lower():
+		var is_digit: bool = c >= "0" and c <= "9"
+		if not run.is_empty() and is_digit != digits:
+			out.append(int(run) if digits and run.length() <= 18 else run)
+			run = ""
+		digits = is_digit
+		run += c
+	if not run.is_empty():
+		out.append(int(run) if digits and run.length() <= 18 else run)
+	return out
+
+
+## Every part and colour the collection holds, by [method key_of]: its loose
+## lots, and each set's inventory in [param records] (its spares too, built
+## or apart: a set kept built still holds its parts). What a place may be
+## set on (api/collection.js heldKeys, the same rule): key -> true.
+func held_keys(records: Dictionary, library: PartLibrary = null) -> Dictionary:
+	var out: Dictionary = {}
+	for lot: Dictionary in parts:
+		out[key_of(str(lot["part"]), int(lot["colour"]), library)] = true
+	for entry: Dictionary in sets:
+		if is_fig(entry):
+			continue
+		var record: Variant = records.get(str(entry["set"]))
+		if not record is Dictionary:
+			continue
+		for row: Variant in (record as Dictionary).get("p", []) + (record as Dictionary).get("s", []):
+			out[key_of(str((row as Array)[0]), int((row as Array)[1]), library)] = true
+	return out
+
+
+## Every place kept as a CSV: Part (LDraw's number), Colour (its LDraw code),
+## Colour name and Place, in the order a walk round the drawers takes
+## ([method place_less]), which [method read_places_csv] and My collection's
+## Places CSV… read back. A place a spreadsheet would read as a formula
+## (=, +, -, @ first) is written after a ', which reading back takes off;
+## so is one that begins with a ' of its own, so it reads back with it.
+func places_csv(library: PartLibrary = null) -> String:
+	var keys: Array = places.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool:
+		if str(places[a]) != str(places[b]):
+			return place_less(str(places[a]), str(places[b]))
+		return a < b)
+	var lines := PackedStringArray(["Part,Colour,Colour name,Place"])
+	for key: String in keys:
+		var place: String = str(places[key])
+		if place.left(1) in CSV_GUARDED:
+			place = "'" + place
+		lines.append("%s,%d,%s,%s" % [Inventory._csv(part_of(key)), colour_of(key),
+			Inventory._csv(_colour_name(colour_of(key), library)), Inventory._csv(place)])
+	return "\r\n".join(lines) + "\r\n"
+
+
+## A places CSV read ([method places_csv]'s, or a spreadsheet's with a
+## Part, a Colour and a Place column: Color, Location, Drawer, Bin and
+## Where are read as their names too): {"places": [{"part", "colour",
+## "place"}] in the file's order, "bad": what could not be read, each "line
+## N: why"}. A part by its LDraw number or BrickLink's, a colour by its
+## LDraw code or its name. A place left empty takes one off.
+static func read_places_csv(text: String, library: PartLibrary) -> Dictionary:
+	var rows: Array = _csv_rows(text)
+	var out: Array = []
+	var bad := PackedStringArray()
+	if rows.is_empty():
+		return {"places": out, "bad": PackedStringArray(["the file is empty"])}
+	var head: Array = (rows[0] as Array).map(func(cell: String) -> String: return cell.strip_edges().to_lower())
+	# The headings as this app writes them, as others name them, and in the
+	# app's other languages (the file is the person's, in theirs).
+	var at_part: int = _column(head, ["part", "part number", "part num", "part_num", "item no", "itemid", "teil", "pièce",
+		"piece", "pieza"])
+	var at_colour: int = _column(head, ["colour", "color", "colour code", "color code", "ldraw colour", "ldraw color",
+		"color_id", "colour id", "farbe", "couleur"])
+	var at_place: int = _column(head, ["place", "location", "drawer", "bin", "where", "storage", "ort", "schublade",
+		"emplacement", "tiroir", "sitio", "lugar", "cajón"])
+	if at_part < 0 or at_colour < 0 or at_place < 0:
+		var lacking := PackedStringArray()
+		for named: Array in [["Part", at_part], ["Colour", at_colour], ["Place", at_place]]:
+			if int(named[1]) < 0:
+				lacking.append(str(named[0]))
+		return {"places": out, "bad": PackedStringArray(["its first line names no %s column" % ", no ".join(lacking)])}
+	var seen: Dictionary = {}
+	for n: int in range(1, rows.size()):
+		var row: Array = rows[n]
+		if row.size() == 1 and str(row[0]).strip_edges().is_empty():
+			continue
+		var cell: Callable = func(at: int) -> String: return str(row[at]).strip_edges() if at < row.size() else ""
+		var asked: String = (cell.call(at_part) as String).to_lower().trim_suffix(".dat")
+		var id: String = library.resolve(asked) if not asked.is_empty() else ""
+		if not id.is_empty() and not library.parts.has(id):
+			id = library.by_shop(asked)
+		if id.is_empty() or not library.parts.has(id):
+			bad.append("line %d: no part numbered %s" % [n + 1, asked if not asked.is_empty() else "(none)"])
+			continue
+		var colour: String = cell.call(at_colour)
+		var code: int = -1
+		if colour.is_valid_int():
+			code = int(colour)
+		else:
+			for known: int in library.colors:
+				if (library.colors[known] as PartLibrary.BrickColor).name.replace("_", " ").to_lower() == colour.to_lower():
+					code = known
+					break
+			if code < 0:
+				var named: Array[PartLibrary.BrickColor] = PartsBin.colours_named(library, colour)
+				code = named[0].code if not named.is_empty() else -1
+		if code in PartsBin.NOT_A_COLOUR or not library.colors.has(code):
+			bad.append("line %d: “%s” is not a colour here" % [n + 1, colour])
+			continue
+		var place: String = place_text(cell.call(at_place))
+		if place.left(1) == "'" and place.substr(1, 1) in CSV_GUARDED:
+			place = place.substr(1)
+		if place.length() > MOST_PLACE:
+			bad.append("line %d: a place is at most %d characters" % [n + 1, MOST_PLACE])
+			continue
+		var key: String = key_of(id, code, library)
+		if seen.has(key):
+			bad.append("line %d: %s in colour %d is named on line %d too" % [n + 1, id, code, int(seen[key])])
+			continue
+		seen[key] = n + 1
+		out.append({"part": id, "colour": code, "place": place})
+	return {"places": out, "bad": bad}
+
+
+## What a place in a CSV is written after a ' for when it begins with
+## ([method places_csv]): what a spreadsheet takes for a formula, and the '
+## itself, which [method read_places_csv] takes off once before any of them.
+const CSV_GUARDED: Array = ["=", "+", "-", "@", "'"]
+
+
+## Which of [param names] [param head] has first, or -1.
+static func _column(head: Array, names: Array) -> int:
+	for name: String in names:
+		var at: int = head.find(name)
+		if at >= 0:
+			return at
+	return -1
+
+
+## [param text] as CSV rows (RFC 4180: a quoted cell may hold commas, line
+## breaks and "" for a quote), a byte-order mark first left off.
+static func _csv_rows(text: String) -> Array:
+	var rows: Array = []
+	var row: Array = []
+	var cell: String = ""
+	var quoted: bool = false
+	var at: int = 0
+	var body: String = text.trim_prefix(String.chr(0xFEFF))
+	while at < body.length():
+		var c: String = body[at]
+		if quoted:
+			if c == "\"":
+				if at + 1 < body.length() and body[at + 1] == "\"":
+					cell += "\""
+					at += 1
+				else:
+					quoted = false
+			else:
+				cell += c
+		elif c == "\"" and cell.is_empty():
+			quoted = true
+		elif c == ",":
+			row.append(cell)
+			cell = ""
+		elif c == "\n" or c == "\r":
+			if c == "\r" and at + 1 < body.length() and body[at + 1] == "\n":
+				at += 1
+			row.append(cell)
+			rows.append(row)
+			row = []
+			cell = ""
+		else:
+			cell += c
+		at += 1
+	if not cell.is_empty() or not row.is_empty():
+		row.append(cell)
+		rows.append(row)
+	return rows
+

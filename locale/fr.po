@@ -14946,3 +14946,184 @@ msgstr "Aucune étape ne pose « %s » : le modèle l'a en %d autres couleurs"
 
 msgid "No step places “%s”"
 msgstr "Aucune étape ne pose « %s »"
+
+# partplaces (APP_UX9 #14)
+msgid "Where it's kept…"
+msgstr "Où c'est rangé…"
+
+msgid "Where you keep each part and colour: a drawer, a box, a tray. The parts list sorts by it, and the booklet's parts boxes say it"
+msgstr "Où vous rangez chaque pièce dans chaque couleur : un tiroir, une boîte, un bac. La liste des pièces se trie ainsi, et les encadrés de pièces de la notice l'indiquent"
+
+msgid "Forget every set and part in your collection, and where each is kept? This cannot be undone."
+msgstr "Oublier tous les sets et toutes les pièces de votre collection, et où chacun est rangé ? Cette action est irréversible."
+
+msgid "Forget every set and part in your collection, and where each is kept"
+msgstr "Oublier tous les sets et toutes les pièces de votre collection, et où chacun est rangé"
+
+msgid "Find: a part's number, its name, a colour, or a place"
+msgstr "Chercher : le numéro d'une pièce, son nom, une couleur ou un emplacement"
+
+msgid "By part"
+msgstr "Par pièce"
+
+msgid "By place"
+msgstr "Par emplacement"
+
+msgid "In the order of the parts, or of the places they are kept, as a walk round them takes"
+msgstr "Dans l'ordre des pièces, ou des emplacements où elles sont rangées, comme on en fait le tour"
+
+msgid "drawer 3"
+msgstr "tiroir 3"
+
+msgid "Put them there"
+msgstr "Les ranger là"
+
+msgid "Every part the find keeps, shown or not, kept in the place typed; with none typed, taken off their places"
+msgstr "Chaque pièce que la recherche retient, affichée ou non, rangée à l'emplacement saisi ; sans rien de saisi, retirée de son emplacement"
+
+msgid "Save places as CSV"
+msgstr "Enregistrer les emplacements en CSV"
+
+msgid "Every place kept, as a spreadsheet: part, colour, place. Read back here with Places CSV…"
+msgstr "Chaque emplacement enregistré, en tableur : pièce, couleur, emplacement. À relire ici avec CSV d'emplacements…"
+
+msgid "Places CSV…"
+msgstr "CSV d'emplacements…"
+
+msgid "A spreadsheet of where parts are kept, with a Part, a Colour and a Place column: each place it names is set, and the rest stay"
+msgstr "Un tableur des emplacements des pièces, avec une colonne Pièce, Couleur et Emplacement (ou Part, Colour et Place) : chaque emplacement qu'il nomme est défini, le reste ne change pas"
+
+msgid "Say where each is kept in the booklet"
+msgstr "Indiquer dans la notice où chacune est rangée"
+
+msgid "The booklet's parts boxes name the place under each part (\"from drawer 3\"). Turn it off for a booklet made for others"
+msgstr "Les encadrés de pièces de la notice nomment l'emplacement sous chaque pièce (\"from drawer 3\"). Désactivez-le pour une notice destinée à d'autres"
+
+msgid "to build"
+msgstr "à construire"
+
+msgid "kept in"
+msgstr "rangé dans"
+
+msgid "Where it's kept — %d of %s placed"
+msgstr "Où c'est rangé — %d sur %s avec un emplacement"
+
+msgid "%d part and colour"
+msgstr "%d pièce et couleur"
+
+msgid "%d parts and colours"
+msgstr "%d pièces et couleurs"
+
+msgid "Where it's kept is not in the copy on this device: a Brickworks from before places wrote it. It comes back from your account once Brickworks can be reached."
+msgstr "Les emplacements ne sont pas dans la copie de cet appareil : un Brickworks d'avant les emplacements l'a écrite. Ils reviennent de votre compte dès que Brickworks est joignable."
+
+msgid "A drawer, a box, a tray: where you keep each part and colour you own, your sets' parts with them. The parts list sorts by it, and the booklet's parts boxes say it."
+msgstr "Un tiroir, une boîte, un bac : où vous rangez chaque pièce dans chaque couleur, celles de vos sets comprises. La liste des pièces se trie ainsi, et les encadrés de pièces de la notice l'indiquent."
+
+msgid "…and %d more: find them above, or put them all somewhere at once"
+msgstr "…et %d de plus : trouvez-les ci-dessus, ou rangez-les toutes quelque part d'un coup"
+
+msgid "Put the %d shown there"
+msgstr "Ranger là les %d affichées"
+
+msgid "Take the %d shown off their places"
+msgstr "Retirer les %d affichées de leur emplacement"
+
+msgid "Where you keep it: a drawer, a box, a tray. Kept with your account"
+msgstr "Où vous la rangez : un tiroir, une boîte, un bac. Enregistré avec votre compte"
+
+msgid "every one shown is kept there already"
+msgstr "chacune des pièces affichées y est déjà rangée"
+
+msgid "none shown is kept anywhere"
+msgstr "aucune des pièces affichées n'a d'emplacement"
+
+msgid "%d set, then: %s"
+msgstr "%d définis, puis : %s"
+
+msgid "%s in %s kept in “%s”"
+msgstr "%s en %s rangé dans « %s »"
+
+msgid "%s in %s taken off its place"
+msgstr "%s en %s retiré de son emplacement"
+
+msgid "%s kept in “%s”"
+msgstr "%s rangées dans « %s »"
+
+msgid "%s taken off their places"
+msgstr "%s retirées de leur emplacement"
+
+msgid "no places to save: type where parts are kept first"
+msgstr "aucun emplacement à enregistrer : saisissez d'abord où les pièces sont rangées"
+
+msgid "%s read: %s set, the rest as they were"
+msgstr "%s lus : %s définis, le reste inchangé"
+
+msgid "%s not in your collection (%s%s)"
+msgstr "%s absentes de votre collection (%s%s)"
+
+msgid "%d place"
+msgstr "%d emplacement"
+
+msgid "%d places"
+msgstr "%d emplacements"
+
+msgid "line %d: no part numbered %s"
+msgstr "ligne %d : aucune pièce numérotée %s"
+
+msgid "line %d: “%s” is not a colour here"
+msgstr "ligne %d : « %s » n'est pas une couleur ici"
+
+msgid "line %d: a place is at most %d characters"
+msgstr "ligne %d : un emplacement fait au plus %d caractères"
+
+msgid "line %d: %s in colour %d is named on line %d too"
+msgstr "ligne %d : %s en couleur %d figure aussi à la ligne %d"
+
+msgid "its first line names no %s column"
+msgstr "sa première ligne ne nomme aucune colonne %s"
+
+msgid "As in the model"
+msgstr "Comme dans le modèle"
+
+msgid "By where it's kept"
+msgstr "Par emplacement de rangement"
+
+msgid "By where it's kept: the parts in the order of their places, as a walk round them takes, those kept nowhere last (My collection, Where it's kept…)"
+msgstr "Par emplacement de rangement : les pièces dans l'ordre de leurs emplacements, comme on en fait le tour, celles sans emplacement en dernier (Ma collection, Où c'est rangé…)"
+
+msgid "Kept in “%s”"
+msgstr "Rangé dans « %s »"
+
+msgid "Take them off their places"
+msgstr "Les retirer de leur emplacement"
+
+msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
+msgstr "Oublier où sont rangées ces %d pièces et couleurs ? Enregistrez d'abord les emplacements en CSV pour en garder une copie."
+
+msgid "Move parts kept elsewhere"
+msgstr "Déplacer les pièces rangées ailleurs"
+
+msgid "%d of the %d parts and colours shown are kept somewhere else already. Move them to “%s” too?"
+msgstr "%d des %d pièces et couleurs affichées sont déjà rangées ailleurs. Les déplacer aussi vers « %s » ?"
+
+msgid "Move all %d"
+msgstr "Déplacer les %d"
+
+msgid "Only the %d kept nowhere"
+msgstr "Seulement les %d sans emplacement"
+
+msgid "a place is at most %d characters, and that is %d"
+msgstr "un emplacement fait au plus %d caractères, et celui-ci en fait %d"
+
+msgid "nothing was kept: a place is at most %d characters, and that is %d"
+msgstr "rien n'a été enregistré : un emplacement fait au plus %d caractères, et celui-ci en fait %d"
+
+msgid "Where it's kept — %d of %s placed, and %d you own none of now"
+msgstr "Où c'est rangé — %d sur %s avec un emplacement, et %d que vous n'avez plus"
+
+msgid "You own none of it now. Its place is kept for when it comes back: empty it and press Enter to take it off"
+msgstr "Vous n'en avez plus. Son emplacement est gardé pour son retour : videz-le et appuyez sur Entrée pour le retirer"
+
+msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
+msgstr "%s en %s ne prend pas de nouvel emplacement : vous n'en avez plus. Videz son emplacement pour le retirer"

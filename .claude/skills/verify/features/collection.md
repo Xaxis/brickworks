@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test, ui:where each part is kept, cli:partplaces probe, cli:partplaces api test, cli:ppreview probe, cli:ppreview2 probe -->
 
 ## Sub-features
 
@@ -259,6 +259,54 @@ which models they could build from what they have. Added 2026-10-12.
   `AppTools.held_to_mine` via `CommandSocket._run`; parts_list need and
   edit_collection's read-back end with `AppTools.MINE_SAID`. Proof:
   `tools/probe.sh ownlimit_probe` ends `held to the person's own bricks`.
+- `where each part is kept` (partplaces, APP_UX9 #14): What I own's
+  **Where it's kept…** (`collection_places`) opens the places page
+  (`CollectionDialog.open_places`, `collection_places_*`): every part and
+  colour held (`Collection.held_keys`: loose lots and each set's inventory,
+  spares too), and every placed one held no more, faint (a place outlives
+  its last lot: taken off from its row or a CSV's empty place, never given a
+  new one); each row a place field kept on Enter or leaving it, once
+  (`_keep_place`: its meta `shown` is set to the place as it is sent; rows
+  drawn again give the focus back to the same part's field with what was
+  typed, `_refocus_place`, and taking a field out sends nothing); over 40
+  characters is said as typed and refused on Enter, never cut (no
+  `max_length`); the find (`collection_places_find`, SelectBy's words or a
+  place's) and **Put them there** (`put_places_shown`, every held row the
+  find keeps in one change, asked first by `_confirm_move` when it would
+  move any kept elsewhere and more than one row shows, with Only the N kept
+  nowhere; nothing typed takes them off, asked first past one); By
+  part / By place (`Collection.place_less`, natural: drawer 2 before drawer
+  10, none last); Save places as CSV (`Collection.places_csv`, a place a
+  spreadsheet reads as a formula written after a ') and Places CSV…
+  (`read_places`, `Collection.read_places_csv`: Part, Colour and Place
+  columns, their synonyms and the app's languages' words; a part not held,
+  an unknown colour or a part named twice said and left out); Say where each
+  is kept in the booklet (ShellPrefs `booklet_places`). A place is one line
+  of at most 40 characters (`Collection.place_text`, api `placeText`),
+  never cut. Kept per part and colour (`Collection.key_of`) in the row's
+  `places` column (`supabase/partplaces.sql`), written only by op `place`
+  (each `{part, colour, was, place}`, one already at `place` done whatever
+  `was` says, refused as a conflict when `was` is not what is kept or the
+  part is not held, a lone surrogate anywhere in a body 400, over
+  `MOST_PLACES_BYTES` written out 413 with words; the sets' shards read only when a
+  loose lot is not it) and emptied by Start over; a place-only change keeps
+  `updated_at`, so the site's pool is not counted again. Before the SQL is
+  applied the api reads `select=*` as before and refuses op place (503,
+  with words). `CollectionStore.places` (the window's store) feeds the parts
+  list (`InventoryPanel`: a place on each row, `parts_sort` By where it's
+  kept, ShellPrefs `parts_by_place`, its find takes a place's words) and the
+  booklet (`BookletMaker` sets `Booklet.Lot.place`; `Booklet._entry` draws
+  "from drawer 3" under the count, class `e pl`, and `cell_width`/`_rows`
+  make room only where a row has one, so a booklet with no places is laid
+  out as before; the page editor draws the same). Over MCP
+  `edit_collection place=[{part, color, place}]` sets them in one change
+  (`_collection_places`: each said "was ...", refused with words changing
+  nothing for a part not held, over 40 characters, no words, or with
+  add=/remove=/built=/missing=; every edit_collection refusal names 10
+  reasons and counts the rest, `AppTools._reasons`), and the read-back names each lot's place
+  and lists the places. An older build reads the collection without places
+  and never writes them (its ops and PUT leave the column); the newer one
+  says when the copy on this device lacks them (`Collection.places_read`).
 - `collection sums` (`src/collection/collection.gd`, pure): the pool (sets
   expanded through their inventories, plus loose parts), the shortfall, the
   plan of what could stand in, and coverage. One spelling for both sides: a
@@ -496,6 +544,12 @@ tools/relay_probe.sh localbricks -- --shots=DIR   # a window, 1280x720 (PROBE_SI
 # a set kept built left out of the counts (keptbuilt): the endpoint's op, then the app by hand and over MCP, on a relay
 node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790
 tools/relay_probe.sh keptbuilt -- --shots=DIR     # a window, 1280x720
+# where each part is kept (partplaces): the endpoint's op, then the window, the parts list, the booklet and MCP, on a relay
+node tools/web/partplaces_api.mjs --pure                     # the op on rows made here, no network
+node tools/web/partplaces_api.mjs --url=http://127.0.0.1:8790   # supabase/partplaces.sql applied
+tools/relay_probe.sh partplaces -- --shots=DIR    # a window, 1280x720
+tools/relay_probe.sh ppreview -- --ppout=DIR      # ppreview's attacks R1-R9, kept by ppfix
+tools/relay_probe.sh ppreview2 -- --ppout=DIR     # R10 Put them there asks first, R11 30 lots in a step
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json

@@ -94,6 +94,9 @@ class Lot extends RefCounted:
 	var colour: String = ""
 	var element: String = ""
 	var part_id: String = ""
+	## Where the person keeps it (partplaces, CollectionStore.places), "" for
+	## nowhere: said under its count, "from drawer 3".
+	var place: String = ""
 
 
 ## One step, as it goes on a page.
@@ -1121,29 +1124,55 @@ static func _parts_size(lots: Array[Lot], widest: float) -> Vector2:
 	var height: float = PAD
 	for row: Array in rows:
 		width = maxf(width, float(row[1]))
-		height += float(row[2]) + QUANTITY + 1.0
+		height += float(row[2]) + QUANTITY + 1.0 + float(row[3])
 	return Vector2(width + PAD * 2.0, height + PAD - 1.0)
 
 
-## [[lots], width, tallest picture] per row.
+## [[lots], width, tallest picture, how much taller its places make it]
+## per row.
 static func _rows(lots: Array[Lot], widest: float) -> Array:
 	var rows: Array = []
 	var row: Array[Lot] = []
 	var width: float = 0.0
 	var tallest: float = 0.0
+	var placed: float = 0.0
 	for lot: Lot in lots:
-		var cell: float = maxf(lot.size.x, QUANTITY * 2.0)
+		var cell: float = cell_width(lot)
 		if not row.is_empty() and width + PAD + cell > widest - PAD * 2.0:
-			rows.append([row, width, tallest])
+			rows.append([row, width, tallest, placed])
 			row = []
 			width = 0.0
 			tallest = 0.0
+			placed = 0.0
 		width += (PAD if not row.is_empty() else 0.0) + cell
 		tallest = maxf(tallest, lot.size.y)
+		if not lot.place.is_empty():
+			placed = PLACE_LINE
 		row.append(lot)
 	if not row.is_empty():
-		rows.append([row, width, tallest])
+		rows.append([row, width, tallest, placed])
 	return rows
+
+
+## A part's place under its count, in mm: its size, and the room its line
+## takes under the count (partplaces). A box with no place set is laid out
+## as it always was, to the hundredth of a millimetre.
+const PLACE_SIZE := 2.2
+const PLACE_LINE := 2.8
+
+
+## What a part's place says under its count: "from drawer 3", or "".
+static func place_words(lot: Lot) -> String:
+	return "from " + lot.place if not lot.place.is_empty() else ""
+
+
+## How wide a part's cell in a parts box is: its picture, its "2x", and
+## its place's words.
+static func cell_width(lot: Lot) -> float:
+	var cell: float = maxf(lot.size.x, QUANTITY * 2.0)
+	if not lot.place.is_empty():
+		cell = maxf(cell, Helvetica.text_width(place_words(lot), PLACE_SIZE, false) + 0.4)
+	return cell
 
 
 ## The callout box on the attach step's panel: a cell for each of its
@@ -1616,14 +1645,18 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 			var x: float = entry.parts_rect.position.x + PAD
 			var tallest: float = float(row[2])
 			for lot: Lot in row[0]:
-				var cell: float = maxf(lot.size.x, QUANTITY * 2.0)
+				var cell: float = cell_width(lot)
 				var at := Rect2(Vector2(x + (cell - lot.size.x) * 0.5, y + tallest - lot.size.y),
 					lot.size)
 				out.append(_part(at, lot, document))
 				out.append(_text(Vector2(x, y + tallest + 0.6), QUANTITY * 0.82,
 					"%dx" % lot.count, "q"))
+				# Where it is kept, under its count (partplaces).
+				if not lot.place.is_empty():
+					out.append(_text(Vector2(x, y + tallest + 0.6 + QUANTITY * 0.82 + 0.5), PLACE_SIZE,
+						_escape(place_words(lot)), "e pl"))
 				x += cell + PAD
-			y += tallest + QUANTITY + 1.0
+			y += tallest + QUANTITY + 1.0 + float(row[3])
 	out.append(_text(entry.number_at, entry.number_size, str(entry.number), "n",
 		document.sheet.number_style()))
 	if not entry.name.is_empty():

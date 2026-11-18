@@ -5654,6 +5654,41 @@
       "area": "collection"
     },
     {
+      "kind": "ui",
+      "label": "where each part is kept",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own, Where it's kept…: type a place in a row and Enter, or find and Put them there; then the parts list's By where it's kept and Make instructions' parts boxes; tools/relay_probe.sh partplaces)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "partplaces probe",
+      "entry": "src/dev/partplaces_probe.gd",
+      "reach": "tools/relay_probe.sh partplaces   (a window, 1280x720; -- --shots=DIR: 7140-1 and 12 loose lots; edit_collection place= on 12 lots in 1 call, refusals changing nothing, the read-back; Where it's kept: a row typed, a find and Put them there in one change, By place; the sets and lots byte for byte, a restart and another device keep every place; the parts list By where it's kept; the booklet's parts box says \"from drawer 3\", none with it turned off; rel-m308's Collection drops only the places and the page says so; two tabs at once; Save places as CSV and Places CSV… read back; a part not owned refused; Start over forgets them; the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "ppreview probe",
+      "entry": "src/dev/ppreview_probe.gd",
+      "reach": "tools/relay_probe.sh ppreview   (a window, 1280x720; -- --ppout=DIR: an independent review's attacks on where each part is kept, kept by ppfix: R1 17 odd places over MCP kept exactly, one that looks blank as none; R2 the places CSV read back, '=x as '=x; R3 a row's Enter sends once and keeps the focus; R4 a row typed while another is kept keeps its words and focus; R5 41 characters pasted said, never cut; R6 a place on a part held no more listed, taken off from its row and by a CSV; R7 MCP limits, 300 refusals as 10 and a count; R8 op lots and op place at once; R9 the booklet with 40-character places, its PDF and pictures)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "ppreview2 probe",
+      "entry": "src/dev/ppreview2_probe.gd",
+      "reach": "tools/relay_probe.sh ppreview2   (a window, 1280x720: R10 Put them there with the find empty asks first, naming the 6 kept elsewhere, Only the 14 kept nowhere, then Move all 6, one row shown put unasked; R11 a step of 30 lots in the booklet, each parts box in its panel)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "partplaces api test",
+      "entry": "tools/web/partplaces_api.mjs",
+      "reach": "node tools/web/partplaces_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced, supabase/partplaces.sql applied; --pure alone runs step 0 with no network: placeText one line and never cut, placesOf, op place on rows made here held by the lots and a set's inventory; then 12 placed in one op, every set and lot and updated_at as they were, made once with its id; refused changing nothing from a place not shown, a part not held, named twice, 41 characters; two tabs at once; kept through every other change, a replace import and an older app's PUT; taken off; Start over and DELETE forget them)",
+      "area": "collection"
+    },
+    {
       "kind": "cli",
       "label": "keptbuilt api test",
       "entry": "tools/web/keptbuilt_api.mjs",
