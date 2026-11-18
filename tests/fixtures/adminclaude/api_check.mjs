@@ -202,6 +202,16 @@ try {
   const ownedAfter = rows("social_sends").find((one) => one.id === suggested?.id);
   out.improve = { tools: toolsOf(improve), new_draft: Boolean(improved && improved.id !== suggested?.id),
     original_unchanged: JSON.stringify(owned) === JSON.stringify(ownedAfter) };
+  // A reply drafted by hand to a Reddit address (no inbox without Reddit's
+  // API, redditway): improved as a reply to that same address.
+  const byHand = await admin("social_draft", { body: { provider: "reddit", kind: "reply",
+    address: "https://www.reddit.com/r/lego/comments/mkp009/a_modular/k0mm3nt/", body: "Thanks, glad it helps." } });
+  const handId = byHand.json?.send?.id;
+  const improveHand = await chat({ ask: "improve", section: "social", target: { draft: handId || "aaaaaaaaaa" }, history: [] });
+  const handImproved = improveHand.events.find((one) => one.event === "draft")?.data?.send;
+  out.improve_by_hand = { kept: byHand.status, tools: toolsOf(improveHand),
+    draft: handImproved && { kind: handImproved.kind, parent: handImproved.parent, link: handImproved.link,
+      new: handImproved.id !== handId } };
   const overview = await chat({ ask: "overview", section: "social", history: [] });
   out.overview = { tools: toolsOf(overview), text: textOf(overview).slice(0, 200) };
   const marked = await admin("social", { method: "GET" });
@@ -287,7 +297,8 @@ try {
 
   // 12. What the chats wrote.
   out.writes = [...new Set(writes)].sort();
-  out.sends = { made: rows("social_sends").length - sendsBefore, statuses: [...new Set(rows("social_sends").map((one) => one.status))],
+  // Every draft but the one the owner kept by hand above is Claude's.
+  out.sends = { made: rows("social_sends").length - sendsBefore - (handId ? 1 : 0), statuses: [...new Set(rows("social_sends").map((one) => one.status))],
     drafts_marked: rows("admin_claude_drafts").length };
 
   // 13. The audit: each call, never the key or the words.

@@ -170,13 +170,16 @@ export const SOCIAL_TOOLS = [
   },
   {
     name: "make_draft",
-    description: "Keep a draft on the social desk, marked \"by Claude\": a post to a subreddit or a reply to an inbox item. "
+    description: "Keep a draft on the social desk, marked \"by Claude\": a post to a subreddit, or a reply to an inbox item "
+      + "(parent) or to a Reddit post or comment by its address (address: a reply drafted by hand keeps it as its link). "
       + "This is the only thing you can write. It never sends, posts, replies, schedules or changes a draft that is there: "
       + "the owner reads it, edits it and presses Send themselves. Links to brickworks.diy are tagged as it is kept.",
     input_schema: { type: "object", properties: {
       kind: { type: "string", enum: ["post", "reply"] },
       community: { ...COMMUNITY, description: "For a post: the subreddit it is for" },
       parent: { type: "string", pattern: "^t[134]_[A-Za-z0-9]{1,20}$", maxLength: 24, description: "For a reply: the inbox item it answers" },
+      address: { type: "string", maxLength: 2000, pattern: "^https://\\S+$",
+        description: "For a reply to what is not in the inbox: the address on Reddit of the post or comment it answers" },
       title: { type: "string", maxLength: 300, description: "For a post: its title, at most 300 characters" },
       body: { type: "string", maxLength: 40000, description: "The words" },
       link: { type: "string", maxLength: 2000, pattern: "^https://\\S+$", description: "For a link post: its address (leave body empty)" },
@@ -185,14 +188,17 @@ export const SOCIAL_TOOLS = [
     async run(input, ctx) {
       const given = checked(this.input_schema, input);
       if (ctx.drafts >= 3) throw new ToolRefusal("At most three drafts for one question: say what you made and stop.");
-      if (given.kind === "reply" && !given.parent) throw new ToolRefusal("A reply names the inbox item it answers: parent.");
+      if (given.kind === "reply" && !given.parent && !given.address) {
+        throw new ToolRefusal("A reply names what it answers: parent (an inbox item) or address (its address on Reddit).");
+      }
       if (given.kind === "post" && !given.community) throw new ToolRefusal("A post names its subreddit: community.");
       const held = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, setHeader() { return this; },
         json(body) { this.body = body; return this; } };
       try {
         await socialDraft({ method: "POST", query: ctx.tests ? { tests: "1" } : {}, headers: ctx.request.headers || {},
           body: { provider: "reddit", kind: given.kind, community: given.community || "", parent: given.parent || "",
-            title: given.title || "", body: given.body, link: given.link || "" } }, held);
+            address: given.kind === "reply" ? given.address || "" : "", title: given.title || "", body: given.body,
+            link: given.link || "" } }, held);
       } catch (trouble) {
         throw new ToolRefusal(trouble instanceof AuthError ? trouble.message : "The desk did not keep it.");
       }
@@ -206,7 +212,8 @@ export const SOCIAL_TOOLS = [
       }
       ctx.emit("draft", { send: { ...send, by_claude: { model: ctx.model, ask: ctx.ask } }, note: given.note || "" });
       ctx.made.push(send.id);
-      return { kept: true, id: send.id, kind: send.kind, community: send.community, parent: send.parent, campaign: send.campaign,
+      return { kept: true, id: send.id, kind: send.kind, community: send.community, parent: send.parent,
+        answers: send.kind === "reply" ? send.link || null : null, campaign: send.campaign,
         where: "The desk's Drafts (Social › Write), marked by Claude", sent: false,
         next: "The owner reads it, edits it and presses Send; nothing goes out by itself." };
     },

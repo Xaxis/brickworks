@@ -143,7 +143,9 @@ read gives:
 - **Its one write** is `make_draft`: a draft on the social desk through the
   desk's own `socialDraft` (so the site's links are tagged as the owner's
   drafts are), marked in `admin_claude_drafts` so the desk shows "by
-  Claude".
+  Claude". A post, or a reply to an inbox item or, as the desk's reply by
+  hand, to a post or comment by its address on Reddit (so a reply drafted
+  by hand is improved as a reply to the same address).
 - It never sends, posts, replies, schedules, deletes, mails, or changes a
   plan or a switch. No tool does, and none is offered.
 - An Improve writes a new draft beside the owner's and leaves theirs as it

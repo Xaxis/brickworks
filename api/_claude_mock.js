@@ -242,6 +242,15 @@ function next(list) {
       return { blocks: [use("social_rules", { community: draft?.[2] || "lego" })], stop: "tool_use" };
     }
     if (rounds === 2) {
+      // A reply drafted by hand (its address kept as its link) is improved as
+      // a reply to the same address.
+      const sends = all.flatMap((text) => { try { return JSON.parse(text).sends || []; } catch { return []; } });
+      const target = sends.find((one) => one.id === improve[1]);
+      if (target?.kind === "reply" && target.link) {
+        return { blocks: [use("make_draft", { kind: "reply", address: target.link,
+          body: "Thanks for trying it. Brickworks is ours; what would you build first?",
+          note: `Shorter than ${improve[1]}, and it answers the same comment.` })], stop: "tool_use" };
+      }
       return { blocks: [use("make_draft", { kind: "post", community: "lego", title: "We made a free LEGO® CAD for the browser",
         body: "Brickworks is ours, and free: https://brickworks.diy/gallery. Tell us what to build next.",
         note: `Shorter than ${improve[1]}, affiliation first, the title plain.` })], stop: "tool_use" };

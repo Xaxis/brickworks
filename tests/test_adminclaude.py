@@ -201,8 +201,13 @@ def test_suggest_reply_improve_overview() -> None:
     assert got["reply"]["draft"] == {"kind": "reply", "parent": "t4_mk4001", "status": "draft"}
     assert got["improve"] == {"tools": ["social_sends:ok", "social_rules:ok", "make_draft:ok"], "new_draft": True,
                               "original_unchanged": True}
+    # A reply drafted by hand to a Reddit address (no inbox without Reddit's
+    # API) is improved as a reply to that same address, beside it.
+    assert got["improve_by_hand"] == {"kept": 200, "tools": ["social_sends:ok", "social_rules:ok", "make_draft:ok"],
+                                      "draft": {"kind": "reply", "parent": "t1_k0mm3nt", "new": True,
+                                                "link": "https://www.reddit.com/r/lego/comments/mkp009/a_modular/k0mm3nt/"}}
     assert got["overview"]["tools"] == ["social_overview:ok"] and "What to post next" in got["overview"]["text"]
-    assert got["marks"] == ["improve", "reply", "suggest"]
+    assert got["marks"] == ["improve", "improve", "reply", "suggest"]
 
 
 def test_only_drafts_are_written() -> None:
