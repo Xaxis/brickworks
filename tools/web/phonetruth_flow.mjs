@@ -155,7 +155,9 @@ async function measure(config, result) {
   try {
     await signInContext(context);
     await context.addInitScript(instrument);
-    for (const page of context.pages()) await page.close().catch(() => {});
+    // WebKit's MiniBrowser ends with its last page, so its first is kept
+    // (blank; the sampler reads the biggest content process alone).
+    if (config.engine !== "webkit") for (const page of context.pages()) await page.close().catch(() => {});
     const memory = sampler(context, config);
     // The first visit, cold, and a return.
     result.cold = await visit(context, config, withBypass(app()), memory, "cold", { ms: VISIT_MS });

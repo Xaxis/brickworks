@@ -3188,8 +3188,10 @@ plan with Claude as the client.
   engine's files at the rate they come, then `phone_start_s`;
   `window.brickworksEta` is what it worked out. A return
   (`localStorage brickworks.engineHad` is this engine's `/e/<hash>/`), a
-  computer and a tablet are told nothing. Proven by the phonewarn browser
-  flow.
+  computer and a tablet are told nothing. A start the browser refuses its
+  memory ("Out of memory", as iOS Safari refuses the 2 GB shared one on
+  some iPhones) is said as that, with what to do. Proven by the phonewarn
+  browser flow.
 - `the numbers a phone is warned by` (`api/_phone.js`): `phone_parts` and
   `phone_start_s`, site_settings switches for one scope (brickworks.diy's,
   or a preview's own), the measured defaults until set. GET
@@ -3207,7 +3209,9 @@ plan with Claude as the client.
   WebGL 2 (taken from the canvas) said on all three within seconds on Fast
   4G with the engine's files not finished; a phone's first visit on Fast 4G
   told how long, with how close the first estimate came in warn.json, and
-  a return, the computer and the tablet told nothing. Passes on
+  a return, the computer and the tablet told nothing; the engine's memory
+  refused (WebAssembly.Memory made to throw Safari's RangeError) said on
+  the phone and the computer, with no time given. Passes on
   "phonewarn: N passed, 0 failed".
 - `phonetruth measures` (`tools/web/phonetruth_flow.mjs`, local only, under
   heavy; `bench/results/phonetruth-2026-11-18/run_measures.sh`): the studio

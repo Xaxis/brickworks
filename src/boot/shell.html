@@ -266,6 +266,7 @@ const loaderSays = (function () {
 			"This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.": "Dieser Browser kann das Studio nicht in 3D zeichnen: Ihm fehlt WebGL 2. Schalte in seinen Einstellungen die Hardwarebeschleunigung ein oder aktualisiere ihn, oder öffne Brickworks in einem anderen Browser oder an einem Computer. Die Seite eines Modells zeigt weiterhin sein Bild und seine Teile.",
 			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Erster Besuch auf diesem Handy: noch etwa {n} s. Spätere Besuche starten schneller.",
 			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Erster Besuch auf diesem Handy: noch etwa {n} min. Spätere Besuche starten schneller.",
+			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Dieser Browser gibt dem Studio nicht den Speicher, den es braucht ({why}). Schließe andere Tabs und lade neu, oder öffne Brickworks an einem Computer.",
 		},
 		fr: {
 			"Every brick, at the size it really is.": "Chaque brique, à sa vraie taille.",
@@ -286,6 +287,7 @@ const loaderSays = (function () {
 			"This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.": "Ce navigateur ne peut pas afficher le studio en 3D : il n’a pas WebGL 2. Activez l’accélération matérielle dans ses réglages ou mettez-le à jour, ou ouvrez Brickworks dans un autre navigateur ou sur un ordinateur. La page d’un modèle montre toujours son image et ses pièces.",
 			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Première visite sur ce téléphone : encore environ {n} s. Les visites suivantes démarrent plus vite.",
 			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Première visite sur ce téléphone : encore environ {n} min. Les visites suivantes démarrent plus vite.",
+			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Ce navigateur ne donne pas au studio la mémoire dont il a besoin ({why}). Fermez d’autres onglets et rechargez, ou ouvrez Brickworks sur un ordinateur.",
 		},
 		es: {
 			"Every brick, at the size it really is.": "Cada ladrillo, a su tamaño real.",
@@ -306,6 +308,7 @@ const loaderSays = (function () {
 			"This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.": "Este navegador no puede mostrar el estudio en 3D: no tiene WebGL 2. Activa la aceleración por hardware en su configuración o actualízalo, o abre Brickworks en otro navegador o en un ordenador. La página de un modelo sigue mostrando su imagen y sus piezas.",
 			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Primera visita en este teléfono: faltan unos {n} s. Las próximas visitas empiezan antes.",
 			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Primera visita en este teléfono: faltan unos {n} min. Las próximas visitas empiezan antes.",
+			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Este navegador no le da al estudio la memoria que necesita ({why}). Cierra otras pestañas y vuelve a cargar, o abre Brickworks en un ordenador.",
 		},
 	};
 	let code = "";
@@ -1518,7 +1521,15 @@ const loaderSays = (function () {
 		});
 	}, function (error) {
 		eta.stop();
-		fail(String(error));
+		// The engine's memory refused: a 2 GB shared one, which this build
+		// asks for, is more than iOS Safari would make on some iPhones
+		// (godotengine/godot#70621; docs/PHONE.md). Said as what it is.
+		const why = String(error && error.message || error);
+		if (/out of memory|could not allocate|WebAssembly\.Memory/i.test(why)) {
+			fail(loaderSays("This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.", { why: why.slice(0, 80) }));
+		} else {
+			fail(String(error));
+		}
 		console.error(error);
 	});
 })();

@@ -23,9 +23,13 @@
 //      the loader says how long it will take, and how close its first
 //      estimate came is written down; a return to the same phone, the
 //      computer and the tablet are told nothing.
+//   5. The engine's memory refused, as iOS Safari refuses a 2 GB shared one
+//      on some iPhones (godot#70621): said as that, in plain words, with
+//      what to do, on the phone and the computer alike; no time to wait
+//      given. The other cases above never say it.
 //
 //   node tools/web/phonewarn_flow.mjs --url=https://<preview>/app [--bypass=SECRET] [--owner]
-//     [--big=ID:PARTS] [--small=ID:PARTS] [--only=1,2,3,4] [--out=DIR]
+//     [--big=ID:PARTS] [--small=ID:PARTS] [--only=1,2,3,4,5] [--out=DIR]
 //
 // Exit 0 when every check passed. The pictures, and warn.json with what
 // each case saw, go to --out.
@@ -60,6 +64,7 @@ const KINDS = {
 };
 const FAST4G = { offline: false, latency: 165, downloadThroughput: (9e6 / 8) * 0.9, uploadThroughput: (1.5e6 / 8) * 0.9 };
 const NO_GL2 = "This browser can't draw the studio in 3D: it has no WebGL 2.";
+const NO_MEMORY = "This browser would not give the studio the memory it needs";
 
 let failed = 0;
 let passed = 0;
@@ -80,8 +85,19 @@ const browser = await launch({ signedOut: true });
 /// loads the studio carries it by the address and its cookie (studio()):
 /// a header of its own on every request would be asked about first by the
 /// part store, which is another site.
-async function fresh(kind, { noGl2 = false, net = null, studio = true } = {}) {
+async function fresh(kind, { noGl2 = false, noMemory = false, net = null, studio = true } = {}) {
   const context = await browser.newContext({ ...KINDS[kind], ...(studio ? {} : { extraHTTPHeaders: headers }) });
+  if (noMemory) {
+    // Safari's own refusal, for the engine's shared memory past 1 GB.
+    await context.addInitScript(() => {
+      const Made = WebAssembly.Memory;
+      WebAssembly.Memory = function Memory(given) {
+        if (given && given.shared && given.maximum > 16384) throw new RangeError("Out of memory");
+        return new Made(given);
+      };
+      WebAssembly.Memory.prototype = Made.prototype;
+    });
+  }
   if (noGl2) {
     await context.addInitScript(() => {
       const made = HTMLCanvasElement.prototype.getContext;
@@ -302,7 +318,7 @@ try {
           const ms = Date.now() - began;
           if (now) {
             if (now.eta) told.push({ ms, said: now.eta, left: Math.round(now.left) });
-            if (now.note.startsWith(NO_GL2)) gl2 = true;
+            if (now.note.startsWith(NO_GL2) || now.note.startsWith(NO_MEMORY)) gl2 = true;
             if (now.up) {
               up = ms;
               break;
@@ -329,7 +345,26 @@ try {
       } else {
         check(`${kind}, first visit${net ? " on Fast 4G" : ""}: told nothing (${up(first)})`, first.told === 0 && Number.isFinite(first.up_ms));
       }
-      check(`… and never that WebGL 2 is missing`, visits.every((v) => !v.gl2_said));
+      check(`… and never that WebGL 2 is missing, or the memory refused`, visits.every((v) => !v.gl2_said));
+      await context.close();
+    }
+  }
+  if (wanted(5)) {
+    console.log(`5. The engine's memory refused  [${at()}]`);
+    for (const kind of ["phone", "desktop"]) {
+      const { context, page } = await fresh(kind, { noMemory: true });
+      const began = Date.now();
+      await page.goto(studio(), { waitUntil: "commit", timeout: 120000 });
+      const told = await page.waitForFunction((words) => (document.getElementById("note")?.textContent || "").startsWith(words), NO_MEMORY, { timeout: 120000 })
+        .then(() => Date.now() - began, () => NaN);
+      await page.waitForTimeout(2000);
+      const note = await page.evaluate(() => ({ note: document.getElementById("note").textContent, eta: !document.getElementById("eta").hidden,
+        up: Boolean(window.brickworksBoot?.ui) }));
+      await page.screenshot({ path: join(out, `nomemory_${kind}.png`), timeout: 30000 }).catch(() => {});
+      seen[`nomemory_${kind}`] = { told_ms: told, ...note };
+      check(`${kind}, the memory refused: said plainly${Number.isFinite(told) ? ` in ${(told / 1000).toFixed(1)} s` : ""}`, Number.isFinite(told) && !note.up,
+        note.note.slice(0, 120));
+      check("… and no time to wait given", !note.eta);
       await context.close();
     }
   }
