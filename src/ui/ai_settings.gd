@@ -82,6 +82,8 @@ var _model: String = ""
 var _listed: Array = []
 ## Bumped by each list asked for, so an older answer arriving late is dropped.
 var _asking: int = 0
+## The address Enter last gave, until the field is left; null when none.
+var _base_entered: Variant = null
 ## How asking for the list went, when it is not simply there.
 var _list_said: String = ""
 var _tester: ModelTest
@@ -135,8 +137,16 @@ func _build() -> void:
 	_own.add_child(_row("Provider", provider_choice))
 
 	base_field = _field("Address", "https://…/v1")
-	base_field.text_submitted.connect(func(_text: String) -> void: _base_given())
-	base_field.focus_exited.connect(_base_given)
+	base_field.text_submitted.connect(func(_text: String) -> void:
+		_base_entered = base_field.text
+		_base_given())
+	# Left right after Enter gave the same address: its models were asked
+	# for once, not a second time (ppfix: the places page sent twice so).
+	base_field.focus_exited.connect(func() -> void:
+		var entered: Variant = _base_entered
+		_base_entered = null
+		if entered == null or base_field.text != str(entered):
+			_base_given())
 	_base_row = _row("Address", base_field)
 	_own.add_child(_base_row)
 	_base_note = _note("")

@@ -71,6 +71,7 @@ const READ_WORDS: Array[String] = [
 	"REFERENCE", "REFERENCE_PICTURE", # ReferenceImage
 	"AUTHORED_STEPS", "WORKED_STEPS", "COPY", "IN", # LdrModel
 	"PAGES", "PAGE", # SharedPages
+	"PROGRAM", # HubProgram
 ]
 
 
@@ -307,12 +308,12 @@ static func _in_copy(was: bool, section: int, word: String, raw: String, said_at
 
 
 ## Whether a line of the app's of [param word] in an IN block is the copy's
-## ([constant IN_COPY]): a light, a view or a motion, as LdrModel.parse
-## reads them (within_lines). A step's look in the block is the step's:
+## ([constant IN_COPY]): a light, a view, a motion or a program, as
+## LdrModel.parse reads them (within_lines). A step's look in the block is the step's:
 ## read as the copy's, a group's step lost its ZOOM at the second save
 ## (mlattack badlooks).
 static func _copys(word: String) -> bool:
-	return word == "LIGHT" or word == "VIEW" or word.begins_with("MOTION")
+	return word == "LIGHT" or word == "VIEW" or word.begins_with("MOTION") or word == "PROGRAM"
 
 
 func _add(start: int, stop: int, next: int, section: int, word: String, said_at: int,
@@ -582,11 +583,15 @@ static func _plain(line: String) -> bool:
 ## and tabs; and JSON as what it says, its keys in order and its numbers as
 ## numbers, so a file's "at":[0,0,0] says what the app's [0.0,0.0,0.0] does
 ## and an unedited save keeps the file's line (metalines).
+##
+## Read by a parser of its own: JSON.parse_string logs an engine error for
+## every line it cannot read, and a malformed line is the file's, kept (a
+## malformed PROGRAM line logged one at each open and save, hpreview F8).
 static func clean_of(word: String, said: String) -> String:
 	if said.begins_with("{") or said.begins_with("["):
-		var parsed: Variant = JSON.parse_string(said)
-		if parsed != null:
-			said = JSON.stringify(parsed, "", true)
+		var json := JSON.new()
+		if json.parse(said) == OK:
+			said = JSON.stringify(json.data, "", true)
 	elif said.contains("\t") or said.contains("  "):
 		said = " ".join(LdrModel._fields(said))
 	return "0 " + WORD + " " + word + ("" if said.is_empty() else " " + said)

@@ -360,6 +360,10 @@ var section_files: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
+## The program for its motors (HubProgram), as written: what Simulate plays,
+## read from its file and written into it; "" for none. Changed only by the
+## history's steps (Builder's "program").
+var program: String = ""
 ## The cut-away kept with the model, as its file says it (CutShape.read):
 ## SeeInside sets it as the person cuts and the model's file carries it
 ## (ModelStore); none for a model with none, and none again when the model
@@ -675,6 +679,7 @@ func clear(keep_numbers: bool = false) -> void:
 	held_landed = {}
 	section_files.clear()
 	motions = null
+	program = ""
 	cut_kept = {}
 	saved_views = []
 	scene_lights = []

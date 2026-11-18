@@ -1368,6 +1368,16 @@ var checked := Vector2.ZERO
 var motor: int = 0
 var stall: Dictionary = {}
 var heaviest: Dictionary = {}
+## The torque the weight asks of that motor to turn the driver on at each
+## step of the sweeps, N·cm (less than 0 where the weight helps it on):
+## Vector2(turns, needs), going on and, on the sweep back, back. What a hub's
+## program stalls a move on, either way and from anywhere
+## (HubProgram.reach_in); the stall above is the first going on from 0.
+var asked := PackedVector2Array()
+var asked_back := PackedVector2Array()
+## Whether the motion came round with nothing meeting: after the turns
+## checked every moving body is back where it was built, so they repeat.
+var periodic: bool = false
 ## Parts with no exact shape, which nothing is judged against.
 var unshaped: int = 0
 
@@ -1393,6 +1403,9 @@ func begin_stops(span: float) -> void:
 	meets_back = {}
 	stall = {}
 	heaviest = {}
+	asked = PackedVector2Array()
+	asked_back = PackedVector2Array()
+	periodic = false
 	loop_reach = Vector2(-INF, INF)
 	checked = Vector2.ZERO
 	motor = int(motored.get(driver, 0))
@@ -1418,6 +1431,8 @@ func stops_step(budget_ms: float) -> bool:
 			_sweep = {"way": -1.0, "to": maxf(-BACK_TURNS, loop_reach.x)}
 			_sweep_from(0.0)
 			continue
+		if float(_sweep["way"]) > 0.0:
+			periodic = true
 		if checked.x == 0.0:
 			# Round on with nothing meeting, and back to where it began: going
 			# back passes the same places.
@@ -1634,6 +1649,8 @@ func _sweep_one() -> bool:
 		_tested[key] = [shown[key], next]
 	if way > 0.0 and motor != 0:
 		_weigh_step(at, next, pose)
+	elif motor != 0:
+		_weigh_back(at, next, pose)
 	_sweep["at"] = next
 	_sweep["pose"] = pose
 	if way > 0.0:
@@ -1869,6 +1886,7 @@ func _weigh_step(at: float, next: float, pose: Dictionary) -> void:
 	var needs: float = (weight - float(_sweep["weight"])) / ((next - at) * TAU) * TORQUE_N_CM
 	var middle: float = (at + next) * 0.5
 	_sweep["weight"] = weight
+	asked.append(Vector2(middle, needs))
 	if heaviest.is_empty() or needs > float(heaviest["needs"]):
 		heaviest = {"turns": middle, "needs": needs}
 	var gives: float = float((MOTORS[motors[motor]] as Array)[1])
@@ -1880,6 +1898,15 @@ func _weigh_step(at: float, next: float, pose: Dictionary) -> void:
 		stall = {"turns": maxf(turns, 0.0), "needs": needs}
 	_sweep["needs"] = needs
 	_sweep["needs_at"] = middle
+
+
+## And on the sweep back: what the weight asks to turn it on at each step,
+## kept ([member asked_back]), and no stall found, as before (Play turns on).
+func _weigh_back(at: float, next: float, pose: Dictionary) -> void:
+	var weight: float = _weight_up(pose)
+	asked_back.append(Vector2((at + next) * 0.5,
+		(weight - float(_sweep["weight"])) / ((next - at) * TAU) * TORQUE_N_CM))
+	_sweep["weight"] = weight
 
 
 ## Where it stops, in words: what meets, the range, and the motor.

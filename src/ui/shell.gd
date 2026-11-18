@@ -1242,7 +1242,11 @@ func _define() -> void:
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),
 		Callable(), "Who is signed in, and Sign out")
-	_add("quit", "Quit", CTRL | KEY_Q, func() -> void: app.get_tree().quit(),
+	# What is being typed kept first: the working model written as the app
+	# goes has it (ModelBar.end_typing).
+	_add("quit", "Quit", CTRL | KEY_Q, func() -> void:
+		bar.end_typing()
+		app.get_tree().quit(),
 		func() -> bool: return not OS.has_feature("web"))
 	# Edit
 	# An open is the oldest step: Undo past every change since brings back

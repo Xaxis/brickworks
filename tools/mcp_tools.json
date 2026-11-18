@@ -5131,7 +5131,7 @@
       "readOnlyHint": false,
       "title": "Simulate the mechanism"
     },
-    "description": "Turn the model's gear train as Tools, Simulate mechanism does, and what it drives in a loop as a drag moves it (a pinion's rack slides, a crank's rod rocks and its slider strokes), without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result).",
+    "description": "Turn the model's gear train as Tools, Simulate mechanism does, and what it drives in a loop as a drag moves it (a pinion's rack slides, a crank's rod rocks and its slider strokes), without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result). program= sets the program for the model's motors (kept in its file; undo takes it back; \"\" takes it out) and runs it in the same call, as Simulate's Run does: each motor at its rated speed, each move stopped where a part meets another or the motor stalls under its load, said move by move with a picture where it ended. A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it); with two hub motors or more, each line begins with its port, A to F.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5142,6 +5142,10 @@
         "frames": {
           "description": "frames in a recording, 2 to 240; 24 when omitted",
           "type": "integer"
+        },
+        "program": {
+          "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out",
+          "type": "string"
         },
         "record": {
           "type": "boolean"
@@ -5303,7 +5307,7 @@
       "readOnlyHint": false,
       "title": "Add to the person's collection"
     },
-    "description": "The person's own bricks, as Build, My collection's What I own keeps them with their account: sets, and loose parts by part, colour and count. add=[{part, color, count}] adds loose lots, all in one call: given a photo of their pile, look at it closely, name each part (its LDraw number, as search_parts gives it; a BrickLink number is read too) and its LDraw colour code, count each, and add them together. Every lot added is marked as this chat's and listed for the person apart from their own, to keep or take back with one button. remove=[{part, color, count}] takes pieces off lots this chat added (count omitted: the whole lot). With neither, it reads the collection back, this chat's lots apart. Their sets and their own lots are theirs: add= and remove= never change them; missing= changes only the marks it names, each said as was N, now M. parts_list which=\"need\" then measures the model against it, and which=\"buildable\" ranks what they can build. missing={set, lots: [{part, color, count}]} puts how many of each named part a set they own is missing to count, all its copies together (0 unmarks it), as its Missing parts… page does; the reply says each change as was N, now M, to put back. none=true says a set has nothing missing: refused while anything is marked, naming it; then name those lots, count 0, or send none=true with marked= the number of lots it said, to unmark them all. Send missing= alone, not with add= or remove=. What do I need?, the pool and a bin built from the set then count only what is there. built=[\"7140-1\"] marks each set they own as kept built on a shelf, every copy of it, as its Built mark in My collection does: its parts are then left out of What can I build?, My bricks, parts_list need and submit_design mine=true (its spares still count). {set, copies} marks that many of its copies; copies 0 takes it apart. The reply says each as was N, now M, to put back. Send built= alone.",
+    "description": "The person's own bricks, as Build, My collection's What I own keeps them with their account: sets, and loose parts by part, colour and count. add=[{part, color, count}] adds loose lots, all in one call: given a photo of their pile, look at it closely, name each part (its LDraw number, as search_parts gives it; a BrickLink number is read too) and its LDraw colour code, count each, and add them together. Every lot added is marked as this chat's and listed for the person apart from their own, to keep or take back with one button. remove=[{part, color, count}] takes pieces off lots this chat added (count omitted: the whole lot). With neither, it reads the collection back, this chat's lots apart. Their sets and their own lots are theirs: add= and remove= never change them; missing= changes only the marks it names, each said as was N, now M. parts_list which=\"need\" then measures the model against it, and which=\"buildable\" ranks what they can build. missing={set, lots: [{part, color, count}]} puts how many of each named part a set they own is missing to count, all its copies together (0 unmarks it), as its Missing parts… page does; the reply says each change as was N, now M, to put back. none=true says a set has nothing missing: refused while anything is marked, naming it; then name those lots, count 0, or send none=true with marked= the number of lots it said, to unmark them all. Send missing= alone, not with add= or remove=. What do I need?, the pool and a bin built from the set then count only what is there. built=[\"7140-1\"] marks each set they own as kept built on a shelf, every copy of it, as its Built mark in My collection does: its parts are then left out of What can I build?, My bricks, parts_list need and submit_design mine=true (its spares still count). {set, copies} marks that many of its copies; copies 0 takes it apart. The reply says each as was N, now M, to put back. Send built= alone. place=[{part, color, place}] says where they keep each part and colour (a drawer, a box, a tray, as they name it: \"drawer 3\"), all in one call, for parts their collection holds (a loose lot, or in a set of theirs); place \"\" takes one off. The parts list then sorts by it and the booklet's parts boxes say \"from drawer 3\". The reply says each as was, now, to put back. Send place= alone.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5415,6 +5419,33 @@
             "set"
           ],
           "type": "object"
+        },
+        "place": {
+          "description": "where they keep parts: each part and colour in a place they name",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code, like 4 for Red",
+                "type": "integer"
+              },
+              "part": {
+                "description": "the part's LDraw number, like 3001 (a BrickLink number is read too)",
+                "type": "string"
+              },
+              "place": {
+                "description": "where it is kept, at most 40 characters, like \"drawer 3\"; \"\" takes it off",
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "place"
+            ],
+            "type": "object"
+          },
+          "type": "array"
         },
         "remove": {
           "description": "pieces to take off lots this chat added",

@@ -14911,6 +14911,159 @@ msgstr "keine Sets zum Speichern: füge sie zuerst unter Was ich habe hinzu"
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "es kamen weniger Exemplare zurück als als Aufgebaut markiert waren, also sind diese nicht mehr markiert: %s%s"
 
+msgid "Program"
+msgstr "Programm"
+
+msgid "Run"
+msgstr "Ausführen"
+
+msgid "Run the program for the motors at each one's rated speed (it is kept with the model)"
+msgstr "Das Programm für die Motoren mit der Nenndrehzahl jedes Motors ausführen (es wird mit dem Modell gespeichert)"
+
+msgid "A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30% (by an angle), run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it). With two motors or more, each line begins with its port, A to F."
+msgstr "Eine Zeile je Befehl: to 90° at 50% (auf einen Winkel, von der gebauten Stellung aus), turn -45° at 30% (um einen Winkel), run 40% for 2 s, wait 1 s, repeat 3 (die darunter eingerückten Zeilen). Bei zwei oder mehr Motoren beginnt jede Zeile mit ihrem Anschluss, A bis F."
+
+msgid "Running the program…"
+msgstr "Programm läuft…"
+
+msgid "Write a program first, a line each: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" with the lines it repeats under it."
+msgstr "Schreibe zuerst ein Programm, eine Zeile je Befehl: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" mit den Zeilen, die es wiederholt, darunter."
+
+msgid "%s turns nothing: its output holds no axle or pin here. Put an axle in its hub."
+msgstr "%s dreht nichts: An seinem Abtrieb steckt hier keine Achse und kein Pin. Stecke eine Achse in seine Nabe."
+
+msgid "The model changed as the program began: run it again."
+msgstr "Das Modell hat sich beim Start des Programms geändert: Führe es noch einmal aus."
+
+msgid "%s cannot turn: %s."
+msgstr "%s kann sich nicht drehen: %s."
+
+msgid "%s and %s turn the same train: a program drives only one of them. Take the other's lines out, or part their trains."
+msgstr "%s und %s drehen dasselbe Getriebe: Ein Programm treibt nur einen von beiden an. Nimm die Zeilen des anderen heraus oder trenne ihre Getriebe."
+
+msgid "%s s of %s s: line %d"
+msgstr "%s s von %s s: Zeile %d"
+
+msgid "Stopped %s s in."
+msgstr "Nach %s s angehalten."
+
+msgid "set the program"
+msgstr "Programm festgelegt"
+
+msgid "took the program out"
+msgstr "Programm entfernt"
+
+msgid "%s, the %s #%d"
+msgstr "%s, %s #%d"
+
+msgid "A program has %d lines at most; this one has %d."
+msgstr "Ein Programm hat höchstens %d Zeilen; dieses hat %d."
+
+msgid "Line %d: %s"
+msgstr "Zeile %d: %s"
+
+msgid "Line %d: nothing to repeat; indent the lines it repeats under it."
+msgstr "Zeile %d: nichts zu wiederholen; rücke die Zeilen, die es wiederholt, darunter ein."
+
+msgid "nothing to read."
+msgstr "nichts zu lesen."
+
+msgid "a hub's ports are A to F, not %s."
+msgstr "die Anschlüsse eines Hubs heißen A bis F, nicht %s."
+
+msgid "\"%s\" is not one of its words: to, turn, run, wait, repeat."
+msgstr "\"%s\" ist keines seiner Wörter: to, turn, run, wait, repeat."
+
+msgid "%s takes degrees: \"%s 90° at 50%\"."
+msgstr "%s braucht Grad: \"%s 90° at 50%\"."
+
+msgid "%s° is more than the %d° a line turns at most."
+msgstr "%s° ist mehr als die %d°, die eine Zeile höchstens dreht."
+
+msgid "after the degrees, \"at\" and a speed: \"%s 90° at 50%\"."
+msgstr "nach den Grad \"at\" und eine Geschwindigkeit: \"%s 90° at 50%\"."
+
+msgid "a speed is a share of the motor's: \"at 50%\"."
+msgstr "eine Geschwindigkeit ist ein Anteil der des Motors: \"at 50%\"."
+
+msgid "run takes a speed and a time: \"run 40% for 2 s\"."
+msgstr "run braucht eine Geschwindigkeit und eine Zeit: \"run 40% for 2 s\"."
+
+msgid "wait waits for no motor: \"wait 1 s\"."
+msgstr "wait wartet auf keinen Motor: \"wait 1 s\"."
+
+msgid "repeat repeats the lines under it, for every motor: \"repeat 3\"."
+msgstr "repeat wiederholt die Zeilen darunter, für jeden Motor: \"repeat 3\"."
+
+msgid "repeat takes how many times: \"repeat 3\"."
+msgstr "repeat braucht, wie oft: \"repeat 3\"."
+
+msgid "repeat goes round 1 to %d times."
+msgstr "repeat läuft 1- bis %d-mal."
+
+msgid "a time in seconds: \"1 s\", or \"500 ms\"."
+msgstr "eine Zeit in Sekunden: \"1 s\" oder \"500 ms\"."
+
+msgid "a time from 0 to %d s."
+msgstr "eine Zeit von 0 bis %d s."
+
+msgid "a speed is 100% at most, the motor's speed with no load."
+msgstr "eine Geschwindigkeit ist höchstens 100 %, die des Motors ohne Last."
+
+msgid "a speed of at least 1%, or it never gets there."
+msgstr "eine Geschwindigkeit von mindestens 1 %, sonst kommt er nie an."
+
+msgid "Line %d names no motor, and %d are on the hub's ports: %s. Begin it with its port: \"%s %s\"."
+msgstr "Zeile %d nennt keinen Motor, und %d sind an den Anschlüssen des Hubs: %s. Beginne sie mit ihrem Anschluss: \"%s %s\"."
+
+msgid "Line %d: no motor is on port %s. %s."
+msgstr "Zeile %d: An Anschluss %s ist kein Motor. %s."
+
+msgid "No motor here for a program to drive: put in one that plugs into a hub (a SPIKE Prime, Technic or Powered Up motor) with its output on the axle it turns."
+msgstr "Hier ist kein Motor, den ein Programm antreiben kann: Setze einen ein, der an einen Hub angeschlossen wird (einen SPIKE Prime-, Technic- oder Powered Up-Motor), mit seinem Abtrieb auf der Achse, die er dreht."
+
+msgid "The %s #%d plugs into no hub (a battery box or an IR receiver runs it), so a program does not drive it: Play turns it. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "%s #%d wird an keinen Hub angeschlossen (ein Batteriekasten oder ein IR-Empfänger treibt ihn), also treibt ihn kein Programm an: Abspielen dreht ihn. Ein SPIKE Prime-, Technic- oder Powered Up-Motor nimmt ein Programm."
+
+msgid "The %s #%d is on no port: a hub has six, A to F."
+msgstr "%s #%d ist an keinem Anschluss: Ein Hub hat sechs, A bis F."
+
+msgid "%d motors are on no port (%s): a hub has six, A to F."
+msgstr "%d Motoren sind an keinem Anschluss (%s): Ein Hub hat sechs, A bis F."
+
+msgid "No motor here plugs into a hub (a battery box or an IR receiver runs each), so a program drives none of them: Play turns them. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "Kein Motor hier wird an einen Hub angeschlossen (ein Batteriekasten oder ein IR-Empfänger treibt jeden), also treibt ein Programm keinen von ihnen an: Abspielen dreht sie. Ein SPIKE Prime-, Technic- oder Powered Up-Motor nimmt ein Programm."
+
+msgid "This program runs past %d moves or %d minutes; Simulate plays one that does less. Repeat it fewer times."
+msgstr "Dieses Programm läuft über %d Bewegungen oder %d Minuten hinaus; Simulieren spielt eines ab, das weniger tut. Wiederhole es seltener."
+
+msgid "Line %d: %s stops at %s on its way to %s, %s s in: %s."
+msgstr "Zeile %d: %s hält bei %s auf dem Weg nach %s an, nach %s s: %s."
+
+msgid "Ran to its end in %s s."
+msgstr "In %s s bis zum Ende gelaufen."
+
+msgid "Ran to its end in %s s: %s."
+msgstr "In %s s bis zum Ende gelaufen: %s."
+
+msgid "its motor stalls: the weight it lifts asks more than the %s N·cm it gives at %s V"
+msgstr "sein Motor bleibt stehen: Das Gewicht, das er hebt, verlangt mehr als die %s N·cm, die er bei %s V gibt"
+
+msgid "%s meets %s"
+msgstr "%s trifft auf %s"
+
+msgid "the loop it closes goes no further"
+msgstr "die Schleife, die er schließt, geht nicht weiter"
+
+msgid "Simulate checked its turn no further"
+msgstr "Simulieren hat seine Drehung nicht weiter geprüft"
+
+msgid "a program for its motors this build cannot read, kept in the file as it is"
+msgstr "ein Programm für seine Motoren, das diese Version nicht lesen kann, unverändert in der Datei behalten"
+
+msgid "its program does not run as written (%s), kept as it is"
+msgstr "sein Programm läuft nicht so, wie es geschrieben ist (%s), so behalten, wie es ist"
+
 msgid "Find a step by part or colour"
 msgstr "Einen Schritt nach Teil oder Farbe finden"
 
@@ -15015,3 +15168,184 @@ msgstr "%d Reibungsverbindungen sacken ab, rot markiert, die schwächste hält %
 
 msgid "on a Technic ball joint"
 msgstr "auf einem Technic-Kugelgelenk"
+
+# partplaces (APP_UX9 #14)
+msgid "Where it's kept…"
+msgstr "Wo es liegt…"
+
+msgid "Where you keep each part and colour: a drawer, a box, a tray. The parts list sorts by it, and the booklet's parts boxes say it"
+msgstr "Wo du jedes Teil in jeder Farbe aufbewahrst: eine Schublade, eine Kiste, ein Fach. Die Teileliste sortiert danach, und die Teilekästen der Anleitung nennen es"
+
+msgid "Forget every set and part in your collection, and where each is kept? This cannot be undone."
+msgstr "Alle Sets und Teile in deiner Sammlung vergessen, und wo jedes liegt? Das lässt sich nicht rückgängig machen."
+
+msgid "Forget every set and part in your collection, and where each is kept"
+msgstr "Alle Sets und Teile in deiner Sammlung vergessen, und wo jedes liegt"
+
+msgid "Find: a part's number, its name, a colour, or a place"
+msgstr "Suchen: die Nummer eines Teils, sein Name, eine Farbe oder ein Ort"
+
+msgid "By part"
+msgstr "Nach Teil"
+
+msgid "By place"
+msgstr "Nach Ort"
+
+msgid "In the order of the parts, or of the places they are kept, as a walk round them takes"
+msgstr "In der Reihenfolge der Teile oder der Orte, an denen sie liegen, wie ein Rundgang sie abläuft"
+
+msgid "drawer 3"
+msgstr "Schublade 3"
+
+msgid "Put them there"
+msgstr "Dorthin legen"
+
+msgid "Every part the find keeps, shown or not, kept in the place typed; with none typed, taken off their places"
+msgstr "Jedes Teil, das die Suche findet, gezeigt oder nicht, kommt an den eingegebenen Ort; ist keiner eingegeben, verliert es seinen Ort"
+
+msgid "Save places as CSV"
+msgstr "Orte als CSV speichern"
+
+msgid "Every place kept, as a spreadsheet: part, colour, place. Read back here with Places CSV…"
+msgstr "Jeder gespeicherte Ort als Tabelle: Teil, Farbe, Ort. Hier mit Orte-CSV… wieder einlesen"
+
+msgid "Places CSV…"
+msgstr "Orte-CSV…"
+
+msgid "A spreadsheet of where parts are kept, with a Part, a Colour and a Place column: each place it names is set, and the rest stay"
+msgstr "Eine Tabelle, wo Teile liegen, mit einer Spalte Teil, Farbe und Ort (oder Part, Colour und Place): Jeder Ort, den sie nennt, wird gesetzt, der Rest bleibt"
+
+msgid "Say where each is kept in the booklet"
+msgstr "In der Anleitung sagen, wo jedes liegt"
+
+msgid "The booklet's parts boxes name the place under each part (\"from drawer 3\"). Turn it off for a booklet made for others"
+msgstr "Die Teilekästen der Anleitung nennen unter jedem Teil seinen Ort (\"from drawer 3\"). Schalte es für eine Anleitung für andere aus"
+
+msgid "to build"
+msgstr "zum Bauen"
+
+msgid "kept in"
+msgstr "liegt in"
+
+msgid "Where it's kept — %d of %s placed"
+msgstr "Wo es liegt — %d von %s mit Ort"
+
+msgid "%d part and colour"
+msgstr "%d Teil in einer Farbe"
+
+msgid "%d parts and colours"
+msgstr "%d Teile und Farben"
+
+msgid "Where it's kept is not in the copy on this device: a Brickworks from before places wrote it. It comes back from your account once Brickworks can be reached."
+msgstr "Wo alles liegt, steht nicht in der Kopie auf diesem Gerät: Ein Brickworks von vor den Orten hat sie geschrieben. Es kommt aus deinem Konto zurück, sobald Brickworks erreichbar ist."
+
+msgid "A drawer, a box, a tray: where you keep each part and colour you own, your sets' parts with them. The parts list sorts by it, and the booklet's parts boxes say it."
+msgstr "Eine Schublade, eine Kiste, ein Fach: wo du jedes Teil in jeder Farbe aufbewahrst, die Teile deiner Sets mit dabei. Die Teileliste sortiert danach, und die Teilekästen der Anleitung nennen es."
+
+msgid "…and %d more: find them above, or put them all somewhere at once"
+msgstr "…und %d weitere: Finde sie oben, oder lege sie alle auf einmal irgendwohin"
+
+msgid "Put the %d shown there"
+msgstr "Die %d gezeigten dorthin legen"
+
+msgid "Take the %d shown off their places"
+msgstr "Den %d gezeigten ihren Ort nehmen"
+
+msgid "Where you keep it: a drawer, a box, a tray. Kept with your account"
+msgstr "Wo du es aufbewahrst: eine Schublade, eine Kiste, ein Fach. In deinem Konto gespeichert"
+
+msgid "every one shown is kept there already"
+msgstr "jedes gezeigte liegt schon dort"
+
+msgid "none shown is kept anywhere"
+msgstr "keines der gezeigten hat einen Ort"
+
+msgid "%d set, then: %s"
+msgstr "%d gesetzt, dann: %s"
+
+msgid "%s in %s kept in “%s”"
+msgstr "%s in %s liegt in „%s“"
+
+msgid "%s in %s taken off its place"
+msgstr "%s in %s hat keinen Ort mehr"
+
+msgid "%s kept in “%s”"
+msgstr "%s liegen in „%s“"
+
+msgid "%s taken off their places"
+msgstr "%s haben keinen Ort mehr"
+
+msgid "no places to save: type where parts are kept first"
+msgstr "keine Orte zum Speichern: gib zuerst ein, wo Teile liegen"
+
+msgid "%s read: %s set, the rest as they were"
+msgstr "%s gelesen: %s gesetzt, der Rest wie zuvor"
+
+msgid "%s not in your collection (%s%s)"
+msgstr "%s nicht in deiner Sammlung (%s%s)"
+
+msgid "%d place"
+msgstr "%d Ort"
+
+msgid "%d places"
+msgstr "%d Orte"
+
+msgid "line %d: no part numbered %s"
+msgstr "Zeile %d: kein Teil mit der Nummer %s"
+
+msgid "line %d: “%s” is not a colour here"
+msgstr "Zeile %d: „%s“ ist hier keine Farbe"
+
+msgid "line %d: a place is at most %d characters"
+msgstr "Zeile %d: ein Ort hat höchstens %d Zeichen"
+
+msgid "line %d: %s in colour %d is named on line %d too"
+msgstr "Zeile %d: %s in Farbe %d steht auch in Zeile %d"
+
+msgid "its first line names no %s column"
+msgstr "seine erste Zeile nennt keine Spalte %s"
+
+msgid "As in the model"
+msgstr "Wie im Modell"
+
+msgid "By where it's kept"
+msgstr "Nach Aufbewahrungsort"
+
+msgid "By where it's kept: the parts in the order of their places, as a walk round them takes, those kept nowhere last (My collection, Where it's kept…)"
+msgstr "Nach Aufbewahrungsort: die Teile in der Reihenfolge ihrer Orte, wie ein Rundgang sie abläuft, die ohne Ort zuletzt (Meine Sammlung, Wo es liegt…)"
+
+msgid "Kept in “%s”"
+msgstr "Liegt in „%s“"
+
+msgid "Take them off their places"
+msgstr "Von ihren Orten nehmen"
+
+msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
+msgstr "Vergessen, wo diese %d Teile und Farben liegen? Speichere die Orte vorher als CSV, um eine Kopie zu behalten."
+
+msgid "Move parts kept elsewhere"
+msgstr "Woanders liegende Teile verlegen"
+
+msgid "%d of the %d parts and colours shown are kept somewhere else already. Move them to “%s” too?"
+msgstr "%d der %d gezeigten Teile und Farben liegen schon woanders. Sollen sie auch nach „%s“?"
+
+msgid "Move all %d"
+msgstr "Alle %d verlegen"
+
+msgid "Only the %d kept nowhere"
+msgstr "Nur die %d ohne Ort"
+
+msgid "a place is at most %d characters, and that is %d"
+msgstr "ein Ort hat höchstens %d Zeichen, und dieser hat %d"
+
+msgid "nothing was kept: a place is at most %d characters, and that is %d"
+msgstr "nichts wurde gespeichert: ein Ort hat höchstens %d Zeichen, und dieser hat %d"
+
+msgid "Where it's kept — %d of %s placed, and %d you own none of now"
+msgstr "Wo es liegt — %d von %s mit Ort, und %d, von denen du jetzt keins mehr hast"
+
+msgid "You own none of it now. Its place is kept for when it comes back: empty it and press Enter to take it off"
+msgstr "Du hast jetzt keins mehr davon. Sein Ort bleibt, bis es wiederkommt: leere ihn und drücke Enter, um ihn zu entfernen"
+
+msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
+msgstr "%s in %s bekommt keinen neuen Ort: du hast jetzt keins mehr davon. Leere seinen Ort, um ihn zu entfernen"

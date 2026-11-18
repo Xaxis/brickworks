@@ -658,6 +658,14 @@ sorted collection walks to the same drawers again and again.
 - **Judged:** keep partplaces' bar, and add the booklet's parts callout
   ("from drawer 3"). After keptbuilt, which changes the same store. It
   writes the collection, so one review.
+- **Built (partplaces, 2026-11-17):** a place is free text, one line of
+  at most 40 characters ("drawer 3", "B12"), sorted as a person reads it
+  (drawer 2 before drawer 10). It is kept per part and colour, whatever
+  brought the part (a set, a file, the person's own lots), because a drawer
+  holds a part in a colour, not a lot. It goes in a `places` column of its
+  own (`supabase/partplaces.sql`), not the lots' jsonb, since a set's parts
+  have no lot to hang it on and no other op may lose it. Many at once: the
+  page's find and Put them there, a places CSV, or `place=` over MCP.
 
 **5. A shake test.** A spaceship swooshed by a child loses its wings
 first.

@@ -867,7 +867,15 @@ func definitions() -> Array:
 				+ "floating parts by number, and weighs the balance over the whole cycle: the "
 				+ "worst frame, the arm furthest past the base's edge, a picture of it there. "
 				+ "record=true also renders turns= turns of the reference (1) in frames= frames "
-				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result)."),
+				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result). "
+				+ "program= sets the program for the model's motors (kept in its file; undo takes "
+				+ "it back; \"\" takes it out) and runs it in the same call, as Simulate's Run "
+				+ "does: each motor at its rated speed, each move stopped where a part meets "
+				+ "another or the motor stalls under its load, said move by move with a picture "
+				+ "where it ended. A line each: to 90° at 50% (to an angle from where it was "
+				+ "built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines "
+				+ "indented under it); with two hub motors or more, each line begins with its "
+				+ "port, A to F."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
@@ -876,6 +884,7 @@ func definitions() -> Array:
 				"frames": {"type": "integer", "description": "frames in a recording, 2 to 240; 24 when omitted"},
 				"turns": {"type": "number", "description": "turns of the reference (or the driver) a recording covers; 1 when omitted"},
 				"record": {"type": "boolean"},
+				"program": {"type": "string", "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out"},
 			}},
 		},
 		{
@@ -983,7 +992,13 @@ func definitions() -> Array:
 				+ "its Built mark in My collection does: its parts are then left out of What can I build?, "
 				+ "My bricks, parts_list need and submit_design mine=true (its spares still count). "
 				+ "{set, copies} marks that many of its copies; copies 0 takes it apart. The reply says "
-				+ "each as was N, now M, to put back. Send built= alone."),
+				+ "each as was N, now M, to put back. Send built= alone. "
+				# partplaces (APP_UX9 #14): where each part is kept.
+				+ "place=[{part, color, place}] says where they keep each part and colour (a drawer, a box, a "
+				+ "tray, as they name it: \"drawer 3\"), all in one call, for parts their collection holds (a "
+				+ "loose lot, or in a set of theirs); place \"\" takes one off. The parts list then sorts by "
+				+ "it and the booklet's parts boxes say \"from drawer 3\". The reply says each as was, now, to "
+				+ "put back. Send place= alone."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"add": {"type": "array", "description": "loose lots to add", "items": {
 					"type": "object", "additionalProperties": false, "required": ["part", "color", "count"],
@@ -1023,6 +1038,14 @@ func definitions() -> Array:
 							"set": {"type": "string", "description": "the set's number, like 7140-1"},
 							"copies": {"type": "integer", "description": "how many of its copies are kept built; 0 takes it apart"},
 						}}]}},
+				# partplaces (APP_UX9 #14): where each part and colour is kept.
+				"place": {"type": "array", "description": "where they keep parts: each part and colour in a place they name",
+					"items": {"type": "object", "additionalProperties": false, "required": ["part", "color", "place"],
+						"properties": {
+							"part": {"type": "string", "description": "the part's LDraw number, like 3001 (a BrickLink number is read too)"},
+							"color": {"type": "integer", "description": "LDraw colour code, like 4 for Red"},
+							"place": {"type": "string", "description": "where it is kept, at most 40 characters, like \"drawer 3\"; \"\" takes it off"},
+						}}},
 			}},
 		},
 		{
@@ -1662,6 +1685,9 @@ static func changes(tool: String, input: Dictionary) -> bool:
 	# rest of edit_palette changes only the person's palettes.
 	if tool == "edit_palette":
 		return str(input.get("action", "")) == "place"
+	# hubprogram: simulate_mechanism's program= sets the model's program.
+	if tool == "simulate_mechanism":
+		return input.has("program")
 	return tool in CHANGES and not _while_looking(tool, input)
 
 
@@ -1681,7 +1707,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not input.has("degrees") and not input.has("along") and not input.has("to") \
 				and not input.has("spin")
 		"simulate_mechanism":
-			return not bool(input.get("record", false))
+			return not bool(input.get("record", false)) and not input.has("program")
 		"export_model":
 			# mcpreach: the booklet's PDF, as its page is.
 			return str(input.get("format", "")) in ["instructions", "pdf"]
@@ -4529,6 +4555,10 @@ func _edit_collection(input: Dictionary) -> String:
 	if marking_built and input.get("missing") != null:
 		return ("Nothing was changed: missing= marks a set's missing parts and built= the sets kept built, "
 			+ "one thing a call: send them in separate calls.")
+	# partplaces (APP_UX9 #14): where each part and colour is kept.
+	var placing: Variant = input.get("place")
+	if placing != null and not (placing is Array and (placing as Array).is_empty()):
+		return await _collection_places(mine, library, input)
 	# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
 	if input.get("missing") != null:
 		return await _collection_marks(mine, library, input)
@@ -4580,7 +4610,7 @@ func _edit_collection(input: Dictionary) -> String:
 		if int(down[key]["qty"]) >= 0:
 			down[key]["qty"] = -1 if int(lot["qty"]) == 0 else int(down[key]["qty"]) + int(lot["qty"])
 	if not refused.is_empty():
-		return ("Nothing was changed: " + "; ".join(refused)
+		return ("Nothing was changed: " + _reasons(refused)
 			+ ". search_parts finds a part's LDraw number; colours are LDraw codes.")
 	var add_lots: Array = []
 	for key: String in order:
@@ -4606,7 +4636,7 @@ func _edit_collection(input: Dictionary) -> String:
 		one["was"] = int(held["qty"])
 		down_lots.append(one)
 	if not own.is_empty():
-		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % "; ".join(own)
+		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % _reasons(own)
 	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
 	if done["kind"] != CollectionStore.DONE:
 		return _not_made(done, "this chat was shown it")
@@ -4767,7 +4797,9 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 			if listed >= limit:
 				break
 			listed += 1
-			said.append("  %d x %s" % [int(lot["qty"]), _lot_words(lot, library)])
+			var place: String = held.place_of(str(lot["part"]), int(lot["colour"]), library)
+			said.append("  %d x %s%s" % [int(lot["qty"]), _lot_words(lot, library),
+				", kept in " + place if not place.is_empty() else ""])
 	var total: int = ours.size() + others.size() + own.size()
 	# The marks, by set: what missing= changes, a count a part.
 	var shown_marks: int = 0
@@ -4787,6 +4819,25 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 				"colour": Collection.colour_of(key)}, library)])
 	if total > listed:
 		said.append("  and %d more lots: limit= for more." % (total - listed))
+	# partplaces: where things are kept, by place, their sets' parts too.
+	if not held.places.is_empty():
+		var by_place: Dictionary = {}
+		for key: String in held.places:
+			var at: String = str(held.places[key])
+			if not by_place.has(at):
+				by_place[at] = []
+			(by_place[at] as Array).append(_lot_words({"part": Collection.part_of(key),
+				"colour": Collection.colour_of(key)}, library))
+		var named: Array = by_place.keys()
+		named.sort_custom(func(a: String, b: String) -> bool: return Collection.place_less(a, b))
+		said.append("Where they keep parts (place= sets them, \"\" takes one off): %s in %s:" % [
+			Counted.of(held.places.size(), "part and colour", "parts and colours"), Counted.of(named.size(), "place")])
+		for at: String in named.slice(0, 20):
+			var those: Array = by_place[at]
+			said.append("  %s: %s%s" % [at, "; ".join(PackedStringArray(those.slice(0, 6))), "; and %d more" % (those.size() - 6)
+				if those.size() > 6 else ""])
+		if named.size() > 20:
+			said.append("  and %d more places." % (named.size() - 20))
 	said.append(MINE_SAID)
 	return "\n".join(said)
 
@@ -4876,7 +4927,7 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 			else:
 				named.append(lot)
 		if not bad.is_empty():
-			return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
+			return "Nothing was changed: %s. %s" % [_reasons(bad), NAME_LOTS]
 	var trouble_read: String = await mine.load_collection()
 	var entries: Array = mine.collection.entries_of(number)
 	if entries.is_empty():
@@ -4965,7 +5016,7 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 			wanted[key] = int(lot["qty"])
 			order.append(key)
 	if not bad.is_empty():
-		return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
+		return "Nothing was changed: %s. %s" % [_reasons(bad), NAME_LOTS]
 	# Each entry's lots to write, by key: [key, lots, how many more or fewer
 	# it marks there].
 	var writes: Array = []
@@ -5132,7 +5183,7 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 			was += Collection.built_of(entry)
 		changes.append({"set": number, "was": was, "built": wanted, "copies": copies})
 	if not bad.is_empty():
-		return "Nothing was changed: %s.%s" % ["; ".join(bad),
+		return "Nothing was changed: %s.%s" % [_reasons(bad),
 			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
 	var sent: Array = changes.map(func(one: Dictionary) -> Dictionary:
 		return {"set": one["set"], "was": one["was"], "built": one["built"]})
@@ -5154,6 +5205,114 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 
 ## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).
 const MOST_MARK_CHANGES := 2000
+
+
+## A refusal's reasons, "; " between them: the first [constant
+## MOST_REASONS] named and the rest counted, so 300 parts not held come
+## back in a few lines, not 24,000 characters (ppreview F8).
+static func _reasons(reasons: Variant) -> String:
+	var all := PackedStringArray(reasons)
+	if all.size() <= MOST_REASONS:
+		return "; ".join(all)
+	return "%s; and %d more" % ["; ".join(
+		all.slice(0, MOST_REASONS)), all.size() - MOST_REASONS]
+
+
+## How many reasons a refusal names before it counts the rest.
+const MOST_REASONS := 10
+
+
+## The first SHOWN_LOTS of [param lines] (each [line, ...]), then how many
+## more, as edit_collection with nothing lists them all.
+static func _said_first(lines: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for one: Array in lines.slice(0, SHOWN_LOTS):
+		out.append(str(one[0]))
+	if lines.size() > SHOWN_LOTS:
+		out.append("  and %d more: edit_collection with nothing, limit=, lists where each is kept" % (lines.size()
+			- SHOWN_LOTS))
+	return out
+
+
+## edit_collection place=: where the person keeps each part and colour
+## (partplaces, APP_UX9 #14), each {part, color, place} ("" takes it off),
+## all in one change at the account (CollectionStore.set_places, op
+## "place"), from the places read afresh, all or nothing. A part is named
+## by its LDraw number or BrickLink's, a colour by its code or its name,
+## and only one the collection holds is placed: a loose lot of it, or in a
+## set of theirs. Each said "was, now", to put back.
+func _collection_places(mine: CollectionStore, library: PartLibrary, input: Dictionary) -> String:
+	for other: String in ["add", "remove", "built"]:
+		var also: Variant = input.get(other)
+		if also != null and not (also is Array and (also as Array).is_empty()):
+			return ("Nothing was changed: place= says where parts are kept and %s= changes the collection, one "
+				+ "thing a call: send them in separate calls.") % other
+	if input.get("missing") != null:
+		return ("Nothing was changed: place= says where parts are kept and missing= marks a set's missing parts, "
+			+ "one thing a call: send them in separate calls.")
+	var asked: Variant = input["place"]
+	if not asked is Array:
+		return "place is a list of {part, color, place}."
+	if (asked as Array).size() > MOST_LOTS:
+		return "At most %d places a call; send the rest in another." % MOST_LOTS
+	var trouble_read: String = await mine.load_collection()
+	var held: Collection = mine.collection
+	var holds: Dictionary = held.held_keys(mine.records, library)
+	var changes: Array = []
+	var bad := PackedStringArray()
+	var seen: Dictionary = {}
+	for n: int in (asked as Array).size():
+		var one: Variant = asked[n]
+		if not one is Dictionary:
+			bad.append("place %d: a place is {part, color, place}" % (n + 1))
+			continue
+		var lot: Variant = _lot_given(one, library, 0, 1)
+		if lot is String:
+			bad.append("place %d: %s" % [n + 1, lot])
+			continue
+		if str(lot["part"]).is_empty():
+			bad.append("place %d: %s" % [n + 1, _no_part(str(lot["asked"]))])
+			continue
+		var raw: Variant = (one as Dictionary).get("place")
+		if not raw is String:
+			bad.append("place %d: place is words, like \"drawer 3\" (\"\" takes it off)" % (n + 1))
+			continue
+		var place: String = Collection.place_text(raw)
+		if place.length() > Collection.MOST_PLACE:
+			bad.append("place %d: a place is at most %d characters, and that is %d" % [n + 1, Collection.MOST_PLACE,
+				place.length()])
+			continue
+		var key: String = Collection.key_of(str(lot["part"]), int(lot["colour"]), library)
+		if seen.has(key):
+			bad.append("place %d: %s is named twice" % [n + 1, _lot_words(lot, library)])
+			continue
+		seen[key] = true
+		var was: String = str(held.places.get(key, ""))
+		if not place.is_empty() and place != was and not holds.has(key):
+			bad.append("place %d: %s is not in the person's collection: neither a loose lot of theirs nor in a set "
+				% [n + 1, _lot_words(lot, library)] + "of theirs (they add it in My collection)")
+			continue
+		changes.append({"part": Collection.part_of(key), "colour": Collection.colour_of(key), "was": was,
+			"place": place})
+	if not bad.is_empty():
+		return "Nothing was changed: %s.%s" % [_reasons(bad),
+			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	if changes.is_empty():
+		return "place is a list of {part, color, place}: name at least one."
+	var sent: Array = changes.filter(func(one: Dictionary) -> bool: return str(one["was"]) != str(one["place"]))
+	if not sent.is_empty():
+		var done: Dictionary = await mine.set_places(sent)
+		if done["kind"] != CollectionStore.DONE:
+			return _not_made(done, "this chat read it", true)
+	var lines: Array = []
+	for one: Dictionary in changes:
+		lines.append(["  %s: %s (was %s)" % [_lot_words(one, library),
+			"in " + str(one["place"]) if not str(one["place"]).is_empty() else "kept nowhere",
+			"\"" + str(one["was"]) + "\"" if not str(one["was"]).is_empty() else "nowhere"], 0])
+	return ("Kept at the person's account, as My collection's Where it's kept shows it:\n%s\n"
+		+ "The parts list sorts by where each is kept, and the booklet's parts boxes say \"from\" the place under "
+		+ "each part. To put any back, send place=[{part, color, place: the was}] (\"\" for nowhere).") \
+		% "\n".join(_said_first(lines))
 
 
 ## How many lots a reply lists before it counts the rest, as the read back does.
