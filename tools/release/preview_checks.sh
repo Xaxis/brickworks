@@ -557,6 +557,18 @@ declare -A CMD=(
   # light and dark; Forget key; the key in no answer, page or log. Run alone:
   # it empties the checks' pool of the desk as socialdesk does.
   [adminclaude]="tools/web/adminclaude_flow.mjs --url=$P --out=$S/${TAG}_adminclaude"
+  # /admin › Notifications (ownernotify, docs/OWNER_NOTIFY.md), in the
+  # checks' own pool, whose mail goes only to Resend's test inbox; it refuses
+  # brickworks.diy. Each op 401 signed out and 404 to anybody else, the
+  # cron's op 401 without its secret, a one-click link 404 unsigned. Before
+  # supabase/owner_notify.sql the section says so and a change answers 503.
+  # After it: each kind off and on, to the digest and back, a threshold kept
+  # and a wrong one refused; quiet hours, the digest's time, the time zone
+  # and the cap kept; Pause all; Send a test and a kind's test; another
+  # address by its code, a wrong code refused, back to the account's own;
+  # Check now; Sent and Read it; both tabs at 1280 and 430, light and dark.
+  # The pool's settings put back after.
+  [ownernotify]="tools/web/ownernotify_flow.mjs --url=$P --out=$S/${TAG}_ownernotify"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):

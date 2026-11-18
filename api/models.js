@@ -73,6 +73,7 @@
 // account of its own.
 const SHARED_TEST = "delivered+brickworks-tests@resend.dev";
 
+import { noted } from "./_noted.js";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
@@ -186,7 +187,7 @@ function bodyOf(request) {
 // account_models.sql not applied.
 const NOT_HERE = /: 404$|: 400$/;
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response
       .status(204)
@@ -365,3 +366,6 @@ async function saved(args, most = null, any = false) {
   }
   throw new Error(`database POST rpc/${name}: ${answer.status}`);
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("models", handler);

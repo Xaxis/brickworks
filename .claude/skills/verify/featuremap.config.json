@@ -617,7 +617,7 @@
       "kind": "cli",
       "label": "account browser flow",
       "entry": "tools/web/account_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced; begins on the landing page from a tagged link on another site, and checks the studio's code request carries how the visit came, web/theme.js and src/account/account.gd)",
       "area": "account"
     },
     {
@@ -5910,6 +5910,41 @@
       "label": "adminclaude browser flow",
       "entry": "tools/web/adminclaude_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/adminclaude_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose Anthropic and Reddit are stand-ins: the gate on every claude op in both pools; before admin_claude.sql the section and the panel say so and a key and a question answer 503; after it, keys refused and kept, models, settings, Enter twice asks once, Suggest a post, a hostile reply at most a draft, Suggest a reply, Improve, Overview, a refusal and a 429 left out of the conversation, the cap reached, the panel by keyboard and by name at 390/1280 light/dark, Forget key; the key in no answer, page, storage or console line; preview check [adminclaude]. Locally, nothing applied and the project's pool untouched: node tools/web/relay_server.mjs PORT --hold=admin_claude_settings,admin_claude_holds,admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules, then the flow with --url=http://127.0.0.1:PORT --held)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the owner's notifications",
+      "entry": "api/_notify.js",
+      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; how a visit came kept for the tab by web/theme.js and read by the studio's sign-in, or worked out there for a visit that began at /app (came_check.mjs); owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "each server error kept",
+      "entry": "api/_noted.js",
+      "reach": "tests/test_owner_notify.py's errors checks: each of the 12 functions wrapped by noted(), a 5xx (answered or thrown) kept in owner_notify_errors after the answer is sent, nothing said before owner_notify.sql is applied",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "work after the answer",
+      "entry": "api/_after.js",
+      "reach": "tests/test_owner_notify.py's after checks: with owner_notify's tables hung, a sign-up's code, a first publish, feedback, Admission's webhook and a 5xx each answer in under 300 ms and what each raised lands once the tables answer; hung past BOUND (1.5 s) nothing waits longer or throws; on a stand-in of Vercel's request context (globalThis[Symbol.for('@vercel/request-context')].get().waitUntil) the work is handed to it; /admin › Notifications says which (after: waitUntil or bounded)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the owner's notifications page",
+      "entry": "web/admin-notify.js",
+      "reach": "<deployment>/admin?tests=1#notifications/settings and #notifications/sent as the owner: each kind on or off, at once or the daily digest, its number; the address in part, another by its code; quiet hours, the digest's time, the time zone, the cap; Pause all; Send a test, Check now; what is not mailed from here and why; Sent with each mail's words; a mail's one-click link at #notifications/off/<kind>/<pool>/<key> acted on signed out (docs/OWNER_NOTIFY.md)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "ownernotify browser flow",
+      "entry": "tools/web/ownernotify_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/ownernotify_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose mail goes only to Resend's test inbox; refuses brickworks.diy: the gate on every notify op, the cron's op and the off link; before owner_notify.sql the section says so and a change 503; after it each kind off and on, digest and back, a threshold kept and a wrong one refused, quiet hours, digest time, time zone, cap, Pause all, Send a test and a kind's test, another address and a wrong code, Check now, Sent and Read it, both tabs at 1280/430 light/dark; preview check [ownernotify]. Locally: node tools/web/relay_server.mjs PORT --hold=owner_notify_settings,owner_notify_mails,owner_notify_events,owner_notify_errors, which also proves a test mail's own off link signed out)",
       "area": "web"
     }
   ]

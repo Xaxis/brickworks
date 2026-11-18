@@ -8,8 +8,9 @@ import { $, TESTS, adminJson, ago, cell, count, emptyRow, make, resort, say, seg
   from "/admin-kit.js";
 
 export const KIND = { sign_in_code: "Sign-in code", beta: "Beta", feedback_answer: "Feedback answer", digest: "Digest",
-  report_digest: "Reports, to you", canary_alarm: "Canary alarm, to you", sign_in_notice: "Sign-in notice", other: "Other" };
-const YOURS = new Set(["report_digest", "canary_alarm"]);
+  report_digest: "Reports, to you", canary_alarm: "Canary alarm, to you", sign_in_notice: "Sign-in notice",
+  owner_notify: "Notifications, to you", other: "Other" };
+const YOURS = new Set(["report_digest", "canary_alarm", "owner_notify"]);
 const STATE = { delivered: "Delivered", bounced: "Bounced", complained: "Marked as spam", failed: "Failed",
   suppressed: "Suppressed", delivery_delayed: "Delayed", sent: "Sent", opened: "Opened", clicked: "Clicked" };
 const KEPT = { dry: "Kept for a test inbox, not sent", failed: "Resend refused it", sent: "Sent" };
