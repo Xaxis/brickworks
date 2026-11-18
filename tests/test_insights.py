@@ -517,3 +517,13 @@ def test_every_name_the_studio_tells_the_page_is_kept() -> None:
                           capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
     assert done.returncode == 0, done.stderr
     assert json.loads(done.stdout) == ["made_up_control"]
+
+
+def test_a_field_sent_false_or_null_is_taken_as_absent() -> None:
+    if _api() is None:
+        return
+    # self_attack: a false bearer is no account, a false seen no names, a
+    # false seconds 0; the beacon is still kept as the plain one is.
+    got = _api()["false_fields"]
+    assert got["status"] == [204, 204]
+    assert got["rows"] == [{"account": None, "seconds": 0, "test": True}] * 2

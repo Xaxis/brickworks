@@ -189,6 +189,19 @@ try {
   const again = await askPlans({ method: "GET", query: { op: "tally_daily" }, headers: { authorization: "Bearer cron-check-secret" } });
   out.cron_again = { status: again.status, rolled: again.json?.rolled?.length };
 
+  // After the read and the cron, so no count above moves. Every field sent as false (or null) is taken as absent (self_attack):
+  // a false bearer is no account, a false seen no names, a false seconds 0,
+  // a false first no first visit, and the row is the plain one's.
+  out.false_fields = await (async () => {
+    const t = await tally({ bearer: false, seen: false, seconds: false, first: false, check: false, consent: false,
+      who: false, about: { landing: "/gallery", channel: "direct", device: "desktop", browser: "chrome", os: "linux",
+        lang: "en", first: false } });
+    const nulls = await tally({ bearer: null, seen: null, seconds: null, first: null, check: null });
+    const rows = await pg.q("select visit, account, seconds, test from public.insights_visits where visit = any($1) order by visit",
+      [[t.v, nulls.v]]);
+    return { status: [t.status, nulls.status], rows: rows.map((r) => ({ account: r.account, seconds: r.seconds, test: r.test })) };
+  })();
+
   // 7. Every row as text: no address, no IP, no account id, no email.
   const dump = JSON.stringify(await pg.q("select (select json_agg(v) from public.insights_visits v) as v, "
     + "(select json_agg(e) from public.insights_events e) as e, (select json_agg(d) from public.insights_days d) as d, "
