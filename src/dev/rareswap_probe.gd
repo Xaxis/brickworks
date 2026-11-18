@@ -672,9 +672,13 @@ func _case_words() -> void:
 	Language.apply("de")
 	list = await _list_up()
 	var german: Array = _box_names(list) if await _swaps_up(list) else []
-	_check("words: ...in German, as each row draws it (%s)" % " | ".join(german),
-		german.size() == boxes.size() and not german.has("")
-		and german.all(func(n: String) -> bool: return _drawn_in(list, n) and not boxes.has(n)))
+	var undrawn: Array = german.filter(func(n: String) -> bool: return not _drawn_in(list, n))
+	var as_was: Array = german.filter(func(n: String) -> bool: return boxes.has(n))
+	_check("words: ...in German, as each row draws it (%s)%s" % [" | ".join(german),
+		("" if undrawn.is_empty() else "; not drawn: " + " | ".join(undrawn))
+		+ ("" if as_was.is_empty() else "; still English: " + " | ".join(as_was))],
+		german.size() == boxes.size() and not german.has("") and undrawn.is_empty()
+		and as_was.is_empty())
 	list.hide_list()
 	Language.apply("en")
 	for code: String in ["de", "fr", "es"]:
