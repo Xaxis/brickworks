@@ -858,7 +858,15 @@ func definitions() -> Array:
 				+ "floating parts by number, and weighs the balance over the whole cycle: the "
 				+ "worst frame, the arm furthest past the base's edge, a picture of it there. "
 				+ "record=true also renders turns= turns of the reference (1) in frames= frames "
-				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result)."),
+				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result). "
+				+ "program= sets the program for the model's motors (kept in its file; undo takes "
+				+ "it back; \"\" takes it out) and runs it in the same call, as Simulate's Run "
+				+ "does: each motor at its rated speed, each move stopped where a part meets "
+				+ "another or the motor stalls under its load, said move by move with a picture "
+				+ "where it ended. A line each: to 90° at 50% (to an angle from where it was "
+				+ "built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines "
+				+ "indented under it); with two hub motors or more, each line begins with its "
+				+ "port, A to F."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
@@ -867,6 +875,7 @@ func definitions() -> Array:
 				"frames": {"type": "integer", "description": "frames in a recording, 2 to 240; 24 when omitted"},
 				"turns": {"type": "number", "description": "turns of the reference (or the driver) a recording covers; 1 when omitted"},
 				"record": {"type": "boolean"},
+				"program": {"type": "string", "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out"},
 			}},
 		},
 		{
@@ -1653,6 +1662,9 @@ static func changes(tool: String, input: Dictionary) -> bool:
 	# rest of edit_palette changes only the person's palettes.
 	if tool == "edit_palette":
 		return str(input.get("action", "")) == "place"
+	# hubprogram: simulate_mechanism's program= sets the model's program.
+	if tool == "simulate_mechanism":
+		return input.has("program")
 	return tool in CHANGES and not _while_looking(tool, input)
 
 
@@ -1672,7 +1684,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not input.has("degrees") and not input.has("along") and not input.has("to") \
 				and not input.has("spin")
 		"simulate_mechanism":
-			return not bool(input.get("record", false))
+			return not bool(input.get("record", false)) and not input.has("program")
 		"export_model":
 			# mcpreach: the booklet's PDF, as its page is.
 			return str(input.get("format", "")) in ["instructions", "pdf"]

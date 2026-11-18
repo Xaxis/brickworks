@@ -18,6 +18,12 @@
 ## them (BrickWorld.set_drawn): nothing is moved, nothing goes into undo, and
 ## a save made while it plays writes the model as it was built.
 ##
+## The program row (APP_UX9 hubprogram): a program for the model's motors
+## (HubProgram), kept with the model, run at each motor's rated speed and
+## stopped where Simulate finds each move stops. Its words are the model's
+## once Run is pressed or the box is left, one step of the history (Undo
+## takes them back), and a save writes them; running it moves nothing.
+##
 ## The balance is weighed over the cycle (Balance, through Shell's
 ## weigh_balance, which draws the support polygon and the centre of mass on
 ## the floor), and the arm that reaches furthest past the base's edge named.
@@ -109,6 +115,29 @@ var _last: Dictionary = {}
 var _told_page: String = ""
 var _told_page_at: int = 0
 
+## The program row: the program running, how far in (seconds), its run
+## (HubProgram.run), the motors on the hub's ports (HubProgram.ports_of),
+## and each port's mechanism, driven from its motor, with its torque curve
+## (HubProgram.curve_of). The panel's own reading drives the first port.
+var running: bool = false
+var program_time: float = 0.0
+## When the run began (Time.get_ticks_usec): its time is the clock's, so a
+## slow frame shows where the motors are by then, at their rated speed in
+## real time, rather than slowing the run with the frames.
+var _program_began: int = 0
+var _ran: Dictionary = {}
+var _ports: Dictionary = {}
+var _port_sims: Dictionary = {}
+var _port_curves: Dictionary = {}
+var _preparing: bool = false
+var _program_rows: VBoxContainer
+var _program_box: TextEdit
+var _run: Button
+var _program_said: Label
+## The program as the box last showed the model's, and the line lit.
+var _shown_program: String = ""
+var _lit_line: int = -1
+
 
 func _ready() -> void:
 	visible = false
@@ -126,6 +155,7 @@ func _ready() -> void:
 ## the one selected, else the one that turns most.
 func open() -> void:
 	visible = true
+	_show_program_text()
 	await read()
 
 
@@ -133,6 +163,10 @@ func close() -> void:
 	if renderer != null and renderer.is_busy():
 		renderer.cancel()
 	_stop()
+	# Words written in the box and not run are the model's as the panel goes.
+	_commit_program()
+	_stop_program()
+	_port_sims.clear()
 	visible = false
 	if world != null:
 		world.set_drawn({})
@@ -148,6 +182,8 @@ func read() -> void:
 		return
 	_reading = true
 	_stop()
+	_stop_program()
+	_port_sims.clear()
 	world.set_drawn({})
 	_status.text = ""
 	_stops.text = ""
@@ -407,6 +443,7 @@ func _scrub_range() -> void:
 
 
 func play() -> void:
+	_stop_program()
 	if playing:
 		_stop()
 		return
@@ -428,6 +465,7 @@ func _stop() -> void:
 ## Turn the driver to [param at] turns from where it was built, and show it.
 func scrub_to(at: float) -> void:
 	_stop()
+	_stop_program()
 	turns = maxf(at, 0.0)
 	_show_pose()
 
@@ -476,9 +514,17 @@ func _process(delta: float) -> void:
 		_seen_revision = world.revision
 		read()
 		return
-	if playing and sim != null:
+	if running:
+		program_time = (Time.get_ticks_usec() - _program_began) / 1e6
+		_show_program_pose()
+	elif playing and sim != null:
 		turns += speed * delta
 		_show_pose()
+	# The model's program changed by an undo, a redo, an open or a session:
+	# the box shows it, unless the person is writing in it.
+	if world != null and world.program != _shown_program and _program_box != null \
+			and not _program_box.has_focus():
+		_show_program_text()
 	_tell_page()
 
 
@@ -508,9 +554,216 @@ func _input(event: InputEvent) -> void:
 	if key.pressed and not key.echo and key.keycode == KEY_ESCAPE:
 		if _recording and renderer != null:
 			renderer.cancel()
+		elif _program_box != null and _program_box.has_focus():
+			# Out of the box first: Escape there leaves it, as a field's does.
+			_program_box.release_focus()
+			_commit_program()
 		else:
 			close()
 		get_viewport().set_input_as_handled()
+
+
+# -- the program -----------------------------------------------------------------------
+
+
+## Run the model's program (Run), or stop it (Stop): the box's words made the
+## model's first, each port it names driven from its motor, and the run
+## played at each motor's rated speed from where the model was built.
+func run_program() -> void:
+	if running:
+		_stop_program()
+		return
+	if sim == null or world == null or _reading or _driving or _preparing or _recording:
+		return
+	_commit_program()
+	_stop()
+	var program: HubProgram = HubProgram.parse(world.program)
+	if program.is_empty():
+		_program_said.text = ("Write a program first, a line each: \"to 90° at 50%\", "
+			+ "\"wait 1 s\", \"repeat 3\" with the lines it repeats under it.")
+		return
+	_preparing = true
+	_run.disabled = true
+	var job: Working.Job = Working.begin("Running the program…")
+	await job.shown()
+	var made: Dictionary = await prepare_run(program, sim, true)
+	job.end()
+	_preparing = false
+	_run.disabled = false
+	if made.has("refusal"):
+		_program_said.text = str(made["refusal"])
+		return
+	_ran = made["ran"]
+	_ports = made["ports"]
+	_port_sims = made["sims"]
+	_port_curves = made["curves"]
+	if not str(_ran.get("refusal", "")).is_empty():
+		_program_said.text = str(_ran["refusal"])
+		return
+	program_time = 0.0
+	_program_began = Time.get_ticks_usec()
+	running = true
+	_run.text = "Stop"
+	_show_program_pose()
+
+
+## The program [param program] run on the model as [param simulation] reads
+## it: each port it names driven from its motor (with [param panel], the
+## first by the panel's own reading, driven there as a click drives it; the
+## next each by a reading of its own), where each one's motion stops found,
+## and the run (HubProgram.run). {ran, ports, sims, curves}, or {refusal}.
+func prepare_run(program: HubProgram, simulation: Simulation, panel: bool) -> Dictionary:
+	if not program.errors.is_empty():
+		return {"refusal": "\n".join(program.errors)}
+	var ports: Dictionary = HubProgram.ports_of(simulation.motors)
+	var used: Variant = program.ports_used(ports)
+	if used is String:
+		return {"refusal": used}
+	var sims: Dictionary = {}
+	var curves: Dictionary = {}
+	var bodies: Dictionary = {}
+	for port: String in used:
+		var motor: Dictionary = ports[port]
+		var body: int = SimulatePanel._motored_body(simulation, int(motor["key"]))
+		if body < 0:
+			return {"refusal": ("%s turns nothing: its output holds no axle or pin here. Put "
+				+ "an axle in its hub.") % HubProgram.port_said(port, motor)}
+		var one: Simulation = simulation
+		if not sims.is_empty():
+			one = await read_mechanism()
+		if panel and one == sim:
+			if sim.driver != body or not sim.stops_done:
+				await drive(body, "its motor turns it")
+			if sim != one:
+				return {"refusal": "The model changed as the program began: run it again."}
+		else:
+			one.drive(body)
+		if not bool(one.solved.get("ok", false)):
+			return {"refusal": "%s cannot turn: %s." % [HubProgram.port_said(port, motor),
+				str(one.solved.get("said", ""))]}
+		# Where it stops, found for this driver: the panel's drive found it
+		# unless a click came meanwhile; a reading of its own, here.
+		if not (panel and one == sim and one.stops_done):
+			await find_stops(one)
+		sims[port] = one
+		curves[port] = HubProgram.curve_of(one)
+		bodies[port] = body
+	# Two motors whose trains turn each other: the one train held by both.
+	for port: String in sims:
+		for other: String in sims:
+			if port != other and absf(float((sims[port] as Simulation).rates.get(bodies[other], 0.0))) \
+					> Simulation.STILL:
+				return {"refusal": ("%s and %s turn the same train: a program drives only one of "
+					+ "them. Take the other's lines out, or part their trains.") % [
+						HubProgram.port_said(port, ports[port]), HubProgram.port_said(other, ports[other])]}
+	var reach := func(port: String, from: float, to: float) -> Dictionary:
+		return HubProgram.reach_in(sims[port], curves[port], from, to)
+	return {"ran": program.run(ports, reach), "ports": ports, "sims": sims, "curves": curves}
+
+
+## The body [param key]'s motor turns in [param simulation], -1 for none.
+static func _motored_body(simulation: Simulation, key: int) -> int:
+	for body: int in simulation.motored:
+		if int(simulation.motored[body]) == key:
+			return body
+	return -1
+
+
+## Where every part each port's motor moves stands [param t] seconds into
+## [param ran]: brick id -> Transform3D.
+static func program_pose(ran: Dictionary, sims: Dictionary, t: float) -> Dictionary:
+	var pose: Dictionary = {}
+	var angles: Dictionary = HubProgram.angles_at(ran, t)
+	for port: String in angles:
+		var one: Simulation = sims.get(port)
+		if one != null:
+			pose.merge(one.placed(float(angles[port])), true)
+	return pose
+
+
+func _show_program_pose() -> void:
+	if world == null:
+		return
+	var seconds: float = float(_ran.get("seconds", 0.0))
+	var t: float = minf(program_time, seconds)
+	world.set_drawn(SimulatePanel.program_pose(_ran, _port_sims, t))
+	var angles: Dictionary = HubProgram.angles_at(_ran, t)
+	for port: String in _port_sims:
+		if _port_sims[port] == sim and angles.has(port):
+			turns = float(angles[port])
+	if sim != null:
+		_at.text = "%s %s" % [sim.names.get(sim.driver, "the driver"), Simulation.turned(maxf(turns, 0.0))]
+	_light_line(HubProgram.line_at(_ran, t))
+	if program_time >= seconds:
+		running = false
+		_run.text = "Run"
+		_light_line(int((_ran.get("stopped", {}) as Dictionary).get("line", 0)))
+		_program_said.text = HubProgram.ran_words(_ran, _ports)
+		return
+	_program_said.text = "%s s of %s s: line %d" % [Simulation.figure(snappedf(t, 0.1)),
+		Simulation.figure(snappedf(seconds, 0.01)), HubProgram.line_at(_ran, t)]
+
+
+## Stop the program where it is, its words said.
+func _stop_program() -> void:
+	if not running:
+		return
+	running = false
+	if _run != null:
+		_run.text = "Run"
+		_program_said.text = "Stopped %s s in." % Simulation.figure(snappedf(program_time, 0.1))
+	_light_line(-1)
+
+
+## Line [param line] of the box lit (from 1); 0 or less for none.
+func _light_line(line: int) -> void:
+	if _program_box == null or line == _lit_line:
+		return
+	if _lit_line > 0 and _lit_line <= _program_box.get_line_count():
+		_program_box.set_line_background_color(_lit_line - 1, Color(0, 0, 0, 0))
+	_lit_line = line
+	if line > 0 and line <= _program_box.get_line_count():
+		_program_box.set_line_background_color(line - 1, Color(0.30, 0.55, 1.0, 0.28))
+
+
+## The box made the model's program, as the model has it.
+func _show_program_text() -> void:
+	if _program_box == null or world == null:
+		return
+	_shown_program = world.program
+	# A model shared to look at keeps its program as it is (set_program).
+	_program_box.editable = shell == null or not shell.read_only
+	if _program_box.text != world.program:
+		_program_box.text = world.program
+		_lit_line = -1
+
+
+## The box's words made the model's program when the person changed them
+## since it showed the model's: as Run and leaving the box do. A box no one
+## typed in never puts back a program set since (an undo, a session's).
+func _commit_program() -> void:
+	if _program_box == null or world == null or _program_box.text == _shown_program:
+		return
+	set_program(_program_box.text)
+	_shown_program = world.program
+
+
+## [param words] made the model's program (blanks, none): one step of the
+## history, which Undo takes back, and a save writes. False when it was so
+## already, or the model is one shared to look at.
+func set_program(words: String) -> bool:
+	if words.strip_edges().is_empty():
+		words = ""
+	if world == null or words == world.program or (shell != null and shell.read_only):
+		return false
+	var had: String = world.program
+	world.program = words
+	if builder != null:
+		builder.record([{"undo": "program", "program": had}],
+			"took the program out" if words.is_empty() else "set the program")
+	if _program_box != null and not _program_box.has_focus():
+		_show_program_text()
+	return true
 
 
 # -- recording ------------------------------------------------------------------------
@@ -642,7 +895,7 @@ func _reach(simulation: Simulation, poses: Array) -> AABB:
 ## One picture of the mechanism with the driver turned [param at] turns,
 ## the model's own colours, off screen, from the hero view: for a session,
 ## which cannot see the window's camera. Null without a window.
-func picture(simulation: Simulation, at: float) -> Image:
+func picture(simulation: Simulation, at: float, given: Dictionary = {}) -> Image:
 	if not StudioRender.possible() or _recording:
 		return null
 	_renderer()
@@ -651,7 +904,8 @@ func picture(simulation: Simulation, at: float) -> Image:
 	var chosen: RenderSettings = settings.copy()
 	chosen.size = Vector2i(720, 450)
 	chosen.view = "hero"
-	var pose: Dictionary = simulation.placed(at)
+	# [param given]: a pose of its own (a program's, every port's motor).
+	var pose: Dictionary = given if not given.is_empty() else simulation.placed(at)
 	var shot: Array = [null]
 	await renderer.animate(world, chosen, 1, func(_n: int) -> Dictionary: return pose,
 		func(_n: int) -> float: return 0.0, _reach(simulation, [pose]),
@@ -671,7 +925,8 @@ func _set_working(on: bool) -> void:
 ## simulate_mechanism (AppTools): the same reading, driving, periods and
 ## balance as the panel, said compactly with what to do about it, a picture
 ## of its worst frame, and a recording when asked. Never changes the model,
-## and leaves the panel as the person left it. A String, or text and a
+## and leaves the panel as the person left it; but program= sets the model's
+## program and runs it ([method _program_for_session]). A String, or text and a
 ## picture. Each slow step is on the Working bar, as the panel's are. With
 ## record=true the call is a job (ToolJobs.long_call), [param work], which
 ## the recording's frames are counted on.
@@ -681,6 +936,9 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	var job: Working.Job = Working.begin("Reading the mechanism…")
 	await job.shown()
 	var simulation: Simulation = await read_mechanism()
+	if input.has("program"):
+		job.end()
+		return await _program_for_session(simulation, str(input["program"]))
 	var chosen: Dictionary = _session_driver(simulation, str(input.get("driver", "")))
 	job.end()
 	if chosen.has("refusal"):
@@ -754,6 +1012,76 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 		return text
 	text += "\nThe picture: %s %s%s." % [simulation.names.get(body, "the driver"),
 		Simulation.turned(shown) if why.is_empty() else "at " + Simulation.angle(shown), why]
+	return [{"type": "text", "text": text}, {"type": "image", "source": {"type": "base64",
+		"media_type": "image/png", "data": Marshalls.raw_to_base64(image.save_png_to_buffer())}}]
+
+
+## simulate_mechanism's program=: [param words] made the model's program
+## (one step of the history, as the program row's Run makes it; blanks take
+## it out) and run as the row runs it, in one call: what it did move by move,
+## where it stopped and why, and a picture where it ended. With Simulate open
+## in the window, it plays there too. Words it cannot read set nothing.
+func _program_for_session(simulation: Simulation, words: String) -> Variant:
+	var program: HubProgram = HubProgram.parse(words)
+	if not program.errors.is_empty():
+		return ("The program was not set: %s\nIts words, a line each: to 90° at 50%% (to "
+			+ "an angle from where it was built), turn -45° at 30%% (by an angle), run 40%% for "
+			+ "2 s, wait 1 s, repeat 3 (the lines indented under it); with two motors or more "
+			+ "each line begins with its port, A to F.") % "; ".join(program.errors)
+	if shell != null and shell.read_only:
+		return "This tab shows a model shared to look at: its program cannot be changed."
+	var changed: bool = set_program(words)
+	if program.is_empty():
+		return ("The program is taken out of the model (undo puts it back)." if changed
+			else "The model has no program to take out.")
+	var kept: String = ("Set as the model's program (kept in its file; undo takes it back)"
+		if changed else "The model's program already")
+	var job: Working.Job = Working.begin("Running the program…")
+	await job.shown()
+	var made: Dictionary = await prepare_run(program, simulation, false)
+	job.end()
+	if made.has("refusal"):
+		return "%s, but it cannot run: %s" % [kept, made["refusal"]]
+	var ran: Dictionary = made["ran"]
+	var ports: Dictionary = made["ports"]
+	if not str(ran.get("refusal", "")).is_empty():
+		return "%s, but it cannot run: %s" % [kept, ran["refusal"]]
+	var lines := PackedStringArray()
+	lines.append("%s, and run in Simulate at each motor's rated speed: %s" % [kept,
+		HubProgram.ran_words(ran, ports)])
+	var named := PackedStringArray()
+	for port: String in made["sims"]:
+		var motor: Dictionary = ports[port]
+		named.append("%s (%s rpm with no load, %s N·cm stalled, at %s V)" % [
+			HubProgram.port_said(port, motor), Simulation.figure(float(motor["rpm"])),
+			Simulation.figure(float(motor["gives"])), Simulation.figure(float(motor["volts"]))])
+	lines.append("On the hub's ports: %s." % "; ".join(named))
+	lines.append_array(HubProgram.moves_words(ran, ports))
+	# Played in the window too, when Simulate is open there.
+	if visible and sim != null and not _recording and not _reading and not _driving:
+		_ran = ran
+		_ports = ports
+		_port_sims = made["sims"]
+		_port_curves = made["curves"]
+		_stop()
+		program_time = 0.0
+		_program_began = Time.get_ticks_usec()
+		running = true
+		_run.text = "Stop"
+		lines.append("Simulate is open in the window, and plays it there.")
+	var text: String = "\n".join(lines)
+	if not StudioRender.possible():
+		return text + "\n(No picture: this app is running without a window.)"
+	var seconds: float = float(ran.get("seconds", 0.0))
+	var first: Simulation = (made["sims"] as Dictionary).values()[0]
+	job = Working.begin("Drawing the mechanism…")
+	await job.shown()
+	var image: Image = await picture(first, 0.0, SimulatePanel.program_pose(ran, made["sims"], seconds))
+	job.end()
+	if image == null:
+		return text
+	text += "\nThe picture: where the program %s, %s s in." % ["stopped" if not (ran.get("stopped",
+		{}) as Dictionary).is_empty() else "ended", Simulation.figure(snappedf(seconds, 0.01))]
 	return [{"type": "text", "text": text}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(image.save_png_to_buffer())}}]
 
@@ -894,6 +1222,7 @@ func _build() -> void:
 			scrub_to(value))
 	column.add_child(_scrub)
 	_at = _words(column, 11, 0.7)
+	_build_program(column)
 	_weighed = _words(column, 12, 0.92)
 	var recording := HBoxContainer.new()
 	recording.add_theme_constant_override("separation", 6)
@@ -929,6 +1258,65 @@ func _for_a_finger(column: VBoxContainer, playing: Control) -> void:
 	column.move_child(playing, 1)
 	column.move_child(_scrub, 2)
 	column.move_child(_at, 3)
+	# The program next, under the player (hubprogram): Run a fingertip tall
+	# beside its title, the box four lines of 14-point type the sheet's
+	# width, written with the phone's own keyboard.
+	column.move_child(_program_rows, 4)
+	_run.custom_minimum_size = Vector2(Phone.px(get_viewport(), Phone.TARGET) * 1.6,
+		Phone.px(get_viewport(), Phone.TARGET))
+	_program_box.add_theme_font_size_override("font_size", 14)
+	_program_box.custom_minimum_size = Vector2(0, 4 * 22 + 12)
+
+
+## The box, tapped where it shows at the panel's foot on a phone, whole in
+## the panel's view to be written in, once the finger is off the glass: a
+## list moved under a finger still down is thrown on as if the finger had
+## moved it (FlingScroll), 328 units for the 62 it needed.
+func _program_into_view() -> void:
+	var scroll: Node = _program_box.get_parent()
+	while scroll != null and not scroll is ScrollContainer:
+		scroll = scroll.get_parent()
+	if scroll == null:
+		return
+	while Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and is_inside_tree():
+		await get_tree().process_frame
+	if is_instance_valid(scroll) and _program_box.has_focus():
+		LaidOut.into_view(scroll as ScrollContainer, _program_box)
+
+
+## The program row: its title and Run, the box its words are written in, and
+## what it says (the motors on the hub's ports, where a run is, what it did).
+func _build_program(column: VBoxContainer) -> void:
+	_program_rows = VBoxContainer.new()
+	_program_rows.add_theme_constant_override("separation", 4)
+	column.add_child(_program_rows)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	_program_rows.add_child(head)
+	# Its words on the title, in the person's language; the box holds the
+	# program, read in its own words whatever the language, so it and its
+	# example are never translated.
+	var title := Label.new()
+	title.text = "Program"
+	title.tooltip_text = ("A line each: to 90° at 50% (to an angle from where it was built), "
+		+ "turn -45° at 30% (by an angle), run 40% for 2 s, wait 1 s, repeat 3 (the lines "
+		+ "indented under it). With two motors or more, each line begins with its port, A to F.")
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
+	title.add_theme_font_size_override("font_size", 12)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	_run = _button(head, "Run", run_program,
+		"Run the program for the motors at each one's rated speed (it is kept with the model)")
+	_program_box = TextEdit.new()
+	_program_box.accessibility_name = "Program for the motors"
+	_program_box.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_program_box.placeholder_text = "repeat 3\n  to 90° at 50%\n  wait 1 s\n  to 0° at 50%"
+	_program_box.add_theme_font_size_override("font_size", 12)
+	_program_box.custom_minimum_size = Vector2(320, 4 * 18 + 10)
+	_program_box.focus_exited.connect(_commit_program)
+	_program_box.focus_entered.connect(_program_into_view)
+	_program_rows.add_child(_program_box)
+	_program_said = _words(_program_rows, 11, 0.8)
 
 
 func _words(into: Control, size: int, alpha: float) -> Label:
@@ -960,7 +1348,8 @@ func _button(into: Control, words: String, action: Callable, tip: String) -> But
 ## wrong, the balance.
 func said() -> Dictionary:
 	return {"driver": _driver.text, "readout": _readout.text, "trouble": _trouble.text,
-		"stops": _stops.text, "balance": _weighed.text, "status": _status.text, "at": _at.text}
+		"stops": _stops.text, "balance": _weighed.text, "status": _status.text, "at": _at.text,
+		"program": _program_said.text}
 
 
 func controls_by_name() -> Dictionary:
@@ -969,7 +1358,8 @@ func controls_by_name() -> Dictionary:
 	return {"simulate_play": _play, "simulate_speed": _speed, "simulate_scrub": _scrub,
 		"simulate_worst": _worst, "simulate_stop": _where, "simulate_reference": _reference,
 		"simulate_record": _record,
-		"simulate_frames": _frames, "simulate_close": _close}
+		"simulate_frames": _frames, "simulate_close": _close,
+		"simulate_program": _program_box, "simulate_run": _run}
 
 
 ## What the panel is doing, for a browser test: window.brickworksSimulate.
@@ -984,7 +1374,7 @@ func _tell_page() -> void:
 	var state: Dictionary = {"open": visible, "playing": playing, "recording": _recording,
 		"turns": snappedf(turns, 0.001), "driver": _driver.text, "readout": _readout.text,
 		"trouble": _trouble.text, "stops": _stops.text, "balance": _weighed.text,
-		"status": _status.text}
+		"status": _status.text, "running": running, "program": _program_said.text}
 	for key: String in _last:
 		state[key] = _last[key]
 	var text: String = JSON.stringify(state)

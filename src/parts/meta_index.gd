@@ -71,6 +71,7 @@ const READ_WORDS: Array[String] = [
 	"REFERENCE", "REFERENCE_PICTURE", # ReferenceImage
 	"AUTHORED_STEPS", "WORKED_STEPS", "COPY", "IN", # LdrModel
 	"PAGES", "PAGE", # SharedPages
+	"PROGRAM", # HubProgram
 ]
 
 
@@ -307,12 +308,12 @@ static func _in_copy(was: bool, section: int, word: String, raw: String, said_at
 
 
 ## Whether a line of the app's of [param word] in an IN block is the copy's
-## ([constant IN_COPY]): a light, a view or a motion, as LdrModel.parse
-## reads them (within_lines). A step's look in the block is the step's:
+## ([constant IN_COPY]): a light, a view, a motion or a program, as
+## LdrModel.parse reads them (within_lines). A step's look in the block is the step's:
 ## read as the copy's, a group's step lost its ZOOM at the second save
 ## (mlattack badlooks).
 static func _copys(word: String) -> bool:
-	return word == "LIGHT" or word == "VIEW" or word.begins_with("MOTION")
+	return word == "LIGHT" or word == "VIEW" or word.begins_with("MOTION") or word == "PROGRAM"
 
 
 func _add(start: int, stop: int, next: int, section: int, word: String, said_at: int,

@@ -2696,6 +2696,9 @@ func _clear_undone() -> Array:
 		back.append({"undo": "unitstep", "unit": unit, "step": step, "kept": step == -1})
 	if _world.motions != null:
 		back.append({"undo": "motions", "motions": _world.motions.copy()})
+	# And the program for its motors (HubProgram).
+	if not _world.program.is_empty():
+		back.append({"undo": "program", "program": _world.program})
 	for section: String in _world.broken_out:
 		back.append({"undo": "sectionout", "path": section,
 			"record": (_world.broken_out[section] as Dictionary).duplicate(true)})

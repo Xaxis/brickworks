@@ -79,7 +79,8 @@ asking for an API key.
   (the model's own motions, docs/MOTIONS.md; see [view](view.md)'s
   `motions`; `src/dev/motions_probe.gd` calls each over `tools/call`),
   `simulate_mechanism` (Tools, Simulate mechanism; `SimulatePanel.for_session`,
-  see [geometry](geometry.md)), `undo` (Edit,
+  see [geometry](geometry.md); `program=` sets the model's program for its
+  motors and runs it in one call, `hubprogram_probe` section 6), `undo` (Edit,
   Undo and Redo), `open_model` (File, Open), `parts_list` (Build, Parts
   list; My collection, What do I need, What can I build), `render_model`
   (File, Render), `export_model` (File, Export, and Instructions),

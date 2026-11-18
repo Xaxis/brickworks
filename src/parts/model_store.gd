@@ -640,6 +640,15 @@ func _metas_now() -> MetaIndex:
 	return _metas_read
 
 
+## The model's program as this build cannot run it, kept in the file as
+## written (ProgramLine.unread_words): "" for none.
+var program_unread_words: String:
+	get:
+		var metas: MetaIndex = _metas_now()
+		return ProgramLine.unread_words(world.program if world != null else "",
+			metas.untaken(["PROGRAM"]) if metas != null else PackedStringArray())
+
+
 ## The view lines of the model on the baseplate its open could not read,
 ## kept in the file as they are, and those of a name an earlier one has
 ## (SavedViews.unread_words): "" for none.
@@ -1957,6 +1966,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
+	# The program for its motors (HubProgram), as written.
+	world.program = read["program"]
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -1997,7 +2008,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "", "lost": lost,
 		"moved": listed, "unshown": unshown, "kept": source != null or not _absent.is_empty(),
 		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
-		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
+		"motions_unread": motions_unread_words, "views_unread": views_unread_words,
+		"program_unread": program_unread_words})
 
 
 ## A file's placements made what this library puts down, in place: Studio's
@@ -2096,6 +2108,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"views": SavedViews.read_from(metas),
 		"lights": SceneLights.read_from(metas),
 		"motions": Motions.read_from(metas),
+		"program": ProgramLine.read_from(metas),
 		"pins": PinnedComments.read_from(metas),
 	}
 
@@ -2923,6 +2936,7 @@ func _metas_asked(source: SourceFile) -> Dictionary:
 		"motions": _motion_lines(),
 		"motions_unread": world.motions.unread.duplicate() if world.motions != null
 			else PackedStringArray(),
+		"program": world.program,
 		"pins": pins.lines(world, _lift_now()), "set": from_set}
 
 
@@ -3003,7 +3017,8 @@ static func _written_with(asked: Dictionary, kept: String) -> String:
 ## says they are now, each feature's a family (MetaIndex.Family) in the order
 ## a model the app writes whole has them: under its title the set it is, its
 ## lights, views, cut, hidden colours and the name a save gave someone
-## else's file; at the end of its head the floor, the motions and the pins.
+## else's file; at the end of its head the floor, the motions, the program
+## and the pins.
 ## Each with the lines of it the open could not read where the file had them
 ## (MetaIndex.lines_for). [param here] is the text [param text] being written,
 ## read (MetaIndex.of_text). From what it is given alone, so on any thread.
@@ -3062,6 +3077,11 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 	# ._settle_unread).
 	out.append(_family(metas, ["MOTION*"], asked["motions"], MetaIndex.HEAD, Callable(),
 		asked["motions_unread"]))
+	# The program for its motors (HubProgram): its line as the file has it
+	# when it says the same text, so an unedited save is the file.
+	var program: String = ProgramLine.line_of(str(asked.get("program", "")))
+	out.append(_family(metas, ["PROGRAM"], PackedStringArray([program]) if not program.is_empty()
+		else PackedStringArray(), MetaIndex.HEAD, ProgramLine.parsed))
 	# Pins are said by when each was made (PinnedComments._order), whatever
 	# order the file has them in.
 	out.append(_family(metas, ["PIN"], asked["pins"], MetaIndex.HEAD, PinnedComments.said_in,
@@ -4313,9 +4333,11 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	# a view one of the sub-model's, a motion kept in it as its file has it,
 	# played where it is the model (held_words says so). Up to 2026-11-12
 	# they were left out without a word (im3check: the observatory's 4
-	# motions went).
+	# motions went). And its program (HubProgram), kept in its sub-model and
+	# not run: the model it went into runs its own.
 	var motions: int = 0
-	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*"]):
+	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*",
+			"PROGRAM"]):
 		own.append(line.raw)
 		motions += 1 if line.word == "MOTION" else 0
 	# And the notes in its head ("0 // ..."), its sub-model's here, written

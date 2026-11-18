@@ -880,6 +880,9 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 	# build wrote went at the next save, unsaid.
 	if not str(result.get("views_unread", "")).is_empty():
 		note += " — " + str(result["views_unread"])
+	# And a program for its motors this build cannot run (ProgramLine.unread_words).
+	if not str(result.get("program_unread", "")).is_empty():
+		note += " — " + str(result["program_unread"])
 	return note
 
 
@@ -894,7 +897,8 @@ static func unshown_words(store: ModelStore) -> String:
 	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
 		"kept": true, "lost": store.lost, "lights_unread": store.lights_unread_words,
 		"motions_unread": store.motions_unread_words,
-		"views_unread": store.views_unread_words}, false) + looks_words(store)
+		"views_unread": store.views_unread_words,
+		"program_unread": store.program_unread_words}, false) + looks_words(store)
 
 
 ## What of the booklet as its designer set it the model just opened shows on

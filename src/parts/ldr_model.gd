@@ -264,6 +264,9 @@ const _VIEW_WORD := "VIEW"
 ## And its motions' lines ("MOTION", "MOTION_TRACK"...): a sub-model's are
 ## its own, kept as its file has them (Motions reads the model's).
 const _MOTION_WORD := "MOTION"
+## And its program for its motors (HubProgram): a sub-model's is its own, as a
+## model put into another brings it, kept and not run.
+const _PROGRAM_WORD := "PROGRAM"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -507,6 +510,10 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				# A sub-model's motions: its own, as a model put into another
 				# brings them (ModelStore.held_from), written back with it. Read
 				# as nothing, a save and an open of the app's own lost them.
+				model._section_line(current_key, raw)
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == _PROGRAM_WORD and current != model.main:
+				# A sub-model's program: its own, as its motions are.
 				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _IN_WORD:
@@ -787,7 +794,7 @@ func _section_line(key: String, raw: String) -> void:
 static func _kept_within(keyword: String, tokens: PackedStringArray) -> bool:
 	if keyword == "!BRICKWORKS":
 		return tokens.size() > 2 and (tokens[2] == _LIGHT_WORD or tokens[2] == _VIEW_WORD
-			or tokens[2].begins_with(_MOTION_WORD))
+			or tokens[2].begins_with(_MOTION_WORD) or tokens[2] == _PROGRAM_WORD)
 	return keyword == "AUTHOR:" or keyword == "!LICENSE" or keyword.begins_with("//")
 
 

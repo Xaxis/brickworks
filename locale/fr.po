@@ -14910,3 +14910,150 @@ msgstr "aucun set à enregistrer : ajoutez-les d’abord dans Ce que je possède
 
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "moins d’exemplaires sont revenus que de marqués Monté, ceux-là ne sont donc plus marqués : %s%s"
+
+msgid "Program"
+msgstr "Programme"
+
+msgid "Run"
+msgstr "Exécuter"
+
+msgid "Run the program for the motors at each one's rated speed (it is kept with the model)"
+msgstr "Exécuter le programme des moteurs à la vitesse nominale de chacun (il est gardé avec le modèle)"
+
+msgid "A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30% (by an angle), run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it). With two motors or more, each line begins with its port, A to F."
+msgstr "Une ligne par ordre : to 90° at 50% (jusqu'à un angle, compté depuis la position construite), turn -45° at 30% (d'un angle), run 40% for 2 s, wait 1 s, repeat 3 (les lignes en retrait dessous). Avec deux moteurs ou plus, chaque ligne commence par son port, de A à F."
+
+msgid "Running the program…"
+msgstr "Programme en cours…"
+
+msgid "Write a program first, a line each: \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" with the lines it repeats under it."
+msgstr "Écris d'abord un programme, une ligne par ordre : \"to 90° at 50%\", \"wait 1 s\", \"repeat 3\" avec les lignes qu'il répète dessous."
+
+msgid "%s turns nothing: its output holds no axle or pin here. Put an axle in its hub."
+msgstr "%s ne fait rien tourner : sa sortie ne tient ici ni axe ni goupille. Mets un axe dans son moyeu."
+
+msgid "The model changed as the program began: run it again."
+msgstr "Le modèle a changé au démarrage du programme : exécute-le de nouveau."
+
+msgid "%s cannot turn: %s."
+msgstr "%s ne peut pas tourner : %s."
+
+msgid "%s and %s turn the same train: a program drives only one of them. Take the other's lines out, or part their trains."
+msgstr "%s et %s font tourner le même train : un programme n'en entraîne qu'un. Retire les lignes de l'autre, ou sépare leurs trains."
+
+msgid "%s s of %s s: line %d"
+msgstr "%s s sur %s s : ligne %d"
+
+msgid "Stopped %s s in."
+msgstr "Arrêté au bout de %s s."
+
+msgid "set the program"
+msgstr "programme défini"
+
+msgid "took the program out"
+msgstr "programme retiré"
+
+msgid "%s, the %s #%d"
+msgstr "%s, %s #%d"
+
+msgid "A program has %d lines at most; this one has %d."
+msgstr "Un programme a au plus %d lignes ; celui-ci en a %d."
+
+msgid "Line %d: %s"
+msgstr "Ligne %d : %s"
+
+msgid "Line %d: nothing to repeat; indent the lines it repeats under it."
+msgstr "Ligne %d : rien à répéter ; mets en retrait dessous les lignes qu'il répète."
+
+msgid "nothing to read."
+msgstr "rien à lire."
+
+msgid "a hub's ports are A to F, not %s."
+msgstr "les ports d'un hub vont de A à F, pas %s."
+
+msgid "\"%s\" is not one of its words: to, turn, run, wait, repeat."
+msgstr "\"%s\" n'est pas l'un de ses mots : to, turn, run, wait, repeat."
+
+msgid "%s takes degrees: \"%s 90° at 50%\"."
+msgstr "%s prend des degrés : \"%s 90° at 50%\"."
+
+msgid "%s° is more than the %d° a line turns at most."
+msgstr "%s° dépasse les %d° qu'une ligne fait tourner au plus."
+
+msgid "after the degrees, \"at\" and a speed: \"%s 90° at 50%\"."
+msgstr "après les degrés, \"at\" et une vitesse : \"%s 90° at 50%\"."
+
+msgid "a speed is a share of the motor's: \"at 50%\"."
+msgstr "une vitesse est une part de celle du moteur : \"at 50%\"."
+
+msgid "run takes a speed and a time: \"run 40% for 2 s\"."
+msgstr "run prend une vitesse et une durée : \"run 40% for 2 s\"."
+
+msgid "wait waits for no motor: \"wait 1 s\"."
+msgstr "wait n'attend aucun moteur : \"wait 1 s\"."
+
+msgid "repeat repeats the lines under it, for every motor: \"repeat 3\"."
+msgstr "repeat répète les lignes dessous, pour tous les moteurs : \"repeat 3\"."
+
+msgid "repeat takes how many times: \"repeat 3\"."
+msgstr "repeat prend un nombre de fois : \"repeat 3\"."
+
+msgid "repeat goes round 1 to %d times."
+msgstr "repeat tourne de 1 à %d fois."
+
+msgid "a time in seconds: \"1 s\", or \"500 ms\"."
+msgstr "une durée en secondes : \"1 s\", ou \"500 ms\"."
+
+msgid "a time from 0 to %d s."
+msgstr "une durée de 0 à %d s."
+
+msgid "a speed is 100% at most, the motor's speed with no load."
+msgstr "une vitesse vaut 100 % au plus, celle du moteur à vide."
+
+msgid "a speed of at least 1%, or it never gets there."
+msgstr "une vitesse d'au moins 1 %, sinon il n'y arrive jamais."
+
+msgid "Line %d names no motor, and %d are on the hub's ports: %s. Begin it with its port: \"%s %s\"."
+msgstr "La ligne %d ne nomme aucun moteur, et %d sont sur les ports du hub : %s. Commence-la par son port : \"%s %s\"."
+
+msgid "Line %d: no motor is on port %s. %s."
+msgstr "Ligne %d : aucun moteur sur le port %s. %s."
+
+msgid "No motor here for a program to drive: put in one that plugs into a hub (a SPIKE Prime, Technic or Powered Up motor) with its output on the axle it turns."
+msgstr "Aucun moteur ici qu'un programme puisse entraîner : mets-en un qui se branche sur un hub (un moteur SPIKE Prime, Technic ou Powered Up), sa sortie sur l'axe qu'il fait tourner."
+
+msgid "The %s #%d plugs into no hub (a battery box or an IR receiver runs it), so a program does not drive it: Play turns it. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "%s #%d ne se branche sur aucun hub (un boîtier à piles ou un récepteur IR l'alimente), donc aucun programme ne l'entraîne : Lire le fait tourner. Un moteur SPIKE Prime, Technic ou Powered Up prend un programme."
+
+msgid "No motor here plugs into a hub (a battery box or an IR receiver runs each), so a program drives none of them: Play turns them. A SPIKE Prime, Technic or Powered Up motor takes a program."
+msgstr "Aucun moteur ici ne se branche sur un hub (un boîtier à piles ou un récepteur IR alimente chacun), donc un programme n'en entraîne aucun : Lire les fait tourner. Un moteur SPIKE Prime, Technic ou Powered Up prend un programme."
+
+msgid "This program runs past %d moves or %d minutes; Simulate plays one that does less. Repeat it fewer times."
+msgstr "Ce programme dépasse %d mouvements ou %d minutes ; Simuler en joue un qui en fait moins. Répète-le moins de fois."
+
+msgid "Line %d: %s stops at %s on its way to %s, %s s in: %s."
+msgstr "Ligne %d : %s s'arrête à %s en allant vers %s, au bout de %s s : %s."
+
+msgid "Ran to its end in %s s."
+msgstr "Exécuté jusqu'au bout en %s s."
+
+msgid "Ran to its end in %s s: %s."
+msgstr "Exécuté jusqu'au bout en %s s : %s."
+
+msgid "its motor stalls: the weight it lifts asks more than the %s N·cm it gives at %s V"
+msgstr "son moteur cale : le poids qu'il soulève demande plus que les %s N·cm qu'il donne à %s V"
+
+msgid "%s meets %s"
+msgstr "%s touche %s"
+
+msgid "the loop it closes goes no further"
+msgstr "la boucle qu'il ferme ne va pas plus loin"
+
+msgid "Simulate checked its turn no further"
+msgstr "Simuler n'a pas vérifié sa rotation plus loin"
+
+msgid "a program for its motors this build cannot read, kept in the file as it is"
+msgstr "un programme pour ses moteurs que cette version ne sait pas lire, gardé tel quel dans le fichier"
+
+msgid "its program has words this build cannot run (%s), kept as written"
+msgstr "son programme a des mots que cette version ne sait pas exécuter (%s), gardé tel qu'écrit"
