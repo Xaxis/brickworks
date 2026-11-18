@@ -344,12 +344,15 @@ that yet.
   - It has no jetsam, so nothing is ever killed for memory, and no
     Gigacage limit as an iPhone sets it.
   - Its frames are the CPU's drawing, not an Apple GPU's.
-  - Driven by Playwright, it sent every request with `Cache-Control:
-    no-cache`, the head's preload among them. So the preload was not
-    reused, and the engine's 6.9 MB Wasm and 2.4 MB pack came twice: 19 MB
-    over the wire where Chromium took 9 MB. A return fetched everything
-    again, so WebKit's returns are no faster than its first visits. Neither
-    is Safari's, which caches as Chromium does.
+  - Its runs had Playwright's request routing on: the towers the measure
+    hands the page, and the tests' parts mirror. Routing turns the HTTP
+    cache off ([Playwright](https://playwright.dev/docs/api/class-page#page-route)),
+    so WebKit sent every request with `Cache-Control: no-cache`, the head's
+    preload among them. The preload was not reused, and the engine's
+    6.9 MB Wasm and 2.4 MB pack came twice: 19 MB over the wire where
+    Chromium took 9 MB. A return fetched everything again, so WebKit's
+    returns are no faster than its first visits. Neither is Safari's, which
+    caches as Chromium does.
   - What it proves: the page, the loader, the engine and the studio run on
     WebKit's JavaScript and Wasm, with WebKit's COOP/COEP and
     SharedArrayBuffer, at an iPhone's screen size and touch. What it
