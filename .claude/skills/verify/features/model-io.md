@@ -368,7 +368,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   step made of two moves to just after that step's end
   (`SourceFile._regroup`; `_grouped_at_steps` for a section written whole),
   so the step is in the group or out of it whole, as LPub3D draws a group: an
-  END takes it in, a BEGIN starts after it. A `BUFEXCHG STORE` stays where
+  END takes it in, a BEGIN starts after it. Only between that step's parts:
+  a page of notes alone taken in by the step after it (5540-1's cover) leaves
+  the BEGIN at that step's start (`_parts_before`; keep_text stepops). A `BUFEXCHG STORE` stays where
   it was, inside the step: LPub3D stores the parts above it, so moved to the
   step's end it would store the next step's too. `endsteps_probe` (headless;
   `ENDSTEPS_CASES=loose,groups`) checks both, patched and written whole;

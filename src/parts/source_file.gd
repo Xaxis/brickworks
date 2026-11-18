@@ -2120,7 +2120,8 @@ func _regroup(section: String, drop: Dictionary, ends: Dictionary, targets: Dict
 				break
 			if _round_steps(original[n]):
 				groups.append(n)
-		if groups.is_empty() or step_now < 0 or not ends.has(step_now):
+		if groups.is_empty() or step_now < 0 or not ends.has(step_now) \
+				or not _parts_before(section, int(dropped), drop, gone):
 			continue
 		var end: Array = ends[step_now]
 		var at: int = int(end[0])
@@ -2138,6 +2139,22 @@ func _regroup(section: String, drop: Dictionary, ends: Dictionary, targets: Dict
 			if _is_placing(original[n]) and not gone.has(n):
 				crossed[n] = true
 	return crossed
+
+
+## Whether a part of the step the STEP line at [param at] ended comes
+## before it, the STEP lines taken out ([param drop]) passed over: a group
+## line after it is in the middle of a step only then. A page of notes
+## alone (5540-1's cover) taken in by the step after it leaves its BEGIN at
+## that step's start (keep_text, stepops).
+func _parts_before(section: String, at: int, drop: Dictionary, gone: Dictionary) -> bool:
+	for n: int in range(at - 1, int(sections[section][0]) - 1, -1):
+		if gone.has(n):
+			continue
+		if _is_step(original[n]) and not drop.has(n):
+			return false
+		if _is_placing(original[n]):
+			return true
+	return false
 
 
 ## Where a line of step [param step] goes in a section laid out
