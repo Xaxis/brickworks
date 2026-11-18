@@ -58,6 +58,12 @@ const DEFAULTS: Dictionary = {
 	# then "offered", "skipped" or "done". Offered once on a device, on a
 	# first visit, and never again unasked.
 	"first_build": "",
+	# partplaces: the booklet's parts boxes say where each part is kept
+	# ("from drawer 3"), from My collection's places. Turned off on Where
+	# it's kept, for a booklet made for somebody else.
+	"booklet_places": true,
+	# The parts list by where each part is kept, while there are places.
+	"parts_by_place": false,
 	# Whether the warning that this browser may clear the person's models
 	# has been shown (StorageOffer): once on a device, and never again.
 	"storage_warned": false,

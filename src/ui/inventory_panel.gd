@@ -47,7 +47,8 @@ var _rows: GridContainer
 var _scroll: ScrollContainer
 var _sight: ThumbTile.Sight
 var _find: LineEdit
-## Every lot's row, made once a showing: [Inventory.Lot, Button]. The find
+## Every lot's row, made once a showing: [Inventory.Lot, Button, its place in
+## the model's order]. The find
 ## takes rows out of the list and puts them back rather than making them
 ## again.
 var _made: Array = []
@@ -106,6 +107,11 @@ var _offering: bool = false
 ## out again as a colours file comes in (the web).
 var _own_picks: Dictionary = {}
 # end rareswap
+## partplaces: the list in the model's order, or by where each part is kept
+## (CollectionStore.places), shown while the person keeps any places.
+var _sort: OptionButton
+## Where each part and colour is kept, as the list was shown with.
+var _places: Dictionary = {}
 
 signal closed
 ## Select these bricks and show them: a row clicked, or Enter in the find.
@@ -146,6 +152,8 @@ func controls_by_name() -> Dictionary:
 		"parts_find": _find}
 	named["parts_bricklink_wants"] = _bricklink_wants
 	named["parts_pickabrick"] = _pickabrick
+	if _sort.visible:
+		named["parts_sort"] = _sort
 	if _note.visible:
 		named["parts_note"] = _note
 	if _wants_dialog != null and _wants_dialog.visible:
@@ -238,7 +246,25 @@ func _build() -> void:
 	_find.add_theme_font_size_override("font_size", 12)
 	_find.text_changed.connect(func(_text: String) -> void: _filter())
 	_find.text_submitted.connect(func(_text: String) -> void: _choose_shown())
-	column.add_child(_find)
+	_find.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var finding := HBoxContainer.new()
+	finding.add_theme_constant_override("separation", 8)
+	column.add_child(finding)
+	finding.add_child(_find)
+	# partplaces: by where each part is kept, a walk round the drawers.
+	_sort = OptionButton.new()
+	_sort.add_theme_font_size_override("font_size", 12)
+	_sort.focus_mode = Control.FOCUS_NONE
+	_sort.add_item("As in the model")
+	_sort.add_item("By where it's kept")
+	_sort.tooltip_text = "By where it's kept: the parts in the order of their places, as a walk round them takes, " \
+		+ "those kept nowhere last (My collection, Where it's kept…)"
+	_sort.visible = false
+	_sort.item_selected.connect(func(at: int) -> void:
+		ShellPrefs.put("parts_by_place", at == 1)
+		_order()
+		_filter())
+	finding.add_child(_sort)
 	_build_rare(column)
 
 	_scroll = ScrollContainer.new()
@@ -297,10 +323,15 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 			var key: String = Collection.key_of(lot.part_id, lot.color_code, library)
 			_used[key] = int(_used.get(key, 0)) + lot.count
 	_rare_rows.clear()
+	_places = CollectionStore.places
 	for lot: Inventory.Lot in _stock.lots:
 		var row: Button = _row(lot)
-		_made.append([lot, row])
-		_rows.add_child(row)
+		_made.append([lot, row, _made.size()])
+	_sort.visible = not _places.is_empty()
+	_sort.select(1 if _sort.visible and bool(ShellPrefs.value("parts_by_place")) else 0)
+	_order()
+	for pair: Array in _made:
+		_rows.add_child(pair[1])
 	_tag_rare()
 	_sight.forget()
 
@@ -341,6 +372,38 @@ func _counts() -> String:
 		_stock.weight()]
 
 
+## The rows in the order chosen: the model's (Inventory's), or by where
+## each is kept (Collection.place_less), those kept nowhere last in the
+## model's order.
+func _order() -> void:
+	_made.sort_custom(func(a: Array, b: Array) -> bool:
+		if _sort.selected == 1:
+			var x: String = place_of(a[0])
+			var y: String = place_of(b[0])
+			if x != y:
+				return Collection.place_less(x, y)
+		return int(a[2]) < int(b[2]))
+
+
+## Where [param lot]'s part and colour is kept, as the list was shown with,
+## or "".
+func place_of(lot: Inventory.Lot) -> String:
+	return Collection.place_in(_places, lot.part_id, lot.color_code, library) if not lot.custom else ""
+
+
+## The rows' lots in the order shown, for a probe: [{"part", "colour",
+## "place"}].
+func rows_listed() -> Array:
+	var out: Array = []
+	for child: Node in _rows.get_children():
+		for pair: Array in _made:
+			if pair[1] == child:
+				var lot: Inventory.Lot = pair[0]
+				out.append({"part": lot.part_id, "colour": lot.color_code, "place": place_of(lot)})
+				break
+	return out
+
+
 ## Only the rows the find answers, in the list's own order.
 func _filter() -> void:
 	if _stock == null:
@@ -354,9 +417,12 @@ func _filter() -> void:
 		_rows.remove_child(child)
 	var lots: int = 0
 	var pieces: int = 0
+	var lower: String = said.to_lower()
 	for pair: Array in _made:
 		var lot: Inventory.Lot = pair[0]
-		if wanted.takes(lot.part_id, lot.color_code):
+		# A place's words find what is kept there too ("drawer 3").
+		if wanted.takes(lot.part_id, lot.color_code) or (not said.is_empty() and not _places.is_empty()
+				and place_of(lot).to_lower().contains(lower)):
 			_rows.add_child(pair[1])
 			lots += 1
 			pieces += lot.count
@@ -484,6 +550,23 @@ func _row(lot: Inventory.Lot) -> Button:
 	shade.modulate = Color(1, 1, 1, 0.6)
 	shade.clip_text = true
 	row.add_child(shade)
+
+	# Where it is kept (partplaces), as the person named it: a column of
+	# its own while they keep any places, empty for a part kept nowhere, so
+	# the colours stay in one column.
+	var place: String = place_of(lot)
+	if not _places.is_empty():
+		var kept := Label.new()
+		kept.text = place
+		kept.custom_minimum_size = Vector2(110, 0)
+		kept.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		kept.add_theme_font_size_override("font_size", 12)
+		kept.add_theme_color_override("font_color", Look.ACCENT)
+		kept.clip_text = true
+		row.add_child(kept)
+		if not place.is_empty():
+			kept.tooltip_text = "Kept in “%s”" % place
+			button.tooltip_text += "\nKept in “%s”" % place
 
 	# More of it than the bin's sets or the person's own bricks hold.
 	var past: int = over_of(lot)
@@ -748,7 +831,7 @@ func _show_rows() -> void:
 	_swaps_scroll.visible = false
 	_swap_bar.visible = false
 	_scroll.visible = true
-	_find.visible = true
+	(_find.get_parent() as Control).visible = true
 	if _stock != null:
 		_heading.text = _counts()
 	_say_rare()
@@ -772,7 +855,8 @@ func show_swaps(again: bool = false) -> void:
 		_own_picks.clear()
 	_swapping = true
 	_scroll.visible = false
-	_find.visible = false
+	# The find and its sort by place: the swaps are no rows to find or sort.
+	(_find.get_parent() as Control).visible = false
 	_rare_row.visible = false
 	_swaps_scroll.visible = true
 	_swap_bar.visible = true

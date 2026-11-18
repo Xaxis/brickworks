@@ -712,6 +712,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 	# Parts added: at the end of their step, in their copy's sub-model.
 	var added: Dictionary = {}      ## restepped section -> [[step, line]]
+	var heads: Dictionary = {}      ## line -> true: a STEP goes in there ([method _head_after_turn_end])
 	for entry: Array in left:
 		var brick: BrickWorld.Brick = entry[0]
 		var at: Transform3D = entry[1]
@@ -737,10 +738,19 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				added[section] = []
 			(added[section] as Array).append([brick.step, said])
 			continue
+		var head: Array = _head_after_turn_end(section, brick.step)
+		if not head.is_empty():
+			_insert(inserts, int(head[0]), [said])
+			if bool(head[1]):
+				heads[int(head[0])] = true
+			continue
 		var to: Variant = _step_end(section, brick.step)
 		if to == null:
 			return null
 		_insert(inserts, to, _step_lines(section, brick.step) + [said])
+	# Its STEP after every new part of it.
+	for at: int in heads:
+		_insert(inserts, at, ["0 STEP"])
 
 	_unplace_emptied(replace, left, moved_into)
 
@@ -968,12 +978,39 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 		replace[n] = ""
 	if out.is_empty():
 		return true
+	out = _grouped_at_steps(out)
 	var joined: String = (eol + "\n").join(out)
 	if head_end < tail:
 		replace[head_end] = joined
 	else:
 		_insert(inserts, tail, [joined])
 	return true
+
+
+## [param out], a section's steps written whole ([method _restep]), with
+## each line beginning or ending a group of steps (LPub's MULTI_STEP) that a
+## step's parts are on both sides of moved to just after the line ending
+## that step, as [method _regroup] moves one in a patch: two steps made one
+## left the group's line inside it.
+static func _grouped_at_steps(out: PackedStringArray) -> PackedStringArray:
+	var made := PackedStringArray()
+	var waiting := PackedStringArray()
+	var parts: bool = false
+	for line: String in out:
+		if _is_step(line):
+			made.append(line)
+			made.append_array(waiting)
+			waiting.clear()
+			parts = false
+			continue
+		if parts and _round_steps(line):
+			waiting.append(line)
+			continue
+		if _is_placing(line):
+			parts = true
+		made.append(line)
+	made.append_array(waiting)
+	return made
 
 
 ## A sub-model whose every part was taken out, its every copy taken off, is
@@ -1271,6 +1308,9 @@ class Plan extends RefCounted:
 	var steps_gone: Dictionary = {}
 	var shifted: Dictionary = {}
 	var relaid: Dictionary = {}
+	## The file's lines of parts a group of steps (LPub's MULTI_STEP) moved
+	## by a layout now takes in or leaves out ([method SourceFile._regroup]).
+	var regrouped: Dictionary = {}
 	## The step of each line of a part the app cannot show, or one on its
 	## way, now ([method SourceFile.held_steps]).
 	var held_steps: Dictionary = {}
@@ -1378,6 +1418,48 @@ func _stack_before(section: String, at: int) -> Array:
 			out.append(int(pair[0]))
 	out.sort()
 	return out
+
+
+## Where a new part of step [param step] goes in [param section] when the
+## line ending the step before is the author's "0 ROTSTEP END" and no part
+## of the file's is after it: [the line just after that one, whether a STEP
+## goes after the part], or [] for any other. A part put down after a
+## turned last step whose turn the author ends so is numbered into the step
+## that line starts (ModelStore._past_turn_ends): it goes at that step's
+## head, in the usual view, and when the step has lines of its own (5540-1's
+## LPub INSERT MODEL and INSERT PAGE) a plain "0 STEP" after it keeps them a
+## step of their own. No line of the author's is written again: up to s5fix
+## the part went before that line, still turned, and the line ending the
+## last step was written "0 ROTSTEP END" for it (s5review).
+func _head_after_turn_end(section: String, step: int) -> Array:
+	if step <= 0 or not sections.has(section):
+		return []
+	var span: Array = sections[section]
+	var stop: int = int(span[1])
+	var seen: int = 0
+	var head: int = -1
+	for n: int in range(int(span[0]), stop):
+		if not _is_step(lines[n]):
+			continue
+		if seen == step - 1:
+			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+			if words.size() < 3 or words[1].to_upper() != "ROTSTEP" or words[2].to_upper() != "END":
+				return []
+			head = n + 1
+			break
+		seen += 1
+	if head < 0:
+		return []
+	var own: bool = false
+	var in_step: bool = true
+	for n: int in range(head, stop):
+		if _is_placing(lines[n]):
+			return []
+		if in_step and _is_step(lines[n]):
+			in_step = false
+		elif in_step and not lines[n].strip_edges().is_empty():
+			own = true
+	return [head, own]
 
 
 ## Where a part of step [param step] goes at its end in [param section]:
@@ -1781,6 +1863,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return _no(plan, str(laid))
 		laid_out[section] = laid
 		plan.steps_gone.merge((laid as Dictionary)["drop"])
+		plan.regrouped.merge((laid as Dictionary)["regrouped"])
 		for put: Array in (laid as Dictionary)["puts"]:
 			var at: int = put[0]
 			var from: int = put[2]
@@ -1793,6 +1876,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				var text: String = str(rewrites.get(k, "")) + _eol() if rewrites.has(k) else lines[k]
 				_add_to(inserts, at, [text, MOVE, k, [], float(put[1])])
 	plan.relaid = laid_out.duplicate()
+	var heads: Dictionary = {}      ## line -> true: a STEP put in there ([method _head_after_turn_end])
 	var keys: Array = groups.keys()
 	keys.sort()
 	for key: String in keys:
@@ -1801,6 +1885,13 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		var step: int = int(group[2])
 		var to: int = _end_of_step(section, step)
 		var order: float = 0.0
+		var head: Array = [] if laid_out.has(section) else _head_after_turn_end(section, step)
+		if not head.is_empty():
+			to = int(head[0])
+			# Its STEP, once, after every new part of it.
+			if bool(head[1]) and not heads.has(to):
+				heads[to] = true
+				_add_to(inserts, to, ["0 STEP" + _eol(), STEPS, -1, [], 0.5])
 		if laid_out.has(section):
 			var end: Array = _laid_end(laid_out[section], section, step)
 			to = int(end[0])
@@ -2057,11 +2148,12 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 				puts.append([at, float(next_step) + 0.5, -1])
 			next_step += 1
 	var tail: int = int(_tail.get(section, stop))
+	var regrouped: Dictionary = _regroup(section, drop, ends, targets, gone, puts)
 	# Each line not kept, at the end of its step.
 	var keeping: Dictionary = {}
 	for line: int in kept:
 		keeping[line] = true
-	var laid: Dictionary = {"drop": drop, "puts": puts, "ends": ends, "tail": tail}
+	var laid: Dictionary = {"drop": drop, "puts": puts, "ends": ends, "tail": tail, "regrouped": regrouped}
 	for line: int in chunks:
 		if keeping.has(line):
 			continue
@@ -2071,6 +2163,72 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 			return "a step edit would cross a pair (line %d)" % (line + 1)
 		puts.append([int(end[0]), float(end[1]), line])
 	return laid
+
+
+## A group of steps begun or ended (LPub's MULTI_STEP BEGIN, END) right
+## after a STEP line a layout took out ([param drop]) is in the middle of
+## the step that took the two in: the step is half in the group, which no
+## reader can draw, and LPub3D asks for a STEP before each (streview,
+## srmetas: the 4th step taken out left "MULTI_STEP END" between the 3rd's
+## parts and its own). Each such line moves to just after the line that
+## ends that step now ([param ends]), so the group starts or ends where a
+## step does and the step is in it or out of it whole: a group ended there
+## takes the step in, one begun there starts at the next. Into [param puts]
+## ([method _relaid]'s); returns the lines of parts that crossed it, which
+## may now be in that group or out of it ([method _pairs_kept]). A line in
+## a step with no line after it to end it stays: it ends the section.
+func _regroup(section: String, drop: Dictionary, ends: Dictionary, targets: Dictionary,
+		gone: Dictionary, puts: Array) -> Dictionary:
+	var crossed: Dictionary = {}
+	var stop: int = int(sections[section][1])
+	for dropped: Variant in drop:
+		var groups: Array = []
+		var step_now: int = -1
+		for n: int in range(int(dropped) + 1, stop):
+			if gone.has(n):
+				continue
+			if _is_step(original[n]):
+				break
+			if _is_placing(original[n]):
+				step_now = int(targets.get(n, -1))
+				break
+			if _round_steps(original[n]):
+				groups.append(n)
+		if groups.is_empty() or step_now < 0 or not ends.has(step_now) \
+				or not _parts_before(section, int(dropped), drop, gone):
+			continue
+		var end: Array = ends[step_now]
+		var at: int = int(end[0])
+		# After a STEP line kept, before the line after it; after one put in
+		# at a line, before that line still, ordered after it.
+		var put_in: bool = false
+		for put: Array in puts:
+			if int(put[2]) == -1 and int(put[0]) == at and float(put[1]) == float(step_now) + 0.5:
+				put_in = true
+		var before: int = at if put_in else at + 1
+		var order: float = float(step_now) + 0.75
+		for k: int in groups.size():
+			puts.append([before, order + 0.01 * k, groups[k]])
+		for n: int in range(int(dropped) + 1, before):
+			if _is_placing(original[n]) and not gone.has(n):
+				crossed[n] = true
+	return crossed
+
+
+## Whether a part of the step the STEP line at [param at] ended comes
+## before it, the STEP lines taken out ([param drop]) passed over: a group
+## line after it is in the middle of a step only then. A page of notes
+## alone (5540-1's cover) taken in by the step after it leaves its BEGIN at
+## that step's start (keep_text, stepops).
+func _parts_before(section: String, at: int, drop: Dictionary, gone: Dictionary) -> bool:
+	for n: int in range(at - 1, int(sections[section][0]) - 1, -1):
+		if gone.has(n):
+			continue
+		if _is_step(original[n]) and not drop.has(n):
+			return false
+		if _is_placing(original[n]):
+			return true
+	return false
 
 
 ## Where a line of step [param step] goes in a section laid out
@@ -2893,6 +3051,7 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 	seen.changed = plan.changed
 	seen.steps_gone = plan.steps_gone
 	seen.shifted = plan.shifted
+	seen.regrouped = plan.regrouped
 	seen.relaid = plan.relaid
 	seen.held_steps = plan.held_steps
 	map.resize(final.size())
@@ -3177,7 +3336,7 @@ func _pairs_kept(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 		var wanted: Array = [] if from < 0 else _stack_at.get(from, [])
 		# A part a step edit moved goes into its new step's group of steps
 		# (LPub's MULTI_STEP) as any part of that step is in it.
-		if from >= 0 and plan.shifted.has(from):
+		if from >= 0 and (plan.shifted.has(from) or plan.regrouped.has(from)):
 			stack = _round_parts(stack)
 			wanted = _round_parts(wanted)
 		if stack != wanted:

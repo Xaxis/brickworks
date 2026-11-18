@@ -533,6 +533,7 @@ func save_as(name: String) -> bool:
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
+		_program_kept = world.program
 		saved.emit(name)
 		return true
 	return false
@@ -548,6 +549,7 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 	if ok:
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
+		_program_kept = world.program
 	# Still watching the model's own file for saves from elsewhere.
 	if path != saved_path(title):
 		_known_path = was[0]
@@ -567,6 +569,10 @@ var _views_kept: Array = []
 ## The lights placed in the model (SceneLights) as it was opened or last saved
 ## to its file, in the window's coordinates: others now are work not saved.
 var _lights_kept: Array = []
+## And the program for its motors (HubProgram), the same: it is in no part's
+## line, so a program typed since a save was no work to lose, and New asked
+## nothing (hpreview F2).
+var _program_kept: String = ""
 ## What the open read of the model's lights (SceneLights.of_model): the lines
 ## it read, those it could not, and its sub-models' own, each as the file has
 ## them, written back with the lights wherever the model is written. The
@@ -638,6 +644,15 @@ func _metas_now() -> MetaIndex:
 	if world == null or world.generation() != _metas_in:
 		return null
 	return _metas_read
+
+
+## The model's program as this build cannot run it, kept in the file as
+## written (ProgramLine.unread_words): "" for none.
+var program_unread_words: String:
+	get:
+		var metas: MetaIndex = _metas_now()
+		return ProgramLine.unread_words(world.program if world != null else "",
+			metas.untaken(["PROGRAM"]) if metas != null else PackedStringArray())
 
 
 ## The view lines of the model on the baseplate its open could not read,
@@ -753,6 +768,7 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	bin_sets = PackedStringArray()
 	_views_kept = []
 	_lights_kept = []
+	_program_kept = ""
 	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
@@ -781,7 +797,8 @@ func identity() -> Dictionary:
 		"credit": credit.duplicate(true), "from_set": from_set,
 		"hidden_scheme": hidden_scheme.duplicate(true), "pins": pins,
 		"bin_sets": bin_sets.duplicate(), "views_kept": _views_kept,
-		"lights_kept": _lights_kept, "reference": reference.duplicate(true),
+		"lights_kept": _lights_kept, "program_kept": _program_kept,
+		"reference": reference.duplicate(true),
 		"made_with": made_with, "source": _live_source(),
 		"opened": world != null and world.generation() == _opened_in, "lifted_by": _lifted_by,
 		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
@@ -820,6 +837,7 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	pins = kept["pins"]
 	_views_kept = kept["views_kept"]
 	_lights_kept = kept["lights_kept"]
+	_program_kept = str(kept.get("program_kept", ""))
 	reference = (kept["reference"] as Dictionary).duplicate(true)
 	made_with = str(kept["made_with"])
 	# Opened from a file, it stands as that file was lifted to (lift), and is
@@ -951,6 +969,9 @@ func has_unsaved_work() -> bool:
 	# So is a light placed, changed or taken out (SceneLights).
 	if not SceneLights.same(world.scene_lights, _lights_kept) \
 			and world.brick_count() - scenery.size() > 0:
+		return true
+	# And the program for its motors, typed or set (HubProgram).
+	if world.program != _program_kept and world.brick_count() - scenery.size() > 0:
 		return true
 	# An example as it shipped is nobody's work: New on the first visit's
 	# car, untouched, asked whether to save it. Nothing has been done to
@@ -1957,6 +1978,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
+	# The program for its motors (HubProgram), as written.
+	world.program = read["program"]
+	_program_kept = world.program
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -1997,7 +2021,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "", "lost": lost,
 		"moved": listed, "unshown": unshown, "kept": source != null or not _absent.is_empty(),
 		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
-		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
+		"motions_unread": motions_unread_words, "views_unread": views_unread_words,
+		"program_unread": program_unread_words})
 
 
 ## A file's placements made what this library puts down, in place: Studio's
@@ -2096,6 +2121,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"views": SavedViews.read_from(metas),
 		"lights": SceneLights.read_from(metas),
 		"motions": Motions.read_from(metas),
+		"program": ProgramLine.read_from(metas),
 		"pins": PinnedComments.read_from(metas),
 	}
 
@@ -2768,6 +2794,99 @@ static func left_out_words(name: String, drops: Dictionary) -> String:
 		% [name, count, "; ".join(kinds)]
 
 
+## The parts put down outside the author's steps in a model with steps of
+## its own, numbered as the file numbers them (AuthorSteps.numbers_for_file:
+## each in one step after its section's last): {"bricks": id -> step,
+## "sections": section -> that step}, or {} for none.
+func _loose_steps(authored: bool) -> Dictionary:
+	if not authored:
+		return {}
+	var any: bool = false
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step < 0 and not scenery.has(brick.id):
+			any = true
+			break
+	if not any:
+		return {}
+	var numbers: Dictionary = AuthorSteps.numbers_for_file(world, world.library, scenery)["bricks"]
+	var loose: Dictionary = {}
+	var sections: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step < 0 and numbers.has(brick.id) and not scenery.has(brick.id):
+			loose[brick.id] = int(numbers[brick.id])
+			sections[AuthorSteps.home(world, Assemblies.path_of(brick))] = int(numbers[brick.id])
+	return {"bricks": loose, "sections": sections}
+
+
+## [param loose] ([method _loose_steps]) with each section's parts put in
+## the step the author's "0 ROTSTEP END" starts, where a turn in force after
+## the section's last step with parts is ended so by the author: they are
+## written just after that line (SourceFile._head_after_turn_end), in the
+## usual view as the booklet shows them, and no line of the author's is
+## written again. Up to s5fix they went in the empty step before it, and the
+## line ending the last step was written "0 ROTSTEP END" for them (s5review:
+## 5540-1's plane).
+static func _past_turn_ends(world: BrickWorld, loose: Dictionary) -> Dictionary:
+	if loose.is_empty() or world.step_looks.is_empty():
+		return loose
+	var sections: Dictionary = loose["sections"]
+	var moved: Dictionary = {}
+	for section: String in sections:
+		var step: int = int(sections[section])
+		if BookletLooks.turn_at(world, section, step).is_empty():
+			continue
+		var head: String = BookletLooks.definition_of(section) + "|"
+		var ended: int = -1
+		for name: String in world.step_looks:
+			var tail: String = name.substr(head.length())
+			if name.begins_with(head) and tail.is_valid_int() and tail.to_int() > step \
+					and str((world.step_looks[name] as Dictionary).get("turn", "")) == "end" \
+					and (ended < 0 or tail.to_int() < ended):
+				ended = tail.to_int()
+		if ended >= 0 and BookletLooks.turn_at(world, section, ended).is_empty():
+			moved[section] = ended
+	if moved.is_empty():
+		return loose
+	var bricks: Dictionary = (loose["bricks"] as Dictionary).duplicate()
+	for id: int in bricks:
+		var section: String = AuthorSteps.home(world, Assemblies.path_of(world.get_brick(id)))
+		if moved.has(section):
+			bricks[id] = moved[section]
+	return {"bricks": bricks, "sections": sections.merged(moved, true)}
+
+
+## [param looks] with the step of the parts put down outside the author's
+## steps ([param loose], [method _loose_steps]) in the usual view, as the
+## booklet shows it (a page of such parts has no turn, BookletLooks.turn_at):
+## where a turn holds to the end of its section, "0 ROTSTEP END" ends the
+## step before it. Up to smalls5 the file let the turn hold, and the part
+## put on top after a turned last step opened again upside down (streview
+## addturn). [param written], each section's steps as written whole
+## (BookletLooks.as_written's keys), where they are not the model's.
+static func _looks_with_loose(world: BrickWorld, looks: Dictionary, loose: Dictionary,
+		written: Dictionary = {}) -> Dictionary:
+	if loose.is_empty() or world.step_looks.is_empty():
+		return looks
+	var sections: Dictionary = loose["sections"]
+	for section: String in sections:
+		var step: int = int(sections[section])
+		if BookletLooks.turn_at(world, section, step).is_empty():
+			continue
+		var definition: String = BookletLooks.definition_of(section)
+		var at: int = step
+		if written.has(definition):
+			at = (written[definition] as Array).find(step)
+			if at < 0:
+				continue
+		var name: String = BookletLooks.key(definition, at)
+		var look: Dictionary = (looks.get(name, {}) as Dictionary).duplicate(true)
+		if look.has("turn"):
+			continue
+		look["turn"] = "end"
+		looks[name] = look
+	return looks
+
+
 ## The source file with the model on the baseplate written into it, or null
 ## when there is none or the change cannot be written into it as it is.
 func _source_text(title_now: String) -> Variant:
@@ -2805,6 +2924,18 @@ func _source_asked(title_now: String) -> Dictionary:
 		home.hidden = brick.hidden
 		home.origin = brick.origin
 		bricks.append(home)
+	# A part put down outside the author's steps (step -1) is in a step of
+	# its own after the last, as the whole write numbers it
+	# (AuthorSteps.numbers_for_file) and the booklet shows it: up to smalls5
+	# a patch wrote it at the end of the file's last step, so after a last
+	# step with no STEP line to end it it joined that step (streview: 358-1,
+	# 30 pages opened again as 29).
+	var loose: Dictionary = _past_turn_ends(world, _loose_steps(source.authored))
+	if not loose.is_empty():
+		var numbers: Dictionary = loose["bricks"]
+		for home: BrickWorld.Brick in bricks:
+			if home.step < 0 and numbers.has(home.id):
+				home.step = int(numbers[home.id])
 	# In an order of their own, not the world's: which line a part is paired
 	# with and where a part put down goes in the file follow it, and two
 	# copies of a model built in another order (Together) wrote two files.
@@ -2828,7 +2959,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"waiting": waiting, "waiting_lines": waiting_lines, "held": unshown_steps, "moved": whole,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
-		"looks": world.step_looks.duplicate(true),
+		"looks": _looks_with_loose(world, world.step_looks.duplicate(true), loose),
 		"authored": AuthorSteps.any(world, scenery)}.merged(_metas_asked(source))
 	# A model put into it whole (held_from) is grafted into the patch of the
 	# file's own parts: its sections as the model written whole has them
@@ -2923,6 +3054,7 @@ func _metas_asked(source: SourceFile) -> Dictionary:
 		"motions": _motion_lines(),
 		"motions_unread": world.motions.unread.duplicate() if world.motions != null
 			else PackedStringArray(),
+		"program": world.program,
 		"pins": pins.lines(world, _lift_now()), "set": from_set}
 
 
@@ -3003,7 +3135,8 @@ static func _written_with(asked: Dictionary, kept: String) -> String:
 ## says they are now, each feature's a family (MetaIndex.Family) in the order
 ## a model the app writes whole has them: under its title the set it is, its
 ## lights, views, cut, hidden colours and the name a save gave someone
-## else's file; at the end of its head the floor, the motions and the pins.
+## else's file; at the end of its head the floor, the motions, the program
+## and the pins.
 ## Each with the lines of it the open could not read where the file had them
 ## (MetaIndex.lines_for). [param here] is the text [param text] being written,
 ## read (MetaIndex.of_text). From what it is given alone, so on any thread.
@@ -3062,6 +3195,11 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 	# ._settle_unread).
 	out.append(_family(metas, ["MOTION*"], asked["motions"], MetaIndex.HEAD, Callable(),
 		asked["motions_unread"]))
+	# The program for its motors (HubProgram): its line as the file has it
+	# when it says the same text, so an unedited save is the file.
+	var program: String = ProgramLine.line_of(str(asked.get("program", "")))
+	out.append(_family(metas, ["PROGRAM"], PackedStringArray([program]) if not program.is_empty()
+		else PackedStringArray(), MetaIndex.HEAD, ProgramLine.parsed))
 	# Pins are said by when each was made (PinnedComments._order), whatever
 	# order the file has them in.
 	out.append(_family(metas, ["PIN"], asked["pins"], MetaIndex.HEAD, PinnedComments.said_in,
@@ -3793,9 +3931,11 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 ## file it came from.
 func _with_looks(text: String, whole: bool = false, steps: Dictionary = {},
 		here: MetaIndex = null) -> String:
-	var written: Callable = func() -> Dictionary: return BookletLooks.as_written(world, steps)
-	return _looks_into(text, world.step_looks, AuthorSteps.any(world, scenery),
-		written if whole else Callable(), here)
+	var authored: bool = AuthorSteps.any(world, scenery)
+	var loose: Dictionary = _loose_steps(authored) if whole else {}
+	var written: Callable = func() -> Dictionary:
+		return _looks_with_loose(world, BookletLooks.as_written(world, steps).duplicate(true), loose, steps)
+	return _looks_into(text, world.step_looks, authored, written if whole else Callable(), here)
 
 
 ## [method _with_looks] on any thread: [param looks] as the world has them,
@@ -4313,9 +4453,11 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	# a view one of the sub-model's, a motion kept in it as its file has it,
 	# played where it is the model (held_words says so). Up to 2026-11-12
 	# they were left out without a word (im3check: the observatory's 4
-	# motions went).
+	# motions went). And its program (HubProgram), kept in its sub-model and
+	# not run: the model it went into runs its own.
 	var motions: int = 0
-	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*"]):
+	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*",
+			"PROGRAM"]):
 		own.append(line.raw)
 		motions += 1 if line.word == "MOTION" else 0
 	# And the notes in its head ("0 // ..."), its sub-model's here, written
@@ -4661,6 +4803,7 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
+		_program_kept = world.program
 		saved.emit(name)
 		return true
 	return false

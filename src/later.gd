@@ -160,6 +160,10 @@ const PATHS: Dictionary[StringName, String] = {
 	# rareswap (APP_UX9 #12): the parts list's rare lots and their swaps, made
 	# the first time the list or a session's replace_parts rare= asks.
 	&"RareSwap": "res://src/collection/rare_swap.gd",
+	# hubprogram (APP_UX9 #11): the program for the model's motors, played in
+	# Simulate; the first screen reads and writes only its line (ProgramLine)
+	# and has it read the words of a program an open found (unread_words).
+	&"HubProgram": "res://src/assembly/hub_program.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

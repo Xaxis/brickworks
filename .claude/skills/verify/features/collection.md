@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test, ui:where each part is kept, cli:partplaces probe, cli:partplaces api test, cli:ppreview probe, cli:ppreview2 probe -->
 
 ## Sub-features
 
@@ -233,7 +233,28 @@ which models they could build from what they have. Added 2026-10-12.
   and a set taken apart counts the taken-apart copy's. Over MCP
   `edit_collection {"built": ["7140-1"]}` marks it in one call
   (`{set, copies}` for a number, 0 to take apart; each said "was N"), and
-  its read-back says which are kept built. Save sets as CSV
+  its read-back says which are kept built. With My collection open, Ctrl+Z
+  (or Edit › Undo, the touch bar's Undo) takes back the last Built press,
+  one at a time (`CollectionDialog.undo_built`, reached by
+  `EditVerbs.panel_undo` from `Shell`, asked by `EditVerbs.own_undo` alone:
+  your Claude's undo, `EditVerbs.press`, takes back the model's change, never
+  a Built press, keptbuilt_probe step 14): the same op the other way round,
+  `{was: now, built: was}`, so the counts are as before it ("undid: 7140-1
+  … taken apart: …"); a press whose marks moved on at another device since
+  is refused ("undid nothing: somebody else changed 7140-1 … since") and
+  shown as the account has it; with nothing pressed, or another account
+  signed in since, Undo is the model's. Op
+  `built` takes the `rev` the view was shown at: a set not in the
+  collection is a 400 "set N: X is not in your collection: only a set you
+  own is kept built", and a 409 "not in your collection any more" only
+  when the collection moved on since that rev; a minifigure's number the
+  collection holds (sw0001) is refused by built, own and missing as "a
+  minifigure in your collection, not a set", never read as set sw0001-1;
+  one in a BrickLink figure's shape with no -N, held or not (sw0002,
+  cty0001a), as "a minifigure's number, not a set's: a set is named with
+  its -N", and a part's file name (3001.dat) as one (s5review);
+  a list that is not one is named for what it lists ("sets is a list of
+  sets", smalls5). Save sets as CSV
   (`Collection.sets_csv`, Rebrickable's sets list with a Built column) and
   as XML (`sets_xml`, BrickLink's, a built copy's REMARKS `Built`) read
   back the marks through their imports; a replace import of a file with no
@@ -259,6 +280,54 @@ which models they could build from what they have. Added 2026-10-12.
   `AppTools.held_to_mine` via `CommandSocket._run`; parts_list need and
   edit_collection's read-back end with `AppTools.MINE_SAID`. Proof:
   `tools/probe.sh ownlimit_probe` ends `held to the person's own bricks`.
+- `where each part is kept` (partplaces, APP_UX9 #14): What I own's
+  **Where it's kept…** (`collection_places`) opens the places page
+  (`CollectionDialog.open_places`, `collection_places_*`): every part and
+  colour held (`Collection.held_keys`: loose lots and each set's inventory,
+  spares too), and every placed one held no more, faint (a place outlives
+  its last lot: taken off from its row or a CSV's empty place, never given a
+  new one); each row a place field kept on Enter or leaving it, once
+  (`_keep_place`: its meta `shown` is set to the place as it is sent; rows
+  drawn again give the focus back to the same part's field with what was
+  typed, `_refocus_place`, and taking a field out sends nothing); over 40
+  characters is said as typed and refused on Enter, never cut (no
+  `max_length`); the find (`collection_places_find`, SelectBy's words or a
+  place's) and **Put them there** (`put_places_shown`, every held row the
+  find keeps in one change, asked first by `_confirm_move` when it would
+  move any kept elsewhere and more than one row shows, with Only the N kept
+  nowhere; nothing typed takes them off, asked first past one); By
+  part / By place (`Collection.place_less`, natural: drawer 2 before drawer
+  10, none last); Save places as CSV (`Collection.places_csv`, a place a
+  spreadsheet reads as a formula written after a ') and Places CSV…
+  (`read_places`, `Collection.read_places_csv`: Part, Colour and Place
+  columns, their synonyms and the app's languages' words; a part not held,
+  an unknown colour or a part named twice said and left out); Say where each
+  is kept in the booklet (ShellPrefs `booklet_places`). A place is one line
+  of at most 40 characters (`Collection.place_text`, api `placeText`),
+  never cut. Kept per part and colour (`Collection.key_of`) in the row's
+  `places` column (`supabase/partplaces.sql`), written only by op `place`
+  (each `{part, colour, was, place}`, one already at `place` done whatever
+  `was` says, refused as a conflict when `was` is not what is kept or the
+  part is not held, a lone surrogate anywhere in a body 400, over
+  `MOST_PLACES_BYTES` written out 413 with words; the sets' shards read only when a
+  loose lot is not it) and emptied by Start over; a place-only change keeps
+  `updated_at`, so the site's pool is not counted again. Before the SQL is
+  applied the api reads `select=*` as before and refuses op place (503,
+  with words). `CollectionStore.places` (the window's store) feeds the parts
+  list (`InventoryPanel`: a place on each row, `parts_sort` By where it's
+  kept, ShellPrefs `parts_by_place`, its find takes a place's words) and the
+  booklet (`BookletMaker` sets `Booklet.Lot.place`; `Booklet._entry` draws
+  "from drawer 3" under the count, class `e pl`, and `cell_width`/`_rows`
+  make room only where a row has one, so a booklet with no places is laid
+  out as before; the page editor draws the same). Over MCP
+  `edit_collection place=[{part, color, place}]` sets them in one change
+  (`_collection_places`: each said "was ...", refused with words changing
+  nothing for a part not held, over 40 characters, no words, or with
+  add=/remove=/built=/missing=; every edit_collection refusal names 10
+  reasons and counts the rest, `AppTools._reasons`), and the read-back names each lot's place
+  and lists the places. An older build reads the collection without places
+  and never writes them (its ops and PUT leave the column); the newer one
+  says when the copy on this device lacks them (`Collection.places_read`).
 - `collection sums` (`src/collection/collection.gd`, pure): the pool (sets
   expanded through their inventories, plus loose parts), the shortfall, the
   plan of what could stand in, and coverage. One spelling for both sides: a
@@ -496,6 +565,12 @@ tools/relay_probe.sh localbricks -- --shots=DIR   # a window, 1280x720 (PROBE_SI
 # a set kept built left out of the counts (keptbuilt): the endpoint's op, then the app by hand and over MCP, on a relay
 node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790
 tools/relay_probe.sh keptbuilt -- --shots=DIR     # a window, 1280x720
+# where each part is kept (partplaces): the endpoint's op, then the window, the parts list, the booklet and MCP, on a relay
+node tools/web/partplaces_api.mjs --pure                     # the op on rows made here, no network
+node tools/web/partplaces_api.mjs --url=http://127.0.0.1:8790   # supabase/partplaces.sql applied
+tools/relay_probe.sh partplaces -- --shots=DIR    # a window, 1280x720
+tools/relay_probe.sh ppreview -- --ppout=DIR      # ppreview's attacks R1-R9, kept by ppfix
+tools/relay_probe.sh ppreview2 -- --ppout=DIR     # R10 Put them there asks first, R11 30 lots in a step
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
@@ -641,9 +716,10 @@ Proves it when:
   Built alone read as the mark, a person's note that begins with the word
   ("Built once, box opened") not; then on a throwaway account, an
   older collection (no `built` anywhere) read as it was; op `built` marks
-  7140-1, the same id again changes nothing, a stale `was`, a set not
-  owned, copies past those owned and a set named twice each refused with
-  words and nothing changed; the mark kept through own, a lot change, a
+  7140-1, the same id again changes nothing, a stale `was`, a set never
+  owned (400, saying so), one gone since the rev shown (409, with the
+  collection), copies past those owned and a set named twice each refused
+  with words and nothing changed; the mark kept through own, a lot change, a
   set added, a Rebrickable replace import and an older app's PUT; own
   down to fewer copies unmarks the rest; Save's CSV (`Built` column) and
   XML (`<REMARKS>Built</REMARKS>`) read into an empty collection built
@@ -670,8 +746,15 @@ Proves it when:
   mark comes off the copies apart alone); missing= with built= refused;
   two copies, one built, three 3001s missing, counted 7 however the marks
   sit over the number's entries; a kept built of "2", true, 1.5, 0.5, -1 and
-  null read as none, 2.0 and 2 as 2, 7 as the 3 copies.
+  null read as none, 2.0 and 2 as 2, 7 as the 3 copies; with My
+  collection open, two presses taken back by two Ctrl+Z pressed in the
+  window, each at the account, counts and all (56+570, 341, 56 back to
+  341 and 626), the model's own history and parts untouched, and one whose
+  marks another device moved on since refused, said, as the account has it;
+  every line said, the undo's too, in de, fr and es.
   Look at `keptbuilt_marked`, `keptbuilt_bin`, `keptbuilt_two_copies`.
+- `tests/test_collection_words.py` (minitest): op built's, own's and
+  missing's refusals in words, run under node on api/collection.js.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
   found, each first; whole scenes of box, bags and parts 2 of 10.

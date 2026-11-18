@@ -91,11 +91,15 @@
 //       missing from the count the person saw ("was", 0 for none) to qty
 //       (0: none missing). Kept on the set as "missing": [{part, colour,
 //       qty}], in LDraw's numbers as the set's inventory has them.
-//   {"op": "built", "sets": [{"set": "7140-1", "was": 0, "built": 1}]}
+//   {"op": "built", "sets": [{"set": "7140-1", "was": 0, "built": 1}],
+//    "rev"?: the rev shown}
 //       how many copies of each set stand built on a shelf (keptbuilt,
 //       APP_UX9 #6), every copy of the number together, from the count the
 //       person saw ("was") to built (0: all apart, at most the copies
-//       owned). Kept on the set's entries as "built", in the order kept,
+//       owned). A set not owned is refused (400), or, when "rev" says it
+//       was shown at another rev, is gone since (409). Undo is the same op
+//       the other way round, {was: built, built: was} (the app's Ctrl+Z).
+//       Kept on the set's entries as "built", in the order kept,
 //       each up to its own count. The app leaves a built copy's parts out of
 //       what can be built; its spares stay in. Fewer copies (an Own down, a
 //       Remove of one entry) take the copies kept apart first, so a mark
@@ -105,6 +109,25 @@
 //       and a BrickLink XML item's REMARKS of Built bring the mark in (the
 //       app's own exports write them); a file that says nothing of it
 //       leaves the marks as they were.
+//   {"op": "place", "places": [{part, colour, was: "", place: "drawer 3"}]}
+//       where each part and colour is kept (partplaces, APP_UX9 #14): a
+//       drawer, a box, a tray, as the person names it, from the place they
+//       saw ("was", "" for none) to place ("" for none). Kept apart from the
+//       lots, in the row's "places" ({key: place}, supabase/partplaces.sql),
+//       by the app's key (Collection.key_of: the number a part means today
+//       and the colour a shop files it under), so a drawer holds a part and
+//       colour whatever brought it: a set's parts, a Rebrickable list, the
+//       person's own lots. Only for what the collection holds: a loose lot
+//       of it, or a set whose inventory lists it (read from the shards only
+//       when no loose lot is it). A place is free text, made one line
+//       (placeText), at most MOST_PLACE characters, all of them at most
+//       MOST_PLACES_BYTES written out. One already in the place asked is
+//       done, whatever "was" says: the same place sent twice, by Enter and
+//       then the field left or by two tabs, is no conflict. No op but this
+//       one and Start over writes places, so a lot taken out and brought back finds
+//       its drawer again, and an older app, which knows no places, never
+//       changes them (it writes sets and parts alone). Start over forgets
+//       them with everything else.
 //
 // A set as it really is (mysets, 2026-11-07), additive: a set entry may
 // carry "missing", the lots it is short of, and a minifigure is kept among
@@ -199,6 +222,17 @@ const MOST_AWAY = 20;
 const MOST_AWAY_BYTES = 32000;
 /// How many times a change is made again on what another write left.
 const TRIES = 12;
+/// The most characters a place is (partplaces), and the most places a
+/// collection keeps: one a lot, as many as it holds lots.
+export const MOST_PLACE = 40;
+export const MAX_PLACES = MAX_LOTS;
+/// The most places one "place" op names.
+export const MOST_PLACE_CHANGES = 5000;
+/// The most bytes a collection's places are as the database writes them
+/// out (places::text): supabase/partplaces.sql's collections_places_size,
+/// met here first with words. 20,000 places of 40 letters fit in half of
+/// it; 40 four-byte characters each, under the longest keys, do not.
+export const MOST_PLACES_BYTES = 4000000;
 
 /// Where each import's lots and sets come from; "hand" is My collection's.
 export const HAND = "hand";
@@ -553,6 +587,42 @@ export function whoName(raw) {
   return [...text].slice(0, 60).join("").replace(/ +$/, "");
 }
 
+/// Where a part is kept, as the person typed it, made one line the way a
+/// name is (whoName): control characters, line breaks and the marks that
+/// turn text round made spaces, spaces run together, trimmed. Collection
+/// .place_text in the app is the same, so a place shown is the place kept.
+/// Refused, with words, when it is not text or longer than MOST_PLACE
+/// characters: a place is never cut short, since "drawer 1" cut from
+/// "drawer 12" is another drawer.
+export function placeText(raw, where) {
+  if (raw === undefined || raw === null) return "";
+  if (typeof raw !== "string") throw new Refusal(400, `${where}: a place is words, like "drawer 3"`);
+  if (!raw.isWellFormed()) throw new Refusal(400, `${where}: the place has half a character in it (a lone surrogate)`);
+  // Every space of Unicode's a space, and the marks that take no room
+  // (U+200B, U+2060, U+FEFF) left out, so a place that looks blank is none.
+  const text = raw
+    .replace(/[\u200b\u2060\ufeff]/g, "")
+    .replace(/[\u0000-\u001f\u007f-\u00a0\u1680\u2000-\u200a\u2028\u2029\u202a-\u202f\u205f\u2066-\u2069\u3000]/g, " ")
+    .replace(/ {2,}/g, " ")
+    .replace(/^ +| +$/g, "");
+  if ([...text].length > MOST_PLACE) {
+    throw new Refusal(400, `${where}: a place is at most ${MOST_PLACE} characters, and "${[...text].slice(0, 20).join("")}…" is ${[...text].length}`);
+  }
+  return text;
+}
+
+/// The places kept in a row: {key: place}, each a key as keyOf spells it
+/// and a place as placeText makes it; anything else left out.
+export function placesOf(row) {
+  const kept = row?.places;
+  const out = {};
+  if (!kept || typeof kept !== "object" || Array.isArray(kept)) return out;
+  for (const [key, place] of Object.entries(kept)) {
+    if (/^[a-z0-9][a-z0-9._-]{0,40}\/[0-9]{1,9}$/.test(key) && typeof place === "string" && place) out[key] = place;
+  }
+  return out;
+}
+
 /// An LDraw colour code as LDConfig has it: a whole number, never 16 (the
 /// colour a part is placed in) or 24 (its edges), and never null, "",
 /// false or a word, which Number() would have made Black.
@@ -814,7 +884,7 @@ function spreadBuilt(list, set, total) {
 
 /// A lot's key, as Collection.key_of: the number it means today and the
 /// colour a shop files it under.
-const keyOf = (p) => `${resolvePart(p.part)}/${plainColour(Number(p.colour))}`;
+export const keyOf = (p) => `${resolvePart(p.part)}/${plainColour(Number(p.colour))}`;
 const copies = (entry) => Math.max(1, Number(entry.qty) || 1);
 
 /// [lots] by [keyOf], in the order first marked: key -> lots.
@@ -900,11 +970,43 @@ async function inventoriesFor(have, body, add, books, origin) {
   for (const set of wanted) books.set(set, read.get(shardOf(set))?.sets?.[set] || null);
 }
 
-function listed(body, field, most, where = field) {
+/// [body]'s [field], a list of at most [most] [noun] ("lots", or "sets"
+/// for op built), said as [where]; refused, in its own words, otherwise.
+function listed(body, field, most, where = field, noun = "lots") {
   const list = body?.[field] === undefined ? [] : body[field];
-  if (!Array.isArray(list)) throw new Refusal(400, `${where} is a list of lots`);
-  if (list.length > most) throw new Refusal(413, `that is ${list.length} lots; one change is at most ${most}`);
+  if (!Array.isArray(list)) throw new Refusal(400, `${where} is a list of ${noun}`);
+  if (list.length > most) throw new Refusal(413, `that is ${list.length} ${noun}; one change is at most ${most}`);
   return list;
+}
+
+/// A BrickLink minifigure's number as BrickLink gives most of them: a
+/// theme's letters, three or four digits and a letter at most (sw0002,
+/// cty0001a, hp001). A few sets are numbered so too (hp2113-1, lmg001-1),
+/// and are named with their -N.
+const FIG_SHAPE = /^[a-z]{2,5}[0-9]{3,4}[a-z]?$/;
+/// A part's file name (3001.dat), which SET_NUMBER's "." lets through.
+const FILE_NAME = /\.(dat|ldr|mpd)$/;
+
+/// [raw] read as a set's number for an op on [sets], [where] its place in
+/// the request ("set 2: ", or ""); refused, said, when it is none. A
+/// minifigure's number with no -N (sw0001) is refused as the figure it is,
+/// held or not: read as a set it would be set sw0001-1, which nobody has
+/// (kbreview, finding 6; s5review: one not held was made a set). So is a
+/// part's file name, which read as 3001.dat-1 (s5review).
+function setOf(sets, raw, where = "") {
+  const fig = figNumber(raw);
+  if (fig && sets.list.some((s) => s.fig === true && s.set === fig)) {
+    throw new Refusal(400, `${where}${fig} is a minifigure in your collection, not a set`);
+  }
+  if (fig && FIG_SHAPE.test(fig)) {
+    throw new Refusal(400, `${where}${fig} is a minifigure's number, not a set's: a set is named with its -N, as ${fig}-1`);
+  }
+  if (FILE_NAME.test(String(raw ?? "").trim().toLowerCase())) {
+    throw new Refusal(400, `${where}"${raw}" is a part's file name, not a set number`);
+  }
+  const set = setNumber(raw);
+  if (!set) throw new Refusal(400, `${where}"${raw}" is not a set number`);
+  return set;
 }
 
 /// Lots named once each: an op that names one twice is refused.
@@ -922,7 +1024,7 @@ function once(ids, where) {
 /// person saw is no longer so, a Conflict carrying [have]; either way
 /// nothing is changed. Pure: made again on a fresh [have] when another
 /// write came first.
-export function applyOp(have, body) {
+export function applyOp(have, body, books = new Map()) {
   const op = String(body?.op || "");
   const parts = new Keyed(lotKey, have.parts);
   const sets = new Keyed(setKey, have.sets);
@@ -1041,8 +1143,7 @@ export function applyOp(have, body) {
     // first, then off the other sources', the last kept first, a copy that
     // goes taking its marks with it as remove_set's does. A figure is never
     // one of its copies: a figure's number is never a set's.
-    const set = setNumber(body?.set);
-    if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
+    const set = setOf(sets, body?.set);
     const was = counted(body?.was, set, 0, "count seen");
     const qty = counted(body?.qty, set, 0);
     const copiesOf = () => sets.list.filter((s) => s.set === set && !s.fig);
@@ -1085,8 +1186,7 @@ export function applyOp(have, body) {
   }
 
   if (op === "missing") {
-    const set = setNumber(body?.set);
-    if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
+    const set = setOf(sets, body?.set);
     const src = body?.src === undefined || body?.src === null ? "" : String(body.src);
     if (src && !SOURCES.has(src)) throw new Refusal(400, `"${src}" is not where a set comes from`);
     const changes = listed(body, "lots", MOST_LOT_CHANGES);
@@ -1124,22 +1224,27 @@ export function applyOp(have, body) {
   if (op === "built") {
     // How many copies of each set stand built (keptbuilt): every copy of
     // the number together, from the count shown to the count asked.
-    const changes = listed(body, "sets", MOST_LOT_CHANGES, "sets");
+    const changes = listed(body, "sets", MOST_LOT_CHANGES, "sets", "sets");
     if (changes.length === 0) throw new Refusal(400, "no sets to mark built or apart");
-    const named = changes.map((one, n) => {
-      const set = setNumber(one?.set);
-      if (!set) throw new Refusal(400, `set ${n + 1}: "${one?.set}" is not a set number`);
-      return set;
-    });
+    const named = changes.map((one, n) => setOf(sets, one?.set, `set ${n + 1}: `));
     named.forEach((set, n) => {
       if (named.indexOf(set) !== n) throw new Refusal(400, `set ${n + 1}: ${set} is named twice`);
     });
     const counts = changes.map((one, n) => [counted(one?.was, named[n], 0, "count seen"),
       counted(one?.built, named[n], 0, "count built")]);
+    // The rev the marks were pressed on, when the app sends it: a set it
+    // showed owned that is gone at another rev was taken out since (409,
+    // with the collection as it is); one not owned otherwise never was,
+    // as far as anything that asked could see, and is refused as such.
+    const seen = body?.rev === undefined || body?.rev === null ? null : Number(body.rev);
+    const moved = seen !== null && seen !== (have.rev === undefined || have.rev === null ? null : Number(have.rev));
     const list = sets.list;
     named.forEach((set, n) => {
       const owned = list.filter((s) => s.set === set && !s.fig).reduce((sum, s) => sum + copies(s), 0);
-      if (owned === 0) throw new Conflict(`${set} is not in your collection any more`, have);
+      if (owned === 0 && moved) throw new Conflict(`${set} is not in your collection any more`, have);
+      if (owned === 0) {
+        throw new Refusal(400, `set ${n + 1}: ${set} is not in your collection: only a set you own is kept built`);
+      }
       const now = builtOf(list, set);
       if (now !== counts[n][0]) throw new Conflict(`${set} has ${now} kept built now, not the ${counts[n][0]} shown`, have);
       if (counts[n][1] > owned) {
@@ -1153,17 +1258,170 @@ export function applyOp(have, body) {
     return { next: next(), done: { built: named.map((set, n) => ({ set, was: counts[n][0], built: counts[n][1] })) } };
   }
 
+  if (op === "place") {
+    // Where each part and colour is kept (partplaces), from the place the
+    // person saw to the place asked, all or nothing.
+    if (!have.placesKept && have.there) {
+      throw new Refusal(503, "places cannot be kept with your account yet, so nothing was changed: try again later");
+    }
+    const changes = listed(body, "places", MOST_PLACE_CHANGES, "places", "places");
+    if (changes.length === 0) throw new Refusal(400, "no places to set");
+    const named = changes.map((p, n) => {
+      if (p?.part === undefined || p?.part === null || p?.part === "") {
+        throw new Refusal(400, `place ${n + 1}: a place needs a part number`);
+      }
+      const part = partNumber(p.part);
+      if (!part) throw new Refusal(400, `place ${n + 1}: "${p?.part}" is not a part number`);
+      const colour = colourOf(p?.colour, `place ${n + 1}`);
+      return { part, colour, key: keyOf({ part, colour }), was: placeText(p?.was, `place ${n + 1}`),
+        place: placeText(p?.place, `place ${n + 1}`) };
+    });
+    named.forEach((one, n) => {
+      if (named.findIndex((other) => other.key === one.key) !== n) {
+        throw new Refusal(400, `place ${n + 1}: ${one.part} in colour ${one.colour} is named twice`);
+      }
+    });
+    const places = placesOf(have);
+    const held = heldKeys(have, books);
+    // One already where it is asked to be is done: the same place sent again
+    // (Enter, then the field left) or by two tabs at once is no conflict.
+    const moving = named.filter((one) => (places[one.key] || "") !== one.place);
+    named.forEach((one, n) => {
+      const now = places[one.key] || "";
+      if (now === one.place) return;
+      if (now !== one.was) {
+        throw new Conflict(`place ${n + 1}: ${one.part} in colour ${one.colour} is kept ${now ? `in "${now}"` : "nowhere"} `
+          + `now, not ${one.was ? `in "${one.was}"` : "nowhere"} as shown`, have);
+      }
+      // Taken off a place is never refused: a lot gone keeps its drawer
+      // until the person takes it off.
+      if (one.place && one.place !== one.was && !held.keys.has(one.key)) {
+        if (held.unread.length) {
+          throw new Refusal(503, `place ${n + 1}: the inventories of ${held.unread.slice(0, 3).join(", ")}`
+            + `${held.unread.length > 3 ? ", …" : ""} could not be read to see whether ${one.part} in colour `
+            + `${one.colour} is in them, so nothing was changed: try again`);
+        }
+        throw new Conflict(`place ${n + 1}: ${one.part} in colour ${one.colour} is not in your collection: neither a lot `
+          + "of your own nor in a set of yours", have);
+      }
+    });
+    if (moving.length === 0) return { next: null, done: { placed: 0 } };
+    for (const one of moving) {
+      if (one.place) places[one.key] = one.place;
+      else delete places[one.key];
+    }
+    if (Object.keys(places).length > MAX_PLACES) {
+      throw new Refusal(413, `that makes ${Object.keys(places).length} places; a collection keeps ${MAX_PLACES}`);
+    }
+    const bytes = placesBytes(places);
+    if (bytes > MOST_PLACES_BYTES) {
+      throw new Refusal(413, `that makes the places ${(bytes / 1e6).toFixed(2)} MB written out; a collection keeps `
+        + `${MOST_PLACES_BYTES / 1e6} MB of them: take some off, or make them shorter`);
+    }
+    return { next: null, places, done: { placed: moving.length } };
+  }
+
   if (op === "start_over") {
     const seen = body?.rev === undefined || body?.rev === null ? null : Number(body.rev);
     const now = have.rev === undefined || have.rev === null ? null : Number(have.rev);
     if (seen !== now) throw new Conflict("your collection changed since it was shown; here it is now", have);
-    if (have.sets.length + have.parts.length === 0) return { next: null, done: {} };
-    return { next: { sets: [], parts: [] }, done: { started_over: true } };
+    // Where things were kept goes too: Start over forgets all of it.
+    const placed = Object.keys(placesOf(have)).length > 0;
+    if (have.sets.length + have.parts.length === 0 && !placed) return { next: null, done: {} };
+    return { next: { sets: [], parts: [] }, ...(placed ? { places: {} } : {}), done: { started_over: true } };
   }
 
-  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing, built or start_over, "
-    + "or from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
+  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing, built, place or "
+    + "start_over, or from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
 }
+
+/// The most bytes [places] are as the database writes them out
+/// (places::text, which collections_places_size measures): JSON's, and a
+/// space after each colon and comma.
+export function placesBytes(places) {
+  return Buffer.byteLength(JSON.stringify(places), "utf8") + 2 * Object.keys(places).length;
+}
+
+/// Whether every string in [value], its keys too, is whole: a lone UTF-16
+/// surrogate is half a character, which the database refuses (a 502 after
+/// the change was tried), so it is refused here first, with words.
+export function wholeText(value) {
+  if (typeof value === "string") return value.isWellFormed();
+  if (Array.isArray(value)) return value.every(wholeText);
+  if (value && typeof value === "object") {
+    return Object.entries(value).every(([key, inner]) => key.isWellFormed() && wholeText(inner));
+  }
+  return true;
+}
+
+/// The keys [have] holds, as keyOf spells them: its loose lots', and those
+/// of each set's inventory in [books] (set number -> its record, or null
+/// when it could not be read), spares too, built or apart. {keys: Set,
+/// unread: the sets whose inventories [books] lacks}. A figure holds none
+/// (no inventory of BrickLink's is here).
+function heldKeys(have, books) {
+  const keys = new Set(have.parts.map((p) => keyOf(p)));
+  const unread = [];
+  for (const number of new Set(have.sets.filter((s) => !s.fig).map((s) => String(s.set)))) {
+    if (!books.has(number)) continue;
+    const record = books.get(number);
+    if (!record) {
+      unread.push(number);
+      continue;
+    }
+    for (const row of [...(Array.isArray(record.p) ? record.p : []), ...(Array.isArray(record.s) ? record.s : [])]) {
+      if (Array.isArray(row) && row.length >= 2) keys.add(keyOf({ part: String(row[0]), colour: Number(row[1]) }));
+    }
+  }
+  return { keys, unread };
+}
+
+/// The inventories a "place" op needs into [books]: those of every set
+/// [have] holds, read only when a place it sets is on no loose lot, each
+/// shard once (shardsRead, kept while this function lives: an inventory
+/// changes only with a deployment), 16 at a time, within READING_MS; one
+/// not read in time is null.
+async function placesInventories(have, body, books, origin) {
+  const lots = new Set(have.parts.map((p) => keyOf(p)));
+  const wanted = Array.isArray(body?.places) ? body.places : [];
+  const elsewhere = wanted.some((p) => {
+    if (typeof p?.place !== "string" || !p.place.trim()) return false;
+    const part = partNumber(p?.part);
+    if (!part) return false;
+    try {
+      return !lots.has(keyOf({ part, colour: colourOf(p?.colour, "") }));
+    } catch {
+      return false;
+    }
+  });
+  if (!elsewhere) return;
+  const numbers = [...new Set(have.sets.filter((s) => !s.fig).map((s) => String(s.set)))];
+  const shards = [...new Set(numbers.map(shardOf))].filter((n) => !shardsRead.has(n));
+  let next = 0;
+  const reader = async () => {
+    while (next < shards.length) {
+      const n = shards[next++];
+      const read = await readShard(n, origin).catch(() => null);
+      if (read) {
+        if (shardsRead.size >= 300) shardsRead.delete(shardsRead.keys().next().value);
+        shardsRead.set(n, read);
+      }
+    }
+  };
+  let timer;
+  await Promise.race([Promise.all(Array.from({ length: Math.min(16, shards.length) }, reader)),
+    new Promise((done) => { timer = setTimeout(done, READING_MS); })]);
+  clearTimeout(timer);
+  // A shard read without the set: an inventory nobody knows, which holds
+  // nothing; a shard not read: null, so the op says it could not tell.
+  for (const number of numbers) {
+    const shard = shardsRead.get(shardOf(number));
+    books.set(number, shard ? shard.sets?.[number.toLowerCase()] || { p: [], s: [] } : null);
+  }
+}
+
+/// The shards a "place" op read, by number, while this function lives.
+const shardsRead = new Map();
 
 /// A set's copies as text that is the same however a database kept them
 /// (jsonb keeps an object's keys in an order of its own).
@@ -1313,10 +1571,14 @@ function within(collection) {
 // --- the row ----------------------------------------------------------------------
 
 /// The row as kept, or an empty one ("there": false) when there is none.
+///
+/// Every column (select=*), so a row read before supabase/partplaces.sql is
+/// applied reads as it did, with no places, and says so (placesKept): only
+/// a change of places writes that column, and is refused until it is there.
 async function readRow(owner) {
-  const rows = await db(`collections?owner=eq.${owner}&select=sets,parts,updated_at,rev,recent`);
+  const rows = await db(`collections?owner=eq.${owner}&select=*`);
   const row = rows && rows[0];
-  if (!row) return { there: false, sets: [], parts: [], updated_at: null, rev: null, recent: [] };
+  if (!row) return { there: false, sets: [], parts: [], updated_at: null, rev: null, recent: [], places: {} };
   return {
     there: true,
     sets: Array.isArray(row.sets) ? row.sets : [],
@@ -1324,12 +1586,16 @@ async function readRow(owner) {
     updated_at: row.updated_at ?? null,
     rev: row.rev ?? null,
     recent: Array.isArray(row.recent) ? row.recent : [],
+    places: placesOf(row),
+    placesKept: Object.hasOwn(row, "places"),
   };
 }
 
-/// What the app is sent of a row: never the request ids.
+/// What the app is sent of a row: never the request ids. Its places
+/// (partplaces) beside its sets and lots, where an older app never looks.
 function shown(row) {
-  return { sets: row.sets || [], parts: row.parts || [], updated_at: row.updated_at ?? null, rev: row.rev ?? null };
+  return { sets: row.sets || [], parts: row.parts || [], places: placesOf(row), updated_at: row.updated_at ?? null,
+    rev: row.rev ?? null };
 }
 
 /// A remembered change's id: an entry is {id, done}.
@@ -1352,7 +1618,7 @@ async function change(owner, make, id = "") {
     const made = await make(have);
     // A change that changes nothing is remembered too, where there is a
     // row to keep it in, so a resend is told what the first was.
-    if (!made.next && !(id && have.there)) return { row: have, done: made.done };
+    if (!made.next && made.places === undefined && !(id && have.there)) return { row: have, done: made.done };
     const next = made.next || { sets: have.sets, parts: have.parts };
     within(next);
     // What an Own took down is remembered though its caller gave no id, so
@@ -1362,8 +1628,14 @@ async function change(owner, make, id = "") {
       sets: next.sets,
       parts: next.parts,
       recent: remember || made.done?.spent ? remembered(have.recent, remember, made.done) : have.recent,
-      updated_at: new Date().toISOString(),
+      // A change of places alone changes no count, so it leaves the time
+      // the counts were kept: the gallery's pool is counted again only
+      // when that moves (api/_owned.js freshPool).
+      updated_at: made.next || !have.there ? new Date().toISOString() : have.updated_at,
     };
+    // Places (partplaces) only when the change makes them, and only where
+    // the column is: no other change writes them, so none loses them.
+    if (made.places !== undefined && (have.placesKept || !have.there)) kept.places = made.places;
     let saved = null;
     if (have.there) {
       const held = have.rev === null ? "is.null" : `eq.${have.rev}`;
@@ -1455,9 +1727,11 @@ export default async function handler(request, response) {
     if (request.method === "DELETE") {
       // An older app's Start over, asked first there: everything out, the
       // row kept with the ids it remembers.
-      const { row } = await change(owner, (have) => ({
-        next: have.sets.length + have.parts.length ? { sets: [], parts: [] } : null, done: {},
-      }));
+      const { row } = await change(owner, (have) => {
+        const placed = have.placesKept && Object.keys(have.places).length > 0;
+        return { next: have.sets.length + have.parts.length || placed ? { sets: [], parts: [] } : null,
+          ...(placed ? { places: {} } : {}), done: {} };
+      });
       return response.status(200).json(shown(row));
     }
     if (request.method !== "POST" && request.method !== "PUT") {
@@ -1474,6 +1748,9 @@ export default async function handler(request, response) {
     if (size > most) {
       throw new Refusal(413, `that is ${size} bytes; ${body?.op ? "a change" : "an import"} is at most ${most}`);
     }
+    if (!wholeText(body)) {
+      throw new Refusal(400, "it has half a character in it (a lone surrogate), so nothing was changed");
+    }
 
     if (request.method === "PUT") {
       const { row, done } = await change(owner, (have) => olderRemoval(have, body));
@@ -1486,7 +1763,12 @@ export default async function handler(request, response) {
       // A change of lots adds and takes down: said again as it was, it is
       // never made twice, so it says which it is.
       if (body.op === "lots" && !id) throw new Refusal(400, "a change of lots says its id");
-      const { row, done } = await change(owner, (have) => applyOp(have, body), id);
+      // A place on what no loose lot is: the sets' inventories read first.
+      const books = new Map();
+      const { row, done } = await change(owner, async (have) => {
+        if (body.op === "place") await placesInventories(have, body, books, originOf(request));
+        return applyOp(have, body, books);
+      }, id);
       if (body.op === "own") {
         const { away, spent, ...said } = done;
         return response.status(200).json({ done: said, rev: row.rev ?? null });

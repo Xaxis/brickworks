@@ -6261,3 +6261,175 @@ reading has none; a hinge's range is Grab's, section 35); a drag on a
 motor's axle still reads it keyed to the case (Bodies); and the stall is
 by weight alone, with no friction in the gears, so a real train stalls
 sooner.
+
+## 40. A program for the model's motors (hubprogram, APP_UX9 11)
+
+A builder could turn a motor in Simulate only by hand: a click on its
+axle, Play, the slider. Brickyard runs a program on the model, and
+Kinebrick Studio's next release builds Pybricks programs. Simulate now has
+a program row: a few lines for the model's motors, played at each motor's
+rated speed from where the model was built, stopped where the mechanism
+stops it, and kept with the model (`HubProgram`, the row in
+`SimulatePanel`).
+
+### The words
+
+Five verbs a builder reads at a glance, named as Pybricks names its
+motor's methods where that helps, a line each:
+
+- `to 90° at 50%`: to an angle from where the model was built
+  (Pybricks' `run_target`).
+- `turn -45° at 30%`: by an angle from where it is (`run_angle`).
+- `run 40% for 2 s`: at a speed for a time, back with a speed below 0
+  (`run_time`).
+- `wait 1 s` (or `500 ms`).
+- `repeat 3`: the lines indented under it, that many times.
+
+A speed is a share of the motor's speed with no load (`Simulation.MOTORS`:
+the SPIKE Prime large angular motor's 175 rpm, so 50% is 525°/s), 75% when
+none is said, as SPIKE's own blocks have it. `#` starts a note. Lines run
+one after another, each to its end, as a hub's `run_target` waits by
+default. Pybricks' own names are read too (`run_target 90 at 40%`), and a
+word it does not have, a speed past 100%, a repeat with nothing under it
+or a port past F is refused with its line ("Line 2: ..."). A number is read
+whole with its exponent (`wait 1e-3 s`; `turn 1e400°` is refused as more
+than 36000°, as written), and `wait 0 s` waits for nothing, as Pybricks'
+`wait(0)` does.
+
+### Motors and ports
+
+The motors that plug into a hub (SPIKE Prime, Robot Inventor, Technic and
+Powered Up) are on its ports A to F in the order the model has them. With
+one, a line needs no port. With two or more, each line begins with its port
+(`A to 90° at 50%`), and a line that names none is refused naming each
+port's motor ("A, the SPIKE Prime large angular motor #12; B, ..."). Each
+port's motor drives its own reading of the mechanism; two motors whose
+trains turn each other are refused, as one train cannot be driven from two
+places. A Power Functions or 9 V motor plugs into no hub (a battery box or
+an IR receiver runs it), so a program does not drive it: the row says so,
+and Play still turns it. A seventh hub motor is on no port, and the run
+says so ("The SPIKE Prime large angular motor #19 is on no port: a hub has
+six, A to F."). LDraw has no SPIKE Prime hub part, so none is
+needed in the model.
+
+### Where it stops
+
+Each move goes as far as Simulate found the motion goes (section 39): to
+where two parts meet, where a loop closes no further, and where the weight
+asks more of the motor than it gives, found by the same virtual work. The
+stall going forward is Simulate's own; going back, the torque the weight
+asks on that side is weighed on Simulate's back sweep
+(`Simulation.asked_back`, beside `asked` forward) and found the same way. A
+train that comes round whole is walked round its cycle from where the move
+begins, a cycle at most: laid out and sorted over each move, 2,000 moves of
+1° held a frame 174 ms and one 600 s run 71. The run is worked out a slice
+a frame (`HubProgram.begin_run`, `run_step`, as the stops are), and where
+each motor is at a moment is found by halves, not read from the first move
+each frame. Its moves are kept a column for each of their numbers
+(`HubProgram.Moves`): a Dictionary a move, a run of 20,000 took 20 ms to
+free in whichever frame dropped it, 35 ms in the Run after one refused as
+too long; as columns, 0.1 ms. The run ends where a
+move stops, as a hub's program waits on a motor that cannot get there, and
+the row says where and why: "Line 1: A, the SPIKE Prime large angular
+motor #12 stops at 26.3° on its way to 90°, 0.1 s in: its motor stalls:
+the weight it lifts asks more than the 25 N·cm it gives at 7.2 V."
+
+### The row
+
+Under Play, the slider and the stops: "Program" (its words in a tooltip),
+Run (Stop while it runs), a box of four lines and a line saying how far in
+it is ("2.1 s of 4.03 s: line 3") and, at its end, where each motor ended.
+The line running is lit in the box, and the slider goes round with the
+panel's driver as it does with Play. The run's time is the clock's, so a
+slow frame shows where the motors are by then. The box and its example are
+never translated: the program is read in its own words whatever the
+language. On a phone (390 points wide) the row comes right under the
+player, Run a fingertip tall, the box four lines of 14-point type, and what
+a run says under Run, above the box, scrolled into the sheet's view as Run
+or Stop is pressed or the run ends: under the box, it was below the fold.
+Undo of the program after a run puts the parts back where they were built.
+
+### In the file
+
+`0 !BRICKWORKS PROGRAM {"text":"repeat 3\n  to 90° at 50%\n..."}`, one line
+at the end of the model's head (`ProgramLine.line_of`, read by
+`MetaIndex.first_read`), written as the file has it while it says the same
+program, so an unedited save, someone else's file's among them, is the file
+byte for byte. The box's words are the model's as they are typed, one step
+of the history each time the box is written in (or a session's call), which
+Undo takes back, and a changed program is work not saved. So Ctrl+S, New, an
+open or Quit pressed with the keys still in the box keeps them, and on the
+model they were typed for alone: another model opened meanwhile shows its
+own, and the box left after it writes nothing into it. Up to hpreview the
+words became the model's only as the box was left: Ctrl+S wrote the program
+as it was, and words typed for one model, the box left after a session
+opened another, became that one's program. The model's other fields that
+keep their words as they are left (a booklet page's words, the booklet's
+texts, a motion's name) keep them as Ctrl+S, Ctrl+N, an open or Ctrl+Q is
+pressed in them (`ModelBar.end_typing`). The app's words in a sub-model's
+head are read in any case, as `MetaIndex` reads them: a lower-case
+`0 !BrickWorks program` or `view` there was dropped from every save. A model
+put into another keeps its program in its sub-model, not run; the model it
+went into runs its own. A build before this one keeps the model's own line
+as a later build's (`MetaIndex.unclaimed`); a sub-model's it drops, as an
+older build drops every line of a sub-model it does not read. This build
+names what it cannot run where an open says what it left out: a program
+with a line that does not run, a later build's word or a slip of the
+person's own ("its program does not run as written (Line 1: "beep" is not
+one of its words ...), kept as it is") and a PROGRAM line in a form it
+cannot read, each kept byte for byte.
+
+Over MCP, `simulate_mechanism`'s `program` sets the model's program and runs
+it in one call: the run move by move, where it stopped and why, and a
+picture where it ended; Simulate plays it in the window when it is open
+there. `""` takes it out.
+
+### Checked
+
+`tools/probe.sh hubprogram_probe` builds its rigs part by part, as
+`motion_probe` does, signed in through the gate:
+
+- The bar's program typed into the row and Run clicked, on a beam pinned
+  to a SPIKE Prime large angular motor's hub: 9 moves in 4.0286 s, as
+  worked (each 90° in 90 / 525 = 0.1714 s, three 1 s waits). The beam is
+  drawn at the program's angle in every frame (160, at most 0.001° apart),
+  turning 525.00°/s by the run's clock; at 90° three times and back at 0°.
+  By the probe's own clock `run 50% for 3 s` turns it 1575° at 523.4°/s
+  over 113 frames, against 525. The model never moves.
+- spikemotors' rig (the hub geared up 9 to ten 2x8 bricks, 29.91 N·cm at
+  most against the motor's 25): `to 90° at 50%` stops at 26.300°, worked
+  26.300°, Simulate's own stall 26.300198°; `to -90° at 50%` stops at
+  -26.301° going back. Each said with its line, its motor and its 25 N·cm.
+- Kept: Run is one undo step, undone and redone in the box too; saved, one
+  line in the model's head and none in its sub-model's; saved again, reopened
+  and saved, a copy, all byte for byte; someone else's file with the line
+  written by hand (its own spacing) saved byte for byte, and a new program
+  changing that line alone; a later build's word and a later build's form
+  each named on open and saved byte for byte; a model put into another keeps
+  its program in its sub-model, the host's its own, reopened byte for byte.
+  On the build before this one (pre261 b56b6578b, `-- only=older`) this
+  build's file saves byte for byte, its PROGRAM line where it was.
+- Two motors: a line with no port refused naming A and B, then A to 90° and
+  B -45° each its own beam in 0.2143 s; a Power Functions M motor refused as
+  on no hub. Over MCP, `program=` set and ran it in one call (1.34 s, three
+  moves, a picture); undo took it out; `spin 3` set nothing.
+
+`tools/probe.sh hpreview_probe` (an independent review's, kept; `-- only=`
+files, history, plays, mcp, extra, again or mcpopen; `hpreview_phone_probe`
+in a phone's 430 x 932) opens twenty-odd files written by hand (a CRLF file, a
+BOM, the line last with no line end, in the body, lower case in the head and
+in a sub-model, malformed, 120,000 characters long, 250 lines) and saves each
+unedited, byte for byte where live writes it so; types into the box and
+presses Ctrl+S with the keys still there, opens another model mid-typing, by
+the window and by a session's `open_model` (refused while the words are not
+saved, then with `discard_changes`); times the frames of five long programs against 16 ms; and
+taps Run and Stop on a phone, the result line and the slider in view.
+
+### Left
+
+The program is played in Simulate, not exported to a hub: no Pybricks or
+SPIKE file is written. Moves run one after another; two motors at once
+(Pybricks' `wait=False`) is left. The stall is by weight alone, with no
+friction (section 39), and a motor's speed under load is its speed with no
+load. A Together room does not carry the program yet (Together's
+META_KEYS).

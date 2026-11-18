@@ -26,6 +26,11 @@ static var where: String = "user://collection.json"
 ## them all, a model's bin opened again) leaves out what is not there
 ## (localbricks, APP_UX6 #8).
 static var marks: Dictionary = {}
+## Where each part and colour is kept (partplaces): Collection.places of
+## the person signed in, key -> place, kept current by the window's store
+## as [member marks] is and emptied when nobody is signed in. The parts list
+## and the booklet's parts box read it (InventoryPanel, BookletMaker).
+static var places: Dictionary = {}
 
 var account: Account
 var inventories: SetInventories
@@ -79,6 +84,7 @@ func _on_account() -> void:
 		records = {}
 		if _asks:
 			marks = {}
+			places = {}
 		changed.emit()
 		return
 	load_collection()
@@ -264,9 +270,23 @@ func remove_set(entry: Dictionary) -> Dictionary:
 ## Sets marked as kept built, or taken apart (keptbuilt): each of
 ## [param asked] is {"set", "was": how many of its copies were shown built,
 ## "built": how many are now}, every copy of the number together. Refused,
-## changing nothing, when any is not as shown (api/collection.js op "built").
+## changing nothing, when any is not as shown (api/collection.js op "built"),
+## with the rev it was shown at: a set gone since is a 409 that shows the
+## collection as it is, not a refusal of a set never owned.
 func set_built(asked: Array) -> Dictionary:
-	return await change({"op": "built", "sets": asked})
+	var body: Dictionary = {"op": "built", "sets": asked}
+	if collection.rev != null:
+		body["rev"] = collection.rev
+	return await change(body)
+
+
+## Where parts are kept (partplaces): each of [param asked] is {"part",
+## "colour", "was": the place shown ("" for none), "place": the place asked
+## ("" takes it off)}, by the part and colour as the collection holds them.
+## Refused, changing nothing, when any is not as shown, or is not held
+## (api/collection.js op "place"). Nothing else is touched.
+func set_places(asked: Array) -> Dictionary:
+	return await change({"op": "place", "places": asked})
 
 
 ## Forget all of it, at the account and here: what was shown, if it is
@@ -289,6 +309,7 @@ func refresh_pool() -> void:
 	on_hand = collection.pool(records, library)
 	if _asks:
 		marks = collection.marks(library)
+		places = collection.places.duplicate()
 
 
 func pieces_on_hand() -> int:

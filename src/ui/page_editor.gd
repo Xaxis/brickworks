@@ -978,7 +978,7 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 				var x: float = (item["rect"] as Rect2).position.x + Booklet.PAD
 				var tallest: float = float(row[2])
 				for lot: Booklet.Lot in row[0]:
-					var cell: float = maxf(lot.size.x, Booklet.QUANTITY * 2.0)
+					var cell: float = Booklet.cell_width(lot)
 					var spot := Rect2(Vector2(x + (cell - lot.size.x) * 0.5,
 						y + tallest - lot.size.y) * k, lot.size * k)
 					var part: Texture2D = _part_shots.get(lot.key)
@@ -989,8 +989,13 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 					_canvas.draw_string(font, Vector2(x, y + tallest + Booklet.QUANTITY) * k,
 						"%dx" % lot.count, HORIZONTAL_ALIGNMENT_LEFT, -1,
 						int(maxf(8, Booklet.QUANTITY * 0.82 * k)), INK)
+					# Where it is kept, under its count, as the booklet says it.
+					if not lot.place.is_empty():
+						_canvas.draw_string(font, Vector2(x, y + tallest + Booklet.QUANTITY + Booklet.PLACE_LINE) * k,
+							Booklet.place_words(lot), HORIZONTAL_ALIGNMENT_LEFT, -1,
+							int(maxf(7, Booklet.PLACE_SIZE * k)), INK)
 					x += cell + Booklet.PAD
-				y += tallest + Booklet.QUANTITY + 1.0
+				y += tallest + Booklet.QUANTITY + 1.0 + float(row[3])
 		"callout":
 			_canvas.draw_rect(rect, CALLOUT_COLOUR)
 			_canvas.draw_rect(rect, INK, false, maxf(1.0, 0.4 * k))

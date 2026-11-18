@@ -734,6 +734,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.motions = (step["motions"] as Motions).copy()
 		return {"undo": "motions", "motions": had}
 
+	# The program for the model's motors (HubProgram), as it was: its own
+	# reverse.
+	if step.get("undo", "") == "program":
+		var had: String = world.program
+		world.program = str(step["program"])
+		return {"undo": "program", "program": had}
+
 	# How the booklet shows its steps (BookletLooks): the whole table as it
 	# was, its own reverse.
 	if step.get("undo", "") == "steplooks":
