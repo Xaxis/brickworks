@@ -10,7 +10,9 @@
 //   POST ?op=notifications_read  (session) {model}: that model's read, as
 //                                its group is opened; {achievements: true}:
 //                                the achievements' group read; {challenge}:
-//                                that challenge's; {all: true}: Mark all read
+//                                that challenge's; {announcement, clicked?}:
+//                                that announcement's, its link followed or
+//                                not; {all: true}: Mark all read
 //   GET  ?op=feed_count          (session) {count, notifications, feed, me}:
 //                                what is new for the avatar (the two
 //                                together, as the app's Account says it),
@@ -27,7 +29,10 @@
 // opening, its last two days (not once you entered it) and, if you voted
 // in it, who won, in a group a challenge. Since comment_mentions.sql, a
 // comment or reply that names you (@your-handle), under its model, unless
-// you hear of it already as its designer or in its thread. Nothing says
+// you hear of it already as its designer or in its thread. Since
+// announce.sql, what the site's owner announced to you (/admin ›
+// Announcements, api/_announce.js), each in a group of its own, until it is
+// withdrawn. Nothing says
 // who followed you: a follow tells nobody anything (supabase/follows.sql).
 //
 // Until notifications.sql is applied its functions are not there (404),
@@ -95,6 +100,21 @@ const quote = (text) => say("“{text}”", { text });
 /// What a challenge tells everybody who may enter it, or who voted in it.
 const CHALLENGE = new Set(["challenge_open", "challenge_closing", "challenge_won"]);
 
+/// An announcement's link: its own (a path on this site, or https), else
+/// its place on the Notifications page.
+const announcementLink = (row, origin) => {
+  const link = String(row.link || "");
+  if (/^https:\/\/[^\s/]+/.test(link)) return link;
+  if (/^\/(?![/\\])/.test(link)) return `${origin}${link}`;
+  return `${origin}/notifications#announcement-${Number(row.announcement) || 0}`;
+};
+
+/// An announcement's words as the owner wrote them: their lines kept.
+const written = (text, most) => {
+  const words = String(text ?? "").replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, " ").replace(/[ ]{2,}/g, " ").trim();
+  return words.length > most ? `${words.slice(0, most - 1)}…` : words;
+};
+
 /// A challenge's own page, a test one's as a test asks for it.
 const challengeLink = (row, origin) =>
   `${origin}/challenge?id=${Number(row.challenge) || 0}${row.test === true ? "&tests=1" : ""}`;
@@ -131,6 +151,11 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
       link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
       line: row.parent ? stepped(say("{who} mentioned you in a reply on step {step}"), say("{who} mentioned you in a reply"))
         : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
+  }
+  if (row.kind === "announcement") {
+    // From the site's owner (supabase/announce.sql): its words, as written.
+    return { ...base, who: "Brickworks", said: written(row.said, 1000), link: announcementLink(row, origin),
+      edited: row.edited === true, line: row.edited === true ? say("From {who}, edited") : say("From {who}") };
   }
   if (row.kind === "photo") {
     return { ...base, who: base.who || say("A builder"), said: quoted(row.words, 140),
@@ -177,7 +202,8 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
 /// was opened after it ([reads]) or everything was marked read ([read_at]).
 /// The levels reached are a group of their own, [achievements] true, and
 /// each challenge's notices one too, [challenge] its id: no model and no
-/// picture, each unread until it was opened (each row's [read]).
+/// picture, each unread until it was opened (each row's [read]); and each
+/// announcement too, [announcement] its id, named by its title.
 export function noticeGroups(page, origin = "", now = Date.now()) {
   const rows = Array.isArray(page?.rows) ? page.rows : [];
   const models = page?.models && typeof page.models === "object" ? page.models : {};
@@ -190,10 +216,12 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
   for (const row of rows) {
     const levelled = row.kind === "achievement";
     const challenge = CHALLENGE.has(row.kind) ? Number(row.challenge) || 0 : 0;
-    const on = levelled ? "achievements" : challenge ? `challenge-${challenge}` : String(row.on || "");
-    if (!levelled && !challenge && !ID.test(on)) continue;
+    const told = row.kind === "announcement";
+    const on = levelled ? "achievements" : challenge ? `challenge-${challenge}` : told ? `announcement-${Number(row.announcement) || 0}`
+      : String(row.on || "");
+    if (!levelled && !challenge && !told && !ID.test(on)) continue;
     const at = Date.parse(row.at);
-    const readTo = levelled || challenge ? (row.read === true ? Infinity : allRead)
+    const readTo = levelled || challenge || told ? (row.read === true ? Infinity : allRead)
       : Math.max(allRead, reads[on] ? Date.parse(reads[on]) : -Infinity);
     const said = { ...noticeSaid(row, origin, now), new: seen === null || at > seen, unread: at > readTo };
     if (said.unread) unread += 1;
@@ -205,6 +233,10 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
     if (challenge && !groups.has(on)) {
       groups.set(on, { model: "", challenge, name: say("Challenge: {title}", { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
         link: challengeLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
+    }
+    if (told && !groups.has(on)) {
+      groups.set(on, { model: "", announcement: Number(row.announcement) || 0, name: quoted(row.title || say("News"), 120),
+        picture: null, link: announcementLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
     }
     if (!groups.has(on)) {
       const card = models[on] || {};
@@ -280,6 +312,15 @@ export async function notificationsRead(request, response) {
   const body = request.body && typeof request.body === "object" ? request.body : {};
   if (body.achievements === true) {
     const said = await call("achievement_read", { viewer: asker }, () => ({ missing: true }));
+    return response.status(200).json({ read: !said?.missing, kept: !said?.missing });
+  }
+  if (body.announcement !== undefined) {
+    // Opened, and with [clicked] its link followed (supabase/announce.sql).
+    if (!Number.isSafeInteger(body.announcement) || body.announcement < 1) throw new Unacceptable("say which announcement, by its number");
+    if (body.clicked !== undefined && typeof body.clicked !== "boolean") throw new Unacceptable("clicked is true or false");
+    const said = await call("announcement_read", { viewer: asker, p_id: body.announcement, p_clicked: body.clicked === true },
+      () => ({ missing: true }));
+    if (said?.refused) throw new Unacceptable("There is no such announcement for you.", 404);
     return response.status(200).json({ read: !said?.missing, kept: !said?.missing });
   }
   if (body.challenge !== undefined) {

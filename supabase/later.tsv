@@ -39,3 +39,10 @@ feedback.sql	beta_tester	beta_join.sql	public.beta_testers t
 console3.sql	admin_export	console3b.sql	'oc_rh'
 discovery.sql	owned_keep_pool	pool_rule.sql	rule = excluded.rule
 discovery.sql	owned_pool_of	pool_rule.sql	'rule', k.rule
+notifications.sql	notification_rows	announce.sql	announcement_rows(
+replies.sql	notification_rows	announce.sql	announcement_rows(
+achievements.sql	notification_rows	announce.sql	announcement_rows(
+challenge_notices.sql	notification_rows	announce.sql	announcement_rows(
+comment_mentions.sql	notification_rows	announce.sql	announcement_rows(
+console3.sql	site_notice	announce.sql	n.ends_at is null or n.ends_at > now()
+console3.sql	site_notices_list	announce.sql	'ends_at', n.ends_at

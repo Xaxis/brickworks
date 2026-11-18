@@ -55,7 +55,7 @@ const SUBJECTS = [
   [/orangecheck .*signs you in to Brickworks/i, "sign_in_notice"],
 ];
 export const KINDS = ["sign_in_code", "beta", "feedback_answer", "digest", "report_digest", "canary_alarm",
-  "sign_in_notice", "other"];
+  "sign_in_notice", "announcement", "other"];
 
 /// What kind of mail [data] (an event's data) is about.
 export function kindOf(data) {

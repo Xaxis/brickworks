@@ -10,7 +10,7 @@
 //                  the console flips; and the notice, with the ones before
 //   noticeShown    the notice showing where a request was made, for every
 //                  page (/api/plans?op=notice, kept a minute at the CDN)
-//   noticeSet      {words: {en, de?, fr?, es?}, tone: info | warn}: shown on
+//   noticeSet      {words: {en, de?, fr?, es?}, tone: info | warn, ends?}: shown on
 //                  every page of this deployment's scope (brickworks.diy's
 //                  on the site, a preview's own on a preview), in place of
 //                  the one before; German, French and Spanish only as the
@@ -21,6 +21,7 @@
 
 import { db } from "./_db.js";
 import { scopeOf } from "./_settings.js";
+import { noticeEnds, setNoticeEnds } from "./_announce.js";
 
 const notYet = (trouble) => /: 404$/.test(String(trouble?.message || ""));
 const VERCEL = "https://vercel.com/xaxis-projects/brickworks/settings/environment-variables";
@@ -141,7 +142,8 @@ export async function noticeShown(request, response) {
   let notice = null;
   try {
     const one = await noticeOf(scopeOf(request));
-    if (one) notice = { id: one.id, words: one.words, tone: one.tone };
+    // Its end (supabase/announce.sql), so a page kept open takes it down then.
+    if (one) notice = { id: one.id, words: one.words, tone: one.tone, ends_at: one.ends_at ?? null };
   } catch (trouble) {
     console.error(`notice: ${String(trouble?.message || trouble).slice(0, 120)}`);
     response.setHeader("Cache-Control", "no-store");
@@ -166,11 +168,13 @@ export function noticeWords(given) {
   return { words };
 }
 
-/// POST /api/admin?op=notice_set {words: {en, de?, fr?, es?}, tone}.
+/// POST /api/admin?op=notice_set {words: {en, de?, fr?, es?}, tone, ends?}:
+/// [ends] the time it goes by itself (api/_announce.js noticeEnds).
 export async function noticeSet(request, response, claims) {
   const body = request.body && typeof request.body === "object" ? request.body : {};
   const checked = noticeWords(body.words);
   if (checked.error) return response.status(400).json({ error: checked.error });
+  const ends = noticeEnds(body.ends);
   const tone = body.tone === "warn" ? "warn" : "info";
   let made;
   try {
@@ -180,8 +184,9 @@ export async function noticeSet(request, response, claims) {
     if (notYet(trouble)) return response.status(503).json({ error: "Not open yet: supabase/console3.sql is not applied." });
     throw trouble;
   }
+  const end = ends && made.notice?.id ? await setNoticeEnds(scopeOf(request), made.notice.id, ends) : { ends_at: null };
   return response.status(200).json({ notice: made.notice?.id ?? null, was: made.was ?? null, tone,
-    languages: Object.keys(checked.words), scope: scopeOf(request) });
+    languages: Object.keys(checked.words), scope: scopeOf(request), ...end });
 }
 
 /// POST /api/admin?op=notice_clear.

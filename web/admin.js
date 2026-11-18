@@ -9,7 +9,8 @@
 // (console3) Moderation admin-moderation.js, Challenges admin-challenges.js
 // (and one challenge's panel at #challenges/<id>), Data admin-data.js,
 // Switches admin-switches.js, and here an account's Export, Sign out
-// everywhere and Delete, and the bar's Find.
+// everywhere and Delete, and the bar's Find. Announcements is
+// admin-announce.js, asked only once its section is opened.
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
@@ -32,10 +33,10 @@ import { loadSocial, whenChanged as socialChanged } from "/admin-social.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "plans", "mail", "connector", "site",
-  "data", "switches", "audit"];
+const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "announcements", "plans", "mail",
+  "connector", "site", "data", "switches", "audit"];
 const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
-  social: ["inbox", "write", "sent", "accounts"] };
+  social: ["inbox", "write", "sent", "accounts"], announcements: ["write", "sent", "banner", "settings"] };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -70,6 +71,7 @@ const loaders = {
   beta: () => loadBeta(),
   feedback: () => loadFeedback(),
   social: () => loadSocial(),
+  announcements: () => import("/admin-announce.js").then((part) => part.loadAnnouncements()),
   plans: () => loadPlans(),
   mail: () => loadMail(),
   connector: () => loadConnector(),

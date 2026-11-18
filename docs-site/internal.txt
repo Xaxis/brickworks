@@ -81,6 +81,7 @@ lib:the console's part C  # the owner's console's notice, variables, usage, expo
 lib:the social desk  # the owner's social desk on the admin page: Brickworks' own Reddit account, its inbox, sends and results (docs/SOCIAL_DESK.md)
 lib:the social desk's Reddit adapter  # the social desk's calls to Reddit for Brickworks' own account; a visitor never meets it
 ui:the owner's social desk  # the owner's, on the admin page (/admin › Social)
+lib:announcements  # the owner's sending of news on the admin page (/admin › Announcements, docs/ANNOUNCE.md); a person meets what it sends as the notifications page's group
 ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: the review account's password sign-in (docs/directory/claude.md); everyone else signs in by a code
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
 entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested

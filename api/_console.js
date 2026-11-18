@@ -429,15 +429,24 @@ const TARGETS = {
   social_unschedule: (_, b) => ["send", b.id],
   social_posted: (_, b) => ["send", b.id],
   social_notes: (_, b) => ["social", b.community],
+  // Announcements (announce): one by its number; the day's most.
+  announce_keep: (_, b, a) => ["announcement", a?.announcement?.id ?? b.id ?? "new"],
+  announce_send: (_, b) => ["announcement", b.id],
+  announce_unschedule: (_, b) => ["announcement", b.id],
+  announce_edit: (_, b) => ["announcement", b.id],
+  announce_withdraw: (_, b) => ["announcement", b.id],
+  announce_drop: (_, b) => ["announcement", b.id],
+  announce_limit: () => ["setting", "announce_limit"],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
-  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url"];
+  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url", "ends", "most"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.
 const ANSWERED = ["listed", "barred", "file_barred", "unlisted", "files_barred", "resolution", "cleared", "removed", "ended",
   "pick", "until", "challenge", "granted", "pending", "mail", "was", "value", "scope", "refused", "again", "email", "deleted",
-  "photos", "avatars", "sessions", "claudes", "rows", "ran", "seconds", "outcome", "notice", "languages", "account_out"];
+  "photos", "avatars", "sessions", "claudes", "rows", "ran", "seconds", "outcome", "notice", "languages", "account_out",
+  "reach", "audience_said", "ends_at"];
 
 /// What the audit keeps of an act: {kind, target, detail, test}.
 export function describe(op, request, answer) {

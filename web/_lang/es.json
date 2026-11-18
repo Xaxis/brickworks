@@ -607,7 +607,7 @@
   "Notifications · Brickworks": "Notificaciones · Brickworks",
   "Notifications": "Notificaciones",
   "Mark all read": "Marcar todo como leído",
-  "Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter and each level you reach.": "Comentarios, fotos de construcciones, remixes y me gusta en tus modelos, respuestas a tus comentarios, los desafíos en los que participas y cada nivel que alcanzas.",
+  "Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter, each level you reach and news from Brickworks.": "Comentarios, fotos de construcciones, remixes y me gusta en tus modelos, respuestas a tus comentarios, los desafíos en los que participas, cada nivel que alcanzas y las novedades de Brickworks.",
   "Sign in to see what happens to your models: comments, photos of people’s builds, remixes, likes and the challenges you enter, and replies to your comments. We email you a code: no password.": "Inicia sesión para ver lo que pasa con tus modelos: comentarios, fotos de las construcciones de otras personas, remixes, me gusta y los desafíos en los que participas, además de las respuestas a tus comentarios. Te enviamos un código por correo: sin contraseña.",
   "Notifications are not open on Brickworks yet.": "Las notificaciones aún no están disponibles en Brickworks.",
   "Nothing yet. When somebody comments on one of your models, posts a photo of their build of it, remixes it or likes it, or replies to your comment, it is here, with the model.": "Nada todavía. Cuando alguien comente uno de tus modelos, publique una foto de su construcción, lo remezcle o le dé me gusta, o responda a tu comentario, aparecerá aquí, junto al modelo.",
@@ -1065,7 +1065,8 @@
   "Groups": "Grupos",
   "Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.": "Brickworks está en beta abierta. Su barra al pie de cada página tiene Informar de un error y la forma de unirse. Elegido para este navegador.",
   "<input type=\"checkbox\" data-beta-bar-show checked> Show the beta bar on every page": "<input type=\"checkbox\" data-beta-bar-show checked> Mostrar la barra de la beta en cada página",
-  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "La barra al pie de cada página, con Informar de un error. Elegido para este navegador; Informar de un error está en el menú de tu cuenta de todos modos."
+  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "La barra al pie de cada página, con Informar de un error. Elegido para este navegador; Informar de un error está en el menú de tu cuenta de todos modos.",
+  "<input type=\"checkbox\" id=\"mail-news\"> Email me Brickworks news: new features and planned maintenance, a few times a month at most": "<input type=\"checkbox\" id=\"mail-news\"> Envíame por correo las novedades de Brickworks: nuevas funciones y mantenimientos previstos, unas pocas veces al mes como mucho"
  },
  "scripts": {
   "Copy": "Copiar",
@@ -2878,7 +2879,6 @@
   "You have three models in it already: that is the most.": "Ya tienes tres modelos en él: es el máximo.",
   "Beta bar hidden. Show it again in {settings}. Report a bug is in your account menu.": "Barra de la beta oculta. Vuelve a mostrarla en {settings}. Informar de un error está en el menú de tu cuenta.",
   "Beta bar hidden. Show it again in {settings}.": "Barra de la beta oculta. Vuelve a mostrarla en {settings}.",
-  "Undo": "Deshacer",
   "Hide the beta bar": "Ocultar la barra de la beta",
   "Admin": "Administración",
   "It works once and expires in ten minutes. Not there? Look in spam.": "Sirve una vez y caduca en diez minutos. ¿No está? Mira en spam.",
@@ -2893,6 +2893,15 @@
   "Sent a new code. Use the newest one.": "Código nuevo enviado. Usa el más reciente.",
   "Enter all {count} digits of the code.": "Escribe los {count} dígitos del código.",
   "Digit {n} of {count}": "Dígito {n} de {count}",
-  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Inicia sesión con orangecheck: su botón abre su ventana y luego vuelves a la aplicación con la sesión iniciada."
+  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Inicia sesión con orangecheck: su botón abre su ventana y luego vuelves a la aplicación con la sesión iniciada.",
+  "On: Brickworks' news by email, now and then. Each one has a link to stop them.": "Activado: novedades de Brickworks por correo, de vez en cuando. Cada una trae un enlace para dejar de recibirlas.",
+  "Off: no news by email.": "Desactivado: ninguna novedad por correo.",
+  "That unsubscribe link was cut short. Turn off Brickworks news under Email below, once signed in.": "Ese enlace para darte de baja está incompleto. Desactiva las novedades de Brickworks en Correo, más abajo, cuando hayas iniciado sesión.",
+  "Unsubscribed: Brickworks will email you no more news. You can turn it on again under Email.": "Baja hecha: Brickworks no te enviará más novedades por correo. Puedes volver a activarlas en Correo.",
+  "That did not work just now. Try the link again in a minute.": "No ha funcionado ahora mismo. Prueba el enlace de nuevo en un minuto.",
+  "There is no such announcement for you.": "Ese anuncio no existe para ti.",
+  "From {who}, edited": "De {who}, editado",
+  "From {who}": "De {who}",
+  "News": "Novedades"
  }
 }

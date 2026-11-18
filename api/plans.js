@@ -99,6 +99,12 @@
 //   POST /api/plans?op=social_visit {campaign, nonce, path, source}: a page
 //                                  opened from a sent post's link
 //                                  (web/theme.js); always 204
+//   GET  /api/plans?op=announce_due Vercel's cron (/api/plans/announce-due):
+//                                  the owner's scheduled announcements whose
+//                                  time came, and their mail (api/_announce.js)
+//   POST /api/plans?op=notice_hide {id}, GET ?op=notice_hidden&id=N: the
+//                                  notice hidden by a person signed in, in
+//                                  each of their browsers (web/notice.js)
 //
 // And feedback (api/_feedback.js, supabase/feedback.sql), from anywhere,
 // signed in or out:
@@ -122,6 +128,7 @@ import { betaDaily, betaHub, betaJoin, betaLeave, betaRoute, betaSpots } from ".
 import { feedbackRoute } from "./_feedback.js";
 import { noticeShown } from "./_console_switches.js";
 import { socialDueRoute, socialVisit } from "./_social.js";
+import { announceDueRoute, noticeHidden, noticeHide } from "./_announce.js";
 import { db, dbConfigured } from "./_db.js";
 
 // Pro is the one paid plan since 2026-10-29 (docs/PLANS.md, section 1).
@@ -361,6 +368,9 @@ export default async function handler(request, response) {
   if (request.method === "GET" && op === "notice") return noticeShown(request, response);
   if (request.method === "GET" && op === "social_due") return socialDueRoute(request, response);
   if (request.method === "POST" && op === "social_visit") return socialVisit(request, response);
+  if (request.method === "GET" && op === "announce_due") return announceDueRoute(request, response);
+  if (request.method === "POST" && op === "notice_hide") return noticeHide(request, response);
+  if (request.method === "GET" && op === "notice_hidden") return noticeHidden(request, response);
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   if (request.method === "POST" && PAID.includes(op) && billingMode() !== "off") return paying(request, response, op);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");

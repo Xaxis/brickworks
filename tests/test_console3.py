@@ -380,7 +380,7 @@ def test_the_notice_is_set_shown_on_its_own_site_and_cleared() -> None:
     assert got["notice_set"]["status"] == 200 and got["notice_set"]["json"]["languages"] == ["en", "de"]
     # A language the site does not have is dropped, not kept.
     assert got["notice_shown"] == {"status": 200, "json": {"notice": {"id": 1, "words": {
-        "de": "Wartung um 02:00 UTC.", "en": "Down for upkeep at 02:00 UTC."}, "tone": "warn"}}}
+        "de": "Wartung um 02:00 UTC.", "en": "Down for upkeep at 02:00 UTC."}, "tone": "warn", "ends_at": None}}}
     # A preview's notice is the preview's alone.
     assert got["notice_live"] == {"notice": None}
     assert got["notice_again"]["was"] == 1 and got["notice_overview"]["words"] == {"en": "Back up."}

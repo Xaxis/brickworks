@@ -402,6 +402,10 @@ async function load() {
   $("mail-comments").checked = Boolean(mail && mail.comments);
   $("mail-kinds").hidden = !(mail && mail.kinds === true);
   for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
+  // Brickworks' news by email (api/_announce.js), off until chosen.
+  const news = answer.body.news;
+  $("news-choice").hidden = !(news && news.ready);
+  $("mail-news").checked = Boolean(news && news.news);
   // Whether their profile shows whom they follow (supabase/follows.sql).
   const shows = answer.body.follows;
   $("follows-choice").dataset.ready = shows && shows.ready ? "yes" : "";
@@ -456,6 +460,21 @@ $("mail-comments").addEventListener("change", async () => {
   $("mail-said").textContent = answer.body.comments
     ? say("On: at most one email a day, when somebody comments on a model you shared.")
     : say("Off: no emails about comments.");
+});
+
+$("mail-news").addEventListener("change", async () => {
+  const box = $("mail-news");
+  box.disabled = true;
+  const answer = await call("/api/people?op=news", { method: "POST", body: { news: box.checked } });
+  box.disabled = false;
+  if (answer.status !== 200) {
+    box.checked = !box.checked;
+    $("mail-said").textContent = told(answer.body.error, say("That did not work just now."));
+    return;
+  }
+  $("mail-said").textContent = answer.body.news
+    ? say("On: Brickworks' news by email, now and then. Each one has a link to stop them.")
+    : say("Off: no news by email.");
 });
 
 // Each kind's two sentences, on and off.
@@ -622,4 +641,28 @@ $("delete-form").addEventListener("submit", async (event) => {
   await deleteAccount({ confirm: typed });
 });
 
-load();
+/// Opened from a news mail's Unsubscribe (/settings?unsubscribe=<account>.<token>,
+/// api/_announce.js): no more news by email, asked by this page, signed in
+/// or not, so a link checker that only opens the address changes nothing.
+async function unsubscribed() {
+  const asked = new URLSearchParams(location.search).get("unsubscribe") || "";
+  const found = /^([0-9a-f-]{36})\.([A-Za-z0-9_-]{20,64})$/.exec(asked);
+  if (!asked) return;
+  const left = new URL(location.href);
+  left.searchParams.delete("unsubscribe");
+  history.replaceState(null, "", left.pathname + left.search + left.hash);
+  const note = $("unsubscribed");
+  note.hidden = false;
+  if (!found) {
+    note.textContent = say("That unsubscribe link was cut short. Turn off Brickworks news under Email below, once signed in.");
+    return;
+  }
+  const answer = await fetch("/api/people?op=news_unsubscribe", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ a: found[1], t: found[2] }) }).then(async (reply) => ({ status: reply.status,
+    body: await reply.json().catch(() => ({})) }), () => null);
+  note.textContent = answer && answer.status === 200
+    ? say("Unsubscribed: Brickworks will email you no more news. You can turn it on again under Email.")
+    : told(answer?.body?.error, say("That did not work just now. Try the link again in a minute."));
+}
+
+unsubscribed().catch(() => null).finally(() => load());
