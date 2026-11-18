@@ -469,8 +469,10 @@ async function press(send, at, said) {
     // The form emptied for the next, before what became of this is said.
     startNew();
     if (done.outcome === "scheduled") {
-      say("social-note", `Scheduled for ${when(done.send.send_at)}.`);
       closeSheet();
+      await reread();
+      landed(send.id, `Scheduled for ${when(done.send.send_at)}.`);
+      return true;
     } else if (done.outcome === "sent") {
       say("social-note", "Sent.");
       openSheet("Sent", [make("p", "", "It is on Reddit: "), done.url ? linkOut(done.url, done.url) : "—"], send.id);
@@ -527,10 +529,10 @@ function postedButton(send, address, said, words) {
   return act(words, async () => {
     try {
       await adminJson({ op: "social_posted" }, { method: "POST", body: { id: send.id, url: address.value.trim() } });
-      say("sends-note", reddit()?.account ? "Kept: its score and the visits it brings are counted from now."
-        : "Kept: the visits it brings are counted from now. Its score is read only once Reddit is connected.");
       closeSheet();
       await reread();
+      landed(send.id, reddit()?.account ? "Kept: its score and the visits it brings are counted from now."
+        : "Kept: the visits it brings are counted from now. Its score is read only once Reddit is connected.");
       return true;
     } catch (problem) {
       say(said, problem.message, true);
@@ -577,10 +579,10 @@ function unsureSheet(send) {
 const backButton = (send, where, words) => act(words, async () => {
   try {
     const done = await adminJson({ op: "social_unschedule" }, { method: "POST", body: { id: send.id } });
-    say("sends-note", done.outcome === "unscheduled" ? "Unscheduled: back among the drafts, and it goes only when you press Send again."
-      : "Back among the drafts: it goes only when you press Send again.");
     if ($("social-sheet").open) closeSheet();
     await reread();
+    landed(send.id, done.outcome === "unscheduled" ? "Unscheduled: back among the drafts, and it goes only when you press Send again."
+      : "Back among the drafts: it goes only when you press Send again.");
     return true;
   } catch (problem) {
     say(where, problem.message, true);
@@ -654,6 +656,7 @@ function drawDrafts() {
   if (!drafts.length) return emptyRow(body, "No drafts.");
   for (const one of drafts) {
     const row = make("tr");
+    row.id = `draft-${one.id}`;
     timeCell(row, one.changed_at);
     cell(row, where(one));
     cell(row, excerpt(one.title || one.body || "(empty)"), "text");
@@ -695,6 +698,10 @@ function drawSends() {
     .reduce((s, [, n]) => s + n, 0), 0);
   say("n-social-visits-said", total ? `${count(recent)} in 7 days` : "counted by each post's utm_campaign");
 
+  const older = $("sends-older");
+  older.hidden = !desk.unlisted;
+  say(older, desk.unlisted ? `${count(desk.unlisted)} older ${desk.unlisted === 1 ? "one is" : "ones are"} kept and not listed: `
+    + "here are the newest 300 and every one still to go." : "");
   const body = $("sends");
   body.replaceChildren();
   if (!shown.length) return emptyRow(body, "Nothing sent or scheduled yet. Write a post under Write.");
@@ -750,7 +757,8 @@ function details(one) {
     ["Said", one.said],
   ])];
   if (one.results.length) {
-    const table = make("table", "", make("thead", "", make("tr", "", ...["When", "Score", "Comments", "Upvoted"].map((h) => {
+    const table = make("table", "", make("caption", "visually-hidden", "Its score over time"),
+      make("thead", "", make("tr", "", ...["When", "Score", "Comments", "Upvoted"].map((h) => {
       const th = make("th", "", h);
       th.scope = "col";
       return th;
@@ -793,11 +801,31 @@ function facts(pairs) {
 
 function openSheet(title, body, id = "") {
   const sheet = $("social-sheet");
-  $("social-sheet-title").textContent = title;
+  const heading = $("social-sheet-title");
+  heading.textContent = title;
   $("social-sheet-body").replaceChildren(...[body].flat());
   sheet.dataset.send = id;
   if (!sheet.open) sheet.showModal();
+  // A sheet that becomes the next (Review, then Post it on Reddit): the
+  // control pressed went with the old one, so its name is what is read
+  // next, and Tab goes on from there. Opened afresh, it starts at Close.
+  else if (!sheet.contains(document.activeElement)) {
+    heading.tabIndex = -1;
+    heading.focus();
+  }
+}
+
+/// Once an act from a row or a sheet has moved a send and the lists are
+/// drawn again, focus lands on what is there, never on the page: the send's
+/// row in the tab shown, else that tab's own place (Write's Review, or the
+/// list), and what became of it is said in that tab's line.
+function landed(id, words) {
+  const tab = [...document.querySelectorAll('[data-section="social"] [data-tab]')].find((one) => !one.hidden)?.dataset.tab;
+  say(tab === "write" ? "social-note" : "sends-note", words);
+  const row = [$(`send-${id}`), $(`draft-${id}`)].find((one) => one && !one.closest("[data-tab]").hidden);
+  (row?.querySelector("a, button") || (tab === "write" ? $("social-review") : $("sends").closest(".table")))?.focus();
 }
 function closeSheet() { $("social-sheet").close(); }
+$("social-sheet").addEventListener("close", () => $("social-sheet-title").removeAttribute("tabindex"));
 $("social-sheet-close").addEventListener("click", closeSheet);
 $("social-sheet").addEventListener("click", (event) => { if (event.target === $("social-sheet")) closeSheet(); });
