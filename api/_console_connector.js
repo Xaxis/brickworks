@@ -27,7 +27,7 @@ const DAY = 864e5;
 // (TAB_LOST_MS), and a conversation that called in this long still holds its
 // tab (HELD_MS).
 const TAB_HEARD_MS = 180_000;
-const HELD_MS = 30 * 60 * 1000;
+const HELD_MS = 10 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const chatOf = (key) => createHash("sha256").update(String(key)).digest("hex").slice(0, 8);

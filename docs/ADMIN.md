@@ -351,7 +351,7 @@ server may call.
   conversations (`relay_picks`: which tab each works in, its last call and
   tool, its count of calls) and its calls by day (`relay_call_days`, counted
   by `relay_call_note` from api/mcp.js's noteCall). Working now is a
-  conversation that called within 30 minutes in a tab heard within three.
+  conversation that called within 10 minutes in a tab heard within three.
   `#connector/<account>` is an account's panel, linked from People's.
   Nothing here ends or changes a session.
 - **Site** (api/_console_site.js): the release train writes each release
