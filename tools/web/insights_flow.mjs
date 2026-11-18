@@ -10,10 +10,11 @@
 //   1. The gate: the owner's read answers 401 signed out and 404 to an
 //      account that is not the owner's; the beacon's route answers a GET 405
 //      and any POST 204, saying nothing back.
-//   2. Nothing sent, nothing started: with Do Not Track, with Global Privacy
-//      Control, after No, and in a driven browser that did not ask to be
-//      counted, each after the counter loaded; the same page with the
-//      check's own ask sends (so the first four mean something).
+//   2. Nothing sent, nothing started, nothing even fetched (tally.js and
+//      counting.js): with Do Not Track, with Global Privacy Control, after
+//      No, and in a driven browser that did not ask to be counted; the same
+//      page with the check's own ask loads the counter and sends (so the
+//      first four mean something).
 //   3. A visit counted: three site pages by a tagged link, each beacon read
 //      as sent: a 16-letter visit, its source the link's, every name a row
 //      may hold, and no address, IP address, typed word or page text in any.
@@ -197,13 +198,16 @@ try {
     await leave(one.page);
     await go(one.page, "/plans");
     await wait(2500);
+    const fetched = await one.page.evaluate(() => performance.getEntriesByType("resource")
+      .filter((r) => /\/(tally|counting)\.js/.test(r.name)).map((r) => new URL(r.name).pathname));
     await leave(one.page);
     await wait(1500);
     if (label === "the check's own ask") {
       check(`${label}: the counter loaded (${came}), started (${on}), ${one.sent.length} beacons sent`, came && on && one.sent.length >= 1);
     } else {
-      check(`${label}: the counter loaded (${came}) and did nothing: started ${on}, ${one.sent.length} beacons`,
-        came && !on && one.sent.length === 0);
+      // A no costs no request (inreview L3): the counter is never fetched.
+      check(`${label}: nothing fetched (${fetched.join(", ") || "none"}), started ${on}, ${one.sent.length} beacons`,
+        !came && fetched.length === 0 && !on && one.sent.length === 0);
     }
     await one.context.close();
   }
@@ -335,7 +339,7 @@ try {
     check("the account told by its sign-in's token, never its id or its address",
       told.every((b) => b.bearer === stranger.access_token && b.who === undefined) && !building.sent.some((text) => text.includes("@")));
     const studioUnknown = unknown(told);
-    check(`every studio name one the server keeps (${studioUnknown.length} not${studioUnknown.length ? `: ${studioUnknown.slice(0, 8).join(", ")}` : ""})`,
+    check(`every studio name one the server keeps (${studioUnknown.length} not${studioUnknown.length ? `: ${[...new Set(studioUnknown)].slice(0, 40).join(", ")}` : ""})`,
       studioUnknown.length === 0);
     await building.context.close();
   }

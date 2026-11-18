@@ -14,9 +14,11 @@ when the code that counts it names it:
   studio tool    the studio's tools (src/ui/edit_verbs.gd MODES)
   studio panel   web/tally.js's PANELS
   studio press   a control the studio names to the page (every
-                 controls_by_name in src/, and the view cube's faces); a
-                 name made from a prefix and a number or a word of its own
-                 file is a family: the prefix and each word it can take
+                 controls_by_name in src/, and the view cube's faces: each
+                 word its body names, and its file's words where it keys
+                 by a variable); a name made from a prefix and a number or
+                 a word of its own file is a family: the prefix and each
+                 word it can take
   studio command a command of the studio's palette (src/ui/shell.gd)
   studio run     Simulate, Render (by kind), a booklet, Together
   error          a script of the site's (web/*.js) or the studio's
@@ -148,14 +150,27 @@ def controls() -> tuple[set[str], dict[str, int], list[list[str]]]:
         place = len(files)
         used = False
         for body in found:
-            for key in re.findall(r'"([a-z0-9_]+)"\s*:', body):
+            # A key as the page is told it, words and all ("part search"),
+            # which the page's nameOf makes part_search.
+            for key in re.findall(r'"([A-Za-z0-9_ ]+)"\s*:', body):
                 exact.add(name_of(key))
-            for key in re.findall(r'\[\s*"([a-z0-9_]+)"\s*\]\s*=', body):
+            for key in re.findall(r'\[\s*"([A-Za-z0-9_ ]+)"\s*\]\s*=', body):
                 exact.add(name_of(key))
+            # Any other word the body names (a key chosen from a list:
+            # name if name in ["new", "open", "save"] else "tool_" + name).
+            for word in strings(body):
+                if re.match(r"^[A-Za-z0-9_ ]{1,40}$", word):
+                    exact.add(name_of(word))
+            # A key held in a variable (out[name] = _arrows[name]) is one of
+            # its file's own words.
+            if re.search(r"\[\s*(?:str\()?[a-z_][a-z0-9_.]*\)?\s*\]\s*=", body):
+                exact.update(words)
             for line in body.splitlines():
-                # "prefix_" + word, "prefix_%d" % n, and a key built in a variable first.
-                for prefix in re.findall(r'"([a-z0-9_]*_)"\s*\+', line) + re.findall(r'"([a-z0-9_]*_)%d"\s*%', line):
-                    families.setdefault(name_of(prefix), place)
+                # "prefix_" + word, "prefix %d" % n, and a key built in a variable first.
+                for prefix in (re.findall(r'"([A-Za-z0-9_ ]*[_ ])"\s*\+', line)
+                               + re.findall(r'"([A-Za-z0-9_ ]*[_ ])%d"\s*%', line)):
+                    # "tile picture " is told as tile_picture_#: its space a _.
+                    families.setdefault(name_of(prefix.replace(" ", "_")), place)
                     used = True
                 for prefix in re.findall(r'(?:prefix|key)\s*\+\s*"([a-z0-9_]+)"', line):
                     exact.add(name_of(prefix))
@@ -166,6 +181,10 @@ def controls() -> tuple[set[str], dict[str, int], list[list[str]]]:
                     exact.add(name_of(prefix + rest))
         if used:
             files.append(words)
+    # The bin's Techniques tiles, "technique " and each technique's name
+    # (src/ai/techniques.gd).
+    table = (ROOT / "src" / "ai" / "techniques.gd").read_text(encoding="utf-8")
+    exact.update(name_of("technique " + n) for n in re.findall(r'"name":\s*"([^"]{1,48})"', table))
     return {n for n in exact if NAME.match(n)}, {p: f for p, f in families.items() if p}, files
 
 
