@@ -32,7 +32,8 @@
 //   5. every other change keeps them: a lot added, a count set, a lot taken
 //      to none (its drawer kept for when it comes back), remove_set and the
 //      set typed again, an Own down and up, a Rebrickable fetch replacing,
-//      and an older app's whole copy PUT (it knows no places)
+//      and an older app's Remove a set, its whole copy PUT without it (it
+//      knows no places; its copy sent as it is is refused, as before)
 //   6. taken off ("" place), for a part no longer held too; Start over
 //      forgets every place; an older app's DELETE does too
 import { applyOp, placeText, placesOf, keyOf, MOST_PLACE } from "../../api/collection.js";
@@ -223,10 +224,19 @@ try {
   await keeps("an Own down to 1", await call(token, { method: "POST", body: { op: "own", id: id(), set: SET, was: 2, qty: 1 } }));
   await keeps("a Rebrickable fetch replacing", await call(token, { method: "POST", body: { from: "rebrickable_api", mode: "replace",
     id: id(), sets: [[SET, 1, false]], parts: (await call(token)).body.parts.map((p) => [p.part, p.colour, p.qty]) } }));
+  // An older app (rel-m267 and before) takes a set out by sending its whole
+  // copy, which knows no places, without that set: made as remove_set. Its
+  // copy sent as it is, not a removal, is refused as before.
   const held = (await call(token)).body;
-  const olderCopy = { sets: held.sets.map((s) => ({ set: s.set, qty: s.qty, spares: Boolean(s.spares) })),
-    parts: held.parts.map((p) => ({ part: p.part, colour: p.colour, qty: p.qty })) };
-  await keeps("an older app's whole copy PUT, no places in it", await call(token, { method: "PUT", body: olderCopy }));
+  const olderCopy = (without) => ({ sets: held.sets.filter((s) => s.set !== without)
+    .map((s) => ({ set: s.set, qty: s.qty, spares: Boolean(s.spares) })),
+  parts: held.parts.map((p) => ({ part: p.part, colour: p.colour, qty: p.qty })) });
+  const asIs = await call(token, { method: "PUT", body: olderCopy("") });
+  const afterAsIs = (await call(token)).body;
+  check(asIs.status === 409 && same(afterAsIs.places, placesNow) && same(rest(afterAsIs), rest(held)),
+    `an older app's whole copy PUT as it is: ${asIs.status} (not a set taken out), nothing changed, places as they were`);
+  await keeps(`an older app's Remove ${SET}: its whole copy PUT without it, no places in it`,
+    await call(token, { method: "PUT", body: olderCopy(SET) }));
 
   console.log("\n6. taken off, then forgotten");
   const offOne = await place([{ ...twelve[3], was: "drawer 4", place: "" }]);

@@ -34,8 +34,9 @@
 ##      reading the account's copy keeps every set and lot byte for byte and
 ##      drops only the places; the copy it writes on this device, read here
 ##      with the account out of reach, is said to lack them, and they come
-##      back from the account; its whole copy PUT (an older app's Remove a
-##      set) leaves every place at the account
+##      back from the account; its whole copy PUT without 7140-1 (an older
+##      app's Remove a set) leaves every place at the account, and so does
+##      7140-1 typed again
 ##   8. two tabs at once: two parts placed from two tabs together, both
 ##      kept; one part from both, from the same place shown: one kept, the
 ##      other told, shown it as it is now
@@ -415,10 +416,24 @@ func _steps() -> void:
 		await _settled()
 		_check("...and they come back from the account: %d" % _store.collection.places.size(),
 			not _store.offline and _same(_store.collection.places, want))
-		var put_reply: Dictionary = await _http(HTTPClient.METHOD_PUT, {"sets": its["sets"], "parts": its["parts"]})
+		# An older app (rel-m267 and before) takes a set out by sending its
+		# whole copy, which knows no places, without that set.
+		var before_old: Dictionary = await _account_now()
+		var older_sets: Array = (its["sets"] as Array).filter(func(one: Dictionary) -> bool:
+			return str(one.get("set", "")) != SET)
+		var put_reply: Dictionary = await _http(HTTPClient.METHOD_PUT, {"sets": older_sets, "parts": its["parts"]})
 		var after_old: Dictionary = await _account_now()
-		_check("its whole copy PUT (an older app's Remove a set): %d, every place kept" % int(put_reply["code"]),
-			int(put_reply["code"]) == 200 and _same(after_old["places"], want))
+		_check("its whole copy PUT without %s (an older app's Remove a set): %d, the set out, every lot and place kept" % [
+			SET, int(put_reply["code"])], int(put_reply["code"]) == 200 and _same(after_old["places"], want)
+			and _same(after_old["parts"], before_old["parts"])
+			and (after_old["sets"] as Array).all(func(one: Dictionary) -> bool: return str(one.get("set", "")) != SET))
+		var again: Dictionary = await _http(HTTPClient.METHOD_POST, {"from": "sets", "text": SET,
+			"id": "partplaces-%s" % Crypto.new().generate_random_bytes(8).hex_encode()})
+		var after_again: Dictionary = await _account_now()
+		_check("...%s typed again: %d, every place as it was" % [SET, int(again["code"])], int(again["code"]) == 200
+			and _same(after_again["places"], want) and (after_again["sets"] as Array).size() == (before_old["sets"] as Array).size())
+		await _store.load_collection()
+		await _settled()
 
 	print("\n8. two tabs at once")
 	var tab := CollectionStore.new()
