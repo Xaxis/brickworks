@@ -5131,7 +5131,7 @@
       "readOnlyHint": false,
       "title": "Simulate the mechanism"
     },
-    "description": "Turn the model's gear train as Tools, Simulate mechanism does, and what it drives in a loop as a drag moves it (a pinion's rack slides, a crank's rod rocks and its slider strokes), without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result).",
+    "description": "Turn the model's gear train as Tools, Simulate mechanism does, and what it drives in a loop as a drag moves it (a pinion's rack slides, a crank's rod rocks and its slider strokes), without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result). program= sets the program for the model's motors (kept in its file; undo takes it back; \"\" takes it out) and runs it in the same call, as Simulate's Run does: each motor at its rated speed, each move stopped where a part meets another or the motor stalls under its load, said move by move with a picture where it ended. A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it); with two hub motors or more, each line begins with its port, A to F.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5142,6 +5142,10 @@
         "frames": {
           "description": "frames in a recording, 2 to 240; 24 when omitted",
           "type": "integer"
+        },
+        "program": {
+          "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out",
+          "type": "string"
         },
         "record": {
           "type": "boolean"

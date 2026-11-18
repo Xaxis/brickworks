@@ -1,0 +1,37 @@
+0 FILE untitled.ldr
+0 Untitled
+0 !BRICKWORKS MADE hand
+0 Name: untitled.ldr
+0 Author: Brickworks
+0 !BRICKWORKS FLOOR BASEPLATE 32 32 288
+0 !BRICKWORKS PROGRAM {"text":"repeat 3\n  to 90° at 50%\n  wait 1 s\n  to 0° at 50%"}
+
+1 71 0 -24 50 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -48 50 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -72 50 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -96 50 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 71 0 -120 50 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -144 50 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -168 50 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -176 50 1 0 0 0 1 0 0 0 1 3738.dat
+0 STEP
+1 0 -40 -176 50 0 1 0 -1 0 0 0 0 1 2780.dat
+1 0 40 -176 50 0 1 0 -1 0 0 0 0 1 2780.dat
+0 STEP
+1 71 0 -326 50 -1 0 0 0 0 1 0 1 0 54675.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 arm.ldr
+0
+0 NOFILE
+0 FILE arm.ldr
+0 Arm
+0 Name: arm.ldr
+0 Author: Brickworks
+
+1 0 0 -306 0 0 0 1 0 1 0 -1 0 0 2780.dat
+1 14 0 -326 -10 1 0 0 0 0 -1 0 1 0 32316.dat
+1 0 0 -346 0 0 0 1 0 1 0 -1 0 0 2780.dat
+0
+0 NOFILE
