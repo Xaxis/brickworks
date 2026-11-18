@@ -78,6 +78,14 @@ The mark is kept with your account and in the files Save sets as CSV and as XML 
 
 **Build › What do I need?…** (or **What do I need?** on the parts list, [[P]]) lists what the model uses that you do not own, and what you own that could stand in. Export what is left as a shopping list: see [Buy the parts](/docs/exports#shop-lists).
 
+## Make a model easier to buy {#rare}
+
+A part in a colour that comes in three sets or fewer is one few sellers have. The parts list ([[P]]) says over its rows how many of the model's lots are like that, by Rebrickable's set inventories, and marks each such row "rare: in 2 sets". Press that line and each rare lot is shown with a swap that comes in 20 sets or more: the same shape and connections in its own colour (another mould of the part, or a print's plain part), or else the nearest colour it comes in, its ΔE said. A print keeps its print unless you tick it; a part no colour of which comes in 20 sets says so and has no box. Untick any you want to keep, then **Swap**: every copy of a sub-model changes with it, a locked part stays, and the whole swap is one undo step. The line then says what changed and what is still rare. Your Claude does the same with replace_parts rare=true, in one call.
+
+<!-- covers
+ui:rare lots swapped for common ones
+-->
+
 ## What can I build? {#build}
 
 **File › What can I build?…** opens on **Real sets**: every LEGO® set Rebrickable lists, the one you could build most of first. Each says how much of it you have in its colours (*92%*), how many pieces are short, and how much you have in any colour; the sets you own are left out. Your sets' parts and your loose parts all count, and another moulding of a part stands in, as What do I need? counts them.
