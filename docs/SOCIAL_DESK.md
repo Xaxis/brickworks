@@ -128,12 +128,29 @@ section's badge sums them.
   - Links to brickworks.diy are tagged when the draft is kept.
   - "Review and send…" opens the sheet: the exact words, then Send now, or a
     day and a quarter-hour to Schedule.
+  - Two Keeps of one new draft (two tabs at once, a double tap, or Keep
+    pressed again when its answer was lost) make one draft. A new draft's id
+    is made from its words and the ten seconds it is kept in, so the second
+    Keep meets the first's id and the database's key decides, in whatever
+    order they run; one from the ten seconds before is found too. Both
+    answers name the one kept. The same words kept again later, or once that
+    draft was edited, are a second draft.
 - **Sent and scheduled** (`#social/sent`): every post and reply that went or
   waits. For each: its state, score, comments and the visits it brought, with
   Unschedule; Post it on Reddit…, Back to drafts and Drop (handed to the
   owner); Look again and Drop (failed); Is it up?… (unsure, below); and
   Details (its words, when and by whom it was pressed, its tag, its score
-  over time, its visits by day). On a phone each row is a card.
+  over time, its visits by day). On a phone each row is a card. It lists
+  the newest 300 and, however old, every send still to go or waiting on the
+  owner (scheduled, sending, handed or failed); how many older ones are kept
+  and not listed is said under it.
+- **By keyboard and screen reader.** Each table has a name of its own, the
+  rules' line is a status, and a sheet that becomes the next (Review, then
+  Post it on Reddit) puts focus on its name. After an act that closes the
+  sheet (It is posted, Schedule, Back to drafts), focus lands on the send's
+  row, or on the tab's own place (Write's Review, or the list), and what
+  became of it is said in that tab's line. By finger, links in the rows and
+  in Details are as tall as a button (44 px).
 - **A send is never sent twice.** Reddit's own no ("did not take the post")
   marks it "Did not go", and it may be pressed again. Anything less clear (a
   timeout, Reddit's 5xx, an answer that names no post, the row not written
@@ -365,6 +382,14 @@ Where the desk matches the best, and where it does better:
 - **Connect** is OAuth's code flow.
   - The state is signed here (HMAC, ten minutes), so a code is taken back
     only for a connect the owner started.
+  - It is good once. It carries when the account was last connected (or
+    that it was not), and the finish writes the account only while that
+    still holds: the same state again is refused, and of two finishes at
+    once one connects and the other's keys are handed back at Reddit.
+  - Reddit comes back to one fixed address, the one registered with the
+    app, `https://brickworks.diy/admin?connected=reddit`, whichever host
+    the console was on (www included). The stand-in comes back to the
+    console it was asked from.
   - Coming back, the page lifts the code and state from the address before
     anything else, so neither stays in the history.
 - **The cron** `/api/plans/social-due` runs every 15 minutes (`*/15 * * * *`;
@@ -415,8 +440,13 @@ Where the desk matches the best, and where it does better:
     unsure after five minutes; a long post's address; a handed post taken
     back or dropped; a comment's or Share link's address refused for a post;
     a reply to a message marked sent; wrong types; a title of emoji; and two
-    visitors counted as two however many numbers the page sends. Every answer, log line and request path is searched for a
-    token.
+    visitors counted as two however many numbers the page sends. And
+    sdreview's L-findings: a connect's state refused the second time, two
+    finishes of one connect held at the exchange until both are there (one
+    account, the loser's keys handed back), Reddit's redirect the same from
+    www, two Keeps of one new draft at once as one draft, and a schedule
+    older than the newest 300 still listed with the rest counted. Every
+    answer, log line and request path is searched for a token.
   - `tests/fixtures/social/db_check.mjs` applies social.sql twice to a
     Postgres of its own. It checks that no role but the server's reads any
     table, that the refusals hold, and that a token goes with its account.
@@ -425,6 +455,7 @@ Where the desk matches the best, and where it does better:
   the stand-in's consent; the inbox and its filters; a reply; a post with its
   rules, its draft, a refusal of words changed behind the open sheet, and
   Send; Schedule and Unschedule; the cron sending one due; results; a visit
-  by the tagged link; disconnect; a post by hand; every tab at 390 and 1280,
+  by the tagged link; disconnect; a post by hand (focus on the new sheet's
+  name, then back on Write's Review after It is posted); every tab at 390 and 1280,
   light and dark; and no token in any answer, page or storage. Before the
   file is applied it proves the gate and the "not yet" state.
