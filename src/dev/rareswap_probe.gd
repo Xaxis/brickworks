@@ -164,36 +164,42 @@ static func _row_count(text: String) -> int:
 	return int(at.get_slice(" ", 0))
 
 
-## A control pressed with the mouse where it is on screen, as a person
-## presses it.
-func _press(control: Control) -> void:
-	var at: Vector2 = control.get_global_rect().get_center()
-	var rect: Vector2 = root.get_visible_rect().size
-	var event_at: Vector2 = at * (Vector2(DisplayServer.window_get_size()) / rect) \
-		if rect.x > 0.0 and rect.y > 0.0 else at
-	var move := InputEventMouseMotion.new()
-	move.position = event_at
-	move.global_position = event_at
-	Input.parse_input_event(move)
-	await process_frame
-	for down: bool in [true, false]:
-		var event := InputEventMouseButton.new()
-		event.button_index = MOUSE_BUTTON_LEFT
-		event.pressed = down
-		event.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
-		event.position = event_at
-		event.global_position = event_at
-		Input.parse_input_event(event)
-		await process_frame
+## A button pressed, once a person could press it: shown, not turned off and
+## inside the window. A headless
+## window takes no pointer (as keptbuilt's probe, it presses the button);
+## the preview's dialogs flows click the real thing. False when it could not.
+func _press(control: Control) -> bool:
+	var button: BaseButton = control as BaseButton
+	var inside: bool = root.get_visible_rect().encloses(control.get_global_rect())
+	if button == null or not button.is_visible_in_tree() or button.disabled or not inside:
+		print("  could not press %s (shown %s, off %s, inside %s)" % [control.name,
+			control.is_visible_in_tree(), button != null and button.disabled, inside])
+		return false
+	if button.toggle_mode:
+		button.button_pressed = not button.button_pressed
+	else:
+		button.pressed.emit()
 	await _frames(4)
+	return true
+
+
+## Where [param a] and [param b] first differ, by byte, with the text round
+## it: "" when they are the same.
+static func _first_unlike(a: String, b: String) -> String:
+	if a == b:
+		return ""
+	var at: int = 0
+	while at < mini(a.length(), b.length()) and a[at] == b[at]:
+		at += 1
+	return "at %d of %d/%d: \"%s\" / \"%s\"" % [at, a.length(), b.length(),
+		a.substr(maxi(at - 40, 0), 80).c_escape(), b.substr(maxi(at - 40, 0), 80).c_escape()]
 
 
 ## The rare row pressed, and the swaps' list once it is filled (30 s at most).
 func _swaps_up(list: InventoryPanel) -> bool:
 	var row: Control = list.controls_by_name().get("parts_rare")
-	if row == null:
+	if row == null or not await _press(row):
 		return false
-	await _press(row)
 	var until: int = Time.get_ticks_msec() + 30000
 	while Time.get_ticks_msec() < until:
 		if list.controls_by_name().has("parts_swap_row") and not bool(list.get("_swapping")):
@@ -208,7 +214,8 @@ func _swap_pressed(list: InventoryPanel) -> bool:
 	if button == null or button.disabled:
 		return false
 	var depth: int = _builder.history_depth()
-	await _press(button)
+	if not await _press(button):
+		return false
 	var until: int = Time.get_ticks_msec() + 30000
 	while Time.get_ticks_msec() < until:
 		if not bool(list.get("_swapping")) and not list.controls_by_name().has("parts_swap") \
@@ -333,11 +340,13 @@ func _undone() -> String:
 func _case_mcp() -> void:
 	var text: String = FileAccess.get_file_as_string("res://models/corner_shop.ldr")
 	await _open(text)
+	var opened: String = _save()
 	var list: InventoryPanel = await _list_up()
-	await _swaps_up(list)
-	await _swap_pressed(list)
+	_check("mcp: the rare row opens the swaps", await _swaps_up(list))
+	_check("mcp: Swap pressed", await _swap_pressed(list))
 	list.hide_list()
 	var by_panel: String = _save()
+	_check("mcp: the panel swapped corner_shop", by_panel != opened)
 	await _open(text)
 	var before: String = _save()
 	var preview: String = await _say("replace_parts", {"rare": true, "preview": true})
@@ -382,12 +391,12 @@ func _case_kept() -> void:
 	var text: String = _fixture(KEPT)
 	await _open(text)
 	var before: String = _save()
-	_check("kept: someone else's file opened and saved, to the byte (%s)" % _diff(text, before),
-		before == text)
+	_check("kept: someone else's file opened and saved, to the byte (%s %s)" % [_diff(text, before),
+		_first_unlike(text, before)], before == text)
 	var rare: Dictionary = _rare_here()
 	print("  rare: %s" % rare)
 	var list: InventoryPanel = await _list_up()
-	await _swaps_up(list)
+	_check("kept: the rare row opens the swaps", await _swaps_up(list))
 	var picked := PackedStringArray()
 	for lot: RareSwap.Lot in list.get("_rare"):
 		print("    %s%s" % [(list.get("_swapper") as RareSwap).lot_words(lot),
@@ -396,7 +405,7 @@ func _case_kept() -> void:
 			picked.append(lot.key)
 	var shown_before: int = _rare_here().size()
 	var depth: int = _builder.history_depth()
-	await _swap_pressed(list)
+	_check("kept: Swap pressed", await _swap_pressed(list))
 	list.hide_list()
 	var after: String = _save()
 	_check("kept: one undo step (%d)" % (_builder.history_depth() - depth),
@@ -434,8 +443,8 @@ func _case_kept() -> void:
 	_check("kept: ...and it saves to itself (%s)" % _diff(after, _save()), _save() == after)
 	await _open(text)
 	list = await _list_up()
-	await _swaps_up(list)
-	await _swap_pressed(list)
+	_check("kept: the rare row opens the swaps again", await _swaps_up(list))
+	_check("kept: Swap pressed again", await _swap_pressed(list))
 	list.hide_list()
 	var undone: String = await _undone()
 	_check("kept: the undo, the file opened to the byte (%s)" % _diff(before, undone),
@@ -450,7 +459,7 @@ func _case_kept() -> void:
 func _case_printed() -> void:
 	await _open(_fixture(KEPT))
 	var list: InventoryPanel = await _list_up()
-	await _swaps_up(list)
+	_check("printed: the rare row opens the swaps", await _swaps_up(list))
 	var print_lot: RareSwap.Lot = null
 	var box: CheckBox = null
 	for each: Control in list.call("_swap_boxes"):
@@ -462,7 +471,7 @@ func _case_printed() -> void:
 	_check("printed: 2431p70 offered its plain part, 2431 in Black (%s)" % (
 		(list.get("_swapper") as RareSwap).lot_words(print_lot) if print_lot != null else "none"),
 		print_lot != null and print_lot.into_part == "2431" and print_lot.into_colour < 0)
-	await _swap_pressed(list)
+	_check("printed: Swap pressed", await _swap_pressed(list))
 	list.hide_list()
 	_check("printed: picked alone, it alone swaps (2431p70 %d, 2431 %d, 87087 %d)" % [
 		_count("2431p70", 0), _count("2431", 0), _count("87087", 379)],
@@ -478,8 +487,8 @@ func _case_locked() -> void:
 	var said: Array = []
 	var list: InventoryPanel = await _list_up()
 	list.said.connect(func(line: String) -> void: said.append(line))
-	await _swaps_up(list)
-	await _swap_pressed(list)
+	_check("locked: the rare row opens the swaps", await _swaps_up(list))
+	_check("locked: Swap pressed", await _swap_pressed(list))
 	list.hide_list()
 	print("  said: %s" % said)
 	_check("locked: the locked 3622 stays Sand Blue, the rest swap (%d, 87087 %d)" % [
@@ -494,16 +503,16 @@ func _case_locked() -> void:
 func _case_picks() -> void:
 	await _open(_fixture(KEPT))
 	var list: InventoryPanel = await _list_up()
-	await _swaps_up(list)
+	_check("picks: the rare row opens the swaps", await _swaps_up(list))
 	for each: Control in list.call("_swap_boxes"):
 		var lot: RareSwap.Lot = each.get_meta("lot")
 		if lot.part == "3622":
-			await _press(each)
+			_check("picks: its box pressed off", await _press(each) and not lot.picked)
 	var swap: Button = list.controls_by_name()["parts_swap"]
 	print("  button: %s" % swap.text)
 	_check("picks: one box pressed off, the button says one fewer (%s)" % swap.text,
 		swap.text == "Swap 4 lots")
-	await _swap_pressed(list)
+	_check("picks: Swap pressed", await _swap_pressed(list))
 	var row: String = list.controls_by_name()["parts_rare"].text
 	print("  row: %s" % row)
 	list.hide_list()
@@ -525,7 +534,7 @@ func _case_words() -> void:
 		"Swapped 3 rare lots for common ones, 9 parts. No lot is rare now",
 		"Swapped 1 rare lot for common ones, 1 part. Still rare: 1 lot comes in 3 sets or fewer, so few sellers have it: swap for common parts…",
 		"nothing swapped"]
-	await _swaps_up(list)
+	_check("words: the rare row opens the swaps", await _swaps_up(list))
 	texts.append(list.get("_heading").text)
 	for node: Node in [list.get("_swap_note"), list.get("_swap_now"), list.get("_swap_back")]:
 		texts.append(node.get("text"))
