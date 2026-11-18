@@ -1207,7 +1207,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   // Counted for /admin › Analytics (api/_analytics.js): each tool call, its
   // name, whether it went (null: not told) and how long it took; awaited
   // before the handler ends, so the count is never cut off with it.
-  const counted = (ok) => (calling && !viewerCall ? tallyCall(where.owner, name, ok, Date.now() - began) : null);
+  const counted = (ok) => (calling && !viewerCall ? tallyCall(where.owner, name, ok, Date.now() - began, where.host) : null);
   // The model's viewer, served here: the tab need not be open to read it.
   if (["resources/list", "resources/read", "resources/templates/list"].includes(message.method)) {
     await where.used(message, null);
@@ -1229,8 +1229,14 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       : rpcError(id, -32002, `no resource ${uri.slice(0, 200)}`));
   }
   if (calling && RELAY_TOOLS.some((tool) => tool.name === name)) {
-    const answered = await relayTool(where, message, response, where.used(message, null));
-    await counted(null);
+    // Whether it went, from what it answered (inreview L6).
+    let said = null;
+    const heard = { status: (code) => ({ json: (body) => {
+      said = body;
+      return response.status(code).json(body);
+    } }) };
+    const answered = await relayTool(where, message, heard, where.used(message, null));
+    await counted(said ? !said.error && said.result?.isError !== true : null);
     return answered;
   }
   // What the call is placed by, read at once rather than one after another
@@ -1573,7 +1579,8 @@ async function forAccount(request, response) {
   const give = request.body && request.body.method === "initialize" && !session
     ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
   const begun = early && early.owner === grant.owner && early.id === grant.id ? early : null;
-  return await fromClaude(accountTabs(grant, origin, session || give, begun), request.body, response, give,
+  const where = { ...accountTabs(grant, origin, session || give, begun), host: hostOf(request) };
+  return await fromClaude(where, request.body, response, give,
     streams(request));
 }
 
@@ -1744,7 +1751,8 @@ export default async function handler(request, response) {
       const session = sessionOf(request);
       const give = request.body && request.body.method === "initialize" && !session
         ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
-      return await fromClaude(oneTab(channel, session || give), request.body, response, give, streams(request));
+      return await fromClaude({ ...oneTab(channel, session || give), host: hostOf(request) }, request.body, response, give,
+        streams(request));
     }
     if (op === "hello") {
       if (!instance) return response.status(400).json({ error: "hello needs ?i=" });
@@ -1828,10 +1836,17 @@ export default async function handler(request, response) {
   }
 }
 
+/// The host [request] came to: the live site's, or a preview's (a tool
+/// call there is a check's, api/_analytics.js testOf).
+function hostOf(request) {
+  return String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
+}
+
 /// A request that stopped on [trouble]: said, and a tool call counted as
 /// failed, its account not known here (/admin › Analytics, api/_analytics.js).
 async function stopped(request, response, trouble) {
-  const counted = request.body?.method === "tools/call" ? tallyCall(null, request.body.params?.name, false, null) : null;
+  const counted = request.body?.method === "tools/call" ? tallyCall(null, request.body.params?.name, false, null, hostOf(request))
+    : null;
   const sent = response.status(502).json({ error: String(trouble.message || trouble) });
   await counted;
   return sent;

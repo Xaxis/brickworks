@@ -4,10 +4,20 @@
 // site pages only, never in the studio, and only once a browser has said
 // neither. Its answer is kept in this browser and can be changed in
 // Settings › Privacy, which this wires too (#counting-on).
+//
+// By keyboard (inreview M5): the card is the page's first stop, before the
+// skip link, so it is reached at once and not after the whole page; Escape
+// closes it unanswered, as its close button does (nothing counted, the next
+// page asks again); and once it is gone focus goes back where it was before
+// it came into the card, or, when it came from nowhere, on to the stop after
+// the card, so the next Tab goes on through the page.
 import { iconHtml, langAt, say } from "/card.js";
 import { browserSaysNo, countingState, setCounting } from "/counting.js";
 
 let card = null;
+// What a key can stop on, in the page's order.
+const STOPS = "a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), "
+  + "textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
 // The site notice's card (web/site.css .site-notice), at the window's left
 // so the notice keeps its right; over the notice on a phone, where both
@@ -63,15 +73,34 @@ export function ask() {
   close.className = "icon-btn small";
   close.setAttribute("aria-label", say("Ask me later"));
   close.innerHTML = iconHtml("close");
-  const answer = (on) => {
+  // Where focus was before it came into the card.
+  let before = null;
+  card.addEventListener("focusin", (event) => {
+    if (!before && event.relatedTarget instanceof HTMLElement && !card.contains(event.relatedTarget)) before = event.relatedTarget;
+  });
+  // [keyed]: answered by a key, so focus lands where a key can go on from.
+  const answer = (on, keyed) => {
     if (on !== null) setCounting(on);
+    const had = card.contains(document.activeElement);
     card.remove();
     card = null;
+    if (!had) return;
+    if (before?.isConnected && before !== document.body) before.focus({ preventScroll: true });
+    else if (keyed) {
+      const stop = [...document.body.querySelectorAll(STOPS)].find((el) => el.getClientRects().length || el.matches(".skip"));
+      stop?.focus({ preventScroll: true });
+    }
   };
-  yes.addEventListener("click", () => answer(true));
-  no.addEventListener("click", () => answer(false));
+  // A click by Enter or Space has no pointer (its detail is 0).
+  yes.addEventListener("click", (event) => answer(true, event.detail === 0));
+  no.addEventListener("click", (event) => answer(false, event.detail === 0));
   // Closed unanswered: nothing is counted, and the next page asks again.
-  close.addEventListener("click", () => answer(null));
+  close.addEventListener("click", (event) => answer(null, event.detail === 0));
+  card.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || event.defaultPrevented) return;
+    event.preventDefault();
+    answer(null, true);
+  });
   const row = document.createElement("div");
   row.className = "row";
   row.append(yes, no);
@@ -79,7 +108,8 @@ export function ask() {
   body.className = "body";
   body.append(words, row);
   card.append(body, close);
-  document.body.append(card);
+  // First in the page, so first by Tab; it is fixed at the window's foot, so where it sits moves nothing.
+  document.body.prepend(card);
   requestAnimationFrame(() => requestAnimationFrame(() => card?.classList.add("shown")));
 }
 

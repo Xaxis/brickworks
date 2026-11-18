@@ -94,12 +94,33 @@ beacon is one request with at most 80 rows.
 With each visit go its first page, where it came from (the channel, the
 referrer's host or `utm_source`, `utm_medium`, `utm_campaign`; the social
 desk's `bw-<post>` joins its post), the kind of device, browser and system,
-the page's language, its seconds, its last act, and when signed in the
-account's id. The server keeps the account only as an HMAC of the id under
-`VIEW_SECRET` with a prefix of its own (24 hex characters): rows cannot be
-joined to anything outside the database, and the console makes the same
-hash to join them to sign-ups. The studio's controls shown (their names)
-are kept once each, so a control nobody presses shows as never used.
+the page's language, its seconds and its last act. When signed in, the
+beacon carries the page's own sign-in token (the site's, or the one the
+studio's own requests to /api/ carry), and the server takes the account
+only from that token once it checks out (`verify`, as every signed-in op);
+a beacon's own word for whose it is counts for nothing. The server keeps
+the account only as an HMAC of the id under `VIEW_SECRET` with a prefix of
+its own (24 hex characters), and the token is let go: rows cannot be joined
+to anything outside the database, and the console makes the same hash to
+join them to sign-ups. A visit's account is set once, never changed. The
+studio's controls shown (their names) are kept once each, so a control
+nobody presses shows as never used.
+
+**Only names the code has.** A beacon is the browser's word, and anybody
+can send one, so the server keeps a name only when the code that counts it
+names it: the site's pages and its API ops, the studio's tools, panels,
+palette commands, runs and named controls, a script of the site's or the
+studio's for an error, and the connector's tools for a call.
+`tools/insights_names.py` reads them from the code into
+`api/_insights_names.js` (`--check` says when it is behind; a test runs
+it). A name made up is dropped before it reaches the database, so it is
+never a row, a line in the console, or a share of the day's cap. Each kind
+has its most a beacon (20 views, 200 presses, 60 commands…): one beacon
+cannot make a press a million.
+
+**Never pressed** leaves out a control whose tool was picked or whose
+palette command ran. Keys, shortcuts and Claude's own presses are not seen,
+so a control used only that way shows as never pressed.
 
 **Not counted yet: items chosen from the studio's own menus.** The page sees
 the menu bar's presses and the palette's commands, but an item chosen in a
@@ -115,28 +136,49 @@ app's menu handler (a Godot change, left for its own unit).
   (`insights_take` refuses any other name).
 - **A visit** is a random id in the tab's session storage, gone when the
   tab closes, and new after 30 minutes away.
-- **Asked first** where the law wants a yes (the EU, the EEA, the UK,
-  Switzerland): the browser's time zone says so in the page, and Vercel's
-  country header on the server, which drops a beacon from there without the
-  yes; the header is read and let go. The ask is a card at the window's
-  foot on a site page (never the studio), with Yes, No and Ask me later.
+- **Asked first** where the law wants a yes (the EU, the EEA with its
+  outermost regions, the UK, Switzerland): the browser's time zone says so
+  in the page, and Vercel's country header on the server, which drops a
+  beacon from there without the yes; the header is read and let go. A clock
+  that names no place (UTC, `Etc/*`, GMT) asks first, as Europe's does. The
+  ask is a card at the window's foot on a site page (never the studio),
+  with Yes, No and Ask me later. It comes first in the Tab order, Escape
+  closes it unanswered, and focus goes back where it was or to the page's
+  next stop.
 - **Never counted:** a browser sending Do Not Track or GPC (checked in the
   page and again on the server's headers), anyone who said No or turned it
   off in Settings › Privacy (kept in this browser), and a browser a program
-  drives (`navigator.webdriver`) unless a check asked to be counted.
+  drives (`navigator.webdriver`) unless a check asked to be counted. A no
+  costs no request: theme.js and the studio's shell check all four before
+  fetching tally.js or counting.js (`window.brickworksCountingNo`).
+- **The social desk's `social_visit`** follows the same choice: never sent
+  under Do Not Track, GPC or a No; where a yes comes first, only once it is
+  given on that landing page. A check's driven browser still sends it.
+- **A connector tool call** is counted by the server (its tool, whether it
+  went, how long), never with an account: a person's choice not to be
+  counted lives in their browser, and a call does not come from there.
 - **Kept 30 days** as sent; each day's totals after (`insights_days`), with
   the day an account first put down a part and saved, and which days it was
-  active, by its hash. A deleted account's rows go at the next daily run.
+  active, by its hash. Deleting an account deletes its rows there and then
+  (`api/_erase.js`, `insights_forget_account`); the daily run deletes any a
+  deleted account left, whatever else is kept, unless that day's listing of
+  accounts failed (none, or much shorter than the last: `insights_gone`).
 - **Said plainly** at `/counting` (de, fr, es), linked from the privacy
   page's visit section and from Settings' choice.
-- **The checks' own** (any deployment but production, or a beacon a check
-  marked) are kept apart (`test`), read with `?tests=1`, as the console's
-  other sections do.
+- **The checks' own** are kept apart (`test`), read with `?tests=1`, as the
+  console's other sections do: anything not sent to brickworks.diy or
+  www.brickworks.diy (every Vercel deployment is a production one, so a
+  preview is told by its host), anything any deployment but production
+  sent, a test account's (`@resend.dev`, the checks' own), and a beacon a
+  check marked. The same holds for a tool call. Every row kept before
+  `supabase/analytics2.sql` is marked a check's: none came from
+  brickworks.diy.
 
 ## Cost
 
 Each beacon is one call of `api/plans` and one `insights_take`, whose
-answer is a number. Measured on a preview (tools/web/insights_flow.mjs,
+answer is a number; a signed-in one's token is checked as every signed-in
+op's is (`verify`: the keys, cached, and one read of the session). Measured on a preview (tools/web/insights_flow.mjs,
 2026-11-18): a site page's beacon is 320–490 bytes with 1–5 rows; the
 studio's first is 1.9 kB with 92 (its view, its start's timings and the
 controls it shows, which are kept once a name, not once a visit), later
@@ -152,13 +194,26 @@ them in the studio:
 | Database size | about 70 MB at 30 days, then about 0.4 MB a day of totals | 450,000 rows of about 150 bytes |
 | Supabase egress | about 2–6 MB, and about 0.2 MB a console read | the beacons' answers are a few bytes each; the read answers totals only |
 
-Caps hold it whatever comes: 80 rows a beacon, 1,500 a visit, 400 control
-names a visit, and 200,000 rows a day, past which no new visit is kept
-(`insights_caps`). The console's read sums the totals and today's raw rows
-in the database and sends back only the sums; no raw row ever leaves it.
-Vercel's cron rolls up each day that is over at 03:27 UTC
-(`/api/plans/tally-daily`) and forgets what is past 30 days; it rolls a day
-once, and a read never writes.
+Caps hold it whatever comes (`insights_caps`): 80 rows a beacon, each kind
+at its most a beacon, 1,500 rows a visit, 400 control names a beacon (each
+new name a row of the day's), and 200,000 rows a day. Past 150,000 a new
+signed-out visit is kept one in 8, by its id, and counted at a weight of 8,
+so a busy day goes on being counted and the console says how many were
+sampled; past 200,000 no new visit is kept, and the console says how many
+were turned away. A tool call has a budget of its own (50,000 a day), so a
+flood of beacons cannot blind the connector's counts. One address may send
+40 beacons at once and one more each 4 s after, and start 60 visits an hour
+(the route, in memory: it slows a script, not a person).
+
+The console's read sums the totals and today's raw rows in the database and
+sends back only the sums, each list its top 25 or 50 by count (`names`
+says how many there were); no raw row ever leaves it. However the beacons
+were made up, the read is at most 113 kB (every list full and 401 days:
+days 38 kB, studio use 46 kB, speed 12 kB, sources 10 kB, never pressed
+8 kB; db_attacks case F, 2026-11-18). Vercel's cron rolls up each day that
+is over at 03:27 UTC (`/api/plans/tally-daily`), one day a call so a
+backlog never times out the next, and forgets what is past 30 days; it rolls
+a day once, and a read never writes.
 
 ## The console: /admin › Analytics
 
@@ -170,6 +225,9 @@ the owner unless asked, `all`, `free`, `tester`, `pro`, `owner`, `none`;
 
 - **Overview:** visitors, visits, sign-ups, active builders, published and
   Claude calls, each with its sparkline, and visitors and sign-ups a day.
+  A visitor is a person once a day, on every device and language they used
+  (the totals are kept over all of each as well as by each); People in the
+  tables is person-days.
 - **Funnels**, **Retention** (a heatmap, a share in each cell),
   **Pages** (views by template and the site's acts), **The studio** (firsts,
   tools, panels, commands, runs, controls, where visits stopped, never
@@ -181,7 +239,8 @@ the owner unless asked, `all`, `free`, `tester`, `pro`, `owner`, `none`;
 Charts follow the dataviz method: one series each in one blue (#2a78d6
 light, #3987e5 dark, both validated against the console's panels), thin
 marks, a hairline grid, a tooltip on hover and focus, and each chart as a
-table too. Before `supabase/analytics.sql` is applied the section says so
+table too. Each chart is one Tab stop, the arrow keys moving between its
+days; on a phone the tab strip keeps the open tab in view. Before `supabase/analytics.sql` is applied the section says so
 and the beacon's route keeps nothing.
 
 ## Where it lives
@@ -189,7 +248,30 @@ and the beacon's route keeps nothing.
 `web/counting.js` (may this browser be counted), `web/counting-ask.js`
 (the ask, Settings' choice), `web/tally.js` (the counter), `web/counting.html`
 (`/counting`), `api/_analytics.js` (the route, the read, the cron, a tool
-call's count), `supabase/analytics.sql` (additive; every table with row
-security on and nothing granted, its functions the server's alone),
-`web/admin-analytics.js`. Proven by `tests/test_insights.py` and, on a
-deployment, `tools/web/insights_flow.mjs` (preview check `insights`).
+call's count), `api/_insights_names.js` (the names it keeps, made by
+`tools/insights_names.py`), `supabase/analytics.sql` and
+`supabase/analytics2.sql` (additive; every table with row security on and
+nothing granted, its functions the server's alone; analytics2 is the
+review's fixes, dry-run in `tools/analytics2_try.sql`),
+`web/admin-analytics.js`. Proven by `tests/test_insights.py` (with
+`tests/fixtures/insights/attacks_check.mjs`, the review's attacks, and
+`tests/test_insights_page.py`) and, on a deployment,
+`tools/web/insights_flow.mjs` (preview check `insights`).
+
+## The review (2026-11-18)
+
+An independent review (bench/results/inreview-2026-11-18/report.md) found 3
+High, 7 Medium and 7 Low faults before it went live; all are fixed (infix):
+previews and live checks wrote people's tool-call rows (H1); the owner's
+read and the never-pressed names had no bound (H2); six forged accounts
+stopped account deletion for good (H3); a beacon's account was never
+checked, so anyone could add activity to anyone's (M1); one beacon counted
+800,000 likes (M2); the day's cap blinded the rest of the day (M3); a tool
+call was counted under the account whatever it chose (M4); the ask was hard
+to use by keyboard (M5); "never used" counted only pointer presses (M6);
+visitors and People were wrong across devices (M7); a beacon's body was
+never measured (L1); the desk's `social_visit` and the counter's scripts
+went under Do Not Track, GPC and No (L2, L3); clocks that name no place
+never asked (L4); a backlog of flooded days never rolled up (L5); relayed
+tool calls never said whether they went (L6); and the charts were 60 Tab
+stops, the open tab out of view on a phone (L7).

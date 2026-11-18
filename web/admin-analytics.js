@@ -23,6 +23,7 @@ export const PANELS = ["parts", "assistant", "properties", "palette", "app_menu"
 
 // What every number means: the Definitions tab, and where each name links.
 export const TERMS = {
+  people: ["People", "In a table: the people who did it, a day at a time, added up over the days (person-days), so somebody who did it on three days counts three. On one day a signed-in account counts once, on however many devices; a signed-out visit counts once, as nothing ties two of them together."],
   visits: ["Visits", "A visit is one browser tab's time on the site and in the studio, ended by 30 minutes away. Pages opened in the same tab are one visit."],
   visitors: ["Visitors", "People on a day: a signed-in account once, a signed-out visit once (nothing ties two of them together). Added up over the days, so somebody back on three days counts three times, as daily counters such as Plausible's do."],
   signups: ["Sign-ups", "Accounts made in the range, from the accounts themselves, not from what was counted: the plan filter narrows them, the device and language filters do not."],
@@ -38,7 +39,7 @@ export const TERMS = {
   command: ["Commands", "Commands run from the command palette (Ctrl K), by name; a part searched for there is find_part."],
   run: ["Runs", "Simulate, Render, booklets and Building together: how many ran, how many worked (Simulate with nothing wrong said, a render with a file made), and how long they took."],
   leave: ["Where visits stopped", "Each visit's last act: the page, tool, panel, press or run it did last. A visit counts where it stopped."],
-  never: ["Never used", "Tools and panels the studio has that nobody used in the range, and controls shown at least once (since counting began) that nobody pressed in the range."],
+  never: ["Never used", "Tools and panels the studio has that nobody used in the range: a tool counts however it was picked (a press, a key, the palette or Claude), and a panel however it opened. And controls shown at least once (since counting began) that nobody pressed with a pointer or finger in the range, and whose tool or command nobody used either. Keys, shortcuts and Claude's own uses of a control are not seen as presses, so a control on that list may still be used that way."],
   milestone: ["Firsts", "How long after the studio came up (its own start mark) the first part was put down and the first model saved, in the visits that did."],
   view: ["Pages", "Pages opened, by kind: a model's page is /m/:id, never which model. An address the site did not make is /other."],
   act: ["Site acts", "What people did that the site's API wrote: a like, a comment, a follow, an entry, a sign-in code, by the API's name and op. Failed is an answer of 400 or more."],
@@ -363,6 +364,9 @@ function columns(title, key, points, unit) {
   figure.append(make("figcaption", "", term(key, title), make("small", "", `${count(total)} in all`)));
   const plot = make("div", "plot");
   figure.append(plot);
+  // The day a key is on: the chart's one Tab stop (inreview L7: a stop a
+  // day made 60 of them on Overview); the arrow keys, Home and End move it.
+  let lit = points.length - 1;
   const draw = () => {
     const w = Math.max(240, plot.clientWidth - 24);
     const h = 160;
@@ -370,8 +374,9 @@ function columns(title, key, points, unit) {
     const bottom = 20;
     const ticks = ticksOf(Math.max(0, ...points.map((p) => p.value)));
     const top = ticks.at(-1) || 1;
-    const shape = svg("svg", { viewBox: `0 0 ${w} ${h + bottom}`, role: "img",
-      "aria-label": `${title}, a column a day, ${count(total)} in all` });
+    const shape = svg("svg", { viewBox: `0 0 ${w} ${h + bottom}`, role: "group",
+      "aria-label": `${title}, a column a day, ${count(total)} in all; the arrow keys go from day to day` });
+    const hits = [];
     const y = (v) => h - (v / top) * (h - 8);
     for (const t of ticks) {
       shape.append(svg("line", { x1: left, x2: w, y1: y(t), y2: y(t), class: t === 0 ? "base" : "grid" }));
@@ -383,8 +388,17 @@ function columns(title, key, points, unit) {
     const width = Math.max(1, Math.min(24, slot - 2));
     points.forEach((p, at) => {
       const x = left + at * slot + (slot - width) / 2;
-      const hit = svg("rect", { x: left + at * slot, y: 0, width: slot, height: h, class: "hit", tabindex: points.length <= 120 ? 0 : -1,
-        "aria-label": `${day(`${p.day}T12:00:00Z`)}: ${count(p.value)} ${unit}` });
+      const hit = svg("rect", { x: left + at * slot, y: 0, width: slot, height: h, class: "hit", tabindex: at === lit ? 0 : -1,
+        role: "img", "aria-label": `${day(`${p.day}T12:00:00Z`)}: ${count(p.value)} ${unit}` });
+      hits.push(hit);
+      hit.addEventListener("keydown", (event) => {
+        const to = { ArrowLeft: at - 1, ArrowDown: at - 1, ArrowRight: at + 1, ArrowUp: at + 1, Home: 0, End: points.length - 1 }[event.key];
+        if (to === undefined) return;
+        event.preventDefault();
+        lit = Math.max(0, Math.min(points.length - 1, to));
+        hits.forEach((one, n) => one.setAttribute("tabindex", n === lit ? "0" : "-1"));
+        hits[lit].focus();
+      });
       const show = (event) => tipAt(event, day(`${p.day}T12:00:00Z`), `${count(p.value)} ${unit}`);
       hit.addEventListener("pointerenter", show);
       hit.addEventListener("focus", show);
@@ -608,7 +622,7 @@ function drawRetention() {
 const cols = {
   name: { head: "Name", name: true, value: (u) => u.name },
   n: (head = "Times", key) => ({ head, key, value: (u) => Number(u.n) || 0, bar: true }),
-  people: { head: "People", n: true, value: (u) => Number(u.people) || 0 },
+  people: { head: "People", key: "people", n: true, value: (u) => Number(u.people) || 0 },
   visits: { head: "Visits", key: "visits", n: true, value: (u) => Number(u.visits) || 0 },
   failed: { head: "Failed", n: true, value: (u) => (u.failed ? `${count(u.failed)} (${share(u.failed, (u.ok || 0) + u.failed)})` : "0") },
   p50: { head: "p50", key: "p50", n: true, value: (u) => ms(u.p50) },
@@ -629,10 +643,21 @@ function drawStudio() {
   const neverTools = TOOLS.filter((t) => !tools.some((u) => u.name === t));
   const neverPanels = PANELS.filter((p) => !panels.some((u) => u.name === p));
   const pressed = new Set(presses.map((u) => u.name));
-  const neverPressed = (data.seen || []).map((s) => s.name).filter((name) => !pressed.has(name));
+  // A control used another way than a press (inreview M6): its tool picked
+  // (tool_mode_move is the tool move, however it was picked), or its command
+  // run from the palette (tool_, phone_row_ and phone_quick_ name the
+  // command they run, phone_ the phone's undo and redo).
+  const ran = new Set(used("command").map((u) => u.name));
+  const picked = new Set(tools.map((u) => u.name));
+  const usedElse = (name) => {
+    const command = (/^(?:tool_|phone_row_|phone_quick_|phone_)(.+)$/.exec(name) || [])[1];
+    const mode = (/^mode_(.+)$/.exec(command || "") || [])[1];
+    return Boolean(command && (ran.has(command) || (mode && picked.has(mode))));
+  };
+  const neverPressed = (data.seen || []).map((s) => s.name).filter((name) => !pressed.has(name) && !usedElse(name));
   const firsts = used("milestone");
   const never = make("div", "part", make("div", "lead", make("h3", "", term("never", "Never used in this range"))));
-  for (const [words, list] of [["Tools", neverTools], ["Panels and dialogs", neverPanels], ["Controls shown, never pressed", neverPressed]]) {
+  for (const [words, list] of [["Tools", neverTools], ["Panels and dialogs", neverPanels], ["Controls shown, never pressed with a pointer or finger", neverPressed]]) {
     never.append(make("p", "note", `${words}: ${list.length ? count(list.length) : "none"}`));
     if (list.length) {
       const ul = make("ul", "never");

@@ -9,7 +9,12 @@
 // check drives (navigator.webdriver) unless the check asked to be counted.
 // Where the law wants a yes first (the EU, the EEA, the UK, Switzerland: the
 // browser's time zone says so here, the server's country header there),
-// nothing is counted until the person says yes.
+// nothing is counted until the person says yes. A clock that names no place
+// (UTC, Etc/*) is asked too.
+//
+// web/theme.js and src/boot/shell.html repeat this file's cheap no (Do Not
+// Track, GPC, a No kept, a driven browser that did not ask) before they
+// fetch the counter at all: change one, change them.
 
 const KEY = "brickworks.counting";
 const CHECK = "brickworks.counting.check";
@@ -31,18 +36,23 @@ export function browserSaysNo() {
 // Time zones where a yes is asked first: Europe's, and the EU's islands and
 // regions on other continents' clocks.
 const ASKED_ZONES = new Set(["Atlantic/Canary", "Atlantic/Madeira", "Atlantic/Azores", "Atlantic/Reykjavik", "Atlantic/Faroe",
-  "Arctic/Longyearbyen", "Africa/Ceuta", "America/Guadeloupe", "America/Martinique", "America/Cayenne", "America/St_Barthelemy",
-  "America/Marigot", "Indian/Reunion", "Indian/Mayotte", "Asia/Nicosia", "Asia/Famagusta"]);
+  "Atlantic/Jan_Mayen", "Arctic/Longyearbyen", "Africa/Ceuta", "America/Guadeloupe", "America/Martinique", "America/Cayenne",
+  "America/St_Barthelemy", "America/Marigot", "Indian/Reunion", "Indian/Mayotte", "Asia/Nicosia", "Asia/Famagusta"]);
+// A clock that names no place (UTC, GMT, Etc/GMT+1, none at all) could be
+// anywhere, the EU too: a yes comes first there as well (inreview L4).
+const NOWHERE = /^(?:Etc\/.*|UTC|UCT|GMT.*|Universal|Zulu|Greenwich)?$/;
 
 /// Whether this browser's clock is one where a yes comes first.
-export function asksFirst() {
-  let zone = "";
-  try {
-    zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-  } catch {
-    return true;
+export function asksFirst(zone = undefined) {
+  if (zone === undefined) {
+    try {
+      zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+      return true;
+    }
   }
-  return zone.startsWith("Europe/") || ASKED_ZONES.has(zone);
+  zone = String(zone ?? "");
+  return NOWHERE.test(zone) || zone.startsWith("Europe/") || ASKED_ZONES.has(zone);
 }
 
 /// Where this browser stands: "browser" (DNT or GPC), "off" (said no),

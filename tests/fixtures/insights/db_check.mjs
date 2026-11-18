@@ -12,8 +12,10 @@ import { NEEDS } from "../console/needs2.mjs";
 
 // Dates as PostgREST sends them ("2026-11-13").
 createRequire(import.meta.url)(process.env.PG_MODULE || "/tmp/pg/node_modules/pg/lib/index.js").types.setTypeParser(1082, (v) => v);
-const SQL = "supabase/analytics.sql";
-const db = await startPostgres({ also: [...NEEDS, "supabase/console2.sql", "supabase/social.sql", SQL] });
+// analytics.sql, then the review's fixes over it (infix): as the live
+// project has them once both are applied.
+const SQLS = ["supabase/analytics.sql", "supabase/analytics2.sql"];
+const db = await startPostgres({ also: [...NEEDS, "supabase/console2.sql", "supabase/social.sql", ...SQLS] });
 const rpc = async (name, args = {}) => {
   const names = Object.keys(args);
   const values = names.map((key) => (args[key] !== null && typeof args[key] === "object" ? JSON.stringify(args[key]) : args[key]));
@@ -41,7 +43,7 @@ const H1 = "a1".repeat(12);
 const H2 = "b2".repeat(12);
 try {
   // Applied again, nothing changes and nothing fails.
-  await db.q(readFileSync(new URL(`../../../${SQL}`, import.meta.url), "utf8"));
+  for (const SQL of SQLS) await db.q(readFileSync(new URL(`../../../${SQL}`, import.meta.url), "utf8"));
   out.again = "ok";
   // The shared_models the funnel reads, as the live table has them.
   await db.q("alter table public.shared_models add column if not exists published boolean not null default true, "
@@ -141,14 +143,27 @@ try {
   const before = await rpc("insights_read", { p_from: from, p_to: today, p_tests: false, p_filters: {}, p_accounts: accounts });
   out.read_wrote = (await db.q("select (select count(*) from public.insights_rollups)::int as rollups, "
     + "(select count(*) from public.insights_days)::int as days"))[0];
-  out.daily = await rpc("insights_daily", { p_plans: { [H1]: "tester" } });
+  // The cron: each day over rolled up, one call a day (api/_analytics.js tallyDaily), then what deleted accounts left.
+  out.rolled_days = [];
+  for (const day of (await db.q("select d::text as d from public.insights_unrolled(current_date - 30) d")).map((r) => r.d)) {
+    out.rolled_days.push({ day, rows: await rpc("insights_rollup", { p_day: day, p_plans: { [H1]: "tester" } }) });
+  }
+  out.daily = await rpc("insights_gone", { p_plans: { [H1]: "tester" }, p_listed: 40 });
+  // Applied again once live, analytics2.sql keeps every row and the rollup.
+  const kept = async () => (await db.q("select (select count(*) from public.insights_days)::int as days, "
+    + "(select count(*) from public.insights_visits where not test)::int as visits"))[0];
+  const keptBefore = await kept();
+  await db.q(readFileSync(new URL("../../../supabase/analytics2.sql", import.meta.url), "utf8"));
+  out.again_keeps = { before: keptBefore, after: await kept() };
   // H2 is in no account listed: an account deleted, its rows let go.
   out.h2_left = (await db.q("select (select count(*) from public.insights_account_days where account = $1)::int as days, "
     + "(select count(*) from public.insights_account_firsts where account = $1)::int as firsts, "
     + "(select count(*) from public.insights_visits where account = $1)::int as visits, "
     + "(select count(*) from public.insights_events where account = $1)::int as events", [H2]))[0];
   // A listing that came back empty deletes nothing.
-  out.daily_empty = await rpc("insights_daily", { p_plans: {} });
+  out.daily_empty = await rpc("insights_gone", { p_plans: {}, p_listed: 0 });
+  // Nor one much shorter than the last that went through (40 then 3).
+  out.daily_short = await rpc("insights_gone", { p_plans: {}, p_listed: 3 });
   out.h1_kept = (await db.q("select count(*)::int as n from public.insights_account_days where account = $1", [H1]))[0].n;
   out.unrolled_after = (await db.q("select count(*)::int as n from public.insights_unrolled(current_date - 30)"))[0].n;
   out.held = await db.q(`
@@ -156,7 +171,7 @@ try {
            r.ms_p50 as rolled_p50, h.p50 as held_p50, r.ok as rolled_ok, h.ok as held_ok, r.failed as rolled_failed, h.failed as held_failed
       from (select kind, name, sum(n)::int as n, sum(visits)::int as visits, max(ms_p50) as ms_p50, sum(ok)::int as ok,
                    sum(failed)::int as failed
-              from public.insights_days where day = current_date - 1 and test = false
+              from public.insights_days where day = current_date - 1 and test = false and device = '*' and lang = '*'
                and kind not in ('visit', 'campaign', 'reach', 'leave') group by kind, name) r
       full join (select kind, name, sum(n)::int as n, count(distinct visit)::int as visits,
                         (percentile_cont(0.5) within group (order by ms))::real as p50,
@@ -165,9 +180,14 @@ try {
              on h.kind = r.kind and h.name = r.name
      order by 1, 2`);
   out.reach = await db.q("select name, sum(visits)::int as visits, sum(people)::int as people from public.insights_days "
-    + "where day = current_date - 1 and test = false and kind = 'reach' group by name order by name");
+    + "where day = current_date - 1 and test = false and kind = 'reach' and device = '*' and lang = '*' group by name order by name");
   out.visit_rows = await db.q("select name, channel, device, sum(visits)::int as visits from public.insights_days "
-    + "where day = current_date - 1 and test = false and kind = 'visit' group by name, channel, device order by name");
+    + "where day = current_date - 1 and test = false and kind = 'visit' and device <> '*' and lang = '*' "
+    + "group by name, channel, device order by name");
+  // Each count is kept by device and language, and over all of each ('*').
+  out.star_rows = (await db.q("select count(*) filter (where device = '*' and lang = '*')::int as both, "
+    + "count(*) filter (where device = '*' and lang <> '*')::int as by_lang, count(*) filter (where device <> '*' and lang = '*')::int as by_device, "
+    + "count(*) filter (where device <> '*' and lang <> '*')::int as neither from public.insights_days where day = current_date - 1"))[0];
   out.firsts = await db.q("select account, first_part_at is not null as part, first_save_at is not null as save, channel, source "
     + "from public.insights_account_firsts order by account");
   out.account_days = await db.q("select account, built, studio, test from public.insights_account_days order by account");

@@ -3230,12 +3230,14 @@ plan with Claude as the client.
   are used, counted by Brickworks itself. web/theme.js asks for the counter
   once a site page has loaded and gone idle (never /admin, /oauth or an
   embed), src/boot/shell.html two seconds after the studio is up. It does
-  nothing at all, not even look, with Do Not Track or GPC, after No, off in
-  Settings › Privacy (`#counting-on`), or in a driven browser without
-  `localStorage["brickworks.counting.check"] = "1"` (a check's own ask,
-  sent as `check: true` and kept as the checks' own). On a European clock
-  (Europe/*, the EU's islands) it waits for Yes on the ask at the window's
-  foot; the server drops a beacon from the EU, the EEA, the UK or
+  nothing at all, not even fetch tally.js or counting.js, with Do Not
+  Track or GPC, after No, off in Settings › Privacy (`#counting-on`), or in
+  a driven browser without `localStorage["brickworks.counting.check"] =
+  "1"` (a check's own ask, sent as `check: true` and kept as the checks'
+  own); the desk's `social_visit` follows the same choice. On a European
+  clock (Europe/*, the EU's islands and outermost regions) or one naming no
+  place (UTC, Etc/*, GMT) it waits for Yes on the ask at the window's foot,
+  the page's first Tab stop, Escape closing it unanswered; the server drops a beacon from the EU, the EEA, the UK or
   Switzerland (Vercel's country header) without it. A beacon every 15 s
   while something happened and on leaving (sendBeacon): a page's template
   (`/m/:id`, never the id), where the visit came from (the referrer's host,
@@ -3246,26 +3248,44 @@ plan with Claude as the client.
 - `the counter's route and its reads` (`api/_analytics.js`;
   supabase/analytics.sql): `POST /api/plans?op=tally` always 204 (a GET
   405), kept through `insights_take` (refuses any other name, caps of 80
-  rows a beacon, 1,500 a visit, 200,000 a day); the account kept only as
-  HMAC(VIEW_SECRET), none without it; a preview's rows always the checks'
-  own. `GET /api/admin?op=analytics&from=&to=&plan=&device=&lang=&signed=`
-  401 signed out, 404 to anybody else, only sums; before analytics.sql
-  `{ready: false}` and the beacon keeps nothing. The cron
-  `/api/plans/tally-daily` (03:27 UTC, CRON_SECRET) adds each day that is
-  over up once and forgets rows past 30 days, a deleted account's with
-  them. Claude's tool calls counted in api/mcp.js by tool, ok and time,
-  refused and failed ones too. Proven by `tests/test_insights.py` (the SQL
-  in a Postgres of its own via tests/fixtures/insights/db_check.mjs, the
-  handlers via api_check.mjs, the names via names_check.mjs) and the
-  insights browser flow. Dry run: `tools/analytics_try.sql`.
+  rows a beacon, 1,500 a visit, 200,000 a day, one in 8 new signed-out
+  visits past 150,000 at a weight of 8, turned-away and sampled visits
+  counted; supabase/analytics2.sql over analytics.sql). Only names the
+  code has are kept (`api/_insights_names.js`, made by
+  `python3 tools/insights_names.py`; `--check` says when it is behind),
+  each kind at its most a beacon; one address's bucket of 40 beacons and 60
+  new visits an hour. The account only from a bearer that verifies (the
+  beacon's `bearer`, or its Authorization header), kept as
+  HMAC(VIEW_SECRET), a beacon's `who` ignored; a row is a test's unless
+  sent to brickworks.diy or www.brickworks.diy by a production deployment
+  and not by an @resend.dev account. `GET
+  /api/admin?op=analytics&from=&to=&plan=&device=&lang=&signed=` 401 signed
+  out, 404 to anybody else, only sums, each list its top 25 or 50 (at most
+  113 kB); before analytics.sql `{ready: false}` and the beacon keeps
+  nothing. The cron `/api/plans/tally-daily` (03:27 UTC, CRON_SECRET) rolls
+  up each day that is over once, a day a call, then `insights_gone`
+  deletes what deleted accounts left unless the listing failed (none, or
+  much shorter than the last); an account deleted is forgotten at once
+  (api/_erase.js). Claude's tool calls counted in api/mcp.js by tool, ok
+  and time, with no account, refused, failed and relayed ones too, on a
+  budget of their own. Proven by `tests/test_insights.py` (the SQL in a
+  Postgres of its own via tests/fixtures/insights/db_check.mjs, the
+  handlers via api_check.mjs, the names via names_check.mjs, the review's
+  attacks via attacks_check.mjs, `--big` timing a flooded day) and the
+  insights browser flow. Dry runs: `tools/analytics_try.sql`, then
+  `tools/analytics2_try.sql` for analytics2.sql.
 - `the owner's Analytics` (`web/admin-analytics.js`, `/admin#analytics/…`):
   Overview (visitors, visits, sign-ups, active builders, published,
   Claude's calls, each with a sparkline), Funnels, Retention (a heatmap by
   week), Pages, The studio (firsts, tools, panels, commands, runs, controls,
-  where visits stopped, never used), Sources (channels, sources, the desk's
-  campaigns), Speed (by device, rated against Web Vitals), Errors, Claude,
-  Definitions; every number's name links to its definition. Filters in
-  one row, kept for the tab. Each chart has a table too.
+  where visits stopped, never pressed: not a control whose tool or command
+  was used), Sources (channels, sources, the desk's campaigns), Speed (by
+  device, rated against Web Vitals), Errors, Claude, Definitions; every
+  number's name links to its definition; a day's sampled and turned-away
+  visits said. Filters in one row, kept for the tab. Each chart has a
+  table too, and is one Tab stop with the arrow keys between days; at 390
+  the open tab is kept in view. The page parts are proven by
+  `tests/test_insights_page.py` (tests/fixtures/insights/page_check.mjs).
 - `what is counted page` (`web/counting.html`, `/counting` and its de, fr,
   es copies): what is counted, what never is, when you are asked, turning
   it off, how long it is kept, who sees it; linked from the privacy page's
@@ -3279,8 +3299,10 @@ plan with Claude as the client.
   link's, every name a row may hold, no address, IP address or page text;
   the ask in German at 430x932 with its words in view, nothing before the
   answer, Yes carrying the yes, No kept and nothing sent; off in Settings;
-  beacons posted with Sec-GPC and DNT kept nowhere; the studio's beacon
-  with the account's id; once analytics.sql is applied, this run's
+  beacons posted with Sec-GPC and DNT kept nowhere; every name a beacon
+  sent one the server keeps (api/_insights_names.js); the studio's beacon
+  with the sign-in's token as its bearer, never an id; once analytics.sql
+  is applied, this run's
   sources and pages in the owner's read and the dropped ones nowhere, no
   address or IP address in it; each tab at 390 and 1280, light and dark,
   never wider than the window; `--no-studio` skips /app. Writes

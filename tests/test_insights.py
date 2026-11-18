@@ -7,8 +7,11 @@ rollup held against those rows kind by kind, the read again from the rollup,
 deleted accounts' rows, and forgetting after 30 days. api_check.mjs drives
 the real handlers (api/plans.js's tally and cron, api/admin.js's read,
 api/mcp.js's count of a tool call) with that Postgres answering their rpc
-calls. names_check.mjs runs web/tally.js's names in node. Each is skipped
-without a Postgres, as test_console.py's are.
+calls. names_check.mjs runs web/tally.js's names in node. attacks_check.mjs
+is the review's attacks on the fixed tree (infix, 2026-11-18; inreview's
+db_attacks.mjs and its own three), each beside the honest path. Each is
+skipped without a Postgres, as test_console.py's are. Both SQL files are
+applied, analytics2.sql over analytics.sql, as the live project has them.
 """
 
 from __future__ import annotations
@@ -52,6 +55,12 @@ def _run(script: str, env: dict | None, timeout: int = 240) -> dict:
 def _db() -> dict | None:
     env = _pg_env()
     return None if env is None else _run("tests/fixtures/insights/db_check.mjs", env)
+
+
+@functools.cache
+def _attacks() -> dict | None:
+    env = _pg_env()
+    return None if env is None else _run("tests/fixtures/insights/attacks_check.mjs", env, timeout=400)
 
 
 @functools.cache
@@ -119,8 +128,8 @@ def test_the_caps_hold() -> None:
         return
     got = _db()
     assert got["take_many"] == 80
-    # Past the day's rows, no new visit and no call.
-    assert got["flood"] == 0 and got["flood_visit"] == 0 and got["flood_call"] is False
+    # Past the day's rows, no new visit; a tool call has a budget of its own.
+    assert got["flood"] == 0 and got["flood_visit"] == 0 and got["flood_call"] is True
 
 
 def test_no_row_holds_an_address_words_or_an_id() -> None:
@@ -139,7 +148,9 @@ def test_the_read_writes_nothing_and_the_rollup_reads_the_same() -> None:
     got = _db()
     assert got["read_wrote"] == {"rollups": 0, "days": 0}
     assert got["read_same_before_and_after"] is True
-    assert got["unrolled"] == [got["daily"]["rolled"][0]["day"]] and got["unrolled_after"] == 0
+    # analytics2.sql applied again deletes nothing and marks nothing a test's.
+    assert got["again_keeps"]["before"] == got["again_keeps"]["after"] and got["again_keeps"]["before"]["days"] > 0
+    assert got["unrolled"] == [got["rolled_days"][0]["day"]] and got["unrolled_after"] == 0
 
 
 def test_the_rollup_is_right_against_the_rows_it_was_made_from() -> None:
@@ -195,10 +206,13 @@ def test_a_deleted_accounts_rows_go_and_a_short_listing_deletes_nothing() -> Non
     if _db() is None:  # no Postgres here (pg.mjs)
         return
     got = _db()
-    assert got["daily"]["accounts_gone"] == 1
+    assert got["daily"]["accounts_gone"] == 1 and got["daily"]["listing_failed"] is False
     assert got["h2_left"] == {"days": 0, "firsts": 0, "visits": 0, "events": 0}
-    # An empty listing (a failed read) is not every account deleted.
-    assert got["daily_empty"]["accounts_gone"] < 0 and got["h1_kept"] == 1
+    # An empty listing (a failed read) is not every account deleted, nor one
+    # much shorter than the last that went through.
+    assert got["daily_empty"]["listing_failed"] is True and got["daily_empty"]["accounts_gone"] == 0
+    assert got["daily_short"]["listing_failed"] is True and got["daily_short"]["accounts_gone"] == 0
+    assert got["h1_kept"] == 1
 
 
 def test_raw_rows_go_after_30_days_and_the_rollup_stays() -> None:
@@ -228,8 +242,11 @@ def test_only_production_rows_are_peoples() -> None:
         return
     got = _api()
     assert got["preview_test"] is True
-    # A boolean sent as false, or as words, is as absent.
-    assert got["production"] == {"plain": False, "check": True, "check_false": False, "check_string": False}
+    # A boolean sent as false, or as words, is as absent. Every deployment is
+    # a production one, so a preview's host is a check's, and so is a test
+    # account's beacon on the live site (inreview H1).
+    assert got["production"] == {"plain": False, "check": True, "check_false": False, "check_string": False,
+                                 "preview_host": True, "www": False, "test_account": True, "person": False}
 
 
 def test_an_account_is_kept_only_as_its_hash() -> None:
@@ -237,7 +254,10 @@ def test_an_account_is_kept_only_as_its_hash() -> None:
         return
     got = _api()["account"]
     assert got["kept"] == got["hash"] and got["length"] == 24
-    assert got["bad_who"] is None
+    # Only its own sign-in says whose a visit is: never a beacon's word, nor
+    # a token that does not check out (inreview H3, M1).
+    assert got["bad_who"] is None and got["said_who"] is None and got["forged_bearer"] is None
+    assert got["header_bearer"] is True
 
 
 def test_a_studio_visit_lands_whole() -> None:
@@ -263,10 +283,13 @@ def test_the_read_is_the_owners_alone() -> None:
     assert read["status"] == 200 and read["ready"] is True and read["tests"] is True and read["hashed"] is True
     # Everyone but the owner unless asked.
     assert read["filters"] == {"plan": "!owner"}
-    assert read["today"]["visits"] == 9 and read["today"]["signups"] == 1 and read["today"]["builders"] == 1
+    assert read["today"]["visits"] == 14 and read["today"]["signups"] == 1 and read["today"]["builders"] == 1
+    # An account seen on several visits is one visitor.
+    assert read["today"]["visitors"] == 12
     assert read["funnel"]["first_part"] == read["funnel"]["first_save"] == 1
     assert read["tools"][0]["name"] == "paint" and read["runs"][0]["ok"] == 1
-    assert read["seen"] == ["parts_search", "render_go"]
+    # Controls the studio has: a made-up one never lands.
+    assert read["seen"] == ["parts_find", "render_close"]
     assert got["read_accounts_sent"] == [{"plan": "free", "hashed": True}]
 
 
@@ -284,7 +307,7 @@ def test_the_cron_is_vercels_and_rolls_a_day_once() -> None:
     got = _api()
     assert got["cron_anyone"] == 401
     assert got["cron"] == {"status": 200, "rolled": 1, "gone": 0}
-    assert got["cron_plans_sent"] == ["free", "owner"]
+    assert got["cron_plans_sent"] == ["free", "free", "owner"] and got["cron_listed"] == 3
     assert got["cron_again"] == {"status": 200, "rolled": 0}
     assert got["logged"] == []
 
@@ -294,10 +317,12 @@ def test_a_tool_call_is_counted_however_it_ended() -> None:
         return
     got = _api()["mcp"]
     assert got["stopped"] is True and got["tabs"] is True and got["listed"] is True
-    # The call the relay stopped on: failed, nobody's. The relay's own tool:
-    # the account's, timed, whether it went not told. The list: not a call.
+    # The call the relay stopped on: failed. The relay's own tool: timed, and
+    # whether it went from what it answered (inreview L6). Neither keeps an
+    # account: a person's choice not to be counted lives in their browser,
+    # which a tool call does not come from (inreview M4). The list: not a call.
     assert got["counted"] == [{"tool": "look_at_model", "ok": False, "timed": False, "mine": False, "none": True},
-                              {"tool": "tabs", "ok": None, "timed": True, "mine": True, "none": False}]
+                              {"tool": "tabs", "ok": True, "timed": True, "mine": False, "none": True}]
 
 
 # --- The page's names -----------------------------------------------------------
@@ -385,3 +410,92 @@ def test_no_turn_of_the_counter_takes_a_frame() -> None:
     assert all(ms < 16 for ms in got["slowest"].values()), got["slowest"]
     # A beacon stays small: 80 rows and 400 names at most.
     assert got["largest_beacon"] < 16000
+
+
+# --- The review's attacks (infix, inreview-2026-11-18) ----------------------------
+
+
+def test_previews_and_test_accounts_never_write_peoples_rows() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    got = _attacks()["A_preview_mcp_real"]
+    # A tester's calls anywhere, and a person's on a preview, are tests; a
+    # made-up tool name is no row at all; none keeps an account.
+    assert [(one["test"], one["account_kept"]) for one in got["rows"]] == [(True, False), (True, False), (False, False)]
+    assert got["owners_real_view_today_calls"] == 1
+
+
+def test_one_beacon_counts_at_most_a_kinds_most() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    assert _attacks()["B_one_beacon_inflates"]["likes_counted"] == 20
+
+
+def test_a_visit_is_an_account_only_by_its_own_sign_in() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    assert _attacks()["C_who_unverified"] == {"kept_as_victims_hash": False, "forged_bearer_kept_as_victim": False,
+                                              "own_sign_in_kept_as_victim": True}
+
+
+def test_made_up_names_never_land_and_seen_counts_against_the_cap() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    got = _attacks()
+    assert got["D_seen_uncapped"]["seen_rows_added"] == 0 and got["D_seen_uncapped"]["real_names_added_at_cap"] == 0
+    assert got["F_used_unbounded"]["read_used_entries"] <= 5
+
+
+def test_a_flooded_day_is_sampled_said_and_calls_go_on() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    got = _attacks()["E_flood_blinds_day"]
+    assert got["mcp_call_kept"] is True and got["turned_away"] >= 1
+    soft = got["past_soft"]
+    assert soft["weight"] == 8 and 0 < soft["kept"] < soft["new_visits"]
+    assert soft["today_said"]["sampled"] == soft["new_visits"] - soft["kept"]
+    assert soft["today_visits_said"] >= soft["kept"] * 8
+    # One address cannot fill the day; another is not held back by it.
+    assert _attacks()["M3_bucket"] == {"sent": 120, "kept": 40, "another_address_kept": 1}
+
+
+def test_the_owners_read_is_bounded_whatever_was_sent() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    most = _attacks()["F_used_unbounded"]["most"]
+    assert most["status"] == 200 and most["days"] == 401
+    assert most["read_bytes"] < 150000, most["bytes_by_list"]
+    assert most["seen"] <= 100 and most["speed"] <= 100 and most["sources"] <= 50 and most["campaigns"] <= 50
+
+
+def test_a_deleted_accounts_rows_go_whatever_hashes_were_forged() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    got = _attacks()["G_deletion_blocked"]
+    assert got["first_cron_gone"] == 8 and got["deleted_accounts_rows_left"] == 0 and got["rows_left_next_day"] == 0
+    assert got["erase_at_once"]["rows_before"] > 0 and got["erase_at_once"]["rows_after"] == 0
+    assert got["short_listing"]["listing_failed"] is True and got["short_listing"]["gone"] == 0
+    # Deleting an account forgets it there and then (api/_erase.js).
+    assert "forgetAccount(account)" in (ROOT / "api/_erase.js").read_text()
+
+
+def test_one_person_on_two_devices_is_one_visitor() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    assert _attacks()["P_people_twice"] == {"visits": 2, "visitors": 1, "gallery_people": 1, "phone_visitors": 1}
+
+
+def test_only_a_beacons_known_fields_go_on() -> None:
+    if _attacks() is None:  # no Postgres here (pg.mjs)
+        return
+    got = _attacks()["L1_body"]
+    assert got["kept"] == 1 and got["rpc_body_bytes"] < 1000 and got["rpc_calls"] == 1
+
+
+def test_the_closed_names_are_what_the_code_names() -> None:
+    done = subprocess.run(["python3", "tools/insights_names.py", "--check"], cwd=ROOT, capture_output=True, text=True,
+                          timeout=60, stdin=subprocess.DEVNULL)
+    assert done.returncode == 0, done.stdout + done.stderr
+    names = json.loads(re.search(r"export const NAMES = (\{.*\});", (ROOT / "api/_insights_names.js").read_text()).group(1))
+    assert "/gallery" in names["exact"]["site"]["view"] and "people.like" in names["exact"]["site"]["act"]
+    assert "look_at_model" in names["mcp"] and "tabs" in names["mcp"]

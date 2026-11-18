@@ -93,8 +93,13 @@ async function show() {
   if (at.tab) {
     for (const tab of part.querySelectorAll("[data-tab]")) tab.hidden = tab.dataset.tab !== at.tab;
     for (const to of part.querySelectorAll("[data-tab-link]")) {
-      if (to.dataset.tabLink === at.tab) to.setAttribute("aria-current", "true");
-      else to.removeAttribute("aria-current");
+      if (to.dataset.tabLink !== at.tab) to.removeAttribute("aria-current");
+      else {
+        to.setAttribute("aria-current", "true");
+        // Tabs wider than the window (a phone's) scroll sideways: the current one into sight (inreview L7).
+        const [tab, strip] = [to.getBoundingClientRect(), to.parentElement.getBoundingClientRect()];
+        if (tab.left < strip.left || tab.right > strip.right) to.parentElement.scrollLeft += tab.left - strip.left - (strip.width - tab.width) / 2;
+      }
     }
   }
   document.title = `${part.querySelector("h2")?.textContent || "Console"} · Console · Brickworks`;

@@ -1415,8 +1415,16 @@ const loaderSays = (function () {
 			say("Ready");
 			boot.classList.add("done");
 			// How the studio is used, counted (web/tally.js, /counting): after
-			// it is up, and nothing sent where the browser or the person said no.
-			setTimeout(function () { import("/tally.js").catch(function () {}); }, 2000);
+			// it is up, and not even fetched where the browser or the person said
+			// no (web/counting.js's cheap no: Do Not Track, GPC, a No kept, a
+			// driven browser that did not ask; web/theme.js says it the same).
+			setTimeout(function () {
+				var kept = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+				var dnt = String(navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack || "");
+				if (dnt === "1" || dnt === "yes" || navigator.globalPrivacyControl === true || kept("brickworks.counting") === "no"
+					|| (navigator.webdriver === true && kept("brickworks.counting.check") !== "1")) return;
+				import("/tally.js").catch(function () {});
+			}, 2000);
 			// The canvas wants focus or the first keystroke goes nowhere.
 			setTimeout(function () { GODOT_CONFIG.canvas.focus(); }, 700);
 		});

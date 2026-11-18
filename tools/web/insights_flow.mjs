@@ -40,6 +40,7 @@
 // when it ends "insights: all ok".
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { nameKnown, namesKnown } from "../../api/_analytics.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -230,6 +231,14 @@ try {
   const viewsSent = read.flatMap((b) => (b?.e || []).filter((e) => e[1] === "view").map((e) => e[2]));
   check(`the pages by template: ${[...new Set(viewsSent)].join(", ")}`, ["/gallery", "/plans", "/counting"].every((p) => viewsSent.includes(p)));
   check(`every name one a row may hold (${names.length})`, names.every((name) => NAME.test(String(name))));
+  // And one the server keeps: a name the code has (api/_insights_names.js).
+  // One it does not is a count the console never shows.
+  const sets = await namesKnown();
+  const unknown = (beacons) => beacons.flatMap((b) => [...(b?.e || []).filter((e) => !nameKnown(sets, e[0], e[1], e[2]))
+    .map((e) => `${e[0]}:${e[1]}:${e[2]}`), ...(b?.seen || []).filter((n) => !nameKnown(sets, "studio", "press", n))]);
+  const siteUnknown = unknown(read);
+  check(`every name one the server keeps (${siteUnknown.length} not${siteUnknown.length ? `: ${siteUnknown.slice(0, 5).join(", ")}` : ""})`,
+    siteUnknown.length === 0);
   // Every word a beacon carries is a name a row may hold (no capital, no
   // space, so no sentence of the page), its visit or the account's id; no @
   // and no IP address anywhere in it.
@@ -321,8 +330,13 @@ try {
     const events = told.flatMap((b) => b.e || []);
     check(`the studio's counter started (${came}) and sent ${told.length}: ${events.slice(0, 6).map((e) => `${e[1]}:${e[2]}`).join(", ")}`,
       came && told.length >= 1 && events.some((e) => e[0] === "studio" && e[1] === "view" && e[2] === "/app"));
-    check("the account told by its id for the server to hash, never its address",
-      told.every((b) => b.who === stranger.kept.user_id) && !building.sent.some((text) => text.includes("@")));
+    // The server takes the account only from the sign-in's own token, which
+    // it checks and lets go; a beacon's word for whose it is counts for nothing.
+    check("the account told by its sign-in's token, never its id or its address",
+      told.every((b) => b.bearer === stranger.access_token && b.who === undefined) && !building.sent.some((text) => text.includes("@")));
+    const studioUnknown = unknown(told);
+    check(`every studio name one the server keeps (${studioUnknown.length} not${studioUnknown.length ? `: ${studioUnknown.slice(0, 8).join(", ")}` : ""})`,
+      studioUnknown.length === 0);
     await building.context.close();
   }
 

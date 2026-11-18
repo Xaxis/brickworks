@@ -214,14 +214,30 @@ function holdSeconds() {
   visibleSince = document.visibilityState === "visible" ? Date.now() : 0;
 }
 
-/// The signed-in account's id, for the server to hash: from the session
-/// the site and the studio keep (web/account.js, src/account/account.gd).
-function whoIs() {
+/// The signed-in account's access token, for the server to verify and
+/// hash (it never takes a page's word for whose a visit is): the tab's own
+/// (web/account.js keeps it in session storage), or the last one the page
+/// itself sent to the site's API (the studio keeps its token in the engine,
+/// and its own calls carry it). Held in memory, never written.
+let bearerSeen = null;
+function tokenNow() {
   try {
-    const id = JSON.parse(localStorage.getItem("brickworks.session") || "null")?.user_id;
-    return /^[0-9a-f-]{36}$/i.test(String(id || "")) ? String(id) : null;
+    const kept = JSON.parse(sessionStorage.getItem("brickworks.access") || "null");
+    if (kept && typeof kept.token === "string" && Number(kept.until) > Date.now()) return kept.token;
   } catch {
-    return null;
+    // None kept: the page's own, if it sent one.
+  }
+  return bearerSeen && Date.now() - bearerSeen.at < 50 * 60 * 1000 ? bearerSeen.token : null;
+}
+
+/// A bearer the page sent to its own API: [init]'s or [input]'s header.
+function heardBearer(input, init) {
+  try {
+    const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+    const found = /^Bearer\s+([A-Za-z0-9_.-]{20,4000})$/.exec(headers.get("authorization") || "");
+    if (found && found[1].split(".").length === 3) bearerSeen = { token: found[1], at: Date.now() };
+  } catch {
+    // Headers this cannot read are not heard.
   }
 }
 
@@ -243,8 +259,15 @@ function send(leaving = false) {
   queue = new Map();
   singles = singles.slice(80 - counted.length);
   const visit = visitNow();
+  // A visit's first beacon says so: the server takes only so many new
+  // visits an hour from one place.
+  const first = !visit.sent;
+  if (first) {
+    visit.sent = true;
+    sessionWrite(visit);
+  }
   const body = JSON.stringify({ v: visit.id, about: { ...visit.about, studio, last: lastAct || undefined },
-    e: events, seen: seenNew.splice(0, 400), seconds, who: whoIs(),
+    e: events, seen: seenNew.splice(0, 400), seconds, bearer: tokenNow() || undefined, first: first || undefined,
     consent: countingState() === "yes" ? true : undefined, check: navigator.webdriver === true ? true : undefined });
   lastSent = lastAct;
   try {
@@ -276,7 +299,8 @@ const ACTS = new Set(["share", "people", "collection", "models", "account", "pla
 const NOT_ACTS = new Set(["tally", "social_visit", "notice", "feed_count", "seen", "me"]);
 
 /// The page's own fetch, watched for writes to the site's API: their name
-/// and op, whether they went, never what they sent or got.
+/// and op, whether they went, never what they sent or got; and the bearer
+/// its calls to the API carry (tokenNow).
 function watchActs() {
   const before = window.fetch;
   if (typeof before !== "function" || before.brickworksTally) return;
@@ -284,9 +308,13 @@ function watchActs() {
     const answer = before.apply(this, arguments);
     try {
       const method = String(init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
-      if (method !== "GET" && method !== "HEAD") {
+      if (method === "GET" || method === "HEAD") {
+        const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+        if (url.origin === location.origin && url.pathname.startsWith("/api/")) heardBearer(input, init);
+      } else {
         const url = new URL(input instanceof Request ? input.url : String(input), location.href);
         const fn = (/^\/api\/([a-z_]+)$/.exec(url.pathname) || [])[1];
+        if (url.origin === location.origin && fn) heardBearer(input, init);
         const op = url.searchParams.get("op") || method.toLowerCase();
         if (url.origin === location.origin && fn && ACTS.has(fn) && !NOT_ACTS.has(op)) {
           const name = `${fn}.${op}`;
