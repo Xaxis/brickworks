@@ -327,6 +327,18 @@ var within_lines: Dictionary = {}
 var unit_kept: Dictionary = {}
 ## Which copy's IN block gave [member within_lines] each definition's.
 var _within_first: Dictionary = {}
+## Each sub-model's key whose "0 Name:" line has been read in its head: 0,
+## then 1 once [constant NAMED_HERE] is in its [member section_lines].
+var _named_at: Dictionary = {}
+
+## In a sub-model's own lines ([member section_lines]): where its Name and
+## whose it is go, the lines before it above them and those after below, as
+## the file had them ([method _write_one]). An empty line, so a writer that
+## knows nothing of it writes a blank line at most. Up to mergekeep
+## (2026-11-18) every one went above the Name, and an unedited save of a
+## file of the app's own moved a sub-model's PROGRAM, VIEW or LIGHT line
+## after its Author up there (hpreview F3).
+const NAMED_HERE := ""
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -546,6 +558,10 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model._section_line(current_key, raw)
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
+			elif keyword == "NAME:" and current != model.main and step == 0 \
+					and current.placements.is_empty():
+				# Where its own lines after it are written back (NAMED_HERE).
+				model._named_at[current_key] = 0
 			elif (current.title.is_empty() and current.placements.is_empty()
 					and not keyword.begins_with("!") and keyword != "BFC"
 					and keyword != "NAME:" and keyword != "NOFILE"
@@ -789,6 +805,9 @@ static func is_credit_line(line: String) -> bool:
 func _section_line(key: String, raw: String) -> void:
 	if not section_lines.has(key):
 		section_lines[key] = []
+	if int(_named_at.get(key, -1)) == 0:
+		(section_lines[key] as Array).append(NAMED_HERE)
+		_named_at[key] = 1
 	(section_lines[key] as Array).append(raw.trim_suffix("\r"))
 
 
@@ -1901,8 +1920,15 @@ static func _write_one(placements: Array, title: String, author_name: String,
 	# Whose a section is and on what terms, where it is someone else's
 	# (section_lines: a model put into this one, a section of another's
 	# file): under its name, in place of the writer's, as LDraw heads a file.
+	# Its own lines the file had after its Name (NAMED_HERE) go after these,
+	# as they were, whose it is among them where the file said it.
+	var here: int = kept.find(NAMED_HERE)
+	var after: PackedStringArray = kept.slice(here + 1) if here >= 0 else PackedStringArray()
+	var credit_after: bool = false
+	for line: String in after:
+		credit_after = credit_after or is_credit_line(line)
 	var credit := PackedStringArray()
-	for line: String in kept:
+	for line: String in (kept.slice(0, here) if here >= 0 else kept):
 		if is_credit_line(line):
 			credit.append(line)
 		else:
@@ -1911,8 +1937,9 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		else new_file_name(title)))
 	if not credit.is_empty():
 		lines.append_array(credit)
-	elif not author_name.is_empty():
+	elif not author_name.is_empty() and not credit_after:
 		lines.append("0 Author: " + author_name)
+	lines.append_array(after)
 	lines.append("")
 
 	# [step, 0 for a reference or 1 for a part, its place, its line, the copy
@@ -1963,7 +1990,9 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			var named: bool = false
 			for copy: String in _kept_opened(inside, kept_in, said):
 				lines.append(IN_META + " " + copy)
-				lines.append_array(kept_in[copy])
+				for line: String in kept_in[copy]:
+					if line != NAMED_HERE:
+						lines.append(line)
 				said[copy] = true
 				named = copy == inside
 			if not named:

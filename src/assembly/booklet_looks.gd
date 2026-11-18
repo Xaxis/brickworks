@@ -2296,6 +2296,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	## where it is when the step's look says it still: [index in out, raw]
 	## ([method _place_lines]).
 	var placed: Array = []
+	## Where the step's own lines begin in out, before its first part: its
+	## first look, name or unread line, -1 for none yet. The first step's
+	## turn goes above them ([method _turn_first]).
+	var own_from: int = -1
 	for raw: String in lines:
 		var line: String = raw.strip_edges()
 		if skipping:
@@ -2330,6 +2334,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			out.append(raw)
 			pending.clear()
 			placed.clear()
+			own_from = -1
 			continue
 		# After a NOFILE, until the next FILE: in no step, as read reads it.
 		if not section_open and not first_file:
@@ -2341,7 +2346,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			# looks; a sub-model's are left where they are, as they are.
 			if not definition.is_empty() and word in ["PAGE_SETUP", "PAGE_TEXT"]:
 				out.append(raw)
-			elif word == "STEP_NAME":
+				continue
+			if own_from < 0 and not any_part:
+				own_from = out.size()
+			if word == "STEP_NAME":
 				pending.append([out.size(), raw])
 				out.append(raw)
 			elif _unread_here(looks, key(definition, step), raw, wrote):
@@ -2362,12 +2370,14 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			out.append(_ending(raw, looks, definition, step + 1, eol))
 			step += 1
 			any_part = false
+			own_from = -1
 			continue
 		if _of_type(line, "1"):
 			if step == 0 and not any_part:
 				var first: Dictionary = looks.get(key(definition, 0), {})
 				if first.has("turn") and str(first["turn"]) != "end":
-					out.append(_ending("0 STEP" + eol, looks, definition, 0, eol))
+					_turn_first(out, _ending("0 STEP" + eol, looks, definition, 0, eol),
+						own_from, [pending, placed])
 			any_part = true
 		out.append(raw)
 	if section_open or first_file:
@@ -2448,6 +2458,36 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		out.remove_at(out.size() - 1)
 		out[out.size() - 1] = last
 	return "\n".join(out)
+
+
+## The words of a section's LDraw head lines, which nothing of a step's goes
+## above ([method _turn_first]).
+const _HEAD_WORDS: Array[String] = ["NAME:", "AUTHOR:", "!LDRAW_ORG", "!LICENSE", "BFC",
+	"!HISTORY", "!CATEGORY", "!KEYWORDS", "!CMDLINE", "!HELP"]
+
+
+## The line that turns a section's first step, [param ending], put into
+## [param out] before its first part: above that step's own lines so far,
+## from [param own_from] (its looks, its name, the lines its open could not
+## read; -1 for none), never above the section's head; each of [param lists]
+## ([index in out, raw] each) told where its lines now are. read numbers the
+## steps by their ending lines, so a step's line above it is read as an
+## empty step's before it. Up to 2026-11-18 the turn went right above the
+## first part, under the lines the file has at the step's head: the yellow
+## step merged on row.mpd, once the steps before it were gone, opened again
+## with its page alone on a step of no parts, and saved again with the
+## booklet's PER_PAGE and HIGHLIGHT moved below the turn (mergekeep).
+static func _turn_first(out: PackedStringArray, ending: String, own_from: int,
+		lists: Array) -> void:
+	var at: int = out.size() if own_from < 0 else own_from
+	for k: int in range(at, out.size()):
+		if _keyword(out[k]) in _HEAD_WORDS:
+			at = k + 1
+	out.insert(at, ending)
+	for entries: Array in lists:
+		for entry: Array in entries:
+			if int(entry[0]) >= at:
+				entry[0] = int(entry[0]) + 1
 
 
 ## A step's look lines [param said] ([method _step_lines], each ending as

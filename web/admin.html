@@ -316,6 +316,7 @@
       <p class="page-toc-title" id="nav-title">Console</p>
       <ul class="scroller">
         <li><a href="#overview" data-go="overview">Overview</a></li>
+        <li><a href="#analytics" data-go="analytics">Analytics</a></li>
         <li><a href="#people" data-go="people">People</a></li>
         <li><a href="#moderation" data-go="moderation">Moderation <span class="badge accent" id="nav-moderation" hidden></span></a></li>
         <li><a href="#gallery" data-go="gallery">Gallery</a></li>
@@ -380,6 +381,13 @@
             <ul class="acts-list" id="latest" aria-labelledby="h-latest"></ul>
             <p class="state" id="latest-none" hidden>Nothing done from the console yet.</p>
           </div>
+        </section>
+
+        <!-- Analytics (insights; web/admin-analytics.js makes the rest) ----------->
+        <section data-section="analytics" aria-labelledby="h-analytics" hidden>
+          <div class="lead"><h2 id="h-analytics">Analytics</h2>
+            <p class="note">How the site and the studio are used, counted here and nowhere else: never a model, what
+              anybody typed, an email address or an IP address. Nobody is counted who said no.</p></div>
         </section>
 
         <!-- People ------------------------------------------------------------------>
@@ -1231,6 +1239,23 @@
               </table>
             </div>
             <p class="note" id="settings-note" role="status"></p>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-phones">Phones</h3><p class="note" id="phones-said"></p></div>
+            <form id="phones-form" class="card console-form" aria-labelledby="h-phones">
+              <p class="note">What a phone is told before the studio opens, on <span id="phones-scope">this site</span>, from
+                what was measured on phones (docs/PHONE.md). Pages read a change within a minute or two.</p>
+              <label>Parts a phone opens without a warning <small id="phone_parts-was"></small>
+                <input name="phone_parts" type="number" inputmode="numeric" min="50" max="100000" step="1" required></label>
+              <p class="note">A model past it asks first on a phone, from its page: "About N parts: on a phone this may
+                close the tab". Computers and tablets are never asked.</p>
+              <label>Seconds a phone takes to start the studio once it has its files <small id="phone_start_s-was"></small>
+                <input name="phone_start_s" type="number" inputmode="numeric" min="1" max="600" step="1" required></label>
+              <p class="note">A first visit on a phone is told how long it will take as it loads: the files at the rate
+                they are coming, then these seconds.</p>
+              <div class="row"><button type="submit" class="cta">Keep them</button>
+                <span class="note" id="phones-note" role="status"></span></div>
+            </form>
           </div>
           <div class="part">
             <div class="lead"><h3 id="h-variables">Deployment variables</h3><p class="note" id="variables-said"></p></div>

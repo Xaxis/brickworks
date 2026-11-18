@@ -7386,6 +7386,15 @@ msgstr "c'est maintenant l'étape %d"
 msgid "took out step %d; its parts are in step %d"
 msgstr "étape %d retirée ; ses pièces sont dans l'étape %d"
 
+msgid "step %d and the next stay apart: the next begins with “%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown"
+msgstr "l'étape %d et la suivante restent séparées : la suivante commence par « %s », donc dans LPub3D et MLCad, en une seule étape, les pièces de l'étape %d ne seraient jamais montrées"
+
+msgid "step %d stays: it begins with “%s”, so in LPub3D and MLCad, put in the step before, that step's parts would never be shown"
+msgstr "l'étape %d reste : elle commence par « %s », donc dans LPub3D et MLCad, mise dans l'étape d'avant, les pièces de celle-ci ne seraient jamais montrées"
+
+msgid "step %d stays: the next begins with “%s”, so in LPub3D and MLCad, put in it, this step's parts would never be shown"
+msgstr "l'étape %d reste : la suivante commence par « %s », donc dans LPub3D et MLCad, mises dans celle-ci, les pièces de cette étape ne seraient jamais montrées"
+
 msgid "step %d has no step of the model's own to put them in"
 msgstr "l'étape %d n'a pas d'étape propre au modèle où les mettre"
 

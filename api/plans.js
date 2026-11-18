@@ -92,6 +92,10 @@
 //                                  owner's console (console3,
 //                                  api/_console_switches.js), or null;
 //                                  anybody's, kept a minute at the CDN
+//   GET  /api/plans?op=phone       the numbers a phone is warned by before
+//                                  the studio opens (api/_phone.js): set in
+//                                  the console's Switches, else measured;
+//                                  anybody's, kept a minute at the CDN
 //   GET  /api/plans?op=social_due  Vercel's cron (/api/plans/social-due,
 //                                  every quarter hour): the owner's scheduled
 //                                  sends whose time came, and the desk's look
@@ -99,6 +103,9 @@
 //   POST /api/plans?op=social_visit {campaign, nonce, path, source}: a page
 //                                  opened from a sent post's link
 //                                  (web/theme.js); always 204
+//   POST /api/plans?op=tally       a visit's counts (web/tally.js), and GET
+//                                  ?op=tally_daily, Vercel's cron
+//                                  (/api/plans/tally-daily): api/_analytics.js
 //
 // And feedback (api/_feedback.js, supabase/feedback.sql), from anywhere,
 // signed in or out:
@@ -121,7 +128,9 @@ import {
 import { betaDaily, betaHub, betaJoin, betaLeave, betaRoute, betaSpots } from "./_beta.js";
 import { feedbackRoute } from "./_feedback.js";
 import { noticeShown } from "./_console_switches.js";
+import { phoneShown } from "./_phone.js";
 import { socialDueRoute, socialVisit } from "./_social.js";
+import { tallyDaily, tallyRoute } from "./_analytics.js";
 import { db, dbConfigured } from "./_db.js";
 
 // Pro is the one paid plan since 2026-10-29 (docs/PLANS.md, section 1).
@@ -359,8 +368,12 @@ export default async function handler(request, response) {
   if (request.method === "GET" && op === "beta_hub") return betaHub(request, response);
   if (request.method === "GET" && op === "beta_daily") return betaDaily(request, response);
   if (request.method === "GET" && op === "notice") return noticeShown(request, response);
+  if (request.method === "GET" && op === "phone") return phoneShown(request, response);
   if (request.method === "GET" && op === "social_due") return socialDueRoute(request, response);
   if (request.method === "POST" && op === "social_visit") return socialVisit(request, response);
+  // How the site and the studio are used (insights, api/_analytics.js).
+  if (op === "tally") return tallyRoute(request, response);
+  if (request.method === "GET" && op === "tally_daily") return tallyDaily(request, response);
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   if (request.method === "POST" && PAID.includes(op) && billingMode() !== "off") return paying(request, response, op);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");

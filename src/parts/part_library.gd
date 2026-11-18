@@ -42,7 +42,7 @@ func _resolve_root() -> String:
 	else:
 		order = [FULL_ROOT, PACK_ROOT]
 	for candidate: String in order:
-		if FileAccess.file_exists(candidate + "catalogue.json"):
+		if FileAccess.file_exists(candidate + "catalogue.json") or FileAccess.file_exists(candidate + COLUMNS):
 			_root = candidate
 			return _root
 	_root = FULL_ROOT
@@ -785,6 +785,18 @@ signal loaded(part_count: int)
 func load_catalogue(path: String = "") -> bool:
 	if path.is_empty():
 		path = _resolve_root() + "catalogue.json"
+	# The web ships the catalogue as columns alone (COLUMNS): read those
+	# where the text is not.
+	var columns: String = path.get_base_dir().path_join(COLUMNS)
+	if path.get_file() == COLUMNS or (path.get_file() == "catalogue.json"
+			and not FileAccess.file_exists(path) and FileAccess.file_exists(columns)):
+		var read: Variant = bytes_to_var(FileAccess.get_file_as_bytes(columns))
+		if typeof(read) != TYPE_DICTIONARY or int((read as Dictionary).get("format", 0)) != COLUMNS_FORMAT:
+			push_error("part library: %s is not a catalogue this build reads" % columns)
+			return false
+		_read_head(read)
+		_read_columns(read)
+		return _catalogue_read()
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		push_error("part library: no catalogue at %s — run tools/build_meshes.py" % path)
@@ -797,6 +809,19 @@ func load_catalogue(path: String = "") -> bool:
 		return false
 
 	var document: Dictionary = raw
+	_read_head(document)
+	var entries: Array = document.get("parts", [])
+	for entry: Variant in entries:
+		var info: PartInfo = _read_part(entry)
+		parts[info.id] = info
+		_ordered_ids.append(info.id)
+	return _catalogue_read()
+
+
+## What a catalogue says beside its parts: the set norms, the kinds of
+## build, and where availability comes from. A catalogue.json's own
+## fields, which its columns (columns_of) keep as they are.
+func _read_head(document: Dictionary) -> void:
 	var norms: Dictionary = document.get("set_norms", {})
 	var bands: Variant = norms.get("bands", [])
 	if typeof(bands) == TYPE_ARRAY:
@@ -809,11 +834,10 @@ func load_catalogue(path: String = "") -> bool:
 	var made: Dictionary = document.get("availability", {})
 	recent_since = int(made.get("recent_since", 0))
 	availability_source = str(made.get("source", ""))
-	var entries: Array = document.get("parts", [])
-	for entry: Variant in entries:
-		var info: PartInfo = _read_part(entry)
-		parts[info.id] = info
-		_ordered_ids.append(info.id)
+
+
+## The indexes over the parts once they are read, however they were.
+func _catalogue_read() -> bool:
 	_index_prints()
 	_read_names()
 	_read_usage()
@@ -1125,6 +1149,205 @@ func _read_part(entry: Dictionary) -> PartInfo:
 		info.keywords.append(str(word))
 
 	return info
+
+
+## The web's catalogue as columns: catalogue.bin, made from the web pack's
+## catalogue.json at export (src/dev/write_all_order.gd, columns_of) and
+## shipped in its place. Each field of every part is one packed array, so
+## reading it makes no text and no tree of dictionaries. Read as JSON, the
+## 17 MB file became a 67 MB string and then a tree of 29,668 dictionaries:
+## 264 MB more at its height on a desktop, gone a second later. A web page's
+## Wasm memory never gives back what it grew to, so the engine kept that
+## height all visit: most of the 519 MB every start grew to (webstart11,
+## 2026-11-18). A file of any other format is not read.
+const COLUMNS := "catalogue.bin"
+const COLUMNS_FORMAT := 1
+## The whole numbers of a part, in this order, WHOLES to a part.
+const WHOLES := 9
+## The yes-or-no fields of a part, one bit each.
+const _RECOLOURABLE := 1
+const _PACKED := 2
+const _REACHABLE := 4
+const _EXACT := 8
+const _UNOFFICIAL := 16
+const _CUSTOM := 32
+const _COLORS_PARTIAL := 64
+
+
+## [param document], a catalogue.json read whole, as catalogue.bin keeps it:
+## each field _read_part reads, worked out as it reads it, in one packed
+## array per field in the parts' order. A list of each part's (its words,
+## colours, connector counts) is one array of them all and where each
+## part's begin. The catalogue's own fields beside its parts are kept as
+## they are.
+static func columns_of(document: Dictionary) -> Dictionary:
+	# Each its own: a packed array is a value, so one kept in a dictionary
+	# would be appended to as a copy.
+	var ids := PackedStringArray()
+	var names := PackedStringArray()
+	var categories := PackedStringArray()
+	var kinds_of := PackedStringArray()
+	var meshes := PackedStringArray()
+	var moved := PackedStringArray()
+	var ldraw_categories := PackedStringArray()
+	var sources := PackedStringArray()
+	var wholes := PackedInt32Array()
+	var flags := PackedInt32Array()
+	var boxes := PackedFloat32Array()
+	var words := PackedStringArray()
+	var word_at := PackedInt32Array([0])
+	var colours := PackedInt32Array()
+	var colour_at := PackedInt32Array([0])
+	var recent := PackedInt32Array()
+	var recent_at := PackedInt32Array([0])
+	var joint_names := PackedStringArray()
+	var joint_name_of: Dictionary = {}
+	var joint_kind := PackedInt32Array()
+	var joint_count := PackedInt32Array()
+	var joint_at := PackedInt32Array([0])
+	var turned := PackedInt32Array()
+	var turns := PackedFloat64Array()
+	var entries: Array = document.get("parts", [])
+	for at: int in entries.size():
+		var entry: Dictionary = entries[at]
+		ids.append(str(entry.get("id", "")))
+		names.append(str(entry.get("name", "")))
+		categories.append(str(entry.get("category", "")))
+		var kind: String = str(entry.get("kind", "Part"))
+		kinds_of.append(kind)
+		meshes.append(str(entry.get("mesh", "")))
+		moved.append(str(entry.get("moved_to", "")))
+		ldraw_categories.append(str(entry.get("ldraw_category", "")))
+		sources.append(str(entry.get("source", "")))
+		var recolourable: bool = bool(entry.get("recolourable", true))
+		var fixed: Array = entry.get("fixed_colors", [])
+		var fixed_colour: int = int(fixed[0]) \
+			if fixed.size() == 1 and not recolourable and kind.contains("Physical_Colour") else -1
+		var span: Array = entry.get("years", [])
+		wholes.append_array([int(entry.get("triangles", 0)), int(entry.get("stud_count", 0)),
+			int(entry.get("socket_count", 0)), int(entry.get("box_count", 0)), int(entry.get("in_sets", 0)),
+			int(entry.get("moved_colour", -1)), int(span[0]) if span.size() == 2 else 0,
+			int(span[1]) if span.size() == 2 else 0, fixed_colour])
+		flags.append((_RECOLOURABLE if recolourable else 0)
+			| (_PACKED if bool(entry.get("packed", true)) else 0)
+			| (_REACHABLE if bool(entry.get("reachable", true)) else 0)
+			| (_EXACT if bool(entry.get("exact", true)) else 0)
+			| (_UNOFFICIAL if bool(entry.get("unofficial", false)) else 0)
+			| (_CUSTOM if bool(entry.get("custom", false)) else 0)
+			| (_COLORS_PARTIAL if bool(entry.get("colors_partial", false)) else 0))
+		for field: String in ["size_ldu", "bounds_min", "bounds_max"]:
+			var three: Array = entry.get(field, [0, 0, 0])
+			boxes.append_array([three[0], three[1], three[2]])
+		for word: Variant in entry.get("keywords", []):
+			words.append(str(word))
+		word_at.append(words.size())
+		for code: Variant in entry.get("colors", []):
+			colours.append(int(code))
+		colour_at.append(colours.size())
+		for code: Variant in entry.get("colors_recent", []):
+			recent.append(int(code))
+		recent_at.append(recent.size())
+		var counts: Variant = entry.get("connector_counts", {})
+		if typeof(counts) == TYPE_DICTIONARY:
+			for name: Variant in counts:
+				if not joint_name_of.has(str(name)):
+					joint_name_of[str(name)] = joint_names.size()
+					joint_names.append(str(name))
+				joint_kind.append(int(joint_name_of[str(name)]))
+				joint_count.append(int((counts as Dictionary)[name]))
+		joint_at.append(joint_kind.size())
+		var moved_by: Variant = entry.get("moved_by", [])
+		if moved_by is Array and (moved_by as Array).size() == 12:
+			turned.append(at)
+			turns.append_array(PackedFloat64Array(moved_by))
+	var columns: Dictionary = {"format": COLUMNS_FORMAT, "count": entries.size(),
+		"id": ids, "name": names, "category": categories, "kind": kinds_of, "mesh": meshes,
+		"moved_to": moved, "ldraw_category": ldraw_categories, "source": sources,
+		"wholes": wholes, "flags": flags, "boxes": boxes, "words": words, "word_at": word_at,
+		"colours": colours, "colour_at": colour_at, "recent": recent, "recent_at": recent_at,
+		"joint_names": joint_names, "joint_kind": joint_kind, "joint_count": joint_count, "joint_at": joint_at,
+		"turned": turned, "turns": turns}
+	for field: String in ["set_norms", "kinds", "availability"]:
+		if document.has(field):
+			columns[field] = document[field]
+	return columns
+
+
+## The parts of catalogue.bin's [param columns], each as _read_part makes
+## it from catalogue.json.
+func _read_columns(columns: Dictionary) -> void:
+	var ids: PackedStringArray = columns["id"]
+	var names: PackedStringArray = columns["name"]
+	var categories: PackedStringArray = columns["category"]
+	var kinds_of: PackedStringArray = columns["kind"]
+	var meshes: PackedStringArray = columns["mesh"]
+	var moved: PackedStringArray = columns["moved_to"]
+	var ldraw_categories: PackedStringArray = columns["ldraw_category"]
+	var sources: PackedStringArray = columns["source"]
+	var wholes: PackedInt32Array = columns["wholes"]
+	var flags: PackedInt32Array = columns["flags"]
+	var boxes: PackedFloat32Array = columns["boxes"]
+	var words: PackedStringArray = columns["words"]
+	var word_at: PackedInt32Array = columns["word_at"]
+	var colours: PackedInt32Array = columns["colours"]
+	var colour_at: PackedInt32Array = columns["colour_at"]
+	var recent: PackedInt32Array = columns["recent"]
+	var recent_at: PackedInt32Array = columns["recent_at"]
+	var joint_names: PackedStringArray = columns["joint_names"]
+	var joint_kind: PackedInt32Array = columns["joint_kind"]
+	var joint_count: PackedInt32Array = columns["joint_count"]
+	var joint_at: PackedInt32Array = columns["joint_at"]
+	var turns: PackedFloat64Array = columns["turns"]
+	var turned: Dictionary = {}
+	var turned_at: PackedInt32Array = columns["turned"]
+	for k: int in turned_at.size():
+		turned[turned_at[k]] = k
+	for at: int in int(columns["count"]):
+		var info: PartInfo = PartInfo.new()
+		info.id = ids[at]
+		info.name = names[at]
+		info.category = categories[at]
+		info.kind = kinds_of[at]
+		info.mesh_hash = meshes[at]
+		var whole: int = at * WHOLES
+		info.triangles = wholes[whole]
+		info.stud_count = wholes[whole + 1]
+		info.socket_count = wholes[whole + 2]
+		info.box_count = wholes[whole + 3]
+		info.in_sets = wholes[whole + 4]
+		info.moved_colour = wholes[whole + 5]
+		info.first_year = wholes[whole + 6]
+		info.last_year = wholes[whole + 7]
+		info.fixed_colour = wholes[whole + 8]
+		var flag: int = flags[at]
+		info.recolourable = flag & _RECOLOURABLE != 0
+		info.packed = flag & _PACKED != 0
+		info.reachable = flag & _REACHABLE != 0
+		info.exact = flag & _EXACT != 0
+		info.unofficial = flag & _UNOFFICIAL != 0
+		info.custom = flag & _CUSTOM != 0
+		info.colors_partial = flag & _COLORS_PARTIAL != 0
+		if joint_at[at + 1] > joint_at[at]:
+			var counts: Dictionary = {}
+			for j: int in range(joint_at[at], joint_at[at + 1]):
+				# As JSON reads a number: a float.
+				counts[joint_names[joint_kind[j]]] = float(joint_count[j])
+			info.connector_counts = counts
+		info.moved_to = moved[at]
+		if turned.has(at):
+			var k: int = turned[at]
+			info.moved_by = LdrModel.to_transform(turns.slice(k * 12, k * 12 + 12))
+		info.ldraw_category = ldraw_categories[at]
+		info.source_path = sources[at]
+		info.colors = colours.slice(colour_at[at], colour_at[at + 1])
+		info.colors_recent = recent.slice(recent_at[at], recent_at[at + 1])
+		var box: int = at * 9
+		info.size = Vector3(boxes[box], boxes[box + 1], boxes[box + 2])
+		var low := Vector3(boxes[box + 3], boxes[box + 4], boxes[box + 5])
+		info.bounds = AABB(low, Vector3(boxes[box + 6], boxes[box + 7], boxes[box + 8]) - low)
+		info.keywords = words.slice(word_at[at], word_at[at + 1])
+		parts[info.id] = info
+		_ordered_ids.append(info.id)
 
 
 func _load_colors() -> void:

@@ -7386,6 +7386,15 @@ msgstr "jetzt ist es Schritt %d"
 msgid "took out step %d; its parts are in step %d"
 msgstr "Schritt %d herausgenommen; seine Teile sind in Schritt %d"
 
+msgid "step %d and the next stay apart: the next begins with “%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown"
+msgstr "Schritt %d und der nächste bleiben getrennt: der nächste beginnt mit „%s“, daher wären in LPub3D und MLCad in einem Schritt die Teile von Schritt %d nie zu sehen"
+
+msgid "step %d stays: it begins with “%s”, so in LPub3D and MLCad, put in the step before, that step's parts would never be shown"
+msgstr "Schritt %d bleibt: er beginnt mit „%s“, daher wären in LPub3D und MLCad im Schritt davor dessen Teile nie zu sehen"
+
+msgid "step %d stays: the next begins with “%s”, so in LPub3D and MLCad, put in it, this step's parts would never be shown"
+msgstr "Schritt %d bleibt: der nächste beginnt mit „%s“, daher wären in LPub3D und MLCad darin die Teile dieses Schritts nie zu sehen"
+
 msgid "step %d has no step of the model's own to put them in"
 msgstr "Schritt %d hat keinen eigenen Schritt des Modells, in den sie kommen könnten"
 

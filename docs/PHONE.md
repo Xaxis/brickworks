@@ -1,0 +1,639 @@
+# The studio on phones
+
+phonetruth, 2026-11-18. The owner asked two things: does the studio need a
+mobile version, or should phone users be warned? This page answers both
+from measurements. Every earlier phone check (phone_flow, phonewalk_flow,
+tablet_flow and the probes' phone sizes) was desktop Chromium pretending
+to be a phone, on this box's fast CPU and SwiftShader. None had run
+WebKit, a phone's CPU speed, a phone's memory or a mobile network.
+
+## The answer, short
+
+- **One adaptive studio, not a separate mobile version.** What fails on a
+  phone is the engine's start and its memory, not the layout. A separate
+  mobile mode on the same engine would fail the same way. The phone layout
+  already does the walk by finger: all 23 acts at 390x844, and 21 on
+  WebKit's shorter iPhone screens (390x664, 393x659), where Motions' list is
+  under a row tall.
+  Only a native app changes the engine's limits, and that is not worth its
+  cost before real phones' numbers say so (the judgement, below).
+- **Warn, never gate,** and only with numbers the owner can change. Three
+  warnings are built, and a fourth for a start the browser refuses:
+  - a browser without WebGL 2 is told at once and the download stops;
+  - a phone opening a model past **10,101 parts** is asked first;
+  - a phone's first visit says how long it will take;
+  - a refused engine memory is said plainly instead of hanging.
+- **The owner sets the numbers** in `/admin#switches`, under **Phones**:
+  `phone_parts` (10,101) and `phone_start_s` (40 s). Each is per deployment,
+  audited, and shown beside the measured value.
+- **The start by phase, and the first cut** (webstart11, below): the
+  scripts' compile is the largest phase on every engine (24.5 s of a 72 s
+  first visit at CPU/4) and fills 432 MB; the catalogue's JSON filled the
+  last 87 MB. The web now reads the catalogue from columns: 519 → 432 MB
+  of Wasm memory, the catalogue's read x0.37 at CPU/4.
+- **Before any ad push**, what breaks first and what it costs:
+  [docs/CAPACITY.md](CAPACITY.md).
+
+## What works on what
+
+Measured on 2026-11-18 against brickworks.diy, signed in with a shared test
+account, each configuration in a fresh browser profile. Five stand-ins:
+
+- Chromium's phone emulation at this box's full speed (390x844, touch);
+- Playwright's WebKit as an iPhone 13 and as an iPhone 15;
+- Chromium at a quarter and at a sixth of this box's CPU, on DevTools' Fast
+  4G.
+
+The two WebKit columns differ only in screen and user agent, not in speed,
+so the gap between them is the box's load (71 against 26).
+
+| | Chromium as a phone | WebKit as an iPhone 13 | WebKit as an iPhone 15 | Chromium, CPU ¼, Fast 4G | Chromium, CPU ⅙, Fast 4G |
+|---|---|---|---|---|---|
+| The studio starts | yes, 10.5 s | yes, 21.3 s | yes, 12.4 s | yes, 58.4 s | yes, 94.8 s |
+| A return starts it | 9.1 s | 21.3 s (uncached, below) | 13.8 s (uncached) | 42.8 s | 81.7 s |
+| Every gallery model opens and stays, up to 10,101 parts | yes | yes | yes | yes | yes |
+| Past the gallery, up to 50,505 parts | yes (1.65 GB tab) | yes | yes | not tried | not tried |
+| Turning the car, frames/s; own work p95 | 6.8/s; 13 ms | 3.8/s; 61 ms | 9.3/s; 12 ms | 8/s; 39 ms | 3.1/s; 196 ms |
+| Turning Orthanc (10,101), frames/s; own work p95 | 4.2/s; 17 ms | 2/s; 40 ms | 4.5/s; 22 ms | 5.1/s; 58 ms | 2.1/s; 188 ms |
+| The walk by finger, 23 acts | 23 (20 + Motions 3 re-walked) | 21 | 21 | 20 + Motions not re-walked | 20 + Motions not re-walked |
+
+Frames per second here are measured to a WebGL fence on SwiftShader (or
+llvmpipe for WebKit), a software GPU. They measure what the app's own work
+costs per frame, not a phone's frame rate: a phone's GPU draws far faster
+than a CPU drawing in software.
+
+The whole measure, as `phonetruth_flow.mjs --table` wrote it (the results
+are in `bench/results/phonetruth-2026-11-18/measures/`):
+
+| | Chromium as a phone (today's checks) | WebKit as an iPhone 13 | WebKit as an iPhone 15 | Chromium, CPU 1/4, Fast 4G | Chromium, CPU 1/6, Fast 4G |
+|---|---|---|---|---|---|
+| first visit, cold, to working | 10.5 s | 21.3 s | 12.4 s | 58.4 s | 94.8 s |
+| … engine's files had come | 0.9 s | 5.4 s | 2.3 s | 10.2 s | 11.4 s |
+| … engine started | 7.5 s | 15.9 s | 9.4 s | 52.2 s | 85.0 s |
+| … started once its files had come | 6.6 s | 10.4 s | 7.0 s | 42.0 s | 73.6 s |
+| … over the wire | 9 MB | 19 MB | 19 MB | 9 MB | 9 MB |
+| a return, to working | 9.1 s | 21.3 s | 13.8 s | 42.8 s | 81.7 s |
+| peak memory, first visit (Pss / Wasm / JS heap) | 807 MB / 519 MB / 15 MB | 1748 MB / 519 MB / – | 1774 MB / 519 MB / – | 890 MB / 519 MB / 13 MB | 859 MB / 519 MB / 13 MB |
+| Orthanc (10,101 parts) opened | 32.5 s | 58.1 s | 31.2 s | 62.4 s | 128.4 s |
+| peak memory, Orthanc | 935 MB / 519 MB / 18 MB | 1821 MB / 519 MB / – | 2484 MB / 519 MB / – | 942 MB / 621 MB / 15 MB | 930 MB / 620 MB / 25 MB |
+| turning the car: frames/s; own work p95 | 6.8/s; 13.1 ms | 3.8/s; 60.5 ms | 9.3/s; 11.6 ms | 8/s; 39.1 ms | 3.1/s; 195.6 ms |
+| turning Orthanc: frames/s; own work p95 | 4.2/s; 17.1 ms | 2/s; 39.6 ms | 4.5/s; 21.7 ms | 5.1/s; 57.9 ms | 2.1/s; 188 ms |
+| largest model open and kept | Wizard's Tower (10,101) | Wizard's Tower ×5 (50,505) | Wizard's Tower ×5 (50,505) | Wizard's Tower (10,101) | Wizard's Tower (10,101) |
+| … A friendly maintenance robot (151) | 15.8 s; 875 MB / 519 MB / 16 MB | 27.0 s; 1760 MB / 519 MB / – | 17.7 s; 1733 MB / 519 MB / – | 43.3 s; 881 MB / 519 MB / 14 MB | 90.3 s; 813 MB / 519 MB / 15 MB |
+| … 21011 Brandenburg Gate (362) | 18.3 s; 841 MB / 519 MB / 13 MB | 29.5 s; 1761 MB / 519 MB / – | 16.8 s; 1723 MB / 519 MB / – | 46.1 s; 886 MB / 519 MB / 13 MB | 86.1 s; 828 MB / 519 MB / 15 MB |
+| … 6080 King's Castle (741) | 24.9 s; 855 MB / 519 MB / 18 MB | 27.4 s; 1927 MB / 519 MB / – | 23.0 s; 1914 MB / 519 MB / – | 71.8 s; 893 MB / 519 MB / 16 MB | 86.6 s; 856 MB / 519 MB / 18 MB |
+| … A barn owl (1,032) | 13.7 s; 861 MB / 519 MB / 16 MB | 20.8 s; 1823 MB / 519 MB / – | 19.1 s; 1789 MB / 519 MB / – | 52.5 s; 845 MB / 519 MB / 14 MB | 82.8 s; 838 MB / 519 MB / 17 MB |
+| … A castle, from one sentence (2,497) | 11.1 s; 871 MB / 519 MB / 18 MB | 25.1 s; 1960 MB / 519 MB / – | 21.1 s; 1988 MB / 519 MB / – | 54.8 s; 884 MB / 519 MB / 19 MB | 90.7 s; 835 MB / 519 MB / 19 MB |
+| … Wizard's Tower (10,101) | 12.4 s; 873 MB / 519 MB / 19 MB | 29.6 s; 2411 MB / 620 MB / – | 28.1 s; 2384 MB / 620 MB / – | 119.4 s; 860 MB / 519 MB / 18 MB | 129.7 s; 868 MB / 519 MB / 19 MB |
+| … Wizard's Tower ×2 (20,202) | – | 38.6 s; 3001 MB / 620 MB / – | 32.7 s; 2916 MB / 720 MB / – | – | – |
+| … Wizard's Tower ×3 (30,303) | – | 37.6 s; 2972 MB / 620 MB / – | 40.9 s; 3340 MB / 620 MB / – | – | – |
+| … Wizard's Tower ×5 (50,505) | – | 54.7 s; 3067 MB / 722 MB / – | 62.9 s; 2117 MB / 721 MB / – | – | – |
+| the walk by finger: acts done | 20 of 23 | 21 of 23 | 21 of 23 | 20 of 23 | 20 of 23 |
+| box load at the start | 28 | 71 | 26 | 44 | 113 |
+
+- Memory is each phase's peak. *Pss* is the content process's: Chromium's
+  renderer, or WebKit's web process. Wasm is the engine's memory as it
+  grew, and the JS heap is Chromium's.
+- WebKit's Pss includes its software drawing, which an iPhone does in a
+  separate GPU process (below).
+- *Engine started* is the window drawn. *Started once its files had come*
+  is what a phone's CPU takes after the download.
+- The largest-model row of each column is only as far as that column was
+  taken. Chromium as a phone went to Wizard's Tower ×5 in the run below.
+
+**The walk by finger.** `tools/web/phonewalk_flow.mjs` does 23 acts of the
+studio with taps, drags and the on-screen keyboard only:
+- a part to the last step;
+- a render;
+- a booklet page;
+- Like this;
+- Check stability;
+- Cut away;
+- My collection;
+- Measure;
+- the page editor: opened, an item moved, an item resized, words added,
+  Done;
+- split and merge;
+- a 15° turn;
+- a wall of eight bricks from the search;
+- painting;
+- Motions: kept and played, recorded, a joint's slider;
+- Simulate: played, scrubbed, its driver changed.
+
+Two misses were the walk's own, and are fixed in it:
+
+- **Motions** at 390x844 (all three Chromium columns). The motion's row
+  sat across the top of its panel's list, and the walk scrolled the list
+  the wrong way to bring it in. Fixed, the three Motions acts pass at
+  390x844 (`motions-debug/`). The 4x and 6x walks were not re-run for them.
+- **Select all on an "iPhone"** (WebKit). The walk cleared the bin's
+  search with Control+A, but Godot's web build takes Command for its
+  shortcuts when the browser says it is an Apple one. So each search
+  typed an "a" in front of the last: *a3020a3001a1x4 brick* found
+  nothing, and the turn, the wall and the paint failed. With Command+A
+  all three pass.
+
+What is left is the studio's. On WebKit as an iPhone 13 and 15 (390x664
+and 393x659), Motions' list is under one row tall: Keep never came wholly
+into sight, and the joint's slider followed it out (fault 6).
+
+## As models grow
+
+The gallery stops at Wizard's Tower (10,101 parts). Past that, the measure
+put the tower beside itself 2, 3 and 5 times as one model, handed to the
+page as a shared model (`phonetruth_flow.mjs --steps=…,beyond`).
+
+| Model | Chromium as a phone: tab (renderer Pss) / Wasm | WebKit as an iPhone 13: WebProcess Pss / Wasm |
+|---|---|---|
+| 151 to 2,497 parts (5 gallery models) | 0.81–0.89 GB / 519 MB | 1.76–1.96 GB / 519 MB |
+| Wizard's Tower, 10,101 | 0.86 GB / 519 MB | 2.41 GB / 620 MB |
+| ×2, 20,202 | 1.04 GB / 722 MB | 3.00 GB / 620 MB |
+| ×3, 30,303 | 1.31 GB / 822 MB | 2.97 GB / 620 MB |
+| ×5, 50,505 | 1.65 GB / 1,023 MB | 3.07 GB / 722 MB |
+
+Every one opened and stayed open: a computer's browser has no phone's
+limit to hit, so these are measures of size, not of survival.
+
+**What the numbers say.**
+- Up to 10,101 parts a model costs no memory past the studio's own. The
+  engine grows its Wasm memory to 519 MB at every start, whatever is
+  opened, and the tab sits at 0.8–0.9 GB.
+- Past that, Chromium's tab grows about 20 MB for every 1,000 parts:
+  0.86 GB at 10,101 and 1.65 GB at 50,505.
+- An iPhone's tab is killed at about 1.4–1.5 GB (cited below). At this
+  rate it reaches that at about 38,000 parts. At 20,202 it is already past
+  70% of it.
+- So `phone_parts` is **10,101**: the largest model measured to cost a
+  phone nothing past the studio itself. Nothing in the gallery is past it
+  today.
+
+**WebKit here draws in software inside its own process** (WPE on llvmpipe).
+Its Pss carries the drawing's memory, which an iPhone keeps in a separate
+GPU process. So it is an upper bound on what WebKit's own work costs, not
+an iPhone's figure.
+
+## The start, phase by phase
+
+webstart11, 2026-11-18. Each phase of a first visit timed on the build's
+own marks, never a trace: the engine's files (Resource Timing), the Wasm
+compiled and instantiated (timed apart), the engine's own start (its
+Build configuration line), then `main.gd`'s boot marks and the car's 61
+parts drawn. Two builds at the same moment, each in a browser of its own,
+the order alternating (`tools/web/start_phases.mjs`). The box was at load
+60–99 of 24 cores throughout, so the seconds are a loaded box's; the
+ratios between the two builds are what hold. Results:
+`bench/results/webstart11-2026-11-18/`.
+
+**Where a CPU/4 + Fast 4G first visit goes** (Chromium, 5 pairs, the
+base's medians):
+
+| Phase | Lasts | Ends at |
+|---|---|---|
+| The engine's files (9 MB over the wire) | 12.1 s | 12.1 s |
+| Wasm compiled, beside the download | 11.0 s | 12.3 s |
+| The engine's own start | 5.5 s | 18.2 s |
+| **The scripts compiled** | **24.5 s** | 41.2 s |
+| The data pack waited for | 1.9 s | 43.1 s |
+| **The catalogue read** | **10.0 s** | 54.5 s |
+| The window built | 9.3 s | 63.6 s |
+| The car laid and drawn | 8.3 s | 72.4 s |
+
+The main thread is busy 48.5 s of it. On WebKit as an iPhone 13 (full
+speed, no throttle: WebKit takes none) the scripts take 9.4 s and the
+catalogue 2.9 s of a 25 s start.
+
+**What fills the 519 MB of Wasm memory.** A web page's Wasm memory never
+shrinks, so whatever the start needs at its height it keeps.
+- The engine's own start: 48 MB (34 MB without threads).
+- **Compiling the first screen's scripts: to 432 MB.** GDScript holds the
+  parse trees of the whole start's script closure at once; on a desktop
+  debug build the compile peaks at 520 MB and settles at 203 MB. Every
+  engine and build measured reaches 432 MB at the scripts' mark.
+- **The catalogue's JSON: the last 87 MB.** Its 14 MB of text is 4 bytes a
+  character as a Godot String, and its tree of 29,668 parts' Dictionaries
+  rose to +341 MB at its height on a desktop, then kept +198 MB.
+
+**The cut built: the web reads its catalogue from columns.** The export
+writes the pack's catalogue as columns (`assets/web/catalogue.bin`: one
+packed array a field, 11.5 MB) and reads them back field for field, or
+stops (`src/dev/write_all_order.gd`). The web build ships them in the
+JSON's place; desktop still reads the JSON. Every field of every part is
+the JSON's (`catalogue_columns_probe`). On a desktop the read's height is
++139 MB against +341 MB, in 869 ms against 2,019 ms.
+
+| Same moment, base → after (medians) | Chromium, desktop | Chromium, CPU/4 + Fast 4G | WebKit as an iPhone 13 |
+|---|---|---|---|
+| Pairs; the box's load | 5; 60–99 | 5; 69–96 | 5; 51–81 |
+| The catalogue read | 2.7 → 1.1 s (x0.45) | 10.0 → 3.7 s (x0.37) | 2.2 → 0.8 s (x0.35) |
+| First visit, working | 33.9 → 27.2 s (pairs x0.87) | 72.4 → 68.4 s (pairs x0.91) | 18.4 → 18.7 s (pairs x1.02) |
+| A return, working | 31.4 → 24.4 s (pairs x0.91) | not run | not run |
+| Main thread's CPU to working | 10.6 → 9.1 s | 48.5 → 44.3 s | 11.7 → 10.7 s |
+| **Wasm memory at its height** | **519 → 432 MB** | **519 → 432 MB** | **519 → 432 MB** |
+| Content process's Pss at working | 817 → 786 MB | 849 → 772 MB | 1,792 → 1,676 MB |
+
+The after build was faster than the base in 5 of 5 desktop pairs, both
+visits, and in 4 of 5 at CPU/4. On WebKit the catalogue's 1.4 s is under
+the box's noise there: its pairs ran 0.59 to 1.80 of each other, the
+slowest from the download on, before the catalogue is read. Its Wasm
+memory was 432 MB in every visit on every engine: the script compile now
+sets the height, not the catalogue. `phonetruth_flow` on the after build
+(CPU/4, load about 50) started the studio in 64.6 s and returned in
+47.5 s, and turned the car at 8.3 frames a second, own work p95 37.6 ms
+(39.1 ms before).
+
+**The next cuts, in order of seconds:**
+1. **The scripts' compile** (24.5 s at CPU/4, and the 432 MB). A smaller
+   first-screen closure: the classes the first window names but does not
+   use until a press (the assistant, Together, the booklet, the forge)
+   loaded on first use, as the Later scripts already are. It is the start's
+   largest phase on every engine and the whole of its memory.
+2. **The window** (9.3 s at CPU/4): what `_ready` builds that the first
+   screen does not show.
+
+**Tried, and not a cut: the Wasm's compiled code kept between visits.** Godot's loader
+hands `instantiateStreaming` a Response it made itself, to count the
+download, and a desktop return still compiled the Wasm for 5–7 s, so
+V8's code cache looked lost. Handing it the fetched Response instead
+(the export's `index.js` patched, the progress read off a clone) did
+not help: 3 pairs on a desktop, the return's compile 5.4 → 6.1 s,
+working slower in all 3 (x1.1;
+`bench/results/webstart11-2026-11-18/codecache-desktop/`). Why V8 kept
+nothing is not found; until it is, this is not a cut.
+
+## The no-threads export on WebKit
+
+`Web (no threads)` (`build/web-nothreads`, unshared memory) against the
+threaded build, both base, at the same moments:
+
+| | Threads | No threads |
+|---|---|---|
+| WebKit as an iPhone 13, working (4 pairs, load 73–98) | 25.2 s | **17.7 s** (x0.70; faster in 3 of 4) |
+| … the scripts' compile | 9.4 s | 5.0 s |
+| … all threads' CPU to working | 27.5 s | 22.2 s |
+| … WebProcess Pss at working | 1,779 MB | 1,613 MB |
+| Chromium, CPU/4 + Fast 4G, working (3 pairs, load 60–77) | 65.6 s | 64.9 s (x1.00) |
+| … renderer Pss at working | 853 MB | 791 MB |
+| Wasm memory at its height, both engines | 519 MB | 519 MB |
+| Together, two browsers (`together_flow --desktop=no`, about load 100) | 42 checks passed before its 45 minutes ran out; pointer late, Follow and the outline failed | 71 passed, 5 failed: a change's and the pointer's time, Follow (2), the outline |
+| WebKit's walk: render, a booklet page, Simulate played, scrubbed, driven | done (phonetruth's walk) | done, 5 of 5; Motions' Keep fails on both (fault 6) |
+
+**My judgement: serve it to iPhones, behind the owner's switch, once one
+real iPhone agrees. Android keeps threads.**
+- On WebKit it started in 0.70 of the time, the scripts' compile almost
+  halved, and its process held 166 MB less. On Chromium it was no faster
+  (x1.00): there threads cost nothing and help the work after the start.
+- It does what the threaded build does: Together's edits, undo, comments,
+  reload and the session in 71 checks; render, the booklet and Simulate by
+  finger on WebKit. Its failures in Together are the threaded build's at
+  the same load (the timing bars, Follow, the outline), so they are this
+  box's, not its own.
+- What it costs is the workers. With no threads the engine runs each
+  pool task in the frame that asks for it: weighing a model past 600
+  parts, the booklet's pictures and PDF, the search's index. Such a frame
+  is the whole task long. The app allows for it in three places already
+  (custom_parts, builder, booklet_studio); the rest would need the same.
+- Its Wasm memory reaches the same height (519 MB, 432 MB with the
+  columns). What it changes on iOS is the shared memory's 2 GB maximum,
+  reserved up front, which an iPhone has refused (godot#70621). Only a real
+  iPhone can say how often that happens, so the switch waits on one.
+- **The switch is not built here** (the bound). The two exports' packs are
+  byte for byte the same; only the engine (`index.wasm`, `index.js`)
+  differs. So it is one more engine at its own `/e/<hash>/` (40 MB, 7 MB
+  over the wire), chosen by the page on iOS when `phone_nothreads` is on
+  in `/admin#switches` › Phones (default off), and phonewarn and phonewalk
+  run both ways. A unit of its own.
+
+
+## The faults, each with its cause and fix
+
+In order of how many people they reach.
+
+1. **The start is the phone's CPU, not its network.**
+   - *Measured.* At a quarter of this box's speed on Fast 4G, the engine's
+     files took 10.2 s and the studio started 42.0 s after that: 58.4 s in
+     all. A return, with every file cached, still took 42.8 s. At a sixth
+     the start took 73.6 s after the files (the box was at load 113 then).
+     On WebKit as an iPhone, at full speed, the boot marks were:
+     - compiled at 7.3 s;
+     - the catalogue at 9.0 s;
+     - the window at 10.1 s;
+     - the car laid at 10.3 s.
+   - *Cause.* Everything after the download runs at the phone's speed:
+     compiling and instantiating the 39 MB `index.wasm`, reading the parts
+     catalogue, and building the window. The download is 9–10 MB.
+   - *Fix.* Cut the start itself (webstart11, phones first). First time
+     each phase on a throttled phone, then: a smaller Wasm, the catalogue
+     read on first use, and the compiled module kept between visits.
+     **Built here:** a phone's first visit says how long it will take.
+     **webstart11** timed each phase (above): the scripts' compile is the
+     largest on every engine, then the catalogue, which now reads x0.37.
+
+2. **The studio's memory before any model.**
+   - *Measured.* The engine grows its Wasm memory to 519 MB at every start,
+     on every engine. Chromium's tab is then at 0.8 GB; WebKit's process,
+     with its software drawing, at 1.75 GB.
+   - *Cause.* The threaded build asks for a shared memory: 32 MB to start,
+     2 GB at most. Whatever the engine loads at start fills it to 519 MB.
+     On iOS, Wasm memory and SharedArrayBuffers share one 2 GB cage, and
+     "only ~300 MB" is reliably available (WebKit 269937). A 2 GB shared
+     maximum has been refused outright on an iPhone (godot#70621).
+   - *Fix.* Find what fills 519 MB and keep it out of the start. Measure the
+     no-threads export (`Web (no threads)`, unshared memory, Godot's
+     default since 4.3 for Apple's sake) on a real iPhone, and serve it to
+     iOS if it holds. **Built here:** a refused memory is said plainly with
+     what to do, and the files still coming are let go. Before, the loader
+     sat at "Sorting the bin…" for ever: the refusal is thrown outside the
+     start's promise, and nothing heard it.
+     **webstart11:** the catalogue's 87 MB kept out of it (519 → 432 MB on
+     every engine), and the no-threads export judged on WebKit (above).
+     The 432 MB left is the scripts' compile.
+
+3. **A model past 10,101 parts grows the tab about 20 MB per 1,000 parts**
+   (above). **Built here:** the question before it opens on a phone.
+
+4. **Frames on a slow phone.**
+   - *Measured.* The app's own work per frame, turning by two fingers, at
+     p95:
+
+     | Speed | The car (61 parts) | Orthanc (10,101) |
+     |---|---|---|
+     | Full speed | 13.1 ms | 17.1 ms |
+     | 4x slower | 39.1 ms | 57.9 ms |
+     | 6x slower | 196 ms | 188 ms |
+
+     The 6x run was at load 113.
+   - *Cause.* Each frame's own work, at the phone's speed. DevTools does
+     not slow the GPU process, so the drawing's cost is a computer's here.
+   - *Fix.* A later unit: what the app does each frame when nothing moves.
+     The studio stays usable at 4x; at 6x, turning is a slide show.
+
+5. **No WebGL 2: the whole download, then Godot's words.**
+   - *Cause.* Godot's web export draws only with WebGL 2. The loader named
+     the missing feature only after the 15 MB download, in Godot's words,
+     with advice to the server.
+   - **Fixed here.** It is said at once in plain words, with what to do,
+     and the engine's files are let go: 2.6–5.6 MB had come, then nothing.
+     The model pages' 3D view had also accepted WebGL 1, which three.js
+     0.186 cannot draw with. It now asks for WebGL 2 alone.
+
+6. **Motions on a short phone.**
+   - *Measured.* WebKit as an iPhone 13 has 390x664 of page once Safari's
+     bars are drawn, and as an iPhone 15, 393x659. There Motions' list showed less than one row between
+     its title and its foot: Keep was never wholly in sight, so the walk
+     could not keep the suggested motion, nor set a joint by its slider.
+     At 390x844 all three Motions acts pass.
+   - *Cause.* At the top of the page sit the moved-parts strip ("16 parts
+     have new numbers in the LDraw library", about 75 px, on any model
+     whose parts the LDraw library renumbered) and the assistant's bar
+     (about 45 px). The panel's own title, Render animation row and status
+     line stand still around the list. What is left for the list is about
+     50 px.
+   - *Fix* (the studio's UI, outside this unit):
+     - on a phone, fold the moved-parts strip to one line, or put it under
+       More;
+     - let Motions' foot (Render animation and the status) scroll with its
+       list;
+     - give a panel the height the view gives up, as the parts sheet does.
+
+## The warnings built
+
+Each warning states a fact and what to do. None of them stops anyone.
+Each fires only in its own case. `tools/web/phonewarn_flow.mjs` proves
+that on a phone (390x844 and 430x932), a tablet (820x1180, touch) and a
+computer (1280x800). It runs as the `phonewarn` check on every preview.
+
+| Warning | When it fires | Where | Never fires for |
+|---|---|---|---|
+| "This browser can't draw the studio in 3D: it has no WebGL 2…" | `Engine.getMissingFeatures` names WebGL 2 | the loader (`src/boot/shell.html`), at once; the engine's files are let go | a browser with WebGL 2, whatever else it lacks |
+| "First visit on this phone: about N s to go. Later visits start sooner." | a phone (touch only, no fine pointer, short side under 600 px) that has not started this engine before | the loader, under the bar; counts down from the download's rate plus `phone_start_s` | a tablet, a computer, a phone returning to the same engine |
+| "About N parts: on a phone this may close the tab…" with Not now / Open it anyway | a phone pressing a way into the studio (`/app?view=`, `?copy=`, `?library=`) from a model's or a set's page, when the model has more than `phone_parts` | the page, as a dialog (`web/phone-warn.js`) | a tablet, a computer, a model at or under the number, a press with a key held (a new tab) |
+| "This browser would not give the studio the memory it needs (…)…" | the engine's `WebAssembly.Memory` is refused (Safari's "Out of memory", Chromium's "could not allocate memory") before it starts | the loader; the time to wait stops and the files still coming are let go | any other start failure, which keeps its own words |
+
+**The owner's numbers.** `/admin#switches` → **Phones**:
+- `phone_parts`: the parts past which a phone is asked. Measured default
+  10,101.
+- `phone_start_s`: the seconds a phone takes to start once the files are
+  in. Measured default 40.
+
+*Keep them* saves both, for the deployment the console is on
+(brickworks.diy, or a preview's own). A number outside its range (50 to
+100,000 parts, 1 to 600 s) is refused with words. Each save is audited,
+and the console shows who set each number and when, beside its measured
+default. Pages read the
+numbers from `GET /api/plans?op=phone`, with the defaults used until it
+answers. A press made before the answer waits up to 2 s for it, so it is
+not judged by the default.
+
+Every line is in English, German, French and Spanish.
+
+## A mobile version, or one adaptive studio
+
+**My judgement: one adaptive studio. No separate mobile app or mobile mode
+now.**
+
+**What a phone lacks is not the layout.**
+- The phone layout already does the walk by finger: all 23 acts at
+  390x844, none of them on a control under 44 points, and 21 on WebKit's
+  iPhone 13 and 15 screens (390x664, 393x659), where one panel (Motions) is
+  too short.
+- The panels fold, the bin and the drawer sit under a thumb, Measure and the
+  move handles take a finger, and the page editor works by touch. All of
+  that was built (phonewalk, phonepanels, fingertools) and is checked on
+  every release (`phone`, `tablet`).
+
+**What a phone lacks is the engine's start and memory.** A "mobile mode"
+on the same Godot web engine would carry both unchanged:
+- The same 39 MB Wasm to compile.
+- The same catalogue to read.
+- The same 519 MB of Wasm memory at start.
+- The same 2 GB shared maximum, which iOS may refuse.
+
+A lighter UI would save a little drawing per frame. It would not touch
+the start, which is where a phone loses 40–75 s.
+
+**A native app is the only "version" that changes those limits.** Godot
+exports to iOS and Android with no browser around it: no Wasm, no 2 GB
+cage, and threads with no COOP/COEP. It costs:
+- two store listings and their reviews;
+- a signing pipeline per platform;
+- a second release lane;
+- a 1.4 GB tab limit traded for an app's own, which on iOS is still set by
+  jetsam.
+
+Desktop downloads are paused today. A phone app is the same kind of work
+with stricter stores. It is worth it only if real phones say the web
+start cannot be brought under about 20 s, and nothing measured here says
+that yet.
+
+**What to do instead, in order:**
+1. **webstart11**: the start, phones first. Time each phase at 4x with
+   no throttled network, then cut the biggest. Phones are where the
+   start costs most and where it is felt.
+2. **A memory unit**: what fills the 519 MB at start, and the no-threads
+   web export measured against the threaded one on WebKit and a real
+   iPhone (start, frames, memory). If it holds, serve iOS that build.
+   That ends the shared-memory refusal and the 2 GB cage.
+3. **A short phone's panels** (fault 6): the moved-parts strip folded on
+   a phone, and Motions' foot scrolling with its list.
+4. **Real phones**: one Android at about $200 and one iPhone 13-class,
+   driven over remote debugging. They replace this document's stand-ins
+   and set `phone_parts` and `phone_start_s` from what they measure.
+   The console takes the new numbers with no deploy.
+
+## What this measure cannot say
+
+- **Playwright's WebKit is not iOS Safari.**
+  - It is WPE WebKit on Linux, drawing in software (llvmpipe) inside its
+    own web process.
+  - It has no jetsam, so nothing is ever killed for memory, and no
+    Gigacage limit as an iPhone sets it.
+  - Its frames are the CPU's drawing, not an Apple GPU's.
+  - Its runs had Playwright's request routing on: the towers the measure
+    hands the page, and the tests' parts mirror. Routing turns the HTTP
+    cache off ([Playwright](https://playwright.dev/docs/api/class-page#page-route)),
+    so WebKit sent every request with `Cache-Control: no-cache`, the head's
+    preload among them. The preload was not reused, and the engine's
+    6.9 MB Wasm and 2.4 MB pack came twice: 19 MB over the wire where
+    Chromium took 9 MB. A return fetched everything again, so WebKit's
+    returns are no faster than its first visits. Neither is Safari's, which
+    caches as Chromium does.
+  - What it proves: the page, the loader, the engine and the studio run on
+    WebKit's JavaScript and Wasm, with WebKit's COOP/COEP and
+    SharedArrayBuffer, at an iPhone's screen size and touch. What it
+    cannot prove: that an iPhone keeps the tab.
+- **Chromium's CPU throttle is a stand-in for a slow phone's CPU.**
+  - It slows the page's own work. The GPU process is not slowed, so the
+    drawing's cost is still a computer's (cited below).
+  - Lighthouse calibrates 4x on a high-end desktop as a mid-tier phone,
+    and suggests 10x for a low-end one. This box is a Ryzen 9 5900X
+    (12 cores, 24 threads), so 4x stands for a mid-tier phone and 6x for
+    one below it. A low-end phone is slower still.
+- **The box was loaded** (load 28 to 125 on 24 cores) by other work while
+  this ran. The load at each run's start is in the table. Throttled
+  timings at a higher load are slower than a quiet phone's. Compare runs
+  only at a similar load.
+- **A link pasted straight into the studio** (`/app?view=…`) is not
+  warned: the warning is on the model's page, where the count is known
+  before the studio is fetched. The studio itself could ask once it has
+  the model, but by then a phone has paid the start.
+- **A phone's own memory warning** (iOS's didReceiveMemoryWarning, Android's
+  onTrimMemory) never reaches a web page. A tab that is killed reloads, and
+  the page cannot tell why.
+
+
+## What the platforms allow, cited
+
+**WebGL 2.**
+- Godot 4's web export draws only with WebGL 2, through the Compatibility
+  renderer, and has no WebGL 1 path
+  ([Godot docs](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)).
+  The same page warns that "Safari has several issues with WebGL 2.0
+  support".
+- Safari has had WebGL 2 since Safari 15 on iOS 15, drawn on Metal through
+  ANGLE ([WebKit](https://webkit.org/blog/11989/new-webkit-features-in-safari-15/)).
+  Chrome for Android has had it since 58
+  ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext)).
+- Chromium's GPU blocklist turns WebGL off on one class of Android GPU:
+  those with no separate GPU process and no reset notification
+  ([software_rendering_list.json](https://chromium.googlesource.com/chromium/src/+/main/gpu/config/software_rendering_list.json)).
+- The model pages' 3D view uses three.js 0.186, which since r163 also
+  draws only with WebGL 2. Its check accepted WebGL 1 until this unit.
+
+**Memory per tab.**
+- On an iPhone, a tab's WebContent process has a soft limit of "around
+  1.5GB". Above it the process is "subject to getting killed by jetsam",
+  and the limit is lower on iPhones with less RAM. One reporter measured
+  about 1.5 GB on an iPhone 12 Pro and about 3 GB on a 15 Pro
+  ([WebKit 277848](https://bugs.webkit.org/show_bug.cgi?id=277848)).
+- WebKit's Gigacage held 2 GB of such allocations on iOS. An 8 GB iPad gave
+  a page only 1.88 GB
+  ([WebKit 268816](https://bugs.webkit.org/show_bug.cgi?id=268816)).
+- Wasm memory and SharedArrayBuffers share that cage. A duplicate bug is
+  titled "Only ~300 MB of RAM is reliably available to WebAssembly pages"
+  ([WebKit 269937](https://bugs.webkit.org/show_bug.cgi?id=269937)).
+- In Safari, `memory.grow()` does not fail. The tab is killed and
+  reopened instead, and "too much memory is decided based on system
+  pressure not a fixed limit"
+  ([WebKit 221530](https://bugs.webkit.org/show_bug.cgi?id=221530)).
+- The "A problem repeatedly occurred" reload is jetsam's
+  `per_process_limit`. It has been seen past 1.4 GB in a Wasm app on an
+  iPhone 13 Pro ([WebKit 256703](https://bugs.webkit.org/show_bug.cgi?id=256703)).
+- Godot #70621: on iOS 16.2, a `WebAssembly.Memory` with a 2048 MB maximum
+  failed as out of memory, and a 256 MB maximum worked
+  ([godot#70621](https://github.com/godotengine/godot/issues/70621)).
+  Brickworks' threaded build asks for exactly that: shared, 32 MB to start,
+  2048 MB at most (build/web/index.js).
+- Chrome on Android kills background tabs aggressively, losing their state
+  ([Chrome](https://developer.chrome.com/blog/tab-discarding/)). No
+  official per-tab figure for Android is published.
+
+**Threads.**
+- Safari 15.2 (iOS 15.2) added COOP and COEP and turned SharedArrayBuffer
+  back on for cross-origin isolated pages
+  ([WebKit](https://webkit.org/blog/12140/new-webkit-features-in-safari-15-2/)).
+  Android Chrome 88 requires the same isolation
+  ([Chrome](https://developer.chrome.com/blog/enabling-shared-array-buffer)).
+- Godot 4.3 added a single-threaded web export and made it the default.
+  Among its reasons, the long-standing problems on Apple devices "fortunately
+  disappear" without threads
+  ([Godot](https://godotengine.org/article/progress-report-web-export-in-4-3/)).
+  The 4.7 docs say threads "always had compatibility issues" on iOS.
+- Brickworks has a no-threads preset (`Web (no threads)`,
+  build/web-nothreads), but only the threaded build is deployed.
+- Emscripten notes that threads together with memory growth make
+  JavaScript's reads of Wasm memory slow
+  ([Emscripten](https://emscripten.org/docs/porting/pthreads.html)).
+
+**Sound.**
+- An AudioContext must be made or resumed inside a user gesture
+  ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices);
+  [WebKit 180522](https://bugs.webkit.org/show_bug.cgi?id=180522)).
+- iOS suspends it when the page goes to the background
+  ([WebKit 231105](https://bugs.webkit.org/show_bug.cgi?id=231105)).
+- Godot resumes it on every key, mouse, touch and IME event
+  ([display_server_web.cpp](https://github.com/godotengine/godot/blob/master/platform/web/display_server_web.cpp)).
+
+**The soft keyboard.**
+- Since Chrome 108, Android Chrome resizes only the visual viewport when
+  the keyboard opens, as Safari on iOS does
+  ([Chrome](https://developer.chrome.com/blog/viewport-resize-behavior)).
+  `visualViewport` exists in both
+  ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport)).
+- Godot's `html/experimental_virtual_keyboard` uses a hidden input. It
+  never reads `visualViewport`
+  ([library_godot_display.js](https://github.com/godotengine/godot/blob/master/platform/web/js/libs/library_godot_display.js)).
+  The studio lifts its own dialogs above the keyboard (dialogs_430,
+  field_drag).
+
+**In the background.**
+- A hidden tab's requestAnimationFrame is paused
+  ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)).
+  Chrome holds its timers to once a second, then once a minute after five
+  minutes ([Chrome](https://developer.chrome.com/blog/timer-throttling-in-chrome-88)).
+- On iOS, "tabs are completely suspended when possible"
+  ([WebKit](https://webkit.org/blog/8970/how-web-content-can-affect-power-usage/)).
+  Low Power Mode caps requestAnimationFrame at 30 frames a second
+  ([WebKit 215745](https://bugs.webkit.org/show_bug.cgi?id=215745)).
+- A frozen Android page runs nothing, and a discarded one starts again
+  ([Chrome](https://developer.chrome.com/docs/web-platform/page-lifecycle-api)).
+  The studio keeps every edit in IndexedDB as it is made, so a reload
+  reopens the work (docs/APP_UX8.md, the connector with the tab hidden).
+
+**How honest the stand-ins are.**
+- A 4x CPU throttle is Lighthouse's calibration of a high-end desktop down
+  to a mid-tier phone (a Moto G4). Its table suggests 10x for a low-end
+  phone ([Lighthouse](https://github.com/GoogleChrome/lighthouse/blob/main/docs/throttling.md)).
+- DevTools calls throttling "a first-order approximation"
+  ([DevTools](https://developer.chrome.com/docs/devtools/device-mode)).
+  Its CPU throttling "doesn't touch the GPU process"
+  ([DevTools](https://developer.chrome.com/blog/devtools-grounded-real-world)).
+- Fast 4G is 9 Mbps down × 0.9, 1.5 Mbps up × 0.9, and 60 ms × 2.75 =
+  165 ms a request
+  ([NetworkManager.ts](https://github.com/ChromeDevTools/devtools-frontend/blob/main/front_end/core/sdk/NetworkManager.ts)).
+- Playwright's WebKit is WebKit's main branch with patches, not Safari. On
+  Linux it is WPE's MiniBrowser
+  ([Playwright](https://playwright.dev/docs/browsers)). It shares
+  JavaScriptCore and WebKit's layout with iOS Safari. It has none of
+  iOS's jetsam limits or Gigacage size, and none of its Metal path:
+  here it draws on Mesa's llvmpipe. So it tells what WebKit runs and how,
+  never whether an iPhone keeps the tab.

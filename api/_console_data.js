@@ -54,6 +54,7 @@ export const RUNNABLE = {
   canary: { path: "/api/otp/canary", said: "A sign-in code sent to Resend's test inbox and read back" },
   social_due: { path: "/api/plans/social-due", said: "Sends only what you pressed Schedule on whose time came, then reads "
     + "what came in" },
+  tally_daily: { path: "/api/plans/tally-daily", said: "Rolls up only days that are over; again the same day changes nothing" },
 };
 /// What is never run from here, and why.
 export const NOT_RUNNABLE = {

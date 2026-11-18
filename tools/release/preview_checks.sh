@@ -535,6 +535,15 @@ declare -A CMD=(
   # page offered, never opened); each tab at 390 and 1280, light and dark;
   # no token in any answer, page or storage. The pool emptied after.
   [socialdesk]="tools/web/socialdesk_flow.mjs --url=$P --out=$S/${TAG}_socialdesk"
+  # The counter and /admin › Analytics (insights, docs/ANALYTICS.md): the
+  # read 401 signed out and 404 to anybody else; nothing sent or started
+  # with Do Not Track, GPC, after No or in a driven browser not asking;
+  # a tagged visit's beacons with no address, IP or page text; the ask in
+  # German at 430x932, Yes and No; off in Settings; the server's own drop
+  # of GPC and DNT; the studio's beacon; once supabase/analytics.sql is
+  # applied, this run's rows in the read; each tab at 390 and 1280, light
+  # and dark. Never on brickworks.diy; the throwaway deleted after.
+  [insights]="tools/web/insights_flow.mjs --url=$P --out=$S/${TAG}_insights"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -639,6 +648,21 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # What a phone is told before the studio opens (phonetruth, docs/PHONE.md),
+  # each in its case and in no other, at 1280 x 800, 390 x 844 (touch, three
+  # to the point) and 820 x 1180 (touch): a model past the console's number
+  # asks first from its page on the phone alone, its picture's 3D view
+  # unasked; the number set in Switches' Phones as the owner is the one the
+  # page goes by, put back after (this deployment's, never brickworks.diy's);
+  # no WebGL 2 said plainly at once on all three, the engine's files let go;
+  # a first visit on the phone on Fast 4G told how long it will take, and a
+  # return, the computer and the tablet told nothing.
+  [phonewarn]="tools/web/phonewarn_flow.mjs --url=$P/app $B --owner --out=$S/${TAG}_phonewarn_web"
+  # local only: phonetruth_flow.mjs. The studio measured as phones run it
+  # (phonetruth, docs/PHONE.md): WebKit as an iPhone 13 and 15 and Chromium
+  # at a 4x and 6x CPU on Fast 4G beside its phone emulation, a cold visit,
+  # a return, memory, frames and the largest model kept, against the live
+  # site. A measure with no verdict, and an hour or more a run.
   # local only: phonewalk_flow.mjs. The walk by finger (APP_UX8, phonewalk):
   # every act of the desktop walk at 390 x 844 and 1024 x 768, by touch alone,
   # counted in taps beside the desktop's presses, and what a finger cannot do

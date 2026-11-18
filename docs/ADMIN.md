@@ -42,6 +42,7 @@ three that stay outside, each with why.
 | The year's plan of themes | Gallery's Challenges tab | Challenges, with each month's preview and the day visitors are told |
 | A challenge's entries, groups, rule failures, results | its public page, or SQL | Challenges › its panel (`#challenges/N`) |
 | A notice on every page | nothing: it would have been a deploy | Switches › The notice: set, cleared, its history, each act audited |
+| What a phone is told before the studio opens (phonetruth, docs/PHONE.md) | nothing: numbers in the code | Switches › Phones: the parts a phone opens without being asked first, and the seconds a phone takes to start the studio once it has its files; each with who set it and the measured one; audited |
 | site_settings (the beta's switch, any other key) | Beta for the beta; SQL for the rest | Switches › Settings: every key by scope; the beta's flipped there or in Beta, one act |
 | Deployment variables | Vercel's dashboard | Switches › Variables: each by name, whether here, which of Vercel's environments, what it switches, where it is changed. Its value: **outside**, at Vercel |
 | The crons | Site (part B), read only; running one meant curl with CRON_SECRET | Site, with Run now for the four safe ones (`run_cron`, audited); never the beta's round, which mails testers |
@@ -59,6 +60,7 @@ three that stay outside, each with why.
 | Prices, trials, comps, promotions, refunds, payouts | Admission | **Outside**: real money stays the owner's yes at Admission; Plans reads it and links to each |
 | Secrets' values (keys, signing secrets, CRON_SECRET) | Vercel, Resend, Supabase | **Outside**: never on a page; Switches names them and says where each is changed |
 | Brickworks' own social accounts: what came in, posts and replies, their results (socialdesk) | each network's own site | Social: the inbox, Write with the community's rules, Sent and scheduled, Accounts (docs/SOCIAL_DESK.md). Posting on Reddit is by hand on Reddit's own page until Reddit grants API access: **outside** for that one press |
+| How the site and the studio are used: visits, sources, funnels, retention, tools and panels, speed, errors, Claude's calls (insights) | Overlook's own dashboard, visits only | Analytics (docs/ANALYTICS.md); Overlook's dashboard stays **outside** for the visit counter |
 
 ### api/admin.js, every op
 
@@ -105,6 +107,7 @@ it answers.
 | `challenge_view` | GET `&challenge=` | One challenge whole: its entries by group, those failing its rules, its winners, what visitors see (part C) | challenge_list, challenge_admin_entries |
 | `unbar_model` | POST `&id=` | A model taken out let back (part C) | barred_models |
 | `notice_set`, `notice_clear` | POST | The notice on every page of this deployment but the studio, or cleared (part C) | site_notice_set, site_notice_clear |
+| `phone_rules` | POST | `{phone_parts?, phone_start_s?}`: the numbers a phone is warned by on this deployment, whole numbers in range or all refused with words (phonetruth, api/_phone.js) | site_setting_set |
 | `run_cron` | POST `&job=` | A safe cron run now at this deployment's own address with CRON_SECRET, on the server (part C) | the cron's own path |
 | `export` | POST `&account=` | Every row of the account as JSON: at most 1000 a table, the rest counted; no secret column (part C) | auth user, admin_export |
 | `delete_account` | POST `&account=` `{confirm, reason}` | The account deleted at its person's request, its address typed again; never the owner's (part C) | api/_erase.js: Admission, orangecheck, photos, pictures, feedback's files, auth |
@@ -115,12 +118,16 @@ it answers.
 | `social_sync`, `social_mark` | POST | What came in and how sent posts do, read now; read or unread here (never at the network) | social_items, social_results |
 | `social_draft`, `social_drop`, `social_notes` | POST | A draft kept (the site's links tagged) or thrown away; notes on a community's rules | social_sends, social_rules |
 | `social_send`, `social_unschedule`, `social_posted` | POST `{id, hash, at?}` | The owner's press of Send or Schedule on the exact words the hash names; back to the drafts (a schedule, a hand-off not posted, or a send unsure whether it is up); a post made by hand or found up, its address kept | social_sends, the network |
+| `analytics` | GET `&from= &to= &plan= &device= &lang= &signed=` | How the site and the studio are used, a day at a time: every tab of Analytics, only sums (insights) | insights_read: insights_days, today's insights_visits and insights_events, insights_account_days, insights_account_firsts |
 
 Part B's four are reads: not kept in the audit, like the other GETs; part
 C's reads are not either, and each of its POSTs is. `api/otp.js` takes one
 more op that is not the owner's: `POST ?op=mail_event`, Resend's word on
 each mail (below); `api/plans.js` one public read, `GET ?op=notice`, the
-notice of the deployment it is asked on (a minute at the CDN).
+notice of the deployment it is asked on (a minute at the CDN), and another,
+`GET ?op=phone`, the numbers a phone is warned by there (phonetruth). And one
+public write, `POST ?op=tally`, the counter's beacon (always 204, kept only as
+docs/ANALYTICS.md says).
 
 ### The owner's other ops
 
@@ -178,6 +185,7 @@ through `cron_noted`), and the canary's are its own `canary_runs`.
 | `/api/share/omr` | 05:37 Mondays | What LDraw's Official Model Repository has that the library has not |
 | `/api/plans/beta-daily` | 05:07 daily | The beta's daily round, and feedback's sweep with it |
 | `/api/plans/social-due` | every 15 minutes | The social desk: scheduled sends whose time came, each only as pressed; then each connected account's inbox and results. Noted when it sent, failed, ran by hand, or first after midnight |
+| `/api/plans/tally-daily` | 03:27 daily | Analytics: each day that is over added up once, and what was sent more than 30 days ago forgotten, a deleted account's rows with it |
 
 ### Outside services
 
@@ -185,7 +193,8 @@ Supabase (database, sign-in, storage), Vercel (hosting, deployments,
 crons), Resend (mail), Admission (plans and payments, over Stripe),
 orangecheck (sign-in), Rebrickable (sets, daily), the relay (the Claude
 connector's sessions, in relay_tabs), Overlook (visit counts, never on
-/admin), Reddit (the social desk, once an app exists; by hand until then).
+/admin; Analytics counts the rest itself and sends nothing out), Reddit
+(the social desk, once an app exists; by hand until then).
 
 ## What the best consoles do
 
@@ -234,13 +243,14 @@ px (a row of pills on a phone), and the section beside it.
 | Challenges | `#challenges`, `#challenges/<id>` | The running one; every challenge by state; a challenge whole in a panel (entries by group, rule failures, winners); the set form and the year's plan, each with its preview | Set a challenge, Set the year, End it now |
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
+| Analytics | `#analytics/overview`, `funnels`, `retention`, `pages`, `studio`, `sources`, `speed`, `errors`, `claude`, `definitions` | Visitors, visits, sign-ups, active builders, published and Claude's calls with sparklines; the sign-up funnel; retention by week; pages; the studio's firsts, tools, panels, commands, runs and what was never used; sources and the desk's campaigns; load and frames by device; errors; Claude's tools; what each number means | Filter by days, plan, device, language, signed in; none else: read only |
 | Social | `#social/inbox`, `write`, `sent`, `accounts` | Replies, mentions and messages; a post or a reply with the community's rules beside it, and drafts; what was sent and waits, with score, comments and visits over time; each network, connected or not, and what each still to come costs | Check now, Mark read, Reply…, Keep the draft, Review and send… (Send now, Schedule), Unschedule, Post it on Reddit…, Connect, Disconnect |
 | Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
 | Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
 | Site | `#site` | The live release and since when; Supabase's auth, rest and storage; each cron's last runs; the releases before with their units | Run now, on the four safe crons |
 | Data | `#data` | The set catalogue and its pictures, Rebrickable's tables, the parts library's index, what the OMR's look found, the database and storage by bucket, why egress is read at Supabase | None |
-| Switches | `#switches` | The notice with its preview and history; the settings by scope; every deployment variable by name | Show the notice, Clear it; the beta's switch |
+| Switches | `#switches` | The notice with its preview and history; the settings by scope; Phones, the numbers a phone is warned by; every deployment variable by name | Show the notice, Clear it; the beta's switch; Keep them (Phones) |
 | Audit log | `#audit` | Every act: when, what, on what, the outcome, by whom | Filter by act, search |
 
 The bar holds Find: one search over people, models, lists, reports and the
@@ -540,3 +550,31 @@ a stand-in (`api/_social_mock.js`), and turns on with `REDDIT_CLIENT_ID` and
 Proven by `tests/test_social.py` (the handlers against held tables and the
 stand-in; social.sql in a Postgres of its own) and, on a deployment,
 `tools/web/socialdesk_flow.mjs` (preview check `socialdesk`).
+
+## Analytics (insights): in the console now
+
+How people use every part of the site and the studio, counted by
+Brickworks itself (docs/ANALYTICS.md has the research, what is counted and
+what never is, and the cost). `web/tally.js` sends a beacon every 15 s
+while something happened, and on leaving, to `POST /api/plans?op=tally`;
+`api/_analytics.js` keeps it through `supabase/analytics.sql`'s
+`insights_take`, the cron `/api/plans/tally-daily` adds each day up once,
+and `GET /api/admin?op=analytics` reads only sums.
+
+- **Never kept:** a model or anything in it, words typed, an email address,
+  an IP address. An account is kept only as its hash (HMAC with
+  `VIEW_SECRET`); a deployment without it tells no accounts apart.
+- **Asked first** in the EU, the EEA, the UK and Switzerland; never counted
+  with Do Not Track or GPC, after No, or off in Settings › Privacy; said
+  plainly at `/counting` (de, fr, es).
+- **Raw rows kept 30 days**, each day's totals after.
+- **The ops:** `analytics` behind the gate (401 signed out, 404 to anybody
+  else), a read, not audited. Before `supabase/analytics.sql` is applied the
+  section says so and the beacon keeps nothing.
+- **Claude's calls** are counted in `api/mcp.js` by tool, whether each
+  worked and how long it took, never what it was asked.
+
+Proven by `tests/test_insights.py` (the SQL in a Postgres of its own, the
+route, the read and the cron through their handlers, the counter's names in
+node) and, on a deployment, `tools/web/insights_flow.mjs` (preview check
+`insights`).

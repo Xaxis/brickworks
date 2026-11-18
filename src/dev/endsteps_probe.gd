@@ -24,7 +24,11 @@
 ## inside the step made of the 1st and 2nd. A "BUFEXCHG A STORE" stays where
 ## it was, inside a step made of two: LPub3D stores the parts above it, as
 ## it did (OMR files write it inside a step); at the step's end it would
-## store the next step's too.
+## store the next step's too. A "BUFEXCHG A RETRIEVE" stays at the head of
+## the step it starts: a merge or a step taken out that would put it in the
+## middle of one is refused, with why, and nothing changes, the file saved
+## as it was (mergekeep: up to it, a step made of the 4th and 5th showed the
+## stored base where the RETRIEVE stood, and the 4th's tiles never).
 extends "res://src/dev/keep_text_probe.gd"
 
 ## A model whose last step has no STEP line after it.
@@ -188,20 +192,42 @@ func _loose_case() -> void:
 func _groups_case() -> void:
 	print("\n== groups: LPub's MULTI_STEP round steps taken out and merged")
 	ModelStore.patch_files = true
-	# [what, the verb, the step index the timeline is on]
-	for edit: Array in [["take out the 4th (MULTI_STEP END after its STEP)", "delete", 3],
-			["merge the 3rd and 4th", "merge", 2],
-			["take out the 1st (BUFEXCHG STORE, then MULTI_STEP BEGIN)", "delete", 0],
-			["take out the 2nd (the group's first)", "delete", 1],
-			["merge the 2nd and 3rd (inside the group)", "merge", 1],
-			["merge the 4th and 5th (RETRIEVE between)", "merge", 3]]:
+	# [what, the verb, the step index the timeline is on, refused]
+	for edit: Array in [["take out the 4th (MULTI_STEP END after its STEP)", "delete", 3, false],
+			["merge the 3rd and 4th", "merge", 2, false],
+			["take out the 1st (BUFEXCHG STORE, then MULTI_STEP BEGIN)", "delete", 0, false],
+			["take out the 2nd (the group's first)", "delete", 1, false],
+			["merge the 2nd and 3rd (inside the group)", "merge", 1, false],
+			["merge the 4th and 5th (RETRIEVE between)", "merge", 3, true],
+			["take out the 5th (RETRIEVE starts it)", "delete", 4, true],
+			["take out the 6th (after the RETRIEVE's)", "delete", 5, false]]:
 		for whole: bool in [false, true]:
 			ModelStore.patch_files = not whole
 			var name: String = "%s, %s" % [edit[0], "written whole" if whole else "patched"]
 			await _open(GROUPS, "groups")
 			var steps: Array = _ops_steps("")
+			var before: Array = _pages()
+			var depth: int = _builder.history_depth()
 			var said: String = _shell.change_steps(str(edit[1]), [], _ops_step("", steps[int(edit[2])]))
 			await _frames(4)
+			if bool(edit[3]):
+				_check("%s: refused, with why (\"%s\"), the steps as they were, nothing to undo"
+					% [name, said.left(140)], said.contains("BUFEXCHG A RETRIEVE")
+					and said.contains("never be shown") and _pages() == before
+					and _builder.history_depth() == depth)
+				# The same verb by a session (edit_steps), by the booklet's number.
+				var tools := AppTools.new()
+				tools.app = _main
+				tools.assistant = _main.get("_assistant")
+				var by_mcp: String = str(await tools.run("edit_steps", {"op": str(edit[1]),
+					"step": int(edit[2]) + 1}))
+				await _frames(4)
+				_check("%s: refused over MCP too (\"%s\")" % [name, by_mcp.left(100)],
+					by_mcp.contains("BUFEXCHG A RETRIEVE") and _pages() == before
+					and _builder.history_depth() == depth)
+			else:
+				_check("%s: done (\"%s\")" % [name, said.left(60)],
+					not said.contains("never be shown") and _builder.history_depth() > depth)
 			var shown: Array = _pages()
 			var saved: String = _store.saved_text()
 			var wrote: String = str(_store.get("last_whole"))
@@ -217,6 +243,9 @@ func _groups_case() -> void:
 			_check("%s: the BUFEXCHG lines kept, as many, \"STORE\" after the same parts (%s)" % [name,
 				_stored(saved)], saved.count("BUFEXCHG A STORE") == 1
 				and saved.count("BUFEXCHG A RETRIEVE") == 1 and _stored(saved) == _stored(GROUPS))
+			var retrieved: String = _retrieve_mid_step(saved)
+			_check("%s: \"RETRIEVE\" at the head of the step it starts (%s)" % [name,
+				"so" if retrieved.is_empty() else retrieved], retrieved.is_empty())
 			if wrong.is_empty() and not whole and edit[2] == 3 and edit[1] == "delete":
 				print("      the file round it:\n%s" % _round(saved, "MULTI_STEP END"))
 
@@ -288,6 +317,23 @@ static func _group_mid_step(text: String) -> String:
 		if words.size() >= 15 and words[0] == "1":
 			parts = true
 	return "a group never ended" if open else ""
+
+
+## Where a "BUFEXCHG A RETRIEVE" of [param text] has a part of its step
+## above it, so LPub3D never shows that part: "" for none.
+static func _retrieve_mid_step(text: String) -> String:
+	var parts: int = 0
+	var n: int = 0
+	for raw: String in text.split("\n"):
+		n += 1
+		var words: PackedStringArray = raw.strip_edges().split(" ", false)
+		if words.size() >= 2 and words[0] == "0" and words[1] in ["STEP", "ROTSTEP", "FILE"]:
+			parts = 0
+		elif words.size() >= 15 and words[0] == "1":
+			parts += 1
+		elif words.size() >= 4 and words[1] == "BUFEXCHG" and words[3] == "RETRIEVE" and parts > 0:
+			return "line %d, below %d parts of its step" % [n, parts]
+	return ""
 
 
 ## The parts above "BUFEXCHG A STORE", the ones LPub3D stores (sorted).

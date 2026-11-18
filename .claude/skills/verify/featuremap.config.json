@@ -5486,6 +5486,41 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "the counter's route and its reads",
+      "entry": "api/_analytics.js",
+      "reach": "python3 tools/minitest.py tests/test_insights.py   (POST /api/plans?op=tally always 204: DNT, GPC, the EU/UK without a yes, a junk body kept nowhere; rows test unless sent to brickworks.diy or www by a person's account (a preview's host, a check's, an @resend.dev account's); the account only from a bearer that verifies, kept as HMAC(VIEW_SECRET), a beacon's who ignored; only names api/_insights_names.js has (python3 tools/insights_names.py --check), each kind at its most a beacon; one address's bucket; GET /api/admin?op=analytics 401 signed out, 404 to anybody else, ranges and filters, every list bounded (at most 113 kB); the cron /api/plans/tally-daily a day a call, insights_gone deleting a deleted account's rows unless the listing failed; an account's rows gone when it is deleted (api/_erase.js); Claude's tool calls counted in api/mcp.js with no account, refused, failed and relayed ones too; supabase/analytics.sql then analytics2.sql in a Postgres of its own: no role reaches a table, the caps, sampling past the soft cap, a read writes nothing, the rollup equal to the held rows, a person on two devices one visitor, 30 days kept; tests/fixtures/insights/attacks_check.mjs the review's attacks [--big times a flooded day]; dry run tools/analytics2_try.sql; docs/ANALYTICS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the counter and its ask",
+      "entry": "web/tally.js",
+      "reach": "every site page and /app, loaded after the first screen (web/theme.js, src/boot/shell.html): beacons to /api/plans?op=tally every 15 s while something happened and on leaving; nothing with Do Not Track or GPC, after No, off in Settings › Privacy (#counting-on) or in a driven browser without localStorage brickworks.counting.check=1, and then tally.js and counting.js never fetched (window.brickworksCountingNo); the sign-in token as the beacon's bearer, the site's or the one the studio's /api/ requests carry, never an id; on a European clock or one naming no place (UTC, Etc/*) the ask at the window's foot (web/counting-ask.js) first, the first Tab stop, Escape closing it unanswered; /counting says it in en, de, fr, es (python3 tools/minitest.py tests/test_insights_page.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the owner's Analytics",
+      "entry": "web/admin-analytics.js",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what is counted page",
+      "entry": "web/counting.html",
+      "reach": "https://brickworks.diy/counting (and /de, /fr, /es): what is counted, what never is, when you are asked, turning it off, how long it is kept, who sees it; linked from /privacy#your-visit and Settings › Privacy",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "insights browser flow",
+      "entry": "tools/web/insights_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/insights_flow.mjs --url=<preview> --out=DIR [--no-studio]   (never on brickworks.diy: the read's gate; nothing sent or started with DNT, GPC, after No or driven unasked; a tagged visit's beacons with no address, IP or page text; the ask in German at 430x932, Yes and No; off in Settings; the server's own GPC and DNT drop; the studio's beacon; after supabase/analytics.sql this run's rows in the owner's read; each tab at 390/1280 light/dark; <out>/beacons.json the beacons' sizes; preview check [insights])",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "deployment variables written down",
       "entry": "tools/release/env_names.sh",
@@ -5792,6 +5827,55 @@
       "entry": "src/dev/rsreview_phone_probe.gd",
       "reach": "tools/probe.sh rsreview_phone_probe   (windowed, 430x932 by its header; RSR_OUT=DIR keeps its pictures)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "a phone asked before a big model opens",
+      "entry": "web/phone-warn.js",
+      "reach": "<deployment>/m/<id> or /library/set/<n> on a phone (touch only, shorter side under 600 px): Build it, Open in Brickworks or the 3D view's way into the studio, on a model past phone_parts (/api/plans?op=phone, set in /admin#switches Phones), asks \"About N parts: on a phone this may close the tab\" first; Not now or Escape stays, Open it anyway goes on; the picture's 3D view, a computer, a tablet and a smaller model are never asked (web/model-page.js loads it); preview check [phonewarn]",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the loader's words for a phone and a browser without WebGL 2",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app: no WebGL 2 is said at once in plain words with what to do instead, and the engine's files are let go (window.stop); a first visit on a phone (#eta, window.brickworksEta) says how long it will take as the files come, plus phone_start_s; a return (localStorage brickworks.engineHad is this engine's /e/<hash>/), a computer and a tablet are told nothing; the engine's memory refused is said as that; preview check [phonewarn]",
+      "area": "web"
+    },
+    {
+      "kind": "endpoint",
+      "label": "the numbers a phone is warned by",
+      "entry": "api/_phone.js",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "phonewarn browser flow",
+      "entry": "tools/web/phonewarn_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/phonewarn_flow.mjs --url=<preview>/app --owner --out=DIR   (at 1280x800, 390x844 touch and 820x1180 touch: the big-model question on the phone alone and its three answers, the 3D view unasked; Switches' Phones number set as the owner and obeyed by the page, then put back (never on brickworks.diy); no WebGL 2 said on all three with the engine's files let go; a phone's first visit on Fast 4G timed, a return, the computer and the tablet told nothing; preview check [phonewarn])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "phonetruth measures",
+      "entry": "tools/web/phonetruth_flow.mjs",
+      "reach": "node --env-file=.env tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR --configs=chromium,cpu4,cpu6,iphone13,iphone15 [--steps=load,frames,ladder] [--table]   (under heavy, local only: Chromium phone emulation, Playwright WebKit as an iPhone 13 and 15 (software GL, multi-finger touch by tools/web/fingers.mjs), Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and a return, peak memory (process Pss, Wasm, JS heap), frames turning the car and Orthanc, the largest gallery model kept; DIR/phonetruth.md is docs/PHONE.md's table; tools/web/phonewalk_flow.mjs --engine=webkit --device=\"iPhone 13\" | --cpu=4 --net=fast4g walks it by finger)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the start by phase",
+      "entry": "tools/web/start_phases.mjs",
+      "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] --out=DIR   (webstart11, local servers only: two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; DIR/phases.md and pairs.json)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the web's catalogue as columns",
+      "entry": "src/parts/part_library.gd",
+      "reach": "godot --headless --path . --script src/dev/catalogue_columns_probe.gd   (webstart11: assets/web/catalogue.bin, written by src/dev/write_all_order.gd at every web export from the pack's catalogue.json (PartLibrary.columns_of) and read back field for field or the export stops; the web presets ship it in the JSON's place; the probe judges every field of 29,668 parts the same, its memory height under half the JSON's, no slower, another format refused)",
+      "area": "parts"
     }
   ]
 }
