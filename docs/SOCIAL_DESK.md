@@ -509,3 +509,20 @@ Where the desk matches the best, and where it does better:
   name, then back on Write's Review after It is posted); every tab at 390 and 1280,
   light and dark; and no token in any answer, page or storage. Before the
   file is applied it proves the gate and the "not yet" state.
+  - **One run at a time.** The checks' pool is one for every deployment: one
+    stand-in account a network, emptied before and after each run. So a
+    deployed run holds the live database alone (preview_checks.sh ALONE_DB).
+    A run against a relay on this machine needs the desk's seven tables held
+    there (`--hold=...`, asked of the relay's `/__held/<table>`), never
+    touches the project's pool, and stops at once otherwise. On 11-18 the
+    cron step failed twice on brickworks.diy ("nothing due", the row gone):
+    a local run's emptying of the project's pool had deleted the live run's
+    rows inside its 70 s wait (15:15:13Z and 16:08:20Z, between that run's
+    two calls of the cron in `cron_runs`). The live cron itself was fine.
+  - **Vercel's own cron** also sends the checks' due rows on production,
+    every quarter hour. If it does so inside the wait, the flow's own call
+    finds nothing due; the step then passes only when `cron_runs` holds that
+    vercel-cron run. `SOCIALDESK_VERCEL_CRON=1` on production leaves the
+    send to Vercel's cron alone, watching the row for up to 17 minutes: the
+    proof that an owner's schedule fires on brickworks.diy with nobody
+    calling it.

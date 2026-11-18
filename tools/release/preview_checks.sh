@@ -749,7 +749,11 @@ live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/
 #   switch off, as console leaves it for a minute), it writes nothing another run reads.
 # - console: turns this deployment's beta off for a minute, which every
 #   beta check beside it would read, and takes a spot of the checks' pool.
-ALONE_DB=" discovery first_steps challenges console "
+# - socialdesk: the checks' pool holds one stand-in account a network, and
+#   a run empties the pool's desk rows before and after, so a run beside it
+#   loses its account and sends: a local run's emptying did, twice, on
+#   brickworks.diy (cronlive, 2026-11-18).
+ALONE_DB=" discovery first_steps challenges console socialdesk "
 case " $NAMES " in
   *" beta "*)
     curl -s --max-time 20 -H "x-vercel-protection-bypass: $VERCEL_BYPASS" "$P/api/plans?op=beta" \

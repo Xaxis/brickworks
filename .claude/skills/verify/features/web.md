@@ -3220,9 +3220,17 @@ plan with Claude as the client.
   (New reply, a Share link refused, its rules beside the box, Reply on
   Reddit offering that comment's page, the reply's address kept), and no
   token in any answer, page or storage. The
-  checks' pool is emptied after. Locally against `relay_server.mjs PORT
+  checks' pool is emptied after; it is one for every deployment, so the
+  check is in preview_checks.sh's ALONE_DB. If Vercel's own cron (*/15 on
+  production) sends the due row in the wait, the step passes only on its
+  vercel-cron run in `cron_runs_of`; `SOCIALDESK_VERCEL_CRON=1` on
+  production calls no cron and waits up to 17 minutes for Vercel's. Locally
+  only against `relay_server.mjs PORT
   --hold=social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`
-  (restart it between runs: the held rows last as long as it does).
+  (restart it between runs: the held rows last as long as it does). Then it
+  never touches the project's pool; against a relay not holding all seven it
+  exits 2 at once. A local run emptying the project's pool deleted the live
+  check's rows twice on 11-18 (cronlive).
   Passes on "socialdesk: all ok", or "socialdesk: all ok (before the
   file)".
 - `the site notice` (`web/notice.js`, asked for by `web/theme.js` on every
