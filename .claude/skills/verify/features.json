@@ -81,6 +81,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -173,6 +174,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -271,6 +273,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -307,6 +310,7 @@
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_console2.py",
+        "tests/test_flows_for.py",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
         "tests/fixtures/console/api_check.mjs",
@@ -314,7 +318,6 @@
         "tests/test_billing_pay.py",
         "tests/test_console.py",
         "tests/test_feedback.py",
-        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py",
@@ -3601,6 +3604,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -4463,6 +4467,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -4592,7 +4597,9 @@
       "entry": "supabase/console2.sql",
       "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_flows_for.py"
+      ]
     },
     {
       "id": "lib:the console's part C",
@@ -4600,7 +4607,9 @@
       "entry": "supabase/console3.sql",
       "reach": "python3 tools/minitest.py tests/test_console3.py   (console3.sql and api/admin.js's data, find, challenge_view, switches, unbar_model, notice_set, notice_clear, run_cron, export, delete_account and sign_out against a real Postgres: the gate, reads unaudited and writes audited, Run now's address, the typed deletion, the export's caps, no value in switches)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_flows_for.py"
+      ]
     },
     {
       "id": "lib:the console's reads and audit",
@@ -5159,6 +5168,7 @@
         "tests/test_console.py",
         "tests/test_console2.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_site_lang.py"
       ]
     },
@@ -5614,6 +5624,7 @@
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6037,7 +6048,8 @@
       "area": "web",
       "tests": [
         "tests/test_alike.py",
-        "tests/test_bench.py"
+        "tests/test_bench.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -6351,7 +6363,8 @@
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
       "area": "model-io",
       "tests": [
-        "tests/test_docs_site.py"
+        "tests/test_docs_site.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -6480,6 +6493,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
@@ -6879,6 +6893,7 @@
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6983,6 +6998,7 @@
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -7187,6 +7203,7 @@
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py"
       ]
