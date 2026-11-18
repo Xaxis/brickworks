@@ -26,7 +26,9 @@
 //      in its Details; a visit by its tagged link counted once, the tags
 //      taken from the address the visitor sees.
 //   9. Disconnect, and a post by hand: Reddit's own page offered (never
-//      opened here) with the words, its address pasted back, counted.
+//      opened here) with the words, its address pasted back, counted; a
+//      reply by hand to a comment by its pasted address (a Share link
+//      refused), its own page offered, its reply's address kept.
 //  10. Every tab at 390 and 1280, light and dark, never wider than the
 //      phone, no button in Accounts shown off; no token in any answer,
 //      page, storage or console line.
@@ -467,6 +469,38 @@ try {
     const hand = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.title === handTitle);
     check(`its address kept, counted from now: ${hand?.status} ${hand?.route} ${hand?.external_id}`, hand?.status === "sent"
       && hand.route === "by_hand" && hand.external_id === "t3_abc123");
+    // A reply by hand to any post or comment, by its address: no inbox
+    // without Reddit's API, and Reddit ended RSS on 13 November 2026.
+    await page.click("#social-new-reply");
+    check("New reply asks for the address it answers, with the focus in it", await until(page, () =>
+      !document.getElementById("social-address-l").hidden && document.activeElement?.name === "address"
+      && document.getElementById("social-form-h").textContent === "A new reply"));
+    const thanks = `Thank you ${rand}`;
+    await page.fill("#social-form input[name='address']", "https://www.reddit.com/r/lego/s/AbCdEf12");
+    await page.fill("#social-form textarea[name='body']", thanks);
+    await page.click("#social-form button[type='submit']");
+    check("...a Share link refused, in words that say what to paste", await until(page, () =>
+      /names nothing the desk can read/.test(document.getElementById("social-note").textContent)));
+    await page.fill("#social-form input[name='address']", "https://old.reddit.com/r/lego/comments/abc777/a_castle/def888/?context=3");
+    await page.click("#social-review");
+    await until(page, () => document.querySelector("#social-sheet[open]"));
+    const there = "https://www.reddit.com/r/lego/comments/abc777/a_castle/def888/";
+    check("...kept answering the comment, in r/lego, its rules beside the box", await until(page, ([to]) =>
+      document.getElementById("social-replying").textContent.includes(to) && document.querySelectorAll("#social-rules li").length >= 1,
+    [there]));
+    check("...the sheet says it opens on Reddit and nothing is sent until Reply there",
+      /Nothing is sent until you press Reply there/.test(await page.locator(sheet).textContent()));
+    await press(page, sheet, "Reply on Reddit…");
+    await until(page, () => document.getElementById("social-sheet-title").textContent === "Reply on Reddit");
+    const replyAt = await page.locator(`${sheet} a.cta`).getAttribute("href");
+    check(`...Reply on Reddit offers that comment's own page, not opened here: ${replyAt}`, replyAt === there
+      && (await page.locator(sheet).getByRole("button", { name: "Copy the words" }).count()) === 1);
+    await page.fill(`${sheet} input[type='url']`, "https://www.reddit.com/r/lego/comments/abc777/a_castle/ghi999/");
+    await press(page, sheet, "It is posted");
+    await until(page, () => !document.querySelector("#social-sheet[open]"));
+    const byHandReply = (await as("/api/admin?op=social&tests=1")).json.sends.find((one) => one.body === thanks);
+    check(`...its reply's address kept: ${byHandReply?.status} ${byHandReply?.parent} ${byHandReply?.external_id}`, byHandReply?.status === "sent"
+      && byHandReply.parent === "t1_def888" && byHandReply.external_id === "t1_ghi999" && byHandReply.link === there);
     const audit = await as("/api/admin?op=audit&tests=1&limit=60");
     const ops = new Set((audit.json?.rows || []).map((one) => one.op));
     check(`each act in the audit as a test's: ${[...ops].filter((op) => op.startsWith("social_")).sort().join(", ")}`,

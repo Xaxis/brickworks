@@ -66,7 +66,10 @@ const DETAIL = { comment_reply: "to a comment", post_reply: "to a post", usernam
 const STATE = { draft: "Draft", scheduled: "Scheduled", sending: "Sending", handed: "Waiting on you at Reddit", sent: "Sent",
   failed: "Did not go" };
 const stateOf = (one) => (one.unsure ? "Unsure: look on Reddit" : STATE[one.status] || one.status);
-const where = (one) => (one.community ? `r/${one.community}` : one.kind === "reply" ? "a reply" : "—");
+/// The community a Reddit address is in, or "".
+const subOf = (url) => /^https:\/\/www\.reddit\.com\/r\/([A-Za-z0-9_]{2,21})\//.exec(String(url || ""))?.[1] || "";
+const where = (one) => (one.community ? `r/${one.community}` : one.kind === "reply"
+  ? (subOf(one.link) ? `a reply in r/${subOf(one.link)}` : "a reply") : "—");
 const excerpt = (words, most = 160) => (words.length > most ? `${words.slice(0, most - 1)}…` : words);
 
 function draw() {
@@ -131,7 +134,8 @@ function drawNetworks() {
       card.classList.add("by-hand");
       card.append(make("p", "", make("strong", "", "Posting by hand: Reddit takes no new API apps (since 31 Oct 2026).")),
         make("p", "note", "Send opens Reddit's own page with your words; you press Post there and paste its address back here, "
-          + "so the visits it brings are counted. Replies go the same way. Its score and comments are read only once Reddit is connected."),
+          + "so the visits it brings are counted. A reply goes the same way: New reply under Write answers any post or comment by "
+          + "its address. Its score and comments are read only once Reddit is connected."),
         make("div", "row", link("#social/write", "Write a post", "cta"), linkOut(NOTICE, "Reddit's notice", "cta ghost")),
         connectLater(one));
       return card;
@@ -233,8 +237,9 @@ function drawInbox() {
     const account = reddit()?.account;
     emptyRow(body, desk.ready === false ? "Not open yet." : account ? `Nothing yet. Last look ${ago(account.synced_at)}; Check now looks again.`
       : reddit()?.api ? "Nothing yet. Connect Reddit under Accounts to read replies, mentions and messages here."
-        : "Nothing comes in here until Reddit grants the desk API access (it took no new apps from 31 October 2026): "
-          + "replies, mentions and messages reach you on Reddit itself, in its inbox.");
+        : "Nothing comes in here until Reddit grants the desk API access (it took no new apps from 31 October 2026), and "
+          + "Reddit ended its RSS feeds on 13 November 2026: replies, mentions and messages reach you on Reddit itself, in its "
+          + "inbox. To answer one here, press New reply under Write and paste its address.");
     return;
   }
   for (const one of desk.items) {
@@ -307,8 +312,9 @@ $("inbox-all-read").addEventListener("click", async () => {
 // Write: one form for a post or a reply, kept as a draft on the server
 // before anything is shown to be sent.
 
-/// What the form holds: {id, kind, parent, item} of a draft, or a new post.
-let editing = { id: null, kind: "post", parent: null, item: null };
+/// What the form holds: {id, kind, parent, item, answers} of a draft, or a
+/// new post. [answers] is the Reddit address a reply by hand answers.
+let editing = { id: null, kind: "post", parent: null, item: null, answers: null };
 const form = $("social-form");
 
 function drawProviders() {
@@ -327,18 +333,18 @@ function fill() {
   for (const id of ["social-community-l", "social-title-l", "social-link-l"]) $(id).hidden = !post;
   $("social-form-h").textContent = editing.id ? (post ? "A post, kept" : "A reply, kept") : post ? "A new post" : "A new reply";
   const replying = $("social-replying");
-  replying.hidden = post;
+  // A new reply by hand names what it answers by its address.
+  const byAddress = !post && !editing.id && !editing.parent;
+  $("social-address-l").hidden = !byAddress;
+  replying.hidden = post || byAddress;
   replying.replaceChildren();
-  if (!post) {
-    const item = editing.item || desk.items.find((one) => one.external_id === editing.parent);
+  const item = post ? null : editing.item || desk.items.find((one) => one.external_id === editing.parent);
+  if (item) {
     replying.append(`Replying to ${item?.author ? `u/${item.author}` : "it"}${item?.community ? ` in r/${item.community}` : ""}: `,
       make("q", "", excerpt(item?.body || item?.subject || "", 200)));
-    if (item?.url) {
-      const open = link(item.url, " Open it on Reddit");
-      open.target = "_blank";
-      open.rel = "noopener noreferrer";
-      replying.append(open);
-    }
+    if (item?.url) replying.append(linkOut(item.url, " Open it on Reddit"));
+  } else if (!post && editing.answers) {
+    replying.append(`Replying in r/${subOf(editing.answers) || "…"} to `, linkOut(editing.answers, editing.answers));
   }
   counts();
 }
@@ -352,7 +358,7 @@ form.elements.title.addEventListener("input", counts);
 form.elements.body.addEventListener("input", counts);
 
 function startNew() {
-  editing = { id: null, kind: "post", parent: null, item: null };
+  editing = { id: null, kind: "post", parent: null, item: null, answers: null };
   form.reset();
   form.elements.provider.value = "reddit";
   say("social-note", "");
@@ -360,20 +366,33 @@ function startNew() {
 }
 $("social-new").addEventListener("click", startNew);
 
+/// A reply by hand to any post or comment on Reddit, named by its address:
+/// the inbox is empty without Reddit's API (docs/SOCIAL_DESK.md).
+function startReply() {
+  editing = { id: null, kind: "reply", parent: null, item: null, answers: null };
+  form.reset();
+  form.elements.provider.value = "reddit";
+  say("social-note", "");
+  fill();
+  form.elements.address.focus();
+}
+$("social-new-reply").addEventListener("click", startReply);
+
 function open(send) {
-  editing = { id: send.id, kind: send.kind, parent: send.parent, item: null };
+  const answers = send.kind === "reply" ? send.link : null;
+  editing = { id: send.id, kind: send.kind, parent: send.parent, item: null, answers };
   form.elements.provider.value = send.provider;
   form.elements.community.value = send.community ? `r/${send.community}` : "";
   form.elements.title.value = send.title;
-  form.elements.link.value = send.link || "";
+  form.elements.link.value = send.kind === "post" ? send.link || "" : "";
   form.elements.body.value = send.body;
   fill();
   location.hash = "#social/write";
-  if (send.community) rules(send.community);
+  if (send.community || subOf(answers)) rules(send.community || subOf(answers));
 }
 
 function replyTo(item) {
-  editing = { id: null, kind: "reply", parent: item.external_id, item };
+  editing = { id: null, kind: "reply", parent: item.external_id, item, answers: null };
   form.reset();
   form.elements.provider.value = item.provider;
   say("social-note", "");
@@ -394,13 +413,19 @@ function keep() {
     for (const button of holds) button.disabled = true;
     keeping = (async () => {
       const e = form.elements;
+      const post = editing.kind === "post";
       const body = { id: editing.id || undefined, provider: e.provider.value, kind: editing.kind, parent: editing.parent || undefined,
-        community: e.community.value.trim(), title: e.title.value, body: e.body.value, link: e.link.value.trim() };
+        community: e.community.value.trim(), title: e.title.value, body: e.body.value, link: post ? e.link.value.trim() : "",
+        address: !post && !editing.id && !editing.parent ? e.address.value.trim() : undefined };
       const done = await adminJson({ op: "social_draft" }, { method: "POST", body });
+      const first = !editing.id;
       editing.id = done.send.id;
+      editing.parent = done.send.parent;
+      editing.answers = post ? null : done.send.link;
       e.body.value = done.send.body;
-      e.link.value = done.send.link || "";
+      e.link.value = post ? done.send.link || "" : "";
       fill();
+      if (first && subOf(editing.answers)) rules(subOf(editing.answers));
       await reread();
       return { ...done.send, outcome: done.outcome };
     })().finally(() => {
@@ -452,14 +477,16 @@ function review(send) {
   const parts = [
     make("p", "", api ? `This goes to ${target} by Reddit's API, as u/${account.handle}, exactly as it is here.`
       : send.kind === "post" ? `Reddit's own page for ${target} opens next, with these words to copy. Nothing is posted until you `
-        + "press Post there." : "The item opens on Reddit next, with these words to copy and paste as your reply there."),
+        + "press Post there." : "What it answers opens on Reddit next, with these words to copy and paste as your reply there. "
+        + "Nothing is sent until you press Reply there."),
     words(send),
   ];
   if (!api && send.kind === "post" && !send.hand_off_filled) {
     parts.push(make("p", "note", "These words are too long to go in Reddit's address, so its page opens with the title alone: "
       + "copy the words and paste them into its box."));
   }
-  const now = act(api ? "Send now" : "Post it on Reddit…", async () => press(send, null, said), "cta");
+  const now = act(api ? "Send now" : send.kind === "post" ? "Post it on Reddit…" : "Reply on Reddit…", async () => press(send, null, said),
+    "cta");
   parts.push(make("div", "row", now));
   // A day (today and the next 60) and a quarter-hour, in this browser's time.
   const dayPick = make("select");
@@ -766,7 +793,8 @@ function drawSends() {
     cell(row, last?.comments ?? "—", "n");
     cell(row, count(one.visits?.total || 0), "n");
     const acts = cell(row, "", "acts");
-    if (one.hand_off) acts.append(act(due || one.status === "handed" ? "Post it on Reddit…" : "Open on Reddit…", async () => {
+    if (one.hand_off) acts.append(act(due || one.status === "handed" ? (one.kind === "post" ? "Post it on Reddit…" : "Reply on Reddit…")
+      : "Open on Reddit…", async () => {
       if (one.status === "handed") handOff(one);
       else review(one);
       return false;
@@ -822,6 +850,12 @@ function details(one) {
     region.setAttribute("role", "region");
     region.setAttribute("aria-label", "Its score over time");
     parts.push(make("div", "part", make("h3", "", "Over time"), make("p", "note", "As Reddit says it, read every quarter of an hour."), region));
+  }
+  // Posted by hand, its score is Reddit's alone to show: said, never a zero.
+  if (!one.results.length && one.route === "by_hand" && one.status === "sent") {
+    parts.push(make("div", "part", make("h3", "", "Its score"), make("p", "note", "Read only once Reddit is connected. Reddit's "
+      + "public pages refuse a server (403, checked 18 November 2026), and what is left of its public access ends in March 2027. ",
+    one.url ? linkOut(one.url, "See it on Reddit") : "")));
   }
   const days = Object.entries(one.visits?.by_day || {}).sort(([a], [b]) => (a < b ? 1 : -1));
   parts.push(make("div", "part", make("h3", "", `Visits it brought: ${count(one.visits?.total || 0)}`),
