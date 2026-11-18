@@ -40,7 +40,9 @@
 //      page, and in one that never saw it (C) it never shows, not even for
 //      a moment, both told by the avatar's count (feed_count's
 //      notice_hidden) and asking nothing more; Bea still sees it. Cleared
-//      after (anfix).
+//      after (anfix). Before supabase/announce2.sql is applied the count
+//      carries no ids, and B and C are checked as before it: hidden by
+//      asking op=notice_hidden.
 //
 // Throwaways deleted after; announcements left in the pool are its own.
 // Prints "announce: all ok".
@@ -227,6 +229,11 @@ try {
   check(`the owner's desk answers: ${desk.status}`, desk.status === 200);
   const ready = desk.json?.ready === true;
   console.log(`  --    supabase/announce.sql ${ready ? "applied (or stood in for)" : "not applied"}; test pool ${desk.json?.test}`);
+  // announce2.sql's news_mail_state answers only once it is applied: before
+  // it, the avatar's count carries no hidden notices, and a browser of the
+  // person's asks op=notice_hidden itself, as before the fix.
+  const second = ready && desk.json?.news_mail != null;
+  console.log(`  --    supabase/announce2.sql ${second ? "applied (or stood in for)" : "not applied: step 10 checks the hide as before it"}`);
   check("everything here is the checks' own pool", desk.json?.test === true);
 
   // The console's first screen never asks the section's code.
@@ -533,9 +540,16 @@ try {
       await next.waitForTimeout(2500);
       const ever = await next.evaluate(() => window.__notices || []);
       const told = heard.some((ids) => Array.isArray(ids) && ids.map(String).includes(noticeId));
-      check(`B, which showed it, at its next page: never drawn (${ever.length} times), told by feed_count (${JSON.stringify(heard)}), `
-        + `no notice request of its own (${asked.filter((one) => one.includes("op=notice_hidden")).length})`,
-      ever.length === 0 && told && !asked.some((one) => one.includes("op=notice_hidden")));
+      if (second) {
+        check(`B, which showed it, at its next page: never drawn (${ever.length} times), told by feed_count (${JSON.stringify(heard)}), `
+          + `no notice request of its own (${asked.filter((one) => one.includes("op=notice_hidden")).length})`,
+        ever.length === 0 && told && !asked.some((one) => one.includes("op=notice_hidden")));
+      } else {
+        const shown = await next.evaluate(() => Boolean(document.querySelector(".site-notice:not([hidden])")));
+        check(`B, which showed it, at its next page, before announce2.sql: hidden by asking (${asked.filter((one) => one.includes("op=notice_hidden")).length}), `
+          + `shown now ${shown}, feed_count carries no ids (${JSON.stringify(heard)})`,
+        !shown && asked.some((one) => one.includes("op=notice_hidden")) && !told);
+      }
     }
     await before.context.close();
     // C: a browser of hers that never saw it, on a phone.
@@ -546,9 +560,15 @@ try {
       await again.page.waitForTimeout(4000);
       const ever = await again.page.evaluate(() => window.__notices || []);
       const told = heard.some((ids) => Array.isArray(ids) && ids.map(String).includes(noticeId));
-      check(`C, which never saw it: never drawn, not even for a moment (${ever.length} times), told by feed_count (${told}), `
-        + `no notice request of its own (${elsewhere.filter((one) => one.includes("op=notice_hidden")).length})`,
-      ever.length === 0 && told && !elsewhere.some((one) => one.includes("op=notice_hidden")));
+      if (second) {
+        check(`C, which never saw it: never drawn, not even for a moment (${ever.length} times), told by feed_count (${told}), `
+          + `no notice request of its own (${elsewhere.filter((one) => one.includes("op=notice_hidden")).length})`,
+        ever.length === 0 && told && !elsewhere.some((one) => one.includes("op=notice_hidden")));
+      } else {
+        const shown = await again.page.evaluate(() => Boolean(document.querySelector(".site-notice:not([hidden])")));
+        check(`C, which never saw it, before announce2.sql: hidden by asking (${elsewhere.filter((one) => one.includes("op=notice_hidden")).length}), `
+          + `shown now ${shown}`, !shown && elsewhere.some((one) => one.includes("op=notice_hidden")));
+      }
       await again.context.close();
     }
     const hers = await seen(bea, "bea notice", "phone");
