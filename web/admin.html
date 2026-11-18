@@ -819,6 +819,9 @@
               <form id="social-form" class="card console-form" novalidate>
                 <h3 id="social-form-h">A new post</h3>
                 <p class="note" id="social-replying" hidden></p>
+                <label id="social-address-l" hidden>The post or comment on Reddit it answers
+                  <input name="address" type="url" inputmode="url" placeholder="https://www.reddit.com/r/lego/comments/…"
+                    spellcheck="false" autocomplete="off"></label>
                 <label>Network
                   <select name="provider" id="social-provider"></select></label>
                 <div class="with-act" id="social-community-l">
@@ -837,6 +840,7 @@
                   <button type="submit" class="ghost">Keep the draft</button>
                   <button type="button" class="cta" id="social-review">Review and send…</button>
                   <button type="button" class="ghost" id="social-new">New</button>
+                  <button type="button" class="ghost" id="social-new-reply">New reply</button>
                   <span class="note" id="social-note" role="status"></span>
                 </div>
               </form>
