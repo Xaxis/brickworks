@@ -4789,16 +4789,16 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 		for key: String in held.places:
 			var at: String = str(held.places[key])
 			if not by_place.has(at):
-				by_place[at] = PackedStringArray()
-			(by_place[at] as PackedStringArray).append(_lot_words({"part": Collection.part_of(key),
+				by_place[at] = []
+			(by_place[at] as Array).append(_lot_words({"part": Collection.part_of(key),
 				"colour": Collection.colour_of(key)}, library))
 		var named: Array = by_place.keys()
 		named.sort_custom(func(a: String, b: String) -> bool: return Collection.place_less(a, b))
 		said.append("Where they keep parts (place= sets them, \"\" takes one off): %s in %s:" % [
 			Counted.of(held.places.size(), "part and colour", "parts and colours"), Counted.of(named.size(), "place")])
 		for at: String in named.slice(0, 20):
-			var those: PackedStringArray = by_place[at]
-			said.append("  %s: %s%s" % [at, "; ".join(those.slice(0, 6)), "; and %d more" % (those.size() - 6)
+			var those: Array = by_place[at]
+			said.append("  %s: %s%s" % [at, "; ".join(PackedStringArray(those.slice(0, 6))), "; and %d more" % (those.size() - 6)
 				if those.size() > 6 else ""])
 		if named.size() > 20:
 			said.append("  and %d more places." % (named.size() - 20))
