@@ -713,41 +713,6 @@
     },
     {
       "kind": "ui",
-      "label": "find and replace everywhere",
-      "entry": "src/ui/find_replace_bar.gd",
-      "reach": "godot --path .  (Edit, Find and replace… or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "swapfind probe",
-      "entry": "src/dev/swapfind_probe.gd",
-      "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "swapfind phone probe",
-      "entry": "src/dev/swapfind_phone_probe.gd",
-      "reach": "tools/probe.sh swapfind_phone_probe   (windowed, 390x844 by its header; no sign-in)",
-      "area": "building"
-    },
-    {
-      "kind": "ui",
-      "label": "copies follow only where a person could",
-      "entry": "src/assembly/assemblies.gd",
-      "reach": "godot --path .  (a sub-model placed twice, a part locked in one copy: paint, replace, move, turn, delete or paste into the other copy, by hand or a session's edit_model, is refused with \"Locked in one copy of …: …. Unlock it, or use Build › Make this copy unique\"; a part newly in the way of a twin (not its own copy, nor one it stood in already unless deeper): \"No room in … (copy 2): … is in the way there\"; nothing changes, no undo step is left and the model is not marked changed; 10179 and 10030 parts that stand in others still move with their copies; tools/probe.sh followfix_probe)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "followfix probe",
-      "entry": "src/dev/followfix_probe.gd",
-      "reach": "tools/probe.sh followfix_probe   (headless, about 3 minutes; FOLLOWFIX_CASES=paint,mcp_move,mirror for some)",
-      "area": "building"
-    },
-    {
-      "kind": "ui",
       "label": "undo history",
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (History on the toolbar, or Edit, History)",
@@ -1129,13 +1094,6 @@
       "label": "collection sums",
       "entry": "src/collection/collection.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
-      "area": "collection"
-    },
-    {
-      "kind": "lib",
-      "label": "every set ranked",
-      "entry": "src/collection/set_ranking.gd",
-      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
       "area": "collection"
     },
     {
@@ -5053,20 +5011,6 @@
     },
     {
       "kind": "ui",
-      "label": "lift by a part",
-      "entry": "src/assembly/lift_test.gd",
-      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "loadtest probe",
-      "entry": "src/dev/loadtest_probe.gd",
-      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
       "label": "moving renders kept as a GIF",
       "entry": "src/render/animated_gif.gd",
       "reach": "tools/probe.sh video2   (by hand: File, Render…, Kept as GIF, then Render turntable, Render animation or Render building: one 256-colour palette for the whole video, an ordered dither, at most 640 px across and made to fit 8 MB by fewer frames a second then a smaller picture; render_model format=gif over MCP; node tools/web/gif_plays.mjs FILE.gif says what Chromium decodes)",
@@ -5119,20 +5063,6 @@
       "label": "localbricks probe",
       "entry": "src/dev/localbricks_probe.gd",
       "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
-      "area": "collection"
-    },
-    {
-      "kind": "cli",
-      "label": "keptbuilt probe",
-      "entry": "src/dev/keptbuilt_probe.gd",
-      "reach": "tools/relay_probe.sh keptbuilt   (a window, 1280x720; -- --shots=DIR: 7140-1 and 12 loose lots, the counts by hand (341 pieces); its Built mark pressed once: the pool, the bin's My bricks, What can I build? and submit_design mine=true all the 12 lots alone (56), pressed again all back; edit_collection {\"built\": [\"7140-1\"]} in 1 call and {set, copies: 0}, refusals changing nothing; kept through a restart and another device; Save sets as CSV and XML read back built; rel-m304's Collection keeps the set and drops only the mark; two copies Built 1 of 2, 2 of 2, none; the words in de/fr/es)",
-      "area": "collection"
-    },
-    {
-      "kind": "cli",
-      "label": "keptbuilt api test",
-      "entry": "tools/web/keptbuilt_api.mjs",
-      "reach": "node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op built idempotent and refused with words, the mark kept through every other change, a replace import and an older app's PUT, fewer copies unmark and say so, the CSV's Built column and the XML's Built remarks read back, the older collection lot for lot)",
       "area": "collection"
     },
     {
@@ -5410,20 +5340,6 @@
     },
     {
       "kind": "ui",
-      "label": "page editor motions and simulate by finger",
-      "entry": "src/ui/page_editor.gd",
-      "reach": "on a phone or a tablet: the timeline's Lay out the page… (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "phonepanels probe",
-      "entry": "src/dev/phonepanels_probe.gd",
-      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
       "label": "the console's plans and revenue",
       "entry": "web/admin-plans.js",
       "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
@@ -5484,104 +5400,6 @@
       "entry": "tools/web/resend_webhook.sh",
       "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
       "area": "web"
-    },
-    {
-      "kind": "lib",
-      "label": "your sets and lists",
-      "entry": "api/_mylists.js",
-      "reach": "curl -s -H \"authorization: Bearer $TOKEN\" 'https://brickworks.diy/api/people?op=keeps&sets=6080-1&models='   (and ?op=lists, ?op=list_items&id=owned|want|saved|<id>, ?op=list_csv&id=; POST ?op=keep {key, list, on}, ?op=list_order {id, keys, sort}, ?op=owned_choice {shows}; POST /api/collection {op:'own', set, was, qty}; supabase/lists.sql, applied 2026-11-13; docs/LISTS.md)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "own want and save",
-      "entry": "web/keep.js",
-      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "your lists page",
-      "entry": "web/lists.html",
-      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "the sets you own on a profile",
-      "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "lists browser flow",
-      "entry": "tools/web/lists_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [lists]; or a local relay_server.mjs on a port of yours, never 10080, which fetch refuses)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "mcpreach probe",
-      "entry": "src/dev/mcpreach_probe.gd",
-      "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext, its cover pictured in the answer (shots/mcpreach/pdf_cover.png or MCPREACH_OUT); every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File › Export with its save dialog still writes over when the person says so)",
-      "area": "mcp"
-    },
-    {
-      "kind": "cli",
-      "label": "ask to leave timing",
-      "entry": "tools/web/framefetch_flow.mjs",
-      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
-      "area": "web"
-    },
-    {
-      "kind": "lib",
-      "label": "a request asked of the page",
-      "entry": "src/net/page_fetch.gd",
-      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "more's first rows and adding to a selection by finger",
-      "entry": "src/ui/phone_shell.gd",
-      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page… first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "smalls2 probe",
-      "entry": "src/dev/smalls2_probe.gd",
-      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
-      "area": "building"
-    },
-    {
-      "kind": "ui",
-      "label": "missing and moved parts on open",
-      "entry": "src/ui/moved_parts_dialog.gd",
-      "reach": "godot --path .  (File, Open a file naming parts by numbers LDraw has moved, made aliases or has no file for, e.g. vendor/omr/files/4349-1_Dragon-Fly.mpd or 6056-1.mpd: moved and alias parts open with no list, only the strip over the model saying \"N parts have new numbers in the LDraw library\" with Update all (every sub-model, one undo, Edit, Undo puts the file back byte for byte and keeps earlier edits undoable), Review… (Missing and moved parts: each number, why, the part it points to and how many in which sub-models; Replace checked) and Keep as is; a part with no file opens the list by itself and offers Search; a sub-model or carried part named as a moved number keeps its name; shown after a person's own open only (File, Open, a file, Recent, the library), never a session's, Together's or an undo's; over MCP open_model names them and replace_moved=true replaces them in 1 call)  (tools/probe.sh movedparts_probe; tools/probe.sh movedparts_phone_probe; tools/probe.sh mvreview_probe)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "movedparts probe",
-      "entry": "src/dev/movedparts_probe.gd",
-      "reach": "tools/probe.sh movedparts_probe   (headless: 10 OMR files with moved or alias parts and 3 with parts with no file, each listed against the file read apart, all replaced, Save's file changed only in those names and a turned stub's numbers, every part where it was within 0.01 LDU, undo byte for byte and redo; an attack file of CRLF, tabs, upper case, a mirrored copy, a sub-model 3 times 2 deep, a turned stub, a chain, a print, an alias, a colour stub and a sub-model and carried part named as moved numbers (left as they are), saved and opened again the same; the strip on a person's open, Review…'s list, one unchecked, Keep as is, Search on a missing part's list; a placed part then Update all, two undos and two redos; open_model's answer and replace_moved=true; de, fr and es words; MOVEDPARTS_CASES=omr,attack,dialog,edits,mcp,words for some, MOVEDPARTS_OUT=dir for each file before and after)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "movedparts phone probe",
-      "entry": "src/dev/movedparts_phone_probe.gd",
-      "reach": "tools/probe.sh movedparts_phone_probe   (windowed, 390x844 by its header: the list laid out for a phone, wholly in the window, every check box and button 44 points or more; MOVEDPARTS_OUT=dir for its picture)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "mvreview probe",
-      "entry": "src/dev/mvreview_probe.gd",
-      "reach": "MVREVIEW_CASES=listing,omr2,editfirst,mcp2,xform tools/probe.sh mvreview_probe   (headless, the movedparts review's own cases: a file's own sub-model, embedded part and shortcut blocks named as moved numbers left alone; 396-1 and 364-1 listed and replaced alike; an edit, then the replace, then two undos; open_model's answer on 40 moved numbers under 4,000 characters; every turned stub placed within 0.00001 LDU)",
-      "area": "model-io"
     },
     {
       "kind": "ui",
@@ -5647,11 +5465,221 @@
       "area": "release"
     },
     {
+      "kind": "lib",
+      "label": "your sets and lists",
+      "entry": "api/_mylists.js",
+      "reach": "curl -s -H \"authorization: Bearer $TOKEN\" 'https://brickworks.diy/api/people?op=keeps&sets=6080-1&models='   (and ?op=lists, ?op=list_items&id=owned|want|saved|<id>, ?op=list_csv&id=; POST ?op=keep {key, list, on}, ?op=list_order {id, keys, sort}, ?op=owned_choice {shows}; POST /api/collection {op:'own', set, was, qty}; supabase/lists.sql, applied 2026-11-13; docs/LISTS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "own want and save",
+      "entry": "web/keep.js",
+      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your lists page",
+      "entry": "web/lists.html",
+      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the sets you own on a profile",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "lists browser flow",
+      "entry": "tools/web/lists_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [lists]; or a local relay_server.mjs on a port of yours, never 10080, which fetch refuses)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "lift by a part",
+      "entry": "src/assembly/lift_test.gd",
+      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "loadtest probe",
+      "entry": "src/dev/loadtest_probe.gd",
+      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "page editor motions and simulate by finger",
+      "entry": "src/ui/page_editor.gd",
+      "reach": "on a phone or a tablet: the timeline's Lay out the page… (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "phonepanels probe",
+      "entry": "src/dev/phonepanels_probe.gd",
+      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "mcpreach probe",
+      "entry": "src/dev/mcpreach_probe.gd",
+      "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext, its cover pictured in the answer (shots/mcpreach/pdf_cover.png or MCPREACH_OUT); every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File › Export with its save dialog still writes over when the person says so)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "ask to leave timing",
+      "entry": "tools/web/framefetch_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a request asked of the page",
+      "entry": "src/net/page_fetch.gd",
+      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "more's first rows and adding to a selection by finger",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page… first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls2 probe",
+      "entry": "src/dev/smalls2_probe.gd",
+      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "every set ranked",
+      "entry": "src/collection/set_ranking.gd",
+      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "find and replace everywhere",
+      "entry": "src/ui/find_replace_bar.gd",
+      "reach": "godot --path .  (Edit, Find and replace… or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "swapfind probe",
+      "entry": "src/dev/swapfind_probe.gd",
+      "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "swapfind phone probe",
+      "entry": "src/dev/swapfind_phone_probe.gd",
+      "reach": "tools/probe.sh swapfind_phone_probe   (windowed, 390x844 by its header; no sign-in)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "missing and moved parts on open",
+      "entry": "src/ui/moved_parts_dialog.gd",
+      "reach": "godot --path .  (File, Open a file naming parts by numbers LDraw has moved, made aliases or has no file for, e.g. vendor/omr/files/4349-1_Dragon-Fly.mpd or 6056-1.mpd: moved and alias parts open with no list, only the strip over the model saying \"N parts have new numbers in the LDraw library\" with Update all (every sub-model, one undo, Edit, Undo puts the file back byte for byte and keeps earlier edits undoable), Review… (Missing and moved parts: each number, why, the part it points to and how many in which sub-models; Replace checked) and Keep as is; a part with no file opens the list by itself and offers Search; a sub-model or carried part named as a moved number keeps its name; shown after a person's own open only (File, Open, a file, Recent, the library), never a session's, Together's or an undo's; over MCP open_model names them and replace_moved=true replaces them in 1 call)  (tools/probe.sh movedparts_probe; tools/probe.sh movedparts_phone_probe; tools/probe.sh mvreview_probe)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "movedparts probe",
+      "entry": "src/dev/movedparts_probe.gd",
+      "reach": "tools/probe.sh movedparts_probe   (headless: 10 OMR files with moved or alias parts and 3 with parts with no file, each listed against the file read apart, all replaced, Save's file changed only in those names and a turned stub's numbers, every part where it was within 0.01 LDU, undo byte for byte and redo; an attack file of CRLF, tabs, upper case, a mirrored copy, a sub-model 3 times 2 deep, a turned stub, a chain, a print, an alias, a colour stub and a sub-model and carried part named as moved numbers (left as they are), saved and opened again the same; the strip on a person's open, Review…'s list, one unchecked, Keep as is, Search on a missing part's list; a placed part then Update all, two undos and two redos; open_model's answer and replace_moved=true; de, fr and es words; MOVEDPARTS_CASES=omr,attack,dialog,edits,mcp,words for some, MOVEDPARTS_OUT=dir for each file before and after)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "movedparts phone probe",
+      "entry": "src/dev/movedparts_phone_probe.gd",
+      "reach": "tools/probe.sh movedparts_phone_probe   (windowed, 390x844 by its header: the list laid out for a phone, wholly in the window, every check box and button 44 points or more; MOVEDPARTS_OUT=dir for its picture)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "mvreview probe",
+      "entry": "src/dev/mvreview_probe.gd",
+      "reach": "MVREVIEW_CASES=listing,omr2,editfirst,mcp2,xform tools/probe.sh mvreview_probe   (headless, the movedparts review's own cases: a file's own sub-model, embedded part and shortcut blocks named as moved numbers left alone; 396-1 and 364-1 listed and replaced alike; an edit, then the replace, then two undos; open_model's answer on 40 moved numbers under 4,000 characters; every turned stub placed within 0.00001 LDU)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "copies follow only where a person could",
+      "entry": "src/assembly/assemblies.gd",
+      "reach": "godot --path .  (a sub-model placed twice, a part locked in one copy: paint, replace, move, turn, delete or paste into the other copy, by hand or a session's edit_model, is refused with \"Locked in one copy of …: …. Unlock it, or use Build › Make this copy unique\"; a part newly in the way of a twin (not its own copy, nor one it stood in already unless deeper): \"No room in … (copy 2): … is in the way there\"; nothing changes, no undo step is left and the model is not marked changed; 10179 and 10030 parts that stand in others still move with their copies; tools/probe.sh followfix_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "followfix probe",
+      "entry": "src/dev/followfix_probe.gd",
+      "reach": "tools/probe.sh followfix_probe   (headless, about 3 minutes; FOLLOWFIX_CASES=paint,mcp_move,mirror for some)",
+      "area": "building"
+    },
+    {
       "kind": "ui",
       "label": "ball joints by hand",
       "entry": "src/assembly/joint_snap.gd",
       "reach": "godot --headless --path . --script src/dev/balljoints_probe.gd  (a socket held, aimed at a ball, clicked, or a ball onto a socket; the rotate handle stands on the ball's centre; R turns it about the ball; Pose lists a ball as three turns; move_part turns a part about its ball)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "on by the joint it was picked up by",
+      "entry": "src/assembly/grip.gd",
+      "reach": "godot --path .  (X over a part's side stud, or a Select drag begun on it, then the pointer at a plate's hole: the part goes on by that stud, not its foot; a beam picked up by its end hole goes onto a pin by that hole; R turns it about the joint, T lets go of it; a part from the bin as before; tools/probe.sh grabseat_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "keptbuilt probe",
+      "entry": "src/dev/keptbuilt_probe.gd",
+      "reach": "tools/relay_probe.sh keptbuilt   (a window, 1280x720; -- --shots=DIR: 7140-1 and 12 loose lots, the counts by hand (341 pieces); its Built mark pressed once: the pool, the bin's My bricks, What can I build? and submit_design mine=true all the 12 lots alone (56), pressed again all back; edit_collection {\"built\": [\"7140-1\"]} in 1 call and {set, copies: 0}, refusals changing nothing; kept through a restart and another device; Save sets as CSV and XML read back built; rel-m304's Collection keeps the set and drops only the mark; two copies Built 1 of 2, 2 of 2, none; the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "keptbuilt api test",
+      "entry": "tools/web/keptbuilt_api.mjs",
+      "reach": "node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op built idempotent and refused with words, the mark kept through every other change, a replace import and an older app's PUT, fewer copies unmark and say so, the CSV's Built column and the XML's Built remarks read back, the older collection lot for lot)",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "connection points",
+      "entry": "src/ui/joint_marks.gd",
+      "reach": "tools/probe.sh jointmarks   (by hand: View, Connection points, on to start with: pick a 2780 pin and point it at a beam's hole, or hover a part with Select; a session: view_model marks=true)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "jointmarks probe",
+      "entry": "src/dev/jointmarks_probe.gd",
+      "reach": "tools/probe.sh jointmarks [-- --only=menu,beam,kinds,cost,written,session --orthanc --shots=DIR]   (windowed, on the GPU, 1280 x 720: on out of the box and View, Connection points off and on; a 2780 pin aimed at a 32524 beam's third hole, each hole's ring within 1 px of its mouth, hollow, a pin's size, the pin's end amber; eleven parts' studs, anti-studs, clips, bars, balls, sockets, hinges, axles, pin and axle holes each at its own size, studs and anti-studs as the catalogue counts them; the car's frame with the marks within 10% of without; the saved file, Export picture, a session's picture and a Render the same bytes; view_model marks=true in 1 call over tools/call; PROBE_COMPAT=1 for the web's renderer)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "mcpreach2 probe",
+      "entry": "src/dev/mcpreach2_probe.gd",
+      "reach": "tools/probe.sh mcpreach2_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach2_probe.gd. APP_UX9 #10: where_to_attach with nothing selected is the whole model, a picture in 1 call, its numbered points over every part and the rest as dots, parts= the parts named; render_model turntable says the camera goes once round a model that stands still; attachment_points on the walk's y6 SPIKE motor names its output's axle and pin holes apart from the case's, simulate_mechanism driver=<motor> turns the output, move_part names the motor; submit_design pool=31058-1 all in the set, over by part, 31058 read as 31058-1, two sets pooled, an unknown number said so. The relay's other-chats words: python3 tools/minitest.py tests/test_relay_chats.py)",
+      "area": "mcp"
     }
   ]
 }

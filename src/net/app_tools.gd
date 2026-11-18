@@ -103,6 +103,8 @@ const COMMANDS: Dictionary = {
 	"booklet_page_setup": "page_setup",
 	# seeing2: View, Stud directions is view_board's studs=true.
 	"stud_map": "view_board",
+	# jointmarks: View, Connection points is view_model's marks=true.
+	"joint_marks": "view_model",
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
@@ -2611,7 +2613,9 @@ func _pose(input: Dictionary) -> String:
 		for brick: BrickWorld.Brick in world.bricks():
 			ids.append(brick.id)
 		var on_balls: String = JointSnap.balls_said(world, app.get("_library"), builder.lattice, ids)
-		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls)
+		var motors: String = _motors_driven(world, app.get("_store"), app.get("_library"))
+		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls) \
+			+ ("" if motors.is_empty() else " " + motors)
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0
@@ -2720,9 +2724,12 @@ func _what_moves(grabbing: GrabDrag) -> String:
 	for key: Variant in bodies.parent_link:
 		if not bodies.flexible.has(key):
 			moving.append([(bodies.members.get(key, PackedInt64Array()) as PackedInt64Array).size(), int(key)])
+	var motors: String = _motors_driven(world, store, library)
 	if moving.is_empty():
 		lines.append("Nothing in it hangs on a joint: every part is held rigidly to what stays (%s)."
 			% bodies.summary())
+		if not motors.is_empty():
+			lines.append(motors)
 		lines.append("Nothing was changed.")
 		return "\n".join(lines)
 	moving.sort_custom(func(x: Array, y: Array) -> bool: return int(x[0]) > int(y[0]))
@@ -2741,6 +2748,8 @@ func _what_moves(grabbing: GrabDrag) -> String:
 			link.words(), GrabDrag.at_words(link.point), "" if link.holds else ", turning freely"])
 	if moving.size() > MOST_MOVING:
 		lines.append("  and %d more." % (moving.size() - MOST_MOVING))
+	if not motors.is_empty():
+		lines.append(motors)
 	lines.append("Nothing was changed. move_part part=N says what moving it does; degrees= turns it.")
 	return "\n".join(lines)
 
@@ -2931,6 +2940,21 @@ func _list_motions(input: Dictionary) -> String:
 	lines.append("play_motion {\"name\": …} plays one (reverse=true backwards); render_motion renders "
 		+ "it. Nothing was changed.")
 	return "\n".join(lines)
+
+
+## The motors, and that what is on a motor's output turns when the motor
+## drives it, not by a drag or a pose (mcpreach2): a drag holds a motor
+## whole, case and hub, so move_part listed an arm pinned to a SPIKE motor's
+## hub as moving with the case, pose_model said "Nothing here turns", and
+## APP_UX9's y6 session told the person Simulate "doesn't treat the motor's
+## output hub as something that turns" without asking it. "" for none.
+static func _motors_driven(world: BrickWorld, store: ModelStore, library: PartLibrary) -> String:
+	var motors: String = _motors_said(world, store, library)
+	if motors.is_empty():
+		return ""
+	return motors + (" What is keyed or pinned into a motor's output turns when the motor drives "
+		+ "it, not by a drag or a pose: simulate_mechanism driver=<the motor's number> turns it, and "
+		+ "attachment_points brick=<the motor's number> names the output's holes.")
 
 
 # unit spikemotors
@@ -4098,6 +4122,119 @@ func held_to_mine(answer: Variant) -> Variant:
 	return answer
 
 
+## submit_design pool= (mcpreach2, APP_UX9's past parity 1): a design held to
+## one real set's parts, or several sets' together, checked as mine=true is
+## (held_to_mine): the model as it now stands against the set's inventory as
+## What can I build? counts it (OwnCounts.set_needs: no spares, nothing nobody
+## owns alone), each part it uses more of than the set has and by how many,
+## and what in the set could stand in, said after the answer's first
+## paragraph. A set is named by its number as Rebrickable writes it
+## ("31058-1"; "31058" is its first version, SetInventories.normal), never by
+## its name: many sets share one ("Fire Station"), and a session that has only
+## a name finds the number with gallery library=true q=. None of a set under
+## test (DesignMemory.holds): its parts list is a bench session's answer.
+func held_to_pool(answer: Variant, pool: String) -> Variant:
+	var text: String = answer if answer is String else ""
+	var block: Dictionary = {}
+	if answer is Array:
+		for one: Variant in answer:
+			if one is Dictionary and str((one as Dictionary).get("type", "")) == "text":
+				block = one
+				text = str(block.get("text", ""))
+				break
+	if not text.begins_with("Built"):
+		return answer
+	var paragraphs: PackedStringArray = text.split("\n\n")
+	paragraphs.insert(1, await _pool_said(pool))
+	if block.is_empty():
+		return "\n\n".join(paragraphs)
+	block["text"] = "\n\n".join(paragraphs)
+	return answer
+
+
+## What a design held to [param pool] hears: every part in the sets named, or
+## each it goes over.
+func _pool_said(pool: String) -> String:
+	var numbers := PackedStringArray()
+	for raw: String in pool.replace(";", ",").replace(" ", ",").split(",", false):
+		var normal: String = SetInventories.normal(raw)
+		if not normal.is_empty() and not numbers.has(normal):
+			numbers.append(normal)
+	if numbers.is_empty():
+		return "pool= names no set: give a set's number, \"31058-1\" (gallery library=true q= finds one)."
+	var shell: Shell = app.get("_shell")
+	var books: CollectionStore = shell.collection_store if shell != null else null
+	var library: PartLibrary = app.get("_library")
+	if books == null or books.inventories == null:
+		return "pool=%s, but this app has no set inventories: nothing could be held to them." % pool
+	var found: Dictionary = await books.inventories.lookup(numbers)
+	var have: Dictionary = {}
+	var named := PackedStringArray()
+	var trouble := PackedStringArray()
+	var pieces_had: int = 0
+	for number: String in numbers:
+		var record: Variant = found.get(number)
+		if DesignMemory.holds(number, str((record as Dictionary).get("n", "")) if record is Dictionary else ""):
+			trouble.append("set %s is under test in this run, so its parts are not given" % number)
+			continue
+		if not record is Dictionary:
+			trouble.append(books.inventories.trouble if not books.inventories.trouble.is_empty()
+				else "no set %s is in Rebrickable's inventories (gallery library=true q= finds a set's number)" % number)
+			continue
+		named.append("%s %s" % [number, str((record as Dictionary).get("n", ""))])
+		var needs: Dictionary = OwnCounts.set_needs(record, library)
+		for key: String in needs:
+			have[key] = int(have.get(key, 0)) + int(needs[key])
+			pieces_had += int(needs[key])
+	if have.is_empty():
+		return "pool=%s: %s, so nothing could be held to it." % [pool, "; ".join(trouble)]
+	var sets: String = " and ".join(named)
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var used: Dictionary = SetBin.used_in(world, store.scenery, library)
+	var pieces: int = 0
+	for key: String in used:
+		if library == null or Collection.ownable(Collection.part_of(key), library):
+			pieces += int(used[key])
+	var rows: Array = OwnCounts.over(have, used, library)
+	var not_found: String = "" if trouble.is_empty() else " (%s)" % "; ".join(trouble)
+	if rows.is_empty():
+		return ("From %s's parts alone (pool): every one of its %s is in the set%s in its colour, "
+			+ "%s of the %s %s.%s") % [sets, Counted.of(pieces, "piece"), "s" if named.size() > 1 else "",
+			Counted.of(maxi(0, pieces_had - pieces), "piece left", "pieces left"),
+			"sets'" if named.size() > 1 else "set's", Working.comma(pieces_had), not_found]
+	var short: int = 0
+	var lines := PackedStringArray()
+	for row: Dictionary in rows:
+		short += int(row["short"])
+		if lines.size() < 40:
+			lines.append("  " + _pool_row_said(row, library))
+	if rows.size() > 40:
+		lines.append("  and %d more parts." % (rows.size() - 40))
+	return ("Over %s's parts (pool): %s it uses more of than the set%s %s, %s over in all%s:\n%s\n"
+		+ "Change each to a part the set has with edit_model, or tell the person what else they would "
+		+ "need; parts_list which=\"compare\" a=\"open\" b=\"%s\" sets the two side by side.") % [sets,
+		Counted.of(rows.size(), "part"), "s" if named.size() > 1 else "", "have" if named.size() > 1 else "has",
+		Counted.of(short, "piece"), not_found, "\n".join(lines), named[0].get_slice(" ", 0)]
+
+
+## One part over a set's: "3001 Brick 2 x 4 in Red (4): 6 used, the set has 4,
+## 2 over; it has it spare in Black (3)", as OwnCounts says a collection's.
+static func _pool_row_said(row: Dictionary, library: PartLibrary) -> String:
+	var stand_in := PackedStringArray()
+	for swap: Dictionary in row.get("swaps", []):
+		stand_in.append("%d spare in %s" % [int(swap["qty"]), OwnCounts._colour(int(swap["colour"]), library)])
+	for combo: Dictionary in row.get("combos", []):
+		var pieces := PackedStringArray()
+		for piece: Array in combo["parts"]:
+			pieces.append("%d x %s" % [int(piece[1]), OwnCounts._part(str(piece[0]), library)])
+		stand_in.append("%s in its colour for %s" % [" and ".join(pieces),
+			"one of them" if int(combo["qty"]) == 1 else "%d of them" % int(combo["qty"])])
+	return "%s in %s: %d used, the set has %d, %d over%s" % [OwnCounts._part(str(row["part"]), library),
+		OwnCounts._colour(int(row["colour"]), library), int(row["need"]), int(row["have"]), int(row["short"]),
+		"; it has " + ", ".join(stand_in) if not stand_in.is_empty() else ""]
+
+
 func _parts_list(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	var library: PartLibrary = app.get("_library")
@@ -5041,6 +5178,23 @@ static func _sorted_keys(counts: Dictionary) -> Array:
 # -- rendering and exporting ---------------------------------------------------------
 
 
+## What a turntable shows, said with it (mcpreach2). Asked for "the camera
+## circling the model while it stands still", APP_UX9's session had six
+## frames and said "I can't tell you ... the app's render could be turning the
+## car in place in front of a fixed camera". It is drawn so
+## (StudioRender.turntable turns the model, its contact shadow and its own
+## lamps on a pivot before a still camera, studio lights and backdrop), which
+## makes the very frames of a camera going round a model that stands still,
+## its lights and backdrop going round with it: so the video is said as it is
+## seen, and how it is drawn after.
+const TURNTABLE_SAID := ("What happens in it: the camera goes once round the model, a full "
+	+ "circle from the %s view's height, while the model stands still; the studio's lights and "
+	+ "backdrop go round with the camera, so the shadow keeps its side of the frame. No part of "
+	+ "the model moves. The last frame is a step short of the first, so it loops. (It is drawn "
+	+ "by turning the model on a turntable before a still camera and lights, which makes exactly "
+	+ "these frames.)")
+
+
 func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
@@ -5119,6 +5273,9 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var how: String = _best_said(dialog, chosen)
 	if not how.is_empty():
 		said = "%s. %s" % [said.trim_suffix("."), how]
+	if kind == "turntable" and dialog._last.get("output") != was \
+			and str(dialog._last.get("kind", "")) == "turntable":
+		said = "%s.\n%s" % [said.strip_edges().trim_suffix("."), TURNTABLE_SAID % view_asked]
 	if kind != "picture":
 		return _with_frames(said, dialog, was, chosen.fps)
 	if dialog.last_picture() == null:

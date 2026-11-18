@@ -589,7 +589,7 @@ const HINTS := {
 	"look_at_picture": ["See the chosen picture", "look"],
 	"selection": ["What is selected", "look"],
 	"edit_selection": ["Change the selection", "remove"],
-	"where_to_attach": ["Where the selection takes a part", "look"],
+	"where_to_attach": ["Where a part can go", "look"],
 	"choose_sketch": ["Choose a sketch", "remove"],
 	# The feature and surface passes lay pieces, for settle_feature and
 	# settle_surface to keep or take off again.
@@ -954,6 +954,9 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# they own, said with it (AppTools.held_to_mine, ownlimit).
 	if name == "submit_design" and bool(input.get("mine", false)):
 		answer = await _the_app_tools().held_to_mine(answer)
+	# A design held to one set's parts, checked the same way (mcpreach2).
+	if name == "submit_design" and not str(input.get("pool", "")).strip_edges().is_empty():
+		answer = await _the_app_tools().held_to_pool(answer, str(input["pool"]))
 	_hand_and_view_back(held)
 	return answer
 

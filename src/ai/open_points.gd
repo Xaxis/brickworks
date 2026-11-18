@@ -32,6 +32,10 @@ const PLATE := 8.0
 ## (Assistant._studs_reaching_in), and how far under an anti-stud.
 const TIP := 5.0
 const UNDER := 2.0
+## A point's [member Point.by] when it faces the ground at the ground: no part
+## goes under the ground (fits refuses one below it), so it is not free.
+## f5's car on the baseplate numbered sixteen hollows under its own bricks.
+const GROUND := -1
 ## Kinds of connector worth naming, as a person says them.
 const NAMES: Dictionary = {
 	"stud": "stud", "anti-stud": "anti-stud", "pin_hole": "pin hole",
@@ -60,7 +64,8 @@ class Point extends RefCounted:
 	var section: String = ""
 	var local_at := Vector3.ZERO
 	var face: String = "up"
-	## What is on it or in it, by number; 0 when it is free.
+	## What is on it or in it, by number; 0 when it is free, GROUND when it
+	## faces the ground at the ground.
 	var by: int = 0
 	## Its number in a list, and on the picture.
 	var number: int = 0
@@ -140,6 +145,9 @@ func points_of(ids: Array) -> Array[Point]:
 			point.by = _other_at(lattice, point.at + point.way * UNDER, brick.id)
 			out.append(point)
 	_mate_round_ones(out)
+	for point: Point in out:
+		if point.by == 0 and point.way.y < -0.7 and (point.at + point.way * UNDER).y < 0.0:
+			point.by = GROUND
 	return out
 
 

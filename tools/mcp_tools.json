@@ -1921,6 +1921,10 @@
           ],
           "type": "string"
         },
+        "marks": {
+          "description": "true marks every connection point in the picture, as View › Connection points does in the window: filled for what goes in (studs, pins, axles, bars, balls), hollow for what takes one (anti-studs, pin and axle holes, clips, sockets), each at its own size. To find a beam's third hole or where a ball goes without counting.",
+          "type": "boolean"
+        },
         "view": {
           "description": "A view the person saved with the model (View › Viewpoint), by its name, in place of from: the picture from exactly there, as their window draws it. A name it does not keep is answered with those it does.",
           "type": "string"
@@ -2811,6 +2815,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "pool": {
+          "description": "a real set's number (\"31058-1\"; \"31058\" is its first version), or several joined by commas, when the person asked for a design from that set's parts alone (\"something else from 31058\"): the answer names each part it uses more of than the set has, by how many, with what in the set could stand in. gallery library=true q= finds a set's number from its name",
+          "type": "string"
         },
         "repeat_section": {
           "items": {
@@ -3964,9 +3972,9 @@
     "annotations": {
       "openWorldHint": false,
       "readOnlyHint": true,
-      "title": "Where the selection takes a part"
+      "title": "Where a part can go"
     },
-    "description": "Where the selected parts can take another part: every open stud, anti-stud (the hollow underneath that takes a stud), side stud, pin hole, bar and clip, grouped by the way it faces, each with the part that carries it and where it is in the coordinates edit_selection takes (a section's own, for parts laid turned), and a picture with the free ones numbered. Give part= (and color=) and it seats that part on them and tries each against the model as it stands: what comes back fits and holds, to put in edit_selection's add as it is. toward= puts first the points facing that way (out: away from the model's middle, for spikes or detail on an outer face); near= {x, y, z} those nearest a place.",
+    "description": "Where parts can take another part: of the parts named (parts=), else the person's selection, else the whole model. Every open stud, anti-stud (the hollow underneath that takes a stud), side stud, pin hole, bar and clip, grouped by the way it faces, each with the part that carries it and where it is in the coordinates edit_selection and edit_model take (a section's own, for parts laid turned), and a picture with the free ones marked, the listed ones numbered. Give part= (and color=) and it seats that part on them and tries each against the model as it stands: what comes back fits and holds, to put in the add of the tool it names as it is. toward= puts first the points facing that way (out: away from the model's middle, for spikes or detail on an outer face); near= {x, y, z} those nearest a place.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4011,6 +4019,13 @@
         "part": {
           "description": "a part to seat on the open points, e.g. 49668",
           "type": "string"
+        },
+        "parts": {
+          "description": "the parts to read, by number; the selection, or the whole model, when omitted",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
         },
         "toward": {
           "enum": [

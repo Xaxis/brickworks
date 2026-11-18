@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
 
 ## Sub-features
 
@@ -824,6 +824,32 @@ picture the assistant is shown.
   words. `tools/probe.sh seeing2` (the car's 61 parts worked out from their
   connectors and read off the picture view by view; the window's colours
   and legend; pictures in SEEING2_SHOTS or user://seeing2_probe).
+- `connection points` (`src/ui/joint_marks.gd`, `JointMarks`, a Later class
+  made by `Shell._process` the first time a part is in hand or under the
+  pointer; `Builder.joint_end`; APP_UX9 jointmarks): View › Connection
+  points, on out of the box (ShellPrefs `joint_marks`), marks where parts
+  connect: with a part in hand, those of the parts within four studs of it
+  (`REACH`, nearest first, `MOST` 2,000 at most, a part of more than `BIG`
+  marks only those near where it is pointed at); with nothing in hand, the
+  part under the pointer's. Read from the part as the hand seats it
+  (`JointSnap.ends_for`, the stud connectors, `PartMesh.sockets`): filled for
+  what goes in (stud, pin, axle as a cross, bar, ball, hinge pin), hollow
+  for what takes one (anti-stud, pin hole, axle hole as a cross, clip,
+  a hollow's mouth, socket), whose inside is the size of what goes in; a
+  hole's mouth underneath is its anti-stud too, one mark. A pin or an axle
+  is marked by its ends only: its record's anti-studs along its round's side
+  (`JointMarks.on_round`) and its hollow middle drew rings in the air round
+  an upright pin (the MCP walk's session, 11-17). A bore is a clip's bar
+  line only on a part named for a clip; elsewhere a ring at each open mouth
+  where no stud, pin or axle ends. Blue what the part in hand can
+  take, faint grey what it cannot (`JointSnap.mates`; studs and anti-studs
+  by the hand's own), amber the hand's own end on the joint it is aimed at,
+  over everything. Drawn as one MultiMesh of quads, the shapes worked out in
+  the shader, a dark edge 1.25 px round each; flat on its face and gone from
+  behind, balls and sockets to the eye, bars and clips along their length.
+  A child of the builder, so Export picture's `aside` hides it; ModelShot,
+  StudioRender and the booklet draw worlds of their own. `tools/probe.sh
+  jointmarks` (pictures in user://jointmarks_probe or --shots=DIR).
 - `controls panel and hint`: the keys sheet, opened with `F1` or Help, Keys and
   controls, and every key on it actually doing that; Settings (`,`, Tools,
   Settings…) is the same panel's other face (`ControlsDialog.open()` and

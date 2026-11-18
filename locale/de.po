@@ -12120,6 +12120,15 @@ msgstr "Noppenrichtungen: jedes Teil danach eingefärbt, wohin seine Noppen zeig
 msgid "stud directions off"
 msgstr "Noppenrichtungen aus"
 
+# View, Connection points (APP_UX9 jointmarks): where a part connects, marked
+# while one is in hand and on the part under the pointer.
+
+msgid "Connection points"
+msgstr "Verbindungspunkte"
+
+msgid "Mark where parts connect, on the parts near the one in hand and on the part under the pointer: studs, pins, axles, bars and balls filled, what takes them hollow"
+msgstr "Markiert, wo Teile sich verbinden, an den Teilen nahe dem Teil in der Hand und am Teil unter dem Zeiger: Noppen, Pins, Achsen, Stangen und Kugeln gefüllt, was sie aufnimmt hohl"
+
 # Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
 # Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
 
