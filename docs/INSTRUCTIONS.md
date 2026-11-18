@@ -1962,6 +1962,30 @@ page… up on its page: no step there shows a picture drawn of another. The
 whole probe, windowed on the GPU with 30050-1, 106-1 and 10016-1 after,
 passes its 524 checks.
 
+Four releases shipped a fault this probe saw (mergekeep, 2026-11-18). After
+"Merge with next" on the yellow step, the reopen put yellow's settings on
+the step before it, and a second save differed from the first. Two causes.
+Every save took out each "0 !BRICKWORKS PAGE …" line as a shared link's
+step list (SharedPages), "PAGE NEW" and "PAGE ALONE" too, and the looks put
+them back by their neighbours, after the merged step's parts: read again,
+the step before had the page. And the booklet's per-page line went in at the
+first step with parts, so with the steps before it empty the reader counted
+one step fewer. Now only the shared link's lines, "PAGE {…}", are taken out,
+and the first step's STEP line goes above the lines that step had of its
+own. The probe now makes every edit beside the merge (split, take out,
+earlier, later, add at the end, the last two merged), also with the steps
+before the yellow emptied first; each is saved, opened and saved again, and
+the second save must be the first byte for byte. Its file half
+(`--no-booklet`) runs headless, so the release train runs it
+(tools/suite/headless.txt).
+
+A step that MLCad's buffer exchange starts ("0 BUFEXCHG A RETRIEVE") is not
+merged with the one before it, nor taken out into it: LPub3D shows the
+stored model where the RETRIEVE stands, so in one step the earlier step's
+parts would never be shown. The app says so and changes nothing. A STORE
+needs no such care: it keeps the model as it is where it stands, the same
+in the middle of a merged step as at the end of the first.
+
 `booklet_edit_flow.mjs`, in a browser, moves 106-1's step 4, the one with a
 drawn arrow, a new page, words and a picture. Its parts stand on step 3's and
 step 5's stand on it, so Later and Earlier are both refused. Merging steps 1
