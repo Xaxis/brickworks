@@ -173,6 +173,7 @@ body {
 .count strong { font-weight: 600; color: var(--ink); }
 .note { font-size: 13px; color: var(--ink-faint); max-width: 46ch; }
 .note.bad { color: var(--error); max-width: 60ch; }
+.eta { font-size: 13px; color: var(--ink-soft); max-width: 46ch; }
 
 .legal {
 	align-self: end;
@@ -220,6 +221,7 @@ $GODOT_HEAD_INCLUDE
 		<div class="status">
 			<div class="count"><strong id="laid">0</strong> <span id="count-of">of</span> <span id="total">0</span> <span id="count-bricks">bricks</span></div>
 			<div class="note" id="note">Fetching parts…</div>
+			<div class="eta" id="eta" role="status" hidden></div>
 		</div>
 	</div>
 
@@ -261,6 +263,10 @@ const loaderSays = (function () {
 			"Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.": "Dein Modell ist in einem anderen Brickworks-Tab dieses Browsers geöffnet. Wechsle zu diesem Tab, um weiterzumachen; diesen hier kannst du schließen.",
 			"● Your model is here": "● Dein Modell ist hier",
 			"Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.": "Brickworks konnte seinen Teilekatalog nicht laden ({why}). Lade die Seite neu, um es noch einmal zu versuchen.",
+			"This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.": "Dieser Browser kann das Studio nicht in 3D zeichnen: Ihm fehlt WebGL 2. Schalte in seinen Einstellungen die Hardwarebeschleunigung ein oder aktualisiere ihn, oder öffne Brickworks in einem anderen Browser oder an einem Computer. Die Seite eines Modells zeigt weiterhin sein Bild und seine Teile.",
+			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Erster Besuch auf diesem Handy: noch etwa {n} s. Spätere Besuche starten schneller.",
+			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Erster Besuch auf diesem Handy: noch etwa {n} min. Spätere Besuche starten schneller.",
+			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Dieser Browser gibt dem Studio nicht den Speicher, den es braucht ({why}). Schließe andere Tabs und lade neu, oder öffne Brickworks an einem Computer.",
 		},
 		fr: {
 			"Every brick, at the size it really is.": "Chaque brique, à sa vraie taille.",
@@ -278,6 +284,10 @@ const loaderSays = (function () {
 			"Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.": "Votre modèle est ouvert dans un autre onglet Brickworks de ce navigateur. Passez à cet onglet pour continuer ; celui-ci peut être fermé.",
 			"● Your model is here": "● Votre modèle est ici",
 			"Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.": "Brickworks n’a pas pu charger son catalogue de pièces ({why}). Rechargez la page pour réessayer.",
+			"This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.": "Ce navigateur ne peut pas afficher le studio en 3D : il n’a pas WebGL 2. Activez l’accélération matérielle dans ses réglages ou mettez-le à jour, ou ouvrez Brickworks dans un autre navigateur ou sur un ordinateur. La page d’un modèle montre toujours son image et ses pièces.",
+			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Première visite sur ce téléphone : encore environ {n} s. Les visites suivantes démarrent plus vite.",
+			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Première visite sur ce téléphone : encore environ {n} min. Les visites suivantes démarrent plus vite.",
+			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Ce navigateur ne donne pas au studio la mémoire dont il a besoin ({why}). Fermez d’autres onglets et rechargez, ou ouvrez Brickworks sur un ordinateur.",
 		},
 		es: {
 			"Every brick, at the size it really is.": "Cada ladrillo, a su tamaño real.",
@@ -295,6 +305,10 @@ const loaderSays = (function () {
 			"Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.": "Tu modelo está abierto en otra pestaña de Brickworks en este navegador. Cambia a esa pestaña para seguir; esta se puede cerrar.",
 			"● Your model is here": "● Tu modelo está aquí",
 			"Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.": "Brickworks no pudo cargar su catálogo de piezas ({why}). Vuelve a cargar la página para intentarlo de nuevo.",
+			"This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.": "Este navegador no puede mostrar el estudio en 3D: no tiene WebGL 2. Activa la aceleración por hardware en su configuración o actualízalo, o abre Brickworks en otro navegador o en un ordenador. La página de un modelo sigue mostrando su imagen y sus piezas.",
+			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Primera visita en este teléfono: faltan unos {n} s. Las próximas visitas empiezan antes.",
+			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Primera visita en este teléfono: faltan unos {n} min. Las próximas visitas empiezan antes.",
+			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Este navegador no le da al estudio la memoria que necesita ({why}). Cierra otras pestañas y vuelve a cargar, o abre Brickworks en un ordenador.",
 		},
 	};
 	let code = "";
@@ -443,13 +457,18 @@ const loaderSays = (function () {
 		requestAnimationFrame(tick);
 	})();
 
+	// What went wrong stays said: the files still coming, the start's other
+	// steps and the wall never write over it.
+	let failed = false;
 	function say(text, bad) {
+		if (failed && !bad) return;
 		note.textContent = loaderSays(text);
 		note.classList.toggle("bad", Boolean(bad));
 	}
 
 	function fail(text) {
 		running = false;
+		failed = true;
 		say(text, true);
 		laidLabel.textContent = String(shown);
 	}
@@ -471,8 +490,20 @@ const loaderSays = (function () {
 
 	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
 	if (missing.length) {
-		let message = loaderSays("This browser is missing: {what}.", { what: missing.join(", ") });
-		if (GODOT_THREADS_ENABLED) {
+		// Without WebGL 2 the studio cannot draw at all, whatever comes: said
+		// plainly with what to do instead, at once rather than after the
+		// download, and the engine's files asked for in <head> let go
+		// (phonetruth, docs/PHONE.md). three.js, which the model pages' 3D
+		// view draws with, needs it too, so that is not offered instead.
+		if (missing.some(function (one) { return /^WebGL2\b/.test(one); })) {
+			fail("This browser can't draw the studio in 3D: it has no WebGL 2. Turn on hardware acceleration in its settings or update it, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.");
+			try { window.stop(); } catch (e) {}
+			return;
+		}
+		// Godot's names, without its advice to whoever serves the page.
+		const names = missing.map(function (one) { return one.split(" - ")[0]; });
+		let message = loaderSays("This browser is missing: {what}.", { what: names.join(", ") });
+		if (GODOT_THREADS_ENABLED && names.some(function (one) { return /Cross-Origin|SharedArrayBuffer/.test(one); })) {
 			message += " " + loaderSays("Threads need the page served with {headers}.", { headers:
 				"Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Embedder-Policy: require-corp" });
 		}
@@ -1377,6 +1408,106 @@ const loaderSays = (function () {
 		else if (!(packs.data && packs.data.gave_up)) setTimeout(function () { whenUp(then); }, 50);
 	}
 
+	// A first visit on a phone told how long it will take, as it loads
+	// (phonetruth, docs/PHONE.md): the engine's files at the rate they are
+	// coming, then what a phone takes to start the studio once they are here
+	// (phone_start_s: the console's Switches, /api/plans?op=phone; measured at
+	// a mid-range Android phone's speed). A phone is a touch screen with no
+	// fine pointer whose shorter side is under 600 px (web/phone-warn.js
+	// judges one the same); a tablet, a computer, and a phone that has
+	// started this engine before (its address, /e/<hash>/, kept when it last
+	// came up) are told nothing. window.brickworksEta is what it worked out.
+	const eta = (function () {
+		const line = document.getElementById("eta");
+		const wasm = document.querySelector('link[rel="preload"][href$=".wasm"]');
+		const engineAt = wasm ? wasm.href : "";
+		let had = "";
+		try { had = localStorage.getItem("brickworks.engineHad") || ""; } catch (e) {}
+		let phone = false;
+		try {
+			phone = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches
+				&& Math.min(screen.width, screen.height) < 600;
+		} catch (e) {}
+		const state = window.brickworksEta = { on: phone && Boolean(engineAt) && had !== engineAt, phone: phone,
+			start_s: 40, from: 0, got: 0, current: 0, total: 0, rate: 0, end: 0, left: NaN, said: "" };
+		if (state.on) {
+			fetch("/api/plans?op=phone").then(function (reply) { return reply.ok ? reply.json() : null; }).then(function (rules) {
+				const told = Number(rules && rules.phone_start_s);
+				if (told >= 1 && told <= 600) state.start_s = told;
+			}).catch(function () {});
+		}
+		let ticking = 0;
+		function show() {
+			const now = performance.now();
+			if (state.end) state.left = state.start_s - (now - state.end) / 1000;
+			else if (state.rate > 0) state.left = (state.total - state.current) / state.rate + state.start_s;
+			else return;
+			if (state.left < 5) {
+				line.hidden = true;
+				return;
+			}
+			const minutes = state.left >= 90;
+			const n = minutes ? Math.ceil(state.left / 60) : Math.ceil(state.left / 5) * 5;
+			state.said = loaderSays(minutes ? "First visit on this phone: about {n} min to go. Later visits start sooner."
+				: "First visit on this phone: about {n} s to go. Later visits start sooner.", { n: n });
+			line.textContent = state.said;
+			line.hidden = false;
+		}
+		return {
+			progress: function (current, total) {
+				if (!state.on || !(total > 0)) return;
+				const now = performance.now();
+				if (!state.from) {
+					state.from = now;
+					state.got = current;
+				}
+				state.current = current;
+				state.total = total;
+				// A second of it before a rate is trusted: the first answer
+				// counts what the head's preload had already brought.
+				if (now - state.from >= 1000) state.rate = (current - state.got) / ((now - state.from) / 1000);
+				if (current >= total && !state.end) state.end = now;
+				if (!ticking) ticking = setInterval(show, 1000);
+				show();
+			},
+			up: function () {
+				this.stop();
+				try { if (engineAt) localStorage.setItem("brickworks.engineHad", engineAt); } catch (e) {}
+			},
+			// For good: a start that failed is told no time to wait.
+			stop: function () {
+				state.on = false;
+				if (ticking) clearInterval(ticking);
+				ticking = 0;
+				line.hidden = true;
+			},
+		};
+	})();
+
+	// The engine's memory refused: a 2 GB shared one, which this build asks
+	// for, is more than iOS Safari would make on some iPhones
+	// (godotengine/godot#70621; docs/PHONE.md). index.js makes it as its
+	// script runs, outside the start's promise, so the refusal is heard
+	// from the window too until the engine is up; else the loader would sit
+	// at its last words for ever. Said once, as what it is.
+	const MEMORY_REFUSED = /out of memory|could not allocate|WebAssembly\.Memory/i;
+	let refusalSaid = false;
+	function memoryRefused(why) {
+		if (refusalSaid || started || !MEMORY_REFUSED.test(why)) return false;
+		refusalSaid = true;
+		eta.stop();
+		// The engine cannot start, so its files still coming are let go.
+		try { window.stop(); } catch (e) {}
+		fail(loaderSays("This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.", { why: why.slice(0, 80) }));
+		return true;
+	}
+	window.addEventListener("error", function (event) {
+		memoryRefused(String((event.error && event.error.message) || event.message || ""));
+	});
+	window.addEventListener("unhandledrejection", function (event) {
+		memoryRefused(String((event.reason && event.reason.message) || event.reason || ""));
+	});
+
 	const engine = new Engine(GODOT_CONFIG);
 	claimTab().catch(function (trouble) {
 		console.error("could not choose this tab's session", trouble);
@@ -1392,6 +1523,7 @@ const loaderSays = (function () {
 		hereWhenAsked(tab.id);
 		return startEngine({
 			onProgress: function (current, total) {
+				eta.progress(current, total);
 				if (total > 0) {
 					downloaded = Math.min(1, current / total) * DOWNLOAD_SHARE;
 					if (downloaded >= DOWNLOAD_SHARE) {
@@ -1408,6 +1540,7 @@ const loaderSays = (function () {
 		writePacks();
 		writeLater();
 		whenUp(function () {
+			eta.up();
 			running = false;
 			downloaded = 1;
 			creep = 0;
@@ -1429,7 +1562,8 @@ const loaderSays = (function () {
 			setTimeout(function () { GODOT_CONFIG.canvas.focus(); }, 700);
 		});
 	}, function (error) {
-		fail(String(error));
+		eta.stop();
+		if (!memoryRefused(String((error && error.message) || error)) && !refusalSaid) fail(String(error));
 		console.error(error);
 	});
 })();

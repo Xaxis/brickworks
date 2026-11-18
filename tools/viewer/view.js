@@ -28,11 +28,14 @@ export const CLAY = new Color(0xc9ced6);
 const CORNER = [0.72, 0.52, 0.72];
 const FETCHING = 12;
 
-// Whether this browser can draw in 3D at all.
+// Whether this browser can draw in 3D at all: with WebGL 2, the one
+// three.js draws with since r163 (pinned 0.186.1, build.mjs). A browser with
+// WebGL 1 alone passed here and then failed inside three.js, said as a load
+// that went wrong rather than a browser that cannot (phonetruth).
 export function webglWorks() {
   try {
     const probe = document.createElement("canvas");
-    const gl = probe.getContext("webgl2") || probe.getContext("webgl");
+    const gl = probe.getContext("webgl2");
     if (!gl) return false;
     const lose = gl.getExtension("WEBGL_lose_context");
     if (lose) lose.loseContext();

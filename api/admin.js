@@ -152,6 +152,9 @@
 //   POST /api/admin?op=notice_set        {words: {en, de?, fr?, es?}, tone}:
 //                                        a notice on every page here
 //   POST /api/admin?op=notice_clear      the notice taken down
+//   POST /api/admin?op=phone_rules       {phone_parts?, phone_start_s?}: the
+//                                        numbers a phone is warned by
+//                                        (phonetruth, api/_phone.js), here
 //   POST /api/admin?op=run_cron&job=J    a safe cron run now, with
 //                                        CRON_SECRET, on the server
 //   POST /api/admin?op=export&account=U  every row of the account, as JSON
@@ -215,6 +218,7 @@ import { mailRead } from "./_console_mail.js";
 import { connectorRead } from "./_console_connector.js";
 import { siteRead, supabaseHealth } from "./_console_site.js";
 import { noticeClear, noticeSet, switchesRead } from "./_console_switches.js";
+import { phoneSet } from "./_phone.js";
 import { dataRead, runCron, withRunNow } from "./_console_data.js";
 import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
 import { challengeView } from "./_console_challenges.js";
@@ -293,6 +297,8 @@ export default async function handler(request, response) {
     // Part C (console3).
     unbar_model: unbarModel, notice_set: noticeSet, notice_clear: noticeClear, run_cron: runCron, export: exportAccount,
     delete_account: deleteAccount, sign_out: signOut,
+    // The numbers a phone is warned by (phonetruth).
+    phone_rules: phoneSet,
     // The social desk (socialdesk, api/_social.js; docs/SOCIAL_DESK.md). Of
     // these, only social_send sends anything anywhere, and only what the
     // owner pressed it on.

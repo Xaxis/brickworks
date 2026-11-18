@@ -81,6 +81,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
@@ -116,6 +117,7 @@
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
+        "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
@@ -175,6 +177,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
@@ -231,6 +234,7 @@
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
       "tests": [
+        "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
@@ -278,6 +282,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
@@ -315,14 +320,15 @@
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_console2.py",
+        "tests/test_flows_for.py",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
+        "tests/test_console3.py",
         "tests/test_feedback.py",
-        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py",
@@ -341,6 +347,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -360,6 +367,7 @@
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -2333,6 +2341,22 @@
       "tests": []
     },
     {
+      "id": "cli:phonetruth measures",
+      "kind": "cli",
+      "entry": "tools/web/phonetruth_flow.mjs",
+      "reach": "node --env-file=.env tools/web/phonetruth_flow.mjs --url=https://brickworks.diy/app --out=DIR --configs=chromium,cpu4,cpu6,iphone13,iphone15 [--steps=load,frames,ladder] [--table]   (under heavy, local only: Chromium phone emulation, Playwright WebKit as an iPhone 13 and 15 (software GL, multi-finger touch by tools/web/fingers.mjs), Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and a return, peak memory (process Pss, Wasm, JS heap), frames turning the car and Orthanc, the largest gallery model kept; DIR/phonetruth.md is docs/PHONE.md's table; tools/web/phonewalk_flow.mjs --engine=webkit --device=\"iPhone 13\" | --cpu=4 --net=fast4g walks it by finger)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:phonewarn browser flow",
+      "kind": "cli",
+      "entry": "tools/web/phonewarn_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/phonewarn_flow.mjs --url=<preview>/app --owner --out=DIR   (at 1280x800, 390x844 touch and 820x1180 touch: the big-model question on the phone alone and its three answers, the 3D view unasked; Switches' Phones number set as the owner and obeyed by the page, then put back (never on brickworks.diy); no WebGL 2 said on all three with the engine's files let go; a phone's first visit on Fast 4G timed, a return, the computer and the tablet told nothing; preview check [phonewarn])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:photographed light in a browser",
       "kind": "cli",
       "entry": "tools/web/light_render_flow.mjs",
@@ -3476,6 +3500,14 @@
       "tests": []
     },
     {
+      "id": "endpoint:the numbers a phone is warned by",
+      "kind": "endpoint",
+      "entry": "api/_phone.js",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "lib:3d model files",
       "kind": "lib",
       "entry": "src/parts/mesh_file.gd",
@@ -3628,6 +3660,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
@@ -4491,6 +4524,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
@@ -4621,7 +4655,9 @@
       "entry": "supabase/console2.sql",
       "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_flows_for.py"
+      ]
     },
     {
       "id": "lib:the console's part C",
@@ -4629,7 +4665,9 @@
       "entry": "supabase/console3.sql",
       "reach": "python3 tools/minitest.py tests/test_console3.py   (console3.sql and api/admin.js's data, find, challenge_view, switches, unbar_model, notice_set, notice_clear, run_cron, export, delete_account and sign_out against a real Postgres: the gate, reads unaudited and writes audited, Run now's address, the typed deletion, the export's caps, no value in switches)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_flows_for.py"
+      ]
     },
     {
       "id": "lib:the console's reads and audit",
@@ -5019,6 +5057,14 @@
       "tests": []
     },
     {
+      "id": "ui:a phone asked before a big model opens",
+      "kind": "ui",
+      "entry": "web/phone-warn.js",
+      "reach": "<deployment>/m/<id> or /library/set/<n> on a phone (touch only, shorter side under 600 px): Build it, Open in Brickworks or the 3D view's way into the studio, on a model past phone_parts (/api/plans?op=phone, set in /admin#switches Phones), asks \"About N parts: on a phone this may close the tab\" first; Not now or Escape stays, Open it anyway goes on; the picture's 3D view, a computer, a tablet and a smaller model are never asked (web/model-page.js loads it); preview check [phonewarn]",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:a pose that holds its own weight",
       "kind": "ui",
       "entry": "src/assembly/pose_hold.gd",
@@ -5197,6 +5243,7 @@
         "tests/test_console.py",
         "tests/test_console2.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_site_lang.py"
       ]
     },
@@ -5662,6 +5709,7 @@
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_insights.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
@@ -6086,7 +6134,8 @@
       "area": "web",
       "tests": [
         "tests/test_alike.py",
-        "tests/test_bench.py"
+        "tests/test_bench.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -6183,6 +6232,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
+        "tests/test_console3.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -6400,7 +6450,8 @@
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
       "area": "model-io",
       "tests": [
-        "tests/test_docs_site.py"
+        "tests/test_docs_site.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -6530,6 +6581,7 @@
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
@@ -6947,6 +6999,7 @@
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_insights.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
@@ -6970,6 +7023,14 @@
       "entry": "src/render/pointer_pace.gd",
       "reach": "tools/probe.sh hover_cost_probe   (on the GPU: Orthanc, Select in hand; -- --model=res://... for another)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:the loader's words for a phone and a browser without WebGL 2",
+      "kind": "ui",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app: no WebGL 2 is said at once in plain words with what to do instead, and the engine's files are let go (window.stop); a first visit on a phone (#eta, window.brickworksEta) says how long it will take as the files come, plus phone_start_s; a return (localStorage brickworks.engineHad is this engine's /e/<hash>/), a computer and a tablet are told nothing; the engine's memory refused is said as that; preview check [phonewarn]",
+      "area": "web",
       "tests": []
     },
     {
@@ -7063,6 +7124,7 @@
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -7279,6 +7341,7 @@
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py"
       ]

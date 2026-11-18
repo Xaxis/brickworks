@@ -21,12 +21,17 @@ import { pageRoute } from "./page_routes.mjs";
 // Every browser any script here starts reads the parts bucket from this
 // machine's copy (storage_mirror.mjs), each object from Supabase at most once.
 import "./storage_mirror.mjs";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { canSignIn, endOwnAccount, ownAccount, signInContext, TEST_EMAIL } from "./session.mjs";
 
 export const SOFTWARE = [
   "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
 ];
+
+/// WebKit's environment, drawing in software too: Mesa's llvmpipe, never
+/// the GPU (phonetruth, 2026-11-18). Playwright's WebKit on Linux is WPE,
+/// whose WebGL is Mesa's; asked for software, it opens no render node.
+export const WEBKIT_SOFTWARE = { LIBGL_ALWAYS_SOFTWARE: "1", GALLIUM_DRIVER: "llvmpipe" };
 
 // How long a page has for the app to come up and show its controls: five
 // minutes, which a fresh page of the web build drawn in software needs on a
@@ -113,13 +118,18 @@ export async function instantScroll(context) {
 }
 
 export async function launch(options = {}) {
-  const { signedOut = false, realCounter = false, ownAccount: own = false, ...rest } = options;
+  const { signedOut = false, realCounter = false, ownAccount: own = false, engine = "chromium", ...rest } = options;
   // A run's own account is deleted before the run ends, stopped too, so the
   // run answers its signals itself (ownAccount), not Playwright.
   const mine = own && !signedOut && canSignIn();
   const email = mine ? await ownAccount() : TEST_EMAIL;
   const signals = mine ? { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } : {};
-  const browser = await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
+  // { engine: "webkit" }: Playwright's WebKit, the engine of every iPhone
+  // browser, in software (WEBKIT_SOFTWARE); it speaks no CDP, so its
+  // routes are Playwright's own (page_routes.mjs).
+  const browser = engine === "webkit"
+    ? await webkit.launch({ ...signals, ...rest, env: { ...process.env, ...WEBKIT_SOFTWARE, ...(rest.env || {}) } })
+    : await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
   const made = browser.newContext.bind(browser);
   // Every page of every context takes a dropped picture again (steady_shots.mjs).
   const steady = (context) => { context.on("page", (page) => steadyShots(page)); return context; };

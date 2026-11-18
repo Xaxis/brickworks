@@ -24,7 +24,9 @@ Everything below is `tools/release.py`; `--help` lists its commands.
   (`tools/release/train.sh`, with no `--probes`; `tools/release/README.md`),
   never a windowed one. Every train from v0.15.0 to rel-m256 was staged
   with none, eight probes went red on main unseen, and desktop016's run of
-  the whole suite held 0.16.0 on them (2026-11-04).
+  the whole suite held 0.16.0 on them (2026-11-04). A web lane train runs
+  none, as its app is the one the full train before it probed and exported
+  (`tools/release/README.md`, "Which lane").
 - **New parts once a month**, before that month's release, in the main
   checkout with nothing else building or measuring (every worktree reads
   its library and catalogue): `heavy tools/update_parts.py`. It fetches

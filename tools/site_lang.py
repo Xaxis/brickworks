@@ -197,7 +197,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "mosaicHtml",
                             "collectionCardHtml", "basedHtml", "keepHtml", "listCount",
                             "awardsHtml", "levelName", "levelAwards", "rulesSaid", "brokenSaid"),
-            "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
+            "web/start3d.js": (), "web/phone-warn.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
             # In your room (APP_UX5 #13, arview).

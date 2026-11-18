@@ -2925,6 +2925,10 @@
   "Your browser asks sites not to track it (Do Not Track or Global Privacy Control), so nothing is counted.": "Dein Browser bittet Websites, ihn nicht zu verfolgen (Do Not Track oder Global Privacy Control), daher wird nichts gezählt.",
   "This browser is driven by a program, so nothing is counted.": "Dieser Browser wird von einem Programm gesteuert, daher wird nichts gezählt.",
   "Counted in this browser.": "In diesem Browser wird gezählt.",
-  "Not counted in this browser.": "In diesem Browser wird nicht gezählt."
+  "Not counted in this browser.": "In diesem Browser wird nicht gezählt.",
+  "A big model for a phone": "Ein großes Modell für ein Handy",
+  "About {parts} parts: on a phone this may close the tab. A phone gives a tab much less memory than a computer does, and a model this big can use it all.": "Etwa {parts} Teile: Auf einem Handy kann das den Tab schließen. Ein Handy gibt einem Tab viel weniger Speicher als ein Computer, und ein so großes Modell kann ihn ganz aufbrauchen.",
+  "{name} opens as it should on a computer.": "{name} öffnet sich auf einem Computer, wie es soll.",
+  "Open it anyway": "Trotzdem öffnen"
  }
 }

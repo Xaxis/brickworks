@@ -20,7 +20,10 @@
 ##   S5_SAVE=DIR   each save written there, named the same in any snapshot
 ##
 ## Exits 1 when a row fails that KNOWN does not hold: the faults base has
-## (pre261 e04dbde4b, the same probe), each owned by a unit to come.
+## (pre261 e04dbde4b, the same probe), each owned by a unit to come. A
+## known row is said "known" with why, never FAIL, as hpreview says its
+## own: a release counts every FAIL line as a failure whatever the exit,
+## and held rel-m312 on this probe's known rows (m312fix, 2026-11-18).
 extends "res://src/dev/keep_text_probe.gd"
 
 const FILES: Array = [
@@ -85,12 +88,13 @@ func _run() -> void:
 	ModelStore.patch_files = true
 	print("\ns5steps rows:")
 	var new_faults: PackedStringArray = PackedStringArray()
-	for row: String in _s5_rows:
-		print("  " + row)
-		var label: String = row.substr(5)
-		if row.begins_with("FAIL") and not KNOWN.has(label):
+	for row: Array in _s5_rows:
+		var mark: String = row[0]
+		var label: String = row[1]
+		print("  %s %s" % [mark, label])
+		if mark == "FAIL":
 			new_faults.append(label)
-		elif row.begins_with("ok") and KNOWN.has(label):
+		elif mark == "ok  " and KNOWN.has(label):
 			print("    (known, and passes now: %s)" % KNOWN[label])
 	print("s5steps: %d unlike or lost, %d not known: %s" % [_s5_bad, new_faults.size(), ", ".join(new_faults)])
 	_world.clear()
@@ -213,14 +217,16 @@ func _s5_one(name: String, text: String, section: String, tag: String, op: Strin
 		unlike = _s5_touched(text, saved, name)
 	var counted: bool = op.ends_with("_at") or op == "to_last" or shown.size() == pages_before + expect
 	var ok: bool = unlike.is_empty() and resaved == saved and counted
-	print("  %s %s (\"%s\"): %s, saved in %d ms; pages %d -> %d shown, %d reopened%s; saves to itself %s%s" % [
-		"ok  " if ok else "FAIL", label, said.get_slice("\n", 0).left(70),
+	var mark: String = "ok  " if ok else "known" if KNOWN.has(label) else "FAIL"
+	print("  %s %s (\"%s\"): %s, saved in %d ms; pages %d -> %d shown, %d reopened%s; saves to itself %s%s%s" % [
+		mark, label, said.get_slice("\n", 0).left(70),
 		"patched" if wrote.is_empty() else "whole: " + wrote.left(50), took, pages_before, shown.size(),
 		again.size(), "" if counted else " (expected %+d)" % expect, resaved == saved,
-		"" if unlike.is_empty() else "\n      UNLIKE " + unlike])
+		"" if unlike.is_empty() else "\n      UNLIKE " + unlike,
+		"" if mark != "known" else "\n      (known: %s)" % KNOWN[label]])
 	if not ok:
 		_s5_bad += 1
-	_s5_rows.append("%s %s" % ["ok  " if ok else "FAIL", label])
+	_s5_rows.append([mark, label])
 
 
 func _s5_keep(name: String, what: String, mode: String, text: String) -> void:

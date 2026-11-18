@@ -1241,6 +1241,23 @@
             <p class="note" id="settings-note" role="status"></p>
           </div>
           <div class="part">
+            <div class="lead"><h3 id="h-phones">Phones</h3><p class="note" id="phones-said"></p></div>
+            <form id="phones-form" class="card console-form" aria-labelledby="h-phones">
+              <p class="note">What a phone is told before the studio opens, on <span id="phones-scope">this site</span>, from
+                what was measured on phones (docs/PHONE.md). Pages read a change within a minute or two.</p>
+              <label>Parts a phone opens without a warning <small id="phone_parts-was"></small>
+                <input name="phone_parts" type="number" inputmode="numeric" min="50" max="100000" step="1" required></label>
+              <p class="note">A model past it asks first on a phone, from its page: "About N parts: on a phone this may
+                close the tab". Computers and tablets are never asked.</p>
+              <label>Seconds a phone takes to start the studio once it has its files <small id="phone_start_s-was"></small>
+                <input name="phone_start_s" type="number" inputmode="numeric" min="1" max="600" step="1" required></label>
+              <p class="note">A first visit on a phone is told how long it will take as it loads: the files at the rate
+                they are coming, then these seconds.</p>
+              <div class="row"><button type="submit" class="cta">Keep them</button>
+                <span class="note" id="phones-note" role="status"></span></div>
+            </form>
+          </div>
+          <div class="part">
             <div class="lead"><h3 id="h-variables">Deployment variables</h3><p class="note" id="variables-said"></p></div>
             <div class="tools">
               <input type="search" id="variables-q" placeholder="Search variables" aria-label="Search variables">
