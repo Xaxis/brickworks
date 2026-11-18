@@ -121,6 +121,7 @@
         "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
@@ -241,6 +242,7 @@
         "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
@@ -331,6 +333,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -352,6 +355,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/db2_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -375,6 +379,7 @@
         "tests/test_feedback.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -4761,7 +4766,7 @@
       "id": "lib:the owner's notifications",
       "kind": "lib",
       "entry": "api/_notify.js",
-      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
+      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; how a visit came kept for the tab by web/theme.js and read by the studio's sign-in, or worked out there for a visit that began at /app (came_check.mjs); owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
       "area": "web",
       "tests": []
     },
@@ -4971,7 +4976,9 @@
       "entry": "web/faq.html",
       "reach": "https://brickworks.diy/faq   (the two ways to bring Claude, and the questions)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/owner_notify/came_check.mjs"
+      ]
     },
     {
       "id": "ui:LDraw library page",
@@ -5718,6 +5725,7 @@
       "tests": [
         "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
@@ -6244,6 +6252,7 @@
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_console3.py",
@@ -6997,6 +7006,7 @@
       "tests": [
         "tests/test_gallery_tabs.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
@@ -7313,6 +7323,7 @@
       "reach": "https://brickworks.diy/profile?tab=achievements   (signed in, once supabase/achievements.sql is applied: a tile a track, its level, how far the next is and the way there); the profile browser flow, locally",
       "area": "web",
       "tests": [
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_achievements.py",
         "tests/test_console3.py",
         "tests/test_share_unknowns.py",
@@ -7405,6 +7416,7 @@
       "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, Achievements, ?tab=)",
       "area": "web",
       "tests": [
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_achievements.py",
         "tests/test_console3.py",
         "tests/test_share_unknowns.py",

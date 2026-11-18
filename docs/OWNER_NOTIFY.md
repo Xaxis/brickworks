@@ -87,7 +87,7 @@ own docs. **unconfirmed** means no source said it either way.
 
 | Kind | Raised where | Default | Notes |
 |---|---|---|---|
-| A new sign-up | api/otp.js (the account made as its first code is asked for), api/orangecheck.js | on, at once | The handle, and how they came: the referring site or a link's `utm_` tags. web/theme.js reads them on the visit's first page that has them and keeps them for that tab alone (sessionStorage, gone when it closes), so a page or two later, or in the studio, they are still known. They are sent only with a sign-in code asked for in that tab: the site's form (web/account.js, web/authorize.js) or the studio's (src/account/account.gd) |
+| A new sign-up | api/otp.js (the account made as its first code is asked for), api/orangecheck.js | on, at once | The handle, and how they came: the referring site or a link's `utm_` tags. web/theme.js reads them on the visit's first page that has them and keeps them for that tab alone (sessionStorage, gone when it closes), so a page or two later, or in the studio, they are still known. They are sent only with a sign-in code asked for in that tab: the site's form (web/account.js, web/authorize.js) or the studio's (src/account/account.gd). The studio's page loads no theme.js, so the studio reads the tab's keep itself; a visit that began in the studio works it out from its own address and referrer by the same rule, and keeps it for the site's sign-in it may go on to (orangecheck). tests/fixtures/owner_notify/came_check.mjs runs both, page after page in one tab |
 | A first model published | api/share.js | on, at once | Its name, parts, whether listed, a link |
 | A bug report or feedback | api/_feedback.js | on, at once | Its kind and first words, from `@handle`, "someone signed in, with no handle yet" or "someone signed out", never an address; a link to Feedback |
 | Plans and payments | api/plans.js, Admission's signed webhook | on, at once | Bought, changed, cancelling, cancelled, a failed payment; renewals are not mailed |
@@ -252,9 +252,16 @@ nothing else on the site notices.
   Postgres of its own: no role but the server's reaches a table, and each
   check refuses in its own name. It then applies owner_notify2.sql twice
   over the rows already there, which keeps them all.
+- `tests/fixtures/owner_notify/came_check.mjs` runs web/theme.js's
+  first touch and the studio's read of it (account.gd `_CAME_JS`) page
+  after page in one tab: kept to the next page and to the studio, worked
+  out in the studio for a visit that began there and kept for the site's
+  sign-in, nothing from the site's own pages, nothing thrown in a browser
+  that keeps nothing for the tab.
 - `tools/web/account_flow.mjs` (preview check `account`) starts on the
   landing page from another site's tagged link, goes into the studio, and
-  checks that the code the studio asks for says how the visit came.
+  checks that the code the studio asks for says how the visit came. Only a
+  deployment shows it: the studio's page there is the export's.
 - `tools/web/ownernotify_flow.mjs` (preview check `ownernotify`) uses the
   page as the owner does, in the checks' pool, at 1280 and 430, light and
   dark. It refuses brickworks.diy.
