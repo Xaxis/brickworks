@@ -247,16 +247,18 @@ sets the height, not the catalogue. `phonetruth_flow` on the after build
    use until a press (the assistant, Together, the booklet, the forge)
    loaded on first use, as the Later scripts already are. It is the start's
    largest phase on every engine and the whole of its memory.
-2. **The Wasm's compiled code kept between visits.** Godot's loader
-   hands `instantiateStreaming` a Response it made itself, to count the
-   download, so V8 cannot keep the module's compiled code for the next
-   visit: a desktop return still compiled the Wasm for 7.3 s. Handing it
-   the fetched Response, and counting a clone, is a few lines in the
-   export's `index.js`; a return on Chromium is where it would show.
-   WebKit has no such cache that this unit found, so iPhones would gain
-   little.
-3. **The window** (9.3 s at CPU/4): what `_ready` builds that the first
+2. **The window** (9.3 s at CPU/4): what `_ready` builds that the first
    screen does not show.
+
+**Tried, and not a cut: the Wasm's compiled code kept between visits.** Godot's loader
+hands `instantiateStreaming` a Response it made itself, to count the
+download, and a desktop return still compiled the Wasm for 5–7 s, so
+V8's code cache looked lost. Handing it the fetched Response instead
+(the export's `index.js` patched, the progress read off a clone) did
+not help: 3 pairs on a desktop, the return's compile 5.4 → 6.1 s,
+working slower in all 3 (x1.1;
+`bench/results/webstart11-2026-11-18/codecache-desktop/`). Why V8 kept
+nothing is not found; until it is, this is not a cut.
 
 ## The no-threads export on WebKit
 
