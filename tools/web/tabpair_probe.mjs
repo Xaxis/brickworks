@@ -240,7 +240,7 @@ const intoHeld = await c.call("select_tab", { tab: "castle" });
 // and how to tell (api/mcp.js quietWords, mcpreach2).
 check(`chat C chooses the castle anyway, and is told another chat called there before it: "${intoHeld.words.slice(0, 200)}"`,
   intoHeld.words.includes("Before this chat's first call here, another chat called in this tab")
-  && intoHeld.words.includes("if this conversation called Brickworks earlier, that was its own calls")
+  && intoHeld.words.includes("if this conversation called Brickworks earlier, that was its own call.")
   && !intoHeld.words.includes("Careful"));
 const aOn = await a.call("edit_model", { add: [] });
 check(`chat A calls again, and is told C is working there since it began, "both" for two: "${aOn.words.slice(0, 220)}"`,
