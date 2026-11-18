@@ -98,6 +98,8 @@ func _run() -> void:
 		if arg.begins_with("shots="):
 			_shots = arg.trim_prefix("shots=").trim_suffix("/") + "/"
 	await _start()
+	process_frame.connect(_on_process_frame)
+	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
 	_new = _world.get("program") != null
 	print("hpreview_probe: %dx%d, %s build" % [size.x, size.y, "hubprogram" if _new else "merge-base"])
 	if only.is_empty() or ("," + only + ",").contains(",files,"):
@@ -220,7 +222,7 @@ func _mcpopen() -> void:
 ## focus, Stop, and undo after a kept Clear.
 func _again() -> void:
 	print("\nagain: Ctrl+S with words in the box, Stop, undo after Clear")
-	var fix: String = FileAccess.get_file_as_string(FIX_PATH)
+	var fix: String = _named(FileAccess.get_file_as_string(FIX_PATH), "hpr_ctrls")
 	_write(MODELS + "hpr_ctrls.ldr", fix)
 	_main.call("clear_model")
 	await _frames(6)
@@ -245,7 +247,8 @@ func _again() -> void:
 	_check("Ctrl+S with the box in focus writes the words in the box (%s; model's %s; focus %s)" % [
 		_said(said), _program_now().left(30).c_escape(), box.has_focus()],
 		said.size() == 1 and str(said[0][1]).contains("30° at 20%"))
-	_check("...and nothing is left unsaved (%s)" % _store.has_unsaved_work(), not bool(_store.has_unsaved_work()))
+	_check("...and nothing is left unsaved (%s), no dialog asking (%s)" % [_store.has_unsaved_work(),
+		", ".join(_asking())], not bool(_store.has_unsaved_work()) and _asking().is_empty())
 	# Typed again, unsaved, then another model opened in its place: the
 	# words were this one's, dropped with it; never the other's.
 	await _type_text(" ")
@@ -324,13 +327,19 @@ func _again() -> void:
 	await _open(MODELS + "hpr_ctrls.ldr")
 	var had: String = _program_now()
 	var parts: int = _world.brick_count()
+	var own: int = parts - _store.scenery.size()
 	_main.call("clear_model", true)
 	await _frames(6)
 	_note("cleared: %d parts, program %s" % [_world.brick_count(), _program_now().c_escape()])
 	await _verbs.press("undo")
 	await _settled()
-	_check("undo after Clear: %d parts of %d, the program back (%s)" % [_world.brick_count(), parts,
-		_program_now().left(30).c_escape()], _world.brick_count() == parts and _program_now() == had)
+	# The model's own parts, the floor apart: the floor is Clear's to lay
+	# again, and was counted twice after the undo (15 of 14), hubprogram or
+	# not (main._clear_undone; said, not this feature's).
+	var own_after: int = _world.brick_count() - _store.scenery.size()
+	_check("undo after Clear: the model's %d parts of %d (%d with the floor, of %d), the program back (%s)" % [
+		own_after, own, _world.brick_count(), parts, _program_now().left(30).c_escape()],
+		own_after == own and _program_now() == had)
 
 
 func _start() -> void:
@@ -619,6 +628,10 @@ func _history() -> void:
 	_note("undo after Clear: %d parts, program %s" % [_world.brick_count(), _program_now().c_escape()])
 
 	print("  words typed in the box, then Ctrl+S with the box still in focus")
+	# Named, so Ctrl+S saves it where it is: the fixture's "0 Untitled" made
+	# Ctrl+S ask for a name, and the dialog stayed open over every later
+	# section, taking their keys and clicks (hpreview's again and mcpopen).
+	fix = _named(fix, "hpr_ctrls")
 	_write(MODELS + "hpr_ctrls.ldr", fix)
 	_main.call("clear_model")
 	await _frames(6)
@@ -640,8 +653,8 @@ func _history() -> void:
 	_check("Ctrl+S with the box in focus writes the words in the box (%s; model's %s; file changed %s)" % [
 		_said(said), _program_now().left(30).c_escape(), after != fix],
 		said.size() == 1 and str(said[0][1]).contains("30° at 20%"))
-	# New with the words still in the box.
-	_note("has_unsaved_work with the words in the box: %s" % _store.has_unsaved_work())
+	_check("...with no dialog left asking (%s)" % ", ".join(_asking()), _asking().is_empty())
+	_note("has_unsaved_work after Ctrl+S: %s" % _store.has_unsaved_work())
 	_panel.call("close")
 	await _frames(6)
 	_note("after closing Simulate, the model's program %s; has_unsaved_work %s" % [
@@ -677,16 +690,17 @@ func _plays() -> void:
 			str(timed["said"]).left(160), timed["worst_ms"], timed["prep_ms"], timed["seconds"]],
 			str(timed["said"]).begins_with(str(case[1])))
 		await _stop_now(run)
-	print("  long programs: does any frame hang? (F6: 174 ms and 117 ms; the bar is 16 ms)")
+	print("  long programs: does any frame hang? (F6: 174 ms and 117 ms; the bar is 16 ms of work a frame)")
+	_worst_work = 0.0
 	var idle: float = await _idle_worst(120)
-	print("    the longest of 120 frames with nothing running: %.1f ms" % idle)
+	print("    120 frames with nothing running: the longest %.1f ms, its work %.1f ms" % [idle, _worst_work])
 	for program: String in ["repeat 1000\n  turn 360° at 100%", "run 100% for 600 s",
 			"repeat 1000\n  repeat 1000\n    wait 0.001 s", "repeat 1000\n  turn 1° at 100%\n  turn -1° at 100%",
 			"repeat 1000\n  to 36000° at 100%\n  to -36000° at 100%"]:
 		var timed: Dictionary = await _run_timed(program, 30.0)
-		_check("%s: the longest frame %.1f ms (prepared in %.0f ms; %d moves, %s s): %s" % [program.c_escape(),
-			timed["worst_ms"], timed["prep_ms"], timed["moves"], timed["seconds"], str(timed["said"]).left(120)],
-			float(timed["worst_ms"]) < 16.0)
+		_check("%s: the most work in a frame %.1f ms (the longest frame %.1f ms; prepared in %.0f ms; %d moves, %s s): %s" % [
+			program.c_escape(), timed["work_ms"], timed["worst_ms"], timed["prep_ms"], timed["moves"], timed["seconds"],
+			str(timed["said"]).left(120)], float(timed["work_ms"]) < 16.0)
 		await _stop_now(run)
 	print("  Stop mid-program")
 	var beam: BrickWorld.Brick = _world.get_brick(int(rig["beam"]))
@@ -743,6 +757,42 @@ func _plays() -> void:
 		str(hp.call("ran_words", ran, ports)).contains("#7 is on no port"))
 
 
+## [param text] with its title line (the second) [param title]: a model
+## with a name of its own, saved by Ctrl+S under it.
+static func _named(text: String, title: String) -> String:
+	var lines: PackedStringArray = text.split("\n")
+	lines[1] = "0 " + title
+	return "\n".join(lines)
+
+
+## The dialogs showing, by name: one left open takes every key after it.
+func _asking() -> PackedStringArray:
+	var out := PackedStringArray()
+	for node: Node in root.find_children("*", "AcceptDialog", true, false):
+		if (node as Window).visible:
+			out.append("%s \"%s\"" % [node.name, (node as AcceptDialog).dialog_text.left(60)])
+	return out
+
+
+## What the frame's processing took apart from its drawing: from
+## process_frame, which comes before every node's _process and every await
+## of it (the run's slices among them), to frame_pre_draw, which comes as
+## the drawing begins. On this box a frame's drawing alone took up to 85 ms
+## with nothing running (Xvfb, under load), so the wall clock's frame says
+## nothing of what the program costs; the work it adds is here.
+var _frame_began: int = 0
+var _worst_work: float = 0.0
+
+
+func _on_process_frame() -> void:
+	_frame_began = Time.get_ticks_usec()
+
+
+func _on_pre_draw() -> void:
+	if _frame_began > 0:
+		_worst_work = maxf(_worst_work, (Time.get_ticks_usec() - _frame_began) / 1000.0)
+
+
 ## The longest of [param count] frames from now, in ms.
 func _idle_worst(count: int) -> float:
 	var last: int = Time.get_ticks_usec()
@@ -761,6 +811,7 @@ func _run_timed(program: String, most_s: float) -> Dictionary:
 	_panel.call("set_program", program)
 	await _frames(2)
 	var said_before: String = str(_panel.call("said").get("program", ""))
+	_worst_work = 0.0
 	var began: int = Time.get_ticks_usec()
 	var last: int = began
 	var worst: float = 0.0
@@ -785,7 +836,7 @@ func _run_timed(program: String, most_s: float) -> Dictionary:
 		worst = maxf(worst, (now - last) / 1000.0)
 		last = now
 	var ran: Dictionary = _panel.get("_ran")
-	return {"worst_ms": worst, "prep_ms": prep, "said": _panel.call("said").get("program", ""),
+	return {"worst_ms": worst, "work_ms": _worst_work, "prep_ms": prep, "said": _panel.call("said").get("program", ""),
 		"moves": (ran.get("moves", []) as Array).size(), "seconds": Simulation.figure(snappedf(float(ran.get("seconds", 0.0)), 0.01))}
 
 

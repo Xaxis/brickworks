@@ -441,8 +441,9 @@ var _stack: Array = []
 ## begin_stops and stops_step, a program's way. Made in one go, 2,000 moves
 ## held a frame 174 ms (hpreview F6).
 func begin_run(ports: Dictionary, reach: Callable) -> void:
-	ran = {"moves": [], "seconds": 0.0, "stopped": {}, "refusal": "", "starts": PackedFloat64Array(),
-		"by_port": {}}
+	# Arrays, not packed ones: a packed array read out of the run to append
+	# to is a copy, and the run's stayed empty (every motor at 0, line 0).
+	ran = {"moves": [], "seconds": 0.0, "stopped": {}, "refusal": "", "starts": [], "by_port": {}}
 	_stack = []
 	_state = {}
 	if not errors.is_empty():
@@ -458,7 +459,7 @@ func begin_run(ports: Dictionary, reach: Callable) -> void:
 	_state = {"t": 0.0, "angles": {}}
 	for port: String in used:
 		_state["angles"][port] = 0.0
-		ran["by_port"][port] = [PackedFloat64Array(), PackedInt32Array()]
+		ran["by_port"][port] = [[], []]
 	_stack = [[lines, 0, 1]]
 
 
@@ -500,7 +501,7 @@ func _move(statement: Statement) -> bool:
 			+ "that does less. Repeat it fewer times.") % [MOST_MOVES, int(MOST_SECONDS / 60.0)]
 		return false
 	if statement.verb == "wait":
-		(ran["starts"] as PackedFloat64Array).append(t)
+		(ran["starts"] as Array).append(t)
 		moves.append({"line": statement.line, "port": "", "verb": "wait", "from": 0.0, "to": 0.0,
 			"start": t, "end": t + statement.seconds})
 		_state["t"] = t + statement.seconds
@@ -524,9 +525,9 @@ func _move(statement: Statement) -> bool:
 	if statement.verb == "run" and why.is_empty():
 		seconds = statement.seconds
 	var mine: Array = ran["by_port"][port]
-	(mine[0] as PackedFloat64Array).append(t)
-	(mine[1] as PackedInt32Array).append(moves.size())
-	(ran["starts"] as PackedFloat64Array).append(t)
+	(mine[0] as Array).append(t)
+	(mine[1] as Array).append(moves.size())
+	(ran["starts"] as Array).append(t)
 	moves.append({"line": statement.line, "port": port, "verb": statement.verb, "from": from,
 		"to": at, "start": t, "end": t + seconds, "speed": statement.speed,
 		"wanted": to})
@@ -548,12 +549,12 @@ static func angles_at(ran: Dictionary, t: float) -> Dictionary:
 	var moves: Array = ran.get("moves", [])
 	var by_port: Dictionary = ran.get("by_port", {})
 	for port: String in by_port:
-		var starts: PackedFloat64Array = (by_port[port] as Array)[0]
-		var numbers: PackedInt32Array = (by_port[port] as Array)[1]
+		var starts: Array = (by_port[port] as Array)[0]
+		var numbers: Array = (by_port[port] as Array)[1]
 		if starts.is_empty():
 			continue
 		var k: int = starts.bsearch(t, false) - 1
-		var move: Dictionary = moves[numbers[maxi(k, 0)]]
+		var move: Dictionary = moves[int(numbers[maxi(k, 0)])]
 		if k < 0:
 			out[port] = float(move["from"])
 			continue
@@ -568,7 +569,7 @@ static func angles_at(ran: Dictionary, t: float) -> Dictionary:
 ## the last move begun by then that is still going or takes no time.
 static func line_at(ran: Dictionary, t: float) -> int:
 	var moves: Array = ran.get("moves", [])
-	var starts: PackedFloat64Array = ran.get("starts", PackedFloat64Array())
+	var starts: Array = ran.get("starts", [])
 	var k: int = starts.bsearch(t, false) - 1
 	while k >= 0:
 		var move: Dictionary = moves[k]

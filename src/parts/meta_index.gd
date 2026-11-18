@@ -583,11 +583,15 @@ static func _plain(line: String) -> bool:
 ## and tabs; and JSON as what it says, its keys in order and its numbers as
 ## numbers, so a file's "at":[0,0,0] says what the app's [0.0,0.0,0.0] does
 ## and an unedited save keeps the file's line (metalines).
+##
+## Read by a parser of its own: JSON.parse_string logs an engine error for
+## every line it cannot read, and a malformed line is the file's, kept (a
+## malformed PROGRAM line logged one at each open and save, hpreview F8).
 static func clean_of(word: String, said: String) -> String:
 	if said.begins_with("{") or said.begins_with("["):
-		var parsed: Variant = JSON.parse_string(said)
-		if parsed != null:
-			said = JSON.stringify(parsed, "", true)
+		var json := JSON.new()
+		if json.parse(said) == OK:
+			said = JSON.stringify(json.data, "", true)
 	elif said.contains("\t") or said.contains("  "):
 		said = " ".join(LdrModel._fields(said))
 	return "0 " + WORD + " " + word + ("" if said.is_empty() else " " + said)
