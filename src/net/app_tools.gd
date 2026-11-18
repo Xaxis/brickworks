@@ -411,7 +411,8 @@ it. Nothing else can be done in the app while a job runs.
  - replace_parts: Find and Replace, as Edit › Find and replace… does, in one call and one \
 undo step: find= a part, a colour or both, replace= another part, colour or both, where= \
 "all" (every sub-model and every copy of one), "submodel" or "selection". It lists where \
-they are and in which colours, and says where a new part will not sit the same."""
+they are and in which colours, and says where a new part will not sit the same. rare=true \
+swaps the lots hard to buy (3 sets or fewer) for common ones, as the parts list's rare row."""
 
 
 func definitions() -> Array:
@@ -6381,6 +6382,103 @@ func _point_at(input: Dictionary) -> String:
 	return said
 
 
+# -- rareswap (APP_UX9 #12): replace_parts rare=, the lots hard to buy swapped -----------
+
+## replace_parts rare=true: the model's rare lots (RareSwap), each with its
+## swap, swapped as one undo step as the parts list's rare row swaps them,
+## or only the lots= named, or listed with preview=true. Said as the rare
+## count before and after.
+func _rare_swap(input: Dictionary, finder: RefCounted) -> String:
+	if input.get("rare") != true:
+		return "rare= is true: replace_parts rare=true lists the lots hard to buy and swaps them."
+	if input.has("find") or input.has("replace") or input.has("where"):
+		return ("rare=true takes no find=, replace= or where=: it finds the lots hard to buy "
+			+ "everywhere itself. Give lots= to swap only some.")
+	var named: Dictionary = {}
+	if input.has("lots"):
+		if not input.get("lots") is Array or (input.get("lots") as Array).is_empty():
+			return "lots= is a list of lots as the rare list names them: lots= [\"3794a/19\"]."
+		for key: Variant in input.get("lots"):
+			named[str(key).strip_edges().to_lower().trim_suffix(".dat")] = true
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var swapper: RefCounted = Later.script(&"RareSwap").new(library)
+	var stock: Inventory = Inventory.of(app.get("_world"), library, store.scenery)
+	if stock.pieces == 0:
+		return "The model has no parts yet."
+	var rare: Dictionary = await _rare_counted(swapper, stock, library)
+	var lots: Array = rare["lots"]
+	var said := PackedStringArray()
+	said.append(_rare_heading(rare, stock))
+	if lots.is_empty():
+		return "\n".join(said)
+	await swapper.call("offer_all", lots, finder)
+	var known: Dictionary = {}
+	for lot: RefCounted in lots:
+		known[lot.get("key")] = true
+		if not named.is_empty():
+			lot.set("picked", named.has(lot.get("key")) and lot.call("offered"))
+	var unknown: Array = named.keys().filter(func(key: String) -> bool: return not known.has(key))
+	for lot: RefCounted in lots:
+		var tags := PackedStringArray()
+		if lot.call("offered") and not lot.get("picked"):
+			tags.append("kept: " + ("its print stays; name it in lots= to swap it for the plain part"
+				if lot.call("drops_print") else "not named in lots="))
+		said.append("- %s [%s]%s" % [swapper.call("lot_words", lot), lot.get("key"),
+			"" if tags.is_empty() else " (" + "; ".join(tags) + ")"])
+	if not unknown.is_empty():
+		said.append("No rare lot %s here: lots= names them as the list above does." % ", ".join(unknown))
+	if bool(input.get("preview", false)):
+		said.append("Nothing changed (preview): replace_parts rare=true swaps those picked, "
+			+ "lots= [...] only those named.")
+		return "\n".join(said)
+	var done: Dictionary = await swapper.call("swap", lots, finder)
+	if int(done["changed"]) == 0:
+		said.append("Nothing changed%s." % (": " + "; ".join(done["stayed"])
+			if not (done["stayed"] as PackedStringArray).is_empty() else ": no lot was picked"))
+		return "\n".join(said)
+	var after: Inventory = Inventory.of(app.get("_world"), library, store.scenery)
+	var left: Dictionary = swapper.call("rare_of", after)
+	said.append("%s, as one undo step%s. Rare lots now: %d of %d (were %d)." % [
+		str(done["words"]).capitalize().left(1) + str(done["words"]).substr(1),
+		"" if (done["stayed"] as PackedStringArray).is_empty()
+			else "; stayed: " + "; ".join(done["stayed"]),
+		(left["lots"] as Array).size(), after.lot_count(), lots.size()])
+	return "\n".join(said)
+
+
+## [param swapper]'s rare lots of [param stock] once every lot's counts are
+## here: the web fetches a part's colours file the first time it is asked,
+## so it is asked again as they come, for up to 20 s.
+func _rare_counted(swapper: RefCounted, stock: Inventory, library: PartLibrary) -> Dictionary:
+	var rare: Dictionary = swapper.call("rare_of", stock)
+	var until: int = Time.get_ticks_msec() + 20000
+	while int(rare["waiting"]) > 0 and Time.get_ticks_msec() < until:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		rare = swapper.call("rare_of", stock)
+	return rare
+
+
+## "Rare lots (each in 3 sets or fewer in its colour, by Rebrickable's set
+## inventories): 4 of 119 lots, 14 pieces." with those it could not count.
+func _rare_heading(rare: Dictionary, stock: Inventory) -> String:
+	var lots: Array = rare["lots"]
+	var pieces: int = 0
+	for lot: RefCounted in lots:
+		pieces += int(lot.get("count"))
+	var said: String = ("Rare lots (each comes in its colour in 3 sets or fewer, by "
+		+ "Rebrickable's set inventories): %d of %d lots, %d pieces." % [lots.size(),
+		stock.lot_count(), pieces]) if not lots.is_empty() \
+		else "No lot is rare: each comes in its colour in more than 3 sets, by Rebrickable's set inventories (%d lots)." % stock.lot_count()
+	if int(rare["unknown"]) > 0:
+		said += " %d more %s no set counts to judge by." % [int(rare["unknown"]),
+			"has" if int(rare["unknown"]) == 1 else "have"]
+	if int(rare["waiting"]) > 0:
+		said += " %d could not be counted yet." % int(rare["waiting"])
+	return said
+# end rareswap
+
+
 # -- swapfind (APP_UX8 #9): Find and Replace into every sub-model ---------------------
 
 static func _replace_parts_definition() -> Dictionary:
@@ -6410,8 +6508,14 @@ static func _replace_parts_definition() -> Dictionary:
 			+ "in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a "
 			+ "number the library has (search_parts finds one), and the answer names the part "
 			+ "it puts in. With no replace= or with preview=true it changes nothing and lists "
-			+ "only."),
-		"input_schema": {"type": "object", "additionalProperties": false, "required": ["find"],
+			+ "only. rare=true, in place of find= and replace=, lists the lots hard to buy (a "
+			+ "part in a colour that comes in 3 sets or fewer, by Rebrickable's inventories) "
+			+ "each with a swap that comes in 20 or more: the same shape in its colour (another "
+			+ "mould, or a print's plain part) or the nearest colour (ΔE), and swaps them all "
+			+ "as one undo step, as the parts list's rare row does; a print keeps its print "
+			+ "unless lots= names it. lots= [\"3023b/379\", ...] swaps only those; with "
+			+ "preview=true it lists and changes nothing."),
+		"input_schema": {"type": "object", "additionalProperties": false,
 			"properties": {
 				"find": parts,
 				"replace": parts,
@@ -6419,6 +6523,11 @@ static func _replace_parts_definition() -> Dictionary:
 					"description": "where to look; \"all\" when not given"},
 				"preview": {"type": "boolean",
 					"description": "list what would change, and change nothing"},
+				# rareswap (APP_UX9 #12)
+				"rare": {"type": "boolean",
+					"description": "the lots that come in 3 sets or fewer, each swapped for a common part or colour; no find= or replace= with it"},
+				"lots": {"type": "array", "items": {"type": "string"},
+					"description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"); a print named here swaps to its plain part"},
 			}},
 	}
 
@@ -6432,6 +6541,8 @@ static func _replace_parts_definition() -> Dictionary:
 ## guess, and named in the answer (F4).
 func _replace_parts(input: Dictionary) -> String:
 	var finder: RefCounted = Later.script(&"FindReplace").new(app)
+	if input.has("rare") or input.has("lots"):
+		return await _rare_swap(input, finder)
 	for side: String in ["find", "replace"]:
 		if input.has(side) and not input.get(side) is Dictionary:
 			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]

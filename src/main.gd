@@ -6564,6 +6564,8 @@ func _make_inventory() -> void:
 	# Its rows' pictures, and a row clicked: those parts, in the model.
 	list.thumbnails = _thumbnails
 	list.chosen.connect(_show_found)
+	# Its rare lots swapped through Find and Replace (rareswap).
+	list.set("app", self)
 	# And what the collection lacks of it (Shell's collection).
 	list.need_wanted.connect(func() -> void:
 		if _shell != null and _shell.collection != null:

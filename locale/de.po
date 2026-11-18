@@ -14910,3 +14910,122 @@ msgstr "keine Sets zum Speichern: füge sie zuerst unter Was ich habe hinzu"
 
 msgid "fewer copies came back than were marked Built, so those are no longer marked: %s%s"
 msgstr "es kamen weniger Exemplare zurück als als Aufgebaut markiert waren, also sind diese nicht mehr markiert: %s%s"
+
+# rareswap (APP_UX9 #12): the parts list's row for the lots that come in 3 sets or fewer, their swaps for a common part or colour, picked or not, put in as one undo step
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it: swap for common parts…"
+msgstr "1 Posten kommt in %d Sets oder weniger vor, also haben ihn wenige Verkäufer: gegen gängige Teile tauschen…"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them: swap for common parts…"
+msgstr "%d Posten kommen in %d Sets oder weniger vor, also haben sie wenige Verkäufer: gegen gängige Teile tauschen…"
+
+msgid "1 lot comes in %d sets or fewer, so few sellers have it"
+msgstr "1 Posten kommt in %d Sets oder weniger vor, also haben ihn wenige Verkäufer"
+
+msgid "%d lots come in %d sets or fewer, so few sellers have them"
+msgstr "%d Posten kommen in %d Sets oder weniger vor, also haben sie wenige Verkäufer"
+
+msgid "Swapped %s for common ones, %s"
+msgstr "%s gegen gängige getauscht, %s"
+
+msgid "1 rare lot"
+msgstr "1 seltener Posten"
+
+msgid "%d rare lots"
+msgstr "%d seltene Posten"
+
+msgid "Still rare: %s"
+msgstr "Noch selten: %s"
+
+msgid "No lot is rare now"
+msgstr "Jetzt ist kein Posten mehr selten"
+
+msgid "Counting the sets each part comes in…"
+msgstr "Zähle die Sets, in denen jedes Teil vorkommt…"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories: each swap is a part or a colour in %d sets or more, picked or not, put in as one undo step"
+msgstr "Jeder kommt in seiner Farbe in %d Sets oder weniger vor, nach den Set-Inventaren von Rebrickable: Jeder Ersatz ist ein Teil oder eine Farbe in %d Sets oder mehr, ausgewählt oder nicht, eingesetzt in einem einzigen Rückgängig-Schritt"
+
+msgid "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories"
+msgstr "Jeder kommt in seiner Farbe in %d Sets oder weniger vor, nach den Set-Inventaren von Rebrickable"
+
+msgid "Back to the list"
+msgstr "Zurück zur Liste"
+
+msgid "The parts list, nothing swapped"
+msgstr "Die Teileliste, nichts getauscht"
+
+msgid "Swap 1 lot"
+msgstr "1 Posten tauschen"
+
+msgid "Swap %d lots"
+msgstr "%d Posten tauschen"
+
+msgid "Put the picked swaps in, as one undo step"
+msgstr "Die ausgewählten Ersatzteile einsetzen, in einem einzigen Rückgängig-Schritt"
+
+msgid "Rare lots, and a common swap for each"
+msgstr "Seltene Posten und ein gängiger Ersatz für jeden"
+
+msgid "Finding a common part or colour for each…"
+msgstr "Suche für jeden ein gängiges Teil oder eine gängige Farbe…"
+
+msgid "A swap is a part or a colour in %d sets or more: the same shape in the lot's colour where there is one, else the nearest colour"
+msgstr "Ein Ersatz ist ein Teil oder eine Farbe in %d Sets oder mehr: dieselbe Form in der Farbe des Postens, wo es eine gibt, sonst die nächste Farbe"
+
+msgid "A print's plain part is not picked unless you pick it"
+msgstr "Das unbedruckte Teil eines Drucks wird nicht ausgewählt, außer du wählst es aus"
+
+msgid "Swap this lot"
+msgstr "Diesen Posten tauschen"
+
+msgid "No part or colour of it comes in %d sets"
+msgstr "Kein Teil und keine Farbe davon kommt in %d Sets vor"
+
+msgid "rare: %s"
+msgstr "selten: %s"
+
+msgid "in 1 set"
+msgstr "in 1 Set"
+
+msgid "in %s sets"
+msgstr "in %s Sets"
+
+msgid "in no set"
+msgstr "in keinem Set"
+
+msgid "%d × %s (%s) in %s, %s → %s"
+msgstr "%d × %s (%s) in %s, %s → %s"
+
+msgid "%s, %s (ΔE %s)"
+msgstr "%s, %s (ΔE %s)"
+
+msgid "%s (%s), the same shape and connections in its colour, %s"
+msgstr "%s (%s), dieselbe Form und dieselben Verbindungen in seiner Farbe, %s"
+
+msgid "the plain %s (%s), without its print, %s"
+msgstr "das unbedruckte %s (%s), ohne seinen Druck, %s"
+
+msgid "no swap in %d sets or more: %s"
+msgstr "kein Ersatz in %d Sets oder mehr: %s"
+
+msgid "it comes in %d sets at most, in any colour"
+msgstr "es kommt in höchstens %d Sets vor, in jeder Farbe"
+
+msgid "it comes in 1 set at most, in any colour"
+msgstr "es kommt in höchstens 1 Set vor, in jeder Farbe"
+
+msgid "no colour of its transparency comes in %d sets"
+msgstr "keine Farbe seiner Transparenz kommt in %d Sets vor"
+
+msgid "nothing swapped"
+msgstr "nichts getauscht"
+
+msgid "nothing swapped: %s"
+msgstr "nichts getauscht: %s"
+
+msgid "stayed: %s"
+msgstr "geblieben: %s"
+
+msgid "%s: %s's shape could not be had"
+msgstr "%s: die Form von %s war nicht zu bekommen"

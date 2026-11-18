@@ -16,6 +16,12 @@
 ## 1x2 brick"), and Enter selects all of those. Studio's palette has an "In
 ## model" view that does this; without it, finding where the one blue 1 x 2
 ## brick of a hotel was had no route at all (walk180, 2026-10-23).
+##
+## And a row over them for the lots that are hard to buy (rareswap, APP_UX9
+## #12): each lot whose part comes in its colour in three sets or fewer
+## (RareSwap), marked on its own row with how many, and the swaps for them
+## listed under the row, each a common part or colour, picked or not, put in
+## by Find and Replace as one undo step.
 class_name InventoryPanel
 extends PanelContainer
 
@@ -33,6 +39,9 @@ var held: Dictionary = {}
 var held_title: String = ""
 ## What the model uses by the same key, worked out as the list is shown.
 var _used: Dictionary = {}
+## The app (Main), for a rare lot's swap through Find and Replace; null, and
+## no swap offered, in a shared model's viewer (rareswap).
+var app: Node = null
 
 var _rows: GridContainer
 var _scroll: ScrollContainer
@@ -68,6 +77,29 @@ var _pickabrick: Button
 ## by name. Wrapped at the panel's foot, as many lines as it needs.
 var _note: Label
 var _done: Button
+# rareswap (APP_UX9 #12): the rare lots' row, and their swaps in its place.
+var _world: BrickWorld
+var _scenery: Dictionary = {}
+var _swapper: RefCounted = null      ## RareSwap
+var _finder: FindReplace = null
+## The rare lots of the stock shown (RareSwap.Lot), rarest first.
+var _rare: Array = []
+## How many lots' set counts are still on their way (the web's colours files).
+var _rare_waiting: int = 0
+## What the last swap did, said on the row once the list is taken again.
+var _swapped_words: String = ""
+var _rare_row: Button
+var _swaps_scroll: ScrollContainer
+var _swaps: VBoxContainer
+var _swap_bar: HBoxContainer
+var _swap_now: Button
+var _swap_back: Button
+var _swap_note: Label
+## Each rare lot's row in the list, by its key: the rows tagged "in 2 sets".
+var _rare_rows: Dictionary = {}
+## The swap list is being made or put in.
+var _swapping: bool = false
+# end rareswap
 
 signal closed
 ## Select these bricks and show them: a row clicked, or Enter in the find.
@@ -115,6 +147,14 @@ func controls_by_name() -> Dictionary:
 		named["bricklink_list"] = _wanted_list
 		named["bricklink_notify"] = _notify
 		named["bricklink_save"] = _wants_dialog.get_ok_button()
+	if _rare_row.visible:
+		named["parts_rare"] = _rare_row
+	if _swaps_scroll.visible:
+		named["parts_swap"] = _swap_now
+		named["parts_swap_back"] = _swap_back
+		var boxes: Array = _swap_boxes()
+		if not boxes.is_empty():
+			named["parts_swap_row"] = boxes[0]
 	# The first row shown, which a click selects in the model.
 	if _rows.get_child_count() > 0:
 		named["parts_row"] = _rows.get_child(0)
@@ -193,6 +233,7 @@ func _build() -> void:
 	_find.text_changed.connect(func(_text: String) -> void: _filter())
 	_find.text_submitted.connect(func(_text: String) -> void: _choose_shown())
 	column.add_child(_find)
+	_build_rare(column)
 
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -208,6 +249,7 @@ func _build() -> void:
 	_rows.add_theme_constant_override("v_separation", 2)
 	_scroll.add_child(_rows)
 	_sight = ThumbTile.Sight.new(_scroll, _rows)
+	_build_swaps(column)
 
 	# At the foot, under the rows: a list written never moves the row under
 	# the pointer.
@@ -228,9 +270,13 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 		scenery: Dictionary, title: String) -> bool:
 	library = from_library
 	_title = title
+	_world = world
+	_scenery = scenery
 	_stock = Inventory.of(world, from_library, scenery)
 	if _stock.pieces == 0:
 		return false
+	_take_rare()
+	_show_rows()
 
 	_heading.text = _counts()
 	_note.visible = false
@@ -244,10 +290,12 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 		for lot: Inventory.Lot in _stock.lots:
 			var key: String = Collection.key_of(lot.part_id, lot.color_code, library)
 			_used[key] = int(_used.get(key, 0)) + lot.count
+	_rare_rows.clear()
 	for lot: Inventory.Lot in _stock.lots:
 		var row: Button = _row(lot)
 		_made.append([lot, row])
 		_rows.add_child(row)
+	_tag_rare()
 	_sight.forget()
 
 	HudFront.show_panel(self)
@@ -275,6 +323,7 @@ func show_finding(world: BrickWorld, from_library: PartLibrary,
 
 func hide_list() -> void:
 	_was_at = _scroll.scroll_vertical
+	_swapped_words = ""
 	if _find.has_focus():
 		_find.release_focus()
 	visible = false
@@ -544,3 +593,277 @@ func _on_csv() -> void:
 	tell(line)
 	if not line.is_empty():
 		said.emit(line)
+
+
+# -- rareswap (APP_UX9 #12): the lots hard to buy, and their swaps --------------------
+
+
+## The row over the list that says how many lots are rare, and opens their
+## swaps; hidden while none is.
+func _build_rare(column: Container) -> void:
+	_rare_row = Button.new()
+	_rare_row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_rare_row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rare_row.focus_mode = Control.FOCUS_NONE
+	_rare_row.add_theme_font_size_override("font_size", 12)
+	_rare_row.add_theme_color_override("font_color", RARE_COLOUR)
+	_rare_row.visible = false
+	_rare_row.pressed.connect(show_swaps)
+	column.add_child(_rare_row)
+
+
+## The swaps' list, in the rows' place while it is open, and its buttons.
+func _build_swaps(column: Container) -> void:
+	_swaps_scroll = ScrollContainer.new()
+	_swaps_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_swaps_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_swaps_scroll.visible = false
+	column.add_child(_swaps_scroll)
+	_swaps = VBoxContainer.new()
+	_swaps.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_swaps.add_theme_constant_override("separation", 6)
+	_swaps_scroll.add_child(_swaps)
+	_swap_bar = HBoxContainer.new()
+	_swap_bar.add_theme_constant_override("separation", 10)
+	_swap_bar.visible = false
+	column.add_child(_swap_bar)
+	_swap_note = Label.new()
+	_swap_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_swap_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_swap_note.add_theme_font_size_override("font_size", 11)
+	_swap_note.modulate = Color(1, 1, 1, 0.7)
+	_swap_bar.add_child(_swap_note)
+	_swap_back = _header_button(_swap_bar, "Back to the list", "The parts list, nothing swapped")
+	_swap_back.pressed.connect(_show_rows)
+	_swap_now = _header_button(_swap_bar, "Swap", "")
+	_swap_now.pressed.connect(func() -> void: await swap_picked())
+
+
+## The colour a rare lot is said in: the "over" mark's amber.
+const RARE_COLOUR := Color(1.0, 0.62, 0.3)
+
+
+## The rare lots of the stock shown, counted again (RareSwap.rare_of), and
+## the row that says so.
+func _take_rare() -> void:
+	if _swapper == null:
+		_swapper = RareSwap.new(library)
+		library.colour_sets_came.connect(_colour_sets_came)
+	(_swapper as RareSwap).library = library
+	var rare: Dictionary = (_swapper as RareSwap).rare_of(_stock)
+	_rare = rare["lots"]
+	_rare_waiting = int(rare["waiting"])
+	_say_rare()
+
+
+## A part's colours file came in on the web: the counts it held, said.
+func _colour_sets_came() -> void:
+	if visible and _stock != null and _rare_waiting > 0 and not _swapping:
+		_take_rare()
+		_tag_rare()
+
+
+## The row's words: how many lots are rare and what a press does, what the
+## last swap did, or nothing to say.
+func _say_rare() -> void:
+	var count: int = _rare.size()
+	var words: String = ""
+	if count > 0:
+		words = ("%s in %d sets or fewer, so few sellers have %s" % [
+			"1 lot comes" if count == 1 else "%d lots come" % count, RareSwap.RARE_IN,
+			"it" if count == 1 else "them"])
+		if can_swap():
+			words += ": swap for common parts…"
+	if not _swapped_words.is_empty():
+		words = _swapped_words + (". Still rare: " + words if count > 0 else ". No lot is rare now")
+	elif count == 0 and _rare_waiting > 0:
+		words = "Counting the sets each part comes in…"
+	_rare_row.text = words
+	_rare_row.visible = not words.is_empty()
+	_rare_row.disabled = count == 0 or not can_swap()
+	_rare_row.tooltip_text = ("Each comes in its colour in %d sets or fewer, by Rebrickable's "
+		+ "set inventories: each swap is a part or a colour in %d sets or more, picked or not, "
+		+ "put in as one undo step") % [RareSwap.RARE_IN, RareSwap.COMMON_IN] if can_swap() \
+		else "Each comes in its colour in %d sets or fewer, by Rebrickable's set inventories" \
+			% RareSwap.RARE_IN
+
+
+## Whether the model shown can be changed here: not in a shared model's
+## viewer, which has no edits.
+func can_swap() -> bool:
+	return app != null and app.get("_share_view") == null
+
+
+## Each rare lot's own row marked "in 2 sets", as a lot over the bin is
+## marked over.
+func _tag_rare() -> void:
+	var sets: Dictionary = {}
+	for lot: RefCounted in _rare:
+		sets[lot.get("key")] = int(lot.get("sets"))
+	_rare_rows.clear()
+	for pair: Array in _made:
+		var lot: Inventory.Lot = pair[0]
+		var button: Button = pair[1]
+		var line: HBoxContainer = button.get_child(0)
+		var had: Label = button.get_meta("rare_tag") if button.has_meta("rare_tag") else null
+		var key: String = "%s/%d" % [lot.part_id, lot.color_code]
+		if not sets.has(key):
+			if had != null:
+				had.queue_free()
+				button.remove_meta("rare_tag")
+			continue
+		_rare_rows[key] = button
+		if had == null:
+			had = Label.new()
+			had.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			had.add_theme_font_size_override("font_size", 12)
+			had.add_theme_color_override("font_color", RARE_COLOUR)
+			line.add_child(had)
+			button.set_meta("rare_tag", had)
+		had.text = "rare: " + RareSwap.sets_words(int(sets[key]))
+
+
+## The rows of the model's parts, the swaps closed.
+func _show_rows() -> void:
+	if _swapping:
+		return
+	_swaps_scroll.visible = false
+	_swap_bar.visible = false
+	_scroll.visible = true
+	_find.visible = true
+	if _stock != null:
+		_heading.text = _counts()
+	_say_rare()
+
+
+## The rare lots' swaps, in the rows' place: each with what it is, what it
+## becomes and in how many sets each comes, picked or not by its box.
+## Shown at once and filled once every swap is known (an equal part's shape
+## may have to be fetched on the web).
+func show_swaps() -> void:
+	if _rare.is_empty() or not can_swap() or _swapping:
+		return
+	if _finder == null:
+		_finder = FindReplace.new(app)
+	_swapping = true
+	_scroll.visible = false
+	_find.visible = false
+	_rare_row.visible = false
+	_swaps_scroll.visible = true
+	_swap_bar.visible = true
+	_heading.text = "Rare lots, and a common swap for each"
+	for child: Node in _swaps.get_children():
+		_swaps.remove_child(child)
+		child.queue_free()
+	_swap_note.text = "Finding a common part or colour for each…"
+	_swap_now.disabled = true
+	await (_swapper as RareSwap).offer_all(_rare, _finder)
+	_swapping = false
+	if not _swaps_scroll.visible:
+		return
+	for lot: RefCounted in _rare:
+		_swaps.add_child(_swap_row(lot))
+	_swap_note.text = ("A swap is a part or a colour in %d sets or more: the same shape in "
+		+ "the lot's colour where there is one, else the nearest colour. A print's plain part "
+		+ "is not picked unless you pick it") % RareSwap.COMMON_IN
+	_say_picked()
+
+
+## One lot's swap: its box (picked or not), the colour it is and the colour
+## it becomes, and the words of both.
+func _swap_row(lot: RefCounted) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var box := CheckBox.new()
+	box.focus_mode = Control.FOCUS_NONE
+	box.button_pressed = bool(lot.get("picked"))
+	box.disabled = not bool(lot.call("offered"))
+	box.tooltip_text = "Swap this lot" if not box.disabled else "No part or colour of it comes in %d sets" \
+		% RareSwap.COMMON_IN
+	box.toggled.connect(func(on: bool) -> void:
+		lot.set("picked", on)
+		_say_picked())
+	box.set_meta("lot", lot)
+	row.add_child(box)
+	row.add_child(_swatch(int(lot.get("colour"))))
+	var into: int = int(lot.get("into_colour"))
+	if bool(lot.call("offered")):
+		var arrow := Label.new()
+		arrow.text = "→"
+		arrow.add_theme_font_size_override("font_size", 12)
+		row.add_child(arrow)
+		row.add_child(_swatch(into if into >= 0 else int(lot.get("colour"))))
+	var words := Label.new()
+	words.text = (_swapper as RareSwap).lot_words(lot)
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_theme_font_size_override("font_size", 12)
+	if not bool(lot.call("offered")):
+		words.modulate = Color(1, 1, 1, 0.6)
+	row.add_child(words)
+	return row
+
+
+## A colour's square, as a row shows its lot's.
+func _swatch(code: int) -> Panel:
+	var swatch := Panel.new()
+	swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	swatch.custom_minimum_size = Vector2(15, 15)
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var style := StyleBoxFlat.new()
+	var color: PartLibrary.BrickColor = library.color(code)
+	style.bg_color = color.shown if color != null else Color.MAGENTA
+	style.set_corner_radius_all(3)
+	if color != null and color.is_transparent():
+		style.set_border_width_all(2)
+		style.border_color = Color(color.rgb, 1.0).darkened(0.4)
+	swatch.add_theme_stylebox_override("panel", style)
+	return swatch
+
+
+## The swap boxes shown, in the list's order.
+func _swap_boxes() -> Array:
+	var out: Array = []
+	for row: Node in _swaps.get_children():
+		if row.is_queued_for_deletion() or row.get_child_count() == 0:
+			continue
+		out.append(row.get_child(0))
+	return out
+
+
+## The swap button's words: how many lots it swaps.
+func _say_picked() -> void:
+	var picked: int = 0
+	for lot: RefCounted in _rare:
+		if bool(lot.get("picked")) and bool(lot.call("offered")):
+			picked += 1
+	_swap_now.text = "Swap 1 lot" if picked == 1 else "Swap %d lots" % picked
+	_swap_now.disabled = picked == 0
+	_swap_now.tooltip_text = "Put the picked swaps in, as one undo step"
+
+
+## The picked swaps put in as one undo step (RareSwap.swap), said in the
+## status bar, and the list taken again: its row says what changed and how
+## many lots are still rare. {} when nothing was picked.
+func swap_picked() -> Dictionary:
+	if _swapping or _rare.is_empty() or not can_swap():
+		return {}
+	_swapping = true
+	_swap_now.disabled = true
+	var done: Dictionary = await (_swapper as RareSwap).swap(_rare, _finder)
+	_swapping = false
+	var stayed: PackedStringArray = done["stayed"]
+	var words: String = str(done["words"])
+	if int(done["changed"]) == 0:
+		said.emit("nothing swapped" + (": " + "; ".join(stayed) if not stayed.is_empty() else ""))
+		_show_rows()
+		return done
+	said.emit(Keymap.filled("%s — {undo|takes it back}") % (words
+		+ ("" if stayed.is_empty() else "; stayed: " + "; ".join(stayed))))
+	var picked_at: int = _was_at
+	show_for(_world, library, _scenery, _title)
+	_was_at = picked_at
+	_swapped_words = "Swapped " + words.trim_prefix("swapped ")
+	_say_rare()
+	return done
+# end rareswap

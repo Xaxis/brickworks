@@ -157,6 +157,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# replace_parts asks.
 	&"FindReplace": "res://src/assembly/find_replace.gd",
 	&"FindReplaceBar": "res://src/ui/find_replace_bar.gd",
+	# rareswap (APP_UX9 #12): the parts list's rare lots and their swaps, made
+	# the first time the list or a session's replace_parts rare= asks.
+	&"RareSwap": "res://src/collection/rare_swap.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:
