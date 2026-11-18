@@ -356,8 +356,23 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a step edit heard in a Build together room, a step emptied first;
   `KEEP_TEXT_SAVED=DIR` keeps each save, `KEEP_TEXT_OPEN=DIR` opens another
   build's back.
-  A part put down outside the author's steps (step -1, its own page after
-  the last) is written in a step of its own after the last, in a patch as in
+  A part put down outside the author's steps (step -1) is shown on a page of
+  its own after its section's last step, where the file writes it, so it
+  keeps its page through a reopen (`Instructions._loose_entries`; in a
+  sub-model built on the side, its callout's last step,
+  `_authored_callout`). Whether a sub-model is built on the side is judged
+  with such parts in it (`_found_among`), as it is once they are read back
+  in its last step: one put above 5540-1's sub05 holds it together no more,
+  and it is built where it stands. Up to smalls6 (2026-11-18) every such page came
+  after the model's last: one put on a sub-model's end moved a page on
+  reopening, and on a sub-model placed twice it was one page shown and two
+  reopened (mergekeep's finding). `subend_probe` (headless; `SUBEND_ONLY=`
+  a case, `SUBEND_ALL=1` 8063-1 too) puts one on each sub-model's end,
+  above it and on its part, once and twice placed, after PAGE NEW and PAGE
+  ALONE, in an LPub3D group, built on the side, 358-1 and 5540-1, and on the
+  main model, patched and whole: the pages the same reopened, the save
+  saving to itself, undone to the byte. It is written in a step of its own
+  after its section's last, in a patch as in
   the whole write (`ModelStore._loose_steps`, AuthorSteps.numbers_for_file),
   and where a turn held to the end, unturned: "0 ROTSTEP END" ends the step
   before it, as the booklet shows it (`_looks_with_loose`). Up to smalls5
