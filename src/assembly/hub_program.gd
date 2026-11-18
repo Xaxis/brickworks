@@ -411,18 +411,70 @@ static func no_hub_words(ports: Dictionary) -> String:
 
 ## The program run on [param ports] (ports_of), each move as far as
 ## [param reach] lets it: (port, from, to, turns of the motor from where it
-## was built) -> {at, why ("" for there)}. {moves: [{line, port, verb, from,
-## to, start, end (seconds)}] in order, waits among them with port ""; seconds;
+## was built) -> {at, why ("" for there)}. {moves: the moves in order, waits
+## among them with port "" (Moves; [method moves_of] gives them as {line,
+## port, verb, from, to, start, end (seconds), speed, wanted}); seconds;
 ## stopped: {line, port, at, wanted, why, seconds} when a move did not get
 ## there (the run ends there, as a hub's waits on a motor that cannot);
-## refusal: why it cannot run, else ""}. And, to find where it is at a time
-## in a step or two however long it is: starts, every move's start in order;
-## by_port, {port: [its moves' starts, their numbers in moves]}.
+## refusal: why it cannot run, else ""}.
 func run(ports: Dictionary, reach: Callable) -> Dictionary:
 	begin_run(ports, reach)
 	while not run_step(INF):
 		pass
 	return ran
+
+
+## A run's moves, a column for each of their numbers: a run of 20,000 moves
+## a Dictionary each took 20 ms to free, in whichever frame dropped it (the
+## next Run's, after a run refused as too long: 35 ms, hpreview F6), where
+## columns are a few arrays. Written by its own methods: a packed array read
+## out of an object to append to is a copy.
+class Moves extends RefCounted:
+	var line := PackedInt32Array()
+	var port := PackedStringArray()
+	var verb := PackedStringArray()
+	var from_turns := PackedFloat64Array()
+	var to_turns := PackedFloat64Array()
+	var start := PackedFloat64Array()
+	var end := PackedFloat64Array()
+	var speed := PackedFloat64Array()
+	var wanted := PackedFloat64Array()
+	## Where it is at a time found in a step or two however long it runs:
+	## {port: Track}, its moves' starts and their numbers here.
+	var by_port: Dictionary = {}
+
+	func size() -> int:
+		return start.size()
+
+	func add(number: int, on: String, how: String, from: float, to: float, begins: float, ends: float,
+			at_speed: float, aimed: float) -> void:
+		if not on.is_empty():
+			(by_port[on] as Track).add(begins, start.size())
+		line.append(number)
+		port.append(on)
+		verb.append(how)
+		from_turns.append(from)
+		to_turns.append(to)
+		start.append(begins)
+		end.append(ends)
+		speed.append(at_speed)
+		wanted.append(aimed)
+
+	## Move [param k] as a Dictionary: {line, port, verb, from, to, start,
+	## end, speed, wanted}.
+	func at(k: int) -> Dictionary:
+		return {"line": line[k], "port": port[k], "verb": verb[k], "from": from_turns[k],
+			"to": to_turns[k], "start": start[k], "end": end[k], "speed": speed[k], "wanted": wanted[k]}
+
+
+## One port's moves in a run: their starts, and their numbers in Moves.
+class Track extends RefCounted:
+	var starts := PackedFloat64Array()
+	var numbers := PackedInt32Array()
+
+	func add(begins: float, number: int) -> void:
+		starts.append(begins)
+		numbers.append(number)
 
 
 ## The run [method run_step] makes, as [method run] returns it.
@@ -441,9 +493,8 @@ var _stack: Array = []
 ## begin_stops and stops_step, a program's way. Made in one go, 2,000 moves
 ## held a frame 174 ms (hpreview F6).
 func begin_run(ports: Dictionary, reach: Callable) -> void:
-	# Arrays, not packed ones: a packed array read out of the run to append
-	# to is a copy, and the run's stayed empty (every motor at 0, line 0).
-	ran = {"moves": [], "seconds": 0.0, "stopped": {}, "refusal": "", "starts": [], "by_port": {}}
+	var moves := Moves.new()
+	ran = {"moves": moves, "seconds": 0.0, "stopped": {}, "refusal": ""}
 	_stack = []
 	_state = {}
 	if not errors.is_empty():
@@ -459,7 +510,7 @@ func begin_run(ports: Dictionary, reach: Callable) -> void:
 	_state = {"t": 0.0, "angles": {}}
 	for port: String in used:
 		_state["angles"][port] = 0.0
-		ran["by_port"][port] = [[], []]
+		moves.by_port[port] = Track.new()
 	_stack = [[lines, 0, 1]]
 
 
@@ -495,15 +546,13 @@ func run_step(budget_ms: float) -> bool:
 ## refused.
 func _move(statement: Statement) -> bool:
 	var t: float = _state["t"]
-	var moves: Array = ran["moves"]
+	var moves: Moves = ran["moves"]
 	if moves.size() >= MOST_MOVES or t > MOST_SECONDS:
 		ran["refusal"] = ("This program runs past %d moves or %d minutes; Simulate plays one "
 			+ "that does less. Repeat it fewer times.") % [MOST_MOVES, int(MOST_SECONDS / 60.0)]
 		return false
 	if statement.verb == "wait":
-		(ran["starts"] as Array).append(t)
-		moves.append({"line": statement.line, "port": "", "verb": "wait", "from": 0.0, "to": 0.0,
-			"start": t, "end": t + statement.seconds})
+		moves.add(statement.line, "", "wait", 0.0, 0.0, t, t + statement.seconds, 0.0, 0.0)
 		_state["t"] = t + statement.seconds
 		return true
 	var port: String = statement.port if not statement.port.is_empty() else str(_hub[0])
@@ -524,13 +573,7 @@ func _move(statement: Statement) -> bool:
 	var seconds: float = absf(at - from) * 360.0 / degrees_a_second if degrees_a_second > 0.0 else 0.0
 	if statement.verb == "run" and why.is_empty():
 		seconds = statement.seconds
-	var mine: Array = ran["by_port"][port]
-	(mine[0] as Array).append(t)
-	(mine[1] as Array).append(moves.size())
-	(ran["starts"] as Array).append(t)
-	moves.append({"line": statement.line, "port": port, "verb": statement.verb, "from": from,
-		"to": at, "start": t, "end": t + seconds, "speed": statement.speed,
-		"wanted": to})
+	moves.add(statement.line, port, statement.verb, from, at, t, t + seconds, statement.speed, to)
 	_state["angles"][port] = at
 	_state["t"] = t + seconds
 	if not why.is_empty():
@@ -546,37 +589,60 @@ func _move(statement: Statement) -> bool:
 ## seconds cost its frames more and more.
 static func angles_at(ran: Dictionary, t: float) -> Dictionary:
 	var out: Dictionary = {}
-	var moves: Array = ran.get("moves", [])
-	var by_port: Dictionary = ran.get("by_port", {})
-	for port: String in by_port:
-		var starts: Array = (by_port[port] as Array)[0]
-		var numbers: Array = (by_port[port] as Array)[1]
-		if starts.is_empty():
+	var moves: Moves = _moves(ran)
+	if moves == null:
+		return out
+	for port: String in moves.by_port:
+		var track: Track = moves.by_port[port]
+		if track.starts.is_empty():
 			continue
-		var k: int = starts.bsearch(t, false) - 1
-		var move: Dictionary = moves[int(numbers[maxi(k, 0)])]
+		var k: int = track.starts.bsearch(t, false) - 1
+		var n: int = track.numbers[maxi(k, 0)]
 		if k < 0:
-			out[port] = float(move["from"])
+			out[port] = moves.from_turns[n]
 			continue
-		var start: float = move["start"]
-		var end: float = move["end"]
+		var start: float = moves.start[n]
+		var end: float = moves.end[n]
 		var share: float = 1.0 if end <= start or t >= end else (t - start) / (end - start)
-		out[port] = lerpf(float(move["from"]), float(move["to"]), share)
+		out[port] = lerpf(moves.from_turns[n], moves.to_turns[n], share)
 	return out
 
 
 ## The line running [param t] seconds in (from 1), or 0 once it is done:
 ## the last move begun by then that is still going or takes no time.
 static func line_at(ran: Dictionary, t: float) -> int:
-	var moves: Array = ran.get("moves", [])
-	var starts: Array = ran.get("starts", [])
-	var k: int = starts.bsearch(t, false) - 1
+	var moves: Moves = _moves(ran)
+	if moves == null:
+		return 0
+	var k: int = moves.start.bsearch(t, false) - 1
 	while k >= 0:
-		var move: Dictionary = moves[k]
-		if t < float(move["end"]) or float(move["end"]) <= float(move["start"]):
-			return int(move["line"])
+		if t < moves.end[k] or moves.end[k] <= moves.start[k]:
+			return moves.line[k]
 		k -= 1
 	return 0
+
+
+## The moves of [param ran], null for none.
+static func _moves(ran: Dictionary) -> Moves:
+	var moves: Variant = ran.get("moves")
+	return moves if moves is Moves else null
+
+
+## How many moves [param ran] made.
+static func move_count(ran: Dictionary) -> int:
+	var moves: Moves = _moves(ran)
+	return 0 if moves == null else moves.size()
+
+
+## The moves of [param ran] as Dictionaries ([method Moves.at]), up to
+## [param most]: for a few, to say or to check.
+static func moves_of(ran: Dictionary, most: int = 1 << 30) -> Array:
+	var moves: Moves = _moves(ran)
+	var out: Array = []
+	if moves != null:
+		for k: int in mini(moves.size(), most):
+			out.append(moves.at(k))
+	return out
 
 
 ## A turn of a motor in degrees, to a tenth: "90°", "-20.9°".
@@ -612,8 +678,7 @@ static func ran_words(ran: Dictionary, ports: Dictionary) -> String:
 ## many more.
 static func moves_words(ran: Dictionary, ports: Dictionary, most: int = 14) -> PackedStringArray:
 	var out := PackedStringArray()
-	var moves: Array = ran.get("moves", [])
-	for move: Dictionary in moves.slice(0, most):
+	for move: Dictionary in moves_of(ran, most):
 		var span: String = "%s-%s s" % [Simulation.figure(snappedf(float(move["start"]), 0.001)),
 			Simulation.figure(snappedf(float(move["end"]), 0.001))]
 		if str(move["port"]).is_empty():
@@ -624,8 +689,8 @@ static func moves_words(ran: Dictionary, ports: Dictionary, most: int = 14) -> P
 			move["port"], degrees(float(move["from"])), degrees(float(move["to"])),
 			Simulation.figure(absf(float(move["speed"]))),
 			Simulation.figure(snappedf(float(motor["rpm"]) * 6.0 * absf(float(move["speed"])) / 100.0, 0.1))])
-	if moves.size() > most:
-		out.append("... and %d more" % (moves.size() - most))
+	if move_count(ran) > most:
+		out.append("... and %d more" % (move_count(ran) - most))
 	return out
 
 

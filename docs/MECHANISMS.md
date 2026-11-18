@@ -6325,7 +6325,10 @@ begins, a cycle at most: laid out and sorted over each move, 2,000 moves of
 1° held a frame 174 ms and one 600 s run 71. The run is worked out a slice
 a frame (`HubProgram.begin_run`, `run_step`, as the stops are), and where
 each motor is at a moment is found by halves, not read from the first move
-each frame. The run ends where a
+each frame. Its moves are kept a column for each of their numbers
+(`HubProgram.Moves`): a Dictionary a move, a run of 20,000 took 20 ms to
+free in whichever frame dropped it, 35 ms in the Run after one refused as
+too long; as columns, 0.1 ms. The run ends where a
 move stops, as a hub's program waits on a motor that cannot get there, and
 the row says where and why: "Line 1: A, the SPIKE Prime large angular
 motor #12 stops at 26.3° on its way to 90°, 0.1 s in: its motor stalls:

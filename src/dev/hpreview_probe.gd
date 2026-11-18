@@ -698,8 +698,9 @@ func _plays() -> void:
 			"repeat 1000\n  repeat 1000\n    wait 0.001 s", "repeat 1000\n  turn 1° at 100%\n  turn -1° at 100%",
 			"repeat 1000\n  to 36000° at 100%\n  to -36000° at 100%"]:
 		var timed: Dictionary = await _run_timed(program, 30.0)
-		_check("%s: the most work in a frame %.1f ms (the longest frame %.1f ms; prepared in %.0f ms; %d moves, %s s): %s" % [
-			program.c_escape(), timed["work_ms"], timed["worst_ms"], timed["prep_ms"], timed["moves"], timed["seconds"],
+		_check("%s: the most work in a frame %.1f ms, %s (the longest frame %.1f ms; prepared in %.0f ms; %d moves, %s s): %s" % [
+			program.c_escape(), timed["work_ms"], "working the run out" if timed["work_preparing"] else "running it",
+			timed["worst_ms"], timed["prep_ms"], timed["moves"], timed["seconds"],
 			str(timed["said"]).left(120)], float(timed["work_ms"]) < 16.0)
 		await _stop_now(run)
 	print("  Stop mid-program")
@@ -752,7 +753,7 @@ func _plays() -> void:
 	var unnamed: Variant = hp.call("parse", "to 90°").call("ports_used", ports)
 	_check("a line naming no port with seven: said, the seventh too (%s)" % str(unnamed).left(200),
 		unnamed is String and str(unnamed).contains("#7 is on no port"))
-	var ran: Dictionary = {"seconds": 0.11, "by_port": {}, "moves": []}
+	var ran: Dictionary = {"seconds": 0.11}
 	_check("...and a run's end says it (%s)" % str(hp.call("ran_words", ran, ports)),
 		str(hp.call("ran_words", ran, ports)).contains("#7 is on no port"))
 
@@ -777,20 +778,35 @@ func _asking() -> PackedStringArray:
 ## What the frame's processing took apart from its drawing: from
 ## process_frame, which comes before every node's _process and every await
 ## of it (the run's slices among them), to frame_pre_draw, which comes as
-## the drawing begins. On this box a frame's drawing alone took up to 85 ms
-## with nothing running (Xvfb, under load), so the wall clock's frame says
-## nothing of what the program costs; the work it adds is here.
+## the drawing begins, in the main thread's own time on a CPU
+## (/proc/thread-self/schedstat), not the clock's. On this box a frame's
+## drawing alone took up to 85 ms with nothing running (Xvfb, at a load of
+## 40 on 24 cores), and the clock's time between the two counted the time
+## the thread waited for a CPU: 13.5 ms of it in frames doing nothing.
 var _frame_began: int = 0
 var _worst_work: float = 0.0
+var _worst_preparing: bool = false
+
+
+## The main thread's time on a CPU so far, in µs; the clock's where /proc
+## cannot be read.
+static func _cpu_us() -> int:
+	var file: FileAccess = FileAccess.open("/proc/thread-self/schedstat", FileAccess.READ)
+	if file == null:
+		return Time.get_ticks_usec()
+	return int(file.get_line().get_slice(" ", 0).to_int() / 1000)
 
 
 func _on_process_frame() -> void:
-	_frame_began = Time.get_ticks_usec()
+	_frame_began = _cpu_us()
 
 
 func _on_pre_draw() -> void:
 	if _frame_began > 0:
-		_worst_work = maxf(_worst_work, (Time.get_ticks_usec() - _frame_began) / 1000.0)
+		var work: float = (_cpu_us() - _frame_began) / 1000.0
+		if work > _worst_work:
+			_worst_work = work
+			_worst_preparing = _panel != null and bool(_panel.get("_preparing"))
 
 
 ## The longest of [param count] frames from now, in ms.
@@ -836,8 +852,8 @@ func _run_timed(program: String, most_s: float) -> Dictionary:
 		worst = maxf(worst, (now - last) / 1000.0)
 		last = now
 	var ran: Dictionary = _panel.get("_ran")
-	return {"worst_ms": worst, "work_ms": _worst_work, "prep_ms": prep, "said": _panel.call("said").get("program", ""),
-		"moves": (ran.get("moves", []) as Array).size(), "seconds": Simulation.figure(snappedf(float(ran.get("seconds", 0.0)), 0.01))}
+	return {"worst_ms": worst, "work_ms": _worst_work, "work_preparing": _worst_preparing, "prep_ms": prep, "said": _panel.call("said").get("program", ""),
+		"moves": HubProgram.move_count(ran), "seconds": Simulation.figure(snappedf(float(ran.get("seconds", 0.0)), 0.01))}
 
 
 func _stop_now(run: Button) -> void:

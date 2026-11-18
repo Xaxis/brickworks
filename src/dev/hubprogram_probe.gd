@@ -209,7 +209,7 @@ func _words() -> void:
 	var ports: Dictionary = _hp.call("ports_of", {12: "54675"})
 	var ran: Dictionary = program.call("run", ports, func(_port: String, _from: float, to: float) -> Dictionary:
 		return {"at": to, "why": ""})
-	var moves: Array = ran.get("moves", [])
+	var moves: Array = HubProgram.moves_of(ran)
 	var move_s: float = 90.0 / (0.5 * SPIKE_RPM * 6.0)
 	var each: bool = moves.size() == 9
 	for move: Dictionary in moves:
@@ -305,7 +305,7 @@ func _plays() -> void:
 		if not running:
 			break
 	var ran: Dictionary = _panel.get("_ran")
-	var moves: Array = ran.get("moves", [])
+	var moves: Array = HubProgram.moves_of(ran)
 	var move_s: float = 90.0 / (0.5 * SPIKE_RPM * 6.0)
 	_check("Run plays it: %d moves, %.4f s in all (worked %.4f), the panel says \"%s\"" % [moves.size(),
 		float(ran.get("seconds", 0.0)), 3.0 * (2.0 * move_s + 1.0), _panel.call("said").get("program", "")],
@@ -623,7 +623,7 @@ func _motors() -> void:
 		if not bool(_panel.get("running")) and not bool(_panel.get("_preparing")):
 			break
 	var ran: Dictionary = _panel.get("_ran")
-	var moves: Array = ran.get("moves", [])
+	var moves: Array = HubProgram.moves_of(ran)
 	var worked: float = 90.0 / (0.5 * SPIKE_RPM * 6.0) + 45.0 / (SPIKE_RPM * 6.0)
 	var a: BrickWorld.Brick = _world.get_brick(int(one["beam"]))
 	var b: BrickWorld.Brick = _world.get_brick(int(two["beam"]))
