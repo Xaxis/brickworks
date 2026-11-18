@@ -4574,7 +4574,7 @@ func _edit_collection(input: Dictionary) -> String:
 		if int(down[key]["qty"]) >= 0:
 			down[key]["qty"] = -1 if int(lot["qty"]) == 0 else int(down[key]["qty"]) + int(lot["qty"])
 	if not refused.is_empty():
-		return ("Nothing was changed: " + "; ".join(refused)
+		return ("Nothing was changed: " + _reasons(refused)
 			+ ". search_parts finds a part's LDraw number; colours are LDraw codes.")
 	var add_lots: Array = []
 	for key: String in order:
@@ -4600,7 +4600,7 @@ func _edit_collection(input: Dictionary) -> String:
 		one["was"] = int(held["qty"])
 		down_lots.append(one)
 	if not own.is_empty():
-		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % "; ".join(own)
+		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % _reasons(own)
 	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
 	if done["kind"] != CollectionStore.DONE:
 		return _not_made(done, "this chat was shown it")
@@ -4891,7 +4891,7 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 			else:
 				named.append(lot)
 		if not bad.is_empty():
-			return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
+			return "Nothing was changed: %s. %s" % [_reasons(bad), NAME_LOTS]
 	var trouble_read: String = await mine.load_collection()
 	var entries: Array = mine.collection.entries_of(number)
 	if entries.is_empty():
@@ -4980,7 +4980,7 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 			wanted[key] = int(lot["qty"])
 			order.append(key)
 	if not bad.is_empty():
-		return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
+		return "Nothing was changed: %s. %s" % [_reasons(bad), NAME_LOTS]
 	# Each entry's lots to write, by key: [key, lots, how many more or fewer
 	# it marks there].
 	var writes: Array = []
@@ -5147,7 +5147,7 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 			was += Collection.built_of(entry)
 		changes.append({"set": number, "was": was, "built": wanted, "copies": copies})
 	if not bad.is_empty():
-		return "Nothing was changed: %s.%s" % ["; ".join(bad),
+		return "Nothing was changed: %s.%s" % [_reasons(bad),
 			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
 	var sent: Array = changes.map(func(one: Dictionary) -> Dictionary:
 		return {"set": one["set"], "was": one["was"], "built": one["built"]})
@@ -5169,6 +5169,21 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 
 ## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).
 const MOST_MARK_CHANGES := 2000
+
+
+## A refusal's reasons, "; " between them: the first [constant
+## MOST_REASONS] named and the rest counted, so 300 parts not held come
+## back in a few lines, not 24,000 characters (ppreview F8).
+static func _reasons(reasons: Variant) -> String:
+	var all := PackedStringArray(reasons)
+	if all.size() <= MOST_REASONS:
+		return "; ".join(all)
+	return "%s; and %d more" % ["; ".join(
+		all.slice(0, MOST_REASONS)), all.size() - MOST_REASONS]
+
+
+## How many reasons a refusal names before it counts the rest.
+const MOST_REASONS := 10
 
 
 ## The first SHOWN_LOTS of [param lines] (each [line, ...]), then how many
@@ -5244,7 +5259,7 @@ func _collection_places(mine: CollectionStore, library: PartLibrary, input: Dict
 		changes.append({"part": Collection.part_of(key), "colour": Collection.colour_of(key), "was": was,
 			"place": place})
 	if not bad.is_empty():
-		return "Nothing was changed: %s.%s" % ["; ".join(bad),
+		return "Nothing was changed: %s.%s" % [_reasons(bad),
 			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
 	if changes.is_empty():
 		return "place is a list of {part, color, place}: name at least one."

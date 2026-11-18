@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test, ui:where each part is kept, cli:partplaces probe, cli:partplaces api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test, ui:where each part is kept, cli:partplaces probe, cli:partplaces api test, cli:ppreview probe, cli:ppreview2 probe -->
 
 ## Sub-features
 
@@ -263,10 +263,18 @@ which models they could build from what they have. Added 2026-10-12.
   **Where it's kept…** (`collection_places`) opens the places page
   (`CollectionDialog.open_places`, `collection_places_*`): every part and
   colour held (`Collection.held_keys`: loose lots and each set's inventory,
-  spares too), each row a place field kept on Enter or leaving it
-  (`set_place`, from the place shown); the find (`collection_places_find`,
-  SelectBy's words or a place's) and **Put them there** (`put_places_shown`,
-  every row the find keeps in one change; nothing typed takes them off); By
+  spares too), and every placed one held no more, faint (a place outlives
+  its last lot: taken off from its row or a CSV's empty place, never given a
+  new one); each row a place field kept on Enter or leaving it, once
+  (`_keep_place`: its meta `shown` is set to the place as it is sent; rows
+  drawn again give the focus back to the same part's field with what was
+  typed, `_refocus_place`, and taking a field out sends nothing); over 40
+  characters is said as typed and refused on Enter, never cut (no
+  `max_length`); the find (`collection_places_find`, SelectBy's words or a
+  place's) and **Put them there** (`put_places_shown`, every held row the
+  find keeps in one change, asked first by `_confirm_move` when it would
+  move any kept elsewhere and more than one row shows, with Only the N kept
+  nowhere; nothing typed takes them off, asked first past one); By
   part / By place (`Collection.place_less`, natural: drawer 2 before drawer
   10, none last); Save places as CSV (`Collection.places_csv`, a place a
   spreadsheet reads as a formula written after a ') and Places CSV…
@@ -277,8 +285,10 @@ which models they could build from what they have. Added 2026-10-12.
   of at most 40 characters (`Collection.place_text`, api `placeText`),
   never cut. Kept per part and colour (`Collection.key_of`) in the row's
   `places` column (`supabase/partplaces.sql`), written only by op `place`
-  (each `{part, colour, was, place}`, refused as a conflict when `was` is not
-  what is kept or the part is not held, the sets' shards read only when a
+  (each `{part, colour, was, place}`, one already at `place` done whatever
+  `was` says, refused as a conflict when `was` is not what is kept or the
+  part is not held, a lone surrogate anywhere in a body 400, over
+  `MOST_PLACES_BYTES` written out 413 with words; the sets' shards read only when a
   loose lot is not it) and emptied by Start over; a place-only change keeps
   `updated_at`, so the site's pool is not counted again. Before the SQL is
   applied the api reads `select=*` as before and refuses op place (503,
@@ -292,7 +302,8 @@ which models they could build from what they have. Added 2026-10-12.
   `edit_collection place=[{part, color, place}]` sets them in one change
   (`_collection_places`: each said "was ...", refused with words changing
   nothing for a part not held, over 40 characters, no words, or with
-  add=/remove=/built=/missing=), and the read-back names each lot's place
+  add=/remove=/built=/missing=; every edit_collection refusal names 10
+  reasons and counts the rest, `AppTools._reasons`), and the read-back names each lot's place
   and lists the places. An older build reads the collection without places
   and never writes them (its ops and PUT leave the column); the newer one
   says when the copy on this device lacks them (`Collection.places_read`).
@@ -537,6 +548,8 @@ tools/relay_probe.sh keptbuilt -- --shots=DIR     # a window, 1280x720
 node tools/web/partplaces_api.mjs --pure                     # the op on rows made here, no network
 node tools/web/partplaces_api.mjs --url=http://127.0.0.1:8790   # supabase/partplaces.sql applied
 tools/relay_probe.sh partplaces -- --shots=DIR    # a window, 1280x720
+tools/relay_probe.sh ppreview -- --ppout=DIR      # ppreview's attacks R1-R9, kept by ppfix
+tools/relay_probe.sh ppreview2 -- --ppout=DIR     # R10 Put them there asks first, R11 30 lots in a step
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json

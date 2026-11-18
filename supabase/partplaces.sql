@@ -31,9 +31,12 @@
 alter table public.collections add column if not exists places jsonb not null default '{}'::jsonb;
 
 -- The endpoint refuses anything over these first, with words (MAX_PLACES
--- places of MOST_PLACE characters); this is the ceiling a request that went
--- round it still meets: an object, and no bigger than 20,000 places of 40
--- characters and their keys would be.
+-- places of MOST_PLACE characters, and MOST_PLACES_BYTES as this check
+-- measures them, api/collection.js placesBytes); this is the ceiling a
+-- request that went round it still meets: an object, and at most 4,000,000
+-- bytes as text. That holds 20,000 places of 40 letters (about 2 MB), but
+-- not 20,000 of 40 four-byte characters under the longest keys (4.4 MB),
+-- which the endpoint refuses with words before the database would.
 do $$
 begin
     if not exists (select 1 from pg_constraint where conname = 'collections_places_object') then

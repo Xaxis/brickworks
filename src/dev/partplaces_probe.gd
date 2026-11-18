@@ -20,8 +20,9 @@
 ##      40 characters, a place that is no words, place= with add=; read
 ##      back with each lot's place
 ##   3. the window's Where it's kept: a part only 7140-1 holds typed in its
-##      row, kept; a find and Put them there, every part shown in one change
-##      (the rev one on); sorted by place, as a walk round them takes
+##      row, kept; a find and Put them there, asked first since one of them
+##      is kept elsewhere, then every part shown in one change (the rev one
+##      on); sorted by place, as a walk round them takes
 ##   4. kept: the sets and lots as in 1, byte for byte at the account and on
 ##      this device, and the time the counts were kept; a restart reads the
 ##      places from this device and the account; another device signed in
@@ -258,6 +259,20 @@ func _steps() -> void:
 	_drawn.append(go.tooltip_text)
 	var rev: int = int((await _account_now())["rev"])
 	go.pressed.emit()
+	await _frames(5)
+	# One of them is kept in b12 already: asked first, naming it (ppfix F3).
+	var moving: ConfirmationDialog = _dialog.get("_confirm_move")
+	var only: Button = _dialog.get("_move_only_unplaced")
+	var unasked: Dictionary = await _account_now()
+	_check("...one of them kept elsewhere: asked first, \"%s\" (%s, %s), nothing moved till then" % [
+		moving.dialog_text if moving != null else "", moving.ok_button_text if moving != null else "",
+		only.text if only != null else ""], moving != null and moving.visible and moving.dialog_text.begins_with("1 of the")
+		and int(unasked["rev"]) == rev)
+	if moving == null or not moving.visible:
+		return
+	for words: String in [moving.title, moving.dialog_text, moving.ok_button_text, only.text]:
+		_drawn.append(words)
+	moving.get_ok_button().pressed.emit()
 	await _changed()
 	await _settled()
 	for one: Dictionary in shown:

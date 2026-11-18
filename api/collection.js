@@ -116,8 +116,11 @@
 //       person's own lots. Only for what the collection holds: a loose lot
 //       of it, or a set whose inventory lists it (read from the shards only
 //       when no loose lot is it). A place is free text, made one line
-//       (placeText), at most MOST_PLACE characters. No op but this one and
-//       Start over writes places, so a lot taken out and brought back finds
+//       (placeText), at most MOST_PLACE characters, all of them at most
+//       MOST_PLACES_BYTES written out. One already in the place asked is
+//       done, whatever "was" says: the same place sent twice, by Enter and
+//       then the field left or by two tabs, is no conflict. No op but this
+//       one and Start over writes places, so a lot taken out and brought back finds
 //       its drawer again, and an older app, which knows no places, never
 //       changes them (it writes sets and parts alone). Start over forgets
 //       them with everything else.
@@ -221,6 +224,11 @@ export const MOST_PLACE = 40;
 export const MAX_PLACES = MAX_LOTS;
 /// The most places one "place" op names.
 export const MOST_PLACE_CHANGES = 5000;
+/// The most bytes a collection's places are as the database writes them
+/// out (places::text): supabase/partplaces.sql's collections_places_size,
+/// met here first with words. 20,000 places of 40 letters fit in half of
+/// it; 40 four-byte characters each, under the longest keys, do not.
+export const MOST_PLACES_BYTES = 4000000;
 
 /// Where each import's lots and sets come from; "hand" is My collection's.
 export const HAND = "hand";
@@ -585,8 +593,12 @@ export function whoName(raw) {
 export function placeText(raw, where) {
   if (raw === undefined || raw === null) return "";
   if (typeof raw !== "string") throw new Refusal(400, `${where}: a place is words, like "drawer 3"`);
+  if (!raw.isWellFormed()) throw new Refusal(400, `${where}: the place has half a character in it (a lone surrogate)`);
+  // Every space of Unicode's a space, and the marks that take no room
+  // (U+200B, U+2060, U+FEFF) left out, so a place that looks blank is none.
   const text = raw
-    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, " ")
+    .replace(/[\u200b\u2060\ufeff]/g, "")
+    .replace(/[\u0000-\u001f\u007f-\u00a0\u1680\u2000-\u200a\u2028\u2029\u202a-\u202f\u205f\u2066-\u2069\u3000]/g, " ")
     .replace(/ {2,}/g, " ")
     .replace(/^ +| +$/g, "");
   if ([...text].length > MOST_PLACE) {
@@ -954,10 +966,10 @@ async function inventoriesFor(have, body, add, books, origin) {
   for (const set of wanted) books.set(set, read.get(shardOf(set))?.sets?.[set] || null);
 }
 
-function listed(body, field, most, where = field) {
+function listed(body, field, most, where = field, things = "lots") {
   const list = body?.[field] === undefined ? [] : body[field];
-  if (!Array.isArray(list)) throw new Refusal(400, `${where} is a list of lots`);
-  if (list.length > most) throw new Refusal(413, `that is ${list.length} lots; one change is at most ${most}`);
+  if (!Array.isArray(list)) throw new Refusal(400, `${where} is a list of ${things}`);
+  if (list.length > most) throw new Refusal(413, `that is ${list.length} ${things}; one change is at most ${most}`);
   return list;
 }
 
@@ -1178,7 +1190,7 @@ export function applyOp(have, body, books = new Map()) {
   if (op === "built") {
     // How many copies of each set stand built (keptbuilt): every copy of
     // the number together, from the count shown to the count asked.
-    const changes = listed(body, "sets", MOST_LOT_CHANGES, "sets");
+    const changes = listed(body, "sets", MOST_LOT_CHANGES, "sets", "sets");
     if (changes.length === 0) throw new Refusal(400, "no sets to mark built or apart");
     const named = changes.map((one, n) => {
       const set = setNumber(one?.set);
@@ -1213,10 +1225,13 @@ export function applyOp(have, body, books = new Map()) {
     if (!have.placesKept && have.there) {
       throw new Refusal(503, "places cannot be kept with your account yet, so nothing was changed: try again later");
     }
-    const changes = listed(body, "places", MOST_PLACE_CHANGES, "places");
+    const changes = listed(body, "places", MOST_PLACE_CHANGES, "places", "places");
     if (changes.length === 0) throw new Refusal(400, "no places to set");
     const named = changes.map((p, n) => {
-      const part = partNumber(p?.part);
+      if (p?.part === undefined || p?.part === null || p?.part === "") {
+        throw new Refusal(400, `place ${n + 1}: a place needs a part number`);
+      }
+      const part = partNumber(p.part);
       if (!part) throw new Refusal(400, `place ${n + 1}: "${p?.part}" is not a part number`);
       const colour = colourOf(p?.colour, `place ${n + 1}`);
       return { part, colour, key: keyOf({ part, colour }), was: placeText(p?.was, `place ${n + 1}`),
@@ -1229,8 +1244,12 @@ export function applyOp(have, body, books = new Map()) {
     });
     const places = placesOf(have);
     const held = heldKeys(have, books);
+    // One already where it is asked to be is done: the same place sent again
+    // (Enter, then the field left) or by two tabs at once is no conflict.
+    const moving = named.filter((one) => (places[one.key] || "") !== one.place);
     named.forEach((one, n) => {
       const now = places[one.key] || "";
+      if (now === one.place) return;
       if (now !== one.was) {
         throw new Conflict(`place ${n + 1}: ${one.part} in colour ${one.colour} is kept ${now ? `in "${now}"` : "nowhere"} `
           + `now, not ${one.was ? `in "${one.was}"` : "nowhere"} as shown`, have);
@@ -1247,15 +1266,20 @@ export function applyOp(have, body, books = new Map()) {
           + "of your own nor in a set of yours", have);
       }
     });
-    if (named.every((one) => one.was === one.place)) return { next: null, done: { placed: 0 } };
-    for (const one of named) {
+    if (moving.length === 0) return { next: null, done: { placed: 0 } };
+    for (const one of moving) {
       if (one.place) places[one.key] = one.place;
       else delete places[one.key];
     }
     if (Object.keys(places).length > MAX_PLACES) {
       throw new Refusal(413, `that makes ${Object.keys(places).length} places; a collection keeps ${MAX_PLACES}`);
     }
-    return { next: null, places, done: { placed: named.filter((one) => one.was !== one.place).length } };
+    const bytes = placesBytes(places);
+    if (bytes > MOST_PLACES_BYTES) {
+      throw new Refusal(413, `that makes the places ${(bytes / 1e6).toFixed(2)} MB written out; a collection keeps `
+        + `${MOST_PLACES_BYTES / 1e6} MB of them: take some off, or make them shorter`);
+    }
+    return { next: null, places, done: { placed: moving.length } };
   }
 
   if (op === "start_over") {
@@ -1270,6 +1294,25 @@ export function applyOp(have, body, books = new Map()) {
 
   throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing, built, place or "
     + "start_over, or from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
+}
+
+/// The most bytes [places] are as the database writes them out
+/// (places::text, which collections_places_size measures): JSON's, and a
+/// space after each colon and comma.
+export function placesBytes(places) {
+  return Buffer.byteLength(JSON.stringify(places), "utf8") + 2 * Object.keys(places).length;
+}
+
+/// Whether every string in [value], its keys too, is whole: a lone UTF-16
+/// surrogate is half a character, which the database refuses (a 502 after
+/// the change was tried), so it is refused here first, with words.
+export function wholeText(value) {
+  if (typeof value === "string") return value.isWellFormed();
+  if (Array.isArray(value)) return value.every(wholeText);
+  if (value && typeof value === "object") {
+    return Object.entries(value).every(([key, inner]) => key.isWellFormed() && wholeText(inner));
+  }
+  return true;
 }
 
 /// The keys [have] holds, as keyOf spells them: its loose lots', and those
@@ -1665,6 +1708,9 @@ export default async function handler(request, response) {
     const most = ["keep", "take_back"].includes(body?.op) ? MAX_KEEP_BYTES : MAX_BYTES;
     if (size > most) {
       throw new Refusal(413, `that is ${size} bytes; ${body?.op ? "a change" : "an import"} is at most ${most}`);
+    }
+    if (!wholeText(body)) {
+      throw new Refusal(400, "it has half a character in it (a lone surrogate), so nothing was changed");
     }
 
     if (request.method === "PUT") {

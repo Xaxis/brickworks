@@ -2379,6 +2379,22 @@
       "tests": []
     },
     {
+      "id": "cli:ppreview probe",
+      "kind": "cli",
+      "entry": "src/dev/ppreview_probe.gd",
+      "reach": "tools/relay_probe.sh ppreview   (a window, 1280x720; -- --ppout=DIR: an independent review's attacks on where each part is kept, kept by ppfix: R1 17 odd places over MCP kept exactly, one that looks blank as none; R2 the places CSV read back, '=x as '=x; R3 a row's Enter sends once and keeps the focus; R4 a row typed while another is kept keeps its words and focus; R5 41 characters pasted said, never cut; R6 a place on a part held no more listed, taken off from its row and by a CSV; R7 MCP limits, 300 refusals as 10 and a count; R8 op lots and op place at once; R9 the booklet with 40-character places, its PDF and pictures)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:ppreview2 probe",
+      "kind": "cli",
+      "entry": "src/dev/ppreview2_probe.gd",
+      "reach": "tools/relay_probe.sh ppreview2   (a window, 1280x720: R10 Put them there with the find empty asks first, naming the 6 kept elsewhere, Only the 14 kept nowhere, then Move all 6, one row shown put unasked; R11 a step of 30 lots in the booklet, each parts box in its panel)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:print3mf probe",
       "kind": "cli",
       "entry": "src/dev/print3mf_probe.gd",

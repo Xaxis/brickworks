@@ -15038,9 +15038,6 @@ msgstr "jedes gezeigte liegt schon dort"
 msgid "none shown is kept anywhere"
 msgstr "keines der gezeigten hat einen Ort"
 
-msgid "a place is at most %d characters"
-msgstr "ein Ort hat höchstens %d Zeichen"
-
 msgid "%d set, then: %s"
 msgstr "%d gesetzt, dann: %s"
 
@@ -15103,3 +15100,30 @@ msgstr "Von ihren Orten nehmen"
 
 msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
 msgstr "Vergessen, wo diese %d Teile und Farben liegen? Speichere die Orte vorher als CSV, um eine Kopie zu behalten."
+
+msgid "Move parts kept elsewhere"
+msgstr "Woanders liegende Teile verlegen"
+
+msgid "%d of the %d parts and colours shown are kept somewhere else already. Move them to “%s” too?"
+msgstr "%d der %d gezeigten Teile und Farben liegen schon woanders. Sollen sie auch nach „%s“?"
+
+msgid "Move all %d"
+msgstr "Alle %d verlegen"
+
+msgid "Only the %d kept nowhere"
+msgstr "Nur die %d ohne Ort"
+
+msgid "a place is at most %d characters, and that is %d"
+msgstr "ein Ort hat höchstens %d Zeichen, und dieser hat %d"
+
+msgid "nothing was kept: a place is at most %d characters, and that is %d"
+msgstr "nichts wurde gespeichert: ein Ort hat höchstens %d Zeichen, und dieser hat %d"
+
+msgid "Where it's kept — %d of %s placed, and %d you own none of now"
+msgstr "Wo es liegt — %d von %s mit Ort, und %d, von denen du jetzt keins mehr hast"
+
+msgid "You own none of it now. Its place is kept for when it comes back: empty it and press Enter to take it off"
+msgstr "Du hast jetzt keins mehr davon. Sein Ort bleibt, bis es wiederkommt: leere ihn und drücke Enter, um ihn zu entfernen"
+
+msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
+msgstr "%s in %s bekommt keinen neuen Ort: du hast jetzt keins mehr davon. Leere seinen Ort, um ihn zu entfernen"

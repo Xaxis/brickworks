@@ -36,7 +36,11 @@
 //      knows no places; its copy sent as it is is refused, as before)
 //   6. taken off ("" place), for a part no longer held too; Start over
 //      forgets every place; an older app's DELETE does too
-import { applyOp, placeText, placesOf, keyOf, MOST_PLACE } from "../../api/collection.js";
+//   7. ppfix: the same place sent twice (Enter, then the field left) is
+//      done, not a 409; a lone surrogate is a 400 with words, not a 502;
+//      places is a list of places, and an entry with no part says so
+import { applyOp, placeText, placesOf, placesBytes, wholeText, keyOf, MOST_PLACE, MOST_PLACES_BYTES }
+  from "../../api/collection.js";
 import { readShard, shardOf } from "../../api/_owned.js";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -98,6 +102,15 @@ try {
     && placeText("d".repeat(MOST_PLACE), "x").length === MOST_PLACE,
     "41 characters refused, never cut; 40 kept");
   check(refusedWith(() => placeText(3, "place 1"), 400, /a place is words/) === "", "a number refused");
+  // ppfix F6: every space a space, the marks that take no room left out.
+  const spaced = ["\u200b", "\u00a0\u00a0", "\u3000", "\ufeff", "\u2060"].map((one) => placeText(one, "x"));
+  check(spaced.every((one) => one === "") && placeText("drawer\u00a03\u200b", "x") === "drawer 3"
+    && placeText("\u2007B\u202f12\u205f", "x") === "B 12",
+    `a place that looks blank is none (${JSON.stringify(spaced)}); NBSP and the like are spaces, U+200B left out`);
+  // ppfix F7: half a character refused with words, here and at the edge.
+  check(refusedWith(() => placeText("\ud800 x", "place 1"), 400, /half a character/) === ""
+    && !wholeText({ places: [{ place: "\udc00" }] }) && !wholeText({ ["\ud800"]: 1 }) && wholeText({ a: ["🧱 ok"] }),
+    "a lone surrogate refused (400), in a place and anywhere in a body");
   check(same(placesOf({ places: { "3001/4": "drawer 3", "BAD KEY": "x", "3020/0": "", "3021/4": 7 } }), { "3001/4": "drawer 3" })
     && same(placesOf({ places: ["x"] }), {}) && same(placesOf({}), {}),
     "placesOf keeps only keys as keyOf spells them and places that are words");
@@ -136,6 +149,33 @@ try {
   check(same(over.next, { sets: [], parts: [] }) && same(over.places, {}), "Start over forgets the places too");
   const bare = applyOp({ ...row, sets: [], parts: [], places: pure.places }, { op: "start_over", rev: 1 });
   check(same(bare.places, {}), "...also when only places are left");
+  // ppfix F1: the same place sent again, from the place first shown.
+  const sentTwice = applyOp({ ...row, places: pure.places }, { op: "place", places: [{ ...twelve[0], was: "", place: "drawer 1" }] },
+    books);
+  check(sentTwice.next === null && sentTwice.places === undefined && sentTwice.done.placed === 0,
+    `the same place sent twice (Enter, then the field left): done, nothing written (${JSON.stringify(sentTwice.done)})`);
+  check(refusedWith(() => applyOp({ ...row, places: pure.places }, { op: "place",
+    places: [{ ...twelve[0], was: "", place: "drawer 2" }] }, books), 409, /kept in "drawer 1" now, not nowhere/) === "",
+    "...but another place from the place first shown is still told what is there now");
+  // ppfix F10: the words.
+  check(refusedWith(() => applyOp(row, { op: "place", places: {} }, books), 400, /^places is a list of places$/) === ""
+    && refusedWith(() => applyOp(row, { op: "place", places: Array(5001).fill(twelve[0]) }, books), 413,
+      /^that is 5001 places; one change is at most 5000$/) === ""
+    && refusedWith(() => applyOp(row, { op: "place", places: [null] }, books), 400, /^place 1: a place needs a part number$/) === ""
+    && refusedWith(() => applyOp(row, { op: "built", sets: {} }, books), 400, /^sets is a list of sets$/) === "",
+    "places is a list of places, that is 5001 places, [null] needs a part number; sets is a list of sets");
+  // ppfix F9: the size the database checks, met here first with words.
+  const heavy = {};
+  for (let n = 0; n < 20000; n += 1) heavy[`${"p".repeat(30)}${String(n).padStart(11, "0")}/${100000000 + n}`] = "🧱".repeat(40);
+  check(placesBytes(heavy) > MOST_PLACES_BYTES, `20,000 places of 40 emoji under 51-character keys: ${placesBytes(heavy)} bytes`);
+  // One under the count a collection keeps, so it is the size that refuses.
+  const many = { ...row, places: Object.fromEntries(Object.entries(heavy).slice(1)), parts: [...row.parts] };
+  check(refusedWith(() => applyOp(many, { op: "place", places: [{ ...twelve[0], was: "", place: "🧱" }] }, books), 413,
+    /MB written out; a collection keeps 4 MB of them/) === "",
+    "...a place that takes them over 4 MB refused with words (413), before the database would");
+  const light = {};
+  for (let n = 0; n < 20000; n += 1) light[`${"p".repeat(30)}${String(n).padStart(11, "0")}/${100000000 + n}`] = "a".repeat(40);
+  check(placesBytes(light) < MOST_PLACES_BYTES / 1.9, `20,000 places of 40 letters: ${placesBytes(light)} bytes, in half of it`);
   if (args.pure) throw "pure";
 
   const { deleteAccount, mintSession } = await import("./session.mjs");
@@ -237,6 +277,21 @@ try {
     `an older app's whole copy PUT as it is: ${asIs.status} (not a set taken out), nothing changed, places as they were`);
   await keeps(`an older app's Remove ${SET}: its whole copy PUT without it, no places in it`,
     await call(token, { method: "PUT", body: olderCopy(SET) }));
+
+  console.log("\n7. the same place twice, and half a character (ppfix)");
+  const firstSend = await place([{ ...twelve[3], was: "drawer 4", place: "drawer 44" }]);
+  const secondSend = await place([{ ...twelve[3], was: "drawer 4", place: "drawer 44" }]);
+  check(firstSend.status === 200 && secondSend.status === 200 && secondSend.body.done?.placed === 0
+    && secondSend.body.places[keyOf(twelve[3])] === "drawer 44",
+    `Enter, then the field left, both from "drawer 4": ${firstSend.status}, then ${secondSend.status} `
+    + `${JSON.stringify(secondSend.body?.done || secondSend.body?.error)}`);
+  const half = await place([{ ...twelve[3], was: "drawer 44", place: "\ud800 x" }]);
+  const halfOwner = await call(token, { method: "POST", body: { op: "lots", id: id(), add: [{ part: "3001", colour: 4,
+    qty: 1, by: "\udc00" }] } });
+  check(half.status === 400 && /half a character/.test(half.body?.error || "") && halfOwner.status === 400
+    && (await call(token)).body.places[keyOf(twelve[3])] === "drawer 44",
+    `a lone surrogate, in a place and in a lot's name: ${half.status} "${half.body?.error}", ${halfOwner.status}; nothing changed`);
+  await place([{ ...twelve[3], was: "drawer 44", place: "drawer 4" }]);
 
   console.log("\n6. taken off, then forgotten");
   const offOne = await place([{ ...twelve[3], was: "drawer 4", place: "" }]);

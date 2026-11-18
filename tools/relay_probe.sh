@@ -2,7 +2,7 @@
 # relay_probe.sh NAME : one of the probes tools/suite/out.txt keeps out of
 # runs for want of the relay (account, connector, tabs, tabpair, together,
 # desktop_cloud, mybricks, mysets, localbricks, keptbuilt,
-# partplaces), run on a relay of its own: .env's keys, a free port, the
+# partplaces, ppreview, ppreview2), run on a relay of its own: .env's keys, a free port, the
 # relay's address handed the way the probe's header takes it, the live
 # database's lock held (they make accounts in production Supabase), and the
 # relay stopped after. Exits as the probe does.
@@ -31,8 +31,12 @@ case $name in
   # partplaces: where each part is kept, with the account, in the parts list,
   # the booklet, the CSV and over MCP (APP_UX9 #14).
   partplaces) env=("BRICKWORKS_API=$api") ;;
+  # ppreview, ppreview2: an independent review's attacks on where each part
+  # is kept (odd places, Enter and the focus, a paste over 40, a place held
+  # no more, Put them there asking first, the booklet), kept by ppfix.
+  ppreview|ppreview2) env=("BRICKWORKS_API=$api") ;;
   together) hold=("--hold=together_sessions,together_ops,together_people,together_snapshot_parts"); args=("--api=$api") ;;
-  *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets localbricks keptbuilt partplaces)" >&2; exit 2 ;;
+  *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets localbricks keptbuilt partplaces ppreview ppreview2)" >&2; exit 2 ;;
 esac
 # The keys are the main checkout's: a worktree has no .env of its own.
 keys=.env

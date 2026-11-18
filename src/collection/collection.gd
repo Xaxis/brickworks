@@ -1182,15 +1182,20 @@ static var _PLACE_KEY: RegEx = RegEx.create_from_string("^[a-z0-9][a-z0-9._-]{0,
 
 
 ## A place as the person typed it, made one line the account's way
-## (api/collection.js placeText): control characters, line breaks and the
-## marks that turn text round made spaces, spaces run together, trimmed.
-## Not cut: the caller refuses one over [constant MOST_PLACE].
+## (api/collection.js placeText): control characters, line breaks, every
+## space of Unicode's and the marks that turn text round made spaces, the
+## marks that take no room (U+200B, U+2060, U+FEFF) left out, so a place
+## that looks blank is none; spaces run together, trimmed. Not cut: the
+## caller refuses one over [constant MOST_PLACE].
 static func place_text(raw: String) -> String:
 	var out := ""
 	for at: int in raw.length():
 		var c: int = raw.unicode_at(at)
-		var gone: bool = c < 32 or (c >= 127 and c <= 159) or c == 0x2028 or c == 0x2029 \
-			or (c >= 0x202A and c <= 0x202E) or (c >= 0x2066 and c <= 0x2069)
+		if c == 0x200B or c == 0x2060 or c == 0xFEFF:
+			continue
+		var gone: bool = c < 32 or (c >= 127 and c <= 160) or c == 0x1680 or (c >= 0x2000 and c <= 0x200A) \
+			or c == 0x2028 or c == 0x2029 or (c >= 0x202A and c <= 0x202F) or c == 0x205F \
+			or (c >= 0x2066 and c <= 0x2069) or c == 0x3000
 		out += " " if gone else String.chr(c)
 	while out.contains("  "):
 		out = out.replace("  ", " ")
@@ -1288,7 +1293,8 @@ func held_keys(records: Dictionary, library: PartLibrary = null) -> Dictionary:
 ## Colour name and Place, in the order a walk round the drawers takes
 ## ([method place_less]), which [method read_places_csv] and My collection's
 ## Places CSV… read back. A place a spreadsheet would read as a formula
-## (=, +, -, @ first) is written after a ', which reading back takes off.
+## (=, +, -, @ first) is written after a ', which reading back takes off;
+## so is one that begins with a ' of its own, so it reads back with it.
 func places_csv(library: PartLibrary = null) -> String:
 	var keys: Array = places.keys()
 	keys.sort_custom(func(a: String, b: String) -> bool:
@@ -1298,7 +1304,7 @@ func places_csv(library: PartLibrary = null) -> String:
 	var lines := PackedStringArray(["Part,Colour,Colour name,Place"])
 	for key: String in keys:
 		var place: String = str(places[key])
-		if place.left(1) in ["=", "+", "-", "@"]:
+		if place.left(1) in CSV_GUARDED:
 			place = "'" + place
 		lines.append("%s,%d,%s,%s" % [Inventory._csv(part_of(key)), colour_of(key),
 			Inventory._csv(_colour_name(colour_of(key), library)), Inventory._csv(place)])
@@ -1361,7 +1367,7 @@ static func read_places_csv(text: String, library: PartLibrary) -> Dictionary:
 			bad.append("line %d: “%s” is not a colour here" % [n + 1, colour])
 			continue
 		var place: String = place_text(cell.call(at_place))
-		if place.left(2) in ["'=", "'+", "'-", "'@"]:
+		if place.left(1) == "'" and place.substr(1, 1) in CSV_GUARDED:
 			place = place.substr(1)
 		if place.length() > MOST_PLACE:
 			bad.append("line %d: a place is at most %d characters" % [n + 1, MOST_PLACE])
@@ -1373,6 +1379,12 @@ static func read_places_csv(text: String, library: PartLibrary) -> Dictionary:
 		seen[key] = n + 1
 		out.append({"part": id, "colour": code, "place": place})
 	return {"places": out, "bad": bad}
+
+
+## What a place in a CSV is written after a ' for when it begins with
+## ([method places_csv]): what a spreadsheet takes for a formula, and the '
+## itself, which [method read_places_csv] takes off once before any of them.
+const CSV_GUARDED: Array = ["=", "+", "-", "@", "'"]
 
 
 ## Which of [param names] [param head] has first, or -1.

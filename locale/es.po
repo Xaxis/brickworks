@@ -15038,9 +15038,6 @@ msgstr "cada una de las mostradas ya se guarda ahí"
 msgid "none shown is kept anywhere"
 msgstr "ninguna de las mostradas tiene sitio"
 
-msgid "a place is at most %d characters"
-msgstr "un sitio tiene como mucho %d caracteres"
-
 msgid "%d set, then: %s"
 msgstr "%d puestos, luego: %s"
 
@@ -15103,3 +15100,30 @@ msgstr "Quitarles su sitio"
 
 msgid "Forget where these %d parts and colours are kept? Save places as CSV first to keep a copy."
 msgstr "¿Olvidar dónde se guardan estas %d piezas y colores? Guarda antes los sitios como CSV para conservar una copia."
+
+msgid "Move parts kept elsewhere"
+msgstr "Mover piezas guardadas en otro sitio"
+
+msgid "%d of the %d parts and colours shown are kept somewhere else already. Move them to “%s” too?"
+msgstr "%d de las %d piezas y colores mostrados ya se guardan en otro sitio. ¿Moverlos también a «%s»?"
+
+msgid "Move all %d"
+msgstr "Mover los %d"
+
+msgid "Only the %d kept nowhere"
+msgstr "Solo los %d sin sitio"
+
+msgid "a place is at most %d characters, and that is %d"
+msgstr "un sitio tiene como mucho %d caracteres, y este tiene %d"
+
+msgid "nothing was kept: a place is at most %d characters, and that is %d"
+msgstr "no se guardó nada: un sitio tiene como mucho %d caracteres, y este tiene %d"
+
+msgid "Where it's kept — %d of %s placed, and %d you own none of now"
+msgstr "Dónde se guarda — %d de %s con sitio, y %d que ya no tienes"
+
+msgid "You own none of it now. Its place is kept for when it comes back: empty it and press Enter to take it off"
+msgstr "Ya no tienes nada de ella. Su sitio se guarda para cuando vuelva: vacíalo y pulsa Intro para quitarlo"
+
+msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
+msgstr "%s en %s no admite un sitio nuevo: ya no tienes nada de ella. Vacía su sitio para quitarlo"
