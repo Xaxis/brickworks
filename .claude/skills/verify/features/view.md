@@ -2104,7 +2104,14 @@ picture the assistant is shown.
   STEP line out, a split one in, a reorder whole steps moved with their
   ROTSTEP, every other line byte for byte; a step of only a ROTSTEP in a
   sub-model that is edited is taken out, its turn given to the step it
-  turned. Earlier refuses a step whose parts stand on the one before
+  turned, but one the model still numbers (no part in it, a part in a later
+  step: the ROTSTEP above the first part that the open counts as an empty
+  step before it, through Earlier or Later, which number nothing again) is
+  written as the file has it, so the steps written are the looks' numbers
+  (mkreview M2: each step's settings went on the step after it, the first
+  step's turn gone; `booklet_edit_probe --only=stay`'s "first, written
+  whole" and "the first step turned, opened again" checks, the whole write
+  the patch's file byte for byte). Earlier refuses a step whose parts stand on the one before
   (`AuthorSteps.blocked_swap`, read off the parts' boxes), and Earlier,
   Later and Merge go to the nearest step with parts. `BookletMaker` draws a
   turned step from its turn (`entry.fixed`), a zoomed one framed on its new

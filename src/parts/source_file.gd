@@ -907,10 +907,32 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 	for n: int in line_step:
 		if int(line_step[n]) < 0:
 			line_step[n] = latest
-	# The rest of each step's lines go with most of its parts.
+	# The rest of each step's lines go with most of its parts. A step the
+	# file has with nothing in it that the model still numbers (no part is in
+	# that number, and one is in a later) is written as the file has it,
+	# with its line ending it, so the steps written are numbered as the
+	# model's, by which the booklet's looks are keyed: a ROTSTEP above the
+	# first part, which the open counts as an empty step before it, taken
+	# out by an Earlier or Later put each step's looks on the step after it,
+	# and the first step's turn on the second (mkreview M2). An edit that
+	# numbers the steps again (AuthorSteps._tidy) leaves no such number.
+	var used: Dictionary = {}
+	for n: int in line_step:
+		used[int(line_step[n])] = true
+	for entry: Array in added:
+		used[int(entry[0])] = true
+	var kept_empty: Dictionary = {}     ## a block the file has empty, kept as its step
+	# A step a buffer's RETRIEVE begins goes with the parts of it that stay,
+	# not most of its parts (_retrieve_steps).
+	var retrieved: Dictionary = {}      ## a block -> the step its RETRIEVE begins now
+	var heads_at: Dictionary = _retrieve_steps(section, line_step)
+	for r: Variant in heads_at:
+		if r is int and int(r) >= head_end and int(r) < tail:
+			retrieved[_step_at[int(r)]] = int(heads_at[r])
 	var block_step: Array = []
 	var before: int = 0
-	for block: Array in blocks:
+	for k: int in blocks.size():
+		var block: Array = blocks[k]
 		var votes: Dictionary = {}
 		for n: int in block:
 			if line_step.has(n):
@@ -920,6 +942,12 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 			if best < 0 or int(votes[step]) > int(votes[best]) \
 					or int(votes[step]) == int(votes[best]) and step < best:
 				best = step
+		if best < 0 and k < latest and not used.has(k) and int(ends[k]) >= 0:
+			best = k
+			used[k] = true
+			kept_empty[k] = true
+		elif retrieved.has(k):
+			best = int(retrieved[k])
 		if best < 0:
 			best = before
 		block_step.append(best)
@@ -937,11 +965,11 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 			if not into.has(step):
 				into[step] = []
 			(into[step] as Array).append([float(n), text])
-		# A step with nothing in it is taken out with the line that ended
-		# it: the steps are numbered as the model has them now, and what an
-		# empty step's ROTSTEP turned goes with the step it turned
+		# Any other step with nothing in it is taken out with the line that
+		# ended it: the steps are numbered as the model has them now, and
+		# what an empty step's ROTSTEP turned goes with the step it turned
 		# (BookletLooks.follow).
-		var any: bool = false
+		var any: bool = kept_empty.has(k)
 		for n: int in blocks[k]:
 			if line_step.has(n):
 				any = true
@@ -954,6 +982,20 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 		if not into.has(step):
 			into[step] = []
 		(into[step] as Array).append([float(tail) + 0.5, str(entry[1])])
+	# A buffer's RETRIEVE that began a step of the file begins its step still:
+	# a part moved into it from a step before is written below the RETRIEVE,
+	# not above it in the order of its line, where it was put on and taken
+	# away at once in LPub3D and MLCad (mkreview M1). The RETRIEVE goes with
+	# its step's lines, as every other note does, to the step its parts that
+	# stay are in.
+	var span_of: float = float(lines.size() + 1) * 4.0
+	for r: int in _retrieve_heads(section):
+		if r < head_end or r >= tail or replace.has(r) or _step_at[r] >= block_step.size():
+			continue
+		for item: Array in into.get(int(block_step[_step_at[r]]), []):
+			var n: float = float(item[0])
+			if n < float(r) and n == floorf(n) and line_step.has(int(n)):
+				item[0] = float(r) + 0.25 + n / span_of
 	var order: Dictionary = {}
 	for step: int in into:
 		order[step] = true
@@ -2018,6 +2060,27 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 	# into the next step is the one moved (kt3r_emptystep), and a step put in
 	# of the middle part of the next, whose last part then went, leaves its
 	# LPub INSERT PAGE above the first, as with the last there (stfix).
+	# A step a buffer's RETRIEVE begins stays where the parts of it that stay
+	# are, not where most went (_retrieve_steps). A part of it moved to a step
+	# before that, or one of a step before it moved into it, cannot keep its
+	# line: the RETRIEVE would be in the middle of the step (stmreview).
+	var must_move: Dictionary = {}
+	var heads_at: Dictionary = {}
+	if _retrieves.has(section):
+		var chunk_steps: Dictionary = {}
+		for line: int in chunks:
+			chunk_steps[line] = int(targets[line])
+		heads_at = _retrieve_steps(section, chunk_steps)
+	for r: Variant in heads_at:
+		if not r is int:
+			continue
+		var at_step: int = int(heads_at[r])
+		if votes.has(_step_at[int(r)]):
+			stays[_step_at[int(r)]] = at_step
+			even.erase(_step_at[int(r)])
+		for line: int in chunks:
+			if line > int(r) and int(targets[line]) < at_step or line < int(r) and int(targets[line]) >= at_step:
+				must_move[line] = true
 	var stayed: Dictionary = {}
 	for was: int in votes:
 		if not even.has(was):
@@ -2068,7 +2131,7 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		for from_shift: int in states:
 			for state: Array in states[from_shift]:
 				_cheaper(next, from_shift, int(state[0]) + move, int(state[1]), int(state[2]))
-				if int(state[1]) <= now:
+				if int(state[1]) <= now and not must_move.has(line):
 					node_at.append(i)
 					node_before.append(int(state[2]))
 					_cheaper(next, shift, int(state[0]) + absi(shift - from_shift) * _STEP_LINE,
@@ -2104,6 +2167,7 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 	for line: int in kept:
 		bounds.append([line, int(targets[line])])
 	bounds.append([stop, end_step])
+	var heads: Array = _retrieve_heads(section)
 	var next_step: int = 0
 	for b: int in range(1, bounds.size()):
 		var low: int = int(bounds[b - 1][0])
@@ -2124,6 +2188,9 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		# it, else above the first kept, else below the earlier line.
 		for k: int in maxi(have.size() - need, 0):
 			drop[have[k]] = true
+		var held: String = _retrieve_kept_heading(heads, low, high, start, need, have, drop)
+		if not held.is_empty():
+			return held
 		var kept_lines: Array = []
 		for n: int in have:
 			if not drop.has(n):
@@ -2235,6 +2302,43 @@ func _parts_before(section: String, at: int, drop: Dictionary, gone: Dictionary)
 		if _is_placing(original[n]):
 			return true
 	return false
+
+
+## A RETRIEVE of [param heads] ([method _retrieve_heads]) between two lines a
+## layout keeps, [param low] and [param high], still begins a step: of the
+## STEP lines between them ([param have]), those [param drop] takes out
+## leave one above it when a part kept is above it, the earliest kept going
+## instead. The earliest went first, and a part of the step after a RETRIEVE
+## moved into the step before it, or the step before it moved on into it,
+## took out the STEP line right above it: the RETRIEVE was in the middle of
+## a step, and what that step put on before it was never shown in LPub3D or
+## MLCad (mkreview M1). Why not, where the two lines are in one step now and
+## a part kept is above it: "" when it begins one.
+func _retrieve_kept_heading(heads: Array, low: int, high: int, start: int, need: int,
+		have: PackedInt32Array, drop: Dictionary) -> String:
+	if low < start:
+		return ""
+	var first: int = -1
+	for r: Variant in heads:
+		if int(r) > low and int(r) < high:
+			first = int(r)
+			break
+	if first < 0:
+		return ""
+	var above: int = -1         ## the last STEP line above it
+	for n: int in have:
+		if n < first:
+			above = n
+			if not drop.has(n):
+				return ""
+	if need <= 0 or above < 0:
+		return "a RETRIEVE would be in the middle of a step (line %d)" % (first + 1)
+	for n: int in have:
+		if not drop.has(n):
+			drop[n] = true
+			break
+	drop.erase(above)
+	return ""
 
 
 ## Where a line of step [param step] goes in a section laid out
@@ -3637,6 +3741,142 @@ func retrieve_between(unit: String, earlier: Array, later: Array) -> String:
 ## nothing more (retrieve_between).
 func retrieves_in(unit: String) -> bool:
 	return _retrieves.has(_section_of(unit))
+
+
+## Whether any section of the file has a buffer's RETRIEVE ([method retrieves_in]).
+func has_retrieves() -> bool:
+	return not _retrieves.is_empty()
+
+
+## The RETRIEVE lines of [param section] that begin a step of the file: no
+## part is put on between the line ending the step before and it. One the
+## file has in the middle of a step is the author's, and is left so.
+func _retrieve_heads(section: String) -> Array:
+	var out: Array = []
+	if not _retrieves.has(section):
+		return out
+	var start: int = int((sections.get(section, [0, 0]) as Array)[0])
+	for r: int in _retrieves[section]:
+		var head: bool = true
+		for n: int in range(r - 1, start - 1, -1):
+			if _is_step(original[n]):
+				break
+			if _is_placing(original[n]):
+				head = false
+				break
+		if head:
+			out.append(r)
+	return out
+
+
+## Where each buffer RETRIEVE beginning a step of [param section] ([method
+## _retrieve_heads]) goes, as [param now] has the section's lines (a line
+## placing a part or a copy -> the step it is in now): {the RETRIEVE's line:
+## the step it begins now}. It stays with the parts of its step that stay:
+## the first step now holding parts from its step on (the file's) and no
+## step before it whole, where those it holds outnumber the earlier's, so a
+## part moved from the step before into its step goes below it, and a part
+## moved out of its step leaves it where it was. Up to stepmoves the step
+## most of its parts were in was the step's, so 2 of its 3 parts moved back
+## took it into the step before (stmreview). With every part of its step and
+## of the step before it in one step now, the two are one ("joined": [the
+## line, the file's step before it, its own]), as with every part from it on
+## gone before it, and no step is given it: what the earlier put on would be
+## put on and taken away at once in LPub3D and MLCad (mkreview M1).
+func _retrieve_steps(section: String, now: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var heads: Array = _retrieve_heads(section)
+	if heads.is_empty():
+		return out
+	var total: Dictionary = {}      ## a step of the file -> its lines [param now] has
+	var in_step: Dictionary = {}    ## a step now -> {a step of the file: its lines there}
+	for line: Variant in now:
+		var at: int = int(line)
+		if at < 0 or at >= _sec.size() or _sec[at] != section or int(now[line]) < 0:
+			continue
+		var was: int = _step_at[at]
+		total[was] = int(total.get(was, 0)) + 1
+		if not in_step.has(int(now[line])):
+			in_step[int(now[line])] = {}
+		var tally: Dictionary = in_step[int(now[line])]
+		tally[was] = int(tally.get(was, 0)) + 1
+	var order: Array = in_step.keys()
+	order.sort()
+	for r: int in heads:
+		var late: int = _step_at[r]
+		var early: int = -1
+		var after: bool = false
+		for was: int in total:
+			if was < late:
+				early = maxi(early, was)
+			else:
+				after = true
+		if not after:
+			continue
+		var at_step: int = -1
+		for step: int in order:
+			var tally: Dictionary = in_step[step]
+			if early >= 0 and total.has(late) and int(tally.get(early, 0)) == int(total[early]) \
+					and int(tally.get(late, 0)) == int(total[late]):
+				break
+			var whole_before: bool = false
+			var whole_after: bool = false
+			var before_n: int = 0
+			var after_n: int = 0
+			for was: int in tally:
+				var whole: bool = int(tally[was]) == int(total[was])
+				if was < late:
+					before_n += int(tally[was])
+					whole_before = whole_before or whole
+				else:
+					after_n += int(tally[was])
+					whole_after = whole_after or whole
+			if after_n > 0 and not whole_before and (whole_after or after_n > before_n):
+				at_step = step
+				break
+		if at_step >= 0:
+			out[r] = at_step
+		elif not out.has("joined"):
+			out["joined"] = [r, early, late]
+	return out
+
+
+## The first RETRIEVE beginning a step of the section the copy [param unit]
+## is of ([method _retrieve_heads]) that [method _retrieve_steps] finds
+## joins the step before it and its own, as [param items] are now ([origin,
+## step, ...] each: a part's place in the file, the step it or the copy it is
+## in goes on in): [the line as the file has it, the indices in
+## [param items] of the step before it, of the step it begins]; [] for none.
+## Written so, the STEP line between them goes, and what the earlier put on
+## is put on and taken away at once in LPub3D and MLCad: the edit is refused
+## (Shell.change_steps), as a merge of the two is (mkreview M1). Parts moved
+## from one into the other are not that while either keeps one: written on
+## the RETRIEVE's side of its step ([method _restep], [method _relaid]).
+func retrieve_joined(unit: String, items: Array) -> Array:
+	var section: String = _section_of(unit)
+	if not _retrieves.has(section):
+		return []
+	var now: Dictionary = {}
+	var on_line: Dictionary = {}    ## a line -> the items on it
+	for index: int in items.size():
+		var line: int = _line_in(section, str(items[index][0]))
+		if line < 0:
+			continue
+		now[line] = int(items[index][1])
+		if not on_line.has(line):
+			on_line[line] = []
+		(on_line[line] as Array).append(index)
+	var joined: Array = _retrieve_steps(section, now).get("joined", [])
+	if joined.is_empty():
+		return []
+	var before: Array = []
+	var after: Array = []
+	for line: int in on_line:
+		if _step_at[line] == int(joined[1]):
+			before.append_array(on_line[line])
+		elif _step_at[line] == int(joined[2]):
+			after.append_array(on_line[line])
+	return [original[int(joined[0])].strip_edges().left(80), before, after]
 
 
 ## The line of [param section] a part's place in the file ([param origin],
