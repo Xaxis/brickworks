@@ -162,10 +162,12 @@
 // Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project, and
 // SUPABASE_PUBLISHABLE_KEY for accounts.
 
+import { noted } from "./_noted.js";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
+import { tallyCall } from "./_analytics.js";
 import { challenge, clientLabel, grantOf, isClaude, originOf, resourceOf } from "./_oauth.js";
 import {
   ASK_VIEWS, EXTENSION, VIEWER_ONLY, asRead, asksViews, isViewerOnly, partRead, sessionFor, sessionShows,
@@ -1178,6 +1180,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     return response.status(202).end();
   }
   const id = message.id;
+  const began = Date.now();
   // Claude Code's first request, before initialize: server/discover, of a
   // newer protocol (2026-07-28) whose sessions have no initialize, and so no
   // session id to keep a chat in its tab by. This speaks the older one, so
@@ -1202,6 +1205,10 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   // The card's own call: no header, and never the one that hears the tools
   // have changed, which is Claude's to hear.
   const viewerCall = calling && isViewerOnly(name);
+  // Counted for /admin › Analytics (api/_analytics.js): each tool call, its
+  // name, whether it went (null: not told) and how long it took; awaited
+  // before the handler ends, so the count is never cut off with it.
+  const counted = (ok) => (calling && !viewerCall ? tallyCall(where.owner, name, ok, Date.now() - began, where.host) : null);
   // The model's viewer, served here: the tab need not be open to read it.
   if (["resources/list", "resources/read", "resources/templates/list"].includes(message.method)) {
     await where.used(message, null);
@@ -1223,7 +1230,15 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       : rpcError(id, -32002, `no resource ${uri.slice(0, 200)}`));
   }
   if (calling && RELAY_TOOLS.some((tool) => tool.name === name)) {
-    return await relayTool(where, message, response, where.used(message, null));
+    // Whether it went, from what it answered (inreview L6).
+    let said = null;
+    const heard = { status: (code) => ({ json: (body) => {
+      said = body;
+      return response.status(code).json(body);
+    } }) };
+    const answered = await relayTool(where, message, heard, where.used(message, null));
+    await counted(said ? !said.error && said.result?.isError !== true : null);
+    return answered;
   }
   // What the call is placed by, read at once rather than one after another
   // (2026-10-29, relay338: each a round trip to the database): the tabs,
@@ -1264,7 +1279,10 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     home = picked && !picked.moved_at ? picked : null;
     const refuse = async (words) => {
       await where.used(message, null);
-      return response.status(200).json(text(id, words, true));
+      const tally = counted(false);
+      const sent = response.status(200).json(text(id, words, true));
+      await tally;
+      return sent;
     };
     if (target) {
       const found = named(tabs, target);
@@ -1340,8 +1358,11 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   }
   const send = async (answer) => {
     await noted;
+    const tally = counted(!answer?.error && answer?.result?.isError !== true);
     const rooted = withPartsRoot(answer);
-    return answerWith(response, readFor ? asRead(rooted, readFor) : rooted, changed, stream);
+    const sent = answerWith(response, readFor ? asRead(rooted, readFor) : rooted, changed, stream);
+    await tally;
+    return sent;
   };
 
   // The handshake and the tool list, from what the tab sent when it
@@ -1559,7 +1580,8 @@ async function forAccount(request, response) {
   const give = request.body && request.body.method === "initialize" && !session
     ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
   const begun = early && early.owner === grant.owner && early.id === grant.id ? early : null;
-  return await fromClaude(accountTabs(grant, origin, session || give, begun), request.body, response, give,
+  const where = { ...accountTabs(grant, origin, session || give, begun), host: hostOf(request) };
+  return await fromClaude(where, request.body, response, give,
     streams(request));
 }
 
@@ -1694,7 +1716,7 @@ async function nextForTab(channel, instance, request, response) {
   return response.status(204).end();
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   response.setHeader("cache-control", "no-store");
   if (!dbConfigured()) {
     return response.status(503).json({ error: "the connector is not configured on this deployment" });
@@ -1704,7 +1726,7 @@ export default async function handler(request, response) {
     try {
       return await forAccount(request, response);
     } catch (trouble) {
-      return response.status(502).json({ error: String(trouble.message || trouble) });
+      return await stopped(request, response, trouble);
     }
   }
   if (!TOKEN.test(token)) {
@@ -1730,7 +1752,8 @@ export default async function handler(request, response) {
       const session = sessionOf(request);
       const give = request.body && request.body.method === "initialize" && !session
         ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
-      return await fromClaude(oneTab(channel, session || give), request.body, response, give, streams(request));
+      return await fromClaude({ ...oneTab(channel, session || give), host: hostOf(request) }, request.body, response, give,
+        streams(request));
     }
     if (op === "hello") {
       if (!instance) return response.status(400).json({ error: "hello needs ?i=" });
@@ -1810,6 +1833,25 @@ export default async function handler(request, response) {
     }
     return response.status(400).json({ error: `no op ${op}` });
   } catch (trouble) {
-    return response.status(502).json({ error: String(trouble.message || trouble) });
+    return await stopped(request, response, trouble);
   }
 }
+
+/// The host [request] came to: the live site's, or a preview's (a tool
+/// call there is a check's, api/_analytics.js testOf).
+function hostOf(request) {
+  return String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
+}
+
+/// A request that stopped on [trouble]: said, and a tool call counted as
+/// failed, its account not known here (/admin › Analytics, api/_analytics.js).
+async function stopped(request, response, trouble) {
+  const counted = request.body?.method === "tools/call" ? tallyCall(null, request.body.params?.name, false, null, hostOf(request))
+    : null;
+  const sent = response.status(502).json({ error: String(trouble.message || trouble) });
+  await counted;
+  return sent;
+}
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("mcp", handler);

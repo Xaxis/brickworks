@@ -65,6 +65,7 @@
 // Disconnect in the app deletes the connection, and every token of it goes
 // with it.
 
+import { noted } from "./_noted.js";
 import { timingSafeEqual } from "node:crypto";
 import { ASSERTION_TYPE, assertionTrouble, claimedClient, givenKeys, keysAt } from "./_assertion.js";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
@@ -824,7 +825,7 @@ function fields(request) {
   return body && typeof body === "object" ? body : {};
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Cache-Control", "no-store");
   if (request.method === "OPTIONS") {
@@ -872,3 +873,6 @@ export default async function handler(request, response) {
     });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("oauth", handler);

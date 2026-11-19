@@ -124,6 +124,8 @@
 			</ul>
 		</nav>
 		<div class="settings-col">
+			<!-- A news mail's Unsubscribe, opened here: said, signed in or not (settings.js). -->
+			<p class="note" id="unsubscribed" role="status" hidden></p>
 			<!-- The panel's place while what it says is asked (settings.js). -->
 			<div class="settings skeleton" id="loading" role="status">
 				<span class="visually-hidden">Looking for your sign-in…</span>
@@ -222,6 +224,8 @@
 								<label class="choice"><input type="checkbox" id="mail-remixes" data-kind="remixes">
 									Remixes of my models</label>
 							</div>
+							<label class="choice" id="news-choice" hidden><input type="checkbox" id="mail-news">
+								Email me Brickworks news: new features and planned maintenance, a few times a month at most</label>
 							<p class="said" id="mail-said" role="status"></p>
 						</div>
 					</div>
@@ -261,6 +265,14 @@
 							<label class="choice"><input type="checkbox" id="shows-likes">
 								Show on my profile the models I liked</label>
 							<p class="said" id="likes-said" role="status"></p>
+						</div>
+						<div class="wide" id="counting-choice">
+							<p>Brickworks counts how its pages and the studio are used, to make them better: never your
+								models, what you type, your email address or your IP address.
+								<a href="/counting">What is counted</a></p>
+							<label class="choice"><input type="checkbox" id="counting-on">
+								Count how I use Brickworks in this browser</label>
+							<p class="said" id="counting-said" role="status"></p>
 						</div>
 					</div>
 
@@ -381,5 +393,6 @@
 </footer>
 
 <script src="/settings.js" type="module"></script>
+<script src="/counting-ask.js" type="module"></script>
 </body>
 </html>

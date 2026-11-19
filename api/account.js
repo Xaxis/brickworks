@@ -93,6 +93,7 @@
 // compiling it in means a rotated key reaches the desktop build without
 // anyone reinstalling.
 
+import { noted } from "./_noted.js";
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { betaMode, memberOf } from "./_beta.js";
@@ -102,7 +103,7 @@ import { orangecheckOffer } from "./_oc_config.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver, TOO_YOUNG } from "./_trust.js";
 import { erase, NOT_DELETED } from "./_erase.js";
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response
       .status(204)
@@ -508,3 +509,6 @@ async function deleteAccount(request, response) {
   const gone = await erase(claims.sub);
   return response.status(gone.status).json(gone.body);
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("account", handler);

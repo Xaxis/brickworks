@@ -412,6 +412,7 @@ const TARGETS = {
   unbar_model: (q) => ["model", q.id],
   notice_set: () => ["setting", "notice"],
   notice_clear: () => ["setting", "notice"],
+  phone_rules: () => ["setting", "phone"],
   run_cron: (q) => ["cron", q.job],
   export: (q) => ["account", q.account],
   delete_account: (q) => ["account", q.account],
@@ -429,15 +430,42 @@ const TARGETS = {
   social_unschedule: (_, b) => ["send", b.id],
   social_posted: (_, b) => ["send", b.id],
   social_notes: (_, b) => ["social", b.community],
+  // Claude in the console (adminclaude): never the key, which no list here names.
+  claude_key: () => ["claude", "key"],
+  claude_check: () => ["claude", "key"],
+  claude_forget: () => ["claude", "key"],
+  claude_settings: () => ["claude", "settings"],
+  // The owner's notifications (ownernotify): what was set, never an address
+  // or a code (neither is in ASKED; the answer's address is in part).
+  notify_set: () => ["notification", "settings"],
+  notify_address: () => ["notification", "the address"],
+  notify_confirm: () => ["notification", "the address"],
+  notify_test: (_, b) => ["notification", typeof b.event === "string" && b.event ? b.event : "a test"],
+  notify_flush: () => ["notification", "check now"],
+  // Announcements (announce): one by its number; the day's most; the news
+  // mail's most a day and its foot's address (anfix).
+  announce_keep: (_, b, a) => ["announcement", a?.announcement?.id ?? b.id ?? "new"],
+  announce_send: (_, b) => ["announcement", b.id],
+  announce_unschedule: (_, b) => ["announcement", b.id],
+  announce_edit: (_, b) => ["announcement", b.id],
+  announce_withdraw: (_, b) => ["announcement", b.id],
+  announce_drop: (_, b) => ["announcement", b.id],
+  announce_limit: () => ["setting", "announce_limit"],
+  announce_mail_most: () => ["setting", "news_mail_most"],
+  announce_mail_address: () => ["setting", "news_mail_address"],
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
-  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url"];
+  "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url", "ends", "most",
+  "phone_parts", "phone_start_s",
+  // claude_settings: the model, effort and monthly cap chosen (never the key).
+  "model", "effort", "cap_usd"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.
 const ANSWERED = ["listed", "barred", "file_barred", "unlisted", "files_barred", "resolution", "cleared", "removed", "ended",
   "pick", "until", "challenge", "granted", "pending", "mail", "was", "value", "scope", "refused", "again", "email", "deleted",
-  "photos", "avatars", "sessions", "claudes", "rows", "ran", "seconds", "outcome", "notice", "languages", "account_out"];
+  "photos", "avatars", "sessions", "claudes", "rows", "ran", "seconds", "outcome", "notice", "languages", "account_out",
+  "reach", "audience_said", "ends_at"];
 
 /// What the audit keeps of an act: {kind, target, detail, test}.
 export function describe(op, request, answer) {
@@ -450,6 +478,12 @@ export function describe(op, request, answer) {
     if (given !== undefined && given !== null && given !== "" && !(key === "id" && kind === "model")) asked[key] = clip(given);
   }
   if (op === "plan" && Array.isArray(b.themes)) asked.themes = b.themes.map((one) => clip(one?.month, 7)).join(", ");
+  // The postal address at a news mail's foot (anfix) is kept; never the
+  // owner's notifications' address (notify_address), so "address" is not in ASKED.
+  if (op === "announce_mail_address") {
+    const given = b.address ?? q.address;
+    if (given !== undefined && given !== null && given !== "") asked.address = clip(given);
+  }
   // A notice's words: its English, and which languages were typed.
   if (op === "notice_set" && b.words && typeof b.words === "object") {
     asked.words = clip(b.words.en);

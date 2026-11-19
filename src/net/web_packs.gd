@@ -34,7 +34,7 @@ const HDRI := "hdri"
 const FONTS := "fonts"
 ## A file each is whole without: how a build that was not split is told.
 const _IN_THE_PACK: Dictionary = {
-	DATA: "res://assets/web/catalogue.json",
+	DATA: "res://assets/web/catalogue.bin",
 	PRIMITIVES: "res://assets/ldraw/p/stud.dat",
 	HDRI: "res://assets/hdri/studio_small_09.hdr",
 	FONTS: "res://assets/fonts/LiberationSans-Regular.ttf",

@@ -34,8 +34,11 @@ export async function startPostgres({ also = [] } = {}) {
   const data = path.join(store, "data");
   const made = spawnSync(path.join(bin, "initdb"), ["-D", data, "-U", "postgres", "-A", "trust", "--no-sync"], { env });
   if (made.status !== 0) throw new Error(`initdb: ${String(made.stderr).slice(0, 500)}`);
+  // In UTC, as Supabase's database is: initdb takes the box's own zone, and
+  // in Alaska's evening current_date was a day behind the UTC dates the
+  // fixtures write, so the day's counts read as empty (11-18).
   const server = spawn(path.join(bin, "postgres"), ["-D", data, "-k", dir, "-c", "listen_addresses=", "-c", "fsync=off",
-    "-c", "max_connections=60"], { env, stdio: ["ignore", "ignore", "pipe"] });
+    "-c", "max_connections=60", "-c", "timezone=UTC", "-c", "log_timezone=UTC"], { env, stdio: ["ignore", "ignore", "pipe"] });
   let log = "";
   server.stderr.on("data", (chunk) => { log += chunk; });
   const connect = async () => {

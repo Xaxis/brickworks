@@ -2,7 +2,8 @@
 // notice, set and cleared here (api/admin.js notice_set, notice_clear, each
 // kept in the audit) with a preview of it as visitors see it (web/notice.js,
 // site.css .site-notice); the settings the console keeps, the beta's
-// flipped here as in Beta (beta_switch, one act); and every variable of the
+// flipped here as in Beta (beta_switch, one act); the numbers a phone is
+// warned by (phone_rules, api/_phone.js; phonetruth); and every variable of the
 // deployment by name: whether this deployment has it, which of Vercel's
 // environments have it, what it switches and where it is changed. Never a
 // value, never its length (/api/admin?op=switches, api/_console_switches.js).
@@ -36,15 +37,72 @@ function previewNotice() {
 segmented($("notice-tone"), (value) => { tone = value === "warn" ? "warn" : "info"; previewNotice(); });
 $("notice-form").addEventListener("input", previewNotice);
 
+// The notice's end: a day (none, or today and the next 60) and a quarter
+// hour, in this browser's time, as the console asks every time.
+function endsPickers() {
+  const dayPick = $("notice-ends-day");
+  const timePick = $("notice-ends-time");
+  if (!dayPick || dayPick.options.length) return;
+  dayPick.append(new Option("None: until it is cleared", ""));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let at = 0; at <= 60; at += 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + at);
+    dayPick.append(new Option(at === 0 ? "Today" : at === 1 ? "Tomorrow" : d.toLocaleDateString(undefined, { weekday: "short", day: "numeric",
+      month: "short" }), d.toISOString()));
+  }
+  for (let minutes = 0; minutes < 24 * 60; minutes += 15) {
+    const t = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
+    timePick.append(new Option(t.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }), String(minutes)));
+  }
+  const pair = () => { timePick.disabled = !dayPick.value; };
+  dayPick.addEventListener("change", pair);
+  pair();
+}
+endsPickers();
+
+/// The end chosen, as an ISO time, or "" for none.
+function endsChosen() {
+  const dayPick = $("notice-ends-day");
+  if (!dayPick?.value) return "";
+  const at = new Date(dayPick.value);
+  at.setMinutes(Number($("notice-ends-time").value) || 0);
+  return at.toISOString();
+}
+
+/// [iso] shown in the end's pickers (its day added if it is past the 60).
+function endsShown(iso) {
+  const dayPick = $("notice-ends-day");
+  if (!dayPick) return;
+  if (!iso) {
+    dayPick.value = "";
+  } else {
+    const at = new Date(iso);
+    const midnight = new Date(at);
+    midnight.setHours(0, 0, 0, 0);
+    const value = midnight.toISOString();
+    if (![...dayPick.options].some((one) => one.value === value)) {
+      dayPick.append(new Option(midnight.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }), value));
+    }
+    dayPick.value = value;
+    $("notice-ends-time").value = String(Math.floor((at.getHours() * 60 + at.getMinutes()) / 15) * 15);
+  }
+  dayPick.dispatchEvent(new Event("change"));
+}
+
 $("notice-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const send = form.querySelector('button[type="submit"]');
   const words = Object.fromEntries(Object.keys(LANGS).map((lang) => [lang, form.elements[lang].value.trim()]).filter(([, w]) => w));
   if (!words.en) return say("notice-note", "Give it its words in English.", true);
+  // Its end, if one is chosen: the time it goes by itself (api/_announce.js).
+  const ends = endsChosen();
   send.disabled = true;
   await post({ op: "notice_set" }, "notice-note", (said) => `Shown on every page of the site, not the studio${said.languages?.length > 1 ? `, in ${said.languages
-    .map((lang) => LANGS[lang]).join(", ")}` : ""}: visitors see it within a minute or two.`, { body: { words, tone },
+    .map((lang) => LANGS[lang]).join(", ")}` : ""}${said.ends_at ? `, until ${when(said.ends_at)}` : ""}: visitors see it within a minute or two.`
+    + `${said.ends_said ? ` ${said.ends_said}` : ""}`, { body: { words, tone, ...(ends ? { ends } : {}) },
     after: async () => { await loadSwitches(); after(); } });
   send.disabled = false;
 });
@@ -59,6 +117,41 @@ $("notice-clear").addEventListener("click", async () => {
 
 $("variables-q").addEventListener("input", () => sift($("variables"), $("variables-q").value));
 
+// The numbers a phone is warned by: both kept in one act, or neither.
+$("phones-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const send = form.querySelector('button[type="submit"]');
+  const body = { phone_parts: form.elements.phone_parts.value.trim(), phone_start_s: form.elements.phone_start_s.value.trim() };
+  send.disabled = true;
+  await post({ op: "phone_rules" }, "phones-note", (said) => `Kept: ${Number(said.phone_parts).toLocaleString("en-US")} parts, `
+    + `${said.phone_start_s} s. Pages read them within a minute or two.`, { body,
+    after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
+  send.disabled = false;
+  // Switches drawn again above can push it off a phone's screen: what the
+  // press came to is brought into view.
+  $("phones-note").scrollIntoView({ block: "nearest" });
+});
+
+function drawPhones(s) {
+  const form = $("phones-form");
+  say("phones-scope", s.scope === "live" ? "brickworks.diy" : `this preview (${s.scope})`);
+  const rules = s.phone || [];
+  form.querySelector('button[type="submit"]').disabled = !rules.length;
+  if (!rules.length) return say("phones-said", "Not read just now: the measured numbers stand.", true);
+  for (const one of rules) {
+    const input = form.elements[one.name];
+    if (!input) continue;
+    // What is typed and not yet kept stays as typed when the page redraws.
+    if (!form.dataset.drawn) input.value = String(one.value);
+    say(`${one.name}-was`, one.set ? `set ${ago(one.set_at)}${one.set_by ? ` by ${one.set_by}` : ""}; measured ${one.fallback.toLocaleString("en-US")}`
+      : `as measured`);
+  }
+  form.dataset.drawn = "yes";
+  const set = rules.filter((one) => one.set).length;
+  say("phones-said", set ? `${set === rules.length ? "Both" : "One"} set here; the rest as measured.` : "As measured: neither is set here yet.");
+}
+
 function drawNotice(s) {
   const now = s.notice;
   const form = $("notice-form");
@@ -68,12 +161,14 @@ function drawNotice(s) {
     form.querySelector('button[type="submit"]').disabled = true;
   } else {
     form.querySelector('button[type="submit"]').disabled = false;
-    say("notice-said", now ? `Showing since ${when(now.set_at)}, set by ${now.set_by}.` : "None is showing.");
+    say("notice-said", now ? `Showing since ${when(now.set_at)}, set by ${now.set_by}${now.ends_at ? `, until ${when(now.ends_at)}`
+      : ", until you clear it"}.` : "None is showing.");
   }
   $("notice-clear").hidden = !now;
   // The form holds what is showing, to change or clear it.
   if (now && !form.dataset.drawn) {
     for (const lang of Object.keys(LANGS)) form.elements[lang].value = now.words?.[lang] || "";
+    endsShown(now.ends_at || "");
     tone = now.tone === "warn" ? "warn" : "info";
     for (const button of $("notice-tone").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.value === tone));
     if (Object.keys(now.words || {}).some((lang) => lang !== "en")) form.querySelector("details.more-langs").open = true;
@@ -89,7 +184,9 @@ function drawNotice(s) {
     cell(row, one.words?.en || "—", "said");
     cell(row, Object.keys(one.words || {}).map((lang) => LANGS[lang] || lang).join(", "));
     cell(row, one.set_by || "—");
-    cell(row, one.cleared_at ? `${when(one.cleared_at)} by ${one.cleared_by}` : "showing", one.cleared_at ? "" : "bad");
+    const ended = !one.cleared_at && one.ends_at && Date.parse(one.ends_at) <= Date.now();
+    cell(row, one.cleared_at ? `${when(one.cleared_at)} by ${one.cleared_by}` : ended ? `ended ${when(one.ends_at)}`
+      : one.ends_at ? `showing until ${when(one.ends_at)}` : "showing", one.cleared_at || ended ? "" : "bad");
     before.append(row);
   }
   if (!before.rows.length) emptyRow(before, s.notice_ready ? "No notice has been set here." : "Not kept yet.");
@@ -104,7 +201,7 @@ function drawSettings(s) {
   for (const one of list) {
     const row = make("tr");
     row.dataset.setting = `${one.name}@${one.scope}`;
-    const name = make("th", "", one.name === "beta" ? "The beta" : one.name);
+    const name = make("th", "", one.name === "beta" ? "The beta" : (s.phone || []).find((rule) => rule.name === one.name)?.said || one.name);
     name.scope = "row";
     row.append(name);
     cell(row, `${one.scope === "live" ? "brickworks.diy" : one.scope}${one.here ? " (here)" : ""}`, "about");
@@ -171,6 +268,7 @@ export async function loadSwitches() {
   const s = await adminJson({ op: "switches" });
   drawNotice(s);
   drawSettings(s);
+  drawPhones(s);
   drawVariables(s);
   return s;
 }

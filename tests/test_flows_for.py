@@ -228,7 +228,9 @@ def test_a_line_in_one_block_of_theme_js_names_that_blocks_checks_alone() -> Non
     every = _checks(_run("web/theme.js"))
     assert {"gallery", "socialdesk", "theme", "beta"} <= every and len(every) > 40, every
     # The social desk's tag, the theme's choice, the beta's bar: each its own.
-    assert _run_diff(_changed("web/theme.js", "const campaign = params.get"), "web/theme.js") == {"socialdesk"}
+    # The desk's visit keeps to the counting choice (infix, inreview L2), and
+    # the counter's flow lands by a tagged link (utm_campaign): both its own.
+    assert _run_diff(_changed("web/theme.js", "const campaign = params.get"), "web/theme.js") == {"socialdesk", "insights"}
     theme = _run_diff(_changed("web/theme.js", 'const KEY = "brickworks.theme"'), "web/theme.js")
     assert {"theme", "theme_account"} <= theme and "socialdesk" not in theme and "gallery" not in theme, theme
     beta = _run_diff(_changed("web/theme.js", 'heard?.beta === "open"'), "web/theme.js")
@@ -238,7 +240,7 @@ def test_a_line_in_one_block_of_theme_js_names_that_blocks_checks_alone() -> Non
     # Two blocks: both blocks' checks.
     both = _run_diff(_changed("web/theme.js", "const campaign = params.get", 'const KEY = "brickworks.theme"'),
                      "web/theme.js")
-    assert both == theme | {"socialdesk"}, both
+    assert both == theme | {"socialdesk", "insights"}, both
     # The language block hands every page's scripts their words: every page's.
     assert _run_diff(_changed("web/theme.js", "code: page, chosen, choose, say"), "web/theme.js") == every
     # A block's start taken out, or a file the diff does not name: every page's.
@@ -261,10 +263,18 @@ def test_a_line_inside_one_console_section_names_that_sections_flows() -> None:
     assert _run_diff(_changed("web/admin.html", ".networks li.by-hand {"), "web/admin.html") == whole
 
 
+# A section's module another module may import too, when that module's own
+# flow visits the section, so a change to it names that flow as well (below):
+# Claude's panel puts its acts on the desk's rows and opens a draft in Write
+# (adminclaude), and adminclaude_flow walks the desk.
+ALSO_IMPORTED_BY = {"web/admin-social.js": ["admin-claude.js"]}
+
+
 def test_each_section_module_is_its_sections_alone() -> None:
-    """Only admin.js imports it, and admin.js only loads it as its section
-    opens and marks the section changed: a module used anywhere else is the
-    whole page's, and comes out of ADMIN_SECTION_MODULES."""
+    """Only admin.js imports it (or a module ALSO_IMPORTED_BY names), and
+    admin.js only loads it as its section opens and marks the section
+    changed: a module used anywhere else is the whole page's, and comes out
+    of ADMIN_SECTION_MODULES."""
     flows_for = _flows_for()
     admin_js = (ROOT / "web/admin.js").read_text()
     page = (ROOT / "web/admin.html").read_text()
@@ -273,7 +283,7 @@ def test_each_section_module_is_its_sections_alone() -> None:
         assert f'data-section="{section}"' in page, (path, section)
         importers = sorted(p.name for p in (ROOT / "web").glob("*.[jh][st]*")
                            if p.name != name and f"/{name}" in p.read_text(errors="ignore"))
-        assert importers == ["admin.js"], (path, importers)
+        assert importers == sorted(["admin.js", *ALSO_IMPORTED_BY.get(path, [])]), (path, importers)
         imported = re.search(rf'^import \{{([^}}]*)\}} from "/{re.escape(name)}";$', admin_js, re.M)
         assert imported, path
         for spec in imported.group(1).split(","):
@@ -284,4 +294,4 @@ def test_each_section_module_is_its_sections_alone() -> None:
                                 or re.fullmatch(rf'{local}\(\(\) => changed\("{section}"\)\);', use) for use in uses), \
                 (path, local, uses)
     social = _checks(_run("web/admin-social.js"))
-    assert "socialdesk" in social and "account" not in social, social
+    assert "socialdesk" in social and "adminclaude" in social and "account" not in social, social

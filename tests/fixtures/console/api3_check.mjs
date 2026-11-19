@@ -265,6 +265,31 @@ try {
   out.audit_leaks = kept.some((row) => JSON.stringify(row.detail).includes("cron-key-for-this-test-only")
     || JSON.stringify(row.detail).includes("AdaList001"));
 
+  // The numbers a phone is warned by (phonetruth, api/_phone.js), after the
+  // audit above is read so console3's own list stands: the measured defaults
+  // before any is set; closed to anybody but the owner; refused with words out
+  // of range, not whole, or none named, and then none kept; set on this
+  // preview alone, read back by anybody there and in the console's Switches;
+  // each act kept in the audit.
+  const phoneAt = (host) => askPlans({ query: { op: "phone" }, headers: { host } });
+  const phoneAudit = async () => (await db.q("select count(*)::int as n from public.admin_audit where op = 'phone_rules'"))[0].n;
+  out.phone_before = (await phoneAt(preview)).json;
+  const shut = { method: "POST", query: { op: "phone_rules" }, body: { phone_parts: 900 } };
+  out.phone_gate = [(await askAdmin({ ...shut, headers: as(null) })).status, (await askAdmin({ ...shut, headers: as(ada) })).status];
+  out.phone_audit_gate = await phoneAudit();
+  out.phone_none = await act({ op: "phone_rules" }, {});
+  out.phone_low = await act({ op: "phone_rules" }, { phone_parts: 10 });
+  out.phone_half = await act({ op: "phone_rules" }, { phone_parts: 900, phone_start_s: "12.5" });
+  out.phone_words = await act({ op: "phone_rules" }, { phone_start_s: "soon" });
+  out.phone_after_refused = (await phoneAt(preview)).json;
+  out.phone_set = await act({ op: "phone_rules" }, { phone_parts: "1\u200b200", phone_start_s: 40 });
+  out.phone_shown = await phoneAt(preview);
+  out.phone_live = (await phoneAt("brickworks.diy")).json;
+  out.phone_one = (await act({ op: "phone_rules" }, { phone_start_s: " 30 " })).json;
+  out.phone_switches = (await read({ op: "switches" })).json.phone;
+  out.phone_audit = (await db.q("select status, target_kind, target, detail from public.admin_audit where op = 'phone_rules' order by id"))
+    .map((row) => ({ status: row.status, target: `${row.target_kind}:${row.target}`, asked: row.detail?.asked, said: row.detail?.said }));
+
   // What a report is, as Moderation's queue sorts it.
   const { reportKind } = await import("../../../api/admin.js");
   out.kinds = [

@@ -43,6 +43,7 @@
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/admin-claude.css">
 <style>
   /* The console's layout alone: its controls, tables, tabs, pills, stats
      and the detail sheet are site.css's (docs/DESIGN_SYSTEM.md). */
@@ -275,10 +276,46 @@
   /* The sheet's name takes focus when its body becomes the next sheet's
      (admin-social.js, openSheet): read, not pressed, so it draws no ring. */
   #social-sheet-title:focus { outline: none; }
+  /* Announcements (admin-announce.js): who it is for, its people's own view, the notice's end. */
+  #announce-form fieldset.audience, #notice-form fieldset.ends { display: grid; gap: var(--s-3); min-width: 0; margin: 0; padding: 0; border: 0; }
+  #announce-form fieldset.audience > legend, #notice-form fieldset.ends > legend { padding: 0; margin: 0 0 var(--s-2); font-size: var(--t-small);
+    color: var(--ink-soft); }
+  .announce-shown { display: grid; gap: var(--s-2); min-width: 0; }
+  .announce-shown > p.note { margin: var(--s-2) 0 0; }
+  [data-section="announcements"] [data-tab] > p.note { margin: 0 0 var(--s-4); }
+  /* Their page's group needs room to read as it will on their page. */
+  @media (width >= 1180px) { [data-section="announcements"] .with-preview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
   /* A link in a row or a sheet's facts, by finger: as tall as a button. */
   @media (width < 600px), (pointer: coarse) {
     table.cards td.text a, #social-sheet dd a { display: inline-flex; align-items: center; min-height: var(--control-h); }
   }
+  /* Notifications (ownernotify): a row a kind, its switch and words on the
+     left, when and its number on the right; one under the other on a phone. */
+  .notify-events { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+  .notify-events > li { display: grid; gap: var(--s-3) var(--s-5); grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .notify-events .choice { padding: 0; }
+  .notify-events .choice b { display: block; color: var(--ink); font-size: var(--t-body); font-weight: 600; }
+  .notify-events .choice small { display: block; color: var(--ink-soft); line-height: 1.45; }
+  .notify-events .row { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: center; justify-content: flex-end; }
+  .notify-events label.number { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; font-size: var(--t-small);
+    color: var(--ink-soft); }
+  .notify-events input[type="number"] { width: 7.5em; }
+  .notify-events .said { grid-column: 1 / -1; min-height: 0; }
+  /* A kind with numbers to set: its controls under its words, so the words keep their width. */
+  .notify-events > li.numbers { grid-template-columns: minmax(0, 1fr); }
+  .notify-events > li.numbers .row { justify-content: flex-start; }
+  @media (width < 760px) {
+    .notify-events > li { grid-template-columns: minmax(0, 1fr); }
+    .notify-events .row { justify-content: flex-start; }
+  }
+  /* A tick and its words on one line, as everywhere on the site (site.css .choice). */
+  .notify-form label.choice { display: flex; gap: 10px; align-items: flex-start; color: var(--ink); }
+  .notify-form .row.notify-times { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: end; }
+  .notify-form .notify-times label { flex: 1 1 150px; }
+  .notify-form .notify-times select, .notify-form .notify-times input { width: 100%; }
+  .notify-form .notify-to { margin: 0 0 var(--s-2); overflow-wrap: anywhere; }
+  .notify-address { display: grid; gap: var(--s-3); padding-bottom: var(--s-3); border-bottom: 1px solid var(--line); }
+  #notify-mail-subject:focus { outline: none; }
   /* The desk's tables as cards on a phone: a row a block, each cell named by
      its column (data-label, admin-social.js), the acts side by side. */
   @media (width < 600px) {
@@ -305,6 +342,7 @@
     <div class="who">
       <span id="meta-who">Owner console</span>
       <span id="note" role="status"></span>
+      <button id="claude-toggle" type="button" class="cta ghost small" aria-controls="claude-dock" aria-expanded="false" hidden>Claude</button>
       <button id="again" type="button" class="cta ghost small">Refresh</button>
       <a id="sign-in" class="cta small" href="/profile?sign-in" hidden>Sign in</a>
     </div>
@@ -316,6 +354,7 @@
       <p class="page-toc-title" id="nav-title">Console</p>
       <ul class="scroller">
         <li><a href="#overview" data-go="overview">Overview</a></li>
+        <li><a href="#analytics" data-go="analytics">Analytics</a></li>
         <li><a href="#people" data-go="people">People</a></li>
         <li><a href="#moderation" data-go="moderation">Moderation <span class="badge accent" id="nav-moderation" hidden></span></a></li>
         <li><a href="#gallery" data-go="gallery">Gallery</a></li>
@@ -323,12 +362,15 @@
         <li><a href="#beta" data-go="beta">Beta <span class="badge accent" id="nav-beta" hidden></span></a></li>
         <li><a href="#feedback" data-go="feedback">Feedback <span class="badge accent" id="nav-feedback" hidden></span></a></li>
         <li><a href="#social" data-go="social">Social <span class="badge accent" id="nav-social" hidden></span></a></li>
+        <li><a href="#announcements" data-go="announcements">Announcements</a></li>
         <li><a href="#plans" data-go="plans">Plans</a></li>
         <li><a href="#mail" data-go="mail">Mail <span class="badge accent" id="nav-mail" hidden></span></a></li>
+        <li><a href="#notifications" data-go="notifications">Notifications <span class="badge accent" id="nav-notifications" hidden></span></a></li>
         <li><a href="#connector" data-go="connector">Connector <span class="badge accent" id="nav-connector" hidden></span></a></li>
         <li><a href="#site" data-go="site">Site <span class="badge accent" id="nav-site" hidden></span></a></li>
         <li><a href="#data" data-go="data">Data <span class="badge accent" id="nav-data" hidden></span></a></li>
         <li><a href="#switches" data-go="switches">Switches</a></li>
+        <li><a href="#claude" data-go="claude">Claude</a></li>
         <li><a href="#audit" data-go="audit">Audit log</a></li>
       </ul>
       <div class="end">
@@ -380,6 +422,13 @@
             <ul class="acts-list" id="latest" aria-labelledby="h-latest"></ul>
             <p class="state" id="latest-none" hidden>Nothing done from the console yet.</p>
           </div>
+        </section>
+
+        <!-- Analytics (insights; web/admin-analytics.js makes the rest) ----------->
+        <section data-section="analytics" aria-labelledby="h-analytics" hidden>
+          <div class="lead"><h2 id="h-analytics">Analytics</h2>
+            <p class="note">How the site and the studio are used, counted here and nowhere else: never a model, what
+              anybody typed, an email address or an IP address. Nobody is counted who said no.</p></div>
         </section>
 
         <!-- People ------------------------------------------------------------------>
@@ -896,6 +945,20 @@
           </div>
         </section>
 
+        <!-- Announcements (announce): the tabs' contents are admin-announce.js's. -->
+        <section data-section="announcements" aria-labelledby="h-announcements" hidden>
+          <div class="lead"><h2 id="h-announcements">Announcements</h2>
+            <p class="note">Tell the site's people something, in their own Notifications, and by email to those who chose news.
+              Nothing goes until you press Send on its exact words.</p></div>
+          <nav class="tabs" aria-label="Announcements">
+            <a href="#announcements/write" data-tab-link="write">Write</a>
+            <a href="#announcements/sent" data-tab-link="sent">Sent and scheduled <span class="n" id="tab-announce-due"></span></a>
+            <a href="#announcements/banner" data-tab-link="banner">Banner</a>
+            <a href="#announcements/settings" data-tab-link="settings">Settings</a>
+          </nav>
+          <div data-tab="write" hidden></div><div data-tab="sent" hidden></div><div data-tab="banner" hidden></div><div data-tab="settings" hidden></div>
+        </section>
+
         <!-- Plans and revenue (console2) ----------------------------------------------->
         <section data-section="plans" aria-labelledby="h-plans" hidden>
           <div class="lead"><h2 id="h-plans">Plans and revenue</h2>
@@ -1025,6 +1088,104 @@
               </table>
             </div>
             <p class="note" id="mail-note" role="status"></p>
+          </div>
+        </section>
+
+        <!-- Notifications (ownernotify) -------------------------------------------------->
+        <section data-section="notifications" aria-labelledby="h-notifications" hidden>
+          <div class="lead"><h2 id="h-notifications">Notifications</h2>
+            <p class="note">Mail to you about what happens on the site: each kind on or off, at once or in a daily digest,
+              with quiet hours and a cap an hour, so it never floods. Every mail sent, held or folded is under Sent.</p></div>
+          <p class="note bad" id="notify-not-yet" role="alert" hidden></p>
+          <nav class="tabs" aria-label="Notifications">
+            <a href="#notifications/settings" data-tab-link="settings">Settings</a>
+            <a href="#notifications/sent" data-tab-link="sent">Sent <span class="n" id="tab-notify-failed"></span></a>
+          </nav>
+
+          <div data-tab="settings" hidden>
+            <div class="card live-line" id="notify-state">
+              <h3 id="notify-headline">—</h3>
+              <p class="note" id="notify-said"></p>
+              <div class="acts-row">
+                <button type="button" id="notify-test">Send a test</button>
+                <button type="button" id="notify-flush" class="ghost">Check now</button>
+              </div>
+              <p class="said" id="notify-acted" role="status"></p>
+            </div>
+
+            <div class="part">
+              <div class="lead"><h3 id="h-notify-events">What mails you</h3>
+                <p class="note">Each saves as you change it. At once: within a few minutes, one mail for a burst. Daily
+                  digest: in one mail at the time below.</p></div>
+              <ul class="notify-events" id="notify-events" aria-labelledby="h-notify-events"></ul>
+            </div>
+
+            <div class="part">
+              <div class="lead"><h3 id="h-notify-where">Where and when</h3></div>
+              <form class="console-form notify-form" id="notify-form" novalidate>
+                <div class="notify-address">
+                  <p class="notify-to">Mail goes to <b id="notify-to">—</b> <small class="faint" id="notify-to-said"></small></p>
+                  <div class="acts-row">
+                    <button type="button" class="cta ghost small" id="notify-other">Use another address</button>
+                    <button type="button" class="cta ghost small" id="notify-own" hidden>Back to my account's address</button>
+                  </div>
+                  <div class="with-act" id="notify-new" hidden>
+                    <label>Another address <small>a code goes there first; it changes nothing until you type it</small>
+                      <input type="email" id="notify-new-address" autocomplete="email" spellcheck="false"></label>
+                    <button type="button" id="notify-send-code">Send a code</button>
+                  </div>
+                  <div class="with-act" id="notify-confirm" hidden>
+                    <label>The code sent to <span id="notify-pending">—</span>
+                      <input type="text" id="notify-code" inputmode="numeric" autocomplete="one-time-code"></label>
+                    <button type="button" id="notify-confirm-code">Confirm</button>
+                  </div>
+                  <p class="said" id="notify-address-said" role="status"></p>
+                </div>
+                <label class="choice"><input type="checkbox" id="notify-paused">
+                  <span>Pause all: nothing is mailed, nor kept to mail later</span></label>
+                <label class="choice"><input type="checkbox" id="notify-quiet-on">
+                  <span>Quiet hours: mail is held, and goes as one when they end</span></label>
+                <div class="row notify-times">
+                  <label>Quiet from <select id="notify-quiet-from"></select></label>
+                  <label>until <select id="notify-quiet-to"></select></label>
+                  <label>The daily digest at <select id="notify-digest-at"></select></label>
+                </div>
+                <div class="row notify-times">
+                  <label>Time zone <select id="notify-tz"></select></label>
+                  <label>At most, mails an hour <small>past it, the rest go in one mail</small>
+                    <input type="number" id="notify-cap" min="1" max="60" step="1" inputmode="numeric"></label>
+                </div>
+                <p class="said" id="notify-form-said" role="status"></p>
+              </form>
+            </div>
+
+            <div class="part">
+              <div class="lead"><h3 id="h-notify-not-here">Not mailed from here</h3>
+                <p class="note">What was asked for that no key the site holds can read, why, and where it is watched instead.</p></div>
+              <ul class="acts-list" id="notify-not-here" aria-labelledby="h-notify-not-here"></ul>
+            </div>
+          </div>
+
+          <div data-tab="sent" hidden>
+            <div class="stats">
+              <div class="stat"><b id="n-notify-hour">—</b><span>mailed in the last hour</span><small id="n-notify-cap"></small></div>
+              <div class="stat"><b id="n-notify-held">—</b><span>held for quiet hours</span></div>
+              <div class="stat"><b id="n-notify-capped">—</b><span>waiting past the cap</span></div>
+              <div class="stat"><b id="n-notify-digest">—</b><span>for the next digest</span><small id="n-notify-digest-at"></small></div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-notify-sent">
+              <table class="queue cards">
+                <caption class="visually-hidden" id="h-notify-sent">Mails sent, held and folded, and what you changed</caption>
+                <thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Of</th><th scope="col">Said</th>
+                  <th scope="col">Outcome</th><th scope="col"><span class="visually-hidden">Read it</span></th></tr></thead>
+                <tbody id="notify-sent"></tbody>
+              </table>
+            </div>
+            <div class="part" id="notify-mail" hidden>
+              <div class="lead"><h3 id="notify-mail-subject" tabindex="-1">—</h3><p class="note" id="notify-mail-said"></p></div>
+              <pre class="words" id="notify-mail-body"></pre>
+            </div>
+            <p class="note" id="notify-sent-note" role="status"></p>
           </div>
         </section>
 
@@ -1186,7 +1347,7 @@
             <div class="with-preview">
               <form id="notice-form" class="card console-form">
                 <p class="note">Shown on every page of <span id="notice-scope">this site</span>, not the studio, until you clear it, at the
-                  window's foot, and hidden by anyone's × in their own browser. In German, French and Spanish only where
+                  window's foot, and hidden by anyone's × for them: in their browser, and on every device once signed in. In German, French and Spanish only where
                   you type them; those pages show the English otherwise.</p>
                 <label>English <small>needed</small>
                   <textarea name="en" maxlength="300" rows="2" required></textarea></label>
@@ -1196,6 +1357,9 @@
                   <label>Français <small>optional</small><textarea name="fr" maxlength="300" rows="2" lang="fr"></textarea></label>
                   <label>Español <small>optional</small><textarea name="es" maxlength="300" rows="2" lang="es"></textarea></label>
                 </details>
+                <fieldset class="ends"><legend>Ends <small>optional: it goes by itself then, in this computer's time</small></legend>
+                  <div class="when-pair"><label><span class="visually-hidden">Ends: day</span><select name="ends_day" id="notice-ends-day"></select></label>
+                    <label><span class="visually-hidden">Ends: time</span><select name="ends_time" id="notice-ends-time"></select></label></div></fieldset>
                 <div class="row">
                   <div class="segmented" role="group" aria-label="Tone" id="notice-tone">
                     <button type="button" data-value="info" aria-pressed="true">News</button>
@@ -1233,6 +1397,23 @@
             <p class="note" id="settings-note" role="status"></p>
           </div>
           <div class="part">
+            <div class="lead"><h3 id="h-phones">Phones</h3><p class="note" id="phones-said"></p></div>
+            <form id="phones-form" class="card console-form" aria-labelledby="h-phones">
+              <p class="note">What a phone is told before the studio opens, on <span id="phones-scope">this site</span>, from
+                what was measured on phones (docs/PHONE.md). Pages read a change within a minute or two.</p>
+              <label>Parts a phone opens without a warning <small id="phone_parts-was"></small>
+                <input name="phone_parts" type="number" inputmode="numeric" min="50" max="100000" step="1" required></label>
+              <p class="note">A model past it asks first on a phone, from its page: "About N parts: on a phone this may
+                close the tab". Computers and tablets are never asked.</p>
+              <label>Seconds a phone takes to start the studio once it has its files <small id="phone_start_s-was"></small>
+                <input name="phone_start_s" type="number" inputmode="numeric" min="1" max="600" step="1" required></label>
+              <p class="note">A first visit on a phone is told how long it will take as it loads: the files at the rate
+                they are coming, then these seconds.</p>
+              <div class="row"><button type="submit" class="cta">Keep them</button>
+                <span class="note" id="phones-note" role="status"></span></div>
+            </form>
+          </div>
+          <div class="part">
             <div class="lead"><h3 id="h-variables">Deployment variables</h3><p class="note" id="variables-said"></p></div>
             <div class="tools">
               <input type="search" id="variables-q" placeholder="Search variables" aria-label="Search variables">
@@ -1249,6 +1430,59 @@
         </section>
 
         <!-- Audit log ------------------------------------------------------------------>
+        <!-- Claude (adminclaude: web/admin-claude.js, docs/ADMIN_CLAUDE.md) ------------>
+        <section data-section="claude" aria-labelledby="h-claude" hidden>
+          <div class="lead"><h2 id="h-claude">Claude</h2>
+            <p class="note">Claude on your own Anthropic key, in the panel beside every section: it reads what the console
+              reads, and on the social desk it suggests posts and replies as drafts. It never sends, posts, replies, schedules,
+              deletes, mails, or changes a plan or a switch: you do, from the drafts.</p></div>
+          <p class="note bad" id="claude-not-yet" role="alert" hidden></p>
+          <p class="note bad" id="claude-elsewhere" role="alert" hidden></p>
+          <p class="note" id="claude-stand-in" hidden>The checks' own pool (?tests=1): its Anthropic is a stand-in on this
+            server, and only the stand-in's key fits. Nothing here reaches Anthropic.</p>
+          <div class="groups">
+            <form class="card console-form" id="claude-key-form" novalidate aria-labelledby="h-claude-key">
+              <h3 id="h-claude-key">Your API key</h3>
+              <p class="note" id="claude-key-shown" role="status"></p>
+              <p class="note bad" id="claude-secret" role="alert" hidden></p>
+              <label id="claude-key-l">Anthropic API key
+                <input type="password" id="claude-key" name="key" autocomplete="off" spellcheck="false" autocapitalize="off"
+                  placeholder="sk-ant-…" aria-describedby="claude-key-how"></label>
+              <p class="note" id="claude-key-how">Made at console.anthropic.com › API keys, and paid for by you, there. It is checked
+                with Anthropic, then kept on the server alone, sealed: it is never shown again, here or anywhere, only its last four
+                characters.</p>
+              <div class="row">
+                <button type="submit" class="cta" id="claude-key-keep">Check and keep</button>
+                <button type="button" id="claude-check" hidden>Check key</button>
+                <button type="button" class="cta ghost danger" id="claude-forget" hidden>Forget key</button>
+                <span class="note" id="claude-key-note" role="status"></span>
+              </div>
+            </form>
+            <form class="card console-form" id="claude-settings-form" novalidate aria-labelledby="h-claude-settings">
+              <h3 id="h-claude-settings">Model, effort and cap</h3>
+              <label>Model
+                <select id="claude-model" name="model" aria-describedby="claude-models-said claude-price"></select></label>
+              <p class="note" id="claude-models-said"></p>
+              <p class="note" id="claude-price"></p>
+              <label>Effort
+                <select id="claude-effort" name="effort" aria-describedby="claude-effort-how"></select></label>
+              <p class="note" id="claude-effort-how">How long Claude thinks before it answers. More effort is slower and costs more;
+                high suits most asks.</p>
+              <label>Monthly cap, in dollars
+                <input type="number" id="claude-cap" name="cap_usd" min="0.01" max="10000" step="0.01" inputmode="decimal"
+                  aria-describedby="claude-month"></label>
+              <div class="claude-month">
+                <p class="note" id="claude-month"></p>
+                <meter id="claude-meter" min="0" low="0" aria-label="This month's spend against the cap" hidden></meter>
+              </div>
+              <div class="row">
+                <button type="submit" class="cta">Keep</button>
+                <span class="note" id="claude-settings-note" role="status"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+
         <section data-section="audit" aria-labelledby="h-audit" hidden>
           <div class="lead"><h2 id="h-audit">Audit log</h2>
             <p class="note">Every act from the console, newest first: who, what, on what, when, and what came of it,
@@ -1292,6 +1526,37 @@
   </div>
   <div class="sheet-body" id="social-sheet-body"></div>
 </dialog>
+
+<!-- Claude, beside every section (web/admin-claude.js). -->
+<aside class="claude-dock" id="claude-dock" aria-labelledby="claude-dock-h" hidden>
+  <div class="claude-head">
+    <h2 id="claude-dock-h">Claude</h2>
+    <button type="button" class="cta ghost small" id="claude-new">New chat</button>
+    <button type="button" class="icon-btn" id="claude-close" aria-label="Close Claude"><svg class="icon" aria-hidden="true"><use href="/icons.svg#close"/></svg></button>
+  </div>
+  <p class="note" id="claude-said" role="status"></p>
+  <p class="note claude-how" id="claude-how" hidden></p>
+  <div class="claude-log" id="claude-log" role="log" aria-live="polite" aria-label="Your conversation with Claude" tabindex="0"></div>
+  <div class="claude-empty" id="claude-empty">
+    <p>Ask about the site in plain words. For instance:</p>
+    <ul><li>How many people signed up this week, and how does it compare?</li>
+      <li>Did any mail fail to go in the last few days?</li>
+      <li>On Social: what should I post next, and when?</li></ul>
+  </div>
+  <form class="claude-ask" id="claude-ask" novalidate>
+    <label for="claude-q">Ask Claude</label>
+    <textarea id="claude-q" rows="3" spellcheck="true" aria-describedby="claude-q-n claude-ask-how claude-ask-said"></textarea>
+    <div class="row">
+      <small id="claude-q-n">0 / 8,000</small>
+      <span class="note" id="claude-ask-how">Enter asks; Shift+Enter starts a new line.</span>
+      <span class="push">
+        <button type="button" id="claude-stop" hidden>Stop</button>
+        <button type="submit" class="cta small" id="claude-send">Ask</button>
+      </span>
+    </div>
+    <p class="note" id="claude-ask-said" role="alert"></p>
+  </form>
+</aside>
 
 <script type="module" src="/admin.js"></script>
 </html>

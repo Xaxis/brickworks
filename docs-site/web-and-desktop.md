@@ -55,6 +55,20 @@ ui:page editor motions and simulate by finger
 ui:more's first rows and adding to a selection by finger
 -->
 
+### What a phone is told first {#phone-warnings}
+
+A phone gives a browser tab far less memory than a computer does, and starts the app more slowly. So before you wait, Brickworks tells you plainly:
+
+- **A first visit on a phone** says how long it will take as it loads, from how fast the files are coming. Later visits start sooner and say nothing.
+- **A big model** opened from its page on a phone asks first: *About N parts: on a phone this may close the tab.* **Open it anyway** goes on; **Not now** stays on the page. Every model in the gallery today opens on a phone without asking. On a computer or a tablet nothing is asked.
+- **A browser without WebGL 2** is told at once, before the download, with what to do: turn on hardware acceleration, update the browser, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.
+- **A browser that will not give the app the memory it needs** is told so, with what to do: close other tabs and reload, or open Brickworks on a computer.
+
+<!-- covers
+ui:a phone asked before a big model opens
+ui:the loader's words for a phone and a browser without WebGL 2
+-->
+
 ## Work on several models at once {#tabs}
 
 Each browser tab is its own model. **File › New tab** opens another, and each tab has a link of its own, `/app?tab=<id>`, that opens its model again in this browser. When the same model is open in two tabs and you save it in one, the other offers **Reload it**.
@@ -77,7 +91,7 @@ lib:newer build
 
 ## A notice at the foot of the page {#notice}
 
-Now and then a short notice floats at the foot of every page of the site: a time Brickworks will be down for upkeep, or news. It is in your page's language when one was written for it, else in English, and nothing on the page moves for it. Press **×** to put it away: it stays away in that browser until there is a new one.
+Now and then a short notice floats at the foot of every page of the site: a time Brickworks will be down for upkeep, or news. It is in your page's language when one was written for it, else in English, and nothing on the page moves for it. Press **×** to put it away: it stays away in that browser until there is a new one, and when you are signed in, on every device you sign in on. A notice with an end time is gone by itself once it is over.
 
 <!-- covers
 ui:the site notice

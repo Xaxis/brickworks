@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, cli:ask to leave timing, lib:a request asked of the page, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe, cli:console2 browser flow, cli:Resend's webhook set up, lib:your sets and lists, ui:own want and save, ui:your lists page, ui:the sets you own on a profile, cli:lists browser flow, cli:console3 browser flow, ui:the site notice, lib:the social desk, lib:the social desk's Reddit adapter, ui:the owner's social desk, cli:socialdesk browser flow -->
+<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, cli:ask to leave timing, lib:a request asked of the page, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe, cli:console2 browser flow, cli:Resend's webhook set up, lib:your sets and lists, ui:own want and save, ui:your lists page, ui:the sets you own on a profile, cli:lists browser flow, cli:console3 browser flow, ui:the site notice, lib:the social desk, lib:the social desk's Reddit adapter, ui:the owner's social desk, cli:socialdesk browser flow, ui:a phone asked before a big model opens, ui:the loader's words for a phone and a browser without WebGL 2, endpoint:the numbers a phone is warned by, cli:phonewarn browser flow, cli:phonetruth measures, lib:the counter's route and its reads, ui:the counter and its ask, ui:the owner's Analytics, ui:what is counted page, cli:insights browser flow, cli:the start by phase, lib:Claude in the console, lib:Claude's read-only tools, lib:the Claude API client, ui:Claude in the owner's console, cli:adminclaude browser flow, lib:the owner's notifications, lib:each server error kept, lib:work after the answer, ui:the owner's notifications page, cli:ownernotify browser flow, lib:announcements, ui:an announcement on a person's Notifications, cli:announce browser flow -->
 
 ## Sub-features
 
@@ -3233,6 +3233,229 @@ plan with Claude as the client.
   check's rows twice on 11-18 (cronlive).
   Passes on "socialdesk: all ok", or "socialdesk: all ok (before the
   file)".
+- `the counter and its ask` (`web/tally.js`, `web/counting.js`,
+  `web/counting-ask.js`; docs/ANALYTICS.md): how the site and the studio
+  are used, counted by Brickworks itself. web/theme.js asks for the counter
+  once a site page has loaded and gone idle (never /admin, /oauth or an
+  embed), src/boot/shell.html two seconds after the studio is up. It does
+  nothing at all, not even fetch tally.js or counting.js, with Do Not
+  Track or GPC, after No, off in Settings › Privacy (`#counting-on`), or in
+  a driven browser without `localStorage["brickworks.counting.check"] =
+  "1"` (a check's own ask, sent as `check: true` and kept as the checks'
+  own); the desk's `social_visit` follows the same choice. On a European
+  clock (Europe/*, the EU's islands and outermost regions) or one naming no
+  place (UTC, Etc/*, GMT) it waits for Yes on the ask at the window's foot,
+  the page's first Tab stop, Escape closing it unanswered; the server drops a beacon from the EU, the EEA, the UK or
+  Switzerland (Vercel's country header) without it. A beacon every 15 s
+  while something happened and on leaving (sendBeacon): a page's template
+  (`/m/:id`, never the id), where the visit came from (the referrer's host,
+  utm_*), acts by API name and op, studio tools, panels, commands, runs,
+  firsts, timings and frame times, an error's file and line; names only
+  a-z 0-9 `_:/#.-`, 60 long, nothing with an @. Never a model, typed words,
+  an address or an IP address.
+- `the counter's route and its reads` (`api/_analytics.js`;
+  supabase/analytics.sql): `POST /api/plans?op=tally` always 204 (a GET
+  405), kept through `insights_take` (refuses any other name, caps of 80
+  rows a beacon, 1,500 a visit, 200,000 a day, one in 8 new signed-out
+  visits past 150,000 at a weight of 8, turned-away and sampled visits
+  counted; supabase/analytics2.sql over analytics.sql). Only names the
+  code has are kept (`api/_insights_names.js`, made by
+  `python3 tools/insights_names.py`; `--check` says when it is behind),
+  each kind at its most a beacon; one address's bucket of 40 beacons and 60
+  new visits an hour. The account only from a bearer that verifies (the
+  beacon's `bearer`, or its Authorization header), kept as
+  HMAC(VIEW_SECRET), a beacon's `who` ignored; a row is a test's unless
+  sent to brickworks.diy or www.brickworks.diy by a production deployment
+  and not by an @resend.dev account. `GET
+  /api/admin?op=analytics&from=&to=&plan=&device=&lang=&signed=` 401 signed
+  out, 404 to anybody else, only sums, each list its top 25 or 50 (at most
+  113 kB); before analytics.sql `{ready: false}` and the beacon keeps
+  nothing. The cron `/api/plans/tally-daily` (03:27 UTC, CRON_SECRET) rolls
+  up each day that is over once, a day a call, then `insights_gone`
+  deletes what deleted accounts left unless the listing failed (none, or
+  much shorter than the last); an account deleted is forgotten at once
+  (api/_erase.js). Claude's tool calls counted in api/mcp.js by tool, ok
+  and time, with no account, refused, failed and relayed ones too, on a
+  budget of their own. Proven by `tests/test_insights.py` (the SQL in a
+  Postgres of its own via tests/fixtures/insights/db_check.mjs, the
+  handlers via api_check.mjs, the names via names_check.mjs, the review's
+  attacks via attacks_check.mjs, `--big` timing a flooded day) and the
+  insights browser flow. Dry runs: `tools/analytics_try.sql`, then
+  `tools/analytics2_try.sql` for analytics2.sql.
+- `the owner's Analytics` (`web/admin-analytics.js`, `/admin#analytics/…`):
+  Overview (visitors, visits, sign-ups, active builders, published,
+  Claude's calls, each with a sparkline), Funnels, Retention (a heatmap by
+  week), Pages, The studio (firsts, tools, panels, commands, runs, controls,
+  where visits stopped, never pressed: not a control whose tool or command
+  was used), Sources (channels, sources, the desk's campaigns), Speed (by
+  device, rated against Web Vitals), Errors, Claude, Definitions; every
+  number's name links to its definition; a day's sampled and turned-away
+  visits said. Filters in one row, kept for the tab. Each chart has a
+  table too, and is one Tab stop with the arrow keys between days; at 390
+  the open tab is kept in view. The page parts are proven by
+  `tests/test_insights_page.py` (tests/fixtures/insights/page_check.mjs).
+- `what is counted page` (`web/counting.html`, `/counting` and its de, fr,
+  es copies): what is counted, what never is, when you are asked, turning
+  it off, how long it is kept, who sees it; linked from the privacy page's
+  visit section and from Settings › Privacy.
+- `insights browser flow` (`tools/web/insights_flow.mjs`, preview check
+  `[insights]`; never on brickworks.diy, which it refuses): the read 401
+  signed out and 404 to a stranger, the route's GET 405 and a junk POST 204
+  saying nothing; nothing sent or started with DNT, GPC, after No or driven
+  without the check's ask, the same page with it sending; a tagged visit
+  over /gallery, /plans and /counting: one 16-letter visit, its source the
+  link's, every name a row may hold, no address, IP address or page text;
+  the ask in German at 430x932 with its words in view, nothing before the
+  answer, Yes carrying the yes, No kept and nothing sent; off in Settings;
+  beacons posted with Sec-GPC and DNT kept nowhere; every name a beacon
+  sent one the server keeps (api/_insights_names.js); the studio's beacon
+  with the sign-in's token as its bearer, never an id; once analytics.sql
+  is applied, this run's
+  sources and pages in the owner's read and the dropped ones nowhere, no
+  address or IP address in it; each tab at 390 and 1280, light and dark,
+  never wider than the window; `--no-studio` skips /app. Writes
+  `<out>/beacons.json` (sizes and rows). Passes on "insights: all ok", or
+  "insights: all ok (before the file)".
+- `Claude in the owner's console` (`web/admin-claude.js` and
+  `web/admin-claude.css`, `/admin#claude` and the panel beside every
+  section; api/_claude.js, the client api/_claude_api.js, the tools
+  api/_claude_social.js, _claude_people.js, _claude_plans.js, _claude_mail.js,
+  _claude_site.js, _claude_feedback.js over api/_claude_data.js, the stand-in
+  api/_claude_mock.js; supabase/admin_claude.sql; docs/ADMIN_CLAUDE.md):
+  Claude on the owner's own Anthropic key. Claude › Settings: the key pasted,
+  checked with the Models API, sealed with AES-256-GCM under
+  CLAUDE_KEY_SECRET and kept in a table only the server reads; the page is
+  told only `sk-ant-…` and its last four; Check key, Forget key (which says
+  to revoke it at console.anthropic.com, linked). The key is opened, and
+  Anthropic asked with it, only on brickworks.diy and www (ownOrigin and the
+  Host header both): on a preview or this box every op that would open it
+  answers 403 "Claude uses your key only on brickworks.diy. Checks use
+  ?tests=1." and the page says so; ?tests=1 works anywhere. The model from
+  the key's own list (adaptive thinking, and a price in PRICES; any other
+  listed as not offered, "no price known to Brickworks yet"), read only
+  once Settings or the panel is first opened; the effort, a monthly cap in
+  dollars and this month's spend. The panel (the bar's Claude
+  button, aria-expanded; docked at 1100 px and wider, open on Social by
+  default and as last chosen, the desk's tables as cards beside it under
+  1,660 px; over the page and closed on a phone; Escape closes it to its
+  toggle): one conversation kept in the tab, streamed
+  (SSE) with each tool it read and what the answer cost; Enter asks once,
+  Shift+Enter a new line, over 8,000 characters refused with words. On the
+  desk: Suggest a post (beside Write's community), Suggest a reply (each
+  inbox row), Improve (each draft, the owner's left as it is), Overview by
+  Claude; each draft lands among the desk's drafts marked "by Claude" (Open
+  it in Write asks first over words of the owner's own), and nothing is
+  sent but by the owner's own Send. Its only write is a draft;
+  inbox, Reddit and feedback words reach it as `<untrusted>` data, read as
+  they read first (invisible characters out, NFKC, entities decoded), so no
+  way of writing the tag closes it. The cap is held before each call: every
+  attempt a fallback may make (two), each its prompt (a token for every
+  three ASCII characters and every other UTF-8 byte) and max_tokens, at the
+  dearest model of its chain; settled from the answer's usage, each
+  attempt at its own model's price, never above the hold. A call Anthropic
+  ended with an error counts its prompt and what it may have written; one
+  cut off here, or after a fallback took over, all it held. A turn's tenth
+  call, or one with under 40 s left, is sent with tool_choice none and its
+  answer kept. Every call goes to the audit (op claude_chat, kind claude:
+  model, the model that served it, tokens in and out, cache, cost, tools;
+  never the key, never the words); claude_settings records the model,
+  effort and cap. Proven by `tests/test_adminclaude.py` (33 passed: the
+  checks' pool through `api_check.mjs`, the live pool with a made-up key
+  and a scripted api.anthropic.com through `live_check.mjs`) and the
+  adminclaude browser flow.
+- `Claude's read-only tools` (`api/_claude_social.js` and the other
+  `api/_claude_*.js`): see Claude in the owner's console; each reads what
+  its console section's own read gives, without an email address.
+- `the Claude API client` (`api/_claude_api.js`): plain HTTP, as
+  tools/package_api.sh packs no npm module; GET /v1/models paged, POST
+  /v1/messages streamed with anthropic-version 2026-10-21. Proven by
+  `tests/test_adminclaude.py` against the stand-in.
+- `adminclaude browser flow` (`tools/web/adminclaude_flow.mjs`, preview
+  check `[adminclaude]`): Claude as the owner uses it on `?tests=1`, whose
+  Anthropic and Reddit are stand-ins (the browser aborts any request to
+  either). The gate on all 7 ops in both pools; before admin_claude.sql is
+  applied, Settings and the panel say so (the panel open beside Social at
+  1280, over the page from its toggle at 390) and a key and a question
+  answer 503; after it, a key that is none and one refused not kept, the
+  stand-in's kept and shown as sk-ant-…AAAA, the models, a model, effort
+  and cap kept, Enter twice asking once, Suggest a post and Open it in
+  Write (asking first over the owner's own words, No keeping them), a
+  hostile reply at most a draft, Suggest a reply, Improve,
+  Overview, a refusal and a 429 left out of the conversation, the cap
+  reached and said with a way to raise it, the panel by keyboard and by
+  its names at 390 and 1280 light and dark with every desk row's acts in
+  sight beside it, Forget key and where to revoke it; the key in no
+  answer, page, storage or console line. Off brickworks.diy, the live
+  pool's read says the key is not used there and its page holds the key's
+  form (read only, nothing of it changed); on People the models are not
+  read until the panel is opened. Locally, nothing applied and the
+  project's checks' pool untouched, both with `--env-file=ENV`, a file of
+  SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_PUBLISHABLE_KEY alone and
+  MASTER_EMAIL the shared test account (never the whole .env, which holds
+  a real Anthropic key): `relay_server.mjs PORT
+  --hold=admin_claude_settings,admin_claude_holds,admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules`
+  then the flow with `--url=http://127.0.0.1:PORT --held` (restart the
+  relay between runs). Passes on "adminclaude: all ok" (49 checks on
+  acfix, 2026-11-18), or "adminclaude: all ok (before the file)".
+- `the owner's notifications` (`api/_notify.js`; `supabase/owner_notify.sql`,
+  `supabase/owner_notify2.sql`; docs/OWNER_NOTIFY.md),
+  `each server error kept` (`api/_noted.js`, around each of the 12
+  functions) and `work after the answer` (`api/_after.js`: each raise and
+  5xx row runs after the
+  answer, kept alive on Vercel by the request context's `waitUntil`,
+  elsewhere on its own for 1.5 s at most): mail to the owner about what
+  happens. Raised where it happens: a new account (api/otp.js,
+  api/orangecheck.js, with how they came, kept for the tab by web/theme.js
+  and sent by the site's sign-in and the studio's), a first model
+  (api/share.js),
+  feedback (api/_feedback.js), Admission's signed word of a plan or payment
+  (api/plans.js); looked at by the cron `/api/plans/owner-notify` every five
+  minutes: 5xx in an hour past the owner's number, Supabase's size and
+  health (hourly), the social desk's tables (read only). Each kind on or
+  off, at once or the digest; a burst one mail (2 minutes quiet, 10 at
+  most); the cap an hour, the rest in one "And N more" ("This hour: ..."
+  when it is the hour's only mail); quiet hours hold and send as one, a
+  digest inside them too, as they end; old rows pruned at each UTC day's
+  first run (`pruned_on`); 5 address codes an hour; Pause all; a failed
+  send tried 3 times. Every mail
+  sent, held or folded is in the audit (actor `notifications`). The site's
+  pool mails from the start; a preview's mails nobody until saved (a test
+  there leaves it off), and the cron by hand looks only at its own;
+  `?tests=1` mails only resend.dev.
+  When the database refuses, one alarm a day by Resend's idempotency key.
+  Proven by `python3 tools/minitest.py $PWD/tests/test_owner_notify.py`
+  (api_check.mjs: each event by its real path against held tables and a
+  stand-in Resend, 100 checks, among them the tables hung (each path under
+  300 ms) and the digest across 2027's clock changes; db_check.mjs: the
+  SQL applied twice to a Postgres of its own, then owner_notify2.sql twice
+  over its rows, skipped without PG_MODULE and PG_BIN).
+- `the owner's notifications page` (`web/admin-notify.js`,
+  `/admin#notifications/settings`, `#notifications/sent`): a row a kind with
+  its switch, At once or Daily digest, its number and its own Send a test;
+  the address shown in part (Use another address: a code first; Back to my
+  account's address); Pause all, quiet hours, the digest's time, the time
+  zone, the cap; what is not mailed from here and why; Sent with the
+  hour's count against the cap, what waits, and each mail's words (Read
+  it). A mail's one-click link lands at
+  `#notifications/off/<kind>/<r|t>/<key>`, acted on before the sign-in gate
+  and taken out of the address. A deployment without `RESEND_API_KEY` says
+  which variable to set.
+- `ownernotify browser flow` (`tools/web/ownernotify_flow.mjs`, preview check
+  `[ownernotify]`): the page as the owner uses it on `?tests=1`; it refuses
+  brickworks.diy. The gate on the 6 ops in both pools (401 signed out, 404
+  to anybody else), the cron's op 401 without its secret, an unsigned off
+  link 404; before owner_notify.sql the section's "not yet" line, a change
+  503, the 8 kinds and the 4 not mailed from here at 1280 and 430, light and
+  dark; after it each setting changed by the page and read back from the
+  API (two changes answered out of order still show the one written last),
+  wrong numbers refused in words, Send a test and a kind's test,
+  another address with a wrong code refused and back to the account's own,
+  Check now, Sent and Read it, both tabs at 1280 and 430, light and dark,
+  no wider than the screen. The pool's settings are put back after. Locally
+  against `relay_server.mjs PORT
+  --hold=owner_notify_settings,owner_notify_mails,owner_notify_events,owner_notify_errors`
+  it also opens the test mail's own off link signed out. Passes on
+  "ownernotify: all ok", or "ownernotify: all ok (before the file)".
 - `the site notice` (`web/notice.js`, asked for by `web/theme.js` on every
   page but an embed and the consent page; site.css `.site-notice`): the
   notice the owner sets in `/admin#switches`, read from
@@ -3243,6 +3466,176 @@ plan with Claude as the client.
   beta bar under 900 px, so nothing in the page moves; its x hides that
   notice in this browser, a new one shows. Proven by the console3 browser
   flow; `tests/test_console3.py` holds it to text, never markup.
+  Since announce it can carry an end (Switches' Ends day and time;
+  `site_notice_ends`), past which it shows nowhere, and its x hides it for
+  the person signed in on every device of theirs (`notice_hide`; another
+  browser of theirs is told by the avatar's `feed_count`, whose
+  `notice_hidden` lists the ids they hid, and waits for it before drawing,
+  so it never shows for a moment; a page without the avatar asks
+  `notice_hidden`). Proven by the announce browser flow.
+- `a phone asked before a big model opens` (`web/phone-warn.js`, loaded by
+  `web/model-page.js` on a model's page and a set's; phonetruth,
+  docs/PHONE.md): on a phone (touch only, no fine pointer, shorter side
+  under 600 px) a link into the studio with the page's model in it
+  (`/app?view=`, `?copy=`, `?library=`: Build it, Open in Brickworks, the 3D
+  view's own way in) asks first when the model's `data-parts` is past
+  `phone_parts`: "About N parts: on a phone this may close the tab". Not now
+  and Escape stay; Open it anyway goes on. The picture, when it opens the 3D
+  view in its place, is never asked; nor are a computer, a tablet, a
+  smaller model or a click with a key held. A press before the owner's
+  number has come waits for it (two seconds at most, then the measured one;
+  `html[data-phone-warn-waited]`). Proven by the phonewarn browser flow;
+  `html[data-phone-warn]` says asked, stayed or opened.
+- `the loader's words for a phone and a browser without WebGL 2`
+  (`src/boot/shell.html`): without WebGL 2 the loader says at once, in
+  plain words, that this browser cannot draw the studio and what to do
+  instead, and lets the engine's files go (`window.stop()`); Godot's other
+  missing features are named without its advice to the server, and the
+  threads' headers only when isolation is what is missing. A first visit on
+  a phone shows `#eta` ("First visit on this phone: about N s to go"): the
+  engine's files at the rate they come, then `phone_start_s`;
+  `window.brickworksEta` is what it worked out. A return
+  (`localStorage brickworks.engineHad` is this engine's `/e/<hash>/`), a
+  computer and a tablet are told nothing. A start the browser refuses its
+  memory ("Out of memory", as iOS Safari refuses the 2 GB shared one on
+  some iPhones) is said as that, with what to do, from the start's promise
+  or the window's error (index.js makes the memory as its script runs,
+  outside the promise). Proven by the phonewarn browser flow.
+- `the numbers a phone is warned by` (`api/_phone.js`): `phone_parts` and
+  `phone_start_s`, site_settings switches for one scope (brickworks.diy's,
+  or a preview's own), the measured defaults until set. GET
+  `/api/plans?op=phone` (anybody's, a minute at the CDN); POST
+  `/api/admin?op=phone_rules` (the owner's, audited; whole numbers in their
+  range or all refused with words); `/admin#switches`, Phones, shows each
+  with who set it and the measured one. `tests/test_console3.py` runs it on
+  a real Postgres (api3_check.mjs's phone block).
+- `phonewarn browser flow` (`tools/web/phonewarn_flow.mjs`, preview check
+  `[phonewarn]`): each warning in its case and in no other, at 1280x800,
+  390x844 touch and 820x1180 touch. The gallery's largest (Wizard's Tower,
+  10,101, the measured default) goes straight on at the number the site
+  serves; then with `--number` (5,000) routed to the page as the owner's:
+  the big-model question on the phone alone (Escape, Not now, Open it
+  anyway), in view at 430x932, the 3D view unasked, the small model, the
+  computer and the tablet straight on, and a press before the owner's
+  number came waited on; `--owner`:
+  Switches' Phones set under the small model's parts as the owner, the
+  page then asking for it, put back after (never on brickworks.diy); no
+  WebGL 2 (taken from the canvas) said on all three within seconds on Fast
+  4G with the engine's files not finished; a phone's first visit on Fast 4G
+  told how long, with how close the first estimate came in warn.json, and
+  a return, the computer and the tablet told nothing; the engine's memory
+  refused (WebAssembly.Memory made to throw Safari's RangeError) said on
+  the phone and the computer, still said two seconds on, with no time
+  given. The question, the time to wait and the console's "Kept" are each
+  checked inside the screen. Passes on
+  "phonewarn: N passed, 0 failed".
+- `phonetruth measures` (`tools/web/phonetruth_flow.mjs`, local only, under
+  heavy; `bench/results/phonetruth-2026-11-18/run_measures.sh`): the studio
+  on Chromium's phone emulation, Playwright's WebKit as an iPhone 13 and 15
+  (WPE on software GL; touch by `tools/web/fingers.mjs`, since WebKit has no
+  CDP), and Chromium at a 4x and 6x CPU on Fast 4G: a cold first visit and
+  a return, peak memory (the content process's Pss, the Wasm memory, the JS
+  heap), frames turning the car and Orthanc by two fingers, and the largest
+  gallery model that opens and stays; with `--steps=…,beyond`, Wizard's
+  Tower 2, 3 and 5 times over (the share API's reply for `Towers000K`
+  routed to the page) past the gallery's largest. `--table` writes DIR/phonetruth.md,
+  docs/PHONE.md's table. `tools/web/phonewalk_flow.mjs --engine=webkit
+  --device="iPhone 13"` or `--cpu=4 --net=fast4g` walks the studio by
+  finger on the same.
+- `the start by phase` (`tools/web/start_phases.mjs`, webstart11, local
+  servers only, under heavy): two builds timed at the same moment, never in
+  turn, each in a browser and a node process of its own, the launch order
+  alternating per pair. `--config=desktop` (Chromium on SwiftShader, `--warm`
+  adds a return), `cpu4` (CPU/4 and Fast 4G by CDP), `phone` and `iphone13`
+  (Playwright's WebKit, which takes no throttle). Each phase's end and
+  length from the build's own marks, never a trace: the engine's files
+  (Resource Timing), the Wasm compiled and instantiated (compileStreaming
+  and instantiate timed apart), the engine's own start (its Build
+  configuration line), then main.gd's brickworksBoot marks (scripts, data,
+  catalogue, ui, model) and the car's 61 parts drawn. The Wasm memory at
+  each mark, the content process's Pss and each thread's CPU from /proc.
+  DIR/phases.md is docs/PHONE.md's phase table; DIR/pairs.json every visit.
+
+  ```sh
+  set -a; . ./.env; set +a
+  python3 tools/web/serve.py SNAP_A 10711 --parts assets/generated/parts --delay 0 --accounts --compressed --cached
+  python3 tools/web/serve.py SNAP_B 10712 --parts assets/generated/parts --delay 0 --accounts --compressed --cached
+  heavy node tools/web/start_phases.mjs --urls=http://127.0.0.1:10711/index.html,http://127.0.0.1:10712/index.html \
+    --labels=base,after --config=cpu4 --pairs=5 --out=DIR
+  ```
+- `announcements` (`api/_announce.js`, `/admin#announcements/…` drawn by
+  `web/admin-announce.js`, asked only once the section opens;
+  `supabase/announce.sql`, then `supabase/announce2.sql`; docs/ANNOUNCE.md):
+  the owner tells the site's
+  people something. A title, plain words and an optional link (a page
+  here or https) for everyone, a plan, the beta's testers, people who
+  signed up since a day, people who published, or one person by handle;
+  previewed as their page and menu will draw it (`web/notice-view.js` in a
+  shadow root with the site's styles) with its reach now; sent only by the
+  owner's press on the words' hash and the version seen (changed words
+  409; two presses one send; an edit unschedules); at most the day's most
+  (two until set; a test one's counted per deployment); one row each, who
+  it reached fixed as it goes as rows of `announcement_to` written by the
+  send's own statement (reach is their count; `recipients` stays empty),
+  read by account through `notification_rows`; the console's list reads
+  only `announcement_counts`; edited (marked edited) or withdrawn (out of
+  every list). Barred accounts are in no audience but one person, and never
+  mailed. Email only to those who chose news in Settings before it went
+  (off until chosen): Resend's batch of 100, at most one request every
+  1.1 s and never within 1.5 s of a sign-in code, at most the news mails a
+  day the owner sets under the section's News by email (200 until set,
+  counted inside the take), stopped until the next UTC day by a quota 429
+  (the console says why), with List-Unsubscribe and List-Unsubscribe-Post,
+  the footer address when set, and a link in the words to
+  `/api/people?op=news_unsubscribe` (GET to Settings, whose Unsubscribe
+  button posts; the POST itself unsubscribes), its token signed with
+  `NEWS_UNSUB_SECRET` (the old key's still verify; no mail without it).
+  The cron `/api/plans/announce-due` at 8, 23, 38 and 53 past each hour
+  sends what is due only as pressed, then its mail; a send already gone is
+  skipped quietly; off brickworks.diy it sends only test ones and mails
+  nobody. On a preview or `?tests=1` only the checks' accounts at
+  resend.dev are reached and nobody is mailed. Before the file the section
+  says so, its buttons are off and Settings hides news. Proven by
+  `python3 tools/minitest.py tests/test_announce.py` (both files in a
+  Postgres of its own, a mocked Resend) and the announce browser flow; the
+  SQL on the project rolled back by `node tools/apply_sql.mjs
+  supabase/announce.sql --dry --try=tools/announce_try.sql` and
+  `supabase/announce2.sql --dry --try=tools/announce2_try.sql`; at 50,000
+  people by the review's `bench/results/anreview-2026-11-18/tools/attack.mjs
+  --scale=50000` (rows under 3 ms, the list under 50 ms).
+- `an announcement on a person's Notifications` (`web/notice-view.js`, for
+  `web/notifications.js` and the console's preview): a group of its own,
+  `#announcement-N`, named by its title, "From Brickworks" (", edited"
+  when it was), its words as plain lines, its link (this site's, or https
+  opened outside); counted on the avatar and in the account menu; opened
+  it is read, its link followed it is clicked (`notifications_read`
+  `{announcement, clicked}`). Proven by the announce browser flow.
+- `announce browser flow` (`tools/web/announce_flow.mjs`, preview check
+  `[announce]`, run alone: it sets a notice and turns the day's most down):
+  never on brickworks.diy. The gate on every announce op; before
+  announce.sql the section's line, its buttons off and Settings' news
+  hidden; after it, a throwaway Ann turns news on in Settings (off until
+  then, kept across a reload) and Bea leaves it off; the owner sets the
+  day's most to 3, writes one for Ann by handle (its preview by the site's
+  own styles, "Reaches 1 person", every control named, Tab alone to Review
+  and send), Review shows it, Enter twice on Send now sends once (one row,
+  reach 1); Ann's avatar counts it, her Notifications show it unread with
+  its words, following its link counts read and clicked; edited for
+  everyone, her page says edited; one scheduled for tomorrow then changed
+  is a draft; at a most of 1 Send now is refused in words and it stays a
+  draft; withdrawn, gone from her page; Write and Sent at 1280, 390 and
+  430x932 in light and dark with nothing sideways and every control named;
+  the console's first screen never asks admin-announce.js; the notice with
+  an end hidden by Ann is never drawn, not for a moment, in her browser
+  that showed it before nor in a phone that never did, each told by
+  `feed_count` with no notice request of its own; Bea still sees it, the
+  Banner tab says its end; cleared after, throwaways deleted. Locally
+  before the files: `node --env-file=<only SUPABASE_URL, the two keys and
+  MASTER_EMAIL> tools/web/relay_server.mjs PORT --hold=announce`
+  (`tools/web/announce_stand_in.mjs`: both files in a Postgres of this
+  machine's own; restart it between runs; never the whole .env, and the
+  flow refuses this machine's server without the hold). Passes on
+  "announce: all ok".
 - `Resend's webhook set up` (`tools/web/resend_webhook.sh`): run once a
   release with `?op=mail_event` is live, with the full-access key of the
   Resend team that sends brickworks.diy's mail as `RESEND_ADMIN_KEY` in the

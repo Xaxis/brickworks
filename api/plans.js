@@ -92,6 +92,10 @@
 //                                  owner's console (console3,
 //                                  api/_console_switches.js), or null;
 //                                  anybody's, kept a minute at the CDN
+//   GET  /api/plans?op=phone       the numbers a phone is warned by before
+//                                  the studio opens (api/_phone.js): set in
+//                                  the console's Switches, else measured;
+//                                  anybody's, kept a minute at the CDN
 //   GET  /api/plans?op=social_due  Vercel's cron (/api/plans/social-due,
 //                                  every quarter hour): the owner's scheduled
 //                                  sends whose time came, and the desk's look
@@ -99,6 +103,23 @@
 //   POST /api/plans?op=social_visit {campaign, nonce, path, source}: a page
 //                                  opened from a sent post's link
 //                                  (web/theme.js); always 204
+//   POST /api/plans?op=tally       a visit's counts (web/tally.js), and GET
+//                                  ?op=tally_daily, Vercel's cron
+//                                  (/api/plans/tally-daily): api/_analytics.js
+//   GET  /api/plans?op=owner_notify Vercel's cron (/api/plans/owner-notify,
+//                                  every five minutes): the owner's
+//                                  notifications mailed as they set them
+//                                  (api/_notify.js)
+//   POST /api/plans?op=notify_off  {event, pool, token}: one kind of the
+//                                  owner's notifications turned off by a
+//                                  mail's one-click link (404 unless the
+//                                  pool's own key signed it)
+//   GET  /api/plans?op=announce_due Vercel's cron (/api/plans/announce-due):
+//                                  the owner's scheduled announcements whose
+//                                  time came, and their mail (api/_announce.js)
+//   POST /api/plans?op=notice_hide {id}, GET ?op=notice_hidden&id=N: the
+//                                  notice hidden by a person signed in, in
+//                                  each of their browsers (web/notice.js)
 //
 // And feedback (api/_feedback.js, supabase/feedback.sql), from anywhere,
 // signed in or out:
@@ -111,6 +132,8 @@
 // /releases.json names, and the paid desktop built dark here before (a
 // gated download, a signed token the app checked at start) is gone.
 
+import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { createHmac } from "node:crypto";
 import { AdmissionError, AdmissionUnavailable, verifyWebhook, WebhookError } from "./_admission.js";
 import { rawOf } from "./_raw.js";
@@ -121,7 +144,12 @@ import {
 import { betaDaily, betaHub, betaJoin, betaLeave, betaRoute, betaSpots } from "./_beta.js";
 import { feedbackRoute } from "./_feedback.js";
 import { noticeShown } from "./_console_switches.js";
+import { phoneShown } from "./_phone.js";
 import { socialDueRoute, socialVisit } from "./_social.js";
+import { tallyDaily, tallyRoute } from "./_analytics.js";
+import { notifyDueRoute, notifyOffRoute, raise } from "./_notify.js";
+import { scopeOf } from "./_settings.js";
+import { announceDueRoute, noticeHidden, noticeHide } from "./_announce.js";
 import { db, dbConfigured } from "./_db.js";
 
 // Pro is the one paid plan since 2026-10-29 (docs/PLANS.md, section 1).
@@ -311,8 +339,35 @@ async function webhook(request, response) {
   // The other mode's event is not this deployment's to act on.
   if (event.mode === a.mode && event.type === "customer.updated" && typeof event.data?.customerId === "string") {
     await a.forget(event.data.customerId);
+    const told = planTold(event);
+    if (told) {
+      // After the answer (api/_after.js): Admission never waits on it.
+      afterAnswer(() => raise("plan", { scope: scopeOf(request), test: event.mode !== "live", key: id.slice(0, 200),
+        account: /^[0-9a-f-]{36}$/.test(event.data.customerId) ? event.data.customerId : null, detail: told }), "plans: webhook");
+    }
   }
   return response.status(200).json({ heard: String(event.type || "") });
+}
+
+/// What Admission's [event] says for the owner's notifications (api/_notify.js):
+/// a plan bought, changed or cancelled, a payment failed, or a plan ended;
+/// null for what is not theirs to hear (a renewal, a count, a comp). Read from
+/// the customer's answer, as Admission asks: a first event can come before
+/// it is paid.
+export function planTold(event) {
+  const reason = String(event?.data?.reason || "");
+  const sub = event?.data?.customer?.subscription || null;
+  const plan = String(sub?.plan || event?.data?.customer?.plan?.key || "").slice(0, 40) || null;
+  const interval = sub?.interval === "year" || sub?.interval === "month" ? sub.interval : null;
+  const status = String(sub?.status || "");
+  const base = { plan, interval, mode: event.mode === "live" ? "live" : "test" };
+  if (reason === "subscription.grace_ended") return { ...base, how: "grace" };
+  if (reason === "subscription.ended") return { ...base, how: "ended" };
+  if (reason !== "subscription.created" && reason !== "subscription.changed") return null;
+  if (status === "past_due" || status === "unpaid") return { ...base, how: "failed" };
+  if (status === "incomplete" || status === "incomplete_expired") return null;
+  if (sub?.endsAt) return { ...base, how: "cancelling", ends: String(sub.endsAt).slice(0, 30) };
+  return { ...base, how: reason === "subscription.created" ? "bought" : "changed" };
 }
 
 /// What went wrong on the way to Stripe, in words a person can act on.
@@ -346,7 +401,7 @@ async function paying(request, response, op) {
   }
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   // Asked only by the site's own page: no cross-origin answer, and nothing
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
@@ -359,8 +414,17 @@ export default async function handler(request, response) {
   if (request.method === "GET" && op === "beta_hub") return betaHub(request, response);
   if (request.method === "GET" && op === "beta_daily") return betaDaily(request, response);
   if (request.method === "GET" && op === "notice") return noticeShown(request, response);
+  if (request.method === "GET" && op === "phone") return phoneShown(request, response);
   if (request.method === "GET" && op === "social_due") return socialDueRoute(request, response);
   if (request.method === "POST" && op === "social_visit") return socialVisit(request, response);
+  // How the site and the studio are used (insights, api/_analytics.js).
+  if (op === "tally") return tallyRoute(request, response);
+  if (request.method === "GET" && op === "tally_daily") return tallyDaily(request, response);
+  if (request.method === "GET" && op === "owner_notify") return notifyDueRoute(request, response);
+  if (op === "notify_off") return notifyOffRoute(request, response);
+  if (request.method === "GET" && op === "announce_due") return announceDueRoute(request, response);
+  if (request.method === "POST" && op === "notice_hide") return noticeHide(request, response);
+  if (request.method === "GET" && op === "notice_hidden") return noticeHidden(request, response);
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   if (request.method === "POST" && PAID.includes(op) && billingMode() !== "off") return paying(request, response, op);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");
@@ -391,3 +455,6 @@ export default async function handler(request, response) {
     return say(response, 503, "That did not go just now. Try again in a minute.");
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("plans", handler);

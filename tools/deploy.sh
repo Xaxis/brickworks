@@ -269,7 +269,13 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # tester's month given once Pro launches, a reminder three days before one
 # ends, and declined applications erased after 90 days. Every quarter hour
 # /api/plans/social-due (api/_social.js): the owner's social desk sends what
-# the owner pressed Schedule on whose time came, and reads what came in.
+# the owner pressed Schedule on whose time came, and reads what came in. At
+# 8, 23, 38 and 53 past each hour /api/plans/announce-due (api/_announce.js):
+# the owner's scheduled announcements whose time came, and their mail.
+# At 03:27 /api/plans/tally-daily (api/_analytics.js): yesterday's counts of
+# how the site and the studio were used rolled up, rows past 30 days gone.
+# Every five minutes /api/plans/owner-notify (api/_notify.js): the owner's
+# notifications mailed as they set them in /admin › Notifications.
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
@@ -492,7 +498,10 @@ cat > .vercel/output/config.json <<EOF
              { "path": "/api/share/feature", "schedule": "7 0 * * *" },
              { "path": "/api/share/omr", "schedule": "37 5 * * 1" },
              { "path": "/api/plans/beta-daily", "schedule": "7 5 * * *" },
-             { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" } ],
+             { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" },
+             { "path": "/api/plans/tally-daily", "schedule": "27 3 * * *" },
+             { "path": "/api/plans/owner-notify", "schedule": "*/5 * * * *" },
+             { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -517,6 +526,9 @@ $docs_moved
     { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
     { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
     { "src": "/api/plans/social-due", "dest": "/api/plans?op=social_due" },
+    { "src": "/api/plans/tally-daily", "dest": "/api/plans?op=tally_daily" },
+    { "src": "/api/plans/owner-notify", "dest": "/api/plans?op=owner_notify" },
+    { "src": "/api/plans/announce-due", "dest": "/api/plans?op=announce_due" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
@@ -682,18 +694,22 @@ log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # a key no page or API here reads, so the checks see what production runs.
 #
 # So every deployment gets every production secret, and a unit's preview
-# runs code nobody has reviewed. --unit withholds the four it never needs:
+# runs code nobody has reviewed. --unit withholds the five it never needs:
 # OC_SIGNING_SECRET, which orangecheck asked be kept from unreviewed branch
 # code, since their review covers what ships (2026-10-23), and for the same
 # reason OC_CONNECT_KEY, which makes and deletes orangecheck accounts
 # (2026-10-24, api/_oc.js provision); RESEND_API_KEY,
 # so unreviewed code cannot send mail from brickworks.diy (2026-10-24; a
 # test inbox still signs in, api/otp.js deliver); and ANTHROPIC_API_KEY,
-# which nothing has read since the proxy that spent it went (2026-10-09). --env NAME= sets one to nothing for this deployment
+# which nothing has read since the proxy that spent it went (2026-10-09); and
+# CLAUDE_KEY_SECRET, which opens the owner's own Anthropic key sealed in the
+# database (api/_claude.js), so unreviewed code holding the database cannot
+# open it too (2026-11-18; the checks' pool seals with its own fixed secret).
+# --env NAME= sets one to nothing for this deployment
 # alone, over the project's value. Never --env NAME: that sends the value
 # in .env. A release's preview and production are reviewed code, and keep
 # both.
-withheld=(OC_SIGNING_SECRET OC_CONNECT_KEY RESEND_API_KEY ANTHROPIC_API_KEY)
+withheld=(OC_SIGNING_SECRET OC_CONNECT_KEY RESEND_API_KEY ANTHROPIC_API_KEY CLAUDE_KEY_SECRET)
 blank=()
 if [ "$unit" = 1 ]; then
   for k in "${withheld[@]}"; do blank+=(--env "$k="); done

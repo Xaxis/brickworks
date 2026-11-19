@@ -112,7 +112,9 @@ THEME_BLOCKS = (
 # scripts are the whole page's, as before.
 # And each section's own module, which admin.js only imports, loads as its
 # section opens (NAME: () => loadNAME()) and marks changed: a change to one
-# is its section's. tests/test_flows_for.py holds each of these to that.
+# is its section's. tests/test_flows_for.py holds each of these to that;
+# its ALSO_IMPORTED_BY names a module that imports one too and whose own flow
+# walks that section (admin-claude.js the desk's), so the flow is named.
 # One that fails to load stops the whole console, which site finds (it
 # loads /admin).
 ADMIN_SECTION_MODULES = {"web/admin-social.js": "social", "web/admin-beta.js": "beta",

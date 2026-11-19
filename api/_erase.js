@@ -117,9 +117,31 @@ export async function erase(account) {
     // account, their files by name first. Imported here, not above: this
     // route answers every start of the app.
     const feedback = await (await import("./_feedback.js")).deleteFeedbackOf(account);
+    // What the owner's notifications kept of it (supabase/owner_notify.sql):
+    // its sign-up, its first model, and the words of each mail that told of
+    // it (a mail stays in the record as sent, saying no more than that).
+    try {
+      const told = await db(`owner_notify_events?account=eq.${account}&mail=not.is.null&select=mail`);
+      const mails = [...new Set(told.map((one) => one.mail))].filter((id) => /^[a-z0-9]{12}$/.test(id));
+      if (mails.length) {
+        await db(`owner_notify_mails?id=in.(${mails.join(",")})`, { method: "PATCH",
+          body: { subject: "About an account since deleted", body: "" } });
+      }
+      await db(`owner_notify_events?account=eq.${account}`, { method: "DELETE" });
+    } catch (trouble) {
+      if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
+    }
     const gone = await reach("auth DELETE", 20, `${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` } });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
+    // What /admin › Analytics kept of it, by its hash, gone now too
+    // (api/_analytics.js): the daily cron's diff of the accounts is only the
+    // net under this. Loaded only here.
+    try {
+      await (await import("./_analytics.js")).forgetAccount(account);
+    } catch (trouble) {
+      console.error(`account: analytics left for the cron: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
     return { status: 200, body: { deleted: true, photos: photos.length, avatars: avatars.length, feedback,
       ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) } };
   } catch (trouble) {
