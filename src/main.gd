@@ -1882,10 +1882,6 @@ func _ready() -> void:
 		await _view_shared()
 		return
 
-	# The first part picked finds its ghost's and its marks' shaders made,
-	# once the bin is usable, whether or not the model has come.
-	if OS.has_feature("web") and _renders_when_idle:
-		_warm_first_pick()
 	var stress: String = _argument("--stress")
 	var wanted: String = _argument("--model")
 	var given: String = TabSession.given_file()
@@ -1944,6 +1940,9 @@ func _ready() -> void:
 	# Open in Brickworks, from a shared model's viewer: once whatever was
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
+	# The first part picked finds its ghost's and its marks' shaders made.
+	if OS.has_feature("web") and _renders_when_idle:
+		_warm_first_pick()
 	# The window is up and the model back: a copy just updated says so to the
 	# helper waiting on it, and the day's check is made (Updater).
 	if _updater != null:
@@ -6847,46 +6846,42 @@ func _render_when_idle() -> void:
 ## batches of the connection points' marks (JointMarks.warm), in one frame.
 ## Drawn in software (a browser on SwiftShader), the first pick compiled
 ## their fifteen programs in the frames it was waited for: 807 ms on live at
-## load, 1.2 to 3 s at load 50 to 100, where nothing was fetched; with them
-## made, 442 ms (smalls8). Begun with the start and drawn once the page has
-## been told the bin is usable (_tell_page), so it is never a frame that
-## makes it so. The ghost is drawn on one triangle (_a_triangle): waiting
-## for a part's geometry, it came 7 to 11 s after the bin on a first visit,
-## and the first part was picked before it. The marks' script is compiled in
-## that frame too, as the pick would (34 to 93 ms at load). Read on a worker
-## it waited 5 to 25 s behind the start's own reads, and a pick meanwhile,
-## whose own load of it (Shell) waits for that worker, was held 10.8 and
-## 22 s. Not for a probe (--script), whose window starts as it did.
+## load, 1.2 to 2.2 s traced, where nothing was fetched (smalls8). Begun as
+## soon as the model is back: on a first visit the bin is usable 5 s before
+## the model is drawn, and this, waiting a second more and then a frame for
+## the ghost and another for the marks, was still being drawn when the first
+## part was picked. Its frame comes after the page has been told the bin is
+## usable (_tell_page), so it is never one that makes it so. The marks'
+## script is compiled in that frame too, as the pick would (34 to 93 ms at
+## load). Read on a worker it waited 5 to 25 s behind the start's own reads,
+## and a pick meanwhile, whose own load of it (Shell) waits for that worker,
+## was held 10.8 and 22 s. Not for a probe (--script), whose window starts
+## as it did.
 func _warm_first_pick() -> void:
+	var drawn: int = Engine.get_frames_drawn()
 	var told: int = -1
-	for _n: int in 36000:
-		if _bin != null and not _bin.first_found().is_empty():
+	for _n: int in 600:
+		if Engine.get_frames_drawn() >= drawn + 2 and _bin != null and not _bin.first_found().is_empty():
 			if not OS.has_feature("web") or (told >= 0 and _told_page_at != told):
 				break
 			if told < 0:
 				told = _told_page_at
 		await get_tree().process_frame
+	var mesh: Mesh = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _library.is_resident(brick.part_id):
+			var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+			if part != null and not part.surfaces.is_empty():
+				mesh = part.surfaces[0]
+				break
 	# Where the camera looks, so in view: not the model's bounds, a walk of
 	# every part (Orthanc's would be this frame's longest work).
 	var at: Vector3 = _camera.focus
 	# Both let go of what they drew once this frame is drawn, before this returns.
-	_builder.warm_ghost(_a_triangle(), at)
+	_builder.warm_ghost(mesh, at)
 	if bool(ShellPrefs.value("joint_marks")):
 		Later.script(&"JointMarks").warm(_builder, at)
 	await RenderingServer.frame_post_draw
-
-
-## One triangle with the arrays a part's surface has (Lbm.make_meshes): a
-## material's programs are made for those and the material, not the part.
-static func _a_triangle() -> ArrayMesh:
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3.ZERO, Vector3.RIGHT, Vector3.UP])
-	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK])
-	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2])
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return mesh
 
 
 ## Build, Motions…: the model's own motions, played, recorded by a drag, set
