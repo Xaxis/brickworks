@@ -1109,12 +1109,8 @@ static func _joints_of(nodes: Array[Node2], world: BrickWorld, library: PartLibr
 	if entries.is_empty():
 		return
 	var by_id: Dictionary = {}
-	## Each node's place in [param nodes], which is [method in_order]'s: of two
-	## as low, the one first there, never the one the world was given first.
-	var rank: Dictionary = {}
 	for node: Node2 in nodes:
 		by_id[node.id] = node
-		rank[node.id] = rank.size()
 	if job != null and job.due():
 		await job.next()
 	var found: Array = Joints.pairs(entries)
@@ -1155,7 +1151,11 @@ static func _joints_of(nodes: Array[Node2], world: BrickWorld, library: PartLibr
 	var lowest := func(a: Node2, b: Node2) -> bool:
 		if absf(a.box.position.y - b.box.position.y) > 0.5:
 			return a.box.position.y < b.box.position.y
-		return int(rank[a.id]) < int(rank[b.id])
+		# By number. By their place in [method in_order] instead, 75102-1
+		# built without sub-models stood 515 of its 726 parts in the air, not
+		# 46, and none of the 187 fixtures saved differently either way or
+		# drifted between saves (keepbytes).
+		return a.id < b.id
 	var nearest := func(a: Node2, b: Node2) -> bool:
 		var one: int = int(reach.get(a.id, 0x7FFFFFFF))
 		var two: int = int(reach.get(b.id, 0x7FFFFFFF))
