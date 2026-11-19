@@ -435,6 +435,14 @@ static func held_key(placement: LdrModel.Placement) -> String:
 	return Assemblies.path_from(placement.group, placement.unit)
 
 
+## A column of a part's turn as one number, to the thousandth: how the orders
+## of their own that a file and the build order put parts in (ModelStore
+## ._in_file_order, Instructions.in_order) tell two turns apart.
+static func turn_key(column: Vector3) -> int:
+	return ((roundi(column.x * 1000.0) + 1001) * 2003 + roundi(column.y * 1000.0) + 1001) * 2003 \
+		+ roundi(column.z * 1000.0) + 1001
+
+
 ## [member names_held]'s names now: none when it is unset.
 func names_held_now() -> Array:
 	return names_held.call() if names_held.is_valid() else []
