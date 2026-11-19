@@ -12,14 +12,33 @@
 ## place in the resource cache, the engine loads that instead, and the
 ## picture is drawn once the loop begins.
 ##
-## Without the flag this does nothing and costs one small script's compile:
-## the app starts as before, on the desktop and on the web. A probe given
-## with --script is its own main loop, so this never runs under one.
+## Without the flag it compiles the first screen a cycle at a time, where
+## the export says how (FIRST_ORDER), and the app starts as before. A probe
+## given with --script is its own main loop, so this never runs under one.
 class_name BrickworksLoop
 extends SceneTree
 
 const THUMBNAIL := "res://src/render/model_thumbnail.gd"
 const FLAG := "--thumbnail"
+## The first screen's scripts, a script a line, each named after every one
+## it names (tools/web/start_closure.py compile_order), written by the web
+## export and kept in the pack the engine waits for (tools/web/pck_split.py).
+##
+## Loading main.tscn compiled all 214 of the first screen's scripts in one
+## load, and Godot holds the parse of every script a load compiles until the
+## load ends: that was the whole of the page's 432 MB of Wasm memory at the
+## start, which a page keeps for good and an iPhone gives about 300 of. Loaded
+## a cycle at a time, the largest single compile is the scripts that name
+## each other round (78% of them). In pairs at the same moment (webstart12,
+## 2026-11-19) the Wasm's height went 432 -> 360 MB on WebKit as an iPhone 13
+## and in Chromium, and WebKit started sooner (scripts 7.4 -> 6.4 s, working
+## 19.4 -> 17.3); but at a quarter CPU Chromium's scripts took 25.5 s, not
+## 22.5: each load parses again what it names that an earlier load compiled.
+## So an iPhone or iPad compiles so, where the memory is what is short (the
+## shell's own test of one, src/boot/shell.html "apple"), and everything
+## else as one. Without the file (a desktop build, a checkout never
+## exported) main.tscn compiles them all.
+const FIRST_ORDER := "res://assets/web/first_order.txt"
 
 ## The scene loaded in the main scene's place, held so the cache keeps it.
 var _stand_in: PackedScene = null
@@ -27,6 +46,7 @@ var _stand_in: PackedScene = null
 
 func _init() -> void:
 	if not asked_for_a_picture():
+		compile_first_screen()
 		return
 	var empty := Node.new()
 	empty.name = "Thumbnail"
@@ -45,3 +65,22 @@ func _initialize() -> void:
 
 static func asked_for_a_picture() -> bool:
 	return OS.get_cmdline_args().has(FLAG) or OS.get_cmdline_user_args().has(FLAG)
+
+
+## The first screen's scripts loaded in FIRST_ORDER's order, before the
+## engine loads the main scene: its compile, a cycle at a time. Main.gd,
+## last, then finds them all made ("compiled", Main._boot_mark).
+static func compile_first_screen() -> void:
+	if not FileAccess.file_exists(FIRST_ORDER) or not _apple():
+		return
+	for path: String in FileAccess.get_file_as_string(FIRST_ORDER).split("\n", false):
+		if path.begins_with("res://") and ResourceLoader.exists(path):
+			load(path)
+
+
+## An iPhone or iPad's browser, as the shell tells one: an iPad asking for
+## the desktop site says it is a Mac, and a Mac has no touch points.
+static func _apple() -> bool:
+	return OS.has_feature("web") and bool(JavaScriptBridge.eval(
+		"/iPhone|iPad|iPod/.test(navigator.userAgent) || "
+		+ "(/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)", true))
