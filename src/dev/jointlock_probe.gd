@@ -110,7 +110,7 @@ func _run() -> void:
 		await _model("slider", _slider_ldr(), "3705", "3701", "Axle", "row")
 	# jlreview's findings, each its own case (jlfix); a name or more after
 	# the probe's -- runs those alone.
-	for step: String in (only if not only.is_empty() else PackedStringArray(["together", "breakout",
+	for step: String in (only if not only.is_empty() else PackedStringArray(["together", "breakout", "replace",
 			"motion_breakout", "chain", "copies", "dangling"])):
 		await call("_case_" + step)
 
@@ -675,6 +675,48 @@ func _case_dangling() -> void:
 		and named.contains(line))
 	var saved: String = await _save("dangling.ldr")
 	_check("...and saved unedited byte for byte", saved == text)
+
+
+## A locked part swapped for another by Find and Replace (the lead's ask):
+## the lock goes to the part that took its place, is written so and holds
+## after a reopen, and one undo puts the part and its lock back byte for
+## byte. The first swap with room is the one tried: a pin, or a part with a
+## pin through it, has none on pre261 (find_replace.gd's room check counts
+## the hole the pin sits in), so the knee's hips go first.
+func _case_replace() -> void:
+	for one: Array in [["knee", _knee_ldr(), "Leg", "3815", "3815b", "3816", 0],
+			["hinge", _hinge_ldr(), "Beam", "3701", "3702", "2780", 7],
+			["hinge", _hinge_ldr(), "Beam", "3701", "3700", "2780", 7]]:
+		print("\n══ replace: %s's locked %s swapped for %s by Find and Replace ══" % [one[0], one[3], one[4]])
+		_write(MODELS + "replace.ldr", str(one[1]))
+		await _open(MODELS + "replace.ldr")
+		await _say("pose_model", {"joint": one[2], "lock": true})
+		var locked: String = await _save("replace.ldr")
+		var depth: int = _builder.history_depth()
+		var said: String = await _say("replace_parts", {"find": {"part": one[3]}, "replace": {"part": one[4]}})
+		print("    %s" % said.replace("\n", " | ").left(240))
+		if said.contains("no room"):
+			continue
+		var held: Variant = _grabbing.held_of([_id_of(str(one[5]))])
+		_check("swapped, the lock is on the part that took its place: \"%s\"" % str(held).left(90),
+			_id_of(str(one[4])) != 0 and _id_of(str(one[3])) == 0 and held is String
+			and str(held).contains(Motions.UNLOCK_WORDS))
+		var swapped: String = await _save("replace_swapped.ldr")
+		var lines: Array = _texts(_lines_with(swapped, Motions.LOCK_META))
+		_check("...saved as one LOCK line naming it (%s)" % str(lines), lines.size() == 1
+			and str(lines[0]).contains("PART %s %d " % [one[4], one[6]])
+			and not str(lines[0]).contains("PART %s " % one[3]))
+		while _builder.history_depth() > depth:
+			_builder.undo()
+		var back: String = await _save("replace_back.ldr")
+		_check("...one undo puts the part and its lock back, byte for byte (%s)" % ("same" if back == locked
+			else _first_difference(locked, back)), back == locked)
+		await _open(MODELS + "replace_swapped.ldr")
+		var again: Variant = _grabbing.held_of([_id_of(str(one[5]))])
+		_check("...reopened swapped, the lock holds: \"%s\"" % str(again).left(80), again is String
+			and str(again).contains(Motions.UNLOCK_WORDS))
+		return
+	_check("a locked part swapped with room for its new part", false)
 
 
 # -- the models -------------------------------------------------------------------------

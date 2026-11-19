@@ -1867,10 +1867,34 @@ func _swap(brick: BrickWorld.Brick, part_id: String, at: Transform3D, packed: Pa
 	steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
 		"transform": brick.transform, "group": brick.group, "unit": brick.unit,
 		"step": brick.step, "was": brick.id})
+	_carry_locks(brick, made, steps)
 	world.remove_brick(brick_id)
 	removed.emit(brick_id)
 	swapped.append(made)
 	return true
+
+
+## A joint lock (Motions.Lock) of [param was] moved to [param made], the part
+## swapped in where it stood, with the swap's own undo after it (a group's
+## steps are undone in order: the old part is back before its lock is). A
+## joint locked stays locked through Find and Replace, Use what I own and a
+## rare colour's swap; the lock named a part that was gone, held nothing and
+## left the file at the next save, with nothing said.
+func _carry_locks(was: BrickWorld.Brick, made: int, steps: Array) -> void:
+	var motions: Motions = world.motions
+	if motions == null or motions.locks.is_empty():
+		return
+	var had: Motions = null
+	for lock: Motions.Lock in motions.locks:
+		for joint: Motions.Joint in [lock.a, lock.b]:
+			if Motions.lock_part(joint, world, self) != was.id:
+				continue
+			if had == null:
+				had = motions.copy()
+			joint.lead = made
+			joint.part = world.get_brick(made).part_id
+	if had != null:
+		steps.append({"undo": "motions", "motions": had})
 
 
 ## Find and Replace's change (FindReplace), any parts anywhere in the model,

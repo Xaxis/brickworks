@@ -2796,9 +2796,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   AT were written at the broken-out place before); a turn of a locked part
   broken out is refused for what it stands on and names the lock
   (`GrabDrag._lock_on`). A LOCK line naming parts
-  the model has not got is named at the open and kept byte for byte.
-  Probes: `jointlock_probe` (windowed; `-- together breakout motion_breakout
-  chain copies dangling` runs the review's cases alone), `jointlock_time_probe`
+  the model has not got is named at the open and kept byte for byte. A locked
+  part swapped by Find and Replace, Use what I own or a rare colour's swap
+  keeps its lock on the part that took its place, in the swap's one undo
+  (`Builder._carry_locks`; the lock was dropped at the next save before).
+  Probes: `jointlock_probe` (windowed; `-- together breakout replace
+  motion_breakout chain copies dangling` runs the review's cases alone), `jointlock_time_probe`
   (headless, Orthanc: the lock's work each frame under 16 ms); in a session,
   `together_probe -- --api=… --only=lock`.
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
