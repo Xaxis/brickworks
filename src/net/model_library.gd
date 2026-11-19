@@ -380,11 +380,13 @@ func fetch_model(id: String, job: Working.Job = null) -> Dictionary:
 ## What came for [param entry]'s file, as [method model_text] answers.
 func _text_of(entry: Dictionary, got: Dictionary) -> Dictionary:
 	var file: String = str(entry["file"])
+	# Its bytes read as File, Open reads them (LdrModel.text_of): as text, a
+	# file that began with a BOM (4558-1's two) lost it, and saved without.
 	if int(got["code"]) == 200 and not (got["bytes"] as PackedByteArray).is_empty():
-		return {"text": (got["bytes"] as PackedByteArray).get_string_from_utf8(), "error": ""}
+		return {"text": LdrModel.text_of(got["bytes"]), "error": ""}
 	# A dev checkout has the repository's files themselves.
 	if not OS.has_feature("web") and FileAccess.file_exists(VENDOR + file.get_file()):
-		return {"text": FileAccess.get_file_as_string(VENDOR + file.get_file()), "error": ""}
+		return {"text": LdrModel.text_of(FileAccess.get_file_as_bytes(VENDOR + file.get_file())), "error": ""}
 	return {"text": "", "error": _unreached(got, title_of(entry))}
 
 
