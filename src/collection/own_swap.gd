@@ -89,6 +89,9 @@ class Lot extends RefCounted:
 	var picked: bool = false
 	## The panel's rareswap list reads this of its rows: nothing waits here.
 	var waited: bool = false
+	## Its parts' ids as the parts list counted them when the lot was made:
+	## what an offer finds them by, with the model as it was.
+	var bricks: Array = []
 
 	func short() -> int:
 		return count - owned
@@ -170,6 +173,7 @@ func short_of(world: BrickWorld, scenery: Dictionary, on_hand: Dictionary,
 		short.colour_name = lot.color_name
 		short.count = lot.count
 		short.owned = mine
+		short.bricks = Array(lot.bricks)
 		short.flexible = flexible.has(lot)
 		var info: PartLibrary.PartInfo = library.parts.get(library.resolve(lot.part_id))
 		short.printed = info != null and (info.decor() & (PartLibrary.PartInfo.PRINTED
@@ -363,10 +367,11 @@ func _nearest(lot: Lot, left: Dictionary, by_family: Dictionary) -> Array:
 ## twin in every other copy), the model's own parts before those in copies;
 ## a group with no room, locked or bigger than what is left is passed over.
 ## The ids, each once; [] for none.
-func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindReplace) -> Array:
+func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindReplace,
+		fresh: bool = false) -> Array:
 	if need <= 0 or most <= 0:
 		return []
-	var found: Dictionary = found_for(lot, finder)
+	var found: Dictionary = found_for(lot, finder, fresh)
 	var ids: Array = found["ids"]
 	if ids.is_empty():
 		return []
@@ -432,14 +437,20 @@ static func _changed_by(planned: Dictionary) -> Array:
 
 ## [param lot]'s parts as Find and Replace finds them, as RareSwap.found_for
 ## finds a rare lot's: its own part in its colour, those the parts list
-## counts in it; locked ones left out and counted.
-func found_for(lot: Lot, finder: FindReplace) -> Dictionary:
-	var stock: Inventory = Inventory.of(finder.world, library, finder.scenery)
+## counts in it; locked ones left out and counted. By the ids the lot was
+## made with, unless [param fresh] (a swap before it may have laid copies
+## again): then the parts list's count is taken again.
+func found_for(lot: Lot, finder: FindReplace, fresh: bool = false) -> Dictionary:
 	var ids: Dictionary = {}
-	for each: Inventory.Lot in stock.lots:
-		if each.part_id == lot.part and each.color_code == lot.colour:
-			for brick_id: int in each.bricks:
-				ids[brick_id] = true
+	if not fresh and not lot.bricks.is_empty():
+		for brick_id: int in lot.bricks:
+			ids[brick_id] = true
+	else:
+		var stock: Inventory = Inventory.of(finder.world, library, finder.scenery)
+		for each: Inventory.Lot in stock.lots:
+			if each.part_id == lot.part and each.color_code == lot.colour:
+				for brick_id: int in each.bricks:
+					ids[brick_id] = true
 	var found: Dictionary = finder.find({"part": "" if lot.flexible else lot.part, "color": lot.colour}, "all")
 	return RareSwap.narrowed(found, ids, finder)
 
@@ -470,16 +481,16 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 			var other: String = Mirror.counterpart(library, lot.into_part)
 			if not other.is_empty():
 				await finder.shape(other)
-		var ids: Array = await pieces_for(lot, into, lot.takes, lot.takes, finder)
+		var ids: Array = await pieces_for(lot, into, lot.takes, lot.takes, finder, true)
 		if ids.is_empty():
-			var found: Dictionary = found_for(lot, finder)
+			var found: Dictionary = found_for(lot, finder, true)
 			stayed.append("%s: %s" % [lot.name, "; ".join(FindReplace.stay_words(found, {}))
 				if int(found.get("locked", 0)) > 0 else "no room for it"])
 			continue
 		var kept: Dictionary = {}
 		for brick_id: int in ids:
 			kept[brick_id] = true
-		var done: Dictionary = finder.replace(RareSwap.narrowed(found_for(lot, finder), kept, finder), into)
+		var done: Dictionary = finder.replace(RareSwap.narrowed(found_for(lot, finder, true), kept, finder), into)
 		changed += int(done["changed"])
 		if int(done["changed"]) > 0:
 			swapped += 1
