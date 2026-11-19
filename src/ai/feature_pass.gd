@@ -278,9 +278,16 @@ func candidates_for(name: String) -> Array:
 	if found.any(func(row: Array) -> bool: return int(row[0]) >= FIRST_READING):
 		found = found.filter(func(row: Array) -> bool: return int(row[0]) >= FIRST_READING)
 	# Those that say more of it first, then in the search's order: the
-	# subject's own sets, then the best scored.
+	# subject's own sets, then the best scored. For a LEGO® Technic subject,
+	# a Technic set's piece before another that says it as well: its panels,
+	# beams and gears are what the subject's surface is judged by.
+	var technic: bool = TechnicParts.of_technic(assistant._subject_of())
 	found.sort_custom(func(one: Array, other: Array) -> bool:
-		return one[0] > other[0] if one[0] != other[0] else one[1] < other[1])
+		if one[0] != other[0]:
+			return one[0] > other[0]
+		if technic and _of_technic(one[2]) != _of_technic(other[2]):
+			return _of_technic(one[2])
+		return one[1] < other[1])
 	var out: Array = []
 	var from: Dictionary = {}
 	for row: Array in found:
@@ -292,6 +299,11 @@ func candidates_for(name: String) -> Array:
 		if out.size() >= CANDIDATES:
 			break
 	return out
+
+
+## Whether a real piece is from a LEGO® Technic set.
+static func _of_technic(entry: Dictionary) -> bool:
+	return str(entry.get("theme", "")) == "Technic"
 
 
 ## What a feature does that only some plastic can: a light shines and a

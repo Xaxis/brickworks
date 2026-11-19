@@ -2660,6 +2660,31 @@ fixing what it got wrong.
   to 2,000 parts. Probe: `colours_seen_probe` (a bench design of 7992-1 and the
   judge's picture of it: the Python read's six colours, City's 258 sets with
   7992-1 left out, both tools' words).
+- **A Technic set's seen parts, in the first build** (`TechnicParts`,
+  `Assistant._technic_surface`, `_technic_refusal`, `method_for_subject`,
+  design26, 2026-11-19). A subject said to be in the style of LEGO® Technic
+  sets (`TechnicParts.of_technic`: "Technic" said of the subject, not "Technic
+  bricks" or "Technic link tracks" said of a part) is told once, after
+  `how_real_sets_build_this`'s own answer, what a Technic set shows on its
+  surface: each role's share of what shows, its parts and where it goes, the
+  ways real sets hold them on a studded body, and the hold written in
+  submit_design's own words (a Technic brick in the wall course named, a pin
+  attached in its hole, the panel attached on the pin; a beam laid flat on
+  studs). Its first full `submit_design` with no panel or fewer than four
+  beams and liftarms is sent back once with the same; submitted again as it
+  was, it is built. The connector's first answer has `METHOD` and, for a
+  Technic subject, `TechnicParts.METHOD_SAID`; any other subject's is
+  `METHOD` byte for byte. The feature pass puts a Technic set's piece first
+  among those that name a feature as well. The table is
+  `assets/knowledge/technic_parts.json.gz` (`tools/technic_parts.py build`:
+  96 Technic sets since 2000 drawn from four sides and above, holds read over
+  every set since 2000, the bench's 88 subjects held out by number and name;
+  `show`, and `measure MODEL.ldr` for a design's seen surface by role),
+  fetched from `knowledge/` on the web (`tools/export.sh`). Probe:
+  `technic_parts_probe` (headless: the ten roles with parts, holds and sets,
+  none held out; the app's roles as the table's; the words; told once; the
+  send-back and the build after it; the told hold built; METHOD unchanged for
+  a lighthouse).
 
 ## How to reach it
 

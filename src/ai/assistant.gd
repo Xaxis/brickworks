@@ -3414,7 +3414,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
 			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
-				+ DesignMemory.recall(subject)
+				+ await _technic_surface() + DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			var described: String = _describe_world(args)
@@ -6648,6 +6648,8 @@ func _begin_subject(brief: String, heard_of_it: String = "") -> void:
 	_joints_told = 0
 	_joint_parts_told = false
 	_joints_refused = false
+	_technic_told = false
+	_technic_refused = false
 
 
 ## A design submitted is of the subject standing, or begins another. Another
@@ -6926,6 +6928,55 @@ func _unjointed_refusal(design: Model) -> String:
 		+ "attach to them, a hat {\"part\": ..., \"attach\": {\"to\": \"hair.stud[0]\"}}, or stand "
 		+ "on their studs. Keep the rest of the design (a plinth, props), leave out the body "
 		+ "it replaces. Submitted again with nothing on a joint, it is built as it is.")
+
+
+## Whether a LEGO® Technic subject's first build has been told what a Technic
+## set shows on its surface (TechnicParts.surface_said), and whether a first
+## submission showing none of it has been sent back.
+var _technic_told: bool = false
+var _technic_refused: bool = false
+
+
+## What a Technic set shows on its surface and how each part is held on a
+## studded body, told once a subject, with how_real_sets_build_this: before
+## the first build, which is the build a session keeps (design25: parts laid
+## at the close look were kept in 71 spots). [] for a subject not said to be
+## in the style of Technic sets: theirs is told as it was.
+func _technic_surface() -> Array:
+	if _technic_told or not TechnicParts.of_technic(_subject_of()):
+		return []
+	if not await TechnicParts.ensure(self):
+		return []
+	_technic_told = true
+	return [{"type": "text", "text": TechnicParts.surface_said()}]
+
+
+## A Technic subject's first submission that shows nothing of a Technic set's
+## surface, no panel and too few beams for its frame lines, is sent back once
+## with the parts and how each is held, to lay on the body it keeps. As the
+## joints are (_unjointed_refusal): a submission that is built is a choice
+## made, and what is said after it is detail the session may never lay.
+## Submitted again as it was, it is built. "" to go on and check it.
+func _technic_refusal(design: Model) -> String:
+	if _technic_refused or design.placements.size() < JOINTS_FROM \
+			or not TechnicParts.of_technic(_subject_of(design)):
+		return ""
+	if not await TechnicParts.ensure(self):
+		return ""
+	var said: String = TechnicParts.sent_back(TechnicParts.roles_in(
+		design.placements.map(func(p: Placement) -> String: return p.part), library))
+	if said.is_empty():
+		return ""
+	_technic_refused = true
+	_technic_told = true
+	return said
+
+
+## The method's words for the subject the connector heard first: METHOD, and
+## for a Technic subject what its first build lays (TechnicParts.METHOD_SAID).
+func method_for_subject() -> String:
+	return METHOD + ("\n\n" + TechnicParts.METHOD_SAID if TechnicParts.of_technic(_subject_of())
+		else "")
 
 
 ## Whether the model is made of as many different things as a real set.
@@ -21628,6 +21679,9 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	var unjointed: String = _unjointed_refusal(design)
 	if not unjointed.is_empty():
 		return unjointed
+	var technic: String = await _technic_refusal(design)
+	if not technic.is_empty():
+		return technic
 	await _ready_to_check(design)
 	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
