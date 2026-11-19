@@ -3944,16 +3944,19 @@ static var _shaped: Dictionary = {}
 static var _shaped_lock := Mutex.new()
 
 
-## The model's parts in an order of their own: by height, the sub-model and
-## copy each is in, part, across, along, colour and how it is turned, each
-## as a file writes it (to a thousandth of an LDU). What the order is worked
-## out from, and how two parts it could put first either way are told apart:
-## never the order the world was given them, which is the order a file
-## lists them. That order is the plan the file was saved with, so a plan
-## that went by it planned a model again from its own last plan: saved,
-## opened and saved, pagoda's pond and sculpt170-042's potato body came out
-## in steps of their own each time, the potato built in the model's steps,
-## and settled only by the third save (keepbytes, 2026-11-19).
+## The model's parts in an order of their own: by height, part, across,
+## along, colour and how it is turned, each as a file writes it (to a
+## thousandth of an LDU). What the order is worked out from, and how two
+## parts it could put first either way are told apart: never the order the
+## world was given them, which is the order a file lists them. That order is
+## the plan the file was saved with, so a plan that went by it planned a
+## model again from its own last plan: saved, opened and saved, pagoda's pond
+## and sculpt170-042's potato body came out in steps of their own each time,
+## the potato built in the model's steps, and settled only by the third save
+## (keepbytes, 2026-11-19). Nor the names of the sub-model and copy a part is
+## in: a rename changed the order, and Sub renamed Crate built 7 of its 8
+## parts in other steps, and a sub-model named as it was made saved with
+## changes still unsaved (unit_steps).
 static func in_order(world: BrickWorld) -> Array:
 	var bricks: Array = world.bricks()
 	var keys: Array = []
@@ -3962,14 +3965,14 @@ static func in_order(world: BrickWorld) -> Array:
 		var brick: BrickWorld.Brick = bricks[n]
 		var at: Vector3 = brick.transform.origin
 		var turn: Basis = brick.transform.basis
-		keys[n] = [roundi(at.y * 1000.0), brick.group, brick.unit, brick.part_id,
-			roundi(at.x * 1000.0), roundi(at.z * 1000.0), brick.color_code,
-			BrickWorld.turn_key(turn.x), BrickWorld.turn_key(turn.y), BrickWorld.turn_key(turn.z), n]
+		keys[n] = [roundi(at.y * 1000.0), brick.part_id, roundi(at.x * 1000.0),
+			roundi(at.z * 1000.0), brick.color_code, BrickWorld.turn_key(turn.x),
+			BrickWorld.turn_key(turn.y), BrickWorld.turn_key(turn.z), n]
 	keys.sort()
 	var out: Array = []
 	out.resize(bricks.size())
 	for n: int in keys.size():
-		out[n] = bricks[int((keys[n] as Array)[10])]
+		out[n] = bricks[int((keys[n] as Array).back())]
 	return out
 
 
