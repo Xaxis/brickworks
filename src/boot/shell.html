@@ -1084,18 +1084,42 @@ const loaderSays = (function () {
 		window.brickworksElsewhere = id;
 	}
 	// And that tab, asked: it comes forward where the browser lets it, and
-	// its title says which it is for a few seconds either way.
+	// its title says which it is for a few seconds either way. The app puts
+	// the model's title back at every frame it runs (main.gd _tell_page), so
+	// set here alone it said so for one frame, and a check sampling the
+	// title each 250 ms saw it only by chance (app_host, smalls6 at load 23;
+	// smalls7, 2026-11-19). While it says so, a title anything else sets is
+	// kept for after, and put back then.
 	function hereWhenAsked(id) {
+		const own = Object.getOwnPropertyDescriptor(Document.prototype, "title");
+		let flashing = false;
+		let kept = "";
+		try {
+			Object.defineProperty(document, "title", {
+				configurable: true,
+				get: function () { return own.get.call(document); },
+				set: function (value) {
+					if (flashing) kept = String(value);
+					else own.set.call(document, value);
+				},
+			});
+		} catch (e) {}
 		try {
 			new BroadcastChannel("brickworks-tabs").onmessage = function (event) {
-				if (!event.data || event.data.show !== id) return;
+				if (!event.data || event.data.show !== id || flashing) return;
 				try { window.focus(); } catch (e) {}
-				const was = document.title;
+				kept = document.title;
+				flashing = true;
+				own.set.call(document, loaderSays("● Your model is here"));
 				let flips = 0;
 				const flip = setInterval(function () {
 					flips += 1;
-					document.title = flips % 2 ? loaderSays("● Your model is here") : was;
-					if (flips >= 10) { clearInterval(flip); document.title = was; }
+					own.set.call(document, flips % 2 ? kept : loaderSays("● Your model is here"));
+					if (flips >= 10) {
+						clearInterval(flip);
+						flashing = false;
+						own.set.call(document, kept);
+					}
 				}, 600);
 			};
 		} catch (e) {}
