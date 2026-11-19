@@ -541,8 +541,14 @@ plan with Claude as the client.
   answers the tab's `op=next` 401 (asked again every 5 s while it waits, so a
   waiting tab is told within about 10 s, not at the end of its 25 s), so the
   tab says hello again, which only a new sign-in passes. A row from before the column (no session) gets 401 "say
-  hello again" and its hello writes it; a database without the column goes on
-  as before. Before: a tab switched on before Sign out everywhere served its
+  hello again" and its hello writes it. It never fails open (s6review): the
+  column is always read (no ask whether it is there), and a sign-in Supabase
+  cannot be asked about (`rpc/oc_session_of` failing or over 3 s) refuses the
+  call for now, "Nothing was done: Brickworks could not check just now …",
+  passes on no answer, hands the tab nothing (`op=next` 503, the tab asks
+  again still on) and closes nothing. An account's ended tabs are set aside
+  before one is chosen, so a call goes to a tab of the account still signed
+  in; one named, or the chat's own, is told it was signed out. Before: a tab switched on before Sign out everywhere served its
   address for as long as the page stayed open (live, 18 of 18 calls in the
   20 s after). `tests/test_relay_signed_out.py` (the handler over the
   stand-in); on a deployment, with `.env` sourced, from a worktree: `node
