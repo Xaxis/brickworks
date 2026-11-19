@@ -75,11 +75,20 @@ func _init(app: Node = null) -> void:
 ## locked, and left out, "locked_ids" which; "where", "inside": the
 ## sub-model being edited ("" for the model)}.
 func find(asked: Dictionary, where: String) -> Dictionary:
+	var inside: String = assemblies.entered if assemblies != null else ""
+	var looked: Array = _looked_in(where, inside)
+	return find_among(looked, asked, where, _frames_for(looked))
+
+
+## [method find]'s answer over [param looked] (bricks) alone, its copies'
+## frames [param frames] ([method _frames_for] of them, or of more): what a
+## caller that knows its parts asks, with no look over the whole model
+## (OwnSwap's lots, osreview H3: two looks a lot were 220 + 254 ms on
+## Orthanc).
+func find_among(looked: Array, asked: Dictionary, where: String, frames: Dictionary) -> Dictionary:
 	var part: String = str(asked.get("part", "")).strip_edges()
 	var colour: int = int(asked.get("color", -1))
 	var inside: String = assemblies.entered if assemblies != null else ""
-	var looked: Array = _looked_in(where, inside)
-	var frames: Dictionary = _frames_for(looked)
 	var out: Dictionary = {"ids": [], "mirrored": {}, "follow": {}, "part": part, "parts": {},
 		"colours": {}, "places": [], "locked": 0, "locked_ids": [], "where": where,
 		"inside": inside}
@@ -104,7 +113,8 @@ func find(asked: Dictionary, where: String) -> Dictionary:
 		var def: String = "" if path.is_empty() else Assemblies.definition(Assemblies.leaf(path))
 		by_def[def] = int(by_def.get(def, 0)) + 1
 	out["follow"] = _twins_found(out["mirrored"], out["ids"], frames)
-	var copies: Dictionary = _copies_by_definition()
+	var copies: Dictionary = _copies_by_definition() if not by_def.keys().all(func(def: String) -> bool:
+		return def.is_empty()) else {}
 	var names: Array = by_def.keys()
 	names.sort_custom(func(a: String, b: String) -> bool:
 		return a.is_empty() or (not b.is_empty() and a.naturalnocasecmp_to(b) < 0))
@@ -262,8 +272,10 @@ func _copies_by_definition() -> Dictionary:
 ## connection points); "floats": of those, the ids where it would hold onto
 ## nothing that held the old one; "missing": the part's number when its
 ## shape is not here}. Each found part is counted once: changed (with
-## "follow"), "same", "room", "held" or "locked".
-func plan(found: Dictionary, into: Dictionary) -> Dictionary:
+## "follow"), "same", "room", "held" or "locked". [param cache] keeps the
+## copies and how they lie on each other across plans of one model as it
+## stands (OwnSwap plans each lot, and each copy group, of one model).
+func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictionary:
 	var part: String = str(into.get("part", "")).strip_edges()
 	var colour: int = int(into.get("color", -1))
 	var out: Dictionary = {"changes": [], "follow": [], "followers": [], "same": 0, "room": [],
@@ -299,9 +311,13 @@ func plan(found: Dictionary, into: Dictionary) -> Dictionary:
 	var joined: Dictionary = {}      ## id -> the id it is grouped under
 	var reached: Dictionary = {}     ## a twin -> [the found part it follows, the copies' fit]
 	if assemblies != null and not order.is_empty():
-		var copies: Dictionary = _copies_by_definition()
-		var matches: Dictionary = {}
-		var copied: Dictionary = {}
+		if not cache.has("copies"):
+			cache["copies"] = _copies_by_definition()
+			cache["matches"] = {}
+			cache["copied"] = {}
+		var copies: Dictionary = cache["copies"]
+		var matches: Dictionary = cache["matches"]
+		var copied: Dictionary = cache["copied"]
 		assemblies._begin_pass()
 		for brick_id: int in order:
 			if bool(moving[brick_id]["follows"]):
@@ -597,74 +613,102 @@ func _held_by(packed: PackedInt32Array, self_id: int, at: Transform3D, sel: Vari
 ## [method plan] made as the model stands now (the bar's, made as it showed
 ## it), else made here; on 10179 a plan is 0.4 s.
 func replace(found: Dictionary, into: Dictionary, made: Dictionary = {}) -> Dictionary:
+	return replace_all([{"found": found, "into": into, "made": made}])[0]
+
+
+## [method replace] for each of [param jobs] ({"found", "into", "made": its
+## plan, or {} to make it here}) at once: one change of the model and one
+## undo step, the copies following it once, where a replace a job was one
+## each (OwnSwap's lots, osreview H3: each lot's own replace held a frame
+## for 254 ms on Orthanc). Every plan is made as the model stands before
+## any of them changes it, so no two jobs may change one part. Each job's
+## answer as replace's, in their order; the step said by [param words], or
+## for one job by what it changed.
+func replace_all(jobs: Array, words: String = "") -> Array:
+	var out: Array = []
 	# A part lifted and still in hand goes back where it was first (rsfix,
 	# rsreview F5): this step laid over its lift left Escape nothing to put
 	# it back from, and it was lost, live since swapfind.
 	if put_back_held() < 0:
-		return {"changed": 0, "followed": 0, "room": 0, "locked": 0, "same": 0,
-			"words": "", "stayed": HELD_WORDS}
-	if made.is_empty():
-		made = plan(found, into)
-	var depth: int = builder.history_depth()
-	var was: Dictionary = {}         ## id -> [its part, its colour] before
+		for _job: Dictionary in jobs:
+			out.append({"changed": 0, "followed": 0, "room": 0, "locked": 0, "same": 0,
+				"words": "", "stayed": HELD_WORDS})
+		return out
+	var changes: Array = []
+	var was: Array = []              ## a job's: id -> [its part, its colour] before
 	var paths: Dictionary = {}       ## a follower -> its copy's path
-	for brick_id: int in found["ids"] + made["followers"]:
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick != null:
-			was[brick_id] = [brick.part_id, brick.color_code]
-			paths[brick_id] = Assemblies.path_of(brick)
-	var words: String = step_words(found, into)
-	var done: Vector2i = builder.replace_bricks(made["changes"], words)
+	for job: Dictionary in jobs:
+		if (job.get("made", {}) as Dictionary).is_empty():
+			job["made"] = plan(job["found"], job["into"])
+		var before: Dictionary = {}
+		for brick_id: int in job["found"]["ids"] + job["made"]["followers"]:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null:
+				before[brick_id] = [brick.part_id, brick.color_code]
+				paths[brick_id] = Assemblies.path_of(brick)
+		was.append(before)
+		changes.append_array(job["made"]["changes"])
+	if jobs.is_empty():
+		return out
+	var depth: int = builder.history_depth()
+	var step: String = words if not words.is_empty() else step_words(jobs[0]["found"], jobs[0]["into"])
+	var done: Vector2i = builder.replace_bricks(changes, step)
 	if done.x > 0:
 		edited.call()
 	# Those in a copy a mirror places that their twin's follow did not reach,
 	# changed where they stand.
-	var left := PackedInt64Array()
-	var twin_of: Dictionary = found.get("follow", {})
-	for brick_id: int in made["follow"]:
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		var twin: BrickWorld.Brick = world.get_brick(int(twin_of.get(brick_id, -1)))
-		var twin_changed: bool = twin == null or not was.has(twin.id) \
-			or was[twin.id] != [twin.part_id, twin.color_code]
-		if brick != null and twin_changed and was[brick_id] == [brick.part_id, brick.color_code]:
-			left.append(brick_id)
-	if not left.is_empty():
+	var more: Array = []
+	for n: int in jobs.size():
+		var found: Dictionary = jobs[n]["found"]
+		var left := PackedInt64Array()
+		var twin_of: Dictionary = found.get("follow", {})
+		for brick_id: int in jobs[n]["made"]["follow"]:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var twin: BrickWorld.Brick = world.get_brick(int(twin_of.get(brick_id, -1)))
+			var twin_changed: bool = twin == null or not was[n].has(twin.id) \
+				or was[n][twin.id] != [twin.part_id, twin.color_code]
+			if brick != null and twin_changed and was[n][brick_id] == [brick.part_id, brick.color_code]:
+				left.append(brick_id)
+		if left.is_empty():
+			continue
 		var rest: Dictionary = found.duplicate()
 		rest["ids"] = Array(left)
 		rest["follow"] = {}
-		var mirrored_into: Dictionary = into.duplicate()
-		if not str(into.get("part", "")).is_empty():
-			mirrored_into["part"] = _as_defined(str(into["part"]), true)
-		var more: Vector2i = builder.replace_bricks(plan(rest, mirrored_into)["changes"], words)
-		done.y += more.y
-		if more.x > 0:
-			edited.call()
+		var mirrored_into: Dictionary = (jobs[n]["into"] as Dictionary).duplicate()
+		if not str(mirrored_into.get("part", "")).is_empty():
+			mirrored_into["part"] = _as_defined(str(mirrored_into["part"]), true)
+		more.append_array(plan(rest, mirrored_into)["changes"])
+	if not more.is_empty() and builder.replace_bricks(more, step).x > 0:
+		edited.call()
 	builder.fold_since(depth)
 	if assemblies != null:
 		assemblies.no_copies_follow()
 	# What changed, each part once, the copies' follow included.
-	var found_ids: Dictionary = {}
-	for brick_id: int in found["ids"]:
-		found_ids[brick_id] = true
-	var gone: Array = []             ## [its part, its colour, found] of each changed
-	var followed: Dictionary = {}    ## a sub-model -> how many changed in its copies, not found
-	for brick_id: int in was:
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick != null and was[brick_id] == [brick.part_id, brick.color_code]:
-			continue
-		gone.append(was[brick_id])
-		if not found_ids.has(brick_id):
-			var name: String = Assemblies.definition(Assemblies.leaf(str(paths[brick_id])))
-			followed[name] = int(followed.get(name, 0)) + 1
-	words = changed_words(found, into, gone, followed)
+	for n: int in jobs.size():
+		var found: Dictionary = jobs[n]["found"]
+		var made: Dictionary = jobs[n]["made"]
+		var found_ids: Dictionary = {}
+		for brick_id: int in found["ids"]:
+			found_ids[brick_id] = true
+		var gone: Array = []             ## [its part, its colour, found] of each changed
+		var followed: Dictionary = {}    ## a sub-model -> how many changed in its copies, not found
+		for brick_id: int in was[n]:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null and was[n][brick_id] == [brick.part_id, brick.color_code]:
+				continue
+			gone.append(was[n][brick_id])
+			if not found_ids.has(brick_id):
+				var name: String = Assemblies.definition(Assemblies.leaf(str(paths[brick_id])))
+				followed[name] = int(followed.get(name, 0)) + 1
+		var stayed: int = (found["ids"] as Array).size() - int(made["same"]) \
+			- (made["locked"] as Array).size() - gone.size() + _sum(followed)
+		out.append({"changed": gone.size(), "followed": _sum(followed),
+			"room": maxi(stayed, 0), "locked": (made["locked"] as Array).size(),
+			"same": int(made["same"]), "words": changed_words(found, jobs[n]["into"], gone, followed),
+			"stayed": "; ".join(stay_words(found, made))})
 	if builder.history_depth() > depth:
-		builder.name_newest(words)
-	var stayed: int = (found["ids"] as Array).size() - int(made["same"]) \
-		- (made["locked"] as Array).size() - gone.size() + _sum(followed)
-	return {"changed": gone.size(), "followed": _sum(followed),
-		"room": maxi(stayed, 0), "locked": (made["locked"] as Array).size(),
-		"same": int(made["same"]), "words": words,
-		"stayed": "; ".join(stay_words(found, made))}
+		builder.name_newest(words if not words.is_empty() else str(out[0]["words"]))
+	return out
 
 
 ## Why nothing is replaced while a part is in hand that cannot go back.

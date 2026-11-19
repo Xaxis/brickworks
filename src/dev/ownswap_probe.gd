@@ -12,7 +12,8 @@
 ##   worked out here apart from OwnSwap) is on the list, and no other, with
 ##   a swap or "none you own", its shortfall the same;
 ## - no swap over ΔE 10 or across a finish (transparency, chrome, pearl and
-##   metallic, rubber: measured here with CIEDE2000 and RareSwap.family), and
+##   metallic, milky, fluorescent, rubber, conductive: measured here with
+##   CIEDE2000 and the colours' own finish and alpha, [method crossed]), and
 ##   a part swap is the same shape in the same colour (RareSwap.fits);
 ## - no owned part used twice: what the swaps take of each part and colour is
 ##   no more than was free of it (Collection.allocate, here), and the pieces
@@ -176,9 +177,21 @@ func _swap_wrong(lot: OwnSwap.Lot) -> String:
 	var delta: float = HiddenColours.de2000(HiddenColours.lab(was.rgb), HiddenColours.lab(now.rgb))
 	if delta > 10.0:
 		return "ΔE %.1f" % delta
+	return crossed(was, now)
+
+
+## What a swap from [param was] to [param now] crosses, worked out here from
+## the colours themselves: "" for nothing (osreview H1: a family that put
+## milky with solid, metallic with pearl, let a Milky White part go
+## Trans-Clear and Metallic Dark Grey go Conductive Black).
+static func crossed(was: PartLibrary.BrickColor, now: PartLibrary.BrickColor) -> String:
+	if not now.is_plastic() or now.name.contains("Conductive") or now.group == "fluorescent paint":
+		return "into %s, no plastic a part is bought in" % now.name
 	if was.is_transparent() != now.is_transparent():
 		return "across see-through"
-	if RareSwap.family(was) != RareSwap.family(now):
+	if was.is_transparent() and (was.alpha < 200) != (now.alpha < 200):
+		return "across clear and clouded (alpha %d to %d)" % [was.alpha, now.alpha]
+	if was.drawn_as != now.drawn_as:
 		return "across a finish (%s to %s)" % [was.finish_name(), now.finish_name()]
 	if (was.group == "rubber") != (now.group == "rubber"):
 		return "across rubber"
@@ -599,33 +612,79 @@ func _case_mcp() -> void:
 	_check("mcp: at the end the file is as opened", _save() == opened)
 
 
-## Orthanc's and 10179's swaps: from the row's press to the list filled, the
-## longest frame of it.
+## Orthanc's and 10179's swaps, listed and then put in: no frame of either
+## with more than 16 ms of the app's own work (self_attack "Time"; osreview
+## H3: 2.1 s and 6.4 s frames), and the status bar saying so while it runs,
+## each frame's own work measured as ProbeTime.Frames measures it. The totals
+## are said. On 501e38ab9 this fails: one frame of Use what I own was 2,108
+## ms on Orthanc, and nothing was on the bar.
 func _case_time() -> void:
 	for path: String in TIMED:
+		var name: String = path.get_file()
 		await _open(FileAccess.get_file_as_string(path))
-		# The count the parts list takes each time it is shown (OwnSwap.short_of,
-		# given the list's own Inventory), in one frame: its time alone.
-		var stock: Inventory = Inventory.of(_world, _library, _store.scenery)
-		var counting := ProbeTime.Span.new()
-		var counted: Dictionary = OwnSwap.new(_library).short_of(_world, _store.scenery, _owner.on_hand, stock)
-		counting.end()
-		_check("time %s: the parts list's count of what is short, %d lots, %s, within %.0f ms" % [
-			path.get_file(), (counted["lots"] as Array).size(), counting.said(), 16.0 * counting.slack()],
-			counting.own < 16.0 * counting.slack())
 		var list: InventoryPanel = await _list_up()
-		var span := ProbeTime.Span.new()
-		var timed: Array = await _own_up(list)
-		span.end()
-		var note: String = (list.get("_swap_note") as Label).text
-		if not _check("time %s: the list filled" % path.get_file(), not timed.is_empty()):
+		var row: Control = list.controls_by_name().get("parts_own")
+		if not _check("time %s: the row" % name, row != null):
 			continue
-		print("  %s: %d short lots, %s, longest frame %.1f ms" % [path.get_file(), (list.get("_own") as Array).size(),
-			span.said(), float(timed[1])])
-		_check("time %s: %.0f ms to the list (%s), within %.0f ms, the longest frame %.1f ms" % [path.get_file(),
-			float(timed[0]), span.said(), 1000.0 * span.slack(), float(timed[1])],
-			span.own < 1000.0 * span.slack() or not note.is_empty())
+		var listed: Array = await _timed_act(func() -> void: (row as Button).pressed.emit(),
+			func() -> bool: return list.controls_by_name().has("parts_use_own") and not bool(list.get("_swapping")))
+		_time_said(name, "the swaps listed", listed, (list.get("_own") as Array).size())
+		var depth: int = _builder.history_depth()
+		var button: Button = list.controls_by_name().get("parts_use_own")
+		if not _check("time %s: Use what I own to press" % name, button != null and not button.disabled):
+			list.hide_list()
+			continue
+		var swapped: Array = await _timed_act(func() -> void: button.pressed.emit(),
+			func() -> bool: return not bool(list.get("_swapping")) and not list.controls_by_name().has("parts_use_own"))
+		_time_said(name, "Use what I own", swapped, _builder.history_depth() - depth)
 		list.hide_list()
+		if _builder.history_depth() > depth:
+			await _undone()
+
+
+## [param act] done, then frames until [param done] holds (120 s at most):
+## [the time on the clock in ms, frames, the longest frame's own work in ms
+## with its wait aside, how many frames had more than 16 ms of their own,
+## whether the status bar said the work in a frame of it, the slack, done].
+func _timed_act(act: Callable, done: Callable) -> Array:
+	var frames := ProbeTime.Frames.new()
+	frames.label = func() -> String:
+		var job: Working.Job = Working.current()
+		return job.words if job != null else ""
+	root.add_child(frames)
+	var started: int = Time.get_ticks_usec()
+	act.call()
+	var until: int = Time.get_ticks_msec() + 120000
+	var finished: bool = false
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		if done.call():
+			finished = true
+			break
+	await process_frame
+	var clock: float = (Time.get_ticks_usec() - started) / 1000.0
+	var longest: float = 0.0
+	var over: int = 0
+	var bar: bool = false
+	for frame: Array in frames.work:
+		var own: float = float(frame[1]) - float(frame[2])
+		longest = maxf(longest, own)
+		if own > 16.0 * frames.slack():
+			over += 1
+		bar = bar or not str(frame[3]).is_empty()
+	var slack: float = frames.slack()
+	var count: int = frames.work.size()
+	frames.queue_free()
+	return [clock, count, longest, over, bar, slack, finished]
+
+
+func _time_said(name: String, what: String, timed: Array, count: int) -> void:
+	print("  %s: %s (%d), %.0f ms over %d frames, the longest frame %.1f ms of its own, %d over %.0f ms, the bar %s"
+		% [name, what, count, float(timed[0]), int(timed[1]), float(timed[2]), int(timed[3]),
+		16.0 * float(timed[5]), "said it" if bool(timed[4]) else "said nothing"])
+	_check("time %s: %s done, no frame over %.0f ms of its own (the longest %.1f ms, %d over, in %.0f ms), the bar saying so"
+		% [name, what, 16.0 * float(timed[5]), float(timed[2]), int(timed[3]), float(timed[0])],
+		bool(timed[6]) and int(timed[3]) == 0 and bool(timed[4]))
 
 
 ## The row, the swaps, the button and what the row says after, in German,

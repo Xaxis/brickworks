@@ -1243,11 +1243,30 @@ func show_own() -> void:
 	_say_picked()
 
 
+## Said when the collection changed since the swaps shown were worked out.
+const STALE_WORDS := "Your collection changed since these were worked out, so they are worked out again from what you own now: nothing was swapped"
+
+
 ## The picked swaps put in as one undo step (OwnSwap.swap), said in the status
 ## bar, and the list taken again: its row says what changed and what is still
-## missing. {} when nothing was picked.
+## missing. {} when nothing was picked, or the collection changed since the
+## swaps shown were worked out (they are then worked out again).
 func use_own() -> Dictionary:
 	if _swapping or _own.is_empty() or not can_swap():
+		return {}
+	# Against the collection as it is now (osreview M1: another tab took the
+	# free ones and 4 still went in): swaps that no longer hold are worked
+	# out again and shown, and nothing is changed.
+	var pool: Dictionary = _pool()
+	if pool.is_empty() or OwnSwap.stale(_own, OwnSwap.free_now(_own_short, pool)):
+		_take_own()
+		if _own.is_empty():
+			_show_rows()
+		else:
+			await show_own()
+			if _listing_own and _swaps_scroll.visible:
+				_swap_note.text = STALE_WORDS
+		said.emit(STALE_WORDS)
 		return {}
 	_swapping = true
 	_swap_now.disabled = true

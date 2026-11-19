@@ -23,8 +23,10 @@
 ##   print was chosen and only the builder can say it may go;
 ## - else the same part, or a moulding of it, in the nearest colour they own
 ##   ([constant RareSwap.CLOSE_DE] or nearer by CIEDE2000) of the same
-##   transparency and finish family (RareSwap.family): no chrome, pearl,
-##   metallic or see-through for a solid, nor the reverse;
+##   see-through and finish exactly (RareSwap.keeps_finish, rareswap's own
+##   rule): no chrome, pearl, metallic, milky, fluorescent or see-through for
+##   a solid, nor the reverse, nor metallic for pearl, and never conductive
+##   plastic or an ink;
 ## - else none they own, and what they have of it said.
 ## Of those, the one that covers the most of what is short; then the same
 ## colour before another; then the nearest.
@@ -42,15 +44,31 @@
 ## sub-model changes with its twin in every other copy or not at all (Find
 ## and Replace's rule), so the pieces are taken a copy group at a time, as
 ## FindReplace.plan groups them, and a group bigger than what is free is
-## passed over. The swaps are made through Find and Replace, folded into one
-## undo step; a part lifted and still in hand is put back where it was
-## first, as Escape puts it (FindReplace.put_back_held), and never lost.
+## passed over. A lot's swap changes only the lot's own parts (decided for
+## osreview H2): a group that would change a part of another lot, a left
+## wing's mirrored twin that is a right wing, is passed over and said so,
+## rather than charged to the twin's own part and colour, which would swap
+## another lot's pieces under this one's words and count; the twin's lot is
+## offered its own swap. The swaps are made through Find and Replace in one
+## change of the model (FindReplace.replace_all), one undo step; a part
+## lifted and still in hand is put back where it was first, as Escape puts
+## it (FindReplace.put_back_held), and never lost.
+##
+## The model is looked at once for an offer or a swap, not once a lot
+## (osreview H3: two looks a lot were 474 ms of one frame on Orthanc and
+## Use what I own took 31.8 s on 10179): each lot's parts from its own ids,
+## the copies' frames read once, and how copies lie on each other kept
+## across every plan. The work goes on a slice of a frame at a time
+## ([constant SLICE_US]), the status bar saying so (Working).
 class_name OwnSwap
 extends RefCounted
 
 ## A frame's share of the work, in µs, as RareSwap's: the rest goes on in the
 ## next frame, so the list never holds a frame on Orthanc.
 const SLICE_US := 8000
+## What a lot's swap is when its pieces' groups would change another lot's
+## parts (osreview H2).
+const TWIN_WORDS := "none you own for these alone: a swap would change their twins in other copies, which are another lot"
 
 
 ## One lot the person owns too few of, and its swap.
@@ -77,6 +95,9 @@ class Lot extends RefCounted:
 	var into_colour: int = -1
 	var takes: int = 0
 	var free: int = 0
+	## The part and colour of the person's its swap takes from, as
+	## CollectionStore.on_hand keys them.
+	var from_key: String = ""
 	## How far the new colour is from the old, as an eye judges (CIEDE2000).
 	var delta_e: float = 0.0
 	## A part swap's connection points beyond the old part's: 0 for the same.
@@ -92,6 +113,9 @@ class Lot extends RefCounted:
 	## Its parts' ids as the parts list counted them when the lot was made:
 	## what an offer finds them by, with the model as it was.
 	var bricks: Array = []
+	## Its swap was passed over only because each group of its pieces holds
+	## another lot's part (TWIN_WORDS).
+	var twins: bool = false
 
 	func short() -> int:
 		return count - owned
@@ -109,8 +133,19 @@ class Lot extends RefCounted:
 
 
 var library: PartLibrary
-## RareSwap's matcher: its equal parts and its colours' families.
+## RareSwap's matcher: its equal parts.
 var _rare: RareSwap
+## The one look at the model an offer or a swap makes ([method _look]): the
+## model as it was looked at, its copies' frames (FindReplace._frames_for of
+## every part, read once on first need), and FindReplace.plan's cache.
+var _looked_as: Array = []
+var _frames: Variant = null
+var _cache: Dictionary = {}
+## Each lot's parts as found, by its key, for the model as looked at.
+var _found: Dictionary = {}
+## The last [method pieces_for] passed over a group only because it held
+## another lot's part.
+var _twinned: bool = false
 
 
 func _init(from: PartLibrary = null) -> void:
@@ -143,10 +178,7 @@ func short_of(world: BrickWorld, scenery: Dictionary, on_hand: Dictionary,
 	var owned: int = 0
 	for key: String in have:
 		owned += int(have[key])
-	var free: Dictionary = {}
-	for key: String in shared["spare"]:
-		if int(shared["spare"][key]) > 0:
-			free[key] = int(shared["spare"][key])
+	var free: Dictionary = _spare(shared)
 	if stock == null:
 		stock = Inventory.of(world, library, scenery)
 	var flexible: Dictionary = {}
@@ -183,7 +215,35 @@ func short_of(world: BrickWorld, scenery: Dictionary, on_hand: Dictionary,
 		if a.short() != b.short():
 			return a.short() > b.short()
 		return a.key < b.key)
-	return {"lots": lots, "pieces": pieces, "owned": owned, "free": free}
+	return {"lots": lots, "pieces": pieces, "owned": owned, "free": free, "needs": needs}
+
+
+## What is free of [param on_hand] now for the model [param short]
+## (short_of's) was counted for: key -> pieces owned and not used by it.
+static func free_now(short: Dictionary, on_hand: Dictionary) -> Dictionary:
+	return _spare(Collection.allocate(short.get("needs", {}), on_hand))
+
+
+static func _spare(shared: Dictionary) -> Dictionary:
+	var free: Dictionary = {}
+	for key: String in shared["spare"]:
+		if int(shared["spare"][key]) > 0:
+			free[key] = int(shared["spare"][key])
+	return free
+
+
+## Whether a picked swap of [param lots] takes more than [param free]
+## (free_now's) has of what it takes: the collection changed since the
+## swaps were worked out (osreview M1: 4 went in of a part no longer owned).
+static func stale(lots: Array, free: Dictionary) -> bool:
+	var takes: Dictionary = {}
+	for lot: Lot in lots:
+		if lot.picked and lot.offered():
+			takes[lot.from_key] = int(takes.get(lot.from_key, 0)) + lot.takes
+	for key: String in takes:
+		if int(takes[key]) > int(free.get(key, 0)):
+			return true
+	return false
 
 
 ## The share of the model's pieces the person owns, as mine=true counts it:
@@ -199,8 +259,11 @@ static func share(short: Dictionary) -> float:
 ## used up as each is chosen, the biggest shortfall first), picked when it
 ## keeps the look. A part's shape is fetched first where it is not here
 ## ([param finder]'s FindReplace.shape: the web fetches what it has not got).
-## The work goes on across frames ([constant SLICE_US]).
+## The work goes on across frames ([constant SLICE_US]), the status bar
+## saying so.
 func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
+	var job: Working.Job = Working.begin("Finding a part or colour of yours for each…")
+	_look(finder)
 	var left: Dictionary = free.duplicate()
 	var by_family: Dictionary = {}       ## a part's family -> the free keys of it
 	for key: String in left:
@@ -218,18 +281,22 @@ func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
 		lot.delta_e = 0.0
 		lot.more_points = 0
 		lot.nearest = []
+		lot.twins = false
+		lot.from_key = ""
 		var choices: Array = _colour_choices(lot, left, by_family)
 		if not lot.flexible:
 			choices.append_array(await _part_choices(lot, left, finder))
 		# Those that keep the look first: a print's plain part only where none
 		# of them can be had.
 		choices.sort_custom(_better)
+		var twinned: bool = false
 		for choice: Array in choices:
 			var into: Dictionary = {"part": choice[1] if choice[0] == "part" else "",
 				"color": int(choice[1]) if choice[0] == "colour" else -1}
 			var took: Array = await pieces_for(lot, into, mini(int(choice[3]), lot.short()), int(choice[3]),
 				finder)
 			if took.is_empty():
+				twinned = twinned or _twinned
 				continue
 			if choice[0] == "part":
 				lot.into_part = str(choice[1])
@@ -239,14 +306,17 @@ func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
 				lot.delta_e = float(choice[4])
 			lot.takes = took.size()
 			lot.free = int(choice[3])
+			lot.from_key = str(choice[2])
 			left[str(choice[2])] = int(left[str(choice[2])]) - lot.takes
 			break
 		if not lot.offered():
+			lot.twins = twinned
 			lot.nearest = _nearest(lot, left, by_family)
 		lot.picked = keeps_look(lot)
 		if Time.get_ticks_usec() - slice > SLICE_US:
 			await tree.process_frame
 			slice = Time.get_ticks_usec()
+	job.end()
 
 
 ## Whether [param lot]'s swap leaves the model looking as it did, and so is
@@ -276,7 +346,8 @@ static func _better(a: Array, b: Array) -> bool:
 
 
 ## The colours of [param lot]'s part, or a moulding of it, the person has
-## free in [param left], close and of its transparency and finish: each
+## free in [param left], close and of its see-through and finish exactly
+## (RareSwap.keeps_finish): each
 ## ["colour", code, its key, free, ΔE, false, how much of the shortfall it
 ## covers].
 func _colour_choices(lot: Lot, left: Dictionary, by_family: Dictionary) -> Array:
@@ -291,26 +362,13 @@ func _colour_choices(lot: Lot, left: Dictionary, by_family: Dictionary) -> Array
 		var code: int = Collection.colour_of(key)
 		if spare <= 0 or code == plain:
 			continue
-		var other: PartLibrary.BrickColor = library.color(code)
-		if not matches_finish(want, other):
+		if not RareSwap.keeps_finish(want, library.color(code)):
 			continue
-		var delta: float = HiddenColours.de2000(here, HiddenColours.lab(other.rgb))
+		var delta: float = HiddenColours.de2000(here, HiddenColours.lab(library.color(code).rgb))
 		if delta > RareSwap.CLOSE_DE:
 			continue
 		out.append(["colour", code, key, spare, delta, false, mini(spare, lot.short())])
 	return out
-
-
-## Whether [param other] keeps [param want]'s kind of plastic: of it, not a
-## sticker's or a fabric's; rubber for rubber; see-through for see-through;
-## and the same finish family (RareSwap.family: solid, pearl and metallic,
-## chrome, glitter, opal, glow).
-static func matches_finish(want: PartLibrary.BrickColor, other: PartLibrary.BrickColor) -> bool:
-	if want == null or other == null or not other.is_plastic():
-		return false
-	if (other.group == "rubber") != (want.group == "rubber"):
-		return false
-	return other.is_transparent() == want.is_transparent() and RareSwap.family(other) == RareSwap.family(want)
 
 
 ## The parts equal to [param lot]'s in its colour that the person has free
@@ -362,62 +420,70 @@ func _nearest(lot: Lot, left: Dictionary, by_family: Dictionary) -> Array:
 
 ## The parts of [param lot] that [param into] ({"part", "color"}) changes to
 ## cover [param need] of it with no more than [param most] changed: its parts
-## as Find and Replace finds them (RareSwap.found_for), taken a copy group at
+## as Find and Replace finds them ([method found_for]), taken a copy group at
 ## a time as FindReplace.plan groups them (a part in a copy changes with its
 ## twin in every other copy), the model's own parts before those in copies;
-## a group with no room, locked or bigger than what is left is passed over.
-## The ids, each once; [] for none.
-func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindReplace,
-		fresh: bool = false) -> Array:
+## a group with no room, locked, bigger than what is left, or holding a part
+## of another lot (osreview H2: a left wing's mirrored twin, a right wing
+## the person owns none of, went Light Grey under the left wing's count) is
+## passed over. A part of the model's own in no mirror's copy is a group of
+## one, a colour put on it where it stands with no plan. The ids, each once;
+## [] for none.
+func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindReplace) -> Array:
+	_twinned = false
 	if need <= 0 or most <= 0:
 		return []
-	var found: Dictionary = found_for(lot, finder, fresh)
+	var found: Dictionary = found_for(lot, finder)
 	var ids: Array = found["ids"]
 	if ids.is_empty():
 		return []
-	if not str(into.get("part", "")).is_empty() and await finder.shape(str(into["part"])) == null:
+	var swaps_part: bool = not str(into.get("part", "")).is_empty()
+	if swaps_part and await finder.shape(str(into["part"])) == null:
 		return []
-	# The lot planned once as a whole: every one of them where all are short
-	# and there is enough for them; else what can change at all.
-	var whole: Array = _changed_by(finder.plan(found, into))
-	if need >= ids.size() and not whole.is_empty() and whole.size() <= most:
-		return whole
-	var can: Dictionary = {}
-	for brick_id: int in whole:
-		can[brick_id] = true
+	var mine: Dictionary = {}
+	for brick_id: int in ids:
+		mine[brick_id] = true
 	var following: Dictionary = found.get("follow", {})
-	var order: Array = ids.duplicate()
-	order.sort_custom(func(a: int, b: int) -> bool:
-		var in_a: bool = not Assemblies.path_of(finder.world.get_brick(a)).is_empty()
-		var in_b: bool = not Assemblies.path_of(finder.world.get_brick(b)).is_empty()
-		if in_a != in_b:
-			return not in_a
-		return ids.find(a) < ids.find(b))
+	var followed: Dictionary = {}
+	for brick_id: int in following:
+		followed[int(following[brick_id])] = true
+	var own: Array = []
+	var copied: Array = []
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = finder.world.get_brick(brick_id)
+		if brick != null and Assemblies.path_of(brick).is_empty():
+			own.append(brick_id)
+		else:
+			copied.append(brick_id)
 	var taken: Dictionary = {}
+	var seen: Dictionary = {}            ## the parts of a group already judged
+	var passed_twins: bool = false
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var slice: int = Time.get_ticks_usec()
-	for brick_id: int in order:
+	for brick_id: int in own + copied:
 		if taken.size() >= need:
 			break
-		if taken.has(brick_id) or not can.has(brick_id):
+		if seen.has(brick_id):
 			continue
-		# A part of the model's own, in no sub-model and followed by no
-		# mirror, is a group of one, with room as the whole plan found it (with
-		# fewer changed there is no less room); one in a sub-model is planned
-		# alone, with the twins its copies' follow reaches.
-		var brick: BrickWorld.Brick = finder.world.get_brick(brick_id)
-		var alone: bool = brick != null and Assemblies.path_of(brick).is_empty() \
-			and not following.has(brick_id) and not following.values().has(brick_id)
+		var alone: bool = not swaps_part and not following.has(brick_id) and not followed.has(brick_id) \
+			and own.has(brick_id)
 		var group: Array = [brick_id] if alone \
-			else _changed_by(finder.plan(RareSwap.narrowed(found, {brick_id: true}, finder), into))
+			else _changed_by(finder.plan(RareSwap.narrowed(found, {brick_id: true}, finder), into, _cache))
+		for each: int in group:
+			seen[each] = true
+		seen[brick_id] = true
 		if group.is_empty() or taken.size() + group.size() > most \
 				or group.any(func(each: int) -> bool: return taken.has(each)):
+			continue
+		if group.any(func(each: int) -> bool: return not mine.has(each)):
+			passed_twins = true
 			continue
 		for each: int in group:
 			taken[each] = true
 		if Time.get_ticks_usec() - slice > SLICE_US:
 			await tree.process_frame
 			slice = Time.get_ticks_usec()
+	_twinned = taken.is_empty() and passed_twins
 	return taken.keys()
 
 
@@ -437,69 +503,123 @@ static func _changed_by(planned: Dictionary) -> Array:
 
 ## [param lot]'s parts as Find and Replace finds them, as RareSwap.found_for
 ## finds a rare lot's: its own part in its colour, those the parts list
-## counts in it; locked ones left out and counted. By the ids the lot was
-## made with, unless [param fresh] (a swap before it may have laid copies
-## again): then the parts list's count is taken again.
-func found_for(lot: Lot, finder: FindReplace, fresh: bool = false) -> Dictionary:
-	var ids: Dictionary = {}
-	if not fresh and not lot.bricks.is_empty():
-		for brick_id: int in lot.bricks:
-			ids[brick_id] = true
-	else:
+## counts in it; locked ones left out and counted. Found from the ids the
+## lot was made with, among the model as [method _look] looked at it, once
+## a lot; where one of them is gone or changed, from the parts list's count
+## taken again.
+func found_for(lot: Lot, finder: FindReplace) -> Dictionary:
+	if _found.has(lot.key):
+		return _found[lot.key]
+	var bricks: Array = []
+	var asked: String = "" if lot.flexible else lot.part
+	for brick_id: int in lot.bricks:
+		var brick: BrickWorld.Brick = finder.world.get_brick(brick_id)
+		if brick == null or brick.color_code != lot.colour \
+				or not asked.is_empty() and not finder.same_part(brick.part_id, asked):
+			bricks.clear()
+			break
+		bricks.append(brick)
+	if bricks.is_empty():
 		var stock: Inventory = Inventory.of(finder.world, library, finder.scenery)
 		for each: Inventory.Lot in stock.lots:
 			if each.part_id == lot.part and each.color_code == lot.colour:
 				for brick_id: int in each.bricks:
-					ids[brick_id] = true
-	var found: Dictionary = finder.find({"part": "" if lot.flexible else lot.part, "color": lot.colour}, "all")
-	return RareSwap.narrowed(found, ids, finder)
+					bricks.append(finder.world.get_brick(brick_id))
+	if _frames == null:
+		_frames = finder._frames_for(finder.world.bricks())
+	var found: Dictionary = finder.find_among(bricks.filter(func(brick: BrickWorld.Brick) -> bool:
+		return brick != null and not finder.scenery.has(brick.id)), {"part": asked, "color": lot.colour},
+		"all", _frames)
+	_found[lot.key] = found
+	return found
+
+
+## The model looked at afresh for an offer or a swap, what was kept of it
+## let go: [method found_for] finds each lot again in the model as it now
+## is, and FindReplace.plan lays copies on each other again.
+func _look(finder: FindReplace) -> void:
+	_looked_as = _model_of(finder)
+	_frames = null
+	_cache = {}
+	_found = {}
+
+
+## What the model is, as [method _look] keeps it: whether it has changed
+## since.
+static func _model_of(finder: FindReplace) -> Array:
+	return [finder.world.generation(), finder.world.revision]
 
 
 # -- swapping -----------------------------------------------------------------------
+
+
+## Said when the model changed while a swap was worked out across frames.
+const CHANGED_WORDS := "the model changed while the swaps were worked out: nothing swapped, look at the swaps again"
 
 
 ## The picked lots of [param lots] swapped through [param finder]'s Find and
 ## Replace, as one undo step: {"lots": how many lots changed, "changed": how
 ## many parts, "stayed": what stayed and why, a line a lot, "words": the
 ## step's, "put_back": how many parts in hand went back first}. Each lot's
-## parts are found again before its swap (a swap inside a sub-model lays its
-## copies again), and no more of them change than its swap was given.
+## parts are found in the model as it stands, worked out a slice of a frame
+## at a time with the status bar saying so, and changed together in one
+## change of the model (FindReplace.replace_all), no more of a lot's than
+## its swap was given. A model changed in between is left as it is and said
+## ([constant CHANGED_WORDS]).
 func swap(lots: Array, finder: FindReplace) -> Dictionary:
 	var builder: Builder = finder.builder
 	var put_back: int = finder.put_back_held()
-	var depth: int = builder.history_depth()
 	var swapped: int = 0
 	var changed: int = 0
 	var stayed := PackedStringArray()
+	var out: Dictionary = {"lots": 0, "changed": 0, "stayed": stayed, "words": swapped_words(0, 0),
+		"put_back": maxi(put_back, 0)}
 	if put_back < 0:
 		stayed.append(FindReplace.HELD_WORDS)
+		return out
+	var job: Working.Job = Working.begin("Swapping in the parts you own…")
+	_look(finder)
+	var jobs: Array = []
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var slice: int = Time.get_ticks_usec()
 	for lot: Lot in lots:
-		if put_back < 0 or not lot.picked or not lot.offered():
+		if not lot.picked or not lot.offered():
 			continue
 		var into: Dictionary = {"part": lot.into_part, "color": lot.into_colour}
 		if not lot.into_part.is_empty():
 			var other: String = Mirror.counterpart(library, lot.into_part)
 			if not other.is_empty():
 				await finder.shape(other)
-		var ids: Array = await pieces_for(lot, into, lot.takes, lot.takes, finder, true)
+		var ids: Array = await pieces_for(lot, into, lot.takes, lot.takes, finder)
 		if ids.is_empty():
-			var found: Dictionary = found_for(lot, finder, true)
+			var found: Dictionary = found_for(lot, finder)
 			stayed.append("%s: %s" % [lot.name, "; ".join(FindReplace.stay_words(found, {}))
 				if int(found.get("locked", 0)) > 0 else "no room for it"])
 			continue
 		var kept: Dictionary = {}
 		for brick_id: int in ids:
 			kept[brick_id] = true
-		var done: Dictionary = finder.replace(RareSwap.narrowed(found_for(lot, finder, true), kept, finder), into)
-		changed += int(done["changed"])
-		if int(done["changed"]) > 0:
+		var narrowed: Dictionary = RareSwap.narrowed(found_for(lot, finder), kept, finder)
+		jobs.append({"found": narrowed, "into": into, "made": finder.plan(narrowed, into, _cache), "lot": lot})
+		if Time.get_ticks_usec() - slice > SLICE_US:
+			await tree.process_frame
+			slice = Time.get_ticks_usec()
+	if _model_of(finder) != _looked_as:
+		job.end()
+		stayed.append(CHANGED_WORDS)
+		return out
+	var done: Array = finder.replace_all(jobs)
+	for n: int in done.size():
+		changed += int(done[n]["changed"])
+		if int(done[n]["changed"]) > 0:
 			swapped += 1
-		if not str(done.get("stayed", "")).is_empty():
-			stayed.append("%s: %s" % [lot.name, str(done["stayed"])])
+		if not str(done[n].get("stayed", "")).is_empty():
+			stayed.append("%s: %s" % [(jobs[n]["lot"] as Lot).name, str(done[n]["stayed"])])
 	var words: String = swapped_words(swapped, changed)
-	builder.fold_since(depth, words)
-	if builder.history_depth() == depth + 1:
+	if changed > 0:
 		builder.name_newest(words)
+	_look(finder)
+	job.end()
 	return {"lots": swapped, "changed": changed, "stayed": stayed, "words": words,
 		"put_back": maxi(put_back, 0)}
 
@@ -538,6 +658,8 @@ static func owned_words(owned: int) -> String:
 ## covers only some says how many are still missing, after "; ".
 func into_words(lot: Lot) -> String:
 	if not lot.offered():
+		if lot.twins:
+			return TWIN_WORDS
 		if lot.nearest.is_empty():
 			return "none you own: you have none of it in any colour to spare"
 		return "none you own: the nearest you have of it is %s (ΔE %.1f), not close" % [

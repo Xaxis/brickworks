@@ -15607,3 +15607,17 @@ msgstr "il en manque encore %s"
 
 msgid "no room for it"
 msgstr "pas de place pour elle"
+
+# osfix (osreview H2, H3, M1): a swap passed over for another lot's twin, the collection or the model changed under the swaps, the swap at work
+
+msgid "none you own for these alone: a swap would change their twins in other copies, which are another lot"
+msgstr "aucune à vous pour celles-ci seules : un échange changerait leurs jumelles dans d’autres copies, qui sont un autre lot"
+
+msgid "Your collection changed since these were worked out, so they are worked out again from what you own now: nothing was swapped"
+msgstr "Votre collection a changé depuis que ceux-ci ont été calculés, ils sont donc recalculés d’après ce que vous possédez maintenant : rien n’a été échangé"
+
+msgid "the model changed while the swaps were worked out: nothing swapped, look at the swaps again"
+msgstr "le modèle a changé pendant le calcul des échanges : rien d’échangé, regardez de nouveau les échanges"
+
+msgid "Swapping in the parts you own…"
+msgstr "Mise en place des pièces que vous possédez…"

@@ -33,8 +33,9 @@
 ##   chosen, and only the builder can say it may go;
 ## - else another colour, which never starts picked unless it is close
 ##   ([constant CLOSE_DE] or nearer by CIEDE2000) and of the same
-##   transparency and finish family ([method family]): a see-through part
-##   stays see-through and a chrome one chrome, which are chosen on purpose.
+##   see-through and finish exactly ([method keeps_finish]): a see-through
+##   part stays see-through, a milky one milky and a chrome one chrome,
+##   which are chosen on purpose.
 ##   The colours ranked by same transparency, then same finish, then close,
 ##   then still made, then nearest; a rubber tyre kept rubber. One source
 ##   colour goes to one colour across the model's lots where their parts
@@ -73,10 +74,11 @@ const WAIT_MS := 20000
 ## next frame, so the swaps' list never holds a frame (rsreview F6: 317 ms).
 const SLICE_US := 8000
 
-## The finish families a swap keeps: a solid colour, see-through or not
-## (fluorescent and milky among them), pearl and metallic, chrome, glitter
-## and speckle; opal and glow in the dark each their own.
-enum Family { SOLID, PEARL, CHROME, GLITTER, OPAL, GLOW, RUBBER, FABRIC }
+## A see-through colour this clear or clearer (its alpha under it) is seen
+## through; one over it, a lens filed see-through but near black (Trans
+## Black IR Lens, 245) or milky plastic (240), is clouded, and a swap keeps
+## the one for the other no more than it makes either opaque.
+const CLEAR_BELOW := 200
 
 
 ## One rare lot, and its swap.
@@ -258,16 +260,13 @@ func offer_all(rare: Array, finder: FindReplace) -> void:
 
 ## Whether [param lot]'s swap leaves the model looking as it did, and so may
 ## start picked: the same shape in its colour (not a print's plain part), or
-## a close colour of the same transparency and finish.
+## a close colour of the same see-through and finish ([method keeps_finish]).
 func keeps_look(lot: Lot) -> bool:
 	if not lot.offered() or lot.drops_print():
 		return false
 	if not lot.into_part.is_empty():
 		return true
-	var was: PartLibrary.BrickColor = library.color(lot.colour)
-	var now: PartLibrary.BrickColor = library.color(lot.into_colour)
-	return lot.close() and was != null and now != null \
-		and was.is_transparent() == now.is_transparent() and family(was) == family(now)
+	return lot.close() and keeps_finish(library.color(lot.colour), library.color(lot.into_colour))
 
 
 ## [param lot] given [param choice]: ["part", id, sets, more points] or
@@ -284,24 +283,40 @@ static func _take(lot: Lot, choice: Array) -> void:
 	lot.into_sets = int(choice[2])
 
 
-## A colour's finish family: what a swap keeps.
-static func family(colour: PartLibrary.BrickColor) -> int:
-	match colour.drawn_as:
-		PartLibrary.BrickColor.Finish.PEARL, PartLibrary.BrickColor.Finish.METAL:
-			return Family.PEARL
-		PartLibrary.BrickColor.Finish.CHROME:
-			return Family.CHROME
-		PartLibrary.BrickColor.Finish.GLITTER, PartLibrary.BrickColor.Finish.SPECKLE:
-			return Family.GLITTER
-		PartLibrary.BrickColor.Finish.OPAL:
-			return Family.OPAL
-		PartLibrary.BrickColor.Finish.GLOW:
-			return Family.GLOW
-		PartLibrary.BrickColor.Finish.RUBBER:
-			return Family.RUBBER
-		PartLibrary.BrickColor.Finish.FABRIC:
-			return Family.FABRIC
-	return Family.SOLID
+## Whether a swap from [param want] to [param other] keeps its kind of
+## plastic, the one rule rareswap's and ownswap's (OwnSwap) swaps keep
+## (osreview H1: a family that put milky and fluorescent with solid and
+## metallic with pearl let 42 pairs within ΔE 10 cross, 3 Milky White
+## round plates made Trans-Clear and picked): [param other] a plastic a part
+## is moulded in ([method swaps_to]); seen through alike
+## ([method same_see_through]); and drawn alike, its finish exactly
+## (BrickColor.drawn_as: solid, chrome, metallic, pearl, speckle, glitter,
+## opal, glow, fluorescent, rubber, fabric and milky each its own).
+static func keeps_finish(want: PartLibrary.BrickColor, other: PartLibrary.BrickColor) -> bool:
+	return want != null and swaps_to(other) and same_see_through(want, other) \
+		and want.drawn_as == other.drawn_as
+
+
+## Whether a swap may go to [param colour]: a plastic a part is moulded in.
+## Not a sticker's film, an electrical contact, a magnet or a retired code
+## (BrickColor.is_plastic), nor conductive plastic (Conductive Black, filed
+## with the pearls, made to carry current) or a printing ink (LDConfig's
+## fluorescent paint), which no part is bought in: Metallic Dark Grey went
+## Conductive Black at ΔE 0.0 (osreview H1).
+static func swaps_to(colour: PartLibrary.BrickColor) -> bool:
+	return colour != null and colour.is_plastic() and colour.group != "fluorescent paint" \
+		and not colour.name.contains("Conductive")
+
+
+## Whether [param a] and [param b] are seen through alike: both see-through
+## or neither, and of those both clear or both clouded ([constant
+## CLEAR_BELOW]).
+static func same_see_through(a: PartLibrary.BrickColor, b: PartLibrary.BrickColor) -> bool:
+	return a.is_transparent() == b.is_transparent() and _clear(a) == _clear(b)
+
+
+static func _clear(colour: PartLibrary.BrickColor) -> bool:
+	return colour.is_transparent() and colour.alpha < CLEAR_BELOW
 
 
 # -- the counts first --------------------------------------------------------------
@@ -444,8 +459,9 @@ static func same_shape(was: Lbm.PartMesh, shape: Lbm.PartMesh) -> bool:
 
 
 ## [param part]'s colours of 20 sets or more but [param colour] itself:
-## [code, sets, ΔE from it, still made, same transparency, same finish
-## family], a rubber tyre's rubber kept rubber.
+## [code, sets, ΔE from it, still made, seen through alike, the same finish
+## (BrickColor.drawn_as)], a rubber tyre's rubber kept rubber; never one no
+## swap goes to ([method swaps_to]).
 func _colour_choices(part: String, colour: int) -> Array:
 	var want: PartLibrary.BrickColor = library.color(colour)
 	if want == null:
@@ -457,15 +473,14 @@ func _colour_choices(part: String, colour: int) -> Array:
 		if code == colour:
 			continue
 		var other: PartLibrary.BrickColor = library.colors[code]
-		if not other.is_plastic() or (other.group == "rubber") != rubber \
+		if not swaps_to(other) or (other.group == "rubber") != rubber \
 				or not rubber and other.plain_code != code:
 			continue
 		var sets: int = library.sets_in_colour(part, code)
 		if sets < COMMON_IN:
 			continue
 		out.append([code, sets, HiddenColours.de2000(here, HiddenColours.lab(other.rgb)),
-			library.is_current(code), other.is_transparent() == want.is_transparent(),
-			family(other) == family(want)])
+			library.is_current(code), same_see_through(want, other), other.drawn_as == want.drawn_as])
 	return out
 
 
@@ -638,9 +653,11 @@ func found_for(lot: Lot, finder: FindReplace) -> Dictionary:
 
 
 ## [param found] (FindReplace.find's) kept to the parts [param ids] holds, its
-## counts, colours and places counted again as find counts them.
+## counts, colours and places counted again as find counts them. What it
+## holds is [param found]'s own where it is kept whole, and read only: an
+## offer narrows a lot to each of its copy groups in turn (OwnSwap).
 static func narrowed(found: Dictionary, ids: Dictionary, finder: FindReplace) -> Dictionary:
-	var out: Dictionary = found.duplicate(true)
+	var out: Dictionary = found.duplicate()
 	var kept: Array = []
 	var parts: Dictionary = {}
 	var colours: Dictionary = {}
@@ -731,12 +748,14 @@ func into_words(lot: Lot) -> String:
 	var now: PartLibrary.BrickColor = library.color(lot.into_colour)
 	var notes := PackedStringArray(["a close colour" if lot.close() else "a different colour"])
 	if was != null and now != null:
-		if was.is_transparent() and not now.is_transparent():
-			notes.append("not see-through")
-		elif now.is_transparent() and not was.is_transparent():
-			notes.append("see-through")
-		if family(was) != family(now):
-			notes.append("loses its %s" % was.finish_name() if family(was) != Family.SOLID
+		# Opaque against see-through first, then clear against clouded.
+		var seen: bool = was.is_transparent() if was.is_transparent() != now.is_transparent() \
+			else _clear(was)
+		if not same_see_through(was, now):
+			notes.append("not see-through" if seen else "see-through")
+		if was.drawn_as != now.drawn_as:
+			notes.append("loses its %s" % was.finish_name()
+				if was.drawn_as != PartLibrary.BrickColor.Finish.PLASTIC
 				else "becomes %s" % now.finish_name())
 	return "%s, %s (ΔE %.1f); %s" % [now.name.replace("_", " ") if now != null else str(lot.into_colour),
 		sets_words(lot.into_sets), lot.delta_e, "; ".join(notes)]
