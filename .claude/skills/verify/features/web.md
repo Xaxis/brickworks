@@ -165,7 +165,13 @@ plan with Claude as the client.
   and load_check prints "loaded on first use", each before interactive,
   under the first pick, or after: anything before the pick is a compile
   the person waited on (the collection's arrival making the assistant
-  held a first pick 3.5 to 9 s, 2026-10-31). The pack Godot exports is cut in four after it (webload,
+  held a first pick 3.5 to 9 s, 2026-10-31). What the first pick draws and
+  the first screen does not, the ghost's shader and the connection points'
+  marks (ten programs, drawn in software each a sync wait), is drawn once
+  out of sight a second after the first frames (Main._warm_first_pick,
+  `firstpick` probe; smalls8, 2026-11-19): a pick slower than 600 ms cold,
+  with no part file fetched, is a shader the warm does not draw yet (find
+  it by wrapping WebGL2's linkProgram in an init script). The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
   waits for the code alone: `index.pck` keeps the scripts the first
   screen compiles, shaders and scenes (2.2 MB brotli), and the two tables

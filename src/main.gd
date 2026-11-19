@@ -1940,6 +1940,9 @@ func _ready() -> void:
 	# Open in Brickworks, from a shared model's viewer: once whatever was
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
+	# The first part picked finds its ghost's and its marks' shaders made.
+	if OS.has_feature("web") and _renders_when_idle:
+		_warm_first_pick()
 	# The window is up and the model back: a copy just updated says so to the
 	# helper waiting on it, and the day's check is made (Updater).
 	if _updater != null:
@@ -6836,6 +6839,38 @@ func _render_when_idle() -> void:
 	if now - _drawn_ms < RENDER_IDLE_MS or now - _touched_ms < RENDER_IDLE_MS:
 		return
 	_make_render()
+
+
+## What the first part picked from the bin draws and the first screen does
+## not, drawn once out of sight once the first screen is up: the ghost
+## (Builder.warm_ghost) and the connection points' marks (JointMarks.warm),
+## a frame each. Drawn in software (a browser on SwiftShader), the first
+## pick compiled their ten programs in the frames it was waited for: 807 ms
+## on live at load, 1.2 to 2.2 s traced, where nothing was fetched
+## (smalls8). After the first frames and a second more, so the bin is told
+## to the page usable (_tell_page) before these frames are drawn. Not for a
+## probe (--script), whose window starts as it did.
+func _warm_first_pick() -> void:
+	var drawn: int = Engine.get_frames_drawn()
+	for _n: int in 600:
+		if Engine.get_frames_drawn() >= drawn + 2:
+			break
+		await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	var mesh: Mesh = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _library.is_resident(brick.part_id):
+			var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+			if part != null and not part.surfaces.is_empty():
+				mesh = part.surfaces[0]
+				break
+	var box: AABB = _built_bounds()
+	var at: Vector3 = box.get_center() if box.has_volume() \
+		else _camera.global_position - _camera.global_basis.z * 200.0
+	await _builder.warm_ghost(mesh, at)
+	if bool(ShellPrefs.value("joint_marks")):
+		var marks: GDScript = await Later.script_in_background(&"JointMarks", null)
+		await marks.warm(_builder, at)
 
 
 ## Build, Motions…: the model's own motions, played, recorded by a drag, set
