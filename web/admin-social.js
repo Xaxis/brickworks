@@ -21,6 +21,8 @@ let desk = null;
 let onChange = () => {};
 /// [then] after an act here that the Overview counts (unread, waiting).
 export function whenChanged(then) { onChange = then; }
+/// Claude's asks on a row (web/admin-claude.js): item(one, acts), draft(one, row).
+export const extras = { item: null, draft: null };
 
 // ---------------------------------------------------------------------------
 // Coming back from a network's consent: the code and state taken from the
@@ -53,7 +55,7 @@ export async function loadSocial() {
   }
 }
 
-async function reread() {
+export async function reread() {
   desk = await adminJson({ op: "social" });
   draw();
   onChange();
@@ -264,6 +266,7 @@ function drawInbox() {
     if (/^t[134]_/.test(one.external_id)) {
       acts.append(act("Reply…", async () => { replyTo(one); return false; }, "cta ghost small"));
     }
+    extras.item?.(one, acts);
     acts.append(act(one.read ? "Mark unread" : "Mark read", async () => {
       try {
         await adminJson({ op: "social_mark" }, { method: "POST", body: { provider: one.provider, external_id: one.external_id, read: !one.read } });
@@ -378,7 +381,7 @@ function startReply() {
 }
 $("social-new-reply").addEventListener("click", startReply);
 
-function open(send) {
+export function open(send) {
   const answers = send.kind === "reply" ? send.link : null;
   editing = { id: send.id, kind: send.kind, parent: send.parent, item: null, answers };
   form.elements.provider.value = send.provider;
@@ -732,6 +735,7 @@ function drawDrafts() {
     cell(row, where(one));
     cell(row, excerpt(one.title || one.body || "(empty)"), "text");
     cell(row, "", "acts").append(act("Edit", async () => { open(one); return false; }, "cta ghost small"), drop(one, "social-note"));
+    extras.draft?.(one, row);
     body.append(row);
   }
   labelCells(body);

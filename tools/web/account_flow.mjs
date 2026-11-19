@@ -18,6 +18,11 @@
 // are; and Sign out must bring the screen back. The browser's console must
 // carry no refusal from the security policy throughout.
 //
+// The visit begins on the landing page, from a link with utm_ tags on
+// another site, and goes into the app from there: the code the studio asks
+// for carries how the visit came, kept for the tab (web/theme.js,
+// src/account/account.gd; onfix, 2026-11-18).
+//
 // --master also signs in as MASTER_EMAIL (minted the same way: no email is
 // sent) and checks the admin page lists the accounts. It signs the owner's
 // account in, in a throwaway browser, so it is not the default.
@@ -54,6 +59,11 @@ watch(page);
 const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
   : url;
+const landing = `${origin}/?utm_source=flowcheck&utm_medium=check${bypass ? `&x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true` : ""}`;
+const codeAsks = [];
+page.on("request", (one) => {
+  if (one.method() === "POST" && new URL(one.url()).pathname === "/api/otp") codeAsks.push(one.postDataJSON?.() ?? null);
+});
 
 async function account(p = page) {
   return p.evaluate(() => window.brickworksAccount || null);
@@ -82,8 +92,9 @@ async function shot(name, p = page) {
 }
 
 try {
-  console.log(`a first visit to ${url}`);
-  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
+  console.log(`a first visit, from another site's link to the landing page, then ${url}`);
+  await page.goto(landing, { waitUntil: "domcontentloaded", timeout: 120000, referer: "https://www.reddit.com/r/lego/" });
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
   const gated = await until((s) => s.state === "signed_out" && s.gated, "showed the sign-in screen");
   check(gated.gated, "the sign-in screen is up on a first visit");
   // The page is told where a control is once two of the app's reports agree:
@@ -147,6 +158,9 @@ try {
   for (let i = 0; i < 120 && !(await controls()).signin_code; i++) await page.waitForTimeout(500);
   check(Boolean((await controls()).signin_code),
     "Email me a code: the deployment sends one, and the form asks for it");
+  const asked = codeAsks.find((one) => one?.email === email) || null;
+  check(asked?.came?.source === "flowcheck" && asked.came.medium === "check" && asked.came.referrer === "www.reddit.com",
+    `...and says how the visit came, from the landing page a page before: ${JSON.stringify(asked?.came ?? null)}`);
   await shot("3_check_your_email");
 
   // One digit a box (signinux): the eighth sends the code by itself, so

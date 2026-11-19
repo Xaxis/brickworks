@@ -113,7 +113,11 @@
 //   GET  ?op=notifications        (session) what happened to the caller's
 //                                 models, grouped by model; opening it
 //                                 clears its count (api/_notifications.js)
-//   POST ?op=notifications_read   (session) {model}, {challenge}, {achievements: true} or {all: true}: read
+//   POST ?op=notifications_read   (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
+//                                 or {all: true}: read
+//   POST ?op=news                 (session) {news}: Brickworks' news by email or not, off until chosen
+//   POST ?op=news_unsubscribe&a&t a news mail's one-click unsubscribe, no sign-in (RFC 8058); GET of
+//                                 it goes to Settings, which asks (api/_announce.js)
 //   GET  ?op=designs              (session) the caller's own models' last 30
 //                                 days: opens, builds finished, remixes,
 //                                 comments, and who built them; &handle=X
@@ -191,6 +195,7 @@
 // not exist. Every word a person typed is checked here and escaped on every
 // page that shows it.
 
+import { noted } from "./_noted.js";
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode } from "./_billing.js";
@@ -211,6 +216,7 @@ import {
   addComment, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
   setCommentsOpen,
 } from "./_comments.js";
+import { chooseNews, newsOf, newsUnsubscribe } from "./_announce.js";
 import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
@@ -471,7 +477,7 @@ async function saveShowcase(request, response) {
 async function me(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signedIn(request);
-  const [people, lists, mail, follows, shows, theirs, avatar, likes] = await Promise.all([
+  const [people, lists, mail, follows, shows, theirs, avatar, likes, news] = await Promise.all([
     db(`people?account=eq.${account}&select=handle,name,bio,created_at`),
     db(`model_collections?owner=eq.${account}&select=id,name,description,public,kind,updated_at&order=updated_at.desc`),
     mailChoice(account),
@@ -483,6 +489,7 @@ async function me(request, response) {
       + "&select=id,name,has_image&order=listed_at.desc&limit=200"),
     avatarOf(account),
     likesChoiceOf(account),
+    newsOf(account),
   ]);
   const counts = await Promise.all(lists.map((list) =>
     db("rpc/collection_count", { method: "POST", body: { list: list.id, private: true } })));
@@ -499,8 +506,9 @@ async function me(request, response) {
     likes,
     collections: lists.map((list, at) => ({ ...list, count: Number(counts[at]) || 0 })),
     // What is emailed: comments on their models and the feed's kinds, once
-    // a day, each when chosen.
+    // a day, each when chosen; and Brickworks' news (api/_announce.js).
     mail,
+    news,
     // Whether their profile shows whom they follow (supabase/follows.sql).
     follows,
     // What their profile shows besides its name (supabase/profile_shows.sql),
@@ -1825,7 +1833,7 @@ async function collections(request, response) {
       followers: Number(list.followers) || 0, by: list.by || null, covers: covers.get(list.id) || [] })) });
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response.status(204)
       .setHeader("Access-Control-Allow-Origin", "*")
@@ -1871,6 +1879,8 @@ export default async function handler(request, response) {
       if (op === "lists") return await yourLists(request, response);
       if (op === "list_items") return await listItems(request, response, { origin: originOf(request) });
       if (op === "list_csv") return await listCsv(request, response, { origin: originOf(request) });
+      // A news mail's unsubscribe opened in a browser: to Settings, which asks.
+      if (op === "news_unsubscribe") return await newsUnsubscribe(request, response);
     } else if (request.method === "POST") {
       if (op === "photo_start") return await photoStart(request, response);
       if (op === "photo") return await photoKeep(request, response);
@@ -1892,6 +1902,8 @@ export default async function handler(request, response) {
       if (op === "comment_change") return await changeComment(request, response);
       if (op === "comments_open") return await setCommentsOpen(request, response);
       if (op === "mail") return await chooseMail(request, response);
+      if (op === "news") return await chooseNews(request, response);
+      if (op === "news_unsubscribe") return await newsUnsubscribe(request, response);
       if (op === "follow") return await follow(request, response);
       if (op === "list_follow") return await listFollow(request, response);
       if (op === "follow_choice") return await followChoice(request, response);
@@ -1915,3 +1927,6 @@ export default async function handler(request, response) {
     return response.status(502).json({ error: "Brickworks could not reach its storage just now. Try again in a minute." });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("people", handler);

@@ -58,11 +58,19 @@ writeFileSync(join(here, "tally.mjs"), readFileSync(new URL("tally.js", web), "u
   .replaceAll('"/counting-ask.js"', '"data:text/javascript,export const ask = () => {}"'));
 await import(pathToFileURL(join(here, "tally.mjs")).href);
 
+// What a turn costs the page's own thread: its CPU time, not the clock's.
+// On a box at load 100 the clock also counts the time the thread waited for
+// a core (18.8 ms, against 4.7 ms idle, in the 11-19 gate), which a person's
+// device does not add. Node before 23.9 has no thread clock: there the
+// clock, as before.
 const slowest = {};
+const cpu = typeof process.threadCpuUsage === "function"
+  ? () => { const used = process.threadCpuUsage(); return (used.user + used.system) / 1000; }
+  : () => performance.now();
 const time = (kind, fn) => {
-  const began = performance.now();
+  const began = cpu();
   fn();
-  const took = performance.now() - began;
+  const took = cpu() - began;
   slowest[kind] = Math.max(slowest[kind] || 0, Math.round(took * 1000) / 1000);
 };
 // Ten minutes of the studio: each second's look, a press on each second, a

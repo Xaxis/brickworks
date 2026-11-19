@@ -312,6 +312,9 @@ func _to_orangecheck() -> void:
 		# Drawn before the page goes.
 		await get_tree().process_frame
 		await get_tree().process_frame
+		# How a visit that began here came, kept for the tab, so the site's
+		# sign-in tells the owner (Account.came).
+		Account.came()
 		JavaScriptBridge.eval("location.assign('/profile?then=' "
 			+ "+ encodeURIComponent(location.pathname + location.search) + '&with=orangecheck')", true)
 		return

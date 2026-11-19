@@ -67,7 +67,9 @@ def test_a_publish_refused_by_storage_names_the_upload_in_its_log_line() -> None
     assert publish["logged"] == ["share: storage POST png: not reached (UND_ERR_SOCKET)"]
     # The model went, the picture did not, and the new link's files went
     # with the failed publish (share.js dropNew). The age first: an account
-    # whose row says under 13 shares nothing (_trust.js publicTrouble).
+    # whose row says under 13 shares nothing (_trust.js publicTrouble). Last,
+    # after the answer, the 502 kept for the owner's server-errors mail
+    # (api/_noted.js).
     assert publish["asked"] == [
         "GET /auth/v1/.well-known/jwks.json",
         "POST /rest/v1/rpc/age_of",
@@ -76,4 +78,5 @@ def test_a_publish_refused_by_storage_names_the_upload_in_its_log_line() -> None
         "POST /storage/v1/object/shared-models/<id>.png",
         "DELETE /storage/v1/object/shared-models",
         "DELETE /storage/v1/object/shared-thumbs",
+        "POST /rest/v1/owner_notify_errors",
     ]

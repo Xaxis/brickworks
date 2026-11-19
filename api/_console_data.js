@@ -55,6 +55,10 @@ export const RUNNABLE = {
   social_due: { path: "/api/plans/social-due", said: "Sends only what you pressed Schedule on whose time came, then reads "
     + "what came in" },
   tally_daily: { path: "/api/plans/tally-daily", said: "Rolls up only days that are over; again the same day changes nothing" },
+  owner_notify: { path: "/api/plans/owner-notify", said: "Mails you only what waits, as Notifications says: its quiet hours, "
+    + "its cap and its digest's time" },
+  announce_due: { path: "/api/plans/announce-due", said: "Sends only the announcements you pressed Schedule on whose time came, "
+    + "and their mail to those who asked for news, each person once" },
 };
 /// What is never run from here, and why.
 export const NOT_RUNNABLE = {
