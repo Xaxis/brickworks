@@ -9,8 +9,10 @@
 ## --held-out=, never --brickbench): there a save with features unsettled is
 ## refused, written nowhere (H1). Run with --assistant=on alone, a person's
 ## tab: it is written, says what is not finished, and lays nothing, the file
-## the model as it stood (M1). M3REV_ONLY=save,pose,coll,hinge,motor runs
-## some; nothing set runs all. Without the stand-in on 10910, coll is
+## the model as it stood (M1). M3REV_ONLY=save,pose,coll,hinge,motor (or the
+## user arg --only=, as tools/suite gives it) runs some; nothing set runs
+## all, ~16 min at load: motor lists 42131-1's joints alone in 339 s, so the
+## suite runs save,hinge,pose. Without the stand-in on 10910, coll is
 ## skipped (exit 3 when it is all that was asked).
 ##  save   H1 (a bench's run) or M1 (a person's), as the args make it.
 ##  pose   L2: pose_model joint= an assembly's joint on 42109-1, opened
@@ -71,6 +73,9 @@ func _run() -> void:
 		OS.get_cmdline_user_args(), Assistant.brickbench, DesignMemory.holding()])
 	process_frame.connect(_tick)
 	var only: String = OS.get_environment("M3REV_ONLY")
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			only = arg.trim_prefix("--only=")
 	if only.is_empty() or only.contains("save"):
 		await _save_on_bench_tab()
 	if only.is_empty() or only.contains("hinge"):
