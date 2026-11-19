@@ -39,3 +39,19 @@ feedback.sql	beta_tester	beta_join.sql	public.beta_testers t
 console3.sql	admin_export	console3b.sql	'oc_rh'
 discovery.sql	owned_keep_pool	pool_rule.sql	rule = excluded.rule
 discovery.sql	owned_pool_of	pool_rule.sql	'rule', k.rule
+notifications.sql	notification_rows	announce.sql	announcement_rows(
+replies.sql	notification_rows	announce.sql	announcement_rows(
+achievements.sql	notification_rows	announce.sql	announcement_rows(
+challenge_notices.sql	notification_rows	announce.sql	announcement_rows(
+comment_mentions.sql	notification_rows	announce.sql	announcement_rows(
+console3.sql	site_notice	announce.sql	n.ends_at is null or n.ends_at > now()
+console3.sql	site_notices_list	announce.sql	'ends_at', n.ends_at
+announce.sql	announce_audience	announce2.sql	barred_accounts b where b.account = u.id
+announce.sql	announce_count	announce2.sql	barred_accounts b where b.account = a.account
+announce.sql	announce_press	announce2.sql	insert into public.announcement_to
+announce.sql	announce_list	announce2.sql	public.announcement_counts c
+announce.sql	announcement_rows	announce2.sql	from public.announcement_to t
+announce.sql	announcement_read	announce2.sql	public.announce_tally(p_id
+announce.sql	announce_mail_take	announce2.sql	public.news_mail_stopped()
+announce.sql	announce_mail_done	announce2.sql	public.announce_tally(p_id
+announce.sql	announce_mail_due	announce2.sql	public.announcement_to t

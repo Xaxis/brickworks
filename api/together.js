@@ -103,6 +103,7 @@
 // as "Builder 2": never an email. An account under 13 builds together like
 // anyone, as it shares a model by link like anyone (supabase/trust.sql);
 // only its name is never shown.
+import { noted } from "./_noted.js";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
@@ -1179,7 +1180,7 @@ const PARTY_OPS = { party_start: partyStart, party_join: partyJoin, party_send: 
 const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart };
 const LINES = "application/x-ndjson";
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   response.setHeader("Access-Control-Allow-Origin", "*");
   if (request.method === "OPTIONS") {
@@ -1219,3 +1220,6 @@ export default async function handler(request, response) {
     return response.status(status).json({ error });
   }
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("together", handler);

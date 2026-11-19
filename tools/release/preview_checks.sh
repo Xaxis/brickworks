@@ -519,6 +519,18 @@ declare -A CMD=(
   # another deleted by its address typed again, found in the audit; each at
   # 390 and 1280, light and dark. Throwaways deleted after.
   [console3]="tools/web/console3_flow.mjs --url=$P --out=$S/${TAG}_console3"
+  # The owner's announcements (announce, docs/ANNOUNCE.md), in the checks'
+  # pool: only throwaways at resend.dev are reached, nobody is mailed, and
+  # each deployment counts its own. Every op refused signed out (401) and to
+  # anybody else (404). Before supabase/announce.sql: the section says so and
+  # Settings hides news. After it: news chosen in Settings; one written for a
+  # throwaway by handle, its preview and reach; Enter twice on Send now sends
+  # once; her avatar counts it, her Notifications show it, read and clicked;
+  # edited; a scheduled one changed is a draft; over the day's most refused
+  # in words; withdrawn; the notice with an end hidden by her everywhere;
+  # Write and Sent at 1280, 390 and 430x932, light and dark, every control
+  # named. Throwaways deleted after.
+  [announce]="tools/web/announce_flow.mjs --url=$P --out=$S/${TAG}_announce"
   # The social desk (socialdesk, docs/SOCIAL_DESK.md), in the checks' pool
   # (?tests=1), whose Reddit is the stand-in: never reddit.com. Every op
   # refused signed out (401) and to anybody else (404). Before
@@ -535,6 +547,31 @@ declare -A CMD=(
   # page offered, never opened); each tab at 390 and 1280, light and dark;
   # no token in any answer, page or storage. The pool emptied after.
   [socialdesk]="tools/web/socialdesk_flow.mjs --url=$P --out=$S/${TAG}_socialdesk"
+  # Claude in the console (adminclaude, docs/ADMIN_CLAUDE.md), in the checks'
+  # pool (?tests=1), whose Anthropic and Reddit are stand-ins: no real key is
+  # spent and neither is reached. Every claude op refused signed out (401)
+  # and to anybody else (404), in both pools. Before supabase/admin_claude.sql
+  # is applied: Settings and the panel say so, a key and a question answer
+  # 503, the panel open beside Social at 1280 and over it from its toggle at
+  # 390. After it: keys refused with words and the stand-in's kept as
+  # sk-ant-…AAAA; models, effort, cap; Enter twice asks once; Suggest a post,
+  # a hostile reply at most a draft, Suggest a reply, Improve, Overview; a
+  # refusal, a 429 and the cap said; by keyboard and name at 390 and 1280,
+  # light and dark; Forget key; the key in no answer, page or log. Run alone:
+  # it empties the checks' pool of the desk as socialdesk does.
+  [adminclaude]="tools/web/adminclaude_flow.mjs --url=$P --out=$S/${TAG}_adminclaude"
+  # /admin › Notifications (ownernotify, docs/OWNER_NOTIFY.md), in the
+  # checks' own pool, whose mail goes only to Resend's test inbox; it refuses
+  # brickworks.diy. Each op 401 signed out and 404 to anybody else, the
+  # cron's op 401 without its secret, a one-click link 404 unsigned. Before
+  # supabase/owner_notify.sql the section says so and a change answers 503.
+  # After it: each kind off and on, to the digest and back, a threshold kept
+  # and a wrong one refused; quiet hours, the digest's time, the time zone
+  # and the cap kept; Pause all; Send a test and a kind's test; another
+  # address by its code, a wrong code refused, back to the account's own;
+  # Check now; Sent and Read it; both tabs at 1280 and 430, light and dark.
+  # The pool's settings put back after.
+  [ownernotify]="tools/web/ownernotify_flow.mjs --url=$P --out=$S/${TAG}_ownernotify"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -764,11 +801,13 @@ live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/
 #   switch off, as console leaves it for a minute), it writes nothing another run reads.
 # - console: turns this deployment's beta off for a minute, which every
 #   beta check beside it would read, and takes a spot of the checks' pool.
+# - adminclaude: empties the checks' pool of the social desk, which
+#   socialdesk beside it would be reading and writing.
 # - socialdesk: the checks' pool holds one stand-in account a network, and
 #   a run empties the pool's desk rows before and after, so a run beside it
 #   loses its account and sends: a local run's emptying did, twice, on
 #   brickworks.diy (cronlive, 2026-11-18).
-ALONE_DB=" discovery first_steps challenges console socialdesk "
+ALONE_DB=" discovery first_steps challenges console adminclaude socialdesk "
 case " $NAMES " in
   *" beta "*)
     curl -s --max-time 20 -H "x-vercel-protection-bypass: $VERCEL_BYPASS" "$P/api/plans?op=beta" \
@@ -836,9 +875,10 @@ run() {
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
 # console3 sets a notice that floats over every page of the deployment for a
-# few minutes, over the controls a check beside it would press. pointat times
+# few minutes, over the controls a check beside it would press; announce
+# does too, and turns this deployment's day's most down. pointat times
 # a part pointed out crossing between two tabs, as together does.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 pointat "
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 announce pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

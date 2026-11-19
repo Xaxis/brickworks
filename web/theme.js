@@ -193,6 +193,44 @@
   else load();
 })();
 
+// How this visit came, for the owner's mail of a new sign-up (ownernotify,
+// 2026-11-18; api/_notify.js): the site that sent the visitor, and a link's
+// utm_ tags, read before they are taken out of the address below. The
+// visit's first that says anything is kept for this tab alone
+// (sessionStorage, gone when it closes), so a page or two later, or in the
+// studio, it is still known (onfix); never sent but with a sign-in code
+// asked for in this tab (web/account.js, web/authorize.js,
+// src/account/account.gd).
+(() => {
+  try {
+    const KEY = "brickworks.came";
+    // Each may throw (a browser that keeps nothing for the tab, a referrer
+    // that is no address): then that is not known, and the rest still is.
+    const safely = (act) => {
+      try {
+        return act(globalThis.sessionStorage);
+      } catch {
+        return null;
+      }
+    };
+    let came = safely((store) => JSON.parse(store?.getItem(KEY) || "null"));
+    if (!came || typeof came !== "object" || Array.isArray(came)) {
+      came = {};
+      const params = new URLSearchParams(location.search);
+      for (const name of ["source", "medium", "campaign"]) {
+        const value = String(params.get(`utm_${name}`) || "").trim();
+        if (/^[A-Za-z0-9 ._+-]{1,60}$/.test(value)) came[name] = value;
+      }
+      const from = safely(() => (document.referrer ? new URL(document.referrer).hostname.toLowerCase() : "")) || "";
+      if (from && from !== location.hostname && !/(^|\.)brickworks\.diy$/.test(from)) came.referrer = from.slice(0, 100);
+      if (Object.keys(came).length) safely((store) => store?.setItem(KEY, JSON.stringify(came)));
+    }
+    if (Object.keys(came).length) globalThis.brickworksCame = Object.freeze(came);
+  } catch {
+    // Nothing known of how they came: the mail says so.
+  }
+})();
+
 // A visit a post from the owner's social desk brought (socialdesk,
 // 2026-11-18; api/_social.js, /admin › Social): the desk tags the site's
 // links in what it sends with utm_campaign=bw-<send id>. The landing is told

@@ -87,11 +87,12 @@ ui:the app's Account count
 
 ## Notifications {#notifications}
 
-[brickworks.diy/notifications](/notifications) says what happened to your models, grouped by model, newest first: comments, replies, [mentions](/docs/model-pages#mentions), photos of builds, remixes, and how many liked it that day. **Your achievements** are a group of their own, and so is each [challenge](/docs/challenges#told). Opening it clears the count on your avatar; **Mark all read** clears them all.
+[brickworks.diy/notifications](/notifications) says what happened to your models, grouped by model, newest first: comments, replies, [mentions](/docs/model-pages#mentions), photos of builds, remixes, and how many liked it that day. **Your achievements** are a group of their own, and so is each [challenge](/docs/challenges#told). News from Brickworks, such as a new feature or planned upkeep, is a group of its own too, marked *From Brickworks* (and *edited* if it was changed after it went). Opening it clears the count on your avatar; **Mark all read** clears them all.
 
 <!-- covers
 ui:notifications page
 lib:notifications apart from the feed
+ui:an announcement on a person's Notifications
 -->
 
 ## The account menu {#account-menu}
@@ -111,6 +112,7 @@ ui:the account menu
 - **Profile**: **Edit profile**.
 - **Appearance**: **System**, **Light** or **Dark**, kept in this browser and with your account.
 - **Email**: the daily email, every box off until you tick it. **Email me when somebody comments on a model I shared**, and in the same email what came into your feed: new models and versions from people you follow, photos of builds, remixes of yours. At most one email a day.
+  **Email me Brickworks news** is off until you tick it: new features and planned upkeep, a few times a month at most. Every one of those emails has an **Unsubscribe** link, and your mail app's own unsubscribe button works too.
 - **orangecheck**: **Link orangecheck** to sign in with it as well as your email ([signing in](/docs/account#sign-in)); **Unlink** to stop. Each first sends a code to your email to confirm it is you, unless you signed in with one in the last five minutes, and your email is told.
 - **Privacy**: your age answer, **Show on my profile whom I follow**, and **Show on my profile the models I liked** (the Likes tab).
 - **Assistants**: the AI apps that can work in your Brickworks tabs ([the connector](/docs/connector)).

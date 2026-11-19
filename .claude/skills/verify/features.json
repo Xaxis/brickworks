@@ -42,6 +42,9 @@
       "area": "model-io",
       "tests": [
         "tests/test_saved_models_plan.py",
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_bench.py",
         "tests/test_booklet_follow.py",
         "tests/test_cadtask.py",
@@ -79,6 +82,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -96,6 +100,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -115,12 +120,15 @@
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/test_announce.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
+        "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -132,11 +140,15 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
+        "tests/test_announce.py",
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py",
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -156,6 +168,7 @@
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
@@ -173,6 +186,7 @@
       "area": "account",
       "tests": [
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -219,6 +233,7 @@
       "area": "account",
       "tests": [
         "tests/fixtures/console/api3_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_comment_mentions.py"
       ]
     },
@@ -229,12 +244,15 @@
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
       "tests": [
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/test_announce.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
+        "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -258,11 +276,15 @@
       "reach": "POST /api/otp?op=mail_event, signed as Svix signs (svix-id, svix-timestamp, svix-signature) with RESEND_WEBHOOK_SECRET: 404 with no secret, 401 unsigned or stale, 200 {kept:false} for another product's mail, kept once in mail_events; tools/web/resend_webhook.sh sets the webhook up",
       "area": "account",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
         "tests/test_beta.py",
         "tests/test_console.py",
         "tests/test_console2.py",
-        "tests/test_feedback.py"
+        "tests/test_feedback.py",
+        "tests/test_owner_notify.py"
       ]
     },
     {
@@ -273,6 +295,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -290,6 +313,7 @@
       "tests": [
         "tests/test_model_bases.py",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
@@ -315,12 +339,15 @@
         "tests/test_flows_for.py",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
         "tests/test_console3.py",
         "tests/test_feedback.py",
+        "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py",
@@ -336,11 +363,13 @@
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/db2_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_console3.py",
         "tests/test_flows_for.py",
+        "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -353,6 +382,8 @@
       "reach": "curl -s -X POST '<deployment>/api/plans?op=feedback' -H 'content-type: application/json' -d '{\"kind\":\"idea\",\"words\":\"...\",\"email\":\"delivered@resend.dev\"}'; GET it signed in for your own   (422 with why; 429 past the hour's rate; 503 \"not open here yet\" before supabase/feedback.sql; python3 tools/minitest.py tests/test_feedback.py)",
       "area": "web",
       "tests": [
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_owner_notify.py",
         "tests/test_feedback.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
@@ -474,7 +505,7 @@
       "id": "cli:account browser flow",
       "kind": "cli",
       "entry": "tools/web/account_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced; begins on the landing page from a tagged link on another site, and checks the studio's code request carries how the visit came, web/theme.js and src/account/account.gd)",
       "area": "account",
       "tests": []
     },
@@ -483,6 +514,14 @@
       "kind": "cli",
       "entry": "tools/web/account_page_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8890 &  node --env-file=.env tools/web/account_page_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>; throwaway accounts, deleted after)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:adminclaude browser flow",
+      "kind": "cli",
+      "entry": "tools/web/adminclaude_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/adminclaude_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose Anthropic and Reddit are stand-ins: the gate on every claude op in both pools; before admin_claude.sql the section and the panel say so and a key and a question answer 503; after it, keys refused and kept, models, settings, Enter twice asks once, Suggest a post, a hostile reply at most a draft, Suggest a reply, Improve, Overview, a refusal and a 429 left out of the conversation, the cap reached, the panel by keyboard and by name at 390/1280 light/dark, Forget key; the key in no answer, page, storage or console line; preview check [adminclaude]. Locally, nothing applied and the project's pool untouched: node tools/web/relay_server.mjs PORT --hold=admin_claude_settings,admin_claude_holds,admin_claude_drafts,social_accounts,social_tokens,social_items,social_sends,social_results,social_visits,social_rules, then the flow with --url=http://127.0.0.1:PORT --held)",
       "area": "web",
       "tests": []
     },
@@ -518,6 +557,14 @@
       "entry": "src/dev/anim_walk_probe.gd",
       "reach": "~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/anim_walk_probe.gd -- --into=DIR [--only=steering,crane,door,gears,figure]   (prints and keeps every way of recording what moves on five real sets, as docs/ANIMATION.md measured them; checks nothing)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:announce browser flow",
+      "kind": "cli",
+      "entry": "tools/web/announce_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/announce_flow.mjs --url=<preview> --out=DIR   (never brickworks.diy; the checks' pool: the gate on every announce op; before announce.sql the section says so and Settings hides news; after it, a throwaway turns news on in Settings, the owner sets the day's most, writes one for her by handle with its preview and reach, Enter twice on Send now sends once, her avatar counts it, her Notifications show it and following its link counts read and clicked, edited for everyone, a scheduled one changed is a draft, over the day's most refused in words, withdrawn gone from her page, the notice with an end hidden by her never drawn, not for a moment, in a browser that showed it or one that never did, told by feed_count, and still seen by another; Write and Sent at 1280, 390 and 430x932 light and dark, every control named, Tab alone; the first screen never asks admin-announce.js; preview check [announce], run alone. Locally before the files: node --env-file=<only SUPABASE_URL, the two keys and MASTER_EMAIL> tools/web/relay_server.mjs PORT --hold=announce, never the whole .env)",
+      "area": "web",
       "tests": []
     },
     {
@@ -727,7 +774,8 @@
       "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
       "area": "web",
       "tests": [
-        "tests/fixtures/console/api2_check.mjs"
+        "tests/fixtures/console/api2_check.mjs",
+        "tests/test_adminclaude.py"
       ]
     },
     {
@@ -2202,6 +2250,14 @@
       "tests": []
     },
     {
+      "id": "cli:ownernotify browser flow",
+      "kind": "cli",
+      "entry": "tools/web/ownernotify_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/ownernotify_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted, on ?tests=1 whose mail goes only to Resend's test inbox; refuses brickworks.diy: the gate on every notify op, the cron's op and the off link; before owner_notify.sql the section says so and a change 503; after it each kind off and on, digest and back, a threshold kept and a wrong one refused, quiet hours, digest time, time zone, cap, Pause all, Send a test and a kind's test, another address and a wrong code, Check now, Sent and Read it, both tabs at 1280/430 light/dark; preview check [ownernotify]. Locally: node tools/web/relay_server.mjs PORT --hold=owner_notify_settings,owner_notify_mails,owner_notify_events,owner_notify_errors, which also proves a test mail's own off link signed out)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
@@ -2534,9 +2590,12 @@
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
       "tests": [
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_console2.py",
@@ -3489,6 +3548,22 @@
       "tests": []
     },
     {
+      "id": "lib:Claude in the console",
+      "kind": "lib",
+      "entry": "api/_claude.js",
+      "reach": "python3 tools/minitest.py tests/test_adminclaude.py   (api/admin.js's claude ops against supabase/admin_claude.sql's and social.sql's tables held in memory, the checks' pool talking to the stand-in Anthropic (api/_claude_mock.js: real SSE events, tool_use turns, a refusal, a 429, a fallback) and the stand-in Reddit: the gate on all 7 ops; the key checked with the Models API, sealed (AES-256-GCM, CLAUDE_KEY_SECRET), never in an answer, log or audit row; models from the live list; the cap held before each call and settled from usage; only drafts written; a hostile reply at most a draft; every call audited without words; admin_claude.sql applied twice to a Postgres of its own: no role but the server's reaches it, twelve holds at once never pass the cap)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:Claude's read-only tools",
+      "kind": "lib",
+      "entry": "api/_claude_social.js",
+      "reach": "tests/test_adminclaude.py: social_inbox, social_thread, social_sends, social_overview, social_rules, whats_new and make_draft (the one write: a draft through the desk's own socialDraft, marked by Claude); people_counts (api/_claude_people.js), plans_read (_claude_plans.js), mail_health (_claude_mail.js), site_health (_claude_site.js), feedback_list (_claude_feedback.js), each over what its console section reads, never an email address; inbox, Reddit and feedback words wrapped as <untrusted> data",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:LEGO Art layout",
       "kind": "lib",
       "entry": "src/assembly/mosaic_art.gd",
@@ -3519,6 +3594,9 @@
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -3631,6 +3709,7 @@
       "area": "account",
       "tests": [
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -3672,9 +3751,20 @@
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
+    },
+    {
+      "id": "lib:announcements",
+      "kind": "lib",
+      "entry": "api/_announce.js",
+      "reach": "python3 tools/minitest.py tests/test_announce.py   (api/admin.js's announce ops, api/plans.js's announce_due, notice_hide and notice_hidden, api/people.js's news and news_unsubscribe, against supabase/announce.sql in a Postgres of its own and a mocked Resend (tests/fixtures/announce/api_check.mjs): the gate, each audience counted and reached exactly, two presses one send, stale words refused, an edit unscheduling, the cron sending only as pressed, reads and clicks, edit marked edited, withdraw out of every list, the day's most per deployment, words over refused never cut, mail only to those who chose news before it went with RFC 8058 headers, unsubscribe, the notice's end and its per-person hide carried by feed_count, who it reached as rows of announcement_to and the list from announcement_counts, barred accounts out, the news mails' most a day, the quota stop and the pace beside sign-in codes, a send already gone skipped, the cron off brickworks.diy sending only test ones and mailing nobody, the unsubscribe secret, the footer address, every act audited; the SQL on the project rolled back: tools/apply_sql.mjs supabase/announce.sql --dry --try=tools/announce_try.sql and supabase/announce2.sql --dry --try=tools/announce2_try.sql)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:axles and gears on a line",
@@ -3893,6 +3983,9 @@
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -3943,6 +4036,14 @@
       "entry": "src/assembly/motion_player.gd",
       "reach": "tools/probe.sh drive_probe   (a motion's path, 0 !BRICKWORKS MOTION_PATH, MOTION_WHEEL and MOTION_STEER lines: the whole model driven along the ground, legs straight so many studs or left or right so many degrees on a radius at the back axle's middle, its wheels each turned once a round of its tyre travelled and its steering into the corners; MotionPlayer.Drive, drive_path, path_from; define_motion path=, the Motions panel's Where it drives)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:each server error kept",
+      "kind": "lib",
+      "entry": "api/_noted.js",
+      "reach": "tests/test_owner_notify.py's errors checks: each of the 12 functions wrapped by noted(), a 5xx (answered or thrown) kept in owner_notify_errors after the answer is sent, nothing said before owner_notify.sql is applied",
+      "area": "web",
       "tests": []
     },
     {
@@ -4197,6 +4298,7 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
@@ -4398,6 +4500,9 @@
       "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -4494,6 +4599,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -4571,6 +4677,14 @@
       "kind": "lib",
       "entry": "api/_admission.js",
       "reach": "UPSTREAM.md   (Admission's packages/client, its types taken out; tests/test_billing.py runs it against tests/fixtures/billing/fake_admission.mjs)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:the Claude API client",
+      "kind": "lib",
+      "entry": "api/_claude_api.js",
+      "reach": "tests/test_adminclaude.py: GET /v1/models paged, POST /v1/messages streamed (anthropic-version 2026-10-21, adaptive thinking, effort, cached prefix, server-side fallback), each answer's usage costed at the dearer of the asked and served model; plain HTTP, as tools/package_api.sh packs no npm module (docs/ADMIN_CLAUDE.md)",
       "area": "web",
       "tests": []
     },
@@ -4719,6 +4833,14 @@
       ]
     },
     {
+      "id": "lib:the owner's notifications",
+      "kind": "lib",
+      "entry": "api/_notify.js",
+      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the signed update manifest",
       "kind": "lib",
       "entry": "src/net/updates.gd",
@@ -4854,6 +4976,14 @@
       "tests": []
     },
     {
+      "id": "lib:work after the answer",
+      "kind": "lib",
+      "entry": "api/_after.js",
+      "reach": "tests/test_owner_notify.py's after checks: with owner_notify's tables hung, a sign-up's code, a first publish, feedback, Admission's webhook and a 5xx each answer in under 300 ms and what each raised lands once the tables answer; hung past BOUND (1.5 s) nothing waits longer or throws; on a stand-in of Vercel's request context (globalThis[Symbol.for('@vercel/request-context')].get().waitUntil) the work is handed to it; /admin \u203a Notifications says which (after: waitUntil or bounded)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:worked constructions",
       "kind": "lib",
       "entry": "src/ai/techniques.gd",
@@ -4911,6 +5041,14 @@
       ]
     },
     {
+      "id": "ui:Claude in the owner's console",
+      "kind": "ui",
+      "entry": "web/admin-claude.js",
+      "reach": "<deployment>/admin?tests=1#claude as the owner (Claude \u203a Settings: the key pasted, checked and kept, shown as sk-ant-\u2026XXXX, Check key, Forget key; the model from the key's own list, the effort, the monthly cap and this month's spend), and the panel beside every section from the bar's Claude button, open on Social by default: a question streamed in with what it read and cost; on the desk Suggest a post (Write), Suggest a reply (each inbox row), Improve (each draft), Overview by Claude; each draft marked by Claude for the owner to edit and send (docs/ADMIN_CLAUDE.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:FAQ page",
       "kind": "ui",
       "entry": "web/faq.html",
@@ -4939,6 +5077,9 @@
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
@@ -4950,8 +5091,12 @@
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -5100,8 +5245,12 @@
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -5122,6 +5271,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -5139,6 +5289,14 @@
       "kind": "ui",
       "entry": "api/_library.js",
       "reach": "https://brickworks.diy/library/omr-10179-1   (api/share.js sharePage with model.library: its cover, modelled by and CC BY credit with LDraw's page, facts, Open in Brickworks = /app?new=1&library=<id>, Share, Parts; /library/<id>.webp, .cutout.webp, .cover.webp, .mpd and /parts.json|xml|csv; from the parts store's library/index.json, no database)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:an announcement on a person's Notifications",
+      "kind": "ui",
+      "entry": "web/notice-view.js",
+      "reach": "<deployment>/notifications signed in: an announcement the owner sent is a group of its own (#announcement-N) named by its title, From Brickworks (edited when it was), its words, its link; counted on the avatar and in the account menu; opened, it is read, and its link followed, clicked (POST /api/people?op=notifications_read {announcement, clicked}); the console's preview draws it with the same code",
       "area": "web",
       "tests": []
     },
@@ -5199,6 +5357,7 @@
       "tests": [
         "tests/test_beta.py",
         "tests/test_beta_join.py",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
@@ -5326,6 +5485,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -5508,9 +5668,12 @@
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
       "tests": [
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_console2.py",
@@ -5657,6 +5820,7 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
@@ -6027,7 +6191,9 @@
       "entry": "web/notifications.html",
       "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/owner_notify/api_check.mjs"
+      ]
     },
     {
       "id": "ui:on by the joint it was picked up by",
@@ -6181,10 +6347,12 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_console3.py",
         "tests/test_flows_for.py",
+        "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6245,8 +6413,12 @@
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -6473,7 +6645,9 @@
       "tests": [
         "tests/test_feedback.py",
         "tests/fixtures/feedback/api_check.mjs",
-        "tests/test_account_erase.py"
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_account_erase.py",
+        "tests/test_owner_notify.py"
       ]
     },
     {
@@ -6493,6 +6667,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
@@ -6529,6 +6704,7 @@
       "area": "account",
       "tests": [
         "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -6927,6 +7103,7 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
@@ -6991,6 +7168,14 @@
       "tests": []
     },
     {
+      "id": "ui:the owner's notifications page",
+      "kind": "ui",
+      "entry": "web/admin-notify.js",
+      "reach": "<deployment>/admin?tests=1#notifications/settings and #notifications/sent as the owner: each kind on or off, at once or the daily digest, its number; the address in part, another by its code; quiet hours, the digest's time, the time zone, the cap; Pause all; Send a test, Check now; what is not mailed from here and why; Sent with each mail's words; a mail's one-click link at #notifications/off/<kind>/<pool>/<key> acted on signed out (docs/OWNER_NOTIFY.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:the owner's social desk",
       "kind": "ui",
       "entry": "web/admin-social.js",
@@ -7013,8 +7198,12 @@
       "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/api_check.mjs",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -7033,6 +7222,8 @@
       "reach": "<deployment>/ any page but an embed and the consent page (web/theme.js asks for it): the notice the owner set in /admin#switches (GET /api/plans?op=notice, a minute at the CDN), in the page's language where the owner typed it, else English; floating at the window's foot, info or warn; its x hides it in that browser",
       "area": "web",
       "tests": [
+        "tests/fixtures/adminclaude/live_check.mjs",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/console/api3_check.mjs",
         "tests/test_console3.py"
       ]
@@ -7061,6 +7252,7 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
+        "tests/fixtures/announce/api_check.mjs",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py"
       ]
@@ -7261,8 +7453,11 @@
       "reach": "https://brickworks.diy/settings#feedback signed in   (Your reports: each report with its number (#N, anchored report-N), where it stands, a tester's marked, our answers; never the owner's note)",
       "area": "web",
       "tests": [
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
         "tests/test_billing_pay.py",
-        "tests/test_console.py"
+        "tests/test_console.py",
+        "tests/test_owner_notify.py"
       ]
     },
     {
@@ -7309,7 +7504,10 @@
       "tests": [
         "tests/test_plans.py",
         "tests/test_saved_models_plan.py",
+        "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_account_erase.py",
+        "tests/test_adminclaude.py",
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
@@ -7339,8 +7537,11 @@
       "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web",
       "tests": [
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
         "tests/test_billing_pay.py",
-        "tests/test_console.py"
+        "tests/test_console.py",
+        "tests/test_owner_notify.py"
       ]
     }
   ]
