@@ -535,6 +535,14 @@ func _grab_in(world: BrickWorld, builder: Builder, library: PartLibrary, id: int
 
 ## The lines of [method _lines_with]'s [line, text] pairs, where a line's
 ## number moves with what was taken out above it.
+static func _without_made(text: String) -> String:
+	var kept := PackedStringArray()
+	for line: String in text.split("\n"):
+		if not line.begins_with(ModelStore.MADE_META):
+			kept.append(line)
+	return "\n".join(kept)
+
+
 static func _texts(pairs: Array) -> Array:
 	return pairs.map(func(pair: Array) -> String: return str(pair[1]))
 
@@ -680,12 +688,15 @@ func _case_dangling() -> void:
 ## A locked part swapped for another by Find and Replace (the lead's ask):
 ## the lock goes to the part that took its place, is written so and holds
 ## after a reopen, and one undo puts the part and its lock back byte for
-## byte. The first swap with room is the one tried: a pin, or a part with a
-## pin through it, has none on pre261 (find_replace.gd's room check counts
-## the hole the pin sits in), so the knee's hips go first.
+## byte. The first swap with room is the one tried: a part of another shape
+## where a pin passes through has none on pre261 (find_replace.gd's room
+## check counts the hole the pin sits in), so a printed part of the same
+## mould goes first (3701's own twin, 370101, is read back as 3701 in White).
 func _case_replace() -> void:
-	for one: Array in [["knee", _knee_ldr(), "Leg", "3815", "3815b", "3816", 0],
-			["hinge", _hinge_ldr(), "Beam", "3701", "3702", "2780", 7],
+	var modern: String = _knee_ldr().replace("3815.dat", "3815b.dat").replace("3816.dat", "3816b.dat") \
+		.replace("3817.dat", "3817b.dat")
+	for one: Array in [["knee", modern, "Leg", "3815b", "3815bp04", "3816b", 0],
+			["knee", modern, "Leg", "3816b", "3816bp30", "3816bp30", 4],
 			["hinge", _hinge_ldr(), "Beam", "3701", "3700", "2780", 7]]:
 		print("\n══ replace: %s's locked %s swapped for %s by Find and Replace ══" % [one[0], one[3], one[4]])
 		_write(MODELS + "replace.ldr", str(one[1]))
@@ -708,7 +719,10 @@ func _case_replace() -> void:
 			and not str(lines[0]).contains("PART %s " % one[3]))
 		while _builder.history_depth() > depth:
 			_builder.undo()
-		var back: String = await _save("replace_back.ldr")
+		# Undone, the model still says Claude worked on it (ModelStore.made_with
+		# only goes up), so that line is left out of the comparison.
+		var back: String = _without_made(await _save("replace_back.ldr"))
+		locked = _without_made(locked)
 		_check("...one undo puts the part and its lock back, byte for byte (%s)" % ("same" if back == locked
 			else _first_difference(locked, back)), back == locked)
 		await _open(MODELS + "replace_swapped.ldr")
