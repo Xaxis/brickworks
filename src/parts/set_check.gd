@@ -60,8 +60,9 @@ const SAME_TURN := 0.01
 ## A part of the set's number in another colour this near, LDU, is that part
 ## moved and recoloured; further off it is one taken away and one added.
 const RECOLOURED_NEAR := 60.0
-## A set's file this long or longer is read on a worker, as an open reads it
-## (ModelStore.READ_OFF_FRAME_FROM): 8466-1's 36 MB is over a second.
+## A set's file this long or longer is parsed on a worker, as an open parses
+## it (ModelStore.READ_OFF_FRAME_FROM), and the rest of its reading paced on
+## the frame: 8466-1's 36 MB is over a second.
 const READ_OFF_FRAME_FROM := 262144
 ## Parts on both sides from which the matching is done on a worker, the
 ## window drawing meanwhile: 10179's 9,000 were more than a frame's work.
@@ -170,57 +171,119 @@ var _model_steps: Dictionary = {}
 
 ## The parts a set's file [param text] puts down, as the app opens it
 ## (ModelDiff.parts_of_text, keeping each part's step, line and place in the
-## file); a part this app's library has no part of is counted, not kept.
+## file); a part this app's library has no part of is counted, not kept. On
+## the frame, at once: a small file ([method read_set_paced] for any).
 static func read_set(text: String, library: PartLibrary, name: String = "set") -> Reading:
 	var side := Reading.new()
+	var model: LdrModel = _parsed(text, name, side)
+	if model == null:
+		return side
+	_skinned(model, library)
+	for placement: LdrModel.Placement in model.flatten(library.parts):
+		_take(side, placement, library)
+	side.unit_steps = model.unit_steps.duplicate()
+	return side
+
+
+## [method read_set] for any file, the frames going on. On a worker only what
+## reads plain values: the parse, as an open's is (ModelStore._off_frame),
+## and the flatten of the file's own model. What reads the library (the
+## skins, which blocks are its parts, each part's number and colour as this
+## app has it) is on the frame, a slice at a time (FramePace), a fetched
+## part arriving between slices as it does in any frame: read on a worker,
+## a Dictionary written meanwhile can crash.
+static func read_set_paced(text: String, library: PartLibrary, name: String = "set") -> Reading:
+	if text.length() < READ_OFF_FRAME_FROM and not always_off_frame:
+		return read_set(text, library, name)
+	var side := Reading.new()
+	var model: LdrModel = await WorkerTasks.awaited(func() -> LdrModel: return _parsed(text, name, side),
+		"read a set's file to check a model against")
+	if model == null:
+		return side
+	var pace := FramePace.new()
+	_skinned(model, library)
+	# The flatten asks the library one thing, which shortcut blocks are its
+	# parts (LdrModel.sub_model_of): answered here, as plain values, and the
+	# flatten of the check's own model put on a worker with them (42100-1's
+	# is 0.1 s).
+	var known: Dictionary = {}
+	for sub: LdrModel.SubModel in model.submodels.values():
+		for placement: LdrModel.Placement in sub.placements:
+			var nested: LdrModel.SubModel = model.submodels.get(placement.reference)
+			if nested != null and nested.library_file and library.parts.has(placement.part_id):
+				known[placement.part_id] = true
+		if pace.due():
+			await pace.next()
+	var placements: Array = await WorkerTasks.awaited(func() -> Array: return model.flatten(known),
+		"lay out a set's file to check a model against")
+	pace = FramePace.new()
+	for placement: LdrModel.Placement in placements:
+		if pace.due():
+			await pace.next()
+		_take(side, placement, library)
+	side.unit_steps = model.unit_steps.duplicate()
+	# Let go of on a worker as well, nothing else holding either: freed on the
+	# frame, 42100-1's file and layout held it 27 ms.
+	var held: Array = [model, placements]
+	model = null
+	placements = []
+	await WorkerTasks.awaited(func() -> bool:
+		held.clear()
+		return true, "let go of a set's file read")
+	return side
+
+
+## Every read and match on a worker however small (the probe's: to read and
+## match while the frames change the library and the model).
+static var always_off_frame: bool = false
+
+
+## [param text] parsed, its line count and sample put in [param side]; null,
+## the trouble said, for a file that is no model. Reads only the text: safe
+## on a worker. [param side] is the caller's own, read by nothing till done.
+static func _parsed(text: String, name: String, side: Reading) -> LdrModel:
 	var model: LdrModel = LdrModel.parse(text, name)
 	if model == null:
 		side.trouble = "its file is not a model"
-		return side
-	# A flexible part LDCad generated (a hose, a rope) is one part, its skin,
-	# as the open puts it on the baseplate; read as its hundred pieces it
-	# was none, and the model's own read as added (6080-1, 10179-1).
-	CustomParts.put_skins(library, model)
+		return null
 	var lines: PackedStringArray = text.split("\n")
 	side.line_count = lines.size()
 	for n: int in range(0, lines.size(), _stride(lines.size())):
 		side.sample.append(lines[n])
 	side.stepped = model.stepped
-	for placement: LdrModel.Placement in model.flatten(library.parts):
-		placement.part_id = ModelStore.studio_part(placement.part_id, library)
-		if placement.mirrored:
-			Assemblies.unmirror(placement, library)
-		ModelStore.as_moved(placement, library)
-		var colour: int = library.current_colour(placement.part_id)
-		if colour >= 0:
-			placement.part_id = library.current(placement.part_id)
-			placement.color_code = colour
-		if not library.parts.has(placement.part_id):
-			side.unknown += 1
-			continue
-		var part := Part.new()
-		part.part_id = placement.part_id
-		part.colour = placement.color_code
-		part.at = placement.transform
-		part.path = Assemblies.path_from(placement.group, placement.unit)
-		part.step = placement.step
-		part.line = placement.line
-		part.origin = placement.origin
-		side.parts.append(part)
-	side.unit_steps = model.unit_steps.duplicate()
-	return side
+	return model
 
 
-## [method read_set] on a worker for a big file, the frames going on; at once
-## for a small one.
-static func read_set_paced(text: String, library: PartLibrary, name: String = "set") -> Reading:
-	if text.length() < READ_OFF_FRAME_FROM:
-		return read_set(text, library, name)
-	# Its skins put there too (CustomParts locks the table they are read
-	# from): put on the frame, 8466-1's held a frame 0.9 s, and a copy of the
-	# table taken on the frame held 42100-1's 0.4 s.
-	return await WorkerTasks.awaited(func() -> Reading: return read_set(text, library, name),
-		"read a set's file to check a model against", library)
+## A flexible part LDCad generated (a hose, a rope) is one part, its skin,
+## as the open puts it on the baseplate; read as its hundred pieces it was
+## none, and the model's own read as added (6080-1, 10179-1). On the frame.
+static func _skinned(model: LdrModel, library: PartLibrary) -> void:
+	CustomParts.put_skins(library, model)
+
+
+## One placement of the set's as the open lays it, kept in [param side] or
+## counted as unknown. On the frame.
+static func _take(side: Reading, placement: LdrModel.Placement, library: PartLibrary) -> void:
+	placement.part_id = ModelStore.studio_part(placement.part_id, library)
+	if placement.mirrored:
+		Assemblies.unmirror(placement, library)
+	ModelStore.as_moved(placement, library)
+	var colour: int = library.current_colour(placement.part_id)
+	if colour >= 0:
+		placement.part_id = library.current(placement.part_id)
+		placement.color_code = colour
+	if not library.parts.has(placement.part_id):
+		side.unknown += 1
+		return
+	var part := Part.new()
+	part.part_id = placement.part_id
+	part.colour = placement.color_code
+	part.at = placement.transform
+	part.path = Assemblies.path_from(placement.group, placement.unit)
+	part.step = placement.step
+	part.line = placement.line
+	part.origin = placement.origin
+	side.parts.append(part)
 
 
 ## The model on the baseplate as its file has it (ModelDiff.parts_of_world):
@@ -372,20 +435,25 @@ static func reading_of(entry: Dictionary, text: String, library: PartLibrary) ->
 
 ## The model on the baseplate checked against [param on_set], the set's file
 ## read, of the library's [param entry].
-## Read on the frame, as the baseplate is; matched on a worker for a big model,
-## the window drawing meanwhile. A coroutine.
+## Read on the frame, as the baseplate is, into parts of its own (plain
+## values: number, colour, place, step, line); the library's moulds of every
+## number on both sides taken on the frame too ([method moulds_of]). Matched
+## on a worker for a big model, the window drawing meanwhile: the worker
+## reads only those, never the library or the model, which the person may
+## edit as it runs. A coroutine.
 static func of_model(on_set: Reading, entry: Dictionary, world: BrickWorld, store: ModelStore,
 		library: PartLibrary) -> SetCheck:
 	var began: int = Time.get_ticks_usec()
 	var model: Reading = read_model(world, store)
 	var read_ms: float = (Time.get_ticks_usec() - began) / 1000.0
 	var same: bool = is_same_file(store.opened_lines(), on_set)
+	var moulds: Dictionary = moulds_of([on_set, model], library)
 	var check: SetCheck
-	if on_set.parts.size() + model.parts.size() < MATCH_OFF_FRAME_FROM:
-		check = between(on_set, model, library, same)
+	if on_set.parts.size() + model.parts.size() < MATCH_OFF_FRAME_FROM and not always_off_frame:
+		check = between(on_set, model, moulds, same)
 	else:
-		check = await WorkerTasks.awaited(func() -> SetCheck: return between(on_set, model, library, same),
-			"check a model against its set", library)
+		check = await WorkerTasks.awaited(func() -> SetCheck: return between(on_set, model, moulds, same),
+			"check a model against its set")
 	check.read_ms = read_ms
 	check.set_name = ModelLibrary.title_of(entry)
 	check.set_short = str(entry.get("set", ""))
@@ -418,8 +486,9 @@ static func run(asked: String, models: ModelLibrary, world: BrickWorld, store: M
 # -- the check -------------------------------------------------------------------
 
 
-## [param model] against [param on_set]: every change.
-static func between(on_set: Reading, model: Reading, library: PartLibrary, same: bool) -> SetCheck:
+## [param model] against [param on_set]: every change. [param moulds] is
+## [method moulds_of] both. Reads nothing else: safe on a worker.
+static func between(on_set: Reading, model: Reading, moulds: Dictionary, same: bool) -> SetCheck:
 	var began: int = Time.get_ticks_usec()
 	var check := SetCheck.new()
 	check.set_parts = on_set.parts.size()
@@ -455,14 +524,14 @@ static func between(on_set: Reading, model: Reading, library: PartLibrary, same:
 	_pair_in_place(was, now, pairs, func(a: Part, b: Part) -> bool:
 		return a.part_id == b.part_id)
 	_pair_in_place(was, now, pairs, func(a: Part, b: Part) -> bool:
-		return near_mould(a.part_id, b.part_id, library))
+		return near_mould(a.part_id, b.part_id, moulds))
 	# 4. The same part elsewhere.
 	_pair_anywhere(was, now, pairs, true, INF)
 	_pair_anywhere(was, now, pairs, false, RECOLOURED_NEAR)
 	# 5. Another part where one of the set's stood.
 	_pair_in_place(was, now, pairs, func(_a: Part, _b: Part) -> bool: return true)
 	for pair: Array in pairs:
-		var change: Change = check._compared(pair[0], pair[1], library)
+		var change: Change = check._compared(pair[0], pair[1], moulds)
 		if change != null:
 			check.changes.append(change)
 	# 6. What is left: of the set's, what the model's file holds and does not
@@ -492,12 +561,12 @@ static func between(on_set: Reading, model: Reading, library: PartLibrary, same:
 
 
 ## The change one pair is, or null when it is none.
-func _compared(was: Part, now: Part, library: PartLibrary) -> Change:
+func _compared(was: Part, now: Part, moulds: Dictionary) -> Change:
 	var change := Change.new()
 	change.was = was
 	change.now = now
 	change.swapped = was.part_id != now.part_id
-	change.near_mould = change.swapped and near_mould(was.part_id, now.part_id, library)
+	change.near_mould = change.swapped and near_mould(was.part_id, now.part_id, moulds)
 	change.recoloured = was.colour != now.colour
 	change.by = was.at.origin.distance_to(now.at.origin)
 	change.turned = not _same_turn(was.at.basis, now.at.basis)
@@ -519,14 +588,29 @@ func _compared(was: Part, now: Part, library: PartLibrary) -> Change:
 
 ## Whether [param a] and [param b] are near moulds of one part: another
 ## moulding of its number (3794a, 3794b: Collection.family_of), or a part of
-## the same kind, size and studs (Collection's other mould or print).
-static func near_mould(a: String, b: String, library: PartLibrary) -> bool:
+## the same kind, size and studs (Collection's other mould or print), by
+## [param moulds] ([method moulds_of]).
+static func near_mould(a: String, b: String, moulds: Dictionary) -> bool:
 	if a == b:
 		return false
-	if Collection.family_of(a) == Collection.family_of(b):
+	var of_a: Array = moulds.get(a, [a, null])
+	var of_b: Array = moulds.get(b, [b, null])
+	if of_a[0] == of_b[0]:
 		return true
-	var shape: Variant = Collection._shape(a, library)
-	return shape != null and shape == Collection._shape(b, library)
+	return of_a[1] != null and of_a[1] == of_b[1]
+
+
+## Each number the [param sides] have -> [its family (Collection.family_of),
+## its shape (Collection._shape) or null]: the library read on the frame,
+## for [method between] to match with off it.
+static func moulds_of(sides: Array, library: PartLibrary) -> Dictionary:
+	var moulds: Dictionary = {}
+	for side: Reading in sides:
+		for part: Part in side.parts:
+			if not moulds.has(part.part_id):
+				moulds[part.part_id] = [Collection.family_of(part.part_id),
+					Collection._shape(part.part_id, library)]
+	return moulds
 
 
 static func _same_turn(a: Basis, b: Basis) -> bool:

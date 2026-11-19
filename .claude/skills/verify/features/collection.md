@@ -438,9 +438,12 @@ which models they could build from what they have. Added 2026-10-12.
   section's step numbers). A flexible part LDCad generated (a hose, a rope, a
   spring) is one part, its skin, on both sides (`CustomParts.put_skins`); the
   set comes from `from_set` or the file's main model name ("0 FILE 6399 -
-  main.ldr"), and a number typed for one model is not kept for the next. Reads only: the set's file on a worker past
-  256 KB with the status bar saying so, kept for the next check
-  (`SetCheck.reading_of`). `compare_with_set` (set=, most=, show=) says the
+  main.ldr"), and a number typed for one model is not kept for the next. Reads only. Past 256 KB only the
+  set's parse is on a worker, as an open's is; its skins, flatten and part
+  numbers are read from the library on the frame in slices, the status bar
+  saying so, and kept for the next check (`SetCheck.reading_of`). The match
+  is on a worker past 1,500 parts and reads only parts and mould keys taken
+  on the frame (`SetCheck.moulds_of`), never the library or the model. `compare_with_set` (set=, most=, show=) says the
   same to a session in one call, each change with its #N and the edit_model
   call that puts it back.
 - `official models' parts lists` (`src/dev/collection_models.gd`): the 1,575
@@ -569,7 +572,9 @@ tools/probe.sh collection_arrives_probe   # fetched as they sign in, read first 
 # two sets or models compared, and the list to buy (1400x900; PROBE_SIZE=1280x720 too)
 tools/probe.sh comparesets_probe -- --shots=DIR
 # a model checked against its set's own steps: ten sets, nine changes each (headless)
-tools/probe.sh setcheck_probe          # SETCHECK_ONLY=7140-1 for one set, =time for the times
+tools/probe.sh setcheck_probe          # SETCHECK_ONLY=7140-1 for one set, =time for the times;
+                                       # each set is read and matched 3 more times on workers while
+                                       # every frame adds library parts and edits the model
 godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd   # needs a display
 # building from a set's parts: the counts down, undo, delete, over, saved (1280x720; PROBE_SIZE=1400x900 too)
 tools/probe.sh setbin_probe -- --shots=DIR

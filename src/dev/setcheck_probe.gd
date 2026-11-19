@@ -30,6 +30,8 @@ const SETS: Array[String] = ["7140-1", "6080-1", "6399-1", "6542-1", "8880-1", "
 	"10212-1", "4558-1", "6285-1", "10179-1"]
 ## The biggest sets of the library: by parts, and by file.
 const BIGGEST := "42100-1"
+## Reads and matches of each set on workers while the frames change things.
+const STRESS_RUNS := 3
 const BIGGEST_FILE := "8466-1"
 ## The colours a part is recoloured to: Red, else Blue.
 const RED := 4
@@ -53,6 +55,9 @@ var _failures: int = 0
 var _families: Dictionary = {}
 ## The tally the report gives: found, missed, false, by set.
 var _tally: Array = []
+## The stress's runs, what they found and named that was not changed, and the
+## frames that changed the library and the model as they ran.
+var _stress: Array = [0, 0, 0, 0]
 
 
 func _initialize() -> void:
@@ -118,6 +123,9 @@ func _run() -> void:
 		found += int(row[1])
 		missed += int(row[2])
 		wrong += int(row[3])
+	if int(_stress[0]) > 0:
+		print("  stress: %d runs on workers, %d frames changing the library and the model: %d found, %d false" % [
+			_stress[0], _stress[3], _stress[1], _stress[2]])
 	print("setcheck: %d sets, %d found, %d missed, %d false; %s" % [_tally.size(), found, missed,
 		wrong, "all pass" if _failures == 0 else "%d FAILED" % _failures])
 	_done()
@@ -402,6 +410,9 @@ func _one_set(number: String) -> void:
 	_check("nothing changed: the parts, the history (%d) and unsaved (%s) as before" % [depth, unsaved],
 		_standing() == after and _builder.history_depth() == depth and _store.has_unsaved_work() == unsaved)
 	_compare.close()
+	# Read and matched again on workers, the frames changing the library
+	# and the model meanwhile.
+	await _stressed(number, text, plan)
 	# Undone, it matches again.
 	_builder.clear_selection()
 	_builder.undo_steps(plan.size())
@@ -411,6 +422,71 @@ func _one_set(number: String) -> void:
 	_check("undone, it matches the set again: %s" % (check.summary() if check != null else "no check"),
 		check != null and check.matches() and _standing(false) == was)
 	_compare.close()
+
+
+## [method SetCheck.read_set_paced] and the match, [constant STRESS_RUNS]
+## times, each read and match on a worker (SetCheck.always_off_frame) while
+## every frame adds parts to the library as a fetched part arriving does
+## (its Dictionary written), and edits the model: bricks moved and put back,
+## one added and taken away, each within the frame, so that a worker that
+## read either would see them change under it. What each finds is the same.
+func _stressed(number: String, text: String, plan: Array) -> void:
+	var entry: Dictionary = _compare.get("_set_entry")
+	var bricks: Array = _world.bricks()
+	var going: Array = [true]
+	var frames: Array = [0]
+	var added: Array = []
+	(func() -> void:
+		while going[0]:
+			await process_frame
+			frames[0] += 1
+			for _n: int in 8:
+				var made := PartLibrary.PartInfo.new()
+				made.id = "setcheck-stress-%d" % added.size()
+				made.name = "Stress %d" % added.size()
+				_library.parts[made.id] = made
+				added.append(made.id)
+			for k: int in 20:
+				var brick: BrickWorld.Brick = bricks[(int(frames[0]) * 20 + k) % bricks.size()]
+				var home: Transform3D = brick.transform
+				_world.move_brick(brick.id, home.translated(Vector3(0, -400, 0)))
+				_world.move_brick(brick.id, home)
+			_world.remove_brick(_world.add_brick("3001", RED, Transform3D(Basis.IDENTITY,
+				Vector3(9000, 0, 9000))))).call()
+	SetCheck.always_off_frame = true
+	var found: int = 0
+	var wrong: int = 0
+	for _n: int in STRESS_RUNS:
+		var side: SetCheck.Reading = await SetCheck.read_set_paced(text, _library, number)
+		var check: SetCheck = await SetCheck.of_model(side, entry, _world, _store, _library)
+		var got: Array = _found(check, plan)
+		found += int(got[0])
+		wrong += int(got[1])
+	SetCheck.always_off_frame = false
+	going[0] = false
+	await process_frame
+	for id: String in added:
+		_library.parts.erase(id)
+	_stress[0] += STRESS_RUNS
+	_stress[1] += found
+	_stress[2] += wrong
+	_stress[3] += int(frames[0])
+	_check("read and matched %d times on workers, %d frames changing the library and the model meanwhile: %d found, %d named that were not changed" % [
+		STRESS_RUNS, frames[0], found, wrong], found == 9 * STRESS_RUNS and wrong == 0)
+
+
+## Of [param plan], how many [param check] found, and how many changes it
+## named that were not made: [found, false].
+func _found(check: SetCheck, plan: Array) -> Array:
+	var claimed: Dictionary = {}
+	var found: int = 0
+	for planned: Planned in plan:
+		for change: SetCheck.Change in check.changes:
+			if not claimed.has(change) and _is(change, planned):
+				claimed[change] = true
+				found += 1
+				break
+	return [found, check.changes.size() - claimed.size()]
 
 
 ## The number typed in the panel's field and Enter pressed, as a person
@@ -690,7 +766,7 @@ func _biggest() -> void:
 	var side: SetCheck.Reading = await SetCheck.read_set_paced(text, _library, BIGGEST_FILE)
 	var read_ms: float = (Time.get_ticks_usec() - began) / 1000.0
 	going[0] = false
-	var check: SetCheck = SetCheck.between(side, side, _library, true)
+	var check: SetCheck = SetCheck.between(side, side, SetCheck.moulds_of([side], _library), true)
 	_check("%s, %.0f MB, %d parts: read in %.0f ms on a worker, its longest frame %.0f ms; matched in %.0f ms: %s" % [
 		BIGGEST_FILE, text.length() / 1048576.0, side.parts.size(), read_ms, int(longest[0]) / 1000.0,
 		check.matched_ms, check.summary()],
