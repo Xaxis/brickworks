@@ -172,15 +172,23 @@ var _model_steps: Dictionary = {}
 ## (ModelDiff.parts_of_text, keeping each part's step, line and place in the
 ## file); a part this app's library has no part of is counted, not kept.
 static func read_set(text: String, library: PartLibrary, name: String = "set") -> Reading:
-	var side := Reading.new()
 	var model: LdrModel = LdrModel.parse(text, name)
-	if model == null:
-		side.trouble = "its file is not a model"
-		return side
 	# A flexible part LDCad generated (a hose, a rope) is one part, its skin,
 	# as the open puts it on the baseplate; read as its hundred pieces it
 	# was none, and the model's own read as added (6080-1, 10179-1).
-	CustomParts.put_skins(library, model)
+	if model != null:
+		CustomParts.put_skins(library, model)
+	return _read_parsed(model, text, library)
+
+
+## [param model], read from [param text] with its flexible parts put as
+## skins, as the parts it puts down. Reads the library only, so it may run on
+## a worker (WorkerTasks.awaited holds new parts aside meanwhile).
+static func _read_parsed(model: LdrModel, text: String, library: PartLibrary) -> Reading:
+	var side := Reading.new()
+	if model == null:
+		side.trouble = "its file is not a model"
+		return side
 	var lines: PackedStringArray = text.split("\n")
 	side.line_count = lines.size()
 	for n: int in range(0, lines.size(), _stride(lines.size())):
@@ -216,7 +224,14 @@ static func read_set(text: String, library: PartLibrary, name: String = "set") -
 static func read_set_paced(text: String, library: PartLibrary, name: String = "set") -> Reading:
 	if text.length() < READ_OFF_FRAME_FROM:
 		return read_set(text, library, name)
-	return await WorkerTasks.awaited(func() -> Reading: return read_set(text, library, name),
+	var model: LdrModel = await WorkerTasks.awaited(func() -> LdrModel: return LdrModel.parse(text, name),
+		"read a set's file to check a model against", library)
+	# The skins between, on the frame: their table is written on the frame by
+	# an open (CustomParts.begin_skins), and a worker reading a Dictionary
+	# while it is written can crash.
+	if model != null:
+		CustomParts.put_skins(library, model)
+	return await WorkerTasks.awaited(func() -> Reading: return _read_parsed(model, text, library),
 		"read a set's file to check a model against", library)
 
 
