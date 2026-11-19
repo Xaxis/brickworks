@@ -1400,9 +1400,13 @@ func _needs_at(path: String) -> Dictionary:
 
 ## Sets added by their numbers, a copy each, as Add a set adds the ones
 ## typed: the window's own add, which edit_collection's sets= makes too
-## (mcpreach3). [method CollectionStore.add]'s answer.
+## (mcpreach3), after any write of the panel's and the counts typed in it
+## ([method _begin]). [method CollectionStore.add]'s answer.
 func add_sets(text: String) -> Dictionary:
-	return await store.add({"from": "sets", "text": text, "mode": "add"})
+	await _begin()
+	var result: Dictionary = await store.add({"from": "sets", "text": text, "mode": "add"})
+	_end()
+	return result
 
 
 func _add_typed() -> void:
@@ -1411,9 +1415,7 @@ func _add_typed() -> void:
 		_say("type a set number first, like 10237-1")
 		return
 	_say("adding %s…" % text)
-	await _begin()
 	var result: Dictionary = await add_sets(text)
-	_end()
 	if not str(result["error"]).is_empty():
 		_say(str(result["error"]))
 		return

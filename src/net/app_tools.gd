@@ -1695,9 +1695,11 @@ func motor_mount_said(tool: String, answer: Variant, input: Dictionary) -> Varia
 		return answer
 	var said: String = ""
 	if tool == "check_design" and (input.get("edit") is Dictionary or input.get("bricks") is Array):
-		said = await _trial_motors_loose(input, world, library)
-	elif not Simulation.motors_in(world.bricks(), library).is_empty():
-		said = _motors_loose(world, library)
+		said = await _trial_motors_loose(input, library)
+	elif tool == "submit_design" or _lays_motor(input.get("add"), library):
+		# edit_model only when it lays a motor: the joints are read whole
+		# for it, and the motors already down were named when laid.
+		said = await _motors_loose(world, library)
 	return answer if said.is_empty() else _appended(answer, said)
 
 
@@ -1708,7 +1710,12 @@ func _motors_loose(world: BrickWorld, library: PartLibrary) -> String:
 	if grabbing == null:
 		return ""
 	var loose := PackedStringArray()
-	for id: Variant in Simulation.motors_in(world.bricks(), library):
+	var motors: Dictionary = Simulation.motors_in(world.bricks(), library)
+	if motors.is_empty():
+		return ""
+	if not grabbing.is_ready():
+		await grabbing._ready_for_session()
+	for id: Variant in motors:
 		var held: Variant = grabbing.held_of([int(id)])
 		if held is Grab and (held as Grab).link != null and MOTOR_LOOSE_KINDS.has((held as Grab).link.kind):
 			loose.append(_motor_loose_words(world, library, int(id), (held as Grab).link))
@@ -1716,41 +1723,59 @@ func _motors_loose(world: BrickWorld, library: PartLibrary) -> String:
 
 
 ## check_design's design, read as rigid bodies by itself (Bodies.read on a
-## world of its own), for its motors whose case hangs on such a joint.
-func _trial_motors_loose(input: Dictionary, world: BrickWorld, library: PartLibrary) -> String:
+## world of its own, on a worker), for its motors whose case hangs on such a
+## joint. Only a design or an edit that lays a motor: the motors on the
+## baseplate were named at the edit that laid them, and a model read whole
+## for an edit that lays none is time spent for nothing.
+func _trial_motors_loose(input: Dictionary, library: PartLibrary) -> String:
 	var what_if: bool = input.get("edit") is Dictionary
-	var any: bool = what_if and not Simulation.motors_in(world.bricks(), library).is_empty()
-	if not any:
-		var given: Array = (input.get("edit") as Dictionary).get("add", []) if what_if 			else input.get("bricks", [])
-		for one: Variant in given:
-			any = any or one is Dictionary and not Simulation.motor_of(library,
-				str((one as Dictionary).get("part", ""))).is_empty()
-	if not any:
+	if not _lays_motor((input["edit"] as Dictionary).get("add") if what_if else input.get("bricks"), library):
 		return ""
 	var trial: Assistant.Model = assistant._edit(input["edit"]) if what_if else assistant._read_model(input)
-	if trial == null or trial.placements.is_empty():
+	if trial == null or trial.placements.is_empty() or trial.placements.size() > MOST_TRIAL_PARTS:
 		return ""
 	var stage: BrickWorld = assistant._stage_of(trial)
-	var covers := Builder.new()
-	var lattice := BrickLattice.new()
-	lattice.keeps_columns = false
+	var part_ids: Dictionary = {}
 	for brick: BrickWorld.Brick in stage.bricks():
-		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if mesh != null:
-			lattice.occupy_boxes(brick.id, covers.boxes_for(mesh, brick.transform))
-	covers.free()
-	var bodies: Bodies = Bodies.read(stage, library, lattice, {}, {})
+		part_ids[brick.part_id] = true
+	var shaped: Array = part_ids.keys()
+	var bodies: Variant = await WorkerTasks.awaited(func() -> Variant:
+		Exact.shapes_for(library, shaped)
+		var covers := Builder.new()
+		var lattice := BrickLattice.new()
+		lattice.keeps_columns = false
+		for brick: BrickWorld.Brick in stage.bricks():
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if mesh != null:
+				lattice.occupy_boxes(brick.id, covers.boxes_for(mesh, brick.transform))
+		covers.free()
+		return Bodies.read(stage, library, lattice, {}, {}), "read a design's joints", library)
 	var loose := PackedStringArray()
-	for id: Variant in Simulation.motors_in(stage.bricks(), library):
-		var key: Variant = bodies.body_of.get(int(id))
-		var link: Bodies.Link = bodies.parent_link.get(key) if key != null else null
-		if link != null and link.turns and MOTOR_LOOSE_KINDS.has(link.kind):
-			# Numbered as the check numbers a design's bricks, from 0.
-			var index: int = stage.bricks().find(stage.get_brick(int(id)))
-			loose.append(_motor_loose_words(stage, library, int(id), link,
-				"brick %d" % index if not what_if else ""))
+	if bodies is Bodies:
+		for id: Variant in Simulation.motors_in(stage.bricks(), library):
+			var key: Variant = (bodies as Bodies).body_of.get(int(id))
+			var link: Bodies.Link = (bodies as Bodies).parent_link.get(key) if key != null else null
+			if link != null and link.turns and MOTOR_LOOSE_KINDS.has(link.kind):
+				# Numbered as the check numbers a design's bricks, from 0.
+				var index: int = stage.bricks().find(stage.get_brick(int(id)))
+				loose.append(_motor_loose_words(stage, library, int(id), link,
+					"brick %d" % index if not what_if else ""))
 	stage.free()
 	return _loose_said(loose)
+
+
+## Whether [param given] (a design's bricks, an edit's add) lays a motor.
+static func _lays_motor(given: Variant, library: PartLibrary) -> bool:
+	if not given is Array:
+		return false
+	for one: Variant in given:
+		if one is Dictionary and not Simulation.motor_of(library, str((one as Dictionary).get("part", ""))).is_empty():
+			return true
+	return false
+
+
+## The most parts a design checked is read for its motors' mounts.
+const MOST_TRIAL_PARTS := 2000
 
 
 func _motor_loose_words(world: BrickWorld, library: PartLibrary, id: int, link: Bodies.Link,
@@ -2932,7 +2957,7 @@ func _pose(input: Dictionary) -> String:
 	# A click hinge, a hinge or a turntable a drag turns, with no assembly
 	# named on it, numbered after the assemblies' (mcpreach3).
 	var grabbing: GrabDrag = app.get("_grab_drag")
-	var drags: Array = _drag_joints(grabbing, joints)
+	var drags: Array = await _drag_joints(grabbing, joints)
 	if input.has("joint") and not drags.is_empty():
 		var picked: String = str(input["joint"]).strip_edges().trim_prefix("#")
 		if picked.is_valid_int() and int(picked) > joints.size() \
@@ -3013,7 +3038,10 @@ const MOST_DRAG_JOINTS := 8
 func _drag_joints(grabbing: GrabDrag, named: Array[Poser.Joint]) -> Array:
 	if grabbing == null:
 		return []
-	grabbing.read_now()
+	# Read on a worker, as move_part reads them: on this thread a big model's
+	# joints held the window seconds.
+	if not grabbing.is_ready():
+		await grabbing._ready_for_session()
 	var bodies: Bodies = grabbing.read_bodies()
 	if bodies == null:
 		return []
