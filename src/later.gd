@@ -164,6 +164,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# Simulate; the first screen reads and writes only its line (ProgramLine)
 	# and has it read the words of a program an open found (unread_words).
 	&"HubProgram": "res://src/assembly/hub_program.gd",
+	# webstart12: the figure rules' tables, 25k tokens of literals compiled
+	# at every start for a figure nobody had made (Minifig.table).
+	&"MinifigData": "res://src/minifig/minifig_data.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

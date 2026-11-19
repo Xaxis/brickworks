@@ -202,3 +202,73 @@ def closure(root: Path = ROOT) -> set[str]:
 def outside(root: Path = ROOT) -> set[str]:
     """The app's scripts the first screen does not compile, by res:// path."""
     return set(scripts(root)) - closure(root)
+
+
+def compile_order(root: Path = ROOT) -> list[str]:
+    """The first screen in loads of its own, each after all it names: one
+    script of each cycle of the first screen (scripts that name each other
+    round and round compile together whatever is asked first), the cycles
+    that name nothing back first.
+
+    Godot holds the parse of every script one load compiles until that load
+    ends, and a script already compiled costs a later load next to nothing.
+    Loaded as one, the first screen's 214 scripts peaked at 591 MB on this
+    box's desktop build; loaded so, a cycle at a time, at 502 MB, the time the
+    same (webstart12, 2026-11-19). The main scene's script and the main loop's
+    are left out: the engine loads those itself."""
+    _, deps = graph(root)
+    stops = set(later(root).values())
+    seen = closure(root)
+    edges = {p: sorted(q for q in deps.get(p, ()) if q in seen and q not in stops) for p in sorted(seen)}
+    # Tarjan's, without recursion: each cycle is emitted once every cycle
+    # it names has been.
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    on_stack: set[str] = set()
+    stack: list[str] = []
+    cycles: list[list[str]] = []
+    for start in edges:
+        if start in index:
+            continue
+        work = [(start, 0)]
+        while work:
+            at, i = work.pop()
+            if i == 0:
+                index[at] = low[at] = len(index)
+                stack.append(at)
+                on_stack.add(at)
+            for j in range(i, len(edges[at])):
+                nxt = edges[at][j]
+                if nxt not in index:
+                    work.append((at, j + 1))
+                    work.append((nxt, 0))
+                    break
+                if nxt in on_stack:
+                    low[at] = min(low[at], index[nxt])
+            else:
+                if low[at] == index[at]:
+                    cycle = []
+                    while True:
+                        top = stack.pop()
+                        on_stack.discard(top)
+                        cycle.append(top)
+                        if top == at:
+                            break
+                    cycles.append(sorted(cycle))
+                if work:
+                    parent = work[-1][0]
+                    low[parent] = min(low[parent], low[at])
+    settings = project_settings(root)
+    engine_loads = set(scripts_of(settings.get("application", {}).get("run/main_scene", ""), root))
+    loop = settings.get("application", {}).get("run/main_loop_type", "SceneTree")
+    if loop not in ENGINE_LOOPS:
+        engine_loads.add(class_list(scripts(root))[loop])
+    return [cycle[0] for cycle in cycles if not engine_loads & set(cycle)]
+
+
+if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["--order"]:
+        print("\n".join(compile_order()))
+    else:
+        sys.exit("usage: start_closure.py --order    the first screen's compile order, a script a line")

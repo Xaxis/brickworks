@@ -11,8 +11,9 @@ compiling while the rest came (webload, 2026-10-30). So the pack Godot
 exports is cut in four, by path:
 
   index.pck             the code the first screen compiles and what it is
-                        drawn with (its scripts, shaders, scenes, icons), and
-                        the two tables read as their classes load: what the
+                        drawn with (its scripts, shaders, scenes, icons), the
+                        tables read as their classes load and the order the
+                        main loop compiles it in: what the
                         engine waits for.
   index.data.pck        what the start reads once the scripts are made: the
                         catalogue and the rest of assets/web/, the models and
@@ -159,7 +160,10 @@ def write_bundle(path: str, files: list[tuple[str, bytes]]) -> None:
 # TrackSnap._table): in the data pack they would read as nothing, for good.
 # 18 KB over the wire, so they stay with the code.
 AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json",
-                 "assets/ldraw/track_ends.json"}
+                 "assets/ldraw/track_ends.json",
+                 # And the order the main loop compiles the first screen in,
+                 # read before any of it (BrickworksLoop.FIRST_ORDER).
+                 "assets/web/first_order.txt"}
 
 
 def where(path: str, later: frozenset[str] = frozenset()) -> str:
