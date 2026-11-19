@@ -2783,6 +2783,15 @@ func retrieve_joined(paths: Array) -> Array:
 	return []
 
 
+## The lines of the file the model on the baseplate was opened from, as it
+## was opened, while it is still that model; empty else. SetCheck reads them
+## to know the model is a library set's own file, so its parts' places
+## (BrickWorld.Brick.origin) are the set's lines.
+func opened_lines() -> PackedStringArray:
+	var source: SourceFile = _live_source()
+	return source.original if source != null else PackedStringArray()
+
+
 ## The source the model on the baseplate is still the model of, or null.
 func _live_source() -> SourceFile:
 	if _source == null or world == null or world.generation() != _opened_in:

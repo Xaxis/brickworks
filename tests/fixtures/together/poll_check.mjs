@@ -87,6 +87,9 @@ const reset = () => {
     joins: 0,
     toldAt: null,
     readMs: 0,
+    // Each GET held this long besides (smalls7): a poll's reads slow, a
+    // point's own PATCH not.
+    getMs: 0,
     joinMs: 5,
     broadcasts: 0,
     // While unseen, a person's row is read as it was before the writes made
@@ -161,6 +164,7 @@ globalThis.fetch = async (url, options = {}) => {
   store.reads.push(`${method} ${table}`);
   store.log.push([`${method} ${table}`, Date.now()]);
   if (store.readMs) await sleep(store.readMs);
+  if (store.getMs && method === "GET") await sleep(store.getMs);
   if (table === "together_sessions") return answer([store.session]);
   if (table === "together_people") {
     const account = (q.get("account") || "").replace("eq.", "");
@@ -591,7 +595,46 @@ async function changeWhileJoining() {
     ops: JSON.parse(response.ended).ops.map((op) => op.seq), log: store.log.map(logged(from)) };
 }
 
-const result = { changed: await changeWhileJoining(), looked: await looked(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),
+// smalls7: a part pointed out while the poll is reading the database (each
+// GET held 400 ms, so a poll is in a read four fifths of its wait) goes out
+// as a line when the channel tells it, not when that read ends: three
+// points, each timed from the server telling the channel to its line.
+async function toldMidRead() {
+  reset();
+  const first = responseOf();
+  const once = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), first);
+  await sleep(100);
+  store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
+  await once;
+  const seen = JSON.parse(first.ended).seen;
+  const joins = store.joins;
+  const response = responseOf();
+  const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
+  await until(joinedSince(joins));
+  await sleep(100);
+  store.getMs = 400;
+  store.unseen = true;
+  const rounds = [];
+  for (let k = 0; k < 3; k += 1) {
+    await sleep(170 + 90 * k);
+    store.toldAt = null;
+    const n = 1763000000100 + k;
+    await lookAs(OTHER, { n, sel: ["ab12.3"], at: [1, 2, 3], age: 0 });
+    let outAt = null;
+    for (const end = Date.now() + 2000; Date.now() < end && outAt === null; await sleep(1)) {
+      if (response.writes.some((one) => one.text.includes(String(n)))) outAt = Date.now();
+    }
+    const toldAt = store.toldAt ?? outAt;
+    rounds.push({ ms: outAt === null || toldAt === null ? null : outAt - toldAt,
+      stalled: outAt === null || toldAt === null ? null : stalledIn(toldAt, outAt) });
+  }
+  Object.assign(store, { getMs: 0, unseen: false, shown: new Map() });
+  store.ops.push({ seq: 2, author: OTHER, client: "abcdef", cid: 1, changes: {} });
+  await done;
+  return { rounds };
+}
+
+const result = { changed: await changeWhileJoining(), looked: await looked(), mid_read: await toldMidRead(), ordered: await ordered(), joining: await joining(), lines: await lines(), whole: await whole(), refused: await refused(),
   reads: { lines: await reads(true), whole: await reads(false), lines_slow_join: await reads(true, true) },
   begins: [await begins(5, 0), await begins(120, 20), await begins(400, 20)],
   told: { lines: await told(true), whole: await told(false), taken_out: await takenOut() },

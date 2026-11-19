@@ -636,6 +636,8 @@ const HINTS := {
 	"break_out_section": ["Break out a section", "add"],
 	"evaluate_section": ["Evaluate a section", "look"],
 	"weakest_joints": ["Weigh the weakest joints", "look"],
+	# setcheck: the model against a set's own model from the library.
+	"compare_with_set": ["Check the model against its set", "look"],
 	# Recolours parts nobody sees, after the person says yes; one step.
 	"colour_hidden_parts": ["Colour the hidden parts", "add"],
 	"gallery": ["Search the gallery", "look", "world"],
@@ -962,6 +964,10 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# A design held to one set's parts, checked the same way (mcpreach2).
 	if name == "submit_design" and not str(input.get("pool", "")).strip_edges().is_empty():
 		answer = await _the_app_tools().held_to_pool(answer, str(input["pool"]))
+	# A motor's mount, before Simulate (mcpreach3): how real sets mount one,
+	# and one whose case swivels on single studs named at the check.
+	if name in ["attachment_points", "check_design", "edit_model", "submit_design"]:
+		answer = await _the_app_tools().motor_mount_said(name, answer, input)
 	_hand_and_view_back(held)
 	return answer
 
@@ -1321,9 +1327,11 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			return await assistant.surface_review()
 		return await assistant.review(str(input.get("assembly", "")),
 			str(input.get("feature", "")), bool(input.get("creative", false)))
-	# Not until its features are settled: saving handed the next one back
-	# only after the file was written, and every session then ended.
-	if tool == "save_model" and assistant != null:
+	# A bench's save waits on what its judge is told, as it did: BrickBench
+	# reads the file at once and scores it (Assistant.BRICKBENCH_FLAG), and
+	# realset saves each held-out session's model at its end and scores that
+	# ([method bench_run]). A person's save is never refused (below).
+	if tool == "save_model" and assistant != null and bench_run():
 		var held: Variant = await assistant.save_gate()
 		if not (held is String and (held as String).is_empty()):
 			return held
@@ -1374,6 +1382,24 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			var store: ModelStore = app.get("_store")
 			if store != null and not store.motions_gone_words.is_empty():
 				written += " %s%s." % [store.motions_gone_words.left(1).to_upper(), store.motions_gone_words.substr(1)]
+			# Never refused (mcpreach3): the file is the model as it stood, and
+			# what is not finished is said after it. A save held until a design's
+			# features were settled kept a person's car unsaved, and a session
+			# asked to keep it before opening a set stopped to ask the person
+			# which of three ways to go (APP_UX10's walk, g1). The features not
+			# settled are named and nothing is laid: the gate's piece, laid
+			# after the file was written, left the model 6 parts on from its
+			# file and unsaved (m3review M1).
+			if assistant != null and not bench_run():
+				var unsettled: String = _unsettled_said(assistant)
+				var held: Variant = ""
+				if unsettled.is_empty():
+					held = await assistant.save_gate()
+				if not unsettled.is_empty() or not (held is String and (held as String).is_empty()):
+					assistant.progress.emit("saved %s; not finished yet" % file)
+					return Assistant._joined(written + " The model as it stood is kept; saving "
+						+ "again writes over this file.", unsettled if not unsettled.is_empty()
+						else _finished_not(held))
 			if assistant != null:
 				written = Assistant._joined(written, assistant.save_advice())
 			# A run's last act is to save: so saving hands back the next
@@ -1388,6 +1414,50 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				more = await assistant.fresh_eyes().reviewed()
 			return Assistant._joined(written, more)
 	return "No tool called %s." % tool
+
+
+## A bench's run, whose saves wait on the gate (Assistant.save_gate): a
+## BrickBench design (--brickbench), or a run that holds a set out
+## (DesignMemory.holding: realset starts each tab with --held-out=, never
+## --brickbench), as AppTools.refusal treats one. Its unsettled saves were
+## written where pre261 refused them, against every earlier baseline
+## (m3review H1).
+static func bench_run() -> bool:
+	return Assistant.brickbench or DesignMemory.holding()
+
+
+## A person's design saved with features not settled (as Assistant.save_gate
+## counts them), named with what settles each, and nothing laid; "" when
+## every one is settled, or no design from outside stands.
+static func _unsettled_said(assistant: Assistant) -> String:
+	if assistant._busy or not assistant._outside_standing:
+		return ""
+	var left: Array[String] = assistant._features_left()
+	if left.is_empty():
+		return ""
+	return ("Not finished yet: %d of its %d features %s not settled (%s), and nothing was laid for them: "
+		% [left.size(), assistant._outside_features.size(), "is" if left.size() == 1 else "are",
+			", ".join(left)]
+		+ "the file is the model as it was when the save was asked. review_model {\"feature\": \"%s\"} "
+		% left[0] + "lays the best real set's piece for the %s where it goes; settle_feature then " % left[0]
+		+ "accepts it (adjusted if need be), asks for the next, rejects it with a reason, says you built it, "
+		+ "or skips it; built and skip settle several in one call (\"feature\": \"all\"). Then save again.")
+
+
+## The save gate's words (Assistant.save_gate) said of a file written: "Not
+## saved yet" read as the save refused, so it is "Not finished yet".
+static func _finished_not(held: Variant) -> Variant:
+	var said: Callable = func(text: String) -> String:
+		for was: String in ["Not saved yet: ", "Not saved yet. "]:
+			if text.begins_with(was):
+				return "Not finished yet" + was.substr(13) + text.substr(was.length())
+		return text
+	if held is Array:
+		var out: Array = (held as Array).duplicate()
+		if not out.is_empty() and out[0] is Dictionary and str((out[0] as Dictionary).get("type", "")) == "text":
+			out[0] = {"type": "text", "text": said.call(str((out[0] as Dictionary)["text"]))}
+		return out
+	return said.call(str(held))
 
 
 ## What a tool handed back, as content blocks.

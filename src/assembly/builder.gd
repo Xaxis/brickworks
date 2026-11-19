@@ -3085,6 +3085,7 @@ func _preview_sticker(part: Lbm.PartMesh, origin: Vector3, direction: Vector3) -
 
 
 func _show_ghost(part: Lbm.PartMesh) -> void:
+	_ghost_warming = false
 	_ghost.mesh = part.surfaces[0]
 	_ghost.transform = _ghost_transform
 	_ghost.visible = true
@@ -5208,7 +5209,7 @@ func has_preview() -> bool:
 			if ghost.visible:
 				return true
 		return false
-	return _ghost != null and _ghost.visible
+	return _ghost != null and _ghost.visible and not _ghost_warming
 
 
 ## Where the one ghost stands, in LDU; null while it is not showing.
@@ -5228,6 +5229,29 @@ func can_place() -> bool:
 	if is_carrying():
 		return carrying.can_place()
 	return has_preview() and _ghost_valid
+
+
+## The ghost drawn once, a thousandth of [param mesh]'s size at [param at],
+## too small to cover a pixel: its shader's programs made before the first
+## part is picked (Main._warm_first_pick). Meanwhile there is no preview
+## ([method has_preview]), so nothing aims at it, marks round it
+## (JointMarks) or tells the page of it; a part picked meanwhile takes the
+## ghost over as ever, and keeps it.
+func warm_ghost(mesh: Mesh, at: Vector3) -> void:
+	if _ghost.visible or mesh == null:
+		return
+	_ghost_warming = true
+	_ghost.mesh = mesh
+	_ghost.transform = Transform3D(Basis().scaled(Vector3.ONE * 0.001), at)
+	_ghost.visible = true
+	await RenderingServer.frame_post_draw
+	if _ghost_warming:
+		_ghost_warming = false
+		_ghost.visible = false
+
+
+## Whether the ghost shows only for [method warm_ghost].
+var _ghost_warming: bool = false
 
 
 func hide_preview() -> void:

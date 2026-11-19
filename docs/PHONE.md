@@ -260,6 +260,69 @@ working slower in all 3 (x1.1;
 `bench/results/webstart11-2026-11-18/codecache-desktop/`). Why V8 kept
 nothing is not found; until it is, this is not a cut.
 
+### What the first screen compiles and never runs (webstart12)
+
+webstart12, 2026-11-19. The assistant, Together, the booklet's maker and
+the forge were already loaded on first use (`src/later.gd`); what is left
+is read here function by function. `src/dev/start_uses.gd` boots the app
+as a first visit does under Godot's script profiler (`-d --profiling`),
+lets the window settle with nobody touching it, and prints every function
+that ran; `tools/web/start_uses.py` sets that against the first screen
+(`tools/web/start_closure.py`), counted in tokens, not bytes: this code's
+comments are a third of its bytes and cost no compile.
+
+- **The first screen: 214 scripts, 1,032k tokens. 77% of them ran before
+  a press** (791k), in a phone's window and in a desktop's alike. 71
+  scripts never ran: 240k tokens, 23%.
+- What never ran, largest first, each with its share of the scripts'
+  24.5 s at CPU/4 and of the 384 MB they grow the Wasm memory by
+  (apportioned by tokens): Grab 33k (0.8 s, 12 MB; the first drag);
+  Instructions 30k (0.7 s, 11 MB; named by 11 scripts of the first
+  screen); MinifigData 25k (0.6 s, 9 MB; a table read by the figures);
+  AuthorSteps 11k; PartPrints 9k; the sign-in screen 6.5k (a signed-out
+  visit's first screen); BookletStudio 6k; TogetherWords, Bands,
+  ModelFilePicker, SeenParts, BuildSteps, Swing and SubmodelFile 5k each;
+  the rest under 4.5k.
+- **So no deferral alone meets the bar.** Every script that never ran,
+  deferred, takes 23% off: the scripts' phase about 24.5 → 19 s, not 12.
+  The phase is the compile of code the start runs.
+- **The memory is set by the largest compile, not the total.** Godot
+  holds the parse of every script one load compiles until that load ends,
+  and 124 of the 214 name each other in one cycle (804k tokens, 78%). On
+  this box's desktop build the first screen's compile peaks at 591 MB and
+  keeps 223; loaded a cycle at a time, the cycles that name nothing back
+  first (`src/dev/start_cost.gd --pre=`), it peaks at 502 MB in the same
+  time. A script already compiled costs a later load next to nothing (four
+  of the largest named by a new script: 58 ms), so a cycle compiled first
+  is not parsed again.
+
+What was done with it, and what it gave, in 3 pairs a config at the same
+moment against pre261 286529440 (`bench/results/webstart12-2026-11-19/`,
+load 50 to 109):
+
+| | WebKit as an iPhone 13 | Chromium, CPU/4, Fast 4G | Chromium desktop |
+|---|---|---|---|
+| Wasm at its height | 432 → 360 MB | 432 → 360 MB | 432 → 360 MB |
+| scripts' phase | 7.4 → 6.4 s (x0.87) | 22.5 → 25.5 s (x1.13) | 6.2 → 7.1 s (x1.11) |
+| working | 19.4 → 17.3 s | 57.1 → 59.2 s | 24.2 → 25.3 s |
+| main thread's CPU to working | 11.5 → 12.2 s | 46.6 → 48.9 s | 9.0 → 9.7 s |
+
+- **The first screen compiled a cycle at a time** (`BrickworksLoop`
+  loads `assets/web/first_order.txt`, which the web export writes from
+  `tools/web/start_closure.py --order`, before the engine loads
+  main.tscn): 79 loads, the largest the 124-script cycle. It costs CPU
+  everywhere, 5 to 8% of the main thread's: each load parses again the
+  scripts it names that an earlier one compiled. WebKit still started
+  sooner, its memory grown less; Chromium started later. So **only an
+  iPhone or iPad compiles so** (the shell's own test of one), where the
+  memory is what is short, and every other browser as before.
+- **The figure rules' tables (MinifigData, 25k tokens) load on first
+  use** through `Later`, read by `Minifig.table(name)`.
+- **Not met: 300 MB, and 12 s at CPU/4.** What is left is the cycle
+  itself: 124 scripts that name each other compile as one whatever is
+  asked first, 78% of the first screen. Under 300 needs that cycle cut,
+  class by class, so that its parts compile apart: the Next.
+
 ## The no-threads export on WebKit
 
 `Web (no threads)` (`build/web-nothreads`, unshared memory) against the

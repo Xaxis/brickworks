@@ -3511,7 +3511,18 @@ picture the assistant is shown.
   phone's keyboard would cover the sheet; a tap selects it to type over), the
   joints next, then keys, play and timing; a joint's key strip a fingertip
   tall, a key taken within half a fingertip; each view (list, edit,
-  sequence) opened at its top. Simulate (`SimulatePanel._for_a_finger`): Play,
+  sequence) opened at its top. By finger Motions' foot (the hold, Render
+  animation, its progress and last frame, the status) scrolls with the list
+  under its last row, only the header standing still; the panel's room is
+  what the tools' column shows, not the box in it, and its list's least is
+  three rows (`PosePanel._least_list`); under the model on a phone held
+  upright the sheet is no shorter than that (`PosePanel.least_tall`,
+  `Main._size_tool_sheet`), the model giving up the difference, at most
+  `SHEET_MOST` of their room (smalls7: on a 390 x 664 iPhone the list was
+  under a row with the moved parts' strip and the assistant's bar shown).
+  After each fit the panel's box lays it out again (`PosePanel._fit`), so it
+  is as wide as the sheet: shrunk to its least it stayed a third narrower.
+  Simulate (`SimulatePanel._for_a_finger`): Play,
   the cycle's slider and its angle under the title, the driver line after. A
   part tapped while Simulate still drives the last tap (turning, weighing,
   finding where it stops) is kept and made the driver once that is done

@@ -170,6 +170,23 @@ Sources: [Vercel limits](https://vercel.com/docs/limits),
 [iad1 prices](https://vercel.com/docs/pricing/regional-pricing/iad1),
 [Flat Rate CDN](https://vercel.com/docs/pricing/flat-rate-cdn).
 
+## 4. A phone's first visit
+
+webstart12, 2026-11-19. What a visitor's own device runs out of first, in
+pairs at the same moment against pre261 (docs/PHONE.md, "What the first
+screen compiles and never runs").
+
+- **An iPhone's memory.** The page's Wasm memory peaks while the first
+  screen's scripts compile, and a page never gives it back: 432 MB, where
+  an iPhone reliably gives about 300. On an iPhone or iPad it now peaks at
+  360 MB, compiled a cycle at a time, and starts sooner (WebKit as an
+  iPhone 13: working 19.4 → 17.3 s). Still over 300: some iPhones will
+  refuse it (the memory warning in `/admin#switches` › Phones says so).
+- **A slow phone's CPU.** At a quarter of this box's speed on Fast 4G a
+  first visit is working in about 57 s, 22.5 s of it the scripts' compile.
+  Code the start never runs is 23% of that compile, so no deferral gets
+  the phase near 12 s; only less code the start runs does.
+
 ## What to do before an ad push
 
 In order. The first two are the owner's: money, and the owner's sign-in.

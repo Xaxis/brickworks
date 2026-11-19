@@ -181,6 +181,12 @@
 							"words": "Compare two sets or models…",
 							"key": "",
 							"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+						},
+						{
+							"name": "compare_set",
+							"words": "Compare with the set…",
+							"key": "",
+							"tip": "Each part taken away, added, swapped, recoloured, moved or in another sub-model, by the set's own steps, and where it is in the model"
 						}
 					]
 				},
@@ -1831,6 +1837,7 @@
 		"versions": "",
 		"compare": "",
 		"compare_sets": "",
+		"compare_set": "",
 		"export_ldraw": "",
 		"export_io": "",
 		"export_3d": "",

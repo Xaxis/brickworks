@@ -45,6 +45,7 @@ FILES = {
     "assets/web/catalogue.json": b'{"parts": {"3001": {}}}' * 50,
     "assets/web/parts/eab5.lbm": bytes(range(256)) * 3,
     "assets/web/all_order.txt": b"1 0\n3001\n",
+    "assets/web/first_order.txt": b"res://src/ui/look.gd\n",
     "models/car.ldr": b"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n",
     "assets/ldraw/part_names.json": b'{"3001": "brick"}',
     "assets/ldraw/gears.json": b'{"gears": {"3647": {}}}',
@@ -125,7 +126,10 @@ def test_the_engine_waits_for_the_code_alone(split: Path) -> None:
     assert sorted(code) == sorted(["project.binary", "src/main.gdc", "src/main.gd.remap", "src/ui/look.gdc",
                                    "assets/ui/tools/accept.svg.import", ".godot/imported/accept.svg-d7c.ctex",
                                    "assets/ldraw/gears.json", "assets/ldraw/known_fits.json",
-                                   "assets/ldraw/track_ends.json"])
+                                   "assets/ldraw/track_ends.json",
+                                   # And the order an iPhone compiles them in, read
+                                   # before any of them (BrickworksLoop.FIRST_ORDER).
+                                   "assets/web/first_order.txt"])
 
 
 def test_what_the_start_reads_is_a_pack_beside_it(split: Path) -> None:
@@ -152,6 +156,7 @@ def test_only_the_scripts_the_first_screen_compiles_stay_with_the_engine() -> No
     assert pck_split.where("src/ai/assistant.gdc", later) == "index.data.pck"
     assert pck_split.where("src/ai/assistant.gd.remap", later) == "index.data.pck"
     assert pck_split.where("assets/ldraw/gears.json", later) == "index.pck"
+    assert pck_split.where("assets/web/first_order.txt", later) == "index.pck"
 
 
 def test_an_entry_point_the_closure_cannot_place_stops_the_export(monkeypatch) -> None:

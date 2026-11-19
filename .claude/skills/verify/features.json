@@ -1870,6 +1870,14 @@
       "tests": []
     },
     {
+      "id": "cli:m3review probe",
+      "kind": "cli",
+      "entry": "src/dev/m3review_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:10910 tools/probe.sh m3review_probe -- --held-out=31058-1 --assistant=on, and again with --assistant=on alone, a stand-in for /api/collection on 10910 (python3 -I tools/collection_standin.py 10910)   (headless: godot --headless --path . --script src/dev/m3review_probe.gd. m3review's attacks on mcpreach3, made checks by m3fix: a held-out (realset) tab's save over unsettled features refused as pre261 refused it, a person's written with nothing laid; pose_model joint= an assembly's joint begins no reading of the drag joints; edit_collection sets= with built= checks every argument before the add, and a reply lost after the add or the Built marks is told it may have been made; M3REV_ONLY=save,pose,coll,hinge,motor)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:made with probe",
       "kind": "cli",
       "entry": "src/dev/made_with_probe.gd",
@@ -1938,6 +1946,14 @@
       "kind": "cli",
       "entry": "src/dev/mcpreach2_probe.gd",
       "reach": "tools/probe.sh mcpreach2_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach2_probe.gd. APP_UX9 #10: where_to_attach with nothing selected is the whole model, a picture in 1 call, its numbered points over every part and the rest as dots, parts= the parts named; render_model turntable says the camera goes once round a model that stands still; attachment_points on the walk's y6 SPIKE motor names its output's axle and pin holes apart from the case's, simulate_mechanism driver=<motor> turns the output, move_part names the motor; submit_design pool=31058-1 all in the set, over by part, 31058 read as 31058-1, two sets pooled, an unknown number said so. The relay's other-chats words: python3 tools/minitest.py tests/test_relay_chats.py)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:mcpreach3 probe",
+      "kind": "cli",
+      "entry": "src/dev/mcpreach3_probe.gd",
+      "reach": "tools/probe.sh mcpreach3_probe; tools/relay_probe.sh mcpreach3 for r5 too   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach3_probe.gd. APP_UX10's mcpreach3: save_model over unsettled features writes the file and says what is not finished, open_model save_first= keeps a changed design and opens in 2 calls, edit_collection sets= built= adds a set kept built in 1 call with its loose parts said (a throwaway account, deleted), pose_model lists and swings a click hinge with no assembly, attachment_points on a motor says how real sets mount it and a motor on single studs is named before Simulate, edit_steps says why nothing changed and step= past the last makes one; the relay's other-chats line once a chat is tests/test_relay_chats.py)",
       "area": "mcp",
       "tests": []
     },
@@ -2902,6 +2918,14 @@
       "entry": "src/dev/setwalk_probe.gd",
       "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:setcheck probe",
+      "kind": "cli",
+      "entry": "src/dev/setcheck_probe.gd",
+      "reach": "tools/probe.sh setcheck_probe   (headless; plays the library with tools/web/serve.py on port 10901; SETCHECK_ONLY=NUMBER for one set)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -4618,6 +4642,14 @@
       ]
     },
     {
+      "id": "lib:set check",
+      "kind": "lib",
+      "entry": "src/parts/set_check.gd",
+      "reach": "tools/probe.sh setcheck_probe   (SetCheck: the set's file read as an open reads it, on a worker past 256 KB; paired by the line each part was read from when the model is the set's file, else by place, part and colour; kinds taken, added, swapped (near mould: another moulding or the same kind, size and studs), recoloured, moved, regrouped; steps the author's, per sub-model; a session: compare_with_set)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "lib:shapes said as patterns",
       "kind": "lib",
       "entry": "src/ai/patterns.gd",
@@ -5633,6 +5665,14 @@
       "tests": []
     },
     {
+      "id": "ui:compare with the set",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh setcheck_probe   (File, Compare, Compare with the set\u2026: the model checked against the set it was opened from, or one typed by number, from the library; each part taken away, added, swapped, recoloured, moved or in another sub-model listed under the set's own step, with its sub-model and line; a row pressed selects the part and frames it; a set the model is says it matches; drawn on the model as a save's comparison is; Esc or Close puts the view back. SETCHECK_ONLY=7140-1 for one set)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "ui:component kit",
       "kind": "ui",
       "entry": "web/kit.js",
@@ -6306,7 +6346,7 @@
       "id": "ui:open a tab by link",
       "kind": "ui",
       "entry": "src/boot/shell.html",
-      "reach": "https://brickworks.diy/app?tab=<id>   (that tab's model when it is kept in this browser and not open; open in another tab here, the page starts nothing and that tab's title says it is the one)",
+      "reach": "https://brickworks.diy/app?tab=<id>   (that tab's model when it is kept in this browser and not open; open in another tab here, the page starts nothing and that tab's title says it is the one, at once and for 6 s, the app's own title held until then)",
       "area": "web",
       "tests": []
     },

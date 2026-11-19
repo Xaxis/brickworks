@@ -1940,6 +1940,9 @@ func _ready() -> void:
 	# Open in Brickworks, from a shared model's viewer: once whatever was
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
+	# The first part picked finds its ghost's and its marks' shaders made.
+	if OS.has_feature("web") and _renders_when_idle:
+		_warm_first_pick()
 	# The window is up and the model back: a copy just updated says so to the
 	# helper waiting on it, and the day's check is made (Updater).
 	if _updater != null:
@@ -6527,6 +6530,8 @@ func _seat_tool_panel(panel: Control) -> void:
 		_touch.size_panel(panel)
 		panel.minimum_size_changed.connect(_fit_tool_panel.bind(panel))
 		panel.visibility_changed.connect(_fit_tool_panel.bind(panel))
+		panel.minimum_size_changed.connect(_size_tool_sheet, CONNECT_DEFERRED)
+		panel.visibility_changed.connect(_size_tool_sheet, CONNECT_DEFERRED)
 
 
 ## The window's sky and its three lights, which Render, Motions and
@@ -6838,6 +6843,49 @@ func _render_when_idle() -> void:
 	_make_render()
 
 
+## What the first part picked from the bin draws and the first screen does
+## not, drawn once out of sight: the ghost (Builder.warm_ghost) and both
+## batches of the connection points' marks (JointMarks.warm), in one frame.
+## Drawn in software (a browser on SwiftShader), the first pick compiled
+## their fifteen programs in the frames it was waited for: 807 ms on live at
+## load, 1.2 to 2.2 s traced, where nothing was fetched (smalls8). Begun as
+## soon as the model is back: on a first visit the bin is usable 5 s before
+## the model is drawn, and this, waiting a second more and then a frame for
+## the ghost and another for the marks, was still being drawn when the first
+## part was picked. Its frame comes after the page has been told the bin is
+## usable (_tell_page), so it is never one that makes it so. The marks'
+## script is compiled in that frame too, as the pick would (34 to 93 ms at
+## load). Read on a worker it waited 5 to 25 s behind the start's own reads,
+## and a pick meanwhile, whose own load of it (Shell) waits for that worker,
+## was held 10.8 and 22 s. Not for a probe (--script), whose window starts
+## as it did.
+func _warm_first_pick() -> void:
+	var drawn: int = Engine.get_frames_drawn()
+	var told: int = -1
+	for _n: int in 600:
+		if Engine.get_frames_drawn() >= drawn + 2 and _bin != null and not _bin.first_found().is_empty():
+			if not OS.has_feature("web") or (told >= 0 and _told_page_at != told):
+				break
+			if told < 0:
+				told = _told_page_at
+		await get_tree().process_frame
+	var mesh: Mesh = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _library.is_resident(brick.part_id):
+			var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+			if part != null and not part.surfaces.is_empty():
+				mesh = part.surfaces[0]
+				break
+	# Where the camera looks, so in view: not the model's bounds, a walk of
+	# every part (Orthanc's would be this frame's longest work).
+	var at: Vector3 = _camera.focus
+	# Both let go of what they drew once this frame is drawn, before this returns.
+	_builder.warm_ghost(mesh, at)
+	if bool(ShellPrefs.value("joint_marks")):
+		Later.script(&"JointMarks").warm(_builder, at)
+	await RenderingServer.frame_post_draw
+
+
 ## Build, Motions…: the model's own motions, played, recorded by a drag, set
 ## joint by joint and rendered (src/ui/pose_panel.gd), in the column beside
 ## the model, so what moves is seen as it moves and no part to be dragged is
@@ -6862,6 +6910,11 @@ func _make_pose() -> void:
 		_verbs.set_mode("select")
 	_seat_tool_panel(pose)
 	pose.changed.connect(_on_model_edited)
+	# By finger its status scrolls with its list: what a press says is said
+	# over the model as well, where it is always in sight (smalls7).
+	pose.said.connect(func(words: String) -> void:
+		if _phone != null:
+			_phone.say(words))
 
 
 ## What plays the model's motions, for Motions…, Render… and the viewer.
@@ -7849,6 +7902,9 @@ const SIMULATE_WIDTH := 360.0
 ## than it was laid out for, when its foot lay under the row of tools, and a
 ## suggestion's Keep went under the list's edge as it opened (smalls2).
 const PHONE_SHEET := 0.9
+## The most of that room the sheet takes for its panel's least
+## (Main._size_tool_sheet): the model keeps at least the rest.
+const SHEET_MOST := 0.6
 
 
 ## A panel in the column opened or closed: the column shown while any is.
@@ -10491,6 +10547,7 @@ func _place_tool_column() -> void:
 	(_tool_column.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = \
 		0.0 if under else float(_phone.foot_height())
 	if under == _tool_sheet:
+		_size_tool_sheet()
 		return
 	_tool_sheet = under
 	var middle: Control = _over_model.get_parent() as Control
@@ -10502,6 +10559,29 @@ func _place_tool_column() -> void:
 		beside.move_child(_tool_column, _bin_dock.get_index() + 1)
 	_tool_column.custom_minimum_size = Vector2(0.0 if under else SIMULATE_WIDTH, 0.0)
 	_tool_column.size_flags_stretch_ratio = PHONE_SHEET if under else 1.0
+	_size_tool_sheet()
+
+
+## The tools' sheet under the model no shorter than its panel's least
+## (PosePanel.least_tall: Motions with its list three rows tall), the
+## model giving up the difference, down to SHEET_MOST of the room the two
+## share. Its share alone (PHONE_SHEET) is of what is left under the
+## notices over the model: on a 664-point iPhone the moved parts' strip
+## and the assistant's bar took 120 points of it, and Motions' list had
+## under a row between its header and its foot (smalls7, docs/PHONE.md
+## fault 6). Where the share is enough, on every larger phone, it is the
+## share, as before.
+func _size_tool_sheet() -> void:
+	if _tool_column == null:
+		return
+	var least: float = 0.0
+	if _tool_sheet and _tool_column.visible:
+		for panel: Node in _tool_panels.get_children():
+			if panel is Control and (panel as Control).visible and panel.has_method(&"least_tall"):
+				least = maxf(least, float(panel.call(&"least_tall")))
+		least = minf(least, (_tool_column.size.y + _over_model.size.y) * SHEET_MOST)
+	if not is_equal_approx(_tool_column.custom_minimum_size.y, least):
+		_tool_column.custom_minimum_size.y = least
 
 
 ## Whether the tools' column, shown beside the model, leaves it less than

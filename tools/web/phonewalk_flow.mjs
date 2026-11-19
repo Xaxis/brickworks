@@ -576,12 +576,15 @@ function person(page, cdp, width, height, size, choosers) {
   // bar at the screen's foot; every drag counted. [top] names the panel's
   // Close, in its title. Its place, or null.
   const bringIn = async (name, top, tries = 6) => {
-    // The list's foot: Motions' rows under it (Render animation) stand
-    // still while it scrolls; else the bar at the screen's foot.
+    // The list's foot: where the app names Motions' list (motions_list,
+    // smalls7), its own edges, its foot scrolling with it by finger; before
+    // that, its rows under it (Render animation) stood still while it
+    // scrolled; else the bar at the screen's foot.
     const named = await controls();
+    const room = listRoom(named, top);
     const under = top === "motions_close" ? named.motions_render : null;
     const bar = named.phone_parts;
-    const floor = under ? under.y - under.h / 2 - 8 : bar ? bar.y - bar.h / 2 : height;
+    const floor = room ? room.floor : under ? under.y - under.h / 2 - 8 : bar ? bar.y - bar.h / 2 : height;
     const first = await where(top, 5);
     // The panel's top: under its title while the title stays (Motions'
     // list scrolls beneath it), or where the title was once the whole panel
@@ -591,7 +594,7 @@ function person(page, cdp, width, height, size, choosers) {
     for (let n = 0; ; n++) {
       const at = await where(name, n ? 4 : 15);
       const head = await where(top, 2);
-      const ceiling = head && Math.abs(head.y - first.y) < 2 ? head.y + head.h / 2 : was;
+      const ceiling = room ? room.top : head && Math.abs(head.y - first.y) < 2 ? head.y + head.h / 2 : was;
       if (DEBUG) said(`bringIn ${name}: at ${at ? `${Math.round(at.x)},${Math.round(at.y)} ${at.w}x${at.h}` : "none"}; ceiling ${Math.round(ceiling)}, floor ${Math.round(floor)}`);
       // A control in the panel's own header, level with its Close (Motions'
       // New motion by finger), is in sight however the list under it scrolls.
@@ -617,6 +620,26 @@ function person(page, cdp, width, height, size, choosers) {
       }
       if (DEBUG) await picture(`bring_${name}_${n}`);
     }
+  };
+  // Motions' list's top and foot on the page, where the app names it.
+  const listRoom = (named, top) => {
+    const list = top === "motions_close" ? named.motions_list : null;
+    return list ? { top: list.y - list.h / 2, floor: list.y + list.h / 2 } : null;
+  };
+  // How many rows Motions' list shows (smalls7, docs/PHONE.md fault 6): its
+  // height in sight, between its edges where the app names them, else
+  // between the title's row and Render animation, which stood still under
+  // it, over a row's (two suggestions' Keeps apart, or a Keep's height).
+  const listRows = (named) => {
+    const room = listRoom(named, "motions_close");
+    const head = named.motions_close;
+    const foot = named.motions_render;
+    const top = room ? room.top : head ? head.y + head.h / 2 : null;
+    const floor = room ? room.floor : foot ? foot.y - foot.h / 2 - 8 : null;
+    const [a, b] = [named.motion_keep_0, named.motion_keep_1];
+    const row = a && b ? Math.abs(b.y - a.y) : a ? a.h : null;
+    if (top === null || floor === null || !row) return null;
+    return { tall: Math.round(floor - top), row: Math.round(row), rows: Math.round(((floor - top) / row) * 10) / 10 };
   };
   // Such a control tapped once in sight, and again if [test] says the first
   // tap did not take. True once it took.
@@ -1398,6 +1421,13 @@ function person(page, cdp, width, height, size, choosers) {
       if (!(await moreRow("pose"))) return { why: "More has no Motions…" };
       let m = await untilRead("brickworksMotions", (now) => (now.suggested || []).length > 0 || (now.motions || []).length > 0, 90);
       note(`suggested ${JSON.stringify(m.suggested || []).slice(0, 80)}`);
+      let named = await controls();
+      for (let n = 0; n < 20 && !named.motion_keep_0; n++) {
+        await page.waitForTimeout(500);
+        named = await controls();
+      }
+      const shows = listRows(named);
+      note(shows ? `the list ${shows.tall} points tall in sight, ${shows.rows} rows of ${shows.row}` : "the list's height not read");
       const kept = async () => ((await untilRead("brickworksMotions", (now) => (now.motions || []).length > 0, 6)).motions || []).length > 0;
       if (!(await pressIn("motion_keep_0", "motions_close", kept))) return { why: "the suggestion's Keep took no tap" };
       const played = async () => {

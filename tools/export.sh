@@ -263,7 +263,13 @@ case "$target" in
     rm -f assets/web/all_order.txt assets/web/catalogue.bin
     godot --headless --path . --script src/dev/write_all_order.gd 2>&1 | grep -E '^(all_order|catalogue_columns)'
     [ -s assets/web/all_order.txt ] || { echo "export FAILED: no assets/web/all_order.txt (src/dev/write_all_order.gd)"; exit 1; }
-    [ -s assets/web/catalogue.bin ] || { echo "export FAILED: no assets/web/catalogue.bin (src/dev/write_all_order.gd)"; exit 1; } ;;
+    [ -s assets/web/catalogue.bin ] || { echo "export FAILED: no assets/web/catalogue.bin (src/dev/write_all_order.gd)"; exit 1; }
+    # The first screen's compile a cycle at a time, in the order the main
+    # loop loads it on an iPhone or iPad (BrickworksLoop.FIRST_ORDER): one
+    # load of all of it held every parse at once, the page's whole 432 MB of
+    # Wasm at the start (webstart12).
+    python3 tools/web/start_closure.py --order > assets/web/first_order.txt \
+      && [ -s assets/web/first_order.txt ] || { echo "export FAILED: no assets/web/first_order.txt (tools/web/start_closure.py --order)"; exit 1; } ;;
 esac
 case "$target" in
   web) build_web "Web" build/web && build_engine "Web (no threads)" build/web-nothreads build/web ;;

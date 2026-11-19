@@ -148,7 +148,18 @@ plan with Claude as the client.
   names a class Later does not load or a member main.gd does not make; `lazystart_probe`
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
-  place, and prints what each first load took. With the assistant shown,
+  place, and prints what each first load took. On an iPhone or iPad the
+  first screen is compiled a cycle at a time before main.tscn
+  (`BrickworksLoop.compile_first_screen`, from `assets/web/first_order.txt`,
+  which `tools/export.sh web` writes with `tools/web/start_closure.py
+  --order` and `pck_split.py` keeps in index.pck; webstart12, 2026-11-19:
+  the Wasm's height 432 -> 360 MB, WebKit working 19.4 -> 17.3 s; in
+  Chromium it cost 11-13% of the scripts' phase, so Chromium compiles as
+  one). `start_phases.mjs --config=iphone13` shows it as "Wasm memory at
+  its largest"; `src/dev/start_uses.gd` under `-d --profiling` with
+  `tools/web/start_uses.py` says which first-screen scripts never ran
+  before a press, and `src/dev/start_cost.gd [--pre=FILE]` times and weighs
+  the compile headless. With the assistant shown,
   Claude's connector is made as the window is built (`_make_connector`,
   its code 55 KB: it names no other Later class, which test_later checks),
   so it asks whether to listen, and the page runs its frames out of view
@@ -165,7 +176,17 @@ plan with Claude as the client.
   and load_check prints "loaded on first use", each before interactive,
   under the first pick, or after: anything before the pick is a compile
   the person waited on (the collection's arrival making the assistant
-  held a first pick 3.5 to 9 s, 2026-10-31). The pack Godot exports is cut in four after it (webload,
+  held a first pick 3.5 to 9 s, 2026-10-31). What the first pick draws and
+  the first screen does not, the ghost's shader and the connection points'
+  marks (fifteen programs, drawn in software each a sync wait), is drawn
+  once out of sight, in one frame, as soon as the model is back and the
+  page has been told the bin is usable (Main._warm_first_pick, `firstpick`
+  probe; smalls8, 2026-11-19). A first visit has the bin usable about 5 s
+  before the model is drawn, so a warm that waits longer is still running
+  at the first click. A pick slower than 600 ms cold, with no part file
+  fetched, is a shader the warm does not draw yet, or a warm still running
+  at the click: find which by wrapping WebGL2's linkProgram in an init
+  script and timing its links against the click. The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
   waits for the code alone: `index.pck` keeps the scripts the first
   screen compiles, shaders and scenes (2.2 MB brotli), and the two tables
@@ -442,12 +463,16 @@ plan with Claude as the client.
   comes back); open in another tab of this browser, the page starts no engine,
   says "Your model is open in another Brickworks tab in this browser", and
   that tab is asked over `BroadcastChannel("brickworks-tabs")` to come forward
-  (`window.focus()` where allowed; its title says "● Your model is here" for
-  six seconds); kept nowhere here (another computer), the link opens
+  (`window.focus()` where allowed; its title says "● Your model is here" at
+  once and every other 600 ms for six seconds, a title the app sets meanwhile
+  held and put back after: the app puts its own title back at every frame,
+  which had cut each "here" to one frame, smalls7 2026-11-19); kept nowhere here (another computer), the link opens
   Brickworks as `/app` does. Prove it in a browser: open `/app`, read
   `window.brickworksTab`, open `/app?tab=<it>` in a second page of the same
   context — that page has `window.brickworksElsewhere` set and no engine, and
-  the first page's title flips; close the first, reload the second, and it
+  the first page's title flips, each "here" lasting about 600 ms (a
+  MutationObserver on `<title>` in the first page times it; one frame long
+  means the app's title is cutting it again); close the first, reload the second, and it
   takes the same id. The relay
   tables are in `supabase/relay.sql` (applied 2026-10-13). `src/dev/tabs_probe.gd`
   proves it (below). With no `t` and no good token: 401 and a

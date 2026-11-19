@@ -297,7 +297,13 @@ signed in as someone else.
   drawing in software under load) 19 of 20 within it or with the rest
   within 500 ms less a frame each side, the rest being what is left after
   the key, the wait for a busy frame to end and the frames that drew it (a
-  frame that ran without drawing it counts against the app). Each round
+  frame that ran without drawing it counts against the app), or with the
+  app's own time within it: the rest less what this box's threads on its
+  way waited for a core (`tools/web/core_waits.mjs`, each thread's
+  schedstat every 10 ms: the owner's page's main thread to the send, the
+  network service's to the second page having it, the second page's from
+  the line said; each round prints "N of it waiting for a core, the app's
+  own M"; smalls7). Each round
   prints its legs: key, send, up (send to the server having it), fan (to
   the second's poll having it, told or read), say, down, frame, raster
   (the frame drawn to its fence), from the relay's `pointed` stamps on the
@@ -318,6 +324,9 @@ signed in as someone else.
   shapes refused 400, and the signature with none as it always was. And
   (pointfix) the line with it names when the server and the poll had it;
   a point sent beside an older pointer still on its way is the one kept
+  (and, smalls7, `mid_read`: told while the poll reads the database, each
+  read held 400 ms, its line goes out within 50 ms, not when the read ends;
+  base 148-320 ms)
   (`ordered`: the database's guard, `pointer_at.lt.<now>`); a point told
   while a new poll's channel is still joining goes out the moment it has
   joined (`joining`: 77 ms, against 275 before), the stand-in channel
