@@ -491,7 +491,7 @@ func _case_together() -> void:
 		refused.contains("Beam's joint") and refused.contains(Motions.UNLOCK_WORDS))
 	var saved: String = await _save("together_there.ldr")
 	_check("...and saved here as one LOCK line, the one this side writes (%s)" % str(
-		_lines_with(saved, Motions.LOCK_META)), _lines_with(saved, Motions.LOCK_META) == own_line)
+		_lines_with(saved, Motions.LOCK_META)), _texts(_lines_with(saved, Motions.LOCK_META)) == _texts(own_line))
 	while _builder.history_depth() > depth:
 		_builder.undo()
 	for node: Node in [tt, tb, tw]:
@@ -531,6 +531,12 @@ func _grab_in(world: BrickWorld, builder: Builder, library: PartLibrary, id: int
 	held.library = library
 	held.begin(id, world.get_brick(id).transform.origin, {})
 	return held
+
+
+## The lines of [method _lines_with]'s [line, text] pairs, where a line's
+## number moves with what was taken out above it.
+static func _texts(pairs: Array) -> Array:
+	return pairs.map(func(pair: Array) -> String: return str(pair[1]))
 
 
 static func _locks_of(world: BrickWorld) -> int:
