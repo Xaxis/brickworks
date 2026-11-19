@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test, ui:where each part is kept, cli:partplaces probe, cli:partplaces api test, cli:ppreview probe, cli:ppreview2 probe -->
+<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:compare with the set, lib:set check, cli:setcheck probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe, cli:keptbuilt probe, cli:keptbuilt api test, ui:where each part is kept, cli:partplaces probe, cli:partplaces api test, cli:ppreview probe, cli:ppreview2 probe -->
 
 ## Sub-features
 
@@ -417,6 +417,32 @@ which models they could build from what they have. Added 2026-10-12.
   "open", or a saved model's or example's name; "set 1234"/"model 1234"), and
   `shop=` writes the list to buy where export_model writes. A set under test in
   a bench run (`DesignMemory.holds`) is compared by neither.
+- `compare with the set` and `set check` (APP_UX10 #4, setcheck, 2026-11-19;
+  `src/ui/compare_view.gd`'s third mode, `src/parts/set_check.gd`): File,
+  Compare, Compare with the set… (Shell `compare_set`) checks the model against a real
+  set's own model from the library (the set it was opened from,
+  `ModelStore.from_set`, or one typed by number), as the side panel Compare
+  with a save uses, wider. Each part taken away, added, swapped (another
+  moulding of its number, `Collection.family_of`, or the same kind, size and
+  studs, `Collection._shape`: "a near mould"), recoloured, moved (half an LDU
+  or a turn is enough) or in another sub-model is a row under the set's own
+  step it is in (its author's STEP lines, per sub-model: "step 3 of the Wing,
+  which goes on in step 12"), with where it is in the model: its sub-model
+  and the line of its file ("the Wing (copy 2), line 412"), a part taken away
+  on the line the set has it. A row pressed selects its part and frames it (a
+  part taken away, its red ghost); a model that is the set says it matches.
+  Drawn as a save's comparison is. Paired by the line each part was read
+  from when the model is the set's file opened (`ModelStore.opened_lines`,
+  `Brick.origin`), else by place: a set built by hand anywhere is compared
+  where it stands (`shifted`). Steps are never a change (an edit tidies a
+  section's step numbers). A flexible part LDCad generated (a hose, a rope, a
+  spring) is one part, its skin, on both sides (`CustomParts.put_skins`); the
+  set comes from `from_set` or the file's main model name ("0 FILE 6399 -
+  main.ldr"), and a number typed for one model is not kept for the next. Reads only: the set's file on a worker past
+  256 KB with the status bar saying so, kept for the next check
+  (`SetCheck.reading_of`). `compare_with_set` (set=, most=, show=) says the
+  same to a session in one call, each change with its #N and the edit_model
+  call that puts it back.
 - `official models' parts lists` (`src/dev/collection_models.gd`): the 1,575
   `vendor/omr` models counted with the app's own LDraw reader, leaving out
   what nobody can own (a primitive drawn into the model, a sub-model the file
@@ -542,6 +568,8 @@ godot --headless --path . --script src/dev/collection_probe.gd
 tools/probe.sh collection_arrives_probe   # fetched as they sign in, read first thing with no panel made
 # two sets or models compared, and the list to buy (1400x900; PROBE_SIZE=1280x720 too)
 tools/probe.sh comparesets_probe -- --shots=DIR
+# a model checked against its set's own steps: ten sets, nine changes each (headless)
+tools/probe.sh setcheck_probe          # SETCHECK_ONLY=7140-1 for one set
 godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd   # needs a display
 # building from a set's parts: the counts down, undo, delete, over, saved (1280x720; PROBE_SIZE=1400x900 too)
 tools/probe.sh setbin_probe -- --shots=DIR

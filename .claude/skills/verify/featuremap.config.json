@@ -4856,6 +4856,27 @@
       "area": "collection"
     },
     {
+      "kind": "ui",
+      "label": "compare with the set",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh setcheck_probe   (File, Compare, Compare with the set…: the model checked against the set it was opened from, or one typed by number, from the library; each part taken away, added, swapped, recoloured, moved or in another sub-model listed under the set's own step, with its sub-model and line; a row pressed selects the part and frames it; a set the model is says it matches; drawn on the model as a save's comparison is; Esc or Close puts the view back. SETCHECK_ONLY=7140-1 for one set)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "set check",
+      "entry": "src/parts/set_check.gd",
+      "reach": "tools/probe.sh setcheck_probe   (SetCheck: the set's file read as an open reads it, on a worker past 256 KB; paired by the line each part was read from when the model is the set's file, else by place, part and colour; kinds taken, added, swapped (near mould: another moulding or the same kind, size and studs), recoloured, moved, regrouped; steps the author's, per sub-model; a session: compare_with_set)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "setcheck probe",
+      "entry": "src/dev/setcheck_probe.gd",
+      "reach": "tools/probe.sh setcheck_probe   (headless; plays the library with tools/web/serve.py on port 10901; SETCHECK_ONLY=NUMBER for one set)",
+      "area": "collection"
+    },
+    {
       "kind": "lib",
       "label": "parts compare",
       "entry": "src/parts/parts_compare.gd",

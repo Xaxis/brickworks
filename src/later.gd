@@ -111,6 +111,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# Missing and moved parts, after a person's open (movedparts).
 	&"MovedPartsDialog": "res://src/ui/moved_parts_dialog.gd",
 	&"CompareView": "res://src/ui/compare_view.gd",
+	# setcheck (APP_UX10 #4): the model checked against its set's own steps,
+	# Compare's third mode and a session's compare_with_set.
+	&"SetCheck": "res://src/parts/set_check.gd",
 	&"PatternDialog": "res://src/ui/pattern_dialog.gd",
 	&"FeedbackDialog": "res://src/ui/feedback_dialog.gd",
 	&"CommandPalette": "res://src/ui/command_palette.gd",

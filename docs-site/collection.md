@@ -1,5 +1,5 @@
 ---
-tools: parts_list, edit_collection
+tools: parts_list, edit_collection, compare_with_set
 panels: CollectionDialog#my-collection
 ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= puts how many of each named part a set they own is missing to a count, all its copies together, and says each change as was N, now M so it can be put back; none=true says a set has nothing missing only while nothing is marked, and is refused otherwise, naming what is: the lots are named to unmark them, or none=true is sent again with marked= the number of lots it named; missing= is sent alone, not with add= or remove=. edit_collection built= marks sets kept built on a shelf (["7140-1"], or {set, copies} for how many copies, 0 to take them apart), each said as was N; a built copy's parts, its spares apart, are left out of what can be built, the bin and mine=true; built= is sent alone.
 rules:
@@ -147,4 +147,18 @@ A set you marked **Built** is left out: its parts stand on your shelf, and only 
 <!-- covers
 ui:compare two sets or models
 lib:parts compare
+-->
+
+## Check a build against its set {#set-check}
+
+**File › Compare › Compare with the set…** checks the model you have open against the real set's own model from the library: the set it was opened from, or one you type by its number (*7140* or *7140-1*). Every difference is a row under the set's own step it is in, as its author stepped it (*step 3 of the Wing, which goes on in step 12*):
+
+- a part **taken away**, **added**, **recoloured**, **moved** (even a stud, or turned), **swapped** for another moulding of it, or put in **another sub-model**;
+- where it is in your model: its sub-model and the line of the file (*the Wing (copy 2), line 412*).
+
+Press a row to select that part and frame it; a part taken away shows as a red ghost where the set has it. A model that is the set says it matches. Your Claude asks the same with `compare_with_set`, and is told how to put each change back. The check only reads: your model and its file are left as they were.
+
+<!-- covers
+ui:compare with the set
+lib:set check
 -->

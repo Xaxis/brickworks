@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 232 | 115 | 110 | 112 | 112 |
-| Studio | 232 | 118 | 113 | 115 | 115 |
-| Mecabricks | 232 | 116 | 111 | 113 | 113 |
-| LDCad | 232 | 118 | 114 | 116 | 116 |
+| Brickworks | 233 | 115 | 110 | 112 | 113 |
+| Studio | 233 | 118 | 113 | 115 | 116 |
+| Mecabricks | 233 | 116 | 111 | 113 | 114 |
+| LDCad | 233 | 118 | 114 | 116 | 117 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -38,7 +38,9 @@ added one with a key under every preset: 226, 109 without a key under the app's 
 (pointat, Alt-W) and Find and replace… (swapfind, Ctrl-Shift-H; LDCad's Ctrl-Shift-F since
 smalls4), each with a key under every preset, and File › Import › Into this model…
 (intomodel3), View › Panels › Colour and Reset panel layout (panelfold), each with none: 232
-now, 112 without a key under the app's keys, 120 with one.
+then, 112 without a key under the app's keys, 120 with one. File › Compare › Compare with the
+set… (setcheck, APP_UX10 #4) added one more with none: 233 now, 113 without a key under the
+app's keys.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -166,6 +168,7 @@ Ctrl-Shift-F.
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
 | `compare_sets` | File › Compare › Compare two sets or models | — | — | — | rarely | all | two sets or models side by side, now and then |
+| `compare_set` | File › Compare › Compare with the set | — | — | — | rarely | all | a build checked against its set once it is built or changed |
 | `import_into` | File › Import › Into this model… | — | — | — | once a model | all | a model chosen once, from File › Import, beside the other imports |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
 | `export_io` | File › Export › BrickLink Studio model (.io) | — | — | — | once a model | all | made once a model is done |

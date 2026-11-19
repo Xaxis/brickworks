@@ -2905,6 +2905,14 @@
       "tests": []
     },
     {
+      "id": "cli:setcheck probe",
+      "kind": "cli",
+      "entry": "src/dev/setcheck_probe.gd",
+      "reach": "tools/probe.sh setcheck_probe   (headless; plays the library with tools/web/serve.py on port 10901; SETCHECK_ONLY=NUMBER for one set)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:sets browser flow",
       "kind": "cli",
       "entry": "tools/web/sets_flow.mjs",
@@ -4618,6 +4626,14 @@
       ]
     },
     {
+      "id": "lib:set check",
+      "kind": "lib",
+      "entry": "src/parts/set_check.gd",
+      "reach": "tools/probe.sh setcheck_probe   (SetCheck: the set's file read as an open reads it, on a worker past 256 KB; paired by the line each part was read from when the model is the set's file, else by place, part and colour; kinds taken, added, swapped (near mould: another moulding or the same kind, size and studs), recoloured, moved, regrouped; steps the author's, per sub-model; a session: compare_with_set)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "lib:shapes said as patterns",
       "kind": "lib",
       "entry": "src/ai/patterns.gd",
@@ -5630,6 +5646,14 @@
       "entry": "src/ui/compare_view.gd",
       "reach": "tools/probe.sh compare_probe   (File, Compare, Compare with\u2026, or Compare on a row of Versions\u2026: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:compare with the set",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh setcheck_probe   (File, Compare, Compare with the set\u2026: the model checked against the set it was opened from, or one typed by number, from the library; each part taken away, added, swapped, recoloured, moved or in another sub-model listed under the set's own step, with its sub-model and line; a row pressed selects the part and frames it; a set the model is says it matches; drawn on the model as a save's comparison is; Esc or Close puts the view back. SETCHECK_ONLY=7140-1 for one set)",
+      "area": "collection",
       "tests": []
     },
     {

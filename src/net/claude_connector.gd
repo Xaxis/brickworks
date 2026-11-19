@@ -636,7 +636,7 @@ const SUBJECT_CALLS := ["how_real_sets_build_this", "plan_scale", "find_referenc
 const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "selection",
 	"edit_model", "edit_selection", "where_to_attach", "attachment_points", "move_part",
 	"mirror_parts", "split_parts", "merge_parts", "make_unique", "colour_hidden_parts",
-	"weakest_joints", "edit_steps", "make_sections", "suggest_sections", "break_out_section",
+	"weakest_joints", "compare_with_set", "edit_steps", "make_sections", "suggest_sections", "break_out_section",
 	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model",
 	"view_board",
 	# Edit, Pattern…'s grid on the parts standing (PatternTool).
