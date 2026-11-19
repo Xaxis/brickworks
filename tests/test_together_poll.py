@@ -242,3 +242,13 @@ def test_a_part_pointed_out_beside_a_pointer_on_its_way_is_kept():
     assert ordered["kept"]["look"]["n"] == 1763000000009 and ordered["kept"]["at"] == [1, 2, 3], ordered
     assert ordered["read"] == 1763000000009, ordered
 
+
+
+def test_a_part_pointed_out_while_the_poll_reads_goes_out_when_told_not_when_the_read_ends():
+    rounds = _run()["mid_read"]["rounds"]
+    # Each read of the database held 400 ms: a poll is in one most of its
+    # wait. Told on the channel mid-read, the line goes out then; it waited
+    # out the read before (148-320 ms here; 377, 648 and 1144 ms on
+    # previews, the server's "say" leg, smalls7 2026-11-19).
+    assert len(rounds) == 3 and all(one["ms"] is not None for one in rounds), rounds
+    assert all(one["ms"] - one["stalled"] < 50 for one in rounds), rounds

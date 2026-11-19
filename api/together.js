@@ -688,6 +688,13 @@ async function poll(request, me, response = null) {
     learned.set(account, [at, Date.now(), via]);
   };
   let wake = null;
+  // A streaming poll's line for a pointer told, said the moment it is told
+  // (tellNow, below), whether the poll rests or is reading the database.
+  // Told only while it rested, a pointer told mid-read waited out that read
+  // before its line went: the server's own "say" leg was 377, 648 and 1144
+  // ms in three rounds of 440 (rel-m313, pollreads, smalls4), each one
+  // slow read, and 40-80 ms in a third of the rest (smalls7, 2026-11-19).
+  let tellNow = null;
   // Listened on from the start, and who is in it read once it listens: what
   // was told before then is in that read, and what is told after is heard.
   // Read first and listened on after, a pointer told in between was heard
@@ -705,7 +712,7 @@ async function poll(request, me, response = null) {
     if (was && Date.parse(was.pointer_at) >= Date.parse(said.pointer_at)) return;
     moved.set(said.account, said);
     learn(said.account, said.pointer_at, "told");
-    wake?.();
+    (tellNow || wake)?.();
   });
   // This person heard from (their row, if they are in it and not taken
   // out), then the session and who is in it at once. A poll begins again
@@ -789,6 +796,15 @@ async function poll(request, me, response = null) {
     if (!response.headersSent) response.setHeader("Content-Type", LINES);
     response.write(`${JSON.stringify({ more: true, people, seen: signature, at: Date.now(), ...pointed() })}\n`);
   };
+  if (streams) {
+    tellNow = () => {
+      const now = peopleOut(id, session, withMoved(all), me);
+      const signature = signatureOf(now);
+      if (signature === told) return;
+      people = now;
+      say(signature);
+    };
+  }
   const answer = async (rows, signature) => {
     // No more than about ANSWER_MOST at once: the rest at the next poll.
     let size = 0;
@@ -876,6 +892,7 @@ async function poll(request, me, response = null) {
     }
   } finally {
     wake = null;
+    tellNow = null;
     channel.close();
   }
 }
