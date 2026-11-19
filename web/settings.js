@@ -5,7 +5,8 @@
 // answer, whom your profile shows you follow and whether it shows the
 // models you liked (supabase/avatars.sql), the AI apps that may work
 // in your tabs, your feedback with where each report stands and our answers
-// (api/_feedback.js), signing out and deleting the account. Your profile itself (name, handle, words, links, pins) is
+// (api/_feedback.js), whom you blocked with Unblock beside each
+// (web/block.js, supabase/block.sql), signing out and deleting the account. Your profile itself (name, handle, words, links, pins) is
 // changed on /profile, with Edit profile (docs/SOCIAL.md U6, D9).
 //
 // Signed in with the app's own sign-in in this browser (account.js). Every
@@ -18,6 +19,8 @@ import {
 import { langAt, say, told } from "/card.js";
 import { codeBoxes } from "/code-boxes.js";
 import { showFeedCount } from "/follow.js";
+import { avatarHtml } from "/kit.js";
+import { blockPerson } from "/block.js";
 
 const $ = (id) => document.getElementById(id);
 // The codes emailed from here, a box per digit (web/code-boxes.js, signinux
@@ -129,6 +132,43 @@ async function claude() {
       else end.disabled = false;
     });
     list.append(make("li", "", words, end));
+  }
+}
+
+/// Whom you blocked, newest first, each with Unblock (GET /api/people?op=blocks).
+/// Unblocking brings back their models and comments, not the follows.
+async function blocked() {
+  const answer = await call("/api/people?op=blocks").catch(() => null);
+  const list = $("blocked");
+  list.replaceChildren();
+  const people = answer && answer.status === 200 && Array.isArray(answer.body.people) ? answer.body.people : null;
+  $("blocked-part").hidden = Boolean(answer && answer.status === 200 && answer.body.ready === false);
+  if (!people) {
+    $("blocked-said").textContent = say("Whom you blocked could not be read just now.");
+    return;
+  }
+  $("blocked-said").textContent = people.length
+    ? say("Their models and comments stay out of your way, and they can’t follow you or comment on your models. They aren’t told.")
+    : say("Nobody. To block somebody, use Block in the More menu on their profile, or beside one of their comments.");
+  for (const one of people) {
+    const name = String(one.name || one.handle);
+    const who = make("a", "who");
+    who.href = `${langAt()}/u/${encodeURIComponent(one.handle)}`;
+    const face = document.createElement("template");
+    face.innerHTML = avatarHtml({ handle: one.handle, name, picture: one.picture }, { size: "small" });
+    who.append(face.content.firstElementChild, make("span", "", make("b", "", name), " ", make("small", "", `@${one.handle}`)));
+    const since = when(one.at);
+    const end = make("button", "link", say("Unblock"));
+    end.type = "button";
+    end.setAttribute("aria-label", say("Unblock {name}", { name }));
+    end.addEventListener("click", async () => {
+      end.disabled = true;
+      const done = await blockPerson(one.handle, name, false);
+      $("blocked-done").textContent = done.said;
+      if (done.ok) blocked();
+      else end.disabled = false;
+    });
+    list.append(make("li", "", who, since ? make("small", "", say("since {date}", { date: since })) : "", end));
   }
 }
 
@@ -370,6 +410,7 @@ async function load() {
   // The beta's row only while the account says the beta is open: with it
   // off the page asks nothing of /api/plans, as before (billing_flow).
   const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null),
+    blocked().catch(() => null),
     ageNow.then(() => (betaOpen() ? beta() : drawBeta(null))).catch(() => drawBeta(null))]);
   const answer = await call("/api/people?op=me");
   if (answer.status === 401) {

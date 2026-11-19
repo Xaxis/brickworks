@@ -4128,6 +4128,27 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "blocking a person",
+      "entry": "supabase/block.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/block.sql --dry --try=tools/block_try.sql --table=blocks   (applied live 2026-11-19; api/_blocks.js, the promises in tests/test_blocks.py; then tools/web/block_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "block a person",
+      "entry": "web/block.js",
+      "reach": "https://brickworks.diy/u/<handle> (More › Block <name>), /m/<id> (Block beside a comment), /settings#blocked-part (Blocked people, Unblock)   (POST /api/people?op=block, GET ?op=blocks)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "block browser flow",
+      "entry": "tools/web/block_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/block_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh block: throwaway Ada, Bob and Cy; or a relay on the live project, relay_server.mjs 10981 --static=web)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "mentions browser flow",
       "entry": "tools/web/mentions_flow.mjs",

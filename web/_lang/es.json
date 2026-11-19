@@ -1072,7 +1072,6 @@
   "What is counted · Brickworks": "Qué se cuenta · Brickworks",
   "What is counted": "Qué se cuenta",
   "Brickworks counts how its site and its studio are used, so it can tell what helps people build and what gets in their way. It counts acts, never what they hold: that a model was saved, never the model.": "Brickworks cuenta cómo se usan su sitio y su estudio, para saber qué ayuda a construir y qué estorba. Cuenta acciones, nunca lo que contienen: que se guardó un modelo, nunca el modelo.",
-  "Updated 18 November 2026": "Actualizado el 18 de noviembre de 2026",
   "What is never counted": "Qué no se cuenta nunca",
   "When you are asked": "Cuándo se te pregunta",
   "Turning it off": "Desactivarlo",
@@ -1089,7 +1088,9 @@
   "Only the owner of Brickworks, in the site’s own console. The visit counter described in the <a href=\"/privacy#your-visit\">privacy policy</a> is a separate one.": "Solo el propietario de Brickworks, en la consola del propio sitio. El contador de visitas descrito en la <a href=\"/privacy#your-visit\">política de privacidad</a> es otro distinto.",
   "How Brickworks counts the way its site and studio are used: what is counted, what never is, how you are asked, and how to turn it off.": "Cómo cuenta Brickworks el uso de su sitio y su estudio: qué se cuenta, qué nunca, cómo se te pregunta y cómo desactivarlo.",
   "What Brickworks counts of how it is used, and what it never does.": "Qué cuenta Brickworks de cómo se usa, y qué no cuenta nunca.",
-  "<input type=\"checkbox\" id=\"mail-news\"> Email me Brickworks news: new features and planned maintenance, a few times a month at most": "<input type=\"checkbox\" id=\"mail-news\"> Envíame por correo las novedades de Brickworks: nuevas funciones y mantenimientos previstos, unas pocas veces al mes como mucho"
+  "<input type=\"checkbox\" id=\"mail-news\"> Email me Brickworks news: new features and planned maintenance, a few times a month at most": "<input type=\"checkbox\" id=\"mail-news\"> Envíame por correo las novedades de Brickworks: nuevas funciones y mantenimientos previstos, unas pocas veces al mes como mucho",
+  "Blocked people": "Personas bloqueadas",
+  "Whom you blocked. Their models and comments stay out of your way, and they can’t follow you or comment on your models. They aren’t told.": "A quién has bloqueado. Sus modelos y comentarios no te estorban, y no pueden seguirte ni comentar tus modelos. No se les avisa."
  },
  "scripts": {
   "Copy": "Copiar",
@@ -2942,6 +2943,32 @@
   "News": "Novedades",
   "Unsubscribe": "Darse de baja",
   "Stop Brickworks news by email to this address?": "¿Dejar de recibir las novedades de Brickworks por correo en esta dirección?",
-  "That did not work just now. Press Unsubscribe again in a minute.": "No ha funcionado ahora mismo. Pulsa Darse de baja de nuevo en un minuto."
+  "That did not work just now. Press Unsubscribe again in a minute.": "No ha funcionado ahora mismo. Pulsa Darse de baja de nuevo en un minuto.",
+  "Block {name}? Their models leave your gallery and feed, their comments on your models are hidden, and follows between you end. They aren’t told.": "¿Bloquear a {name}? Sus modelos salen de tu galería y tu feed, sus comentarios en tus modelos se ocultan y dejáis de seguiros. No se le avisa.",
+  "Sign in to block somebody: we email you a code, no password.": "Inicia sesión para bloquear a alguien: te enviamos un código por correo, sin contraseña.",
+  "You blocked {name}. Unblock them here or in Settings › Blocked people.": "Has bloqueado a {name}. Desbloquéalo aquí o en Ajustes › Personas bloqueadas.",
+  "You unblocked {name}: their models and comments are back. Follows between you aren’t.": "Has desbloqueado a {name}: sus modelos y comentarios vuelven. Los seguimientos entre vosotros, no.",
+  "Unblock {name}": "Desbloquear a {name}",
+  "Block {name}": "Bloquear a {name}",
+  "Whom you blocked could not be read just now.": "No se ha podido leer ahora a quién has bloqueado.",
+  "Their models and comments stay out of your way, and they can’t follow you or comment on your models. They aren’t told.": "Sus modelos y comentarios no te estorban, y no pueden seguirte ni comentar tus modelos. No se les avisa.",
+  "Nobody. To block somebody, use Block in the More menu on their profile, or beside one of their comments.": "Nadie. Para bloquear a alguien, usa Bloquear en el menú Más de su perfil o junto a uno de sus comentarios.",
+  "Unblock": "Desbloquear",
+  "since {date}": "desde el {date}",
+  "Blocking is not open on Brickworks yet.": "Bloquear aún no está disponible en Brickworks.",
+  "That is you: you cannot block yourself.": "Eres tú: no puedes bloquearte a ti mismo.",
+  "That is a lot of blocking in a short time: try again in an hour.": "Son muchos bloqueos en poco tiempo: vuelve a intentarlo en una hora.",
+  "You have blocked 1,000 people, the most there can be: unblock somebody first.": "Has bloqueado a 1.000 personas, el máximo: desbloquea primero a alguien.",
+  "You blocked them. Unblock them in Settings › Blocked people to follow them.": "Has bloqueado a esta persona. Desbloquéala en Ajustes › Personas bloqueadas para seguirla.",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to comment here.": "Has bloqueado a quien diseñó este modelo. Desbloquéalo en Ajustes › Personas bloqueadas para comentar aquí.",
+  "You blocked somebody in this conversation. Unblock them in Settings › Blocked people to reply here.": "Has bloqueado a alguien de esta conversación. Desbloquéalo en Ajustes › Personas bloqueadas para responder aquí.",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to post a photo here.": "Has bloqueado a quien diseñó este modelo. Desbloquéalo en Ajustes › Personas bloqueadas para publicar una foto aquí.",
+  "You blocked whoever made this collection. Unblock them in Settings › Blocked people to follow it.": "Has bloqueado a quien creó esta colección. Desbloquéalo en Ajustes › Personas bloqueadas para seguirla.",
+  "You can’t follow this profile.": "No puedes seguir este perfil.",
+  "You can’t comment on this model.": "No puedes comentar este modelo.",
+  "You can’t reply to this comment.": "No puedes responder a este comentario.",
+  "You can’t post a photo of a build on this model.": "No puedes publicar una foto de una construcción en este modelo.",
+  "You can’t follow this collection.": "No puedes seguir esta colección.",
+  "Block": "Bloquear"
  }
 }

@@ -38,6 +38,8 @@
 // Announcements, api/_announce.js), each in a group of its own, until it is
 // withdrawn. Nothing says
 // who followed you: a follow tells nobody anything (supabase/follows.sql).
+// Nothing by somebody you blocked (supabase/block.sql): their rows leave
+// the list and the count on your avatar (api/_blocks.js).
 //
 // Until notifications.sql is applied its functions are not there (404),
 // and what the feed tells of your models is read from the feed of before
@@ -51,6 +53,7 @@ import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
+import { blockedHandles, countsOff, rowsWithout } from "./_blocks.js";
 
 const NOT_THERE = /: 404$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -302,8 +305,11 @@ export async function notifications(request, response, { origin }) {
   // Opened: what was counted is seen now, with any level reached since.
   await marked(asker);
   const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
-  const read = page && page.missing ? await listBefore(asker, true) : page;
-  if (!read) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
+  const listed = page && page.missing ? await listBefore(asker, true) : page;
+  if (!listed) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
+  // Nothing by anybody they blocked.
+  const handles = await blockedHandles(asker);
+  const read = handles.size ? { ...listed, rows: rowsWithout(listed.rows, handles) } : listed;
   // Each line in the language the page asks in (?lang=).
   const lang = String(request.query?.lang || "en");
   return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,
@@ -354,13 +360,15 @@ export async function notificationsRead(request, response) {
 /// before until that file is applied. A level reached is written down
 /// first, so it is in the count at once.
 export async function newCounts(asker) {
-  const [both, since] = await Promise.all([
+  const [both, since, off] = await Promise.all([
     marked(asker).then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
     call("feed_new_count", { viewer: asker }, () => null),
+    // What came from people they blocked, taken off (supabase/block.sql).
+    countsOff(asker),
   ]);
   if (both && !both.missing) {
-    const notices = Number(both.notifications) || 0;
-    const feed = since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0;
+    const notices = Math.max(0, (Number(both.notifications) || 0) - off.notifications);
+    const feed = Math.max(0, (since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0) - off.feed);
     return { count: Math.min(notices + feed, 99), notifications: notices, feed, ready: true };
   }
   const count = await call("feed_count", { viewer: asker }, () => null);

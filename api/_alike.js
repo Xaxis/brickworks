@@ -131,7 +131,8 @@ export async function designersAlike(person, asker, tests) {
     const states = await Promise.all(batch.map((one) => followsOf(named.get(one.id).handle, asker)));
     batch.forEach((one, i) => {
       const state = states[i];
-      if (!state || !state.ready || state.mine || state.you_follow || out.length >= ALIKE_MOST) return;
+      // Never anybody the asker blocked (followsOf's you_block).
+      if (!state || !state.ready || state.mine || state.you_follow || state.you_block || out.length >= ALIKE_MOST) return;
       const who = named.get(one.id);
       out.push({ handle: who.handle, name: who.name, alike: alikeOf(one), kinds: one.kinds, tags: one.tags,
         follow: { you_follow: false, mine: false, followers: state.followers, may: state.may, why_not: state.why_not,
