@@ -998,6 +998,11 @@ static var skins: Dictionary = {}
 ## A generated sub-model's text -> [its skin's id, the skin's text], or
 ## ["", ""] for one that draws only parts: what begin_skins made of it.
 static var _skins_of_body: Dictionary = {}
+## Held round each write of [member _skins_of_body] and each read off the
+## frame: a set checked against (SetCheck.read_set) puts its skins on a
+## worker while an open may write the table, and a Dictionary read as it is
+## written can crash. Made at class load, never later.
+static var _skins_lock: Mutex = Mutex.new()
 
 
 ## Whether [param part_id] is a flexible part's skin built from a file.
@@ -1044,14 +1049,18 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		# its sub-model before the open (unreached_by): 8466-1's are 36 MB.
 		model.skin_texts[body] = made_of
 		if made_of.is_empty():
+			_skins_lock.lock()
 			_skins_of_body[body] = ["", ""]
+			_skins_lock.unlock()
 			continue
 		if sources.is_empty():
 			sources = model.section_texts.duplicate()
 			sources.merge(model.embedded_sources)
 		var text: String = made_of["text"]
 		var id: String = _skin_id(library, key, text)
+		_skins_lock.lock()
 		_skins_of_body[body] = [id, text]
+		_skins_lock.unlock()
 		var entry: Dictionary = {"key": key, "sub": sub, "id": id, "text": text,
 			"sources": sources, "pieces": pieces, "task": -1, "built": [null]}
 		if not (library.parts.has(id) and library.custom_source(id) == text):
@@ -1126,12 +1135,8 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 ## or added: a skin the library has not got for that text is left as
 ## drawing. A save reads its text back before it may go over anyone's
 ## file (SourceFile.gate): read without, 31037-1's rope read back as 50
-## cylinders (keeptext4).
-## On a worker, pass [param seen_bodies] from [method skins_seen], taken on
-## the frame: an open writes the skins' table on the frame (begin_skins),
-## and a Dictionary read on a worker while it is written can crash.
-static func put_skins(library: PartLibrary, model: LdrModel, seen_bodies: Variant = null) -> void:
-	var known: Dictionary = _skins_of_body if seen_bodies == null else seen_bodies
+## cylinders (keeptext4). Safe on a worker (SetCheck.read_set_paced).
+static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 	var pieces: Dictionary = {}
 	for key: String in model.generated:
 		var sub: LdrModel.SubModel = model.submodels.get(key)
@@ -1139,7 +1144,9 @@ static func put_skins(library: PartLibrary, model: LdrModel, seen_bodies: Varian
 			continue
 		var body: String = str(model.section_texts.get(key, ""))
 		var id: String = ""
-		var seen: Array = known.get(body, [])
+		_skins_lock.lock()
+		var seen: Array = _skins_of_body.get(body, [])
+		_skins_lock.unlock()
 		if not seen.is_empty():
 			id = str(seen[0])
 		else:
@@ -1157,12 +1164,6 @@ static func put_skins(library: PartLibrary, model: LdrModel, seen_bodies: Varian
 		piece.line = int(at[0])
 		kept.append(piece)
 		sub.placements = kept
-
-
-## The skins' table as it stands, for [method put_skins] on a worker: a
-## copy, its texts shared, not copied.
-static func skins_seen() -> Dictionary:
-	return _skins_of_body.duplicate()
 
 
 ## A skin built (PartForge.build_skin) put in the library as a part no bin

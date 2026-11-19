@@ -171,10 +171,7 @@ var _model_steps: Dictionary = {}
 ## The parts a set's file [param text] puts down, as the app opens it
 ## (ModelDiff.parts_of_text, keeping each part's step, line and place in the
 ## file); a part this app's library has no part of is counted, not kept.
-## [param skins_seen] is CustomParts.skins_seen() taken on the frame, for a
-## read on a worker; null on the frame.
-static func read_set(text: String, library: PartLibrary, name: String = "set",
-		skins_seen: Variant = null) -> Reading:
+static func read_set(text: String, library: PartLibrary, name: String = "set") -> Reading:
 	var side := Reading.new()
 	var model: LdrModel = LdrModel.parse(text, name)
 	if model == null:
@@ -183,7 +180,7 @@ static func read_set(text: String, library: PartLibrary, name: String = "set",
 	# A flexible part LDCad generated (a hose, a rope) is one part, its skin,
 	# as the open puts it on the baseplate; read as its hundred pieces it
 	# was none, and the model's own read as added (6080-1, 10179-1).
-	CustomParts.put_skins(library, model, skins_seen)
+	CustomParts.put_skins(library, model)
 	var lines: PackedStringArray = text.split("\n")
 	side.line_count = lines.size()
 	for n: int in range(0, lines.size(), _stride(lines.size())):
@@ -219,10 +216,10 @@ static func read_set(text: String, library: PartLibrary, name: String = "set",
 static func read_set_paced(text: String, library: PartLibrary, name: String = "set") -> Reading:
 	if text.length() < READ_OFF_FRAME_FROM:
 		return read_set(text, library, name)
-	# The skins' table copied here, on the frame: an open writes it on the
-	# frame, and put on the frame 8466-1's skins held a frame 0.9 s.
-	var seen: Dictionary = CustomParts.skins_seen()
-	return await WorkerTasks.awaited(func() -> Reading: return read_set(text, library, name, seen),
+	# Its skins put there too (CustomParts locks the table they are read
+	# from): put on the frame, 8466-1's held a frame 0.9 s, and a copy of the
+	# table taken on the frame held 42100-1's 0.4 s.
+	return await WorkerTasks.awaited(func() -> Reading: return read_set(text, library, name),
 		"read a set's file to check a model against", library)
 
 
