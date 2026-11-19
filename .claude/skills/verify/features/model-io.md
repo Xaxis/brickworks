@@ -160,7 +160,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a save writes changed since the frame after the open or save (`_as_kept`:
   name, floor, views, lights, motions, program, looks, picture, links,
   credit); then the file's own Name line, a floor it never said and a step's
-  parts in their order are kept. Otherwise the kept text is still written
+  parts in their order are kept. That holds for someone else's file too, whose
+  writer put keepbytes' bk_odd "0 !brickworks page new" in capitals. Otherwise the kept text is still written
   while the model differs from it only in its build order (STEP lines and the
   order of its parts, compared by value, so "1\t0" or "24.000" is the same
   line), or in other lines at the same place (its name after Save as, its

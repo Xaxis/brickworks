@@ -1081,10 +1081,12 @@ func _same_moment(was: Array, now: Array) -> bool:
 ## [method to_text] writes it, without them}, each "" where it differs in
 ## more. {} when nothing is kept for it.
 func _kept_for(title_now: String) -> Dictionary:
+	# As it was opened, the file is the save, whoever made it: someone else's
+	# file too, whose writer put "0 !brickworks page new" in capitals.
+	if not _kept_now().is_empty() and not _writing_whole and _as_kept(title_now):
+		return {"saved": _kept_now(), "text": _without_identity(_kept_now())}
 	if not _keeps_order():
 		return {}
-	if _as_kept(title_now):
-		return {"saved": _kept_now(), "text": _without_identity(_kept_now())}
 	var at: Array = _kept_moment(title_now)
 	if _same_moment(_kept_asked, at):
 		return _kept_answer
@@ -1100,10 +1102,12 @@ func _kept_for(title_now: String) -> Dictionary:
 ## worker: each is a third of a second of Orthanc's. {} when the model
 ## changed meanwhile.
 func _kept_for_paced(title_now: String) -> Dictionary:
+	# As it was opened, the file is the save, whoever made it: someone else's
+	# file too, whose writer put "0 !brickworks page new" in capitals.
+	if not _kept_now().is_empty() and not _writing_whole and _as_kept(title_now):
+		return {"saved": _kept_now(), "text": _without_identity(_kept_now())}
 	if not _keeps_order():
 		return {}
-	if _as_kept(title_now):
-		return {"saved": _kept_now(), "text": _without_identity(_kept_now())}
 	if _same_moment(_kept_asked, _kept_moment(title_now)):
 		return _kept_answer
 	var was: Array = _kept_moment(title_now)
