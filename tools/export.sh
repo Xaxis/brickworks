@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Export a build with the presets in export_presets.cfg, then print its sizes.
-#   tools/export.sh web             build/web/            threads (needs COOP/COEP: tools/web.sh serves them)
+#   tools/export.sh web             build/web/            threads (needs COOP/COEP: tools/web.sh serves them),
+#                                   and build/web-nothreads/'s engine beside it (below)
 #   tools/export.sh web-nothreads   build/web-nothreads/  for hosts that cannot send those headers
 #   tools/export.sh mac             build/mac/Brickworks.app universal, ad-hoc signed
 #   tools/export.sh linux           build/linux/brickworks.x86_64
@@ -173,6 +174,39 @@ build_web() {
   report_web "$dir"
 }
 
+# The engine without threads beside the threaded build, for iPhones and
+# iPads when the owner's switch is on (nothreads, 2026-11-19; docs/PHONE.md,
+# "The no-threads export on WebKit"). Only its engine is deployed
+# (tools/web/place_build.py): its index.wasm and index.js, at their own
+# /e/<hash>/. So it is exported and split as the threaded build is, and only
+# the engine compressed, and every pack it made is held to the threaded
+# build's byte for byte: the page reads the threaded build's packs whichever
+# engine it starts, so the export stops if one differs.
+build_engine() {
+  local preset="$1" dir="$2" from="$3" f
+  export_one "$preset" "$dir/index.html" || return 1
+  python3 tools/web/wasm_proxy_fix.py "$dir/index.wasm" || { echo "export FAILED: $dir/index.wasm not mended"; return 1; }
+  cp assets/web/later.bin "$dir/index.parts.bin" || { echo "export FAILED: no assets/web/later.bin (tools/web_pack.py)"; return 1; }
+  python3 tools/web/pck_split.py "$dir" || { echo "export FAILED: splitting $dir/index.pck"; return 1; }
+  local pids=() p
+  for f in "$dir/index.wasm" "$dir/index.js"; do
+    squash "$f" & pids+=($!)
+  done
+  for p in "${pids[@]}"; do
+    wait "$p" || { echo "export FAILED: compressing $dir's engine"; return 1; }
+  done
+  local same=0
+  for f in index.pck index.data.pck index.parts.bin index.primitives.bin index.hdri.bin index.fonts.bin \
+      index.audio.worklet.js index.audio.position.worklet.js; do
+    [ -f "$from/$f" ] || continue
+    cmp -s "$from/$f" "$dir/$f" || { echo "export FAILED: $dir/$f is not $from/$f byte for byte: the two exports' packs differ"; return 1; }
+    same=$((same + 1))
+  done
+  [ "$same" -ge 6 ] || { echo "export FAILED: only $same of the packs to hold equal in $from"; return 1; }
+  printf "  engine without threads: wasm %s br %s; its %d packs the same as %s's, byte for byte\n" \
+    "$(human "$(bytes "$dir/index.wasm")")" "$(human "$(bytes "$dir/index.wasm.br")")" "$same" "$from"
+}
+
 build_mac() {
   export_one "macOS" "build/mac/Brickworks.app" || return 1
   local app=build/mac/Brickworks.app
@@ -232,7 +266,7 @@ case "$target" in
     [ -s assets/web/catalogue.bin ] || { echo "export FAILED: no assets/web/catalogue.bin (src/dev/write_all_order.gd)"; exit 1; } ;;
 esac
 case "$target" in
-  web) build_web "Web" build/web ;;
+  web) build_web "Web" build/web && build_engine "Web (no threads)" build/web-nothreads build/web ;;
   web-nothreads) build_web "Web (no threads)" build/web-nothreads ;;
   mac) build_mac ;;
   linux) build_linux ;;

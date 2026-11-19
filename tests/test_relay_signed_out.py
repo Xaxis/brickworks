@@ -16,6 +16,14 @@ in the 20 s after). Now the hello's session is kept with the tab's row
     closed; a hello needs a sign-in that stands, so only a new one opens it;
   - a row from before the file, with no session, is told to say hello again.
 
+And it never fails open (s6review, 2026-11-19). L1: one failed ask whether the
+column was there skipped every session check on that instance for a minute;
+the column is live, so it is always read, and a sign-in Supabase cannot be
+asked about refuses the call for now, in words that say so, and hands the tab
+nothing. L2: an account's call picked an ended tab first and was refused
+although another tab of the account was still signed in; ended tabs are set
+aside before one is chosen.
+
 Played under node through the real handler, against the stand-in database
 (tests/fixtures/relay/world.mjs), with Supabase's signing key and its sessions
 answered here as tests/test_signed_out.py answers them.
@@ -49,9 +57,16 @@ const bound = new Map();
 const hellos = [];
 const queued = [];
 let answer = () => null;
+// Supabase not answering oc_session_of (a slow or failing database).
+let failing = false;
+// The calls a waiting call took back, untaken, while the sign-in could not be checked.
+const takenBack = [];
+// This chat's pick (relay_picks), by channel: none unless a test sets it.
+let pickedChannel = null;
 w.serve = async (call, init) => {
   if (call === 'GET /auth/v1/.well-known/jwks.json') return Response.json({ keys: [jwk] });
   if (call === 'POST rpc/oc_session_of') {
+    if (failing) return Response.json({ message: 'trouble' }, { status: 500 });
     const id = JSON.parse(init.body).session;
     return Response.json({ exists: sessions.has(id), ...(bound.get(id) || { bound: false, linked: false }) });
   }
@@ -64,6 +79,15 @@ w.serve = async (call, init) => {
     const row = { id: queued.length + 1, ...JSON.parse(init.body) };
     queued.push(row);
     return Response.json([row]);
+  }
+  const back = call.match(/^DELETE relay\?id=eq\.(\d+)&taken_at=is\.null/);
+  if (back) {
+    takenBack.push(Number(back[1]));
+    return Response.json([{ id: Number(back[1]) }]);
+  }
+  if (call.startsWith('GET relay_picks?key=eq.') && pickedChannel) {
+    return Response.json([{ key: 'connection:grant', owner: OWNER, channel: pickedChannel,
+      picked_at: new Date(Date.now()).toISOString(), moved_at: null, called_at: null, did: null }]);
   }
   const asked = call.match(/^DELETE relay\?id=eq\.(\d+)&response=not\.is\.null/);
   if (asked) {
@@ -121,6 +145,31 @@ const call = async (name = 'look_at_model', method = 'tools/call') => {
 const closedFor = () => w.calls.filter((one) => one.startsWith(`PATCH relay_tabs?channel=eq.${CHANNEL}&session=eq.`))
   .map((one) => one.split('session=eq.')[1]);
 const ANSWER = { content: [{ type: 'text', text: 'the tab answered' }] };
+// The same call as Claude signed in to the account makes it (OAuth): its words,
+// and which tabs' queues it went in.
+const ACCOUNT = w.connect(OWNER);
+const askAccount = async (name = 'look_at_model', args = {}) => {
+  const before = queued.length;
+  const got = await send({}, { jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name, arguments: args } },
+    { authorization: `Bearer ${ACCOUNT}` });
+  const result = got.body?.result || {};
+  return { error: Boolean(result.isError), text: (result.content || []).map((one) => one.text).join(' '),
+    went: queued.slice(before).filter((one) => one.request.method === 'tools/call').map((one) => one.channel) };
+};
+// Two tabs of the account: castle (aaaa, used last) signed in with S, car (bbbb) with S2.
+const looks = [{ name: 'look_at_model', description: 'look', annotations: { readOnlyHint: true },
+  inputSchema: { type: 'object', properties: {} } },
+  { name: 'edit_model', description: 'edit', inputSchema: { type: 'object', properties: {} } }];
+const twoTabs = () => ({
+  castle: w.tab({ owner: OWNER, session: S, tab: 'aaaa', model: 'Castle', used_at: new Date(realNow()).toISOString(),
+    hello: { instructions: 'the tab', tools: looks } }),
+  car: w.tab({ owner: OWNER, session: S2, tab: 'bbbb', model: 'Car', used_at: new Date(realNow() - 60_000).toISOString(),
+    hello: { instructions: 'the tab', tools: looks } }),
+});
+const closedOf = (channel) => w.calls.filter((one) => one.startsWith(`PATCH relay_tabs?channel=eq.${channel}&session=eq.`))
+  .map((one) => one.split('session=eq.')[1]);
+const sessionReads = () => w.calls.filter((one) => one === 'POST rpc/oc_session_of').length;
+const IN = (row) => ({ content: [{ type: 'text', text: `answered in ${row.channel}` }] });
 console.error = () => {};
 """
 
@@ -248,23 +297,168 @@ def test_a_call_waiting_on_the_tab_is_told_as_soon_as_the_sign_in_ends() -> None
     assert got["waited"] < 5_000, got
 
 
-def test_a_database_without_the_column_goes_on_as_before() -> None:
+def test_one_failed_read_never_skips_the_session_check() -> None:
+    """s6review L1: an ask whether the column was there (select=session&limit=0)
+    failing once skipped every session check on the instance for a minute.
+    No such ask is made now: the column is always read and written."""
     got = run("""
       sessions.add(S);
-      switchedOn(null);
-      w.trouble = (one) => (one.startsWith('GET relay_tabs?select=session&limit=0') ? { status: 400 }
-        : one.startsWith('POST rpc/relay_take') ? { status: 500 } : null);
+      switchedOn(S);
+      w.trouble = (one) => (one.includes('&limit=0') ? { status: 400 } : null);
       answer = () => ANSWER;
-      const asked = await next();
-      const said = await call();
-      const kept = await hello(await signIn(S));
-      return { asked: asked.status, said, kept: kept.status, wrote: 'session' in (hellos.at(-1) || {}) };
+      const before = await call();
+      sessions.delete(S);
+      later(HELD);
+      const after = await call();
+      sessions.add(S2);
+      const kept = await hello(await signIn(S2));
+      return { before: before.text, after, kept: kept.status, wrote: hellos.at(-1)?.session,
+        asked: w.calls.filter((one) => one.includes('select=session&limit=0')).length };
     """)
     if got is None:
         return
-    assert got["asked"] == 502, got  # not refused: on to the queue
-    assert "the tab answered" in got["said"]["text"], got
-    assert got["kept"] == 204 and got["wrote"] is False, got
+    assert "the tab answered" in got["before"], got
+    assert got["after"]["error"] and not got["after"]["queued"], got
+    assert got["after"]["text"].startswith("Nothing was done: the person was signed out"), got
+    assert got["kept"] == 204 and got["wrote"] == "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", got
+    assert got["asked"] == 0, got
+
+
+def test_a_sign_in_that_cannot_be_checked_refuses_the_call_and_hands_the_tab_nothing() -> None:
+    """A failed read of oc_session_of itself (a 500, or longer than
+    SESSION_READ_S) let the call through until s6review. Now it is refused
+    for now, in words that say so; the tab is handed nothing and told to ask
+    again (503, which ClaudeConnector does in 3 s, still switched on), its
+    row is not closed, and it is answered again once Supabase is."""
+    got = run("""
+      sessions.add(S);
+      switchedOn(S);
+      answer = () => ANSWER;
+      failing = true;
+      const refused = await call();
+      const listed = await call(undefined, 'tools/list');
+      const tabs = await call('tabs');
+      const takes = () => w.calls.filter((one) => one.startsWith('POST rpc/relay_take')).length;
+      const took = takes();
+      const asked = await next();
+      const greeted = await hello(await signIn(S));
+      const tookAfter = takes();
+      failing = false;
+      const after = await call();
+      return { refused, listed, tabs, asked: asked.status, askedSaid: asked.body?.error, takes: tookAfter - took,
+        greeted: greeted.status, closed: closedFor(), after: after.text };
+    """)
+    if got is None:
+        return
+    refused = got["refused"]
+    assert refused["error"] and not refused["queued"], refused
+    assert refused["text"].startswith("Nothing was done: Brickworks could not check just now"), refused
+    assert "Call again in a minute" in refused["text"], refused
+    assert got["tabs"]["error"] and "could not check just now" in got["tabs"]["text"], got
+    # The connector stays listed in Claude; the tab is not told it was asked.
+    assert got["listed"]["tools"][:1] == ["look_at_model"] and not got["listed"]["queued"], got
+    assert got["asked"] == 503 and "could not check this tab's sign-in" in got["askedSaid"], got
+    assert got["takes"] == 0, got  # nothing handed to the tab
+    assert got["greeted"] == 503, got  # a hello is a write: refused for now (api/_auth.js), not switched off
+    assert got["closed"] == [], got
+    assert "the tab answered" in got["after"], got
+
+
+def test_an_answer_or_a_wait_while_the_sign_in_cannot_be_checked_is_not_let_through() -> None:
+    got = run("""
+      sessions.add(S);
+      switchedOn(S);
+      answer = async () => { failing = true; later(HELD); return ANSWER; };
+      const answered = await call();
+      failing = false;
+      later(HELD);
+      let flipped = false;
+      answer = () => { if (!flipped) { flipped = true; failing = true; later(HELD); } return null; };
+      const began = realNow();
+      const waited = await call();
+      return { answered: answered.text, waited: waited.text, ms: realNow() - began, takenBack, closed: closedFor() };
+    """)
+    if got is None:
+        return
+    assert "the tab answered" not in got["answered"], got
+    assert got["answered"].startswith("The person's tab answered, but Brickworks could not check"), got
+    # Not taken by the tab: taken back, only if it still was not, and refused for now.
+    assert got["waited"].startswith("Nothing was done: Brickworks could not check just now"), got
+    assert len(got["takenBack"]) == 1 and got["ms"] < 5_000, got
+    assert got["closed"] == [], got
+
+
+def test_an_accounts_call_goes_to_its_tab_still_signed_in() -> None:
+    """s6review L2: the account's castle tab, used last, was signed out on its
+    device; its car tab still stands. A look picked castle and was refused, and a
+    change was told to choose between both. Castle is set aside first now: both
+    go to car, castle is closed, and the list of tabs names car alone."""
+    got = run("""
+      sessions.add(S2);
+      const { castle, car } = twoTabs();
+      answer = IN;
+      const look = await askAccount('look_at_model');
+      const change = await askAccount('edit_model');
+      const tabs = await askAccount('tabs');
+      return { look, change, tabs: tabs.text, castle: castle.channel, car: car.channel,
+        castleClosed: closedOf(castle.channel), carClosed: closedOf(car.channel) };
+    """)
+    if got is None:
+        return
+    for said in (got["look"], got["change"]):
+        assert not said["error"] and said["went"] == [got["car"]], said
+        assert f"answered in {got['car']}" in said["text"] and said["text"].startswith("Tab bbbb"), said
+    assert got["castleClosed"] and set(got["castleClosed"]) == {"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}, got
+    assert got["carClosed"] == [], got
+    assert got["tabs"].startswith("One Brickworks tab is open") and "bbbb" in got["tabs"], got
+    assert "aaaa" not in got["tabs"], got
+
+
+def test_a_chat_that_names_or_works_in_an_ended_tab_is_told_why() -> None:
+    """A tab set aside is still the one a chat named or works in: told it was
+    signed out, never sent to another tab; and an account with none left
+    signed in is told so, not that none is open."""
+    got = run("""
+      sessions.add(S2);
+      const { castle, car } = twoTabs();
+      answer = IN;
+      const named = await askAccount('edit_model', { target: 'aaaa' });
+      const chosen = await askAccount('select_tab', { tab: 'castle' });
+      pickedChannel = castle.channel;
+      const home = await askAccount('edit_model');
+      pickedChannel = null;
+      sessions.delete(S2);
+      later(HELD);
+      const none = await askAccount('look_at_model');
+      const listed = await askAccount('tabs');
+      return { named, chosen, home, none, listed };
+    """)
+    if got is None:
+        return
+    for which in ("named", "chosen", "home", "none", "listed"):
+        said = got[which]
+        assert said["error"] and said["went"] == [], (which, said)
+        assert said["text"].startswith("Nothing was done: the person was signed out of Brickworks"), (which, said)
+
+
+def test_setting_ended_tabs_aside_reads_each_session_once_in_five_seconds() -> None:
+    """The cost the review measured: about one oc_session_of a session every
+    5 s an instance. Five calls at once read castle's session once (gone is
+    held for good) and car's once; 5 s later one more call reads car's again."""
+    got = run("""
+      sessions.add(S2);
+      twoTabs();
+      answer = IN;
+      const before = sessionReads();
+      for (let i = 0; i < 5; i += 1) await askAccount('look_at_model');
+      const five = sessionReads() - before;
+      later(HELD);
+      await askAccount('look_at_model');
+      return { five, six: sessionReads() - before };
+    """)
+    if got is None:
+        return
+    assert got["five"] == 2 and got["six"] == 3, got
 
 
 def test_a_session_orangecheck_started_ends_the_tab_once_orangecheck_is_unlinked() -> None:

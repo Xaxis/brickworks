@@ -63,10 +63,12 @@ A phone gives a browser tab far less memory than a computer does, and starts the
 - **A big model** opened from its page on a phone asks first: *About N parts: on a phone this may close the tab.* **Open it anyway** goes on; **Not now** stays on the page. Every model in the gallery today opens on a phone without asking. On a computer or a tablet nothing is asked.
 - **A browser without WebGL 2** is told at once, before the download, with what to do: turn on hardware acceleration, update the browser, or open Brickworks in another browser or on a computer. A model's page still shows its picture and its parts.
 - **A browser that will not give the app the memory it needs** is told so, with what to do: close other tabs and reload, or open Brickworks on a computer.
+- **On an iPhone or iPad,** Brickworks can start a build of its engine made for Safari there, which starts sooner and asks for less memory. Every other browser starts the usual one.
 
 <!-- covers
 ui:a phone asked before a big model opens
 ui:the loader's words for a phone and a browser without WebGL 2
+ui:the engine an iPhone or iPad starts
 -->
 
 ## Work on several models at once {#tabs}

@@ -290,6 +290,27 @@ try {
   out.phone_audit = (await db.q("select status, target_kind, target, detail from public.admin_audit where op = 'phone_rules' order by id"))
     .map((row) => ({ status: row.status, target: `${row.target_kind}:${row.target}`, asked: row.detail?.asked, said: row.detail?.said }));
 
+  // The engine iPhones and iPads start (nothreads, api/_phone.js): the
+  // threaded one until it is set; closed to anybody but the owner; refused
+  // unless on is said as true or false, and then nothing kept; set on this
+  // preview alone, read back by anybody there and in Switches; each act kept.
+  const engineAudit = async () => (await db.q("select count(*)::int as n from public.admin_audit where op = 'phone_engine'"))[0].n;
+  const engineShut = { method: "POST", query: { op: "phone_engine" }, body: { on: true } };
+  out.engine_before = (await phoneAt(preview)).json.phone_nothreads;
+  out.engine_gate = [(await askAdmin({ ...engineShut, headers: as(null) })).status, (await askAdmin({ ...engineShut, headers: as(ada) })).status];
+  out.engine_audit_gate = await engineAudit();
+  out.engine_words = await act({ op: "phone_engine" }, { on: "yes" });
+  out.engine_none = await act({ op: "phone_engine" }, {});
+  out.engine_after_refused = (await phoneAt(preview)).json.phone_nothreads;
+  out.engine_on = await act({ op: "phone_engine" }, { on: true });
+  out.engine_shown = (await phoneAt(preview)).json;
+  out.engine_live = (await phoneAt("brickworks.diy")).json.phone_nothreads;
+  out.engine_switch = (await read({ op: "switches" })).json.phone.find((one) => one.name === "phone_nothreads");
+  out.engine_off = await act({ op: "phone_engine" }, { on: false });
+  out.engine_after_off = (await phoneAt(preview)).json.phone_nothreads;
+  out.engine_audit = (await db.q("select status, target_kind, target, detail from public.admin_audit where op = 'phone_engine' order by id"))
+    .map((row) => ({ status: row.status, target: `${row.target_kind}:${row.target}`, asked: row.detail?.asked }));
+
   // What a report is, as Moderation's queue sorts it.
   const { reportKind } = await import("../../../api/admin.js");
   out.kinds = [

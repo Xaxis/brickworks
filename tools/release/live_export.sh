@@ -51,6 +51,12 @@ case "${1:-}" in
     d=$RO/exports/$tag
     mkdir -p "$RO/exports" && rm -rf "$d.$$" && mkdir "$d.$$" || exit 1
     cp -a --reflink=auto "$dir" "$d.$$/web" && echo "$sha" > "$d.$$/built_from" || { rm -rf "$d.$$"; exit 1; }
+    # ...and the engine without threads beside it, which deploy.sh reads as
+    # DIR-nothreads: a web lane that left it out would give iPhones and iPads
+    # the threaded engine whatever the owner's switch says (nothreads, 2026-11-19).
+    if [ -f "${dir%/}-nothreads/index.html" ]; then
+      cp -a --reflink=auto "${dir%/}-nothreads" "$d.$$/web-nothreads" || { rm -rf "$d.$$"; exit 1; }
+    fi
     # Whole, then named: a web lane reading live_web finds the export before or this one.
     was=$(realpath -e "$RO/live_web" 2>/dev/null)
     rm -rf "$d" && mv -T "$d.$$" "$d" && ln -sfnT "exports/$tag" "$RO/live_web.$$" && mv -T "$RO/live_web.$$" "$RO/live_web" || exit 1

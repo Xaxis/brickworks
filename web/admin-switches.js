@@ -3,7 +3,8 @@
 // kept in the audit) with a preview of it as visitors see it (web/notice.js,
 // site.css .site-notice); the settings the console keeps, the beta's
 // flipped here as in Beta (beta_switch, one act); the numbers a phone is
-// warned by (phone_rules, api/_phone.js; phonetruth); and every variable of the
+// warned by (phone_rules, api/_phone.js; phonetruth), and the engine an iPhone
+// starts (phone_engine; nothreads); and every variable of the
 // deployment by name: whether this deployment has it, which of Vercel's
 // environments have it, what it switches and where it is changed. Never a
 // value, never its length (/api/admin?op=switches, api/_console_switches.js).
@@ -133,10 +134,39 @@ $("phones-form").addEventListener("submit", async (event) => {
   $("phones-note").scrollIntoView({ block: "nearest" });
 });
 
+// Which engine an iPhone or iPad starts (nothreads, api/_phone.js): one act.
+$("phones-engine").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const send = form.querySelector('button[type="submit"]');
+  const on = form.elements.phone_nothreads.checked;
+  send.disabled = true;
+  await post({ op: "phone_engine" }, "phones-engine-note", (said) => (said.phone_nothreads
+    ? "Kept: iPhones and iPads start the engine without threads here."
+    : "Kept: iPhones and iPads start the threaded engine here, as everyone else does.")
+    + " Pages read it within a minute or two.", { body: { on },
+    after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
+  send.disabled = false;
+  $("phones-engine-note").scrollIntoView({ block: "nearest" });
+});
+
+function drawEngine(s) {
+  const form = $("phones-engine");
+  const engine = (s.phone || []).find((one) => one.kind === "switch");
+  form.querySelector('button[type="submit"]').disabled = !engine;
+  if (!engine) return say("phone_nothreads-was", "not read just now: off, as measured");
+  // A tick not yet kept stays as ticked when the page redraws.
+  if (!form.dataset.drawn) form.elements.phone_nothreads.checked = engine.value === true;
+  form.dataset.drawn = "yes";
+  say("phone_nothreads-was", engine.set ? `${engine.value ? "on" : "off"}, set ${ago(engine.set_at)}${engine.set_by ? ` by ${engine.set_by}` : ""}`
+    : "off until it is set here");
+}
+
 function drawPhones(s) {
   const form = $("phones-form");
   say("phones-scope", s.scope === "live" ? "brickworks.diy" : `this preview (${s.scope})`);
-  const rules = s.phone || [];
+  drawEngine(s);
+  const rules = (s.phone || []).filter((one) => one.kind !== "switch");
   form.querySelector('button[type="submit"]').disabled = !rules.length;
   if (!rules.length) return say("phones-said", "Not read just now: the measured numbers stand.", true);
   for (const one of rules) {

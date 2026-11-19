@@ -395,7 +395,7 @@ def test_the_numbers_a_phone_is_warned_by_are_the_owners_and_their_sites() -> No
     got = _run("api3_check.mjs")
     if got is None:
         return
-    measured = {"phone_parts": 10101, "phone_start_s": 40}
+    measured = {"phone_parts": 10101, "phone_start_s": 40, "phone_nothreads": False}
     assert got["phone_before"] == measured
     # Nobody but the owner, and nothing kept of the attempts.
     assert got["phone_gate"] == [401, 404] and got["phone_audit_gate"] == 0
@@ -408,7 +408,8 @@ def test_the_numbers_a_phone_is_warned_by_are_the_owners_and_their_sites() -> No
     assert got["phone_after_refused"] == measured
     # A zero-width space typed into the number is not part of it.
     assert got["phone_set"]["status"] == 200 and got["phone_set"]["json"]["phone_parts"] == 1200
-    assert got["phone_shown"]["status"] == 200 and got["phone_shown"]["json"] == {"phone_parts": 1200, "phone_start_s": 40}
+    assert got["phone_shown"]["status"] == 200 and got["phone_shown"]["json"] == {"phone_parts": 1200, "phone_start_s": 40,
+                                                                                    "phone_nothreads": False}
     # A preview's numbers are the preview's alone.
     assert got["phone_live"] == measured
     # One named alone leaves the other as it was.
@@ -420,6 +421,33 @@ def test_the_numbers_a_phone_is_warned_by_are_the_owners_and_their_sites() -> No
     assert [one["status"] for one in got["phone_audit"]] == [400, 400, 400, 400, 200, 200]
     assert {one["target"] for one in got["phone_audit"]} == {"setting:phone"}
     assert got["phone_audit"][4]["asked"] == {"phone_parts": "1​200", "phone_start_s": "40"}
+
+
+def test_the_engine_iphones_and_ipads_start_is_the_owners_switch_and_its_sites() -> None:
+    """nothreads (api/_phone.js, docs/PHONE.md): Switches › Phones, read by every page at /api/plans?op=phone."""
+    got = _run("api3_check.mjs")
+    if got is None:
+        return
+    # Off until the owner sets it: the threaded engine, as everyone else starts.
+    assert got["engine_before"] is False
+    assert got["engine_gate"] == [401, 404] and got["engine_audit_gate"] == 0
+    # Only true or false: "yes", or nothing said, refused with the switch's own words, and nothing kept.
+    for refused in ("engine_words", "engine_none"):
+        assert got[refused]["status"] == 400, got[refused]
+        assert got[refused]["json"]["error"] == "iPhones and iPads use the engine without threads: say on as true or false."
+    assert got["engine_after_refused"] is False
+    assert got["engine_on"]["status"] == 200 and got["engine_on"]["json"]["phone_nothreads"] is True
+    assert got["engine_shown"]["phone_nothreads"] is True and got["engine_shown"]["phone_start_s"] == 30
+    # A preview's switch is the preview's alone: brickworks.diy's pages still start the threaded engine.
+    assert got["engine_live"] is False
+    switch = got["engine_switch"]
+    assert switch["kind"] == "switch" and switch["value"] is True and switch["set"] and switch["fallback"] is False
+    assert switch["said"] == "iPhones and iPads use the engine without threads" and switch["why"]
+    assert switch["set_by"] == "owner@example.com"
+    assert got["engine_off"]["status"] == 200 and got["engine_after_off"] is False
+    assert [one["status"] for one in got["engine_audit"]] == [400, 400, 200, 200]
+    assert {one["target"] for one in got["engine_audit"]} == {"setting:phone_nothreads"}
+    assert got["engine_audit"][2]["asked"] == {"on": "true"}
 
 
 def test_the_phone_numbers_read_by_the_pages_are_the_apis_measured_ones() -> None:

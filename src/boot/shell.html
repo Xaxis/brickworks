@@ -14,9 +14,14 @@
   as CSS boxes in real LEGO® colours, with no studs: our own pictures draw
   no brick and knob (docs/TRADEMARKS.md, Decisions, 2026-10-13).
 
-  The placeholders Godot substitutes at export time are the contract:
-  $GODOT_PROJECT_NAME, $GODOT_HEAD_INCLUDE, $GODOT_URL, $GODOT_CONFIG,
-  $GODOT_THREADS_ENABLED. Do not rename them.
+  The placeholders Godot substitutes at export time are the contract: the
+  names GODOT_PROJECT_NAME, GODOT_HEAD_INCLUDE, GODOT_CONFIG and
+  GODOT_THREADS_ENABLED with a dollar sign before each, where they stand
+  below. Do not rename them. Godot fills one in a comment too, so this one
+  does not write them out: two exports' pages then differ only where their
+  engines do (tools/web/place_build.py). The engine's script is named from
+  GODOT_CONFIG, not by Godot's own placeholder for it: the page chooses
+  which engine it starts.
 -->
 <html lang="en">
 <head>
@@ -196,11 +201,81 @@ body {
   engine's script has come and run and this tab has chosen its session
   (claimTab): Godot's loader fetches these very addresses the same way
   (fetch, same-origin) and is handed what is already on its way.
-  deploy.sh points the pack at /b/<sha>/ with the rest, and the wasm at the
-  engine's own /e/<hash>/ (tools/web/place_build.py).
+  deploy.sh points the pack at /b/<sha>/ with the rest, and the engine at
+  its own /e/<hash>/ (tools/web/place_build.py). The pack is both engines',
+  so it is asked for at once; the engine's wasm and script once the page
+  has chosen which engine (below).
 -->
-<link rel="preload" href="index.wasm" as="fetch" crossorigin>
 <link rel="preload" href="index.pck" as="fetch" crossorigin>
+<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+
+// Which engine this page starts (nothreads, 2026-11-19; docs/PHONE.md, "The
+// no-threads export on WebKit"). The threaded one, as every page always
+// did; or, on an iPhone or iPad and only while the owner's switch
+// phone_nothreads is on (/admin#switches, Phones; /api/plans?op=phone),
+// the one without threads that deploy.sh put beside it
+// (GODOT_CONFIG.nothreads: the keys its own export's page says otherwise).
+// Every browser on iOS is WebKit, where the threaded engine started in
+// 25.2 s and this one in 17.7, and an iPhone has refused the threaded one's
+// 2 GB shared memory outright (godot#70621). Chromium is no faster without
+// threads (x1.00), so anywhere else nothing is asked and nothing changes.
+// An iPad that asks for the desktop site says it is a Mac: a Mac has no
+// touch screen. Its switch answered, or not within SWITCH_MS, the engine's
+// wasm and script are asked for; brickworksEngine.ready is then that
+// choice, and window.brickworksEngine says what it was.
+const brickworksEngine = (function () {
+	const SWITCH_MS = 2500;
+	const other = GODOT_CONFIG.nothreads || null;
+	delete GODOT_CONFIG.nothreads;
+	const chosen = window.brickworksEngine = { at: GODOT_CONFIG.engine || GODOT_CONFIG.executable,
+		threads: GODOT_THREADS_ENABLED, apple: false, asked: false, on: null };
+	try {
+		const agent = navigator.userAgent || "";
+		chosen.apple = /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1);
+	} catch (e) {}
+	let loaded = null;
+	const ready = new Promise(function (resolve) { loaded = resolve; });
+	let asked = false;
+	function load() {
+		if (asked) return;
+		asked = true;
+		const wasm = document.createElement("link");
+		wasm.rel = "preload";
+		wasm.href = chosen.at + ".wasm";
+		wasm.as = "fetch";
+		wasm.crossOrigin = "anonymous";
+		document.head.appendChild(wasm);
+		const script = document.createElement("script");
+		script.src = chosen.at + ".js";
+		script.async = false;
+		// Gone wrong too: the page then says what it would have without it.
+		script.onload = script.onerror = function () { loaded(chosen); };
+		document.head.appendChild(script);
+	}
+	if (!chosen.apple || !other) {
+		load();
+		return { ready: ready, rules: null };
+	}
+	// The same answer the first visit's time to go reads (eta, below), asked once.
+	chosen.asked = true;
+	const rules = fetch("/api/plans?op=phone").then(function (reply) { return reply.ok ? reply.json() : null; })
+		.catch(function () { return null; });
+	rules.then(function (said) {
+		if (asked) return;
+		chosen.on = Boolean(said && said.phone_nothreads === true);
+		if (chosen.on) {
+			Object.assign(GODOT_CONFIG, other);
+			chosen.at = other.engine;
+			chosen.threads = false;
+		}
+		load();
+	});
+	setTimeout(load, SWITCH_MS);
+	return { ready: ready, rules: rules };
+})();
+</script>
 $GODOT_HEAD_INCLUDE
 </head>
 <body>
@@ -234,11 +309,7 @@ $GODOT_HEAD_INCLUDE
 	</p>
 </div>
 
-<script src="$GODOT_URL"></script>
 <script>
-const GODOT_CONFIG = $GODOT_CONFIG;
-const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
-
 // This page in the app's language (2026-11-01): the one the address asks
 // for (/app?lang=de, as every link of the site says it: web/theme.js), else
 // the one chosen on the site or in the app's Settings, which both keep it
@@ -365,7 +436,9 @@ const loaderSays = (function () {
 	} catch (e) {}
 })();
 
-(function () {
+// The studio, once the engine the page chose (brickworksEngine, in <head>)
+// has its script in: as it ran right after that script when the page named it.
+brickworksEngine.ready.then(function (chosen) {
 	"use strict";
 
 	// Real LEGO® colours, straight from LDConfig: red, yellow, green, blue,
@@ -488,7 +561,7 @@ const loaderSays = (function () {
 		console.error(...parts);
 	};
 
-	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	const missing = Engine.getMissingFeatures({ threads: chosen.threads });
 	if (missing.length) {
 		// Without WebGL 2 the studio cannot draw at all, whatever comes: said
 		// plainly with what to do instead, at once rather than after the
@@ -503,7 +576,7 @@ const loaderSays = (function () {
 		// Godot's names, without its advice to whoever serves the page.
 		const names = missing.map(function (one) { return one.split(" - ")[0]; });
 		let message = loaderSays("This browser is missing: {what}.", { what: names.join(", ") });
-		if (GODOT_THREADS_ENABLED && names.some(function (one) { return /Cross-Origin|SharedArrayBuffer/.test(one); })) {
+		if (chosen.threads && names.some(function (one) { return /Cross-Origin|SharedArrayBuffer/.test(one); })) {
 			message += " " + loaderSays("Threads need the page served with {headers}.", { headers:
 				"Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Embedder-Policy: require-corp" });
 		}
@@ -1431,7 +1504,8 @@ const loaderSays = (function () {
 		const state = window.brickworksEta = { on: phone && Boolean(engineAt) && had !== engineAt, phone: phone,
 			start_s: 40, from: 0, got: 0, current: 0, total: 0, rate: 0, end: 0, left: NaN, said: "" };
 		if (state.on) {
-			fetch("/api/plans?op=phone").then(function (reply) { return reply.ok ? reply.json() : null; }).then(function (rules) {
+			// On an iPhone the engine's choice asked already: one question.
+			(brickworksEngine.rules || fetch("/api/plans?op=phone").then(function (reply) { return reply.ok ? reply.json() : null; })).then(function (rules) {
 				const told = Number(rules && rules.phone_start_s);
 				if (told >= 1 && told <= 600) state.start_s = told;
 			}).catch(function () {});
@@ -1566,7 +1640,7 @@ const loaderSays = (function () {
 		if (!memoryRefused(String((error && error.message) || error)) && !refusalSaid) fail(String(error));
 		console.error(error);
 	});
-})();
+});
 </script>
 </body>
 </html>
