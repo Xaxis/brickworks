@@ -222,6 +222,9 @@ func _site_names(label: String, text: String) -> void:
 ## under the 2 x 2 with it, whichever the file has first.
 func _case_s2() -> void:
 	await _open(_s2_text())
+	# Planned as an edited model is (kbkeep): opened and saved with no edit,
+	# the file is written as it is.
+	_store.forget_kept()
 	var first: String = await _rounds("s2")
 	var tower: String = first.substr(first.find("0 FILE tower.ldr"))
 	var body: PackedStringArray = tower.split("\n")
@@ -233,11 +236,14 @@ func _case_s2() -> void:
 		" ".join(lines) == "3005.dat STEP 3001.dat 3003.dat 3062b.dat")
 
 
-## The tower's lines the other way round: the same file saved.
+## The tower's lines the other way round: the same plan saved, each planned
+## as an edited model is.
 func _case_s2_flipped() -> void:
 	await _open(_s2_text())
+	_store.forget_kept()
 	var plain: String = await _saved()
 	await _open(_s2_text(["4", "1"], true))
+	_store.forget_kept()
 	var flipped: String = await _saved()
 	_check("s2_flipped: the tower's lines in the other order save the same file (%s)"
 		% _diff(plain, flipped), flipped == plain)

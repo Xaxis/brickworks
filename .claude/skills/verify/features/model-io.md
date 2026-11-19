@@ -156,7 +156,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is saved as kept text and never planned. A model of the app's own is kept
   too, as its file's text (`ModelStore._kept_for`), and an unedited save
   writes that text again, byte for byte. Unedited is has_unsaved_work's test
-  (no history, nothing to redo, every part it opened with) with nothing else
+  (no history, every part it opened with; edits undone and a Clear undone
+  count, as each undo is exact) with nothing else
   a save writes changed since the frame after the open or save (`_as_kept`:
   name, floor, views, lights, motions, program, looks, picture, links,
   credit); then the file's own Name line, a floor it never said and a step's

@@ -822,7 +822,8 @@ func identity() -> Dictionary:
 		"views": world.saved_views.duplicate(true) if world != null else [],
 		"cut": world.cut_kept.duplicate(true) if world != null else {},
 		"lights": world.scene_lights.duplicate(true) if world != null else [],
-		"kept": [_kept_now(), _order_said]}
+		"kept": [_kept_now(), _order_said, world != null and _opened_whole == world.generation(),
+			_kept_state, _opened_parts]}
 
 
 ## The model made what [param kept] ([method identity]) says, in the world
@@ -885,6 +886,12 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_kept_text = str(file[0])
 	_kept_in = world.generation() if not _kept_text.is_empty() else -1
 	_order_said = bool(file[1])
+	# As it was opened, if it was: a save of it then is its file to the byte.
+	_kept_state = str(file[3]) if file.size() > 4 else ""
+	_state_due = false
+	if file.size() > 4 and bool(file[2]):
+		_opened_whole = world.generation()
+		_opened_parts = int(file[4])
 	world.saved_views = (kept["views"] as Array).duplicate(true)
 	world.cut_kept = (kept["cut"] as Dictionary).duplicate(true)
 	world.scene_lights = (kept["lights"] as Array).duplicate(true)
