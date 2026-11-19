@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 233 | 115 | 110 | 112 | 113 |
-| Studio | 233 | 118 | 113 | 115 | 116 |
-| Mecabricks | 233 | 116 | 111 | 113 | 114 |
-| LDCad | 233 | 118 | 114 | 116 | 117 |
+| Brickworks | 234 | 115 | 110 | 112 | 114 |
+| Studio | 234 | 118 | 113 | 115 | 117 |
+| Mecabricks | 234 | 116 | 111 | 113 | 115 |
+| LDCad | 234 | 118 | 114 | 116 | 118 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -38,8 +38,9 @@ added one with a key under every preset: 226, 109 without a key under the app's 
 (pointat, Alt-W) and Find and replace… (swapfind, Ctrl-Shift-H; LDCad's Ctrl-Shift-F since
 smalls4), each with a key under every preset, and File › Import › Into this model…
 (intomodel3), View › Panels › Colour and Reset panel layout (panelfold), each with none: 232
-then, 112 without a key under the app's keys, 120 with one. File › Compare › Compare with the
-set… (setcheck, APP_UX10 #4) added one more with none: 233 now, 113 without a key under the
+then, 112 without a key under the app's keys, 120 with one. View › Connection points
+(jointmarks) came with none and no row, which keys4 found; File › Compare › Compare with the
+set… (setcheck, APP_UX10 #4) added one more with none: 234 now, 114 without a key under the
 app's keys.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
@@ -241,6 +242,7 @@ Ctrl-Shift-F.
 | `cut_grow` | View › Cut away by › Grow it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Grow is the strip's button |
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
+| `joint_marks` | View › Connection points | — | — | — | a few times a model | all | the marks shown with a part in hand, turned on to seat a hard joint and left on; it is a look set once, as the floor |
 | `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
 | `edges` | View › Edges and studs › Edges | — | — | — | once, kept | all | a look set once and kept on this machine, as the floor is; every picture and booklet is drawn whole whatever it says |
 | `studs` | View › Edges and studs › Studs | — | — | — | once, kept | all | a look set once and kept on this machine, as the floor is; every picture and booklet is drawn whole whatever it says |
