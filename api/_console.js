@@ -458,7 +458,7 @@ const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status",
   "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url",
   "phone_parts", "phone_start_s",
   // claude_settings: the model, effort and monthly cap chosen (never the key).
-  "model", "effort", "cap_usd", "ends", "most", "address"];
+  "model", "effort", "cap_usd", "ends", "most"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.
@@ -478,6 +478,12 @@ export function describe(op, request, answer) {
     if (given !== undefined && given !== null && given !== "" && !(key === "id" && kind === "model")) asked[key] = clip(given);
   }
   if (op === "plan" && Array.isArray(b.themes)) asked.themes = b.themes.map((one) => clip(one?.month, 7)).join(", ");
+  // The postal address at a news mail's foot (anfix) is kept; never the
+  // owner's notifications' address (notify_address), so "address" is not in ASKED.
+  if (op === "announce_mail_address") {
+    const given = b.address ?? q.address;
+    if (given !== undefined && given !== null && given !== "") asked.address = clip(given);
+  }
   // A notice's words: its English, and which languages were typed.
   if (op === "notice_set" && b.words && typeof b.words === "object") {
     asked.words = clip(b.words.en);
