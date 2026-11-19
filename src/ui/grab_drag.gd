@@ -447,6 +447,10 @@ func _let_go() -> String:
 	grab = null
 	if held.state != "moves":
 		return held.why
+	# A first move still waiting for the next to say turn or slide moves as
+	# it asked: never left where it was taken (Grab._gone_round).
+	if held.decide_now():
+		world.set_drawn(held.drawn())
 	# Let go while the pointer was turning it: it carries on at that rate.
 	# Still is what a frame saw: the last frame that found it held, not the
 	# clock at the release, which a slow frame between the last move and

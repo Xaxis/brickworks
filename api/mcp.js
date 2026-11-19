@@ -755,10 +755,19 @@ function heldWords(others) {
 
 // When this chat began in [tab]: its pick of it, or now for a chat whose
 // first call there this is (its pick is made as the call goes, after the
-// picks were read).
-function beganIn(tab, picks, key) {
-  const own = (picks || []).find((one) => one.key === key);
-  return own && own.channel === tab.channel && !own.moved_at ? Date.parse(own.picked_at) || Date.now() : Date.now();
+// picks were read). In a tab not its own (target=), when that tab first
+// answered it ([heard], which the tab says: brickworks/heard).
+function beganIn(tab, picks, key, heard = null) {
+  if (homeIn(tab, picks, key)) {
+    return Date.parse((picks || []).find((one) => one.key === key).picked_at) || Date.now();
+  }
+  return Date.parse(heard || "") || Date.now();
+}
+
+// Whether [tab] is the chat's own: its pick, not moved off.
+function homeIn(tab, picks, key) {
+  const own = key ? (picks || []).find((one) => one.key === key) : null;
+  return Boolean(own && own.channel === tab.channel && !own.moved_at);
 }
 
 // Chats the tab heard from only before this one began, in words. Claude Code
@@ -807,17 +816,33 @@ function listing(tabs, current, picks = [], key = null) {
 // there are others when there are, and that another chat works in this one:
 // one heard from since this chat began, for certain; one heard from only
 // before, as quietWords says. "Both" only for two.
-export function header(tab, answered, tabs, picks = [], key = null) {
+export function header(tab, answered, tabs, picks = [], key = null, heard = null) {
   const others = tabs.filter((one) => stateOf(one) !== "closed" && one.channel !== tab.channel).length;
   const shared = heldBy(tab, picks, key);
-  const began = beganIn(tab, picks, key);
+  const began = beganIn(tab, picks, key, heard);
   const along = shared.filter((one) => lastOf(one) > began);
   const before = shared.filter((one) => lastOf(one) <= began);
   return `Tab ${idOf(tab)}, ${modelOf(tab, answered)}.`
     + (others ? ` ${others} other tab${others === 1 ? " is" : "s are"} open; tabs lists them.` : "")
     + (along.length ? ` Careful: ${heldWords(along)}, on this same model since this chat began; the tab `
       + `shows ${along.length === 1 ? "both chats" : "every chat"} and the person can keep one.`
-      : before.length ? ` ${quietWords(before)}` : "");
+      : before.length && firstHere(tab, picks, key, heard) ? ` ${quietWords(before)}` : "");
+}
+
+// Whether this is the chat's first call in [tab]: no pick of its own there
+// as the call was read, or none called since it was made (select_tab to it
+// again). The chats heard only before it began are said then, once, as
+// quietWords promises that any calling while it works will be (along,
+// above). Said on every answer, it was 420 characters on each of one chat's
+// seven calls (APP_UX10's walk, t9; mcpreach3). In a tab not its own
+// (target=), its pick says nothing of its calls there: the tab says whether
+// it answered this chat before ([heard]), and the line was on every call
+// without it (m3review L1).
+function firstHere(tab, picks, key, heard = null) {
+  if (!homeIn(tab, picks, key)) return !(key && Date.parse(heard || ""));
+  const own = picks.find((one) => one.key === key);
+  if (!own.called_at) return true;
+  return (Date.parse(own.called_at) || 0) < (Date.parse(own.picked_at) || 0);
 }
 
 function withHeader(answer, tab, tabs, picks = [], key = null, more = "") {
@@ -825,7 +850,11 @@ function withHeader(answer, tab, tabs, picks = [], key = null, more = "") {
   if (!result || typeof result !== "object") return answer;
   const meta = result._meta && typeof result._meta === "object" ? result._meta : {};
   const content = Array.isArray(result.content) ? result.content : [];
-  const said = header(tab, meta["brickworks/model"], tabs, picks, key) + (more ? ` ${more}` : "");
+  // When the tab first answered this chat (src/net/claude_connector.gd), for
+  // the header alone: the session is not told it.
+  const heard = typeof meta["brickworks/heard"] === "string" ? meta["brickworks/heard"] : null;
+  delete meta["brickworks/heard"];
+  const said = header(tab, meta["brickworks/model"], tabs, picks, key, heard) + (more ? ` ${more}` : "");
   result.content = [{ type: "text", text: said }, ...content];
   return answer;
 }

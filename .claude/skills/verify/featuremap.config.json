@@ -4856,6 +4856,27 @@
       "area": "collection"
     },
     {
+      "kind": "ui",
+      "label": "compare with the set",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh setcheck_probe   (File, Compare, Compare with the set…: the model checked against the set it was opened from, or one typed by number, from the library; each part taken away, added, swapped, recoloured, moved or in another sub-model listed under the set's own step, with its sub-model and line; a row pressed selects the part and frames it; a set the model is says it matches; drawn on the model as a save's comparison is; Esc or Close puts the view back. SETCHECK_ONLY=7140-1 for one set)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "set check",
+      "entry": "src/parts/set_check.gd",
+      "reach": "tools/probe.sh setcheck_probe   (SetCheck: the set's file read as an open reads it, on a worker past 256 KB; paired by the line each part was read from when the model is the set's file, else by place, part and colour; kinds taken, added, swapped (near mould: another moulding or the same kind, size and studs), recoloured, moved, regrouped; steps the author's, per sub-model; a session: compare_with_set)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "setcheck probe",
+      "entry": "src/dev/setcheck_probe.gd",
+      "reach": "tools/probe.sh setcheck_probe   (headless; plays the library with tools/web/serve.py on port 10901; SETCHECK_ONLY=NUMBER for one set)",
+      "area": "collection"
+    },
+    {
       "kind": "lib",
       "label": "parts compare",
       "entry": "src/parts/parts_compare.gd",
@@ -5981,6 +6002,20 @@
       "entry": "tools/web/announce_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/announce_flow.mjs --url=<preview> --out=DIR   (never brickworks.diy; the checks' pool: the gate on every announce op; before announce.sql the section says so and Settings hides news; after it, a throwaway turns news on in Settings, the owner sets the day's most, writes one for her by handle with its preview and reach, Enter twice on Send now sends once, her avatar counts it, her Notifications show it and following its link counts read and clicked, edited for everyone, a scheduled one changed is a draft, over the day's most refused in words, withdrawn gone from her page, the notice with an end hidden by her never drawn, not for a moment, in a browser that showed it or one that never did, told by feed_count, and still seen by another; Write and Sent at 1280, 390 and 430x932 light and dark, every control named, Tab alone; the first screen never asks admin-announce.js; preview check [announce], run alone. Locally before the files: node --env-file=<only SUPABASE_URL, the two keys and MASTER_EMAIL> tools/web/relay_server.mjs PORT --hold=announce, never the whole .env)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "mcpreach3 probe",
+      "entry": "src/dev/mcpreach3_probe.gd",
+      "reach": "tools/probe.sh mcpreach3_probe; tools/relay_probe.sh mcpreach3 for r5 too   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach3_probe.gd. APP_UX10's mcpreach3: save_model over unsettled features writes the file and says what is not finished, open_model save_first= keeps a changed design and opens in 2 calls, edit_collection sets= built= adds a set kept built in 1 call with its loose parts said (a throwaway account, deleted), pose_model lists and swings a click hinge with no assembly, attachment_points on a motor says how real sets mount it and a motor on single studs is named before Simulate, edit_steps says why nothing changed and step= past the last makes one; the relay's other-chats line once a chat is tests/test_relay_chats.py)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "m3review probe",
+      "entry": "src/dev/m3review_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:10910 tools/probe.sh m3review_probe -- --held-out=31058-1 --assistant=on, and again with --assistant=on alone, a stand-in for /api/collection on 10910 (python3 -I tools/collection_standin.py 10910)   (headless: godot --headless --path . --script src/dev/m3review_probe.gd. m3review's attacks on mcpreach3, made checks by m3fix: a held-out (realset) tab's save over unsettled features refused as pre261 refused it, a person's written with nothing laid; pose_model joint= an assembly's joint begins no reading of the drag joints; edit_collection sets= with built= checks every argument before the add, and a reply lost after the add or the Built marks is told it may have been made; M3REV_ONLY=save,pose,coll,hinge,motor)",
+      "area": "mcp"
     }
   ]
 }

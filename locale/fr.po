@@ -15524,3 +15524,36 @@ msgstr "Poignée de rotation"
 
 msgid "Program for the motors"
 msgstr "Programme des moteurs"
+
+# Compare with the set (setcheck, APP_UX10 #4): File's row, the panel's title,
+# field, button and what it says with nothing to list.
+
+msgid "Compare with the set…"
+msgstr "Comparer avec le set…"
+
+msgid "Each part taken away, added, swapped, recoloured, moved or in another sub-model, by the set's own steps, and where it is in the model"
+msgstr "Chaque pièce retirée, ajoutée, échangée, recolorée, déplacée ou dans un autre sous-modèle, selon les étapes du set lui-même, et où elle se trouve dans le modèle"
+
+msgid "Compare with the set"
+msgstr "Comparer avec le set"
+
+msgid "Check"
+msgstr "Vérifier"
+
+msgid "Every part taken away, added, swapped, recoloured, moved or in another sub-model, by the set's own steps"
+msgstr "Chaque pièce retirée, ajoutée, échangée, recolorée, déplacée ou dans un autre sous-modèle, selon les étapes du set lui-même"
+
+msgid "The set's number, as on its box (7140 or 7140-1): its model from the library is what the model is checked against"
+msgstr "Le numéro du set, comme sur sa boîte (7140 ou 7140-1) : le modèle est comparé à son modèle de la bibliothèque"
+
+msgid "Every part is as the set has it, in its place, colour and sub-model."
+msgstr "Chaque pièce est comme dans le set : à sa place, dans sa couleur et dans son sous-modèle."
+
+msgid "Type the set's number, as on its box: 7140 or 7140-1."
+msgstr "Saisissez le numéro du set, comme sur sa boîte : 7140 ou 7140-1."
+
+msgid "Select it and frame it in the view"
+msgstr "Le sélectionner et le cadrer dans la vue"
+
+msgid "Checking against %s…"
+msgstr "Comparaison avec %s…"

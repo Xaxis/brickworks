@@ -45,6 +45,12 @@ if [ $merged = 0 ]; then
   if git diff --name-only --diff-filter=U | grep -qx tools/mcp_tools.json; then
     git checkout --ours tools/mcp_tools.json && git add tools/mcp_tools.json
   fi
+  # So are Analytics' names (tools/insights_names.py, from the code that counts
+  # each one): two units that each add a name conflict there every time
+  # (keepbytes, then webstart12, 2026-11-19). Either side, written again below.
+  if git diff --name-only --diff-filter=U | grep -qx api/_insights_names.js; then
+    git checkout --ours api/_insights_names.js && git add api/_insights_names.js
+  fi
   # Docs and the generated feature map: the same union every time.
   for f in $(git diff --name-only --diff-filter=U | grep -E '\.md$'); do
     out=$(python3 "$HERE/resolve_docs.py" "$f") && { echo "$out" | grep DOUBLED; git add "$f"; }
@@ -74,6 +80,10 @@ for f in $(git diff --cached --name-only --diff-filter=A -- 'tools/web/*_flow.mj
   grep -qF "$(basename "$f")" <<< "$named" \
     || { echo "UNWIRED: $(basename "$f") is in no preview check: name it in tools/release/preview_checks.sh, or mark it there '# local only: $(basename "$f")', then commit the merge"; exit 5; }
 done
+if [ -f tools/insights_names.py ]; then
+  python3 tools/insights_names.py >/dev/null && git add api/_insights_names.js \
+    || { echo "INSIGHTS: tools/insights_names.py failed on the merge"; exit 6; }
+fi
 ~/.claude/claude-core/bin/featuremap generate --write >/dev/null 2>&1
 git add .claude/skills/verify/features.json 2>/dev/null
 git "${ID[@]}" commit -q -m "$MSG" || exit 1

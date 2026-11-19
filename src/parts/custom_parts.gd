@@ -1138,7 +1138,10 @@ static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 		var seen: Array = _skins_of_body.get(body, [])
 		if not seen.is_empty():
 			id = str(seen[0])
-		else:
+		elif library.parts.has(LdrModel.stem(key) + "-flex"):
+			# With no skin of its name in the library there is none of its
+			# text either (_skin_id), so its text is not read for nothing:
+			# 8466-1's, never opened, held a set check's frame 0.9 s.
 			var made_of: Dictionary = _skin_text(library, model, sub, body, pieces)
 			if not made_of.is_empty():
 				id = _skin_id(library, key, str(made_of["text"]))

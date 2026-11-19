@@ -180,6 +180,12 @@ var _hold_screen := Vector2.ZERO
 var _last_raw: float = 0.0
 var _unwrapped: float = 0.0
 var _decided: bool = false
+## Where the first move was read when it went along the joint's line as a
+## chord of a turn round it may: the next decides ([method _gone_round]).
+var _read_screen := Vector2.ZERO
+var _read_origin := Vector3.ZERO
+var _read_direction := Vector3.ZERO
+var _read_eye: Camera3D = null
 ## Where the last stop was met, degrees; NAN for none.
 var _wall: float = NAN
 ## A frame's room test may run this long, ms (GrabDrag sets it); past it a
@@ -3888,8 +3894,17 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 		var moved: Vector2 = screen - _hold_screen
 		if moved.length() < 3.0:
 			return
+		if _read_screen != Vector2.ZERO:
+			# The first move read went along the line, as a chord of a turn
+			# may: straight on from it slides, a bend turns.
+			var on: Vector2 = screen - _read_screen
+			if on.length() < 3.0:
+				return
+			_decided = true
+			if absf(on.angle_to(_read_screen - _hold_screen)) < deg_to_rad(STRAIGHT_ON_DEG):
+				use_slide()
 		_decided = true
-		if can_slide() and eye != null:
+		if can_slide() and eye != null and _read_screen == Vector2.ZERO:
 			var a: Vector2 = eye.unproject_position(pivot)
 			var b: Vector2 = eye.unproject_position(pivot + axis * 20.0)
 			var line: Vector2 = (b - a)
@@ -3908,6 +3923,15 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 				var along: float = absf(moved.normalized().dot(line.normalized()))
 				var round: float = absf(moved.normalized().dot(turning.normalized())) \
 					if turning.length() > 0.5 else absf(moved.normalized().cross(line.normalized()))
+				if along > round * SLIDE_BIAS and _gone_round(screen, eye):
+					# Along the line, and as well a chord of a turn round it:
+					# the next move read says which.
+					_read_screen = screen
+					_read_origin = origin
+					_read_direction = direction
+					_read_eye = eye
+					_decided = false
+					return
 				if along > round * SLIDE_BIAS:
 					use_slide()
 	match mode:
@@ -3921,6 +3945,55 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 			slide_to(_pointer_along(origin, direction))
 		"ball":
 			ball_to(_pointer_twist(origin, direction))
+
+
+## How far round where the point held turns about, as the eye sees it, the
+## pointer has gone at its first move when it is turning, whichever way the
+## chord from the press points (degrees, [method _gone_round]).
+const GONE_ROUND_DEG := 25.0
+## A drag whose next move read goes on within this of the first move's way
+## is straight, degrees ([method follow]).
+const STRAIGHT_ON_DEG := 20.0
+
+
+## Let go while a first move waited for the next ([method _gone_round]),
+## none having come: it moves as that move asked, along the line, as before
+## there was any waiting. The wait is one move read 3 px on, or this.
+func decide_now() -> bool:
+	if _decided or _read_screen == Vector2.ZERO:
+		return false
+	_decided = true
+	use_slide()
+	follow(_read_origin, _read_direction, _read_screen, _read_eye)
+	return true
+
+
+## Whether the pointer has gone round a point on the joint's line, as the
+## eye sees it, about as far out as the point held is from it: then it is
+## turning, whichever way the chord from the press points. Read a frame
+## late, or a second late on a loaded box drawing in software, a pointer
+## drawn round a wheel is part way round at the first move read, and the
+## chord points half that turn off the way it set out: grab_flow's
+## flywheel, turned round, slid along its axle in two runs of four on
+## rel-m314 and on brickworks.diy (grabroot, 2026-11-19). The point gone
+## round is where the chord's square bisector meets the line: a circle's
+## centre, if the pointer went round one there.
+func _gone_round(screen: Vector2, eye: Camera3D) -> bool:
+	var way: Vector3 = axis.normalized()
+	var own: Vector3 = pivot + way * (_hold - pivot).dot(way)
+	if eye.is_position_behind(own) or eye.is_position_behind(own + way * 20.0):
+		return false
+	var centre: Vector2 = eye.unproject_position(own)
+	var line: Vector2 = eye.unproject_position(own + way * 20.0) - centre
+	var chord: Vector2 = screen - _hold_screen
+	var out: float = _hold_screen.distance_to(centre)
+	if line.length() < 1.0 or out < 4.0 or absf(chord.normalized().dot(line.normalized())) < 0.2:
+		return false
+	var line_way: Vector2 = line.normalized()
+	var about: Vector2 = centre + line_way * (chord.dot((screen + _hold_screen) / 2.0 - centre) / chord.dot(line_way))
+	var reach: float = _hold_screen.distance_to(about)
+	return reach > out * 2.0 / 3.0 and reach < out * 1.5 \
+		and absf((_hold_screen - about).angle_to(screen - about)) >= deg_to_rad(GONE_ROUND_DEG)
 
 
 ## Where the turn stood at each of the pointer's last moves: [usec, degrees].

@@ -894,6 +894,23 @@ static func _material(over: bool) -> ShaderMaterial:
 	return _materials[1 if over else 0]
 
 
+## Both batches drawn once, a mark each a thousandth of its size at
+## [param at] under [param parent], too small to cover a pixel, then let go:
+## the marks' shaders' programs made before the first part is picked
+## (Main._warm_first_pick). Drawn in software, the first pick waited for
+## them to be compiled (smalls8).
+static func warm(parent: Node, at: Vector3) -> void:
+	var rows := PackedFloat32Array()
+	_row(rows, Transform3D(Basis().scaled(Vector3.ONE * 0.001), at), [0, 0.0, 0.0], Role.TAKES)
+	var batches: Array[MultiMeshInstance3D] = [_batch(false), _batch(true)]
+	for batch: MultiMeshInstance3D in batches:
+		parent.add_child(batch)
+		_fill(batch, rows)
+	await RenderingServer.frame_post_draw
+	for batch: MultiMeshInstance3D in batches:
+		batch.queue_free()
+
+
 ## [param batch] drawing [param rows], written only when they changed: a
 ## value written again unchanged draws a frame (IdleDraw). Changed from the
 ## rows last written, kept on the batch: reading the buffer back from the

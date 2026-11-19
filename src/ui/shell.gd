@@ -325,8 +325,9 @@ const SUBMENUS: Dictionary = {
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	# edges (APP_UX6 #19): View › Edges and studs.
 	"edges_studs": ["edges", "studs"],
-	# subexport: File › Compare, a save's changes and two sets' parts.
-	"compares": ["compare", "compare_sets"],
+	# subexport: File › Compare, a save's changes and two sets' parts;
+	# setcheck (APP_UX10 #4): the model against its set's own steps.
+	"compares": ["compare", "compare_sets", "compare_set"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
 		"floor_colour_19", "floor_colour_28", "floor_colour_71", "floor_colour_72",
 		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
@@ -1190,6 +1191,11 @@ func _define() -> void:
 	_add("compare_sets", "Compare two sets or models…", 0, func() -> void: compare.open_parts(),
 		Callable(), "The parts a set, a saved model or this one shares with another, the parts "
 		+ "in only one, and what to buy to build one from the other")
+	# setcheck (APP_UX10 #4): Compare's set mode (src/ui/compare_view.gd,
+	# src/parts/set_check.gd), the model against the set's own steps.
+	_add("compare_set", "Compare with the set…", 0, func() -> void: compare.open_set(),
+		something, "Each part taken away, added, swapped, recoloured, moved or in another "
+		+ "sub-model, by the set's own steps, and where it is in the model")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
@@ -4148,6 +4154,9 @@ func _make_compare() -> void:
 	_compare.thumbnails = app.get("_thumbnails") if app != null else null
 	_compare.write_list = func(shop: String, stock: Inventory, named: String) -> String:
 		return await app.get("_exports").stock_list(shop, stock, named, true)
+	# setcheck: the set's file from the library, and the selection a row sets.
+	_compare.models = app.get("_model_library") if app != null else null
+	_compare.builder = builder
 	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_compare.offset_right = -14.0
