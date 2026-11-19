@@ -1398,6 +1398,13 @@ func _needs_at(path: String) -> Dictionary:
 
 # --- what the buttons do ------------------------------------------------
 
+## Sets added by their numbers, a copy each, as Add a set adds the ones
+## typed: the window's own add, which edit_collection's sets= makes too
+## (mcpreach3). [method CollectionStore.add]'s answer.
+func add_sets(text: String) -> Dictionary:
+	return await store.add({"from": "sets", "text": text, "mode": "add"})
+
+
 func _add_typed() -> void:
 	var text: String = _typed.text.strip_edges()
 	if text.is_empty():
@@ -1405,7 +1412,7 @@ func _add_typed() -> void:
 		return
 	_say("adding %s…" % text)
 	await _begin()
-	var result: Dictionary = await store.add({"from": "sets", "text": text, "mode": "add"})
+	var result: Dictionary = await add_sets(text)
 	_end()
 	if not str(result["error"]).is_empty():
 		_say(str(result["error"]))

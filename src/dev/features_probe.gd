@@ -163,11 +163,14 @@ func _run() -> void:
 	socket.assistant = assistant
 	root.add_child(socket)
 	var count: int = world.brick_count()
-	var refused: Variant = await socket._run_own("save_model", {"name": "owl.ldr"})
+	# A save is never refused (mcpreach3): save_model writes the file and then
+	# says this, the gate's words, with the first feature laid. With no app
+	# here to write to, the gate is asked as save_model asks it.
+	var refused: Variant = await assistant.save_gate()
 	var refused_text: String = _blocks_text(refused)
 	print("    " + refused_text.substr(0, 400).replace("\n", "\n    "))
 	_ok(refused_text.begins_with("Not saved yet: 2 of its 2 features are not settled"),
-		"save_model refuses with two features open")
+		"saving with two features open says they are not settled")
 	_ok(refused_text.contains("The eyes — feature 1 of 2") and world.brick_count() > count,
 		"...and hands the eyes back with the app's piece laid")
 	var first: FeaturePass.Proposal = assistant.feature_pass().proposal("eyes")

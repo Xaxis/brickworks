@@ -89,8 +89,9 @@ def test_several_say_the_first_ones_time_and_the_newest_ones_call_and_never_both
 
 def test_a_resumed_chats_earlier_turns_are_not_counted_or_said_to_be_working_in_it() -> None:
     # The walk's y3: this turn's chat began just now; the session's twelve earlier
-    # turns each called once, in turn, and went quiet as the next began.
-    picks = [{"key": "session:me", "picked": 2, "called": 1}]
+    # turns each called once, in turn, and went quiet as the next began. Its
+    # pick is made, and it has not called yet: this is its first call.
+    picks = [{"key": "session:me", "picked": 2, "called": None}]
     picks += [{"key": f"session:turn{n}", "picked": 45 + n * 40, "called": 25 + n * 40} for n in range(12)]
     said = header(picks)
     if said is None:
@@ -99,6 +100,24 @@ def test_a_resumed_chats_earlier_turns_are_not_counted_or_said_to_be_working_in_
     assert "12" not in said and "13" not in said, said
     assert "Before this chat's first call here, other chats called in this tab, last heard 25 s ago; none has called since." in said, said
     assert "if this conversation called Brickworks earlier, those were its own calls" in said, said
+
+
+def test_the_chats_before_it_are_said_once_a_chat_not_on_every_answer() -> None:
+    # The walk's t9: one chat's seven calls each began with the 420 characters
+    # on the chats before it (mcpreach3). Said on its first call (above); on its
+    # second, with none calling since it began, the header is the tab alone.
+    picks = [{"key": "session:me", "picked": 30, "called": 3}]
+    picks += [{"key": f"session:turn{n}", "picked": 75 + n * 40, "called": 55 + n * 40} for n in range(3)]
+    said = header(picks)
+    if said is None:
+        return
+    assert said == "Tab k2abc, “Wall”.", said
+    # Chosen again (select_tab) since its last call: its first call there, said again.
+    again = header([{"key": "session:me", "picked": 2, "called": 40}] + picks[1:])
+    assert "Before this chat's first call here, other chats called in this tab" in again, again
+    # One that calls after it began is said on every answer, as promised.
+    along = header(picks + [{"key": "session:them", "picked": 20, "called": 1}])
+    assert "Careful: another chat has been working in it" in along, along
 
 
 def test_a_chats_first_call_with_one_chat_before_it_says_that_was_and_no_count() -> None:

@@ -257,7 +257,8 @@ and subtitle=.
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
  - pose_model: lists the joints (a sub-assembly on a hinge, a turntable \
-or a clip) and swings one to an angle, as far as it has room. \
+or a clip, and a part on a click hinge a drag finds, no assembly named) and \
+swings one to an angle, as far as it has room. \
 animate_model: poses at moments, played smoothly between and rendered as \
 an animation.
  - Motions: a model keeps its own named movements in its file ("Open the \
@@ -282,8 +283,8 @@ is held with what it stands on; a frame held by nothing the parts record \
 is held still when named Frame.
  - undo: takes the last change back, or several; redo=true puts it back.
  - open_model: lists the person's saved models and the examples, and \
-opens one. Over changes not saved it is refused unless discard_changes=true, \
-and undo brings back what it replaced. Each save is kept, the \
+opens one. Over changes not saved it is refused unless save_first= a file \
+name saves them first or discard_changes=true, and undo brings back what it replaced. Each save is kept, the \
 last 20: name= with versions=true lists a model's, version=N opens one; \
 versions=true with version=N opens nothing and says what changed since that \
 save, part by part, as File, Compare, Compare with… draws it. \
@@ -452,8 +453,10 @@ func definitions() -> Array:
 			"description": ("The model's build steps, the order the booklet and the timeline "
 				+ "follow, as Edit, Build steps changes them. op \"list\" (the default) gives "
 				+ "them with the part numbers in each; \"to\" puts bricks= in step=, however "
-				+ "far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a "
-				+ "step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", "
+				+ "far, as the person drags them onto a step (a step= past the last makes a new "
+				+ "last step of them); \"next\" or \"prev\" moves bricks= a step later or earlier, "
+				+ "and on from the last step makes a new one; \"new\" makes a new step of bricks=; "
+				+ "\"earlier\", "
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
 				+ "ones first, in the same undo step."
@@ -667,8 +670,9 @@ func definitions() -> Array:
 			"name": "pose_model",
 			"description": ("Swing a part about its joint, as Build, Pose does: a sub-assembly "
 				+ "on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its "
-				+ "turns about x, y and z through the ball). With no joint it lists them, "
-				+ "numbered, with the angle each is at. joint= (number or name) and degrees= "
+				+ "turns about x, y and z through the ball); and a part on a click hinge, a hinge "
+				+ "or a turntable as a drag finds it, with no assembly named on it. With no joint "
+				+ "it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= "
 				+ "(from where it was built, -180 to 180) swings it as far as it has room; the "
 				+ "answer says where it stopped if something is in the way, and whether the pose "
 				+ "holds its own weight: each friction joint (a Technic ball, a friction pin) "
@@ -913,8 +917,9 @@ func definitions() -> Array:
 				+ "does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's "
 				+ "model of that real set, credited to whoever made it, as File, Library… does. "
 				+ "The person's work is never lost: while the model on the baseplate has "
-				+ "changes not saved, opening is refused unless discard_changes=true, and an "
-				+ "open is undone like any change (undo brings back the model it replaced). "
+				+ "changes not saved, opening is refused unless save_first= a file name saves "
+				+ "it first, as the window's Save on Save changes? does, or discard_changes=true, "
+				+ "and an open is undone like any change (undo brings back the model it replaced). "
 				+ "into=true puts name= (or library=, link=) into the model open now as one "
 				+ "sub-assembly with its author's steps, beside the model or at x= z=, as File, "
 				+ "Import, Into this model… does: nothing is replaced, every part and name of "
@@ -933,6 +938,7 @@ func definitions() -> Array:
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it"},
 				"discard_changes": {"type": "boolean"},
+				"save_first": {"type": "string", "description": "a file name, such as car.ldr: the model on the baseplate is saved in the person's models under it first, as save_model saves, and then opened over"},
 				"into": {"type": "boolean", "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced"},
 				"x": {"type": "number", "description": "with into: studs across to its low corner, on the ground; beside the model when omitted"},
 				"z": {"type": "number", "description": "with into: studs deep to its low corner"},
@@ -994,7 +1000,12 @@ func definitions() -> Array:
 				+ "its Built mark in My collection does: its parts are then left out of What can I build?, "
 				+ "My bricks, parts_list need and submit_design mine=true (its spares still count). "
 				+ "{set, copies} marks that many of its copies; copies 0 takes it apart. The reply says "
-				+ "each as was N, now M, to put back. Send built= alone. "
+				+ "each as was N, now M, to put back. Send built= alone, or with sets=. "
+				# mcpreach3 (APP_UX10's r5): a set added by its number.
+				+ "sets=[\"31058-1\"] adds a copy of each set to their collection, as Add a set in My "
+				+ "collection does, its parts from the set's inventory; with built= naming it too, it is "
+				+ "added and marked kept built in one call. The reply says each set's copies, was and now, "
+				+ "their loose parts and the pieces on hand to build with. "
 				# partplaces (APP_UX9 #14): where each part is kept.
 				+ "place=[{part, color, place}] says where they keep each part and colour (a drawer, a box, a "
 				+ "tray, as they name it: \"drawer 3\"), all in one call, for parts their collection holds (a "
@@ -1040,6 +1051,9 @@ func definitions() -> Array:
 							"set": {"type": "string", "description": "the set's number, like 7140-1"},
 							"copies": {"type": "integer", "description": "how many of its copies are kept built; 0 takes it apart"},
 						}}]}},
+				# mcpreach3: sets added by number, as My collection's Add a set.
+				"sets": {"type": "array", "description": "sets to add, a copy each, by number, like [\"31058-1\"], as Add a set in My collection; with built= naming them, added and marked built at once",
+					"items": {"type": "string", "description": "a set's number, like 31058-1"}},
 				# partplaces (APP_UX9 #14): where each part and colour is kept.
 				"place": {"type": "array", "description": "where they keep parts: each part and colour in a place they name",
 					"items": {"type": "object", "additionalProperties": false, "required": ["part", "color", "place"],
@@ -1635,6 +1649,138 @@ func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
 	return await _seeing().findings_pictured(answer, input)
 
 
+# -- a motor's mount, said before Simulate (mcpreach3) ---------------------------
+
+
+## How real sets mount a motor's case, said with attachment_points on one.
+## y6's and r1's sessions (APP_UX10's walk: 32 and 30 calls) stood a SPIKE
+## Prime large motor on 1 x 1 bricks, one stud each; Simulate then said its
+## output "turns on nothing", since the case itself swivelled on those
+## studs, and each found that out by trying move_part and other mounts.
+const MOTOR_MOUNT_WORDS := ("How real sets mount a motor's case: pins through two or more of "
+	+ "the case's own pin holes, not all on one line, into a Technic beam or frame beside it, as "
+	+ "SPIKE Prime's and Robot Inventor's own models do; or one part's two or more studs in the "
+	+ "case's holes (where_to_attach parts=[its number] lists them). Stood on parts that each "
+	+ "hold it by one stud (1 x 1 bricks or plates under it), the case swivels on them, and "
+	+ "Simulate turns the case instead of its output. The output's holes are for what it drives, "
+	+ "never for the mount.")
+## The joints a motor's case swivels on, as a drag reads them: one stud, or
+## one line of pins or an axle in round holes.
+const MOTOR_LOOSE_KINDS: Array[String] = ["stud", "pin", "axle"]
+
+
+## [param answer] of [param tool] with what it should say of a motor's
+## mount: attachment_points on a motor, how real sets mount it; check_design,
+## edit_model and submit_design, each motor in the model checked (or in the
+## design checked, by its own reading of the joints) that stands on joints
+## its case swivels on, named before Simulate is run.
+func motor_mount_said(tool: String, answer: Variant, input: Dictionary) -> Variant:
+	if app == null or assistant == null:
+		return answer
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	if world == null or library == null:
+		return answer
+	if tool == "attachment_points":
+		var asked: Array = [input] + (input.get("parts", []) as Array if input.get("parts") is Array else [])
+		for one: Variant in asked:
+			if not one is Dictionary:
+				continue
+			var part: String = str((one as Dictionary).get("part", ""))
+			if (one as Dictionary).has("brick"):
+				var brick: BrickWorld.Brick = world.get_brick(int((one as Dictionary)["brick"]))
+				part = brick.part_id if brick != null else ""
+			if not part.is_empty() and not Simulation.motor_of(library, part).is_empty():
+				return _appended(answer, MOTOR_MOUNT_WORDS)
+		return answer
+	var said: String = ""
+	if tool == "check_design" and (input.get("edit") is Dictionary or input.get("bricks") is Array):
+		said = await _trial_motors_loose(input, world, library)
+	elif not Simulation.motors_in(world.bricks(), library).is_empty():
+		said = _motors_loose(world, library)
+	return answer if said.is_empty() else _appended(answer, said)
+
+
+## The motors on the baseplate whose case a drag turns on joints of [constant
+## MOTOR_LOOSE_KINDS], as move_part would take hold of them: words, or "".
+func _motors_loose(world: BrickWorld, library: PartLibrary) -> String:
+	var grabbing: GrabDrag = app.get("_grab_drag")
+	if grabbing == null:
+		return ""
+	var loose := PackedStringArray()
+	for id: Variant in Simulation.motors_in(world.bricks(), library):
+		var held: Variant = grabbing.held_of([int(id)])
+		if held is Grab and (held as Grab).link != null and MOTOR_LOOSE_KINDS.has((held as Grab).link.kind):
+			loose.append(_motor_loose_words(world, library, int(id), (held as Grab).link))
+	return _loose_said(loose)
+
+
+## check_design's design, read as rigid bodies by itself (Bodies.read on a
+## world of its own), for its motors whose case hangs on such a joint.
+func _trial_motors_loose(input: Dictionary, world: BrickWorld, library: PartLibrary) -> String:
+	var what_if: bool = input.get("edit") is Dictionary
+	var any: bool = what_if and not Simulation.motors_in(world.bricks(), library).is_empty()
+	if not any:
+		var given: Array = (input.get("edit") as Dictionary).get("add", []) if what_if 			else input.get("bricks", [])
+		for one: Variant in given:
+			any = any or one is Dictionary and not Simulation.motor_of(library,
+				str((one as Dictionary).get("part", ""))).is_empty()
+	if not any:
+		return ""
+	var trial: Assistant.Model = assistant._edit(input["edit"]) if what_if else assistant._read_model(input)
+	if trial == null or trial.placements.is_empty():
+		return ""
+	var stage: BrickWorld = assistant._stage_of(trial)
+	var covers := Builder.new()
+	var lattice := BrickLattice.new()
+	lattice.keeps_columns = false
+	for brick: BrickWorld.Brick in stage.bricks():
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh != null:
+			lattice.occupy_boxes(brick.id, covers.boxes_for(mesh, brick.transform))
+	covers.free()
+	var bodies: Bodies = Bodies.read(stage, library, lattice, {}, {})
+	var loose := PackedStringArray()
+	for id: Variant in Simulation.motors_in(stage.bricks(), library):
+		var key: Variant = bodies.body_of.get(int(id))
+		var link: Bodies.Link = bodies.parent_link.get(key) if key != null else null
+		if link != null and link.turns and MOTOR_LOOSE_KINDS.has(link.kind):
+			# Numbered as the check numbers a design's bricks, from 0.
+			var index: int = stage.bricks().find(stage.get_brick(int(id)))
+			loose.append(_motor_loose_words(stage, library, int(id), link,
+				"brick %d" % index if not what_if else ""))
+	stage.free()
+	return _loose_said(loose)
+
+
+func _motor_loose_words(world: BrickWorld, library: PartLibrary, id: int, link: Bodies.Link,
+		named: String = "") -> String:
+	var brick: BrickWorld.Brick = world.get_brick(id)
+	var motor: String = Simulation.motor_of(library, brick.part_id) if brick != null else ""
+	return "%s, the %s, swivels %s at %s" % ["#%d" % id if named.is_empty() else named,
+		(Simulation.MOTORS[motor] as Array)[0] if Simulation.MOTORS.has(motor) else "motor",
+		link.words(), GrabDrag.at_words(link.point)]
+
+
+static func _loose_said(loose: PackedStringArray) -> String:
+	if loose.is_empty():
+		return ""
+	return ("Before Simulate, its mount: %s, as a drag reads its joints (move_part shows it). Its case "
+		+ "is held by nothing else, so Simulate would turn the case, not its output. Mount it as real "
+		+ "sets do: pins through two or more of the case's pin holes, not all on one line, into a "
+		+ "beam or a frame, or one part's two or more studs in its holes.") % "; ".join(loose)
+
+
+## [param text] said after [param answer], a String or content blocks.
+static func _appended(answer: Variant, text: String) -> Variant:
+	if answer is Array:
+		var out: Array = (answer as Array).duplicate()
+		out.append({"type": "text", "text": text})
+		return out
+	var was: String = str(answer)
+	return text if was.is_empty() else "%s\n\n%s" % [was, text]
+
+
 ## Why [param tool] is not done now, before it begins, or "".
 func refusal(tool: String, input: Dictionary) -> String:
 	# A bench's run (DesignMemory.holding): a picture or a model from a link
@@ -1845,14 +1991,25 @@ func _edit_steps(input: Dictionary) -> String:
 			if ids.is_empty():
 				return "Give bricks= the part numbers to move, from look_at_model or this list."
 			if op != "to":
-				return shell.change_steps(op, ids, null)
+				return _steps_why(shell.change_steps(op, ids, null), op, ids, steps, null)
 			if not input.has("step"):
 				return "Give step= the number of the step to put them in, from edit_steps's list."
 			var into: Instructions.Step = _step_numbered(steps, int(input["step"]))
+			var last: Instructions.Step = steps[steps.size() - 1]
+			# Past the last: a new step after it, as far as a step goes (t9's
+			# "three steps later" of a part two from the end, mcpreach3).
+			if into == null and int(input["step"]) > last.number and last.callout_step == 0:
+				var said: String = _steps_why(shell.change_steps("new", ids, last), "next", ids,
+					steps, null)
+				if said.begins_with("the steps are as they were"):
+					return said
+				return ("%s. There are %d steps, so step %d is a new one after the last: a step "
+					+ "is only made next to one with parts in it, never with empty steps "
+					+ "between.") % [said, last.number, last.number + 1]
 			if into == null:
 				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
-					steps[steps.size() - 1].number]
-			return shell.change_steps(op, ids, into)
+					last.number]
+			return _steps_why(shell.change_steps(op, ids, into), op, ids, steps, into)
 		"earlier", "later", "merge", "delete":
 			if not input.has("step"):
 				return "Give step= a step's number from edit_steps's list."
@@ -1883,6 +2040,63 @@ func _edit_steps(input: Dictionary) -> String:
 
 
 # -- the booklet, by hand --------------------------------------------------------
+
+
+## Why a step edit of parts changed nothing, after the window's own words
+## for it ([param said], Shell.change_steps): t9's `next` on a part alone in
+## the last step, and `new` on it, each answered "the steps are as they
+## were" and nothing more, and the session tried both before telling the
+## person the app would not (APP_UX10's walk; mcpreach3). [param steps] are
+## as they were before the edit. Any other answer is handed back as it is.
+static func _steps_why(said: String, op: String, ids: Array, steps: Array[Instructions.Step],
+		into: Instructions.Step) -> String:
+	if said != "the steps are as they were" or steps.is_empty():
+		return said
+	var step_of: Dictionary = {}
+	var size_of: Dictionary = {}
+	for step: Instructions.Step in steps:
+		if step.callout_step > 0:
+			continue
+		size_of[step.number] = step.brick_ids.size()
+		for brick_id: int in step.brick_ids:
+			step_of[brick_id] = step.number
+	var held: Dictionary = {}
+	for brick_id: Variant in ids:
+		if step_of.has(int(brick_id)):
+			held[step_of[int(brick_id)]] = int(held.get(step_of[int(brick_id)], 0)) + 1
+	var parts := PackedStringArray()
+	for brick_id: Variant in ids:
+		parts.append("#%d" % int(brick_id))
+	var them: String = ", ".join(parts)
+	var one: bool = ids.size() == 1
+	if held.size() != 1:
+		return ("the steps are as they were: %s %s in steps of different sub-models, and a part "
+			+ "moves only within its own sub-model's steps; move each sub-model's parts on their "
+			+ "own.") % [them, "is" if one else "are"] if held.is_empty() else said
+	var at: int = int(held.keys()[0])
+	var whole: bool = int(held[at]) >= int(size_of.get(at, 0))
+	var first: int = steps[0].number
+	var last: int = steps[steps.size() - 1].number
+	if op == "to" and into != null and into.number == at:
+		return "the steps are as they were: %s %s in step %d already." % [them,
+			"is" if one else "are", at]
+	if whole and op == "next" and at == last:
+		return ("the steps are as they were: %s %s all of step %d, the last step: a step after "
+			+ "it would leave step %d empty, and an empty step is taken out, so %s %s built last "
+			+ "already. To build %s later still, move other parts to before %s (to, with "
+			+ "step=).") % [them, "is" if one else "are", at, at, "it" if one else "they",
+			"is" if one else "are", "it" if one else "them", "it" if one else "them"]
+	if whole and op == "prev" and at == first:
+		return ("the steps are as they were: %s %s all of step %d, the first step: a step before "
+			+ "it would leave step %d empty, and an empty step is taken out, so %s %s built "
+			+ "first already.") % [them, "is" if one else "are", at, at, "it" if one else "they",
+			"is" if one else "are"]
+	if whole and op == "new":
+		return ("the steps are as they were: %s %s all of step %d already, and new makes a step "
+			+ "of parts taken out of a step they share. next or prev moves %s a step; to, with "
+			+ "step=, puts %s in any step.") % [them, "is" if one else "are", at,
+			"it" if one else "them", "it" if one else "them"]
+	return said
 
 
 ## The pages as the booklet would lay them out now (BookletMaker.lay_out_only).
@@ -2715,7 +2929,16 @@ func _pose(input: Dictionary) -> String:
 	if assistant != null:
 		assistant._tag_assemblies()
 	var joints: Array[Poser.Joint] = panel.joints_now()
-	if joints.is_empty():
+	# A click hinge, a hinge or a turntable a drag turns, with no assembly
+	# named on it, numbered after the assemblies' (mcpreach3).
+	var grabbing: GrabDrag = app.get("_grab_drag")
+	var drags: Array = _drag_joints(grabbing, joints)
+	if input.has("joint") and not drags.is_empty():
+		var picked: String = str(input["joint"]).strip_edges().trim_prefix("#")
+		if picked.is_valid_int() and int(picked) > joints.size() \
+				and int(picked) <= joints.size() + drags.size():
+			return await _pose_drag(grabbing, drags[int(picked) - joints.size() - 1], input)
+	if joints.is_empty() and drags.is_empty():
 		var world: BrickWorld = app.get("_world")
 		var builder: Builder = app.get("_builder")
 		var ids := PackedInt64Array()
@@ -2745,6 +2968,8 @@ func _pose(input: Dictionary) -> String:
 			said.append("  %d. %s, on its %s, at %d° (%d parts)%s" % [n + 1,
 				one.label(), one.kind(), roundi(one.angle), one.ids.size(),
 				", with no room to turn 10° or 90° either way" if held else ""])
+		for n: int in drags.size():
+			said.append("  %d. %s" % [joints.size() + n + 1, _drag_joint_words(grabbing, drags[n])])
 		if stuck > 0:
 			said.append("A joint with no room is often not what moves: move_part with no part= "
 				+ "lists what a drag moves, and animate_model takes those by part (#14).")
@@ -2753,7 +2978,8 @@ func _pose(input: Dictionary) -> String:
 	var asked: String = str(input["joint"]).strip_edges()
 	var joint: Poser.Joint = _joint_named(joints, asked)
 	if joint == null:
-		return "No joint %s: there are %d, numbered in pose_model's list." % [asked, joints.size()]
+		return "No joint %s: there are %d, numbered in pose_model's list." % [asked,
+			joints.size() + drags.size()]
 	if not input.has("degrees"):
 		return "%s is at %d°. Give degrees= to swing it." % [joint.label(), roundi(joint.angle)]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
@@ -2771,6 +2997,85 @@ func _pose(input: Dictionary) -> String:
 		return "%s stops at %d°%s: any further and it runs into something.%s" % [
 			joint.label(), roundi(reached), went, await _pose_holds()]
 	return "%s at %d°%s.%s" % [joint.label(), roundi(reached), went, await _pose_holds()]
+
+
+## The joints a drag turns that no assembly is named on: each a body on a
+## click hinge, a hinge or a turntable (Bodies.parent_link), as [body key,
+## Bodies.Link, its parts], biggest first, none whose parts a joint of
+## [param named] moves. r2's session built an arm on a click hinge, asked
+## pose_model, and was told "Nothing here turns" until it named the arm an
+## assembly (APP_UX10's walk; mcpreach3): a drag found its hinge at once.
+const DRAG_JOINT_KINDS: Array[String] = ["click", "hinge", "turntable"]
+## How many of them pose_model lists.
+const MOST_DRAG_JOINTS := 8
+
+
+func _drag_joints(grabbing: GrabDrag, named: Array[Poser.Joint]) -> Array:
+	if grabbing == null:
+		return []
+	grabbing.read_now()
+	var bodies: Bodies = grabbing.read_bodies()
+	if bodies == null:
+		return []
+	var posed: Dictionary = {}
+	for joint: Poser.Joint in named:
+		for id: int in joint.ids:
+			posed[id] = true
+	var out: Array = []
+	for key: Variant in bodies.parent_link:
+		var link: Bodies.Link = bodies.parent_link[key]
+		if bodies.flexible.has(key) or not link.turns or not DRAG_JOINT_KINDS.has(link.kind):
+			continue
+		var ids: PackedInt64Array = bodies.members.get(key, PackedInt64Array())
+		if ids.is_empty() or posed.has(int(ids[0])):
+			continue
+		out.append([int(key), link, ids])
+	out.sort_custom(func(x: Array, y: Array) -> bool:
+		return (x[2] as PackedInt64Array).size() > (y[2] as PackedInt64Array).size())
+	return out.slice(0, MOST_DRAG_JOINTS)
+
+
+## A drag joint's line in pose_model's list: the part a drag takes it by,
+## its joint and where, and where it stands from where it was built.
+func _drag_joint_words(grabbing: GrabDrag, drag: Array) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var link: Bodies.Link = drag[1]
+	var ids: PackedInt64Array = drag[2]
+	var brick: BrickWorld.Brick = world.get_brick(int(ids[0]))
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+	var angle: String = "as built"
+	var held: Variant = grabbing.held_of([int(ids[0])])
+	if held is Grab:
+		var built: float = (held as Grab).from_built()
+		if not is_nan(built) and roundi(wrapf(built, -180.0, 180.0)) != 0:
+			angle = "%d° from where it was built" % roundi(wrapf(built, -180.0, 180.0))
+	return "#%d %s%s, %s at %s, %s (%d part%s)%s" % [int(ids[0]),
+		Inventory._tidy(info.name) if info != null else brick.part_id if brick != null else "?",
+		" and what is built on it" if ids.size() > 1 else "", link.words(),
+		GrabDrag.at_words(link.point), angle, ids.size(), "" if ids.size() == 1 else "s",
+		", clicking every %s°" % Balance.tidy(link.detent) if link.detent > 0.0 else ""]
+
+
+## pose_model joint= one of [method _drag_joints]: turned to degrees= from
+## where it was built, as move_part turns it (GrabDrag.for_session), one
+## step to undo; with no degrees=, where it stands.
+func _pose_drag(grabbing: GrabDrag, drag: Array, input: Dictionary) -> String:
+	var ids: PackedInt64Array = drag[2]
+	var part: String = "#%d" % int(ids[0])
+	var held: Variant = grabbing.held_of([int(ids[0])])
+	if not held is Grab:
+		return "%s does not turn just now: %s." % [part, str(held)]
+	var built: float = (held as Grab).from_built()
+	var now: float = 0.0 if is_nan(built) else wrapf(built, -180.0, 180.0)
+	if not input.has("degrees"):
+		return ("%s is at %d° from where it was built. Give degrees= to swing it: degrees are from "
+			+ "where it was built, turned by the right hand about its line.") % [_drag_joint_words(grabbing,
+				drag), roundi(now)]
+	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
+	var said: String = await grabbing.for_session({"part": part, "degrees": wanted - now})
+	return "%s, to %d° from where it was built:\n%s%s" % [part, roundi(wanted), said,
+		await _pose_holds()]
 
 
 ## Whether the model holds its pose as it stands now (posehold), as Pose
@@ -3683,13 +3988,45 @@ func _open(input: Dictionary) -> String:
 	# replace_moved alone: in the model open now.
 	if replace and not opening:
 		return await _moved_said(store, true)
+	var kept: String = ""
+	if opening and not str(input.get("save_first", "")).strip_edges().is_empty():
+		kept = _save_first(store, str(input["save_first"]))
+		if not kept.is_empty() and not kept.begins_with("Saved "):
+			return kept
 	var before: int = store.world.generation()
 	var said: String = await _open_now(input)
 	# Opened: what its file names by a moved or alias number, or has no file
 	# for, said; and with replace_moved, the moved and alias ones replaced.
 	if store.world.generation() == before or not store.not_opened.is_empty():
-		return said
-	return said + await _moved_said(store, replace)
+		return _first(kept, said)
+	return _first(kept, said + await _moved_said(store, replace))
+
+
+## open_model save_first=: the model on the baseplate saved in the person's
+## models under [param asked], as save_model saves it, before an open over
+## it; "Saved ..." said, "" with nothing to save, or why not. g1's session was refused the open over
+## a car it had built, then refused the save, and stopped to ask the person
+## which of three ways to go (APP_UX10's walk; mcpreach3): the window's own
+## Save changes? asks once and saves, and this is that Save.
+func _save_first(store: ModelStore, asked: String) -> String:
+	if not store.has_unsaved_work():
+		return ""
+	var file: String = CommandSocket._model_file(asked)
+	if file.is_empty():
+		return "save_first takes a file name, such as car.ldr; nothing was saved or opened."
+	var path: String = ModelStore.SAVE_DIR + file
+	if FileAccess.file_exists(path) and path != store.saved_path(store.title):
+		return ("There is already a model called %s, and it is not this one: save_first takes "
+			+ "another name. Nothing was saved or opened.") % file
+	if assistant != null:
+		assistant._tag_assemblies()
+	if not bool(app.call("save_model", path)):
+		return "Could not write %s; nothing was opened." % file
+	return "Saved %s as %s, in the person's models, where Open finds it." % [store.title, file]
+
+
+static func _first(before: String, then: String) -> String:
+	return then if before.is_empty() else "%s %s" % [before, then]
 
 
 ## open_model's word on the parts the model open now names by a number LDraw
@@ -3860,8 +4197,10 @@ func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], vers
 ## does not discard them unasked.
 static func _unsaved_refusal(store: ModelStore) -> String:
 	return ("Not opened: the model on the baseplate, %s, has changes that are not saved, "
-		+ "and they are the person's. save_model first, or ask the person and give "
-		+ "discard_changes=true: undo then brings their model back.") % store.title
+		+ "and they are the person's. To keep them, open again with save_first= a file name "
+		+ "(car.ldr): it is saved in their models first, never refused, then opened over. Or "
+		+ "ask the person and give discard_changes=true: undo then brings their model back.") \
+		% store.title
 
 
 ## What an open that took a model off the baseplate says of it: " The model
@@ -4557,6 +4896,10 @@ func _edit_collection(input: Dictionary) -> String:
 	if marking_built and input.get("missing") != null:
 		return ("Nothing was changed: missing= marks a set's missing parts and built= the sets kept built, "
 			+ "one thing a call: send them in separate calls.")
+	# mcpreach3 (APP_UX10's r5): sets added by number, and built= on them.
+	var adding_sets: Variant = input.get("sets")
+	if adding_sets != null and not (adding_sets is Array and (adding_sets as Array).is_empty()):
+		return await _collection_sets(dialog, mine, input)
 	# partplaces (APP_UX9 #14): where each part and colour is kept.
 	var placing: Variant = input.get("place")
 	if placing != null and not (placing is Array and (placing as Array).is_empty()):
@@ -5203,6 +5546,74 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 		+ "parts_list need and submit_design mine=true, its spares apart; %s are now theirs to build with. "
 		+ "To put any back, send built=[{set, copies: the was}].") % ["\n".join(lines),
 			Counted.of(mine.pieces_on_hand(), "piece")]
+
+
+## edit_collection sets=: each set added, a copy, by the window's own Add a
+## set (CollectionDialog.add_sets), and then built= on them when it is given,
+## in one call. r5's session was asked to add 31058-1, kept built, and told
+## the person it could not: sets came in only by My collection, and built=
+## refused a set not yet theirs (APP_UX10's walk; mcpreach3). Said: each
+## set's copies, was and now, as built= says its marks, and the loose parts
+## and the pieces on hand after it.
+func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Dictionary) -> String:
+	for other: String in ["add", "remove", "missing", "place"]:
+		var also: Variant = input.get(other)
+		if also != null and not (also is Array and (also as Array).is_empty()):
+			return ("Nothing was changed: sets= adds sets and %s= is another change, one thing a call "
+				+ "(built= may come with sets=): send them in separate calls.") % other
+	var asked: Variant = input["sets"]
+	if not asked is Array:
+		return "sets is a list of set numbers, like [\"31058-1\"]."
+	if (asked as Array).size() > MOST_SETS_ADDED:
+		return "At most %d sets a call; send the rest in another." % MOST_SETS_ADDED
+	# A set's number as Rebrickable writes them: letters and digits, one at
+	# least a digit, and its version ("31058-1").
+	var shape: RegEx = RegEx.create_from_string("^(?=[a-z0-9]*[0-9])[a-z0-9]+-[0-9]+$")
+	var numbers := PackedStringArray()
+	var bad := PackedStringArray()
+	for n: int in (asked as Array).size():
+		var raw: String = str(asked[n]).strip_edges() if asked[n] is String else ""
+		var number: String = SetInventories.normal(raw)
+		if number.is_empty() or shape.search(number) == null:
+			bad.append("sets %d: a set's number, like 31058-1" % (n + 1))
+		elif numbers.has(number):
+			bad.append("sets %d: %s is named twice" % [n + 1, number])
+		else:
+			numbers.append(number)
+	if not bad.is_empty():
+		return "Nothing was changed: %s." % _reasons(bad)
+	var trouble_read: String = await mine.load_collection()
+	var before: Dictionary = {}
+	for number: String in numbers:
+		before[number] = mine.collection.copies_of(number)
+	var result: Dictionary = await dialog.add_sets(" ".join(numbers))
+	if not str(result["error"]).is_empty():
+		return "Nothing was changed: %s.%s" % [str(result["error"]),
+			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	var unknown: PackedStringArray = mine.collection.unknown_sets
+	var lines := PackedStringArray()
+	for number: String in numbers:
+		var record: Dictionary = mine.records.get(number, {})
+		lines.append("  %s%s: %s now (was %d)%s" % [number,
+			" " + str(record["n"]) if record.has("n") else "",
+			Counted.of(mine.collection.copies_of(number), "copy", "copies"), int(before[number]),
+			", no inventory is known for it, so it adds no parts" if unknown.has(number) else ""])
+	var said: String = ("Added to the person's collection, as Add a set in My collection adds it:\n%s"
+		% "\n".join(lines))
+	var built: Variant = input.get("built")
+	if built != null and not (built is Array and (built as Array).is_empty()):
+		said += "\n" + await _collection_built(mine, {"built": built})
+	else:
+		said += ("\nEvery part of it is theirs to build with until it is marked kept built on a shelf "
+			+ "(built=, or its Built mark in My collection).")
+	return said + ("\nTheir loose parts, in no set: %s in %s. Pieces on hand to build with, sets kept "
+		+ "built left out but their spares counted: %s. The person takes a set out in My collection "
+		+ "(its row's Remove).") % [Counted.of(mine.collection.loose_pieces(), "loose part"),
+			Counted.of(mine.collection.parts.size(), "lot"), Counted.of(mine.pieces_on_hand(), "piece")]
+
+
+## The most sets one sets= adds.
+const MOST_SETS_ADDED := 20
 
 
 ## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).

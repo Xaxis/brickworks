@@ -817,7 +817,19 @@ export function header(tab, answered, tabs, picks = [], key = null) {
     + (others ? ` ${others} other tab${others === 1 ? " is" : "s are"} open; tabs lists them.` : "")
     + (along.length ? ` Careful: ${heldWords(along)}, on this same model since this chat began; the tab `
       + `shows ${along.length === 1 ? "both chats" : "every chat"} and the person can keep one.`
-      : before.length ? ` ${quietWords(before)}` : "");
+      : before.length && firstHere(tab, picks, key) ? ` ${quietWords(before)}` : "");
+}
+
+// Whether this is the chat's first call in [tab]: no pick of its own there
+// as the call was read, or none called since it was made (select_tab to it
+// again). The chats heard only before it began are said then, once, as
+// quietWords promises that any calling while it works will be (along,
+// above). Said on every answer, it was 420 characters on each of one chat's
+// seven calls (APP_UX10's walk, t9; mcpreach3).
+function firstHere(tab, picks, key) {
+  const own = (picks || []).find((one) => one.key === key);
+  if (!key || !own || own.channel !== tab.channel || own.moved_at || !own.called_at) return true;
+  return (Date.parse(own.called_at) || 0) < (Date.parse(own.picked_at) || 0);
 }
 
 function withHeader(answer, tab, tabs, picks = [], key = null, more = "") {
