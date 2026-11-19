@@ -580,11 +580,38 @@ var _floor_y: float = 0.0
 ## build); worked out here otherwise.
 func measure(bricks: Array, poses: Array = [], links: Variant = null,
 		contacts: Dictionary = {}) -> Report:
+	var into: Array = [null]
+	var was: FramePace = pace
+	pace = null
+	# Never waits with no pace: done when it returns.
+	_measure_into(bricks, poses, links, contacts, into)
+	pace = was
+	return into[0]
+
+
+## Set while a weigh over frames reads (Stability.check_in_frames): the
+## loops over the parts and the joints give the frame back when its slice is
+## spent. Null on a worker and in one go.
+var pace: FramePace = null
+
+
+## Give the frame back if this slice is spent: only while [member pace] is set.
+func _breathe() -> void:
+	if pace != null and pace.due():
+		await pace.next()
+
+
+## [method measure] into [param into]'s first.
+func _measure_into(bricks: Array, poses: Array, links: Variant, contacts: Dictionary,
+		into: Array) -> void:
 	var report := Report.new()
-	var ready: bool = prepare(bricks, links, contacts)
+	into[0] = report
+	var prepared: Array = [false]
+	await _prepare_into(bricks, links, contacts, prepared)
+	var ready: bool = prepared[0]
 	report.grams = _weight()
 	if not ready:
-		return report
+		return
 	report.empty = false
 	report.support = _hull
 	report.floor_y = _floor_y
@@ -592,13 +619,16 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 	# As it stands, then each pose.
 	var weighed: Array = []         ## [centre, margin, edge index, ...] per pose
 	var worst_at: Dictionary = {}   ## joint index -> JointLoad
+	await _breathe()
 	var rest: Dictionary = _weigh({}, "", worst_at)
+	await _breathe()
 	report.unweighed = rest["unweighed"]
 	weighed.append(rest)
 	report.rest_centre = rest["centre"]
 	report.rest_margin = float(rest["margin"]) / BrickLattice.STUD
 	var worst: Dictionary = rest
 	for n: int in poses.size():
+		await _breathe()
 		var pose: Dictionary = poses[n]
 		var placed: Dictionary = pose.get("transforms", {})
 		if _through_floor(placed):
@@ -622,8 +652,10 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 
 	for one: Variant in worst_at.values():
 		report.joints.append(one)
+	await _breathe()
 	report.joints.sort_custom(func(a: JointLoad, b: JointLoad) -> bool:
 		return a.ratio > b.ratio)
+	await _breathe()
 	for one: JointLoad in report.joints:
 		if one.ratio > 1.0:
 			report.over += 1
@@ -653,7 +685,6 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 
 	if report.margin < SPARE and floor_cell == 0x7FFFFFFF:
 		_advise(report, weighed, worst)
-	return report
 
 
 ## Read [param bricks] and the joints between them once, so that poses can
@@ -661,9 +692,21 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null,
 ## being dragged about its joint (GrabDrag), weighed every frame. False for a
 ## model with nothing to stand on.
 func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) -> bool:
-	_read(bricks)
+	var into: Array = [false]
+	var was: FramePace = pace
+	pace = null
+	# Never waits with no pace: done when it returns.
+	_prepare_into(bricks, links, contacts, into)
+	pace = was
+	return into[0]
+
+
+## [method prepare] into [param into]'s first.
+func _prepare_into(bricks: Array, links: Variant, contacts: Dictionary, into: Array) -> void:
+	into[0] = false
+	await _read(bricks)
 	if _ids.is_empty():
-		return false
+		return
 	var graph: Dictionary = contacts
 	var boxes: Dictionary = {}
 	if contacts.is_empty():
@@ -677,7 +720,12 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 			var brick: BrickWorld.Brick = item
 			if _index_of.has(brick.id):
 				model.append(brick)
-		graph = judge.contacts(model)
+		graph = {}
+		judge.pace = pace
+		await judge._contacts_into(model, graph)
+		judge.pace = null
+		if _stopping():
+			return
 		boxes = graph["boxes"]
 	else:
 		# Only these bricks' boxes: what they stand on is the lowest of them.
@@ -689,26 +737,32 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 	if top == 0x7FFFFFFF and not floor_ids.is_empty():
 		top = top_of(bricks.filter(func(item: Variant) -> bool:
 			return floor_ids.has((item as BrickWorld.Brick).id)), contacts.get("boxes", {}))
+	await _breathe()
 	_ground(boxes, top if top != 0x7FFFFFFF else GROUND)
 	if (_hull.size() < 3 and floor_cell == 0x7FFFFFFF) or _stopping():
-		return false
-	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)
-	Stability.beside(graph, library, lattice)
+		return
+	await _breathe()
+	var read: Array = [null]
+	await Stability._stud_joints_into(graph, library, lattice, true, pace, read)
+	var joints: Dictionary = read[0]
+	await Stability._beside_into(graph, library, lattice, pace, [null])
 	if _stopping():
-		return false
+		return
 	_sideways = joints["sideways"]
-	var linked: Array = links if links != null else _links()
+	var linked: Array = links if links != null else await _links()
 	if _stopping():
-		return false
-	_join(joints, linked)
+		return
+	await _join(joints, linked)
+	await _breathe()
 	_grow()
 	if finds_core:
 		_find_core()
 	if _stopping():
-		return false
-	_stand_on_touches(boxes)
-	_find_bridges(boxes)
-	return not _stopping()
+		return
+	await _breathe()
+	await _stand_on_touches(boxes)
+	await _find_bridges(boxes)
+	into[0] = not _stopping()
 
 
 ## Whether [member stop] has been asked.
@@ -771,6 +825,7 @@ func _read(bricks: Array) -> void:
 	_index_of.clear()
 	_studded = PackedByteArray()
 	for item: Variant in bricks:
+		await _breathe()
 		var brick: BrickWorld.Brick = item
 		if floor_ids.has(brick.id) or _index_of.has(brick.id):
 			continue
@@ -875,6 +930,7 @@ func _links() -> Array:
 	for n: int in _ids.size():
 		entries.append([_ids[n], _rest[n], library.mesh_for(_parts[n]), _parts[n], _paths[n]])
 	var out: Array = []
+	await _breathe()
 	# The pins and axles by their lines, kept for weighing a joint they alone
 	# make (_pin_load), and given to both_ways rather than found again.
 	var lines: Array = Joints.through(entries)
@@ -884,8 +940,15 @@ func _links() -> Array:
 		var listed: Array = _pin_lines.get(key, [])
 		listed.append([str(one[2]), one[3], one[4], int(one[0])])
 		_pin_lines[key] = listed
-	for held: Dictionary in [Joints.both_ways(entries, lines), Joints.rounds(entries, false),
-			Joints.held_otherwise(entries, library)]:
+	await _breathe()
+	var both: Dictionary = Joints.both_ways(entries, lines)
+	await _breathe()
+	var round: Dictionary = {}
+	await Joints._rounds_into(entries, false, pace, round)
+	await _breathe()
+	var otherwise: Dictionary = Joints.held_otherwise(entries, library)
+	await _breathe()
+	for held: Dictionary in [both, round, otherwise]:
 		for one: Variant in held:
 			for other: Variant in held[one]:
 				out.append([int(one), int(other)])
@@ -918,6 +981,7 @@ func _join(joints: Dictionary, links: Array) -> void:
 	# the other, and no stud grips. 10264-1's Technic axle through a cross block
 	# was weighed as 7.4 g on one stud, past its working load (2026-10-22).
 	for key: int in joints["studs"]:
+		await _breathe()
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if _index_of.has(one) and _index_of.has(other):
@@ -933,6 +997,7 @@ func _join(joints: Dictionary, links: Array) -> void:
 	_touches.clear()
 	_touch_seen = seen
 	for key: int in joints["seated"]:
+		await _breathe()
 		var one: int = key >> 32
 		var other: int = key & 0xFFFFFFFF
 		if not _index_of.has(one) or not _index_of.has(other):
@@ -1099,6 +1164,7 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 	var under: Array = []
 	var lowest: Dictionary = {}          ## node -> its lowest cell
 	for touch: Array in _touches:
+		await _breathe()
 		var a: int = touch[0]
 		var b: int = touch[1]
 		var low: int = touch[2]
@@ -1115,6 +1181,7 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 		var middle: Vector3 = _rest[n] * _middle[n]
 		weighted.append(Vector2(middle.x, middle.z) * _mass[n])
 	for _round: int in 16:
+		await _breathe()
 		# What is past each part in the tree, and where, as it stands; and
 		# where each part comes in the tree's order, its own past it after it.
 		var mass := PackedFloat64Array()
@@ -1154,7 +1221,9 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 			var p: int = _parent[v]
 			nearest[v] = v if past_joint.has(v) else (nearest[p] if p >= 0 and p < count else -1)
 		var carries: Dictionary = {}     ## such node -> the touches under its far side
+		await _breathe()
 		for t: int in under.size():
+			await _breathe()
 			var high: int = under[t][0]
 			var low: int = under[t][1]
 			if pos[high] < 0 or pos[low] < 0:
@@ -1168,6 +1237,7 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 				child = nearest[p] if p >= 0 and p < count else -1
 		var taken: Dictionary = {}       ## index in under -> true
 		for child: int in carries:
+			await _breathe()
 			var corners := PackedVector2Array()
 			for t: int in carries[child]:
 				corners.append_array(_patch(under[t]))
@@ -1177,6 +1247,7 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 		# And each piece the tree does not reach from the floor.
 		var by_upper: Dictionary = _by_upper(under)
 		for piece: Array in _unreached():
+			await _breathe()
 			var standing: Array = _standing_on(piece, under, weighted, by_upper)
 			if not (standing[0] as Array).is_empty() and float(standing[1]) >= -1.0:
 				for t: int in standing[0]:
@@ -1206,7 +1277,9 @@ func _stand_on_touches(boxes: Dictionary) -> void:
 	# 1.35 times its working load, and not the bar alone at 0.13.
 	var held_there: Dictionary = {}      ## node -> true
 	var on_top: Dictionary = _by_upper(under)
+	await _breathe()
 	for piece: Array in _unreached():
+		await _breathe()
 		if not piece.all(_studs_only):
 			for n: int in piece:
 				held_there[n] = true
@@ -1365,6 +1438,7 @@ func _find_bridges(boxes: Dictionary) -> void:
 	_held_otherwise.clear()
 	_held_resting.clear()
 	for e: Variant in _bridge_edges:
+		await _breathe()
 		if _touch_edges.has(int(e)):
 			# A ball in its socket is a ball joint, though their covers only
 			# touch: 5764-1's arms, each a 57909 in a 62712, read as resting.

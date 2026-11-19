@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets, cli:the status bar's weigh over frames -->
 
 ## Sub-features
 
@@ -716,6 +716,7 @@ godot --headless --path . --script src/dev/angled_probe.gd       # not square to
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
 godot --headless --path . --script src/dev/world_view_probe.gd   # parts drawn inside their footprint sit on studs
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
+godot --headless --path . --script src/dev/weighpace_probe.gd    # the weigh over frames (no threads) says what it says in one go, 20 real models
 godot --headless --path . --script src/dev/balance_probe.gd      # margins, joints, counterweight, poses by hand
 godot --headless --path . --script src/dev/stabletruth_probe.gd  # how often the check is right: StableLego's builds, StableText2Brick's scores
 python3 tools/stablelego_ldr.py stablelego                        # the builds again from StableLego's pinned files (MIT)
@@ -727,6 +728,16 @@ godot --headless --path . --script src/dev/pieces_probe.gd       # a sticker, a 
 godot --headless --path . --script src/dev/attach_probe.gd       # are the coordinates usable
 python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if installed
 ```
+
+`weighpace_probe` holds the status bar's weigh without threads
+(`Stability.check_in_frames`: Stability, Balance and Joints give the frame
+back between parts, slices of at most `Stability.IN_FRAMES_US`, on copies
+of the model and lattice, Main._weigh stops it when the model changes) to
+the weigh in one go: the same verdict, weight, joints, risks and margins on
+twenty real models; Orthanc's longest stretch between two frames; a stopped
+weigh says null. The weigh in one go, which a worker runs, is the same code
+with no pace (`check`, `measure`, `studs_in`, `rounds` wrap their paced
+bodies).
 
 `pieces_probe` holds the one rule for what is held without a stud, a pin, a
 clip or a hinge (`Joints.held_otherwise`): a sticker is held by the face it

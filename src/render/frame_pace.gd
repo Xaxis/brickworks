@@ -32,14 +32,20 @@ static var unwatched: bool = false
 var _until: int = 0
 ## The least a slice is: [constant LEAST_US] unless asked for more.
 var _least: int = LEAST_US
+## The most: [constant MOST_US] unless asked for less.
+var _most: int = MOST_US
 
 
 ## [param least_us]: slices of at least this long, for work that draws
 ## nothing while it goes on (a model being laid, ModelStore._open_into), where
-## each frame given back costs as much again as a short slice.
-func _init(least_us: int = LEAST_US) -> void:
+## each frame given back costs as much again as a short slice. [param most_us]:
+## of at most this long, for work that goes on behind what a person does and
+## must not be felt in any frame however slow the frames are (the status bar's
+## weigh without threads, Main.weigh_joints).
+func _init(least_us: int = LEAST_US, most_us: int = MOST_US) -> void:
 	_least = least_us
-	_until = Time.get_ticks_usec() + _slice(_least)
+	_most = most_us
+	_until = Time.get_ticks_usec() + _slice(_least, _most)
 
 
 ## Whether this slice is spent.
@@ -53,13 +59,13 @@ func next() -> void:
 	# at full rate, not the slower ones of a model standing still.
 	IdleDraw.keep_awake()
 	await Engine.get_main_loop().process_frame
-	_until = Time.get_ticks_usec() + _slice(_least)
+	_until = Time.get_ticks_usec() + _slice(_least, _most)
 
 
-static func _slice(least: int = LEAST_US) -> int:
+static func _slice(least: int = LEAST_US, most: int = MOST_US) -> int:
 	if unwatched:
 		return maxi(UNWATCHED_US, least)
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var frame_us: int = int(tree.root.get_process_delta_time() * 1000000.0) \
 		if tree != null else 0
-	return clampi(frame_us / 2, least, maxi(MOST_US, least))
+	return clampi(frame_us / 2, least, maxi(most, least))

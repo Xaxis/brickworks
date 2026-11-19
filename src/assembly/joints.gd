@@ -389,7 +389,18 @@ static func socket_at(at: Transform3D, mesh: Lbm.PartMesh, foot: Vector3,
 ## studs as they once did.
 static func studs_in(entries: Array, filled: Callable) -> Array:
 	var out: Array = []
+	# Never waits with no pace: done when it returns.
+	_studs_in_into(entries, filled, null, out)
+	return out
+
+
+## [method studs_in] into [param out], giving the frame back between parts
+## when [param pace]'s slice is spent (a weigh over frames,
+## Stability.check_in_frames).
+static func _studs_in_into(entries: Array, filled: Callable, pace: FramePace, out: Array) -> void:
 	for entry: Array in entries:
+		if pace != null and pace.due():
+			await pace.next()
 		var part: Lbm.PartMesh = entry[2]
 		if part == null:
 			continue
@@ -405,7 +416,6 @@ static func studs_in(entries: Array, filled: Callable) -> Array:
 				into = _hollow_round(tip, way, entry[0], filled)
 			if into != null:
 				out.append([entry[0], into, at * connector.position, way])
-	return out
 
 
 ## How far round a stud's tip the hollow it stands in is looked for, in LDU:
@@ -600,11 +610,22 @@ const ROUND_FAMILY: Dictionary = {"shaft": "round", "bore": "round",
 ## Without [param zoned], only who holds whom, each with no zones: what
 ## Balance asks, which forgives no overlap.
 static func rounds(entries: Array, zoned: bool = true) -> Dictionary:
+	var held: Dictionary = {}
+	# Never waits with no pace: done when it returns.
+	_rounds_into(entries, zoned, null, held)
+	return held
+
+
+## [method rounds] into [param held], giving the frame back between parts
+## and shafts when [param pace]'s slice is spent.
+static func _rounds_into(entries: Array, zoned: bool, pace: FramePace, held: Dictionary) -> void:
 	var shafts: Array = []    ## [key, start, way, length, radius]
 	var bores: Array = []
 	var by_key: Dictionary = {}   ## key -> its bores
 	var shafts_of: Dictionary = {}   ## key -> its shafts
 	for entry: Array in entries:
+		if pace != null and pace.due():
+			await pace.next()
 		var part: Lbm.PartMesh = entry[2]
 		if part == null:
 			continue
@@ -647,8 +668,9 @@ static func rounds(entries: Array, zoned: bool = true) -> Dictionary:
 				sized[box] = []
 			(sized[box] as Array).append(n)
 
-	var held: Dictionary = {}
 	for shaft: Array in shafts:
+		if pace != null and pace.due():
+			await pace.next()
 		var tried: Dictionary = {}
 		var sizes: Array = []
 		for step: int in range(-ceili(ROUND_FIT), ceili(ROUND_FIT) + 1):
@@ -673,7 +695,6 @@ static func rounds(entries: Array, zoned: bool = true) -> Dictionary:
 					_add_zones(held, shaft[0], bore[0], zones)
 					_add_zones(held, bore[0], shaft[0], zones)
 	_knuckles(shafts, held)
-	return held
 
 
 ## A hinge's knuckles turn on one line: the older hinge plates (4275b with

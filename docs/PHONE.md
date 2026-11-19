@@ -338,25 +338,64 @@ software on this box (results: `bench/results/nothreads-2026-11-19/`):
 | Switch on: the engine started | iPhone, iPad, iPad as a Mac: without threads, nothing of the threaded one asked; Mac Safari, Android Chromium, a computer: threaded |
 | WebKit as an iPhone 13, working, switch on against off (4 same-moment pairs, load 40–53) | **14.8 s against 17.9** (x0.84; faster in 4 of 4); scripts' compile 5.6 against 7.5 s; 105 MB less held |
 
-What a pool task costs without threads, each frame's own work, in WebKit
-(`cad_frames.mjs --engine=webkit` on the export without threads, at load
-30–40):
+### What every pool task costs without threads (weighpace, 2026-11-19)
 
-| Pool task | Without threads | Under 100 ms? |
-|---|---|---|
-| The search's index, the first part number typed | made in frames already (PartLibrary.index_on_a_worker); the app's scripts 24 ms at most | yes |
-| Weighing a model past 600 parts (Main.weigh_joints, Stability.check_paced) | one frame the whole weigh: 1.7 s on 75969-1 (925 parts), **8.6 s on Orthanc (10,101)**, and again after every edit | **no** |
-| The booklet's pictures | in frames already (BookletStudio) | see the walk |
-| The booklet's PDF on the web | never a pool task: written in the page's own frames with or without threads (Main, BookletRead) | the same as with threads |
+Without threads the engine runs each pool task in the frame that asks for
+it. `tools/web/pool_frames.mjs` drives each act a phone reaches, in WebKit
+as an iPhone 13 on the export without threads (base, b77ea31ef, load
+13–18), on the largest real model that act takes, and reads each frame's
+own work from the app (`brickworksState` busy and slow frames, the
+`Working` line). Results: `bench/results/weighpace-2026-11-19/pool/`.
+Before is base; after is this unit, which paces the weigh and nothing else.
 
-**So the switch stays off until the weigh is paced.** With threads the
-status bar weighs a model past 600 parts on a worker; without, it weighs it
-in the frame, and an iPhone holding Orthanc would stop for seconds at every
-edit. It needs the weigh in frames (or the status bar's verdict asked for,
-not made at every edit, past 600 parts without threads): a unit of its own.
-The rest of the pool tasks found by grep (grab_drag, parts_bin, model_store,
-strengthen, tested, the rest) run where they ask too; the walk below drives
-the ones a phone reaches.
+| Act (pool user) | How a person reaches it | Worst frame before: Orthanc / 10179 / 75969-1 | After | Under 100 ms? |
+|---|---|---|---|---|
+| **The status bar's weigh after an edit** (Main.weigh_joints, Stability) | any edit to a model past 600 parts | 4.5–6.8 s / 13.2–19.2 s / 0.85–1.27 s | over frames on copies, "weighing…" meanwhile: longest stretch between two frames 190 / 285 / 52 ms, desktop time at load 26–29 (`weighpace_probe`; the worst of its 20 models 607 ms, 42082-1's Technic pins); WebKit not yet measured, about twice the desktop's | no |
+| Check stability (Shell, Balance on the whole) | Model › Check stability | 3.9 s / 28.1 s / — | the status bar's weigh and the balance over frames | not measured after |
+| Stress on (StressView, the margins weigh) | View › Stress | 3.6 s / 9.3 s / — | the status bar's weigh over frames | not measured after |
+| Open a model (ModelStore, PartLibrary, Builder) | Open, a set's page | 0.73 s / 1.1 s / 0.40 s, besides the weigh | unchanged | no |
+| Search the bin (PartLibrary's index) | type in the bin's search | 145 ms / 19 ms / 102 ms | unchanged | no (Orthanc) |
+| A part to the hand (PartsBin) | tap a part in the bin | 68 / 32 / 17 ms | unchanged | yes |
+| Put it down (Builder) | tap where it goes | 771 / 98 / 202 ms, besides the weigh | unchanged | no |
+| Undo the put | Undo | 137 / 841 / 206 ms, besides the weigh | unchanged | no |
+| Nudge, undo it | the arrows | 17 / — / 47 ms | unchanged | yes |
+| Drag a part (GrabDrag) | drag one in the window | 810 / 18 ms / — (the run ended) | unchanged | no |
+| Suggest sections (Sections) | Tools › Suggest sections | 7.4 s / 9.5 s / — | unchanged | **no** |
+| Strengthen (Strengthen) | Stress panel › Strengthen | not reached: the walk found no Strengthen in the phone's stress panel | — | not measured |
+| Lift by a part (StressView) | Stress, hold a part | 34 / 16 ms / — | unchanged | yes |
+| Colour the hidden parts (HiddenColoursPanel) | Tools › Colour the hidden parts | 754 ms (5 frames past 100) / 1.5 s / — | unchanged | no |
+| Simulate's start (SimulatePanel) | Simulate | 3.4 s / 1.7 s / — | unchanged | **no** |
+| Simulate playing | Play | 18 / 20 ms / — | unchanged | yes |
+| Motions (MotionPlayer) | Motions, play one | — / 0.62 s, playing 1.1 s / — | unchanged | no |
+| The steps' timeline | Steps | 230 / 165 ms / — | unchanged | no |
+| Find and Replace (Main, the weigh after) | Edit › Replace | 3.0 s / 7.6 s / —, besides the weigh | unchanged | **no** |
+| A picture, a turning GIF (RenderQueue, AnimatedGif) | Render | not reached: the walk never saw either dialog on the phone layout | — | not measured |
+| Instructions (BookletStudio) | Instructions | — / 5.6 s, 14 frames past 100 ms / — | unchanged | **no** |
+| Brickify (BrickifyDialog), the design loop's tested | not on the phone's walk | — | — | not measured |
+
+The weigh over frames (`Stability.check_in_frames`, `Balance` and `Joints`
+giving the frame back between parts, `FramePace` slices of at most 20 ms)
+says the same as the weigh in one go: the verdict, the weight, every joint,
+risk and margin, on every model `weighpace_probe` weighs. A weigh under way
+when the model changes is stopped and begun again on the model as it is;
+stopped, it says nothing rather than a verdict. With threads nothing of it
+runs: the status bar still weighs on a worker, every margin with it.
+
+What is left in it in one piece, traced on Orthanc: what holds parts
+without a stud (`Joints.held_otherwise`, 76 ms, desktop time) and the weigh
+of the model as it stands (`Balance._weigh`). The longest stretches are on
+Technic sets (405–607 ms on 42083-1 and 42082-1), not yet traced. Over frames it takes 0.8–1.2 times as long as
+in one go on the twenty. WebKit takes about twice the desktop's time.
+
+**The switch is not safe to turn on.** The weigh no longer holds a frame for
+the whole weigh, but its longest stretch is still past 50 ms on every model
+past 1,000 parts, and twelve
+other acts a phone reaches hold a frame past 100 ms without threads, five of
+them for seconds (Suggest sections 7.4 s, Check stability 3.9 s, Simulate's
+start 3.4 s, Replace 3.0 s, the booklet 5.6 s). With threads they run on a
+worker and the window keeps drawing. Keep `/admin` › Switches › Phones › "iPhones and iPads use the engine without threads"
+off until each row above is under 100 ms in WebKit; never turn it on on
+brickworks.diy to try it.
 
 
 ## The faults, each with its cause and fix

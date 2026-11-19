@@ -2275,9 +2275,21 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true,
 	judge.floor_ids = store.scenery.duplicate()
 	var weighed: Array = [null]
 	var generation: int = world.generation()
-	if world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+	if world.brick_count() < WEIGH_OFF_THREAD_FROM:
 		judge.lattice = builder.lattice
 		weighed[0] = judge.measure(world.bricks(), poses)
+	elif OS.has_feature("nothreads"):
+		# No worker: over frames, on copies, as the status bar weighs
+		# (Stability.check_in_frames). In one frame it held Orthanc's 3.9 s
+		# and 10179's 28 s in WebKit (docs/PHONE.md).
+		judge.lattice = builder.lattice.copy_for_reading()
+		var copy: BrickWorld = world.copy_for_reading()
+		library.begin_reading()
+		judge.pace = FramePace.new(FramePace.LEAST_US, Stability.IN_FRAMES_US)
+		await judge._measure_into(copy.bricks(), poses, null, {}, weighed)
+		judge.pace = null
+		library.end_reading()
+		copy.free()
 	else:
 		judge.lattice = builder.lattice.copy_for_reading()
 		var still: BrickWorld = world.copy_for_reading()

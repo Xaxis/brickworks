@@ -9015,6 +9015,15 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 		_stability_at = 0
 
 
+## What the counts line says while a weigh goes on over frames, where there
+## are no threads ([method weigh_joints]).
+const WEIGHING := "weighing…"
+## That weigh, and the model's revision it weighs: a change meanwhile stops it.
+var _weighing_here: Stability = null
+var _weighing_revision: int = -1
+var _weighing_generation: int = -1
+
+
 ## Whether the model stands, for the counts line.
 ##
 ## Stability is cheap but not free, and a rebuild can fire several times
@@ -9040,6 +9049,13 @@ func _weigh() -> void:
 	if _world != null and _world.generation() != _stability_generation:
 		_stability_generation = _world.generation()
 		_stability_text = ""
+	# Without threads the weigh goes on over frames: a change meanwhile ends
+	# it, and it is begun again on the model as it is (never a verdict on
+	# the model as it was).
+	if _weighing and _weighing_here != null and _world != null \
+			and (_world.revision != _weighing_revision
+				or _world.generation() != _weighing_generation):
+		_weighing_here.stopped = true
 	if _stability == null or _world == null or _counts == null or _weighing \
 			or _world.revision == _stability_revision or _world.is_being_laid():
 		return
@@ -9060,7 +9076,10 @@ func _weigh() -> void:
 	_weighing = true
 	var revision: int = _world.revision
 	var generation: int = _world.generation()
-	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))
+	# Weighed over frames where there are no threads: said meanwhile.
+	if OS.has_feature("nothreads"):
+		_stability_text = WEIGHING
+	var report: Stability.Report = await weigh_joints()
 	_weighing = false
 	# Of the model before one opened meanwhile, whose own is weighed next:
 	# said, it stood beside the other's count.
@@ -9081,13 +9100,11 @@ func _weigh() -> void:
 ## The status bar's weighing of the model as it stands now, every margin
 ## with it: Check stability shows it rather than weigh the same again
 ## (Shell._check_stability). Waited for when under way, and begun at once
-## when not, on a worker; [param meanwhile] is called while it weighs. Null
-## when there is none of this revision: on the web the status bar weighs
-## without margins unless Stress is on, and is not asked to weigh twice.
+## when not, on a worker (over frames without threads); [param meanwhile]
+## is called while it weighs. Null when there is none of this revision.
 func weighed_now(meanwhile: Callable = Callable()) -> Stability.Report:
 	for attempt: int in 2:
-		if not _weighing and _weighed_revision != _world.revision \
-				and not OS.has_feature("nothreads"):
+		if not _weighing and _weighed_revision != _world.revision:
 			_stability_at = 0
 			_weigh()
 		if attempt == 0 and meanwhile.is_valid():
@@ -9101,10 +9118,9 @@ func weighed_now(meanwhile: Callable = Callable()) -> Stability.Report:
 ## joint's margin with it unless [param margins] is false: what View, Stress
 ## tints, the verdict the status bar says and a session's weakest_joints
 ## reads, so the three agree. A joint past its working load is a weak one.
-## On a worker where there are threads; on the window's own thread only
-## while View, Stress is on, since the joints cost 10% to 150% more than the
-## courses and the tipping. Null when the library had to add a part
-## meanwhile. The baseplate is the floor, not the model: whether it tips is
+## On a worker where there are threads; over frames where there are none
+## (Stability.check_in_frames). Null when the library had to add a part
+## meanwhile, or, over frames, when the model changed meanwhile. The baseplate is the floor, not the model: whether it tips is
 ## asked of what stands on it, and it is not in the weight.
 func weigh_joints(margins: bool = true) -> Stability.Report:
 	var scenery: Dictionary = _store.scenery if _store != null else {}
@@ -9121,10 +9137,25 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 			floor_grams += Stability.grams(info)
 	var report: Stability.Report
 	if OS.has_feature("nothreads"):
-		_stability.floor_ids = scenery
-		_stability.with_margins = margins
-		report = _stability.check(_world)
-		_stability.with_margins = true
+		# No worker to weigh on: over frames, a slice of each
+		# (Stability.check_in_frames), on copies nothing changes meanwhile,
+		# as a worker weighs. 75969-1's weigh held one frame 1.7 s in
+		# WebKit, Orthanc's 8.6 s, after every change (docs/PHONE.md).
+		var paced := Stability.new()
+		paced.library = _library
+		paced.with_margins = margins
+		paced.floor_ids = scenery.duplicate()
+		paced.lattice = _builder.lattice.copy_for_reading()
+		var copy: BrickWorld = _world.copy_for_reading()
+		_weighing_here = paced
+		_weighing_revision = _world.revision
+		_weighing_generation = _world.generation()
+		_library.begin_reading()
+		report = await paced.check_in_frames(copy,
+			FramePace.new(FramePace.LEAST_US, Stability.IN_FRAMES_US))
+		_library.end_reading()
+		_weighing_here = null
+		copy.free()
 	else:
 		var judge := Stability.new()
 		judge.library = _library

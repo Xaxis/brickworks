@@ -2501,6 +2501,14 @@
       "tests": []
     },
     {
+      "id": "cli:pool tasks' frames without threads",
+      "kind": "cli",
+      "entry": "tools/web/pool_frames.mjs",
+      "reach": "node tools/web/pool_frames.mjs --engine=webkit --url=http://127.0.0.1:<port>/ --out=DIR --acts=search,place,put,nudge,drag,stability,sections,stress MODEL   (serve.py build/web-nothreads with --parts, .env sourced, under heavy: each act a phone reaches done by its menu, key or gesture; per act the worst frame of the app's own work, frames past 50 and 100 ms, what the status bar said in each slow one, wall time; the weigh after a change told apart; DIR/pool_frames.json; docs/PHONE.md's pool-task table)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:ppreview probe",
       "kind": "cli",
       "entry": "src/dev/ppreview_probe.gd",
@@ -3294,6 +3302,14 @@
       "entry": "tools/web/start_phases.mjs",
       "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] --out=DIR   (webstart11, local servers only: two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; DIR/phases.md and pairs.json)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the status bar's weigh over frames",
+      "kind": "cli",
+      "entry": "src/dev/weighpace_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/weighpace_probe.gd [-- MODEL...]   (tools/probe.sh weighpace_probe: on twenty real models, Orthanc, 10179-1 and 75969-1 among them, Stability.check_in_frames says what check says in one go, verdict, weight, joints, every risk and margin; Orthanc's longest stretch between two frames within the slice and 10 ms; a weigh stopped five frames in says null)",
+      "area": "geometry",
       "tests": []
     },
     {

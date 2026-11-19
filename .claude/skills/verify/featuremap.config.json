@@ -2239,6 +2239,20 @@
     },
     {
       "kind": "cli",
+      "label": "pool tasks' frames without threads",
+      "entry": "tools/web/pool_frames.mjs",
+      "reach": "node tools/web/pool_frames.mjs --engine=webkit --url=http://127.0.0.1:<port>/ --out=DIR --acts=search,place,put,nudge,drag,stability,sections,stress MODEL   (serve.py build/web-nothreads with --parts, .env sourced, under heavy: each act a phone reaches done by its menu, key or gesture; per act the worst frame of the app's own work, frames past 50 and 100 ms, what the status bar said in each slow one, wall time; the weigh after a change told apart; DIR/pool_frames.json; docs/PHONE.md's pool-task table)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "the status bar's weigh over frames",
+      "entry": "src/dev/weighpace_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/weighpace_probe.gd [-- MODEL...]   (tools/probe.sh weighpace_probe: on twenty real models, Orthanc, 10179-1 and 75969-1 among them, Stability.check_in_frames says what check says in one go, verdict, weight, joints, every risk and margin; Orthanc's longest stretch between two frames within the slice and 10 ms; a weigh stopped five frames in says null)",
+      "area": "geometry"
+    },
+    {
+      "kind": "cli",
       "label": "the builder's frames after a change",
       "entry": "src/dev/ahead_probe.gd",
       "reach": "godot --headless --path . --script src/dev/ahead_probe.gd -- --most-ms=50   (tools/probe.sh ahead_probe: a part turned by move_part, Ctrl+Z, a part placed by a click, on the Ducati a session designed, 8808-1 and 42004-1, each followed 4 s while the joints are read and the model weighed on workers; then a press while the joints are read takes the worker's reading, and one while a session moves a part says so)",

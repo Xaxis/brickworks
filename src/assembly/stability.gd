@@ -205,12 +205,28 @@ const ON_A_WORKER_FROM := 600
 ## thread while the worker reads: Check stability finds the poses to weigh
 ## then (Poser), which on Orthanc was a second of its own. Null when the
 ## library had to add a part meanwhile. In one go on a small model, or with
-## no threads, [param meanwhile] first.
+## no threads, [param meanwhile] first; without threads a big model is
+## weighed over frames instead ([method check_in_frames]), on copies too.
 func check_paced(world: BrickWorld, meanwhile: Callable = Callable()) -> Report:
-	if world.brick_count() < ON_A_WORKER_FROM or OS.has_feature("nothreads"):
+	if world.brick_count() < ON_A_WORKER_FROM:
 		if meanwhile.is_valid():
 			meanwhile.call()
 		return check(world)
+	if OS.has_feature("nothreads"):
+		if meanwhile.is_valid():
+			meanwhile.call()
+		var paced := Stability.new()
+		paced.library = library
+		paced.with_margins = with_margins
+		paced.floor_ids = floor_ids.duplicate()
+		paced.lattice = lattice.copy_for_reading()
+		var copy: BrickWorld = world.copy_for_reading()
+		library.begin_reading()
+		var report: Report = await paced.check_in_frames(copy,
+			FramePace.new(FramePace.LEAST_US, IN_FRAMES_US))
+		library.end_reading()
+		copy.free()
+		return report
 	var judge := Stability.new()
 	judge.library = library
 	judge.with_margins = with_margins
@@ -234,10 +250,55 @@ func check_paced(world: BrickWorld, meanwhile: Callable = Callable()) -> Report:
 
 ## Check a model. Returns the joints that would fail, weakest first.
 func check(world: BrickWorld) -> Report:
+	var into: Array = [null]
+	var was: FramePace = pace
+	pace = null
+	# Never waits with no pace: done when it returns.
+	_check_into(world, into)
+	pace = was
+	return into[0]
+
+
+## The longest slice of its own a weigh over frames takes of a frame
+## ([method check_in_frames]): the bar is 50 ms of the app's own work in any
+## frame, and the frame has the rest of the app's work in it too.
+const IN_FRAMES_US := 20000
+
+## Set while [method check_in_frames] weighs: its loops give the frame back
+## when a slice of it is spent. Null on a worker and in one go.
+var pace: FramePace = null
+
+
+## [method check] over frames, a slice of each at a time ([param frames]),
+## where there are no threads to weigh on (the engine without threads that
+## iPhones are served, docs/PHONE.md): every loop over the parts, their
+## joints and the cuts gives the frame back when its slice is spent, so no
+## frame holds more than a slice of it. The same report, to the last margin:
+## the same code, with places to stop. What it reads must not change
+## meanwhile: weigh copies (BrickWorld.copy_for_reading,
+## BrickLattice.copy_for_reading), as a worker does. Null when stopped
+## ([member stopped]) part way. A coroutine.
+func check_in_frames(world: BrickWorld, frames: FramePace) -> Report:
+	pace = frames
+	var into: Array = [null]
+	await _check_into(world, into)
+	pace = null
+	return into[0]
+
+
+## Give the frame back if this slice is spent: only while [member pace] is
+## set, so never on a worker or in one go.
+func _breathe() -> void:
+	if pace != null and pace.due():
+		await pace.next()
+
+
+func _check_into(world: BrickWorld, into: Array) -> void:
 	var report := Report.new()
+	into[0] = report
 	var bricks: Array = world.bricks()
 	if bricks.is_empty():
-		return report
+		return
 
 	# Mass per brick, once.
 	var mass: Dictionary = {}          ## id -> grams
@@ -248,30 +309,34 @@ func check(world: BrickWorld) -> Report:
 			continue
 		mass[brick.id] = grams(info)
 		report.total_grams += mass[brick.id]
+	await _breathe()
 
-	var graph: Dictionary = contacts(bricks)
+	var graph: Dictionary = {}
+	await _contacts_into(bricks, graph)
 	if stopped:
-		return null
+		into[0] = null
+		return
 	var above: Dictionary = graph["above"]
 	var boxes_of: Dictionary = graph["boxes"]
 	for item: Variant in bricks:
 		if above.has((item as BrickWorld.Brick).id):
 			report.joints += 1
 
-	_check_levels(world, mass, boxes_of, report)
+	await _check_levels(world, mass, boxes_of, report)
 	if stopped:
-		return null
-	_check_tipping(bricks, mass, boxes_of, report)
+		into[0] = null
+		return
+	await _check_tipping(bricks, mass, boxes_of, report)
 	if with_margins:
-		_weigh_margins(bricks, graph, report)
+		await _weigh_margins(bricks, graph, report)
 		if stopped:
-			return null
+			into[0] = null
+			return
 
 	report.risks.sort_custom(func(a: Risk, b: Risk) -> bool:
 		return a.margin < b.margin)
 	if not report.risks.is_empty():
 		report.weakest = report.risks[0]
-	return report
 
 
 ## Every stud joint's margin, as Balance weighs it with the model as it
@@ -285,8 +350,15 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 	weigher.lattice = lattice
 	weigher.floor_ids = floor_ids
 	weigher.stop = stop
-	var weighed: Balance.Report = weigher.measure(bricks, [], null, graph)
+	weigher.pace = pace
+	var measured: Array = [null]
+	await weigher._measure_into(bricks, [], null, graph, measured)
+	weigher.pace = null
+	var weighed: Balance.Report = measured[0]
+	if stopped:
+		return
 	for one: Balance.JointLoad in weighed.joints:
+		await _breathe()
 		report.margins[one.beyond] = one
 		if one.ratio <= 1.0 or floor_ids.has(one.beyond):
 			continue
@@ -318,6 +390,7 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 				PoseHold.percent(one.share())]
 		report.risks.append(risk)
 	for piece: Dictionary in weighed.tipping:
+		await _breathe()
 		var risk := Risk.new()
 		risk.brick_id = int((piece["ids"] as Array)[0])
 		risk.kind = "rests on a touch"
@@ -348,6 +421,7 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 	var grams: float = 0.0
 	var weighted := Vector3.ZERO
 	for item: Variant in bricks:
+		await _breathe()
 		var brick: BrickWorld.Brick = item
 		if floor_ids.has(brick.id) or not boxes_of.has(brick.id):
 			continue
@@ -397,6 +471,17 @@ func _floor_top(boxes_of: Dictionary) -> int:
 ## any}. The stud joints [method check] weighs and Balance cuts are read
 ## from it by [method stud_joints].
 func contacts(bricks: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var was: FramePace = pace
+	pace = null
+	_contacts_into(bricks, out)
+	pace = was
+	return out
+
+
+## [method contacts] into [param out], giving the frame back between parts
+## while [member pace] is set.
+func _contacts_into(bricks: Array, out: Dictionary) -> void:
 	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
 	# Who rests on whom. A brick supports another when one of its cells
 	# sits directly beneath one of theirs.
@@ -432,6 +517,7 @@ func contacts(bricks: Array) -> Dictionary:
 	for item: Variant in bricks:
 		if stopped:
 			break
+		await _breathe()
 		var brick: BrickWorld.Brick = item
 		var mine: PackedInt32Array = _boxes(brick)
 		boxes_of[brick.id] = mine
@@ -471,7 +557,7 @@ func contacts(bricks: Array) -> Dictionary:
 			if shared.y > 0 and (shared.x > 0 or back):
 				overlap[pair] = shared.y
 
-	return {"above": above, "boxes": boxes_of, "bricks": bricks, "overlap": overlap}
+	out.merge({"above": above, "boxes": boxes_of, "bricks": bricks, "overlap": overlap}, true)
 
 
 ## [param boxes]' slices (BrickLattice.slices_of), kept in [param sliced] by
@@ -574,9 +660,21 @@ static func pair_of(a: int, b: int) -> int:
 ## on stability_probe's 800 bricks, doubled what it cost (2026-10-21).
 static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		lattice: BrickLattice, everywhere: bool = true) -> Dictionary:
+	var into: Array = [null]
+	# Never waits with no pace: done when it returns.
+	_stud_joints_into(contacts, library, lattice, everywhere, null, into)
+	return into[0]
+
+
+## [method stud_joints] into [param joined]'s first, giving the frame back
+## between parts and pairs when [param pace]'s slice is spent (a weigh over
+## frames, [method check_in_frames]).
+static func _stud_joints_into(contacts: Dictionary, library: PartLibrary,
+		lattice: BrickLattice, everywhere: bool, pace: FramePace, joined: Array) -> void:
 	var kept: String = "joints" if everywhere else "joints where unsure"
 	if contacts.has(kept):
-		return contacts[kept]
+		joined[0] = contacts[kept]
+		return
 	var boxes: Dictionary = contacts["boxes"]
 	var above: Dictionary = contacts["above"]
 	var overlap: Dictionary = contacts["overlap"]
@@ -589,6 +687,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	for low: Variant in above:
 		if not boxes.has(int(low)):
 			continue
+		if pace != null and pace.due():
+			await pace.next()
 		var row: Dictionary = above[low]
 		for high: Variant in row:
 			if int(high) == int(low) or not boxes.has(int(high)):
@@ -607,6 +707,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	var entries: Array = []
 	var ways_of: Dictionary = {}       ## part id -> its studs' ways, its own frame
 	for brick: BrickWorld.Brick in contacts.get("bricks", []):
+		if pace != null and pace.due():
+			await pace.next()
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
 			continue
@@ -635,13 +737,16 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		# may be its own as well as the part it holds, or a third part's too,
 		# and a tip in nothing is looked round, once the stud's foot and way
 		# are known ([method _stud_in], [method _taking]).
-		for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
-				var cell: Vector3i = BrickLattice.to_cell(tip)
-				if not unsure.has(int(key)):
-					var at: int = lattice.brick_at(cell)
-					return at if at != int(key) and boxes.has(at) else null
-				var owners: Array = _owners(lattice, cell, int(key), boxes)
-				return owners[0] if owners.size() == 1 else owners):
+		var filled := func(tip: Vector3, key: Variant) -> Variant:
+			var cell: Vector3i = BrickLattice.to_cell(tip)
+			if not unsure.has(int(key)):
+				var at: int = lattice.brick_at(cell)
+				return at if at != int(key) and boxes.has(at) else null
+			var owners: Array = _owners(lattice, cell, int(key), boxes)
+			return owners[0] if owners.size() == 1 else owners
+		var found: Array = []
+		await Joints._studs_in_into(entries, filled, pace, found)
+		for stud: Array in found:
 			if stud[1] is Array and (stud[1] as Array).is_empty():
 				stud[1] = _stud_in(stud[2], stud[3], int(stud[0]), boxes, lattice)
 				if stud[1] == null:
@@ -661,6 +766,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 	var askew: Dictionary = {}         ## pair -> Array of [Vector2i by, feet taken, way]
 	var by_tips: Dictionary = {}       ## pair -> true where a stud's tip was read
 	for by: Vector2i in tips:
+		if pace != null and pace.due():
+			await pace.next()
 		var feet: Array = (tips[by] as Array)[0]
 		var key: int = pair_of(by.x, by.y)
 		by_tips[key] = true
@@ -720,6 +827,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		for key: int in studs.keys():
 			if by_tips.has(key) or overlapped.has(key):
 				continue
+			if pace != null and pace.due():
+				await pace.next()
 			var ends: Array = [key >> 32, key & 0xFFFFFFFF]
 			var any: bool = false
 			for id: int in ends:
@@ -751,6 +860,8 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		for key: int in studs.keys():
 			if by_tips.has(key) or overlapped.has(key):
 				continue
+			if pace != null and pace.due():
+				await pace.next()
 			if placed.is_empty():
 				for brick: BrickWorld.Brick in contacts.get("bricks", []):
 					placed[brick.id] = brick
@@ -771,7 +882,7 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 		"seated": seated, "overlapped": overlapped, "pivots": pivots, "beside": beside,
 		"resting": resting}
 	contacts[kept] = out
-	return out
+	joined[0] = out
 
 
 ## Of [param contacts]' seated pairs ([method stud_joints]' "seated"), those
@@ -782,9 +893,22 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 ## was: read with it, 8466-1's 589 seated pairs took 28 ms to 93-184.
 ## Worked out once and kept with the joints.
 static func beside(contacts: Dictionary, library: PartLibrary, lattice: BrickLattice) -> Dictionary:
-	var joints: Dictionary = stud_joints(contacts, library, lattice)
+	var into: Array = [null]
+	# Never waits with no pace: done when it returns.
+	_beside_into(contacts, library, lattice, null, into)
+	return into[0]
+
+
+## [method beside] into [param into]'s first, giving the frame back between
+## pairs when [param pace]'s slice is spent.
+static func _beside_into(contacts: Dictionary, library: PartLibrary, lattice: BrickLattice,
+		pace: FramePace, into: Array) -> void:
+	var read: Array = [null]
+	await _stud_joints_into(contacts, library, lattice, true, pace, read)
+	var joints: Dictionary = read[0]
 	if joints.has("beside read"):
-		return joints["beside"]
+		into[0] = joints["beside"]
+		return
 	var out: Dictionary = joints["beside"]
 	var placed: Dictionary = {}
 	for brick: BrickWorld.Brick in contacts.get("bricks", []):
@@ -792,12 +916,14 @@ static func beside(contacts: Dictionary, library: PartLibrary, lattice: BrickLat
 	for key: int in joints["seated"]:
 		if out.has(key):
 			continue
+		if pace != null and pace.due():
+			await pace.next()
 		var one: BrickWorld.Brick = placed.get(key >> 32)
 		var other: BrickWorld.Brick = placed.get(key & 0xFFFFFFFF)
 		if one != null and other != null and not _seated_in(one, other, library):
 			out[key] = true
 	joints["beside read"] = true
-	return out
+	into[0] = out
 
 
 ## Two parts turned to each other further off the square than this, as the
@@ -1034,6 +1160,7 @@ func _check_levels(
 	var stands_at: Dictionary = {}
 	var top: int = _floor_top(boxes_of)
 	for item: Variant in bricks:
+		await _breathe()
 		var brick: BrickWorld.Brick = item
 		var boxes: PackedInt32Array = boxes_of.get(brick.id, PackedInt32Array())
 		if boxes.is_empty():
@@ -1068,6 +1195,7 @@ func _check_levels(
 	var above_y := above_grams.duplicate()
 	var above_z := above_grams.duplicate()
 	for id: int in stands_at:
+		await _breathe()
 		var n: int = level_of[stands_at[id]]
 		var w: float = mass.get(id, 0.0)
 		var middle: Vector3 = _middle(world.get_brick(id))
@@ -1086,6 +1214,7 @@ func _check_levels(
 	var flat := PackedInt32Array()
 	var order := PackedInt64Array()
 	for item: Variant in bricks:
+		await _breathe()
 		var brick: BrickWorld.Brick = item
 		var boxes: PackedInt32Array = boxes_of.get(brick.id, PackedInt32Array())
 		var at: int = 0
@@ -1099,6 +1228,7 @@ func _check_levels(
 	var hi := Vector2(-INF, -INF)
 
 	for n: int in range(1, count):
+		await _breathe()
 		var cut: int = heights[n]
 
 		# The footprint it all stands on: everything below the cut. A box's
