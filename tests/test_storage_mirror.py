@@ -52,6 +52,8 @@ def test_every_script_that_opens_a_browser_brings_the_mirror_in() -> None:
 
 OBJECTS = r"""
 import http from "node:http";
+import { utimesSync } from "node:fs";
+import { join } from "node:path";
 import { object } from "./storage_mirror.mjs";
 
 // argv: "healthy" or "refusing" (the bucket answers 402 from the start), and
@@ -93,6 +95,10 @@ if (refusing) {
   said.first = await get("0a1b2c.lbm");
   said.again = await get("0a1b2c.lbm");
   said.index = await get("library/index.json");
+  // As a read in the same millisecond as the write sees it: the copy's mtime a
+  // little past now. A max-age=0 copy is still asked again with its ETag.
+  const soon = (Date.now() + 500) / 1000;
+  utimesSync(join(process.env.BW_STORAGE_MIRROR, "library/index.json"), soon, soon);
   said.indexAgain = await get("library/index.json");
   said.missing = await get("missing.lbm");
   said.missingAgain = await get("missing.lbm");
