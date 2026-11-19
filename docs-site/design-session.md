@@ -16,9 +16,9 @@ This page is the brief every assistant designs from. Whichever designs, Claude t
 ## The method {#method}
 
 1. **Scale and references.** `plan_scale` with the real thing's length, `find_reference` for a picture of anything real, and `how_real_sets_build_this` for what real sets of the kind are built from, and the faults found in earlier designs of it.
-2. **The silhouette first.** `submit_design` with the main masses, the model's assemblies (what a person would name: the gatehouse, each tower) and its features (what the subject is known by: an owl's eyes, a car's grille, a vehicle's wheels and what breaks its outline), each with where it goes and its form: open, at an angle, curved, twisted or tapering, read off the reference picture and built in that first build by the parts that make it, never a fill or a stack. The app builds it, checks it, and refuses what does not hold together, part by part.
+2. **The silhouette first.** `submit_design` with the main masses, the model's assemblies (what a person would name: the gatehouse, each tower) and its features (what the subject is known by: an owl's eyes, a car's grille), each with where it goes. The app builds it, checks it, and refuses what does not hold together, part by part.
 3. **Review.** `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
-4. **Each feature.** A feature given its form comes back close up as built, with the parts real sets build that form with — curved slopes, wedges, studs turned out — laid where its plates step, to keep, lay the next way or take off, and it is built again whole if it still reads as a block. For one without, the app lays a real set's piece where it goes. `settle_feature` accepts it, asks for the next, rejects it, or says the assistant built it itself.
+4. **Each feature.** The app lays a real set's piece where the feature goes, and `settle_feature` accepts it, asks for the next, rejects it, or says the assistant built it itself.
 5. **Each assembly**, looked at with `review_model` and detailed with `edit_model`.
 6. **The surface pass.** `review_model` with `surface`: the app tiles open studs, steps slopes and rounds hard edges, and `settle_surface` settles each finding.
 7. **The creative pass**, a few touches of character, then `save_model`. A new design's first save brings [fresh eyes](/docs/fresh-eyes).
@@ -63,9 +63,9 @@ A call answered with a job number is still working in the app: call job about ev
 ```said method
 How to work here, said once as this chat begins (read_guide "work" has it whole, and read_guide any section a step names):
  1. Before building: plan_scale with the real thing's size, find_reference for anything that exists, how_real_sets_build_this with the subject: real sets' parts, and the faults found in our own designs of it, to design out.
- 2. submit_design the silhouette first: the main masses, with its assemblies and its features (what the subject is known by, a vehicle's wheels and what breaks its outline among them, each with where it goes and its form: open, at an angle, curved, twisted, tapering; built in this build by the parts that make that form, never a fill or a stack). A hull, a car body or a building is a shape pattern (read_guide "shapes"); a figure or a creature is shaped parts on joints (read_guide "figures"). Pass the person's request, word for word, as brief, and a part count they named as parts.
+ 2. submit_design the silhouette first: the main masses, with its assemblies and its features (what the subject is known by, each with where it goes). A hull, a car body or a building is a shape pattern (read_guide "shapes"); a figure or a creature is shaped parts on joints (read_guide "figures"). Pass the person's request, word for word, as brief, and a part count they named as parts.
  3. review_model: fix the silhouette and proportions before any detail.
- 4. Each feature: one with a form comes back close up with real sets' parts for that form laid where its plates step (rebuild it whole if it still reads as a block), one without with a real set's piece laid; settle_feature it.
+ 4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with edit_model.
  6. review_model {"surface": true}, settle_surface each; 7. review_model {"creative": true}; then save_model.
 Nothing overlaps, nothing floats, and the model is one connected thing.

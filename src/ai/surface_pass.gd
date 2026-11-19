@@ -195,9 +195,6 @@ class Finding extends RefCounted:
 	## The view that sees it best: a slope falling toward -x or -z, or a wall
 	## facing that way, is seen from the far corner. "" for either.
 	var seen_from: String = ""
-	## The feature whose close look laid it (form_finish), "" for the pass's
-	## own: settled with the feature, by settle_feature.
-	var feature: String = ""
 	## "" until settled: "accepted", "adjusted", "rejected", "kept"; "left"
 	## when a loop's turns ran out with it standing.
 	var verdict: String = ""
@@ -233,11 +230,6 @@ var _numbered: int = 0
 var _offered: int = 0
 ## The model read once per reading: placements by brick id.
 var _read: OpenPoints = null
-## While a feature's close look finishes its form (form_finish): the box every
-## finder keeps to, and how its form is laid ({"straight", "edges", "skins",
-## "curves", "straights"}). Empty otherwise.
-var _within := AABB()
-var _form: Dictionary = {}
 
 
 func _init(of: Assistant) -> void:
@@ -402,190 +394,6 @@ func hand() -> Variant:
 	if picture.is_empty():
 		return text
 	return [{"type": "text", "text": text}, picture]
-
-
-# -- a feature's form, close up (design25) --------------------------------------
-
-
-## The close look's form finish: the pass's own finders kept to one feature's
-## [param box], laid at once, by [param way] — {"straight": slopes straight
-## first or curved, "edges": its hard top edges rounded, "skins": its plain
-## faces skinned studs out, "curves"/"straights": the slopes real sets use for
-## its form at its size, first} — and recorded as findings of [param feature],
-## settled with it by settle_feature, not by settle_surface. The pass itself
-## is still to come: this is not its run.
-##
-## design24's lever (each feature's form asked before the first build) won
-## head to head and lost its surface to the set by 14: where it lost, the
-## judge named the design's steps in 49 of 63 (docs/DESIGN_SCORES.md). The
-## forms asked curve, taper and lean, and the sessions built them in plates
-## stepped in, where real sets turn them with curved slopes, wedges and SNOT.
-func form_finish(feature: String, box: AABB, way: Dictionary) -> Array[Finding]:
-	var laid: Array[Finding] = []
-	if assistant._bricks_inside({}).is_empty() or not box.has_volume():
-		return laid
-	_within = box
-	_form = way
-	var found: Array[Finding] = find()
-	var to_lay: Array[Finding] = []
-	for one: Finding in found:
-		if not one.offered:
-			to_lay.append(one)
-	if not to_lay.is_empty():
-		laid = await _lay_all(to_lay, Time.get_ticks_msec() + LAYING_MS)
-	_within = AABB()
-	_form = {}
-	for one: Finding in laid:
-		_numbered += 1
-		one.key = "S%d" % _numbered
-		one.feature = feature
-		findings.append(one)
-	return laid
-
-
-## The findings a feature's close look laid, settled as the feature was: kept
-## ("accepted"), or taken off with what they replaced put back ("rejected",
-## the box left alone for good; "" to lay them again another way). False when
-## something could not be taken off.
-func settle_form(laid: Array, verdict: String, reason: String = "") -> bool:
-	var ok: bool = true
-	for n: int in range(laid.size() - 1, -1, -1):
-		var one: Finding = laid[n]
-		match verdict:
-			"accepted":
-				one.verdict = "accepted"
-			_:
-				if not one.ids.is_empty() and not await _take_off(one):
-					ok = false
-					continue
-				if verdict == "rejected":
-					one.verdict = "rejected"
-					one.reason = reason
-					zones.append([one.box.grow(2.0), reason])
-				else:
-					findings.erase(one)
-	return ok
-
-
-## A feature's findings in words, a line each: "S4 staircase: 6 studs
-## stepping up +x 3 times by a brick, x 2..5, ... Laid: 3 x 15068 ...".
-static func form_said(laid: Array) -> PackedStringArray:
-	var out := PackedStringArray()
-	for raw: Variant in laid:
-		var one: Finding = raw
-		out.append("  %s %s: %s Laid: %s%s." % [one.key, one.kind, one.said, one.laid,
-			_bricks_said(one.ids)])
-	return out
-
-
-## Where a feature's square parts step, seen from each side: its outline at
-## each plate up, from the bricks, plates and tiles in [param box], and each
-## run of two steps or more the same way — a half stud to three studs in or
-## out, within two bricks of the last — as {"face", "way" ("in" as it rises,
-## or "out"), "steps", "from", "to" (plates up), "studs" (how far in all),
-## "covered" (steps a slope or curve now stands on the tread of)}. What the
-## judge names "stepped" is this outline: a curve or a taper laid in plates.
-func steps_in(box: AABB) -> Array:
-	var levels: Dictionary = {}
-	# The slopes, curves, wedges and round parts there, by their boxes: the
-	# lattice leaves a curved slope's cells out, so a step under a 15068 was
-	# read as bare.
-	var shaped: Array[AABB] = []
-	for brick: BrickWorld.Brick in assistant._bricks_inside({}):
-		var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id)
-		var mesh: Lbm.PartMesh = assistant.library.mesh_for(brick.part_id)
-		if info == null or mesh == null:
-			continue
-		var b: AABB = (brick.transform * mesh.bounds).abs()
-		if not box.intersects(b):
-			continue
-		if _shaped(info):
-			shaped.append(b)
-		if not info.family_category() in ["Brick", "Plate", "Tile"]:
-			continue
-		var bottom: int = roundi(b.position.y / PLATE)
-		var top: int = maxi(bottom + 1, roundi((b.end.y - 4.0) / PLATE))
-		for level: int in range(bottom, top):
-			var at: Dictionary = levels.get(level, {})
-			for face: String in ["+x", "-x", "+z", "-z"]:
-				var reach: float = {"+x": b.end.x, "-x": -b.position.x, "+z": b.end.z,
-					"-z": -b.position.z}[face]
-				if not at.has(face) or reach > float((at[face] as Array)[0]):
-					var across: float = b.get_center().z if face.ends_with("x") else b.get_center().x
-					at[face] = [reach, across]
-			levels[level] = at
-	var ys: Array = levels.keys()
-	ys.sort()
-	var out: Array = []
-	for face: String in ["+x", "-x", "+z", "-z"]:
-		var run: Dictionary = {}
-		var last: int = 0
-		for n: int in range(1, ys.size()):
-			var y: int = ys[n]
-			var below: Array = levels[ys[n - 1]][face]
-			var here: Array = levels[y][face]
-			var moved: float = (float(here[0]) - float(below[0])) / STUD
-			var gap: bool = y != int(ys[n - 1]) + 1
-			if not run.is_empty() and (gap or y - last > 6 or absf(moved) > 3.05):
-				if int(run["steps"]) >= 2:
-					out.append(run)
-				run = {}
-			if absf(moved) < 0.45 or absf(moved) > 3.05:
-				continue
-			var way: String = "in" if moved < 0.0 else "out"
-			if not run.is_empty() and str(run["way"]) != way:
-				if int(run["steps"]) >= 2:
-					out.append(run)
-				run = {}
-			if run.is_empty():
-				run = {"face": face, "way": way, "steps": 0, "from": int(ys[n - 1]), "to": y,
-					"studs": 0.0, "covered": 0}
-			run["steps"] = int(run["steps"]) + 1
-			run["to"] = y
-			run["studs"] = float(run["studs"]) + absf(moved)
-			# Covered: on the tread, a half stud out from the riser above it,
-			# stands a slope or a curve.
-			var riser: float = minf(float(here[0]), float(below[0]))
-			var tread := Vector3(riser + 10.0, y * PLATE + 4.0, float(here[1]))
-			match face:
-				"-x":
-					tread = Vector3(-(riser + 10.0), y * PLATE + 4.0, float(here[1]))
-				"+z":
-					tread = Vector3(float(here[1]), y * PLATE + 4.0, riser + 10.0)
-				"-z":
-					tread = Vector3(float(here[1]), y * PLATE + 4.0, -(riser + 10.0))
-			if shaped.any(func(one: AABB) -> bool: return one.grow(0.5).has_point(tread)):
-				run["covered"] = int(run["covered"]) + 1
-			last = y
-		if not run.is_empty() and int(run["steps"]) >= 2:
-			out.append(run)
-	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a["steps"]) > int(b["steps"]))
-	return out
-
-
-## Whether a part is a slope, a curve, a wedge or a round part: what turns a
-## step.
-static func _shaped(info: PartLibrary.PartInfo) -> bool:
-	var name: String = info.name.to_lower()
-	return info.family_category() in ["Slope", "Wedge", "Arch"] or name.contains("curved") \
-		or name.contains("round") or name.contains("wedge")
-
-
-## The steps in words: "from the right it steps in 4 times, 4 studs in all,
-## plates 3 to 15 (1 of them under a slope now)"; "" for none.
-static func steps_said(runs: Array, most: int = 3) -> String:
-	var said := PackedStringArray()
-	for raw: Variant in runs.slice(0, most):
-		var run: Dictionary = raw
-		var side: String = {"+x": "the right", "-x": "the left", "+z": "the front",
-			"-z": "the back"}[str(run["face"])]
-		var covered: int = int(run["covered"])
-		said.append("from %s it steps %s %d times, %s stud%s in all, plates %d to %d%s" % [
-			side, str(run["way"]), int(run["steps"]), _num(float(run["studs"])),
-			"" if absf(float(run["studs"]) - 1.0) < 0.01 else "s", int(run["from"]), int(run["to"]),
-			"" if covered == 0 else " (%d of them under a slope now)" % covered])
-	return "; ".join(said)
 
 
 func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
@@ -878,7 +686,7 @@ func find() -> Array[Finding]:
 	var gone: Dictionary = {}
 	var stairs: Array[Finding] = _staircases(levels, claimed, gone)
 	var edges: Array[Finding] = []
-	if bool(_form.get("edges", false)) if not _form.is_empty() else not _straight_first():
+	if not _straight_first():
 		edges = _edges(levels, claimed)
 	var fields: Array[Finding] = _fields(tops, claimed)
 	# And each section's own: a wing laid at an angle is studs up in its own
@@ -892,17 +700,9 @@ func find() -> Array[Finding]:
 	fields.append_array(_side_fields(points))
 	# A building's long plain walls are textured; a body's flanks skinned,
 	# of brick courses and of plates.
-	# A feature's close look skins its faces where its form is curved or
-	# tapering, building or not: real Architecture sets turn a facade's studs
-	# out under tiles as often as a car's (tools/form_parts.py).
-	var skins: bool = bool(_form.get("skins", false)) if not _form.is_empty() \
-		else not _straight_first()
-	var walls: Array[Finding] = []
-	if skins:
-		walls = _flanks(gone)
+	var walls: Array[Finding] = _walls(gone) if _straight_first() else _flanks(gone)
+	if not _straight_first():
 		walls.append_array(_plate_flanks(gone, walls.duplicate()))
-	elif _form.is_empty():
-		walls = _walls(gone)
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
 	edges.sort_custom(by_size)
@@ -1135,10 +935,6 @@ func _whole_square(point: OpenPoints.Point) -> bool:
 
 
 func _in_zone(at: Vector3) -> bool:
-	# A feature's close look reads only the feature: outside its box is left
-	# alone, as a zone kept is.
-	if _within.has_volume() and not _within.has_point(at):
-		return true
 	for zone: Array in zones:
 		if (zone[0] as AABB).has_point(at):
 			return true
@@ -1167,10 +963,6 @@ func _is_mosaic() -> bool:
 ## from outside, the request's first sentence in the app's loop — and not its
 ## description, where a car's roof and windscreen are described.
 func _straight_first() -> bool:
-	# A feature's close look goes by the feature's form, not the subject's
-	# kind: a palace's dome is curved, a car's spoiler is not.
-	if not _form.is_empty():
-		return bool(_form.get("straight", false))
 	var words: PackedStringArray = assistant._asked_as().get_slice(".", 0).to_lower().replace(
 		",", " ").replace("-", " ").split(" ", false)
 	for word: String in words:
@@ -1603,17 +1395,9 @@ func _cover_row(one: Finding, run: Array[Vector2i], d: Vector2i, perp: Vector2i,
 ## first, curved or straight first as the subject reads.
 func _slopes_for(tread: int, rise: int, straight: bool) -> Array:
 	var out: Array = []
-	# A feature's close look tries first the slopes real sets use for its form
-	# at its size (FormParts), then the rest.
-	var curved: Array = _form.get("curves", []) + CURVED
-	var flat: Array = _form.get("straights", []) + STRAIGHT
-	var seen: Dictionary = {}
-	for list: Array in ([flat, curved] if straight else [curved, flat]):
+	for list: Array in ([STRAIGHT, CURVED] if straight else [CURVED, STRAIGHT]):
 		var these: Array = []
 		for id: String in list:
-			if seen.has(id):
-				continue
-			seen[id] = true
 			var shape: Dictionary = Shapes.part(assistant.library, id)
 			if not shape.is_empty() and int(shape["d"]) == tread and int(shape["h"]) == rise:
 				these.append(shape)
@@ -2178,9 +1962,7 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "",
 		# things already stand on is a yard, laid round them.
 		one.offered = section.is_empty() and _ground(box, model_box) and standing == 0
 		var accents: int = 0
-		# Not in a feature's close look: its form is its shape, and a grille
-		# on a dome is detail the pass after it chooses.
-		if field.size() >= ACCENTS_FROM and not one.offered and _form.is_empty():
+		if field.size() >= ACCENTS_FROM and not one.offered:
 			accents = 1 if field.size() < 40 else (2 if field.size() < 80 else 3)
 		var made: Array[int] = []
 		if lay:
