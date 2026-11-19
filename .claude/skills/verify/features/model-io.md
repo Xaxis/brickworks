@@ -147,13 +147,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   every copy by its name in the app and on the site
   (`tools/web/copy_names_check.mjs`).
   The build order is worked out from the parts in an order of their own (by
-  height, sub-model and copy, part, place, colour and turn,
-  `Instructions.in_order`), never the order the file lists them, which is
-  the last saved plan: saved, opened and saved, sculpt170-042's potato body
-  came back built in the model's steps, and pagoda's pond, orthanc_square
-  and pickabrick_big in other steps (keepbytes, 2026-11-19). Of 203 models
-  (every fixture and 18 real files) 8 fixtures plan otherwise than live at
-  their first save, the real sets none (their steps are their authors').
+  height, part, place, colour and turn, `Instructions.in_order`), never the
+  order the file lists them, which is the last saved plan: saved, opened and
+  saved, sculpt170-042's potato body came back built in the model's steps,
+  and pagoda's pond, orthanc_square and pickabrick_big in other steps
+  (keepbytes, 2026-11-19). Nor by a sub-model's or copy's name, which a
+  rename changes (unit_steps' Sub renamed Crate). Of 205 models (every
+  fixture and 18 real files) 9 fixtures plan otherwise than live at their
+  first save by this order (2 more by pre261's own changes), the real sets
+  none (their steps are their authors').
   A saved model deleted and put back by Undo, renamed, or a set from the
   library is read by its bytes (`LdrModel.text_of`): read as text, a file
   that began with a BOM lost it.
