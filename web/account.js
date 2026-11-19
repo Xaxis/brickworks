@@ -285,8 +285,10 @@ export async function sendCode(address) {
   const wanted = String(address || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(wanted)) throw new Error(say("That is not an email address."));
   await where();
+  // How this visit came (web/theme.js), for the owner's sign-up mail.
+  const came = globalThis.brickworksCame || null;
   const reply = await fetch("/api/otp", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: wanted }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: wanted, ...(came ? { came } : {}) }),
   });
   if (!reply.ok) {
     const body = await json(reply);
@@ -513,6 +515,35 @@ export function signOut() {
   } catch {
     // Nothing kept, nothing to forget.
   }
+}
+
+// The avatar's count as this page last heard it (web/follow.js
+// showFeedCount), for whom: web/notice.js reads the notices the person hid
+// from it (notice_hidden), so it asks nothing of its own.
+let countHeard = null;
+const countWaiting = new Set();
+
+/// What op=feed_count answered on this page ([body], or null when it was
+/// not answered), heard by whoever waits on feedCountHeard.
+export function tellFeedCount(body) {
+  countHeard = { body: body && typeof body === "object" ? body : null, who: email() };
+  for (const done of countWaiting) done(countHeard.body);
+  countWaiting.clear();
+}
+
+/// What op=feed_count answered for the person signed in on this page:
+/// at once when it was heard, else when it is, else null after [ms].
+export function feedCountHeard(ms) {
+  if (countHeard && countHeard.who === email()) return Promise.resolve(countHeard.body);
+  return new Promise((resolve) => {
+    const done = (body) => {
+      clearTimeout(late);
+      countWaiting.delete(done);
+      resolve(body);
+    };
+    const late = setTimeout(() => done(null), ms);
+    countWaiting.add(done);
+  });
 }
 
 /// A call to the site's own API with the sign-in, as JSON: {status, body}.

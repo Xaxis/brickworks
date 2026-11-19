@@ -6,7 +6,9 @@
 // with the award in the picture's place, its link your profile's
 // Achievements tab; and a challenge opening, its last two days and who won
 // it, a group a challenge with a brick in the picture's place, its link
-// the challenge's page. Opening the page clears the count on your avatar (the
+// the challenge's page; and what the site's owner announced, a group each
+// (supabase/announce.sql), its link counted when followed. Each group is
+// drawn by web/notice-view.js. Opening the page clears the count on your avatar (the
 // server marks it seen). A group stays marked unread until it is opened,
 // by any of its links, or Mark all read.
 //
@@ -14,38 +16,23 @@
 // escapes its own.
 import { askToSignIn, call, signOut, signedIn, token } from "/account.js";
 import { showFeedCount, showTabCounts } from "/follow.js";
-import { ago, avatarHtml, iconHtml } from "/kit.js";
-import { langAt, say, told } from "/card.js";
+import { say, told } from "/card.js";
+import { group } from "/notice-view.js";
 
 const $ = (id) => document.getElementById(id);
 // The language the server says each line in (?lang=, api/_notifications.js
 // noticeSaid).
 const LANG = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
 
-/// Only the site's own addresses: what the server made from ids.
-function here(link) {
-  try {
-    const url = new URL(String(link || ""), location.origin);
-    if (url.origin !== location.origin) return `${langAt()}/notifications`;
-    // A page with a copy in the page's language opens it (/de/m/<id>).
-    const copied = /^\/(?:[muc]\/|(?:challenge|profile|collections)(?=\/?$))/.test(url.pathname);
-    return (copied ? langAt() : "") + url.pathname + url.search + url.hash;
-  } catch {
-    return `${langAt()}/notifications`;
-  }
-}
-
-const parsed = (html) => {
-  const made = document.createElement("template");
-  made.innerHTML = html;
-  return made.content.firstElementChild;
-};
-
-/// Its model's group (or the achievements', or a challenge's) opened: read up to now, here at
+/// Its model's group (or the achievements', a challenge's or an announcement's) opened: read up to now, here at
 /// once and on the server, which a link followed straight away does not
 /// wait for.
-async function read(group) {
-  if (!group.classList.contains("unread")) return;
+async function read(group, clicked = false) {
+  // An announcement's own link followed is counted once (a click), read or not.
+  const telling = "announcement" in group.dataset;
+  const counted = telling && clicked && !("clicked" in group.dataset);
+  if (!group.classList.contains("unread") && !counted) return;
+  if (counted) group.dataset.clicked = "";
   group.classList.remove("unread");
   group.querySelector(".dot")?.remove();
   for (const line of group.querySelectorAll(".unread")) line.classList.remove("unread");
@@ -54,6 +41,7 @@ async function read(group) {
   fetch("/api/people?op=notifications_read", { method: "POST", keepalive: true,
     headers: { authorization: `Bearer ${access}`, "content-type": "application/json" },
     body: JSON.stringify("achievements" in group.dataset ? { achievements: true }
+      : telling ? { announcement: Number(group.dataset.announcement), ...(counted ? { clicked: true } : {}) }
       : group.dataset.challenge ? { challenge: Number(group.dataset.challenge) } : { model: group.dataset.model }) })
     .catch(() => null);
   allRead();
@@ -64,98 +52,15 @@ function allRead() {
   $("all-read").hidden = left === 0;
 }
 
-function line(one) {
-  const item = document.createElement("li");
-  item.dataset.kind = String(one.kind || "");
-  if (one.unread) item.classList.add("unread");
-  const link = document.createElement("a");
-  link.href = here(one.link);
-  if (one.by && one.by.handle) {
-    link.append(parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture }, { size: "small" })));
-  }
-  else link.append(parsed(iconHtml(["result", "achievement", "challenge_won"].includes(one.kind) ? "award"
-    : ["challenge_open", "challenge_closing"].includes(one.kind) ? "build" : one.kind === "likes" ? "like" : "comment")));
-  const words = document.createElement("span");
-  words.className = "what";
-  // The line as the server said it in the page's language, whoever did it
-  // where the language puts them.
-  const who = document.createElement("b");
-  who.textContent = String(one.who || "");
-  for (const piece of String(one.line || "").split(/(\{who\})/)) {
-    if (piece) words.append(piece === "{who}" ? who : piece);
-  }
-  if (one.new) {
-    const tag = document.createElement("span");
-    tag.className = "pill new";
-    tag.textContent = say("New");
-    words.append(" ", tag);
-  }
-  if (one.said) {
-    const said = document.createElement("q");
-    said.textContent = String(one.said);
-    words.append(said);
-  }
-  const at = document.createElement("time");
-  at.dateTime = String(one.at || "");
-  at.textContent = ago(one.at);
-  words.append(at);
-  link.append(words);
-  item.append(link);
-  return item;
-}
-
-function group(one, i = 0) {
-  const item = document.createElement("li");
-  item.className = `notice${one.unread ? " unread" : ""}`;
-  item.dataset.model = String(one.model || "");
-  if (one.achievements) item.dataset.achievements = "";
-  if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
-  const picture = document.createElement("a");
-  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : "pic";
-  picture.href = here(one.link);
-  picture.tabIndex = -1;
-  picture.setAttribute("aria-hidden", "true");
-  if (one.picture) {
-    const img = document.createElement("img");
-    img.src = here(one.picture);
-    img.alt = "";
-    img.width = 1200;
-    img.height = 630;
-    // The first screen's asked at once.
-    img.loading = i < 4 ? "eager" : "lazy";
-    img.decoding = "async";
-    picture.append(img);
-  }
-  if (one.achievements) picture.append(parsed(iconHtml("award")));
-  if (one.challenge) picture.append(parsed(iconHtml("build")));
-  const body = document.createElement("div");
-  body.className = "body";
-  const title = document.createElement("h2");
-  const name = document.createElement("a");
-  name.href = here(one.link);
-  name.textContent = String(one.name || say("Your model"));
-  title.append(name);
-  if (one.unread) {
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    dot.title = say("Not opened yet");
-    const words = document.createElement("span");
-    words.className = "visually-hidden";
-    words.textContent = say("Not opened yet");
-    dot.append(words);
-    title.append(dot);
-  }
-  const lines = document.createElement("ul");
-  lines.className = "lines";
-  for (const row of one.rows || []) lines.append(line(row));
-  body.append(title, lines);
-  item.append(picture, body);
-  item.addEventListener("click", (event) => {
-    if (event.target.closest("a")) read(item);
-  });
-  item.addEventListener("auxclick", (event) => {
-    if (event.target.closest("a")) read(item);
-  });
+/// [one] group drawn, its links reading it as they are followed.
+function groupOf(one, i = 0) {
+  const item = group(one, i);
+  const opened = (event) => {
+    const link = event.target.closest("a");
+    if (link) read(item, item.dataset.own !== undefined && link.getAttribute("href") === item.dataset.own);
+  };
+  item.addEventListener("click", opened);
+  item.addEventListener("auxclick", opened);
   return item;
 }
 
@@ -183,7 +88,7 @@ async function load() {
     return;
   }
   const groups = Array.isArray(answer.body.groups) ? answer.body.groups : [];
-  $("groups").replaceChildren(...groups.map(group));
+  $("groups").replaceChildren(...groups.map(groupOf));
   $("empty").hidden = groups.length > 0 || answer.body.ready === false;
   $("not-yet").hidden = answer.body.ready !== false;
   allRead();

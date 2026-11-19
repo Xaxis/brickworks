@@ -162,6 +162,8 @@ for handler in api/*.js; do
   # Vercel holds every line until the last, and a pointer is seen up to
   # 20 s late.
   streams=false; [ "$route" = together ] && streams=true
+  # And the console's Claude streams its answers as they come (api/_claude.js).
+  [ "$route" = admin ] && streams=true
   cat > "$fn/.vc-config.json" <<JSON
 {
   "runtime": "nodejs22.x",

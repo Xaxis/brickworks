@@ -52,9 +52,13 @@
 // mailed there (api/otp.js refuses the domain, api/_comments.js skips it).
 // Rate limited per address in the database, as codes are.
 
+import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
+import { raiseSignup } from "./_notify.js";
+import { scopeOf } from "./_settings.js";
 import {
   checkToken, codeOf, connectConfigured, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, provision, spendToken,
   tradeCode,
@@ -188,7 +192,7 @@ async function signIn(request, response) {
   const body = bodyOf(request);
   const token = typeof body?.token === "string" ? body.token.trim() : "";
   if (token && !(await counted(request, response))) return;
-  return signInWith(token, response);
+  return signInWith(token, response, request);
 }
 
 // What the app sends: orangecheck's code, a PKCE verifier (RFC 7636: 43 to
@@ -210,12 +214,13 @@ async function native(request, response) {
   if (!(await counted(request, response))) return;
   const traded = await tradeCode({ code, verifier, redirect });
   if (!traded.token) return say(response, traded.status, traded.error, traded.more);
-  return signInWith(traded.token, response);
+  return signInWith(traded.token, response, request);
 }
 
 /// [token], orangecheck's, checked and exchanged for a Brickworks session,
-/// answered: the window's sign-in and the app's alike.
-async function signInWith(token, response) {
+/// answered: the window's sign-in and the app's alike. An account made
+/// here is told to the owner (api/_notify.js), for [request]'s deployment.
+async function signInWith(token, response, request = null) {
   const checked = await checkToken(token);
   if (!checked.session) return say(response, checked.status, checked.error, checked.more);
   const { did_oc: did, jti, rh, aud, iat, exp } = checked.session;
@@ -291,6 +296,7 @@ async function signInWith(token, response) {
     return say(response, 409, "orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.");
   }
   await Promise.all([endToken(token), keepHandle(checked.session)]);
+  if (made) afterAnswer(() => raiseSignup({ account, email: null, scope: scopeOf(request), via: "orangecheck" }), "orangecheck: sign-up");
 
   const s = minted.session;
   return response.status(200).json({
@@ -438,7 +444,7 @@ async function connect(request, response) {
   return response.status(200).json(await provision(who.claims.sub, who.emailed));
 }
 
-export default async function handler(request, response) {
+async function handler(request, response) {
   // Asked only by the site's own pages: no cross-origin answer, and nothing
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
@@ -451,3 +457,6 @@ export default async function handler(request, response) {
   if (request.method === "POST" && op === "connect") return connect(request, response);
   return say(response, 405, "POST ?op=signin, ?op=native, ?op=link, ?op=unlink or ?op=connect, or GET ?op=status");
 }
+
+// Each 5xx kept for the owner's server-errors notification (api/_noted.js).
+export default noted("orangecheck", handler);

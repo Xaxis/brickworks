@@ -251,10 +251,14 @@ static func waiting_words(what: String) -> String:
 ## sign-in form that tells them apart is a way of asking whether somebody
 ## is a member. It does say when the email could not be sent.
 func request_code(with_email: String) -> String:
+	var asked := {"email": with_email.strip_edges().to_lower()}
+	var how: Variant = came()
+	if how is Dictionary:
+		asked["came"] = how
 	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/otp",
 		PackedStringArray(["content-type: application/json"]),
 		HTTPClient.METHOD_POST,
-		JSON.stringify({"email": with_email.strip_edges().to_lower()}))
+		JSON.stringify(asked))
 	var body: Variant = reply.get("body")
 	var code: int = int(reply.get("code", 0))
 	if code == 200:
@@ -272,6 +276,49 @@ func request_code(with_email: String) -> String:
 	if code == 0:
 		return "Could not reach Brickworks to send a code. Check your connection."
 	return "Could not send a code just now (%d). Try again in a minute." % code
+
+
+## How this visit came (the site that sent it, a link's utm_ tags), for the
+## owner's mail of a new sign-up (api/_notify.js); null off the web, or when
+## nothing is known. The server checks each field (cameOf).
+##
+## The site's pages keep the visit's first touch for the tab (web/theme.js,
+## sessionStorage "brickworks.came"). The studio's own page loads no
+## theme.js (src/boot/shell.html), so it reads that keep; a visit that began
+## here works it out by the same rule from this page's address and
+## referrer, and keeps it, so the site's sign-in it goes on to (orangecheck,
+## sign_in_form.gd) knows it too. onfix's preview found the studio sending
+## none.
+const _CAME_JS := """(() => {
+	try { const kept = sessionStorage.getItem("brickworks.came"); if (kept) return kept; } catch (e) {}
+	const came = {};
+	try {
+		const params = new URLSearchParams(location.search);
+		for (const name of ["source", "medium", "campaign"]) {
+			const value = String(params.get("utm_" + name) || "").trim();
+			if (/^[A-Za-z0-9 ._+-]{1,60}$/.test(value)) came[name] = value;
+		}
+		const from = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : "";
+		if (from && from !== location.hostname && from !== "brickworks.diy" && !from.endsWith(".brickworks.diy")) {
+			came.referrer = from.slice(0, 100);
+		}
+	} catch (e) {}
+	if (!Object.keys(came).length) return "null";
+	try { sessionStorage.setItem("brickworks.came", JSON.stringify(came)); } catch (e) {}
+	return JSON.stringify(came);
+})()"""
+
+
+static func came() -> Variant:
+	if not OS.has_feature("web"):
+		return null
+	var said: Variant = JavaScriptBridge.eval(_CAME_JS, true)
+	if typeof(said) != TYPE_STRING:
+		return null
+	var json := JSON.new()
+	if json.parse(str(said)) != OK or typeof(json.data) != TYPE_DICTIONARY or (json.data as Dictionary).is_empty():
+		return null
+	return json.data
 
 
 ## [param iso] (a UTC time, api/otp.js retry_at) as this computer's clock

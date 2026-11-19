@@ -619,11 +619,14 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .what .pill { margin-left: 2px; }
 .notice .what q { display: block; margin-top: 2px; color: var(--ink-soft); }
 .notice .what time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
-/* The levels you reached (supabase/achievements.sql), and a challenge
-   (supabase/challenge_notices.sql): the award, or the brick, where a
-   model's picture is. */
-.notice .pic.award, .notice .pic.challenge { display: grid; place-items: center; color: var(--ink-soft); }
-.notice .pic.award .icon, .notice .pic.challenge .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
+/* The levels you reached (supabase/achievements.sql), a challenge
+   (supabase/challenge_notices.sql), and what the site's owner announced
+   (supabase/announce.sql): the award, the brick, or the spark, where a
+   model's picture is. An announcement's words are the owner's, their lines
+   kept, in the line's own ink. */
+.notice .pic.award, .notice .pic.challenge, .notice .pic.announce { display: grid; place-items: center; color: var(--ink-soft); }
+.notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
+.notice .what .words { display: block; margin-top: 2px; white-space: pre-line; }
 @media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
 }

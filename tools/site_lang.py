@@ -204,7 +204,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/room.js": (),
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
             "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
-            "web/feed.js": (), "web/notifications.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/betabar.js": (), "web/notice.js": (),
+            "web/feed.js": (), "web/notifications.js": (), "web/notice-view.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/betabar.js": (), "web/notice.js": (),
             "web/keep.js": (), "web/lists.js": (),
             "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
             "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
