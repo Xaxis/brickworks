@@ -154,6 +154,12 @@ func _save_and_open() -> void:
 	print("    " + refused.left(300))
 	_check("open over unsaved changes is refused, and names save_first=",
 		refused.begins_with("Not opened") and refused.contains("save_first="))
+	var as_absent: String = await _say("open_model", {"name": other, "save_first": false})
+	_check("save_first=false is as if not sent: refused, nothing saved",
+		as_absent.begins_with("Not opened") and not FileAccess.file_exists(ModelStore.SAVE_DIR + "false.ldr"))
+	_written.append(ModelStore.SAVE_DIR + "false.ldr")
+	_calls = 0
+	await _say("open_model", {"name": other})
 	var parts_before: int = (_main.get("_world") as BrickWorld).brick_count()
 	var opened: String = await _say("open_model", {"name": other, "save_first": kept})
 	print("    " + opened.left(300))
@@ -330,6 +336,12 @@ func _set_added() -> void:
 		await store.load_collection()
 		var bad: String = await _say("edit_collection", {"sets": ["not a set"]})
 		_check("a word that is no set's number changes nothing: %s" % bad, bad.begins_with("Nothing was changed"))
+		var twice: String = await _say("edit_collection", {"sets": [SET, "31058\u200b\u20131"]})
+		_check("a number with a zero-width mark and an en dash is read as %s, so named twice: %s" % [SET,
+			twice.left(90)], twice.begins_with("Nothing was changed") and twice.contains("named twice"))
+		var absent: String = await _say("edit_collection", {"sets": false})
+		_check("sets=false is as if not sent: %s" % absent.left(70), not absent.begins_with("Nothing was changed")
+			and not absent.contains("Added to the person's collection"))
 		var mixed: String = await _say("edit_collection", {"sets": [SET], "add": [{"part": "3001", "color": 4, "count": 1}]})
 		_check("sets= with add= changes nothing: %s" % mixed.left(90), mixed.begins_with("Nothing was changed"))
 		_calls = 0

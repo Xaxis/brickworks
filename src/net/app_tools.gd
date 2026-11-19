@@ -3989,8 +3989,10 @@ func _open(input: Dictionary) -> String:
 	if replace and not opening:
 		return await _moved_said(store, true)
 	var kept: String = ""
-	if opening and not str(input.get("save_first", "")).strip_edges().is_empty():
-		kept = _save_first(store, str(input["save_first"]))
+	# Only a file name asks for it: false, null or "" are as if not sent.
+	var save_first: Variant = input.get("save_first")
+	if opening and save_first is String and not (save_first as String).strip_edges().is_empty():
+		kept = _save_first(store, save_first as String)
 		if not kept.is_empty() and not kept.begins_with("Saved "):
 			return kept
 	var before: int = store.world.generation()
@@ -4897,8 +4899,10 @@ func _edit_collection(input: Dictionary) -> String:
 		return ("Nothing was changed: missing= marks a set's missing parts and built= the sets kept built, "
 			+ "one thing a call: send them in separate calls.")
 	# mcpreach3 (APP_UX10's r5): sets added by number, and built= on them.
+	# A list, or one number as a string; false, null, "" or [] are as if not sent.
 	var adding_sets: Variant = input.get("sets")
-	if adding_sets != null and not (adding_sets is Array and (adding_sets as Array).is_empty()):
+	if (adding_sets is Array and not (adding_sets as Array).is_empty()) \
+			or (adding_sets is String and not (adding_sets as String).strip_edges().is_empty()):
 		return await _collection_sets(dialog, mine, input)
 	# partplaces (APP_UX9 #14): where each part and colour is kept.
 	var placing: Variant = input.get("place")
@@ -5562,8 +5566,8 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 			return ("Nothing was changed: sets= adds sets and %s= is another change, one thing a call "
 				+ "(built= may come with sets=): send them in separate calls.") % other
 	var asked: Variant = input["sets"]
-	if not asked is Array:
-		return "sets is a list of set numbers, like [\"31058-1\"]."
+	if asked is String:
+		asked = [asked]
 	if (asked as Array).size() > MOST_SETS_ADDED:
 		return "At most %d sets a call; send the rest in another." % MOST_SETS_ADDED
 	# A set's number as Rebrickable writes them: letters and digits, one at
@@ -5572,8 +5576,7 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 	var numbers := PackedStringArray()
 	var bad := PackedStringArray()
 	for n: int in (asked as Array).size():
-		var raw: String = str(asked[n]).strip_edges() if asked[n] is String else ""
-		var number: String = SetInventories.normal(raw)
+		var number: String = SetInventories.normal(_set_text(asked[n]))
 		if number.is_empty() or shape.search(number) == null:
 			bad.append("sets %d: a set's number, like 31058-1" % (n + 1))
 		elif numbers.has(number):
@@ -5601,8 +5604,9 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 	var said: String = ("Added to the person's collection, as Add a set in My collection adds it:\n%s"
 		% "\n".join(lines))
 	var built: Variant = input.get("built")
-	if built != null and not (built is Array and (built as Array).is_empty()):
-		said += "\n" + await _collection_built(mine, {"built": built})
+	if (built is Array and not (built as Array).is_empty()) \
+			or (built is String and not (built as String).strip_edges().is_empty()):
+		said += "\n" + await _collection_built(mine, {"built": [built] if built is String else built})
 	else:
 		said += ("\nEvery part of it is theirs to build with until it is marked kept built on a shelf "
 			+ "(built=, or its Built mark in My collection).")
@@ -5614,6 +5618,18 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 
 ## The most sets one sets= adds.
 const MOST_SETS_ADDED := 20
+
+
+## A set's number as sent, made plain: Unicode's spaces and the marks that
+## take no room gone (Collection.place_text), and a dash of any kind (an en
+## dash, a minus) the hyphen Rebrickable writes. "" for what is not text.
+static func _set_text(raw: Variant) -> String:
+	if not raw is String:
+		return ""
+	var text: String = Collection.place_text(raw as String).replace(" ", "")
+	for dash: int in [0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0xFE63, 0xFF0D]:
+		text = text.replace(String.chr(dash), "-")
+	return text
 
 
 ## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).
