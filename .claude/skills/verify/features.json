@@ -87,6 +87,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -100,6 +101,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
@@ -124,6 +126,7 @@
         "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_announce.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -191,6 +194,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -214,7 +218,9 @@
         "tests/fixtures/relay/world.mjs",
         "tests/test_assistant_pages.py",
         "tests/test_oauth_clients.py",
-        "tests/fixtures/oauth/world.mjs"
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/oauth/world.mjs",
+        "tests/test_insights.py"
       ]
     },
     {
@@ -234,7 +240,8 @@
       "tests": [
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/test_comment_mentions.py"
+        "tests/test_comment_mentions.py",
+        "tests/test_relay_signed_out.py"
       ]
     },
     {
@@ -248,6 +255,7 @@
         "tests/test_console3.py",
         "tests/test_social.py",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_announce.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -278,12 +286,14 @@
       "tests": [
         "tests/fixtures/adminclaude/api_check.mjs",
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_announce.py",
         "tests/test_beta.py",
         "tests/test_console.py",
         "tests/test_console2.py",
         "tests/test_feedback.py",
+        "tests/test_insights.py",
         "tests/test_owner_notify.py"
       ]
     },
@@ -300,6 +310,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -343,6 +354,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -364,6 +376,7 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/db2_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -387,6 +400,7 @@
         "tests/test_feedback.py",
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
@@ -775,7 +789,8 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
-        "tests/test_adminclaude.py"
+        "tests/test_adminclaude.py",
+        "tests/test_insights.py"
       ]
     },
     {
@@ -882,10 +897,12 @@
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js, the card, and web/viewer3d.js, a model page's 3D view, both from tools/viewer/view.js)",
       "area": "mcp",
       "tests": [
+        "tests/fixtures/insights/names_check.mjs",
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
+        "tests/test_insights.py",
         "tests/test_oauth_clients.py",
         "tests/test_update_parts.py"
       ]
@@ -1639,6 +1656,14 @@
       "kind": "cli",
       "entry": "tools/web/idle_check.mjs",
       "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:insights browser flow",
+      "kind": "cli",
+      "entry": "tools/web/insights_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/insights_flow.mjs --url=<preview> --out=DIR [--no-studio]   (never on brickworks.diy: the read's gate; nothing sent or started with DNT, GPC, after No or driven unasked; a tagged visit's beacons with no address, IP or page text; the ask in German at 430x932, Yes and No; off in Settings; the server's own GPC and DNT drop; the studio's beacon; after supabase/analytics.sql this run's rows in the owner's read; each tab at 390/1280 light/dark; <out>/beacons.json the beacons' sizes; preview check [insights])",
       "area": "web",
       "tests": []
     },
@@ -2594,6 +2619,9 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
         "tests/test_beta_join.py",
@@ -2601,6 +2629,7 @@
         "tests/test_console2.py",
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py"
       ]
     },
@@ -2782,10 +2811,14 @@
       "reach": "python3 tools/bench/run.py run --dry-run --subjects bonsai   (the real batch: run, then summary --append docs/DESIGN_SCORES.md)",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
         "tests/test_bench.py",
         "tests/test_booklet_follow.py",
         "tests/test_console3.py",
         "tests/test_elements.py",
+        "tests/test_insights.py",
         "tests/test_release.py"
       ]
     },
@@ -3256,6 +3289,14 @@
       "tests": []
     },
     {
+      "id": "cli:the start by phase",
+      "kind": "cli",
+      "entry": "tools/web/start_phases.mjs",
+      "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] --out=DIR   (webstart11, local servers only: two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; DIR/phases.md and pairs.json)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the visit counter served from the site",
       "kind": "cli",
       "entry": "tools/web/overlook_copy.sh",
@@ -3501,7 +3542,7 @@
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
-      "reach": "tools/deploy.sh --prod",
+      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py)",
       "area": "web",
       "tests": []
     },
@@ -3524,6 +3565,14 @@
       ]
     },
     {
+      "id": "cli:which engine each browser starts",
+      "kind": "cli",
+      "entry": "tools/web/engine_choice.mjs",
+      "reach": "heavy node tools/web/engine_choice.mjs --url=<page> --expect=on|off [--base=<base's page>] [--only=iphone,ipad,ipad_mac,mac,android,computer] --out=DIR   (nothreads: WebKit as an iPhone 13, an iPad, an iPad that says it is a Mac, a Mac; Chromium as a Pixel 7 and at 1280x800; each signed out: the engine its page asked for, window.brickworksEngine's choice, nothing of the other engine, the window up, no script error; --base: the same requests, each as often, the build's /b/<sha>/ as /b/SHA/; DIR/choice.json, exit 1 on a miss)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:worker first run",
       "kind": "cli",
       "entry": "src/dev/worker_first_run_probe.gd",
@@ -3535,7 +3584,7 @@
       "id": "endpoint:the numbers a phone is warned by",
       "kind": "endpoint",
       "entry": "api/_phone.js",
-      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s, phone_nothreads}, the measured defaults and false until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); POST /api/admin?op=phone_engine {on: true|false} (the owner's, audited, anything else refused with the switch's words; nothreads); /admin#switches Phones, its numbers and \"iPhones and iPads use the engine without threads\"; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
       "area": "account",
       "tests": []
     },
@@ -3714,6 +3763,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -4604,6 +4654,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -4771,6 +4822,14 @@
       "tests": []
     },
     {
+      "id": "lib:the counter's route and its reads",
+      "kind": "lib",
+      "entry": "api/_analytics.js",
+      "reach": "python3 tools/minitest.py tests/test_insights.py   (POST /api/plans?op=tally always 204: DNT, GPC, the EU/UK without a yes, a junk body kept nowhere; rows test unless sent to brickworks.diy or www by a person's account (a preview's host, a check's, an @resend.dev account's); the account only from a bearer that verifies, kept as HMAC(VIEW_SECRET), a beacon's who ignored; only names api/_insights_names.js has (python3 tools/insights_names.py --check), each kind at its most a beacon; one address's bucket; GET /api/admin?op=analytics 401 signed out, 404 to anybody else, ranges and filters, every list bounded (at most 113 kB); the cron /api/plans/tally-daily a day a call, insights_gone deleting a deleted account's rows unless the listing failed; an account's rows gone when it is deleted (api/_erase.js); Claude's tool calls counted in api/mcp.js with no account, refused, failed and relayed ones too; supabase/analytics.sql then analytics2.sql in a Postgres of its own: no role reaches a table, the caps, sampling past the soft cap, a read writes nothing, the rollup equal to the held rows, a person on two devices one visitor, 30 days kept; tests/fixtures/insights/attacks_check.mjs the review's attacks [--big times a flooded day]; dry run tools/analytics2_try.sql; docs/ANALYTICS.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the desktop app updates itself",
       "kind": "lib",
       "entry": "src/net/updater.gd",
@@ -4836,7 +4895,7 @@
       "id": "lib:the owner's notifications",
       "kind": "lib",
       "entry": "api/_notify.js",
-      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
+      "reach": "python3 tools/minitest.py $PWD/tests/test_owner_notify.py   (api/admin.js's notify ops and api/plans.js's owner_notify and notify_off against supabase/owner_notify.sql's tables held in memory and a stand-in Resend: each event by its real path (otp, share, feedback, Admission's signed webhook, a 5xx, Supabase's size and health, the desk's tables), a burst as one mail, 10 minutes at most, the digest once a day and one inside quiet hours sent as they end across both 2027 clock changes, quiet hours, the cap folded (titled as the hour's own at 1), pause, off, the one-click links, tests (a preview's leaving its pool off), another address by its code and 5 codes an hour, Resend failing 3 times, an erased account's mails emptied, the cron on a preview, the alarm without the database, the prune once a UTC day by pruned_on, a report's sender by handle or signed out, only resend.dev mailed; how a visit came kept for the tab by web/theme.js and read by the studio's sign-in, or worked out there for a visit that began at /app (came_check.mjs); owner_notify.sql applied twice to a Postgres of its own, then owner_notify2.sql twice over its rows; docs/OWNER_NOTIFY.md)",
       "area": "web",
       "tests": []
     },
@@ -4878,6 +4937,14 @@
       "entry": "src/net/viewer_tools.gd",
       "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (viewer_scene, viewer_check, viewer_steps, viewer_parts, viewer_pick, called as the relay calls them, each read back off the model)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "lib:the web's catalogue as columns",
+      "kind": "lib",
+      "entry": "src/parts/part_library.gd",
+      "reach": "godot --headless --path . --script src/dev/catalogue_columns_probe.gd   (webstart11: assets/web/catalogue.bin, written by src/dev/write_all_order.gd at every web export from the pack's catalogue.json (PartLibrary.columns_of) and read back field for field or the export stops; the web presets ship it in the JSON's place; the probe judges every field of 29,668 parts the same, its memory height under half the JSON's, no slower, another format refused)",
+      "area": "parts",
       "tests": []
     },
     {
@@ -5054,7 +5121,9 @@
       "entry": "web/faq.html",
       "reach": "https://brickworks.diy/faq   (the two ways to bring Claude, and the questions)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/owner_notify/came_check.mjs"
+      ]
     },
     {
       "id": "ui:LDraw library page",
@@ -5271,6 +5340,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
@@ -5439,6 +5509,7 @@
       "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
       "area": "parts",
       "tests": [
+        "tests/test_relay_signed_out.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -5485,6 +5556,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
@@ -5672,6 +5744,9 @@
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
         "tests/test_beta_join.py",
@@ -5679,6 +5754,7 @@
         "tests/test_console2.py",
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py"
       ]
     },
@@ -5822,10 +5898,17 @@
         "tests/test_gallery_tabs.py",
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/fixtures/insights/page_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6348,6 +6431,7 @@
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_console3.py",
@@ -6667,6 +6751,7 @@
       "tests": [
         "tests/fixtures/menu/admin_check.mjs",
         "tests/test_menu_admin.py",
+        "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
@@ -6709,6 +6794,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_insights.py",
         "tests/test_model_page.py",
         "tests/test_oauth_clients.py"
       ]
@@ -6896,6 +6982,7 @@
       "reach": "godot --path .  (any dialog, chooser or menu: the panels' dark face, on the desktop and, for dialogs, the web)",
       "area": "parts",
       "tests": [
+        "tests/test_relay_signed_out.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -7068,6 +7155,18 @@
       "tests": []
     },
     {
+      "id": "ui:the counter and its ask",
+      "kind": "ui",
+      "entry": "web/tally.js",
+      "reach": "every site page and /app, loaded after the first screen (web/theme.js, src/boot/shell.html): beacons to /api/plans?op=tally every 15 s while something happened and on leaving; nothing with Do Not Track or GPC, after No, off in Settings \u203a Privacy (#counting-on) or in a driven browser without localStorage brickworks.counting.check=1, and then tally.js and counting.js never fetched (window.brickworksCountingNo); the sign-in token as the beacon's bearer, the site's or the one the studio's /api/ requests carry, never an id; on a European clock or one naming no place (UTC, Etc/*) the ask at the window's foot (web/counting-ask.js) first, the first Tab stop, Escape closing it unanswered; /counting says it in en, de, fr, es (python3 tools/minitest.py tests/test_insights_page.py)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/test_insights_page.py"
+      ]
+    },
+    {
       "id": "ui:the embed in 3D",
       "kind": "ui",
       "entry": "web/embed.js",
@@ -7077,6 +7176,14 @@
         "tests/test_model_page.py",
         "tests/test_share_unknowns.py"
       ]
+    },
+    {
+      "id": "ui:the engine an iPhone or iPad starts",
+      "kind": "ui",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app on iOS or iPadOS (an iPhone, iPad or iPod user agent, or a Mac's with navigator.maxTouchPoints over 1): the page asks /api/plans?op=phone before any of the engine, and starts the one without threads (GODOT_CONFIG.nothreads, window.brickworksEngine) while phone_nothreads is on, the threaded one while it is off, unanswered or past 2.5 s; every other browser the threaded one, no question asked. heavy node tools/web/engine_choice.mjs --url=<page> --expect=on|off [--base=<base's page>] --out=DIR; locally tools/web/serve.py <placed tree> PORT --phone-nothreads on|off --compressed --cached (nothreads)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:the gallery's builds tab",
@@ -7105,10 +7212,17 @@
         "tests/test_gallery_tabs.py",
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/fixtures/insights/page_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
+        "tests/test_insights.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -7120,7 +7234,10 @@
       "entry": "web/landing.js",
       "reach": "<deployment>/ with the beta open   (#beta under the first screen: why to join, three points, the way in for each visitor, the months of Pro left from ?op=beta_spots; held from the first frame by <html data-beta>, else put in only while out of sight; tools/web/betahome_flow.mjs)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/test_insights.py"
+      ]
     },
     {
       "id": "ui:the hover drawn at the device's pace",
@@ -7156,6 +7273,14 @@
       "kind": "ui",
       "entry": "web/room.js",
       "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the owner's Analytics",
+      "kind": "ui",
+      "entry": "web/admin-analytics.js",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
       "area": "web",
       "tests": []
     },
@@ -7253,6 +7378,8 @@
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
         "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py"
       ]
@@ -7365,6 +7492,14 @@
       "tests": []
     },
     {
+      "id": "ui:what is counted page",
+      "kind": "ui",
+      "entry": "web/counting.html",
+      "reach": "https://brickworks.diy/counting (and /de, /fr, /es): what is counted, what never is, when you are asked, turning it off, how long it is kept, who sees it; linked from /privacy#your-visit and Settings \u203a Privacy",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:what is set in the booklet kept over an open",
       "kind": "ui",
       "entry": "src/assembly/booklet_looks.gd",
@@ -7427,8 +7562,11 @@
       "reach": "https://brickworks.diy/profile?tab=achievements   (signed in, once supabase/achievements.sql is applied: a tile a track, its level, how far the next is and the way there); the profile browser flow, locally",
       "area": "web",
       "tests": [
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_achievements.py",
         "tests/test_console3.py",
+        "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
@@ -7512,6 +7650,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
+        "tests/test_insights.py",
         "tests/test_realset.py",
         "tests/test_start_abba.py"
       ]
@@ -7523,8 +7662,11 @@
       "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, Achievements, ?tab=)",
       "area": "web",
       "tests": [
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/fixtures/owner_notify/came_check.mjs",
         "tests/test_achievements.py",
         "tests/test_console3.py",
+        "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"

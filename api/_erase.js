@@ -134,6 +134,14 @@ export async function erase(account) {
     const gone = await reach("auth DELETE", 20, `${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` } });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
+    // What /admin › Analytics kept of it, by its hash, gone now too
+    // (api/_analytics.js): the daily cron's diff of the accounts is only the
+    // net under this. Loaded only here.
+    try {
+      await (await import("./_analytics.js")).forgetAccount(account);
+    } catch (trouble) {
+      console.error(`account: analytics left for the cron: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
     return { status: 200, body: { deleted: true, photos: photos.length, avatars: avatars.length, feedback,
       ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) } };
   } catch (trouble) {

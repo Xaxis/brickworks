@@ -103,6 +103,9 @@
 //   POST /api/plans?op=social_visit {campaign, nonce, path, source}: a page
 //                                  opened from a sent post's link
 //                                  (web/theme.js); always 204
+//   POST /api/plans?op=tally       a visit's counts (web/tally.js), and GET
+//                                  ?op=tally_daily, Vercel's cron
+//                                  (/api/plans/tally-daily): api/_analytics.js
 //   GET  /api/plans?op=owner_notify Vercel's cron (/api/plans/owner-notify,
 //                                  every five minutes): the owner's
 //                                  notifications mailed as they set them
@@ -143,6 +146,7 @@ import { feedbackRoute } from "./_feedback.js";
 import { noticeShown } from "./_console_switches.js";
 import { phoneShown } from "./_phone.js";
 import { socialDueRoute, socialVisit } from "./_social.js";
+import { tallyDaily, tallyRoute } from "./_analytics.js";
 import { notifyDueRoute, notifyOffRoute, raise } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
 import { announceDueRoute, noticeHidden, noticeHide } from "./_announce.js";
@@ -413,6 +417,9 @@ async function handler(request, response) {
   if (request.method === "GET" && op === "phone") return phoneShown(request, response);
   if (request.method === "GET" && op === "social_due") return socialDueRoute(request, response);
   if (request.method === "POST" && op === "social_visit") return socialVisit(request, response);
+  // How the site and the studio are used (insights, api/_analytics.js).
+  if (op === "tally") return tallyRoute(request, response);
+  if (request.method === "GET" && op === "tally_daily") return tallyDaily(request, response);
   if (request.method === "GET" && op === "owner_notify") return notifyDueRoute(request, response);
   if (op === "notify_off") return notifyOffRoute(request, response);
   if (request.method === "GET" && op === "announce_due") return announceDueRoute(request, response);

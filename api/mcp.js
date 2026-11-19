@@ -33,7 +33,9 @@
 //                             Signed in: it carries the person's session
 //                             ("Authorization: Bearer …"), and the account
 //                             it names becomes the connector's owner
-//   /api/mcp?t=T&op=next      the tab asks for work; waits up to ~25 s
+//   /api/mcp?t=T&op=next      the tab asks for work; waits up to ~25 s.
+//                             401 once the sign-in it said hello with has
+//                             ended: it says hello again
 //   /api/mcp?t=T&op=answer    the tab answers request ?id=
 //   /api/mcp?t=T&op=state     the page is alive, and in or out of view
 //                             (?visible=0|1): sent by the page itself every
@@ -141,6 +143,18 @@
 // another, and a tab that never said hello while signed in is handed no
 // work. That owner is what a call signed in to an account is routed by.
 //
+// And it ends with that sign-in (2026-11-18, smalls6). The tab's asks for
+// work and its answers carry no token, so a tab switched on before Sign out
+// everywhere went on serving its address for as long as the page stayed
+// open. Now the hello's session is kept with the row (relay_tabs.session,
+// supabase/relay_session.sql), and once Supabase no longer has it — Sign
+// out everywhere, signing out on that device, the account deleted, or, for
+// a session orangecheck started, every session ended on orangecheck — the
+// tab is closed and handed nothing, its ask for work is told to say hello
+// again (401), which only a new sign-in passes, and Claude's calls through
+// the address are told what happened and what to do, nothing reaching the
+// tab: within the 5 s api/_auth.js holds a session's read (signedOut).
+//
 // The model, shown beside a call (2026-10-14). A client that shows a
 // server's own pages inline (MCP Apps: claude.ai, the Claude apps) is
 // handed one, a viewer of the model (api/_viewer.js): resources/list and
@@ -165,8 +179,9 @@
 import { noted } from "./_noted.js";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { AuthError, bearer, verify } from "./_auth.js";
+import { AuthError, SESSION_HELD_MS, bearer, sessionOf as signInOf, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
+import { tallyCall } from "./_analytics.js";
 import { challenge, clientLabel, grantOf, isClaude, originOf, resourceOf } from "./_oauth.js";
 import {
   ASK_VIEWS, EXTENSION, VIEWER_ONLY, asRead, asksViews, isViewerOnly, partRead, sessionFor, sessionShows,
@@ -395,9 +410,116 @@ const HIDDEN =
   "Brickworks tab into view for a moment — it carries on by itself — then " +
   "call again.";
 
+// A tab whose sign-in has ended (smalls6, 2026-11-18): Sign out everywhere
+// (/admin's, admin_sign_out), signing out on that device, or the account
+// deleted, took the session its connector was switched on with. Nothing
+// reaches the tab after, and the tab's own asks for work are told to say
+// hello again, which only a new sign-in does. [taken]: the call was in the
+// tab as it ended, so it may have been done there; its answer is not
+// passed on.
+const signedOutWords = (taken = false) => (taken
+  ? "The person was signed out of Brickworks while this call was in their tab, which ended this "
+    + "connector's link to it: it may have been done there, but its answer is not passed on. "
+  : "Nothing was done: the person was signed out of Brickworks (Sign out everywhere, or signing out "
+    + "on the device this tab is on), which ended this connector's link to their tab. ")
+  + "Ask them to sign in to Brickworks again in that tab and switch the connector on there, under "
+  + "\"Or with your Claude plan\"; then call again. Nothing needs changing in Claude, and nothing "
+  + "they built is lost: the tab keeps its model.";
+
+// What the tab's ask for work is told then (op=next, 401): it says hello
+// again, refused with the old sign-in, and switches off saying to sign in.
+const TAB_SIGNED_OUT = "you were signed out of Brickworks, which ended this tab's connector: "
+  + "sign in and switch it on again";
+
+// While that sign-in cannot be checked (signedOut is UNSURE): a call is
+// refused for now, and an answer that came then is not passed on [taken].
+// Never let through (s6review L1).
+const unsureWords = (taken = false) => (taken
+  ? "The person's tab answered, but Brickworks could not check just then that they are still signed "
+    + "in there, so its answer is not passed on: it may have been done in the tab. Call again in a "
+    + "minute, and look before doing it again (look_at_model says what the tab holds). "
+  : "Nothing was done: Brickworks could not check just now that the person is still signed in, in "
+    + "their tab (its database did not answer in time), and nothing goes to a tab without that. "
+    + "Call again in a minute. ")
+  + "Nothing needs changing in Claude or in the tab.";
+
+// What the tab's ask for work is told then (op=next, 503): it asks again a
+// few seconds later (ClaudeConnector), still switched on.
+const TAB_UNSURE = "Brickworks could not check this tab's sign-in just now: ask again";
+
+// The words for a call refused, or an answer not passed on, as signedOut
+// found the tab's sign-in [out].
+const endedWords = (out, taken = false) => (out === UNSURE ? unsureWords(taken) : signedOutWords(taken));
+
+// Whether the sign-in [tab]'s connector was switched on with has ended:
+// true once it is gone from Supabase, as api/_auth.js asks of every token
+// (sessionOf, read once in SESSION_HELD_MS an instance, and a session found
+// gone held so for good), or, for one orangecheck started, ended on
+// orangecheck as api/_oc.js judges a read (sessionStanding). False while it
+// stands, and for a row with no session (a hello from before
+// relay_session.sql: the tab's next ask for work is told to say hello
+// again, which writes it). UNSURE while Supabase cannot say: rpc/
+// oc_session_of failed, or took longer than SESSION_READ_S. That was false
+// until s6review, so a call went through unchecked; it is truthy, so
+// nothing takes it for standing: a call is refused for now (unsureWords),
+// the tab's ask for work is handed nothing and asks again, and nothing is
+// closed.
+const UNSURE = "unsure";
+
+async function signedOut(tab) {
+  if (!tab || !tab.session) return false;
+  try {
+    const session = await signInOf(tab.session);
+    if (session?.exists === false) return true;
+    if (session?.exists !== true) return UNSURE;
+    if (!session.bound) return false;
+    const { sessionStanding } = await import("./_oc.js");
+    return (await sessionStanding({ session_id: tab.session, email: "" }, "GET")).status === 401;
+  } catch (trouble) {
+    console.error(`mcp: a tab's sign-in was not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return UNSURE;
+  }
+}
+
+// [tab] closed once its sign-in has ended, as op=close closes it: listed
+// nowhere and handed nothing until a hello signed in again opens it. Only
+// while the row is still that sign-in's: a hello since wrote its own.
+async function endTab(tab) {
+  await db(`relay_tabs?channel=eq.${tab.channel}&session=eq.${tab.session}`, {
+    method: "PATCH", body: { open: false },
+  });
+}
+
+// An account's [tabs], each whose sign-in has ended (signedOut) closed
+// (endTab) and set aside before any is chosen (s6review L2): marked
+// {open: false, ended: true}, so nothing picks, lists or counts it, as if it
+// had closed, and a call goes to a tab of the account still signed in
+// rather than being refused for the one picked first. Kept in the list, for
+// a call that names it or works in it to be told why. Every tab's session
+// is asked at once, and each is read once in SESSION_HELD_MS an instance
+// (api/_auth.js sessionOf), so this costs no more than one read a session
+// in that time, and the chosen tab's own ask after it none. One that cannot
+// be read (UNSURE) is kept as it is: a call it is chosen for is refused for
+// now.
+async function setAside(tabs) {
+  const out = await Promise.all(tabs.map((tab) => signedOut(tab)));
+  const ended = tabs.filter((tab, at) => out[at] === true);
+  await Promise.all(ended.map((tab) => endTab(tab)));
+  return tabs.map((tab, at) => (out[at] === true ? { ...tab, open: false, ended: true } : tab));
+}
+
+// A set-aside tab ([tabs], setAside) the words [said] name, for a chat that
+// named one; null for none.
+const namedEnded = (tabs, said) => named(tabs, said, (tab) => tab.ended === true).tab;
+
 // A tab's row, without its hello: that is the app's whole guidance and
-// tool list, read only when it is what is wanted (helloOf).
-const TAB = "channel,seen_at,instance,visible,open,owner,tab,model,used_at";
+// tool list, read only when it is what is wanted (helloOf). Its session is
+// supabase/relay_session.sql's column (2026-11-18, smalls6): the sign-in the
+// tab's hello came with, which its connector ends with (signedOut). It is
+// applied on the one database every deployment shares, so it is always read
+// and written: asking first whether it was there skipped every session check
+// on an instance for a minute after one failed ask (s6review L1).
+const TAB = "channel,seen_at,instance,visible,open,owner,tab,model,used_at,session";
 
 // supabase/relay_cost.sql's two columns of relay_tabs (2026-10-29,
 // relay338), used once they are there and not before:
@@ -716,8 +838,8 @@ function plain(words) {
     .replace(/^\s*the\s+/, "").replace(/\s+tab\s*$/, "").replace(/\s+/g, " ").trim();
 }
 
-function named(tabs, said) {
-  const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+function named(tabs, said, among = (tab) => stateOf(tab) !== "closed") {
+  const live = tabs.filter(among);
   const wanted = plain(said);
   if (!wanted) return { tab: null, matches: [] };
   const byId = live.filter((tab) => idOf(tab) === wanted);
@@ -917,6 +1039,7 @@ async function tellChats(channel) {
 // session, or, for a client that sends none, its connection or address.
 function oneTab(channel, session) {
   const listKey = session ? `session:${session}` : `address:${channel}`;
+  let read = null;
   return {
     shows: sessionShows(session),
     // A tab's own address is pasted into Claude: its list as it always was.
@@ -924,9 +1047,13 @@ function oneTab(channel, session) {
     claude: true,
     who: "",
     tabs: async () => {
-      const tab = await tabOf(channel);
-      return tab ? [tab] : [];
+      read = await tabOf(channel);
+      return read ? [read] : [];
     },
+    // Whether the sign-in of the tab a call is for has ended (signedOut).
+    // An address has its one tab, so it says why it no longer reaches it
+    // whatever state the tab is in, closed or not.
+    ended: (tab) => signedOut(tab || read),
     pick: async () => null,
     lists: () => listsOf(listKey),
     hello: async (tab) => (tab ? await helloOf(tab.channel) : await helloOf(channel)),
@@ -956,7 +1083,10 @@ function accountTabs(grant, origin, session, early = null) {
     claude: isClaude(label),
     // What the tab calls whoever is calling: the same label.
     who: label,
-    tabs: () => ahead("tabs") || tabsOf(grant.owner),
+    // Each ended is set aside before one is chosen (setAside); the tab
+    // chosen is asked after again as a call waits, as an address's is.
+    tabs: async () => setAside(await (ahead("tabs") || tabsOf(grant.owner))),
+    ended: (tab) => (tab && tab.ended ? true : signedOut(tab)),
     pick: () => ahead("pick") || pickOf(key),
     lists: () => ahead("lists") || listsOf(key),
     // The handshake and the tool list: the tab's own once it has said
@@ -1038,9 +1168,15 @@ async function relayTool(where, message, response, used) {
   const id = message.id;
   const name = message.params?.name;
   const [tabs, picks, picked] = await Promise.all([where.tabs(), where.picks(), where.pick(), used]);
+  // An address whose tab's sign-in has ended, or cannot be checked, lists
+  // nothing; so does an account whose every tab's has ended (setAside).
+  const out = await where.ended(null);
+  if (out) return response.status(200).json(text(id, endedWords(out), true));
   const live = tabs.filter((tab) => stateOf(tab) !== "closed");
   const mine = picked && !picked.moved_at ? live.find((tab) => tab.channel === picked.channel) : null;
-  if (!live.length) return response.status(200).json(text(id, where.notOpen, true));
+  if (!live.length) {
+    return response.status(200).json(text(id, tabs.some((tab) => tab.ended) ? signedOutWords() : where.notOpen, true));
+  }
   if (name === "tabs") {
     const count = live.length === 1 ? "One Brickworks tab is open" : `${live.length} Brickworks tabs are open`;
     const moved = picked && picked.moved_at ? live.find((tab) => tab.channel === picked.channel) : null;
@@ -1058,6 +1194,9 @@ async function relayTool(where, message, response, used) {
   const wanted = String(message.params?.arguments?.tab || "").trim();
   const found = named(tabs, wanted);
   const chosen = found.tab;
+  if (!chosen && !found.matches.length && namedEnded(tabs, wanted)) {
+    return response.status(200).json(text(id, signedOutWords(), true));
+  }
   if (!chosen) {
     return response.status(200).json(text(id, notNamed(wanted, found, tabs, mine, picks, where.key), true));
   }
@@ -1179,6 +1318,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     return response.status(202).end();
   }
   const id = message.id;
+  const began = Date.now();
   // Claude Code's first request, before initialize: server/discover, of a
   // newer protocol (2026-07-28) whose sessions have no initialize, and so no
   // session id to keep a chat in its tab by. This speaks the older one, so
@@ -1203,6 +1343,10 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   // The card's own call: no header, and never the one that hears the tools
   // have changed, which is Claude's to hear.
   const viewerCall = calling && isViewerOnly(name);
+  // Counted for /admin › Analytics (api/_analytics.js): each tool call, its
+  // name, whether it went (null: not told) and how long it took; awaited
+  // before the handler ends, so the count is never cut off with it.
+  const counted = (ok) => (calling && !viewerCall ? tallyCall(where.owner, name, ok, Date.now() - began, where.host) : null);
   // The model's viewer, served here: the tab need not be open to read it.
   if (["resources/list", "resources/read", "resources/templates/list"].includes(message.method)) {
     await where.used(message, null);
@@ -1224,7 +1368,15 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       : rpcError(id, -32002, `no resource ${uri.slice(0, 200)}`));
   }
   if (calling && RELAY_TOOLS.some((tool) => tool.name === name)) {
-    return await relayTool(where, message, response, where.used(message, null));
+    // Whether it went, from what it answered (inreview L6).
+    let said = null;
+    const heard = { status: (code) => ({ json: (body) => {
+      said = body;
+      return response.status(code).json(body);
+    } }) };
+    const answered = await relayTool(where, message, heard, where.used(message, null));
+    await counted(said ? !said.error && said.result?.isError !== true : null);
+    return answered;
   }
   // What the call is placed by, read at once rather than one after another
   // (2026-10-29, relay338: each a round trip to the database): the tabs,
@@ -1265,31 +1417,39 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     home = picked && !picked.moved_at ? picked : null;
     const refuse = async (words) => {
       await where.used(message, null);
-      return response.status(200).json(text(id, words, true));
+      const tally = counted(false);
+      const sent = response.status(200).json(text(id, words, true));
+      await tally;
+      return sent;
     };
     if (target) {
       const found = named(tabs, target);
-      tab = found.tab;
+      // One named whose sign-in has ended (setAside) is told so below, not
+      // that no tab is called that.
+      tab = found.tab || (found.matches.length ? null : namedEnded(tabs, target));
       if (!tab) {
         return await refuse(live.length ? notNamed(target, found, tabs, null, picks, where.key) : where.notOpen);
       }
       // Named, by a chat that had not chosen or was moved off: its tab now.
-      if (where.key && !viewerCall && !home) {
+      if (where.key && !viewerCall && !home && !tab.ended) {
         await pick(where.key, where.owner, tab.channel, picked ? picked.channel : null);
         home = { key: where.key, channel: tab.channel, picked_at: new Date().toISOString() };
         if (!picked) note = resumedWords(picks, where.key);
       }
     } else if (home) {
       tab = tabs.find((one) => one.channel === home.channel) || await tabOf(home.channel);
-      if (!tab || stateOf(tab) === "closed") {
+      // Its sign-in ended (setAside): told so below, not that it closed.
+      if (!tab || (stateOf(tab) === "closed" && !tab.ended)) {
         return await refuse(await closedSaying(where, tab || { channel: home.channel }, tabs));
       }
     } else if (picked && picked.moved_at && !viewerCall) {
       const was = tabs.find((one) => one.channel === picked.channel) || { channel: picked.channel };
       return await refuse(movedOff(was, tabs, picks, where.key));
     } else if (!where.key || live.length <= 1) {
-      tab = lastUsed(tabs);
-      if (tab && where.key && !viewerCall) {
+      // With none open but one whose sign-in has ended (setAside): told
+      // that, as when it was the one picked.
+      tab = lastUsed(tabs) || tabs.find((one) => one.ended) || null;
+      if (tab && where.key && !viewerCall && !tab.ended) {
         await pick(where.key, where.owner, tab.channel, picked ? picked.channel : null);
         home = { key: where.key, channel: tab.channel, picked_at: new Date().toISOString() };
         if (!picked) note = resumedWords(picks, where.key);
@@ -1322,6 +1482,22 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     // tools it is given are the ones its calls reach.
     tab = (picked && live.find((one) => one.channel === picked.channel)) || lastUsed(tabs);
   }
+  // The sign-in the tab switched its connector on with has ended (signedOut):
+  // nothing reaches it, and the tab is closed. The handshake and the tool
+  // list are still answered from its hello, so the connector stays listed in
+  // Claude, but the tab is not told of them.
+  // While it cannot be checked (UNSURE), the same, but nothing is closed.
+  const out = await where.ended(tab);
+  if (out) {
+    if (tab && tab.open && out !== UNSURE) await endTab(tab);
+    tab = tab && { ...tab, open: false };
+    if (!["initialize", "tools/list", "ping"].includes(message.method)) {
+      if (noted) await noted.catch(() => {});
+      await where.used(message, null);
+      return response.status(200).json(calling ? text(id, endedWords(out), true)
+        : rpcError(id, -32000, endedWords(out)));
+    }
+  }
   // A call needs only which tools its tab serves, which the tab's row says
   // once relay_cost.sql's columns are there (list); the handshake and the
   // tool list need the whole hello.
@@ -1341,8 +1517,11 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   }
   const send = async (answer) => {
     await noted;
+    const tally = counted(!answer?.error && answer?.result?.isError !== true);
     const rooted = withPartsRoot(answer);
-    return answerWith(response, readFor ? asRead(rooted, readFor) : rooted, changed, stream);
+    const sent = answerWith(response, readFor ? asRead(rooted, readFor) : rooted, changed, stream);
+    await tally;
+    return sent;
   };
 
   // The handshake and the tool list, from what the tab sent when it
@@ -1434,14 +1613,36 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       method: "DELETE", prefer: "return=representation",
     });
     if (answered) {
+      // Not passed on once the tab's sign-in has ended, however late in
+      // the call that was, nor while it cannot be checked.
+      const out = await where.ended(tab);
+      if (out) {
+        return send(calling ? text(id, endedWords(out, true), true) : rpcError(id, -32000, endedWords(out, true)));
+      }
       return send(calling && !viewerCall
         ? withHeader(answered.response, tab, tabs, picks, where.key, note) : answered.response);
     }
     // The page has said it is closing, or, not taken at all, has stopped
-    // since: say so now rather than at the end of four minutes.
+    // since, or its sign-in has ended: say so now rather than at the end of
+    // four minutes.
     if (Date.now() - checked <= 5_000) continue;
     checked = Date.now();
-    const [[done], row_] = await Promise.all([db(`relay?id=eq.${row.id}&select=taken_at`), tabOf(channel)]);
+    const [[done], row_, ended] = await Promise.all([db(`relay?id=eq.${row.id}&select=taken_at`), tabOf(channel),
+      where.ended(tab)]);
+    if (ended === true) {
+      await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
+      const taken = Boolean(done && done.taken_at);
+      return send(calling ? text(id, signedOutWords(taken), true) : rpcError(id, -32000, signedOutWords(taken)));
+    }
+    // While it cannot be checked, a call the tab has not taken is taken
+    // back, if it still has not been, and refused for now; one it has is
+    // waited for, and its answer is not passed on until it can be.
+    if (ended && !(done && done.taken_at)) {
+      const [back] = await db(`relay?id=eq.${row.id}&taken_at=is.null`, {
+        method: "DELETE", prefer: "return=representation",
+      }) || [];
+      if (back) return send(calling ? text(id, unsureWords(), true) : rpcError(id, -32000, unsureWords()));
+    }
     if (done) {
       const now = stateOf(row_);
       const shut = row_ && row_.open === false;
@@ -1560,7 +1761,8 @@ async function forAccount(request, response) {
   const give = request.body && request.body.method === "initialize" && !session
     ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
   const begun = early && early.owner === grant.owner && early.id === grant.id ? early : null;
-  return await fromClaude(accountTabs(grant, origin, session || give, begun), request.body, response, give,
+  const where = { ...accountTabs(grant, origin, session || give, begun), host: hostOf(request) };
+  return await fromClaude(where, request.body, response, give,
     streams(request));
 }
 
@@ -1586,6 +1788,15 @@ async function helloFromTab(channel, instance, request, response) {
   if (!body || typeof body !== "object" || !Array.isArray(body.tools)) {
     return response.status(400).json({ error: "hello needs tools" });
   }
+  // The connector ends with this sign-in (signedOut), so it is written with
+  // the row; a token that names no session, which Supabase never hands a
+  // person, has nothing to end with and switches nothing on.
+  if (!claims.session_id) {
+    return response.status(401).json({
+      error: "sign in to Brickworks to connect Claude",
+      reason: "that sign-in names no session. Sign in again.",
+    });
+  }
   const tab = await tabOf(channel);
   if (tab && tab.owner && tab.owner !== claims.sub) {
     return response.status(403).json({
@@ -1600,6 +1811,7 @@ async function helloFromTab(channel, instance, request, response) {
     body: {
       channel, seen_at: new Date().toISOString(), instance, visible: true, open: true,
       owner: claims.sub,
+      session: claims.session_id,
       hello: { instructions: String(body.instructions || ""), tools: body.tools },
       tab: TAB_ID.test(id) ? id : null,
       model: modelFrom(body.model),
@@ -1639,9 +1851,10 @@ async function nextForTab(channel, instance, request, response) {
   // there, one the browser kept to go back to, is told to say hello
   // (claude_connector.gd does on a 401), and its hello opens it.
   const mine = instance ? `&or=(instance.is.null,instance.eq.${instance})` : "";
-  const said = (await columns()) ? "answered_at" : "channel";
+  const said = `${(await columns()) ? "answered_at" : "channel"},session`;
   const [marked] = await db(`relay_tabs?channel=eq.${channel}&owner=not.is.null&open=is.true${mine}`
     + `&select=${said}`, { method: "PATCH", body: seen, prefer: "return=representation" }) || [];
+  let standing = marked;
   if (!marked) {
     const tab = await tabOf(channel);
     if (instance && tab && tab.instance && tab.instance !== instance) {
@@ -1660,7 +1873,31 @@ async function nextForTab(channel, instance, request, response) {
     }
     // Opened again in between, by a hello: seen, as it is now.
     await db(`relay_tabs?channel=eq.${channel}&open=is.true`, { method: "PATCH", body: seen });
+    standing = tab;
   }
+  // Handed work only while the sign-in it was switched on with stands
+  // (signedOut): ended, the tab is closed and told so, and says hello
+  // again (ClaudeConnector does on a 401), which only a new sign-in passes.
+  // A row from before relay_session.sql names none: told the same, its
+  // hello writes it.
+  // And asked again while it waits, once in SESSION_HELD_MS, so a tab
+  // waiting as its sign-in ends is told within seconds, not at the end of
+  // its wait. While it cannot be checked (UNSURE), the tab is handed
+  // nothing and told to ask again (503), still open.
+  const signIn = { channel, session: standing.session };
+  const ended = async (out) => {
+    if (out === UNSURE) return response.status(503).json({ error: TAB_UNSURE });
+    await endTab(signIn);
+    return response.status(401).json({ error: TAB_SIGNED_OUT });
+  };
+  if (!signIn.session) {
+    return response.status(401).json({
+      error: "say hello again: this connector was switched on before Brickworks kept whose sign-in it is",
+    });
+  }
+  const first = await signedOut(signIn);
+  if (first) return await ended(first);
+  let stood = Date.now();
   if (Math.random() < 0.05) await db("rpc/relay_sweep", { method: "POST", body: {} });
   // A tab a chat is working with looks often; an idle one as it did.
   const answered = Date.parse((marked && marked.answered_at) || "");
@@ -1671,9 +1908,21 @@ async function nextForTab(channel, instance, request, response) {
     const looked = Date.now();
     // Woken by something queued for it here, it is all but sure to take
     // it: whether the page is still open is read beside the take, not after.
-    const [taken, beside] = await Promise.all([
+    // So is whether its sign-in still stands, when it is due.
+    const asking = looked - stood >= SESSION_HELD_MS;
+    const [taken, beside, out] = await Promise.all([
       db("rpc/relay_take", { method: "POST", body: { p_channel: channel } }), woken ? tabOf(channel) : null,
+      asking ? signedOut(signIn) : false,
     ]);
+    if (asking) stood = looked;
+    if (out) {
+      // What it took goes back: for Claude to be told why not, or, while
+      // the sign-in cannot be checked, for the tab's next ask to take.
+      if (taken && taken.length > 0) {
+        await db(`relay?id=eq.${taken[0].id}`, { method: "PATCH", body: { taken_at: null } });
+      }
+      return await ended(out);
+    }
     if (taken && taken.length > 0) {
       const { id, request } = taken[0];
       // The page said it was closing while this ask was waiting: the call
@@ -1705,7 +1954,7 @@ async function handler(request, response) {
     try {
       return await forAccount(request, response);
     } catch (trouble) {
-      return response.status(502).json({ error: String(trouble.message || trouble) });
+      return await stopped(request, response, trouble);
     }
   }
   if (!TOKEN.test(token)) {
@@ -1731,7 +1980,8 @@ async function handler(request, response) {
       const session = sessionOf(request);
       const give = request.body && request.body.method === "initialize" && !session
         ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
-      return await fromClaude(oneTab(channel, session || give), request.body, response, give, streams(request));
+      return await fromClaude({ ...oneTab(channel, session || give), host: hostOf(request) }, request.body, response, give,
+        streams(request));
     }
     if (op === "hello") {
       if (!instance) return response.status(400).json({ error: "hello needs ?i=" });
@@ -1811,8 +2061,24 @@ async function handler(request, response) {
     }
     return response.status(400).json({ error: `no op ${op}` });
   } catch (trouble) {
-    return response.status(502).json({ error: String(trouble.message || trouble) });
+    return await stopped(request, response, trouble);
   }
+}
+
+/// The host [request] came to: the live site's, or a preview's (a tool
+/// call there is a check's, api/_analytics.js testOf).
+function hostOf(request) {
+  return String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
+}
+
+/// A request that stopped on [trouble]: said, and a tool call counted as
+/// failed, its account not known here (/admin › Analytics, api/_analytics.js).
+async function stopped(request, response, trouble) {
+  const counted = request.body?.method === "tools/call" ? tallyCall(null, request.body.params?.name, false, null, hostOf(request))
+    : null;
+  const sent = response.status(502).json({ error: String(trouble.message || trouble) });
+  await counted;
+  return sent;
 }
 
 // Each 5xx kept for the owner's server-errors notification (api/_noted.js).

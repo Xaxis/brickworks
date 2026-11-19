@@ -155,6 +155,10 @@
 //   POST /api/admin?op=phone_rules       {phone_parts?, phone_start_s?}: the
 //                                        numbers a phone is warned by
 //                                        (phonetruth, api/_phone.js), here
+//   POST /api/admin?op=phone_engine      {on: true | false}: iPhones and
+//                                        iPads start the engine without
+//                                        threads here, or not (nothreads,
+//                                        api/_phone.js)
 //   POST /api/admin?op=run_cron&job=J    a safe cron run now, with
 //                                        CRON_SECRET, on the server
 //   POST /api/admin?op=export&account=U  every row of the account, as JSON
@@ -238,13 +242,14 @@ import { mailRead } from "./_console_mail.js";
 import { connectorRead } from "./_console_connector.js";
 import { siteRead, supabaseHealth } from "./_console_site.js";
 import { noticeClear, noticeSet, switchesRead } from "./_console_switches.js";
-import { phoneSet } from "./_phone.js";
+import { phoneEngineSet, phoneSet } from "./_phone.js";
 import { dataRead, runCron, withRunNow } from "./_console_data.js";
 import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
 import { challengeView } from "./_console_challenges.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
+import { analyticsRead } from "./_analytics.js";
 import { CLAUDE_ACTS, claudeChat, claudeModels, claudeRead } from "./_claude.js";
 import { withClaudeMarks } from "./_claude_social.js";
 import { notifyAddress, notifyConfirm, notifyFlush, notifyRead, notifySet, notifyTest } from "./_notify.js";
@@ -321,24 +326,24 @@ async function handler(request, response) {
     // Part C (console3).
     unbar_model: unbarModel, notice_set: noticeSet, notice_clear: noticeClear, run_cron: runCron, export: exportAccount,
     delete_account: deleteAccount, sign_out: signOut,
-    // The numbers a phone is warned by (phonetruth).
-    phone_rules: phoneSet,
+    // The numbers a phone is warned by (phonetruth), and the engine an
+    // iPhone or iPad starts (nothreads).
+    phone_rules: phoneSet, phone_engine: phoneEngineSet,
     // The social desk (socialdesk, api/_social.js; docs/SOCIAL_DESK.md). Of
     // these, only social_send sends anything anywhere, and only what the
     // owner pressed it on.
     social_connect: socialConnect, social_connected: socialConnected, social_disconnect: socialDisconnect,
     social_sync: socialSync, social_mark: socialMark, social_draft: socialDraft, social_drop: socialDrop,
     social_send: socialSend, social_unschedule: socialUnschedule, social_posted: socialPosted, social_notes: socialNotes,
-    // Announcements (announce, api/_announce.js): only announce_send sends, and only the words it was pressed on.
-    announce_keep: announceKeep, announce_send: announceSend, announce_unschedule: announceUnschedule, announce_edit: announceEdit,
-    announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit,
-    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress,
     // The owner's notifications (ownernotify, api/_notify.js). Only
     // notify_test, notify_address and notify_flush mail anything, and only
     // to the pool's own address.
     notify_set: notifySet, notify_address: notifyAddress, notify_confirm: notifyConfirm, notify_test: notifyTest,
     notify_flush: notifyFlush,
-    ...CLAUDE_ACTS };
+    // Announcements (announce, api/_announce.js): only announce_send sends, and only the words it was pressed on.
+    announce_keep: announceKeep, announce_send: announceSend, announce_unschedule: announceUnschedule, announce_edit: announceEdit,
+    announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit,
+    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress, ...CLAUDE_ACTS };
   // Claude's answer streams as it comes, so it writes its own audit row (api/_claude.js).
   if (op === "claude_chat") return claudeChat(request, response, claims);
   // An op is one of these tables' own names, never one Object's prototype
@@ -363,6 +368,8 @@ async function handler(request, response) {
     claude: () => claudeRead(request),
     claude_models: () => claudeModels(request),
     social_rules: () => socialRules(request),
+    // How the site and the studio are used (insights, api/_analytics.js).
+    analytics: () => analyticsRead(request, tests),
     notify: () => notifyRead(request, tests),
     announce: () => announceRead(request),
     announce_preview: () => announcePreview(request),

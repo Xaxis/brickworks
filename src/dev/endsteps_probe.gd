@@ -2,7 +2,7 @@
 ## them (smalls5, from streview's findings, 2026-11-15).
 ##
 ##   godot --headless --path . --script src/dev/endsteps_probe.gd
-##   ENDSTEPS_CASES=loose,groups   those cases (the default: both)
+##   ENDSTEPS_CASES=loose,groups,moves   those cases (the default: all three)
 ##
 ## loose: a part put down on top outside the author's steps (step -1, a page
 ## of its own after the last) in a model whose last step has no STEP line to
@@ -29,6 +29,15 @@
 ## middle of one is refused, with why, and nothing changes, the file saved
 ## as it was (mergekeep: up to it, a step made of the 4th and 5th showed the
 ## stored base where the RETRIEVE stood, and the 4th's tiles never).
+##
+## moves: the same file's parts moved a step across the RETRIEVE, by
+## Shift-[ and Shift-], a drop on the timeline's step and edit_steps over
+## MCP. Every part of a step moved into the other is refused as the merge is;
+## one part moved, or two of three, or one of a step's two, is done, one
+## undo, written below the RETRIEVE in the step it starts (above it in the
+## step before), and opened again as shown. On pre261 each left the RETRIEVE
+## in the middle of a step (mkreview M1); up to smfix most of a step's parts
+## moved were refused as the whole step (stmreview).
 extends "res://src/dev/keep_text_probe.gd"
 
 ## A model whose last step has no STEP line after it.
@@ -147,6 +156,8 @@ func _run() -> void:
 		await _loose_case()
 	if only.is_empty() or "groups" in only:
 		await _groups_case()
+	if only.is_empty() or "moves" in only:
+		await _moves_case()
 	ModelStore.patch_files = true
 	print("\nendsteps probe: %s" % ("all checks passed" if _failures == 0 else "%d checks failed" % _failures))
 	_world.clear()
@@ -250,6 +261,98 @@ func _groups_case() -> void:
 				print("      the file round it:\n%s" % _round(saved, "MULTI_STEP END"))
 
 
+## Parts moved a step across the RETRIEVE: by Shift-[ and Shift-] (Previous
+## and Next step), dragged onto a step on the timeline (To step) and by
+## edit_steps over MCP. Every part of the step the RETRIEVE starts moved to
+## the step before, or every part of the step before it moved on, makes the
+## two one step as a merge does: refused in a merge's words or a step taken
+## out's, nothing changed, nothing to undo. One part moved across is done,
+## and written on the RETRIEVE's side of its step (mkreview M1: up to it each
+## left the RETRIEVE in the middle of a step, a part moved into the step it
+## starts above it, put on and taken away at once).
+func _moves_case() -> void:
+	print("\n== moves: parts moved a step across a RETRIEVE")
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	# [what, the verb, the step index whose parts move, which of them, how,
+	# refused, "below" or "above" the RETRIEVE the moved part is written]
+	for edit: Array in [
+			["every part of the 5th by Shift-[ (Previous step)", "prev", 4, "all", "keys", true, ""],
+			["every part of the 4th by Shift-] (Next step)", "next", 3, "all", "keys", true, ""],
+			["every part of the 5th by edit_steps prev", "prev", 4, "all", "mcp", true, ""],
+			["every part of the 4th by edit_steps next", "next", 3, "all", "mcp", true, ""],
+			["every part of the 4th dragged onto the 5th (To step)", "to", 3, "all", "bar", true, ""],
+			["every part of the 4th by edit_steps to the 5th", "to", 3, "all", "mcp", true, ""],
+			["one part of the 4th dragged onto the 5th (To step)", "to", 3, "one", "bar", false, "below"],
+			["one part of the 4th by Shift-] (Next step)", "next", 3, "one", "keys", false, "below"],
+			["one part of the 5th by edit_steps prev", "prev", 4, "one", "mcp", false, "above"],
+			["two of the 5th's three by Shift-[ (Previous step)", "prev", 4, "two", "keys", false, "above"],
+			["two of the 5th's three by edit_steps prev", "prev", 4, "two", "mcp", false, "above"],
+			["two of the 4th's three by Shift-] (Next step)", "next", 3, "two", "keys", false, "below"],
+			["one of the 5th's two by Shift-[ (Previous step)", "prev", 4, "tie", "keys", false, "above"]]:
+		for whole: bool in [false, true]:
+			ModelStore.patch_files = not whole
+			var name: String = "%s, %s" % [edit[0], "written whole" if whole else "patched"]
+			# "tie": the 5th cut to two parts first (stmreview's srtie5).
+			var text: String = GROUPS if edit[3] != "tie" else \
+				GROUPS.replace("1 15 0 -80 160 1 0 0 0 1 0 0 0 1 3023.dat\n", "")
+			await _open(text, "groups")
+			var unedited: String = _store.saved_text()
+			var steps: Array = _ops_steps("")
+			var from: Array = steps[int(edit[2])][1]
+			var ids: Array = from if edit[3] == "all" else from.slice(0, 2) if edit[3] == "two" else [from[0]]
+			var before: Array = _pages()
+			var depth: int = _builder.history_depth()
+			var said: String = ""
+			match str(edit[4]):
+				"keys":
+					_select_only(ids)
+					var key := InputEventKey.new()
+					key.keycode = KEY_BRACKETLEFT if edit[1] == "prev" else KEY_BRACKETRIGHT
+					key.shift_pressed = true
+					key.pressed = true
+					root.push_input(key)
+					await _frames(2)
+					said = _shell.bar.status_text()
+				"bar":
+					# The timeline's drop of parts on a step (StepsBar._drop_data).
+					said = _shell.change_steps("to", ids, _ops_step("", steps[int(edit[2]) + 1]))
+				"mcp":
+					var args: Dictionary = {"op": edit[1], "bricks": ids}
+					if edit[1] == "to":
+						args["step"] = int(edit[2]) + 2
+					said = str(await tools.run("edit_steps", args))
+			await _frames(4)
+			if bool(edit[5]):
+				_check("%s: refused, with why (\"%s\"), the steps as they were, nothing to undo"
+					% [name, said.left(140)], said.contains("BUFEXCHG A RETRIEVE")
+					and said.contains("would never be shown") and _pages() == before
+					and _builder.history_depth() == depth and _store.saved_text() == unedited)
+				continue
+			_check("%s: done (\"%s\"), one undo step" % [name, said.left(60)],
+				not said.contains("never be shown") and _builder.history_depth() == depth + 1)
+			var shown: Array = _pages()
+			var saved: String = _store.saved_text()
+			var retrieved: String = _retrieve_mid_step(saved)
+			_check("%s: \"RETRIEVE\" at the head of the step it starts (%s)" % [name,
+				"so" if retrieved.is_empty() else retrieved], retrieved.is_empty())
+			# As many fewer above it as moved into the step it starts; or as
+			# many more as moved out of it into the step before.
+			var was: int = _above_retrieve(unedited)
+			var now: int = _above_retrieve(saved)
+			_check("%s: the parts moved %s the RETRIEVE (%d parts above it, were %d)" % [name, edit[6],
+				now, was], now == (was - ids.size() if edit[6] == "below" else was + ids.size()))
+			_builder.undo()
+			await _frames(4)
+			_check("%s: undone, the file as it was" % name, _store.saved_text() == unedited)
+			_builder.redo()
+			await _frames(4)
+			_check("%s: redone, the same save" % name, _store.saved_text() == saved)
+			await _open(saved, "groups")
+			_check("%s: opened again as it was shown (%d pages)" % [name, shown.size()], _pages() == shown)
+	ModelStore.patch_files = true
+
 ## What the booklet's pages show: each step's number, turn and parts.
 func _pages() -> Array:
 	var out: Array = []
@@ -334,6 +437,18 @@ static func _retrieve_mid_step(text: String) -> String:
 		elif words.size() >= 4 and words[1] == "BUFEXCHG" and words[3] == "RETRIEVE" and parts > 0:
 			return "line %d, below %d parts of its step" % [n, parts]
 	return ""
+
+
+## How many parts [param text] puts on above its "BUFEXCHG A RETRIEVE".
+static func _above_retrieve(text: String) -> int:
+	var parts: int = 0
+	for raw: String in text.split("\n"):
+		var words: PackedStringArray = raw.strip_edges().split(" ", false)
+		if words.size() >= 4 and words[1] == "BUFEXCHG" and words[3] == "RETRIEVE":
+			return parts
+		if words.size() >= 15 and words[0] == "1":
+			parts += 1
+	return -1
 
 
 ## The parts above "BUFEXCHG A STORE", the ones LPub3D stores (sorted).

@@ -354,6 +354,7 @@
       <p class="page-toc-title" id="nav-title">Console</p>
       <ul class="scroller">
         <li><a href="#overview" data-go="overview">Overview</a></li>
+        <li><a href="#analytics" data-go="analytics">Analytics</a></li>
         <li><a href="#people" data-go="people">People</a></li>
         <li><a href="#moderation" data-go="moderation">Moderation <span class="badge accent" id="nav-moderation" hidden></span></a></li>
         <li><a href="#gallery" data-go="gallery">Gallery</a></li>
@@ -421,6 +422,13 @@
             <ul class="acts-list" id="latest" aria-labelledby="h-latest"></ul>
             <p class="state" id="latest-none" hidden>Nothing done from the console yet.</p>
           </div>
+        </section>
+
+        <!-- Analytics (insights; web/admin-analytics.js makes the rest) ----------->
+        <section data-section="analytics" aria-labelledby="h-analytics" hidden>
+          <div class="lead"><h2 id="h-analytics">Analytics</h2>
+            <p class="note">How the site and the studio are used, counted here and nowhere else: never a model, what
+              anybody typed, an email address or an IP address. Nobody is counted who said no.</p></div>
         </section>
 
         <!-- People ------------------------------------------------------------------>
@@ -1403,6 +1411,14 @@
                 they are coming, then these seconds.</p>
               <div class="row"><button type="submit" class="cta">Keep them</button>
                 <span class="note" id="phones-note" role="status"></span></div>
+            </form>
+            <form id="phones-engine" class="card console-form" aria-labelledby="h-phones">
+              <label class="choice"><input type="checkbox" name="phone_nothreads">
+                <span>iPhones and iPads use the engine without threads <small id="phone_nothreads-was"></small></span></label>
+              <p class="note" id="phone_nothreads-why">On an iPhone it started the studio in 0.70 of the time (17.7 s against
+                25.2) and asks for no 2 GB of memory up front; Android and computers keep threads.</p>
+              <div class="row"><button type="submit" class="cta">Keep it</button>
+                <span class="note" id="phones-engine-note" role="status"></span></div>
             </form>
           </div>
           <div class="part">

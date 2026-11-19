@@ -36,6 +36,8 @@ export const CRONS = [
     job: "beta_daily", every: DAY },
   { path: "/api/plans/social-due", when: "every 15 minutes", what: "The social desk: sends you scheduled whose time came, and "
     + "what came in (written down when it sent, failed, or once a day)", job: "social_due", every: DAY },
+  { path: "/api/plans/tally-daily", when: "03:27 daily", what: "Analytics: yesterday's counts rolled up, raw rows past 30 days "
+    + "forgotten", job: "tally_daily", every: DAY },
   { path: "/api/plans/owner-notify", when: "every 5 minutes", what: "Your notifications, mailed as you set them in Notifications "
     + "(written down when it mailed, failed, or once a day)", job: "owner_notify", every: DAY },
   { path: "/api/plans/announce-due", when: "every 15 minutes", what: "Announcements you scheduled whose time came, and the mail "

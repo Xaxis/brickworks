@@ -214,9 +214,26 @@ cp ".vercel/output/static/b/$sha/version.json" .vercel/output/static/version.jso
 # release fetches only the release's packs, not the 6.9 MB engine again
 # (webstart10, 2026-11-16); the rest stays under /b/<sha>/. Both are cached
 # forever. Fails rather than ship a page that would load nothing.
-engine="$(python3 tools/web/place_build.py .vercel/output/static "$sha")" || {
+#
+# And the engine without threads, which the page starts on an iPhone or
+# iPad while the owner's switch phone_nothreads is on (nothreads,
+# 2026-11-19; docs/PHONE.md): export.sh web makes it beside the build, in
+# DIR-nothreads. Only its engine goes, at its own /e/<hash>/; its packs are
+# the build's, byte for byte, or nothing is deployed (place_build.py).
+# Without it the page has the one engine, and iPhones the threaded one
+# whatever the switch says.
+nothreads_dir="${dir%/}-nothreads"
+second=()
+if [ -f "$nothreads_dir/index.html" ]; then
+  second=("$nothreads_dir")
+else
+  echo "deploy: no engine without threads in $nothreads_dir (tools/export.sh web): iPhones and iPads get the threaded one, whatever the switch says"
+fi
+engines="$(python3 tools/web/place_build.py .vercel/output/static "$sha" ${second[@]+"${second[@]}"})" || {
   echo "deploy FAILED: could not point the app's page at /b/$sha/ and its engine at /e/"; exit 1; }
+read -r engine engine_nt <<< "$engines"
 echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
+[ -n "${engine_nt:-}" ] && echo "deploy: the engine without threads at /e/$engine_nt/, for iPhones and iPads while phone_nothreads is on"
 
 # The serverless endpoints, packaged the way the Build Output API wants
 # them. A prebuilt deploy has no build step to discover api/, so each is
@@ -269,11 +286,13 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # tester's month given once Pro launches, a reminder three days before one
 # ends, and declined applications erased after 90 days. Every quarter hour
 # /api/plans/social-due (api/_social.js): the owner's social desk sends what
-# the owner pressed Schedule on whose time came, and reads what came in.
+# the owner pressed Schedule on whose time came, and reads what came in. At
+# 8, 23, 38 and 53 past each hour /api/plans/announce-due (api/_announce.js):
+# the owner's scheduled announcements whose time came, and their mail.
+# At 03:27 /api/plans/tally-daily (api/_analytics.js): yesterday's counts of
+# how the site and the studio were used rolled up, rows past 30 days gone.
 # Every five minutes /api/plans/owner-notify (api/_notify.js): the owner's
 # notifications mailed as they set them in /admin › Notifications.
-# At 8, 23, 38 and 53 past each hour /api/plans/announce-due (api/_announce.js):
-# the owner's scheduled announcements whose time came, and their mail.
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
@@ -344,6 +363,11 @@ overrides="\"e/$engine/index.wasm.br\": { \"contentType\": \"application/wasm\" 
     \"b/$sha/index.primitives.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.hdri.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.fonts.bin.br\": { \"contentType\": \"application/octet-stream\" }"
+if [ -n "${engine_nt:-}" ]; then
+  overrides="$overrides,
+    \"e/$engine_nt/index.wasm.br\": { \"contentType\": \"application/wasm\" },
+    \"e/$engine_nt/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" }"
+fi
 for page in .vercel/output/static/*.html; do
   name=$(basename "$page" .html)
   case "$name" in index|404|authorize) continue ;; esac
@@ -488,6 +512,18 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 # became the beta's own page (betahome, 2026-11-09): kept links land there.
 # /beta-admin was the owner's page of the beta until the console took it in
 # (console1, 2026-11-12): it lands on the console's Beta.
+# The engine without threads (above) sent as the engine is: its brotli, to a
+# browser that takes it.
+nothreads_routes=""
+if [ -n "${engine_nt:-}" ]; then
+  nothreads_routes="{ \"src\": \"/e/$engine_nt/(index[.](wasm|js))\",
+      \"has\": [ { \"type\": \"header\", \"key\": \"accept-encoding\", \"value\": \".*br.*\" } ],
+      \"dest\": \"/e/$engine_nt/\$1.br\",
+      \"headers\": { \"Content-Encoding\": \"br\", \"Vary\": \"Accept-Encoding\" } },
+    { \"src\": \"/e/$engine_nt/(index[.](wasm|js))\",
+      \"headers\": { \"Vary\": \"Accept-Encoding\" },
+      \"continue\": true },"
+fi
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -497,6 +533,7 @@ cat > .vercel/output/config.json <<EOF
              { "path": "/api/share/omr", "schedule": "37 5 * * 1" },
              { "path": "/api/plans/beta-daily", "schedule": "7 5 * * *" },
              { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" },
+             { "path": "/api/plans/tally-daily", "schedule": "27 3 * * *" },
              { "path": "/api/plans/owner-notify", "schedule": "*/5 * * * *" },
              { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" } ],
   "overrides": { $overrides },
@@ -523,6 +560,7 @@ $docs_moved
     { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
     { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
     { "src": "/api/plans/social-due", "dest": "/api/plans?op=social_due" },
+    { "src": "/api/plans/tally-daily", "dest": "/api/plans?op=tally_daily" },
     { "src": "/api/plans/owner-notify", "dest": "/api/plans?op=owner_notify" },
     { "src": "/api/plans/announce-due", "dest": "/api/plans?op=announce_due" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
@@ -627,6 +665,7 @@ $docs_moved
     { "src": "/e/$engine/(index[.](wasm|js))",
       "headers": { "Vary": "Accept-Encoding" },
       "continue": true },
+    $nothreads_routes
     { "src": "/b/$sha/(index[.](wasm|pck|js|data[.]pck|(parts|primitives|hdri|fonts)[.]bin))",
       "has": [ { "type": "header", "key": "accept-encoding", "value": ".*br.*" } ],
       "dest": "/b/$sha/\$1.br",
@@ -663,6 +702,12 @@ if [ ! -f .vercel/project.json ]; then
   exit 1
 fi
 
+# Vercel takes at most about 15,000 files a deployment, and past it the CLI
+# dies part way with a stack trace (the part geometry was 13,100 of them,
+# 2026-10-11): counted here, so a deploy that would go past says so first.
+files=$(find .vercel/output -type f | wc -l | tr -d ' ')
+echo "deploy: $files files"
+[ "$files" -le 15000 ] || { echo "deploy FAILED: $files files, past the 15,000 Vercel takes"; exit 1; }
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # Always uploaded unpromoted, even when the domain is the destination.

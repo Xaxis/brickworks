@@ -1368,6 +1368,10 @@ var checked := Vector2.ZERO
 var motor: int = 0
 var stall: Dictionary = {}
 var heaviest: Dictionary = {}
+## Whether that motor's case hangs on its own output: on nothing the base
+## holds still, it goes round with what it turns and lifts nothing against
+## it, so nothing is weighed and no stall is found (said NOT FIXED instead).
+var unfixed: bool = false
 ## The torque the weight asks of that motor to turn the driver on at each
 ## step of the sweeps, N·cm (less than 0 where the weight helps it on):
 ## Vector2(turns, needs), going on and, on the sweep back, back. What a hub's
@@ -1409,6 +1413,12 @@ func begin_stops(span: float) -> void:
 	loop_reach = Vector2(-INF, INF)
 	checked = Vector2.ZERO
 	motor = int(motored.get(driver, 0))
+	# Its case moves, and reaches the base only through the output it turns.
+	# A case carried by something else that turns (a turntable another
+	# motor turns) reaches it through that, and is weighed as before.
+	var turns_on: Mechanism.Joint = model.joint_of(driver)
+	unfixed = motor != 0 and moving.has(motor) and turns_on != null \
+		and model.path(model.body_of(motor)).has(turns_on)
 	stops_done = moving.is_empty()
 	if stops_done:
 		return
@@ -1647,10 +1657,11 @@ func _sweep_one() -> bool:
 		return true
 	for key: Variant in due:
 		_tested[key] = [shown[key], next]
-	if way > 0.0 and motor != 0:
-		_weigh_step(at, next, pose)
-	elif motor != 0:
-		_weigh_back(at, next, pose)
+	if motor != 0 and not unfixed:
+		if way > 0.0:
+			_weigh_step(at, next, pose)
+		else:
+			_weigh_back(at, next, pose)
 	_sweep["at"] = next
 	_sweep["pose"] = pose
 	if way > 0.0:
@@ -1978,6 +1989,14 @@ func motor_line() -> String:
 	var said: String = "%s (#%d %s)" % [it[0], motor, _part(motor)]
 	var gives: float = float(it[1])
 	var volts: String = Simulation.figure(float(it[3]))
+	# A case on its own output alone goes round with what it turns, so no
+	# weight is lifted against it and nothing here weighs what it would be
+	# asked: hung so, the SPIKE rig said it STALLS at 26.1° (smalls6).
+	if unfixed:
+		return ("NOT FIXED: the %s is on nothing the base holds still, so it goes round with what "
+			+ "it turns and lifts nothing: what it would be asked, and whether it stalls, is not "
+			+ "known. Fix its body to the frame (on the base's studs, or pinned through its holes "
+			+ "to a beam of the base), then simulate again.") % said
 	if not stall.is_empty():
 		return ("STALLS: the %s at %s of its turn: the weight it lifts asks more than the %s N·cm "
 			+ "it gives at %s V, %s at most (by the parts' weight, without friction). Gear it "

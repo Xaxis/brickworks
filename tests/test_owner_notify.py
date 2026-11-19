@@ -138,3 +138,14 @@ def test_the_database_refuses_what_is_not_so() -> None:
     assert got["after_mail_deleted"] == {"state": "mailed", "mail": None}
     assert got["mails_refused"] == ["owner_notify_mails_id", "owner_notify_mails_kind", "owner_notify_mails_state", "owner_notify_mails_body"]
     assert got["errors"] == ["kept", "owner_notify_errors_status", "owner_notify_errors_fn"]
+
+
+def test_how_a_visit_came_is_kept_for_the_tab_and_read_by_the_studio() -> None:
+    # web/theme.js's first touch and the studio's read of it (account.gd
+    # _CAME_JS), page after page in one tab: the studio's page loads no
+    # theme.js, and its sign-in sent nothing until onfix's preview said so.
+    done = subprocess.run(["node", "tests/fixtures/owner_notify/came_check.mjs"], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr[-3000:]
+    got = json.loads(done.stdout.strip().splitlines()[-1])
+    assert got["failed"] == [], done.stdout[-3000:]
+    assert got["summary"] == "9 of 9"

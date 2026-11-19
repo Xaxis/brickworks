@@ -6223,7 +6223,16 @@ and whether the motor can lift it. Simulate now says all three
   weight stands for each radian of the motor (virtual work, the parts'
   grams as Balance weighs them, no friction). Where it first asks more
   than the motor gives, it stalls, and the panel says so with the most it
-  is asked; where it never does, how much it slows at its heaviest.
+  is asked; where it never does, how much it slows at its heaviest. A
+  motor whose case is on nothing the base holds still goes round with what
+  it turns (`Simulation.unfixed`: its case moves, and reaches the base only
+  through its own output), so nothing is weighed against it and no stall
+  is found; it is said "NOT FIXED: the ... is on nothing the base holds
+  still ... Fix its body to the frame ..., then simulate again". Hung so,
+  the SPIKE rig said it STALLS at 26.1°. A case that turns on a joint of
+  its own (on a turntable another motor turns, say) reaches the base
+  through that joint, which takes the motor's turn, and is weighed as
+  before.
 
 Play stops at the first of these, the slider goes no further, and Go to
 the stop shows it. Over MCP the same lines come back and the picture is
@@ -6254,6 +6263,9 @@ Measured (`tools/probe.sh motion_probe`, three models built part by part):
   (9:1) stalls at 25.400° of its turn, worked 25.400° (the arm at 228.6°),
   asked 14.67 N·cm at most against its 11. Unloaded it goes round, asked
   0.2 of its 11 N·cm, 405 slowing to 397 rpm.
+- The SPIKE Prime large motor's rig with its column, plate and pins left
+  out (`-- only=loose`), its case hanging on its output's axle: NOT FIXED in
+  the panel and in `simulate_mechanism`'s reply, nothing weighed, no stall.
 
 `telescope_probe` still passes; its rigs now say where each stops: the
 rack wheel's tube meets its bearing at 2.11 turns and its rack ends at

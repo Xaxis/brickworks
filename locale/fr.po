@@ -15515,3 +15515,12 @@ msgstr "Vous n'en avez plus. Son emplacement est gardé pour son retour : videz-
 
 msgid "%s in %s takes no new place: you own none of it now. Empty its place to take it off"
 msgstr "%s en %s ne prend pas de nouvel emplacement : vous n'en avez plus. Videz son emplacement pour le retirer"
+
+msgid "Sizing handle"
+msgstr "Poignée de redimensionnement"
+
+msgid "Turning handle"
+msgstr "Poignée de rotation"
+
+msgid "Program for the motors"
+msgstr "Programme des moteurs"

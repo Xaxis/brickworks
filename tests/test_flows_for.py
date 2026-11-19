@@ -228,7 +228,9 @@ def test_a_line_in_one_block_of_theme_js_names_that_blocks_checks_alone() -> Non
     every = _checks(_run("web/theme.js"))
     assert {"gallery", "socialdesk", "theme", "beta"} <= every and len(every) > 40, every
     # The social desk's tag, the theme's choice, the beta's bar: each its own.
-    assert _run_diff(_changed("web/theme.js", "const campaign = params.get"), "web/theme.js") == {"socialdesk"}
+    # The desk's visit keeps to the counting choice (infix, inreview L2), and
+    # the counter's flow lands by a tagged link (utm_campaign): both its own.
+    assert _run_diff(_changed("web/theme.js", "const campaign = params.get"), "web/theme.js") == {"socialdesk", "insights"}
     theme = _run_diff(_changed("web/theme.js", 'const KEY = "brickworks.theme"'), "web/theme.js")
     assert {"theme", "theme_account"} <= theme and "socialdesk" not in theme and "gallery" not in theme, theme
     beta = _run_diff(_changed("web/theme.js", 'heard?.beta === "open"'), "web/theme.js")
@@ -238,7 +240,7 @@ def test_a_line_in_one_block_of_theme_js_names_that_blocks_checks_alone() -> Non
     # Two blocks: both blocks' checks.
     both = _run_diff(_changed("web/theme.js", "const campaign = params.get", 'const KEY = "brickworks.theme"'),
                      "web/theme.js")
-    assert both == theme | {"socialdesk"}, both
+    assert both == theme | {"socialdesk", "insights"}, both
     # The language block hands every page's scripts their words: every page's.
     assert _run_diff(_changed("web/theme.js", "code: page, chosen, choose, say"), "web/theme.js") == every
     # A block's start taken out, or a file the diff does not name: every page's.

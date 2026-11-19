@@ -993,27 +993,82 @@ func has_unsaved_work() -> bool:
 	# Saved under another name is saved too: a session's save_model
 	# "small-observatory.ldr" of Small Observatory, and its open_model a
 	# moment later said the model had changes that were not saved.
+	var written: String = ""
 	var now := PackedStringArray()
+	var own_now := PackedStringArray()
 	for kept: String in [saved_path(title) if title != UNTITLED else "", _saved_as]:
 		if kept.is_empty() or not FileAccess.file_exists(kept):
 			continue
-		if now.is_empty():
-			now = _brick_lines(to_text(UNTITLED))
+		if written.is_empty():
+			# As a save writes it, its lines beyond the parts with it
+			# (_with_identity), its build order not worked out again.
+			written = _saving(UNTITLED, false)
+			now = _brick_lines(written)
+			own_now = _app_lines(written)
 		# The picture to build over too (ReferenceImage): changed alone, it is
 		# not what was saved.
 		var text: String = FileAccess.get_file_as_string(kept)
 		if not ReferenceImage.same(ReferenceImage.read(text), reference):
 			continue
-		if _brick_lines(text) == now:
+		# And the app's own lines: a motion kept, a step's look or name, the
+		# floor, each written in no part's line, were nothing to lose, and
+		# New started over without a word (smalls6 item 4).
+		if _brick_lines(text) == now and _app_lines(text) == own_now:
 			return false
 		# A save written in the steps a person sees puts a copy's parts in
 		# the section that places them (AuthorSteps.IN_PARENT), and its
 		# lines are not the copy's own: the observatory saved over MCP said
 		# at once that it had changes that were not saved (mcp_walk3). The
-		# same parts in the same copies are the same model.
-		if text.contains(LdrModel.IN_META) and _placed_lines(text) == _placed_lines(to_text(UNTITLED)):
+		# same parts in the same copies are the same model, and its own lines
+		# the same lines, whichever section has them.
+		if text.contains(LdrModel.IN_META) and _placed_lines(text) == _placed_lines(written) \
+				and _app_lines(text, false) == _app_lines(written, false):
 			return false
 	return true
+
+
+## The app's own lines of [param text] ("0 !BRICKWORKS …", in any case), and
+## in a model of the author's steps each turned step's ROTSTEP, sorted: what
+## an edit that writes no part's line changes. [param placed]: a step's own
+## lines (its look and name, BookletLooks.WORDS) each said with the section
+## and step they are in, so one moved to another step is a change, and the
+## rest with their section, wherever in it the writer puts them. Not the
+## TITLE, which a save under another name writes, nor WORKED_STEPS, a save's
+## worked-out order, which [method has_unsaved_work] does not work out again,
+## nor the copies' COPY and IN, which the parts' own lines are compared for.
+static func _app_lines(text: String, placed: bool = true) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var authored: bool = text.contains(LdrModel.AUTHORED_META)
+	var section: int = 0
+	var step: int = 0
+	for line: String in text.trim_prefix(LdrModel.bom()).split("\n"):
+		var bare: String = line.strip_edges()
+		if not bare.begins_with("0"):
+			continue
+		var fields: PackedStringArray = LdrModel._fields(bare)
+		if fields.size() < 2 or fields[0] != "0":
+			continue
+		var keyword: String = fields[1].to_upper()
+		if keyword == "FILE":
+			section += 1
+			step = 0
+		elif keyword == "STEP":
+			step += 1
+		elif keyword == "ROTSTEP":
+			if authored:
+				lines.append("%d %d %s" % [section, step, bare] if placed else bare)
+			step += 1
+		elif keyword == "!BRICKWORKS" and fields.size() > 2:
+			var word: String = fields[2].to_upper()
+			if word in ["TITLE", "WORKED_STEPS", "COPY", "IN"]:
+				continue
+			if not placed:
+				lines.append(bare)
+				continue
+			lines.append("%d %d %s" % [section, step if authored and word in BookletLooks.WORDS
+				else 0, bare])
+	lines.sort()
+	return lines
 
 
 ## The parts [param text] places, each with its colour, its sub-model copy
@@ -2657,6 +2712,71 @@ func retrieve_between(section: String, early: int, late: int) -> String:
 			if not path.is_empty():
 				(origins[int(units[path])] as Array).append(brick.origin)
 	return source.retrieve_between(section, origins[0], origins[1])
+
+
+## The first of the file's buffer RETRIEVEs beginning a step that the model
+## now has in one step with the step before it (SourceFile.retrieve_joined),
+## in the sections of [param paths] (the paths an edit moved parts in) and
+## those a copy among them goes on in with its parts: [the line, the parts
+## of the step before it, of the step it begins (brick ids; a copy's by one
+## of its parts)]; [] for none. Read after Previous, Next or To step,
+## before it is kept: two steps made one across a RETRIEVE are refused as a
+## merge is (Shell.change_steps), or what the earlier put on is never shown
+## in LPub3D (mkreview M1). Asks nothing of a file without one, nor reads
+## the model for a section without.
+func retrieve_joined(paths: Array) -> Array:
+	var source: SourceFile = _live_source()
+	if source == null or not source.has_retrieves():
+		return []
+	var sections: Array = []
+	for path: String in paths:
+		var at: String = AuthorSteps.home(world, path)
+		while true:
+			if not sections.has(at) and source.retrieves_in(at):
+				sections.append(at)
+			# A copy given no step goes on with its lowest part, so a part
+			# moved in it can move it in the one above (AuthorSteps.unit_step).
+			if at.is_empty() or world.unit_steps.has(at):
+				break
+			at = AuthorSteps.home(world, Assemblies.parent_of(at))
+	if sections.is_empty():
+		return []
+	var by_section: Dictionary = AuthorSteps.items_in(world, sections, scenery)
+	var first: Dictionary = {}      ## a path -> its first part, in the model's order
+	for section: String in sections:
+		var items: Array = []
+		var units: Dictionary = {}      ## a copy put on in this section -> its step
+		for item: Dictionary in by_section[section]:
+			if item.has("brick"):
+				var brick: BrickWorld.Brick = world.get_brick(int(item["brick"]))
+				if brick != null and not brick.origin.is_empty():
+					items.append([brick.origin, int(item["step"]), brick.id])
+			elif item.has("unit"):
+				units[str(item["unit"])] = int(item["step"])
+		if not units.is_empty():
+			if first.is_empty():
+				for brick: BrickWorld.Brick in world.bricks():
+					if not brick.origin.is_empty():
+						var path: String = Assemblies.path_of(brick)
+						if not first.has(path):
+							first[path] = brick
+			var given: Dictionary = {}
+			for path: String in first:
+				var up: String = path
+				while not up.is_empty() and not units.has(up):
+					up = Assemblies.parent_of(up)
+				if not up.is_empty() and not given.has(up):
+					given[up] = true
+					var brick: BrickWorld.Brick = first[path]
+					items.append([brick.origin, int(units[up]), brick.id])
+		var joined: Array = source.retrieve_joined(section, items)
+		if not joined.is_empty():
+			var sides: Array = [[], []]
+			for which: int in 2:
+				for index: int in joined[which + 1]:
+					(sides[which] as Array).append(int(items[index][2]))
+			return [joined[0], sides[0], sides[1]]
+	return []
 
 
 ## The source the model on the baseplate is still the model of, or null.

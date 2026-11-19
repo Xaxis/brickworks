@@ -337,15 +337,25 @@ echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format=
 # would say so. Should the promotion not go, production is deployed afresh,
 # as it was before.
 : > "$S/${TAG}_prod.log"
+# Each deploy writes into a log of this run's own and is ended with it
+# (run_owned): stopped, a ship's promotion went on, put the release live
+# after the ship had said it did not, and wrote its "serves" line into the
+# next ship's log of the same tag, which a train reads to say it is live.
+prod_deploy() {
+  local own="$S/${TAG}_prod.$EPOCHSECONDS-$$.log" code
+  run_owned "$own" env SHIP_DEPLOY=1 "$@"; code=$?
+  cat "$own" >> "$S/${TAG}_prod.log" && rm -f "$own"
+  return "$code"
+}
 deployed=0
 # What the domain will serve: the preview's own commit, before SHA when only
 # checks changed since (reused_preview), or SHA built afresh.
 LIVE=${PREVIEW_MADE:-$SHA}
 if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
-    || ! SHIP_DEPLOY=1 timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
+    || ! prod_deploy timeout 900 tools/deploy.sh --promote="$URL"; then
   echo "SHIP: $URL not promoted; deploying production afresh"
   LIVE=$SHA
-  SHIP_DEPLOY=1 timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${DEPLOY_DIR[@]}" >> "$S/${TAG}_prod.log" 2>&1
+  prod_deploy timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${DEPLOY_DIR[@]}"
   deployed=$?
 fi
 # A failed deploy is a failed ship. m174's lost one size of its start check

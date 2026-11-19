@@ -26,6 +26,13 @@ WebKit, a phone's CPU speed, a phone's memory or a mobile network.
 - **The owner sets the numbers** in `/admin#switches`, under **Phones**:
   `phone_parts` (10,101) and `phone_start_s` (40 s). Each is per deployment,
   audited, and shown beside the measured value.
+- **The start by phase, and the first cut** (webstart11, below): the
+  scripts' compile is the largest phase on every engine (24.5 s of a 72 s
+  first visit at CPU/4) and fills 432 MB; the catalogue's JSON filled the
+  last 87 MB. The web now reads the catalogue from columns: 519 → 432 MB
+  of Wasm memory, the catalogue's read x0.37 at CPU/4.
+- **Before any ad push**, what breaks first and what it costs:
+  [docs/CAPACITY.md](CAPACITY.md).
 
 ## What works on what
 
@@ -165,6 +172,193 @@ Its Pss carries the drawing's memory, which an iPhone keeps in a separate
 GPU process. So it is an upper bound on what WebKit's own work costs, not
 an iPhone's figure.
 
+## The start, phase by phase
+
+webstart11, 2026-11-18. Each phase of a first visit timed on the build's
+own marks, never a trace: the engine's files (Resource Timing), the Wasm
+compiled and instantiated (timed apart), the engine's own start (its
+Build configuration line), then `main.gd`'s boot marks and the car's 61
+parts drawn. Two builds at the same moment, each in a browser of its own,
+the order alternating (`tools/web/start_phases.mjs`). The box was at load
+60–99 of 24 cores throughout, so the seconds are a loaded box's; the
+ratios between the two builds are what hold. Results:
+`bench/results/webstart11-2026-11-18/`.
+
+**Where a CPU/4 + Fast 4G first visit goes** (Chromium, 5 pairs, the
+base's medians):
+
+| Phase | Lasts | Ends at |
+|---|---|---|
+| The engine's files (9 MB over the wire) | 12.1 s | 12.1 s |
+| Wasm compiled, beside the download | 11.0 s | 12.3 s |
+| The engine's own start | 5.5 s | 18.2 s |
+| **The scripts compiled** | **24.5 s** | 41.2 s |
+| The data pack waited for | 1.9 s | 43.1 s |
+| **The catalogue read** | **10.0 s** | 54.5 s |
+| The window built | 9.3 s | 63.6 s |
+| The car laid and drawn | 8.3 s | 72.4 s |
+
+The main thread is busy 48.5 s of it. On WebKit as an iPhone 13 (full
+speed, no throttle: WebKit takes none) the scripts take 9.4 s and the
+catalogue 2.9 s of a 25 s start.
+
+**What fills the 519 MB of Wasm memory.** A web page's Wasm memory never
+shrinks, so whatever the start needs at its height it keeps.
+- The engine's own start: 48 MB (34 MB without threads).
+- **Compiling the first screen's scripts: to 432 MB.** GDScript holds the
+  parse trees of the whole start's script closure at once; on a desktop
+  debug build the compile peaks at 520 MB and settles at 203 MB. Every
+  engine and build measured reaches 432 MB at the scripts' mark.
+- **The catalogue's JSON: the last 87 MB.** Its 14 MB of text is 4 bytes a
+  character as a Godot String, and its tree of 29,668 parts' Dictionaries
+  rose to +341 MB at its height on a desktop, then kept +198 MB.
+
+**The cut built: the web reads its catalogue from columns.** The export
+writes the pack's catalogue as columns (`assets/web/catalogue.bin`: one
+packed array a field, 11.5 MB) and reads them back field for field, or
+stops (`src/dev/write_all_order.gd`). The web build ships them in the
+JSON's place; desktop still reads the JSON. Every field of every part is
+the JSON's (`catalogue_columns_probe`). On a desktop the read's height is
++139 MB against +341 MB, in 869 ms against 2,019 ms.
+
+| Same moment, base → after (medians) | Chromium, desktop | Chromium, CPU/4 + Fast 4G | WebKit as an iPhone 13 |
+|---|---|---|---|
+| Pairs; the box's load | 5; 60–99 | 5; 69–96 | 5; 51–81 |
+| The catalogue read | 2.7 → 1.1 s (x0.45) | 10.0 → 3.7 s (x0.37) | 2.2 → 0.8 s (x0.35) |
+| First visit, working | 33.9 → 27.2 s (pairs x0.87) | 72.4 → 68.4 s (pairs x0.91) | 18.4 → 18.7 s (pairs x1.02) |
+| A return, working | 31.4 → 24.4 s (pairs x0.91) | not run | not run |
+| Main thread's CPU to working | 10.6 → 9.1 s | 48.5 → 44.3 s | 11.7 → 10.7 s |
+| **Wasm memory at its height** | **519 → 432 MB** | **519 → 432 MB** | **519 → 432 MB** |
+| Content process's Pss at working | 817 → 786 MB | 849 → 772 MB | 1,792 → 1,676 MB |
+
+The after build was faster than the base in 5 of 5 desktop pairs, both
+visits, and in 4 of 5 at CPU/4. On WebKit the catalogue's 1.4 s is under
+the box's noise there: its pairs ran 0.59 to 1.80 of each other, the
+slowest from the download on, before the catalogue is read. Its Wasm
+memory was 432 MB in every visit on every engine: the script compile now
+sets the height, not the catalogue. `phonetruth_flow` on the after build
+(CPU/4, load about 50) started the studio in 64.6 s and returned in
+47.5 s, and turned the car at 8.3 frames a second, own work p95 37.6 ms
+(39.1 ms before).
+
+**The next cuts, in order of seconds:**
+1. **The scripts' compile** (24.5 s at CPU/4, and the 432 MB). A smaller
+   first-screen closure: the classes the first window names but does not
+   use until a press (the assistant, Together, the booklet, the forge)
+   loaded on first use, as the Later scripts already are. It is the start's
+   largest phase on every engine and the whole of its memory.
+2. **The window** (9.3 s at CPU/4): what `_ready` builds that the first
+   screen does not show.
+
+**Tried, and not a cut: the Wasm's compiled code kept between visits.** Godot's loader
+hands `instantiateStreaming` a Response it made itself, to count the
+download, and a desktop return still compiled the Wasm for 5–7 s, so
+V8's code cache looked lost. Handing it the fetched Response instead
+(the export's `index.js` patched, the progress read off a clone) did
+not help: 3 pairs on a desktop, the return's compile 5.4 → 6.1 s,
+working slower in all 3 (x1.1;
+`bench/results/webstart11-2026-11-18/codecache-desktop/`). Why V8 kept
+nothing is not found; until it is, this is not a cut.
+
+## The no-threads export on WebKit
+
+`Web (no threads)` (`build/web-nothreads`, unshared memory) against the
+threaded build, both base, at the same moments:
+
+| | Threads | No threads |
+|---|---|---|
+| WebKit as an iPhone 13, working (4 pairs, load 73–98) | 25.2 s | **17.7 s** (x0.70; faster in 3 of 4) |
+| … the scripts' compile | 9.4 s | 5.0 s |
+| … all threads' CPU to working | 27.5 s | 22.2 s |
+| … WebProcess Pss at working | 1,779 MB | 1,613 MB |
+| Chromium, CPU/4 + Fast 4G, working (3 pairs, load 60–77) | 65.6 s | 64.9 s (x1.00) |
+| … renderer Pss at working | 853 MB | 791 MB |
+| Wasm memory at its height, both engines | 519 MB | 519 MB |
+| Together, two browsers (`together_flow --desktop=no`, about load 100) | 42 checks passed before its 45 minutes ran out; pointer late, Follow and the outline failed | 71 passed, 5 failed: a change's and the pointer's time, Follow (2), the outline |
+| WebKit's walk: render, a booklet page, Simulate played, scrubbed, driven | done (phonetruth's walk) | done, 5 of 5; Motions' Keep fails on both (fault 6) |
+
+**My judgement: serve it to iPhones, behind the owner's switch, once one
+real iPhone agrees. Android keeps threads.**
+- On WebKit it started in 0.70 of the time, the scripts' compile almost
+  halved, and its process held 166 MB less. On Chromium it was no faster
+  (x1.00): there threads cost nothing and help the work after the start.
+- It does what the threaded build does: Together's edits, undo, comments,
+  reload and the session in 71 checks; render, the booklet and Simulate by
+  finger on WebKit. Its failures in Together are the threaded build's at
+  the same load (the timing bars, Follow, the outline), so they are this
+  box's, not its own.
+- What it costs is the workers. With no threads the engine runs each
+  pool task in the frame that asks for it: weighing a model past 600
+  parts, the booklet's pictures and PDF, the search's index. Such a frame
+  is the whole task long. The app allows for it in three places already
+  (custom_parts, builder, booklet_studio); the rest would need the same.
+- Its Wasm memory reaches the same height (519 MB, 432 MB with the
+  columns). What it changes on iOS is the shared memory's 2 GB maximum,
+  reserved up front, which an iPhone has refused (godot#70621). Only a real
+  iPhone can say how often that happens, so the switch waits on one.
+- **The switch is built** (nothreads, 2026-11-19): below.
+
+### The switch: iPhones and iPads on the engine without threads
+
+`/admin#switches` › Phones › "iPhones and iPads use the engine without
+threads" (`phone_nothreads`, default **off**; `POST /api/admin?op=phone_engine
+{on}`, audited, this deployment's scope only). Every page reads it at
+`/api/plans?op=phone`, a minute at the CDN.
+
+- **Built and deployed both.** `tools/export.sh web` exports `Web (no
+  threads)` into `build/web-nothreads` after the threaded one and stops if
+  any of its 8 packs (pck, data, parts, primitives, light, type, the two
+  audio worklets) is not the threaded export's byte for byte. tools/deploy.sh
+  hands it to tools/web/place_build.py, which copies only its engine
+  (`index.js`, `index.wasm`, their brotli, its worklets: 6 files, 6.6 MB
+  over the wire) to its own `/e/<hash>/` and names it in the page's
+  `GODOT_CONFIG.nothreads`; it refuses one whose packs or page differ but
+  for the engine's settings. The deployment says its file count and is
+  refused past 15,000.
+- **Chosen on the page.** The page names both engines and asks for neither
+  in its markup (src/boot/shell.html, `brickworksEngine`): iOS and iPadOS
+  (an iPhone, iPad or iPod user agent, or a Mac's with
+  `navigator.maxTouchPoints` over 1, as an iPad's Safari says it is) ask
+  `op=phone` first and start the engine without threads while the switch is
+  on, the threaded one while it is off, unanswered or past 2.5 s. Every
+  other browser starts the threaded one at once, asking nothing.
+- **What off costs.** An iPhone's first visit asks `op=phone` as it did
+  (the first-visit time, `#eta`, takes the same answer: one question). An
+  iPad, and an iPhone coming back, ask it once more than before: a few
+  hundred bytes, cached a minute at the CDN, waited for before the engine.
+  Everyone else's requests are base's.
+
+Measured on local copies of one export placed as a deployment is
+(tools/web/serve.py `--phone-nothreads on|off`), WebKit and Chromium in
+software on this box (results: `bench/results/nothreads-2026-11-19/`):
+
+| | |
+|---|---|
+| Switch off, each browser's requests against base's page (`engine_choice.mjs --base`) | iPhone 20 and 20, the same; Mac Safari, the same; iPad and iPad-as-Mac one more (`op=phone`) |
+| Switch on: the engine started | iPhone, iPad, iPad as a Mac: without threads, nothing of the threaded one asked; Mac Safari, Android Chromium, a computer: threaded |
+| WebKit as an iPhone 13, working, switch on against off (4 same-moment pairs, load 40–53) | **14.8 s against 17.9** (x0.84; faster in 4 of 4); scripts' compile 5.6 against 7.5 s; 105 MB less held |
+
+What a pool task costs without threads, each frame's own work, in WebKit
+(`cad_frames.mjs --engine=webkit` on the export without threads, at load
+30–40):
+
+| Pool task | Without threads | Under 100 ms? |
+|---|---|---|
+| The search's index, the first part number typed | made in frames already (PartLibrary.index_on_a_worker); the app's scripts 24 ms at most | yes |
+| Weighing a model past 600 parts (Main.weigh_joints, Stability.check_paced) | one frame the whole weigh: 1.7 s on 75969-1 (925 parts), **8.6 s on Orthanc (10,101)**, and again after every edit | **no** |
+| The booklet's pictures | in frames already (BookletStudio) | see the walk |
+| The booklet's PDF on the web | never a pool task: written in the page's own frames with or without threads (Main, BookletRead) | the same as with threads |
+
+**So the switch stays off until the weigh is paced.** With threads the
+status bar weighs a model past 600 parts on a worker; without, it weighs it
+in the frame, and an iPhone holding Orthanc would stop for seconds at every
+edit. It needs the weigh in frames (or the status bar's verdict asked for,
+not made at every edit, past 600 parts without threads): a unit of its own.
+The rest of the pool tasks found by grep (grab_drag, parts_bin, model_store,
+strengthen, tested, the rest) run where they ask too; the walk below drives
+the ones a phone reaches.
+
+
 ## The faults, each with its cause and fix
 
 In order of how many people they reach.
@@ -186,6 +380,8 @@ In order of how many people they reach.
      each phase on a throttled phone, then: a smaller Wasm, the catalogue
      read on first use, and the compiled module kept between visits.
      **Built here:** a phone's first visit says how long it will take.
+     **webstart11** timed each phase (above): the scripts' compile is the
+     largest on every engine, then the catalogue, which now reads x0.37.
 
 2. **The studio's memory before any model.**
    - *Measured.* The engine grows its Wasm memory to 519 MB at every start,
@@ -203,6 +399,9 @@ In order of how many people they reach.
      what to do, and the files still coming are let go. Before, the loader
      sat at "Sorting the bin…" for ever: the refusal is thrown outside the
      start's promise, and nothing heard it.
+     **webstart11:** the catalogue's 87 MB kept out of it (519 → 432 MB on
+     every engine), and the no-threads export judged on WebKit (above).
+     The 432 MB left is the scripts' compile.
 
 3. **A model past 10,101 parts grows the tab about 20 MB per 1,000 parts**
    (above). **Built here:** the question before it opens on a phone.

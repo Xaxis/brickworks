@@ -471,7 +471,15 @@ func _siblings(every: String, tools: AppTools) -> void:
 		["first: add at end, edit_model put a brick on, then Later on the white step",
 			func() -> String:
 				await add.call()
-				return _shell.change_steps("later", [], _step_of(WHITE))]]
+				return _shell.change_steps("later", [], _step_of(WHITE))],
+		# The first step turned, the file's line above the first part, which
+		# the open counts as an empty step before it; written as live's write
+		# writes someone else's file when no patch is (mkreview M2: each
+		# step's settings went on the step after it, the first's turn gone).
+		["first, written whole: reorder, Later on the yellow step", func() -> String:
+			return _shell.change_steps("later", [], _step_of(YELLOW))],
+		["first, written whole: reorder, Earlier on the green step", func() -> String:
+			return _shell.change_steps("earlier", [], _step_of(GREEN))]]
 	var n: int = 0
 	for entry: Array in cases:
 		n += 1
@@ -479,7 +487,8 @@ func _siblings(every: String, tools: AppTools) -> void:
 		await _timeline()
 		_steps.set_mode(StepsBar.AUTHORS)
 		await _frames(2)
-		if str(entry[0]).begins_with("first:"):
+		ModelStore.patch_files = not str(entry[0]).contains("written whole")
+		if str(entry[0]).begins_with("first"):
 			await _main.get("_assistant")._run_tool({"name": "edit_model", "input": {"remove": [
 				_part(4).id, _part(4, true).id, _part(BLUE).id, _part(BLUE, true).id]}})
 			await _frames(2)
@@ -493,6 +502,30 @@ func _siblings(every: String, tools: AppTools) -> void:
 			_history() > history or _world.bricks().size() > bricks)
 		_stayed("...")
 		await _reopened("...saved and opened again", "sibling%02d" % n)
+		ModelStore.patch_files = true
+	# The file a turned first step was saved as, opened again (its ROTSTEP
+	# above the first part an empty step before it), each reorder written as
+	# a patch and as live's write writes it whole: the same file (mkreview M2).
+	var first: String = _out.path_join("%s_sibling10_saved.mpd" % _name)
+	for edit: Array in [["Later on the yellow step", "later", YELLOW],
+			["Earlier on the black step", "earlier", BLACK]]:
+		var saves: Array = []
+		for whole: bool in [false, true]:
+			ModelStore.patch_files = not whole
+			await _open(first)
+			await _timeline()
+			_steps.set_mode(StepsBar.AUTHORS)
+			await _frames(2)
+			var said: String = _shell.change_steps(str(edit[1]), [], _step_of(int(edit[2])))
+			await _frames(2)
+			_stayed("the first step turned, opened again: %s%s (\"%s\")" % [edit[0],
+				", written whole" if whole else "", said.left(40)])
+			saves.append(_save())
+			await _reopened("...saved and opened again")
+		ModelStore.patch_files = true
+		var diff: Array = _diff(str(saves[0]), str(saves[1]))
+		_check("...%s written whole is the patch's file (out %s, in %s)" % [edit[0], _few(diff[0]),
+			_few(diff[1])], saves[0] == saves[1])
 
 
 ## The yellow step given every setting a step can have, the black step and the

@@ -165,6 +165,9 @@ var _job: Working.Job = null
 ## kept for the next find). On a phone or a tablet the field and the list
 ## are in a sheet Find… opens (_find_sheet).
 var _find: LineEdit
+## What of the find stands in the row of buttons: the field's FindSlot, or
+## on a phone or a tablet Find…; shown in the orders that have steps.
+var _find_in_row: Control
 var _found_line: Container
 var _found_said: Label
 var _found_chips: Array[Button] = []
@@ -657,7 +660,7 @@ func _set_mode_quietly(mode: int) -> void:
 	_show_row(_looks, (mode == AUTHORS or mode == 0) and editable)
 	# A step found by what it places: in the orders that have steps.
 	var stepped: bool = mode == AUTHORS or mode == 0
-	_named["steps_find"].visible = stepped
+	_find_in_row.visible = stepped
 	if not stepped:
 		_found_line.visible = false
 		if _find_sheet != null:
@@ -1479,6 +1482,44 @@ func row_state() -> Dictionary:
 # screen, where the bar is: there Find… opens the field and its list in a
 # sheet, which the layout for a finger keeps above the keyboard
 # (TouchSizing), as it does Move to step… and Name….
+#
+# In the row of buttons the field is as wide as the row has room for, from
+# FindSlot.LEAST to FindSlot.MOST, its words cut to "Find a step" where the
+# whole of them would not show. At a fixed 200 it wrapped Instructions and
+# Done onto a second line at 1280 x 720 with the bin open, the window a
+# first visit gets (smalls6; the row's least was 859 units of its 817).
+
+
+## The find's field in the row of buttons: no less than LEAST wide, so the
+## row's least width (where the flow wraps it) has it at LEAST; as wide as
+## the row leaves it, up to MOST, with the rest of the line beyond it, so
+## Instructions and Done stay at the line's right-hand end. Its placeholder
+## the whole of its words where they show whole, else the short ones.
+class FindSlot extends Container:
+	const LEAST := 120.0
+	const MOST := 240.0
+	var field: LineEdit
+	var words: String = ""
+	var short: String = ""
+
+	func _get_minimum_size() -> Vector2:
+		return Vector2(LEAST, field.get_combined_minimum_size().y if field != null else 0.0)
+
+	func _notification(what: int) -> void:
+		# Another language's words, or another size of them, need their own
+		# width: laid out again.
+		if what in [NOTIFICATION_TRANSLATION_CHANGED, NOTIFICATION_THEME_CHANGED]:
+			queue_sort()
+			return
+		if what != NOTIFICATION_SORT_CHILDREN or field == null:
+			return
+		var wide: float = clampf(size.x, LEAST, MOST)
+		fit_child_in_rect(field, Rect2(0.0, 0.0, wide, size.y))
+		var font: Font = field.get_theme_font("font")
+		var needs: float = font.get_string_size(field.tr(words), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			field.get_theme_font_size("font_size")).x \
+			+ field.get_theme_stylebox("normal").get_minimum_size().x
+		field.placeholder_text = words if wide >= needs else short
 
 
 func _build_find(row: Container, column: Container) -> void:
@@ -1497,7 +1538,6 @@ func _build_find(row: Container, column: Container) -> void:
 	# library's search does, and empty is any field's Escape (FocusGuard:
 	# given on, the first Escape had put the timeline away with the find).
 	_find.set_meta(FocusGuard.CLEAR_ON_ESCAPE, true)
-	_find.custom_minimum_size = Vector2(200, 0)
 	_find.add_theme_font_size_override("font_size", 11)
 	_find.text_changed.connect(func(_text: String) -> void: _find_now())
 	_find.text_submitted.connect(func(_text: String) -> void: find_next(1))
@@ -1512,7 +1552,17 @@ func _build_find(row: Container, column: Container) -> void:
 	_found_line.add_child(_found_said)
 	_named["steps_found"] = _found_line
 	if not Phone.on():
-		row.add_child(_find)
+		var slot := FindSlot.new()
+		slot.field = _find
+		slot.words = _find.placeholder_text
+		slot.short = "Find a step"
+		# The line's room beyond the buttons is the field's, as far as MOST,
+		# before Instructions and Done take what is left at its end.
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.size_flags_stretch_ratio = 100.0
+		slot.add_child(_find)
+		row.add_child(slot)
+		_find_in_row = slot
 		_named["steps_find"] = _find
 		column.add_child(_found_line)
 		return
@@ -1520,6 +1570,7 @@ func _build_find(row: Container, column: Container) -> void:
 		+ "its name or its colour")
 	open.pressed.connect(open_find)
 	row.add_child(open)
+	_find_in_row = open
 	_named["steps_find"] = open
 	_find.custom_minimum_size = Vector2(260, 0)
 	_find_box = VBoxContainer.new()

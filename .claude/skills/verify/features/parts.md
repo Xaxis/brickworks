@@ -3,9 +3,26 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, cli:fetchparts browser flow, ui:recent and favourite parts, ui:techniques in the bin, ui:new parts in the bin, cli:binrow probe, ui:rare colours in the bin, cli:rarity probe, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, cli:fetchparts browser flow, ui:recent and favourite parts, ui:techniques in the bin, ui:new parts in the bin, cli:binrow probe, ui:rare colours in the bin, cli:rarity probe, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read, lib:the web's catalogue as columns -->
 
 ## Sub-features
+
+- `the web's catalogue as columns` (`src/parts/part_library.gd`,
+  `PartLibrary.columns_of` and `_read_columns`; webstart11): the web build
+  reads `assets/web/catalogue.bin`, the pack's catalogue.json as columns
+  (one packed array a field, var_to_bytes), not the JSON, whose text and
+  tree grew a page's Wasm memory by about 90 MB for good. Every web export
+  writes it (`src/dev/write_all_order.gd`) and reads it back field for
+  field, or takes it away and the export stops; the web presets leave the
+  JSON out. Desktop builds still read the full JSON.
+
+  ```sh
+  godot --headless --path . --script src/dev/catalogue_columns_probe.gd   # catalogue_columns: PASS
+  ```
+  Every field of 29,668 parts the same (lazily kept words through their
+  methods), the read's memory height under half the JSON's (desktop: +139
+  against +341 MB), no slower (869 against 2019 ms), a catalogue.bin of
+  another format refused.
 
 - `part search`: ranked search over the catalogue (`assets/generated/catalogue.json`,
   14 MB). Matches the LDraw title, the category and the number, and is judged on

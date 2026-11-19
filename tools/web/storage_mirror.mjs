@@ -100,7 +100,11 @@ function kept(name) {
     const cut = whole.indexOf(10);
     const head = JSON.parse(whole.subarray(0, cut).toString());
     const age = /max-age=(\d+)/.exec(head["cache-control"] || "");
-    const fresh = Date.now() - statSync(file).mtimeMs < (age ? Number(age[1]) : 86400) * 1000;
+    // Fresh while its lifetime is more than its age, and an age is never
+    // below 0 (RFC 9111 4.2): a copy read in the millisecond it was written
+    // has an mtime past Date.now()'s whole milliseconds (64% of such reads
+    // here), which made a max-age=0 copy fresh and skipped its revalidation.
+    const fresh = Math.max(0, Date.now() - statSync(file).mtimeMs) < (age ? Number(age[1]) : 86400) * 1000;
     return { head, body: whole.subarray(cut + 1), fresh, file };
   } catch {
     return null;

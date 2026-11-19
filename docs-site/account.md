@@ -61,9 +61,13 @@ ui:account panel
 
 Your models, your collection and your profile are kept with your account, and nobody sees a model until you share it. A key you give for an AI, Anthropic's or any other provider's, stays in your browser and goes only to that provider ([where a key is kept](/docs/connect#key-custody)). A photo of a build is cleaned of what the camera wrote into it, such as where it was taken. The [privacy page](/privacy) says everything kept and why, and the [terms](/terms) and [guidelines](/guidelines) what the site asks of everyone.
 
+Brickworks also counts how its site and studio are used, to make them better: which kinds of page, tools and panels, how long the studio takes to start and what goes wrong. Never your models, what you type, your email address or your IP address. Where the law asks for a yes first, you are asked; a browser sending Do Not Track or Global Privacy Control is never counted, and **Settings › Privacy** turns it off. [What is counted](/counting) says it all.
+
 <!-- covers
 ui:privacy page
 ui:terms and guidelines
+ui:the counter and its ask
+ui:what is counted page
 -->
 
 ## Delete your account {#delete}

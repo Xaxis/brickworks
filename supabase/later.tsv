@@ -39,6 +39,11 @@ feedback.sql	beta_tester	beta_join.sql	public.beta_testers t
 console3.sql	admin_export	console3b.sql	'oc_rh'
 discovery.sql	owned_keep_pool	pool_rule.sql	rule = excluded.rule
 discovery.sql	owned_pool_of	pool_rule.sql	'rule', k.rule
+analytics.sql	insights_take	analytics2.sql	turned_away
+analytics.sql	insights_call	analytics2.sql	insights_day_calls
+analytics.sql	insights_agg	analytics2.sql	grouping sets
+analytics.sql	insights_read	analytics2.sql	seen_names
+analytics.sql	insights_caps	analytics2.sql	"calls"
 notifications.sql	notification_rows	announce.sql	announcement_rows(
 replies.sql	notification_rows	announce.sql	announcement_rows(
 achievements.sql	notification_rows	announce.sql	announcement_rows(

@@ -68,6 +68,33 @@ import_here() {
   tools/fresh_import.sh
 }
 
+# run_owned OWN CMD...: CMD, its output in OWN, a file of this run's own, and
+# ended with this run. A TERM, INT or HUP to this shell ends CMD first, then
+# the shell: a timeout passes the signal on to its process group, and heavy
+# to its job. Killed, a run used to take none of it along: GNU timeout puts
+# itself in a process group of its own, so `kill -- -PGID` missed the
+# timeout around heavy, and ship.sh's stop (its work's pid alone) missed it
+# too. hubprogram's deploy went on after its run was killed, wrote a second
+# "deploy done" into the next run's log, and that run took both URLs
+# (2026-11-18). This shell only waits while the trap is set, as ship.sh's
+# does, so it never comes due in the middle of a "$(...)" (bash 5.2). The
+# caller's own TERM, INT and HUP traps are put back after.
+run_owned() {
+  local own=$1 saved code; shift
+  saved=$(trap -p TERM INT HUP)
+  OWNED=""
+  trap 'owned_end 143' TERM; trap 'owned_end 130' INT; trap 'owned_end 129' HUP
+  "$@" > "$own" 2>&1 &
+  OWNED=$!
+  wait "$OWNED"; code=$?
+  trap - TERM INT HUP; eval "$saved"
+  return "$code"
+}
+owned_end() {
+  [ -z "${OWNED:-}" ] || { kill -TERM "$OWNED" 2>/dev/null; wait "$OWNED"; }
+  exit "$1"
+}
+
 # deploy_preview NAME SHA [OPTION...]: this worktree on Vercel, unpromoted
 # (tools/deploy.sh without --prod: no domain points at it), in URL, with the
 # deploy's options (a unit's: --unit). Its log is NAME_preview.log, and the
@@ -75,10 +102,18 @@ import_here() {
 # once heavy gives it a slot; the wait for one has three hours of its own.
 # With the timeout outside heavy, shareread's deploy spent its 50 minutes
 # queued behind rel-m252's checks and failed with an empty log (2026-11-03).
+# The deploy writes into a log of this run's own, NAME_preview.<run>.log,
+# which NAME_preview.log links to while it runs and becomes once it ends,
+# and the URL is read from that log alone: a deploy that outlived its run
+# (a run killed outright) writes only into its own run's log.
 deploy_preview() {
-  local name=$1 sha=$2; shift 2
-  timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh "$@" > "$S/${name}_preview.log" 2>&1
-  URL=$(grep -oE "deploy done https://[^ ]+" "$S/${name}_preview.log" | cut -d' ' -f3)
+  local name=$1 sha=$2 own; shift 2
+  own="$S/${name}_preview.$EPOCHSECONDS-$$.log"
+  rm -f "$S/${name}_preview.sha"
+  : > "$own" && ln -sfn "${own##*/}" "$S/${name}_preview.log"
+  run_owned "$own" timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh "$@"
+  URL=$(grep -oE "deploy done https://[^ ]+" "$own" | cut -d' ' -f3)
+  mv -f "$own" "$S/${name}_preview.log"
   [ -n "$URL" ] || { echo "$WHO: preview deploy failed"; tail -3 "$S/${name}_preview.log"; return 1; }
   echo "$sha" > "$S/${name}_preview.sha"
   echo "$WHO: preview $URL"

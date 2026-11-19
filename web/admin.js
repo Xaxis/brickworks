@@ -10,10 +10,10 @@
 // (and one challenge's panel at #challenges/<id>), Data admin-data.js,
 // Switches admin-switches.js, and here an account's Export, Sign out
 // everywhere and Delete, and the bar's Find. Claude, its Settings and the
-// panel beside every section, is admin-claude.js (adminclaude). Notifications
-// (ownernotify) is admin-notify.js, and a mail's one-click "turn this off"
-// lands here before the gate. Announcements is admin-announce.js, asked only
-// once its section is opened.
+// panel beside every section, is admin-claude.js (adminclaude).
+// Notifications (ownernotify) is admin-notify.js, and a mail's one-click
+// "turn this off" lands here before the gate. Announcements is
+// admin-announce.js, asked only once its section is opened.
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
@@ -25,6 +25,7 @@ import { keepInView, loadReport, whenChanged as galleryChanged } from "/admin-ga
 import "/admin-moderation.js";
 import { challengeOf } from "/admin-challenges.js";
 import { loadData } from "/admin-data.js";
+import { TABS as ANALYTICS_TABS, loadAnalytics } from "/admin-analytics.js";
 import { loadSwitches, whenChanged as switchesChanged } from "/admin-switches.js";
 import { loadBeta, whenChanged as betaChanged } from "/admin-beta.js";
 import { loadFeedback } from "/admin-feedback.js";
@@ -38,11 +39,11 @@ import { loadNotify, offFromLink, whenChanged as notifyChanged } from "/admin-no
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social",
-  "announcements", "plans", "mail", "notifications", "connector", "site", "data", "switches", "claude", "audit"];
-const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"],
-  beta: ["applications", "testers"], social: ["inbox", "write", "sent", "accounts"],
-  notifications: ["settings", "sent"], announcements: ["write", "sent", "banner", "settings"] };
+const SECTIONS = ["overview", "analytics", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "announcements",
+  "plans", "mail", "notifications", "connector", "site", "data", "switches", "claude", "audit"];
+const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
+  social: ["inbox", "write", "sent", "accounts"], analytics: ANALYTICS_TABS, notifications: ["settings", "sent"],
+  announcements: ["write", "sent", "banner", "settings"] };
 // The sections drawn from the one report (admin-gallery.js loadReport).
 const REPORTED = ["moderation", "gallery", "challenges"];
 // Where the Gallery's tabs went (console3): their old addresses still land.
@@ -70,6 +71,7 @@ function route() {
 // Each section read once it is first opened, and again on Refresh.
 const loaders = {
   overview: () => loadOverview(),
+  analytics: () => loadAnalytics(),
   people: () => loadPeople(),
   moderation: () => loadReport(),
   gallery: () => loadReport(),
@@ -101,8 +103,13 @@ async function show() {
   if (at.tab) {
     for (const tab of part.querySelectorAll("[data-tab]")) tab.hidden = tab.dataset.tab !== at.tab;
     for (const to of part.querySelectorAll("[data-tab-link]")) {
-      if (to.dataset.tabLink === at.tab) to.setAttribute("aria-current", "true");
-      else to.removeAttribute("aria-current");
+      if (to.dataset.tabLink !== at.tab) to.removeAttribute("aria-current");
+      else {
+        to.setAttribute("aria-current", "true");
+        // Tabs wider than the window (a phone's) scroll sideways: the current one into sight (inreview L7).
+        const [tab, strip] = [to.getBoundingClientRect(), to.parentElement.getBoundingClientRect()];
+        if (tab.left < strip.left || tab.right > strip.right) to.parentElement.scrollLeft += tab.left - strip.left - (strip.width - tab.width) / 2;
+      }
     }
   }
   document.title = `${part.querySelector("h2")?.textContent || "Console"} · Console · Brickworks`;
@@ -354,7 +361,8 @@ const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Le
   beta_decide: "Decided an application", beta_waitlist: "Put an application on the waitlist",
   beta_grant: "Gave the months still to give", beta_switch: "Flipped the beta", feedback_triage: "Marked feedback",
   feedback_reply: "Answered feedback", unbar_model: "Let a model back", notice_set: "Set the site's notice",
-  notice_clear: "Cleared the site's notice", run_cron: "Ran a cron now", export: "Exported an account's data",
+  notice_clear: "Cleared the site's notice", phone_rules: "Set the numbers a phone is warned by",
+  phone_engine: "Set which engine iPhones and iPads start", run_cron: "Ran a cron now", export: "Exported an account's data",
   delete_account: "Deleted an account", sign_out: "Signed an account out everywhere",
   social_connect: "Started connecting a network", social_connected: "Connected a network", social_disconnect: "Disconnected a network",
   social_sync: "Looked at the networks now", social_mark: "Marked what came in", social_draft: "Kept a social draft",
@@ -369,6 +377,8 @@ function opSaid(row) {
   const asked = row.detail?.asked || {};
   if (row.op === "beta_decide" && asked.decision) return asked.decision === "approve" ? "Approved an application" : "Declined an application";
   if (row.op === "beta_switch" && asked.mode) return asked.mode === "open" ? "Opened the beta" : "Turned the beta off";
+  if (row.op === "phone_engine" && asked.on) return asked.on === "true" ? "Gave iPhones and iPads the engine without threads"
+    : "Gave iPhones and iPads the threaded engine";
   return OPS[row.op] || row.op;
 }
 

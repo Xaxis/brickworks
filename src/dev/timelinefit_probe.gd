@@ -4,8 +4,9 @@
 ##   ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 \
 ##     --script src/dev/timelinefit_probe.gd
 ##
-## The window is made 1280 x 720, then 1400 x 900, inside Xvfb's screen of the
-## header's size, as roomfit_probe makes its sizes. timelinefit_tablet_probe
+## The window is made 1280 x 720, 1024 x 768 (the row only, ROW_ONLY), then
+## 1400 x 900, inside Xvfb's screen of the header's size, as roomfit_probe
+## makes its sizes. timelinefit_tablet_probe
 ## is this laid out for a finger in a tablet's 1024 x 768.
 ##
 ## The walk found at 1280 x 720, with the bin, Properties (a wheel rim
@@ -31,13 +32,27 @@
 ## after each one is opened, and the bar's three at the end. In the second,
 ## the same in the author's steps, whose rows of step edits and booklet looks
 ## show too (the rim made a step of its own, New step from selection), undone
-## after. And the timeline alone beside the model: its buttons on one line,
-## as they always were, where the room has them on one.
+## after. And the timeline alone beside the model, and as a person first
+## meets it (the bin open, as the studio starts, then Build › Timeline), at
+## 1280 x 720 and 1024 x 768 too: its row of buttons on one line, the find
+## among them counted as it stands (smalls6: its field, 200 wide, wrapped
+## Instructions and Done onto a second line at 1280 x 720, and the check that
+## counted it in its least width saw no room for one line and checked
+## nothing), Instructions and Done at its right-hand end, and the find there
+## to type in: the field as wide as FIND_LEAST or wider, or laid out for a
+## finger Find…, which opens the field ready to type in.
 ## Pictures in shots/timelinefit/<width>x<height>[_tablet]/.
 extends SceneTree
 
 const SHOTS := "res://shots/timelinefit/"
-const SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1400, 900)]
+const SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1024, 768), Vector2i(1400, 900)]
+## Sizes checked only for the timeline's row, alone and as first met: in a
+## desktop window under Main.ROOMY the columns are drawers, and the panels
+## opened over the model there are the tablet's to check.
+const ROW_ONLY: Array[Vector2i] = [Vector2i(1024, 768)]
+## The least the find's field is useful at, in units: its placeholder's
+## first words and a part number typed ("Find a step…", "red 3001").
+const FIND_LEAST := 110.0
 ## The bar's least width of the model's room, in the window's pixels.
 const LEAST_ROOM_PX := 400.0
 ## The longest a run takes, with room to spare (about 3 minutes).
@@ -46,7 +61,7 @@ const WATCHDOG := 900.0
 const SLACK := 0.5
 ## The timeline's row of buttons, by their names (StepsBar.controls_by_name).
 const ROW: Array[String] = ["steps_start", "steps_back", "steps_play", "steps_next", "steps_end",
-	"steps_order", "steps_booklet", "steps_done"]
+	"steps_order", "steps_find", "steps_booklet", "steps_done"]
 
 var _failures: int = 0
 var _main: Node
@@ -171,12 +186,20 @@ func _at(size: Vector2i) -> String:
 		return "  %dx%d not made" % [size.x, size.y]
 	var lines: Array[String] = []
 	lines.append(await _alone())
+	if not _tablet:
+		lines.append(await _first_met())
+	if not _tablet and size in ROW_ONLY:
+		return _table(got, lines)
 	var orders: Array = [["timeline", "rim", "stress", "parts", "properties", "assistant"],
 		["timeline", "rim", "stress", "assistant", "properties", "parts"]] if _tablet \
 		else [["timeline", "rim", "stress", "assistant", "bin"],
 			["timeline", "rim", "stress", "bin", "assistant"]]
 	for n: int in orders.size():
 		lines.append(await _arrangement(orders[n], n == orders.size() - 1))
+	return _table(got, lines)
+
+
+func _table(got: Vector2i, lines: Array[String]) -> String:
 	var out: String = ""
 	for line: String in lines:
 		out += "  %-10s  %s\n" % ["%dx%d" % [got.x, got.y], line]
@@ -184,30 +207,115 @@ func _at(size: Vector2i) -> String:
 
 
 ## The timeline alone beside the model: everything inside the window, and its
-## buttons on one line where the room has them on one, as they always were.
+## row on one line (_one_row).
 func _alone() -> String:
 	print("\n  the timeline alone")
 	await _close_all()
 	await _open("timeline")
 	await _settle()
+	return await _row_here("alone", "the timeline alone")
+
+
+## The studio as a person first meets it, the columns a first visit gets in
+## a window this size (ShellPrefs.DEFAULTS, laid out as the window starts by
+## Main._arrange_columns: the bin where the columns take turns or both show,
+## every drawer folded where they are drawers), and the timeline opened from
+## Build › Timeline: everything inside the window, and its row on one line.
+func _first_met() -> String:
+	await _close_all()
+	for name: String in ["parts_open", "assistant_open", "properties_open", "narrow_side"]:
+		ShellPrefs.put(name, ShellPrefs.DEFAULTS[name])
+	_main.call("_arrange_columns")
+	await _settle()
+	print("\n  as first met: %s, then Build › Timeline" % _open_now())
+	await _open("timeline")
+	await _settle()
+	return await _row_here("first_met", "as first met")
+
+
+func _row_here(shot: String, said: String) -> String:
 	var past: Dictionary = _past_the_window()
 	var room: Rect2 = _room()
-	var lines: int = _row_lines()
-	print("    open: %s; the model's room %.0f px wide; the timeline %.0f x %.0f units, its buttons on %d line%s"
-		% [_open_now(), room.size.x * _px(), _steps.size.x, _steps.size.y, lines,
-		"" if lines == 1 else "s"])
+	print("    open: %s; the model's room %.0f px wide; the timeline %.0f x %.0f units"
+		% [_open_now(), room.size.x * _px(), _steps.size.x, _steps.size.y])
 	_check("...everything inside the window (%s)" % _said(past), (past["names"] as Array).is_empty())
-	# One line needs the row's least width; where the room is narrower (a
-	# tablet's, its buttons a fingertip) two are what fits.
-	var one_line: float = _row_least()
-	if room.size.x >= one_line + 40.0:
-		_check("...its buttons on one line, as they were, in a room with space for one (%d line%s, %.0f wanted of %.0f)"
-			% [lines, "" if lines == 1 else "s", one_line, room.size.x], lines == 1)
+	await _one_row()
+	await _shot(shot)
+	return "%-24s %4.0f px                         %4.0f px" % [said, float(past["px"]),
+		room.size.x * _px()]
+
+
+## The timeline's row of buttons on one line, the find among it as it
+## stands, with Instructions and Done at its right-hand end and the find
+## there to type in. In a desktop window that is the bar wherever the room
+## is; laid out for a finger, its buttons a fingertip, two lines are what
+## fits where the row is narrower than its least, and said.
+func _one_row() -> void:
+	var named: Dictionary = _steps.controls_by_name()
+	var row: Control = (named["steps_start"] as Control).get_parent()
+	var lines: int = _row_lines()
+	var least: Vector2 = _row_least()
+	print("    the row %.0f units wide, its least %.0f (the find %.0f of it): on %d line%s"
+		% [row.size.x, least.x, least.y, lines, "" if lines == 1 else "s"])
+	if not _tablet:
+		_check("...its buttons and the find on one line (%d line%s; the row %.0f units, its least %.0f)"
+			% [lines, "" if lines == 1 else "s", row.size.x, least.x], lines == 1)
+	elif row.size.x + SLACK >= least.x:
+		_check("...its buttons on one line, in a row with space for one (%d line%s, %.0f wanted of %.0f)"
+			% [lines, "" if lines == 1 else "s", least.x, row.size.x], lines == 1)
 	else:
-		print("    (the room, %.0f units, has no space for one line of %.0f)" % [room.size.x, one_line])
-	await _shot("alone")
-	return "%-24s %4.0f px                         %4.0f px" % ["the timeline alone",
-		float(past["px"]), room.size.x * _px()]
+		print("    (the row, %.0f units, has no space for one line of %.0f)" % [row.size.x, least.x])
+	_check("...Instructions and Done together at its right-hand end (%s)" % _ends_said(),
+		_ends_at_end())
+	await _find_useful()
+
+
+## Done's right edge on the row's, and Instructions just before it, on one
+## line with each other.
+func _ends_at_end() -> bool:
+	var named: Dictionary = _steps.controls_by_name()
+	var row: Rect2 = ((named["steps_start"] as Control).get_parent() as Control).get_global_rect()
+	var done: Rect2 = (named["steps_done"] as Control).get_global_rect()
+	var booklet: Rect2 = (named["steps_booklet"] as Control).get_global_rect()
+	return absf(row.end.x - done.end.x) <= 1.0 and done.position.x > booklet.end.x \
+		and done.position.x - booklet.end.x <= 12.0 \
+		and absf(done.get_center().y - booklet.get_center().y) <= 1.0
+
+
+func _ends_said() -> String:
+	var named: Dictionary = _steps.controls_by_name()
+	var row: Rect2 = ((named["steps_start"] as Control).get_parent() as Control).get_global_rect()
+	var done: Rect2 = (named["steps_done"] as Control).get_global_rect()
+	var booklet: Rect2 = (named["steps_booklet"] as Control).get_global_rect()
+	return "Done %.0f units short of the row's end, Instructions %.0f before it, %.0f apart in height" % [
+		row.end.x - done.end.x, done.position.x - booklet.end.x,
+		absf(done.get_center().y - booklet.get_center().y)]
+
+
+## The find there to use: its field FIND_LEAST wide or more, clicked to type
+## in; or Find… where it gives way, pressed, the field ready to type in.
+func _find_useful() -> void:
+	var find: Control = _steps.controls_by_name().get("steps_find")
+	if find is LineEdit:
+		var wide: float = find.get_global_rect().size.x
+		var reached: bool = await _press_on(find)
+		_check("...the find's field %.0f units wide, %.0f or more, typed in where it is drawn (%s)"
+			% [wide, FIND_LEAST, "its keys" if find.has_focus() else "no keys"],
+			wide >= FIND_LEAST and reached and find.has_focus())
+		find.release_focus()
+		return
+	var field: LineEdit = _steps.find_field()
+	var reached: bool = await _press_on(find)
+	await _frames(10)
+	_check("...Find… (%s) %s where it is drawn opens the field %.0f units wide, ready to type in"
+		% [(find as Button).text if find is Button else str(find), "tapped" if _tablet else "clicked",
+		field.get_global_rect().size.x if field.is_visible_in_tree() else 0.0],
+		reached and field.is_visible_in_tree() and field.has_focus()
+		and field.get_global_rect().size.x >= FIND_LEAST)
+	var sheet: Variant = _steps.get("_find_sheet")
+	if sheet is Window and (sheet as Window).visible:
+		(sheet as Window).hide()
+		await _frames(6)
 
 
 ## The panels opened in [param order]'s order, as a person opens them; after
@@ -239,6 +347,9 @@ func _arrangement(order: Array, authored: bool) -> String:
 		worst <= SLACK and worst_after.is_empty())
 	_check("...the model's room %.0f px wide, %.0f or more" % [room_px, LEAST_ROOM_PX],
 		room_px >= LEAST_ROOM_PX)
+	var lines: int = _row_lines()
+	_check("...Instructions and Done together at the right-hand end of their line, the row on %d line%s (%s)"
+		% [lines, "" if lines == 1 else "s", _ends_said()], _ends_at_end())
 	await _shot(name)
 	if authored:
 		await _authors_steps()
@@ -497,20 +608,27 @@ func _row_lines() -> int:
 	return lines
 
 
-## The width the timeline's row of buttons takes on one line: each button's
-## least width and the gaps between, and the bar's margins.
-func _row_least() -> float:
+## The width the timeline's row takes on one line, everything shown in it at
+## its least and the gaps between, and of that the find's (its field or
+## Find…, as it stands now).
+func _row_least() -> Vector2:
 	var named: Dictionary = _steps.controls_by_name()
 	var start: Control = named["steps_start"]
-	var row: Node = start.get_parent()
+	var row: Container = start.get_parent()
+	var find: Control = named.get("steps_find")
 	var wide: float = 0.0
 	var count: int = 0
+	var found: float = 0.0
 	for child: Node in row.get_children():
 		var control := child as Control
 		if control != null and control.visible:
-			wide += control.get_combined_minimum_size().x
+			var least: float = control.get_combined_minimum_size().x
+			wide += least
 			count += 1
-	return wide + 6.0 * maxf(count - 1, 0) + 24.0
+			if find != null and (control == find or control.is_ancestor_of(find)):
+				found = least
+	var gap: float = float(row.get_theme_constant("h_separation"))
+	return Vector2(wide + gap * maxf(count - 1, 0), found)
 
 
 # -- hands and the window -------------------------------------------------------
