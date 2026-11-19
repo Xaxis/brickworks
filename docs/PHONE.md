@@ -379,7 +379,12 @@ says the same as the weigh in one go: the verdict, the weight, every joint,
 risk and margin, on every model `weighpace_probe` weighs. A weigh under way
 when the model changes is stopped and begun again on the model as it is;
 stopped, it says nothing rather than a verdict. With threads nothing of it
-runs: the status bar still weighs on a worker, every margin with it.
+runs: the status bar still weighs on a worker, every margin with it, and the
+weigh in one go it runs is no slower. `stability_probe` in base's tree and
+in this one at the same moments, twice (load about 20,
+`bench/results/weighpace-2026-11-19/pairs/`): 800 bricks checked in 74 and
+60 ms against 67 and 73; the Falcon 246 and 471 against 315 and 236;
+Orthanc 1,768 and 3,235 against 1,788 and 1,607.
 
 What is left in it in one piece, traced on Orthanc: what holds parts
 without a stud (`Joints.held_otherwise`, 76 ms, desktop time) and the weigh
