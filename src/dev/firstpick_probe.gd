@@ -5,10 +5,10 @@
 ##
 ##   godot --path . --resolution 1280x720 --script src/dev/firstpick_probe.gd
 ##
-## The warm leaves no ghost and no marks behind, changes no pixel, adds
-## nothing to the model and saves nothing; a part picked while it is drawn
-## keeps its ghost, at its own size; and the warm draws the ghost and both
-## batches of marks once each. The time it saves is the web's, read by
+## The warm leaves no ghost and no marks behind, changes no pixel of the
+## model's room, adds nothing to the model and saves nothing; a part picked
+## while it is drawn keeps its ghost, at its own size; and the warm draws the
+## ghost and both batches of marks once each. The time it saves is the web's, read by
 ## tools/web/load_check.mjs --pick in same-moment pairs (start_abba).
 extends SceneTree
 
@@ -52,8 +52,18 @@ func _run() -> void:
 	var revision: int = _world.revision
 	var saves: int = store.saves if "saves" in store else -1
 	var marks_before: int = _marks_drawn()
+	# A still screen first: two frames alike, so what differs is the warm's.
 	await RenderingServer.frame_post_draw
 	var before: Image = root.get_texture().get_image()
+	var still: int = -1
+	for n: int in 600:
+		await process_frame
+		var now: Image = root.get_texture().get_image()
+		if _differing(before, now) == 0:
+			still = n
+			break
+		before = now
+	print("FIRSTPICK the screen still after %d frames" % still)
 	var ghost_frames: int = 0
 	var marks_frames: int = 0
 	var differing: int = 0
@@ -73,7 +83,13 @@ func _run() -> void:
 				previewed += 1
 		if _marks_drawn() > marks_before:
 			marks_frames += 1
-		differing = maxi(differing, _differing(before, root.get_texture().get_image()))
+		var seen: Image = root.get_texture().get_image()
+		var off: int = _differing(before, seen)
+		if off > differing:
+			differing = off
+			_save(before, "before")
+			_save(seen, "warm")
+			print("FIRSTPICK differing pixels within %s" % str(_where(before, seen)))
 	await _frames(6)
 	_check(not warming[0], "the warm ended")
 	_check(ghost_frames >= 1, "the ghost was drawn in %d frame(s) of the warm" % ghost_frames)
@@ -84,7 +100,8 @@ func _run() -> void:
 		"no ghost after the warm")
 	_check(_marks_drawn() == marks_before, "no marks left after the warm (%d, were %d)" % [
 		_marks_drawn(), marks_before])
-	_check(differing == 0, "%d pixels differ from the frame before the warm" % differing)
+	_check(differing == 0, "%d pixels of the model's room (%s) differ from the frame before the warm" % [
+		differing, str(_room(before))])
 	_check(_world.brick_count() == parts and _world.revision == revision,
 		"the model as it was: %d parts, revision %d" % [_world.brick_count(), _world.revision])
 	if saves >= 0:
@@ -129,17 +146,48 @@ func _marks_drawn() -> int:
 	return count
 
 
+## Samples of the model's room (Main._model_rect, in the window's pixels)
+## that differ: what the warm draws is drawn there, and the status bar's
+## words change by themselves ("3001 ready" put away after its seconds).
 func _differing(a: Image, b: Image) -> int:
 	if a.get_size() != b.get_size():
 		return -1
+	var room: Rect2i = _room(a)
 	var count: int = 0
-	for y: int in range(0, a.get_height(), 2):
-		for x: int in range(0, a.get_width(), 2):
+	for y: int in range(room.position.y, room.end.y, 2):
+		for x: int in range(room.position.x, room.end.x, 2):
 			var p: Color = a.get_pixel(x, y)
 			var q: Color = b.get_pixel(x, y)
 			if absf(p.r - q.r) + absf(p.g - q.g) + absf(p.b - q.b) > 0.02:
 				count += 1
 	return count
+
+
+## The box round the samples that differ.
+func _where(a: Image, b: Image) -> Rect2i:
+	var box := Rect2i()
+	var room: Rect2i = _room(a)
+	for y: int in range(room.position.y, room.end.y, 2):
+		for x: int in range(room.position.x, room.end.x, 2):
+			var p: Color = a.get_pixel(x, y)
+			var q: Color = b.get_pixel(x, y)
+			if absf(p.r - q.r) + absf(p.g - q.g) + absf(p.b - q.b) > 0.02:
+				box = Rect2i(x, y, 1, 1) if box.size == Vector2i.ZERO else box.expand(Vector2i(x, y))
+	return box
+
+
+func _room(image: Image) -> Rect2i:
+	var rect: Rect2 = _main.call("_model_rect")
+	var scale: Vector2 = Vector2(image.get_size()) / root.get_visible_rect().size
+	var room := Rect2i(Vector2i((rect.position * scale).ceil()), Vector2i((rect.size * scale).floor()))
+	return room.intersection(Rect2i(Vector2i.ZERO, image.get_size()))
+
+
+func _save(image: Image, name: String) -> void:
+	var dir: String = OS.get_environment("FIRSTPICK_SHOTS")
+	if not dir.is_empty():
+		DirAccess.make_dir_recursive_absolute(dir)
+		image.save_png(dir.path_join(name + ".png"))
 
 
 func _frames(count: int) -> void:
