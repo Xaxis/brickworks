@@ -270,9 +270,13 @@ func _run() -> void:
 	_ok(not Assistant.brickbench, "this run is not BrickBench's: no %s" % Assistant.BRICKBENCH_FLAG)
 	var stood: String = _blocks_text(await assistant.use_tool("submit_design",
 		{"name": "Lamp", "description": "a lamp", "bricks": dish}))
+	# A person's save_model asks the gate once the file is written
+	# (mcpreach3); with no app here to write to, it is asked as save_model
+	# asks it, and what it keeps to say read as save_model reads it.
+	var person_gate: String = _blocks_text(await assistant.save_gate())
 	var person: String = _blocks_text(await socket._run_own("save_model", {"name": "lamp.ldr"}))
 	_ok(stood.begins_with("Built.") and person == "This app cannot do that from outside."
-		and assistant.save_advice().is_empty(),
+		and person_gate.is_empty() and assistant.save_advice().is_empty(),
 		"the dish on its round plate saves, nothing said: one piece by our joints: %s"
 			% person.left(100))
 	# Two bricks side by side, joined by nothing: in two pieces by our own
@@ -282,13 +286,15 @@ func _run() -> void:
 			{"part": "3001", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
 			{"part": "3001", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
 			{"part": "3001", "color": 4, "x": 4, "y": 3, "z": 0, "rot": 0}]})
+	var apart_gate: String = _blocks_text(await assistant.save_gate())
 	var apart_saved: String = _blocks_text(await socket._run_own("save_model", {"name": "wall.ldr"}))
 	var advice: String = assistant.save_advice()
-	_ok(apart_saved == "This app cannot do that from outside." and advice.begins_with(
+	_ok(apart_gate.is_empty() and apart_saved == "This app cannot do that from outside." and advice.begins_with(
 		"Saved as it is, and worth a look before it is finished:")
 		and advice.contains("2 pieces that nothing joins") and advice.contains("join it"),
 		"two stacks side by side save, said once as advice with how to join: %s"
 			% advice.replace("\n", " ").left(200))
+	await assistant.save_gate()
 	await socket._run_own("save_model", {"name": "wall.ldr"})
 	_ok(assistant.save_advice().is_empty(), "...and not said again on the next save")
 

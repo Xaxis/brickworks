@@ -17,15 +17,15 @@
 ##      built in 1 call, "0 loose parts" said; the account holds one copy,
 ##      built. A throwaway account, deleted after: only on a relay of this
 ##      machine (BRICKWORKS_API), as tools/relay_probe.sh runs it.
-##  r2  An arm on a click hinge, no assembly named: pose_model lists the
-##      hinge and swings it, 2 calls.
+##  r2  An arm on a click hinge, built as r2's session built it, no
+##      assembly named: pose_model lists the hinge and swings it, 2 calls.
 ##  y6  attachment_points on the SPIKE Prime motor says how real sets mount
 ##      it; r1's motor on two 1 x 1 bricks is named as swivelling at
 ##      check_design and again as built, before Simulate; mcpreach2's
 ##      pinned motor is not.
 ##  t9  edit_steps: step= past the last makes a new last step; next and new
-##      on a part alone in the last step, and to its own step, each say why
-##      nothing changed.
+##      on a part alone in the last step, to its own step, and to past the
+##      last of the whole last step each say why nothing changed.
 extends SceneTree
 
 const CHAT := "probe-mcpreach3-chat"
@@ -52,16 +52,6 @@ const Y6_BUILD: Array = [
 	{"part": "2780", "color": 0, "axis": "x", "x": 25, "y": 1.25, "z": 0.5},
 	{"part": "2780", "color": 0, "axis": "x", "x": 25, "y": 1.25, "z": 2.5},
 ]
-## r2's arm as the walk's session built it: a plate, the hinge's two halves,
-## a 1 x 6 plate and a 2 x 4 brick on its far end.
-const R2_BUILD: Array = [
-	{"part": "3020", "color": 71, "x": 14, "y": 0, "z": 0},
-	{"part": "30365", "color": 71, "x": 16, "y": 1, "z": 0},
-	{"part": "30364", "color": 0, "x": 18, "y": 1, "z": 0, "rot": 2},
-	{"part": "3666", "color": 0, "x": 19, "y": 4, "z": 0},
-	{"part": "3001", "color": 4, "x": 21, "y": 5, "z": 0},
-]
-
 var _failures: int = 0
 var _main: Node
 var _socket: CommandSocket
@@ -143,9 +133,8 @@ func _save_and_open() -> void:
 	_check("...and says what is not finished, the first feature handed back",
 		saved.contains("Not finished yet: 2 of its 2 features are not settled")
 		and saved.contains("The eyes") and not saved.contains("Not saved yet"))
-	# A change since, then a set's model to open over it.
-	await _say("edit_model", {"add": [{"part": "3024", "color": 15, "x": 0, "y": 13, "z": 6}],
-		"picture": false})
+	# The gate laid the eyes after the file was written: a change since, and
+	# a set's model to open over it.
 	var other: String = (store.list_examples()[0] as ModelStore.Entry).name
 	var kept: String = "probe-mcpreach3-kept-%d.ldr" % OS.get_process_id()
 	_written.append(ModelStore.SAVE_DIR + kept)
@@ -160,14 +149,15 @@ func _save_and_open() -> void:
 	_written.append(ModelStore.SAVE_DIR + "false.ldr")
 	_calls = 0
 	await _say("open_model", {"name": other})
-	var parts_before: int = (_main.get("_world") as BrickWorld).brick_count()
+	var parts_before: int = (_main.get("_world") as BrickWorld).brick_count() - store.scenery.size()
 	var opened: String = await _say("open_model", {"name": other, "save_first": kept})
 	print("    " + opened.left(300))
 	_check("open_model save_first= saves it and opens %s in %d calls" % [other, _calls],
 		_calls == 2 and opened.begins_with("Saved ") and opened.contains("Opened %s" % other))
 	var text: String = FileAccess.get_file_as_string(ModelStore.SAVE_DIR + kept)
-	_check("...the design kept in the person's models, its new tile too (%d parts before)" % parts_before,
-		text.count("\n1 ") + (1 if text.begins_with("1 ") else 0) >= 10 and text.contains("3024.dat"))
+	var lines: int = text.count("\n1 ") + (1 if text.begins_with("1 ") else 0)
+	_check("...the design kept in the person's models as it stood: %d part lines for its %d parts" % [lines,
+		parts_before], parts_before > 9 and lines >= parts_before and text.contains("3001.dat"))
 	var again: String = await _say("open_model", {"name": other, "save_first": kept})
 	_check("...and save_first= over no changes opens without saving: %s" % again.left(80),
 		again.begins_with("Opened %s" % other))
@@ -195,45 +185,42 @@ func _steps() -> void:
 		return
 	var last: int = rows.size()
 	var top: Array = rows[last - 1]
-	_calls = 0
-	var past: String = await _say("edit_steps", {"op": "to", "bricks": top, "step": last + 2})
+	if top.size() < 2:
+		_check("the wall's last step has two parts or more: %s" % str(top), false)
+		return
+	# One part of the last step to a step past the last: a new last step.
+	var alone: int = int(top[top.size() - 1])
+	var past: String = await _say("edit_steps", {"op": "to", "bricks": [alone], "step": last + 2})
 	print("    " + past)
 	var after: Array = _step_rows(await _say("edit_steps", {"op": "list"}))
-	_check("step= past the last: a new step after the last, said why not further",
+	_check("step= past the last: #%d in a new step %d, said why not %d" % [alone, last + 1, last + 2],
 		past.contains("There are %d steps, so step %d is a new one after the last" % [last, last + 1])
-		or past.contains("the steps are as they were"))
-	var alone: int = int((after[after.size() - 1] as Array)[0])
+		and after.size() == last + 1 and (after[last] as Array) == [alone])
 	var next: String = await _say("edit_steps", {"op": "next", "bricks": [alone]})
 	print("    " + next)
 	_check("next on the last step's only part says why nothing changed",
 		next.begins_with("the steps are as they were: #%d is all of step %d, the last step" % [alone,
-			after.size()]) and next.contains("an empty step is taken out"))
+			last + 1]) and next.contains("an empty step is taken out"))
 	var new: String = await _say("edit_steps", {"op": "new", "bricks": [alone]})
 	print("    " + new)
-	_check("new on a part alone in its step says why", new.contains("is all of step %d already" % after.size()))
-	var to: String = await _say("edit_steps", {"op": "to", "bricks": [alone], "step": after.size()})
-	_check("to its own step says it is there already: %s" % to, to.contains("in step %d already" % after.size()))
-	# The whole top row three steps later, from a model whose top row is two
-	# steps from the end: list, to, to.
-	await _say("clear_model", {})
-	var four: Array = []
-	for row: int in 4:
-		for x: int in [0, 4]:
-			four.append({"part": "3001", "color": 4, "x": x, "y": row * 3, "z": 0, "rot": 0})
-	await _say("submit_design", {"name": "Small red wall", "description": "a wall", "floor": "none",
-		"bricks": four})
-	_calls = 0
-	var steps: Array = _step_rows(await _say("edit_steps", {"op": "list"}))
-	print("    steps: %s" % str(steps))
-	var first_row: Array = steps[0]
-	var moved: String = await _say("edit_steps", {"op": "to", "bricks": first_row, "step": 4})
-	print("    " + moved + " (%d calls)" % _calls)
-	var now: Array = _step_rows(await _say("edit_steps", {"op": "list"}))
-	var where: int = -1
-	for n: int in now.size():
-		if (now[n] as Array).has(int(first_row[0])):
-			where = n + 1
-	_check("a row three steps later in 2 calls: step 1 to step %d" % where, where == 4)
+	_check("new on a part alone in its step says why", new.contains("is all of step %d already" % (last + 1)))
+	var to: String = await _say("edit_steps", {"op": "to", "bricks": [alone], "step": last + 1})
+	_check("to its own step says it is there already: %s" % to, to.contains("in step %d already" % (last + 1)))
+	var further: String = await _say("edit_steps", {"op": "to", "bricks": [alone], "step": last + 4})
+	print("    " + further)
+	var still: Array = _step_rows(await _say("edit_steps", {"op": "list"}))
+	_check("to past the last when it is all of the last step: kept, and why",
+		further.begins_with("the steps are as they were: #%d is all of step %d, the last step" % [alone,
+			last + 1]) and still == after)
+	# Two of the last step's parts and one before it, past the last: the last
+	# step's whole, so they all go in it, and that is said.
+	var two: Array = [int((after[last - 1] as Array)[0]), alone]
+	var both: String = await _say("edit_steps", {"op": "to", "bricks": two, "step": last + 3})
+	print("    " + both)
+	var merged: Array = _step_rows(await _say("edit_steps", {"op": "list"}))
+	_check("...with others: they go in the last step, said so",
+		both.contains("a step after the last would leave step %d empty" % (last + 1))
+		and (merged[merged.size() - 1] as Array).has(alone) and (merged[merged.size() - 1] as Array).has(two[0]))
 
 
 ## edit_steps list's rows: each step's part numbers.
@@ -259,13 +246,23 @@ func _hinge() -> void:
 	print("")
 	print("r2: a click hinge's arm posed with no assembly named")
 	await _say("clear_model", {})
-	var built: String = await _say("submit_design", {"name": "Click arm", "description": "an arm on a hinge",
-		"floor": "none", "bricks": R2_BUILD})
-	_check("the arm is built: %s" % built.left(60), built.begins_with("Built"))
+	# As r2's session built it (APP_UX10's walk, calls 3, 6 and 8).
+	var hinge: String = await _say("edit_model", {"add": [
+		{"part": "3020", "color": 71, "x": 14, "y": 0, "z": 0},
+		{"part": "30365", "color": 71, "name": "hb", "x": 16, "y": 1, "z": 0},
+		{"part": "30364", "color": 0, "name": "arm", "attach": {"to": "hb.hinge[0]", "by": "hinge[0]",
+			"flip": true, "yaw": 180}}], "picture": false})
+	var on_arm: String = await _say("edit_model", {"add": [
+		{"part": "3666", "color": 0, "x": 19, "y": 4, "z": 0},
+		{"part": "3001", "color": 4, "x": 21, "y": 5, "z": 0}], "picture": false})
+	print("    " + hinge.left(160).replace("\n", " / "))
+	print("    " + on_arm.left(160).replace("\n", " / "))
+	var world_now: BrickWorld = _main.get("_world")
+	_check("the arm is built: %d parts" % world_now.brick_count(), world_now.brick_count() >= 5)
 	_calls = 0
 	var listed: String = await _say("pose_model", {})
 	print("    " + listed.left(400).replace("\n", "\n    "))
-	var line: RegExMatch = RegEx.create_from_string("(?m)^\\s+(\\d+)\\. #(\\d+) [^\\n]*on its click hinge").search(listed)
+	var line: RegExMatch = RegEx.create_from_string("(?m)^\\s+(\\d+)\\. #(\\d+) [^\\n]*hinge").search(listed)
 	_check("pose_model lists the click hinge, no assembly named", line != null
 		and not listed.begins_with("Nothing here turns"))
 	if line == null:

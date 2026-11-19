@@ -2024,6 +2024,19 @@ func _edit_steps(input: Dictionary) -> String:
 			# Past the last: a new step after it, as far as a step goes (t9's
 			# "three steps later" of a part two from the end, mcpreach3).
 			if into == null and int(input["step"]) > last.number and last.callout_step == 0:
+				# All of the last step among them: a step after it would leave
+				# it empty, so they go in the last step, and that is said.
+				var whole_last: bool = not last.brick_ids.is_empty()
+				for brick_id: int in last.brick_ids:
+					whole_last = whole_last and ids.has(brick_id)
+				if whole_last:
+					var into_last: String = _steps_why(shell.change_steps("to", ids, last), "next", ids,
+						steps, null)
+					if into_last.begins_with("the steps are as they were"):
+						return into_last
+					return ("%s. There are %d steps, and a step after the last would leave step %d "
+						+ "empty, and an empty step is taken out, so they are in step %d, the "
+						+ "last.") % [into_last, last.number, last.number, last.number]
 				var said: String = _steps_why(shell.change_steps("new", ids, last), "next", ids,
 					steps, null)
 				if said.begins_with("the steps are as they were"):
