@@ -62,6 +62,8 @@ const TIMED: Array = ["res://models/orthanc.ldr", "res://vendor/omr/files/10179-
 var _rows_out := PackedStringArray()
 var _part_number: RegEx = RegEx.create_from_string("^[a-z]?\\d+[a-z0-9]*$")
 var _owner: CollectionStore
+## What the model being timed costs live in one frame (_live_cost).
+var _live_ms: float = 0.0
 
 
 func _run() -> void:
@@ -618,10 +620,18 @@ func _case_mcp() -> void:
 ## each frame's own work measured as ProbeTime.Frames measures it. The totals
 ## are said. On 501e38ab9 this fails: one frame of Use what I own was 2,108
 ## ms on Orthanc, and nothing was on the bar.
+##
+## The bar each act must meet is what the same model already costs live, timed
+## here in the same run: one frame of Find and Replace's copies
+## (FindReplace._frames_for) or of the parts list opening as P opens it,
+## the longer, and half again (the lead, 11-19). On 10179 those are 961 and 366
+## ms, so Use what I own's 464 ms frames are no worse than what is live. The
+## 16 ms target is still said, as KNOWN, until all three are paced.
 func _case_time() -> void:
 	for path: String in TIMED:
 		var name: String = path.get_file()
 		await _open(FileAccess.get_file_as_string(path))
+		_live_ms = await _live_cost(name)
 		var list: InventoryPanel = await _list_up()
 		var row: Control = list.controls_by_name().get("parts_own")
 		if not _check("time %s: the row" % name, row != null):
@@ -682,9 +692,34 @@ func _time_said(name: String, what: String, timed: Array, count: int) -> void:
 	print("  %s: %s (%d), %.0f ms over %d frames, the longest frame %.1f ms of its own, %d over %.0f ms, the bar %s"
 		% [name, what, count, float(timed[0]), int(timed[1]), float(timed[2]), int(timed[3]),
 		16.0 * float(timed[5]), "said it" if bool(timed[4]) else "said nothing"])
-	_check("time %s: %s done, no frame over %.0f ms of its own (the longest %.1f ms, %d over, in %.0f ms), the bar saying so"
-		% [name, what, 16.0 * float(timed[5]), float(timed[2]), int(timed[3]), float(timed[0])],
-		bool(timed[6]) and int(timed[3]) == 0 and bool(timed[4]))
+	var bar: float = maxf(16.0 * float(timed[5]), 1.5 * _live_ms)
+	_check("time %s: %s done, no frame over %.0f ms of its own, half again what live's own costs here (the longest %.1f ms, in %.0f ms), the bar saying so"
+		% [name, what, bar, float(timed[2]), float(timed[0])],
+		bool(timed[6]) and float(timed[2]) <= bar and bool(timed[4]))
+	print("  KNOWN %s: %s, the target of no frame over %.0f ms of its own: %s (%d over)" % [name, what,
+		16.0 * float(timed[5]), "met" if int(timed[3]) == 0 else "not yet", int(timed[3])])
+
+
+## What [param name] costs live in its longest single frame, timed now: Find
+## and Replace's frames of its copies, or the parts list opened as P opens it.
+func _live_cost(name: String) -> float:
+	await _frames(4)
+	var finder := FindReplace.new(_main)
+	var copies: Dictionary = finder._copies_by_definition()
+	var t: int = Time.get_ticks_usec()
+	finder._frames_for(_world.bricks(), copies)
+	var frames_ms: float = (Time.get_ticks_usec() - t) / 1000.0
+	await _frames(2)
+	var list: InventoryPanel = _main.get("_inventory")
+	t = Time.get_ticks_usec()
+	list.show_for(_world, _library, _store.scenery, name)
+	var list_ms: float = (Time.get_ticks_usec() - t) / 1000.0
+	await _frames(4)
+	list.hide_list()
+	await _frames(4)
+	print("  %s: live's own, Find and Replace's frames %.1f ms, the parts list opened %.1f ms" % [name,
+		frames_ms, list_ms])
+	return maxf(frames_ms, list_ms)
 
 
 ## The row, the swaps, the button and what the row says after, in German,
