@@ -7454,6 +7454,141 @@ func _rare_heading(rare: Dictionary, stock: Inventory) -> String:
 # end rareswap
 
 
+# -- ownswap (APP_UX10 #2): replace_parts mine=, a model rebuilt from what I own ------
+
+## How many of its lines an answer names before it counts the rest.
+const OWN_LINES := 40
+
+
+## replace_parts mine=true: the lots the person owns too few of (OwnSwap,
+## as submit_design mine=true counts them), each with the swap from their own
+## parts that keeps the look or none, swapped as one undo step as the parts
+## list's Use what I own swaps them, or only the lots= named, or listed with
+## preview=true. Said as the owned share before and after, and what is still
+## missing. Every argument is read before anything changes.
+func _own_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) -> String:
+	if input.has("find") or input.has("replace") or input.has("where"):
+		return ("mine=true takes no find=, replace= or where=: it finds the lots the person owns too "
+			+ "few of everywhere itself. Give lots= to swap only some. Nothing was changed.")
+	var library: PartLibrary = app.get("_library")
+	var named: Dictionary = {}
+	if input.has("lots"):
+		if not input.get("lots") is Array or (input.get("lots") as Array).is_empty():
+			return "lots= is a list of lots as mine=true's list names them: lots= [\"3001/4\"]. Nothing was changed."
+		for key: Variant in input.get("lots"):
+			var said_key: String = str(key).strip_edges()
+			var slash: int = said_key.rfind("/")
+			var part: String = said_key.substr(0, slash if slash >= 0 else said_key.length()) \
+				.strip_edges().to_lower().trim_suffix(".dat")
+			var colour: String = said_key.substr(slash + 1).strip_edges() if slash >= 0 else ""
+			named["%s/%s" % [part, colour]] = said_key
+			if library.parts.has(part):
+				named["%s/%s" % [library.resolve(part), colour]] = said_key
+	var shell: Shell = app.get("_shell")
+	var mine: CollectionStore = shell.collection_store if shell != null else null
+	if mine != null and mine.on_hand.is_empty() and not mine.collection.is_empty():
+		await mine.refresh_pool()
+	if mine == null or mine.on_hand.is_empty():
+		return ("mine=true, but the person's collection is empty, or they are not signed in: there is "
+			+ "nothing of theirs to swap in. They add their sets and parts in Build, My collection. "
+			+ "Nothing was changed.")
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	if Inventory.of(world, library, store.scenery).pieces == 0:
+		return "The model has no parts yet."
+	var swapper: RefCounted = Later.script(&"OwnSwap").new(library)
+	var before: Dictionary = swapper.call("short_of", world, store.scenery, mine.on_hand)
+	var lots: Array = before["lots"]
+	var said := PackedStringArray()
+	var short: int = 0
+	for lot: RefCounted in lots:
+		short += int(lot.call("short"))
+	said.append(("Against the person's collection (mine=true, as submit_design mine=true and the bin's "
+		+ "My bricks count it): %s.") % Later.script(&"OwnSwap").share_words(before))
+	if lots.is_empty():
+		said.append("Every piece is theirs: nothing to swap.")
+		return "\n".join(said)
+	said.append("%s they own too few of, %s short in all:" % [Counted.of(lots.size(), "lot"),
+		Counted.of(short, "piece")])
+	await swapper.call("offer_all", lots, before["free"], finder)
+	var known: Dictionary = {}
+	for lot: RefCounted in lots:
+		if named.has(lot.get("key")):
+			known[named[lot.get("key")]] = true
+		if not named.is_empty():
+			lot.set("picked", named.has(lot.get("key")) and lot.call("offered"))
+	var unknown: Array = []
+	for key: String in named:
+		if not known.has(named[key]) and not unknown.has(named[key]):
+			unknown.append(named[key])
+	var offered: int = 0
+	for lot: RefCounted in lots:
+		if lot.call("offered"):
+			offered += 1
+	var listed: int = 0
+	for lot: RefCounted in lots:
+		# The swaps first, then those with none, as many as an answer holds.
+		if not lot.call("offered"):
+			continue
+		var tags := PackedStringArray()
+		if not lot.get("picked"):
+			tags.append("kept: its print stays; name it in lots= to swap it for the plain part"
+				if lot.call("drops_print") else "kept: not named in lots=")
+		if listed < OWN_LINES:
+			said.append("- %s [%s]%s" % [swapper.call("lot_words", lot), lot.get("key"),
+				"" if tags.is_empty() else " (" + "; ".join(tags) + ")"])
+		listed += 1
+	for lot: RefCounted in lots:
+		if lot.call("offered"):
+			continue
+		if listed < OWN_LINES:
+			said.append("- %s [%s]" % [swapper.call("lot_words", lot), lot.get("key")])
+		listed += 1
+	if listed > OWN_LINES:
+		said.append("  and %d more lots." % (listed - OWN_LINES))
+	said.append("%d of the %d have a swap from their own parts." % [offered, lots.size()])
+	if not unknown.is_empty():
+		said.append("No lot %s here that they own too few of: lots= names them as the list above does."
+			% ", ".join(unknown.slice(0, 10)) + ("" if unknown.size() <= 10
+			else " (and %d more)" % (unknown.size() - 10)))
+	if bool(input.get("preview", false)):
+		said.append("Nothing changed (preview): replace_parts mine=true swaps those that keep "
+			+ "the look, lots= [...] only those named.")
+		return "\n".join(said)
+	var done: Dictionary = await swapper.call("swap", lots, finder)
+	if int(done.get("put_back", 0)) + put_back_first > 0:
+		said.append("The part in the person's hand went back where it was first, as Escape puts it.")
+	if int(done["changed"]) == 0:
+		said.append("Nothing changed%s." % (": " + "; ".join(done["stayed"])
+			if not (done["stayed"] as PackedStringArray).is_empty()
+			else ": no lot named in lots= has a swap" if not named.is_empty()
+			else ": none of the lots has a swap from their own parts"))
+		return "\n".join(said)
+	var after: Dictionary = swapper.call("short_of", world, store.scenery, mine.on_hand)
+	said.append("%s, as one undo step%s. Now %s (was %d%%)." % [
+		str(done["words"]).left(1).to_upper() + str(done["words"]).substr(1),
+		"" if (done["stayed"] as PackedStringArray).is_empty()
+			else "; stayed: " + "; ".join(done["stayed"]),
+		Later.script(&"OwnSwap").share_words(after),
+		int(floor(float(Later.script(&"OwnSwap").share(before)) * 100.0))])
+	var missing: String = Later.script(&"OwnSwap").missing_words(after)
+	if missing.is_empty():
+		said.append("Every piece is now theirs.")
+		return "\n".join(said)
+	var still := PackedStringArray()
+	for lot: RefCounted in after["lots"]:
+		if still.size() >= OWN_LINES:
+			break
+		still.append("  %d × %s (%s) in %s" % [int(lot.call("short")), lot.get("name"), lot.get("part"),
+			lot.get("colour_name")])
+	said.append("Still missing: %s, each with how many:\n%s%s\nTell them what to get, "
+		% [missing, "\n".join(still), "" if (after["lots"] as Array).size() <= OWN_LINES
+			else "\n  and %d more lots." % ((after["lots"] as Array).size() - OWN_LINES)]
+		+ "or change each to a part they own with edit_model; parts_list which=\"need\" lists what is short.")
+	return "\n".join(said)
+# end ownswap
+
+
 # -- swapfind (APP_UX8 #9): Find and Replace into every sub-model ---------------------
 
 static func _replace_parts_definition() -> Dictionary:
@@ -7492,8 +7627,16 @@ static func _replace_parts_definition() -> Dictionary:
 			+ "the same shape in its colour, or a colour within ΔE 10 of the same finish; "
 			+ "every other, a print's plain part among them, is listed as kept, with what it "
 			+ "changes, and swaps only where lots= names it. lots= [\"3023b/379\", ...] swaps "
-			+ "only those; with preview=true it lists and changes nothing. A part lifted in "
-			+ "the person's hand goes back where it was first, as Escape puts it."),
+			+ "only those; with preview=true it lists and changes nothing. mine=true, in place "
+			+ "of find= and replace=, rebuilds the model from the person's own collection (as "
+			+ "the parts list's Use what I own does): each lot they own too few of, as "
+			+ "submit_design mine=true counts it, is swapped, only its missing pieces, for a part "
+			+ "or colour they have free that keeps the look (an equal part in its colour, or the "
+			+ "same part in a colour within ΔE 10 of the same finish), two lots never taking the "
+			+ "same pieces, or said to have none they own; a print's plain part only where lots= "
+			+ "names it. The answer gives the owned share before and after and what is still "
+			+ "missing. A part lifted in the person's hand goes back where it was first, as "
+			+ "Escape puts it."),
 		"input_schema": {"type": "object", "additionalProperties": false,
 			"properties": {
 				"find": parts,
@@ -7506,7 +7649,10 @@ static func _replace_parts_definition() -> Dictionary:
 				"rare": {"type": "boolean",
 					"description": "true: the lots that come in 3 sets or fewer, each offered a common part or colour, those that keep the look swapped; no find= or replace= with it"},
 				"lots": {"type": "array", "items": {"type": "string"},
-					"description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part"},
+					"description": "with rare=true or mine=true, only these lots, \"part/colour\" as its list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part"},
+				# ownswap (APP_UX10 #2)
+				"mine": {"type": "boolean",
+					"description": "true: the lots the person owns too few of (their collection, as submit_design mine=true counts it), each swapped for a part or colour of their own that keeps the look, or said to have none; the owned share before and after and what is still missing said; no find= or replace= with it"},
 			}},
 	}
 
@@ -7526,8 +7672,13 @@ func put_back_first(name: String, input: Dictionary) -> void:
 	_put_back_first = 0
 	if name != "replace_parts" or input.get("preview") == true:
 		return
-	if input.get("rare") != true and not (input.get("replace") is Dictionary
+	if input.get("rare") != true and input.get("mine") != true and not (input.get("replace") is Dictionary
 			and not (input["replace"] as Dictionary).is_empty()):
+		return
+	if input.get("rare") == true and input.get("mine") == true:
+		return
+	# A mine=true it will refuse changes nothing, the hand included.
+	if input.get("mine") == true and (input.has("find") or input.has("replace") or input.has("where")):
 		return
 	_put_back_first = maxi(int(Later.script(&"FindReplace").new(app).call("put_back_held")), 0)
 
@@ -7545,11 +7696,19 @@ func _replace_parts(input: Dictionary) -> String:
 	_put_back_first = 0
 	# Only rare=true is the rare swap: a client that sends every boolean
 	# sends rare=false with a plain find= and replace= (rsreview F4).
+	if input.get("rare") == true and input.get("mine") == true:
+		return ("rare=true and mine=true are two swaps: rare=true swaps the lots hard to buy for "
+			+ "common ones, mine=true the lots the person owns too few of for their own parts. "
+			+ "Give one. Nothing was changed.")
 	if input.get("rare") == true:
 		return await _rare_swap(input, finder, first)
+	# ownswap: the same, only mine=true (a false one is as if not sent).
+	if input.get("mine") == true:
+		return await _own_swap(input, finder, first)
 	if input.has("lots"):
-		return ("lots= goes with rare=true: replace_parts rare=true lots= [\"3794a/19\"] swaps "
-			+ "only the rare lots named. A plain replace takes find= and replace=.")
+		return ("lots= goes with rare=true or mine=true: replace_parts rare=true lots= [\"3794a/19\"] "
+			+ "swaps only the rare lots named, mine=true lots= only those of the person's lots named. "
+			+ "A plain replace takes find= and replace=.")
 	for side: String in ["find", "replace"]:
 		if input.has(side) and not input.get(side) is Dictionary:
 			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]

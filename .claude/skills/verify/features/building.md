@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, cli:rareswap probe, cli:rsreview probe, cli:rsreview phone probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe -->
 
 ## Sub-features
 
@@ -3278,6 +3278,54 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   locked 3622 stays, said), `picks` (picked at first the two moulds alone;
   all ticked, one box off: it stays rare), `words` (de, fr, es; each box's
   description drawn as its row's).
+- `a model rebuilt from what you own` (`src/collection/own_swap.gd`, the
+  parts list's row in `src/ui/inventory_panel.gd`, `replace_parts mine=true`
+  in `src/net/app_tools.gd`; APP_UX10 #2 ownswap): with a collection (signed
+  in, or kept on this device), P, the parts list. Over its rows a row says
+  how many lots the person owns too few of, the pieces short and the share
+  that is theirs ("62% of its 1,204 pieces are yours (746)"), counted as
+  `submit_design mine=true` and My bricks count it (`SetBin.used_in`,
+  `Collection.allocate`, a mould's siblings as one; `OwnCounts.over`); each
+  such row is tagged "3 not yours" (not where it is already marked over the
+  bin). Pressed (not in a shared model's viewer), the rows give way to each
+  lot short, the biggest shortfall first, with its swap from the pieces the
+  rest of the model does not use (`OwnSwap.offer_all`): the same mould in
+  its colour first (a print's own plain part, another mould that sits where
+  it stood with every connection, `RareSwap.fits`), else the same part in an
+  owned colour within ΔE 10 (`RareSwap.CLOSE_DE`) of the same transparency,
+  finish family and rubber (`OwnSwap.matches_finish`), else "none you own"
+  with the nearest it has and its ΔE. Each says how many of the person's
+  free it takes ("3 of your 5 free") and how many are still missing; what
+  one lot takes is gone for the next, so no owned piece is used twice. Only
+  the pieces short change (a lot of 13 with 11 free: 11 change, 2 stay), and
+  a part in a sub-model's copies changes with every copy or stays
+  (`OwnSwap.pieces_for`, FindReplace's twin groups). A print's plain part is
+  offered unpicked. Use what I own puts the picked in, a part in hand put
+  back first, as one undo step named "swapped 3 lots for parts you own, 9
+  parts"; the row then says that and "Still missing: 4 lots, 9 pieces, which
+  What do I need? lists", or "Every piece is yours now". A session's
+  `replace_parts mine=true` does the same in one call: the share before,
+  each lot with its swap or "none you own", the share after and each piece
+  still missing; `preview: true` changes nothing, `lots: ["3009/71"]` swaps
+  only those named (a print among them), mine= takes no find=, replace= or
+  where= and not rare=true, mine=false is a plain replace; with no
+  collection it says so and changes nothing.
+- `ownswap probe` (`src/dev/ownswap_probe.gd`): headless, about fifteen
+  minutes; `OWNSWAP_CASES=gallery,mcp` for some. A collection of 3 sets
+  (10698-1, 31120-1, 6086-1) and 40 loose lots kept on this device
+  (`CollectionStore.where`). `gallery`: the ten gallery models (rareswap's
+  ten), every lot the probe counts short as mine=true does listed with its
+  shortfall, each swap re-measured (CIEDE2000, transparency, finish family,
+  rubber, a part's fit), nothing taken past what was free of a part and
+  colour, Use what I own one undo step, the owned share up by exactly what
+  the swaps covered and the row saying what is still missing, the undo the
+  save before and the redo the swap's save, to the byte; `OWNSWAP_OUT=DIR`
+  writes `gallery.tsv`. `partial` (13 short, 11 free: 11 change), `contest`
+  (3665a and 3665b after the last 15 of one: taken once), `copies` (a
+  sub-model placed once more than is free: every copy stays), `held` (a
+  part in hand put back first, one step), `mcp` (mine=true in one call the
+  panel's file, preview, refusals, mine=false, lots=), `words` (de, fr, es),
+  `time` (Orthanc and 10179 from the row's press to the list filled).
 - `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
   names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`
   writes `lots.tsv` and `catalogue.tsv`. `lpub`, `inherit`, `motion`:

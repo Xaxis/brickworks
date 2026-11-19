@@ -160,6 +160,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# rareswap (APP_UX9 #12): the parts list's rare lots and their swaps, made
 	# the first time the list or a session's replace_parts rare= asks.
 	&"RareSwap": "res://src/collection/rare_swap.gd",
+	# ownswap (APP_UX10 #2): a model rebuilt from the parts the person owns,
+	# made the first time the parts list or replace_parts mine= asks.
+	&"OwnSwap": "res://src/collection/own_swap.gd",
 	# hubprogram (APP_UX9 #11): the program for the model's motors, played in
 	# Simulate; the first screen reads and writes only its line (ProgramLine)
 	# and has it read the words of a program an open found (unread_words).
