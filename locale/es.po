@@ -15653,3 +15653,15 @@ msgstr "el modelo cambió mientras se calculaban los intercambios: no se interca
 
 msgid "Swapping in the parts you own…"
 msgstr "Poniendo las piezas que tienes…"
+
+msgid "2-finger tap"
+msgstr "toque con 2 dedos"
+
+msgid "3-finger tap"
+msgstr "toque con 3 dedos"
+
+msgid "double-tap"
+msgstr "doble toque"
+
+msgid "on a part, turn it as Turn does"
+msgstr "sobre una pieza, girarla como lo hace Giro"

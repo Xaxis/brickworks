@@ -15653,3 +15653,15 @@ msgstr "le modèle a changé pendant le calcul des échanges : rien d’échang�
 
 msgid "Swapping in the parts you own…"
 msgstr "Mise en place des pièces que vous possédez…"
+
+msgid "2-finger tap"
+msgstr "toucher à 2 doigts"
+
+msgid "3-finger tap"
+msgstr "toucher à 3 doigts"
+
+msgid "double-tap"
+msgstr "toucher deux fois"
+
+msgid "on a part, turn it as Turn does"
+msgstr "sur une pièce, la tourner comme le fait Rotation"

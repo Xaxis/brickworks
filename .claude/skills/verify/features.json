@@ -2419,6 +2419,14 @@
       "tests": []
     },
     {
+      "id": "cli:phonefingers probe",
+      "kind": "cli",
+      "entry": "src/dev/phonefingers_probe.gd",
+      "reach": "tools/probe.sh phonefingers_probe; PROBE_SIZE=1024x768 tools/probe.sh phonefingers_probe --tablet   (windowed, 390x844 by its header; pictures in shots/phonefingers/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:phonepanels probe",
       "kind": "cli",
       "entry": "src/dev/phonepanels_probe.gd",
@@ -5918,6 +5926,14 @@
       "entry": "src/ui/find_replace_bar.gd",
       "reach": "godot --path .  (Edit, Find and replace\u2026 or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:finger taps to undo and redo and turn",
+      "kind": "ui",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet laid out for a finger: two fingers tapped on the view undo and three redo, as the bar's Undo and Redo, saying what they took back; a double tap on a part in Select turns it 90 degrees as Turn does, one step  (CadCamera._gesture_ended, PhoneShell._fingers_tapped, _double_tapped; tools/probe.sh phonefingers_probe; tools/web/phonewalk_flow.mjs --only=fingers_still,undo_tap,redo_tap,double_turn)",
+      "area": "view",
       "tests": []
     },
     {
