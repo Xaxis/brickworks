@@ -183,6 +183,9 @@ var _decided: bool = false
 ## Where the first move was read when it went along the joint's line as a
 ## chord of a turn round it may: the next decides ([method _gone_round]).
 var _read_screen := Vector2.ZERO
+var _read_origin := Vector3.ZERO
+var _read_direction := Vector3.ZERO
+var _read_eye: Camera3D = null
 ## Where the last stop was met, degrees; NAN for none.
 var _wall: float = NAN
 ## A frame's room test may run this long, ms (GrabDrag sets it); past it a
@@ -3924,6 +3927,9 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 					# Along the line, and as well a chord of a turn round it:
 					# the next move read says which.
 					_read_screen = screen
+					_read_origin = origin
+					_read_direction = direction
+					_read_eye = eye
 					_decided = false
 					return
 				if along > round * SLIDE_BIAS:
@@ -3948,6 +3954,18 @@ const GONE_ROUND_DEG := 25.0
 ## A drag whose next move read goes on within this of the first move's way
 ## is straight, degrees ([method follow]).
 const STRAIGHT_ON_DEG := 20.0
+
+
+## Let go while a first move waited for the next ([method _gone_round]),
+## none having come: it moves as that move asked, along the line, as before
+## there was any waiting. The wait is one move read 3 px on, or this.
+func decide_now() -> bool:
+	if _decided or _read_screen == Vector2.ZERO:
+		return false
+	_decided = true
+	use_slide()
+	follow(_read_origin, _read_direction, _read_screen, _read_eye)
+	return true
 
 
 ## Whether the pointer has gone round a point on the joint's line, as the

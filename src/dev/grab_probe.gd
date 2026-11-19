@@ -4732,6 +4732,9 @@ func _first_move_case() -> void:
 	var along_asked: int = 0
 	var along_both: int = 0
 	var missed: PackedStringArray = []
+	_waited = 0
+	_waited_moved = 0
+	_waited_not = []
 	for margin: float in [1.15, 14.0]:
 		for yaw: int in range(0, 360, 30):
 			_camera.look_from(Vector3(sin(deg_to_rad(yaw)), 0.75, cos(deg_to_rad(yaw))).normalized())
@@ -4762,12 +4765,16 @@ func _first_move_case() -> void:
 					turned += 1
 				else:
 					slid_round.append("%d°/%s %s round: %s" % [yaw, "near" if margin < 2.0 else "far", theta, mode])
+				await _one_move_let_go(gear, link, under, start, c + r * Vector2(sin(a0 + deg_to_rad(theta)),
+					-cos(a0 + deg_to_rad(theta))), "%d°/%s %s round" % [yaw, "near" if margin < 2.0 else "far", theta])
 			# Straight along the axle as it is drawn, 24 px.
 			var up: Vector2 = _camera.unproject_position(link.point + link.axis.normalized() * 20.0) \
 				- _camera.unproject_position(link.point)
 			if up.length() > 12.0:
 				var mode: String = await _first_mode(under, start, start + up.normalized() * 24.0,
 					start + up.normalized() * 48.0, up)
+				await _one_move_let_go(gear, link, under, start, start + up.normalized() * 24.0,
+					"%d°/%s along" % [yaw, "near" if margin < 2.0 else "far"])
 				# Where the point held, turned, goes along the line as well, a
 				# drag along it says nothing of which it is: the joint turns.
 				if _turning_off_line < 60.0:
@@ -4781,8 +4788,50 @@ func _first_move_case() -> void:
 		% name + "%d of %d%s%s" % [turned, asked, "" if slid_round.is_empty() else " (not: %s)" % ", ".join(slid_round),
 		"" if missed.is_empty() else " (nothing under the press: %s)" % ", ".join(missed)],
 		turned == asked and missed.size() <= 4)
+	_check("%s: let go after one move while it waits for the next, it slides as that move asked, %d of %d%s"
+		% [name, _waited_moved, _waited, "" if _waited_not.is_empty() else " (not: %s)" % ", ".join(_waited_not)],
+		_waited > 0 and _waited_moved == _waited)
 	_check("%s: dragged straight along its axle where a turn goes across it, it slides, %d of %d (%d held where a turn goes along it too)"
 		% [name, along_slid, along_asked, along_both], along_asked > 0 and along_slid == along_asked)
+
+
+## First moves that waited for a next one and were let go instead, how many
+## of those slid as the move asked, and how the rest went.
+var _waited: int = 0
+var _waited_moved: int = 0
+var _waited_not: PackedStringArray = []
+
+
+## Pressed on [param under] at [param from], one move read at [param to],
+## and let go: when that move waits for the next to say turn or slide
+## (Grab._gone_round), the gear slides along its axle as the move asked, by
+## the Grab's own shift and at least half an LDU, and is never left where it
+## was. Taken back after. A move that does not wait is let go of unmoved.
+func _one_move_let_go(gear: int, link: Bodies.Link, under: int, from: Vector2, to: Vector2,
+		said: String) -> void:
+	await _clean_slate()
+	if under == 0 or not _grab.press(under, from) or _grab.grab == null:
+		return
+	var before: Transform3D = _world.get_brick(gear).transform
+	var depth: int = _builder.history_depth()
+	_grab.motion(to)
+	var held: Grab = _grab.grab
+	if held == null or held._decided:
+		_grab.cancel()
+		await _frames(1)
+		return
+	_waited += 1
+	_grab.release()
+	await _settled()
+	await _frames(2)
+	var along: float = (_world.get_brick(gear).transform.origin - before.origin).dot(link.axis.normalized())
+	if held.mode == "slide" and absf(held.shift) >= 0.5 and absf(absf(along) - absf(held.shift)) < 0.1:
+		_waited_moved += 1
+	elif _waited_not.size() < 6:
+		_waited_not.append("%s: %s %.2f LDU along, asked %.2f" % [said, held.mode, along, held.shift])
+	if _builder.history_depth() > depth:
+		_builder.undo()
+	await _frames(1)
 
 
 ## How far the way the point held goes when it turns is drawn off [param
