@@ -6527,6 +6527,8 @@ func _seat_tool_panel(panel: Control) -> void:
 		_touch.size_panel(panel)
 		panel.minimum_size_changed.connect(_fit_tool_panel.bind(panel))
 		panel.visibility_changed.connect(_fit_tool_panel.bind(panel))
+		panel.minimum_size_changed.connect(_size_tool_sheet, CONNECT_DEFERRED)
+		panel.visibility_changed.connect(_size_tool_sheet, CONNECT_DEFERRED)
 
 
 ## The window's sky and its three lights, which Render, Motions and
@@ -6862,6 +6864,11 @@ func _make_pose() -> void:
 		_verbs.set_mode("select")
 	_seat_tool_panel(pose)
 	pose.changed.connect(_on_model_edited)
+	# By finger its status scrolls with its list: what a press says is said
+	# over the model as well, where it is always in sight (smalls7).
+	pose.said.connect(func(words: String) -> void:
+		if _phone != null:
+			_phone.say(words))
 
 
 ## What plays the model's motions, for Motions…, Render… and the viewer.
@@ -7849,6 +7856,9 @@ const SIMULATE_WIDTH := 360.0
 ## than it was laid out for, when its foot lay under the row of tools, and a
 ## suggestion's Keep went under the list's edge as it opened (smalls2).
 const PHONE_SHEET := 0.9
+## The most of that room the sheet takes for its panel's least
+## (Main._size_tool_sheet): the model keeps at least the rest.
+const SHEET_MOST := 0.6
 
 
 ## A panel in the column opened or closed: the column shown while any is.
@@ -10491,6 +10501,7 @@ func _place_tool_column() -> void:
 	(_tool_column.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = \
 		0.0 if under else float(_phone.foot_height())
 	if under == _tool_sheet:
+		_size_tool_sheet()
 		return
 	_tool_sheet = under
 	var middle: Control = _over_model.get_parent() as Control
@@ -10502,6 +10513,29 @@ func _place_tool_column() -> void:
 		beside.move_child(_tool_column, _bin_dock.get_index() + 1)
 	_tool_column.custom_minimum_size = Vector2(0.0 if under else SIMULATE_WIDTH, 0.0)
 	_tool_column.size_flags_stretch_ratio = PHONE_SHEET if under else 1.0
+	_size_tool_sheet()
+
+
+## The tools' sheet under the model no shorter than its panel's least
+## (PosePanel.least_tall: Motions with its list three rows tall), the
+## model giving up the difference, down to SHEET_MOST of the room the two
+## share. Its share alone (PHONE_SHEET) is of what is left under the
+## notices over the model: on a 664-point iPhone the moved parts' strip
+## and the assistant's bar took 120 points of it, and Motions' list had
+## under a row between its header and its foot (smalls7, docs/PHONE.md
+## fault 6). Where the share is enough, on every larger phone, it is the
+## share, as before.
+func _size_tool_sheet() -> void:
+	if _tool_column == null:
+		return
+	var least: float = 0.0
+	if _tool_sheet and _tool_column.visible:
+		for panel: Node in _tool_panels.get_children():
+			if panel is Control and (panel as Control).visible and panel.has_method(&"least_tall"):
+				least = maxf(least, float(panel.call(&"least_tall")))
+		least = minf(least, (_tool_column.size.y + _over_model.size.y) * SHEET_MOST)
+	if not is_equal_approx(_tool_column.custom_minimum_size.y, least):
+		_tool_column.custom_minimum_size.y = least
 
 
 ## Whether the tools' column, shown beside the model, leaves it less than

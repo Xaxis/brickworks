@@ -767,7 +767,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `--cpu=4`, `--net=fast4g` walk it on docs/PHONE.md's stand-ins; as an
   Apple device it selects all with Command+A, as Godot's web build reads
   shortcuts there, and a control cut by the top of its panel's list is
-  scrolled down into sight (phonetruth, 2026-11-18).
+  scrolled down into sight (phonetruth, 2026-11-18). Motions' list is in
+  sight between the edges the app names it by (`motions_list`, its scroller;
+  by finger its foot, the hold, Render animation and the status, scrolls
+  with it, smalls7), and `motions_play` says how many rows it shows ("the
+  list N points tall in sight, R rows of 47"); a build before smalls7 names
+  no list, and the walk falls back to the title's row and Render animation.
 - `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
   phone or a tablet (`Phone.on`) every dialog and panel over the model takes
   the layout's sizing, one rule for all as `Access` is for the keys: its text
