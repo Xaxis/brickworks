@@ -7314,6 +7314,223 @@ Why it fell short:
 - The change is taken back out on this branch (`5b030e513`), so nothing of
   it ships. `5fe92412d` holds what the screen and the proof ran.
 
+### Each feature's form built of the parts real sets make it with, laid at its close look (2026-11-19, design25, `1c0a64656`, NO-GO)
+
+**Why.** design24's feature form won head to head twice (63%, 61%) and
+lifted technique and creativity against the set. It lost the proof on its
+surface, -14. Where it lost, the judge named the design's steps in 49 of
+63: the forms asked curve, taper and lean, and the sessions built them of
+plates stepped in, where the sets turn them with curved slopes, wedges
+and SNOT. The median design was 4% SNOT, against the sets' 27%. So this
+keeps the form and changes only what it is built of.
+
+**The change** (`1c0a64656`, on pre261 `0798993f1`, merged as
+`48bb2b496`):
+
+- design24's form is put back as it was (its take-out `5b030e513`
+  reverted).
+- `tools/form_parts.py` reads the snippets index, 11,881 pieces of 924
+  sets, by each piece's own geometry and parts, not its name. It sorts
+  them into ten forms: curved, round, arched, tapering, flaring, leaning,
+  turned, twisted, open and slender. For each form, size and theme it
+  lists the parts and how often the pieces use each technique: SNOT,
+  curved slopes, wedges, arches, inverted slopes, hinges, bars and clips,
+  tiles. Every set of the bench's two halves is held out by number and by
+  name, read as the app reads it: 88 sets, and 121 index entries skipped
+  for them. It ships as `assets/knowledge/form_parts.json.gz`, read by
+  `src/ai/form_parts.gd`.
+- A formed feature's close look (`settle_feature`, no new tool) says the
+  parts and techniques real sets use for its form and size. It lays them
+  where the feature's plates step, through the surface pass's own finders
+  kept to the feature's box (`FeaturePass.form_ways`):
+  - a curve gets curved slopes on its steps and rounded top edges;
+  - a taper gets straight slopes;
+  - both get their plain faces skinned studs out: a brick with studs on
+    the side and tiles on it.
+  Each way is one settle: accept keeps the parts, next takes them off and
+  lays the next way, reject puts the model back.
+- The close look says when the outline still steps ("from the left it
+  steps in 4 times, 5 studs in all"). A step under a curved slope counts
+  as covered (`SurfacePass.steps_in`).
+
+Chosen as a designer would:
+- Only a curve or a taper is laid. A sloped course or a skin turns those
+  two, and nothing else. Replayed on design24's first builds, laying for
+  every form skinned the combine round its wheels and tiled what stood
+  near a mast. An open, round or arched form is told its parts and laid
+  nothing.
+- A curve tries curved slopes first and a taper straight slopes first.
+  That is the order the table gives for each, at every size.
+- A skin goes on a plain face studs out with tiles, a plate proud,
+  rounded at both ends. The table's tapering pieces at large size use
+  SNOT in 68%, and that is how they do it.
+
+**Proof in the app.** `form_parts_probe` (new, 49 checks) and
+`feature_form_probe` passed through `tools/probe.sh` from the locked
+snapshot `snapd25lev`, with `surface_probe`, `features_probe`,
+`feature_kinds_probe`, `mcp_sync_probe`, `first_design_undo_probe` and
+`undo_ids_probe` (`design25-2026-11-19/probes-48bb2b496/`). `ci_gate`,
+`check.sh --lists`, `featuremap check` and `site_lang --check` passed.
+Replayed in a window on design24's 16 first builds, the close look laid
+parts for 20 formed features in 13 subjects: studs tiled 56 times, flanks
+skinned 24, edges rounded 10, staircases sloped 4.
+
+**The screen.** The base is `d25base`, the same night: pre261
+`793600bf1` from its own locked, imported snapshot `snapd25base`, a tree
+the same as the lever's parent `0798993f1`. The lever (`d25lev`) ran from
+`snapd25lev` at `48bb2b496`. Both ran on the owner's path (`--via relay
+--no-claude-code --instructions none --audit-later`), one session at a
+time each, in the same hours (2026-11-19, 02:40 to 09:00), on design21's
+16 tune-half subjects. Both were judged blind in both orders.
+
+- **Reach** (`design25-2026-11-19/py/reach25.py`, `reach25.txt`;
+  `py/laid25.py`, `laid25.txt`):
+  - All 16 gave forms in the first `submit_design`. 15 had heard the ask
+    before it; Rockefeller asked nothing.
+  - 45 formed features were handed back close up, and 11 were built again
+    after the close look.
+  - Real sets' parts were laid for 16 features in 9 sessions, and kept
+    for 14 in 8. The UN's General Assembly roof and St Paul's dome were
+    rejected. The SNOT courses kept are still in the final models.
+  - What was kept is small: 299 parts in 71 spots, in models of 4,084
+    parts. Tiles on open studs were 37 of the spots, SNOT skins on flanks
+    31, slopes on steps 3. Edges rounded with curved slopes were laid 5
+    times, all in the two features rejected. 95 of the parts turn studs
+    out: 1.3% of the lever's 7,512 parts.
+  - 11 of the 16 close looks said the outline still steps in plates. 9 of
+    those were accepted as they were.
+  - Of the 5 vehicles, only the dozer had parts laid: tiles on its
+    blade's top. The other four settled their wheels "built", and nothing
+    more of them was handed back.
+- **The holdout held** (`py/leak24.py`, `leak25.txt`):
+  - No answer carried a set's own file or number (0 hits).
+  - The library was searched for "21018 United Nations" and "42107
+    Ducati", and found nothing.
+  - 30 of 32 designs logged the index's hold-out line. The lever's
+    Rockefeller never touched the real-set index. The lever's combine
+    asked `how_real_sets_build_this` of "combine harvester", which was
+    read as a farm and a tractor from the part counts and never loaded
+    the index.
+  - The form-parts table holds out every bench set itself.
+- **The build check** (realset's audit, `py/check24.py`, `check25.txt`):
+  14 of 16 clean in each arm.
+  - The lever: San Francisco's cable strings run into each other (68).
+    The dozer's real chain tracks run into their sprockets (24), and the
+    check reads the whole model as floating, as with design24's dozer.
+  - The base: San Francisco's strings (64), and the Ducati (3 floating
+    parts, 4 overlaps).
+
+| subjects | head to head: lever preferred, overall (95%) | likeness | surface | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|---|
+| all 16 | 69% (44-86) | 66% | 72% | 62% | 28%, 41%, +12 (-6, +34) |
+| buildings, 11 | 73% (43-90) | 68% | 82% | 73% | 36%, 50%, +14 (-14, +45) |
+| vehicles, 5 | 60% (23-88) | 60% | 50% | 40% | 10%, 20%, +10 (+0, +30) |
+
+Against the set, on all 16 (`screen25.txt`):
+- surface fell from 31% to 22%, -9 (-28, +6);
+- technique from 25% to 19%, -6 (-22, +6);
+- likeness held at 34%;
+- creativity rose from 34% to 44%, +9 (+0, +25).
+
+Each subject: the lever's overall wins head to head (of 2), and what the
+judge said (`persub25.txt`).
+- **Won both orders (9)**: the Guggenheim, the Lincoln Memorial,
+  Buckingham Palace, the Capitol, London, San Francisco, Tokyo, the
+  tractor, the combine.
+  - The Capitol: the lever has "a tall, two-tier colonnaded drum under a
+    dome with a statue spire". design24's lever lost it on a squat dome.
+  - The Lincoln Memorial: the lever's is "a long row of slim columns
+    under a stepped attic". The base's has "fat columns packed together".
+  - The tractor: the lever's "enclosed cab with a curved white roof on
+    top of a long curved red bonnet". The base's has a flat studded roof.
+  - The combine has "a wide header with a reel and an unloading auger".
+- **Split (4)**: the UN, Shanghai, the forklift, the Ducati.
+- **Lost both (3)**:
+  - Rockefeller: the lever's is a "squat tower with round studs stuck to
+    the sides".
+  - The Arc: the lever's "upper storey is a tall plain box".
+  - The dozer: the lever's "blade floats apart from its taller, boxier
+    body, with no arms holding it". The blade was the one vehicle feature
+    the close look laid parts on: tiles on its top.
+
+All 16, front, corner and close, set then base then lever, were looked at
+(`design25-2026-11-19/sheets/`). What is seen agrees with the judge:
+- where the parts were kept, they are small against the model: rounded
+  tiles on studs-out bricks along Tokyo's Skytree, Tokyo Tower and pagoda
+  roofs, and on Shanghai's Jin Mao; skins on the Arc's piers; tiles on
+  tops elsewhere;
+- the forms' outlines are the session's own, and the lay never changes
+  them. The Guggenheim's rings stack straight where the set's widen. The
+  Shanghai Tower is a plain grey cylinder: the session dropped the twist
+  design24's lever won with ("at this micro scale the corner-round twist
+  read as knobbly blocks"). The towers of San Francisco and Tokyo still
+  stack in steps;
+- Rockefeller's faces are covered in round plates turned out. That is
+  the session's own SNOT, 22% of its parts, laid where the real building
+  is a sheer slab. The close look laid nothing there;
+- the Ducati is a brick body on a brick stand, where the set is Technic
+  panels. The forklift is yellow, as the set is, with its mast in front.
+  The dozer's tracks are real chains, and its blade is a straight wall of
+  bricks set off the body.
+
+**NO-GO.** The screen is not won:
+- wins head to head: 69% (44-86) overall in both orders. This holds.
+  Likeness 66% and technique 62% head to head, and against the set
+  likeness +0 and technique -6 (-22, +6), inside its interval;
+- surface preferred: 72% (47-88) head to head. This holds. Against the
+  set it fell by 3 verdicts of 32: Rockefeller -2 and the dozer -2,
+  London +1;
+- reach at least 8 of 16: parts laid in 9 sessions and kept in 8. This
+  holds, at the edge;
+- SNOT at least 10%: the median design is 3.8%, the base's 3.5%, the
+  sets' 23%. This fails;
+- steps in under a third of surface losses: the judge's reason names the
+  design's steps in 15 of the lever's 25 surface losses (`stepped24.py`,
+  `stepped25.txt`), and the base's in 9 of 22. Read by hand
+  (`py/steps25.py`, `steps25-lev.txt`), the design's own steps are the
+  fault in 11 of 25, and the base's in 6 of 22. This fails;
+- the leak audit is clean. This holds.
+
+So the paired 44 was not run.
+
+Why it fell short:
+- **The parts reach a feature, not the model.** The close look laid
+  parts for one feature in three, in 9 sessions of 16, and kept 299
+  parts in 71 spots. Where SNOT skins were kept, the design's SNOT rose:
+  Tokyo 0% to 10%, Shanghai 0% to 6%. That is a few courses on a tower.
+  The walls, bodies and roofs that make up most of a model are the
+  session's own first build, and the close look does not touch them. So
+  the median stayed at 4%.
+- **What is laid does not turn a form.** The commonest lay was tiles
+  over open studs (37 of 71 spots), which tidies a top. A slope on a
+  step came 3 times. The steps the judge names are in the outline: a
+  tower stacked in setbacks, a body in courses. The close look said so
+  in 11 of 16 looks, and the session accepted 9 of them as they were.
+  A skin laid on a stepped outline leaves it stepped.
+- **Head to head the form won again** (69%, after design24's 63% and
+  61%). The lever's surface won head to head 23 times, and the reason
+  names its tiles in 19 of those and the base's open studs in 18: tidier
+  tops beside studded ones. Against the set, both arms lose surface to
+  the set's curved panels and SNOT.
+- **The vehicles were hardly reached.** Their forms are mostly round
+  (wheels), which lays nothing, and four of five settled their wheels as
+  built.
+- **Next.**
+  - Keep the form. It has now won head to head three times.
+  - A form's parts must make the outline, not finish it. Laid after the
+    first build, they arrive too late and too small. The form's parts and
+    its technique belong in the first build: the session builds the
+    curve or taper of curved slopes, wedges and SNOT walls from the
+    start. One way is a feature's form given as a solid the app lays (a
+    revolve for a dome or drum, a loft for a taper) of those parts, as
+    the shape pattern does for a hull.
+  - The vehicles are next in line: their bodies (bonnets, fenders,
+    fairings) are where they lose surface, and those are not features.
+    The Technic subjects are design26's, on parts.
+- The change is taken back out on this branch (`92c94fc4b`), so nothing
+  of it ships. `1c0a64656` (merged as `48bb2b496`) holds what the screen
+  ran.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
