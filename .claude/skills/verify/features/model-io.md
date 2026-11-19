@@ -359,8 +359,23 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a step edit heard in a Build together room, a step emptied first;
   `KEEP_TEXT_SAVED=DIR` keeps each save, `KEEP_TEXT_OPEN=DIR` opens another
   build's back.
-  A part put down outside the author's steps (step -1, its own page after
-  the last) is written in a step of its own after the last, in a patch as in
+  A part put down outside the author's steps (step -1) is shown on a page of
+  its own after its section's last step, where the file writes it, so it
+  keeps its page through a reopen (`Instructions._loose_entries`; in a
+  sub-model built on the side, its callout's last step,
+  `_authored_callout`). Whether a sub-model is built on the side is judged
+  with such parts in it (`_found_among`), as it is once they are read back
+  in its last step: one put above 5540-1's sub05 holds it together no more,
+  and it is built where it stands. Up to smalls6 (2026-11-18) every such page came
+  after the model's last: one put on a sub-model's end moved a page on
+  reopening, and on a sub-model placed twice it was one page shown and two
+  reopened (mergekeep's finding). `subend_probe` (headless; `SUBEND_ONLY=`
+  a case, `SUBEND_ALL=1` 8063-1 too) puts one on each sub-model's end,
+  above it and on its part, once and twice placed, after PAGE NEW and PAGE
+  ALONE, in an LPub3D group, built on the side, 358-1 and 5540-1, and on the
+  main model, patched and whole: the pages the same reopened, the save
+  saving to itself, undone to the byte. It is written in a step of its own
+  after its section's last, in a patch as in
   the whole write (`ModelStore._loose_steps`, AuthorSteps.numbers_for_file),
   and where a turn held to the end, unturned: "0 ROTSTEP END" ends the step
   before it, as the booklet shows it (`_looks_with_loose`). Up to smalls5
@@ -950,7 +965,16 @@ Whether what you built is still there tomorrow, and still means the same thing.
   New (Ctrl+N on the
   desktop) begins an empty baseplate, Untitled, with a fresh chat; it asks first
   when the model is not saved as it stands (`has_unsaved_work`: Untitled with
-  bricks, or bricks unlike the saved file's). An example as it shipped — the
+  bricks, or bricks or the app's own lines unlike the saved file's). The app's
+  own lines are compared too (`ModelStore._app_lines`, smalls6 item 4): a
+  motion kept, a step's look, name or turn, the floor or the page setup,
+  each written in no part's line, was nothing to lose, and New started over
+  without a word; a step's own lines are compared with the step they are in.
+  Undone back to the saved model, or named back by a second edit, it is
+  saved again, as a part's edit is. Quit asks nothing for any edit, parts
+  too: the working model is kept as it goes. `appedits_probe`, on five.ldr,
+  another author's file, hubprogram's arm and 1484-1's doors, by the
+  window's commands and over MCP, and Orthanc's question timed. An example as it shipped — the
   first visit's car — is nobody's work: untouched (nothing to undo since it
   opened), New asks nothing; it asked whether to save the car. There was no way to begin another
   model. `project_probe` (headless; puts this machine's autosave back) and
@@ -1765,6 +1789,7 @@ godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save
 godot --headless --path . --script src/dev/empty_open_probe.gd   # an open never leaves another model under its name: every open path, empty, unreadable and unknown-parts files
 godot --headless --path . --script src/dev/empty_open_probe.gd   # every way to open: what the file holds, or the model kept under its name
 godot --headless --path . --script src/dev/unsaved_open_probe.gd   # every way to open over changes not saved asks, and Undo brings back what it replaced
+godot --headless --path . --script src/dev/appedits_probe.gd   # an edit of the app's own lines alone is work not saved, and undone it is saved again
 godot --headless --path . --script src/dev/autosave_paths_probe.gd   # a figure stood up by any path survives a reload
 godot --headless --path . --script src/dev/unrestored_probe.gd   # a working model that cannot open is kept, and said
 # real sets' files round-tripped, judged, REPORT.md (run bare: it uses heavy itself; ~20 min)
@@ -1799,7 +1824,10 @@ model stays, saved under its name, and a failed File › Open says nothing);
 `unsaved_open_probe` when it ends "no open loses the changes not saved: each
 asks, Cancel keeps them, Save saves them, and Undo brings back what Don't save
 replaced" (on 25312917, rel-m155, 57 checks fail: no way asks, and Undo has
-nothing to undo); `autosave_paths_probe` when it ends "whatever path changed
+nothing to undo); `appedits_probe` when it ends "an edit of the app's own
+lines alone is work not saved: New asks, open_model refuses, Save keeps it,
+and undone it is saved again, as a part's edit" (on pre261 8d871ed3e a step
+named, a step's look, the page setup and the floor were nothing to lose); `autosave_paths_probe` when it ends "whatever path changed
 the model, a reload brings it back" (on f78934bc the in-app assistant's
 minifigure did not come back, 1 of 11 parts, nor a sub-model named past the
 store); `unrestored_probe` when it ends "a working model that cannot

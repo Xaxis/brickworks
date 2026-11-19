@@ -240,7 +240,8 @@
       "tests": [
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/test_comment_mentions.py"
+        "tests/test_comment_mentions.py",
+        "tests/test_relay_signed_out.py"
       ]
     },
     {
@@ -5500,6 +5501,7 @@
       "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
       "area": "parts",
       "tests": [
+        "tests/test_relay_signed_out.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -6972,6 +6974,7 @@
       "reach": "godot --path .  (any dialog, chooser or menu: the panels' dark face, on the desktop and, for dialogs, the web)",
       "area": "parts",
       "tests": [
+        "tests/test_relay_signed_out.py",
         "tests/test_together_poll.py"
       ]
     },

@@ -793,6 +793,7 @@ godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queu
 godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, the guide, the menus in step
 godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that looks changes nothing
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
+godot --headless --path . --script src/dev/clearundo_probe.gd    # each step that lays the floor again undone whole: count, plates, parts, Save's bytes
 tools/probe.sh first_design_undo_probe                              # a first design's floor and parts one step, undone and redone whole
 tools/probe.sh first_session_probe                                  # the first design on the example is a model of its own
 tools/probe.sh undo_ids_probe                                       # a part back from Undo or Redo keeps its number
@@ -1128,6 +1129,16 @@ All of these are in `tools/check.sh`.
   difference, the undo lost the steps and looks, put the parts back as an
   Untitled model with no file, and its redo left a part behind
   (`copyfaults_probe` clear_undo, clear_held, clear_file, clear_lit).
+  `clearundo_probe` (smalls6 item 3) undoes, redoes and undoes again each
+  step that lays the floor again: a kept Clear, a session's clear_model,
+  set_floor to the grid, to 48 x 48, to none then 16 x 16, the baseplate made
+  part of the model then cleared, another model opened over it. Each time
+  the whole count with the floor in it, the floor's plates where they lay,
+  the model's parts and the file Save writes, byte for byte. hpreview's
+  "15 parts of 14" was its own open: `Main._open` is the start-up's, whose
+  caller lays the floor after it, so the arm stood on no plate though its
+  file says a 32 x 32, and the undo laid one. Opened as File › Open opens
+  it (`ModelBar.opened`), the count is whole; hpreview counts it so again.
   `claude_undo_probe`: the person places a brick, a session edits, Undo takes
   the edit and keeps the brick, a second Undo takes the brick; then
   submit_design, review_model of a feature, edit_model (recolour, move,

@@ -1064,7 +1064,10 @@ meet by their exact shapes (said "MEETS", the pair tinted red), a loop's ends
 9 V; SPIKE Prime, Robot Inventor and Technic large and medium angular, SPIKE Essential
 small angular, Powered Up L, XL, simple medium and Boost medium, each at its own volts:
 `Simulation.MOTORS`, sources in its comment; "STALLS ... it gives at 7.2 V ... Gear it
-down", else its speed at the heaviest). A motor's output turns in its case
+down", else its speed at the heaviest). A motor whose case moves and reaches the base
+only through its own output (`Simulation.unfixed`) is weighed against nothing and said
+"NOT FIXED: the ... is on nothing the base holds still ... Fix its body to the frame";
+a case carried by a turntable or arm something else turns is weighed as before. A motor's output turns in its case
 (`Simulation.split_output`, `Mechanism.OUTPUT`): its face's axle hole, or a SPIKE hub's
 axle and four pin holes and the cross hole through to its back; the case's other holes
 hold it to what it is pinned to. A file's own copy named for a motor ("42114 - 69730") is
@@ -1074,10 +1077,11 @@ speed and its volts. The panel's line under
 the readout says it, **Go to the stop** turns the driver there, the slider and Play go
 no further, and `simulate_mechanism` returns the same lines with its picture taken at
 the stop. `tools/probe.sh motion_probe` (`PROBE_SIZE=1280x720` for the small window,
-`-- only=arm|fourbar|motor|spike|pul|hub|pieces`) builds seven models part by part and ends on
+`-- only=arm|fourbar|motor|spike|loose|pul|hub|pieces`) builds eight models part by part and ends on
 "motion: an arm meeting a beam at 140° said there, a four-bar's range against its closed
 form, a Power Functions M, a SPIKE Prime large and a Powered Up L motor that stall
-lifting their load said and stopped at, a beam pinned to a SPIKE hub turned by it, a
+lifting their load said and stopped at, a motor on nothing the base holds said NOT FIXED,
+a beam pinned to a SPIKE hub turned by it, a
 motor drawn in its pieces turning its hub, and the model never moved": the arm meets the beam at 140.54° (to 2°) and -148.23° back;
 the four-bar's crank goes +80.47° / -80.48° against ±80.41° (to 1°); the PF M motor
 through 9:1 stalls at 25.400°, worked 25.400°, asked 14.67 N·cm against 11, and
@@ -1086,7 +1090,10 @@ underside to a Technic plate, and the Powered Up L, long-pinned through its back
 each lift ten 2x8 bricks through the same 9:1 (13 parts, 49.31 g, their middle 171.8
 LDU above the arm's axle: 29.91 N·cm at the motor): the SPIKE stalls at 26.300°, worked
 26.300° (25 N·cm at 7.2 V), the Powered Up L at 26.709°, worked 26.708° (26 N·cm at
-9 V), each to 1°, its case held with the base. A beam pinned by two pins to a SPIKE
+9 V), each to 1°, its case held with the base; simulate_mechanism says the SPIKE's stall
+too. The same SPIKE rig with its column, plate and pins left out (`only=loose`), its case
+on its output's axle alone, goes all the way round and is said NOT FIXED in the panel
+and over MCP, nothing weighed (on 02196167c it said STALLS at 26.1°). A beam pinned by two pins to a SPIKE
 Prime medium angular motor's hub, no axle, is the driver its motor turns, on the hub's
 line, the pins going round through the hub without meeting it ("turns it with nothing to
 lift: 185 rpm, its speed with no load at 7.2 V"). A Technic large angular motor drawn in

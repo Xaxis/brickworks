@@ -4,10 +4,10 @@
 ##   MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" godot --path . \
 ##     --resolution 1400x900 --script src/dev/motion_probe.gd
 ##   ... and at 1280x720 (PROBE_SIZE=1280x720 bash tools/probe.sh motion_probe)
-##   ... -- only=arm, only=fourbar, only=motor, only=spike, only=pul, only=hub or
-##   only=pieces runs that model alone
+##   ... -- only=arm, only=fourbar, only=motor, only=spike, only=loose, only=pul,
+##   only=hub or only=pieces runs that model alone
 ##
-## Seven models, built here part by part on the baseplate:
+## Eight models, built here part by part on the baseplate:
 ##   - an arm on an axle through a Technic brick, turned by its sub-assembly's
 ##     name (Crank): alone it goes round either way and nothing meets; then a
 ##     beam is stood where the arm's face lies at 140° of its turn, and the
@@ -26,7 +26,14 @@
 ##     its hub's axle geared up 9 to an arm of ten 2x8 bricks: its case is the
 ##     base, the arm stalls where the virtual work says, to 1°, the working
 ##     said (the arm's weight, how far its middle stands from its axle, the
-##     torque), and unloaded the motor turns it at its 175 rpm;
+##     torque), and unloaded the motor turns it at its 175 rpm; over MCP
+##     simulate_mechanism says the same stall;
+##   - the same SPIKE motor and arm with the column, the plate and the two
+##     pins left out, its case hanging on its output's axle and on nothing
+##     the base holds (mcpreach2's y6): its case goes round with what it
+##     turns, so nothing is weighed against it, and the panel and
+##     simulate_mechanism both say NOT FIXED and to fix its body to the
+##     frame, never "nothing to lift" or a stall;
 ##   - a Powered Up L motor (26 N·cm at 9 V, Hurbain's), held by two long
 ##     pins through it to a Technic plate, on the same train and arm: the
 ##     same, to 1°;
@@ -133,6 +140,8 @@ func _run() -> void:
 		await _motor()
 	if only.is_empty() or only == "spike":
 		await _spike_large()
+	if only.is_empty() or only == "loose":
+		await _spike_loose()
 	if only.is_empty() or only == "pul":
 		await _powered_up_l()
 	if only.is_empty() or only == "hub":
@@ -143,7 +152,8 @@ func _run() -> void:
 	if _failures == 0:
 		print("motion: an arm meeting a beam at 140° said there, a four-bar's range against its "
 			+ "closed form, a Power Functions M, a SPIKE Prime large and a Powered Up L motor "
-			+ "that stall lifting their load said and stopped at, a beam pinned to a SPIKE hub "
+			+ "that stall lifting their load said and stopped at, a motor on nothing the base "
+			+ "holds said NOT FIXED, a beam pinned to a SPIKE hub "
 			+ "turned by it, a motor drawn in its pieces turning its hub, and the model never moved")
 	else:
 		print("motion: %d FAILED" % _failures)
@@ -386,7 +396,79 @@ func _spike_large() -> void:
 	_camera.frame(AABB(Vector3(-200, t, -200), Vector3(520, 680, 340)), 1.05)
 	await _frames(10)
 	await _stalls("SPIKE Prime large angular motor", motor, rig, SPIKE_L_N_CM, "7.2 V", 1.0, "7_spike")
+	var said: String = await _session_said(motor)
+	_check("over MCP, simulate_mechanism driver=#%d says the stall too: %s" % [motor,
+		_line_with(said, "#%d %s" % [motor, "54675"]).left(140)], said.contains("STALLS: the SPIKE "
+		+ "Prime large angular motor (#%d 54675)" % motor) and not said.contains("NOT FIXED"))
 	await _unloaded("SPIKE Prime large angular motor", rig, "ten 2x8 bricks", "9_spike_unloaded")
+
+
+# -- a SPIKE Prime large motor on nothing that holds it -------------------------------------
+
+
+func _spike_loose() -> void:
+	print("  the SPIKE Prime large angular motor on its output's axle alone, its case on nothing "
+		+ "the base holds")
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	var h: float = t + 326.0
+	# Where the pinned rig stands it, the column, its plate and the two pins
+	# under it left out: the case hangs on the axle in its hub, as y6's hung
+	# from a beam held by nothing.
+	var motor: int = _place("54675", Transform3D(SPIKE_STANDS, Vector3(0, h, -50)), 71, "")
+	var rig: Dictionary = _geared_arm(t, h, "3007", 10, 80.0)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-200, t, -200), Vector3(520, 680, 340)), 1.05)
+	await _frames(10)
+	var rest: Dictionary = _rest()
+	var depth: int = _builder.history_depth()
+	var revision: int = _world.revision
+	_shell.run("simulate")
+	await _settled()
+	var sim: Simulation = _panel.sim
+	print("    driver: %s" % _panel.said()["driver"])
+	_check("the motor marks the driver: its output's axle", sim != null
+		and sim.driver == sim.model.body_of(int(rig["output"])) and _found(sim, "motor", 0) == motor)
+	_check("...its case on nothing the base holds, going round with what it turns",
+		sim != null and sim.model.body_of(motor) != sim.model.ground and sim.moving.has(motor))
+	var stops: String = _stops_said()
+	print("    stops: %s" % stops.replace("\n", " | "))
+	_check("the panel says NOT FIXED, the motor by name, and to fix its body to the frame",
+		stops.contains("NOT FIXED: the SPIKE Prime large angular motor (#%d 54675)" % motor)
+		and stops.contains("Fix its body to the frame"))
+	_check("...never \"nothing to lift\", a stall or what it is asked, and nothing weighed",
+		not stops.contains("nothing to lift") and not stops.contains("STALLS")
+		and not stops.contains("it is asked") and not stops.contains("its motor stalls")
+		and _found(sim, "stall").is_empty() and _found(sim, "heaviest").is_empty())
+	await _shot("11_spike_loose")
+	var said: String = await _session_said(motor)
+	print("    simulate_mechanism: %s" % _line_with(said, "(#%d 54675)" % motor).left(300))
+	_check("over MCP, simulate_mechanism driver=#%d says NOT FIXED and what to do, not "
+		% motor + "\"nothing to lift\"", said.contains("NOT FIXED: the SPIKE Prime large angular "
+		+ "motor (#%d 54675)" % motor) and said.contains("Fix its body to the frame")
+		and not said.contains("nothing to lift") and not said.contains("STALLS"))
+	_check("the model never moved", _same_as(rest) and _world.revision == revision
+		and _builder.history_depth() == depth)
+	_panel.close()
+	await _frames(3)
+
+
+## What simulate_mechanism driver=#[param motor] says, as a session asks it
+## (AppTools, as simulate_probe asks it).
+func _session_said(motor: int) -> String:
+	var tools: AppTools = AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var answer: Variant = await tools.run("simulate_mechanism", {"driver": "#%d" % motor})
+	return str((answer as Array)[0]["text"]) if answer is Array else str(answer)
+
+
+static func _line_with(text: String, words: String) -> String:
+	for line: String in text.split("\n"):
+		if line.contains(words):
+			return line
+	return "-"
 
 
 # -- a Powered Up L motor and its load -----------------------------------------------------

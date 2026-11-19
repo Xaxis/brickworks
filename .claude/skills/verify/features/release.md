@@ -641,10 +641,10 @@ a step failed only on the preview holds, no finished run on one side
 holds, and runs that timed nothing on either side (playwright missing in a
 worktree) hold; deploy_reads says a commit of words alone on a build stands for it.
 
-Proves it when: `33 passed`, in about 95 s, and 8 copies at once all pass
+Proves it when: `38 passed`, in about 95 s, and 8 copies at once all pass
 (about 56 s each); the killed-train test passes 1000 runs of 16 at once at
 load 33 (4 of 300 failed so before 2026-11-03). Each test makes a repository with an origin and unit
-worktrees; train.sh, ship.sh, preview_lib.sh and retire_wt.sh are the real
+worktrees; train.sh, ship.sh, preview_lib.sh, unit_preview.sh and retire_wt.sh are the real
 ones, with stand-ins for release_wt.sh, merge_unit.sh, the gates,
 deploy.sh, preview_checks.sh, check.sh and probe.sh, and for heavy, godot
 and curl by HOME and PATH. It runs the train detached as staged: it waits
@@ -678,7 +678,14 @@ it says `stopped: killed`, its probes stop with it and nothing of it runs
 on; its ship, stopped with the group while it waits for the probes, writes
 143 to its `.done`, and left to run on holds, writing 1 (0 of 5400 stops of
 ship.sh so at load 32-74 went on; 4 of 1800 ran on before 2026-11-03),
-and killed outright by its pid its work takes no step after; and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
+and killed outright by its pid its work takes no step after; a ship stopped
+while it promotes (its pid alone, as its stop reaches its work) writes 143
+and its promotion ends with it, nothing promoted after its gate opens; a
+unit_preview.sh run killed mid-deploy by its group or its pid takes its
+deploy with it within 10 s, and killed outright (SIGKILL) leaves it running
+into its own run's log, and each time the next run's `_unit_preview.log`
+holds one `deploy done`, its own, and its checks run on that URL alone
+(before 2026-11-18 it read `UNIT: checks on URL_A\nURL_B: io site`); and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
 mid-ship, `failed: io (passed alone)` once ship.sh has run it alone, and `live: brickworks.diy serves it (SHA)` after,
 its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
 a ship begun by hand is listed with its ETA (a median ship after it began)

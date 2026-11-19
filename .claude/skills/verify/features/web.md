@@ -527,7 +527,29 @@ plan with Claude as the client.
   closed to Claude, so rows from before the change read as switched off until
   a signed-in page switches them on. The tab resumes the connector only once
   somebody is signed in, and Sign out switches it off. The owner is what a
-  call signed in to an account is routed by. Prove it: `node
+  call signed in to an account is routed by. **And it ends with that sign-in**
+  (2026-11-18, smalls6): the hello's `session_id` is kept as
+  `relay_tabs.session` (`supabase/relay_session.sql`, applied to the live
+  project 2026-11-18; a hello whose token names none is 401), and once
+  Supabase no longer has that session (Sign out everywhere, a sign-out on that
+  device, the account deleted, or for an orangecheck session `sessionStanding`
+  refusing it) the relay (`signedOut`, the same 5 s read as `api/_auth.js`)
+  closes the tab, answers Claude's calls through the address with "Nothing was
+  done: the person was signed out of Brickworks … switch the connector on
+  there, under "Or with your Claude plan"" and queues nothing, passes on no
+  answer that came after (or a call's wait ends at its next 5 s look), and
+  answers the tab's `op=next` 401 (asked again every 5 s while it waits, so a
+  waiting tab is told within about 10 s, not at the end of its 25 s), so the
+  tab says hello again, which only a new sign-in passes. A row from before the column (no session) gets 401 "say
+  hello again" and its hello writes it; a database without the column goes on
+  as before. Before: a tab switched on before Sign out everywhere served its
+  address for as long as the page stayed open (live, 18 of 18 calls in the
+  20 s after). `tests/test_relay_signed_out.py` (the handler over the
+  stand-in); on a deployment, with `.env` sourced, from a worktree: `node
+  bench/results/smalls6-2026-11-18/relay/relay_signout.mjs <preview>` (a
+  throwaway signed in, a stand-in tab, `admin_sign_out`, a call every ~1 s for
+  20 s: none reaches the tab after 5 s, the tab's next 401 within 11 s, its old hello 401,
+  and a new sign-in's hello on the same address answered). Prove it: `node
   tools/web/relay_server.mjs 8790` (the real handlers, real queue, needs
   `.env`; it serves every route in `api/`) and `godot --headless --path .
   --script src/dev/connector_probe.gd -- 8790`: refused signed out (by the app

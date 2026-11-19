@@ -16,6 +16,10 @@
 # (_unit_preview.log, .sha), the checks' lines (_unit_pv.out) and each
 # check's log (_unit_pv_<check>.log). UNIT_REUSE=1 runs the checks again on
 # the preview this branch last made, if it was made from this very commit.
+# While it deploys, _unit_preview.log links to this run's own log
+# (_unit_preview.<run>.log), and the URL is read from that alone. Stopped
+# (kill -- -PGID, or its pid alone), a run ends its deploy first, heavy's
+# queued job too; killed outright, the deploy writes only its own run's log.
 set -u
 # A unit gives the live database way to a release train within ten minutes,
 # not the train's hour: each of a preview's 10-14 live checks waited an hour

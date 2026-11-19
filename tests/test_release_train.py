@@ -18,7 +18,9 @@ it before the merge and before the probes and the ship, and one set while
 the ship waits still holds; a tree left dirty or mid-merge, or a probe that
 failed or skipped itself, is never shipped; it stops when the release before
 did not ship, was stopped or died, or at its deadline; stopped by hand, it
-says so and nothing of it runs on, its probes included; and status says each
+says so and nothing of it runs on, its probes included, nor a ship's
+promotion; a unit's preview killed while it deploys takes its deploy with
+it, and the next run reads its own deploy's URL alone; and status says each
 step, the checks, the probes and what is live. Its probes run beside the
 ship, four at a time, one failing beside others again alone, and main moves
 only once every one has passed. It ships the tip it merged when the branch
@@ -43,6 +45,7 @@ reason, which the log and status say, and --probes "" is refused.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -94,17 +97,26 @@ exit 1
 # stand-in: a preview of this commit, or that preview promoted (--promote,
 # --prod), which then stands for brickworks.diy/app; when, in promoted. A
 # preview promoted serves the commit it was made from, as the real one does.
+# STUB_DEPLOY_GATE holds a preview, STUB_PROMOTE_GATE a promotion, until that
+# file is there, as a real one takes minutes: it says STUB_DEPLOY_SAYS lines
+# first, its pid in deploy_pids, and a preview so held has a URL of its own.
 SHA=$(git rev-parse --short HEAD)
 echo "$*" >> "$RELEASE_OUT/deploy_args"
 # Its export in build/web, as tools/export.sh makes it, unless given one (--dir) or promoting.
 case " $* " in *" --dir="*|*" --promote="*) ;; *) mkdir -p build/web && echo "$SHA" > build/web/index.html ;; esac
 case "${1:-}" in --promote=*) SHA=${1##*/} ;; esac
+case "${1:-}" in --promote=*|--prod) gate=${STUB_PROMOTE_GATE:-} ;; *) gate=${STUB_DEPLOY_GATE:-} ;; esac
+if [ -n "$gate" ]; then
+  echo $$ >> "$RELEASE_OUT/deploy_pids"
+  for i in $(seq 1 "${STUB_DEPLOY_SAYS:-1}"); do echo "deploy: the stand-in's work, line $i of its own"; done
+  for _ in $(seq 1 2400); do [ -e "$gate" ] && break; sleep 0.05; done
+fi
 case "${1:-}" in
   --promote=*|--prod)
     echo "$(date +%s.%N) $SHA" >> "$RELEASE_OUT/promoted"
     echo "<script src=\\"/b/$SHA/index.js\\"></script>" > "$STUB_LIVE"
     echo "deploy: brickworks.diy serves $SHA" ;;
-  *) echo "deploy done https://preview.invalid/$SHA" ;;
+  *) echo "deploy done https://preview.invalid/$SHA${STUB_DEPLOY_GATE:+-$$}" ;;
 esac
 """,
     "tools/release/preview_checks.sh": """#!/bin/bash
@@ -1182,6 +1194,110 @@ def test_a_train_stopped_by_hand_stops_its_work_and_its_probes_and_says_so(tmp_p
             assert not (y.wt / tag).exists()
     finally:
         y.stop()
+
+
+def _deploying(y: Yard) -> list:
+    """The pids of the yard's held stand-in deploys (STUB_DEPLOY_GATE, STUB_PROMOTE_GATE) still running."""
+    found = []
+    for pid in y.text("deploy_pids").split():
+        try:
+            if "tools/deploy.sh" in Path("/proc/%s/cmdline" % pid).read_text():
+                found.append(int(pid))
+        except OSError:
+            pass
+    return found
+
+
+def _end_deploys(y: Yard) -> None:
+    """Ends the yard's stand-in deploys still running, each with its group."""
+    for pid in _deploying(y):
+        try:
+            os.killpg(os.getpgid(pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+
+def test_a_killed_unit_preview_takes_its_deploy_with_it_and_the_next_reads_only_its_own(tmp_path):
+    """A unit's run killed while it deploys, by its group as agents stop one
+    (kill -- -PGID), by its pid alone, or outright: the next run's preview
+    is its own deploy's alone. The timeout around heavy is a process group
+    of its own, so hubprogram's deploy went on after its run was killed and
+    wrote a second "deploy done" into the next run's log, which took both
+    URLs and ran its checks on neither (2026-11-18)."""
+    y = Yard(tmp_path)
+    for name in ("unit_preview.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
+    unit = y.wt / "unitB"
+    sha = y.git(unit, "rev-parse", "--short", "HEAD")
+
+    def preview(gate: Path, says: int) -> subprocess.Popen:
+        return subprocess.Popen(
+            ["bash", str(y.r / "tools/release/unit_preview.sh"), str(unit), "io"],
+            env={**y.env, "RELEASE_OUT": str(y.ro), "UNIT_RETRY_75": "0",
+                 "STUB_DEPLOY_GATE": str(gate), "STUB_DEPLOY_SAYS": str(says)},
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+
+    try:
+        for n, (how, kill) in enumerate((("by its group", lambda p: os.killpg(p.pid, signal.SIGTERM)),
+                                         ("by its pid", lambda p: os.kill(p.pid, signal.SIGTERM)),
+                                         ("outright", lambda p: os.killpg(p.pid, signal.SIGKILL)))):
+            gate_a, gate_b = tmp_path / ("gate_a%d" % n), tmp_path / ("gate_b%d" % n)
+            a = preview(gate_a, 1)
+            y.until(lambda: len(_deploying(y)) == 1, 60)
+            (deploy_a,) = _deploying(y)
+            kill(a)
+            a.communicate(timeout=60)
+            end = time.time() + 10
+            while deploy_a in _deploying(y) and time.time() < end:
+                time.sleep(0.05)
+            ran_on = deploy_a in _deploying(y)
+            # The next run's deploy says more first; A's, run on, ends while B's is under way.
+            b = preview(gate_b, 6)
+            y.until(lambda: len(set(_deploying(y)) - {deploy_a}) == 1, 60)
+            (deploy_b,) = set(_deploying(y)) - {deploy_a}
+            gate_a.touch()
+            y.until(lambda: deploy_a not in _deploying(y), 60)
+            gate_b.touch()
+            out, _ = b.communicate(timeout=120)
+            mine = "https://preview.invalid/%s-%d" % (sha, deploy_b)
+            log = y.text("unitB_unit_preview.log")
+            assert re.findall(r"deploy done (\S+)", log) == [mine], "killed %s:\n%s\n%s" % (how, log, out)
+            assert "UNIT: checks on %s: io site\n" % mine in out, how + ":\n" + out
+            assert "UNIT: exit=0, 2 checks passed on %s\n" % mine in out, how + ":\n" + out
+            assert y.text("unitB_unit_preview.sha").strip() == sha
+            # Its deploy ended with it, but for the kill no trap sees.
+            assert ran_on == (how == "outright"), "killed %s, its deploy ran on" % how
+    finally:
+        _end_deploys(y)
+
+
+def test_a_ship_stopped_while_it_promotes_promotes_nothing_after(tmp_path):
+    """ship.sh stopped (its work's pid alone, as a train's kill reaches it)
+    ends the deploy it is in: run on, the promotion put the release live
+    after its ship had said 143, not shipped, and wrote its "serves" line
+    into the next ship's log of the same tag."""
+    y = Yard(tmp_path)
+    gate = tmp_path / "promote_gate"
+    try:
+        y.git(y.r, "worktree", "add", "-q", str(y.wt / "stage2"), "stage2")
+        ship = subprocess.Popen(
+            ["bash", str(y.wt / "stage2/tools/release/ship.sh"), str(y.wt / "stage2"), "t-m2", "io"],
+            cwd=y.wt / "stage2", env={**y.env, "RELEASE_OUT": str(y.ro), "STUB_PROMOTE_GATE": str(gate)},
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        y.until(lambda: _deploying(y), 60)
+        (promote,) = _deploying(y)
+        os.kill(ship.pid, signal.SIGTERM)
+        out, _ = ship.communicate(timeout=60)
+        end = time.time() + 10
+        while promote in _deploying(y) and time.time() < end:
+            time.sleep(0.05)
+        gate.touch()
+        y.until(lambda: promote not in _deploying(y), 60)
+        assert y.text("t-m2.done").strip() == "143", out
+        assert not (y.ro / "promoted").exists(), "promoted after its ship was stopped:\n" + out
+        assert "/b/0000000/" in y.live.read_text()
+    finally:
+        _end_deploys(y)
 
 
 def test_what_fails_on_the_preview_runs_on_the_live_site_after_its_battery_as_a_units_check(tmp_path):
