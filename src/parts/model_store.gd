@@ -1032,14 +1032,18 @@ func has_unsaved_work() -> bool:
 ## an edit that writes no part's line changes. [param placed]: a step's own
 ## lines (its look and name, BookletLooks.WORDS) each said with the section
 ## and step they are in, so one moved to another step is a change, and the
-## rest with their section, wherever in it the writer puts them. Not the
-## TITLE, which a save under another name writes, nor WORKED_STEPS, a save's
-## worked-out order, which [method has_unsaved_work] does not work out again,
-## nor the copies' COPY and IN, which the parts' own lines are compared for.
+## rest with their section, wherever in it the writer puts them. A section
+## by its name, not its place in the file: a save writes its sections in the
+## order its steps put their copies on, and one written without steps in
+## another, so a nested model saved said at once it had changes not saved
+## (unit_steps, keepbytes). Not the TITLE, which a save under another name
+## writes, nor WORKED_STEPS, a save's worked-out order, which
+## [method has_unsaved_work] does not work out again, nor the copies' COPY
+## and IN, which the parts' own lines are compared for.
 static func _app_lines(text: String, placed: bool = true) -> PackedStringArray:
 	var lines := PackedStringArray()
 	var authored: bool = text.contains(LdrModel.AUTHORED_META)
-	var section: int = 0
+	var section: String = ""
 	var step: int = 0
 	for line: String in text.trim_prefix(LdrModel.bom()).split("\n"):
 		var bare: String = line.strip_edges()
@@ -1050,13 +1054,13 @@ static func _app_lines(text: String, placed: bool = true) -> PackedStringArray:
 			continue
 		var keyword: String = fields[1].to_upper()
 		if keyword == "FILE":
-			section += 1
+			section = " ".join(fields.slice(2)).to_lower()
 			step = 0
 		elif keyword == "STEP":
 			step += 1
 		elif keyword == "ROTSTEP":
 			if authored:
-				lines.append("%d %d %s" % [section, step, bare] if placed else bare)
+				lines.append("%s %d %s" % [section, step, bare] if placed else bare)
 			step += 1
 		elif keyword == "!BRICKWORKS" and fields.size() > 2:
 			var word: String = fields[2].to_upper()
@@ -1065,7 +1069,7 @@ static func _app_lines(text: String, placed: bool = true) -> PackedStringArray:
 			if not placed:
 				lines.append(bare)
 				continue
-			lines.append("%d %d %s" % [section, step if authored and word in BookletLooks.WORDS
+			lines.append("%s %d %s" % [section, step if authored and word in BookletLooks.WORDS
 				else 0, bare])
 	lines.sort()
 	return lines
