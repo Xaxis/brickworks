@@ -154,6 +154,25 @@
 	--motion: 150ms;
 	--motion-open: 180ms;
 	--ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+	/* Charts (/admin › Analytics): the one series, a muted line, the grid
+	   and the axis; and a six-step ramp, little to much, each step with the
+	   ink a share on it is read in. */
+	--viz-1: #3987e5;
+	--viz-muted: #6b717c;
+	--viz-grid: rgba(255, 255, 255, 0.07);
+	--viz-axis: rgba(255, 255, 255, 0.2);
+	--viz-seq-1: #184f95;
+	--viz-seq-2: #1c5cab;
+	--viz-seq-3: #256abf;
+	--viz-seq-4: #3987e5;
+	--viz-seq-5: #6da7ec;
+	--viz-seq-6: #9ec5f4;
+	--viz-seq-ink-1: var(--ink);
+	--viz-seq-ink-2: var(--ink);
+	--viz-seq-ink-3: var(--ink);
+	--viz-seq-ink-4: var(--ink);
+	--viz-seq-ink-5: var(--bg);
+	--viz-seq-ink-6: var(--bg);
 	/* The header's height (.bar's 60 px and its line), which main fills the
 	   window under. */
 	--head-h: 61px;
@@ -187,6 +206,22 @@
 	--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.3), transparent 70%);
 	--studs: radial-gradient(circle at 1px 1px, rgba(17, 19, 23, 0.08) 1px, transparent 1.5px);
 	--picture-ground: linear-gradient(180deg, #edeff5, #ccd4de);
+	--viz-1: #2a78d6;
+	--viz-muted: #9aa0a8;
+	--viz-grid: rgba(17, 19, 23, 0.07);
+	--viz-axis: rgba(17, 19, 23, 0.25);
+	--viz-seq-1: #cde2fb;
+	--viz-seq-2: #9ec5f4;
+	--viz-seq-3: #6da7ec;
+	--viz-seq-4: #3987e5;
+	--viz-seq-5: #256abf;
+	--viz-seq-6: #184f95;
+	--viz-seq-ink-1: var(--ink);
+	--viz-seq-ink-2: var(--ink);
+	--viz-seq-ink-3: var(--ink);
+	--viz-seq-ink-4: var(--bg);
+	--viz-seq-ink-5: var(--bg);
+	--viz-seq-ink-6: var(--bg);
 	color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
@@ -215,6 +250,22 @@
 		--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.3), transparent 70%);
 		--studs: radial-gradient(circle at 1px 1px, rgba(17, 19, 23, 0.08) 1px, transparent 1.5px);
 		--picture-ground: linear-gradient(180deg, #edeff5, #ccd4de);
+		--viz-1: #2a78d6;
+		--viz-muted: #9aa0a8;
+		--viz-grid: rgba(17, 19, 23, 0.07);
+		--viz-axis: rgba(17, 19, 23, 0.25);
+		--viz-seq-1: #cde2fb;
+		--viz-seq-2: #9ec5f4;
+		--viz-seq-3: #6da7ec;
+		--viz-seq-4: #3987e5;
+		--viz-seq-5: #256abf;
+		--viz-seq-6: #184f95;
+		--viz-seq-ink-1: var(--ink);
+		--viz-seq-ink-2: var(--ink);
+		--viz-seq-ink-3: var(--ink);
+		--viz-seq-ink-4: var(--bg);
+		--viz-seq-ink-5: var(--bg);
+		--viz-seq-ink-6: var(--bg);
 		color-scheme: light;
 	}
 }
