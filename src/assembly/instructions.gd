@@ -1151,10 +1151,6 @@ static func _joints_of(nodes: Array[Node2], world: BrickWorld, library: PartLibr
 	var lowest := func(a: Node2, b: Node2) -> bool:
 		if absf(a.box.position.y - b.box.position.y) > 0.5:
 			return a.box.position.y < b.box.position.y
-		# By number. By their place in [method in_order] instead, 75102-1
-		# built without sub-models stood 515 of its 726 parts in the air, not
-		# 46, and none of the 187 fixtures saved differently either way or
-		# drifted between saves (keepbytes).
 		return a.id < b.id
 	var nearest := func(a: Node2, b: Node2) -> bool:
 		var one: int = int(reach.get(a.id, 0x7FFFFFFF))
@@ -1702,7 +1698,7 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 ## [param job], which then counts them.
 static func _survey_into(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
 		skip: Dictionary, job: Working.Job) -> void:
-	var bricks: Array = in_order(world)
+	var bricks: Array = world.bricks()
 	if job != null:
 		job.say("Measuring %s parts…" % Working.comma(bricks.size()))
 		job.count(0, bricks.size())
@@ -3944,38 +3940,6 @@ static var _shaped: Dictionary = {}
 static var _shaped_lock := Mutex.new()
 
 
-## The model's parts in an order of their own: by height, part, across,
-## along, colour and how it is turned, each as a file writes it (to a
-## thousandth of an LDU). What the order is worked out from, and how two
-## parts it could put first either way are told apart: never the order the
-## world was given them, which is the order a file lists them. That order is
-## the plan the file was saved with, so a plan that went by it planned a
-## model again from its own last plan: saved, opened and saved, pagoda's pond
-## and sculpt170-042's potato body came out in steps of their own each time,
-## the potato built in the model's steps, and settled only by the third save
-## (keepbytes, 2026-11-19). Nor the names of the sub-model and copy a part is
-## in: a rename changed the order, and Sub renamed Crate built 7 of its 8
-## parts in other steps, and a sub-model named as it was made saved with
-## changes still unsaved (unit_steps).
-static func in_order(world: BrickWorld) -> Array:
-	var bricks: Array = world.bricks()
-	var keys: Array = []
-	keys.resize(bricks.size())
-	for n: int in bricks.size():
-		var brick: BrickWorld.Brick = bricks[n]
-		var at: Vector3 = brick.transform.origin
-		var turn: Basis = brick.transform.basis
-		keys[n] = [roundi(at.y * 1000.0), brick.part_id, roundi(at.x * 1000.0),
-			roundi(at.z * 1000.0), brick.color_code, BrickWorld.turn_key(turn.x),
-			BrickWorld.turn_key(turn.y), BrickWorld.turn_key(turn.z), n]
-	keys.sort()
-	var out: Array = []
-	out.resize(bricks.size())
-	for n: int in keys.size():
-		out[n] = bricks[int((keys[n] as Array).back())]
-	return out
-
-
 ## What that reading depends on: the parts [method _survey] makes nodes of,
 ## in its order, each with its sub-model and copy, where it is and the mesh
 ## it is read from; and its colour, which a sub-assembly's kind is named by
@@ -3990,7 +3954,7 @@ static func _shape_of(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 	var meshes := PackedInt64Array()
 	var colours := PackedInt32Array()
 	var places: Array[Transform3D] = []
-	for brick: BrickWorld.Brick in in_order(world):
+	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id):
 			continue
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
