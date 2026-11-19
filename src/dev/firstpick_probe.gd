@@ -76,13 +76,16 @@ func _run() -> void:
 	for _n: int in 1200:
 		if not warming[0]:
 			break
-		await RenderingServer.frame_post_draw
+		# What a frame draws is what is shown as it begins: the warm lets go
+		# of it as that frame ends, before or after this hears so.
+		await RenderingServer.frame_pre_draw
 		if (_builder.get("_ghost") as MeshInstance3D).visible:
 			ghost_frames += 1
 			if _builder.has_preview():
 				previewed += 1
 		if _marks_drawn() > marks_before:
 			marks_frames += 1
+		await RenderingServer.frame_post_draw
 		var seen: Image = root.get_texture().get_image()
 		var off: int = _differing(before, seen)
 		if off > differing:

@@ -168,11 +168,11 @@ plan with Claude as the client.
   held a first pick 3.5 to 9 s, 2026-10-31). What the first pick draws and
   the first screen does not, the ghost's shader and the connection points'
   marks (fifteen programs, drawn in software each a sync wait), is drawn
-  once out of sight, in one frame, as soon as the model is back and the
-  page has been told the bin is usable (Main._warm_first_pick, `firstpick`
-  probe; smalls8, 2026-11-19). A first visit has the bin usable about 5 s
-  before the model is drawn, so a warm that waits longer is still running
-  at the first click. A pick slower than 600 ms cold, with no part file
+  once out of sight, in one frame, once the page has been told the bin is
+  usable, whether or not the model has come (Main._warm_first_pick,
+  `firstpick` probe; smalls8, 2026-11-19). A first visit has the bin usable
+  5 to 11 s before the model is drawn, so a warm that waits for the model is
+  still to come at load_check's click. A pick slower than 600 ms cold, with no part file
   fetched, is a shader the warm does not draw yet, or a warm still running
   at the click: find which by wrapping WebGL2's linkProgram in an init
   script and timing its links against the click. The pack Godot exports is cut in four after it (webload,
