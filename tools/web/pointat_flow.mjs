@@ -605,6 +605,7 @@ try {
     row.waited = Math.min(row.left ?? 0, waits.waited("owner", at(row, "looked"), at(row, "asked"))
       + waits.waited("network", at(row, "looked"), at(row, "shown")) + waits.waited("guest", said, at(row, "shown")));
     row.appOwn = less(row.left, row.waited);
+    row.guestRan = waits.ran("guest", said, at(row, "shown"));
   }
   waits.stop();
   writeFileSync(path.join(out, "rounds.json"), JSON.stringify({ rows, pointSends,
@@ -613,7 +614,8 @@ try {
     const legs = Object.entries(row.legs).map(([k, v]) => `${k} ${v ?? "-"}`).join(", ");
     console.log(`        ${String(row.n).padStart(2)} ${row.part}: drawn there ${row.fenced ?? "-"} ms after the key,`
       + ` the frames each side ${less(row.fenced, row.left) ?? "-"} of it (busy ${row.busy}), the rest ${row.left ?? "-"}`
-      + ` (${row.waited} of it waiting for a core, the app's own ${row.appOwn ?? "-"})`
+      + ` (${row.waited} of it waiting for a core, the app's own ${row.appOwn ?? "-"};`
+      + ` the second page's thread ran ${row.guestRan} ms of its down)`
       + ` (${legs}; ${row.between ?? "-"} frames from the line had to the one that drew it, which ran`
       + ` ${row.frame ? `${row.frame.start}-${row.frame.end}` : "-"}); own drawn ${row.ownFenced ?? "-"}`
       + ` (page ${row.own}); its send answered ${row.answered} after; the poll had it ${row.line?.via ?? "-"};`
@@ -642,7 +644,7 @@ try {
     + ` within it less a frame each side (they ${spread(of("left"))} ms; the frames each side`
     + ` ${spread(rows.map((row) => less(row.fenced, row.left)).filter(Number.isFinite))} ms; of the rest, waiting for a core`
     + ` ${spread(of("waited"))} ms, the app's own ${spread(of("appOwn"))} ms; threads followed`
-    + ` ${JSON.stringify(waits.found)}, load ${loadavg()[0].toFixed(0)})`,
+    + ` ${JSON.stringify(waits.found)} of ${waits.renderers} renderers, load ${loadavg()[0].toFixed(0)})`,
     drawn.length === ROUNDS && (p(drawn, 0.95) <= BAR_MS || inTime >= Math.ceil(0.95 * ROUNDS)));
   check(`...each by the owner's name ("${ownerName}")`, rows.every((row) => row.name === ownerName));
 
