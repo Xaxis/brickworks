@@ -102,14 +102,31 @@ class Proposal extends RefCounted:
 	## "built", "skipped"; "kept" when a loop's turns ran out with it standing.
 	var verdict: String = ""
 	var reason: String = ""
+	## A feature given its form: what its close look laid for that form where
+	## its plates step (SurfacePass.Finding, by SurfacePass.form_finish), the
+	## form's cells it was laid from (FormParts.cell), and which of
+	## [method FeaturePass.form_ways] it was laid by.
+	var finish: Array = []
+	var cells: Array = []
+	var way: int = -1
 
 	func settled() -> bool:
 		return not verdict.is_empty()
+
+	## Whether the close look laid the form's parts for it.
+	func formed() -> bool:
+		return not finish.is_empty()
 
 
 var assistant: Assistant
 ## Feature name in lower case -> the spot the design gave it.
 var spots: Dictionary = {}
+## Feature name in lower case -> the form the design gave it, in its own
+## words: "open: a ring of curved parts round an empty middle, bars for
+## spokes". A feature given its form is built by the design, so the app
+## lays it no real set's piece: it shows the feature close up, as built, to
+## be checked against that form (Assistant._form_brief).
+var forms: Dictionary = {}
 ## Feature name in lower case -> its Proposal.
 var proposals: Dictionary = {}
 
@@ -118,10 +135,39 @@ func _init(of: Assistant) -> void:
 	assistant = of
 
 
-## A new design: its features' spots, and nothing proposed yet.
-func reset(given: Dictionary) -> void:
+## A new design: its features' spots and forms, and nothing proposed yet.
+func reset(given: Dictionary, given_forms: Dictionary = {}) -> void:
 	spots = given.duplicate(true)
+	forms = given_forms.duplicate(true)
 	proposals = {}
+
+
+## The forms a submission gives its features: name in lower case -> the
+## form said, for each that says one. design24, from the judge's reasons
+## on the base's losses to real sets (docs/DESIGN_SCORES.md): the feature
+## was named and built in nearly every loss, and its form was not there: a
+## solid disc for an open wheel, a stack for splayed legs, a flat wall for
+## a curved blade.
+static func read_forms(args: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var given: Variant = args.get("features", [])
+	if not given is Array:
+		return out
+	for raw: Variant in given:
+		if not raw is Dictionary:
+			continue
+		var one: Dictionary = raw
+		var name: String = str(one.get("name", "")).strip_edges().to_lower()
+		var form: String = str(one.get("form", "")).strip_edges()
+		if name.is_empty() or form.is_empty():
+			continue
+		out[name] = form
+	return out
+
+
+## The form the design gave a feature, or "".
+func form_of(name: String) -> String:
+	return str(forms.get(name.to_lower(), ""))
 
 
 ## The spots a submission gives its features: {"name", "x", "y", "z",
@@ -771,8 +817,15 @@ func lay(bricks: Array, remove: Array[int] = []) -> Array[int]:
 
 
 ## Take the proposal's bricks off, those still standing. True when they
-## are gone.
+## are gone. A form's parts come off as the surface pass lays them, with
+## what each replaced put back.
 func take_off(one: Proposal) -> bool:
+	if one.formed():
+		if not await assistant.surface_pass().settle_form(one.finish, ""):
+			return false
+		one.finish = []
+		one.ids = []
+		return true
 	var standing: Array = []
 	for id: int in one.ids:
 		if assistant.world.get_brick(id) != null:
@@ -841,6 +894,58 @@ static func _low(bricks: Array) -> Vector3:
 	return low
 
 
+## How the close look lays a feature's form, best first; "next" takes what
+## was laid off and lays the next. A form curved in profile is laid in
+## curved slopes first, its hard top edges rounded; one that tapers, in
+## straight slopes; whichever the feature's words name first. Either has its
+## plain faces skinned studs out, as real sets turn a curved or tapering face
+## (the form's cells: SNOT in most of their pieces). The next way is the
+## other slope family, then the first without the skins. A form no slope or
+## skin makes (round in plan, an arch, a flare, open, slender, at an angle,
+## turned, twisted) has nothing laid: the parts real sets build it with are
+## said. Replayed on design24's first builds, laying for those too skinned a
+## combine's body round its wheels, tiled what stood near a mast and rounded
+## the edges of an attic "set back above the overhanging cornice".
+static func form_ways(forms: PackedStringArray) -> Array:
+	var curved: int = forms.find("curved")
+	var tapering: int = forms.find("tapering")
+	if curved < 0 and tapering < 0:
+		return []
+	var curving: bool = curved >= 0 and (tapering < 0 or curved < tapering)
+	return [{"straight": not curving, "edges": curving, "skins": true},
+		{"straight": curving, "edges": false, "skins": true},
+		{"straight": not curving, "edges": curving, "skins": false}]
+
+
+## Lay a formed feature's parts by the next of its ways that lays any, in
+## [param box]: its findings and ids on [param one]. False when no way laid
+## anything.
+func lay_form(one: Proposal, box: AABB, forms: PackedStringArray) -> bool:
+	var ways: Array = form_ways(forms)
+	var curves := PackedStringArray()
+	var straights := PackedStringArray()
+	for cell: Variant in one.cells:
+		curves.append_array(FormParts.parts_of(cell, FormParts.CURVING))
+		straights.append_array(FormParts.parts_of(cell, FormParts.STRAIGHT))
+	while one.way + 1 < ways.size():
+		one.way += 1
+		var way: Dictionary = (ways[one.way] as Dictionary).duplicate()
+		way["curves"] = Array(curves)
+		way["straights"] = Array(straights)
+		var laid: Array = await assistant.surface_pass().form_finish(one.feature, box, way)
+		if laid.is_empty():
+			continue
+		one.finish = laid
+		one.ids = []
+		for raw: Variant in laid:
+			one.ids.append_array((raw as SurfacePass.Finding).ids)
+		one.piece = {"id": "form", "name": ", ".join(forms), "form": true}
+		return true
+	one.finish = []
+	one.ids = []
+	return false
+
+
 ## What a feature came to, in a line, once it has been settled.
 func said(name: String) -> String:
 	var one: Proposal = proposal(name)
@@ -848,6 +953,14 @@ func said(name: String) -> String:
 		return ""
 	var piece: String = "%s \"%s\"" % [one.piece.get("id", ""), one.piece.get("name", "")] \
 		if not one.piece.is_empty() else ""
+	if one.formed():
+		var laid: String = "%d of real sets' parts for its form laid by the app" % one.ids.size()
+		match one.verdict:
+			"accepted", "kept":
+				return laid + ", accepted"
+			"built":
+				return laid + ", kept in what the design built%s" % (": " + one.reason
+					if not one.reason.is_empty() else "")
 	match one.verdict:
 		"accepted":
 			return "real piece %s laid by the app, accepted%s" % [piece,
