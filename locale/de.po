@@ -15557,3 +15557,6 @@ msgstr "Auswählen und in der Ansicht einrahmen"
 
 msgid "Checking against %s…"
 msgstr "Wird mit %s verglichen…"
+
+msgid "its build steps were worked out again for the changes"
+msgstr "seine Bauschritte wurden für die Änderungen neu ausgearbeitet"

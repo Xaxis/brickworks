@@ -491,6 +491,10 @@ func _case_three_deep() -> void:
 		+ "0 FILE cap.ldr\n0 Cap\n0 Name: cap.ldr\n0 Author: Brickworks\n"
 		+ "1 0 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat\n0 NOFILE\n")
 	await _bar_on(text)
+	# The replace measured on what the app writes of the model: an edited model
+	# is written whole (its file is kept only while it is as opened, kbkeep),
+	# and the replace changes Cap's one line of that.
+	_store.forget_kept()
 	var before: String = _save()
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
@@ -511,6 +515,9 @@ func _case_three_deep() -> void:
 	await _open(after)
 	_check("three_deep: opened again as shown", shown == _looks())
 	await _open(text)
+	before = _save()
+	_check("three_deep: opened and saved unedited, its file to the byte (%s)" % _diff(text, before),
+		before == text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")

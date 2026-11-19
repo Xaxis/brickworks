@@ -602,7 +602,8 @@ func _on_save() -> bool:
 	elif not on_disk.is_empty() and on_disk.get_file().get_basename().strip_edges() == name:
 		if await store.export_paced(on_disk, name):
 			SaveTo.wrote(on_disk)
-			_say("saved “%s” — wrote %s" % [name, on_disk])
+			_say("saved “%s” — wrote %s%s" % [name, on_disk,
+				"" if store.order_words.is_empty() else " — " + store.order_words])
 		else:
 			_say("saved “%s” here, but could not write %s" % [name, on_disk])
 			return false
@@ -679,8 +680,11 @@ func _save_then_new() -> void:
 ## sooner told a person their work was safe while closing the tab lost it.
 func _say_when_stored(name: String) -> void:
 	var path: String = ModelStore.SAVE_DIR + ModelStore._safe_name(name) + ".ldr"
-	# A joint of a motion whose part is gone, written as it was.
+	# A joint of a motion whose part is gone, written as it was; and a build
+	# order its file did not have, once (ModelStore.order_words).
 	var gone: String = " — " + store.motions_gone_words if not store.motions_gone_words.is_empty() else ""
+	if not store.order_words.is_empty():
+		gone += " — " + store.order_words
 	if ModelStore.stored(path):
 		_say("saved “%s”%s" % [name, gone])
 		return

@@ -153,13 +153,36 @@ Whether what you built is still there tomorrow, and still means the same thing.
   and pagoda's pond, orthanc_square and pickabrick_big in other steps
   (keepbytes, 2026-11-19). Nor by a sub-model's or copy's name, which a
   rename changes (unit_steps' Sub renamed Crate). A file someone else made
-  is saved as kept text and never planned, so this changes only the models
-  the planner plans (a model of the app's own nobody gave steps): of 25 such
-  (gallery seeds, models/*, Orthanc without steps) 19 plan otherwise than
-  live at their first save, and better as steps_score.gd counts them (parts
-  floating 1,265 to 991, hidden 509 to 502, blocked 108 to 106), the castle
-  alone worse anywhere (blocked 96 to 102, floating 355 to 298; kbreview,
-  2026-11-19).
+  is saved as kept text and never planned. A model of the app's own is kept
+  too, as its file's text (`ModelStore._kept_for`), and an unedited save
+  writes that text again, byte for byte. Unedited is has_unsaved_work's test
+  (no history, nothing to redo, every part it opened with) with nothing else
+  a save writes changed since the frame after the open or save (`_as_kept`:
+  name, floor, views, lights, motions, program, looks, picture, links,
+  credit); then the file's own Name line, a floor it never said and a step's
+  parts in their order are kept. Otherwise the kept text is still written
+  while the model differs from it only in its build order (STEP lines and the
+  order of its parts, compared by value, so "1\t0" or "24.000" is the same
+  line), or in other lines at the same place (its name after Save as, its
+  floor), which are put into it where the file has them. has_unsaved_work
+  compares the saved file with that same text. An author's steps are compared step by
+  step, so a part put in another step is written. rel-m315 held on keepbytes
+  planning an older build's model again at an unedited save (mlattack's
+  m267_own_worked, line 20 to line 11; swapfind's car and its CRLF copy);
+  kbkeep keeps those, a model with no STEP lines, and one saved as another
+  name, in their file's order. The new plan is written once an edit changes
+  the parts or their copies, and that save says so once, on the bar and to
+  a session ("its build steps were worked out again for the changes",
+  `order_words`). Of the 25 models the planner plans (gallery seeds,
+  models/*, Orthanc without steps), none changes at its first unedited save;
+  once edited, they plan as keepbytes does: 19 otherwise than live, and better
+  as steps_score.gd counts them (parts floating 1,265 to 991, hidden 509 to
+  502, blocked 108 to 106), the castle alone worse anywhere (blocked 96 to
+  102, floating 355 to 298; kbreview, 2026-11-19). Not kept: the working
+  model restored at start-up and a Build together room's, both sent without
+  their steps (`forget_kept`). Known: the timeline and booklet of an unedited
+  model an older build planned show the new plan while its file keeps the
+  old one; nothing but an edit plans an app model's steps again.
   A saved model deleted and put back by Undo, renamed, or a set from the
   library is read by its bytes (`LdrModel.text_of`): read as text, a file
   that began with a BOM lost it.
@@ -168,7 +191,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   each opened and saved, a part deleted and undone (the same bytes, nothing
   to lose), redone (work to lose), reopened and saved (the same bytes); a BOM
   file deleted and put back, renamed and back, byte for byte; 4558-1 from
-  the library saved with its BOM. `KB_ALL=1` sweeps every fixture and
+  the library saved with its BOM; (F) m267_own_worked, the pagoda with no
+  STEP lines and swapfind's car, each saved unedited twice byte for byte with
+  nothing said, saved as another name in its file's order, then a part
+  deleted and saved (planned again, said once where the order moved) and
+  saved again (the same bytes, nothing said). `KB_ALL=1` sweeps every fixture and
   `KB_FILES` the files it names; `KB_SAVE=DIR` keeps each first and second
   save, named alike in any tree, to diff two builds.
   **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,

@@ -1382,6 +1382,9 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			var store: ModelStore = app.get("_store")
 			if store != null and not store.motions_gone_words.is_empty():
 				written += " %s%s." % [store.motions_gone_words.left(1).to_upper(), store.motions_gone_words.substr(1)]
+			# And a build order its file did not have, once (order_words).
+			if store != null and not store.order_words.is_empty():
+				written += " %s%s." % [store.order_words.left(1).to_upper(), store.order_words.substr(1)]
 			# Never refused (mcpreach3): the file is the model as it stood, and
 			# what is not finished is said after it. A save held until a design's
 			# features were settled kept a person's car unsaved, and a session

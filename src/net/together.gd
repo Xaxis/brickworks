@@ -616,6 +616,10 @@ func join(address: String, rejoining: bool = false) -> String:
 		var opened: Dictionary = await store.open_text_fetched(text, title)
 		if not str(opened["error"]).is_empty():
 			return "Could not open the session's model: %s" % opened["error"]
+	# Sent without its steps, it is no file of the model's: a save works its
+	# build order out (ModelStore.forget_kept).
+	if store != null:
+		store.forget_kept()
 	# Parts on their way, and a big model laid over frames, down first.
 	var until: int = Time.get_ticks_msec() + 90000
 	while (store.laying or not store.awaited.is_empty()) and Time.get_ticks_msec() < until:

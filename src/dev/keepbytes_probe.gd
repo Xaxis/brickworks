@@ -11,6 +11,14 @@
 ## pagoda's pond in other steps) until the third. Then (D) a BOM file
 ## deleted from the saved models and put back by Undo, and renamed and
 ## renamed back, byte for byte: both read it as text and lost the mark.
+## (F) kbkeep: the app's own models a save plans (Author: Brickworks, no
+## steps of an author's) opened and saved with no edit are their files byte
+## for byte, twice, and nothing said: m267's model an older build planned
+## (rel-m315 held on it coming back in a new order), the pagoda with no
+## STEP lines, and swapfind's car. Saved as another name unedited, its
+## parts in its file's order. A part deleted and saved, its steps worked out
+## again and said once where the order moved; saved again, the same bytes
+## and nothing said.
 ## (A0) a file that began with a BOM saves with it (mkreview's bk_bom_open,
 ## with no last line end). A redo that leaves the model empty (the part
 ## deleted was of a sub-model that is the whole model, and took the copy)
@@ -42,7 +50,7 @@ var _bar: ModelBar
 var _verbs: EditVerbs
 var _save: String = OS.get_environment("KB_SAVE")
 var _counts: Dictionary = {"files": 0, "A": 0, "A0": 0, "B": 0, "B2": 0, "emptied": 0, "C": 0, "D": 0,
-	"E": 0, "skipped": 0}
+	"E": 0, "F": 0, "skipped": 0}
 
 
 func _initialize() -> void:
@@ -88,6 +96,7 @@ func _run() -> void:
 	if not sweep:
 		await _bom_kept()
 		await _library_bom()
+		await _planned_kept()
 	for name: String in [NAME, NAME + " 2"]:
 		if FileAccess.file_exists(ModelStore.saved_path(name)):
 			DirAccess.remove_absolute(ModelStore.saved_path(name))
@@ -226,6 +235,70 @@ func _library_bom() -> void:
 		_fail("4558-1.mpd", "E opened from the library and saved, the BOM gone")
 	else:
 		print("  ok   4558-1.mpd from the library: opened and saved with its BOM")
+
+
+## (F) The app's own models whose steps a save works out, kept as their
+## files until edited.
+func _planned_kept() -> void:
+	var pagoda: PackedStringArray = []
+	for line: String in FileAccess.get_file_as_string("res://src/dev/fixtures/house/pagoda.ldr").split("\n"):
+		if line.strip_edges() != "0 STEP":
+			pagoda.append(line)
+	for each: Array in [
+			["m267_own_worked", FileAccess.get_file_as_string("res://src/dev/fixtures/mlattack/m267_own_worked.mpd"), true],
+			["pagoda with no steps", "\n".join(pagoda), false],
+			["swapfind's car", FileAccess.get_file_as_string("res://src/dev/fixtures/swapfind_car.mpd"), false]]:
+		await _planned_one(each[0], each[1], each[2])
+
+
+func _planned_one(what: String, text: String, moves: bool) -> void:
+	var said: String = ModelStore.title_in(text, "")
+	var opened: Dictionary = await _bar.open_text_with_progress(text, said if not said.is_empty() else "model")
+	_bar.opened.emit(int(opened.get("placed", 0)))
+	await _settle()
+	var title: String = _store.title
+	var ok: bool = true
+	if not _store.call("_keeps_order"):
+		_counts["F"] += 1
+		_fail(what, "F not a model whose steps a save works out")
+		return
+	for n: int in 2:
+		_store.save_as(title)
+		var got: String = FileAccess.get_file_as_string(ModelStore.saved_path(title))
+		if got != text or not _store.order_words.is_empty():
+			_counts["F"] += 1
+			ok = _fail(what, "F unedited save %d: byte for byte %s, said “%s”; differ: %s" % [n + 1, got == text,
+				_store.order_words, _diff(text.to_utf8_buffer(), got.to_utf8_buffer())])
+		var again: Dictionary = await _bar.open_text_with_progress(got, title)
+		_bar.opened.emit(int(again.get("placed", 0)))
+		await _settle()
+	_store.save_as(NAME)
+	var other: String = FileAccess.get_file_as_string(ModelStore.saved_path(NAME))
+	if ModelStore.order_moved(text, other) or not _store.order_words.is_empty():
+		_counts["F"] += 1
+		ok = _fail(what, "F saved as another name unedited: its parts moved %s, said “%s”" % [
+			ModelStore.order_moved(text, other), _store.order_words])
+	_store.save_as(title)
+	_builder.select_brick(_first_part().id, false)
+	await _verbs.press("delete")
+	await _settle()
+	_store.save_as(title)
+	var edited: String = FileAccess.get_file_as_string(ModelStore.saved_path(title))
+	var moved: bool = ModelStore.order_moved(text, edited)
+	if moved != (_store.order_words == ModelStore.ORDER_WORDS) or moves and not moved:
+		_counts["F"] += 1
+		ok = _fail(what, "F a part deleted and saved: order moved %s (expected %s), said “%s”" % [moved,
+			moves, _store.order_words])
+	_store.save_as(title)
+	var next: String = FileAccess.get_file_as_string(ModelStore.saved_path(title))
+	if next != edited or not _store.order_words.is_empty():
+		_counts["F"] += 1
+		ok = _fail(what, "F saved again: byte for byte %s, said “%s”" % [next == edited, _store.order_words])
+	if FileAccess.file_exists(ModelStore.saved_path(title)):
+		DirAccess.remove_absolute(ModelStore.saved_path(title))
+	if ok:
+		print("  ok   %s: unedited saves byte for byte twice, nothing said; another name keeps its order; a part deleted, steps worked out again%s; saved again, the same"
+			% [what, ", said once" if moved else ""])
 
 
 ## Save as the bar's Save does (ModelBar._on_save): a model it says it is

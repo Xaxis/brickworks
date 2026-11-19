@@ -15557,3 +15557,6 @@ msgstr "Seleccionarlo y encuadrarlo en la vista"
 
 msgid "Checking against %s…"
 msgstr "Comparando con %s…"
+
+msgid "its build steps were worked out again for the changes"
+msgstr "sus pasos de montaje se calcularon de nuevo para los cambios"
