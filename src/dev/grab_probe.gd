@@ -246,6 +246,8 @@ func _cases(only: String, args: PackedStringArray) -> void:
 		await _landing_case()
 	if only.is_empty() or only == "coast":
 		await _coast_case()
+	if only.is_empty() or only == "coast" or only == "firstmove":
+		await _first_move_case()
 	if only.is_empty() or only == "cardan":
 		await _cardan_case()
 	if only.is_empty() or only == "follow":
@@ -1526,6 +1528,10 @@ func _slide_drag(name: String, grab: Grab) -> void:
 	for target: float in targets:
 		var screen: Vector2 = _camera.unproject_position(hold + grab.axis * target)
 		await _move(screen, MOUSE_BUTTON_MASK_LEFT)
+		if not grab._decided:
+			# Along the line, and as well a chord of a turn round it: the
+			# first move waits for the next to say which (Grab._gone_round).
+			continue
 		if grab.mode != "slide":
 			break
 		var expected: float = clampf(target, span.x, span.y)
@@ -4665,6 +4671,195 @@ func _boom_by_hand() -> void:
 	if _builder.history_depth() > depth:
 		_builder.undo()
 		await _frames(3)
+
+
+## grab_flow's flywheel (tools/web/grab_flow.mjs): a gear 40 on an axle 3 in
+## a Technic plate 2 x 4 with holes on a tower of three bricks 2 x 4.
+const FLOW_FLYWHEEL := """0 grab_flow's flywheel
+0 Name: flow_flywheel.ldr
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 7 0 -80 0 1 0 0 0 1 0 0 0 1 3709b.dat
+1 0 0 -102 0 0 -1 0 1 0 0 0 0 1 4519.dat
+1 7 0 -112 0 1 0 0 0 0 1 0 -1 0 3649.dat
+"""
+## How far round the pointer has gone when the app reads its first move, a
+## turn at half a turn a second as grab_flow's (degrees): a frame to a
+## second late.
+const FIRST_MOVE_ROUND: Array = [30, 60, 90, 120, 150, 180]
+
+
+## The first move a drag reads decides between turning and sliding a joint
+## that does both. A browser drawing a frame a second reads it late, the
+## pointer part way round: grab_flow's flywheel, turned round its axle's
+## handle at half a turn a second, slid along its axle instead in two runs
+## of four on rel-m314 and on brickworks.diy (grabroot, 2026-11-19), its
+## joints read right. Here as there: the handle the page is given, a circle
+## round its pivot, the first move read that far round and the next as late
+## again, from twelve sides, near and as far off as the crane is in
+## grab_flow's window. Each turns. A drag straight along the axle as it is
+## drawn still slides.
+func _first_move_case() -> void:
+	var name: String = "first move"
+	print("\n%s" % name)
+	var path: String = OUT.path_join("flow_flywheel.ldr")
+	_write(path, FLOW_FLYWHEEL)
+	if not await _open(path):
+		_check("%s: the flywheel opens" % name, false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var gear: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3649":
+			gear = brick.id
+	var wheel: int = int(bodies.body_of[gear])
+	var link: Bodies.Link = bodies.parent_link.get(wheel)
+	_check("%s: the gear and its axle are one body on the axle's joint (%d parts, %s)" % [name,
+		(bodies.members[wheel] as PackedInt64Array).size(), "none" if link == null else link.kind],
+		link != null and link.kind == "axle" and (bodies.members[wheel] as PackedInt64Array).size() == 2)
+	if link == null:
+		return
+	var box := AABB()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			var here: AABB = brick.transform * _library.parts[brick.part_id].bounds
+			box = here if box.size == Vector3.ZERO else box.merge(here)
+	var slid_round: PackedStringArray = []
+	var turned: int = 0
+	var along_slid: int = 0
+	var along_asked: int = 0
+	var along_both: int = 0
+	var missed: PackedStringArray = []
+	_waited = 0
+	_waited_moved = 0
+	_waited_not = []
+	for margin: float in [1.15, 14.0]:
+		for yaw: int in range(0, 360, 30):
+			_camera.look_from(Vector3(sin(deg_to_rad(yaw)), 0.75, cos(deg_to_rad(yaw))).normalized())
+			_camera.frame(box, margin)
+			await _frames(15)
+			await _camera_still()
+			var spot: Variant = _grab.handle_on(wheel, link)
+			if spot == null or not (spot as Dictionary).has("pivot"):
+				slid_round.append("%d° (no handle)" % yaw)
+				continue
+			# As grab_flow turns it: round the pivot through the handle, at
+			# least 10 px out.
+			var c: Vector2 = spot["pivot"]
+			var r: float = maxf((spot["screen"] as Vector2).distance_to(c), 10.0)
+			var a0: float = atan2((spot["screen"] as Vector2).x - c.x, -((spot["screen"] as Vector2).y - c.y))
+			var start: Vector2 = c + r * Vector2(sin(a0), -cos(a0))
+			var under: int = _verbs.brick_at(start)
+			if under == 0:
+				# Far off in a small window, 10 px out from the pivot can be
+				# past the parts: there is nothing there to turn.
+				missed.append("%d°/%s" % [yaw, "near" if margin < 2.0 else "far"])
+				continue
+			for theta: int in FIRST_MOVE_ROUND:
+				var mode: String = await _first_mode(under, start, c + r * Vector2(sin(a0 + deg_to_rad(theta)),
+					-cos(a0 + deg_to_rad(theta))), c + r * Vector2(sin(a0 + deg_to_rad(2 * theta)),
+					-cos(a0 + deg_to_rad(2 * theta))))
+				if mode == "turn":
+					turned += 1
+				else:
+					slid_round.append("%d°/%s %s round: %s" % [yaw, "near" if margin < 2.0 else "far", theta, mode])
+				await _one_move_let_go(gear, link, under, start, c + r * Vector2(sin(a0 + deg_to_rad(theta)),
+					-cos(a0 + deg_to_rad(theta))), "%d°/%s %s round" % [yaw, "near" if margin < 2.0 else "far", theta])
+			# Straight along the axle as it is drawn, 24 px.
+			var up: Vector2 = _camera.unproject_position(link.point + link.axis.normalized() * 20.0) \
+				- _camera.unproject_position(link.point)
+			if up.length() > 12.0:
+				var mode: String = await _first_mode(under, start, start + up.normalized() * 24.0,
+					start + up.normalized() * 48.0, up)
+				await _one_move_let_go(gear, link, under, start, start + up.normalized() * 24.0,
+					"%d°/%s along" % [yaw, "near" if margin < 2.0 else "far"])
+				# Where the point held, turned, goes along the line as well, a
+				# drag along it says nothing of which it is: the joint turns.
+				if _turning_off_line < 60.0:
+					along_both += 1
+				else:
+					along_asked += 1
+					if mode == "slide":
+						along_slid += 1
+	var asked: int = (2 * 12 - missed.size()) * FIRST_MOVE_ROUND.size()
+	_check("%s: turned round its axle, the flywheel turns however far round the app reads its first move, "
+		% name + "%d of %d%s%s" % [turned, asked, "" if slid_round.is_empty() else " (not: %s)" % ", ".join(slid_round),
+		"" if missed.is_empty() else " (nothing under the press: %s)" % ", ".join(missed)],
+		turned == asked and missed.size() <= 4)
+	_check("%s: let go after one move while it waits for the next, it slides as that move asked, %d of %d%s"
+		% [name, _waited_moved, _waited, "" if _waited_not.is_empty() else " (not: %s)" % ", ".join(_waited_not)],
+		_waited > 0 and _waited_moved == _waited)
+	_check("%s: dragged straight along its axle where a turn goes across it, it slides, %d of %d (%d held where a turn goes along it too)"
+		% [name, along_slid, along_asked, along_both], along_asked > 0 and along_slid == along_asked)
+
+
+## First moves that waited for a next one and were let go instead, how many
+## of those slid as the move asked, and how the rest went.
+var _waited: int = 0
+var _waited_moved: int = 0
+var _waited_not: PackedStringArray = []
+
+
+## Pressed on [param under] at [param from], one move read at [param to],
+## and let go: when that move waits for the next to say turn or slide
+## (Grab._gone_round), the gear slides along its axle as the move asked, by
+## the Grab's own shift and at least half an LDU, and is never left where it
+## was. Taken back after. A move that does not wait is let go of unmoved.
+func _one_move_let_go(gear: int, link: Bodies.Link, under: int, from: Vector2, to: Vector2,
+		said: String) -> void:
+	await _clean_slate()
+	if under == 0 or not _grab.press(under, from) or _grab.grab == null:
+		return
+	var before: Transform3D = _world.get_brick(gear).transform
+	var depth: int = _builder.history_depth()
+	_grab.motion(to)
+	var held: Grab = _grab.grab
+	if held == null or held._decided:
+		_grab.cancel()
+		await _frames(1)
+		return
+	_waited += 1
+	_grab.release()
+	await _settled()
+	await _frames(2)
+	var along: float = (_world.get_brick(gear).transform.origin - before.origin).dot(link.axis.normalized())
+	if held.mode == "slide" and absf(held.shift) >= 0.5 and absf(absf(along) - absf(held.shift)) < 0.1:
+		_waited_moved += 1
+	elif _waited_not.size() < 6:
+		_waited_not.append("%s: %s %.2f LDU along, asked %.2f" % [said, held.mode, along, held.shift])
+	if _builder.history_depth() > depth:
+		_builder.undo()
+	await _frames(1)
+
+
+## How far the way the point held goes when it turns is drawn off [param
+## line], degrees, at the last [method _first_mode] given one.
+var _turning_off_line: float = 0.0
+
+
+## How a drag pressed on [param under] at [param from], its first move read
+## at [param to] and its next at [param then], moves it: "turn", "slide", or
+## why nothing. Through GrabDrag as main.gd's drag calls it, and let go of.
+func _first_mode(under: int, from: Vector2, to: Vector2, then: Vector2, line := Vector2.ZERO) -> String:
+	await _clean_slate()
+	if under == 0 or not _grab.press(under, from) or _grab.grab == null:
+		return "not taken (%s)" % _grab.last_words
+	if line != Vector2.ZERO:
+		var g: Grab = _grab.grab
+		var held: Vector3 = g._hold - g.pivot
+		var way: Vector3 = g.axis.cross(held - g.axis * held.dot(g.axis))
+		var turning: Vector2 = _camera.unproject_position(g._hold + way.normalized() * 3.0) \
+			- _camera.unproject_position(g._hold)
+		_turning_off_line = 90.0 if turning.length() < 0.5 \
+			else rad_to_deg(acos(absf(turning.normalized().dot(line.normalized()))))
+	_grab.motion(to)
+	_grab.motion(then)
+	var mode: String = _grab.grab.mode if _grab.grab != null else "let go"
+	_grab.cancel()
+	await _frames(1)
+	return mode
 
 
 ## A hinge holds by friction: flicked as the flywheel is, it stays where the
