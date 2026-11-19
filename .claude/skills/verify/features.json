@@ -1870,6 +1870,14 @@
       "tests": []
     },
     {
+      "id": "cli:m3review probe",
+      "kind": "cli",
+      "entry": "src/dev/m3review_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:10910 tools/probe.sh m3review_probe -- --held-out=31058-1 --assistant=on, and again with --assistant=on alone, a stand-in for /api/collection on 10910 (python3 -I tools/collection_standin.py 10910)   (headless: godot --headless --path . --script src/dev/m3review_probe.gd. m3review's attacks on mcpreach3, made checks by m3fix: a held-out (realset) tab's save over unsettled features refused as pre261 refused it, a person's written with nothing laid; pose_model joint= an assembly's joint begins no reading of the drag joints; edit_collection sets= with built= checks every argument before the add, and a reply lost after the add or the Built marks is told it may have been made; M3REV_ONLY=save,pose,coll,hinge,motor)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:made with probe",
       "kind": "cli",
       "entry": "src/dev/made_with_probe.gd",
@@ -1938,6 +1946,14 @@
       "kind": "cli",
       "entry": "src/dev/mcpreach2_probe.gd",
       "reach": "tools/probe.sh mcpreach2_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach2_probe.gd. APP_UX9 #10: where_to_attach with nothing selected is the whole model, a picture in 1 call, its numbered points over every part and the rest as dots, parts= the parts named; render_model turntable says the camera goes once round a model that stands still; attachment_points on the walk's y6 SPIKE motor names its output's axle and pin holes apart from the case's, simulate_mechanism driver=<motor> turns the output, move_part names the motor; submit_design pool=31058-1 all in the set, over by part, 31058 read as 31058-1, two sets pooled, an unknown number said so. The relay's other-chats words: python3 tools/minitest.py tests/test_relay_chats.py)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:mcpreach3 probe",
+      "kind": "cli",
+      "entry": "src/dev/mcpreach3_probe.gd",
+      "reach": "tools/probe.sh mcpreach3_probe; tools/relay_probe.sh mcpreach3 for r5 too   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach3_probe.gd. APP_UX10's mcpreach3: save_model over unsettled features writes the file and says what is not finished, open_model save_first= keeps a changed design and opens in 2 calls, edit_collection sets= built= adds a set kept built in 1 call with its loose parts said (a throwaway account, deleted), pose_model lists and swings a click hinge with no assembly, attachment_points on a motor says how real sets mount it and a motor on single studs is named before Simulate, edit_steps says why nothing changed and step= past the last makes one; the relay's other-chats line once a chat is tests/test_relay_chats.py)",
       "area": "mcp",
       "tests": []
     },

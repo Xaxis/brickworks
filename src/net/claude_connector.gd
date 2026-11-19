@@ -121,6 +121,13 @@ signal chats_changed(chats: Array)
 ## UTC), which tool that was, and what it did in words. Two at once is two
 ## chats editing one model, which the tab says plainly ([method keep_chat]).
 var chats: Array = []
+## When this tab first answered each chat's call (ISO, UTC), by its short
+## name: said back on each later answer of that chat's ([constant
+## HEARD_KEY]), so the relay says the chats before it once a chat and tab,
+## in a tab it calls by target= too, where its pick says nothing of its
+## calls (m3review L1). Never emptied while the tab is open.
+var _heard: Dictionary = {}
+const HEARD_KEY := "brickworks/heard"
 ## How long a chat that has said nothing still counts as working here: the
 ## relay's HELD_MS (api/mcp.js), ten minutes since mcpreach2.
 const HELD_S := 10 * 60
@@ -596,6 +603,19 @@ func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> v
 	if not who.is_empty():
 		found["who"] = who
 	chats_changed.emit(chats)
+
+
+## When this tab first answered a call of the chat that made the tool call
+## [param request] ([member _heard]), or "" for its first here (kept from
+## now) and for a call that names no chat.
+func heard_before(request: Dictionary) -> String:
+	var chat: String = str(_chat_said(request).get("chat", ""))
+	if chat.is_empty():
+		return ""
+	if _heard.has(chat):
+		return str(_heard[chat])
+	_heard[chat] = Time.get_datetime_string_from_system(true) + "Z"
+	return ""
 
 
 ## Which chat the relay says made [param request]: {chat, since}, or empty.
@@ -1284,6 +1304,7 @@ func _answer(token: String, work: Dictionary) -> void:
 	# (ViewerTools) is the person looking, not Claude building: the panel
 	# does not say Claude is at work for it.
 	var looking: bool = Later.script(&"ViewerTools").handles(tool)
+	var heard: String = "" if looking or tool.is_empty() else heard_before(request)
 	if not looking:
 		if not tool.is_empty():
 			_chat_called(request, tool, arguments)
@@ -1311,6 +1332,8 @@ func _answer(token: String, work: Dictionary) -> void:
 		var meta: Dictionary = carried.get("_meta") if carried.get("_meta") is Dictionary else {}
 		meta["brickworks/tab"] = tab()
 		meta["brickworks/model"] = _model()
+		if not heard.is_empty():
+			meta[HEARD_KEY] = heard
 		carried["_meta"] = meta
 	await _ask("%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
 		int(work.get("id", 0))], JSON.stringify(answer if sitting.is_empty() else _taught(sitting, tool, answer)),

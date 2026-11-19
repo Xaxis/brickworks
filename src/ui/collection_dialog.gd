@@ -1398,17 +1398,29 @@ func _needs_at(path: String) -> Dictionary:
 
 # --- what the buttons do ------------------------------------------------
 
+## Sets added by their numbers, a copy each, as Add a set adds the ones
+## typed: the window's own add, which edit_collection's sets= makes too
+## (mcpreach3), after any write of the panel's and the counts typed in it
+## ([method _begin]). [method CollectionStore.change]'s answer, its kind
+## kept: an add whose reply was lost may have been made, which
+## CollectionStore.add's error alone read as nothing changed, and a session
+## sent it again (m3review H2).
+func add_sets(text: String) -> Dictionary:
+	await _begin()
+	var done: Dictionary = await store.change({"from": "sets", "text": text, "mode": "add"})
+	_end()
+	return done
+
+
 func _add_typed() -> void:
 	var text: String = _typed.text.strip_edges()
 	if text.is_empty():
 		_say("type a set number first, like 10237-1")
 		return
 	_say("adding %s…" % text)
-	await _begin()
-	var result: Dictionary = await store.add({"from": "sets", "text": text, "mode": "add"})
-	_end()
-	if not str(result["error"]).is_empty():
-		_say(str(result["error"]))
+	var done: Dictionary = await add_sets(text)
+	if done["kind"] != CollectionStore.DONE:
+		_say(str(done["said"]))
 		return
 	_typed.text = ""
 	var unknown: PackedStringArray = store.collection.unknown_sets
