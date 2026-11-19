@@ -3944,11 +3944,6 @@ static var _shaped: Dictionary = {}
 static var _shaped_lock := Mutex.new()
 
 
-## What that reading depends on: the parts [method _survey] makes nodes of,
-## in its order, each with its sub-model and copy, where it is and the mesh
-## it is read from; and its colour, which a sub-assembly's kind is named by
-## (_assembly), for the sub-assemblies kept with it. Into [param steps],
-## when given one, each one's step (-1 for none), read in the same pass.
 ## The model's parts in an order of their own: by height, the sub-model and
 ## copy each is in, part, across, along, colour and how it is turned, each
 ## as a file writes it (to a thousandth of an LDU). What the order is worked
@@ -3978,6 +3973,11 @@ static func in_order(world: BrickWorld) -> Array:
 	return out
 
 
+## What that reading depends on: the parts [method _survey] makes nodes of,
+## in its order, each with its sub-model and copy, where it is and the mesh
+## it is read from; and its colour, which a sub-assembly's kind is named by
+## (_assembly), for the sub-assemblies kept with it. Into [param steps],
+## when given one, each one's step (-1 for none), read in the same pass.
 static func _shape_of(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		steps: PackedInt32Array = PackedInt32Array()) -> Array:
 	var ids := PackedInt64Array()

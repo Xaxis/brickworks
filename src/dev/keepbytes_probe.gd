@@ -11,12 +11,18 @@
 ## pagoda's pond in other steps) until the third. Then (D) a BOM file
 ## deleted from the saved models and put back by Undo, and renamed and
 ## renamed back, byte for byte: both read it as text and lost the mark.
+## (A0) a file that began with a BOM saves with it (mkreview's bk_bom_open,
+## with no last line end). A redo that leaves the model empty (the part
+## deleted was of a sub-model that is the whole model, and took the copy)
+## is counted "emptied", not B2: an empty model is nothing to lose. (E) a
+## set from the library that begins with a BOM keeps it through a save.
 ##
 ##   godot --headless --path . --script src/dev/keepbytes_probe.gd
 ##
 ## KB_ALL=1 sweeps every fixture under src/dev/fixtures instead, and the
-## files KB_FILES names (spaces between); KB_SAVE=DIR writes each file's first
-## and second save there, named the same in any snapshot, to diff two builds.
+## files KB_FILES names (spaces between; alone, those only); KB_SAVE=DIR
+## writes each file's first and second save there, named the same in any
+## snapshot, to diff two builds.
 extends SceneTree
 
 const NAME := "Keepbytes Probe"
@@ -24,6 +30,7 @@ const FILES: Array = [
 	"res://src/dev/fixtures/bench/sculpt170-042.ldr",
 	"res://src/dev/fixtures/house/pagoda.ldr",
 	"res://src/dev/fixtures/mlattack/h_bom_crlf.ldr",
+	"res://src/dev/fixtures/keepbytes/bk_bom_open.mpd",
 ]
 const BOM_FILE := "res://src/dev/fixtures/mlattack/h_bom_crlf.ldr"
 var _failures: int = 0
@@ -34,7 +41,8 @@ var _builder: Builder
 var _bar: ModelBar
 var _verbs: EditVerbs
 var _save: String = OS.get_environment("KB_SAVE")
-var _counts: Dictionary = {"files": 0, "A": 0, "B": 0, "B2": 0, "C": 0, "D": 0, "skipped": 0}
+var _counts: Dictionary = {"files": 0, "A": 0, "A0": 0, "B": 0, "B2": 0, "emptied": 0, "C": 0, "D": 0,
+	"E": 0, "skipped": 0}
 
 
 func _initialize() -> void:
@@ -65,17 +73,21 @@ func _run() -> void:
 	_verbs = _main.get("_verbs")
 	_store.keeps = true
 	var files := PackedStringArray(FILES)
-	if OS.get_environment("KB_ALL") == "1":
+	var named: PackedStringArray = OS.get_environment("KB_FILES").split(" ", false)
+	var sweep: bool = OS.get_environment("KB_ALL") == "1" or not named.is_empty()
+	if sweep:
 		files = PackedStringArray()
-		_fixtures("res://src/dev/fixtures", files)
-		files.sort()
-		files.append_array(OS.get_environment("KB_FILES").split(" ", false))
+		if OS.get_environment("KB_ALL") == "1":
+			_fixtures("res://src/dev/fixtures", files)
+			files.sort()
+		files.append_array(named)
 	if not _save.is_empty():
 		DirAccess.make_dir_recursive_absolute(_save)
 	for path: String in files:
 		await _one(path)
-	if OS.get_environment("KB_ALL") != "1":
+	if not sweep:
 		await _bom_kept()
+		await _library_bom()
 	for name: String in [NAME, NAME + " 2"]:
 		if FileAccess.file_exists(ModelStore.saved_path(name)):
 			DirAccess.remove_absolute(ModelStore.saved_path(name))
@@ -106,15 +118,23 @@ func _one(path: String) -> void:
 	var file: PackedByteArray = _bytes()
 	_keep(path, "first", file)
 	var ok: bool = true
+	# (A0) A file that began with a BOM saves with it (mkreview's
+	# bk_bom_open: a BOM and no last line end).
+	var mark := PackedByteArray([0xEF, 0xBB, 0xBF])
+	if FileAccess.get_file_as_bytes(path).slice(0, 3) == mark and file.slice(0, 3) != mark:
+		_counts["A0"] += 1
+		ok = _fail(path, "A0 began with a BOM, saved without it")
 	if _store.has_unsaved_work() or _store.saved_text().to_utf8_buffer() != file:
 		_counts["A"] += 1
 		ok = _fail(path, "A right after Save: unsaved %s, what Save writes is the file %s; differ: %s" % [
 			_store.has_unsaved_work(), _store.saved_text().to_utf8_buffer() == file,
 			_diff(file, _store.saved_text().to_utf8_buffer())])
 	var first: BrickWorld.Brick = _first_part()
+	var had: int = _parts()
 	_builder.select_brick(first.id, false)
 	await _verbs.press("delete")
 	await _settle()
+	var gone: int = had - _parts()
 	await _verbs.press("undo")
 	await _settle()
 	var back: PackedByteArray = _store.saved_text().to_utf8_buffer()
@@ -124,9 +144,15 @@ func _one(path: String) -> void:
 			_store.has_unsaved_work(), _diff(file, back)])
 	await _verbs.press("redo")
 	await _settle()
-	if not _store.has_unsaved_work():
+	# A part of a sub-model that is the whole model takes the whole copy
+	# with it, and an empty model is nothing to lose (has_unsaved_work: an
+	# empty baseplate), the saved file holding it all still.
+	if _parts() == 0:
+		_counts["emptied"] += 1
+	elif not _store.has_unsaved_work():
 		_counts["B2"] += 1
-		ok = _fail(path, "B2 redone, a part gone, yet nothing to lose")
+		ok = _fail(path, "B2 redone, %d of %d parts gone (%d by the delete; first %s %s in “%s”), yet nothing to lose"
+			% [had - _parts(), had, gone, first.part_id, first.id, Assemblies.path_of(first)])
 	await _verbs.press("undo")
 	await _settle()
 	began = Time.get_ticks_msec()
@@ -176,6 +202,30 @@ func _bom_kept() -> void:
 			renamed, back, other.slice(0, 3) == was.slice(0, 3), home == was, _diff(was, home)])
 	else:
 		print("  ok   %s: deleted and put back, renamed and back, byte for byte" % BOM_FILE)
+
+
+## (E) A set from the library that begins with a BOM (4558-1, as the
+## library's fetch gives it) opens with it and saves with it: read as text
+## it lost the mark, and the save wrote the file a mark shorter.
+func _library_bom() -> void:
+	var library: ModelLibrary = _main.get("_model_library")
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes("res://vendor/omr/files/4558-1.mpd")
+	var got: Dictionary = library._text_of({"file": "4558-1.mpd"}, {"code": 200, "bytes": bytes})
+	var text: String = str(got["text"])
+	if not text.begins_with(LdrModel.bom()) or text.length() < 2:
+		_counts["E"] += 1
+		_fail("4558-1.mpd", "E the library's text has no BOM")
+		return
+	var opened: Dictionary = await _bar.open_text_with_progress(text, "4558-1")
+	_bar.opened.emit(int(opened.get("placed", 0)))
+	await _settle()
+	await _save_now()
+	var saved: PackedByteArray = _bytes()
+	if saved.slice(0, 3) != PackedByteArray([0xEF, 0xBB, 0xBF]):
+		_counts["E"] += 1
+		_fail("4558-1.mpd", "E opened from the library and saved, the BOM gone")
+	else:
+		print("  ok   4558-1.mpd from the library: opened and saved with its BOM")
 
 
 ## Save as the bar's Save does (ModelBar._on_save): a model it says it is

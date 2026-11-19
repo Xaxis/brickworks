@@ -146,6 +146,25 @@ Whether what you built is still there tomorrow, and still means the same thing.
   castle, 7128-1 and 21008-1, each saved three times in a row to the byte,
   every copy by its name in the app and on the site
   (`tools/web/copy_names_check.mjs`).
+  The build order is worked out from the parts in an order of their own (by
+  height, sub-model and copy, part, place, colour and turn,
+  `Instructions.in_order`), never the order the file lists them, which is
+  the last saved plan: saved, opened and saved, sculpt170-042's potato body
+  came back built in the model's steps, and pagoda's pond, orthanc_square
+  and pickabrick_big in other steps (keepbytes, 2026-11-19). Of 203 models
+  (every fixture and 18 real files) 8 fixtures plan otherwise than live at
+  their first save, the real sets none (their steps are their authors').
+  A saved model deleted and put back by Undo, renamed, or a set from the
+  library is read by its bytes (`LdrModel.text_of`): read as text, a file
+  that began with a BOM lost it.
+  **Check:** `tools/probe.sh keepbytes_probe` (headless, ~3 min): sculpt170-042,
+  pagoda, h_bom_crlf and mkreview's bk_bom_open (a BOM, no last line end),
+  each opened and saved, a part deleted and undone (the same bytes, nothing
+  to lose), redone (work to lose), reopened and saved (the same bytes); a BOM
+  file deleted and put back, renamed and back, byte for byte; 4558-1 from
+  the library saved with its BOM. `KB_ALL=1` sweeps every fixture and
+  `KB_FILES` the files it names; `KB_SAVE=DIR` keeps each first and second
+  save, named alike in any tree, to diff two builds.
   **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
   each as someone else's file and as the app's own: LDView's rule, read in the
   probe apart from LdrModel (with the app's one rule for a library's shortcut
