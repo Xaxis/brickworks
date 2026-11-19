@@ -68,13 +68,18 @@ def test_the_one_who_blocked_is_told_why_and_the_one_blocked_only_that_it_cannot
     said = node("""
 import { refuseFor, WORDS } from "./api/_blocks.js";
 const asked = (state, kind) => { try { refuseFor(state, kind); return null; } catch (e) { return [e.status, e.message]; } };
-console.log(JSON.stringify({ kinds: ["follow", "comment", "reply", "photo", "list", "like"].map((kind) =>
-  [asked("blocked", kind), asked("blocked_by", kind), asked(null, kind)]), words: WORDS }));
+const kinds = ["follow", "comment", "reply", "photo", "list", "like", "remix", "collect"];
+console.log(JSON.stringify({ kinds: kinds.map((kind) =>
+  [kind, asked("blocked", kind), asked("blocked_by", kind), asked(null, kind)]), words: WORDS }));
 """)
-    for blocked, blocked_by, neither in said["kinds"]:
-        assert blocked[0] == 409 and "You blocked" in blocked[1] and "Settings › Blocked people" in blocked[1]
-        # Neutral: no word of a block, a 403 like any other refusal.
-        assert blocked_by[0] == 403 and not re.search(r"block", blocked_by[1], re.I) and blocked_by[1].startswith("You can’t ")
+    assert len(said["kinds"]) == 8
+    for kind, blocked, blocked_by, neither in said["kinds"]:
+        assert blocked[0] == 409 and "You blocked" in blocked[1] and "Settings › Blocked people" in blocked[1], kind
+        # Neutral: no word of a block, a 403 like any other refusal; a
+        # publish's 409, as its other refusals, since the app answers a 403
+        # there by publishing again at a new link.
+        assert blocked_by[0] == (409 if kind == "remix" else 403), kind
+        assert not re.search(r"block", blocked_by[1], re.I) and blocked_by[1].startswith("You can’t "), kind
         assert neither is None
     words = said["words"]
     assert words["yourself"][0] == 409 and words["nobody"] == [404, "Nobody here has that handle."]
@@ -112,15 +117,24 @@ def test_block_sql_is_additive_with_row_security_and_no_client_role() -> None:
     functions = set(re.findall(r"create or replace function public\.(\w+)\(", sql))
     assert {"block_person", "block_list", "block_between", "block_on", "block_hidden", "block_models", "block_named",
             "block_counts", "block_count_against", "block_row_barred", "blocks_guard_follow", "blocks_guard_comment",
-            "blocks_guard_collection_follow", "blocks_guard_photo", "blocks_guard_like"} <= functions
+            "blocks_guard_collection_follow", "blocks_guard_photo", "blocks_guard_like", "blocks_guard_remix",
+            "blocks_guard_collect"} <= functions
     for name in functions:
         assert re.search(rf"revoke all on function public\.{name}\([^)]*\) from public, anon, authenticated;", sql), name
         assert "security definer" in sql
     # Nothing it creates is a client's: every grant goes to the server's role alone.
     assert set(re.findall(r"grant execute on function public\.\w+\([^)]*\) to (\w+);", sql)) == {"service_role"}
     # A trigger on each table a block refuses a write to.
-    for table in ("follows", "collection_follows", "model_comments", "build_photos", "model_likes"):
-        assert re.search(rf"create or replace trigger \w+\s+before insert(?: or update)? on public\.{table}\b", sql), table
+    for table in ("follows", "collection_follows", "model_comments", "build_photos", "model_likes", "shared_models",
+                  "model_collection_items"):
+        assert re.search(rf"create or replace trigger \w+\s+before insert(?: or update(?: of \w+)?)? on public\.{table}\b", sql), \
+            table
+    # A remix link a model already had stays: only a new one is refused.
+    remix = re.search(r"function public\.blocks_guard_remix\(\).*?\$\$;", sql, re.S).group(0)
+    assert "new.remixed_from is not distinct from old.remixed_from" in remix
+    # A list filled many at once keeps the rest: the row is left out, not refused.
+    collect = re.search(r"function public\.blocks_guard_collect\(\).*?\$\$;", sql, re.S).group(0)
+    assert "return null;" in collect and "raise" not in collect
 
 
 def test_nobody_is_told_of_a_block() -> None:
@@ -144,3 +158,26 @@ def test_every_new_word_has_its_three_languages() -> None:
         table = json.loads((ROOT / f"web/_lang/{lang}.json").read_text())["scripts"]
         missing = [w for w in words if w not in table and not w.startswith("say ")]
         assert not missing, (lang, missing)
+
+
+def test_a_blocked_persons_work_leaves_the_model_page_and_the_latest() -> None:
+    share = (ROOT / "api/share.js").read_text()
+    page = re.search(r"async function leaveOffBlocked\(.*?\n\}", share, re.S).group(0)
+    # The owner's blocks, as the page is everybody's; their counts with them.
+    assert "blockedHandles(own.owner)" in page and "page.remixes = " in page and "lists.count = " in page
+    # A new remix link refused before any file is written.
+    publish = share[share.index("const parent = await remixOf(body.remixed_from, id);"):]
+    assert publish.index('refuseFor(await standingBetween(owner, parent.owner), "remix")') < publish.index("putFile(")
+    follows = (ROOT / "api/_follows.js").read_text()
+    latest = re.search(r"export async function latest\(.*?\n\}", follows, re.S).group(0)
+    assert '"private, no-store"' in latest and "withoutBlocked(" in latest and "rowsWithout(photos" in latest
+    # Its two pages ask as the person, at a URL of its own the CDN keeps for nobody.
+    for page in ("web/feed.js", "web/first-steps.js"):
+        assert "/api/people?op=latest&mine=1" in (ROOT / page).read_text(), page
+    # The connector's search and reads, and the app's Library, ask with the session.
+    tool = (ROOT / "src/net/gallery_tool.gd").read_text()
+    assert 'var token: String = await _token()\n\tif sort == "owned"' in tool
+    assert '"/api/people?op=comments&id=" + id, 256 * 1024, token)' in tool
+    assert '"/api/people?op=photos&id=" + id, 64 * 1024, token)' in tool
+    library = (ROOT / "src/ui/library_dialog.gd").read_text()
+    assert 'query.append("mine=1")' in library and "512 * 1024, null, headers)" in library

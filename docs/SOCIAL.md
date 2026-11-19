@@ -1049,18 +1049,30 @@ that leaves A safest without telling B anything B could act on.
 - **Both ways for writing, one way for reading.** Neither may follow the
   other or the other's collections, comment on the other's models, reply
   to the other's comment or in a thread the other started, post a photo of
-  a build on the other's model, like the other's model, or @name the other.
-  A trigger on each table says it whatever writes it. Likes are refused too
-  because a day's likes reach A as one row with a count, which no list can
-  leave B's like out of. B's @ list still offers A, as anybody's does:
+  a build on the other's model, like the other's model, remix it, put it in
+  a collection, or @name the other. A trigger on each table says it
+  whatever writes it. Likes are refused too because a day's likes reach A
+  as one row with a count, which no list can leave B's like out of.
+  Remixes and collections are refused because each sits on A's model's
+  page, and a collection's name is B's to choose: the same harm hiding B's
+  comments is for. A remix B made before keeps its link, and its republish
+  is B's own; a collection filled many at once leaves the model out and
+  keeps the rest. B's @ list still offers A, as anybody's does:
   A missing from it would tell B. Reading stays open both ways on public pages: a
   public model page is public signed out, so hiding it from a signed-in B
   would protect nobody and would tell B.
 - **Follows end both ways, and unblocking doesn't bring them back**, as X
   documents and Instagram's guides say. A follow brought back on its own
   would tell B of the unblock and put B back in A's feed unasked.
+- **What leaves A's model pages, for everybody:** B's remixes and B's
+  public collections made before the block, and B's models among those
+  beside it, out of the page's counts too; the page is everybody's, so it
+  goes by A's blocks, as A's comments do. Back when A unblocks.
 - **What leaves A's view:** B's models from A's gallery (search included),
-  shelves, feed, the feed page's suggestions and "More like"; B's rows from
+  shelves, feed, Latest on Brickworks (the feed page's rail and First
+  steps, answered for A alone) and "More like"; the same where A's own
+  Claude reads the gallery and a model's comments and photos, and in the
+  app's Library, which ask with A's session once A is signed in; B's rows from
   A's notifications and the daily mail, and rows about B's models (a remix
   of A's model with no maker named, a reply on B's model); the count on
   A's avatar, counted again without them (never the count less them: a

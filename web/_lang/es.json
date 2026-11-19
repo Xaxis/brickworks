@@ -2971,6 +2971,10 @@
   "You can’t follow this collection.": "No puedes seguir esta colección.",
   "Block": "Bloquear",
   "You blocked this model’s designer. Unblock them in Settings › Blocked people to like it.": "Has bloqueado a quien diseñó este modelo. Desbloquéalo en Ajustes › Personas bloqueadas para darle me gusta.",
-  "You can’t like this model.": "No puedes darle me gusta a este modelo."
+  "You can’t like this model.": "No puedes darle me gusta a este modelo.",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to remix it.": "Has bloqueado a quien diseñó este modelo. Desbloquéalo en Ajustes › Personas bloqueadas para remezclarlo.",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to put it in a collection.": "Has bloqueado a quien diseñó este modelo. Desbloquéalo en Ajustes › Personas bloqueadas para añadirlo a una colección.",
+  "You can’t remix this model.": "No puedes remezclar este modelo.",
+  "You can’t put this model in a collection.": "No puedes añadir este modelo a una colección."
  }
 }

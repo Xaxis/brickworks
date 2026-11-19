@@ -2971,6 +2971,10 @@
   "You can’t follow this collection.": "Dieser Sammlung kannst du nicht folgen.",
   "Block": "Blockieren",
   "You blocked this model’s designer. Unblock them in Settings › Blocked people to like it.": "Du hast die Person blockiert, die dieses Modell entworfen hat. Hebe die Blockierung unter Einstellungen › Blockierte Personen auf, um es zu liken.",
-  "You can’t like this model.": "Dieses Modell kannst du nicht liken."
+  "You can’t like this model.": "Dieses Modell kannst du nicht liken.",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to remix it.": "Du hast die Person blockiert, die dieses Modell entworfen hat. Hebe die Blockierung unter Einstellungen › Blockierte Personen auf, um es zu remixen.",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to put it in a collection.": "Du hast die Person blockiert, die dieses Modell entworfen hat. Hebe die Blockierung unter Einstellungen › Blockierte Personen auf, um es in eine Sammlung zu legen.",
+  "You can’t remix this model.": "Dieses Modell kannst du nicht remixen.",
+  "You can’t put this model in a collection.": "Dieses Modell kannst du nicht in eine Sammlung legen."
  }
 }

@@ -851,6 +851,9 @@ async function collect(request, response) {
   await counted(account, "collect");
   if (body.on) {
     if (!(await publishedModel(model))) throw new Refusal("there is no shared model at that link", 404);
+    // Not a model of somebody either of them blocked: a public collection,
+    // named as its owner likes, is shown on the model's page.
+    refuseFor(await standing(account, { model }), "collect");
     const held = await db(`model_collection_items?collection=eq.${list.id}&select=model&limit=${MOST_IN_A_LIST + 1}`);
     if (held.length >= MOST_IN_A_LIST) throw new Refusal(`a list holds ${MOST_IN_A_LIST} models at most`, 409);
     await db("model_collection_items?on_conflict=collection,model", { method: "POST",

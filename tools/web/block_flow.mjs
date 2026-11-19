@@ -158,6 +158,27 @@ try {
   const towerId = tower.body.id;
   const shedId = shed.body.id;
   check(`the tower /m/${towerId} and the shed /m/${shedId}`, tower.status === 201 && shed.status === 201);
+  // Bob remixes the tower and puts it in a public collection of his, named
+  // as he likes: both on the tower's page, for everybody, until she blocks.
+  const remix = await api("/api/share", { method: "POST", token: bob.access_token, body: { name: `Bob's remix ${WORD}`,
+    author: "Bob Block", model: model("Remix"), image: picture, listed: true, remixed_from: towerId } });
+  made.push([remix.body.id, bob]);
+  const remixId = remix.body.id;
+  const bobList = await api("/api/people?op=collection", { method: "POST", token: bob.access_token,
+    body: { name: `Bob says ${WORD}`, public: true } });
+  const bobListId = bobList.body.id;
+  const bobPut = await api("/api/people?op=collect", { method: "POST", token: bob.access_token,
+    body: { collection: bobListId, model: towerId, on: true } });
+  check(`Bob's remix /m/${remixId} (${remix.status}), his public collection (${bobList.status}) with the tower (${bobPut.status})`,
+    remix.status === 201 && bobList.status === 200 && bobPut.status === 200 && bobPut.body.has === true);
+  // The tower's page as anybody reads it, past the CDN's half a minute.
+  const towerPage = async () => {
+    const page = await (await fetch(`${site}/m/${towerId}?tests=1&n=${Date.now()}`, { headers })).text();
+    return { remix: page.includes(`/m/${remixId}`), list: page.includes(`Bob says ${WORD}`) };
+  };
+  const pageBefore = await towerPage();
+  check(`the tower's page names Bob's remix (${pageBefore.remix}) and his collection (${pageBefore.list})`,
+    pageBefore.remix && pageBefore.list);
   // Each's first model is a level reached, told: read, so what follows is the comments'.
   for (const who of [ada, bob, cy]) await api("/api/people?op=notifications", { token: who.access_token });
   const bobSays = await api("/api/people?op=comment", { method: "POST", token: bob.access_token,
@@ -237,6 +258,19 @@ try {
   }
   check(`the tower as Bob: as before, his comments and Cy's answer there (${towerFor.bob.length})`,
     towerFor.bob.some((one) => one.id === bobComment) && towerFor.bob.some((one) => one.id === cyReply));
+  const pageBlocked = await towerPage();
+  check(`the tower's page, for everybody: Bob's remix (${pageBlocked.remix}) and collection (${pageBlocked.list}) left off`,
+    !pageBlocked.remix && !pageBlocked.list);
+  // Latest on Brickworks (the feed's rail, First steps): nothing of Bob's
+  // for Ada, kept for her alone; Cy's has his newest.
+  const latestOf = async (who) => (await api("/api/people?op=latest&mine=1&tests=1", { token: who.access_token })).body;
+  const [adaLatest, cyLatest] = [await latestOf(ada), await latestOf(cy)];
+  const bobsIn = (said) => [...(said.models || []).filter((one) => one.by?.handle === BOB || [shedId, remixId].includes(one.id))
+    .map((one) => one.id), ...(said.designers || []).filter((one) => one.handle === BOB).map((one) => `@${one.handle}`),
+  ...(said.photos || []).filter((one) => one.by?.handle === BOB).map((one) => one.id)];
+  check(`Latest for Ada: nothing of Bob's (${bobsIn(adaLatest).join(",") || "none"} of ${(adaLatest.models || []).length}); `
+    + `for Cy his newest (${bobsIn(cyLatest).join(",") || "none"})`, bobsIn(adaLatest).length === 0
+    && (adaLatest.models || []).length > 0 && bobsIn(cyLatest).some((id) => [shedId, remixId].includes(id)));
   const adaNoticesAfter = await noticesOf(ada);
   const adaAfter = await countOf(ada);
   check(`Ada's notifications: nothing by Bob (${adaNoticesAfter.length} rows); her count ${adaUnread.notifications} → ${adaAfter.notifications}`,
@@ -259,11 +293,28 @@ try {
     body: { model: towerId, version: 1, body: "Again." } });
   const bobReplies = await api("/api/people?op=reply", { method: "POST", token: bob.access_token, body: { id: cyComment, body: "Indeed." } });
   const bobLikes = await api(`/api/people?op=like&id=${towerId}`, { method: "POST", token: bob.access_token, body: { on: true } });
+  const bobCollects = await api("/api/people?op=collect", { method: "POST", token: bob.access_token,
+    body: { collection: bobListId, model: towerId, on: true } });
+  const bobKeeps = await api("/api/people?op=keep", { method: "POST", token: bob.access_token,
+    body: { list: "want", items: [`model:${towerId}`], on: true } });
   for (const [what, said, words] of [["a follow", bobFollow, "You can’t follow this profile."],
     ["a comment", bobComments, "You can’t comment on this model."], ["a reply", bobReplies, "You can’t reply to this comment."],
-    ["a like", bobLikes, "You can’t like this model."]]) {
+    ["a like", bobLikes, "You can’t like this model."], ["a collection", bobCollects, "You can’t put this model in a collection."],
+    ["a list of his", bobKeeps, "You can’t put this model in a collection."]]) {
     check(`Bob refused ${what}, neutrally: ${said.status} "${said.body.error}"`, said.status === 403 && said.body.error === words);
   }
+  // A new remix is refused as the publish's other refusals are (409: the
+  // app answers a 403 by publishing at a new link); the one from before
+  // is his, and its republish keeps its link.
+  const bobRemixes = await api("/api/share", { method: "POST", token: bob.access_token, body: { name: `Bob again ${WORD}`,
+    author: "Bob Block", model: model("Again"), image: picture, listed: true, remixed_from: towerId } });
+  if (bobRemixes.body.id) made.push([bobRemixes.body.id, bob]);
+  const bobRepublishes = await api("/api/share", { method: "POST", token: bob.access_token, body: { id: remixId,
+    name: `Bob's remix ${WORD}`, author: "Bob Block", model: model("Remix, again"), image: picture, listed: true, remixed_from: towerId } });
+  check(`Bob refused a remix, neutrally: ${bobRemixes.status} "${bobRemixes.body.error}"; his from before republished: `
+    + `${bobRepublishes.status} ${bobRepublishes.body.remixed_from}`, bobRemixes.status === 409
+    && bobRemixes.body.error === "You can’t remix this model." && [200, 201].includes(bobRepublishes.status)
+    && bobRepublishes.body.id === remixId && bobRepublishes.body.remixed_from === towerId);
   const bobYou = (await api(`/api/people?op=comments&id=${towerId}&v=1`, { token: bob.access_token })).body.you || {};
   check(`the tower's box for Bob: may_write ${bobYou.may_write}, "${bobYou.why_not}"`,
     bobYou.may_write === false && bobYou.why_not === "You can’t comment on this model.");
@@ -271,9 +322,18 @@ try {
   const adaOnShed = await api("/api/people?op=comment", { method: "POST", token: ada.access_token,
     body: { model: shedId, version: 1, body: "Hm." } });
   const adaLikesShed = await api(`/api/people?op=like&id=${shedId}`, { method: "POST", token: ada.access_token, body: { on: true } });
-  check(`Ada is told plainly: ${adaFollow.status} "${adaFollow.body.error}"; on his shed ${adaOnShed.status}, its like ${adaLikesShed.status}`,
+  const adaList = await api("/api/people?op=collection", { method: "POST", token: ada.access_token, body: { name: `Ada keeps ${WORD}` } });
+  const adaCollectsShed = await api("/api/people?op=collect", { method: "POST", token: ada.access_token,
+    body: { collection: adaList.body.id, model: shedId, on: true } });
+  const adaRemixesShed = await api("/api/share", { method: "POST", token: ada.access_token, body: { name: `Ada's shed ${WORD}`,
+    author: "Ada Block", model: model("Ada's shed"), image: picture, listed: true, remixed_from: shedId } });
+  if (adaRemixesShed.body.id) made.push([adaRemixesShed.body.id, ada]);
+  check(`Ada is told plainly: ${adaFollow.status} "${adaFollow.body.error}"; on his shed ${adaOnShed.status}, its like ${adaLikesShed.status}, `
+    + `a collection ${adaCollectsShed.status}, a remix ${adaRemixesShed.status}`,
     adaFollow.status === 409 && /You blocked them/.test(adaFollow.body.error || "") && adaOnShed.status === 409
-      && adaLikesShed.status === 409 && /like it\.$/.test(adaLikesShed.body.error || ""));
+      && adaLikesShed.status === 409 && /like it\.$/.test(adaLikesShed.body.error || "")
+      && adaCollectsShed.status === 409 && /put it in a collection\.$/.test(adaCollectsShed.body.error || "")
+      && adaRemixesShed.status === 409 && /remix it\.$/.test(adaRemixesShed.body.error || ""));
   // The @ list: Ada finds Bob no more; Bob finds Ada as anybody does (her
   // missing would tell him), and a comment of his names her not.
   const findAs = async (who, q) => ((await api(`/api/people?op=people_find&q=${encodeURIComponent(q)}&tests=1`,
@@ -281,12 +341,6 @@ try {
   const [adaFinds, bobFinds] = [await findAs(ada, BOB), await findAs(bob, ADA)];
   check(`the @ list: Ada's has no Bob (${adaFinds.join(",") || "nobody"}), Bob's has Ada (${bobFinds.join(",")})`,
     !adaFinds.includes(BOB) && bobFinds.includes(ADA));
-  // Whom she blocked, on her own feed's first page alone, for the page to
-  // leave out of what it suggests; Bob's says nobody.
-  const blockedSaid = async (who) => (await api("/api/people?op=feed", { token: who.access_token })).body.blocked;
-  const [adaBlocked, bobBlocked] = [await blockedSaid(ada), await blockedSaid(bob)];
-  check(`her feed names whom she blocked (${JSON.stringify(adaBlocked)}), his nobody (${JSON.stringify(bobBlocked)})`,
-    JSON.stringify(adaBlocked) === JSON.stringify([BOB]) && Array.isArray(bobBlocked) && bobBlocked.length === 0);
 
   // --- 5. the edges and row security ------------------------------------------
   console.log("the edges, and who can read the blocks");
@@ -347,6 +401,8 @@ try {
   check("Ada's gallery search has the shed again", seen.includes(shedId));
   const backFor = await commentsOn(towerId, cy);
   check("the tower shows Bob's comment and Cy's answer again", backFor.some((one) => one.id === bobComment) && backFor.some((one) => one.id === cyReply));
+  const pageBack = await towerPage();
+  check(`the tower's page names Bob's remix (${pageBack.remix}) and collection (${pageBack.list}) again`, pageBack.remix && pageBack.list);
   const notBack = [(await api(`/api/people?op=follows&handle=${BOB}`, { token: ada.access_token })).body,
     (await api(`/api/people?op=follows&handle=${ADA}`, { token: bob.access_token })).body];
   check(`the follows not back: ${notBack.map((one) => one.you_follow)}`, notBack.every((one) => one.you_follow === false));

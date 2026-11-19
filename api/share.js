@@ -285,7 +285,7 @@ import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, numbe
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
 // Whose picture to show beside their name (supabase/avatars.sql).
 import { withFaces } from "./_faces.js";
-import { blockedHandles, blockedModels, withoutBlocked } from "./_blocks.js";
+import { blockedHandles, blockedModels, refuseFor, standingBetween, withoutBlocked } from "./_blocks.js";
 // The public collections a model is in, each a card with its cover
 // (supabase/collection_follows.sql).
 import { coversOf, listCardHtml, listsOf } from "./_lists.js";
@@ -2129,6 +2129,29 @@ function sceneAnswer(response, name, file, of, kind = "scene") {
 const scenesKept = new Map();
 const SCENES_KEPT = 16;
 
+/// The remixes, collections and models beside it on a model's page that
+/// were made by somebody its owner blocked, left off it for everybody, as
+/// their comments are (docs/SOCIAL.md section 9), and out of its counts.
+/// The page is the same for everybody, so this is the owner's blocks.
+async function leaveOffBlocked(own, page, next, lists) {
+  if (!own?.owner) return;
+  const handles = await orUnknown("share", blockedHandles(own.owner));
+  if (!handles?.size) return;
+  const remixes = page.remixes_listed || [];
+  const beside = [...next.like, ...next.gallery];
+  const gone = await orUnknown("share", blockedModels(own.owner, [...remixes, ...beside].map((one) => one?.id)))
+    || new Set();
+  const kept = withoutBlocked(remixes, gone, handles);
+  page.remixes = Math.max(0, (Number(page.remixes) || 0) - (remixes.length - kept.length));
+  page.remixes_listed = kept;
+  for (const key of ["like", "gallery"]) next[key] = withoutBlocked(next[key], gone, handles);
+  if (lists) {
+    const shown = lists.lists.filter((list) => !handles.has(String(list?.by?.handle || "")));
+    lists.count = Math.max(0, lists.count - (lists.lists.length - shown.length));
+    lists.lists = shown;
+  }
+}
+
 async function modelPage(id) {
   if (!ID.test(id || "")) return null;
   const page = await db("rpc/directory_model", { method: "POST", body: { model_id: id } });
@@ -2221,6 +2244,7 @@ async function read(request, response) {
       orUnknown("share", basesOf(id))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
+    await leaveOffBlocked(own, page, next, lists);
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
     const ordered = photos && photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
@@ -3146,6 +3170,10 @@ async function publish(request, response) {
   // Said once and kept: a republish from a copy that no longer carries it
   // does not forget where the model came from.
   const parent = await remixOf(body.remixed_from, id);
+  // A new remix link across a block, either way, is refused before any file
+  // is written (supabase/block.sql's trigger holds it whatever writes): it
+  // would sit on the other's page. A link the model already had stays.
+  if (parent && parent.id !== existing?.remixed_from) refuseFor(await standingBetween(owner, parent.owner), "remix");
   const remixedFrom = parent?.id ?? existing?.remixed_from ?? null;
   const description = about.description !== undefined ? about.description : existing?.description ?? null;
   const tags = about.tags !== undefined ? about.tags : existing?.tags ?? [];

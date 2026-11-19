@@ -2763,13 +2763,22 @@ plan with Claude as the client.
   (`api/_comments.js` `listComments`, `block_hidden`), notifications (by
   them or about their models) and the avatar's count, counted again
   without them (`api/_notifications.js`, `block_counts`,
-  `block_row_barred`), the daily mail (`digestShown`), the feed page's
-  suggestions (the feed's own `blocked`, `web/feed.js`), More like both
-  ways (`api/_alike.js`) and the blocker's @ picker (`peopleFind`; the
-  blocked still find the blocker, and are never told); refuses follows,
-  collection follows, comments, replies, build photos, likes and mentions across
-  it (`refuseFor`, and triggers on each table), the blocker told why, the
-  blocked "You can’t …" only; /admin › People's panel says "Blocked by N"
+  `block_row_barred`), the daily mail (`digestShown`), Latest on
+  Brickworks as the feed page's rail and First steps ask it (`?op=latest&mine=1`
+  with the session, private, no-store), the connector's
+  gallery search and a model's comments and photos and the app's Library ›
+  Community (`src/net/gallery_tool.gd`, `src/ui/library_dialog.gd`: the
+  session and mine=1 once signed in; `src/dev/gallery_tool_probe.gd`), More
+  like both ways (`api/_alike.js`) and the blocker's @ picker (`peopleFind`;
+  the blocked still find the blocker, and are never told); off the
+  blocker's model pages for everybody, with their counts: the blocked
+  person's remixes, public collections and models beside it
+  (`api/share.js` `leaveOffBlocked`); refuses follows, collection follows,
+  comments, replies, build photos, likes, new remix links (409, the
+  publish's way), collection adds and mentions across it (`refuseFor`, and
+  triggers on each table; a remix link a model had stays; a list filled
+  many at once leaves the model out), the blocker told why, the blocked
+  "You can’t …" only; /admin › People's panel says "Blocked by N"
   (`block_count_against`), the export never who. SQL proof:
   `PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs
   supabase/block.sql --dry --try=tools/block_try.sql --table=blocks`.
@@ -2780,7 +2789,10 @@ plan with Claude as the client.
   from his profile at 390 x 844, then every rule by the API (gallery
   search, feed, the tower's comments as each of them and a visitor,
   notifications and the count, Bob's answers and pages unchanged, his
-  neutral refusals and a like, the @ lists, the feed's own blocked list,
+  neutral refusals of a like, a collection and a new remix (his remix
+  from before republished), Ada told plainly, the @ lists, Latest for Ada
+  and for Cy, Bob's remix and public collection on the tower's page
+  before, left off for everybody once blocked and back after Unblock,
   the edges, the table and functions refused to the
   publishable key and to Bob's and Cy's tokens), Settings › Blocked
   people at 390 x 844 and Unblock (follows not back), and a comment's

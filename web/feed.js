@@ -208,23 +208,22 @@ function buildFigure(one) {
 }
 
 /// Latest on Brickworks and designers to follow, leaving out [skip] (the
-/// handles of whom you follow, and you) and anything by [blocked] (whom
-/// you blocked: the answer is everybody's, so it is left out here).
-/// [withLatest]: the feed has nothing of its own to show, so the latest is
-/// shown in its place.
-async function suggest(mine, { withLatest, skip = new Set(), blocked = new Set() }) {
+/// handles of whom you follow, and you). [withLatest]: the feed has
+/// nothing of its own to show, so the latest is shown in its place.
+async function suggest(mine, { withLatest, skip = new Set() }) {
   const tests = new URLSearchParams(location.search).get("tests") === "1" ? "&tests=1" : "";
-  const answer = await call(`/api/people?op=latest${tests}`).catch(() => null);
+  // Asked as you (mine=1): nobody you blocked is in it (docs/SOCIAL.md
+  // section 9).
+  const answer = await call(`/api/people?op=latest&mine=1${tests}`).catch(() => null);
   if (mine !== run || !answer || answer.status !== 200) return;
   const designers = (Array.isArray(answer.body.designers) ? answer.body.designers : [])
-    .filter((one) => one && one.handle && !skip.has(one.handle) && !blocked.has(one.handle)).slice(0, SUGGESTED);
+    .filter((one) => one && one.handle && !skip.has(one.handle)).slice(0, SUGGESTED);
   $("people").replaceChildren(...designers.map(person));
   $("designers").hidden = designers.length === 0;
   $("layout").classList.toggle("with-rail", designers.length > 0);
   if (!withLatest) return;
-  const theirs = (one) => blocked.has(String(one?.by?.handle || ""));
-  const models = (Array.isArray(answer.body.models) ? answer.body.models : []).filter((one) => !theirs(one));
-  const photos = (Array.isArray(answer.body.photos) ? answer.body.photos : []).filter((one) => !theirs(one));
+  const models = Array.isArray(answer.body.models) ? answer.body.models : [];
+  const photos = Array.isArray(answer.body.photos) ? answer.body.photos : [];
   $("latest-models").replaceChildren(...models.map((one, i) => modelCard(one, { eager: i < FIRST_SCREEN })));
   $("latest-photos").replaceChildren(...photos.filter((one) => one && ID.test(String(one.id))).map(buildFigure));
   sharpPhotos($("latest-photos"));
@@ -271,8 +270,7 @@ async function page(mine) {
     $("nobody").hidden = !(empty && following !== null && following.length === 0);
     $("quiet").hidden = !(empty && $("nobody").hidden);
     const skip = new Set([...(following || []), ...(state?.me?.handle ? [state.me.handle] : [])]);
-    const blocked = new Set(Array.isArray(answer.body.blocked) ? answer.body.blocked.map(String) : []);
-    await suggest(mine, { withLatest: empty, skip, blocked });
+    await suggest(mine, { withLatest: empty, skip });
   }
   if (mine === run) document.documentElement.dataset.feed = "ready";
 }

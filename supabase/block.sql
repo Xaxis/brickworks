@@ -13,9 +13,13 @@
 --   comments  B's comments and replies on A's models are hidden from
 --             everybody but B, who sees them as before; B may not comment
 --             on A's models, reply to A's comments, post a photo of a
---             build on A's models or like them (triggers on model_comments,
---             build_photos and model_likes). A is told why on B's models; B is told only
---             that it cannot be done, never that A blocked them.
+--             build on A's models, like them, remix them or put them in a
+--             collection (triggers on model_comments, build_photos,
+--             model_likes, shared_models' remix link and
+--             model_collection_items). B's remixes and public collections
+--             made before leave A's model pages, for everybody. A is told
+--             why on B's models; B is told only that it cannot be done,
+--             never that A blocked them.
 --   A's view  B's models leave A's gallery, shelves, search and feed, B's
 --             comments anywhere are hidden from A, and nothing B does
 --             reaches A's notifications or their count (api/_blocks.js).
@@ -34,7 +38,7 @@
 -- who; an account's export (api/_console_people.js) leaves out who blocked
 -- it, as it leaves out who follows it, so a person never learns it there.
 --
--- Additive: one new table, new functions and five new triggers; nothing
+-- Additive: one new table, new functions and seven new triggers; nothing
 -- that was here is altered. Until it is applied, api/_blocks.js finds no
 -- functions (404): nothing is hidden, Block says it is not open yet, and
 -- everything else works as before.
@@ -410,6 +414,52 @@ create or replace trigger blocks_guard_like
     before insert on public.model_likes
     for each row execute function public.blocks_guard_like();
 
+-- A remix linked across a block, either way: it would sit on A's model's
+-- page under Remixes. A link the model already had is its own and stays: a
+-- republish writes it again unchanged (api/share.js PATCHes every column).
+create or replace function public.blocks_guard_remix()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if new.remixed_from is null
+       or (tg_op = 'UPDATE' and new.remixed_from is not distinct from old.remixed_from) then
+        return new;
+    end if;
+    if public.block_between(new.owner, (select s.owner from public.shared_models s where s.id = new.remixed_from)) is not null then
+        raise exception 'brickworks: this model cannot be remixed' using errcode = 'P0001', hint = 'remixes:blocked';
+    end if;
+    return new;
+end;
+$$;
+create or replace trigger blocks_guard_remix
+    before insert or update of remixed_from on public.shared_models
+    for each row execute function public.blocks_guard_remix();
+
+-- A model put in a collection across a block, either way: B's public
+-- collection, named as B likes, would sit on A's model's page. The row is
+-- left out, not refused, so a list filled many at once (api/_mylists.js)
+-- keeps the rest; the API refuses the one asked for first, in words.
+create or replace function public.blocks_guard_collect()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if public.block_between((select c.owner from public.model_collections c where c.id = new.collection),
+                            (select s.owner from public.shared_models s where s.id = new.model)) is not null then
+        return null;
+    end if;
+    return new;
+end;
+$$;
+create or replace trigger blocks_guard_collect
+    before insert on public.model_collection_items
+    for each row execute function public.blocks_guard_collect();
+
 -- ---------------------------------------------------------------------------
 -- Who may call what: the server alone.
 
@@ -440,5 +490,7 @@ revoke all on function public.blocks_guard_collection_follow() from public, anon
 revoke all on function public.blocks_guard_comment() from public, anon, authenticated;
 revoke all on function public.blocks_guard_photo() from public, anon, authenticated;
 revoke all on function public.blocks_guard_like() from public, anon, authenticated;
+revoke all on function public.blocks_guard_remix() from public, anon, authenticated;
+revoke all on function public.blocks_guard_collect() from public, anon, authenticated;
 
 notify pgrst, 'reload schema';

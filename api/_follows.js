@@ -52,7 +52,8 @@ import { SCORE, TESTS_CACHE, Unacceptable, cardOf, inLanguage, siteWords, testsA
 import { photoUrls, say } from "./_card.js";
 import { photosWhere } from "./_builds.js";
 import { shownPublicly } from "./_trust.js";
-import { WORDS as BLOCK_WORDS, blockedHandles, blockedModels, refuseFor, rowsWithout, standingWith } from "./_blocks.js";
+import { WORDS as BLOCK_WORDS, blockedHandles, blockedModels, refuseFor, rowsWithout, standingWith, withoutBlocked }
+  from "./_blocks.js";
 
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -322,9 +323,7 @@ export async function feed(request, response, { origin }) {
     // Whether New is reckoned from each follow too, or (before the file)
     // from the last look alone.
     since_follows: Boolean(followed),
-    // And whom they blocked, their own (private, no-store): the page
-    // leaves them out of what it suggests beside the feed, which is shared.
-    ...(before === null ? { following: following ? following.map((one) => one.handle) : null, blocked: [...handles] } : {}) });
+    ...(before === null ? { following: following ? following.map((one) => one.handle) : null } : {}) });
 }
 
 /// Whether a feed row is New: it came after the feed was last opened
@@ -420,16 +419,28 @@ async function newestPhotos(origin, tests, most) {
 
 /// ?op=latest: {models, photos, designers}, the same for everybody, so
 /// kept by the CDN; asked with tests=1 (a probe), test models too, never
-/// kept.
+/// kept. Asked with mine=1 and a session (the feed's rail and First steps),
+/// without what the people they blocked made or photographed, nor photos of
+/// those people's models (api/_blocks.js), and never kept: a URL of its own,
+/// so no answer kept for everybody is given in its place, nor one person's
+/// to another.
 export async function latest(request, response, { origin }) {
   const tests = testsAsked(request.query || {});
   const flag = tests ? { tests: true } : {};
+  const mine = ["1", "true"].includes(String(request.query?.mine ?? "").toLowerCase());
+  const asker = mine ? await who(request).catch(() => null) : null;
+  const handles = asker ? await blockedHandles(asker) : new Set();
+  // Read twice as many when some may be left out, so the rail stays full.
+  const more = handles.size ? 2 : 1;
   const [newest, top, photos] = await Promise.all([
-    listed({ sort: "newest", size: LATEST.models, skip: 0, ...flag }),
+    listed({ sort: "newest", size: LATEST.models * more, skip: 0, ...flag }),
     listed({ sort: "top", size: TOP_READ, skip: 0, ...flag }),
-    newestPhotos(origin, tests, LATEST.photos),
+    newestPhotos(origin, tests, LATEST.photos * more),
   ]);
-  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
-  return response.status(200).json(await withFaces({ models: (newest || []).slice(0, LATEST.models).map((row) => cardOf(origin, row)),
-    photos, designers: designersFrom((top || []).map((row) => cardOf(origin, row))) }));
+  const gone = handles.size ? await blockedModels(asker, [...(newest || []), ...(top || []), ...photos.map((one) => ({ id: one.model }))]
+    .map((one) => one.id)) : new Set();
+  const cards = (rows) => withoutBlocked((rows || []).map((row) => cardOf(origin, row)), gone, handles);
+  response.setHeader("Cache-Control", mine ? "private, no-store" : tests ? TESTS_CACHE : SHARED_CACHE);
+  return response.status(200).json(await withFaces({ models: cards(newest).slice(0, LATEST.models),
+    photos: rowsWithout(photos, handles, gone).slice(0, LATEST.photos), designers: designersFrom(cards(top)) }));
 }

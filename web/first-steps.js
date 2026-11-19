@@ -106,7 +106,8 @@ export async function firstSteps({ pending = false } = {}) {
     // gallery's kinds and Top builds' cards, and the designers to follow.
     const me = call("/api/people?op=me").catch(() => null);
     const top = call(`/api/share?op=list&sort=top${tests ? `&${tests}` : ""}`).catch(() => null);
-    const latest = call(`/api/people?op=latest${tests ? `&${tests}` : ""}`).catch(() => null);
+    // As you (mine=1): nobody you blocked is among the designers offered.
+    const latest = call(`/api/people?op=latest&mine=1${tests ? `&${tests}` : ""}`).catch(() => null);
     let chosen = [];
     let steps = [];
 

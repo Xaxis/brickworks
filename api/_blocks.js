@@ -43,6 +43,8 @@ export const WORDS = {
   you_photo: [409, "You blocked this model’s designer. Unblock them in Settings › Blocked people to post a photo here."],
   you_list: [409, "You blocked whoever made this collection. Unblock them in Settings › Blocked people to follow it."],
   you_like: [409, "You blocked this model’s designer. Unblock them in Settings › Blocked people to like it."],
+  you_remix: [409, "You blocked this model’s designer. Unblock them in Settings › Blocked people to remix it."],
+  you_collect: [409, "You blocked this model’s designer. Unblock them in Settings › Blocked people to put it in a collection."],
   // To the person blocked: only that it cannot be done.
   cannot_follow: [403, "You can’t follow this profile."],
   cannot_comment: [403, "You can’t comment on this model."],
@@ -50,6 +52,10 @@ export const WORDS = {
   cannot_photo: [403, "You can’t post a photo of a build on this model."],
   cannot_list: [403, "You can’t follow this collection."],
   cannot_like: [403, "You can’t like this model."],
+  // 409, not 403, as the publish's other refusals: the app answers a 403
+  // (somebody else's link) by publishing again at a new link.
+  cannot_remix: [409, "You can’t remix this model."],
+  cannot_collect: [403, "You can’t put this model in a collection."],
 };
 
 export function refused(code) {
@@ -162,7 +168,8 @@ export async function standingBetween(account, other) {
 }
 
 /// Throws the refusal for a write of [kind] (follow, comment, reply,
-/// photo, list) when [state] (standing's) stands in its way. Pure.
+/// photo, list, like, remix, collect) when [state] (standing's) stands in
+/// its way. Pure.
 export function refuseFor(state, kind) {
   if (state === "blocked") throw refused(`you_${kind}`);
   if (state === "blocked_by") throw refused(`cannot_${kind}`);
