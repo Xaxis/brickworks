@@ -2063,6 +2063,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		_find_joints()
 	elif not world.motions.locks.is_empty():
 		_find_joints()
+	# A lock line naming parts the model has not got, nor has on its way:
+	# said once at the open, kept in the file as it is (jlreview L2).
+	world.motions.locks_unfound = _locks_unfound()
 	example = false
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
@@ -2864,7 +2867,9 @@ func _motion_lines() -> PackedStringArray:
 			continue
 		joint.lead = lead.id
 		joint.colour = lead.color_code
-		joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+		# Where it is built: a section broken out is written where it was
+		# pulled from, as its parts' own lines are ([method _source_asked]).
+		joint.place = (Motions.stands(lead, world).origin - back) * LdrModel.FLIP
 	motions_gone_words = _gone_words(motions, gone)
 	# Those it could not read are written where the file had them
 	# (_meta_families), not after the rest.
@@ -2895,9 +2900,25 @@ func _lock_lines() -> PackedStringArray:
 				continue
 			joint.lead = part.id
 			joint.colour = part.color_code
-			joint.place = (part.transform.origin - back) * LdrModel.FLIP
+			joint.place = (Motions.stands(part, world).origin - back) * LdrModel.FLIP
 		if kept:
 			out.append("%s %s" % [Motions.LOCK_META, lock.ref_words()])
+	return out
+
+
+## The lock lines, as the file has them, of each lock with a part the model
+## has not got and has not on its way ([method _awaits]): what the open
+## names (Motions.lock_unread_words).
+func _locks_unfound() -> PackedStringArray:
+	var out := PackedStringArray()
+	if world.motions == null:
+		return out
+	var back: Vector3 = _lift_now()
+	for lock: Motions.Lock in world.motions.locks:
+		for joint: Motions.Joint in [lock.a, lock.b]:
+			if joint.lead == 0 and not _awaits(joint, back):
+				out.append("%s %s" % [Motions.LOCK_META, lock.ref_words()])
+				break
 	return out
 
 

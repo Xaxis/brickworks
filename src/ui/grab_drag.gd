@@ -208,7 +208,8 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 			grab = null
 			frames = 0
 			_said = ""
-			_tell("%s — drag the end where it should go" % _capital(links.said))
+			_tell("%s — drag the end where it should go%s" % [_capital(links.said),
+				"" if links.locked_why.is_empty() else "; left as it is: " + links.locked_why])
 			return true
 	grab = Grab.new()
 	grab.world = world
@@ -1463,6 +1464,10 @@ func _chain_for_session(end: int, to: Variant) -> String:
 	links.library = library
 	links.bodies = _bodies
 	if links.begin(end, held_at) != "moves":
+		# A joint locked held it (jlreview M1): said as a lock refuses, with
+		# its way out.
+		if links.why.contains(Motions.UNLOCK_WORDS):
+			return "#%d will not move: %s. Nothing moved." % [end, links.why]
 		return "#%d has no chain of turning joints back to what stays: %s." % [end, links.why]
 	var off: float = links.reach(target)
 	var depth: int = builder.history_depth()
@@ -1472,6 +1477,8 @@ func _chain_for_session(end: int, to: Variant) -> String:
 	lines.append("%s; its middle is %s studs from the point%s." % [_capital(words),
 		Balance.studs(links.end_point().distance_to(target) / BrickLattice.STUD),
 		" (as near as its joints reach)" if off >= 2.0 else ""])
+	if not links.locked_why.is_empty():
+		lines.append("Left as it is: %s." % links.locked_why)
 	if builder.history_depth() > depth and _judge != null:
 		var after: Balance.Report = _judge.weigh_pose(links.placed)
 		last_report = after

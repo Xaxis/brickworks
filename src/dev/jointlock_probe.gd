@@ -23,6 +23,15 @@
 ## a lock line it cannot read is named at the open and kept as it is.
 ## Unlocked (pose_model lock=false, the list's Unlock, the row again: one
 ## step, back byte for byte), each moves again.
+##
+## Then jlreview's findings, each a case of its own (jlfix; `-- together
+## breakout motion_breakout chain copies dangling`, any of them, runs those
+## alone): a lock made on either side of a Build together room holds on both
+## (two sides in one process, the room's words put on each); a save while a
+## section is broken out writes the lock, and a motion's joints, where they
+## are built; move_part to= on a locked joint names the lock; a lock in one of
+## three copies says which and that the others move; a lock of parts the
+## model has not got is named at the open and kept byte for byte.
 extends SceneTree
 
 const MODELS := "user://models/"
@@ -94,9 +103,16 @@ func _run() -> void:
 	_verbs.set_mode("select")
 	(_verbs.handles as Handles).say = hear
 
-	await _model("knee", _knee_ldr(), "3816", "3815", "Leg", "row")
-	await _model("hinge", _hinge_ldr(), "32524", "3701", "Beam", "mcp")
-	await _model("slider", _slider_ldr(), "3705", "3701", "Axle", "row")
+	var only: PackedStringArray = OS.get_cmdline_user_args()
+	if only.is_empty():
+		await _model("knee", _knee_ldr(), "3816", "3815", "Leg", "row")
+		await _model("hinge", _hinge_ldr(), "32524", "3701", "Beam", "mcp")
+		await _model("slider", _slider_ldr(), "3705", "3701", "Axle", "row")
+	# jlreview's findings, each its own case (jlfix); a name or more after
+	# the probe's -- runs those alone.
+	for step: String in (only if not only.is_empty() else PackedStringArray(["together", "breakout",
+			"motion_breakout", "chain", "copies", "dangling"])):
+		await call("_case_" + step)
 
 	print("")
 	if _failures == 0:
@@ -385,6 +401,262 @@ func _drive(a: int) -> String:
 	_simulate.call("close")
 	await _frames(5)
 	return said
+
+
+# -- jlreview's findings (jlfix) --------------------------------------------------------
+
+
+## Building together (H1): a lock made by either person holds for both. Two
+## sides in one process, as the room carries the model's own state between
+## them: this window, and a second copy of the model (its own world, builder,
+## store and Together), each side's ~motions words put on the other as
+## another person's are (Together._put_meta). Here locks: the words carry
+## it, and there a drag on the joint and a move of its part are refused by
+## the joint's name. There unlocks: here it turns again. There locks: here
+## it is refused, and saved as one LOCK line, the line this side writes. A
+## motion kept here while locked goes there with the lock, and back.
+func _case_together() -> void:
+	print("\n══ together: a lock made by either person holds for both ══")
+	_write(MODELS + "together.ldr", _hinge_ldr())
+	await _open(MODELS + "together.ldr")
+	var here: Together = _main.get("_together")
+	var library: PartLibrary = _main.get("_library")
+	var other: Dictionary = _other_side(library, _hinge_ldr())
+	var tw: BrickWorld = other["world"]
+	var tb: Builder = other["builder"]
+	var tt: Together = other["together"]
+	var depth: int = _builder.history_depth()
+	# A motion kept first, then the lock: another person's change to the
+	# motions arriving later keeps the lock here (the review's case).
+	await _say("define_motion", {"name": "Swing", "tracks": [{"joint": "Beam",
+		"keys": [{"t": 0, "place": 0}, {"t": 1, "place": 45}]}]})
+	await _say("pose_model", {"joint": "Beam", "lock": true})
+	var own_line: Array = _lines_with(await _save("together_here.ldr"), Motions.LOCK_META)
+	var words: String = here._motion_words()
+	_check("here locked: the room's ~motions words carry the lock (%s)" % str(
+		_lines_with(words, Motions.LOCK_META)), _lines_with(words, Motions.LOCK_META).size() == 1)
+	tt._put_meta("~motions", words)
+	var pin: int = _id_in(tw, "2780")
+	var brick: int = _id_in(tw, "3701")
+	_check("...there it is one lock, its two parts found (%s)" % (str(tw.motions.locks.size())
+		if tw.motions != null else "no motions"), tw.motions != null and tw.motions.locks.size() == 1
+		and tw.motions.lock_between(pin, brick, tw, tb) != null)
+	var rest: Dictionary = _rest_in(tw)
+	var held: Grab = _grab_in(tw, tb, library, pin)
+	_check("...there a drag on the joint is refused by its name: \"%s\"" % held.why.left(110),
+		held.state != "moves" and held.why.contains("Beam's joint") and held.why.contains(Motions.UNLOCK_WORDS))
+	tb.clear_selection()
+	tb.select_brick(pin, false)
+	var moved: int = tb.move_selection(Vector3i(0, 0, 1))
+	tb.clear_selection()
+	_check("...and a move of its part by the keys, by name: \"%s\"" % tb.refused_lock.left(110),
+		moved == 0 and tb.refused_lock.contains("Beam's joint") and tb.refused_lock.contains(Motions.UNLOCK_WORDS))
+	_check("...nothing moved there", _same_in(tw, rest))
+	_check("...and its motion with it (%d)" % tw.motions.list.size(), tw.motions.list.size() == 1)
+	# There, the motion taken out (another person's change to the motions):
+	# here the motion goes and the lock stays.
+	var kept: Motions = tw.motions.copy()
+	tw.motions.list.clear()
+	tb.record([{"undo": "motions", "motions": kept}], "took out Swing")
+	here._put_meta("~motions", tt._motion_words())
+	_check("there took the motion out: here it is gone and the lock kept (%d motions, %d locks)" % [
+		_world.motions.list.size() if _world.motions != null else -1, _locks_of(_world)],
+		_world.motions != null and _world.motions.list.is_empty() and _locks_of(_world) == 1)
+	var still: Variant = _grabbing.held_of([_id_of("2780")])
+	_check("...and here it still holds: \"%s\"" % str(still).left(90), still is String
+		and str(still).contains(Motions.UNLOCK_WORDS))
+	# There unlocks, as its window's Unlock does: one step there.
+	var had: Motions = tw.motions.copy()
+	tw.motions.locks.clear()
+	tb.record([{"undo": "motions", "motions": had}], "unlocked")
+	here._put_meta("~motions", tt._motion_words())
+	_check("there unlocked: here none is locked (%d)" % _locks_of(_world), _locks_of(_world) == 0)
+	var turned: String = await _say("pose_model", {"joint": "Beam", "degrees": 30})
+	_check("...and here it turns again: \"%s\"" % turned.left(80), not turned.contains(Motions.UNLOCK_WORDS)
+		and turned.contains("30°"))
+	_builder.undo()
+	await _frames(3)
+	here._put_meta("~motions", tt._motion_words())
+	# There locks it again: here it is refused, and saved as here's own line.
+	pin = _id_in(tw, "2780")
+	brick = _id_in(tw, "3701")
+	if tw.motions == null:
+		tw.motions = Motions.new()
+	had = tw.motions.copy()
+	tw.motions.locks.append(Motions.lock_of(pin, brick, tw, (other["store"] as ModelStore).lift()))
+	tb.record([{"undo": "motions", "motions": had}], "locked")
+	here._put_meta("~motions", tt._motion_words())
+	var refused: String = await _say("pose_model", {"joint": "Beam", "degrees": 30})
+	_check("there locked: here a turn is refused by name: \"%s\"" % refused.left(90),
+		refused.contains("Beam's joint") and refused.contains(Motions.UNLOCK_WORDS))
+	var saved: String = await _save("together_there.ldr")
+	_check("...and saved here as one LOCK line, the one this side writes (%s)" % str(
+		_lines_with(saved, Motions.LOCK_META)), _lines_with(saved, Motions.LOCK_META) == own_line)
+	while _builder.history_depth() > depth:
+		_builder.undo()
+	for node: Node in [tt, tb, tw]:
+		node.queue_free()
+	await _frames(3)
+
+
+## A second copy of the model, as another person's side has it: its own
+## world, builder, store and Together, [param text] opened in it.
+func _other_side(library: PartLibrary, text: String) -> Dictionary:
+	var world := BrickWorld.new()
+	world.library = library
+	root.add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	root.add_child(builder)
+	var store := ModelStore.new()
+	store.world = world
+	store.library = library
+	store.builder = builder
+	store.keeps = false
+	store.open_text(text, "Together")
+	var together := Together.new()
+	together.world = world
+	together.builder = builder
+	together.store = store
+	together.keeps_place = false
+	root.add_child(together)
+	return {"world": world, "builder": builder, "store": store, "together": together}
+
+
+func _grab_in(world: BrickWorld, builder: Builder, library: PartLibrary, id: int) -> Grab:
+	var held := Grab.new()
+	held.world = world
+	held.builder = builder
+	held.library = library
+	held.begin(id, world.get_brick(id).transform.origin, {})
+	return held
+
+
+static func _locks_of(world: BrickWorld) -> int:
+	return world.motions.locks.size() if world.motions != null else 0
+
+
+static func _id_in(world: BrickWorld, part: String) -> int:
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == part:
+			return brick.id
+	return 0
+
+
+static func _rest_in(world: BrickWorld) -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		out[brick.id] = brick.transform
+	return out
+
+
+static func _same_in(world: BrickWorld, rest: Dictionary) -> bool:
+	for id: int in rest:
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		if brick == null or not brick.transform.is_equal_approx(rest[id]):
+			return false
+	return true
+
+
+## A save while a section is broken out (H2): the LOCK line where the parts
+## are built, the file byte for byte as saved in place, and reopened the
+## lock holds.
+func _case_breakout() -> void:
+	print("\n══ breakout: a lock saved while its section is broken out ══")
+	_write(MODELS + "knee_out.ldr", _knee_ldr())
+	await _open(MODELS + "knee_out.ldr")
+	await _say("pose_model", {"joint": "Leg", "lock": true})
+	var in_place: String = await _save("knee_out.ldr")
+	var said: String = await _say("break_out_section", {"section": "Leg"})
+	await _frames(5)
+	print("    %s" % said.left(100))
+	var broken: String = await _save("knee_out_broken.ldr")
+	_check("saved broken out: the LOCK line as saved in place (%s)" % str(_lines_with(broken, Motions.LOCK_META)),
+		_lines_with(broken, Motions.LOCK_META) == _lines_with(in_place, Motions.LOCK_META))
+	_check("...and the file byte for byte as saved in place (%s)" % ("same" if broken == in_place
+		else _first_difference(in_place, broken)), broken == in_place)
+	await _open(MODELS + "knee_out_broken.ldr")
+	var held: Variant = _grabbing.held_of([_id_of("3816")])
+	_check("reopened, the lock holds: \"%s\"" % str(held).left(80), held is String
+		and str(held).contains(Motions.UNLOCK_WORDS))
+
+
+## The live sibling of H2: a motion's joints saved while its section is
+## broken out, where they are built (a turn on the knee, a slide on the
+## slider: its AT too); reopened, the motion finds its joint. Fails on
+## pre261 (bench/results/jlfix-2026-11-19/sibling_pre261.log).
+func _case_motion_breakout() -> void:
+	for one: Array in [["knee", _knee_ldr(), "Leg", false, 45.0], ["slider", _slider_ldr(), "Axle", true, 1.0]]:
+		print("\n══ motion_breakout: %s's motion saved with %s broken out ══" % [one[0], one[2]])
+		_write(MODELS + "mb_%s.ldr" % one[0], str(one[1]))
+		await _open(MODELS + "mb_%s.ldr" % one[0])
+		var track: Dictionary = {"joint": one[2], "keys": [{"t": 0, "place": 0}, {"t": 1, "place": one[4]}]}
+		if one[3]:
+			track["slide"] = true
+		await _say("define_motion", {"name": "Swing", "tracks": [track]})
+		var in_place: String = await _save("mb_%s.ldr" % one[0])
+		await _say("break_out_section", {"section": one[2]})
+		await _frames(5)
+		var broken: String = await _save("mb_%s_broken.ldr" % one[0])
+		_check("%s: saved broken out, the motion's lines as in place (%s)" % [one[0],
+			str(_lines_with(broken, "0 !BRICKWORKS MOTION_TRACK"))],
+			_lines_with(broken, "0 !BRICKWORKS MOTION") == _lines_with(in_place, "0 !BRICKWORKS MOTION")
+			and not _lines_with(in_place, "0 !BRICKWORKS MOTION_TRACK").is_empty())
+		_check("...the file byte for byte as saved in place", broken == in_place)
+		await _open(MODELS + "mb_%s_broken.ldr" % one[0])
+		var played: String = await _say("play_motion", {"name": "Swing"})
+		_check("...reopened, the motion finds its joint: \"%s\"" % played.replace("\n", " | ").left(110),
+			played.contains(str(one[2])) and not played.contains("gone") and not played.contains("not found"))
+
+
+## move_part to= on a locked joint (M1): nothing moved, and the lock named
+## with its way out.
+func _case_chain() -> void:
+	print("\n══ chain: move_part to= on a locked joint ══")
+	_write(MODELS + "chain.ldr", _hinge_ldr())
+	await _open(MODELS + "chain.ldr")
+	await _say("pose_model", {"joint": "Beam", "lock": true})
+	var rest: Dictionary = _rest()
+	var depth: int = _builder.history_depth()
+	var said: String = await _say("move_part", {"part": "#%d" % _id_of("32524"), "to": [0, 20, 3]})
+	_check("refused, nothing moved, the lock named: \"%s\"" % said.left(140), _same(rest)
+		and _builder.history_depth() == depth and said.contains("Beam's joint") and said.contains(Motions.UNLOCK_WORDS))
+
+
+## A lock in one copy of a sub-model placed three times (L1): the answer
+## says which copy, and that the others still move.
+func _case_copies() -> void:
+	print("\n══ copies: a lock in one of three copies ══")
+	var lines := PackedStringArray(["0 FILE knees.ldr", "0 Three knees", "0 Name: knees.ldr",
+		"0 !BRICKWORKS FLOOR NONE"])
+	for k: int in 3:
+		lines.append("1 0 %d -32 1 1 0 0 0 1 0 0 0 1 3815.dat" % (10 + 60 * k))
+		lines.append("1 4 %d -20 1 1 0 0 0 1 0 0 0 1 3817.dat" % (10 + 60 * k))
+		lines.append("1 16 %d 0 0 1 0 0 0 1 0 0 0 1 leg.ldr" % (60 * k))
+	lines.append_array(["0 NOFILE", "0 FILE leg.ldr", "0 Leg", "0 Name: leg.ldr",
+		"1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3816.dat", "0 NOFILE"])
+	_write(MODELS + "knees.ldr", "\n".join(lines) + "\n")
+	await _open(MODELS + "knees.ldr")
+	var said: String = await _say("pose_model", {"joint": "1", "lock": true})
+	print("    %s" % said.replace("\n", " | ").left(400))
+	_check("the answer says which copy, and that the other two still move",
+		said.contains("copy 1 of 3") and said.contains("other 2 copies") and said.contains("still moves"))
+
+
+## A LOCK line naming parts the model has not got (L2): named once at the
+## open, kept byte for byte.
+func _case_dangling() -> void:
+	print("\n══ dangling: a lock of parts the model has not got ══")
+	var line: String = "0 !BRICKWORKS LOCK PART 3005 1 200 -24 200 ON PART 3001 4 200 0 200"
+	var text: String = _hinge_ldr().replace("0 !BRICKWORKS FLOOR NONE\n", "0 !BRICKWORKS FLOOR NONE\n" + line + "\n")
+	_write(MODELS + "dangling.ldr", text)
+	await _open(MODELS + "dangling.ldr")
+	var named: String = _store.motions_unread_words
+	_check("named at the open: \"%s\"" % named.left(140), named.contains("parts the model has not got")
+		and named.contains(line))
+	var saved: String = await _save("dangling.ldr")
+	_check("...and saved unedited byte for byte", saved == text)
 
 
 # -- the models -------------------------------------------------------------------------

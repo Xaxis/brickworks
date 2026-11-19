@@ -95,6 +95,10 @@ func _run() -> void:
 		await _drive_together()
 		var gone: int = await SignInHelper.delete_accounts("delivered+bwtogether", root)
 		print("  (%d throwaway accounts deleted)" % gone)
+	elif _arg("--only") == "lock":
+		await _locks_together()
+		var gone: int = await SignInHelper.delete_accounts("delivered+bwtogether", root)
+		print("  (%d throwaway accounts deleted)" % gone)
 	else:
 		await _pair()
 	print("")
@@ -337,6 +341,7 @@ func _pair() -> void:
 	await _again(a, b)
 	await _sub_lines(a, b)
 	await _copies_at_once(a, b)
+	await _locks_together()
 	await _drive_together()
 	if _arg("--big") != "no":
 		await _big(a, b)
@@ -1088,6 +1093,85 @@ static func _differ(a: String, b: String) -> String:
 ## back without the drive's whole move, so after a redo the rims landed where
 ## the model had stood (drvcheck3 T); and each rim was put down twice where it
 ## came late, once by the model's own file and once by the session.
+## A joint locked in a session (jointlock; jlreview H1): a Technic hinge,
+## its pin locked on one side, held on the other, a drag on it refused there
+## by the joint's name; unlocked on the other side, it turns on the first;
+## locked there again, refused on the first; and the same file on both, its
+## one LOCK line. --only=lock runs it alone.
+func _locks_together() -> void:
+	print("6b. a joint locked by either person holds for both")
+	var stamp: int = int(Time.get_unix_time_from_system())
+	var a: Dictionary = await _side("delivered+bwtogetherl%d@resend.dev" % stamp)
+	var b: Dictionary = await _side("delivered+bwtogetherm%d@resend.dev" % stamp)
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var lines := PackedStringArray(["0 FILE hinge.ldr", "0 A Technic hinge", "0 Name: hinge.ldr",
+		"0 !BRICKWORKS FLOOR NONE"])
+	for k: int in range(1, 13):
+		lines.append("1 4 0 %d -10 1 0 0 0 1 0 0 0 1 3001.dat" % (-24 * k))
+	lines.append_array(["1 7 0 -312 0 1 0 0 0 1 0 0 0 1 3701.dat",
+		"1 16 0 0 0 1 0 0 0 1 0 0 0 1 beam.ldr", "0 NOFILE", "0 FILE beam.ldr", "0 Beam", "0 Name: beam.ldr",
+		"1 0 0 -302 10 0 0 -1 0 1 0 1 0 0 2780.dat", "1 14 0 -242 20 -1 0 0 0 0 1 0 1 0 32524.dat", "0 NOFILE"])
+	(a["store"] as ModelStore).open_text("\n".join(lines) + "\n", "Lock hinge")
+	var trouble: String = await ta.start()
+	trouble += await tb.join(ta.link)
+	await _settle([a, b])
+	_check("a session on the hinge, both with it", trouble.is_empty() and ta.model_hash() == tb.model_hash(), trouble)
+	var lock := func(side: Dictionary, on: bool) -> void:
+		var world: BrickWorld = side["world"]
+		var builder: Builder = side["builder"]
+		if world.motions == null:
+			world.motions = Motions.new()
+		var had: Motions = world.motions.copy()
+		if on:
+			world.motions.locks.append(Motions.lock_of(_kind(world, "2780"), _kind(world, "3701"), world,
+				(side["store"] as ModelStore).lift()))
+		else:
+			world.motions.locks.clear()
+		builder.record([{"undo": "motions", "motions": had}], "locked" if on else "unlocked")
+	var refused := func(side: Dictionary) -> String:
+		var world: BrickWorld = side["world"]
+		var held := Grab.new()
+		held.world = world
+		held.builder = side["builder"]
+		held.library = _library
+		var pin: int = _kind(world, "2780")
+		held.begin(pin, world.get_brick(pin).transform.origin, {})
+		return held.why if held.state != "moves" else ""
+	lock.call(a, true)
+	await _settle([a, b])
+	var there: String = refused.call(b)
+	_check("locked by the owner: the other's drag on it is refused by name (\"%s\")" % there.left(100),
+		there.contains("Beam's joint") and there.contains(Motions.UNLOCK_WORDS))
+	var moved: Dictionary = await tb.check_edit({"op": "move", "uid": tb.uid_of(_kind(b["world"], "2780")),
+		"by": [0, 0, 10]})
+	_check("...and a move of its pin there, by the keys (%s: \"%s\")" % [moved.get("ok"),
+		(b["builder"] as Builder).refused_lock.left(80)], not bool(moved.get("ok", true))
+		and (b["builder"] as Builder).refused_lock.contains("Beam's joint"))
+	lock.call(b, false)
+	await _settle([a, b])
+	_check("unlocked by the other: it turns for the owner", refused.call(a).is_empty()
+		and (a["world"] as BrickWorld).motions.locks.is_empty())
+	lock.call(b, true)
+	await _settle([a, b])
+	var here: String = refused.call(a)
+	_check("locked by the other: the owner's drag on it is refused by name (\"%s\")" % here.left(100),
+		here.contains("Beam's joint") and here.contains(Motions.UNLOCK_WORDS))
+	var file_a: String = ta.model_text()
+	var line_count: int = Array(file_a.split("\n")).filter(func(one: String) -> bool:
+		return one.begins_with(Motions.LOCK_META)).size()
+	_check("the same file on both, its one LOCK line (%d)" % line_count, ta.model_hash() == tb.model_hash()
+		and line_count == 1 and file_a == tb.model_text())
+	await ta.end()
+
+
+static func _kind(world: BrickWorld, part: String) -> int:
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == part:
+			return brick.id
+	return 0
+
+
 func _drive_together() -> void:
 	print("7. a drive kept, undone and redone together, its rims on their way to the one who joined")
 	var stamp: int = int(Time.get_unix_time_from_system())

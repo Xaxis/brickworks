@@ -378,8 +378,35 @@ func set_lock(moving: Dictionary, pair: Array, on: bool) -> String:
 	if on:
 		return ("Locked %s: it keeps its angle and its slide. A drag of either part, R, a handle, "
 			+ "Simulate's driver and Claude's moves are refused until it is unlocked; undo takes "
-			+ "the lock off.") % name
+			+ "the lock off.%s") % [name, _copies_words(lock)]
 	return "Unlocked %s: it moves again. Undo locks it again." % name
+
+
+## What a lock of one copy of a sub-model leaves: which copy it is in, and
+## that the joints of its other copies still move (a lock is of two parts,
+## [Motions.Lock]); "" when the sub-model it is in has no other copy
+## (jlreview L1: the answer named neither).
+func _copies_words(lock: Motions.Lock) -> String:
+	if assemblies == null:
+		return ""
+	var a: int = Motions.lock_part(lock.a, world, builder)
+	var brick: BrickWorld.Brick = world.get_brick(a) if a != 0 else null
+	var path: String = Assemblies.path_of(brick) if brick != null else ""
+	# The innermost sub-model round it that is placed more than once.
+	while not path.is_empty():
+		var others: PackedStringArray = assemblies.copies_of(path)
+		if not others.is_empty():
+			var named := PackedStringArray()
+			for one: String in others.slice(0, 10):
+				named.append(Assemblies.label(one))
+			var more: int = others.size() - named.size()
+			return (" Only in this copy, %s (copy %d of %d): the same joint in the other %s (%s%s) still moves; "
+				+ "lock each on its own row.") % [Assemblies.label(path),
+				Assemblies.copy_of(Assemblies.leaf(path)), others.size() + 1,
+				"copy" if others.size() == 1 else "%d copies" % others.size(), ", ".join(named),
+				" and %d more" % more if more > 0 else ""]
+		path = Assemblies.parent_of(path)
+	return ""
 
 
 func _motions() -> Motions:

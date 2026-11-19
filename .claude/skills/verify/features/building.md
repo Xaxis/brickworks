@@ -2784,10 +2784,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   elsewhere; a line it cannot read is named at the open and kept. One undo a
   lock or an unlock. The list's Joints locked has an Unlock each; `lock=false`
   with nothing locked is as if absent. A lock is of its two parts only: a copy
-  is not locked. A joint locked keeps its row (it is listed as it would move
-  unlocked, `GrabDrag.locks_off`), its slider still. Probes: `jointlock_probe`
-  (windowed), `jointlock_time_probe` (headless, Orthanc: the lock's work each
-  frame under 16 ms).
+  is not locked; a lock in one copy of a sub-model says which copy and that
+  the others still move. A joint locked keeps its row (it is listed as it
+  would move unlocked, `GrabDrag.locks_off`), its slider still. `move_part
+  to=` (`GrabChain.locked_why`) refuses with the lock's words, or names the
+  joint it left. Building together carries locks in the room's `~motions`
+  words (`Together._motion_words`, `_put_motions`, `Motions.find_lock_parts`):
+  a lock or an unlock by either person holds for both. A save while a section
+  is broken out writes the lock's and every motion joint's ref where it is
+  built (`Motions.stands`, jlfix 2026-11-19; a motion's joint and a slide's
+  AT were written at the broken-out place before). A LOCK line naming parts
+  the model has not got is named at the open and kept byte for byte.
+  Probes: `jointlock_probe` (windowed; `-- together breakout motion_breakout
+  chain copies dangling` runs the review's cases alone), `jointlock_time_probe`
+  (headless, Orthanc: the lock's work each frame under 16 ms); in a session,
+  `together_probe -- --api=… --only=lock`.
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
@@ -3772,7 +3783,9 @@ bash tools/probe.sh posehold_probe
 # a joint locked: a minifig's knee, a Technic hinge and a sliding axle, each
 # locked (its row's Lock, pose_model lock=true), refused by name through a drag
 # of either part, Grab, R, a handle, Simulate, move_part and pose_model; saved,
-# reopened, edited elsewhere and undone byte for byte; unlocked, each moves
+# reopened, edited elsewhere and undone byte for byte; unlocked, each moves;
+# then the review's cases: Together both ways, saved broken out (the lock and
+# a motion's joints), move_part to=, a copy of three, a lock of absent parts
 bash tools/probe.sh jointlock_probe
 # the lock's work a frame on Orthanc, each act under 16 ms
 bash tools/probe.sh jointlock_time_probe

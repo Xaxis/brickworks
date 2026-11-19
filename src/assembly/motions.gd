@@ -348,6 +348,10 @@ var locks: Array = []
 ## Lock lines the open could not read, said ([method lock_unread_words]);
 ## each stays in the file where it was (MetaIndex: not taken).
 var locks_unread_why := PackedStringArray()
+## Lock lines read whose parts the model has not got (ModelStore's open),
+## said with those ([method lock_unread_words]) and written as the file had
+## them (ModelStore._lock_lines).
+var locks_unfound := PackedStringArray()
 ## Every joint any motion moves, each once: tracks of two motions on one
 ## joint share it, so its AT is one.
 var joints: Array = []
@@ -375,13 +379,28 @@ func has_lines() -> bool:
 # -- joints locked ---------------------------------------------------------------
 
 
-## The lock lines, each lock's parts as its joints now say them (ModelStore
-## brings their places up to where the parts stand before it asks).
-func lock_lines() -> PackedStringArray:
+## The lock lines, each lock's parts as its joints now say them, or where
+## [param placed] (Joint -> its place, LDraw's coordinates) has them:
+## building together's words (Together._motion_words), placed as a motion's
+## joints are ([method lines]).
+func lock_lines(placed: Dictionary = {}) -> PackedStringArray:
 	var out := PackedStringArray()
 	for lock: Lock in locks:
-		out.append("%s %s" % [LOCK_META, lock.ref_words()])
+		out.append("%s %s ON %s" % [LOCK_META, _ref_written(lock.a, placed), _ref_written(lock.b, placed)])
 	return out
+
+
+## Each lock's two parts found where its refs say ([method part_at]), for a
+## ref whose part is not here by its number: the words another person's
+## side sent (Together._put_motions), read with no part found yet. A lock
+## not found holds nothing until its parts come.
+func find_lock_parts(world: BrickWorld, lift: Vector3) -> void:
+	for lock: Lock in locks:
+		for joint: Joint in [lock.a, lock.b]:
+			if world.get_brick(joint.lead) == null:
+				var found: int = part_at(joint, world, lift)
+				if found != 0:
+					joint.lead = found
 
 
 ## What a lock line says after its word ("PART 3938 71 0 -24 0 ON PART ..."),
@@ -426,11 +445,16 @@ func _read_locks(metas: MetaIndex) -> void:
 ## The lock lines the open could not read, said where an open says what it
 ## left out: "1 lock line not read, kept in the file as it is: ..."; "" for none.
 func lock_unread_words() -> String:
-	if locks_unread_why.is_empty():
-		return ""
-	return "%s: %s" % ["1 lock line not read, kept in the file as it is" if locks_unread_why.size() == 1
-		else "%d lock lines not read, kept in the file as they are" % locks_unread_why.size(),
-		"; ".join(locks_unread_why)]
+	var said := PackedStringArray()
+	if not locks_unread_why.is_empty():
+		said.append("%s: %s" % ["1 lock line not read, kept in the file as it is" if locks_unread_why.size() == 1
+			else "%d lock lines not read, kept in the file as they are" % locks_unread_why.size(),
+			"; ".join(locks_unread_why)])
+	if not locks_unfound.is_empty():
+		said.append("%s: %s" % ["1 lock of parts the model has not got, kept in the file as it is"
+			if locks_unfound.size() == 1 else "%d locks of parts the model has not got, kept in the file as they are"
+			% locks_unfound.size(), "; ".join(locks_unfound)])
+	return "; ".join(said)
 
 
 ## A lock's part as it is now: its id, followed through an undo that put it
@@ -537,8 +561,18 @@ static func _part_ref(id: int, world: BrickWorld, lift: Vector3) -> Joint:
 	joint.lead = id
 	joint.part = brick.part_id
 	joint.colour = brick.color_code
-	joint.place = (brick.transform.origin - lift) * LdrModel.FLIP
+	joint.place = (stands(brick, world).origin - lift) * LdrModel.FLIP
 	return joint
+
+
+## Where [param brick] stands as the model is built: with a section broken
+## out (BrickWorld.broken_out), where it was pulled from (BrickWorld.home_of),
+## as a save writes its line. Every joint's and lock's ref is a place as
+## built, written and looked for there: written where a break out had put
+## it, a reopened lock held nothing and a motion's joint found no part
+## (jlreview H2).
+static func stands(brick: BrickWorld.Brick, world: BrickWorld) -> Transform3D:
+	return brick.transform if world.broken_out.is_empty() else world.home_of(brick)
 
 
 ## The part of [param world] [param joint]'s ref names, by its number and
@@ -561,7 +595,7 @@ static func part_at(joint: Joint, world: BrickWorld, lift: Vector3) -> int:
 	for brick: BrickWorld.Brick in world.bricks():
 		if brick.part_id != joint.part or brick.color_code != joint.colour:
 			continue
-		var off: float = brick.transform.origin.distance_to(want)
+		var off: float = stands(brick, world).origin.distance_to(want)
 		if off < nearest:
 			nearest = off
 			best = brick.id
@@ -795,6 +829,7 @@ func copy() -> Motions:
 	for lock: Lock in locks:
 		out.locks.append(lock.copy())
 	out.locks_unread_why = locks_unread_why.duplicate()
+	out.locks_unfound = locks_unfound.duplicate()
 	var map: Dictionary = {}
 	for joint: Joint in joints:
 		map[joint] = joint.copy()
