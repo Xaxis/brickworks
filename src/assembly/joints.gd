@@ -1281,15 +1281,17 @@ static func _round_about(middle: Vector3, way: Vector3, out: float, key: Variant
 ## dimples, which LDraw draws as small primitives along X and which the
 ## connectors read only now and then (2447b and 3842b have none, 61190f's
 ## pins stop at the mouth of 61189's dimples). Where each part's are is
-## read off those primitives ([constant MinifigData.PIVOTS],
+## read off those primitives (MinifigData.PIVOTS,
 ## tools/minifig.py pivot_of), and two parts whose pivots are one point on
 ## one axis are joined there, as the figure builder puts them.
 static func _pivots(entries: Array, held: Dictionary) -> void:
+	if entries.is_empty():
+		return
 	var seen: Dictionary = {}   ## bucket -> Array of [key, point, axis]
+	var pivots: Dictionary = Minifig.table(&"PIVOTS")
 	for entry: Array in entries:
 		var part_id: String = str(entry[3]) if entry.size() > 3 else ""
-		var pivot: Array = MinifigData.PIVOTS.get(Minifig._family(part_id),
-			MinifigData.PIVOTS.get(part_id, []))
+		var pivot: Array = pivots.get(Minifig._family(part_id), pivots.get(part_id, []))
 		if pivot.size() != 2:
 			continue
 		var at: Transform3D = entry[1]

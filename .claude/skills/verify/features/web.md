@@ -148,7 +148,18 @@ plan with Claude as the client.
   names a class Later does not load or a member main.gd does not make; `lazystart_probe`
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
-  place, and prints what each first load took. With the assistant shown,
+  place, and prints what each first load took. On an iPhone or iPad the
+  first screen is compiled a cycle at a time before main.tscn
+  (`BrickworksLoop.compile_first_screen`, from `assets/web/first_order.txt`,
+  which `tools/export.sh web` writes with `tools/web/start_closure.py
+  --order` and `pck_split.py` keeps in index.pck; webstart12, 2026-11-19:
+  the Wasm's height 432 -> 360 MB, WebKit working 19.4 -> 17.3 s; in
+  Chromium it cost 11-13% of the scripts' phase, so Chromium compiles as
+  one). `start_phases.mjs --config=iphone13` shows it as "Wasm memory at
+  its largest"; `src/dev/start_uses.gd` under `-d --profiling` with
+  `tools/web/start_uses.py` says which first-screen scripts never ran
+  before a press, and `src/dev/start_cost.gd [--pre=FILE]` times and weighs
+  the compile headless. With the assistant shown,
   Claude's connector is made as the window is built (`_make_connector`,
   its code 55 KB: it names no other Later class, which test_later checks),
   so it asks whether to listen, and the page runs its frames out of view

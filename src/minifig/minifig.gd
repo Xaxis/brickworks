@@ -188,7 +188,7 @@ func assemble(library: PartLibrary = null) -> Array[Dictionary]:
 	# The head, on whatever is round the neck.
 	var lift: float = 0.0
 	for slot: String in ["neck", "back", "cape"]:
-		lift = maxf(lift, float(MinifigData.NECK_LIFT.get(worn_as(library, part(slot)), 0)))
+		lift = maxf(lift, float(table(&"NECK_LIFT").get(worn_as(library, part(slot)), 0)))
 	var head_at: Variant = _place(torso_id, part("head"), "c")
 	var head: Transform3D = (head_at if head_at != null else _seated(library, part("head"))) \
 		.translated(Vector3(0, -lift, 0))
@@ -293,7 +293,7 @@ func _lower(library: PartLibrary) -> Dictionary:
 				placed_legs.append({"slot": "legs", "part": leg, "at": at})
 			# Legs in pieces: springs with the legs they go into, and those
 			# legs with their springs, where 43743-f1 puts them.
-			for other: Array in MinifigData.LEGS_WITH.get(legs, []):
+			for other: Array in table(&"LEGS_WITH").get(legs, []):
 				placed_legs.append({"slot": "legs", "part": str(other[0]),
 					"at": _ldraw(other[1])})
 	found.append_array(placed_legs)
@@ -401,7 +401,7 @@ static func _place_on(torso_id: String, part_id: String, side: String) -> Varian
 	if part_id.is_empty() or torso_id.is_empty():
 		return null
 	var key: String = _family(part_id)
-	var by_part: Dictionary = MinifigData.PLACES.get(
+	var by_part: Dictionary = table(&"PLACES").get(
 		torso_id if torso_id == "*" else _family(torso_id), {})
 	var by_side: Dictionary = by_part.get(key, by_part.get(part_id, {}))
 	if by_side.has(side):
@@ -419,7 +419,7 @@ static func _seated(library: PartLibrary, head: String) -> Transform3D:
 	if head.is_empty():
 		return standard
 	var family: String = _family(head)
-	var seat: Variant = MinifigData.SEATS.get(family, MinifigData.SEATS.get(head))
+	var seat: Variant = table(&"SEATS").get(family, table(&"SEATS").get(head))
 	if seat == null:
 		if family.begins_with("3626") or family == "28621":
 			return standard
@@ -442,18 +442,18 @@ static func _seated(library: PartLibrary, head: String) -> Transform3D:
 static func _on_headgear(part_id: String, hat: String = "") -> Transform3D:
 	if part_id.is_empty():
 		return Transform3D.IDENTITY
-	var found: Array = MinifigData.EXTRAS.get(_family(part_id), MinifigData.EXTRAS.get(part_id, []))
+	var found: Array = table(&"EXTRAS").get(_family(part_id), table(&"EXTRAS").get(part_id, []))
 	if found.size() == 13 and (hat.is_empty() or _family(hat) == _family(str(found[0]))):
 		return _ldraw(found.slice(1))
-	var own: Array = MinifigData.PIVOTS.get(_family(part_id), [])
+	var own: Array = table(&"PIVOTS").get(_family(part_id), [])
 	if own.size() != 2:
 		return _ldraw(found.slice(1)) if found.size() == 13 else Transform3D.IDENTITY
-	var on_hat: Array = MinifigData.PIVOTS.get(_family(hat), []) if not hat.is_empty() else []
+	var on_hat: Array = table(&"PIVOTS").get(_family(hat), []) if not hat.is_empty() else []
 	var at_origin: bool = absf(float(own[0])) < 0.5 and absf(float(own[1])) < 0.5
 	if on_hat.size() != 2:
 		if not at_origin:
 			return Transform3D.IDENTITY
-		on_hat = MinifigData.PIVOTS.get("3842b", [5.0, 0.0])
+		on_hat = table(&"PIVOTS").get("3842b", [5.0, 0.0])
 	return Transform3D(Basis.IDENTITY, Vector3(0.0, float(on_hat[0]) - float(own[0]),
 		float(on_hat[1]) - float(own[1])))
 
@@ -462,7 +462,7 @@ static func _on_headgear(part_id: String, hat: String = "") -> Transform3D:
 ## LDraw convention and where 85 of 87 real figures put theirs, turned
 ## the way real figures wear it where they turn it (the quiver).
 static func _worn(part_id: String) -> Transform3D:
-	var turn: float = float(MinifigData.TURNED.get(part_id, 0))
+	var turn: float = float(table(&"TURNED").get(part_id, 0))
 	if turn == 0.0:
 		return Transform3D.IDENTITY
 	return Transform3D(Basis(Vector3.UP, deg_to_rad(turn)), Vector3.ZERO)
@@ -484,7 +484,7 @@ func _cape(library: PartLibrary, part_id: String, stance: Transform3D) -> Transf
 	# Sitting on the shoulders by its own collar, as the head sits on it:
 	# 4524 two LDU up in all nine real figures wearing it, as 50231c02 is
 	# in 9471's Eomer.
-	var collar: float = float(MinifigData.NECK_LIFT.get(part_id, 0))
+	var collar: float = float(table(&"NECK_LIFT").get(part_id, 0))
 	return _hung_clear(library, part_id,
 		Transform3D(Basis.IDENTITY, Vector3(0.0, -collar, 0.0)), stance)
 
@@ -627,7 +627,7 @@ func _hand_parts(library: PartLibrary) -> Dictionary:
 	if side != "c":
 		return _pair(library, chosen, HAND, HAND)
 	# On the side of the arm it goes on, where it goes on one.
-	var needs: Array = MinifigData.ON_ARMS.get(_family(chosen), [])
+	var needs: Array = table(&"ON_ARMS").get(_family(chosen), [])
 	if not needs.is_empty():
 		return {"r": chosen, "l": HAND} if _side(library, str(needs[0])) == "r" \
 			else {"r": HAND, "l": chosen}
@@ -658,10 +658,10 @@ static func _standard_hand_in_arm(side: String) -> Transform3D:
 static func _hand_at(torso_id: String, arm: String, arm_at: Transform3D, hand: String,
 		side: String) -> Variant:
 	# A hand that goes on an arm of its own, on it where the arm says.
-	var needs: Array = MinifigData.ON_ARMS.get(_family(hand), [])
+	var needs: Array = table(&"ON_ARMS").get(_family(hand), [])
 	if needs.size() == 13 and _family(arm) == _family(str(needs[0])):
 		return arm_at * _ldraw(needs.slice(1))
-	var on_arm: Variant = MinifigData.HANDS.get(_family(arm))
+	var on_arm: Variant = table(&"HANDS").get(_family(arm))
 	if on_arm is Dictionary and (on_arm as Dictionary).is_empty():
 		return null
 	if on_arm == null and _hand_moulded_on(arm):
@@ -669,7 +669,7 @@ static func _hand_at(torso_id: String, arm: String, arm_at: Transform3D, hand: S
 	if hand.is_empty():
 		return arm_at * _standard_hand_in_arm(side)
 	# What the library does with this hand and this torso (a baby's).
-	var with_torso: Dictionary = MinifigData.PLACES.get(_family(torso_id), {})
+	var with_torso: Dictionary = table(&"PLACES").get(_family(torso_id), {})
 	var exact: Dictionary = with_torso.get(_family(hand), {})
 	if exact.has(side):
 		return _ldraw(exact[side])
@@ -677,7 +677,7 @@ static func _hand_at(torso_id: String, arm: String, arm_at: Transform3D, hand: S
 		return arm_at * _ldraw(on_arm[side])
 	# A hand of its own shape (a hook) where the library puts it on the
 	# plain arm, carried by whatever arm it is on.
-	var anywhere: Dictionary = (MinifigData.PLACES.get("*", {}) as Dictionary).get(_family(hand), {})
+	var anywhere: Dictionary = (table(&"PLACES").get("*", {}) as Dictionary).get(_family(hand), {})
 	if anywhere.has(side):
 		var plain: Transform3D = _ldraw(ARM_R if side == "r" else ARM_L)
 		return arm_at * plain.affine_inverse() * _ldraw(anywhere[side])
@@ -759,7 +759,7 @@ func _held(held: String, arm: Transform3D, hand: Transform3D, stance: Transform3
 	var low: float = _lowest(stance * hand * grip, info.bounds)
 	# Upright: as long along its grip as a figure is tall — a spear, not
 	# a lance, which is long across it.
-	var bar: Array = MinifigData.GRIPS.get(held, [0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+	var bar: Array = table(&"GRIPS").get(held, [0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
 	var upright: bool = _extent(info.bounds, FLIP.basis * Vector3(bar[3], bar[4], bar[5])) >= LONG
 	if low < 0.0 or upright:
 		# Slid along the grip, as a shaft slides through a closed hand,
@@ -819,7 +819,7 @@ static func _lowest(placed: Transform3D, bounds: AABB) -> float:
 ## LDraw way — handle along Y, business end up — comes out as real sets
 ## hold it, blade forward and up.
 static func in_hand(part_id: String) -> Transform3D:
-	var grip: Array = MinifigData.GRIPS.get(part_id, [0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+	var grip: Array = table(&"GRIPS").get(part_id, [0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
 	var bar := Vector3(grip[0], grip[1], grip[2])
 	var along := Vector3(grip[3], grip[4], grip[5]).normalized()
 	var turn := Basis.IDENTITY
@@ -1148,6 +1148,15 @@ const NAME_RULES: Array = [
 	["neck", "^(Armour|Breastplate)\\b"],
 	["torso", "^(Torso|Mechanical Torso|Mechanical Cuboid Torso|Skeleton Torso|Body|Baby Body|Bundled Baby|Gollum|Figure Sebulba|Mutant Fish)\\b"],
 ]
+
+
+## One of the figure rules' tables (MinifigData), by its constant's name:
+## 25k tokens of literals the first screen compiled for a figure nobody had
+## made yet, 2.5% of its compile (webstart12, 2026-11-19), now loaded the
+## first time a rule reads one. Each read asks Later, which holds the script
+## once loaded: nothing here is kept in a static, which a worker may read.
+static func table(name: StringName) -> Dictionary:
+	return Later.script(&"MinifigData").get(name) as Dictionary
 
 
 ## Which slot a part is offered in, or "" for a part that is not a
@@ -1718,7 +1727,7 @@ func part_for_colour(slot: String) -> String:
 ## yellow.
 func dress_torso(torso: String) -> void:
 	parts["torso"] = torso
-	var hands: Array = MinifigData.TORSO_HANDS.get(torso, [-1, 14])
+	var hands: Array = table(&"TORSO_HANDS").get(torso, [-1, 14])
 	# 16 in an assembly is "the colour the assembly is placed in", which
 	# for a torso assembly is the torso's.
 	var own := func(code: int) -> int:
@@ -1752,7 +1761,7 @@ func choose(library: PartLibrary, slot: String, part_id: String) -> void:
 			# only puts on its own body — a battle droid's clips onto its
 			# torso's bar, and a plain torso has none — brings that body,
 			# as the body brings it.
-			var body: String = str(MinifigData.HEADS_ON.get(_family(part_id), ""))
+			var body: String = str(table(&"HEADS_ON").get(_family(part_id), ""))
 			if not body.is_empty() and _family(part("torso")) == "973":
 				choose(library, "torso", body)
 		"legs":
@@ -1761,7 +1770,7 @@ func choose(library: PartLibrary, slot: String, part_id: String) -> void:
 			_fit_arm(was, part_id)
 		"arms":
 			# An arm the hand cannot go on: the plain hand back.
-			var needs: Array = MinifigData.ON_ARMS.get(_family(part("hands")), [])
+			var needs: Array = table(&"ON_ARMS").get(_family(part("hands")), [])
 			if not needs.is_empty() and _family(part_id) != _family(str(needs[0])):
 				parts["hands"] = HAND
 	if PAIRED.has(slot) and library != null:
@@ -1810,8 +1819,8 @@ func _fit_hips(library: PartLibrary, was: String, legs: String) -> void:
 		if not printed.is_empty():
 			parts["hips"] = printed
 			return
-	var before: Array = MinifigData.LEG_HIPS.get(was, [])
-	var after: Array = MinifigData.LEG_HIPS.get(legs, [])
+	var before: Array = table(&"LEG_HIPS").get(was, [])
+	var after: Array = table(&"LEG_HIPS").get(legs, [])
 	var now: String = part("hips")
 	var by_legs: bool = not before.is_empty() and str(before[0]) == now
 	if not (by_legs or now == PLAIN_HIPS):
@@ -1832,8 +1841,8 @@ func _fit_hips(library: PartLibrary, was: String, legs: String) -> void:
 ## arm it pointed back up it. Over a plain arm or one the hand before
 ## brought; the plain arm back when the hand goes.
 func _fit_arm(was: String, hand: String) -> void:
-	var before: Array = MinifigData.ON_ARMS.get(_family(was), [])
-	var after: Array = MinifigData.ON_ARMS.get(_family(hand), [])
+	var before: Array = table(&"ON_ARMS").get(_family(was), [])
+	var after: Array = table(&"ON_ARMS").get(_family(hand), [])
 	var now: String = part("arms")
 	var by_hand: bool = not before.is_empty() and str(before[0]) == now
 	if not (by_hand or now == ARM_RIGHT):
@@ -1875,7 +1884,7 @@ func _fit_body(library: PartLibrary, was: String, torso: String) -> void:
 ## drawn from its feet up and as tall as a figure is the whole figure,
 ## head and arms and all.
 static func body_of(library: PartLibrary, torso: String) -> Dictionary:
-	var out: Dictionary = (MinifigData.BODIES.get(_family(torso), {}) as Dictionary).duplicate()
+	var out: Dictionary = (table(&"BODIES").get(_family(torso), {}) as Dictionary).duplicate()
 	var assembled: bool = not out.is_empty()
 	var info: PartLibrary.PartInfo = _info(library, torso)
 	if info == null:

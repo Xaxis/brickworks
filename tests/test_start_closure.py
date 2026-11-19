@@ -113,3 +113,35 @@ def test_an_entry_point_it_cannot_place_is_an_error_not_a_script_left_out(tmp_pa
             assert says in str(error), f"{settings!r}: {error}"
             continue
         raise AssertionError(f"{settings!r} gave a first screen, where it names what is not there")
+
+
+def test_the_compile_order_puts_what_a_script_names_before_it(tmp_path: Path) -> None:
+    """An iPhone loads the first screen a script of each cycle at a time
+    (BrickworksLoop.FIRST_ORDER), so each load must find what it names made:
+    a cycle once, after every cycle it names, and never Later's classes or
+    the scripts the engine loads itself (webstart12)."""
+    root = project(tmp_path, '[application]\n\nrun/main_scene="res://src/main.tscn"\n', {
+        "src/main.tscn": scene("", ("Script", "res://src/main.gd")),
+        "src/main.gd": "extends Node\nfunc _ready():\n\tA.go()\n\tB.go()\n\tBig.go()\n",
+        "src/a.gd": "class_name A\nstatic func go():\n\tC.go()\n",
+        "src/c.gd": "class_name C\nstatic func go():\n\tA.go()\n\tD.go()\n",
+        "src/b.gd": "class_name B\nstatic func go():\n\tD.go()\n",
+        "src/d.gd": "class_name D\nstatic func go():\n\tpass\n",
+    })
+    order = start_closure.compile_order(root)
+    assert "res://src/main.gd" not in order and "res://src/big.gd" not in order
+    # A and C name each other: one of them stands for both.
+    assert len({"res://src/a.gd", "res://src/c.gd"} & set(order)) == 1
+    assert sorted(order, key=order.index) == order and len(order) == 3
+    cycle = "res://src/a.gd" if "res://src/a.gd" in order else "res://src/c.gd"
+    assert order.index("res://src/d.gd") < order.index(cycle)
+    assert order.index("res://src/d.gd") < order.index("res://src/b.gd")
+
+
+def test_the_app_s_compile_order_is_its_first_screen() -> None:
+    """Everything the first screen compiles is reached by the order or is
+    the engine's own load (main.gd's cycle, the main loop)."""
+    order = start_closure.compile_order()
+    first = start_closure.closure()
+    assert order and set(order) <= first
+    assert "res://src/main.gd" not in order and "res://src/boot/brickworks_loop.gd" not in order
