@@ -2981,8 +2981,10 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	# What the edit takes out of its step: a step keeps its look with the
 	# parts it keeps. In every copy of a sub-model, as the edit moves them.
 	var taken: Dictionary = {}
+	var moving: Dictionary = {}
 	if op in ["prev", "next", "new", "to"]:
-		for items: Variant in AuthorSteps._moved(world, ids, level, skip).values():
+		moving = AuthorSteps._moved(world, ids, level, skip)
+		for items: Variant in moving.values():
 			for item: Dictionary in items:
 				taken[BookletLooks.item_name(item)] = true
 	elif op == "delete" and int(where[1]) >= 0:
@@ -3012,6 +3014,18 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		"delete":
 			if int(where[1]) >= 0:
 				undo.append_array(AuthorSteps.remove(world, str(where[0]), int(where[1]), skip))
+	# Two of the file's steps an MLCad buffer's RETRIEVE stands between stay
+	# two when parts move too: every part of the step after it moved to the
+	# step before, or of the step before into the one after, made them one
+	# as a merge does, and the file had the RETRIEVE in the middle of a step
+	# (mkreview M1). Read off the model as the edit left it, so the keys, the
+	# bar and a session over MCP are refused alike; only the sections the
+	# parts moved in, which on 8063-1 cost a step move 10 ms read whole.
+	var joined: Array = store.retrieve_joined(moving.keys()) \
+		if op in ["prev", "next", "to"] and not undo.is_empty() else []
+	if not joined.is_empty():
+		_take_back(undo)
+		return _joined_words(joined, ids, skip, number)
 	undo.append_array(BookletLooks.follow(world, looked, skip, taken))
 	undo = AuthorSteps.squash(undo, world)
 	if undo.is_empty():
@@ -3085,18 +3099,48 @@ func _held_apart(op: String, number: int, section: String, step: int, skip: Dict
 	var after: int = AuthorSteps.neighbour(seen, step, 1)
 	if op == "merge":
 		var line: String = store.retrieve_between(section, step, after) if after >= 0 else ""
-		return "" if line.is_empty() else ("step %d and the next stay apart: the next begins with "
-			+ "“%s”, so in LPub3D and MLCad, as one step, step %d's parts would never be shown") \
-			% [number, line, number]
+		return "" if line.is_empty() else _apart(number, line)
 	var before: int = AuthorSteps.neighbour(seen, step, -1)
 	if before >= 0:
 		var line: String = store.retrieve_between(section, before, step)
-		return "" if line.is_empty() else ("step %d stays: it begins with “%s”, so in LPub3D "
-			+ "and MLCad, put in the step before, that step's parts would never be shown") \
-			% [number, line]
+		return "" if line.is_empty() else _stays(number, line)
 	var line: String = store.retrieve_between(section, step, after) if after >= 0 else ""
 	return "" if line.is_empty() else ("step %d stays: the next begins with “%s”, so in LPub3D "
 		+ "and MLCad, put in it, this step's parts would never be shown") % [number, line]
+
+
+## Why step [param number] and the next, which begins with [param line] (a
+## buffer's RETRIEVE), are not made one ([method _held_apart]).
+static func _apart(number: int, line: String) -> String:
+	return ("step %d and the next stay apart: the next begins with “%s”, so in LPub3D and "
+		+ "MLCad, as one step, step %d's parts would never be shown") % [number, line, number]
+
+
+## Why step [param number], which begins with [param line] (a buffer's
+## RETRIEVE), is not put in the step before it ([method _held_apart]).
+static func _stays(number: int, line: String) -> String:
+	return ("step %d stays: it begins with “%s”, so in LPub3D and MLCad, put in the step "
+		+ "before, that step's parts would never be shown") % [number, line]
+
+
+## Why an edit that made two steps a RETRIEVE stands between one is not
+## made ([param joined], ModelStore.retrieve_joined), in the words a merge or
+## a step taken out is refused in ([method _held_apart]): parts of the step
+## it begins moved ([param ids]), it is put in the step before, as a step
+## taken out; else the step before is put in it, as a merge. Read once the
+## edit is taken back, so the steps are numbered as the person sees them.
+func _joined_words(joined: Array, ids: Array, skip: Dictionary, number: int) -> String:
+	var planned: Array[Instructions.Step] = Instructions.plan(world, library, skip, {}, true)
+	var early: Array = numbers_of(planned, joined[1])
+	var late: Array = numbers_of(planned, joined[2])
+	var later_moved: bool = false
+	for brick_id: Variant in ids:
+		if (joined[2] as Array).has(int(brick_id)):
+			later_moved = true
+			break
+	if later_moved:
+		return _stays(int(late[0]) if not late.is_empty() else number, str(joined[0]))
+	return _apart(int(early[0]) if not early.is_empty() else number, str(joined[0]))
 
 
 ## The booklet's numbers the steps holding [param ids] have in
