@@ -396,7 +396,10 @@ func _swept_round() -> void:
 	judge.library = _library
 	judge.lattice = _builder.lattice
 	judge.measure(_world.bricks())
-	var linked: bool = judge._links().any(func(pair: Array) -> bool:
+	# A weigh over frames gives the frame back in it (Balance.pace); with no
+	# pace it never waits.
+	var pairs: Array = await judge._links()
+	var linked: bool = pairs.any(func(pair: Array) -> bool:
 		return int(pair[0]) == turn_top and _world.get_brick(int(pair[1])).part_id == "3680")
 	_check("the turntable's top is joined to its base by the turntable (Joints.rounds)", linked)
 	var poses: Array = poser.sweep()
