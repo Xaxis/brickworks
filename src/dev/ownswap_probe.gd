@@ -604,10 +604,11 @@ func _case_mcp() -> void:
 func _case_time() -> void:
 	for path: String in TIMED:
 		await _open(FileAccess.get_file_as_string(path))
-		# The count the parts list takes each time it is shown (OwnSwap.short_of),
-		# in one frame: its time alone.
+		# The count the parts list takes each time it is shown (OwnSwap.short_of,
+		# given the list's own Inventory), in one frame: its time alone.
+		var stock: Inventory = Inventory.of(_world, _library, _store.scenery)
 		var counting := ProbeTime.Span.new()
-		var counted: Dictionary = OwnSwap.new(_library).short_of(_world, _store.scenery, _owner.on_hand)
+		var counted: Dictionary = OwnSwap.new(_library).short_of(_world, _store.scenery, _owner.on_hand, stock)
 		counting.end()
 		_check("time %s: the parts list's count of what is short, %d lots, %s, within %.0f ms" % [
 			path.get_file(), (counted["lots"] as Array).size(), counting.said(), 16.0 * counting.slack()],

@@ -1139,7 +1139,7 @@ func _take_own() -> void:
 	if _own_swapper == null:
 		_own_swapper = OwnSwap.new(library)
 	(_own_swapper as OwnSwap).library = library
-	_own_short = (_own_swapper as OwnSwap).short_of(_world, _scenery, pool)
+	_own_short = (_own_swapper as OwnSwap).short_of(_world, _scenery, pool, _stock)
 	_own = _own_short["lots"]
 	_say_own()
 

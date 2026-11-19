@@ -123,8 +123,11 @@ func _init(from: PartLibrary = null) -> void:
 ## biggest shortfall first, each with no swap yet ([method offer_all]):
 ## {"lots": Array of Lot, "pieces": the pieces mine=true counts, "owned": of
 ## those how many are theirs, "free": key -> pieces owned and not used by the
-## model, the pool the swaps take from}.
-func short_of(world: BrickWorld, scenery: Dictionary, on_hand: Dictionary) -> Dictionary:
+## model, the pool the swaps take from}. [param stock] is the model's
+## Inventory where the caller has it already (the parts list's), else it is
+## made here.
+func short_of(world: BrickWorld, scenery: Dictionary, on_hand: Dictionary,
+		stock: Inventory = null) -> Dictionary:
 	var used: Dictionary = SetBin.used_in(world, scenery, library)
 	var needs: Dictionary = {}
 	var pieces: int = 0
@@ -141,7 +144,8 @@ func short_of(world: BrickWorld, scenery: Dictionary, on_hand: Dictionary) -> Di
 	for key: String in shared["spare"]:
 		if int(shared["spare"][key]) > 0:
 			free[key] = int(shared["spare"][key])
-	var stock: Inventory = Inventory.of(world, library, scenery)
+	if stock == null:
+		stock = Inventory.of(world, library, scenery)
 	var flexible: Dictionary = {}
 	for path: Variant in stock.items:
 		flexible[stock.items[path]] = true
@@ -368,11 +372,15 @@ func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindRe
 		return []
 	if not str(into.get("part", "")).is_empty() and await finder.shape(str(into["part"])) == null:
 		return []
-	# Every one of them, where all are short and there is enough for them.
-	if need >= ids.size():
-		var whole: Array = _changed_by(finder.plan(found, into))
-		if not whole.is_empty() and whole.size() <= most:
-			return whole
+	# The lot planned once as a whole: every one of them where all are short
+	# and there is enough for them; else what can change at all.
+	var whole: Array = _changed_by(finder.plan(found, into))
+	if need >= ids.size() and not whole.is_empty() and whole.size() <= most:
+		return whole
+	var can: Dictionary = {}
+	for brick_id: int in whole:
+		can[brick_id] = true
+	var following: Dictionary = found.get("follow", {})
 	var order: Array = ids.duplicate()
 	order.sort_custom(func(a: int, b: int) -> bool:
 		var in_a: bool = not Assemblies.path_of(finder.world.get_brick(a)).is_empty()
@@ -386,9 +394,17 @@ func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindRe
 	for brick_id: int in order:
 		if taken.size() >= need:
 			break
-		if taken.has(brick_id):
+		if taken.has(brick_id) or not can.has(brick_id):
 			continue
-		var group: Array = _changed_by(finder.plan(RareSwap.narrowed(found, {brick_id: true}, finder), into))
+		# A part of the model's own, in no sub-model and followed by no
+		# mirror, is a group of one, with room as the whole plan found it (with
+		# fewer changed there is no less room); one in a sub-model is planned
+		# alone, with the twins its copies' follow reaches.
+		var brick: BrickWorld.Brick = finder.world.get_brick(brick_id)
+		var alone: bool = brick != null and Assemblies.path_of(brick).is_empty() \
+			and not following.has(brick_id) and not following.values().has(brick_id)
+		var group: Array = [brick_id] if alone \
+			else _changed_by(finder.plan(RareSwap.narrowed(found, {brick_id: true}, finder), into))
 		if group.is_empty() or taken.size() + group.size() > most \
 				or group.any(func(each: int) -> bool: return taken.has(each)):
 			continue
