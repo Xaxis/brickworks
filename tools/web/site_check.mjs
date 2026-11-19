@@ -231,8 +231,13 @@ console.log("the app");
 const app = await get("/app");
 // The build's own files under /b/<sha>/, and the engine's under an address
 // of its bytes, /e/<hash>/, kept across releases (tools/web/place_build.py).
+// The page names its engines in GODOT_CONFIG and asks for the one it chose
+// (src/boot/shell.html, brickworksEngine): the threaded one, and the one
+// without threads that iPhones and iPads start while the owner's switch is
+// on (nothreads, 2026-11-19).
 const sha = ((app.body || "").match(/href="\/b\/([^/"]+)\/index\.pck"/) || [])[1] || "";
-const engine = ((app.body || "").match(/src="\/e\/([0-9a-f]{16})\/index\.js"/) || [])[1] || "";
+const engine = ((app.body || "").match(/"engine":"\/e\/([0-9a-f]{16})\/index"/) || [])[1] || "";
+const engineNoThreads = ((app.body || "").match(/"nothreads":\{"engine":"\/e\/([0-9a-f]{16})\/index"/) || [])[1] || "";
 let appCsp = "";
 if (app.status !== 200) {
   fail(`/app answered ${app.status}${app.headers.get("location") ? " -> " + app.headers.get("location") : ""}, not the app`);
@@ -306,19 +311,20 @@ if (app.status !== 200) {
   // The engine's: sent as brotli, cached for good, and its script under the
   // app's own policy, which each of the engine's threads runs by: a worker
   // takes the policy its script was sent with, and the site's has no wasm.
-  for (const file of ["index.js", "index.wasm"]) {
-    const r = await get(`/e/${engine}/${file}`, "HEAD");
+  if (!engineNoThreads) fail("/app names no engine without threads for iPhones and iPads (GODOT_CONFIG.nothreads)");
+  for (const [at, file] of [engine, engineNoThreads].filter(Boolean).flatMap((one) => [[one, "index.js"], [one, "index.wasm"]])) {
+    const r = await get(`/e/${at}/${file}`, "HEAD");
     const cache = r.headers.get("cache-control") || "";
-    if (r.status !== 200) fail(`/e/${engine}/${file} answered ${r.status}`);
-    else if (!cache.includes("immutable")) fail(`/e/${engine}/${file} is not cached for good: ${cache}`);
-    else if (r.headers.get("content-encoding") !== "br") fail(`/e/${engine}/${file} is not sent as brotli`);
+    if (r.status !== 200) fail(`/e/${at}/${file} answered ${r.status}`);
+    else if (!cache.includes("immutable")) fail(`/e/${at}/${file} is not cached for good: ${cache}`);
+    else if (r.headers.get("content-encoding") !== "br") fail(`/e/${at}/${file} is not sent as brotli`);
     else if (!(r.headers.get("content-type") || "").startsWith(file.endsWith(".js") ? "application/javascript" : "application/wasm")) {
-      fail(`/e/${engine}/${file} is sent as ${r.headers.get("content-type")}, where nosniff runs only a script sent as one`);
+      fail(`/e/${at}/${file} is sent as ${r.headers.get("content-type")}, where nosniff runs only a script sent as one`);
     }
-    else if (r.headers.get("content-security-policy") !== appCsp) fail(`/e/${engine}/${file} is sent under another policy than the app's`);
-    else if (r.headers.get("cross-origin-embedder-policy") !== "require-corp") fail(`/e/${engine}/${file} is not sent for a cross-origin-isolated page`);
+    else if (r.headers.get("content-security-policy") !== appCsp) fail(`/e/${at}/${file} is sent under another policy than the app's`);
+    else if (r.headers.get("cross-origin-embedder-policy") !== "require-corp") fail(`/e/${at}/${file} is not sent for a cross-origin-isolated page`);
   }
-  ok(`/b/${sha}/ and its files 200, cached for good; the engine at /e/${engine}/, as brotli, under the app's policy`);
+  ok(`/b/${sha}/ and its files 200, cached for good; the engine at /e/${engine}/${engineNoThreads ? ` and the one without threads at /e/${engineNoThreads}/` : ""}, as brotli, under the app's policy`);
 }
 
 // -- nothing there ----------------------------------------------------------

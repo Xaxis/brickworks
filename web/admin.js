@@ -361,7 +361,8 @@ const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Le
   beta_decide: "Decided an application", beta_waitlist: "Put an application on the waitlist",
   beta_grant: "Gave the months still to give", beta_switch: "Flipped the beta", feedback_triage: "Marked feedback",
   feedback_reply: "Answered feedback", unbar_model: "Let a model back", notice_set: "Set the site's notice",
-  notice_clear: "Cleared the site's notice", run_cron: "Ran a cron now", export: "Exported an account's data",
+  notice_clear: "Cleared the site's notice", phone_rules: "Set the numbers a phone is warned by",
+  phone_engine: "Set which engine iPhones and iPads start", run_cron: "Ran a cron now", export: "Exported an account's data",
   delete_account: "Deleted an account", sign_out: "Signed an account out everywhere",
   social_connect: "Started connecting a network", social_connected: "Connected a network", social_disconnect: "Disconnected a network",
   social_sync: "Looked at the networks now", social_mark: "Marked what came in", social_draft: "Kept a social draft",
@@ -376,6 +377,8 @@ function opSaid(row) {
   const asked = row.detail?.asked || {};
   if (row.op === "beta_decide" && asked.decision) return asked.decision === "approve" ? "Approved an application" : "Declined an application";
   if (row.op === "beta_switch" && asked.mode) return asked.mode === "open" ? "Opened the beta" : "Turned the beta off";
+  if (row.op === "phone_engine" && asked.on) return asked.on === "true" ? "Gave iPhones and iPads the engine without threads"
+    : "Gave iPhones and iPads the threaded engine";
   return OPS[row.op] || row.op;
 }
 

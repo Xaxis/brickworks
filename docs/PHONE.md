@@ -296,12 +296,67 @@ real iPhone agrees. Android keeps threads.**
   columns). What it changes on iOS is the shared memory's 2 GB maximum,
   reserved up front, which an iPhone has refused (godot#70621). Only a real
   iPhone can say how often that happens, so the switch waits on one.
-- **The switch is not built here** (the bound). The two exports' packs are
-  byte for byte the same; only the engine (`index.wasm`, `index.js`)
-  differs. So it is one more engine at its own `/e/<hash>/` (40 MB, 7 MB
-  over the wire), chosen by the page on iOS when `phone_nothreads` is on
-  in `/admin#switches` › Phones (default off), and phonewarn and phonewalk
-  run both ways. A unit of its own.
+- **The switch is built** (nothreads, 2026-11-19): below.
+
+### The switch: iPhones and iPads on the engine without threads
+
+`/admin#switches` › Phones › "iPhones and iPads use the engine without
+threads" (`phone_nothreads`, default **off**; `POST /api/admin?op=phone_engine
+{on}`, audited, this deployment's scope only). Every page reads it at
+`/api/plans?op=phone`, a minute at the CDN.
+
+- **Built and deployed both.** `tools/export.sh web` exports `Web (no
+  threads)` into `build/web-nothreads` after the threaded one and stops if
+  any of its 8 packs (pck, data, parts, primitives, light, type, the two
+  audio worklets) is not the threaded export's byte for byte. tools/deploy.sh
+  hands it to tools/web/place_build.py, which copies only its engine
+  (`index.js`, `index.wasm`, their brotli, its worklets: 6 files, 6.6 MB
+  over the wire) to its own `/e/<hash>/` and names it in the page's
+  `GODOT_CONFIG.nothreads`; it refuses one whose packs or page differ but
+  for the engine's settings. The deployment says its file count and is
+  refused past 15,000.
+- **Chosen on the page.** The page names both engines and asks for neither
+  in its markup (src/boot/shell.html, `brickworksEngine`): iOS and iPadOS
+  (an iPhone, iPad or iPod user agent, or a Mac's with
+  `navigator.maxTouchPoints` over 1, as an iPad's Safari says it is) ask
+  `op=phone` first and start the engine without threads while the switch is
+  on, the threaded one while it is off, unanswered or past 2.5 s. Every
+  other browser starts the threaded one at once, asking nothing.
+- **What off costs.** An iPhone's first visit asks `op=phone` as it did
+  (the first-visit time, `#eta`, takes the same answer: one question). An
+  iPad, and an iPhone coming back, ask it once more than before: a few
+  hundred bytes, cached a minute at the CDN, waited for before the engine.
+  Everyone else's requests are base's.
+
+Measured on local copies of one export placed as a deployment is
+(tools/web/serve.py `--phone-nothreads on|off`), WebKit and Chromium in
+software on this box (results: `bench/results/nothreads-2026-11-19/`):
+
+| | |
+|---|---|
+| Switch off, each browser's requests against base's page (`engine_choice.mjs --base`) | iPhone 20 and 20, the same; Mac Safari, the same; iPad and iPad-as-Mac one more (`op=phone`) |
+| Switch on: the engine started | iPhone, iPad, iPad as a Mac: without threads, nothing of the threaded one asked; Mac Safari, Android Chromium, a computer: threaded |
+| WebKit as an iPhone 13, working, switch on against off (4 same-moment pairs, load 40–53) | **14.8 s against 17.9** (x0.84; faster in 4 of 4); scripts' compile 5.6 against 7.5 s; 105 MB less held |
+
+What a pool task costs without threads, each frame's own work, in WebKit
+(`cad_frames.mjs --engine=webkit` on the export without threads, at load
+30–40):
+
+| Pool task | Without threads | Under 100 ms? |
+|---|---|---|
+| The search's index, the first part number typed | made in frames already (PartLibrary.index_on_a_worker); the app's scripts 24 ms at most | yes |
+| Weighing a model past 600 parts (Main.weigh_joints, Stability.check_paced) | one frame the whole weigh: 1.7 s on 75969-1 (925 parts), **8.6 s on Orthanc (10,101)**, and again after every edit | **no** |
+| The booklet's pictures | in frames already (BookletStudio) | see the walk |
+| The booklet's PDF on the web | never a pool task: written in the page's own frames with or without threads (Main, BookletRead) | the same as with threads |
+
+**So the switch stays off until the weigh is paced.** With threads the
+status bar weighs a model past 600 parts on a worker; without, it weighs it
+in the frame, and an iPhone holding Orthanc would stop for seconds at every
+edit. It needs the weigh in frames (or the status bar's verdict asked for,
+not made at every edit, past 600 parts without threads): a unit of its own.
+The rest of the pool tasks found by grep (grab_drag, parts_bin, model_store,
+strengthen, tested, the rest) run where they ask too; the walk below drives
+the ones a phone reaches.
 
 
 ## The faults, each with its cause and fix

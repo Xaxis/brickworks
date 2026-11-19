@@ -69,6 +69,14 @@ of it again and load_check's --warm timed a second first visit:
     tools/web/serve.py build/web 9240 --parts assets/generated/parts --delay 0 \
         --accounts --compressed --cached
 
+With --phone-nothreads on (or off) it answers /api/plans?op=phone as the
+deployment does with the owner's switch set so (api/_phone.js): a build that
+tools/web/place_build.py placed with its engine without threads then starts
+that one on an iPhone or iPad, and the threaded one with off (nothreads,
+2026-11-19). Served from the placed folder, the page at /b/<sha>/index.html:
+
+    tools/web/serve.py "$STATIC" 10801 --phone-nothreads on --compressed --cached
+
 With --library it stands in for the parts store's library (src/net/
 model_library.gd) and the gallery's list, as the library screen and
 open_model library= read them: /api/account names this server as the
@@ -118,6 +126,8 @@ class Handler(SimpleHTTPRequestHandler):
     cached: bool = False
     # Where to sign in, as /api/account says it with --accounts.
     accounts: dict[str, object] = {}
+    # /api/plans?op=phone's answer, with --phone-nothreads.
+    phone: dict[str, object] | None = None
 
     def send_head(self):  # noqa: ANN201 - http.server's own signature
         """The file's .br sibling, with --compressed, to a browser taking brotli."""
@@ -154,6 +164,10 @@ class Handler(SimpleHTTPRequestHandler):
         if self.library is not None and self._library(path):
             return
         if (self.share is not None or self.shares) and self._shared(path):
+            return
+        if self.phone is not None and path == "/api/plans" and parse_qs(self.path.partition("?")[2]).get("op") == ["phone"]:
+            print(f"phone {json.dumps(self.phone)}", flush=True)
+            self._send(200, "application/json", json.dumps(self.phone).encode())
             return
         if self.parts_url and path == "/api/account":
             self._send(200, "application/json",
@@ -319,7 +333,12 @@ def main() -> int:
                         help="answer /api/share?id= and /m/<id> with this model (FILE, or ID=FILE)")
     parser.add_argument("--accounts", action="store_true",
                         help="/api/account says where to sign in (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)")
+    parser.add_argument("--phone-nothreads", choices=["on", "off"],
+                        help="answer /api/plans?op=phone with the owner's switch for iPhones and iPads so")
     args = parser.parse_args()
+    if args.phone_nothreads:
+        # api/_phone.js's rules at their defaults, and the switch as asked.
+        Handler.phone = {"phone_parts": 10101, "phone_start_s": 40, "phone_nothreads": args.phone_nothreads == "on"}
     if args.accounts:
         url = os.environ.get("SUPABASE_URL", "").rstrip("/")
         key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
@@ -349,7 +368,8 @@ def main() -> int:
           + (f", parts at {args.parts_url}" if args.parts_url else "")
           + (", .br where there is one" if args.compressed else "")
           + (", cached as deployed" if args.cached else "")
-          + (", with accounts" if args.accounts else ""),
+          + (", with accounts" if args.accounts else "")
+          + (f", iPhones and iPads told phone_nothreads {args.phone_nothreads}" if args.phone_nothreads else ""),
           flush=True)
     server.serve_forever()
     return 0
