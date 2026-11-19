@@ -316,9 +316,14 @@ func tick() -> void:
 		return
 	# What the kept text's file says beyond its parts, as the model has it the
 	# frame after it was read or written (the bar names it after the open).
-	if _state_due and world != null:
+	# Once every part has arrived: one that lands later moves the world.
+	if _state_due and world != null and awaited.is_empty():
 		_state_due = false
 		_kept_state = _own_state(title) if not _kept_now().is_empty() else ""
+		_kept_seen = _model_now()
+	elif _kept_seen.is_empty() and not _kept_state.is_empty() and world != null:
+		_kept_seen = _model_now()
+	_watch_outside()
 	_hear()
 	if not _pending or not keeps:
 		return
@@ -889,6 +894,8 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	# As it was opened, if it was: a save of it then is its file to the byte.
 	_kept_state = str(file[3]) if file.size() > 4 else ""
 	_state_due = false
+	# Watched from the next frame: the undo putting it back moves it now.
+	_kept_seen = []
 	if file.size() > 4 and bool(file[2]):
 		_opened_whole = world.generation()
 		_opened_parts = int(file[4])
@@ -1005,6 +1012,9 @@ var _kept_answer: Dictionary = {}
 ## after the open or the save ([member _state_due]): "" until then.
 var _kept_state: String = ""
 var _state_due: bool = false
+## The model as [method _watch_outside] last saw it ([method _model_now]):
+## [] until the first frame after [member _kept_state] was taken or given back.
+var _kept_seen: Array = []
 
 
 ## [member _kept_text] while the model it was read for is on the baseplate,
@@ -1019,6 +1029,7 @@ func _keep_text(text: String) -> void:
 	_kept_in = world.generation() if world != null else -1
 	_kept_state = ""
 	_state_due = true
+	_kept_seen = []
 
 
 ## Nothing kept: the model on the baseplate is no file's as it stands (a
@@ -1027,6 +1038,20 @@ func forget_kept() -> void:
 	_kept_in = -1
 	_kept_state = ""
 	_state_due = false
+	_kept_seen = []
+
+
+## The world changed since it was last seen with no step of its history
+## taken, done again or undone: a Build together room's edit, a part that
+## arrived. The model is no longer known to be as its file was, and is
+## compared with it from now (keep_text's room edits were saved as the file).
+func _watch_outside() -> void:
+	if _kept_seen.is_empty() or world == null:
+		return
+	var now: Array = _model_now()
+	if now[0] != _kept_seen[0] and now[1] == _kept_seen[1] and is_same(now[2], _kept_seen[2]):
+		_kept_state = ""
+	_kept_seen = now
 
 
 ## Whether a save may write the kept text: the app's own model (someone
@@ -1048,6 +1073,7 @@ func _keeps_order() -> bool:
 ## the file never said, its Name line, a step's parts in another order). A
 ## Save as another name, or anything changed, is compared ([method _kept_against]).
 func _as_kept(title_now: String) -> bool:
+	_watch_outside()
 	return not _state_due and not _kept_state.is_empty() and _opened_whole == world.generation() \
 		and builder != null and builder.history_depth() == 0 \
 		and _parts_with_awaited() == _opened_parts and _own_state(title_now) == _kept_state
