@@ -1127,7 +1127,11 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 ## drawing. A save reads its text back before it may go over anyone's
 ## file (SourceFile.gate): read without, 31037-1's rope read back as 50
 ## cylinders (keeptext4).
-static func put_skins(library: PartLibrary, model: LdrModel) -> void:
+## On a worker, pass [param seen_bodies] from [method skins_seen], taken on
+## the frame: an open writes the skins' table on the frame (begin_skins),
+## and a Dictionary read on a worker while it is written can crash.
+static func put_skins(library: PartLibrary, model: LdrModel, seen_bodies: Variant = null) -> void:
+	var known: Dictionary = _skins_of_body if seen_bodies == null else seen_bodies
 	var pieces: Dictionary = {}
 	for key: String in model.generated:
 		var sub: LdrModel.SubModel = model.submodels.get(key)
@@ -1135,7 +1139,7 @@ static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 			continue
 		var body: String = str(model.section_texts.get(key, ""))
 		var id: String = ""
-		var seen: Array = _skins_of_body.get(body, [])
+		var seen: Array = known.get(body, [])
 		if not seen.is_empty():
 			id = str(seen[0])
 		else:
@@ -1153,6 +1157,12 @@ static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 		piece.line = int(at[0])
 		kept.append(piece)
 		sub.placements = kept
+
+
+## The skins' table as it stands, for [method put_skins] on a worker: a
+## copy, its texts shared, not copied.
+static func skins_seen() -> Dictionary:
+	return _skins_of_body.duplicate()
 
 
 ## A skin built (PartForge.build_skin) put in the library as a part no bin

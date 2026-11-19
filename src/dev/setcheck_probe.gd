@@ -7,7 +7,7 @@
 ## set… and with compare_with_set.
 ##
 ##   godot --headless --path . --script src/dev/setcheck_probe.gd
-##   SETCHECK_ONLY=7140-1 for one set.
+##   SETCHECK_ONLY=7140-1 for one set, SETCHECK_ONLY=time for the biggest sets' times.
 ##
 ## What counts: each set, opened, matches its set. Changed, every change is
 ## found and none more: its kind, the part it was, the set's step it is in
@@ -106,6 +106,8 @@ func _run() -> void:
 			await _one_set(number)
 	if only.is_empty():
 		await _nothing_written()
+	# SETCHECK_ONLY=time: the biggest sets' times alone.
+	if only.is_empty() or only == "time":
 		await _biggest()
 	print("")
 	var found: int = 0

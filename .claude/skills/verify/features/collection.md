@@ -569,7 +569,7 @@ tools/probe.sh collection_arrives_probe   # fetched as they sign in, read first 
 # two sets or models compared, and the list to buy (1400x900; PROBE_SIZE=1280x720 too)
 tools/probe.sh comparesets_probe -- --shots=DIR
 # a model checked against its set's own steps: ten sets, nine changes each (headless)
-tools/probe.sh setcheck_probe          # SETCHECK_ONLY=7140-1 for one set
+tools/probe.sh setcheck_probe          # SETCHECK_ONLY=7140-1 for one set, =time for the times
 godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd   # needs a display
 # building from a set's parts: the counts down, undo, delete, over, saved (1280x720; PROBE_SIZE=1400x900 too)
 tools/probe.sh setbin_probe -- --shots=DIR
