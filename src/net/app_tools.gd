@@ -3011,6 +3011,11 @@ func _pose(input: Dictionary) -> String:
 		if stuck > 0:
 			said.append("A joint with no room is often not what moves: move_part with no part= "
 				+ "lists what a drag moves, and animate_model takes those by part (#14).")
+		elif not drags.is_empty():
+			# As "Nothing here turns" said it before a drag's hinges were listed.
+			said.append("Parts on pins, axles, studs and steering move without an assembly too, as "
+				+ "a drag moves them: move_part with no part= lists them, and animate_model takes "
+				+ "them by part (#14).")
 		return "Joints:\n%s\npose_model {\"joint\": \"1\", \"degrees\": 45} swings one.%s" \
 			% ["\n".join(said), await _pose_holds()]
 	var asked: String = str(input["joint"]).strip_edges()
