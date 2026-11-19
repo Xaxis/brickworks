@@ -35,6 +35,10 @@ extends PanelContainer
 ## The model's parts moved: a joint set, or the drags a recording made
 ## put back. (A motion kept or changed is a step the store hears itself.)
 signal changed()
+## By finger, what the status line says, for the line over the model
+## (PhoneShell.say): there the status scrolls with the list and may be out
+## of sight when a press says something (smalls7).
+signal said(words: String)
 
 var world: BrickWorld
 var builder: Builder
@@ -298,6 +302,8 @@ func _say(words: String) -> void:
 		return
 	_status.text = words
 	_status.tooltip_text = words
+	if Phone.on():
+		said.emit(words)
 	_fit_later()
 
 
@@ -1967,16 +1973,28 @@ func _build() -> void:
 		header.move_child(_making, 1)
 	_build_editor(inner)
 	_build_sequence(inner)
+	# The foot: whether the pose holds, Render animation, its progress and
+	# last frame, and the status. By finger it scrolls with the list, under
+	# its last row, and only the header stands still. Standing still under
+	# the list on a 664-point iPhone (390 x 664 once Safari's bars are
+	# drawn), the hold's two lines, Render animation and the status, with
+	# the moved parts' strip and the assistant's bar over the model, left
+	# the list under one row between the header and them, and the panel
+	# taller than its sheet: Keep never came wholly into sight, and the
+	# joint's slider followed it out (smalls7, docs/PHONE.md fault 6). Where
+	# the list and the foot both fit, as on every larger phone, the foot
+	# lies where it did, under the list.
+	var foot: Container = inner if Phone.on() else column
 	# Whether the pose holds: in sight in every view, below what moves, and
 	# on a phone the same line wrapped, since nothing there hovers.
 	_hold = VBoxContainer.new()
 	_hold.add_theme_constant_override("separation", 2)
 	_hold.visible = false
-	column.add_child(_hold)
-	column.add_child(HSeparator.new())
+	foot.add_child(_hold)
+	foot.add_child(HSeparator.new())
 	var rendering := HBoxContainer.new()
 	rendering.add_theme_constant_override("separation", 6)
-	column.add_child(rendering)
+	foot.add_child(rendering)
 	_render = _button(rendering, "Render animation", func() -> void: render_animation(),
 		"Draw the chosen motion and keep it: an animated WebP, and on the desktop the frames and an MP4")
 	_rate = OptionButton.new()
@@ -2005,12 +2023,12 @@ func _build() -> void:
 	_progress.step = 0.001
 	_progress.show_percentage = false
 	_progress.custom_minimum_size = Vector2(0, 5)
-	column.add_child(_progress)
+	foot.add_child(_progress)
 	_frame = TextureRect.new()
 	_frame.custom_minimum_size = Vector2(WIDE, 120)
 	_frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_frame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	column.add_child(_frame)
+	foot.add_child(_frame)
 	# The last frame drawn, once a render has drawn one.
 	_frame.visible = false
 	_status = Label.new()
@@ -2019,7 +2037,7 @@ func _build() -> void:
 	_status.custom_minimum_size = Vector2(WIDE, 0)
 	_status.mouse_filter = Control.MOUSE_FILTER_PASS
 	_status.modulate = Color(1, 1, 1, 0.8)
-	column.add_child(_status)
+	foot.add_child(_status)
 
 
 func _heading(into: Control, words: String) -> Label:
@@ -2542,6 +2560,18 @@ func _fit() -> void:
 		return
 	var parent: Control = get_parent() as Control
 	var tall: float = parent.size.y if parent != null else get_viewport_rect().size.y
+	# By finger, the room is what the tools' column shows, which already
+	# keeps clear of the row of tools at the screen's foot. The box it sits
+	# in scrolls in that column and is as tall as what it holds: measured
+	# from the box, with the window's foot taken off again, the list was
+	# given its least, the panel came out taller than the sheet, and the
+	# sheet scrolled the whole panel as well as the list (smalls7).
+	var foot: float = FOOT
+	if Phone.on():
+		foot = 0.0
+		var column: ScrollContainer = parent.get_parent() as ScrollContainer if parent != null else null
+		if column != null:
+			tall = column.size.y
 	var inner: Control = _body.get_child(0) as Control
 	var wanted: float = inner.get_combined_minimum_size().y
 	_body.custom_minimum_size.y = 0.0
@@ -2550,19 +2580,48 @@ func _fit() -> void:
 	_status.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_status.custom_minimum_size.y = 0.0
 	var others: float = get_combined_minimum_size().y
-	var room: float = tall - position.y - FOOT - others
-	var least: float = minf(wanted, 80.0)
+	var room: float = tall - position.y - foot - others
+	var least: float = minf(wanted, _least_list())
 	if room < least:
 		# Words too long for the window: as many lines as it has room for,
-		# the last ending "…", and every word in the tooltip.
-		var line: float = _status.get_line_height() + _status.get_theme_constant("line_spacing")
-		var lines: int = maxi(_status.get_line_count() - ceili((least - room) / maxf(line, 1.0)), 2)
-		_status.max_lines_visible = lines
-		_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		_status.custom_minimum_size.y = line * float(lines)
+		# the last ending "…", and every word in the tooltip. By finger the
+		# status scrolls with the list and is never cut.
+		if not Phone.on():
+			var line: float = _status.get_line_height() + _status.get_theme_constant("line_spacing")
+			var lines: int = maxi(_status.get_line_count() - ceili((least - room) / maxf(line, 1.0)), 2)
+			_status.max_lines_visible = lines
+			_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			_status.custom_minimum_size.y = line * float(lines)
 		room = least
 	_body.custom_minimum_size.y = clampf(wanted, least, maxf(room, 80.0))
 	reset_size()
+	# Shrunk to its least across too: the box it sits in lays it out again,
+	# as wide as the box. Its least size changes back by the end of a fit as
+	# often as not, which tells the box nothing, and with the foot in the
+	# list (by finger) nothing else did: the panel stayed a third narrower
+	# than the screen (smalls7).
+	var box: Container = parent as Container
+	if box != null:
+		box.queue_sort()
+
+
+## The least of the list's own height: by finger three rows, each a
+## fingertip's target and the gap between rows; with the mouse 80 units.
+func _least_list() -> float:
+	if not Phone.on():
+		return 80.0
+	return 3.0 * (Phone.px(get_viewport(), Phone.TARGET) + 3.0)
+
+
+## How tall the panel is with its list at its least (three rows by finger,
+## or the whole list where it is shorter): the least the tools' sheet under
+## the model gives it on a phone held upright (Main._size_tool_sheet).
+func least_tall() -> float:
+	if not visible:
+		return 0.0
+	var inner: Control = _body.get_child(0) as Control
+	var others: float = get_combined_minimum_size().y - _body.get_combined_minimum_size().y
+	return others + minf(inner.get_combined_minimum_size().y, _least_list())
 
 
 # -- for a browser test ---------------------------------------------------------------
@@ -2571,8 +2630,11 @@ func _fit() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
+	# motions_list: the list's scroller, so a check knows where its rows are
+	# in sight (tools/web/phonewalk_flow.mjs bringIn), the foot scrolling
+	# with them by finger.
 	var out: Dictionary = {"motions_close": _close, "motions_render": _render, "motions_cancel": _cancel,
-		"motions_rate": _rate, "motions_size": _size}
+		"motions_rate": _rate, "motions_size": _size, "motions_list": _body}
 	if _view == "list":
 		out.merge({"motions_play_all": _play_all, "motions_loop": _loop, "motions_new": _new,
 			"motions_new_sequence": _new_sequence})

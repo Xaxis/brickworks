@@ -442,12 +442,16 @@ plan with Claude as the client.
   comes back); open in another tab of this browser, the page starts no engine,
   says "Your model is open in another Brickworks tab in this browser", and
   that tab is asked over `BroadcastChannel("brickworks-tabs")` to come forward
-  (`window.focus()` where allowed; its title says "● Your model is here" for
-  six seconds); kept nowhere here (another computer), the link opens
+  (`window.focus()` where allowed; its title says "● Your model is here" at
+  once and every other 600 ms for six seconds, a title the app sets meanwhile
+  held and put back after: the app puts its own title back at every frame,
+  which had cut each "here" to one frame, smalls7 2026-11-19); kept nowhere here (another computer), the link opens
   Brickworks as `/app` does. Prove it in a browser: open `/app`, read
   `window.brickworksTab`, open `/app?tab=<it>` in a second page of the same
   context — that page has `window.brickworksElsewhere` set and no engine, and
-  the first page's title flips; close the first, reload the second, and it
+  the first page's title flips, each "here" lasting about 600 ms (a
+  MutationObserver on `<title>` in the first page times it; one frame long
+  means the app's title is cutting it again); close the first, reload the second, and it
   takes the same id. The relay
   tables are in `supabase/relay.sql` (applied 2026-10-13). `src/dev/tabs_probe.gd`
   proves it (below). With no `t` and no good token: 401 and a
