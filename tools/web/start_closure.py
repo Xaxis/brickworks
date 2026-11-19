@@ -39,6 +39,19 @@ def strip(text: str) -> str:
     return "\n".join(out)
 
 
+# A token as GDScript's tokenizer cuts one, near enough: a string, a number,
+# a word, an operator of two characters or a character.
+TOKEN = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|\d+\.?\d*(?:e[-+]?\d+)?|\w+'
+                   r'|==|!=|<=|>=|->|:=|\*\*|<<|>>|&&|\|\||[-+*/%]=|\S')
+
+
+def tokens(text: str) -> int:
+    """How many tokens a script is, comments not counted: what its compile
+    costs goes with these, not with its bytes, and this code's comments are
+    a third of them (webstart12, 2026-11-19)."""
+    return len(TOKEN.findall(strip(text)))
+
+
 def scripts(root: Path = ROOT) -> dict[str, str]:
     """Every script of the app by res:// path; the probes in src/dev are not the app's."""
     out = {}

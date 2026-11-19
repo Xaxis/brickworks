@@ -260,6 +260,42 @@ working slower in all 3 (x1.1;
 `bench/results/webstart11-2026-11-18/codecache-desktop/`). Why V8 kept
 nothing is not found; until it is, this is not a cut.
 
+### What the first screen compiles and never runs (webstart12)
+
+webstart12, 2026-11-19. The assistant, Together, the booklet's maker and
+the forge were already loaded on first use (`src/later.gd`); what is left
+is read here function by function. `src/dev/start_uses.gd` boots the app
+as a first visit does under Godot's script profiler (`-d --profiling`),
+lets the window settle with nobody touching it, and prints every function
+that ran; `tools/web/start_uses.py` sets that against the first screen
+(`tools/web/start_closure.py`), counted in tokens, not bytes: this code's
+comments are a third of its bytes and cost no compile.
+
+- **The first screen: 214 scripts, 1,032k tokens. 77% of them ran before
+  a press** (791k), in a phone's window and in a desktop's alike. 71
+  scripts never ran: 240k tokens, 23%.
+- What never ran, largest first, each with its share of the scripts'
+  24.5 s at CPU/4 and of the 384 MB they grow the Wasm memory by
+  (apportioned by tokens): Grab 33k (0.8 s, 12 MB; the first drag);
+  Instructions 30k (0.7 s, 11 MB; named by 11 scripts of the first
+  screen); MinifigData 25k (0.6 s, 9 MB; a table read by the figures);
+  AuthorSteps 11k; PartPrints 9k; the sign-in screen 6.5k (a signed-out
+  visit's first screen); BookletStudio 6k; TogetherWords, Bands,
+  ModelFilePicker, SeenParts, BuildSteps, Swing and SubmodelFile 5k each;
+  the rest under 4.5k.
+- **So no deferral alone meets the bar.** Every script that never ran,
+  deferred, takes 23% off: the scripts' phase about 24.5 → 19 s, not 12.
+  The phase is the compile of code the start runs.
+- **The memory is set by the largest compile, not the total.** Godot
+  holds the parse of every script one load compiles until that load ends,
+  and 124 of the 214 name each other in one cycle (804k tokens, 78%). On
+  this box's desktop build the first screen's compile peaks at 591 MB and
+  keeps 223; loaded a cycle at a time, the cycles that name nothing back
+  first (`src/dev/start_cost.gd --pre=`), it peaks at 502 MB in the same
+  time. A script already compiled costs a later load next to nothing (four
+  of the largest named by a new script: 58 ms), so a cycle compiled first
+  is not parsed again.
+
 ## The no-threads export on WebKit
 
 `Web (no threads)` (`build/web-nothreads`, unshared memory) against the
