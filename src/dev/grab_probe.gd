@@ -1528,6 +1528,10 @@ func _slide_drag(name: String, grab: Grab) -> void:
 	for target: float in targets:
 		var screen: Vector2 = _camera.unproject_position(hold + grab.axis * target)
 		await _move(screen, MOUSE_BUTTON_MASK_LEFT)
+		if not grab._decided:
+			# Along the line, and as well a chord of a turn round it: the
+			# first move waits for the next to say which (Grab._gone_round).
+			continue
 		if grab.mode != "slide":
 			break
 		var expected: float = clampf(target, span.x, span.y)
