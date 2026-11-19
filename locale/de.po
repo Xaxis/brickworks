@@ -15653,3 +15653,15 @@ msgstr "das Modell hat sich geändert, während die Tausche ermittelt wurden: ni
 
 msgid "Swapping in the parts you own…"
 msgstr "Deine eigenen Teile werden eingesetzt…"
+
+msgid "2-finger tap"
+msgstr "Tippen mit 2 Fingern"
+
+msgid "3-finger tap"
+msgstr "Tippen mit 3 Fingern"
+
+msgid "double-tap"
+msgstr "Doppeltippen"
+
+msgid "on a part, turn it as Turn does"
+msgstr "auf einem Teil: es drehen, wie Drehung es tut"

@@ -341,6 +341,81 @@ var _was_tap: bool = false
 var _touch_started: Vector2 = Vector2.ZERO
 var _touch_travel: float = 0.0
 
+## Fingers that came down together and lifted as a tap does, short and
+## still: two undo and three redo on a phone (PhoneShell), as iPhone apps
+## that edit do (Procreate; Brick Creator 3D since 19 November). Said once
+## the last of them is up.
+signal tapped_with(fingers: int)
+## One finger tapped twice in one place: a part's turn on a phone
+## (PhoneShell). Said as the second tap lifts.
+signal double_tapped(at: Vector2)
+
+## The most a tap of one, two or three fingers takes, the first finger down
+## to the last up, in milliseconds. A tap is over before a hold begins: iOS
+## holds at 0.5 s (UILongPressGestureRecognizer's documented default), and
+## a finger held here is a part's actions at 480 ms (Main.HOLD_MS), so a
+## tap ends sooner than either, and a hand that lands unevenly still taps.
+const TAP_MS := 400
+## How far each finger of a tap may go from where it came down, in points
+## on the glass: UIKit's allowable movement before a press is no longer
+## one, 10 points. A turn or a pinch goes further than that before it is
+## over (phonefingers_probe prints the least of its 100).
+const TAP_POINTS := 10.0
+## A double tap: the second tap comes down within this of the first one
+## lifting, in milliseconds (Android's DOUBLE_TAP_TIMEOUT, and about iOS's),
+## and within [constant DOUBLE_TAP_POINTS] of where it was.
+const DOUBLE_TAP_MS := 300
+const DOUBLE_TAP_POINTS := 30.0
+
+## This gesture, from a first finger down with none down to the last up:
+## when it began, the most fingers down at once, where each came down, and
+## whether every one has stayed within [constant TAP_POINTS] of it.
+var _gesture_ms: int = 0
+var _gesture_most: int = 0
+var _gesture_from: Dictionary = {}
+var _gesture_still: bool = false
+## The last one-finger tap's lift and place, for a double tap.
+var _tap_up_ms: int = -1000000
+var _tap_up_at: Vector2 = Vector2.INF
+## How many of each the camera has said ([signal tapped_with],
+## [signal double_tapped]), for a check that counts false ones.
+var taps_said: Dictionary = {"two": 0, "three": 0, "double": 0}
+
+
+## A tap's reach in the window's units: points on the glass, whatever the
+## interface size (Phone.per_point counts that in).
+func _tap_reach(points: float) -> float:
+	return points * Phone.per_point(get_viewport()) / maxf(ShellPrefs.interface_size(), 0.01)
+
+
+## The gesture ended with the last finger up: a tap of two or three said,
+## or a one-finger tap kept for the next, and a second that follows the
+## first closely said as a double.
+func _gesture_ended(at: Vector2) -> void:
+	var now: int = Time.get_ticks_msec()
+	# Stillness and time alone: a finger on a part is the app's from its
+	# first wobble (finger_taken), and a real finger wobbles a point or two,
+	# so a tap begun on a part would never be one. A finger that carried a
+	# part or turned the view went past the reach.
+	var tap: bool = _gesture_still and now - _gesture_ms <= TAP_MS
+	if tap and (_gesture_most == 2 or _gesture_most == 3):
+		_tap_up_ms = -1000000
+		taps_said["two" if _gesture_most == 2 else "three"] += 1
+		tapped_with.emit(_gesture_most)
+		return
+	if not tap or _gesture_most != 1:
+		_tap_up_ms = -1000000
+		return
+	if _gesture_ms - _tap_up_ms <= DOUBLE_TAP_MS \
+			and at.distance_to(_tap_up_at) <= _tap_reach(DOUBLE_TAP_POINTS):
+		# A third tap is the first of another pair, not a second double.
+		_tap_up_ms = -1000000
+		taps_said["double"] += 1
+		double_tapped.emit(at)
+		return
+	_tap_up_ms = now
+	_tap_up_at = at
+
 ## The phone's gestures (PhoneShell): two fingers turn the view and pinch
 ## zooms it, and a finger the app has taken (finger_taken) is left to it.
 var phone: bool = false
@@ -360,6 +435,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if phone and touch.pressed and _touches.is_empty() and touch_over.is_valid() \
 				and bool(touch_over.call(touch.position)):
 			_not_mine[touch.index] = true
+			# A tap on a bar between two on the model is not a double tap.
+			_tap_up_ms = -1000000
 			return
 		if phone and not touch.pressed and _not_mine.has(touch.index):
 			_not_mine.erase(touch.index)
@@ -367,7 +444,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		if touch.pressed:
 			if _touches.is_empty():
 				_left_to_app = 0
+				_gesture_ms = Time.get_ticks_msec()
+				_gesture_most = 0
+				_gesture_from.clear()
+				_gesture_still = true
 			_touches[touch.index] = touch.position
+			_gesture_from[touch.index] = touch.position
+			_gesture_most = maxi(_gesture_most, _touches.size())
 			if _touches.size() == 1:
 				_touch_started = touch.position
 				_touch_travel = 0.0
@@ -389,6 +472,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_spread = 0.0
 			if _touches.is_empty():
 				_end(_doing_with)
+				_gesture_ended(touch.position)
 		_fingers_changed()
 		return
 
@@ -406,6 +490,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		var unseen: bool = not _touches.has(drag.index)
 		_touches[drag.index] = drag.position
 		_touch_travel += drag.relative.length()
+		# A finger gone past a tap's reach, or one not seen coming down, is
+		# no tap: a turn or a pinch never undoes.
+		if not _gesture_from.has(drag.index) or drag.position.distance_to(
+				_gesture_from[drag.index] as Vector2) > _tap_reach(TAP_POINTS):
+			_gesture_still = false
 		if unseen:
 			_fingers_changed()
 

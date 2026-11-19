@@ -140,8 +140,22 @@ static func for_touch() -> Array[Binding]:
 			# one they never look for.
 			Binding.new(["Turn", "Tip"], "the part"),
 			Binding.new(["Undo", "Redo"], "a step"),
+		] + _finger_taps() + [
 			Binding.new(["edges"], "panels"),
 		]
+
+
+## A phone's taps of more than one finger, and its double tap (PhoneShell,
+## CadCamera.tapped_with): only where the phone's layout is, the one that
+## answers them.
+static func _finger_taps() -> Array[Binding]:
+	if not Phone.on():
+		return []
+	return [
+		Binding.new(["2-finger tap"], "undo"),
+		Binding.new(["3-finger tap"], "redo"),
+		Binding.new(["double-tap"], "on a part, turn it as Turn does"),
+	]
 
 ## Which controls the strip carries, named by the key they are pressed
 ## with so that the verb beside each still comes from the one list below
@@ -182,7 +196,9 @@ static func for_strip() -> Array[Binding]:
 ## and saving. A control that is not listed is one nobody is told about.
 static func for_keyboard() -> Array[Binding]:
 	var everything: Array[Binding] = []
-	_section(everything, "Building", [
+	# A phone's taps first, where the sheet opens: under the mouse's rows
+	# below them they were past the fold at 390 x 844 (phonefingers).
+	_section(everything, "Building", _finger_taps() + [
 		# Select is where the app rests and a part chosen is in hand
 		# until let go, as in Studio: the left button acts, the right and
 		# the middle look.
