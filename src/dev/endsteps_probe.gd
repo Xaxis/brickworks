@@ -33,9 +33,11 @@
 ## moves: the same file's parts moved a step across the RETRIEVE, by
 ## Shift-[ and Shift-], a drop on the timeline's step and edit_steps over
 ## MCP. Every part of a step moved into the other is refused as the merge is;
-## one part moved is done, one undo, written below the RETRIEVE in the step
-## it starts (above it in the step before), and opened again as shown. On
-## pre261 each left the RETRIEVE in the middle of a step (mkreview M1).
+## one part moved, or two of three, or one of a step's two, is done, one
+## undo, written below the RETRIEVE in the step it starts (above it in the
+## step before), and opened again as shown. On pre261 each left the RETRIEVE
+## in the middle of a step (mkreview M1); up to smfix most of a step's parts
+## moved were refused as the whole step (stmreview).
 extends "res://src/dev/keep_text_probe.gd"
 
 ## A model whose last step has no STEP line after it.
@@ -284,15 +286,22 @@ func _moves_case() -> void:
 			["every part of the 4th by edit_steps to the 5th", "to", 3, "all", "mcp", true, ""],
 			["one part of the 4th dragged onto the 5th (To step)", "to", 3, "one", "bar", false, "below"],
 			["one part of the 4th by Shift-] (Next step)", "next", 3, "one", "keys", false, "below"],
-			["one part of the 5th by edit_steps prev", "prev", 4, "one", "mcp", false, "above"]]:
+			["one part of the 5th by edit_steps prev", "prev", 4, "one", "mcp", false, "above"],
+			["two of the 5th's three by Shift-[ (Previous step)", "prev", 4, "two", "keys", false, "above"],
+			["two of the 5th's three by edit_steps prev", "prev", 4, "two", "mcp", false, "above"],
+			["two of the 4th's three by Shift-] (Next step)", "next", 3, "two", "keys", false, "below"],
+			["one of the 5th's two by Shift-[ (Previous step)", "prev", 4, "tie", "keys", false, "above"]]:
 		for whole: bool in [false, true]:
 			ModelStore.patch_files = not whole
 			var name: String = "%s, %s" % [edit[0], "written whole" if whole else "patched"]
-			await _open(GROUPS, "groups")
+			# "tie": the 5th cut to two parts first (stmreview's srtie5).
+			var text: String = GROUPS if edit[3] != "tie" else \
+				GROUPS.replace("1 15 0 -80 160 1 0 0 0 1 0 0 0 1 3023.dat\n", "")
+			await _open(text, "groups")
 			var unedited: String = _store.saved_text()
 			var steps: Array = _ops_steps("")
 			var from: Array = steps[int(edit[2])][1]
-			var ids: Array = from if edit[3] == "all" else [from[0]]
+			var ids: Array = from if edit[3] == "all" else from.slice(0, 2) if edit[3] == "two" else [from[0]]
 			var before: Array = _pages()
 			var depth: int = _builder.history_depth()
 			var said: String = ""
@@ -328,12 +337,12 @@ func _moves_case() -> void:
 			var retrieved: String = _retrieve_mid_step(saved)
 			_check("%s: \"RETRIEVE\" at the head of the step it starts (%s)" % [name,
 				"so" if retrieved.is_empty() else retrieved], retrieved.is_empty())
-			# One part fewer above it, the one moved into the step it starts;
-			# or one more, the one moved out of it into the step before.
+			# As many fewer above it as moved into the step it starts; or as
+			# many more as moved out of it into the step before.
 			var was: int = _above_retrieve(unedited)
 			var now: int = _above_retrieve(saved)
-			_check("%s: the part moved %s the RETRIEVE (%d parts above it, were %d)" % [name, edit[6],
-				now, was], now == (was - 1 if edit[6] == "below" else was + 1))
+			_check("%s: the parts moved %s the RETRIEVE (%d parts above it, were %d)" % [name, edit[6],
+				now, was], now == (was - ids.size() if edit[6] == "below" else was + ids.size()))
 			_builder.undo()
 			await _frames(4)
 			_check("%s: undone, the file as it was" % name, _store.saved_text() == unedited)
