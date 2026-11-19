@@ -6874,9 +6874,9 @@ func _warm_first_pick() -> void:
 			if part != null and not part.surfaces.is_empty():
 				mesh = part.surfaces[0]
 				break
-	var box: AABB = _built_bounds()
-	var at: Vector3 = box.get_center() if box.has_volume() \
-		else _camera.global_position - _camera.global_basis.z * 200.0
+	# Where the camera looks, so in view: not the model's bounds, a walk of
+	# every part (Orthanc's would be this frame's longest work).
+	var at: Vector3 = _camera.focus
 	# Both let go of what they drew once this frame is drawn, before this returns.
 	_builder.warm_ghost(mesh, at)
 	if bool(ShellPrefs.value("joint_marks")):
