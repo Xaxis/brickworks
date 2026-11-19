@@ -1109,8 +1109,12 @@ static func _joints_of(nodes: Array[Node2], world: BrickWorld, library: PartLibr
 	if entries.is_empty():
 		return
 	var by_id: Dictionary = {}
+	## Each node's place in [param nodes], which is [method in_order]'s: of two
+	## as low, the one first there, never the one the world was given first.
+	var rank: Dictionary = {}
 	for node: Node2 in nodes:
 		by_id[node.id] = node
+		rank[node.id] = rank.size()
 	if job != null and job.due():
 		await job.next()
 	var found: Array = Joints.pairs(entries)
@@ -1151,7 +1155,7 @@ static func _joints_of(nodes: Array[Node2], world: BrickWorld, library: PartLibr
 	var lowest := func(a: Node2, b: Node2) -> bool:
 		if absf(a.box.position.y - b.box.position.y) > 0.5:
 			return a.box.position.y < b.box.position.y
-		return a.id < b.id
+		return int(rank[a.id]) < int(rank[b.id])
 	var nearest := func(a: Node2, b: Node2) -> bool:
 		var one: int = int(reach.get(a.id, 0x7FFFFFFF))
 		var two: int = int(reach.get(b.id, 0x7FFFFFFF))
@@ -1698,7 +1702,7 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 ## [param job], which then counts them.
 static func _survey_into(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
 		skip: Dictionary, job: Working.Job) -> void:
-	var bricks: Array = world.bricks()
+	var bricks: Array = in_order(world)
 	if job != null:
 		job.say("Measuring %s parts…" % Working.comma(bricks.size()))
 		job.count(0, bricks.size())
@@ -3945,6 +3949,35 @@ static var _shaped_lock := Mutex.new()
 ## it is read from; and its colour, which a sub-assembly's kind is named by
 ## (_assembly), for the sub-assemblies kept with it. Into [param steps],
 ## when given one, each one's step (-1 for none), read in the same pass.
+## The model's parts in an order of their own: by height, the sub-model and
+## copy each is in, part, across, along, colour and how it is turned, each
+## as a file writes it (to a thousandth of an LDU). What the order is worked
+## out from, and how two parts it could put first either way are told apart:
+## never the order the world was given them, which is the order a file
+## lists them. That order is the plan the file was saved with, so a plan
+## that went by it planned a model again from its own last plan: saved,
+## opened and saved, pagoda's pond and sculpt170-042's potato body came out
+## in steps of their own each time, the potato built in the model's steps,
+## and settled only by the third save (keepbytes, 2026-11-19).
+static func in_order(world: BrickWorld) -> Array:
+	var bricks: Array = world.bricks()
+	var keys: Array = []
+	keys.resize(bricks.size())
+	for n: int in bricks.size():
+		var brick: BrickWorld.Brick = bricks[n]
+		var at: Vector3 = brick.transform.origin
+		var turn: Basis = brick.transform.basis
+		keys[n] = [roundi(at.y * 1000.0), brick.group, brick.unit, brick.part_id,
+			roundi(at.x * 1000.0), roundi(at.z * 1000.0), brick.color_code,
+			BrickWorld.turn_key(turn.x), BrickWorld.turn_key(turn.y), BrickWorld.turn_key(turn.z), n]
+	keys.sort()
+	var out: Array = []
+	out.resize(bricks.size())
+	for n: int in keys.size():
+		out[n] = bricks[int((keys[n] as Array)[10])]
+	return out
+
+
 static func _shape_of(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		steps: PackedInt32Array = PackedInt32Array()) -> Array:
 	var ids := PackedInt64Array()
@@ -3954,7 +3987,7 @@ static func _shape_of(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 	var meshes := PackedInt64Array()
 	var colours := PackedInt32Array()
 	var places: Array[Transform3D] = []
-	for brick: BrickWorld.Brick in world.bricks():
+	for brick: BrickWorld.Brick in in_order(world):
 		if skip.has(brick.id):
 			continue
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)

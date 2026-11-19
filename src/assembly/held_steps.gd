@@ -61,7 +61,7 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 	var began: int = Time.get_ticks_msec()
 	var bricks: Array = []
 	var by_id: Dictionary = {}
-	for brick: BrickWorld.Brick in world.bricks():
+	for brick: BrickWorld.Brick in Instructions.in_order(world):
 		if not skip.has(brick.id) and library.mesh_for(brick.part_id) != null:
 			bricks.append(brick)
 			by_id[brick.id] = brick
