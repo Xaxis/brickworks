@@ -6851,13 +6851,14 @@ func _render_when_idle() -> void:
 ## the model is drawn, and this, waiting a second more and then a frame for
 ## the ghost and another for the marks, was still being drawn when the first
 ## part was picked. Its frame comes after the page has been told the bin is
-## usable (_tell_page), so it is never one that makes it so. Not for a probe
-## (--script), whose window starts as it did.
+## usable (_tell_page), so it is never one that makes it so. The marks'
+## script is compiled in that frame too, as the pick would (34 to 93 ms at
+## load). Read on a worker it waited 5 to 25 s behind the start's own reads,
+## and a pick meanwhile, whose own load of it (Shell) waits for that worker,
+## was held 10.8 and 22 s. Not for a probe (--script), whose window starts
+## as it did.
 func _warm_first_pick() -> void:
 	var drawn: int = Engine.get_frames_drawn()
-	var marks: GDScript = null
-	if bool(ShellPrefs.value("joint_marks")):
-		marks = await Later.script_in_background(&"JointMarks", null)
 	var told: int = -1
 	for _n: int in 600:
 		if Engine.get_frames_drawn() >= drawn + 2 and _bin != null and not _bin.first_found().is_empty():
@@ -6878,8 +6879,8 @@ func _warm_first_pick() -> void:
 		else _camera.global_position - _camera.global_basis.z * 200.0
 	# Both let go of what they drew once this frame is drawn, before this returns.
 	_builder.warm_ghost(mesh, at)
-	if marks != null:
-		marks.warm(_builder, at)
+	if bool(ShellPrefs.value("joint_marks")):
+		Later.script(&"JointMarks").warm(_builder, at)
 	await RenderingServer.frame_post_draw
 
 
