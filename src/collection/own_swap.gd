@@ -57,9 +57,14 @@
 ## The model is looked at once for an offer or a swap, not once a lot
 ## (osreview H3: two looks a lot were 474 ms of one frame on Orthanc and
 ## Use what I own took 31.8 s on 10179): each lot's parts from its own ids,
-## the copies' frames read once, and how copies lie on each other kept
-## across every plan. The work goes on a slice of a frame at a time
-## ([constant SLICE_US]), the status bar saying so (Working).
+## the copies' frames read once (and kept from the list to Use what I own
+## while the model is as it was), the copies counted once, and how copies
+## lie on each other kept across every plan. The work goes on a slice of a
+## frame at a time ([constant SLICE_US]), the status bar saying so
+## (Working). Still one frame each, measured by ownswap_probe's time case:
+## Assemblies.file_frames (30 ms on Orthanc, 0.97 s on 10179), the change
+## itself (one replace and its copies' follow, 100-115 ms) and the parts
+## list taken again after it as P opens it (440-480 ms).
 class_name OwnSwap
 extends RefCounted
 
@@ -140,6 +145,11 @@ var _rare: RareSwap
 ## every part, read once on first need), and FindReplace.plan's cache.
 var _looked_as: Array = []
 var _frames: Variant = null
+## How many copies the model has of each sub-model (FindReplace's
+## _copies_by_definition), read once a look; with the frames, kept from the
+## list to Use what I own while the model is as it was ([member _kept_as]).
+var _copies: Variant = null
+var _kept_as: Array = []
 var _cache: Dictionary = {}
 ## Each lot's parts as found, by its key, for the model as looked at.
 var _found: Dictionary = {}
@@ -272,6 +282,7 @@ func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
 			by_family[family] = []
 		(by_family[family] as Array).append(key)
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	await _prepare(finder)
 	var slice: int = Time.get_ticks_usec()
 	for lot: Lot in lots:
 		lot.into_part = ""
@@ -525,11 +536,13 @@ func found_for(lot: Lot, finder: FindReplace) -> Dictionary:
 			if each.part_id == lot.part and each.color_code == lot.colour:
 				for brick_id: int in each.bricks:
 					bricks.append(finder.world.get_brick(brick_id))
+	if _copies == null:
+		_copies = finder._copies_by_definition()
 	if _frames == null:
-		_frames = finder._frames_for(finder.world.bricks())
+		_frames = finder._frames_for(finder.world.bricks(), _copies)
 	var found: Dictionary = finder.find_among(bricks.filter(func(brick: BrickWorld.Brick) -> bool:
 		return brick != null and not finder.scenery.has(brick.id)), {"part": asked, "color": lot.colour},
-		"all", _frames)
+		"all", _frames, _copies)
 	_found[lot.key] = found
 	return found
 
@@ -539,9 +552,31 @@ func found_for(lot: Lot, finder: FindReplace) -> Dictionary:
 ## is, and FindReplace.plan lays copies on each other again.
 func _look(finder: FindReplace) -> void:
 	_looked_as = _model_of(finder)
-	_frames = null
+	if _kept_as != _looked_as:
+		_frames = null
+		_copies = null
+	_kept_as = _looked_as
 	_cache = {}
 	_found = {}
+
+
+## The model's copies counted and its copies' frames read, each in a frame
+## of its own: each is one call over the whole model (Assemblies.file_frames
+## 60 ms on Orthanc), so none is added to a frame's other work.
+func _prepare(finder: FindReplace) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if _copies == null:
+		await tree.process_frame
+		_copies = finder._copies_by_definition()
+	if _frames == null:
+		await tree.process_frame
+		_frames = finder._frames_for(finder.world.bricks(), _copies)
+	# FindReplace.plan's own count of them, not read again.
+	if not _cache.has("copies"):
+		_cache["copies"] = _copies
+		_cache["matches"] = {}
+		_cache["copied"] = {}
+	await tree.process_frame
 
 
 ## What the model is, as [method _look] keeps it: whether it has changed
@@ -581,6 +616,7 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 	_look(finder)
 	var jobs: Array = []
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	await _prepare(finder)
 	var slice: int = Time.get_ticks_usec()
 	for lot: Lot in lots:
 		if not lot.picked or not lot.offered():
@@ -604,6 +640,8 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 		if Time.get_ticks_usec() - slice > SLICE_US:
 			await tree.process_frame
 			slice = Time.get_ticks_usec()
+	# The change in a frame of its own, none of the working out added to it.
+	await tree.process_frame
 	if _model_of(finder) != _looked_as:
 		job.end()
 		stayed.append(CHANGED_WORDS)

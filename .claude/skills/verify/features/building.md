@@ -3343,7 +3343,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   panel's file, preview, refusals, mine=false, lots=), `words` (de, fr, es),
   `time` (Orthanc and 10179, listed and then Use what I own: no frame with
   more than 16 ms of its own work, ProbeTime.Frames, and the status bar
-  saying so, the totals printed; on 501e38ab9 it fails, a 2.1 s frame).
+  saying so, the totals printed; on 501e38ab9 it fails, a 2.1 s frame, and
+  it still fails on three calls of one frame each: 10179's
+  Assemblies.file_frames, the change, the list taken again).
 - `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
   names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`
   writes `lots.tsv` and `catalogue.tsv`. `lpub`, `inherit`, `motion`:

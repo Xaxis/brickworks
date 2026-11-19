@@ -1271,15 +1271,18 @@ func use_own() -> Dictionary:
 	_swapping = true
 	_swap_now.disabled = true
 	var done: Dictionary = await (_own_swapper as OwnSwap).swap(_own, _finder)
-	_swapping = false
 	var stayed: PackedStringArray = done["stayed"]
 	var words: String = str(done["words"])
 	if int(done["changed"]) == 0:
+		_swapping = false
 		said.emit("nothing swapped" + (": " + "; ".join(stayed) if not stayed.is_empty() else ""))
 		_show_rows()
 		return done
 	said.emit(Keymap.filled("%s — {undo|takes it back}") % (words
 		+ ("" if stayed.is_empty() else "; stayed: " + "; ".join(stayed))))
+	# The list taken again as P opens it, in a frame after the change's.
+	await get_tree().process_frame
+	_swapping = false
 	var picked_at: int = _was_at
 	show_for(_world, library, _scenery, _title)
 	_was_at = picked_at

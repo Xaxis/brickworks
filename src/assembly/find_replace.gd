@@ -85,7 +85,10 @@ func find(asked: Dictionary, where: String) -> Dictionary:
 ## caller that knows its parts asks, with no look over the whole model
 ## (OwnSwap's lots, osreview H3: two looks a lot were 220 + 254 ms on
 ## Orthanc).
-func find_among(looked: Array, asked: Dictionary, where: String, frames: Dictionary) -> Dictionary:
+## [param copies] is [method _copies_by_definition]'s where the caller has it
+## (it reads every part of the model: 20 ms a lot on Orthanc).
+func find_among(looked: Array, asked: Dictionary, where: String, frames: Dictionary,
+		copies: Variant = null) -> Dictionary:
 	var part: String = str(asked.get("part", "")).strip_edges()
 	var colour: int = int(asked.get("color", -1))
 	var inside: String = assemblies.entered if assemblies != null else ""
@@ -113,14 +116,14 @@ func find_among(looked: Array, asked: Dictionary, where: String, frames: Diction
 		var def: String = "" if path.is_empty() else Assemblies.definition(Assemblies.leaf(path))
 		by_def[def] = int(by_def.get(def, 0)) + 1
 	out["follow"] = _twins_found(out["mirrored"], out["ids"], frames)
-	var copies: Dictionary = _copies_by_definition() if not by_def.keys().all(func(def: String) -> bool:
-		return def.is_empty()) else {}
+	var counted: Dictionary = {} if by_def.keys().all(func(def: String) -> bool: return def.is_empty()) \
+		else copies if copies is Dictionary else _copies_by_definition()
 	var names: Array = by_def.keys()
 	names.sort_custom(func(a: String, b: String) -> bool:
 		return a.is_empty() or (not b.is_empty() and a.naturalnocasecmp_to(b) < 0))
 	for def: String in names:
 		(out["places"] as Array).append({"name": def, "count": int(by_def[def]),
-			"copies": int(copies.get(def, 1))})
+			"copies": int(counted.get(def, 1))})
 	return out
 
 
@@ -178,10 +181,10 @@ func _as_defined(part_id: String, mirrored: bool) -> String:
 ## [param bricks] is in a copy of a sub-model the model has more than one
 ## of; {} otherwise, and for the selection, which is changed as a hand
 ## changes it.
-func _frames_for(bricks: Array) -> Dictionary:
+func _frames_for(bricks: Array, counted: Variant = null) -> Dictionary:
 	if assemblies == null:
 		return {}
-	var copies: Dictionary = _copies_by_definition()
+	var copies: Dictionary = counted if counted is Dictionary else _copies_by_definition()
 	for brick: BrickWorld.Brick in bricks:
 		var path: String = Assemblies.path_of(brick)
 		if path.is_empty():
