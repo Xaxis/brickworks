@@ -42,12 +42,14 @@ export const WORDS = {
   you_reply: [409, "You blocked somebody in this conversation. Unblock them in Settings › Blocked people to reply here."],
   you_photo: [409, "You blocked this model’s designer. Unblock them in Settings › Blocked people to post a photo here."],
   you_list: [409, "You blocked whoever made this collection. Unblock them in Settings › Blocked people to follow it."],
+  you_like: [409, "You blocked this model’s designer. Unblock them in Settings › Blocked people to like it."],
   // To the person blocked: only that it cannot be done.
   cannot_follow: [403, "You can’t follow this profile."],
   cannot_comment: [403, "You can’t comment on this model."],
   cannot_reply: [403, "You can’t reply to this comment."],
   cannot_photo: [403, "You can’t post a photo of a build on this model."],
   cannot_list: [403, "You can’t follow this collection."],
+  cannot_like: [403, "You can’t like this model."],
 };
 
 export function refused(code) {
@@ -181,15 +183,18 @@ export async function unnameable(account, handles) {
   }
 }
 
-/// What of [account]'s counts came from people they blocked: {notifications,
-/// feed}, each to take off; zeros before the file, or when it cannot be read.
-export async function countsOff(account) {
+/// [account]'s new counts without what their blocks leave out of the lists
+/// ({notifications, feed}, each to 99, block.sql block_counts), to use in
+/// place of the counts as they are; null for somebody who blocked nobody,
+/// before the file, or when it cannot be read: the counts as they are.
+export async function blockCounts(account) {
   try {
     const said = await call("block_counts", { viewer: account }, () => null);
-    return { notifications: Number(said?.notifications) || 0, feed: Number(said?.feed) || 0 };
+    return said && typeof said === "object"
+      ? { notifications: Number(said.notifications) || 0, feed: Number(said.feed) || 0 } : null;
   } catch (problem) {
     console.error(`blocks: counts: ${String(problem?.message || problem).slice(0, 160)}`);
-    return { notifications: 0, feed: 0 };
+    return null;
   }
 }
 

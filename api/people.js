@@ -234,7 +234,7 @@ import {
   listShown, ownedChoice, ownedShowcase, ownedShown, setCounts, yourLists,
 } from "./_mylists.js";
 import { designerOf, designs } from "./_designers.js";
-import { getBlocks, refuseFor, setBlock, standing, unnameable } from "./_blocks.js";
+import { blockedHandles, getBlocks, refuseFor, setBlock, standing } from "./_blocks.js";
 import { designersAlike } from "./_alike.js";
 import {
   AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
@@ -726,6 +726,9 @@ async function toggle(request, response, table) {
   if (typeof on !== "boolean") throw new Refusal("say on: true or on: false");
   if (!(await publishedModel(id))) throw new Refusal("there is no shared model at that link", 404);
   await counted(account, table === "model_likes" ? "like" : "favourite");
+  // No like across a block, either way (supabase/block.sql's trigger says
+  // it whatever writes): the one blocked is told only that it can't be.
+  if (on && table === "model_likes") refuseFor(await standing(account, { model: id }), "like");
   if (on) {
     if (table === "model_favourites") {
       // Counted by the database: a read stops at 1,000 rows (review of lists1).
@@ -1133,9 +1136,10 @@ async function peopleFind(request, response) {
   if (!namedOf(q)) return response.status(200).json({ q, people: [] });
   await counted(who, "people_find");
   const found = await peopleFound(q, (account) => mayBeNamed(account, { tests }));
-  // Never anybody a block stands between (supabase/block.sql): a comment
-  // would not name them.
-  const barred = found.length ? await unnameable(who, found.map((one) => one.handle)) : new Set();
+  // Never anybody the asker blocked (supabase/block.sql). Whoever blocked
+  // the asker is offered as to anybody: missing from the @ list, they would
+  // be told it; a comment names neither (api/_comments.js mention).
+  const barred = found.length && who ? await blockedHandles(who) : new Set();
   return response.status(200).json({ q, people: found.filter((one) => !barred.has(one.handle)) });
 }
 

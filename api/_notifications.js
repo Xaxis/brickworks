@@ -53,7 +53,7 @@ import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
-import { blockedHandles, countsOff, rowsWithout } from "./_blocks.js";
+import { blockCounts, blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 
 const NOT_THERE = /: 404$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -307,9 +307,11 @@ export async function notifications(request, response, { origin }) {
   const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
   const listed = page && page.missing ? await listBefore(asker, true) : page;
   if (!listed) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
-  // Nothing by anybody they blocked.
+  // Nothing by anybody they blocked, nor about a model of theirs: a remix
+  // of yours whose maker is unnamed, a reply on their model.
   const handles = await blockedHandles(asker);
-  const read = handles.size ? { ...listed, rows: rowsWithout(listed.rows, handles) } : listed;
+  const gone = handles.size ? await blockedModels(asker, (listed.rows || []).map((row) => row?.model)) : new Set();
+  const read = handles.size ? { ...listed, rows: rowsWithout(listed.rows, handles, gone) } : listed;
   // Each line in the language the page asks in (?lang=).
   const lang = String(request.query?.lang || "en");
   return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,
@@ -360,15 +362,16 @@ export async function notificationsRead(request, response) {
 /// before until that file is applied. A level reached is written down
 /// first, so it is in the count at once.
 export async function newCounts(asker) {
-  const [both, since, off] = await Promise.all([
+  const [both, since, barred] = await Promise.all([
     marked(asker).then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
     call("feed_new_count", { viewer: asker }, () => null),
-    // What came from people they blocked, taken off (supabase/block.sql).
-    countsOff(asker),
+    // Counted again without what their blocks leave out of the lists
+    // (supabase/block.sql), for somebody who blocked anybody.
+    blockCounts(asker),
   ]);
   if (both && !both.missing) {
-    const notices = Math.max(0, (Number(both.notifications) || 0) - off.notifications);
-    const feed = Math.max(0, (since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0) - off.feed);
+    const notices = barred ? barred.notifications : Number(both.notifications) || 0;
+    const feed = barred ? barred.feed : since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0;
     return { count: Math.min(notices + feed, 99), notifications: notices, feed, ready: true };
   }
   const count = await call("feed_count", { viewer: asker }, () => null);

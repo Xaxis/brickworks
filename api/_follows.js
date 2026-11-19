@@ -166,10 +166,11 @@ export function feedSaid(row, origin = "") {
 
 /// [handle]'s follows as [asker] sees them: {ready, followers, following,
 /// shows, you_follow, mine, may, why_not}, or null for nobody shown.
-export async function followsOf(handle, asker = null) {
+export async function followsOf(handle, asker = null, { blocks = true } = {}) {
   const [state, block] = await Promise.all([
     call("follow_state", { asker, wanted: handle }, () => ({ missing: true })),
-    asker ? standingWith(asker, handle) : null,
+    // [blocks] false: the caller left out whoever a block stands between.
+    asker && blocks ? standingWith(asker, handle) : null,
   ]);
   if (state && state.missing) return { ready: false, followers: 0, following: 0, shows: false, you_follow: false,
     mine: false, may: false, why_not: NOT_YET };
@@ -321,7 +322,9 @@ export async function feed(request, response, { origin }) {
     // Whether New is reckoned from each follow too, or (before the file)
     // from the last look alone.
     since_follows: Boolean(followed),
-    ...(before === null ? { following: following ? following.map((one) => one.handle) : null } : {}) });
+    // And whom they blocked, their own (private, no-store): the page
+    // leaves them out of what it suggests beside the feed, which is shared.
+    ...(before === null ? { following: following ? following.map((one) => one.handle) : null, blocked: [...handles] } : {}) });
 }
 
 /// Whether a feed row is New: it came after the feed was last opened

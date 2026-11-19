@@ -32,6 +32,9 @@ do $$ begin perform public.follow_person('00000000-0000-4000-8000-00000000b1a1',
 do $$ begin perform public.add_comment('00000000-0000-4000-8000-00000000b1b2', 'BlockTry01', 1, null, 'Try: Bob again'); insert into said values ('Bob comments on the tower', 'kept'); exception when others then insert into said values ('Bob comments on the tower', sqlerrm); end $$;
 do $$ begin perform public.add_reply('00000000-0000-4000-8000-00000000b1b2', (select id from public.model_comments where body = 'Try: Cy on the tower'), 'Try: Bob answers Cy'); insert into said values ('Bob answers Cy on the tower', 'kept'); exception when others then insert into said values ('Bob answers Cy on the tower', sqlerrm); end $$;
 do $$ begin perform public.add_comment('00000000-0000-4000-8000-00000000b1c3', 'BlockTry02', 1, null, 'Try: Cy on the shed'); insert into said values ('Cy comments on the shed', 'kept'); exception when others then insert into said values ('Cy comments on the shed', sqlerrm); end $$;
+do $$ begin insert into public.model_likes (model, account) values ('BlockTry01', '00000000-0000-4000-8000-00000000b1b2'); insert into said values ('Bob likes the tower', 'kept'); exception when others then insert into said values ('Bob likes the tower', sqlerrm); end $$;
+do $$ begin insert into public.model_likes (model, account) values ('BlockTry02', '00000000-0000-4000-8000-00000000b1a1'); insert into said values ('Ada likes the shed', 'kept'); exception when others then insert into said values ('Ada likes the shed', sqlerrm); end $$;
+do $$ begin insert into public.model_likes (model, account) values ('BlockTry01', '00000000-0000-4000-8000-00000000b1c3'); insert into said values ('Cy likes the tower', 'kept'); exception when others then insert into said values ('Cy likes the tower', sqlerrm); end $$;
 insert into public.model_collections (id, owner, name, public) values ('BlockTryL1', '00000000-0000-4000-8000-00000000b1a1', 'Try list', true);
 do $$ begin perform public.list_follow('00000000-0000-4000-8000-00000000b1b2', 'BlockTryL1', true); insert into said values ('Bob follows Ada''s list', 'kept'); exception when others then insert into said values ('Bob follows Ada''s list', sqlerrm); end $$;
 select * from said;
@@ -44,7 +47,9 @@ select public.block_hidden('BlockTry01') = array[(select id from public.model_co
 select public.block_models('00000000-0000-4000-8000-00000000b1a1', array['BlockTry01', 'BlockTry02']) as "Ada's gallery loses", public.block_models('00000000-0000-4000-8000-00000000b1b2', array['BlockTry01', 'BlockTry02']) as "Bob's loses", public.block_models(null, array['BlockTry02']) as "signed out loses";
 select r->>'handle' as handle, r->>'name' as name from jsonb_array_elements(public.block_list('00000000-0000-4000-8000-00000000b1a1')) r;
 select public.block_list('00000000-0000-4000-8000-00000000b1b2') as "Bob's list", public.block_count_against('00000000-0000-4000-8000-00000000b1b2') as "Bob blocked by", public.block_count_against('00000000-0000-4000-8000-00000000b1a1') as "Ada blocked by";
-select public.block_counts('00000000-0000-4000-8000-00000000b1a1') as "Ada's counts off", public.block_counts('00000000-0000-4000-8000-00000000b1c3') as "Cy's";
+-- Ada's counts without Bob's (in place of notification_counts' and feed_new_count's), beside them; Cy blocked nobody: null.
+select public.block_counts('00000000-0000-4000-8000-00000000b1a1') as "Ada's counts", public.notification_counts('00000000-0000-4000-8000-00000000b1a1') as "as they were", public.block_counts('00000000-0000-4000-8000-00000000b1c3') as "Cy's";
+select r.kind, r.item->'by'->>'handle' as by, public.block_row_barred('00000000-0000-4000-8000-00000000b1a1', r.item) as barred from public.notification_rows('00000000-0000-4000-8000-00000000b1a1', now() - interval '90 days', now()) r;
 -- Ada's notifications: Bob's comment is among the rows block_counts takes off (the API leaves it out of the list).
 select r->>'kind' as kind, r->'by'->>'handle' as by from jsonb_array_elements(public.notification_list('00000000-0000-4000-8000-00000000b1a1')->'rows') r;
 -- Unblocked: no row, the follows not back, and Bob may follow and comment again.

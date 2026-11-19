@@ -2969,6 +2969,8 @@
   "You can’t reply to this comment.": "Auf diesen Kommentar kannst du nicht antworten.",
   "You can’t post a photo of a build on this model.": "Zu diesem Modell kannst du kein Foto eines Nachbaus zeigen.",
   "You can’t follow this collection.": "Dieser Sammlung kannst du nicht folgen.",
-  "Block": "Blockieren"
+  "Block": "Blockieren",
+  "You blocked this model’s designer. Unblock them in Settings › Blocked people to like it.": "Du hast die Person blockiert, die dieses Modell entworfen hat. Hebe die Blockierung unter Einstellungen › Blockierte Personen auf, um es zu liken.",
+  "You can’t like this model.": "Dieses Modell kannst du nicht liken."
  }
 }

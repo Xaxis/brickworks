@@ -258,8 +258,10 @@ try {
   const bobComments = await api("/api/people?op=comment", { method: "POST", token: bob.access_token,
     body: { model: towerId, version: 1, body: "Again." } });
   const bobReplies = await api("/api/people?op=reply", { method: "POST", token: bob.access_token, body: { id: cyComment, body: "Indeed." } });
+  const bobLikes = await api(`/api/people?op=like&id=${towerId}`, { method: "POST", token: bob.access_token, body: { on: true } });
   for (const [what, said, words] of [["a follow", bobFollow, "You can’t follow this profile."],
-    ["a comment", bobComments, "You can’t comment on this model."], ["a reply", bobReplies, "You can’t reply to this comment."]]) {
+    ["a comment", bobComments, "You can’t comment on this model."], ["a reply", bobReplies, "You can’t reply to this comment."],
+    ["a like", bobLikes, "You can’t like this model."]]) {
     check(`Bob refused ${what}, neutrally: ${said.status} "${said.body.error}"`, said.status === 403 && said.body.error === words);
   }
   const bobYou = (await api(`/api/people?op=comments&id=${towerId}&v=1`, { token: bob.access_token })).body.you || {};
@@ -268,8 +270,23 @@ try {
   const adaFollow = await api("/api/people?op=follow", { method: "POST", token: ada.access_token, body: { handle: BOB, on: true } });
   const adaOnShed = await api("/api/people?op=comment", { method: "POST", token: ada.access_token,
     body: { model: shedId, version: 1, body: "Hm." } });
-  check(`Ada is told plainly: ${adaFollow.status} "${adaFollow.body.error}"; on his shed ${adaOnShed.status}`,
-    adaFollow.status === 409 && /You blocked them/.test(adaFollow.body.error || "") && adaOnShed.status === 409);
+  const adaLikesShed = await api(`/api/people?op=like&id=${shedId}`, { method: "POST", token: ada.access_token, body: { on: true } });
+  check(`Ada is told plainly: ${adaFollow.status} "${adaFollow.body.error}"; on his shed ${adaOnShed.status}, its like ${adaLikesShed.status}`,
+    adaFollow.status === 409 && /You blocked them/.test(adaFollow.body.error || "") && adaOnShed.status === 409
+      && adaLikesShed.status === 409 && /like it\.$/.test(adaLikesShed.body.error || ""));
+  // The @ list: Ada finds Bob no more; Bob finds Ada as anybody does (her
+  // missing would tell him), and a comment of his names her not.
+  const findAs = async (who, q) => ((await api(`/api/people?op=people_find&q=${encodeURIComponent(q)}&tests=1`,
+    { token: who.access_token })).body.people || []).map((one) => one.handle);
+  const [adaFinds, bobFinds] = [await findAs(ada, BOB), await findAs(bob, ADA)];
+  check(`the @ list: Ada's has no Bob (${adaFinds.join(",") || "nobody"}), Bob's has Ada (${bobFinds.join(",")})`,
+    !adaFinds.includes(BOB) && bobFinds.includes(ADA));
+  // Whom she blocked, on her own feed's first page alone, for the page to
+  // leave out of what it suggests; Bob's says nobody.
+  const blockedSaid = async (who) => (await api("/api/people?op=feed", { token: who.access_token })).body.blocked;
+  const [adaBlocked, bobBlocked] = [await blockedSaid(ada), await blockedSaid(bob)];
+  check(`her feed names whom she blocked (${JSON.stringify(adaBlocked)}), his nobody (${JSON.stringify(bobBlocked)})`,
+    JSON.stringify(adaBlocked) === JSON.stringify([BOB]) && Array.isArray(bobBlocked) && bobBlocked.length === 0);
 
   // --- 5. the edges and row security ------------------------------------------
   console.log("the edges, and who can read the blocks");

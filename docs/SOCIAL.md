@@ -1049,16 +1049,22 @@ that leaves A safest without telling B anything B could act on.
 - **Both ways for writing, one way for reading.** Neither may follow the
   other or the other's collections, comment on the other's models, reply
   to the other's comment or in a thread the other started, post a photo of
-  a build on the other's model, or @name the other. A trigger on each table says it
-  whatever writes it. Reading stays open both ways on public pages: a
+  a build on the other's model, like the other's model, or @name the other.
+  A trigger on each table says it whatever writes it. Likes are refused too
+  because a day's likes reach A as one row with a count, which no list can
+  leave B's like out of. B's @ list still offers A, as anybody's does:
+  A missing from it would tell B. Reading stays open both ways on public pages: a
   public model page is public signed out, so hiding it from a signed-in B
   would protect nobody and would tell B.
 - **Follows end both ways, and unblocking doesn't bring them back**, as X
   documents and Instagram's guides say. A follow brought back on its own
   would tell B of the unblock and put B back in A's feed unasked.
 - **What leaves A's view:** B's models from A's gallery (search included),
-  shelves, feed and "More like"; B's rows from A's notifications and the
-  count on A's avatar; B from A's @ list.
+  shelves, feed, the feed page's suggestions and "More like"; B's rows from
+  A's notifications and the daily mail, and rows about B's models (a remix
+  of A's model with no maker named, a reply on B's model); the count on
+  A's avatar, counted again without them (never the count less them: a
+  count stops at 99); B from A's @ list.
 - **Unblocking** brings back what was hidden (models, comments) and lets
   either follow or comment again. Settings › Blocked people lists whom you
   blocked, newest first, each with Unblock, as Printables' and Instagram's

@@ -12,9 +12,9 @@
 --             Instagram.
 --   comments  B's comments and replies on A's models are hidden from
 --             everybody but B, who sees them as before; B may not comment
---             on A's models, reply to A's comments, or post a photo of a
---             build on A's models (triggers on model_comments and
---             build_photos). A is told why on B's models; B is told only
+--             on A's models, reply to A's comments, post a photo of a
+--             build on A's models or like them (triggers on model_comments,
+--             build_photos and model_likes). A is told why on B's models; B is told only
 --             that it cannot be done, never that A blocked them.
 --   A's view  B's models leave A's gallery, shelves, search and feed, B's
 --             comments anywhere are hidden from A, and nothing B does
@@ -34,7 +34,7 @@
 -- who; an account's export (api/_console_people.js) leaves out who blocked
 -- it, as it leaves out who follows it, so a person never learns it there.
 --
--- Additive: one new table, new functions and four new triggers; nothing
+-- Additive: one new table, new functions and five new triggers; nothing
 -- that was here is altered. Until it is applied, api/_blocks.js finds no
 -- functions (404): nothing is hidden, Block says it is not open yet, and
 -- everything else works as before.
@@ -245,12 +245,27 @@ as $$
             or (viewer is not null and exists (select 1 from public.blocks b where b.blocker = viewer and b.blocked = k.author)))
 $$;
 
--- What of [viewer]'s counts came from people they blocked: {notifications,
--- feed}, each how many of notification_counts' and feed_new_count's rows
--- (since the list was last opened, in the last 90 days) the API takes off
--- the avatar's count. Zero, and nothing read, for somebody who blocked
--- nobody. Notifications by who did it; the feed by the owner of a model
--- put in a collection they follow (they follow nobody they blocked).
+-- Whether [item] (a notification's or a feed row's, as notification_rows
+-- and follow_rows give it) is by somebody [viewer] blocked, or about a
+-- model of theirs: what api/_blocks.js rowsWithout leaves out of the lists.
+create or replace function public.block_row_barred(viewer uuid, item jsonb)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select exists (select 1 from public.blocks k join public.people p on p.account = k.blocked
+                    where k.blocker = viewer and p.handle = item->'by'->>'handle')
+        or exists (select 1 from public.blocks k join public.shared_models s on s.owner = k.blocked
+                    where k.blocker = viewer and s.id = item->>'model')
+$$;
+
+-- [viewer]'s new counts as notification_counts and feed_new_count count
+-- them, each to 99, without what block_row_barred leaves out of the lists;
+-- null for nobody signed in or somebody who blocked nobody, whose counts
+-- are those as they were. In place of the counts, never taken off them: a
+-- count stops at 99, so 99 less the barred said 0 with 130 waiting.
 create or replace function public.block_counts(viewer uuid)
 returns jsonb
 language sql
@@ -259,21 +274,27 @@ security definer
 set search_path = public
 as $$
     select case when viewer is null or not exists (select 1 from public.blocks k where k.blocker = viewer)
-        then jsonb_build_object('notifications', 0, 'feed', 0)
+        then null
         else jsonb_build_object(
-            'notifications', (select count(*)::integer from public.notification_rows(viewer,
+            'notifications', (select count(*)::integer from (select 1 from public.notification_rows(viewer,
                 greatest(coalesce((select s.seen_at from public.notification_marks_of(viewer) s), '-infinity'),
                          now() - interval '90 days'), now()) r
-                 where r.item->'by'->>'handle' in (select p.handle from public.blocks k
-                                                     join public.people p on p.account = k.blocked
-                                                    where k.blocker = viewer)),
-            'feed', (select count(*)::integer from public.follow_rows(viewer,
-                greatest(coalesce((select f.seen_at from public.feed_marks f where f.account = viewer), '-infinity'),
-                         now() - interval '90 days'), now()) r
-                 join public.collection_follows c on c.follower = viewer and c.collection = r.item->>'collection'
-                 join public.shared_models s on s.id = r.item->>'model'
-                 join public.blocks k on k.blocker = viewer and k.blocked = s.owner
-                where r.kind = 'collection' and r.at > c.at))
+                 where not public.block_row_barred(viewer, r.item) limit 99) n),
+            'feed', (with fed as (
+                    select r.kind, r.at, r.item from public.follow_rows(viewer,
+                        greatest(coalesce((select f.seen_at from public.feed_marks f where f.account = viewer), '-infinity'),
+                                 now() - interval '90 days'), now()) r
+                     where not public.block_row_barred(viewer, r.item))
+                select count(*)::integer from (
+                    select 1 from fed r
+                      join public.people p on p.handle = r.item->'by'->>'handle'
+                      join public.follows f on f.follower = viewer and f.followed = p.account
+                     where r.kind <> 'collection' and r.at > f.at
+                    union all
+                    select 1 from fed r
+                      join public.collection_follows c on c.follower = viewer and c.collection = r.item->>'collection'
+                     where r.kind = 'collection' and r.at > c.at
+                     limit 99) n))
         end
 $$;
 
@@ -370,6 +391,25 @@ create or replace trigger blocks_guard_photo
     before insert on public.build_photos
     for each row execute function public.blocks_guard_photo();
 
+-- A like across a block, either way: B's would reach A's notifications as
+-- one of the day's likes, which no row can leave out (notification_rows).
+create or replace function public.blocks_guard_like()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if public.block_between(new.account, (select s.owner from public.shared_models s where s.id = new.model)) is not null then
+        raise exception 'brickworks: this model cannot be liked' using errcode = 'P0001', hint = 'likes:blocked';
+    end if;
+    return new;
+end;
+$$;
+create or replace trigger blocks_guard_like
+    before insert on public.model_likes
+    for each row execute function public.blocks_guard_like();
+
 -- ---------------------------------------------------------------------------
 -- Who may call what: the server alone.
 
@@ -389,6 +429,8 @@ revoke all on function public.block_models(uuid, text[]) from public, anon, auth
 grant execute on function public.block_models(uuid, text[]) to service_role;
 revoke all on function public.block_hidden(text, uuid) from public, anon, authenticated;
 grant execute on function public.block_hidden(text, uuid) to service_role;
+revoke all on function public.block_row_barred(uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.block_row_barred(uuid, jsonb) to service_role;
 revoke all on function public.block_counts(uuid) from public, anon, authenticated;
 grant execute on function public.block_counts(uuid) to service_role;
 revoke all on function public.block_count_against(uuid) from public, anon, authenticated;
@@ -397,5 +439,6 @@ revoke all on function public.blocks_guard_follow() from public, anon, authentic
 revoke all on function public.blocks_guard_collection_follow() from public, anon, authenticated;
 revoke all on function public.blocks_guard_comment() from public, anon, authenticated;
 revoke all on function public.blocks_guard_photo() from public, anon, authenticated;
+revoke all on function public.blocks_guard_like() from public, anon, authenticated;
 
 notify pgrst, 'reload schema';

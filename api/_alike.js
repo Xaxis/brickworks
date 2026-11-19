@@ -25,6 +25,7 @@
 import { db } from "./_db.js";
 import { ASSISTANT_TAGS, kindLabel } from "./_directory.js";
 import { followsOf } from "./_follows.js";
+import { unnameable } from "./_blocks.js";
 
 export const ALIKE_MOST = 6;
 // The parts all in common count as three themes or tags would.
@@ -125,14 +126,16 @@ export async function designersAlike(person, asker, tests) {
   const named = new Map(people.map((one) => [one.account, one]));
   const out = [];
   // In the order of closeness, a few at a time, until six may be shown.
-  const waiting = closest.filter((one) => named.has(one.id));
+  // Nobody a block stands between, either way, asked once: a suggestion
+  // missing is noticed by nobody (supabase/block.sql).
+  const barred = await unnameable(asker, closest.filter((one) => named.has(one.id)).map((one) => named.get(one.id).handle));
+  const waiting = closest.filter((one) => named.has(one.id) && !barred.has(named.get(one.id).handle));
   while (out.length < ALIKE_MOST && waiting.length) {
     const batch = waiting.splice(0, ALIKE_MOST - out.length + 2);
-    const states = await Promise.all(batch.map((one) => followsOf(named.get(one.id).handle, asker)));
+    const states = await Promise.all(batch.map((one) => followsOf(named.get(one.id).handle, asker, { blocks: false })));
     batch.forEach((one, i) => {
       const state = states[i];
-      // Never anybody the asker blocked (followsOf's you_block).
-      if (!state || !state.ready || state.mine || state.you_follow || state.you_block || out.length >= ALIKE_MOST) return;
+      if (!state || !state.ready || state.mine || state.you_follow || out.length >= ALIKE_MOST) return;
       const who = named.get(one.id);
       out.push({ handle: who.handle, name: who.name, alike: alikeOf(one), kinds: one.kinds, tags: one.tags,
         follow: { you_follow: false, mine: false, followers: state.followers, may: state.may, why_not: state.why_not,

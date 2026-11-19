@@ -68,7 +68,7 @@ def test_the_one_who_blocked_is_told_why_and_the_one_blocked_only_that_it_cannot
     said = node("""
 import { refuseFor, WORDS } from "./api/_blocks.js";
 const asked = (state, kind) => { try { refuseFor(state, kind); return null; } catch (e) { return [e.status, e.message]; } };
-console.log(JSON.stringify({ kinds: ["follow", "comment", "reply", "photo", "list"].map((kind) =>
+console.log(JSON.stringify({ kinds: ["follow", "comment", "reply", "photo", "list", "like"].map((kind) =>
   [asked("blocked", kind), asked("blocked_by", kind), asked(null, kind)]), words: WORDS }));
 """)
     for blocked, blocked_by, neither in said["kinds"]:
@@ -111,15 +111,15 @@ def test_block_sql_is_additive_with_row_security_and_no_client_role() -> None:
     assert re.search(r"revoke all on public\.blocks from public, anon, authenticated, service_role", sql)
     functions = set(re.findall(r"create or replace function public\.(\w+)\(", sql))
     assert {"block_person", "block_list", "block_between", "block_on", "block_hidden", "block_models", "block_named",
-            "block_counts", "block_count_against", "blocks_guard_follow", "blocks_guard_comment",
-            "blocks_guard_collection_follow", "blocks_guard_photo"} <= functions
+            "block_counts", "block_count_against", "block_row_barred", "blocks_guard_follow", "blocks_guard_comment",
+            "blocks_guard_collection_follow", "blocks_guard_photo", "blocks_guard_like"} <= functions
     for name in functions:
         assert re.search(rf"revoke all on function public\.{name}\([^)]*\) from public, anon, authenticated;", sql), name
         assert "security definer" in sql
     # Nothing it creates is a client's: every grant goes to the server's role alone.
     assert set(re.findall(r"grant execute on function public\.\w+\([^)]*\) to (\w+);", sql)) == {"service_role"}
     # A trigger on each table a block refuses a write to.
-    for table in ("follows", "collection_follows", "model_comments", "build_photos"):
+    for table in ("follows", "collection_follows", "model_comments", "build_photos", "model_likes"):
         assert re.search(rf"create or replace trigger \w+\s+before insert(?: or update)? on public\.{table}\b", sql), table
 
 

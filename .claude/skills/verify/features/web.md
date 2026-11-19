@@ -2760,10 +2760,14 @@ plan with Claude as the client.
   person's models from the signed-in gallery and shelves (`api/share.js`
   `withoutTheirBlocked`), feed rows (`api/_follows.js` `feed`), comments
   and their replies on the blocker's models for everyone but their writer
-  (`api/_comments.js` `listComments`, `block_hidden`), notifications and
-  the avatar's count (`api/_notifications.js`, `block_counts`), More like
-  (`api/_alike.js`) and the @ picker (`peopleFind`); refuses follows,
-  collection follows, comments, replies, build photos and mentions across
+  (`api/_comments.js` `listComments`, `block_hidden`), notifications (by
+  them or about their models) and the avatar's count, counted again
+  without them (`api/_notifications.js`, `block_counts`,
+  `block_row_barred`), the daily mail (`digestShown`), the feed page's
+  suggestions (the feed's own `blocked`, `web/feed.js`), More like both
+  ways (`api/_alike.js`) and the blocker's @ picker (`peopleFind`; the
+  blocked still find the blocker, and are never told); refuses follows,
+  collection follows, comments, replies, build photos, likes and mentions across
   it (`refuseFor`, and triggers on each table), the blocker told why, the
   blocked "You can’t …" only; /admin › People's panel says "Blocked by N"
   (`block_count_against`), the export never who. SQL proof:
@@ -2776,7 +2780,8 @@ plan with Claude as the client.
   from his profile at 390 x 844, then every rule by the API (gallery
   search, feed, the tower's comments as each of them and a visitor,
   notifications and the count, Bob's answers and pages unchanged, his
-  neutral refusals, the edges, the table and functions refused to the
+  neutral refusals and a like, the @ lists, the feed's own blocked list,
+  the edges, the table and functions refused to the
   publishable key and to Bob's and Cy's tokens), Settings › Blocked
   people at 390 x 844 and Unblock (follows not back), and a comment's
   row. Passes when it ends "block: hidden from the one who blocked, never

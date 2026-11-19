@@ -78,7 +78,8 @@ import { Unacceptable, count } from "./_directory.js";
 import { mentionsIn } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
-import { commentsShown, hiddenComments, refuseFor, standing, unnameable } from "./_blocks.js";
+import { blockedHandles, blockedModels, commentsShown, hiddenComments, refuseFor, rowsWithout, standing, unnameable }
+  from "./_blocks.js";
 
 export const MOST_CHARACTERS = 1000;
 // How often, as comments.sql counts it (may_act): [an hour, a day].
@@ -517,16 +518,35 @@ export function renderCommentDigest(digest, origin) {
 /// recorded, never sent. COMMENT_MAIL=off sends nothing to anybody, and
 /// leaves what waits for a server that can. {digests: [{id, owner,
 /// state}]}.
+/// [digest] (claim_comment_digest's) without what its owner's blocks leave
+/// out of the page (supabase/block.sql): the comments hidden on their
+/// models, and the feed's rows by whom they blocked or about a model of
+/// theirs. A comment written just before the block is not mailed after it.
+async function digestShown(digest) {
+  const comments = Array.isArray(digest?.comments) ? digest.comments : [];
+  const feed = Array.isArray(digest?.feed) ? digest.feed : [];
+  const owner = digest?.owner || null;
+  const handles = owner ? await blockedHandles(owner) : new Set();
+  if (!handles.size) return { ...digest, comments, feed };
+  const models = [...new Set(comments.map((one) => String(one?.model || "")).filter(Boolean))];
+  const hidden = new Set((await Promise.all(models.map((model) => hiddenComments(model, owner)))).flatMap((ids) => [...ids]));
+  const gone = await blockedModels(owner, feed.map((row) => row?.model));
+  return { ...digest, comments: comments.filter((one) => !hidden.has(Number(one?.id))), feed: rowsWithout(feed, handles, gone) };
+}
+
 export async function sendCommentDigests({ origin, owner = null }) {
   const due = await call("claim_comment_digest", { for_owner: owner }, () => []);
   const done = [];
-  for (const digest of Array.isArray(due) ? due : []) {
+  for (const claimed of Array.isArray(due) ? due : []) {
+    const digest = await digestShown(claimed);
     const email = renderCommentDigest(digest, origin);
     const finish = (outcome) => db("rpc/finish_comment_digest", { method: "POST", body: {
       one: digest.digest, outcome, said_subject: email.subject, said_body: email.text, said_html: email.html } });
     // A test account's, or an orangecheck account's (api/orangecheck.js): its
     // address is made up, at a domain that takes no mail. Recorded, never sent.
-    if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))) {
+    // Or one whose every line came from somebody its owner blocked since.
+    if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))
+      || (!digest.comments.length && !digest.feed.length)) {
       await finish("dry");
       done.push({ id: digest.digest, owner: digest.owner, state: "dry" });
       continue;
