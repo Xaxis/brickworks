@@ -571,6 +571,11 @@ func _case_breakout() -> void:
 	var said: String = await _say("break_out_section", {"section": "Leg"})
 	await _frames(5)
 	print("    %s" % said.left(100))
+	# Broken out, the leg stands away from its hips: a turn of it is refused
+	# for that, and the lock is named too (the review's putback step).
+	var turned: String = await _say("move_part", {"part": "#%d" % _id_of("3816"), "degrees": 30})
+	_check("broken out, a turn of the locked leg names the lock: \"%s\"" % turned.left(120),
+		turned.contains(Motions.UNLOCK_WORDS) and turned.contains("Leg's joint"))
 	var broken: String = await _save("knee_out_broken.ldr")
 	_check("saved broken out: the LOCK line as saved in place (%s)" % str(_lines_with(broken, Motions.LOCK_META)),
 		_lines_with(broken, Motions.LOCK_META) == _lines_with(in_place, Motions.LOCK_META))
@@ -583,16 +588,23 @@ func _case_breakout() -> void:
 
 
 ## The live sibling of H2: a motion's joints saved while its section is
-## broken out, where they are built (a turn on the knee, a slide on the
-## slider: its AT too); reopened, the motion finds its joint. Fails on
-## pre261 (bench/results/jlfix-2026-11-19/sibling_pre261.log).
+## broken out, where they are built. A joint kept by its sub-assembly's name
+## (the knee's Leg, the slider's Axle) writes no place; one kept by its part
+## (a leg of two in one sub-model, an axle under a brick of its own) writes
+## where the part stands, and a slide its AT: those two were written at the
+## broken-out place on pre261 (bench/results/jlfix-2026-11-19, sibling_*).
+## Reopened, the motion finds its joint and plays it.
 func _case_motion_breakout() -> void:
-	for one: Array in [["knee", _knee_ldr(), "Leg", false, 45.0], ["slider", _slider_ldr(), "Axle", true, 1.0]]:
+	for one: Array in [["knee", _knee_ldr(), "Leg", "Leg", false, 45.0],
+			["slider", _slider_ldr(), "Axle", "Axle", true, 1.0],
+			["legs", _legs_ldr(), "Legs", "3816", false, 45.0],
+			["slide", _slide_ldr(), "Slide", "3705", true, 1.0]]:
 		print("\n══ motion_breakout: %s's motion saved with %s broken out ══" % [one[0], one[2]])
 		_write(MODELS + "mb_%s.ldr" % one[0], str(one[1]))
 		await _open(MODELS + "mb_%s.ldr" % one[0])
-		var track: Dictionary = {"joint": one[2], "keys": [{"t": 0, "place": 0}, {"t": 1, "place": one[4]}]}
-		if one[3]:
+		var joint: String = str(one[3]) if str(one[3]) == str(one[2]) else "#%d" % _id_of(str(one[3]))
+		var track: Dictionary = {"joint": joint, "keys": [{"t": 0, "place": 0}, {"t": 1, "place": one[5]}]}
+		if one[4]:
 			track["slide"] = true
 		await _say("define_motion", {"name": "Swing", "tracks": [track]})
 		var in_place: String = await _save("mb_%s.ldr" % one[0])
@@ -607,7 +619,7 @@ func _case_motion_breakout() -> void:
 		await _open(MODELS + "mb_%s_broken.ldr" % one[0])
 		var played: String = await _say("play_motion", {"name": "Swing"})
 		_check("...reopened, the motion finds its joint: \"%s\"" % played.replace("\n", " | ").left(110),
-			played.contains(str(one[2])) and not played.contains("gone") and not played.contains("not found"))
+			played.contains("went from") and not played.contains("gone") and not played.contains("not found"))
 
 
 ## move_part to= on a locked joint (M1): nothing moved, and the lock named
@@ -681,6 +693,36 @@ static func _tower() -> PackedStringArray:
 		lines.append("1 4 0 %d -10 1 0 0 0 1 0 0 0 1 3001.dat" % (-24 * k))
 	lines.append("1 7 0 -312 0 1 0 0 0 1 0 0 0 1 3701.dat")
 	return lines
+
+
+## A minifig's two legs in one sub-model: a turn of one leg is kept by its
+## part, as the other does not move with it.
+static func _legs_ldr() -> String:
+	return "\n".join(PackedStringArray([
+		"0 FILE legs.ldr", "0 A minifig's legs", "0 Name: legs.ldr", "0 !BRICKWORKS FLOOR NONE",
+		"1 0 10 -32 1 1 0 0 0 1 0 0 0 1 3815.dat",
+		"1 4 10 -64 1 1 0 0 0 1 0 0 0 1 973p42.dat",
+		"1 16 0 0 0 1 0 0 0 1 0 0 0 1 legs2.ldr",
+		"0 NOFILE",
+		"0 FILE legs2.ldr", "0 Legs", "0 Name: legs2.ldr",
+		"1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3816.dat",
+		"1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3817.dat",
+		"0 NOFILE"])) + "\n"
+
+
+## The slider's axle with a brick of its own in its sub-model: its slide is
+## kept by its part.
+static func _slide_ldr() -> String:
+	var lines := PackedStringArray(["0 FILE slide.ldr", "0 An axle that slides", "0 Name: slide.ldr",
+		"0 !BRICKWORKS FLOOR NONE"])
+	for k: int in range(1, 13):
+		lines.append("1 4 0 %d -10 1 0 0 0 1 0 0 0 1 3001.dat" % (-24 * k))
+	lines.append("1 7 0 -312 0 1 0 0 0 1 0 0 0 1 3701.dat")
+	lines.append_array(["1 16 0 0 0 1 0 0 0 1 0 0 0 1 slide2.ldr", "0 NOFILE",
+		"0 FILE slide2.ldr", "0 Slide", "0 Name: slide2.ldr",
+		"1 0 0 -302 0 0 0 -1 0 1 0 1 0 0 3705.dat",
+		"1 1 0 -336 -10 1 0 0 0 1 0 0 0 1 3001.dat", "0 NOFILE"])
+	return "\n".join(lines) + "\n"
 
 
 static func _hinge_ldr() -> String:

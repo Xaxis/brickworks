@@ -1044,16 +1044,31 @@ func _cells_for(held: Grab) -> Dictionary:
 		return out, "lay a session's move's cells")
 
 
+## A lock on a joint of [param ids]'s parts, said after why they do not
+## move (" Leg's joint is locked, ...: unlock it ..."), or "". A part broken
+## out of its section stands away from its joint, so what holds it is what
+## it stands on; its joint is still locked, and unlocking it is the way out.
+func _lock_on(ids: Array) -> String:
+	if world.motions == null or world.motions.locks.is_empty():
+		return ""
+	var moving: Dictionary = {}
+	for key: Variant in ids:
+		moving[int(key)] = true
+	var lock: Motions.Lock = world.motions.lock_split(moving, world, builder)
+	return "" if lock == null else " %s." % Motions.lock_words(lock, world, library, builder)
+
+
 func _move_for_session(ids: Array, input: Dictionary) -> String:
 	var held: Grab = await _worked(func() -> Variant: return _taken(ids), "take hold of a part")
 	var first: int = ids[0]
 	var state: String = held.state
 	if state == "rigid":
 		var held_said: String = _bodies.held_words(first)
+		var locked: String = _lock_on(ids)
 		if held_said.is_empty():
-			return ("#%d is held rigidly to what stays (%s): nothing it is built on turns. %s") % [
-				first, _bodies.summary(), held.why]
-		return "#%d will not move: %s. Nothing was changed." % [first, held_said]
+			return ("#%d is held rigidly to what stays (%s): nothing it is built on turns. %s%s") % [
+				first, _bodies.summary(), held.why, locked]
+		return "#%d will not move: %s.%s Nothing was changed." % [first, held_said, locked]
 	if state != "moves":
 		return held.why
 	var lines := PackedStringArray()

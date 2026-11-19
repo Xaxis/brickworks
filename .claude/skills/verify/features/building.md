@@ -2793,7 +2793,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a lock or an unlock by either person holds for both. A save while a section
   is broken out writes the lock's and every motion joint's ref where it is
   built (`Motions.stands`, jlfix 2026-11-19; a motion's joint and a slide's
-  AT were written at the broken-out place before). A LOCK line naming parts
+  AT were written at the broken-out place before); a turn of a locked part
+  broken out is refused for what it stands on and names the lock
+  (`GrabDrag._lock_on`). A LOCK line naming parts
   the model has not got is named at the open and kept byte for byte.
   Probes: `jointlock_probe` (windowed; `-- together breakout motion_breakout
   chain copies dangling` runs the review's cases alone), `jointlock_time_probe`
