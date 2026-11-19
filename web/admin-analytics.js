@@ -54,14 +54,7 @@ export const TERMS = {
   test: ["The checks' own", "With ?tests=1 the console shows only what the site's own checks sent, kept apart from people's."],
 };
 
-const RAMP_LIGHT = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"];
-const RAMP_DARK = ["#184f95", "#1c5cab", "#256abf", "#3987e5", "#6da7ec", "#9ec5f4"];
-
 const LOOK = `
-.insights { --viz-1: #3987e5; --viz-muted: #6b717c; --viz-grid: rgba(255, 255, 255, 0.07); --viz-axis: rgba(255, 255, 255, 0.2); }
-:root[data-theme="light"] .insights { --viz-1: #2a78d6; --viz-muted: #9aa0a8; --viz-grid: rgba(17, 19, 23, 0.07); --viz-axis: rgba(17, 19, 23, 0.25); }
-@media (prefers-color-scheme: light) { :root:not([data-theme]) .insights { --viz-1: #2a78d6; --viz-muted: #9aa0a8;
-  --viz-grid: rgba(17, 19, 23, 0.07); --viz-axis: rgba(17, 19, 23, 0.25); } }
 .insights.reading [data-tab] { opacity: 0.55; transition: opacity 120ms; }
 .insights .filters { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: end; margin: 0 0 var(--s-5); }
 .insights .filters label { display: grid; gap: 2px; font-size: var(--t-tiny); color: var(--ink-faint); }
@@ -77,7 +70,7 @@ const LOOK = `
 .insights figcaption small { font-weight: 400; color: var(--ink-faint); }
 .insights .plot { position: relative; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
 .insights .plot svg { display: block; width: 100%; overflow: visible; }
-.insights .plot text { fill: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.insights .plot text { fill: var(--ink-faint); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
 .insights .plot .grid { stroke: var(--viz-grid); stroke-width: 1; }
 .insights .plot .base { stroke: var(--viz-axis); stroke-width: 1; }
 .insights .plot .bar { fill: var(--viz-1); }
@@ -85,18 +78,18 @@ const LOOK = `
 .insights .plot .hit:hover + .bar, .insights .plot .hit:focus-visible + .bar { fill-opacity: 0.75; }
 .insights .plot .hit:focus-visible { stroke: var(--ink); stroke-width: 1; }
 .insights .tip { position: absolute; z-index: 5; pointer-events: none; padding: 6px 10px; border: 1px solid var(--line-strong);
-  border-radius: var(--r-2, 8px); background: var(--panel); box-shadow: var(--shadow); font-size: var(--t-tiny); white-space: nowrap; }
+  border-radius: var(--r-2); background: var(--panel); box-shadow: var(--shadow); font-size: var(--t-tiny); white-space: nowrap; }
 .insights .tip b { display: block; font-size: var(--t-small); color: var(--ink); font-variant-numeric: tabular-nums; }
 .insights .tip span { color: var(--ink-soft); }
 .insights details.as-table { margin-top: var(--s-2); font-size: var(--t-small); }
 .insights details.as-table summary { cursor: pointer; color: var(--ink-soft); }
 .insights .meter { display: flex; align-items: center; gap: var(--s-2); min-width: 120px; }
-.insights .meter i { display: block; height: 8px; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--viz-1); }
+.insights .meter i { display: block; height: 8px; min-width: 2px; border-radius: 0 var(--r-1) var(--r-1) 0; background: var(--viz-1); }
 .insights .meter span { font-variant-numeric: tabular-nums; color: var(--ink); }
 .insights td.name { overflow-wrap: anywhere; min-width: 120px; max-width: 320px; font-family: var(--mono, ui-monospace, monospace); font-size: var(--t-tiny); color: var(--ink); }
 .insights .heat td.cell { text-align: center; font-variant-numeric: tabular-nums; min-width: 3.2em; border-left: 2px solid var(--panel); }
 .insights .never { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-5); padding: 0; list-style: none; }
-.insights .never li { padding: 2px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: var(--t-tiny);
+.insights .never li { padding: 2px 10px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: var(--t-tiny);
   font-family: var(--mono, ui-monospace, monospace); overflow-wrap: anywhere; }
 .insights .grid2 { display: grid; gap: var(--s-6) var(--s-6); grid-template-columns: minmax(0, 1fr); }
 @media (width >= 1100px) { .insights .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -108,7 +101,7 @@ const LOOK = `
 .insights dl.defs dd { margin: 0 0 var(--s-2); color: var(--ink-soft); max-width: 75ch; }
 .insights dl.defs dt.lit { color: var(--accent-ink, var(--ink)); }
 .insights .pill.ok { color: var(--green, #0ca30c); border-color: currentColor; }
-.insights .pill.mid { color: var(--ink); border-color: #fab219; }
+.insights .pill.mid { color: var(--ink); border-color: var(--accent-edge); }
 .insights .pill.bad { color: var(--bad); border-color: var(--bad); }
 `;
 
@@ -570,14 +563,6 @@ function drawFunnels() {
 }
 
 /// A cell's ink on [fill]: near-black on a light step, white on a dark one.
-function inkOn(fill) {
-  const [r, g, b] = [1, 3, 5].map((at) => parseInt(fill.slice(at, at + 2), 16) / 255)
-    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.3 ? "#0b0b0b" : "#ffffff";
-}
-const lightNow = () => document.documentElement.dataset.theme === "light"
-  || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: light)").matches);
-
 function drawRetention() {
   const rows = data.retention || [];
   const weeks = Math.min(12, Math.max(1, ...rows.map((r) => (r.back || []).length)));
@@ -586,7 +571,6 @@ function drawRetention() {
   for (let at = 0; at < weeks; at += 1) head.append(make("th", "n", `Week ${at}`));
   table.append(make("thead", "", head));
   const body = make("tbody");
-  const ramp = lightNow() ? RAMP_LIGHT : RAMP_DARK;
   for (const row of rows) {
     const tr = make("tr", "", make("td", "", day(`${row.week}T12:00:00Z`)), make("td", "n", count(row.size)));
     for (let at = 0; at < weeks; at += 1) {
@@ -595,9 +579,10 @@ function drawRetention() {
       if (back === undefined) td.textContent = "";
       else {
         const part = row.size ? back / row.size : 0;
-        const fill = ramp[Math.min(ramp.length - 1, Math.floor(part * ramp.length))];
-        td.style.background = fill;
-        td.style.color = inkOn(fill);
+        // site.css's ramp, six steps from little to much, in each theme with the ink to read it in.
+        const step = Math.min(6, Math.floor(part * 6) + 1);
+        td.style.background = `var(--viz-seq-${step})`;
+        td.style.color = `var(--viz-seq-ink-${step})`;
         td.textContent = share(back, row.size);
         td.title = `${count(back)} of ${count(row.size)} back in week ${at}`;
       }
