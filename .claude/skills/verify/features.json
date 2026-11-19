@@ -1942,6 +1942,14 @@
       "tests": []
     },
     {
+      "id": "cli:mcpreach3 probe",
+      "kind": "cli",
+      "entry": "src/dev/mcpreach3_probe.gd",
+      "reach": "tools/probe.sh mcpreach3_probe; tools/relay_probe.sh mcpreach3 for r5 too   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach3_probe.gd. APP_UX10's mcpreach3: save_model over unsettled features writes the file and says what is not finished, open_model save_first= keeps a changed design and opens in 2 calls, edit_collection sets= built= adds a set kept built in 1 call with its loose parts said (a throwaway account, deleted), pose_model lists and swings a click hinge with no assembly, attachment_points on a motor says how real sets mount it and a motor on single studs is named before Simulate, edit_steps says why nothing changed and step= past the last makes one; the relay's other-chats line once a chat is tests/test_relay_chats.py)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:measure brickify against outside models",
       "kind": "cli",
       "entry": "tools/bench/brickify_bench.py",

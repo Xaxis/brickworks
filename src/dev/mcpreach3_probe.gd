@@ -1,9 +1,8 @@
 ## Where the person's Claude stalled or guessed in APP_UX10's MCP walk, each in
 ## the answer that would have spared it (mcpreach3, docs/APP_UX10.md).
 ##
-##   set -a; . ./.env; set +a; node tools/web/relay_server.mjs 10881 &
-##   BRICKWORKS_API=http://127.0.0.1:10881 \
-##     godot --path . --resolution 1280x720 --script src/dev/mcpreach3_probe.gd
+##   godot --path . --resolution 1280x720 --script src/dev/mcpreach3_probe.gd
+##   tools/relay_probe.sh mcpreach3      # r5 too, on a relay of its own
 ##
 ## Every call is a session's, through CommandSocket's tools/call, and counted.
 ## The sixth, the other chats' line once a chat, is the relay's (api/mcp.js),
@@ -16,7 +15,8 @@
 ##      the file and says what is not finished.
 ##  r5  edit_collection sets=["31058-1"] built=["31058-1"]: added and kept
 ##      built in 1 call, "0 loose parts" said; the account holds one copy,
-##      built. A throwaway account, deleted after.
+##      built. A throwaway account, deleted after: only on a relay of this
+##      machine (BRICKWORKS_API), as tools/relay_probe.sh runs it.
 ##  r2  An arm on a click hinge, no assembly named: pose_model lists the
 ##      hinge and swings it, 2 calls.
 ##  y6  attachment_points on the SPIKE Prime motor says how real sets mount
@@ -317,7 +317,9 @@ func _set_added() -> void:
 	print("r5: a set added by its number and kept built in one call")
 	var api: String = Deployment.api_base()
 	if not api.begins_with("http://127.0.0.1"):
-		_check("run against a relay on this machine (BRICKWORKS_API), not %s" % api, false)
+		# The suite's run has no relay: an account is made in production
+		# Supabase, so this part runs under the live database's lock.
+		print("  skip r5: it makes an account; tools/relay_probe.sh mcpreach3 runs it on a relay of its own")
 		return
 	_email = SignInHelper.throwaway("mcpreach3")
 	var problem: String = await _sign_in(_account, _email)

@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:mcpreach2 probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:mcpreach2 probe, cli:mcpreach3 probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -703,6 +703,31 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   441 s, 11 turns, $2.21). Not yet: weighing a model held by a part
   (lifted by its mast), which the session still estimates.
 
+- `mcpreach3 probe` (APP_UX10's mcpreach3; `src/net/command_socket.gd` `_run_own`
+  save_model, `_finished_not`; `src/net/app_tools.gd` `_save_first`,
+  `_collection_sets`, `_drag_joints`, `_pose_drag`, `motor_mount_said`,
+  `_steps_why`; `src/ui/collection_dialog.gd` `add_sets`; the relay's
+  `firstHere` in api/mcp.js): where the person's Claude stalled or guessed in
+  APP_UX10's MCP walk. save_model is never refused for a person: it writes the
+  file, then says "Not finished yet" with the first unsettled feature (a
+  BrickBench run is still refused, `Assistant.brickbench`). open_model over
+  unsaved changes names save_first= (a file name): the model is saved in the
+  person's models first, a file of another model never written over, then
+  opened (g1: 2 calls, the car kept). edit_collection sets=["31058-1"] adds by
+  number through the dialog's own add (`add_sets`), built= with it marks them
+  kept built, and the answer gives each set's copies before and after, the
+  loose parts in no set and the pieces on hand (r5: 1 call). pose_model lists,
+  after the Poser's joints, up to 8 parts on a click hinge, hinge or turntable
+  as a drag reads them (`bodies.parent_link`), with no assembly named, and
+  swings one by `GrabDrag.for_session`, one undo (r2). attachment_points on a
+  motor says how real sets mount one; check_design, edit_model and
+  submit_design name a motor whose case swivels on one stud or one line of
+  pins ("Before Simulate, its mount: ...", y6, r1). edit_steps says why
+  nothing changed (all of the last step, already in that step), and step= past
+  the last makes one new last step, never empty steps between (t9: 3 calls).
+  The tab's line on other chats comes on a chat's first call and again only
+  after another chat called (`firstHere`; tests/test_relay_chats.py).
+
 - `mcpreach2 probe` (APP_UX9 #10; `src/ai/assistant.gd` `_where_to_attach`,
   `_whole_for_points`, `_spread_points`, `_output_said`; `src/net/app_tools.gd`
   `TURNTABLE_SAID`, `held_to_pool`, `_pool_said`, `_what_moves`;
@@ -804,6 +829,7 @@ PROBE_SIZE=1400x900 tools/probe.sh seeing2                          # how parts 
 tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   # a session picks out 4070 however quoted (#6 and #11 of the walk's Pods), save_view in 1 call back by its key and by render_model view= within 0.1° and 0.1 LDU, in_view lists it; pictures in MCPSEE3_SHOTS or user://mcpsee3_probe
 tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   # palettes read-only; edit_palette makes 12 parts + Gatepost in 1 call, the bin's own byte for byte; Gatepost placed whole in another model in 1 call to 0.01 LDU, one undo; take_out/rename/delete, agreed=true; pictures in shots/mcppalettes/
 tools/probe.sh mcpreach2_probe                                      # where_to_attach of the whole model a picture in 1 call, a turntable says the camera circles a still model, a SPIKE motor's output holes named and driven, submit_design pool=31058-1 over by part
+tools/probe.sh mcpreach3_probe; tools/relay_probe.sh mcpreach3      # r5 only with the relay: a save never refused, open save_first= in 2 calls, a set added and kept built in 1, a click hinge posed with no assembly, a motor's mount said before Simulate, edit_steps says why
 tools/probe.sh mcpreach_probe && PROBE_SIZE=1280x720 tools/probe.sh mcpreach_probe   # Together/Share/Import/Comments named with where, export_model pdf read back as typed in 3 calls, free names keep the first file byte for byte, 3MF/STL closed solids as lib3mf reads them
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
 node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed; step 4's bricks drawn in the picture, and again in --again=4 more openings with Next at once (a local export, .env loaded)
