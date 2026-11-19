@@ -16,6 +16,10 @@
 ## the top is out of sight, the top clicked where the view shows it
 ## (hit-tested), and the line says which part it lifted by. A click on a
 ## part that finds another under the pointer says so (`_click_part`).
+## `round7`'s "the bin gave way" at 1280 x 720 was round six's layout:
+## everything open there leaves Properties open and the bin folded before
+## Stress is opened, so the line now says whether the bin was in sight
+## before the click. SECTION may be several, by commas (only=round6,round7).
 ##
 ## uxplan9 added `round8` (the car opened, and the strip of parts with new
 ## numbers it shows; Edit, Find and replace by Ctrl-Shift-H on the car, its
@@ -75,7 +79,7 @@
 ## keys sheet's rows in sight, Render from the palette) and rewrote the turn
 ## in a wall: since A3, R there puts the part in hand, turned.
 ##
-##   godot --path . --resolution 1400x900 --script src/dev/appux_walk.gd -- [only=SECTION]
+##   godot --path . --resolution 1400x900 --script src/dev/appux_walk.gd -- [only=SECTION[,SECTION…]]
 extends SceneTree
 
 var _main: Node
@@ -123,31 +127,31 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("only="):
 			only = arg.substr(5)
-	if only == "" or only == "counts":
+	if only == "" or only.split(",").has("counts"):
 		await _counts()
-	if only == "" or only == "menus":
+	if only == "" or only.split(",").has("menus"):
 		await _menus()
-	if only == "" or only == "search":
+	if only == "" or only.split(",").has("search"):
 		await _search_quality()
-	if only == "" or only == "wall":
+	if only == "" or only.split(",").has("wall"):
 		await _first_wall()
-	if only == "" or only == "turns":
+	if only == "" or only.split(",").has("turns"):
 		await _turns()
-	if only == "" or only == "dialogs":
+	if only == "" or only.split(",").has("dialogs"):
 		await _dialogs()
-	if only == "" or only == "round2":
+	if only == "" or only.split(",").has("round2"):
 		await _round2()
-	if only == "" or only == "round3":
+	if only == "" or only.split(",").has("round3"):
 		await _round3()
-	if only == "" or only == "round4":
+	if only == "" or only.split(",").has("round4"):
 		await _round4()
-	if only == "" or only == "round5":
+	if only == "" or only.split(",").has("round5"):
 		await _round5()
-	if only == "" or only == "round6":
+	if only == "" or only.split(",").has("round6"):
 		await _round6()
-	if only == "" or only == "round7":
+	if only == "" or only.split(",").has("round7"):
 		await _round7()
-	if only == "" or only == "round8":
+	if only == "" or only.split(",").has("round8"):
 		await _round8()
 	if only == "gaps":
 		await _gaps()
@@ -1266,6 +1270,11 @@ func _round7() -> void:
 	if not _shell.stress.panel.is_visible_in_tree():
 		_shell.run("stress")
 	await _frames(30)
+	# Whether the bin was in sight before the click (smalls8): round six
+	# leaves everything open, and at 1280 x 720 Properties has folded the
+	# bin before Stress is opened, so the click was blamed for round six's
+	# layout. From a first visit's, the click keeps it (smalls8's probe).
+	var bin_before: bool = _bin._scroll.is_visible_in_tree()
 	_events = 0
 	await _click(_camera.unproject_position(where.origin + Vector3(0, -2, 0)))
 	await _frames(20)
@@ -1274,9 +1283,9 @@ func _round7() -> void:
 	var bin_shown: bool = _bin._scroll.is_visible_in_tree()
 	if not bin_shown:
 		await _open_bin()
-	print("WALK round7 a 2 x 4 brick clicked with Stress open: the bin %s" % (
-		"in sight" if bin_shown else "gave way; back by its rail, %s" % (
-			"in sight" if _bin._scroll.is_visible_in_tree() else "STILL NOT in sight")))
+	print("WALK round7 a 2 x 4 brick clicked with Stress open (the bin in sight before the click=%s): the bin %s" % [
+		bin_before, "in sight" if bin_shown else "gave way; back by its rail, %s" % (
+			"in sight" if _bin._scroll.is_visible_in_tree() else "STILL NOT in sight")])
 	var shelf_scroll: ScrollContainer = _bin.get("_category_scroll")
 	var window: Rect2 = shelf_scroll.get_global_rect() if shelf_scroll != null else Rect2()
 	var shelves: Array = []
