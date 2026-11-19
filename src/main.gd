@@ -6848,54 +6848,45 @@ func _render_when_idle() -> void:
 ## Drawn in software (a browser on SwiftShader), the first pick compiled
 ## their fifteen programs in the frames it was waited for: 807 ms on live at
 ## load, 1.2 to 3 s at load 50 to 100, where nothing was fetched; with them
-## made, 442 ms (smalls8). Begun with the start, before the model is opened,
-## and drawn once the page has been told the bin is usable (_tell_page), so
-## it is never a frame that makes it so: after the model, it came 7 to 11 s
-## after the bin on a first visit, and the first part was picked before it.
-## The marks' script is compiled in that frame too, as the pick would (34 to
-## 93 ms at load). Read on a worker it waited 5 to 25 s behind the start's
-## own reads, and a pick meanwhile, whose own load of it (Shell) waits for
-## that worker, was held 10.8 and 22 s. Not for a probe (--script), whose
-## window starts as it did.
+## made, 442 ms (smalls8). Begun with the start and drawn once the page has
+## been told the bin is usable (_tell_page), so it is never a frame that
+## makes it so. The ghost is drawn on one triangle (_a_triangle): waiting
+## for a part's geometry, it came 7 to 11 s after the bin on a first visit,
+## and the first part was picked before it. The marks' script is compiled in
+## that frame too, as the pick would (34 to 93 ms at load). Read on a worker
+## it waited 5 to 25 s behind the start's own reads, and a pick meanwhile,
+## whose own load of it (Shell) waits for that worker, was held 10.8 and
+## 22 s. Not for a probe (--script), whose window starts as it did.
 func _warm_first_pick() -> void:
 	var told: int = -1
-	var mesh: Mesh = null
-	var until: int = Time.get_ticks_msec() + 120000
-	var look: int = 0
-	while Time.get_ticks_msec() < until:
+	for _n: int in 36000:
 		if _bin != null and not _bin.first_found().is_empty():
-			if told < 0 and OS.has_feature("web"):
+			if not OS.has_feature("web") or (told >= 0 and _told_page_at != told):
+				break
+			if told < 0:
 				told = _told_page_at
-			elif (_told_page_at != told or not OS.has_feature("web")) and Time.get_ticks_msec() >= look:
-				mesh = _a_part_made()
-				if mesh != null:
-					break
-				look = Time.get_ticks_msec() + 250
 		await get_tree().process_frame
 	# Where the camera looks, so in view: not the model's bounds, a walk of
 	# every part (Orthanc's would be this frame's longest work).
 	var at: Vector3 = _camera.focus
 	# Both let go of what they drew once this frame is drawn, before this returns.
-	_builder.warm_ghost(mesh, at)
+	_builder.warm_ghost(_a_triangle(), at)
 	if bool(ShellPrefs.value("joint_marks")):
 		Later.script(&"JointMarks").warm(_builder, at)
 	await RenderingServer.frame_post_draw
 
 
-## A part whose geometry is here, for [method _warm_first_pick]: the one in
-## hand, or one of the model's first few, or null. A few, so that a large
-## model whose parts are still coming is not walked whole every frame.
-func _a_part_made() -> Mesh:
-	var ids: Array[String] = [_builder.held_part]
-	var bricks: Array = _world.bricks()
-	for n: int in mini(bricks.size(), 32):
-		ids.append((bricks[n] as BrickWorld.Brick).part_id)
-	for id: String in ids:
-		if _library.is_resident(id):
-			var part: Lbm.PartMesh = _library.mesh_for(id)
-			if part != null and not part.surfaces.is_empty():
-				return part.surfaces[0]
-	return null
+## One triangle with the arrays a part's surface has (Lbm.make_meshes): a
+## material's programs are made for those and the material, not the part.
+static func _a_triangle() -> ArrayMesh:
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3.ZERO, Vector3.RIGHT, Vector3.UP])
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK])
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2])
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 ## Build, Motions…: the model's own motions, played, recorded by a drag, set
