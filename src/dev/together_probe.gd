@@ -1150,8 +1150,11 @@ func _locks_together() -> void:
 		and (b["builder"] as Builder).refused_lock.contains("Beam's joint"))
 	lock.call(b, false)
 	await _settle([a, b])
+	# With no motion and no lock left, the room's words are none, and the
+	# owner's motions go with them (null): no lock either way.
+	var owners: Motions = (a["world"] as BrickWorld).motions
 	_check("unlocked by the other: it turns for the owner", refused.call(a).is_empty()
-		and (a["world"] as BrickWorld).motions.locks.is_empty())
+		and (owners == null or owners.locks.is_empty()))
 	lock.call(b, true)
 	await _settle([a, b])
 	var here: String = refused.call(a)
