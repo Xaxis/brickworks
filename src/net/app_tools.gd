@@ -680,8 +680,10 @@ func definitions() -> Array:
 				+ "whose hold nobody has measured. lock=true locks the joint (after degrees=, if "
 				+ "given): it keeps its angle and its slide, and a drag of either part, R, a handle, "
 				+ "Simulate's driver, move_part and pose_model are refused until lock=false unlocks "
-				+ "it; saved with the model, and the answer says what a turn of it now does. A model "
-				+ "with one joint needs no joint=; a drag's joint may be named by a part of it (#12)."),
+				+ "it; saved with the model, and the answer says what a turn of it now does (it tries "
+				+ "one). A model with one joint needs no joint= and no list first: {\"lock\": true} "
+				+ "locks it, {\"degrees\": 45, \"lock\": true} sets it and locks it there. A drag's "
+				+ "joint may be named by a part of it (#12)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"joint": {"type": "string", "description": "its number or name in the list"},
 				"degrees": {"type": "number"},
@@ -3216,7 +3218,9 @@ func _with_lock(panel: PosePanel, sides: Array, input: Dictionary, pose: Callabl
 			var turned: Variant = (app.get("_grab_drag") as GrabDrag).held_of(Array(sides[1]).slice(0, 1)) \
 				if (sides[1] as Array).size() == 2 else null
 			if turned is String and str(turned).contains(Motions.UNLOCK_WORDS):
-				lines.append("Tried just now: a turn of it (a drag, move_part, pose_model) is refused, nothing moved: %s." % (
+				lines.append(("Tried just now, the way a turn of it comes (a drag of its part, as "
+					+ "move_part takes it, and pose_model's swing): refused, and nothing moved, so it stands "
+					+ "exactly where it was locked. A turn tried again is refused the same way: %s.") % (
 					str(turned).get_slice(":", 0)))
 	# Which others are locked, so a session unlocking one knows what still holds.
 	var world: BrickWorld = app.get("_world")
