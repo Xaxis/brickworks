@@ -29,6 +29,7 @@
 // drag handles twice a second in every browser took each step of 75969-1's
 // timeline from 18-75 ms of its own work to 5.7-6.7 s, and steps_flow, which
 // checks what a step shows, passed (docs/CADTASK.md, section 6).
+// --engine=webkit times them in WebKit instead.
 //   node tools/web/cad_frames.mjs --url=URL/app --bypass=X --gate --arrive=300 \
 //     --only=orbit,select_all,step --out=DIR vendor/omr/files/75969-1.mpd
 import { launch, openColumnFor, openFromFile, typeInMenu } from "./browser.mjs";
@@ -93,7 +94,10 @@ function instrument() {
   });
 }
 
-const browser = await launch();
+// --engine=webkit: Playwright's WebKit, the engine of every iPhone and iPad
+// browser; on the export without threads, each pool task runs in the frame
+// that asks for it (nothreads, 2026-11-19).
+const browser = await launch(args.engine === "webkit" ? { engine: "webkit" } : {});
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 await context.addInitScript(instrument);
 const page = await context.newPage();

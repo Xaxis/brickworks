@@ -3541,7 +3541,7 @@
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
-      "reach": "tools/deploy.sh --prod",
+      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py)",
       "area": "web",
       "tests": []
     },
@@ -3564,6 +3564,14 @@
       ]
     },
     {
+      "id": "cli:which engine each browser starts",
+      "kind": "cli",
+      "entry": "tools/web/engine_choice.mjs",
+      "reach": "heavy node tools/web/engine_choice.mjs --url=<page> --expect=on|off [--base=<base's page>] [--only=iphone,ipad,ipad_mac,mac,android,computer] --out=DIR   (nothreads: WebKit as an iPhone 13, an iPad, an iPad that says it is a Mac, a Mac; Chromium as a Pixel 7 and at 1280x800; each signed out: the engine its page asked for, window.brickworksEngine's choice, nothing of the other engine, the window up, no script error; --base: the same requests, each as often, the build's /b/<sha>/ as /b/SHA/; DIR/choice.json, exit 1 on a miss)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:worker first run",
       "kind": "cli",
       "entry": "src/dev/worker_first_run_probe.gd",
@@ -3575,7 +3583,7 @@
       "id": "endpoint:the numbers a phone is warned by",
       "kind": "endpoint",
       "entry": "api/_phone.js",
-      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s}, the measured defaults until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); /admin#switches Phones; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
+      "reach": "GET /api/plans?op=phone (anybody's, a minute at the CDN: {phone_parts, phone_start_s, phone_nothreads}, the measured defaults and false until set); POST /api/admin?op=phone_rules {phone_parts?, phone_start_s?} (the owner's, audited, whole numbers in range or refused with words, this deployment's scope only); POST /api/admin?op=phone_engine {on: true|false} (the owner's, audited, anything else refused with the switch's words; nothreads); /admin#switches Phones, its numbers and \"iPhones and iPads use the engine without threads\"; python3 tools/minitest.py tests/test_console3.py (against a real Postgres)",
       "area": "account",
       "tests": []
     },
@@ -7165,6 +7173,14 @@
         "tests/test_model_page.py",
         "tests/test_share_unknowns.py"
       ]
+    },
+    {
+      "id": "ui:the engine an iPhone or iPad starts",
+      "kind": "ui",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app on iOS or iPadOS (an iPhone, iPad or iPod user agent, or a Mac's with navigator.maxTouchPoints over 1): the page asks /api/plans?op=phone before any of the engine, and starts the one without threads (GODOT_CONFIG.nothreads, window.brickworksEngine) while phone_nothreads is on, the threaded one while it is off, unanswered or past 2.5 s; every other browser the threaded one, no question asked. heavy node tools/web/engine_choice.mjs --url=<page> --expect=on|off [--base=<base's page>] --out=DIR; locally tools/web/serve.py <placed tree> PORT --phone-nothreads on|off --compressed --cached (nothreads)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:the gallery's builds tab",

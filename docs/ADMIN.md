@@ -42,7 +42,7 @@ three that stay outside, each with why.
 | The year's plan of themes | Gallery's Challenges tab | Challenges, with each month's preview and the day visitors are told |
 | A challenge's entries, groups, rule failures, results | its public page, or SQL | Challenges › its panel (`#challenges/N`) |
 | A notice on every page | nothing: it would have been a deploy | Switches › The notice: set, cleared, its history, each act audited |
-| What a phone is told before the studio opens (phonetruth, docs/PHONE.md) | nothing: numbers in the code | Switches › Phones: the parts a phone opens without being asked first, and the seconds a phone takes to start the studio once it has its files; each with who set it and the measured one; audited |
+| What a phone is told before the studio opens (phonetruth, docs/PHONE.md) | nothing: numbers in the code | Switches › Phones: the parts a phone opens without being asked first, and the seconds a phone takes to start the studio once it has its files; each with who set it and the measured one; audited. And whether iPhones and iPads start the engine without threads (nothreads, default off) |
 | site_settings (the beta's switch, any other key) | Beta for the beta; SQL for the rest | Switches › Settings: every key by scope; the beta's flipped there or in Beta, one act |
 | Deployment variables | Vercel's dashboard | Switches › Variables: each by name, whether here, which of Vercel's environments, what it switches, where it is changed. Its value: **outside**, at Vercel |
 | The crons | Site (part B), read only; running one meant curl with CRON_SECRET | Site, with Run now for the four safe ones (`run_cron`, audited); never the beta's round, which mails testers |
@@ -112,6 +112,7 @@ it answers.
 | `unbar_model` | POST `&id=` | A model taken out let back (part C) | barred_models |
 | `notice_set`, `notice_clear` | POST | The notice on every page of this deployment but the studio, or cleared (part C) | site_notice_set, site_notice_clear |
 | `phone_rules` | POST | `{phone_parts?, phone_start_s?}`: the numbers a phone is warned by on this deployment, whole numbers in range or all refused with words (phonetruth, api/_phone.js) | site_setting_set |
+| `phone_engine` | POST | `{on: true\|false}`: whether iPhones and iPads on this deployment start the engine without threads (`phone_nothreads`, default off; anything but true or false refused with words); every page reads it at `/api/plans?op=phone` (nothreads, api/_phone.js, docs/PHONE.md) | site_setting_set |
 | `run_cron` | POST `&job=` | A safe cron run now at this deployment's own address with CRON_SECRET, on the server (part C) | the cron's own path |
 | `export` | POST `&account=` | Every row of the account as JSON: at most 1000 a table, the rest counted; no secret column (part C) | auth user, admin_export |
 | `delete_account` | POST `&account=` `{confirm, reason}` | The account deleted at its person's request, its address typed again; never the owner's (part C) | api/_erase.js: Admission, orangecheck, photos, pictures, feedback's files, auth |
@@ -275,7 +276,7 @@ px (a row of pills on a phone), and the section beside it.
 | Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
 | Site | `#site` | The live release and since when; Supabase's auth, rest and storage; each cron's last runs; the releases before with their units | Run now, on the four safe crons |
 | Data | `#data` | The set catalogue and its pictures, Rebrickable's tables, the parts library's index, what the OMR's look found, the database and storage by bucket, why egress is read at Supabase | None |
-| Switches | `#switches` | The notice with its preview and history; the settings by scope; Phones, the numbers a phone is warned by; every deployment variable by name | Show the notice, Clear it; the beta's switch; Keep them (Phones) |
+| Switches | `#switches` | The notice with its preview and history; the settings by scope; Phones, the numbers a phone is warned by and the engine iPhones and iPads start; every deployment variable by name | Show the notice, Clear it; the beta's switch; Keep them (Phones); Keep it (the engine without threads) |
 | Audit log | `#audit` | Every act: when, what, on what, the outcome, by whom | Filter by act, search |
 
 The bar holds Find: one search over people, models, lists, reports and the
