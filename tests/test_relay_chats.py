@@ -131,3 +131,46 @@ def test_a_chats_first_call_with_one_chat_before_it_says_that_was_and_no_count()
     assert "2 " not in said, said
     one = header([{"key": "session:t2", "picked": 20, "called": 4}])
     assert "another chat called in this tab" in one and "that was its own call." in one, one
+
+
+def header_elsewhere(picks: list[dict], heard: int | None, key: str = "session:me") -> str | None:
+    """The header for chat [key] calling by target= in tab k2 (chan-2), with its own pick in
+    k1 (chan-1): [picks] as header's, each with its "channel"; [heard] seconds since k2 first
+    answered this chat, as the tab says it (brickworks/heard), None for its first call there."""
+    if shutil.which("node") is None:
+        return None
+    script = (
+        "const { header } = await import('./api/mcp.js');"
+        "const ago = (s) => s === null || s === undefined ? null : new Date(Date.now() - s * 1000).toISOString();"
+        f"const given = {json.dumps(picks)};"
+        "const picks = given.map((p) => ({ key: p.key, channel: p.channel, picked_at: ago(p.picked),"
+        " called_at: ago(p.called), did: 'edit_model', moved_at: null }));"
+        "const now = new Date().toISOString();"
+        "const k1 = { channel: 'chan-1', tab: 'k1', model: 'Car', open: true, owner: 'a', seen_at: now, visible: true };"
+        "const k2 = { channel: 'chan-2', tab: 'k2', model: 'Wall', open: true, owner: 'a', seen_at: now, visible: false };"
+        f"console.log(JSON.stringify(header(k2, null, [k1, k2], picks, {json.dumps(key)}, ago({json.dumps(heard)}))));"
+        "process.exit(0);"
+    )
+    done = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True,
+                          timeout=60)
+    assert done.returncode == 0, done.stderr[-2000:]
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+def test_in_a_tab_called_by_target_the_chats_before_it_are_said_once() -> None:
+    # m3review L1: a chat whose own tab is k1 called k2 by target= three times, and each
+    # answer began with the 421 characters on the chat that had worked in k2 before. Its
+    # pick says nothing of its calls in k2: the tab says when it first answered this chat.
+    picks = [{"key": "session:me", "channel": "chan-1", "picked": 120, "called": 3},
+             {"key": "session:old", "channel": "chan-2", "picked": 400, "called": 300}]
+    first = header_elsewhere(picks, None)
+    if first is None:
+        return
+    assert "Before this chat's first call here, another chat called in this tab" in first, first
+    for heard in (40, 20):
+        later = header_elsewhere(picks, heard)
+        assert later == "Tab k2, “Wall”. 1 other tab is open; tabs lists them.", later
+    # One that calls in k2 after this chat first did is said on every answer, as promised.
+    along = header_elsewhere(picks + [{"key": "session:them", "channel": "chan-2", "picked": 90, "called": 5}], 40)
+    assert "Careful: another chat has been working in it" in along, along
+    assert "Before this chat's first call here" not in along, along

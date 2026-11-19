@@ -130,11 +130,17 @@ func _save_and_open() -> void:
 	print("    " + saved.left(300).replace("\n", "\n    "))
 	_check("save_model with 2 features unsettled writes the file", FileAccess.file_exists(path)
 		and saved.begins_with("Written to %s" % file))
-	_check("...and says what is not finished, the first feature handed back",
-		saved.contains("Not finished yet: 2 of its 2 features are not settled")
-		and saved.contains("The eyes") and not saved.contains("Not saved yet"))
-	# The gate laid the eyes after the file was written: a change since, and
-	# a set's model to open over it.
+	var world: BrickWorld = _main.get("_world")
+	var parts_saved: int = world.brick_count()
+	_check("...and says what is not finished, naming the next, nothing laid (m3review M1)",
+		saved.contains("Not finished yet: 2 of its 2 features are not settled (eyes, beak)")
+		and saved.contains("review_model {\"feature\": \"eyes\"}") and not saved.contains("Not saved yet")
+		and not store.has_unsaved_work())
+	# A change since the save, as the gate's piece laid after it was before
+	# m3review M1, and a set's model to open over it.
+	await _say("edit_model", {"add": [{"part": "3001", "color": 4, "x": 12, "y": 1, "z": 12}], "picture": false})
+	_check("...a brick added since: unsaved work (%d parts, %d when saved)" % [world.brick_count(), parts_saved],
+		store.has_unsaved_work() and world.brick_count() == parts_saved + 1)
 	var other: String = (store.list_examples()[0] as ModelStore.Entry).name
 	var kept: String = "probe-mcpreach3-kept-%d.ldr" % OS.get_process_id()
 	_written.append(ModelStore.SAVE_DIR + kept)

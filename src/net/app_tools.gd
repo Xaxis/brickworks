@@ -2968,9 +2968,15 @@ func _pose(input: Dictionary) -> String:
 		assistant._tag_assemblies()
 	var joints: Array[Poser.Joint] = panel.joints_now()
 	# A click hinge, a hinge or a turntable a drag turns, with no assembly
-	# named on it, numbered after the assemblies' (mcpreach3).
+	# named on it, numbered after the assemblies' (mcpreach3). Read to list
+	# them, or for one asked by a number past the assemblies', never to pose
+	# an assembly's joint named: that waited 2.8 to 7.7 s on the read (m3review L2).
 	var grabbing: GrabDrag = app.get("_grab_drag")
-	var drags: Array = await _drag_joints(grabbing, joints)
+	var named_joint: Poser.Joint = _joint_named(joints, str(input["joint"]).strip_edges()) \
+		if input.has("joint") else null
+	var drags: Array = []
+	if named_joint == null:
+		drags = await _drag_joints(grabbing, joints)
 	if input.has("joint") and not drags.is_empty():
 		var picked: String = str(input["joint"]).strip_edges().trim_prefix("#")
 		if picked.is_valid_int() and int(picked) > joints.size() \
@@ -3019,7 +3025,7 @@ func _pose(input: Dictionary) -> String:
 		return "Joints:\n%s\npose_model {\"joint\": \"1\", \"degrees\": 45} swings one.%s" \
 			% ["\n".join(said), await _pose_holds()]
 	var asked: String = str(input["joint"]).strip_edges()
-	var joint: Poser.Joint = _joint_named(joints, asked)
+	var joint: Poser.Joint = named_joint
 	if joint == null:
 		return "No joint %s: there are %d, numbered in pose_model's list." % [asked,
 			joints.size() + drags.size()]
@@ -5543,15 +5549,31 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 	if (asked as Array).size() > MOST_LOTS:
 		return "At most %d sets a call; send the rest in another." % MOST_LOTS
 	var trouble_read: String = await mine.load_collection()
-	var held: Collection = mine.collection
+	var checked: Dictionary = _built_asked(mine.collection, asked)
+	if not (checked["bad"] as PackedStringArray).is_empty():
+		return "Nothing was changed: %s.%s" % [_reasons(checked["bad"]),
+			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	var done: Dictionary = await mine.set_built(_built_sent(checked["changes"]))
+	if done["kind"] != CollectionStore.DONE:
+		return _not_made(done, "it was read")
+	return _built_said(mine, checked["changes"])
+
+
+## built= read against [param held], changing nothing: {"changes": each
+## {set, was, built, copies}, "bad": what is wrong with any, by its place}.
+## [param adding] are sets the same call adds first, a copy each (sets=):
+## counted with the copies held, and not refused as not the person's. A
+## number as sets= reads it (_set_text: an en dash, a zero-width mark).
+static func _built_asked(held: Collection, asked: Array,
+		adding: PackedStringArray = PackedStringArray()) -> Dictionary:
 	var changes: Array = []
 	var bad := PackedStringArray()
 	var seen: Dictionary = {}
-	for n: int in (asked as Array).size():
+	for n: int in asked.size():
 		var one: Variant = asked[n]
 		var raw: String = str(one) if one is String else str((one as Dictionary).get("set", "")) \
 			if one is Dictionary else ""
-		var number: String = SetInventories.normal(raw.strip_edges())
+		var number: String = SetInventories.normal(_set_text(raw))
 		if number.is_empty():
 			bad.append("built %d: a set's number, like 7140-1, or {set, copies}" % (n + 1))
 			continue
@@ -5559,32 +5581,36 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 			bad.append("built %d: %s is named twice" % [n + 1, number])
 			continue
 		seen[number] = true
-		var copies: int = held.copies_of(number)
+		var copies: int = held.copies_of(number) + (1 if adding.has(number) else 0)
 		if copies == 0:
-			bad.append("built %d: %s is not a set in the person's collection (they add it in My collection)"
-				% [n + 1, number])
+			bad.append("built %d: %s is not a set in the person's collection%s (they add it in My collection)"
+				% [n + 1, number, "" if adding.is_empty() else ", nor among sets="])
 			continue
 		var wanted: int = copies
 		if one is Dictionary:
 			var given: Variant = (one as Dictionary).get("copies")
 			if not (given is int or given is float) or float(given) != floorf(float(given)) \
 					or int(given) < 0 or int(given) > copies:
-				bad.append("built %d: copies is a whole number from 0 to %d, the copies of %s they own"
-					% [n + 1, copies, number])
+				bad.append("built %d: copies is a whole number from 0 to %d, the copies of %s they %s"
+					% [n + 1, copies, number, "would own once sets= adds one" if adding.has(number) else "own"])
 				continue
 			wanted = int(given)
 		var was: int = 0
 		for entry: Dictionary in held.entries_of(number):
 			was += Collection.built_of(entry)
 		changes.append({"set": number, "was": was, "built": wanted, "copies": copies})
-	if not bad.is_empty():
-		return "Nothing was changed: %s.%s" % [_reasons(bad),
-			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
-	var sent: Array = changes.map(func(one: Dictionary) -> Dictionary:
+	return {"changes": changes, "bad": bad}
+
+
+## [method _built_asked]'s changes as CollectionStore.set_built sends them.
+static func _built_sent(changes: Array) -> Array:
+	return changes.map(func(one: Dictionary) -> Dictionary:
 		return {"set": one["set"], "was": one["was"], "built": one["built"]})
-	var done: Dictionary = await mine.set_built(sent)
-	if done["kind"] != CollectionStore.DONE:
-		return "Nothing was changed: %s." % str(done["said"])
+
+
+## built= made at the account: each set's mark, was and now, and the pieces
+## left to build with.
+func _built_said(mine: CollectionStore, changes: Array) -> String:
 	var lines := PackedStringArray()
 	for one: Dictionary in changes:
 		var record: Dictionary = mine.records.get(str(one["set"]), {})
@@ -5605,6 +5631,11 @@ func _collection_built(mine: CollectionStore, input: Dictionary) -> String:
 ## refused a set not yet theirs (APP_UX10's walk; mcpreach3). Said: each
 ## set's copies, was and now, as built= says its marks, and the loose parts
 ## and the pieces on hand after it.
+##
+## Every argument, built= too, is checked before the add: a built= refused
+## after it answered "Nothing was changed", the session sent the call again,
+## and the set was added twice (m3review H2). A reply lost after the add is
+## told it may have been made, to read before sending again (_not_made).
 func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Dictionary) -> String:
 	for other: String in ["add", "remove", "missing", "place"]:
 		var also: Variant = input.get(other)
@@ -5616,6 +5647,18 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 		asked = [asked]
 	if (asked as Array).size() > MOST_SETS_ADDED:
 		return "At most %d sets a call; send the rest in another." % MOST_SETS_ADDED
+	# built= with them: a list, or one number as a string; false, null, ""
+	# and [] are as if not sent.
+	var built: Variant = input.get("built")
+	var marking: Array = []
+	if built is Array:
+		marking = built
+	elif built is String:
+		marking = [] if (built as String).strip_edges().is_empty() else [built]
+	elif built != null and not (built is bool and not bool(built)):
+		return "Nothing was changed: built is a list of set numbers, like [\"31058-1\"], or of {set, copies}."
+	if marking.size() > MOST_LOTS:
+		return "Nothing was changed: at most %d sets in built= a call; send the rest in another." % MOST_LOTS
 	# A set's number as Rebrickable writes them: letters and digits, one at
 	# least a digit, and its version ("31058-1").
 	var shape: RegEx = RegEx.create_from_string("^(?=[a-z0-9]*[0-9])[a-z0-9]+-[0-9]+$")
@@ -5632,13 +5675,17 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 	if not bad.is_empty():
 		return "Nothing was changed: %s." % _reasons(bad)
 	var trouble_read: String = await mine.load_collection()
+	if not marking.is_empty():
+		bad = _built_asked(mine.collection, marking, numbers)["bad"]
+		if not bad.is_empty():
+			return "Nothing was changed: %s.%s" % [_reasons(bad),
+				"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
 	var before: Dictionary = {}
 	for number: String in numbers:
 		before[number] = mine.collection.copies_of(number)
-	var result: Dictionary = await dialog.add_sets(" ".join(numbers))
-	if not str(result["error"]).is_empty():
-		return "Nothing was changed: %s.%s" % [str(result["error"]),
-			"" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	var done: Dictionary = await dialog.add_sets(" ".join(numbers))
+	if done["kind"] != CollectionStore.DONE:
+		return _not_made(done, "it was read")
 	var unknown: PackedStringArray = mine.collection.unknown_sets
 	var lines := PackedStringArray()
 	for number: String in numbers:
@@ -5649,10 +5696,8 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 			", no inventory is known for it, so it adds no parts" if unknown.has(number) else ""])
 	var said: String = ("Added to the person's collection, as Add a set in My collection adds it:\n%s"
 		% "\n".join(lines))
-	var built: Variant = input.get("built")
-	if (built is Array and not (built as Array).is_empty()) \
-			or (built is String and not (built as String).strip_edges().is_empty()):
-		said += "\n" + await _collection_built(mine, {"built": [built] if built is String else built})
+	if not marking.is_empty():
+		said += "\n" + await _built_after_add(mine, marking)
 	else:
 		said += ("\nEvery part of it is theirs to build with until it is marked kept built on a shelf "
 			+ "(built=, or its Built mark in My collection).")
@@ -5660,6 +5705,27 @@ func _collection_sets(dialog: CollectionDialog, mine: CollectionStore, input: Di
 		+ "built left out but their spares counted: %s. The person takes a set out in My collection "
 		+ "(its row's Remove).") % [Counted.of(mine.collection.loose_pieces(), "loose part"),
 			Counted.of(mine.collection.parts.size(), "lot"), Counted.of(mine.pieces_on_hand(), "piece")]
+
+
+## sets='s built=, once the sets are added: marked as built= alone marks
+## them, from the counts the add left. The sets are in by then, so what
+## stops the marks is said as theirs alone, never "Nothing was changed", and
+## sending sets= again would add another copy.
+func _built_after_add(mine: CollectionStore, marking: Array) -> String:
+	const AGAIN := ("Never send sets= again for them: the sets are added, and sets= would add another "
+		+ "copy each.")
+	var checked: Dictionary = _built_asked(mine.collection, marking)
+	if not (checked["bad"] as PackedStringArray).is_empty():
+		return "Their Built marks were not made: %s. Send built= alone to mark them. %s" % [
+			_reasons(checked["bad"]), AGAIN]
+	var done: Dictionary = await mine.set_built(_built_sent(checked["changes"]))
+	if done["kind"] == CollectionStore.UNREACHED:
+		return ("Their Built marks: no answer came, so they may have been made (%s). edit_collection with "
+			+ "nothing reads back what is there: read it before sending built= again. %s") % [done["said"], AGAIN]
+	if done["kind"] != CollectionStore.DONE:
+		return "Their Built marks were not made: %s. Send built= alone to mark them. %s" % [
+			"Brickworks could not be reached" if done.get("offline", false) else _account_said(done, false), AGAIN]
+	return _built_said(mine, checked["changes"])
 
 
 ## The most sets one sets= adds.
