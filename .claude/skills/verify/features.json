@@ -2299,6 +2299,14 @@
       "tests": []
     },
     {
+      "id": "cli:ownswap probe",
+      "kind": "cli",
+      "entry": "src/dev/ownswap_probe.gd",
+      "reach": "tools/probe.sh ownswap_probe   (headless, about 15 minutes; OWNSWAP_CASES=gallery,mcp,... for some; OWNSWAP_OUT=DIR writes gallery.tsv, each of the 10 gallery models' lots short, swapped and none you own, and the owned share before and after)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
@@ -2918,6 +2926,14 @@
       "entry": "src/dev/setwalk_probe.gd",
       "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:setcheck probe",
+      "kind": "cli",
+      "entry": "src/dev/setcheck_probe.gd",
+      "reach": "tools/probe.sh setcheck_probe   (headless; plays the library with tools/web/serve.py on port 10901; SETCHECK_ONLY=NUMBER for one set)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -4634,6 +4650,14 @@
       ]
     },
     {
+      "id": "lib:set check",
+      "kind": "lib",
+      "entry": "src/parts/set_check.gd",
+      "reach": "tools/probe.sh setcheck_probe   (SetCheck: the set's file read as an open reads it, on a worker past 256 KB; paired by the line each part was read from when the model is the set's file, else by place, part and colour; kinds taken, added, swapped (near mould: another moulding or the same kind, size and studs), recoloured, moved, regrouped; steps the author's, per sub-model; a session: compare_with_set)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "lib:shapes said as patterns",
       "kind": "lib",
       "entry": "src/ai/patterns.gd",
@@ -5242,6 +5266,14 @@
       "tests": []
     },
     {
+      "id": "ui:a model rebuilt from what you own",
+      "kind": "ui",
+      "entry": "src/collection/own_swap.gd",
+      "reach": "godot --path .  (with a collection, signed in or on this device: P, the parts list: the row over the rows says how many lots you own too few of, the pieces short and the share that is yours, as submit_design mine=true counts it, each such row tagged N not yours; pressed, each with its swap from what you own and the rest of the model does not use, the same shape in its colour or the same part in a colour within \u0394E 10 of its finish, or none you own; no owned piece taken twice; Use what I own, a part in hand put back first, one undo step, the row then says what is still missing; a session's replace_parts mine=true swaps the same in one call, lots= names some; tools/probe.sh ownswap_probe)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:a model's parts and its download",
       "kind": "ui",
       "entry": "api/_parts.js",
@@ -5646,6 +5678,14 @@
       "entry": "src/ui/compare_view.gd",
       "reach": "tools/probe.sh compare_probe   (File, Compare, Compare with\u2026, or Compare on a row of Versions\u2026: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:compare with the set",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh setcheck_probe   (File, Compare, Compare with the set\u2026: the model checked against the set it was opened from, or one typed by number, from the library; each part taken away, added, swapped, recoloured, moved or in another sub-model listed under the set's own step, with its sub-model and line; a row pressed selects the part and frames it; a set the model is says it matches; drawn on the model as a save's comparison is; Esc or Close puts the view back. SETCHECK_ONLY=7140-1 for one set)",
+      "area": "collection",
       "tests": []
     },
     {

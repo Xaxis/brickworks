@@ -1195,18 +1195,16 @@ func delete_saved(name: String) -> String:
 		int(Time.get_unix_time_from_system() * 1000.0), name])
 	# Written, not moved: on the web a written file is what makes the
 	# browser store user:// again, the delete with it (src/boot/shell.html).
-	# Its bytes, not its text: read as text, a file that began with a BOM
-	# lost it, and Undo put back a file one mark shorter (keepbytes).
-	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var text: String = FileAccess.get_file_as_string(path)
 	var file: FileAccess = FileAccess.open(kept, FileAccess.WRITE)
 	if file == null:
 		return ""
-	file.store_buffer(bytes)
+	file.store_string(text)
 	file.close()
 	if DirAccess.remove_absolute(path) != OK:
 		DirAccess.remove_absolute(kept)
 		return ""
-	_tell_page_wrote(kept, bytes.size())
+	_tell_page_wrote(kept, text.to_utf8_buffer().size())
 	var held: PackedStringArray = DirAccess.get_files_at(TabSession.path(DELETED))
 	held.sort()
 	for n: int in maxi(held.size() - OPENS_KEPT, 0):
@@ -1219,8 +1217,7 @@ func delete_saved(name: String) -> String:
 ## its own name or, when a model has that now, the next free one: the name
 ## it has, or "" when it could not be.
 func put_back(kept: String) -> String:
-	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(kept)) \
-		if FileAccess.file_exists(kept) else ""
+	var text: String = FileAccess.get_file_as_string(kept) if FileAccess.file_exists(kept) else ""
 	if text.is_empty() or read_only:
 		return ""
 	var stem: String = kept.get_file().get_basename()
@@ -1254,7 +1251,7 @@ func rename_saved(from: String, to: String) -> String:
 		return "“%s” is a saved model already. Choose another name." % wanted
 	if not NewerBuild.may_write(target):
 		return NewerBuild.REFUSAL
-	if not _write_saved(target, retitled(LdrModel.text_of(FileAccess.get_file_as_bytes(path)), wanted)):
+	if not _write_saved(target, retitled(FileAccess.get_file_as_string(path), wanted)):
 		return "“%s” could not be written." % wanted
 	var listed: PackedStringArray = DirAccess.get_files_at(SAVE_DIR)
 	if listed.has(from + ".ldr") and listed.has(wanted + ".ldr"):
@@ -1286,10 +1283,6 @@ static func _write_saved(path: String, text: String) -> bool:
 ## the name in its file, so a file renamed alone opened, and saved, under
 ## its old one: over the model that has it.
 static func retitled(text: String, name: String) -> String:
-	# A BOM before the first line, kept before it: the line that names the
-	# model is the one after it.
-	if text.begins_with(LdrModel.bom()):
-		return LdrModel.bom() + retitled(text.substr(1), name)
 	var metas: MetaIndex = MetaIndex.of_text(text)
 	var named: MetaIndex.Family = MetaIndex.family(["TITLE"], PackedStringArray([TITLE_META + name]))
 	if not title_meta_from(metas).is_empty():
@@ -2800,6 +2793,15 @@ func retrieve_joined(paths: Array) -> Array:
 					(sides[which] as Array).append(int(items[index][2]))
 			return [joined[0], sides[0], sides[1]]
 	return []
+
+
+## The lines of the file the model on the baseplate was opened from, as it
+## was opened, while it is still that model; empty else. SetCheck reads them
+## to know the model is a library set's own file, so its parts' places
+## (BrickWorld.Brick.origin) are the set's lines.
+func opened_lines() -> PackedStringArray:
+	var source: SourceFile = _live_source()
+	return source.original if source != null else PackedStringArray()
 
 
 ## The source the model on the baseplate is still the model of, or null.
@@ -5075,8 +5077,7 @@ static func _in_file_order(placements: Array) -> Array:
 		var turn: Basis = placement.transform.basis
 		keys[n] = [placement.step, roundi(at.y * 1000.0), placement.group,
 			placement.part_id, roundi(at.x * 1000.0), roundi(at.z * 1000.0),
-			placement.color_code, BrickWorld.turn_key(turn.x), BrickWorld.turn_key(turn.y),
-			BrickWorld.turn_key(turn.z), n]
+			placement.color_code, _turn_key(turn.x), _turn_key(turn.y), _turn_key(turn.z), n]
 	keys.sort()
 	var ordered: Array = []
 	ordered.resize(keys.size())
@@ -5095,14 +5096,20 @@ static func _in_brick_order(bricks: Array) -> Array:
 		var at: Vector3 = brick.transform.origin
 		var turn: Basis = brick.transform.basis
 		keys[n] = [brick.step, brick.unit, brick.group, brick.part_id, roundi(at.y * 1000.0),
-			roundi(at.x * 1000.0), roundi(at.z * 1000.0), brick.color_code, BrickWorld.turn_key(turn.x),
-			BrickWorld.turn_key(turn.y), BrickWorld.turn_key(turn.z), n]
+			roundi(at.x * 1000.0), roundi(at.z * 1000.0), brick.color_code, _turn_key(turn.x),
+			_turn_key(turn.y), _turn_key(turn.z), n]
 	keys.sort()
 	var ordered: Array = []
 	ordered.resize(keys.size())
 	for n: int in keys.size():
 		ordered[n] = bricks[int((keys[n] as Array)[11])]
 	return ordered
+
+
+## A column of a part's turn as one number, to the thousandth.
+static func _turn_key(column: Vector3) -> int:
+	return ((roundi(column.x * 1000.0) + 1001) * 2003 + roundi(column.y * 1000.0) + 1001) * 2003 \
+		+ roundi(column.z * 1000.0) + 1001
 
 
 ## [param text] saying its steps are its author's, under the model's own

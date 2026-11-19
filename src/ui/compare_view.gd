@@ -19,6 +19,14 @@
 ## PartsCompare's; the panel is then a sheet over the model, as the parts list
 ## is, and draws nothing on it.
 ##
+## Its third, File, Compare, Compare with the set… (setcheck, APP_UX10 #4),
+## checks the model against a real set's own model from the library
+## (SetCheck): each part taken away, added, swapped, recoloured, moved or put
+## in another sub-model, listed under the set's own step it is in, with where
+## it is in the model (its sub-model and the line of its file). A row clicked
+## selects that part and frames it; a set the model is says it matches. What
+## changed is drawn on the model as a save's comparison draws it.
+##
 ## Comparing changes nothing. The drawing is BrickWorld's stress layer, the
 ## picture alone (a brick keeps its paint, the history no step, the save its
 ## state), and View, Stress is turned off meanwhile; the ghosts are a world
@@ -104,7 +112,7 @@ func open_with(saved: ModelVersions.Version) -> bool:
 	if text.is_empty():
 		say.call("could not read that save of %s" % store.title)
 		return false
-	if visible and mode == PARTS:
+	if visible and mode != SAVE:
 		close()
 	_show_mode(SAVE)
 	if not visible:
@@ -148,7 +156,13 @@ func close(restore_view: bool = true) -> void:
 	diff = null
 	version = null
 	_was = []
+	checked = null
 	chosen = -1
+	# A check still on its way is dropped (_asked), so nothing waits on it.
+	_asked += 1
+	checking = false
+	if _set_go != null:
+		_set_go.disabled = false
 	closed.emit()
 
 
@@ -163,6 +177,9 @@ func step(by: int) -> void:
 func _process(_delta: float) -> void:
 	if mode == PARTS:
 		_parts_pictures()
+		return
+	if mode == SET:
+		_set_again()
 		return
 	if diff == null or store.laying:
 		return
@@ -533,6 +550,8 @@ func _button(into: Control, words_on_it: String, action: Callable, tip: String) 
 func fields() -> Dictionary:
 	if mode == PARTS:
 		return parts_fields()
+	if mode == SET:
+		return set_fields()
 	var counts: Dictionary = {}
 	for kind: String in _counts:
 		counts[kind] = (_counts[kind] as Label).text
@@ -547,6 +566,8 @@ func controls_by_name() -> Dictionary:
 		return {}
 	if mode == PARTS:
 		return _parts_controls()
+	if mode == SET:
+		return _set_controls()
 	return {"compare_close": _close, "compare_previous": _previous, "compare_next": _next}
 
 
@@ -609,7 +630,7 @@ var comparing: bool = false
 ## time, or a set to type for A and the model open now for B; compared at once
 ## when both are there.
 func open_parts() -> void:
-	if visible and mode == SAVE:
+	if visible and mode != PARTS:
 		close()
 	_show_mode(PARTS)
 	_fill_picks()
@@ -678,7 +699,9 @@ func buy_from(shop: String) -> String:
 func _show_mode(which: String) -> void:
 	if which == PARTS and _parts_column == null:
 		_build_parts()
-	if which == PARTS and _side_place.is_empty():
+	if which == SET and _set_column == null:
+		_build_set()
+	if which != SAVE and _side_place.is_empty():
 		_side_place = {"anchors": [anchor_left, anchor_top, anchor_right, anchor_bottom],
 			"offsets": [offset_left, offset_top, offset_right, offset_bottom],
 			"grow": [grow_horizontal, grow_vertical]}
@@ -686,12 +709,19 @@ func _show_mode(which: String) -> void:
 	_save_column.visible = which == SAVE
 	if _parts_column != null:
 		_parts_column.visible = which == PARTS
+	if _set_column != null:
+		_set_column.visible = which == SET
+	custom_minimum_size.x = SET_WIDE if which == SET else WIDE
 	if which == PARTS:
 		_place_parts()
 	elif not _side_place.is_empty():
 		_set_place(_side_place["anchors"], _side_place["offsets"])
 		grow_horizontal = _side_place["grow"][0]
 		grow_vertical = _side_place["grow"][1]
+		if which == SET:
+			# Wider, by its left edge: its right stays where the save's is.
+			offset_left = offset_right - SET_WIDE
+			_place_set()
 
 
 ## Each edge's anchor, then its offset. Left and top first, each pushing the
@@ -1062,4 +1092,358 @@ func _parts_controls() -> Dictionary:
 			named["compare_%s_number" % ["a", "b"][n]] = _number[n]
 	for shop: String in _shops:
 		named["compare_" + shop] = _shops[shop]
+	return named
+
+
+# -- setcheck (APP_UX10 #4): the model against its set's own -----------------------
+
+## The third mode: the model checked against a library set's own model
+## (SetCheck), a side panel where the save's is, wider for its rows.
+const SET := "set"
+const SET_WIDE := 400.0
+## Most changes listed and drawn as ghosts: a model with more is not a
+## build of the set, and 7,000 ghosts built in a frame held it 1.5 s.
+const SET_SHOWN := 400
+## Set by Shell: the model library the set's file comes from, and the
+## builder whose selection a row's click sets.
+var models: ModelLibrary
+var builder: Builder
+## The check shown, null before one; whether one is being read.
+var checked: SetCheck = null
+var checking: bool = false
+var _set_column: VBoxContainer = null
+var _set_close: Button
+var _set_number: LineEdit
+var _set_go: Button
+var _set_head: Label
+var _set_notes: Label
+var _set_scroll: ScrollContainer
+var _set_rows: VBoxContainer
+var _set_what: Label
+## The set's model read, and its entry in the library's index.
+var _set_side: SetCheck.Reading = null
+var _set_entry: Dictionary = {}
+## The model ([method BrickWorld.generation]) the field's number was
+## checked for: opened again on another, a number typed is not kept.
+var _set_typed_in: int = -1
+## Each change's row, by its index in the check.
+var _set_buttons: Array[Button] = []
+
+
+## File, Compare, Compare with the set…: the model checked against the set
+## [param number] names, or against the set it was opened from, or the one
+## typed last. Checked at once when there is one; else its number is asked.
+func open_set(number: String = "") -> void:
+	if visible and mode != SET:
+		close()
+	_show_mode(SET)
+	if not visible:
+		_aim = camera.aim() if camera != null else {}
+		_stress_was = stress != null and stress.on
+		if _stress_was:
+			stress.set_on(false)
+	visible = true
+	set_process(true)
+	var asked: String = number.strip_edges()
+	if asked.is_empty():
+		asked = SetCheck.own_set(store)
+	# A number typed for another model is not this one's set.
+	if asked.is_empty() and world != null and world.generation() != _set_typed_in:
+		_set_number.text = ""
+	if not asked.is_empty():
+		_set_number.text = asked
+	if _set_number.text.strip_edges().is_empty():
+		checked = null
+		_set_head.text = "Type the set's number, as on its box: 7140 or 7140-1."
+		_fill_set()
+		_set_number.grab_focus()
+		return
+	await check_set()
+
+
+## Check the model against the set the field names: its file fetched from
+## the library (once), read on a worker when it is big with the status bar
+## saying so, and every change listed by the set's steps.
+func check_set() -> void:
+	_asked += 1
+	var asked: int = _asked
+	checking = true
+	_set_go.disabled = true
+	_set_typed_in = world.generation()
+	_set_head.text = "Checking against %s…" % _set_number.text.strip_edges()
+	var got: Dictionary = await SetCheck.run(_set_number.text, models, world, store, library)
+	if asked != _asked or not visible or mode != SET:
+		return
+	checking = false
+	_set_go.disabled = false
+	if got["check"] == null:
+		checked = null
+		world.set_stress(false)
+		_drop_ghosts()
+		_set_head.text = str(got["error"])
+		_fill_set()
+		return
+	_set_side = got["side"]
+	_set_entry = got["entry"]
+	checked = got["check"]
+	chosen = -1
+	_revision = world.revision
+	compared += 1
+	_draw_set()
+	_fill_set()
+	say.call("Checked against %s: %s" % [checked.set_name, checked.summary()])
+
+
+## The model checked again, as it is now: drawn and listed. A coroutine.
+func _check_now() -> void:
+	_asked += 1
+	var asked: int = _asked
+	checking = true
+	var revision: int = world.revision
+	var again: SetCheck = await SetCheck.of_model(_set_side, _set_entry, world, store, library)
+	if asked != _asked or not visible or mode != SET:
+		return
+	checking = false
+	checked = again
+	_revision = revision
+	compared += 1
+	chosen = -1
+	_draw_set()
+	_fill_set()
+
+
+## An edit while it is open is checked again a moment later, longer on a
+## big model.
+func _set_again() -> void:
+	if checked == null or _set_side == null or checking or store.laying:
+		return
+	var now: int = Time.get_ticks_msec()
+	if world.revision != _revision:
+		_revision = world.revision
+		_again_at = now + maxi(AGAIN_AFTER_MS, roundi(checked.matched_ms * 4.0))
+	elif _again_at > 0 and now >= _again_at:
+		_again_at = 0
+		_check_now()
+
+
+## Each change drawn on the model in its colour, the rest faded; a part taken
+## away a red ghost where the set has it, one moved a faint one where it was.
+func _draw_set() -> void:
+	var tints: Dictionary = {}
+	for change: SetCheck.Change in checked.changes:
+		if change.now != null and change.now.id != 0:
+			tints[change.now.id] = set_colour_of(change.kind)
+	world.set_stress(true, tints)
+	_drop_ghosts()
+	_ghosts = BrickWorld.new()
+	_ghosts.library = library
+	_ghosts.keeps_history = false
+	_ghosts.name = "compare_ghosts"
+	world.add_child(_ghosts)
+	var see_through: Dictionary = {}
+	for n: int in mini(checked.changes.size(), SET_SHOWN):
+		var change: SetCheck.Change = checked.changes[n]
+		if change.kind != SetCheck.TAKEN and change.kind != SetCheck.MOVED:
+			continue
+		var ghost: int = _ghosts.add_brick(change.was.part_id,
+			REMOVED_GHOST if change.kind == SetCheck.TAKEN else MOVED_GHOST, _set_place_of(change.was))
+		if ghost == 0:
+			continue
+		_ghost_of[n] = ghost
+		if change.kind == SetCheck.MOVED:
+			see_through[ghost] = true
+	_ghosts.set_xray(see_through)
+
+
+## Where a part of the set's stands on the baseplate: the model's lift, and
+## the shift it was found standing at (SetCheck.shifted).
+func _set_place_of(part: SetCheck.Part) -> Transform3D:
+	return Transform3D(Basis.IDENTITY, store.lift() + checked.shifted) * part.at
+
+
+## The colour a change of [param kind] is drawn and listed in.
+static func set_colour_of(kind: String) -> Color:
+	match kind:
+		SetCheck.ADDED:
+			return ADDED
+		SetCheck.TAKEN:
+			return REMOVED
+		SetCheck.MOVED:
+			return MOVED
+		SetCheck.REGROUPED:
+			return Color(0.45, 0.75, 1.0)
+	return RECOLOURED
+
+
+## A row clicked: its part selected and framed (a part taken away, the ghost
+## where the set has it), and what it is said.
+func choose_set(n: int) -> void:
+	if checked == null or n < 0 or n >= checked.changes.size():
+		return
+	chosen = n
+	var change: SetCheck.Change = checked.changes[n]
+	for k: int in _set_buttons.size():
+		_set_buttons[k].button_pressed = k == n
+	var box := AABB()
+	var brick: BrickWorld.Brick = world.get_brick(change.now.id) \
+		if change.now != null and change.now.id != 0 else null
+	if brick != null:
+		if builder != null and not builder.locked.has(brick.id):
+			# At the level where it is one thing to pick, as the outliner does.
+			if assemblies != null and not Assemblies.within(Assemblies.path_of(brick), assemblies.entered):
+				assemblies.enter("")
+			builder.selection.clear()
+			builder.selection[brick.id] = true
+			builder.selection_changed.emit(builder.selection.size())
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh != null:
+			box = (world.drawn_at(brick) * mesh.bounds).abs()
+	elif change.was != null:
+		var mesh: Lbm.PartMesh = library.mesh_for(change.was.part_id)
+		if mesh != null:
+			box = (_set_place_of(change.was) * mesh.bounds).abs()
+	if camera != null and box.size != Vector3.ZERO:
+		camera.frame(box.grow(8.0), 1.6)
+	_set_what.text = "%s, %s." % [checked.line_words(change, library), checked.step_of(change)]
+	_set_what.visible = true
+	say.call(checked.words(change, library))
+
+
+func _build_set() -> void:
+	_set_column = VBoxContainer.new()
+	_set_column.add_theme_constant_override("separation", 7)
+	_set_column.visible = false
+	add_child(_set_column)
+	if get_parent() is Control:
+		(get_parent() as Control).resized.connect(func() -> void:
+			if visible and mode == SET:
+				_place_set())
+	var header := HBoxContainer.new()
+	_set_column.add_child(header)
+	var title := Label.new()
+	title.text = "Compare with the set"
+	title.add_theme_font_size_override("font_size", 14)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	_set_close = _button(header, "Close", func() -> void: close(),
+		"Stop comparing: every part as it was, and the view too (Esc)")
+	var ask := HBoxContainer.new()
+	ask.add_theme_constant_override("separation", 8)
+	_set_column.add_child(ask)
+	_set_number = LineEdit.new()
+	_set_number.placeholder_text = "Set number, as 7140"
+	_set_number.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_set_number.add_theme_font_size_override("font_size", 12)
+	_set_number.tooltip_text = "The set's number, as on its box (7140 or 7140-1): its model from the library is what the model is checked against"
+	_set_number.text_submitted.connect(func(_text: String) -> void: await check_set())
+	ask.add_child(_set_number)
+	_set_go = _button(ask, "Check", func() -> void: await check_set(),
+		"Every part taken away, added, swapped, recoloured, moved or in another sub-model, by the set's own steps")
+	_set_head = _words(_set_column, 12, 0.9)
+	_set_head.custom_minimum_size.x = SET_WIDE - 28.0
+	_set_notes = _words(_set_column, 11, 0.7)
+	_set_notes.custom_minimum_size.x = SET_WIDE - 28.0
+	_set_scroll = ScrollContainer.new()
+	_set_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_set_scroll.custom_minimum_size = Vector2(SET_WIDE - 28.0, 320)
+	_set_column.add_child(_set_scroll)
+	_set_rows = VBoxContainer.new()
+	_set_rows.add_theme_constant_override("separation", 2)
+	_set_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_set_scroll.add_child(_set_rows)
+	_set_column.add_child(HSeparator.new())
+	_set_what = _words(_set_column, 12, 0.95)
+	_set_what.custom_minimum_size.x = SET_WIDE - 28.0
+	_set_what.visible = false
+
+
+## The list as tall as the model area leaves room for under the panel's top.
+func _place_set() -> void:
+	var area: float = (get_parent() as Control).size.y if get_parent() is Control \
+		else get_viewport_rect().size.y
+	_set_scroll.custom_minimum_size.y = clampf(area - offset_top - 260.0, 140.0, 520.0)
+
+
+## The heading, what was not compared, and a row a change under its step.
+func _fill_set() -> void:
+	for child: Node in _set_rows.get_children():
+		_set_rows.remove_child(child)
+		child.queue_free()
+	_set_buttons.clear()
+	_set_what.visible = false
+	if checked == null:
+		_set_notes.visible = false
+		return
+	_set_head.text = checked.heading()
+	var notes: PackedStringArray = checked.notes()
+	_set_notes.text = " ".join(notes)
+	_set_notes.visible = not notes.is_empty()
+	if checked.changes.is_empty():
+		var none := Label.new()
+		none.text = "Every part is as the set has it, in its place, colour and sub-model."
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.custom_minimum_size.x = SET_WIDE - 40.0
+		none.add_theme_font_size_override("font_size", 12)
+		none.modulate = Color(1, 1, 1, 0.8)
+		_set_rows.add_child(none)
+		return
+	var index: Dictionary = {}
+	for n: int in checked.changes.size():
+		index[checked.changes[n]] = n
+	for group: Array in checked.by_step():
+		var step := Label.new()
+		var said: String = str(group[0])
+		step.text = said.left(1).to_upper() + said.substr(1)
+		step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		step.custom_minimum_size.x = SET_WIDE - 40.0
+		step.add_theme_font_size_override("font_size", 11)
+		step.modulate = Color(1, 1, 1, 0.6)
+		_set_rows.add_child(step)
+		for change: SetCheck.Change in group[1]:
+			var n: int = index[change]
+			var row := Button.new()
+			row.flat = true
+			row.toggle_mode = true
+			row.focus_mode = Control.FOCUS_NONE
+			row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.custom_minimum_size.x = SET_WIDE - 40.0
+			row.add_theme_font_size_override("font_size", 12)
+			row.icon = _chip(set_colour_of(change.kind))
+			row.text = checked.line_words(change, library)
+			row.tooltip_text = "Select it and frame it in the view"
+			row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			row.pressed.connect(func() -> void: choose_set(n))
+			_set_rows.add_child(row)
+			_set_buttons.append(row)
+		if _set_buttons.size() >= SET_SHOWN:
+			var more := Label.new()
+			more.text = "…and %d more changes." % (checked.changes.size() - _set_buttons.size())
+			more.add_theme_font_size_override("font_size", 11)
+			_set_rows.add_child(more)
+			break
+
+
+## What the set panel shows, for a probe to read as a person would.
+func set_fields() -> Dictionary:
+	if _set_column == null:
+		return {"open": false, "mode": mode}
+	var rows: Array = []
+	var steps: Array = []
+	for child: Node in _set_rows.get_children():
+		if child is Button:
+			rows.append((child as Button).text)
+		elif child is Label:
+			steps.append((child as Label).text)
+	return {"open": visible and mode == SET, "mode": mode, "number": _set_number.text,
+		"head": _set_head.text, "notes": _set_notes.text if _set_notes.visible else "",
+		"steps": steps, "rows": rows, "what": _set_what.text if _set_what.visible else "",
+		"checking": checking}
+
+
+func _set_controls() -> Dictionary:
+	var named: Dictionary = {"compare_close": _set_close, "compare_set_number": _set_number,
+		"compare_set_go": _set_go, "compare_set_list": _set_scroll}
+	for n: int in _set_buttons.size():
+		named["compare_set_row_%d" % n] = _set_buttons[n]
 	return named

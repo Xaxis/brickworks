@@ -22,6 +22,13 @@
 ## (RareSwap), marked on its own row with how many, and the swaps for them
 ## listed under the row, each a common part or colour, picked or not, put in
 ## by Find and Replace as one undo step.
+##
+## And a row for the lots the person owns too few of (ownswap, APP_UX10 #2):
+## against their collection, as submit_design mine=true and My bricks count
+## it (OwnSwap), how many lots and pieces are short and the share of the
+## model that is theirs; pressed, each with the swap from their own parts that
+## keeps its look or "none you own", and Use what I own puts them in as one
+## undo step, after which the row says what is still missing.
 class_name InventoryPanel
 extends PanelContainer
 
@@ -107,6 +114,19 @@ var _offering: bool = false
 ## out again as a colours file comes in (the web).
 var _own_picks: Dictionary = {}
 # end rareswap
+# ownswap (APP_UX10 #2): the lots the person owns too few of, and their swaps
+# from what they own, in the same list as the rare lots' while it shows them.
+var _own_swapper: RefCounted = null  ## OwnSwap
+## OwnSwap.short_of's, as the list was shown: its lots (OwnSwap.Lot), the
+## biggest shortfall first, the pieces and the share owned, and what is free.
+var _own_short: Dictionary = {}
+var _own: Array = []
+var _own_row: Button
+## What the last Use what I own did, said on the row once the list is taken again.
+var _own_words: String = ""
+## The swaps' list shows the person's own swaps, not the rare lots'.
+var _listing_own: bool = false
+# end ownswap
 ## partplaces: the list in the model's order, or by where each part is kept
 ## (CollectionStore.places), shown while the person keeps any places.
 var _sort: OptionButton
@@ -163,8 +183,10 @@ func controls_by_name() -> Dictionary:
 		named["bricklink_save"] = _wants_dialog.get_ok_button()
 	if _rare_row.visible:
 		named["parts_rare"] = _rare_row
+	if _own_row.visible:
+		named["parts_own"] = _own_row
 	if _swaps_scroll.visible:
-		named["parts_swap"] = _swap_now
+		named["parts_use_own" if _listing_own else "parts_swap"] = _swap_now
 		named["parts_swap_back"] = _swap_back
 		var boxes: Array = _swap_boxes()
 		if not boxes.is_empty():
@@ -266,6 +288,7 @@ func _build() -> void:
 		_filter())
 	finding.add_child(_sort)
 	_build_rare(column)
+	_build_own(column)
 
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -308,6 +331,7 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 	if _stock.pieces == 0:
 		return false
 	_take_rare()
+	_take_own()
 	_show_rows()
 
 	_heading.text = _counts()
@@ -333,6 +357,7 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 	for pair: Array in _made:
 		_rows.add_child(pair[1])
 	_tag_rare()
+	_tag_own()
 	_sight.forget()
 
 	HudFront.show_panel(self)
@@ -361,6 +386,7 @@ func show_finding(world: BrickWorld, from_library: PartLibrary,
 func hide_list() -> void:
 	_was_at = _scroll.scroll_vertical
 	_swapped_words = ""
+	_own_words = ""
 	if _find.has_focus():
 		_find.release_focus()
 	visible = false
@@ -753,6 +779,14 @@ func _take_rare() -> void:
 func _colour_sets_came() -> void:
 	if not visible or _stock == null or _swapping:
 		return
+	# The person's own swaps shown: the rare counts taken again, kept for the
+	# rows, and the list left as it is (ownswap).
+	if _listing_own and _swaps_scroll.visible:
+		if _rare_waiting > 0:
+			_take_rare()
+			_tag_rare()
+			_rare_row.visible = false
+		return
 	var again: bool = _swaps_scroll.visible and _rare.any(func(lot: RefCounted) -> bool:
 		return bool(lot.get("waited")))
 	if _rare_waiting > 0:
@@ -828,6 +862,7 @@ func _tag_rare() -> void:
 func _show_rows() -> void:
 	if _swapping and not _offering:
 		return
+	_listing_own = false
 	_swaps_scroll.visible = false
 	_swap_bar.visible = false
 	_scroll.visible = true
@@ -835,6 +870,7 @@ func _show_rows() -> void:
 	if _stock != null:
 		_heading.text = _counts()
 	_say_rare()
+	_say_own()
 
 
 ## The rare lots' swaps, in the rows' place: each with what it is, what it
@@ -853,7 +889,9 @@ func show_swaps(again: bool = false) -> void:
 		_finder = FindReplace.new(app)
 	if not again:
 		_own_picks.clear()
+	_listing_own = false
 	_swapping = true
+	_own_row.visible = false
 	_scroll.visible = false
 	# The find and its sort by place: the swaps are no rows to find or sort.
 	(_find.get_parent() as Control).visible = false
@@ -903,8 +941,11 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 	box.focus_mode = Control.FOCUS_NONE
 	box.button_pressed = bool(lot.get("picked"))
 	box.disabled = not bool(lot.call("offered"))
-	box.tooltip_text = "Swap this lot" if not box.disabled else "No part or colour of it comes in %d sets" \
-		% RareSwap.COMMON_IN
+	if _listing_own:
+		box.tooltip_text = "Swap this lot" if not box.disabled else "None of your parts stands in for it"
+	else:
+		box.tooltip_text = "Swap this lot" if not box.disabled else "No part or colour of it comes in %d sets" \
+			% RareSwap.COMMON_IN
 	box.toggled.connect(func(on: bool) -> void:
 		lot.set("picked", on)
 		_own_picks[lot.get("key")] = on
@@ -914,8 +955,8 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 	# label draws them: its tooltip alone is the same on every row, and
 	# read in English. What it becomes is its description, read after it
 	# (rsreview F11: a reader heard what a box swapped, never into what).
-	box.accessibility_name = (_swapper as RareSwap).from_words(lot)
-	box.accessibility_description = (_swapper as RareSwap).into_words(lot)
+	box.accessibility_name = str(_lister().call("from_words", lot))
+	box.accessibility_description = str(_lister().call("into_words", lot))
 	row.add_child(box)
 	# A touch anywhere on the row is a touch on its box, as a list row's is
 	# on a phone (rsreview F10: a finger lands on the words). A drag that
@@ -954,7 +995,7 @@ func _swap_row(lot: RefCounted) -> HBoxContainer:
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.add_theme_constant_override("separation", 0)
-	for said: String in [(_swapper as RareSwap).from_words(lot), (_swapper as RareSwap).into_words(lot)]:
+	for said: String in [str(_lister().call("from_words", lot)), str(_lister().call("into_words", lot))]:
 		var line := Label.new()
 		line.text = said
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1009,10 +1050,13 @@ func _swap_boxes() -> Array:
 ## The swap button's words: how many lots it swaps.
 func _say_picked() -> void:
 	var picked: int = 0
-	for lot: RefCounted in _rare:
+	for lot: RefCounted in _listed():
 		if bool(lot.get("picked")) and bool(lot.call("offered")):
 			picked += 1
-	_swap_now.text = "Swap 1 lot" if picked == 1 else "Swap %d lots" % picked
+	if _listing_own:
+		_swap_now.text = "Use what I own: 1 lot" if picked == 1 else "Use what I own: %d lots" % picked
+	else:
+		_swap_now.text = "Swap 1 lot" if picked == 1 else "Swap %d lots" % picked
 	_swap_now.disabled = picked == 0
 	_swap_now.tooltip_text = "Put the picked swaps in, as one undo step"
 
@@ -1021,6 +1065,8 @@ func _say_picked() -> void:
 ## status bar, and the list taken again: its row says what changed and how
 ## many lots are still rare. {} when nothing was picked.
 func swap_picked() -> Dictionary:
+	if _listing_own:
+		return await use_own()
 	if _swapping or _rare.is_empty() or not can_swap():
 		return {}
 	_swapping = true
@@ -1042,3 +1088,205 @@ func swap_picked() -> Dictionary:
 	_say_rare()
 	return done
 # end rareswap
+
+
+# -- ownswap (APP_UX10 #2): a model rebuilt from what the person owns -----------------
+
+
+## The row over the list that says how many lots the person owns too few of,
+## and opens their swaps; hidden with no collection, or none short.
+func _build_own(column: Container) -> void:
+	_own_row = Button.new()
+	_own_row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_own_row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_own_row.focus_mode = Control.FOCUS_NONE
+	_own_row.add_theme_font_size_override("font_size", 12)
+	_own_row.add_theme_color_override("font_color", Look.ACCENT)
+	_own_row.visible = false
+	_own_row.pressed.connect(show_own)
+	column.add_child(_own_row)
+
+
+## The swaps' lots and their words: the person's own while those are listed.
+func _listed() -> Array:
+	return _own if _listing_own else _rare
+
+
+func _lister() -> RefCounted:
+	return _own_swapper if _listing_own else _swapper
+
+
+## What the person owns, by part and colour (CollectionStore.on_hand): {} when
+## nobody is signed in, the collection is empty, or this is a shared model's
+## viewer.
+func _pool() -> Dictionary:
+	if not can_swap():
+		return {}
+	var shell: Node = app.get("_shell")
+	var store: CollectionStore = shell.get("collection_store") if shell != null else null
+	return store.on_hand if store != null else {}
+
+
+## The lots of the model the person owns too few of, counted again
+## (OwnSwap.short_of), and the row that says so.
+func _take_own() -> void:
+	var pool: Dictionary = _pool()
+	if pool.is_empty():
+		_own_short = {}
+		_own = []
+		_say_own()
+		return
+	if _own_swapper == null:
+		_own_swapper = OwnSwap.new(library)
+	(_own_swapper as OwnSwap).library = library
+	_own_short = (_own_swapper as OwnSwap).short_of(_world, _scenery, pool, _stock)
+	_own = _own_short["lots"]
+	_say_own()
+
+
+## The row's words: how many lots are short and the share that is theirs,
+## what the last Use what I own did and what is still missing, or nothing.
+func _say_own() -> void:
+	var words: String = ""
+	if not _own_short.is_empty():
+		var missing: String = OwnSwap.missing_words(_own_short)
+		if not _own_words.is_empty():
+			words = _own_words + (". Still missing: %s, which What do I need? lists" % missing
+				if not missing.is_empty() else ". Every piece is yours now")
+		elif not _own.is_empty():
+			words = "%s you own too few of (%s short; %s): rebuild from what you own…" % [
+				Counted.of(_own.size(), "lot"), Counted.of(_short_pieces(), "piece"),
+				OwnSwap.share_words(_own_short)]
+	_own_row.text = words
+	_own_row.visible = not words.is_empty()
+	_own_row.disabled = _own.is_empty()
+	_own_row.tooltip_text = ("Against your collection, as My bricks counts it: each lot you own too few "
+		+ "of, with a part or colour of yours that keeps its look, put in as one undo step")
+
+
+func _short_pieces() -> int:
+	var pieces: int = 0
+	for lot: RefCounted in _own:
+		pieces += int(lot.call("short"))
+	return pieces
+
+
+## Each lot short marked on its own row with how many are not the person's,
+## as a lot over the bin is marked over (and not twice where it is).
+func _tag_own() -> void:
+	var short: Dictionary = {}
+	for lot: RefCounted in _own:
+		short[lot.get("key")] = int(lot.call("short"))
+	for pair: Array in _made:
+		var lot: Inventory.Lot = pair[0]
+		var button: Button = pair[1]
+		var line: HBoxContainer = button.get_child(0)
+		var had: Label = button.get_meta("own_tag") if button.has_meta("own_tag") else null
+		var key: String = "%s/%d" % [lot.part_id, lot.color_code]
+		if not short.has(key) or over_of(lot) > 0:
+			if had != null:
+				had.queue_free()
+				button.remove_meta("own_tag")
+			continue
+		if had == null:
+			had = Label.new()
+			had.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			had.add_theme_font_size_override("font_size", 12)
+			had.add_theme_color_override("font_color", Look.ACCENT)
+			line.add_child(had)
+			button.set_meta("own_tag", had)
+		had.text = "%d not yours" % int(short[key])
+
+
+## The lots the person owns too few of, each with its swap from what they own
+## or "none you own", in the rows' place, as the rare lots' are shown: worked
+## out a slice of a frame at a time (OwnSwap.SLICE_US), the note saying so.
+func show_own() -> void:
+	if _own.is_empty() or not can_swap() or _swapping:
+		return
+	if _finder == null:
+		_finder = FindReplace.new(app)
+	_listing_own = true
+	_swapping = true
+	_scroll.visible = false
+	(_find.get_parent() as Control).visible = false
+	_rare_row.visible = false
+	_own_row.visible = false
+	_swaps_scroll.visible = true
+	_swap_bar.visible = true
+	_heading.text = "Rebuilt from what you own: %s" % OwnSwap.share_words(_own_short)
+	for child: Node in _swaps.get_children():
+		_swaps.remove_child(child)
+		child.queue_free()
+	_swap_note.text = "Finding a part or colour of yours for each…"
+	_swap_now.disabled = true
+	_offering = true
+	await (_own_swapper as OwnSwap).offer_all(_own, _own_short["free"], _finder)
+	var slice: int = Time.get_ticks_usec()
+	for lot: RefCounted in _own:
+		if not _swaps_scroll.visible or not _listing_own:
+			break
+		_swaps.add_child(_swap_row(lot))
+		if Time.get_ticks_usec() - slice > OwnSwap.SLICE_US:
+			await get_tree().process_frame
+			slice = Time.get_ticks_usec()
+	_offering = false
+	_swapping = false
+	if not _swaps_scroll.visible or not _listing_own:
+		for child: Node in _swaps.get_children():
+			_swaps.remove_child(child)
+			child.queue_free()
+		return
+	_swap_note.text = ("Only the pieces you are short change, each to one you have free that the rest "
+		+ "do not use: the same shape in its colour, or the same part in a colour within ΔE 10 of its "
+		+ "finish. A print's plain part waits for you to tick it")
+	_say_picked()
+
+
+## Said when the collection changed since the swaps shown were worked out.
+const STALE_WORDS := "Your collection changed since these were worked out, so they are worked out again from what you own now: nothing was swapped"
+
+
+## The picked swaps put in as one undo step (OwnSwap.swap), said in the status
+## bar, and the list taken again: its row says what changed and what is still
+## missing. {} when nothing was picked, or the collection changed since the
+## swaps shown were worked out (they are then worked out again).
+func use_own() -> Dictionary:
+	if _swapping or _own.is_empty() or not can_swap():
+		return {}
+	# Against the collection as it is now (osreview M1: another tab took the
+	# free ones and 4 still went in): swaps that no longer hold are worked
+	# out again and shown, and nothing is changed.
+	var pool: Dictionary = _pool()
+	if pool.is_empty() or OwnSwap.stale(_own, OwnSwap.free_now(_own_short, pool)):
+		_take_own()
+		if _own.is_empty():
+			_show_rows()
+		else:
+			await show_own()
+			if _listing_own and _swaps_scroll.visible:
+				_swap_note.text = STALE_WORDS
+		said.emit(STALE_WORDS)
+		return {}
+	_swapping = true
+	_swap_now.disabled = true
+	var done: Dictionary = await (_own_swapper as OwnSwap).swap(_own, _finder)
+	var stayed: PackedStringArray = done["stayed"]
+	var words: String = str(done["words"])
+	if int(done["changed"]) == 0:
+		_swapping = false
+		said.emit("nothing swapped" + (": " + "; ".join(stayed) if not stayed.is_empty() else ""))
+		_show_rows()
+		return done
+	said.emit(Keymap.filled("%s — {undo|takes it back}") % (words
+		+ ("" if stayed.is_empty() else "; stayed: " + "; ".join(stayed))))
+	# The list taken again as P opens it, in a frame after the change's.
+	await get_tree().process_frame
+	_swapping = false
+	var picked_at: int = _was_at
+	show_for(_world, library, _scenery, _title)
+	_was_at = picked_at
+	_own_words = "Swapped " + words.trim_prefix("swapped ")
+	_say_own()
+	return done
+# end ownswap
