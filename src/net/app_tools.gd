@@ -121,6 +121,8 @@ const COMMANDS: Dictionary = {
 	"together_point": "point_at",
 	# swapfind (APP_UX8 #9): Edit › Find and replace…, into every sub-model.
 	"find_replace": "replace_parts",
+	# setcheck (APP_UX10 #4): File › Compare with the set….
+	"compare_set": "compare_with_set",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -295,6 +297,10 @@ which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and every real set, by how much is owned.
 which="compare" a= b=: any two of a set, a saved model or the open model, \
 the parts in both and in one only, and what to buy to build b from a.
+ - compare_with_set: what differs from a real set and where, in one call: \
+each part taken away, added, swapped, recoloured, moved or in another \
+sub-model, by the set's own steps, with its sub-model, line, #N and the \
+edit_model call that puts it back. Read-only.
  - edit_collection: the person's own loose bricks, as My collection's What \
 I own keeps them. add= lots seen in a photo of their pile (part, colour, \
 count), all in one call, each marked as the session's for the person to \
@@ -1423,6 +1429,28 @@ func definitions() -> Array:
 				"suggestion": {"type": "integer"},
 			}},
 		},
+		# setcheck (APP_UX10 #4): File › Compare with the set….
+		{
+			"name": "compare_with_set",
+			"description": ("What differs between the model and a real set, and where, as File, Compare, "
+				+ "Compare with the set… lists it: the model checked against the set's own model "
+				+ "from the library (LDraw's model repository, stepped by its author as the "
+				+ "booklet is). Every part taken away, added, swapped for another mould or part, "
+				+ "recoloured, moved (a stud is enough) or put in another sub-model, under the "
+				+ "set's own step it is in (step 12; step 3 of the Wing, which goes on in step "
+				+ "12), each with where it is in the model (its sub-model and the line of its "
+				+ "file), its #N as look_at_model numbers it, and the edit_model call that puts "
+				+ "it back as the set has it. A model that is the set says it matches. set= the "
+				+ "set's number as on its box (7140 or 7140-1); without it, the set the model was "
+				+ "opened from (open_model library=). most= how many changes are listed (60). "
+				+ "show=true opens it in the person's window too, drawn on the model. Changes "
+				+ "nothing."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"set": {"type": "string"},
+				"most": {"type": "integer"},
+				"show": {"type": "boolean"},
+			}},
+		},
 		{
 			"name": "weakest_joints",
 			"description": ("What gives first in the model as it stands, as View, Stress "
@@ -1586,6 +1614,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _evaluate_section(input)
 		"weakest_joints":
 			return await _weakest_joints(input)
+		"compare_with_set":
+			return await _compare_with_set(input)
 		"colour_hidden_parts":
 			var panel: HiddenColoursPanel = app.get("_hidden_colours")
 			if panel == null:
@@ -1885,6 +1915,9 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			# mcpreach: the booklet's PDF, as its page is.
 			return str(input.get("format", "")) in ["instructions", "pdf"]
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
+			return true
+		# setcheck: the model checked against its set, read.
+		"compare_with_set":
 			return true
 		"measure", "in_view":
 			return true
@@ -7108,6 +7141,36 @@ func _evaluate_section(input: Dictionary) -> String:
 ## View, Stress's numbers, from the weighing it draws (Main.weigh_joints):
 ## walk180's session, asked what breaks first, rebuilt the tug in
 ## check_design four times over 7 minutes to weigh one joint (2026-10-23).
+## compare_with_set (setcheck, APP_UX10 #4): the model checked against a real
+## set's own model, as File, Compare, Compare with the set… lists it (SetCheck), in one
+## call: the changes by the set's own steps, each with its sub-model and line,
+## its number and the call that puts it back. Reads only; show=true opens it
+## in the window too.
+func _compare_with_set(input: Dictionary) -> String:
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	if store == null or world == null or library == null:
+		return "This app has no model to check."
+	var checker: GDScript = Later.script(&"SetCheck")
+	var asked: String = str(input.get("set", "")).strip_edges()
+	if asked.is_empty():
+		asked = checker.own_set(store)
+	if asked.is_empty():
+		return ("Which set? This model was not opened from one, so name it: set= its number, as "
+			+ "on its box (7140 or 7140-1). gallery library=true finds the sets the library has; "
+			+ "open_model library= opens one.")
+	var got: Dictionary = await checker.run(asked, app.get("_model_library"), world, store, library)
+	if got["check"] == null:
+		return str(got["error"])
+	var check: RefCounted = got["check"]
+	if bool(input.get("show", false)):
+		var shell: Shell = app.get("_shell")
+		if shell != null:
+			shell.compare.open_set(asked)
+	return str(check.said(library, clampi(int(input.get("most", 60)), 1, 400)))
+
+
 func _weakest_joints(input: Dictionary) -> String:
 	if not app.has_method("weigh_joints"):
 		return "This app cannot weigh its joints."

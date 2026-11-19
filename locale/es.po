@@ -15524,3 +15524,36 @@ msgstr "Tirador para girar"
 
 msgid "Program for the motors"
 msgstr "Programa para los motores"
+
+# Compare with the set (setcheck, APP_UX10 #4): File's row, the panel's title,
+# field, button and what it says with nothing to list.
+
+msgid "Compare with the set…"
+msgstr "Comparar con el set…"
+
+msgid "Each part taken away, added, swapped, recoloured, moved or in another sub-model, by the set's own steps, and where it is in the model"
+msgstr "Cada pieza quitada, añadida, cambiada, recoloreada, movida o en otro submodelo, según los pasos del propio set, y dónde está en el modelo"
+
+msgid "Compare with the set"
+msgstr "Comparar con el set"
+
+msgid "Check"
+msgstr "Comprobar"
+
+msgid "Every part taken away, added, swapped, recoloured, moved or in another sub-model, by the set's own steps"
+msgstr "Cada pieza quitada, añadida, cambiada, recoloreada, movida o en otro submodelo, según los pasos del propio set"
+
+msgid "The set's number, as on its box (7140 or 7140-1): its model from the library is what the model is checked against"
+msgstr "El número del set, como en su caja (7140 o 7140-1): el modelo se compara con su modelo de la biblioteca"
+
+msgid "Every part is as the set has it, in its place, colour and sub-model."
+msgstr "Cada pieza está como en el set: en su sitio, en su color y en su submodelo."
+
+msgid "Type the set's number, as on its box: 7140 or 7140-1."
+msgstr "Escribe el número del set, como en su caja: 7140 o 7140-1."
+
+msgid "Select it and frame it in the view"
+msgstr "Seleccionarlo y encuadrarlo en la vista"
+
+msgid "Checking against %s…"
+msgstr "Comparando con %s…"

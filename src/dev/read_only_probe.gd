@@ -157,7 +157,9 @@ func _run() -> void:
 			# pointat: a part pointed out to the others, outside a session too.
 			["point_at", {"part": 1}],
 			# mcppalettes: the person's palettes, read.
-			["palettes", {}]]:
+			["palettes", {}],
+			# setcheck: a model opened from no set is asked which set.
+			["compare_with_set", {}]]:
 		_called[str(call[0])] = true
 		var was: String = _standing(app_world)
 		sent += 1

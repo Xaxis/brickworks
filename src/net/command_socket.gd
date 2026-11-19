@@ -636,6 +636,8 @@ const HINTS := {
 	"break_out_section": ["Break out a section", "add"],
 	"evaluate_section": ["Evaluate a section", "look"],
 	"weakest_joints": ["Weigh the weakest joints", "look"],
+	# setcheck: the model against a set's own model from the library.
+	"compare_with_set": ["Check the model against its set", "look"],
 	# Recolours parts nobody sees, after the person says yes; one step.
 	"colour_hidden_parts": ["Colour the hidden parts", "add"],
 	"gallery": ["Search the gallery", "look", "world"],
