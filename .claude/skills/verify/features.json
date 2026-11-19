@@ -2299,6 +2299,14 @@
       "tests": []
     },
     {
+      "id": "cli:ownswap probe",
+      "kind": "cli",
+      "entry": "src/dev/ownswap_probe.gd",
+      "reach": "tools/probe.sh ownswap_probe   (headless, about 15 minutes; OWNSWAP_CASES=gallery,mcp,... for some; OWNSWAP_OUT=DIR writes gallery.tsv, each of the 10 gallery models' lots short, swapped and none you own, and the owned share before and after)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
@@ -5255,6 +5263,14 @@
       "entry": "tools/viewer/inline.js",
       "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/start3d.js imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a model rebuilt from what you own",
+      "kind": "ui",
+      "entry": "src/collection/own_swap.gd",
+      "reach": "godot --path .  (with a collection, signed in or on this device: P, the parts list: the row over the rows says how many lots you own too few of, the pieces short and the share that is yours, as submit_design mine=true counts it, each such row tagged N not yours; pressed, each with its swap from what you own and the rest of the model does not use, the same shape in its colour or the same part in a colour within \u0394E 10 of its finish, or none you own; no owned piece taken twice; Use what I own, a part in hand put back first, one undo step, the row then says what is still missing; a session's replace_parts mine=true swaps the same in one call, lots= names some; tools/probe.sh ownswap_probe)",
+      "area": "building",
       "tests": []
     },
     {

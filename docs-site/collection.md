@@ -102,6 +102,14 @@ A part in a colour that comes in three sets or fewer is one few sellers have. Th
 ui:rare lots swapped for common ones
 -->
 
+## Build it from what you own {#own}
+
+With your collection in Brickworks (signed in, or kept on this computer), the parts list ([[P]]) says over its rows how many of the model's lots you own too few of, how many pieces that is, and how much of the model is yours already (*62% of its 1,204 pieces are yours*), counted the way My bricks and What do I need? count it: a part's other moulds count as the part, and a piece the rest of the model uses is never counted twice. Each such row is marked *3 not yours*. Press that line and each lot you are short of is shown with a swap from your own parts, out of those the rest of the model does not use: the same shape in its colour (a print's own plain part, or another mould that holds every connection the old one did), or else the same part in a colour you own within ΔE 10 of it and of the same finish and see-through-ness. Chrome, pearl, metallic and see-through never stand in for a solid colour, nor the other way round. A lot with none says *none you own* and the nearest colour you have, with its ΔE. Each says how many of yours it takes and how many are still missing, and what one lot takes is gone for the next, so two lots never both get your last three. Only the pieces you are short of change: of 13 with 11 to spare, 11 change and 2 stay. A part in a sub-model placed more than once changes in every copy or in none. A print's plain part waits for you to tick it. Then **Use what I own**: a part in your hand goes back where it was first, and the whole swap is one undo step. The line then says what changed and what is still missing, which **What do I need?** lists. Your Claude does the same with replace_parts mine=true, in one call, and tells you the share before and after and each piece still missing.
+
+<!-- covers
+ui:a model rebuilt from what you own
+-->
+
 ## What can I build? {#build}
 
 **File › What can I build?…** opens on **Real sets**: every LEGO® set Rebrickable lists, the one you could build most of first. Each says how much of it you have in its colours (*92%*), how many pieces are short, and how much you have in any colour; the sets you own are left out. Your sets' parts and your loose parts all count, and another moulding of a part stands in, as What do I need? counts them.

@@ -15557,3 +15557,99 @@ msgstr "Le sélectionner et le cadrer dans la vue"
 
 msgid "Checking against %s…"
 msgstr "Comparaison avec %s…"
+# ownswap (APP_UX10 #2): the parts list's row for the lots the person owns too few of, their swaps from their own parts or none you own, put in as one undo step, and what is still missing
+
+msgid "%s you own too few of (%s short; %s): rebuild from what you own…"
+msgstr "%s dont vous avez trop peu (il en manque %s ; %s) : reconstruire avec ce que vous possédez…"
+
+msgid "%d% of its %s are yours (%s)"
+msgstr "%d % de ses %s sont à vous (%s)"
+
+msgid "Swapped %s for parts you own, %s"
+msgstr "Échangé %s contre des pièces que vous possédez, %s"
+
+msgid "Still missing: %s, which What do I need? lists"
+msgstr "Il manque encore : %s, que « De quoi ai-je besoin ? » liste"
+
+msgid "Every piece is yours now"
+msgstr "Chaque pièce est maintenant à vous"
+
+msgid "Against your collection, as My bricks counts it: each lot you own too few of, with a part or colour of yours that keeps its look, put in as one undo step"
+msgstr "Comparé à votre collection, comme Mes briques la compte : chaque lot dont vous avez trop peu, avec une pièce ou une couleur à vous qui garde l’aspect, mis en place en une seule étape d’annulation"
+
+msgid "Rebuilt from what you own: %s"
+msgstr "Reconstruit avec ce que vous possédez : %s"
+
+msgid "Finding a part or colour of yours for each…"
+msgstr "Recherche d’une pièce ou d’une couleur à vous pour chacun…"
+
+msgid "Only the pieces you are short change, each to one you have free that the rest do not use: the same shape in its colour, or the same part in a colour within ΔE 10 of its finish"
+msgstr "Seules les pièces qui vous manquent changent, chacune pour une que vous avez de libre et que le reste n’utilise pas : la même forme dans sa couleur, ou la même pièce dans une couleur de même aspect à moins de ΔE 10"
+
+msgid "A print's plain part waits for you to tick it"
+msgstr "La pièce unie d’une pièce imprimée attend que vous la cochiez"
+
+msgid "Use what I own: 1 lot"
+msgstr "Utiliser ce que je possède : 1 lot"
+
+msgid "Use what I own: %d lots"
+msgstr "Utiliser ce que je possède : %d lots"
+
+msgid "None of your parts stands in for it"
+msgstr "Aucune de vos pièces ne peut la remplacer"
+
+msgid "%d not yours"
+msgstr "%d pas à vous"
+
+msgid "you own none"
+msgstr "vous n’en possédez aucune"
+
+msgid "you own %s"
+msgstr "vous en possédez %s"
+
+msgid "none you own: you have none of it in any colour to spare"
+msgstr "aucune à vous : vous n’en avez de libre dans aucune couleur"
+
+msgid "none you own: the nearest you have of it is %s (ΔE %s), not close"
+msgstr "aucune à vous : la plus proche que vous en avez est %s (ΔE %s), pas assez proche"
+
+msgid "the plain %s (%s) in its colour, without its print: %s"
+msgstr "la pièce unie %s (%s) dans sa couleur, sans son impression : %s"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and more: %s"
+msgstr "%s (%s), même forme dans sa couleur, avec toutes ses connexions et d’autres : %s"
+
+msgid "%s (%s), the same shape and connections in its colour: %s"
+msgstr "%s (%s), même forme et mêmes connexions dans sa couleur : %s"
+
+msgid "%s (ΔE %s), a close colour: %s"
+msgstr "%s (ΔE %s), une couleur proche : %s"
+
+msgid "all %s of yours free"
+msgstr "les %s libres que vous avez"
+
+msgid "the 1 of yours free"
+msgstr "la seule libre que vous avez"
+
+msgid "%s of your %s free"
+msgstr "%s de vos %s libres"
+
+msgid "%s still missing"
+msgstr "il en manque encore %s"
+
+msgid "no room for it"
+msgstr "pas de place pour elle"
+
+# osfix (osreview H2, H3, M1): a swap passed over for another lot's twin, the collection or the model changed under the swaps, the swap at work
+
+msgid "none you own for these alone: a swap would change their twins in other copies, which are another lot"
+msgstr "aucune à vous pour celles-ci seules : un échange changerait leurs jumelles dans d’autres copies, qui sont un autre lot"
+
+msgid "Your collection changed since these were worked out, so they are worked out again from what you own now: nothing was swapped"
+msgstr "Votre collection a changé depuis que ceux-ci ont été calculés, ils sont donc recalculés d’après ce que vous possédez maintenant : rien n’a été échangé"
+
+msgid "the model changed while the swaps were worked out: nothing swapped, look at the swaps again"
+msgstr "le modèle a changé pendant le calcul des échanges : rien d’échangé, regardez de nouveau les échanges"
+
+msgid "Swapping in the parts you own…"
+msgstr "Mise en place des pièces que vous possédez…"
