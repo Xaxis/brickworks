@@ -310,7 +310,44 @@ class Motion extends RefCounted:
 		return out
 
 
+## A joint locked (jointlock, docs/APP_UX10.md item 2): the two parts either
+## side of it, each found again by its number, colour and place as a
+## motion's part is ([method part_at]), written
+##
+##   0 !BRICKWORKS LOCK PART 3938 71 0 -24 0 ON PART 3937 71 0 -24 0
+##
+## Locked, neither turns nor slides against the other: a drag of either part,
+## R, a handle, Simulate's driver, move_part and pose_model each refuse,
+## saying which joint and how to unlock it ([method lock_words]). A lock is
+## of those two parts and no others: a copy of them is not locked (a builder
+## copies an arm to pose it otherwise), and a part taken off takes its lock
+## with it until an undo brings the part back.
+class Lock extends RefCounted:
+	## The part that turns or slides on the joint, and the one it is on.
+	var a: Joint
+	var b: Joint
+
+	func ref_words() -> String:
+		return "%s ON %s" % [a.ref_words(), b.ref_words()]
+
+	func copy() -> Lock:
+		var out := Lock.new()
+		out.a = a.copy()
+		out.b = b.copy()
+		return out
+
+
+const LOCK_META := "0 !BRICKWORKS LOCK"
+## Where the window's lock is, and an answer's, said in every refusal.
+const UNLOCK_WORDS := ("unlock it with the lock on its row in Build › Motions… (New motion "
+	+ "lists every joint), or pose_model {\"joint\": …, \"lock\": false}")
+
 var list: Array = []
+## The joints locked, each a [Lock], in the order they were locked.
+var locks: Array = []
+## Lock lines the open could not read, said ([method lock_unread_words]);
+## each stays in the file where it was (MetaIndex: not taken).
+var locks_unread_why := PackedStringArray()
 ## Every joint any motion moves, each once: tracks of two motions on one
 ## joint share it, so its AT is one.
 var joints: Array = []
@@ -333,6 +370,175 @@ func is_empty() -> bool:
 ## Whether there is anything to write: a motion, or a line read and kept.
 func has_lines() -> bool:
 	return not list.is_empty() or not unread.is_empty()
+
+
+# -- joints locked ---------------------------------------------------------------
+
+
+## The lock lines, each lock's parts as its joints now say them (ModelStore
+## brings their places up to where the parts stand before it asks).
+func lock_lines() -> PackedStringArray:
+	var out := PackedStringArray()
+	for lock: Lock in locks:
+		out.append("%s %s" % [LOCK_META, lock.ref_words()])
+	return out
+
+
+## What a lock line says after its word ("PART 3938 71 0 -24 0 ON PART ..."),
+## as the two refs it names: [a's ref words, b's], each with its numbers as a
+## line writes them; null for a line this does not read. A line read and
+## said again the same is the file's line (ModelStore._family).
+static func lock_parsed(said: String) -> Variant:
+	var lock: Lock = _read_lock(tokens(said))
+	return null if lock == null else [lock.a.ref_words(), lock.b.ref_words()]
+
+
+static func _read_lock(words: PackedStringArray) -> Lock:
+	var on: int = words.find("ON")
+	if on != 6 or words.size() != 13:
+		return null
+	var a: Joint = _read_ref(words.slice(0, 6))
+	var b: Joint = _read_ref(words.slice(7))
+	if a == null or b == null or a.by != "part" or b.by != "part":
+		return null
+	var lock := Lock.new()
+	lock.a = a
+	lock.b = b
+	return lock
+
+
+## The lock lines a model's own lines have, read into [member locks]; one
+## this cannot read is left where the file has it and said
+## ([member locks_unread_why]), and so is a second lock of the same two parts.
+func _read_locks(metas: MetaIndex) -> void:
+	for line: MetaIndex.Line in metas.own(["LOCK"]):
+		var lock: Lock = _read_lock(tokens(line.said))
+		if lock == null:
+			locks_unread_why.append(line.raw.strip_edges())
+			continue
+		if locks.any(func(one: Lock) -> bool: return one.ref_words() == lock.ref_words()):
+			line.beaten = true
+			continue
+		locks.append(lock)
+		line.taken = true
+
+
+## The lock lines the open could not read, said where an open says what it
+## left out: "1 lock line not read, kept in the file as it is: ..."; "" for none.
+func lock_unread_words() -> String:
+	if locks_unread_why.is_empty():
+		return ""
+	return "%s: %s" % ["1 lock line not read, kept in the file as it is" if locks_unread_why.size() == 1
+		else "%d lock lines not read, kept in the file as they are" % locks_unread_why.size(),
+		"; ".join(locks_unread_why)]
+
+
+## A lock's part as it is now: its id, followed through an undo that put it
+## back as another (Builder._live); 0 when it is gone. Changes nothing: a
+## drag asks it on a worker (GrabDrag).
+static func lock_part(joint: Joint, world: BrickWorld, builder: Builder) -> int:
+	var id: int = joint.lead
+	if id != 0 and world.get_brick(id) == null and builder != null:
+		id = builder._live(id)
+	var brick: BrickWorld.Brick = world.get_brick(id) if id != 0 else null
+	return id if brick != null and brick.part_id == joint.part else 0
+
+
+## The lock of the joint between [param one] and [param other] (brick ids,
+## either way round), or null.
+func lock_between(one: int, other: int, world: BrickWorld, builder: Builder) -> Lock:
+	for lock: Lock in locks:
+		var a: int = lock_part(lock.a, world, builder)
+		var b: int = lock_part(lock.b, world, builder)
+		if a != 0 and b != 0 and ((a == one and b == other) or (a == other and b == one)):
+			return lock
+	return null
+
+
+## The first lock [param placed] (brick id -> where it goes) would turn or
+## slide: one of its parts moved against the other. Null for none. What a
+## move of any kind asks before it moves anything.
+func lock_broken(placed: Dictionary, world: BrickWorld, builder: Builder) -> Lock:
+	if locks.is_empty() or placed.is_empty():
+		return null
+	for lock: Lock in locks:
+		var a: int = lock_part(lock.a, world, builder)
+		var b: int = lock_part(lock.b, world, builder)
+		if a == 0 or b == 0 or not (placed.has(a) or placed.has(b)):
+			continue
+		var now_a: Transform3D = world.get_brick(a).transform
+		var now_b: Transform3D = world.get_brick(b).transform
+		var was: Transform3D = now_b.affine_inverse() * now_a
+		var then: Transform3D = (placed.get(b, now_b) as Transform3D).affine_inverse() \
+			* (placed.get(a, now_a) as Transform3D)
+		if not _rigid(was, then):
+			return lock
+	return null
+
+
+## The first lock [param moving] (brick id -> true, all moved alike) moves
+## one side of and not the other: what a drag on a joint asks at its press
+## (Grab), before it works out anything else. Null for none.
+func lock_split(moving: Dictionary, world: BrickWorld, builder: Builder) -> Lock:
+	for lock: Lock in locks:
+		var a: int = lock_part(lock.a, world, builder)
+		var b: int = lock_part(lock.b, world, builder)
+		if a != 0 and b != 0 and moving.has(a) != moving.has(b):
+			return lock
+	return null
+
+
+static func _rigid(one: Transform3D, other: Transform3D) -> bool:
+	return one.origin.distance_to(other.origin) < 0.05 \
+		and one.basis.x.distance_to(other.basis.x) < 0.001 \
+		and one.basis.y.distance_to(other.basis.y) < 0.001 \
+		and one.basis.z.distance_to(other.basis.z) < 0.001
+
+
+## [param lock]'s joint in words: its sub-assembly's name when its part is
+## in one ("Leg Left's joint"), else its two parts ("the joint of #12 Hinge
+## Plate 1 x 2 Top on #11 Hinge Plate 1 x 2 Base").
+static func lock_name(lock: Lock, world: BrickWorld, library: PartLibrary, builder: Builder = null) -> String:
+	var a: int = lock_part(lock.a, world, builder)
+	var b: int = lock_part(lock.b, world, builder)
+	var named := func(id: int, ref: Joint) -> String:
+		var brick: BrickWorld.Brick = world.get_brick(id) if id != 0 else null
+		var info: PartLibrary.PartInfo = library.parts.get(ref.part) if library != null else null
+		var what: String = Inventory._tidy(info.name) if info != null else ref.part
+		return "#%d %s" % [id, what] if brick != null else "the %s" % what
+	var path: String = Assemblies.path_of(world.get_brick(a)) if a != 0 else ""
+	var other: String = Assemblies.path_of(world.get_brick(b)) if b != 0 else ""
+	if not path.is_empty() and path != other and not other.begins_with(path + "/"):
+		return "%s's joint" % Assemblies.label(path)
+	return "the joint of %s on %s" % [named.call(a, lock.a), named.call(b, lock.b)]
+
+
+## What a move a lock holds says: which joint, and how to unlock it.
+static func lock_words(lock: Lock, world: BrickWorld, library: PartLibrary, builder: Builder = null) -> String:
+	var name: String = lock_name(lock, world, library, builder)
+	return "%s is locked, so it keeps its angle and its slide: %s" % [
+		name.left(1).to_upper() + name.substr(1), UNLOCK_WORDS]
+
+
+## A lock of the joint between [param one] (the part that moves on it) and
+## [param other], as their refs say them now ([param lift]: how far the
+## model stands above the file's coordinates).
+static func lock_of(one: int, other: int, world: BrickWorld, lift: Vector3) -> Lock:
+	var lock := Lock.new()
+	lock.a = _part_ref(one, world, lift)
+	lock.b = _part_ref(other, world, lift)
+	return lock
+
+
+static func _part_ref(id: int, world: BrickWorld, lift: Vector3) -> Joint:
+	var brick: BrickWorld.Brick = world.get_brick(id)
+	var joint := Joint.new()
+	joint.by = "part"
+	joint.lead = id
+	joint.part = brick.part_id
+	joint.colour = brick.color_code
+	joint.place = (brick.transform.origin - lift) * LdrModel.FLIP
+	return joint
 
 
 ## The part of [param world] [param joint]'s ref names, by its number and
@@ -586,6 +792,9 @@ func copy() -> Motions:
 	out.unread = unread.duplicate()
 	out.unread_why = unread_why.duplicate()
 	out.moved = moved
+	for lock: Lock in locks:
+		out.locks.append(lock.copy())
+	out.locks_unread_why = locks_unread_why.duplicate()
 	var map: Dictionary = {}
 	for joint: Joint in joints:
 		map[joint] = joint.copy()
@@ -806,7 +1015,7 @@ static func written_into(text: String, motion_lines: PackedStringArray) -> Strin
 ## is read after every track and path, so the order the lines are in does
 ## not matter (F4).
 static func read(text: String) -> Motions:
-	if not text.contains("MOTION"):
+	if not text.contains("MOTION") and not text.contains("LOCK"):
 		return Motions.new()
 	return read_from(MetaIndex.of_text(text))
 
@@ -928,6 +1137,7 @@ static func read_from(metas: MetaIndex) -> Motions:
 	out.list = out.list.filter(func(one: Motion) -> bool:
 		return not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence())
 	out._tidy_joints()
+	out._read_locks(metas)
 	refused.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
 	# Each line read into a motion taken; one refused is kept as it is.
 	var not_read: Dictionary = {}

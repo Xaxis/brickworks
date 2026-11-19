@@ -144,6 +144,11 @@ var _frame: TextureRect
 ## Each motion row's buttons, by the row's number, for a browser test.
 var _row_buttons: Array = []
 var _keep_buttons: Array = []
+## The list's joints locked (jointlock): its heading, its rows, and each
+## row's Unlock.
+var _lock_heading: Label
+var _lock_rows: VBoxContainer
+var _unlock_buttons: Array = []
 ## The joint rows: [{joint, slider, readout, strip, droop}], as listed.
 var _joint_parts: Array = []
 
@@ -290,6 +295,93 @@ func set_angle(path: String, value: float) -> float:
 	return poser.joint(path).angle
 
 
+# -- locks --------------------------------------------------------------------------------
+
+
+## The parts [param joint] (a motion's, a row's) turns, as a drag takes it by
+## them, and the two it turns between: [moving (id -> true), [its own part,
+## the one it is on]]; [{}, []] when a drag finds no joint there.
+func _lock_sides(joint: Motions.Joint) -> Array:
+	var ids: Array = player.parts_of(joint) if player != null else []
+	if ids.is_empty() or grabbing == null:
+		return [{}, []]
+	var picked: Grab = grabbing.picked_of(ids)
+	var pair: Array = picked.lock_pair()
+	var moving: Dictionary = {}
+	if not pair.is_empty():
+		for id: int in picked.bodies.parts_of(picked.moving_bodies):
+			moving[id] = true
+	return [moving, pair]
+
+
+## The words of the lock [param joint] is held by (Motions.lock_words); ""
+## when it is not locked.
+func lock_said(joint: Motions.Joint) -> String:
+	var motions: Motions = _motions()
+	if motions.locks.is_empty():
+		return ""
+	var sides: Array = _lock_sides(joint)
+	var lock: Motions.Lock = motions.lock_split(sides[0], world, builder)
+	return "" if lock == null else Motions.lock_words(lock, world, library, builder)
+
+
+## A row's Lock pressed: locked if it was not, else unlocked.
+func toggle_lock(joint: Motions.Joint) -> void:
+	var sides: Array = _lock_sides(joint)
+	_say(set_lock(sides[0], sides[1], lock_said(joint).is_empty()))
+	_refresh()
+
+
+## A lock of the list's Unlock: let go, one step to undo.
+func unlock(lock: Motions.Lock) -> void:
+	var motions: Motions = _motions()
+	if not motions.locks.has(lock):
+		return
+	var name: String = Motions.lock_name(lock, world, library, builder)
+	var had: Motions = motions.copy()
+	motions.locks.erase(lock)
+	builder.record([{"undo": "motions", "motions": had}], "unlocked %s" % name)
+	_seen_history = _history_now()
+	_seen_motions = world.motions
+	_say("Unlocked %s: it moves again. Undo locks it again." % name)
+	_refresh()
+	changed.emit()
+
+
+## Lock ([param on]) or unlock the joint that turns [param moving] (id ->
+## true) between [param pair] ([its own part, the one it is on]): one step to
+## undo, what it did in words. Locking one locked, or unlocking one not, is
+## said and changes nothing. What pose_model's lock= and a row's Lock do.
+func set_lock(moving: Dictionary, pair: Array, on: bool) -> String:
+	var motions: Motions = _motions()
+	if pair.size() != 2 or world.get_brick(int(pair[0])) == null or world.get_brick(int(pair[1])) == null:
+		return "That is on no joint a drag turns or slides: nothing to lock."
+	var held: Motions.Lock = motions.lock_split(moving, world, builder)
+	var lift: Vector3 = player.store.lift() if player != null and player.store != null else Vector3.ZERO
+	var lock: Motions.Lock = held if held != null else Motions.lock_of(int(pair[0]), int(pair[1]), world, lift)
+	var name: String = Motions.lock_name(lock, world, library, builder)
+	var named: String = name.left(1).to_upper() + name.substr(1)
+	if on == (held != null):
+		return "%s is %s already: nothing changed." % [named, "locked" if on else "not locked"]
+	var had: Motions = motions.copy()
+	if on:
+		motions.locks.append(lock)
+	else:
+		# Every lock this joint's turn would break: one joint, all of it.
+		while held != null:
+			motions.locks.erase(held)
+			held = motions.lock_split(moving, world, builder)
+	builder.record([{"undo": "motions", "motions": had}], ("locked %s" if on else "unlocked %s") % name)
+	_seen_history = _history_now()
+	_seen_motions = world.motions
+	changed.emit()
+	if on:
+		return ("Locked %s: it keeps its angle and its slide. A drag of either part, R, a handle, "
+			+ "Simulate's driver and Claude's moves are refused until it is unlocked; undo takes "
+			+ "the lock off.") % name
+	return "Unlocked %s: it moves again. Undo locks it again." % name
+
+
 func _motions() -> Motions:
 	return player.motions() if player != null else Motions.new()
 
@@ -382,6 +474,27 @@ func _fill_list() -> void:
 	_play_all.visible = motions.in_order().size() > 1
 	_loop.visible = not motions.is_empty()
 	_new_sequence.visible = not motions.in_order().is_empty()
+	_clear(_lock_rows)
+	_unlock_buttons.clear()
+	_lock_heading.visible = not motions.locks.is_empty()
+	_lock_rows.visible = not motions.locks.is_empty()
+	for lock: Motions.Lock in motions.locks:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		_lock_rows.add_child(row)
+		var words := Label.new()
+		var name: String = Motions.lock_name(lock, world, library, builder)
+		words.text = name.left(1).to_upper() + name.substr(1)
+		words.tooltip_text = words.text
+		words.mouse_filter = Control.MOUSE_FILTER_PASS
+		words.add_theme_font_size_override("font_size", 12)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.clip_text = true
+		words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		row.add_child(words)
+		var held: Motions.Lock = lock
+		_unlock_buttons.append(_button(row, "Unlock", func() -> void: unlock(held),
+			"Let it move again: a drag, R, a handle, Simulate and Claude may turn or slide it"))
 	_clear(_suggest_rows)
 	_keep_buttons.clear()
 	var offered: Array = _offered()
@@ -790,6 +903,17 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 		words.custom_minimum_size = Vector2(WIDE - 24, 0)
 		row.add_child(words)
 		return
+	# Its lock (jointlock): a word on the row, pressed by a mouse or a finger.
+	var locked: String = lock_said(joint)
+	var lock := _button(top, "Locked" if not locked.is_empty() else "Lock",
+		func() -> void: toggle_lock(joint),
+		"Locked, it keeps its angle and its slide: a drag, R, a handle, Simulate and Claude are refused until it is unlocked")
+	lock.toggle_mode = true
+	lock.set_pressed_no_signal(not locked.is_empty())
+	lock.accessibility_name = "%s: %s" % [called.text, lock.text]
+	if Phone.on():
+		lock.custom_minimum_size = Vector2(Phone.px(get_viewport(), Phone.TARGET),
+			Phone.px(get_viewport(), Phone.TARGET))
 	var slider := HSlider.new()
 	slider.accessibility_name = called.text
 	_style_slider(slider)
@@ -808,6 +932,9 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	slider.set_value_no_signal(place)
 	readout.text = _place_words(place, joint)
 	slider.tooltip_text = "Where it is at the time above: moved, a key there"
+	if not locked.is_empty():
+		slider.editable = false
+		slider.tooltip_text = locked
 	slider.drag_started.connect(func() -> void: _hold_slider(joint))
 	slider.drag_ended.connect(func(_changed: bool) -> void: _let_go_slider(slider.value))
 	slider.value_changed.connect(func(value: float) -> void:
@@ -850,7 +977,8 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	droop.custom_minimum_size = Vector2(WIDE - 24, 0)
 	droop.visible = false
 	row.add_child(droop)
-	var listed := {"joint": joint, "slider": slider, "readout": readout, "strip": strip, "droop": droop}
+	var listed := {"joint": joint, "slider": slider, "readout": readout, "strip": strip, "droop": droop,
+		"lock": lock}
 	_joint_parts.append(listed)
 	_mark_row(listed)
 
@@ -1713,9 +1841,12 @@ func _set_buttons() -> void:
 			if is_instance_valid(item):
 				var button: BaseButton = item
 				button.disabled = busy or (_playing and button != _stop_button and key != "pick")
-	for item: Variant in _keep_buttons:
+	for item: Variant in _keep_buttons + _unlock_buttons:
 		if is_instance_valid(item):
 			(item as Button).disabled = busy or _playing
+	for part: Dictionary in _joint_parts:
+		if is_instance_valid(part.get("lock")):
+			(part["lock"] as Button).disabled = busy or _playing
 	_play_all.disabled = busy or (_playing and _stop_button != _play_all)
 	_new.disabled = busy or _playing
 	_new_sequence.disabled = busy or _playing
@@ -2074,6 +2205,12 @@ func _build_list(into: Control) -> void:
 	_loop.add_theme_font_size_override("font_size", 12)
 	_loop.focus_mode = Control.FOCUS_NONE
 	playing.add_child(_loop)
+	# The joints locked, each with its Unlock: a lock is found where it is
+	# kept, not only on a motion's row (jointlock).
+	_lock_heading = _heading(_list_box, "Joints locked")
+	_lock_rows = VBoxContainer.new()
+	_lock_rows.add_theme_constant_override("separation", 3)
+	_list_box.add_child(_lock_rows)
 	_list_box.add_child(HSeparator.new())
 	_suggest_heading = _heading(_list_box, "Suggested from what moves")
 	_suggest_rows = VBoxContainer.new()
@@ -2646,6 +2783,8 @@ func controls_by_name() -> Dictionary:
 			out["motion_edit_%d" % n] = row["edit"]
 		for n: int in _keep_buttons.size():
 			out["motion_keep_%d" % n] = _keep_buttons[n]
+		for n: int in _unlock_buttons.size():
+			out["motion_unlock_%d" % n] = _unlock_buttons[n]
 	elif _view == "sequence":
 		out.merge({"sequence_back": _seq_back, "sequence_remove": _seq_remove, "sequence_name": _seq_name,
 			"sequence_play": _seq_play, "sequence_reverse": _seq_reverse, "sequence_pick": _seq_pick,
@@ -2660,6 +2799,7 @@ func controls_by_name() -> Dictionary:
 			"motions_time": _time, "motions_how": _how, "motions_drop_key": _drop_key})
 		for n: int in _joint_parts.size():
 			out["motions_joint_%d" % n] = _joint_parts[n]["slider"]
+			out["motions_lock_%d" % n] = _joint_parts[n]["lock"]
 	var shown: Dictionary = {}
 	for key: String in out:
 		var item: Variant = out[key]
@@ -2699,7 +2839,8 @@ func _tell_page() -> void:
 		var entry: Dictionary = {"name": player.joint_name(joint), "mode": joint.mode,
 			"place": snappedf((part["slider"] as HSlider).value, 0.01),
 			"min": (part["slider"] as HSlider).min_value, "max": (part["slider"] as HSlider).max_value,
-			"keys": track.keys.size() if track != null else 0}
+			"keys": track.keys.size() if track != null else 0,
+			"locked": (part["lock"] as Button).button_pressed}
 		entry.merge(ends.call(part["slider"]))
 		joints.append(entry)
 	var fps: int = int(RATES[maxi(_rate.selected, 0)])

@@ -1111,6 +1111,9 @@ func _moved_joined(by: Vector3) -> int:
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
 		return 0
+	if _lock_refuses_ids(alive, func(at: Transform3D) -> Transform3D:
+			return Transform3D(at.basis, at.origin + by)):
+		return 0
 	var was: Dictionary = {}
 	for brick_id: int in alive:
 		was[brick_id] = world.get_brick(brick_id).transform
@@ -1143,6 +1146,63 @@ static func _ldu_words(by: Vector3) -> String:
 	for n: int in 3:
 		words.append(String.num(snappedf(by[n], 0.001), 3))
 	return ", ".join(words)
+
+
+## Why the last move of the selection was refused when a joint locked held it
+## (jointlock: Motions.locks): its words, which joint and how to unlock it,
+## for whoever asked to say. "" when no lock refused it.
+var refused_lock: String = ""
+
+
+## Whether moving [param placed] (brick id -> where it goes) would turn or
+## slide a joint locked; [member refused_lock] says which.
+func _lock_refuses(placed: Dictionary) -> bool:
+	refused_lock = ""
+	if world.motions == null or world.motions.locks.is_empty():
+		return false
+	var lock: Motions.Lock = world.motions.lock_broken(placed, world, self)
+	if lock == null:
+		return false
+	refused_lock = Motions.lock_words(lock, world, library, self)
+	return true
+
+
+## [method _lock_refuses] for [param ids] each moved by [param to]. Only a
+## lock's own parts are placed: a lock asks of its two parts, so Select all
+## on Orthanc moved asks of two, not of 10,101.
+func _lock_refuses_ids(ids: PackedInt64Array, to: Callable) -> bool:
+	refused_lock = ""
+	if world.motions == null or world.motions.locks.is_empty():
+		return false
+	var ours: Dictionary = _lock_ids()
+	var placed: Dictionary = {}
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id) if ours.has(brick_id) else null
+		if brick != null:
+			placed[brick_id] = to.call(brick.transform)
+	return _lock_refuses(placed)
+
+
+## The parts of the joints locked, as they are now: brick id -> true.
+func _lock_ids() -> Dictionary:
+	var out: Dictionary = {}
+	for lock: Motions.Lock in world.motions.locks:
+		for side: Motions.Joint in [lock.a, lock.b]:
+			var id: int = Motions.lock_part(side, world, self)
+			if id != 0:
+				out[id] = true
+	return out
+
+
+## Where the drag would put the parts of the joints locked, moved by
+## [param by]: [method drag_places] cut to them.
+func _lock_places(by: Transform3D) -> Dictionary:
+	var out: Dictionary = {}
+	var was: Dictionary = _dragged.get("was", {})
+	for id: int in _lock_ids():
+		if was.has(id):
+			out[id] = _dragged_to(by, was[id])
+	return out
 
 
 ## The most parts a selection may have for Properties to show its Hinge.
@@ -1306,6 +1366,7 @@ var _dragged: Dictionary = {}
 ## holds; 0 when nothing selected is there to move.
 func drag_begin() -> int:
 	drag_end(Transform3D.IDENTITY)
+	refused_lock = ""
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
 		return 0
@@ -1354,6 +1415,12 @@ func drag_fits(by: Transform3D) -> bool:
 ## one fits; -1 at the first with no room.
 func drag_room(by: Transform3D, from: int = 0, until: int = 0) -> int:
 	refused_by = PackedInt64Array()
+	# A joint locked that the drag would turn or slide (jointlock), asked once
+	# at its first piece: [member refused_lock] says which.
+	if from == 0:
+		refused_lock = ""
+		if world.motions != null and not world.motions.locks.is_empty() and _lock_refuses(_lock_places(by)):
+			return -1
 	var was: Dictionary = _dragged.get("was", {})
 	var ids: Array = was.keys()
 	var n: int = from
@@ -1518,6 +1585,11 @@ var refused_by := PackedInt64Array()
 func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> int:
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
+		return 0
+	# A joint locked that the move would turn or slide refuses it whole
+	# (jointlock): R, T, the arrows and a typed move alike.
+	refused_by = PackedInt64Array()
+	if _lock_refuses_ids(alive, to):
 		return 0
 
 	# Out of the lattice first, so the selection does not collide with
@@ -2436,6 +2508,8 @@ func swing_selection(degrees: float) -> int:
 		* Transform3D(Basis(axis, deg_to_rad(degrees)), Vector3.ZERO) \
 		* Transform3D(Basis.IDENTITY, -at_point)
 	var partners: Dictionary = joint["partners"]
+	if _lock_refuses_ids(alive, func(at: Transform3D) -> Transform3D: return around * at):
+		return 0
 	var was: Dictionary = {}
 	for brick_id: int in alive:
 		was[brick_id] = world.get_brick(brick_id).transform
@@ -2509,7 +2583,8 @@ func _joint_of(ids: PackedInt64Array) -> Dictionary:
 			partners[other] = true
 			var zones: Array = held[mine][other]
 			if found.is_empty() and not zones.is_empty():
-				found = {"point": zones[0][0], "axis": zones[0][1]}
+				# And the two parts it turns between: what a lock of it locks.
+				found = {"point": zones[0][0], "axis": zones[0][1], "pair": [int(mine), int(other)]}
 	if found.is_empty():
 		return {}
 	found["partners"] = partners
@@ -2575,6 +2650,16 @@ func lift_selection(grab: Array = []) -> int:
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
 		return 0
+	# Lifted, one side of a locked joint would leave the other (jointlock).
+	refused_lock = ""
+	if world.motions != null and not world.motions.locks.is_empty():
+		var lifted: Dictionary = {}
+		for brick_id: int in alive:
+			lifted[brick_id] = true
+		var lock: Motions.Lock = world.motions.lock_split(lifted, world, self)
+		if lock != null:
+			refused_lock = Motions.lock_words(lock, world, library, self)
+			return 0
 	var parts: Array = Carry.gather(world, library, Array(alive))
 	if parts.is_empty():
 		return 0

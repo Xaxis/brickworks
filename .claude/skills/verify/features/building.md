@@ -2771,6 +2771,23 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Weighed at the pose as it stands, not over Check stability's sweep. A model
   with no friction joint is weighed as before. Probe: `posehold_probe`
   (`--only=table|built|sets|app`).
+- `a joint locked` (`Motions.Lock`, `Motions.lock_split` / `lock_broken`,
+  `Builder.refused_lock`, `Grab._lock_holds`, `Poser.lock_words`,
+  `Simulation._lock_turned`, `PosePanel.set_lock`, APP_UX10 jointlock,
+  2026-11-19): a joint locked by the Lock on its row in Build › Motions… (New
+  motion lists every joint), or by `pose_model` `lock=true`, keeps its angle and
+  its slide. A drag of either part, a drag on its joint, R / T, a handle,
+  Simulate's driver, `move_part` and `pose_model` are each refused with the
+  joint's name and how to unlock it; moving both its parts together is not.
+  Saved as one `0 !BRICKWORKS LOCK PART … ON PART …` line (its two parts by
+  number, colour and place), kept byte for byte unedited and through an edit
+  elsewhere; a line it cannot read is named at the open and kept. One undo a
+  lock or an unlock. The list's Joints locked has an Unlock each; `lock=false`
+  with nothing locked is as if absent. A lock is of its two parts only: a copy
+  is not locked. A joint locked keeps its row (it is listed as it would move
+  unlocked, `GrabDrag.locks_off`), its slider still. Probes: `jointlock_probe`
+  (windowed), `jointlock_time_probe` (headless, Orthanc: the lock's work each
+  frame under 16 ms).
 - `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
   2026-10-16): a part whose box is not its plate — a clip plate's clip, a
   bracket's arm, anything that hangs past or below where it stands — goes
@@ -3752,6 +3769,13 @@ bash tools/probe.sh grabseat_probe
 # droop marked with its share in Check stability, pose_model and Pose (the
 # pin's row), gone once swung up 60°
 bash tools/probe.sh posehold_probe
+# a joint locked: a minifig's knee, a Technic hinge and a sliding axle, each
+# locked (its row's Lock, pose_model lock=true), refused by name through a drag
+# of either part, Grab, R, a handle, Simulate, move_part and pose_model; saved,
+# reopened, edited elsewhere and undone byte for byte; unlocked, each moves
+bash tools/probe.sh jointlock_probe
+# the lock's work a frame on Orthanc, each act under 16 ms
+bash tools/probe.sh jointlock_time_probe
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
@@ -3766,6 +3790,9 @@ left, the gears and bricks to its right),
 "grabseat: gap run done" and fails nothing),
 `posehold` says "posehold: each friction joint weighed against its kind's
 measured hold, ..." (exit 0, no `FAIL`),
+`jointlock` says "jointlock: each joint locked held through a drag of either
+part, ..." (exit 0, no `FAIL`), `jointlock_time` says "jointlock_time: on
+Orthanc no frame does more than 16 ms of the lock's work",
 `balljoints` says "balljoints: a ball joint is seated by hand as the real sets
 seat it, ..." (look at `shots/balljoints/1280x720/2_seated.png`: the red
 socket plate on the towball out in front of the grey stand, lined up),

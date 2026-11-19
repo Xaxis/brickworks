@@ -103,6 +103,10 @@ var hose_worst_ms: float = 0.0
 var _hose_fits: Dictionary = {}
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
+## Grabs taken while this is set ([method held_of]) take a locked joint as
+## if unlocked (Grab.locks_off): Motions' list of joints sets it while it
+## asks which joints there are, so a locked one keeps its row. Main thread.
+var locks_off: bool = false
 var _judge: Balance = null
 var _judge_revision: int = -1
 var _mark: BalanceMark = null
@@ -1294,6 +1298,7 @@ func _taken(ids: Array) -> Grab:
 	held.bodies = _bodies
 	held.hose_fits = _hose_fits
 	held.shared_mechanism = _mechanism
+	held.locks_off = locks_off
 	var selection: Dictionary = {}
 	if ids.size() > 1:
 		for key: int in ids:
@@ -1378,6 +1383,8 @@ func picked_of(ids: Array) -> Grab:
 	held.builder = builder
 	held.library = library
 	held.bodies = _bodies
+	# Which joint it is and its sides are the same locked or not.
+	held.locks_off = true
 	var selection: Dictionary = {}
 	if ids.size() > 1:
 		for key: int in ids:

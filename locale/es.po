@@ -15524,3 +15524,15 @@ msgstr "Tirador para girar"
 
 msgid "Program for the motors"
 msgstr "Programa para los motores"
+
+msgid "Unlock"
+msgstr "Desbloquear"
+
+msgid "Joints locked"
+msgstr "Articulaciones bloqueadas"
+
+msgid "Locked, it keeps its angle and its slide: a drag, R, a handle, Simulate and Claude are refused until it is unlocked"
+msgstr "Bloqueada, mantiene su ángulo y su deslizamiento: arrastrar, R, un tirador, Simular y Claude se rechazan hasta que se desbloquee"
+
+msgid "Let it move again: a drag, R, a handle, Simulate and Claude may turn or slide it"
+msgstr "Dejar que se mueva de nuevo: arrastrar, R, un tirador, Simular y Claude pueden girarla o deslizarla"

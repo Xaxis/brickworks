@@ -1089,6 +1089,9 @@ func movable(most: int = 16) -> Array:
 		moving.append([order, ids.size(), int(body), by])
 	moving.sort_custom(func(x: Array, y: Array) -> bool:
 		return int(x[0]) < int(y[0]) or (int(x[0]) == int(y[0]) and int(x[1]) > int(y[1])))
+	# A joint locked is listed as it would move unlocked: its row is where
+	# it is unlocked (jointlock).
+	grabbing.locks_off = true
 	for one: Array in moving:
 		if _movable.size() >= most:
 			break
@@ -1101,6 +1104,7 @@ func movable(most: int = 16) -> Array:
 		if not moves_at_all(joint):
 			continue
 		_movable.append(joint)
+	grabbing.locks_off = false
 	return _movable
 
 

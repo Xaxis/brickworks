@@ -50,6 +50,9 @@ class Joint extends RefCounted:
 	## A ball's turn: "x", "y" or "z", the model's axis it turns about;
 	## empty for a hinge or a turntable.
 	var turn: String = ""
+	## The two parts it turns between, [one of its own, the one outside it]
+	## (Builder._joint_of): what a lock of it locks (Motions.Lock).
+	var pair: Array = []
 
 	## "turntable" about the upright, "ball" for a ball's turn, "hinge"
 	## otherwise.
@@ -112,6 +115,10 @@ func find() -> int:
 			joint.axis = (found["axis"] as Vector3).normalized() if turn.is_empty() \
 				else BALL_AXES[turn]
 			joint.partners = found["partners"]
+			joint.pair = found.get("pair", [])
+			if joint.pair.is_empty() and not (found["partners"] as Dictionary).is_empty():
+				# A ball says no pair: a part of its own and one it is on.
+				joint.pair = [int(ids[0]), int((found["partners"] as Dictionary).keys()[0])]
 			joint.ids = ids
 			joint.depth = Assemblies.segments(path).size()
 			joints.append(joint)
@@ -181,12 +188,37 @@ func stand(wanted: Dictionary) -> void:
 			world.move_brick(int(brick_id), placed[brick_id])
 
 
+## Why the last [method settle] did not turn its joint: the words of a joint
+## locked it would have turned (jointlock); "" when it turned, or stopped
+## only where it ran into something.
+var refused: String = ""
+
+
+## The words of the joint locked (Motions.locks) that turning [param one]
+## would turn: one of its two parts in what [param one] turns and the other
+## not; "" for none. A ball's three turns are one joint, locked together.
+func lock_words(one: Joint) -> String:
+	var motions: Motions = world.motions if world != null else null
+	if motions == null or motions.locks.is_empty():
+		return ""
+	var turning: Dictionary = {}
+	for brick_id: int in one.ids:
+		turning[brick_id] = true
+	var lock: Motions.Lock = motions.lock_split(turning, world, builder)
+	return "" if lock == null else Motions.lock_words(lock, world, library, builder)
+
+
 ## Set one joint to [param degrees], as far towards it as it has room for
 ## from where it was at [param was] degrees: one step to undo, the parts
-## where the lattice says they are. Returns the angle it reached.
+## where the lattice says they are. Returns the angle it reached; [param
+## was] and [member refused] said when a lock holds it.
 func settle(path: String, degrees: float, was: float) -> float:
+	refused = ""
 	var one: Joint = joint(path)
 	if one == null:
+		return was
+	refused = lock_words(one)
+	if not refused.is_empty():
 		return was
 	var before: Dictionary = angles()
 	before[path] = was
@@ -381,6 +413,9 @@ func sweep(animation: PoseAnimation = null, step: float = 15.0) -> Array:
 	var now: Dictionary = angles()
 	var start: Dictionary = transforms_for(now)
 	for one: Joint in joints:
+		# A joint locked is not swung: it keeps its angle (jointlock).
+		if not lock_words(one).is_empty():
+			continue
 		for way: float in [1.0, -1.0]:
 			var turned: float = step
 			# The other way stops a step short of half a turn: that one is

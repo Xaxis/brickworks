@@ -677,10 +677,16 @@ func definitions() -> Array:
 				+ "answer says where it stopped if something is in the way, and whether the pose "
 				+ "holds its own weight: each friction joint (a Technic ball, a friction pin) "
 				+ "that droops under what hangs on it, with the share it holds, and the joints "
-				+ "whose hold nobody has measured."),
+				+ "whose hold nobody has measured. lock=true locks the joint (after degrees=, if "
+				+ "given): it keeps its angle and its slide, and a drag of either part, R, a handle, "
+				+ "Simulate's driver, move_part and pose_model are refused until lock=false unlocks "
+				+ "it; saved with the model, and the answer says what a turn of it now does. A model "
+				+ "with one joint needs no joint=; a drag's joint may be named by a part of it (#12)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"joint": {"type": "string", "description": "its number or name in the list"},
 				"degrees": {"type": "number"},
+				"lock": {"type": "boolean", "description": "true locks the joint where it stands "
+					+ "(after degrees=); false unlocks it (before degrees=)"},
 			}},
 		},
 		{
@@ -2962,6 +2968,17 @@ const STUCK_DEGREES: Array[float] = [10.0, 90.0]
 
 func _pose(input: Dictionary) -> String:
 	var panel: PosePanel = app.get("_pose")
+	# lock= checked before anything is read or written (jointlock): false is
+	# the same as absent while nothing is locked.
+	if input.has("lock"):
+		if not input["lock"] is bool:
+			return "lock= is true (lock the joint) or false (unlock it). Nothing was changed."
+		var motions_now: Motions = (app.get("_world") as BrickWorld).motions
+		if not bool(input["lock"]) and (motions_now == null or motions_now.locks.is_empty()):
+			input = input.duplicate()
+			input.erase("lock")
+	if input.has("degrees") and not (input["degrees"] is float or input["degrees"] is int):
+		return "degrees= is a number, -180 to 180. Nothing was changed."
 	# The assemblies a design named are sub-models only once tagged, as a
 	# save tags them; until then nothing in it could turn.
 	if assistant != null:
@@ -2979,9 +2996,18 @@ func _pose(input: Dictionary) -> String:
 		drags = await _drag_joints(grabbing, joints)
 	if input.has("joint") and not drags.is_empty():
 		var picked: String = str(input["joint"]).strip_edges().trim_prefix("#")
+		# A drag joint by a part of it ("#357"), as a session read its number.
+		if picked.is_valid_int() and int(picked) > joints.size() + drags.size():
+			for n: int in drags.size():
+				if (drags[n][2] as PackedInt64Array).has(int(picked)):
+					picked = str(joints.size() + n + 1)
 		if picked.is_valid_int() and int(picked) > joints.size() \
 				and int(picked) <= joints.size() + drags.size():
-			return await _pose_drag(grabbing, drags[int(picked) - joints.size() - 1], input)
+			var drag: Array = drags[int(picked) - joints.size() - 1]
+			if not input.has("lock"):
+				return await _pose_drag(grabbing, drag, input)
+			return await _with_lock(panel, _drag_sides(drag), input, func() -> String:
+				return await _pose_drag(grabbing, drag, input))
 	if joints.is_empty() and drags.is_empty():
 		var world: BrickWorld = app.get("_world")
 		var builder: Builder = app.get("_builder")
@@ -2992,6 +3018,15 @@ func _pose(input: Dictionary) -> String:
 		var motors: String = _motors_driven(world, app.get("_store"), app.get("_library"))
 		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls) \
 			+ ("" if motors.is_empty() else " " + motors) + await _pose_holds()
+	# A model with one joint: degrees= and lock= need no joint= (g2's session
+	# listed the joints only to read "1").
+	if not input.has("joint") and (input.has("degrees") or input.has("lock")):
+		if joints.size() + drags.size() == 1:
+			var one: Dictionary = input.duplicate()
+			one["joint"] = "1"
+			return await _pose(one)
+		return ("degrees= and lock= need joint=: this model has %d joints, listed by pose_model with no "
+			+ "arguments. Nothing was changed.") % (joints.size() + drags.size())
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0
@@ -3009,9 +3044,10 @@ func _pose(input: Dictionary) -> String:
 					break
 			if held:
 				stuck += 1
-			said.append("  %d. %s, on its %s, at %d° (%d parts)%s" % [n + 1,
+			said.append("  %d. %s, on its %s, at %d° (%d parts)%s%s" % [n + 1,
 				one.label(), one.kind(), roundi(one.angle), one.ids.size(),
-				", with no room to turn 10° or 90° either way" if held else ""])
+				", with no room to turn 10° or 90° either way" if held else "",
+				", locked" if not panel.poser.lock_words(one).is_empty() else ""])
 		for n: int in drags.size():
 			said.append("  %d. %s" % [joints.size() + n + 1, _drag_joint_words(grabbing, drags[n])])
 		if stuck > 0:
@@ -3029,12 +3065,25 @@ func _pose(input: Dictionary) -> String:
 	if joint == null:
 		return "No joint %s: there are %d, numbered in pose_model's list." % [asked,
 			joints.size() + drags.size()]
+	if input.has("lock"):
+		var moving: Dictionary = {}
+		for id: int in joint.ids:
+			moving[id] = true
+		var posed: Dictionary = input.duplicate()
+		posed.erase("lock")
+		return await _with_lock(panel, [moving, joint.pair], input, func() -> String:
+			return await _pose(posed) if posed.has("degrees") else "%s is at %d°." % [joint.label(),
+				roundi(joint.angle)])
 	if not input.has("degrees"):
-		return "%s is at %d°. Give degrees= to swing it." % [joint.label(), roundi(joint.angle)]
+		var held_said: String = panel.poser.lock_words(joint)
+		return "%s is at %d°%s. Give degrees= to swing it." % [joint.label(), roundi(joint.angle),
+			"" if held_said.is_empty() else "; " + held_said]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
 	var world: BrickWorld = app.get("_world")
 	var before: Vector3 = _middle_of(world, joint.ids)
 	var reached: float = panel.set_angle(joint.path, wanted)
+	if not panel.poser.refused.is_empty():
+		return "%s. Nothing was changed." % panel.poser.refused
 	# Which way it went, in the plates look_at_model counts: a turn goes by
 	# the right hand about its axis, so +30° about x takes a +z end down.
 	# f1's session read edit_model's pitch (+ lifts the +z end) into it,
@@ -3102,11 +3151,14 @@ func _drag_joint_words(grabbing: GrabDrag, drag: Array) -> String:
 		var built: float = (held as Grab).from_built()
 		if not is_nan(built) and roundi(wrapf(built, -180.0, 180.0)) != 0:
 			angle = "%d° from where it was built" % roundi(wrapf(built, -180.0, 180.0))
-	return "#%d %s%s, %s at %s, %s (%d part%s)%s" % [int(ids[0]),
+	var locked: bool = world.motions != null and not world.motions.locks.is_empty() \
+		and world.motions.lock_split(_drag_sides(drag)[0], world, app.get("_builder")) != null
+	return "#%d %s%s, %s at %s, %s (%d part%s)%s%s" % [int(ids[0]),
 		Inventory._tidy(info.name) if info != null else brick.part_id if brick != null else "?",
 		" and what is built on it" if ids.size() > 1 else "", link.words(),
 		GrabDrag.at_words(link.point), angle, ids.size(), "" if ids.size() == 1 else "s",
-		", clicking every %s°" % Balance.tidy(link.detent) if link.detent > 0.0 else ""]
+		", clicking every %s°" % Balance.tidy(link.detent) if link.detent > 0.0 else "",
+		", locked" if locked else ""]
 
 
 ## pose_model joint= one of [method _drag_joints]: turned to degrees= from
@@ -3128,6 +3180,53 @@ func _pose_drag(grabbing: GrabDrag, drag: Array, input: Dictionary) -> String:
 	var said: String = await grabbing.for_session({"part": part, "degrees": wanted - now})
 	return "%s, to %d° from where it was built:\n%s%s" % [part, roundi(wanted), said,
 		await _pose_holds()]
+
+
+## The parts a drag joint ([method _drag_joints]) turns, and the two it turns
+## between, [its own, the one it is on]: what its lock locks.
+static func _drag_sides(drag: Array) -> Array:
+	var link: Bodies.Link = drag[1]
+	var ids: PackedInt64Array = drag[2]
+	var moving: Dictionary = {}
+	for id: int in ids:
+		moving[id] = true
+	for pair: Array in link.pairs:
+		if moving.has(int(pair[0])) and not moving.has(int(pair[1])):
+			return [moving, [int(pair[0]), int(pair[1])]]
+		if moving.has(int(pair[1])) and not moving.has(int(pair[0])):
+			return [moving, [int(pair[1]), int(pair[0])]]
+	return [moving, []]
+
+
+## pose_model's lock= on the joint that turns [param sides] ([moving, pair]):
+## [param input]'s lock=false unlocks it before [param pose] runs, true locks
+## it after, each one step to undo; and [param pose]'s answer with what the
+## lock did. A joint the lock holds refuses [param pose] with its words.
+func _with_lock(panel: PosePanel, sides: Array, input: Dictionary, pose: Callable) -> String:
+	var lines := PackedStringArray()
+	if input.has("lock") and not bool(input["lock"]):
+		lines.append(panel.set_lock(sides[0], sides[1], false))
+	if input.has("degrees") or not input.has("lock"):
+		lines.append(await pose.call())
+	if input.has("lock") and bool(input["lock"]):
+		var refused: bool = lines.size() > 0 and lines[lines.size() - 1].contains(Motions.UNLOCK_WORDS)
+		if not refused:
+			lines.append(panel.set_lock(sides[0], sides[1], true))
+			# What a turn of it now does, tried on a drag's grab, nothing moved.
+			var turned: Variant = (app.get("_grab_drag") as GrabDrag).held_of(Array(sides[1]).slice(0, 1)) \
+				if (sides[1] as Array).size() == 2 else null
+			if turned is String and str(turned).contains(Motions.UNLOCK_WORDS):
+				lines.append("Tried just now: a turn of it (a drag, move_part, pose_model) is refused, nothing moved: %s." % (
+					str(turned).get_slice(":", 0)))
+	# Which others are locked, so a session unlocking one knows what still holds.
+	var world: BrickWorld = app.get("_world")
+	if input.has("lock") and world.motions != null and not world.motions.locks.is_empty():
+		var named := PackedStringArray()
+		for lock: Motions.Lock in world.motions.locks.slice(0, 10):
+			named.append(Motions.lock_name(lock, world, app.get("_library"), app.get("_builder")))
+		var more: int = world.motions.locks.size() - named.size()
+		lines.append("Locked now: %s%s." % [", ".join(named), " and %d more" % more if more > 0 else ""])
+	return "\n".join(lines)
 
 
 ## Whether the model holds its pose as it stands now (posehold), as Pose
