@@ -160,7 +160,10 @@ const ACTS = [
     file: "src/ui/page_editor.gd (page_done)" },
   // phonefingers: two fingers turning, pinching and twisting on the car, fast
   // and slow, undo nothing (a tap is short and still: CadCamera.TAP_MS, TAP_POINTS).
-  { id: "fingers_still", model: "car", what: "100 two-finger turns, pinches and twists on the car undo nothing", desktop: 0,
+  // Its own half hour: a move of two fingers is a frame, and at 390 x 844 in
+  // SwiftShader on a loaded box the 930 of them outran ten minutes (11-19).
+  { id: "fingers_still", model: "car", ms: 30 * 60 * 1000,
+    what: "100 two-finger turns, pinches and twists on the car undo nothing", desktop: 0,
     how: "the view turned and zoomed: no press", file: "src/camera/cad_camera.gd (_gesture_ended: a tap is short and still)" },
   { id: "split_merge", model: "empty", what: "a 2 x 4 plate split, and merged back", desktop: 4,
     how: "the plate clicked, Alt+S; Ctrl+A, Alt+M (walk `round2`: 1 key each)",
@@ -365,7 +368,7 @@ async function walk(width, height, ratio, result) {
       try {
         result = await Promise.race([
           P.run(act.id),
-          new Promise((done) => setTimeout(() => done({ done: false, timedOut: true }), ACT_MS)),
+          new Promise((done) => setTimeout(() => done({ done: false, timedOut: true }), act.ms || ACT_MS)),
         ]);
       } catch (trouble) {
         result = { done: false, threw: String(trouble.stack || trouble).slice(0, 400) };
@@ -384,7 +387,7 @@ async function walk(width, height, ratio, result) {
       // [slow]: what an act done by finger spent its extra taps on, when it
       // was not only More's three.
       const why = result.threw ? `it could not run: ${result.threw.split("\n")[0]}`
-        : result.timedOut ? `it ran out of time (${Math.round(ACT_MS / 1000)} s)`
+        : result.timedOut ? `it ran out of time (${Math.round((act.ms || ACT_MS) / 1000)} s)`
           : over ? `${tally.n} taps for the desktop's ${act.desktop}${tally.more
             ? `, the command three taps deep in More (${tally.said.filter((l) => / the row$/.test(l)).join("; ")})` : ""}`
             + (result.slow ? `; ${result.slow}` : "")
@@ -1613,6 +1616,13 @@ function person(page, cdp, width, height, size, choosers) {
       }
       await page.waitForTimeout(800);
       const after = await state();
+      // The view put back, not counted: a hundred gestures leave it looking
+      // from under the floor or past the model, and New keeps the view, so
+      // every later act's tap on a part met none (the iPhone walk, 11-19).
+      await untimed(async () => {
+        await page.keyboard.press("0");
+        await page.waitForTimeout(1500);
+      });
       const fired = ["two", "three", "double"].map((k) => (after.fingers?.[k] || 0) - (before.fingers?.[k] || 0));
       const undone = (before.history?.[0] || 0) - (after.history?.[0] || 0);
       note(`${kinds.turn} turns, ${kinds.pinch} pinches, ${kinds.twist} twists: taps of two ${fired[0]}, of three ${fired[1]}, `
