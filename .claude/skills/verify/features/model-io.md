@@ -158,9 +158,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   change the model (CommandSocket, Assistant), a floor put, adopted or
   released, and a restore. Save as another name always works the model out.
   **Check:** kbkeep3's kbk3u/kbx3/kbe3 probes
-  (bench/results/kbkeep3-2026-11-20/tools): 187 files saved twice unedited,
-  byte for byte, every save by the fast path; 21 acts on 6 bases, each save
-  pre261's bytes or the file as opened; edited saves pre261's bytes.
+  (bench/results/kbkeep3-2026-11-20/tools): 185 files (the 173 and 12 that
+  rel-m314/m315 saved; 2 empty New files have nothing to save) saved twice
+  unedited, byte for byte, every save by the fast path; 21 acts on 6 bases,
+  each save pre261's bytes or the file as opened (placing pre261's parts
+  within 0.02); 42 planner models edited three ways, pre261's bytes.
   **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
   each as someone else's file and as the app's own: LDView's rule, read in the
   probe apart from LdrModel (with the app's one rule for a library's shortcut
