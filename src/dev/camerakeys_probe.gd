@@ -616,11 +616,17 @@ func _picked() -> void:
 	await _press_key(strip, 1, false)
 	var name_field: LineEdit = _panel.get("_name")
 	name_field.grab_focus()
+	name_field.caret_column = 0
 	await _frames(2)
 	await _key(KEY_DELETE)
-	_check("Delete typed in the name field takes no key out", _motion_lines(_store.to_text("Doors")) == before)
+	# The field's own: its first letter goes, no key does. The name is put
+	# back before the field is left, or leaving it renames the motion.
+	_check("Delete typed in the name field is the field's (\"%s\") and takes no key out" % name_field.text,
+		name_field.text == "pen the doors" and _motion_lines(_store.to_text("Doors")) == before)
+	name_field.text = "Open the doors"
 	await _press_key(strip, 1, false)
-	var outside := Vector2(_panel.get_global_rect().position.x - 120.0, root.get_visible_rect().size.y * 0.5)
+	# In the view, right of the panel, over the model (left of it is the parts bin).
+	var outside := Vector2(_panel.get_global_rect().end.x + 200.0, root.get_visible_rect().size.y * 0.5)
 	await _move(outside, 0)
 	await _button(outside, true)
 	await _button(outside, false)

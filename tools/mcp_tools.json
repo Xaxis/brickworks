@@ -4890,10 +4890,84 @@
       "readOnlyHint": false,
       "title": "Keep a motion in the model"
     },
-    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. Or path= the whole model driven along the ground (legs: straight studs, left or right degrees), its wheels turning as they roll and its steering into the corners. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
+    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. Or path= the whole model driven along the ground (legs: straight studs, left or right degrees), its wheels turning as they roll and its steering into the corners. camera= keys the camera in it (alone, or with the rest; given alone for a motion it has, its joints are kept): turntable=true once round the model, or keys=. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "camera": {
+          "additionalProperties": false,
+          "description": "the camera keyed in the motion: turntable=true, or keys=; turn=, tilt= and away= where the window's view stands when omitted (a turntable's too), at= the model's middle",
+          "properties": {
+            "away": {
+              "description": "a turntable's distance: LDU from the model's middle",
+              "type": "number"
+            },
+            "keys": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "description": "the point it looks at, LDraw's x y z (LDU)",
+                    "items": {
+                      "type": "number"
+                    },
+                    "type": "array"
+                  },
+                  "away": {
+                    "description": "LDU from the point it looks at",
+                    "type": "number"
+                  },
+                  "fov": {
+                    "description": "its lens top to bottom, degrees, 5 to 120",
+                    "type": "number"
+                  },
+                  "how": {
+                    "enum": [
+                      "ease",
+                      "linear",
+                      "hold"
+                    ],
+                    "type": "string"
+                  },
+                  "t": {
+                    "description": "seconds from the start",
+                    "type": "number"
+                  },
+                  "tilt": {
+                    "description": "degrees above level, -89 to 89",
+                    "type": "number"
+                  },
+                  "turn": {
+                    "description": "degrees round the upright from the model's front; 90 its +x side",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "t"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "remove": {
+              "description": "the camera's keys taken out: the view is the person's",
+              "type": "boolean"
+            },
+            "seconds": {
+              "description": "a turntable's length when the motion has none; 8 when omitted",
+              "type": "number"
+            },
+            "tilt": {
+              "description": "a turntable's height: degrees above level, -89 to 89",
+              "type": "number"
+            },
+            "turntable": {
+              "description": "two keys: once round the model's middle at one speed over the motion (seconds= when it has no length), its first frame and its last the same",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
         "driver": {
           "additionalProperties": false,
           "properties": {
@@ -5081,10 +5155,84 @@
       "readOnlyHint": false,
       "title": "Render a motion"
     },
-    "description": "Render one of the model's motions as an animation, a WebP and an MP4 (where ffmpeg is installed) where Render saves, framed on what it moves, without changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= 480x300 or 720p; view= where the camera stands, hero (three-quarter from the front left, the default) or back for what moves at the back. Needs the app in a window, and is a job (job gives the result, with six of its frames in one picture, the first and the last among them).",
+    "description": "Render one of the model's motions as an animation, a WebP and an MP4 (where ffmpeg is installed) where Render saves, framed on what it moves, without changing the model; through its camera keys where it has them. camera= keys the camera first, kept in the motion (one undo step), a motion of that name made for it when the model has none: {\"turntable\": true} films the model turned once round in this one call. reverse= and sequence= as play_motion; fps= 12 or 24; size= 480x300 or 720p; view= where the camera stands, hero (three-quarter from the front left, the default) or back for what moves at the back. Needs the app in a window, and is a job (job gives the result, with six of its frames in one picture, the first and the last among them).",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "camera": {
+          "additionalProperties": false,
+          "description": "the camera keyed in the motion: turntable=true, or keys=; turn=, tilt= and away= where the window's view stands when omitted (a turntable's too), at= the model's middle",
+          "properties": {
+            "away": {
+              "description": "a turntable's distance: LDU from the model's middle",
+              "type": "number"
+            },
+            "keys": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "description": "the point it looks at, LDraw's x y z (LDU)",
+                    "items": {
+                      "type": "number"
+                    },
+                    "type": "array"
+                  },
+                  "away": {
+                    "description": "LDU from the point it looks at",
+                    "type": "number"
+                  },
+                  "fov": {
+                    "description": "its lens top to bottom, degrees, 5 to 120",
+                    "type": "number"
+                  },
+                  "how": {
+                    "enum": [
+                      "ease",
+                      "linear",
+                      "hold"
+                    ],
+                    "type": "string"
+                  },
+                  "t": {
+                    "description": "seconds from the start",
+                    "type": "number"
+                  },
+                  "tilt": {
+                    "description": "degrees above level, -89 to 89",
+                    "type": "number"
+                  },
+                  "turn": {
+                    "description": "degrees round the upright from the model's front; 90 its +x side",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "t"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "remove": {
+              "description": "the camera's keys taken out: the view is the person's",
+              "type": "boolean"
+            },
+            "seconds": {
+              "description": "a turntable's length when the motion has none; 8 when omitted",
+              "type": "number"
+            },
+            "tilt": {
+              "description": "a turntable's height: degrees above level, -89 to 89",
+              "type": "number"
+            },
+            "turntable": {
+              "description": "two keys: once round the model's middle at one speed over the motion (seconds= when it has no length), its first frame and its last the same",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
         "fps": {
           "enum": [
             12,
