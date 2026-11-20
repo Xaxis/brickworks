@@ -56,13 +56,16 @@ const accountOf = (request) => String(request.query?.account || "").toLowerCase(
 // The panel's more.
 
 /// An account's lists, comments, photos and challenge entries, newest first;
-/// each null where its table is not there.
+/// each null where its table is not there. And how many people blocked it
+/// (supabase/block.sql), never who: read only, for the owner to weigh
+/// beside its reports.
 export async function personMore(account) {
-  const [lists, photos, more] = await Promise.all([
+  const [lists, photos, more, blockedBy] = await Promise.all([
     known(db(`model_collections?owner=eq.${account}&select=id,name,public,updated_at&order=updated_at.desc&limit=50`)),
     known(db(`build_photos?account=eq.${account}&select=id,model,words,at,hidden_at,removed_at&order=at.desc&limit=50`)),
     // The comments' and challenges' tables are the server's through functions alone.
     known(db("rpc/admin_person_more", { method: "POST", body: { p_account: account } })),
+    known(db("rpc/block_count_against", { method: "POST", body: { p_account: account } })),
   ]);
   const comments = more?.comments ?? null;
   const entries = more?.entries ?? null;
@@ -74,6 +77,7 @@ export async function personMore(account) {
     photos: photos && photos.map((one) => ({ id: one.id, model: one.model, words: one.words ?? null, at: one.at,
       state: one.removed_at ? "taken out" : one.hidden_at ? "hidden" : "shown" })),
     entries,
+    blocked_by: Number.isInteger(blockedBy) ? blockedBy : null,
   };
 }
 
@@ -100,6 +104,11 @@ export async function exportAccount(request, response) {
   const followers = more["follows.followed"] ?? (tables["follows.followed"] || []).length;
   delete tables["follows.followed"];
   delete more["follows.followed"];
+  // Who blocked this account is theirs alone, and it is never told: the
+  // export says nothing of it, not even how many (supabase/block.sql). Whom
+  // it blocked is its own, and stays (blocks.blocker).
+  delete tables["blocks.blocked"];
+  delete more["blocks.blocked"];
   // The sets in its lists (lists1's collection_sets, its own sets among
   // them): keyed to a list, not to the account, so admin_export's search by
   // key to auth.users does not find them.

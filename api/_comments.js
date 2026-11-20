@@ -61,6 +61,14 @@
 // Notifications. Each comment says whom it named (mentions: [{handle,
 // name}]), which the page links; an @handle nobody was told of stays
 // words. Before the file a comment names nobody, and goes as ever.
+//
+// A block (2026-11-19, supabase/block.sql, api/_blocks.js): the comments of
+// somebody a model's owner blocked are hidden on it from everybody but
+// their writer, who sees them as before; whoever you blocked, their
+// comments are hidden from you on every model; a comment's replies go with
+// it. Neither of two people one of whom blocked the other comments on the
+// other's models, answers the other's comments, or names the other: the
+// one who blocked is told why, the one blocked only that it cannot be done.
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
@@ -70,6 +78,8 @@ import { Unacceptable, count } from "./_directory.js";
 import { mentionsIn } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
+import { blockedHandles, blockedModels, commentsShown, hiddenComments, refuseFor, rowsWithout, standing, unnameable }
+  from "./_blocks.js";
 
 export const MOST_CHARACTERS = 1000;
 // How often, as comments.sql counts it (may_act): [an hour, a day].
@@ -195,10 +205,13 @@ export function commentSaid(comment, asked, newest, versions) {
 /// before comment_mentions.sql, nor when it could not be asked: the comment
 /// is kept whatever this says.
 async function mention(who, id, text) {
-  const handles = mentionsIn(text);
+  const named = mentionsIn(text).slice(0, 12);
+  // Nobody who blocked the writer, nor whom the writer blocked, is named.
+  const barred = named.length ? await unnameable(who, named) : new Set();
+  const handles = named.filter((handle) => !barred.has(handle));
   if (!handles.length) return [];
   try {
-    const said = await call("comment_mention", { account: who, comment_id: id, handles: handles.slice(0, 12) }, () => null);
+    const said = await call("comment_mention", { account: who, comment_id: id, handles }, () => null);
     return Array.isArray(said?.mentioned) ? said.mentioned.map((one) => ({ handle: String(one.handle), name: String(one.name) })) : [];
   } catch (problem) {
     console.error(`comments: mentions: ${String(problem?.message || problem).slice(0, 160)}`);
@@ -236,8 +249,16 @@ async function versionsOf(id) {
 /// What [who] may do on [id]: {signed_in, may_write, why_not, owner}.
 async function youOn(id, who, owner) {
   if (!who) return { signed_in: false, may_write: false, why_not: WORDS.sign_in[1], owner: false };
-  const trouble = await call("comment_trouble", { account: who, model_id: id }, () => "not_yet");
+  const [trouble, block] = await Promise.all([call("comment_trouble", { account: who, model_id: id }, () => "not_yet"),
+    owner ? null : standing(who, { model: id })]);
   if (trouble === "not_yet") return { signed_in: true, may_write: false, why_not: NOT_YET, owner };
+  if (!trouble && block) {
+    try {
+      refuseFor(block, "comment");
+    } catch (refusal) {
+      return { signed_in: true, may_write: false, why_not: refusal.message, owner };
+    }
+  }
   return { signed_in: true, may_write: !trouble, why_not: trouble ? WORDS[trouble]?.[1] || "" : "", owner };
 }
 
@@ -260,7 +281,9 @@ export async function listComments(request, response) {
   const newest = versions[0].n;
   const asked = given ? Number(given) : newest;
   if (!versions.some((one) => one.n === asked)) throw refused("no_version");
-  const comments = await withMentions((on.comments || []).map((one) => commentSaid(one, asked, newest, versions)));
+  // Without those a block hides from the caller, and their threads' replies.
+  const hidden = await hiddenComments(id, who);
+  const comments = await withMentions(commentsShown((on.comments || []).map((one) => commentSaid(one, asked, newest, versions)), hidden));
   return response.status(200).json(await withFaces({ model: id, ready: true, version: asked, newest, open: on.open === true,
     replies: on.threads === true, count: comments.length, comments, you: await youOn(id, who, on.owner === true) }));
 }
@@ -284,6 +307,7 @@ export async function addComment(request, response, { origin }) {
   }
   const { text, trouble } = cleanComment(body.body);
   if (trouble) throw new Unacceptable(trouble);
+  refuseFor(await standing(who, { model: id }), "comment");
   const made = await call("add_comment", { account: who, model_id: id, at_version: version, at_step: step, said: text },
     notYet);
   if (made?.refused) throw refused(made.refused);
@@ -315,6 +339,7 @@ export async function addReply(request, response, { origin }) {
   if (!Number.isInteger(id) || id < 1) throw new Unacceptable("name the comment it answers: id, a number");
   const { text, trouble } = cleanComment(body.body);
   if (trouble) throw new Unacceptable(trouble);
+  refuseFor(await standing(who, { comment: id }), "reply");
   const made = await call("add_reply", { account: who, comment_id: id, said: text }, () => {
     throw new Unacceptable(REPLIES_NOT_YET, 503);
   });
@@ -493,16 +518,35 @@ export function renderCommentDigest(digest, origin) {
 /// recorded, never sent. COMMENT_MAIL=off sends nothing to anybody, and
 /// leaves what waits for a server that can. {digests: [{id, owner,
 /// state}]}.
+/// [digest] (claim_comment_digest's) without what its owner's blocks leave
+/// out of the page (supabase/block.sql): the comments hidden on their
+/// models, and the feed's rows by whom they blocked or about a model of
+/// theirs. A comment written just before the block is not mailed after it.
+async function digestShown(digest) {
+  const comments = Array.isArray(digest?.comments) ? digest.comments : [];
+  const feed = Array.isArray(digest?.feed) ? digest.feed : [];
+  const owner = digest?.owner || null;
+  const handles = owner ? await blockedHandles(owner) : new Set();
+  if (!handles.size) return { ...digest, comments, feed };
+  const models = [...new Set(comments.map((one) => String(one?.model || "")).filter(Boolean))];
+  const hidden = new Set((await Promise.all(models.map((model) => hiddenComments(model, owner)))).flatMap((ids) => [...ids]));
+  const gone = await blockedModels(owner, feed.map((row) => row?.model));
+  return { ...digest, comments: comments.filter((one) => !hidden.has(Number(one?.id))), feed: rowsWithout(feed, handles, gone) };
+}
+
 export async function sendCommentDigests({ origin, owner = null }) {
   const due = await call("claim_comment_digest", { for_owner: owner }, () => []);
   const done = [];
-  for (const digest of Array.isArray(due) ? due : []) {
+  for (const claimed of Array.isArray(due) ? due : []) {
+    const digest = await digestShown(claimed);
     const email = renderCommentDigest(digest, origin);
     const finish = (outcome) => db("rpc/finish_comment_digest", { method: "POST", body: {
       one: digest.digest, outcome, said_subject: email.subject, said_body: email.text, said_html: email.html } });
     // A test account's, or an orangecheck account's (api/orangecheck.js): its
     // address is made up, at a domain that takes no mail. Recorded, never sent.
-    if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))) {
+    // Or one whose every line came from somebody its owner blocked since.
+    if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))
+      || (!digest.comments.length && !digest.feed.length)) {
       await finish("dry");
       done.push({ id: digest.digest, owner: digest.owner, state: "dry" });
       continue;

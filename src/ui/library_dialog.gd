@@ -633,8 +633,16 @@ func _community(ask: Dictionary) -> Dictionary:
 	for key: String in ["kind", "size", "sort"]:
 		if not str(ask.get(key, "")).is_empty():
 			query.append("%s=%s" % [key, str(ask[key])])
+	# With the person's session once they are signed in, as the gallery's
+	# page asks (mine=1): nobody they blocked is in it (docs/SOCIAL.md
+	# section 9).
+	var account: Account = app.get("_account") as Account if app != null else null
+	var token: String = await account.access_token() if account != null and account.signed_in() else ""
+	if not token.is_empty():
+		query.append("mine=1")
+	var headers := PackedStringArray(["Authorization: Bearer " + token]) if not token.is_empty() else PackedStringArray()
 	var got: Dictionary = await books.fetch(Deployment.api_base() + "/api/share?" + "&".join(query),
-		512 * 1024) if books != null else {"code": 0, "bytes": PackedByteArray()}
+		512 * 1024, null, headers) if books != null else {"code": 0, "bytes": PackedByteArray()}
 	var json := JSON.new()
 	if int(got["code"]) != 200 or json.parse((got["bytes"] as PackedByteArray).get_string_from_utf8()) != OK \
 			or not json.data is Dictionary:

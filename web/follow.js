@@ -35,6 +35,11 @@
 // shown only when somebody is close. On your own page it speaks to you:
 // designers like you, to follow (socialtails, 2026-11-06).
 //
+// Block (2026-11-19, web/block.js): a profile's More menu has Block <name>
+// (button[data-block]), drawn here with Follow from the same answer: hidden
+// signed out and on your own page, Unblock where you blocked them. A block
+// lets go of the follow both ways, so Follow is drawn again as it stands.
+//
 // Everything is put on the page as text, said in the visitor's language
 // as the sign-in's dialogs say theirs (web/account.js say): a Follow button
 // is in First steps on any page, a copy or not.
@@ -42,6 +47,7 @@ import { askToSignIn, call, email, madeUp, say, signOut, signedIn, tellFeedCount
 import { earlyOn } from "/early.js";
 import { alikeSaid, langAt } from "/card.js";
 import { avatarHtml, iconHtml, number } from "/kit.js";
+import { blockPerson, drawBlockItem } from "/block.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
 // (web295): Follow is drawn at once and the server answers 260-390 ms
@@ -138,7 +144,11 @@ export async function followButton(button, known = null) {
   // latest of them is stale, and dropped (sifix, 2026-11-15: an ask still
   // out when Follow was pressed drew it unpressed after it went through).
   let asks = 0;
+  // A profile's Block item, beside Report it in its More menu.
+  const blockItem = named === "person" ? [...document.querySelectorAll(".profile-head button[data-block]")]
+    .find((one) => one.dataset.block === handle) || null : null;
   const draw = () => {
+    if (blockItem) drawBlockItem(blockItem, state);
     button.textContent = state.you_follow ? say("Following") : say("Follow");
     button.setAttribute("aria-pressed", state.you_follow ? "true" : "false");
     button.title = kind.title(state.you_follow);
@@ -181,6 +191,17 @@ export async function followButton(button, known = null) {
   // stands for them (yours hidden, Following where you follow).
   addEventListener("brickworks:signed-in-done", () => {
     if (!state.signed_in) ask().catch(() => null);
+  });
+  blockItem?.addEventListener("click", async () => {
+    tell("");
+    const on = !state.you_block;
+    blockItem.disabled = true;
+    const done = await blockPerson(handle, blockItem.dataset.blockName || handle, on);
+    blockItem.disabled = false;
+    const menu = blockItem.closest("details");
+    if (menu) menu.open = false;
+    if (done.ok) await ask().catch(() => null);
+    tell(done.said);
   });
   button.addEventListener("click", async () => {
     tell("");

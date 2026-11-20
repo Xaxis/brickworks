@@ -615,7 +615,14 @@ var lights_unread_words: String:
 ## kept to be written back (Motions.unread_words): "" for none.
 var motions_unread_words: String:
 	get:
-		return world.motions.unread_words() if world != null and world.motions != null else ""
+		if world == null or world.motions == null:
+			return ""
+		# And the lock lines it could not read (a joint locked, jointlock).
+		var said := PackedStringArray()
+		for words: String in [world.motions.unread_words(), world.motions.lock_unread_words()]:
+			if not words.is_empty():
+				said.append(words)
+		return "; ".join(said)
 ## What the last write said of the joints of the model's motions whose part
 ## is gone ([method _motion_lines]): "" for none.
 var motions_gone_words: String = ""
@@ -2047,6 +2054,11 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		for brick: BrickWorld.Brick in world.bricks():
 			world.motions.snapshot[brick.id] = brick.transform
 		_find_joints()
+	elif not world.motions.locks.is_empty():
+		_find_joints()
+	# A lock line naming parts the model has not got, nor has on its way:
+	# said once at the open, kept in the file as it is (jlreview L2).
+	world.motions.locks_unfound = _locks_unfound()
 	example = false
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
@@ -2818,7 +2830,11 @@ func _find_joints() -> void:
 	var motions: Motions = world.motions
 	if motions == null:
 		return
-	for joint: Motions.Joint in motions.joints:
+	var found_in: Array = motions.joints.duplicate()
+	# And the two parts of each joint locked (jointlock), found the same way.
+	for lock: Motions.Lock in motions.locks:
+		found_in.append_array([lock.a, lock.b])
+	for joint: Motions.Joint in found_in:
 		if joint.by == "part" and world.get_brick(joint.lead) == null:
 			# Only a part found: a lead of 0 is a joint not found since the
 			# file was read, its place the file's (Motions.part_at).
@@ -2853,11 +2869,59 @@ func _motion_lines() -> PackedStringArray:
 			continue
 		joint.lead = lead.id
 		joint.colour = lead.color_code
-		joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+		# Where it is built: a section broken out is written where it was
+		# pulled from, as its parts' own lines are ([method _source_asked]).
+		joint.place = (Motions.stands(lead, world).origin - back) * LdrModel.FLIP
 	motions_gone_words = _gone_words(motions, gone)
 	# Those it could not read are written where the file had them
 	# (_meta_families), not after the rest.
 	return motions.lines({}, false)
+
+
+## The model's joints locked as lines (Motions.lock_lines), each part's ref
+## as it stands now, as a motion's joint is written ([method _motion_lines]).
+## A lock whose part was taken off goes with it: an undo that brings the part
+## back brings the lock (Motions.lock_part follows it). One whose part was
+## never found since the file was read (still on its way, or a file's line
+## naming a part not there) is written as the file had it.
+func _lock_lines() -> PackedStringArray:
+	var motions: Motions = world.motions
+	if motions == null or motions.locks.is_empty():
+		return PackedStringArray()
+	var back: Vector3 = _lift_now()
+	var out := PackedStringArray()
+	for lock: Motions.Lock in motions.locks:
+		var kept: bool = true
+		for joint: Motions.Joint in [lock.a, lock.b]:
+			var id: int = Motions.lock_part(joint, world, builder)
+			if id == 0 and joint.lead == 0:
+				id = Motions.part_at(joint, world, back)
+			var part: BrickWorld.Brick = world.get_brick(id) if id != 0 else null
+			if part == null:
+				kept = kept and joint.lead == 0
+				continue
+			joint.lead = part.id
+			joint.colour = part.color_code
+			joint.place = (Motions.stands(part, world).origin - back) * LdrModel.FLIP
+		if kept:
+			out.append("%s %s" % [Motions.LOCK_META, lock.ref_words()])
+	return out
+
+
+## The lock lines, as the file has them, of each lock with a part the model
+## has not got and has not on its way ([method _awaits]): what the open
+## names (Motions.lock_unread_words).
+func _locks_unfound() -> PackedStringArray:
+	var out := PackedStringArray()
+	if world.motions == null:
+		return out
+	var back: Vector3 = _lift_now()
+	for lock: Motions.Lock in world.motions.locks:
+		for joint: Motions.Joint in [lock.a, lock.b]:
+			if joint.lead == 0 and not _awaits(joint, back):
+				out.append("%s %s" % [Motions.LOCK_META, lock.ref_words()])
+				break
+	return out
 
 
 ## Whether [param joint]'s part is one still on its way (the web fetches
@@ -3228,6 +3292,7 @@ func _metas_asked(source: SourceFile) -> Dictionary:
 		"motions": _motion_lines(),
 		"motions_unread": world.motions.unread.duplicate() if world.motions != null
 			else PackedStringArray(),
+		"locks": _lock_lines(),
 		"program": world.program,
 		"pins": pins.lines(world, _lift_now()), "set": from_set}
 
@@ -3378,6 +3443,10 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 	# ._settle_unread).
 	out.append(_family(metas, ["MOTION*"], asked["motions"], MetaIndex.HEAD, Callable(),
 		asked["motions_unread"]))
+	# The joints locked (jointlock): a lock read and not changed is its line
+	# as the file has it.
+	out.append(_family(metas, ["LOCK"], asked.get("locks", PackedStringArray()), MetaIndex.HEAD,
+		Motions.lock_parsed))
 	# The program for its motors (HubProgram): its line as the file has it
 	# when it says the same text, so an unedited save is the file.
 	var program: String = ProgramLine.line_of(str(asked.get("program", "")))

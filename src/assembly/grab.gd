@@ -158,6 +158,10 @@ var mechanism: Mechanism
 ## The model's gear trains read ahead (GrabDrag), the anchors their ground;
 ## read here for the piece grabbed when not.
 var shared_mechanism: Mechanism = null
+## Taken as if no joint were locked (jointlock): to find which joint a
+## locked one is and its two sides, so its row lists it and unlocks it.
+## Never for a move.
+var locks_off: bool = false
 ## What the press spent, ms: reading what moves, the sweeps, the gears.
 var begin_took: Dictionary = {}
 ## Why no gear turns with it, when none does: for a probe.
@@ -387,6 +391,11 @@ func _chosen() -> String:
 	moving.clear()
 	for key: int in bodies.parts_of(moving_bodies):
 		moving[key] = true
+	# A joint the person locked that this turns (jointlock), asked before a
+	# loop is worked out; what a loop moves besides is asked once it is.
+	var locked_said: String = _lock_holds(moving)
+	if not locked_said.is_empty():
+		return _refuse("locked", locked_said)
 	var ours: Dictionary = {}
 	for one: int in moving_bodies:
 		ours[one] = true
@@ -488,6 +497,13 @@ func _chosen() -> String:
 		if held_by != null:
 			linkage = null
 			return _refuse("locked", _worm_words(held_by))
+	# What a loop moves, a joint locked among it (jointlock): refused at the
+	# press, saying which joint and how to unlock it.
+	if loop != null:
+		var lock_said: String = _lock_holds(moving)
+		if not lock_said.is_empty():
+			linkage = null
+			return _refuse("locked", lock_said)
 	skip = moving.duplicate()
 	_near_kept.clear()
 	# A hose bends out of the way, and is not tested where it is carried.
@@ -614,6 +630,13 @@ func _chosen() -> String:
 	if linkage == null:
 		_gears()
 		_unmeshed()
+		# And what the gears turn: a gear on a locked axle holds its train.
+		if not coupled.is_empty() or not followers.is_empty():
+			var turned: Dictionary = coupled.duplicate()
+			turned.merge(followers)
+			var held_lock: String = _lock_holds(turned)
+			if not held_lock.is_empty():
+				return _refuse("locked", held_lock)
 	begin_took["gears"] = (Time.get_ticks_usec() - clock) / 1000
 	# A hose whose one end moves and other does not bends between them.
 	var going: Dictionary = moving.duplicate()
@@ -640,6 +663,37 @@ func _chosen() -> String:
 	if linkage != null:
 		said += ", in %s" % linkage.said()
 	return state
+
+
+## The two parts the joint [method pick] found turns or slides between, [one
+## that moves, the one it moves on], from its link's pairs: what a lock of it
+## locks (Motions.Lock). [] when it found no joint.
+func lock_pair() -> Array:
+	if state != "moves" or link == null or bodies == null:
+		return []
+	var ours: Dictionary = {}
+	for key: int in bodies.parts_of(moving_bodies):
+		ours[key] = true
+	for pair: Array in link.pairs:
+		var one: int = int(pair[0])
+		var other: int = int(pair[1])
+		if ours.has(one) and not ours.has(other):
+			return [one, other]
+		if ours.has(other) and not ours.has(one):
+			return [other, one]
+	return []
+
+
+## The words of the first joint locked (Motions.locks) that moving
+## [param ours] (brick id -> true) would turn or slide: one of its two parts
+## in it and the other not; "" for none. A train's gears turn each by its own
+## teeth, so they are asked apart from what is held.
+func _lock_holds(ours: Dictionary) -> String:
+	var motions: Motions = world.motions
+	if locks_off or motions == null or motions.locks.is_empty():
+		return ""
+	var lock: Motions.Lock = motions.lock_split(ours, world, builder)
+	return "" if lock == null else Motions.lock_words(lock, world, library, builder)
 
 
 ## Each joint between the moving bodies [param ours] (body -> true) and what

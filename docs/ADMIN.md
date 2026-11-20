@@ -55,6 +55,7 @@ three that stay outside, each with why.
 | An account deleted at its person's request | only by its person, in Settings | People › the account › Delete, its address typed again (audited; the same code as Settings' own, api/_erase.js) |
 | An account signed out everywhere | Supabase's dashboard | People › the account › Sign out everywhere (audited): every token, every Claude it let in, and every tab's connector address end within about 5 s |
 | An account's lists, comments, photos, challenge entries | each public page | People › the account |
+| How many people blocked an account (never who) | nowhere | People › the account › "Blocked by", read only (`block_count_against`, supabase/block.sql; docs/SOCIAL.md section 9) |
 | Finding anything | each section's own search | Find, in the console's bar: people, models, lists, reports, acts |
 | Beta, feedback, plans' reading, mail, connector, releases, backend health, the audit | the console (parts A and B) | unchanged |
 | Prices, trials, comps, promotions, refunds, payouts | Admission | **Outside**: real money stays the owner's yes at Admission; Plans reads it and links to each |
@@ -505,7 +506,11 @@ through functions the server alone may call.
   table with the rest counted, a value over 8 KB named by its size, never a
   secret column, nor oauth_codes, oc_sessions or the audit). Who follows
   the account is counted (`followers`), never named: a follow is its
-  follower's act. The hidden columns are never read, so a busy connector
+  follower's act. Who blocked the account is left out whole, not even
+  counted (`blocks.blocked`): a block is never told, and an export goes
+  to the person it is about; whom it blocked (`blocks.blocker`) is its own,
+  and stays. The panel's "Blocked by" says how many, for the owner alone
+  (2026-11-19). The hidden columns are never read, so a busy connector
   account exports in a fraction of a second (console3b.sql, after the
   review, 2026-11-15). The file holds the owner's own notes on the person
   (feedback, beta application and decision notes, signals), and the
