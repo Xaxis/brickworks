@@ -178,8 +178,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   order. Save as another name unedited writes the file with only its title and
   Name lines changed as a whole write under the new name writes them
   (`_renamed`; a title line the open read past, such as the gallery sports
-  car's "Model", takes the new name; an MPD's Name is its first section's and
-  stays, as its FILE line does). At that moment the file's own Name line, a
+  car's "Model", takes the new name; an MPD of more than one section keeps
+  its first section's Name, as a whole write does, and one of a single
+  section is named anew). At that moment the file's own Name line, a
   floor it never said and a step's parts in their order are kept. That holds
   for someone else's file too, whose writer put keepbytes' bk_odd "0
   !brickworks page new" in capitals. `tools/probe.sh kbx_probe` (headless,
