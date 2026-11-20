@@ -333,7 +333,7 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 			if shape == null:
 				out["missing"] = new_part
 				continue
-			at = _placed(brick.transform, library.mesh_for(brick.part_id), shape)
+			at = builder._in_place_of(brick.transform, library.mesh_for(brick.part_id), shape)
 		moving[brick_id] = {"part": new_part, "color": new_colour, "at": at, "follows": follows}
 		order.append(brick_id)
 	# Each with its twins: those found, and those its copies' follow reaches.
@@ -403,7 +403,8 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 					continue
 				var packed: PackedInt32Array = builder.boxes_for(shape, new[1])
 				boxes[brick_id] = packed
-				if builder.lattice.collides_boxes(packed, brick_id) or _meets_taken(packed, taken):
+				if not builder.has_room_swapped(brick, str(new[0]), new[1], packed) \
+						or _meets_taken(packed, taken, brick_id, builder.lattice):
 					no_room.append(brick_id)
 		if locked > 0 or not no_room.is_empty():
 			for brick_id: int in group:
@@ -418,7 +419,7 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 					"ids": group})
 			continue
 		for brick_id: int in boxes:
-			_take(boxes[brick_id], taken)
+			_take(boxes[brick_id], taken, brick_id)
 		for brick_id: int in group:
 			if not moving.has(brick_id):
 				(out["followers"] as Array).append(brick_id)
@@ -540,22 +541,30 @@ func _sub_model_of(brick_id: int) -> String:
 	return "" if path.is_empty() else Assemblies.definition(Assemblies.leaf(path))
 
 
-## Whether [param packed] meets a new part's place kept in [param taken]: two
-## parts a replace puts down that would run into each other, though each has
-## room as the model stands.
-static func _meets_taken(packed: PackedInt32Array, taken: Dictionary) -> bool:
+## Whether [param packed], the new part for [param brick_id], meets a new
+## part's place kept in [param taken]: two parts a replace puts down that
+## would run into each other, though each has room as the model stands.
+## With [param lattice], not where the two old parts meet each other where
+## they stand, as the room test excuses what the old part met
+## (Builder.has_room_swapped): 6632's two clips back to back, each swapped
+## for a newer clip.
+static func _meets_taken(packed: PackedInt32Array, taken: Dictionary, brick_id: int = 0,
+		lattice: BrickLattice = null) -> bool:
 	for key: Vector3i in _buckets(packed):
-		for other: PackedInt32Array in taken.get(key, []):
-			if BrickLattice.shared_cells(packed, other) > 0:
+		for other: Array in taken.get(key, []):
+			if BrickLattice.shared_cells(packed, other[0]) <= 0:
+				continue
+			if lattice == null or lattice.meeting_of(lattice.boxes_of(brick_id), [other[1]],
+					brick_id).is_empty():
 				return true
 	return false
 
 
-static func _take(packed: PackedInt32Array, taken: Dictionary) -> void:
+static func _take(packed: PackedInt32Array, taken: Dictionary, brick_id: int = 0) -> void:
 	for key: Vector3i in _buckets(packed):
 		if not taken.has(key):
 			taken[key] = []
-		(taken[key] as Array).append(packed)
+		(taken[key] as Array).append([packed, brick_id])
 
 
 ## The buckets of 20 cells each way [param packed]'s bound reaches.
@@ -569,21 +578,6 @@ static func _buckets(packed: PackedInt32Array) -> Array:
 			for z: int in range(floori(bound[2] / 20.0), floori((bound[5] - 1) / 20.0) + 1):
 				out.append(Vector3i(x, y, z))
 	return out
-
-
-## Where [param shape] goes to take the place of [param was] standing at
-## [param at]: exactly there where the two have one footprint and height (a
-## printed version of the same mould, whose print can reach a hair past the
-## plain part's box, is not moved by it), else its middle on the stud grid
-## for its own footprint and its bottom where the other's was
-## (Builder._in_place_of).
-func _placed(at: Transform3D, was: Lbm.PartMesh, shape: Lbm.PartMesh) -> Transform3D:
-	if was == null:
-		return at
-	if was.bounds.size.distance_to(shape.bounds.size) < 1.0 \
-			and was.bounds.get_center().distance_to(shape.bounds.get_center()) < 1.0:
-		return at
-	return builder._in_place_of(at, was, shape)
 
 
 ## Whether [param shape] at [param to] sits as [param was] at [param at]

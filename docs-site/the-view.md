@@ -25,9 +25,12 @@ The view is how you look at the model: from any side, close up, two ways at once
 
 A drag that starts on a part moves the part. With nothing selected, the arrows turn the view, [[W]] [[A]] [[S]] [[D]] slide it and [[=]] [[-]] zoom. The **Orbit**, **Pan** and **Zoom** tools ([[O]], [[H]], [[Z]]) make every left drag move the view. The pointer shows what a drag will do. For touch screens, see [On a tablet or a phone](/docs/web-and-desktop#phone).
 
+The view stays over the floor while the model stands upright: no turn, slide, pinch or wheel takes it underneath, and some of the model is always on the screen. To look from below, press [[6]] or click the view cube's bottom.
+
 A still model costs nothing to leave open: the app draws only when something changes, and on a slow computer it draws a lighter look while you move.
 
 <!-- covers
+ui:the view kept over the floor and on the model
 ui:camera controls
 ui:left-button navigation
 ui:pointer cursors

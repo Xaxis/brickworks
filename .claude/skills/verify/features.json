@@ -2872,6 +2872,14 @@
       "tests": []
     },
     {
+      "id": "cli:seatswap probe",
+      "kind": "cli",
+      "entry": "src/dev/seatswap_probe.gd",
+      "reach": "tools/probe.sh seatswap_probe   (headless, about 5 minutes; a pin in a beam, hips under legs and 7 real sets' seated parts swapped by replace_parts, each one undo and byte for byte back; a 1 x 6 for a 1 x 4 against a wall refused; the hand's Replace on the pin)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:sections in a browser",
       "kind": "cli",
       "entry": "tools/web/sections_flow.mjs",
@@ -3601,6 +3609,14 @@
       "entry": "src/dev/viewer_tools_probe.gd",
       "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (-- --sizes packs 400 and 4,000 parts of Orthanc, times it, and writes scene_400.json and scene_4000.json for tools/viewer/first_paint.mjs)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:viewfloor probe",
+      "kind": "cli",
+      "entry": "src/dev/viewfloor_probe.gd",
+      "reach": "tools/probe.sh viewfloor_probe   (windowed, 390x844 by its header; -- --measure prints and fails nothing; pictures in shots/viewfloor/)",
+      "area": "view",
       "tests": []
     },
     {
@@ -7489,6 +7505,14 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/test_console3.py"
       ]
+    },
+    {
+      "id": "ui:the view kept over the floor and on the model",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "any turn, slide, pinch, wheel notch, key or Fit, mouse or fingers: the eye never goes from over the floor to under it while the model is upright (Bottom and Build's steps from below still look from under), and the middle of the view stays near the model so some of it is always on the screen  (CadCamera.floor_at, _floor_line, _keep_near_model, _pivot_near; tools/probe.sh viewfloor_probe; tools/web/phonewalk_flow.mjs --only=view_floor,view_floor_orthanc)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "ui:theme choice",
