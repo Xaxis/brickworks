@@ -1174,19 +1174,32 @@ func _take_moment(name: String = title) -> void:
 	var history: Array = _history_now()
 	if not bless and not _same_history(history, _kept_history):
 		return
-	_kept_at = [history, scenery.duplicate(), _own_state(name), name]
+	_kept_at = [history, _scenery_now(), _own_state(name), name, scenery.duplicate()]
 	world.mark_parts()
+
+
+## The scenery as its parts stand, each by what it is, not its id, in one
+## order: a floor laid again is the floor it was.
+func _scenery_now() -> Array:
+	var out: Array = []
+	for brick_id: int in scenery:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		out.append(str(BrickWorld.fields_of(brick)) if brick != null else "")
+	out.sort()
+	return out
 
 
 ## Whether the model is at the moment its kept text stands for: the history
 ## at the same step (a redo makes a new one); nothing changed outside it, not
 ## a part (BrickWorld.parts_as_marked: a Build together room's, an MCP
-## write's, one Simulate moved and put back is none), nor what is scenery.
-## Its own lines beyond its parts are [method _as_kept]'s.
+## write's, one Simulate moved and put back is none), nor what is scenery,
+## compared by what it is ([method _scenery_now]): a floor changed and undone
+## is laid again as new parts, the same floor (appedits' Orthanc). Its own
+## lines beyond its parts are [method _as_kept]'s.
 func _at_moment() -> bool:
 	return not _kept_at.is_empty() and not _state_due and not _kept_now().is_empty() \
-		and _same_history(_history_now(), _kept_at[0]) and scenery == _kept_at[1] \
-		and world.parts_as_marked()
+		and _same_history(_history_now(), _kept_at[0]) and _scenery_now() == _kept_at[1] \
+		and world.parts_as_marked([_kept_at[4], scenery])
 
 
 ## Whether a save may write the kept text: the app's own model (someone
@@ -1228,13 +1241,18 @@ func _kept_as_is(title_now: String) -> String:
 
 ## [param kept], the app's own file of the model called [param from], as the
 ## file of the one called [param to]: its title line said anew (the old name,
-## or a placeholder the open read past: [constant NO_TITLES]), and its Name
-## where a save made it of the old name, each as a whole write writes it, in
+## or a placeholder the open read past: [constant NO_TITLES]), and a single
+## file's Name, each as a whole write of it under the new name writes them
+## (an MPD's Name is its first section's, which that keeps), in
 ## the line ends it had; nothing else changed. "" where the file names its
 ## model otherwise.
 static func _renamed(kept: String, from: String, to: String) -> String:
 	var lines: PackedStringArray = kept.split("\n")
 	var titled: bool = false
+	# Under a FILE line the Name is the section's, which a whole write keeps
+	# as it was read (LdrModel._main_file): appedits' arm, "FILE untitled.ldr"
+	# saved as another name, had its Name renamed and its FILE not.
+	var filed: bool = false
 	for n: int in lines.size():
 		var line: String = lines[n]
 		var end: String = "\r" if line.ends_with("\r") else ""
@@ -1246,6 +1264,7 @@ static func _renamed(kept: String, from: String, to: String) -> String:
 			break
 		var said: String = line.trim_suffix("\r").strip_edges().substr(1).strip_edges()
 		if fields.size() > 1 and fields[1].to_upper() == "FILE":
+			filed = true
 			continue
 		if not titled:
 			if said.begins_with("!") or said.is_empty():
@@ -1257,8 +1276,7 @@ static func _renamed(kept: String, from: String, to: String) -> String:
 			lines[n] = "0 " + to + end
 			titled = true
 			continue
-		if said.begins_with("Name:") and said.substr(5).strip_edges().to_lower() \
-				== LdrModel.new_file_name(from).to_lower():
+		if not filed and said.begins_with("Name:"):
 			lines[n] = "0 Name: " + LdrModel.new_file_name(to) + end
 	return "\n".join(lines) if titled else ""
 

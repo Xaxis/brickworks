@@ -164,7 +164,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   step tells the world's `Ledger` first, a Build together room's step past the
   history and an MCP write too; one Simulate moved and put back is no
   change, and nothing is asked of the parts when nothing changed), the
-  scenery the same, and nothing else a save writes changed (name, floor,
+  scenery the same by what it is (a floor changed and undone is laid again as
+  new parts, the same floor: appedits' Orthanc), and nothing else a save writes changed (name, floor,
   views, lights, motions, program, looks, copies' steps, each sub-model's own
   lines and frames, picture, links, credit). An Undo after a save is another
   moment, whatever its parts (kbkreview2 H1: the baseplate made part of the
@@ -175,12 +176,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the autosave whose sha-256 the JSON names), else
   keeps its saved file to compare with and says once where a save moves its
   order. Save as another name unedited writes the file with only its title and
-  Name lines changed (`_renamed`; a title line the open read past, such as the
-  gallery sports car's "Model", takes the new name). At that moment the file's own Name line, a
+  Name lines changed as a whole write under the new name writes them
+  (`_renamed`; a title line the open read past, such as the gallery sports
+  car's "Model", takes the new name; an MPD's Name is its first section's and
+  stays, as its FILE line does). At that moment the file's own Name line, a
   floor it never said and a step's parts in their order are kept. That holds
   for someone else's file too, whose writer put keepbytes' bk_odd "0
   !brickworks page new" in capitals. `tools/probe.sh kbx_probe` (headless,
-  ~10 min) has 70 cases on the car, gears, m267's model, the kart and the
+  ~10 min) has 75 cases on the car, gears, m267's model, the kart and the
   gallery's sports car. Otherwise the kept text is still written
   while the model differs from it only in its build order (STEP lines and the
   order of its parts, compared by value, so "1\t0" or "24.000" is the same

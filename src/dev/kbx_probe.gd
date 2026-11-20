@@ -10,10 +10,14 @@
 ##   leaves is what is written.
 ## - renamed (M2): Save as another name unedited is the file but for its name
 ##   lines, its parts in its order. 11edff5b2 planned the kart again, and
-##   32700945d the sports car, titled "Model" (ModelStore.NO_TITLES).
+##   32700945d the sports car, titled "Model" (ModelStore.NO_TITLES); its
+##   Name line is the one a whole write of it says (4b84ccd5a renamed an
+##   MPD's Name and not its FILE: appedits' arm).
 ## - restore, restore_later, undo_open (M3): the working model restored, and
 ##   an open undone, save byte for byte; restore_edited: one restored with a
 ##   part recoloured saves the new colour.
+## - floor_undo: the floor changed and undone, laid again as new parts, is
+##   nothing unsaved and saves byte for byte (appedits' Orthanc on 4b84ccd5a).
 ## - clear_undo, simulate: a Clear undone, and Simulate run and stopped, save
 ##   byte for byte; peer_step: a part's step set past the history is written.
 ## KBX_ONLY=a,b runs those acts; KBX_OUT=DIR keeps each file.
@@ -83,6 +87,7 @@ func _run() -> void:
 		["restore_edited", _restore_edited],
 		["undo_open", _undo_open],
 		["clear_undo", _clear_undo],
+		["floor_undo", _floor_undo],
 		["simulate", _simulate],
 		["peer_step", _peer_step]]
 	for base: Array in bases:
@@ -256,10 +261,41 @@ func _renamed() -> Array:
 			and (line.contains(OTHER) or line.contains(LdrModel.new_file_name(OTHER)))
 	var moved: bool = ModelStore.order_moved(_base.get_string_from_utf8(), got.get_string_from_utf8())
 	var back: int = await _reopened(ModelStore.saved_path(OTHER))
+	# Its Name as a whole write of it says it: else the next edit of the app's
+	# own lines alone writes a Name it never had.
+	var whole: String = _store.call("_written", OTHER, true, {})
+	var names: Array = [_name_line(got.get_string_from_utf8()), _name_line(whole)]
 	var pass_: bool = ok and a.size() == b.size() and other.size() <= 2 and named and not moved \
-		and back == _parts_open
-	return [pass_, "saved=%s lines %d/%d other_lines=%s moved=%s reopened=%d of %d" % [ok, b.size(), a.size(),
-		JSON.stringify(other).left(160), moved, back, _parts_open]]
+		and back == _parts_open and names[0] == names[1]
+	return [pass_, "saved=%s lines %d/%d other_lines=%s moved=%s reopened=%d of %d name=%s whole_name=%s" % [
+		ok, b.size(), a.size(), JSON.stringify(other).left(160), moved, back, _parts_open, names[0], names[1]]]
+
+
+## A file's first Name line, "" for none.
+static func _name_line(text: String) -> String:
+	for line: String in text.split("\n"):
+		var said: String = line.strip_edges()
+		if said.begins_with("0 Name:"):
+			return said
+		if LdrModel.is_placing(said):
+			break
+	return ""
+
+
+## The floor changed and undone: laid again as new parts, the same floor, so
+## the model is at its moment again: nothing unsaved, saved byte for byte.
+func _floor_undo() -> Array:
+	var other: ModelFloor = _store.model_floor.copy()
+	other.kind = ModelFloor.GRID if other.kind != ModelFloor.GRID else ModelFloor.BASEPLATE
+	_main.call("choose_floor", other)
+	await _frames(4)
+	var changed: bool = _store.has_unsaved_work()
+	await _verbs.press("undo")
+	await _settle()
+	var unsaved: bool = _store.has_unsaved_work()
+	var got: PackedByteArray = await _save()
+	return [changed and not unsaved and got == _base, "unsaved_after_change=%s unsaved_after_undo=%s same_as_base=%s" % [
+		changed, unsaved, got == _base]]
 
 
 ## M3: saved, the autosave written at once, the working model restored as

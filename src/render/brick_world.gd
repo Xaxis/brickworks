@@ -507,11 +507,18 @@ func mark_parts() -> void:
 ## put down, taken off or changed since, or each change undone by another
 ## (Simulate run and stopped). As long as what changed since takes, not the
 ## model: a model left as it was asks nothing of its parts. False with no
-## mark, and once the world is cleared.
-func parts_as_marked() -> bool:
+## mark, and once the world is cleared. A part whose id is in a table of
+## [param skip] is left to its caller (ModelStore's scenery, compared by what
+## it is: a floor laid again is new parts).
+func parts_as_marked(skip: Array = []) -> bool:
 	if not _ledger.on:
 		return false
 	for brick_id: int in _ledger.was:
+		var left: bool = false
+		for table: Dictionary in skip:
+			left = left or table.has(brick_id)
+		if left:
+			continue
 		var then: Variant = _ledger.was[brick_id]
 		var now: Brick = get_brick(brick_id)
 		if now == null:
