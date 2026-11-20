@@ -15886,5 +15886,11 @@ msgstr "Kein Drehteller: %s."
 msgid "A turntable: the camera goes once round the model in %s s, at the height and distance it stands at now. Each key can be picked, moved or changed."
 msgstr "Ein Drehteller: die Kamera kreist in %s s einmal um das Modell, in der Höhe und dem Abstand von jetzt. Jeder Key lässt sich wählen, verschieben oder ändern."
 
-msgid "A key not picked is at %s s already: the keys were left where they were."
-msgstr "Bei %s s liegt schon ein nicht gewählter Key: die Keys bleiben, wo sie waren."
+msgid "A key not picked is at %s s, where the key at %s s would go: the keys were left where they were."
+msgstr "Bei %s s, wohin der Key bei %s s käme, liegt ein nicht gewählter Key: die Keys bleiben, wo sie waren."
+
+msgid "A key is at %s s already: this one was left where it was."
+msgstr "Bei %s s liegt schon ein Key: dieser bleibt, wo er war."
+
+msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
+msgstr "Der Key bei %s s neu gesetzt, weniger als ein Bild von der Zeit entfernt: wo die Kamera steht, worauf sie blickt und ihr Objektiv."

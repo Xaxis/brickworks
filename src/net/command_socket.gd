@@ -608,10 +608,15 @@ const HINTS := {
 	"move_part": ["Move a part on its joint", "add", "again"],
 	"animate_model": ["Animate the model", "add"],
 	"list_motions": ["List the model's motions", "look"],
-	# Its motions are lines in the model's file: one step to undo.
-	"define_motion": ["Keep a motion in the model", "add", "again"],
+	# Its motions are lines in the model's file: one step to undo. One of a
+	# name the model has is put in its place (its camera keys too), and
+	# remove=true takes one out.
+	"define_motion": ["Keep a motion in the model", "remove", "again"],
 	"play_motion": ["Play a motion", "add", "again"],
-	"render_motion": ["Render a motion", "file"],
+	# A file; and camera= keys the motion's camera first, in place of the
+	# keys it had, one step to undo (camreview M1: said to change nothing, it
+	# replaced three hand-made keys, its step unmarked).
+	"render_motion": ["Render a motion", "remove"],
 	"simulate_mechanism": ["Simulate the mechanism", "file"],
 	"undo": ["Undo or redo", "remove"],
 	# In place of the model, and with discard_changes its unsaved changes.

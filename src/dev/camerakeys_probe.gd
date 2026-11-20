@@ -38,6 +38,16 @@
 ##  8. Time: a camera track playing on Orthanc against the view turned the
 ##     same way by hand, each frame's own work (Performance TIME_PROCESS):
 ##     at most 1 ms more a frame.
+##  9. camreview's findings (each failed on f864b1f16): H1 a turntable's last
+##     key keyed again from where it stands keeps its full turn; M2 two
+##     picked keys (0.03 and 2 s) moved to the start leave the key at 0 s
+##     alone and say so, and one key moved onto another is refused; L1 keys
+##     5 ms apart play through both, a session's are refused, a press within
+##     a frame of a key keys that one; M1 render_motion says it can change
+##     the model, its camera= is the session's one step, undone byte for
+##     byte; M3 New or another model opened while a camera motion loops
+##     stops it and gives the view back to the person's hand.
+##     `-- OUT_DIR --review` runs only this part.
 ##
 ## Pictures in shots/camerakeys/ (or OUT_DIR), named by the window's size.
 extends SceneTree
@@ -83,7 +93,9 @@ func _run() -> void:
 	var window: Vector2i = DisplayServer.window_get_size()
 	_size = "%dx%d" % [window.x, window.y]
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	_out = args[0] if not args.is_empty() else ProjectSettings.globalize_path("res://shots/camerakeys")
+	var review_only: bool = args.has("--review")
+	var named: Array = Array(args).filter(func(one: String) -> bool: return not one.begins_with("--"))
+	_out = str(named[0]) if not named.is_empty() else ProjectSettings.globalize_path("res://shots/camerakeys")
 	DirAccess.make_dir_recursive_absolute(_out)
 	if not FileAccess.file_exists(ProjectSettings.globalize_path(DOORS)):
 		print("camerakeys_probe: SKIPPED, no %s (tools/omr.py fetch brings the sets)" % DOORS)
@@ -100,14 +112,17 @@ func _run() -> void:
 	_panel.folder = files
 	(_main.get("_render") as RenderDialog).folder = files
 	if await _open(DOORS):
-		if await _keyed():
-			await _played()
-			await _filmed()
-			await _turntable()
-			await _saved()
-		await _picked()
-		await _mcp()
-	await _time()
+		if not review_only:
+			if await _keyed():
+				await _played()
+				await _filmed()
+				await _turntable()
+				await _saved()
+			await _picked()
+			await _mcp()
+		await _review()
+	if not review_only:
+		await _time()
 	print("")
 	print("camerakeys_probe: %s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
 	_main.queue_free()
@@ -682,6 +697,262 @@ func _mcp() -> void:
 		and _builder.history_depth() == depth + 1)
 	if motion != null and motion.camera != null:
 		_round(said, motion.camera.keys, "the session's turntable")
+
+
+# -- 9. camreview's findings -------------------------------------------------------------------------
+
+
+func _review() -> void:
+	print("\n9. camreview's findings")
+	await _rekey_turntable()
+	await _moved_to_start()
+	await _close_keys()
+	await _render_marked()
+	await _world_replaced()
+
+
+## H1: Turntable makes TURN t0 at 0 s and t0 + 360 at 8 s; the 8 s key
+## pressed, the view raised 5°, Key the camera: still a full turn.
+func _rekey_turntable() -> void:
+	print("  H1. a turntable's last key keyed again from where it stands")
+	if _panel.visible:
+		_panel.back_to_list()
+	else:
+		_shell.run("pose")
+	await _frames(8)
+	_panel.new_motion()
+	await _frames(6)
+	_panel.make_turntable()
+	await _frames(6)
+	var motion: Motions.Motion = _panel._edited()
+	var keys: Array = motion.camera.keys if motion != null and motion.camera != null else []
+	if keys.size() != 2:
+		_check("H1 Turntable makes two keys (%d)" % keys.size(), false)
+		return
+	var first: float = float(keys[0][2])
+	var last: float = float(keys[1][2])
+	_panel._pick_camera_key(1, false)
+	await _frames(30)
+	var aim: Dictionary = _eye.call("aim")
+	aim["pitch"] = float(aim["pitch"]) + deg_to_rad(5.0)
+	_eye.call("aim_at", aim)
+	await _frames(30)
+	var depth: int = _builder.history_depth()
+	_panel.key_camera()
+	await _frames(6)
+	motion = _panel._edited()
+	keys = motion.camera.keys
+	var now: float = float(keys.back()[2])
+	_check("H1 the 8 s key keyed again keeps the full turn: TURN %s -> %s, first %s, %s° round, tilt %s -> %s, "
+		% [Motions.num(last, 2), Motions.num(now, 2), Motions.num(first, 2), Motions.num(now - first, 1),
+		Motions.num(float(motion.camera.keys[0][3]), 1), Motions.num(float(keys.back()[3]), 1)]
+		+ "%d keys, %d step" % [keys.size(), _builder.history_depth() - depth],
+		absf((now - first) - 360.0) < 1.0 and keys.size() == 2 and _builder.history_depth() == depth + 1
+		and absf(float(keys.back()[3]) - float(keys[0][3]) - 5.0) < 0.5)
+	# The first key keyed again the same way: its own turn, not the last's.
+	_panel._pick_camera_key(0, false)
+	await _frames(30)
+	_panel.key_camera()
+	await _frames(6)
+	keys = _panel._edited().camera.keys
+	_check("H1 ...and the 0 s key keyed again keeps its own turn (%s -> %s; the last %s)" % [Motions.num(first, 2),
+		Motions.num(float(keys[0][2]), 2), Motions.num(float(keys.back()[2]), 2)],
+		absf(float(keys[0][2]) - first) < 1.0 and absf(float(keys.back()[2]) - float(keys[0][2]) - 360.0) < 1.0)
+	_panel.back_to_list()
+	await _frames(4)
+
+
+## M2: picked keys at 0.03 and 2 s moved to the start; the key at 0 s is
+## not picked. And one key of a joint moved onto another.
+func _moved_to_start() -> void:
+	print("  M2. picked keys moved to the start, a key not picked at 0 s")
+	var said: String = await _say("define_motion", {"name": "Grid", "camera": {"keys": [
+		{"t": 0, "turn": 0, "tilt": 20, "away": 700}, {"t": 0.03, "turn": 40, "tilt": 20, "away": 700},
+		{"t": 2, "turn": 80, "tilt": 20, "away": 700}]}})
+	var motion: Motions.Motion = _player.motions().named("Grid")
+	if motion == null or motion.camera == null or motion.camera.keys.size() != 3:
+		_check("M2 define_motion made three camera keys: %s" % said.left(160), false)
+		return
+	if not _panel.visible:
+		_shell.run("pose")
+		await _frames(6)
+	_panel.edit("Grid")
+	await _frames(10)
+	var before: PackedStringArray = _camera_lines(_store.to_text("Doors"))
+	# A press, a Ctrl+press, and the first of them dragged to the strip's start (its own calls:
+	# the strip snaps the time to 0.05 s and clamps it at 0).
+	_panel._pick_key(PosePanel.CAMERA, 1, false)
+	_panel._pick_key(PosePanel.CAMERA, 2, true)
+	var depth: int = _builder.history_depth()
+	_panel._move_camera_key(1, -0.5)
+	await _frames(6)
+	motion = _player.motions().named("Grid")
+	var status: String = (_panel.get("_status") as Label).text
+	_check("M2 the key not picked (0 s, turn 0) is kept, the move refused and said (%d keys, %d step; %s)" % [
+		motion.camera.keys.size(), _builder.history_depth() - depth, status],
+		_camera_lines(_store.to_text("Doors")) == before and _builder.history_depth() == depth
+		and status.contains("not picked"))
+	if _builder.history_depth() > depth:
+		_shell.run("undo")
+		await _frames(8)
+	# Moved by as much where nothing is in the way: both, one step, the dragged one where it was let go.
+	_panel.edit("Grid")
+	await _frames(6)
+	_panel._pick_key(PosePanel.CAMERA, 1, false)
+	_panel._pick_key(PosePanel.CAMERA, 2, true)
+	depth = _builder.history_depth()
+	_panel._move_camera_key(1, 0.5)
+	await _frames(6)
+	var times: Array = _player.motions().named("Grid").camera.keys.map(func(key: Array) -> float: return float(key[0]))
+	_check("M2 ...dragged to 0.5 s instead: both move 0.47 s, one step (%s, %d)" % [times, _builder.history_depth() - depth],
+		times.size() == 3 and is_equal_approx(times[0], 0.0) and is_equal_approx(times[1], 0.5)
+		and is_equal_approx(times[2], 2.47) and _builder.history_depth() == depth + 1)
+	if _builder.history_depth() > depth:
+		_shell.run("undo")
+		await _frames(8)
+	_check("M2 ...undone byte for byte", _camera_lines(_store.to_text("Doors")) == before)
+	# One joint key dragged onto another of its track (not picked with others): it took that key's place.
+	if _player.motions().named("Open the doors") == null:
+		await _say("define_motion", {"name": "Open the doors", "suggested": true})
+	var doors: Motions.Motion = _player.motions().named("Open the doors")
+	if doors != null and not doors.tracks.is_empty() and (doors.tracks[0] as Motions.Track).keys.size() >= 2:
+		_panel.edit("Open the doors")
+		await _frames(8)
+		var track: Motions.Track = _player.motions().named("Open the doors").tracks[0]
+		var lines: PackedStringArray = _motion_lines(_store.to_text("Doors"))
+		_panel._pick_key(track.joint, 0, false)
+		depth = _builder.history_depth()
+		_panel._move_key(track.joint, 0, float(track.keys[1][0]))
+		await _frames(6)
+		status = (_panel.get("_status") as Label).text
+		_check("M2 one door key moved onto the next: refused and said, both kept (%d step; %s)" % [
+			_builder.history_depth() - depth, status], _motion_lines(_store.to_text("Doors")) == lines
+			and _builder.history_depth() == depth and status.contains("already"))
+		if _builder.history_depth() > depth:
+			_shell.run("undo")
+			await _frames(8)
+	_panel.back_to_list()
+	await _frames(4)
+
+
+## L1: keys 5 ms apart.
+func _close_keys() -> void:
+	print("  L1. keys under a frame apart")
+	var close := Motions.CameraTrack.new()
+	var track := Motions.Track.new()
+	for one: Array in [[0.0, 0.0], [1.0, 90.0], [1.005, 180.0], [2.0, 200.0]]:
+		close.add_key(Motions.camera_key_of(float(one[0]), Vector3.ZERO, float(one[1]), 0.0, 400.0, 30.0))
+		track.add_key(float(one[0]), float(one[1]))
+	var seen: Array = close.views_at([1.0, 1.005])
+	_check("L1 camera keys at 1.000 and 1.005 s play through both: %s° and %s° (keys 90, 180)" % [
+		Motions.num(float(seen[0][1]), 2), Motions.num(float(seen[1][1]), 2)],
+		absf(float(seen[0][1]) - 90.0) < 1.0 and absf(float(seen[1][1]) - 180.0) < 1.0)
+	_check("L1 a joint's keys likewise: %s° and %s°" % [Motions.num(track.place_at(1.0), 2),
+		Motions.num(track.place_at(1.005), 2)], absf(track.place_at(1.0) - 90.0) < 1.0
+		and absf(track.place_at(1.005) - 180.0) < 1.0)
+	var said: String = await _say("define_motion", {"name": "Close", "camera": {"keys": [
+		{"t": 0, "turn": 0}, {"t": 1, "turn": 90}, {"t": 1.005, "turn": 180}]}})
+	_check("L1 a session's keys 5 ms apart refused in words, nothing kept: %s" % said.left(140),
+		_player.motions().named("Close") == null and said.contains("Nothing"))
+	# A press 10 ms from a session's key keys that one.
+	said = await _say("define_motion", {"name": "Near", "camera": {"keys": [
+		{"t": 0, "turn": 0, "tilt": 20, "away": 700}, {"t": 0.04, "turn": 20, "tilt": 20, "away": 700},
+		{"t": 2, "turn": 80, "tilt": 20, "away": 700}]}})
+	if not _panel.visible:
+		_shell.run("pose")
+		await _frames(6)
+	_panel.edit("Near")
+	await _frames(8)
+	_panel.set_time(0.05)
+	await _frames(3)
+	_panel.key_camera()
+	await _frames(6)
+	var motion: Motions.Motion = _player.motions().named("Near")
+	var times: Array = motion.camera.keys.map(func(key: Array) -> float: return float(key[0])) if motion != null \
+		and motion.camera != null else []
+	_check("L1 Key the camera at 0.05 s, 10 ms from the key at 0.04 s, keys that one (%s; %s)" % [times,
+		(_panel.get("_status") as Label).text], times.size() == 3 and is_equal_approx(times[1], 0.04))
+	_panel.back_to_list()
+	await _frames(4)
+
+
+## M1: render_motion's camera= replaces the motion's keys: said in its hints,
+## the session's one step, undone byte for byte.
+func _render_marked() -> void:
+	print("  M1. render_motion camera= on a motion with three hand-made keys")
+	var hints: Dictionary = CommandSocket.annotations("render_motion")
+	_check("M1 render_motion's hints say it may take work away (%s) and a step is kept for it (%s)" % [
+		JSON.stringify(hints), "before taken" if not _socket._before_change("render_motion").is_empty() else "none"],
+		hints.get("destructiveHint") == true and hints.get("readOnlyHint") == false
+		and not _socket._before_change("render_motion").is_empty())
+	var define: Dictionary = CommandSocket.annotations("define_motion")
+	_check("M1 define_motion's too, as its camera= and remove= take keys and motions away (%s)" % JSON.stringify(define),
+		define.get("destructiveHint") == true)
+	if not _windowed:
+		print("    (headless: not rendered)")
+		return
+	await _say("define_motion", {"name": "Hand made", "camera": {"keys": [
+		{"t": 0, "turn": 0, "tilt": 20, "away": 700}, {"t": 1, "turn": 40, "tilt": 30, "away": 600},
+		{"t": 2, "turn": 80, "tilt": 10, "away": 900}]}})
+	var before: PackedStringArray = _camera_lines(_store.to_text("Doors"))
+	var depth: int = _builder.history_depth()
+	var said: String = _text(await _finished(await _rpc("tools/call", {"name": "render_motion",
+		"arguments": {"name": "Hand made", "camera": {"turntable": true}, "fps": 12, "size": "480x300"}})))
+	_print(said.left(240))
+	var motion: Motions.Motion = _player.motions().named("Hand made")
+	var words: String = str(_builder.last_step().get("words", ""))
+	_check("M1 the turntable kept in place of the three keys, one step, the session's (%d keys, %d step, \"%s\")" % [
+		motion.camera.keys.size() if motion != null and motion.camera != null else 0,
+		_builder.history_depth() - depth, words], motion != null and motion.camera != null
+		and motion.camera.keys.size() == 2 and _builder.history_depth() == depth + 1 and words.contains("render motion"))
+	_shell.run("undo")
+	await _frames(10)
+	_check("M1 ...one Undo brings the three keys back byte for byte", _camera_lines(_store.to_text("Doors")) == before)
+
+
+## M3: New, and another model opened, while a camera motion loops.
+func _world_replaced() -> void:
+	print("  M3. the world replaced while a camera motion loops")
+	for how: String in ["New", "another model opened"]:
+		var said: String = await _say("define_motion", {"name": "Loop round", "camera": {"turntable": true, "seconds": 4}})
+		if _player.motions().named("Loop round") == null:
+			_check("M3 a turntable to loop: %s" % said.left(120), false)
+			return
+		if not _panel.visible:
+			_shell.run("pose")
+			await _frames(6)
+		_panel.edit("Loop round")
+		await _frames(8)
+		var fov: float = _eye.fov
+		(_panel.get("_loop") as CheckBox).button_pressed = true
+		_panel.play("Loop round")
+		await _frames(20)
+		var held: bool = _panel.is_playing() and bool(_eye.call("is_held"))
+		if how == "New":
+			_main.call("clear_model")
+			await _frames(30)
+		else:
+			_main.call("_open", ProjectSettings.globalize_path(DOORS))
+			for _n: int in 900:
+				await process_frame
+				if _store.awaited.is_empty() and _world.brick_count() > 0:
+					break
+			await _frames(40)
+		var playing: bool = _panel.is_playing()
+		var still: bool = bool(_eye.call("is_held"))
+		var aim: Dictionary = _eye.call("aim")
+		aim["yaw"] = float(aim["yaw"]) + deg_to_rad(10.0)
+		_eye.call("aim_at", aim)
+		await _frames(30)
+		var turned: bool = absf(angle_difference(float((_eye.call("aim") as Dictionary)["yaw"]), float(aim["yaw"]))) < 0.01
+		_check("M3 %s while it looped: stopped, the view the person's (held while playing %s; now playing %s, held %s, a turn kept %s, lens %s -> %s)"
+			% [how, held, playing, still, turned, Motions.num(fov, 1), Motions.num(_eye.fov, 1)],
+			held and not playing and not still and turned and absf(_eye.fov - fov) < 0.01)
+		if _panel.is_playing():
+			_panel._stop_playing()
+		await _frames(5)
+		if how == "New":
+			await _open(DOORS)
 
 
 # -- 8. time ---------------------------------------------------------------------------------------

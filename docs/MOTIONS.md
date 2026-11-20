@@ -800,3 +800,29 @@ StudWorx keys any object; Brickworks keyed only joints and paths).
   millisecond (camerakeys_probe section 8 holds both).
 - **Checked by** `src/dev/camerakeys_probe.gd` (tools/suite/windowed.txt);
   keep_text_probe's motion carries two camera lines.
+
+### What camfix changed (camreview's findings, 2026-11-20)
+
+- **A key keyed again keeps its turn.** Key the camera where a key is takes
+  that key's own turn as the short way's start, not the key before it: a
+  turntable's 8 s key keyed again went from 325 to -35, 0° round.
+- **Keys stand a frame apart** (`Motions.LEAST_KEY_GAP`, 1/60 s). Play goes
+  through every key as it is (`Motions.eased_through`: PoseAnimation took
+  keys under 10 ms apart as one, so a key at 1.000 s played 179.7° where it
+  said 90°, a joint's as well as the camera's). A session's camera keys
+  under a frame apart are refused in words; Key the camera within a frame
+  of a key keys that one, and says so.
+- **Moving keys.** Picked keys move by as much as the drag, cut short at 0 s
+  and at the longest, each checked where it lands: onto (or within a frame
+  of) a key not picked, nothing moves and the bar says which. One joint key
+  dragged onto another is refused the same way (it took that key's place).
+- **render_motion and define_motion say they may take work away**
+  (destructiveHint): camera= puts its keys in place of the motion's, and
+  define_motion replaces a motion of the name or removes one. render_motion's
+  camera= is the session's one step (its change measured, not skipped).
+- **A world replaced stops the play.** Another model opened, New, a Together
+  join or a restore while a camera motion loops: it stops and the view is
+  the person's hand's again, with their lens, where the opening put it.
+- **Checked by** camerakeys_probe section 9 (`-- OUT --review` alone): 13
+  of its checks fail on f864b1f16 and pass here
+  (bench/results/camfix-2026-11-20/).

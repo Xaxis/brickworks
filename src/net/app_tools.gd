@@ -861,10 +861,11 @@ func definitions() -> Array:
 		{
 			"name": "render_motion",
 			"description": ("Render one of the model's motions as an animation, a WebP and an MP4 "
-				+ "(where ffmpeg is installed) where Render saves, framed on what it moves, without "
-				+ "changing the model; through its camera keys where it has them. camera= keys the camera "
-				+ "first, kept in the motion (one undo step), a motion of that name made for it when the "
-				+ "model has none: {\"turntable\": true} films the model turned once round in this one call. "
+				+ "(where ffmpeg is installed) where Render saves, framed on what it moves; through its "
+				+ "camera keys where it has them. Without camera= the model is unchanged. camera= keys the "
+				+ "camera first, in place of the keys the motion had (one undo step), a motion of that name "
+				+ "made for it when the model has none: {\"turntable\": true} films the model turned once "
+				+ "round in this one call. "
 				+ "reverse= and sequence= as play_motion; fps= 12 or 24; size= "
 				+ "480x300 or 720p; view= where the camera stands, hero (three-quarter from the front "
 				+ "left, the default) or back for what moves at the back. Needs the app in a window, "
@@ -3992,8 +3993,13 @@ func _camera_from(player: MotionPlayer, given: Variant, length: float) -> Varian
 			float(one.get("away", stands[3])), float(one.get("fov", stands[4])), str(one.get("how", "ease")))
 		if key is String:
 			return "%s%s." % [str(key).left(1).to_upper(), str(key).substr(1)]
-		if camera.keys.any(func(had: Array) -> bool: return absf(float(had[0]) - float(key[0])) < 0.001):
+		# Under a frame apart nothing tells two keys apart as they play (camreview L1).
+		var near: float = Motions.key_near(camera.keys, float(key[0]))
+		if absf(near - float(key[0])) < 0.001:
 			return "Two camera keys at %s s: give each its own time." % Motions.num(float(key[0]), 3)
+		if near >= 0.0:
+			return "Camera keys at %s and %s s are under a frame (1/60 s) apart: give each its own time." % [
+				Motions.num(minf(near, float(key[0])), 3), Motions.num(maxf(near, float(key[0])), 3)]
 		camera.add_key(key)
 	return camera
 

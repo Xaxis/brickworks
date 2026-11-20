@@ -248,6 +248,9 @@ var _quiet: bool = false
 ## What was last seen of the model and its history: any change refreshes
 ## the lists (an undo, a motion a session defined).
 var _seen_generation: int = -1
+## The world the frames playing are of (BrickWorld.generation): replaced, the
+## play stops (camreview M3).
+var _playing_generation: int = -1
 var _seen_history: Array = []
 var _seen_motions: Motions = null
 var _seen_revision: int = -1
@@ -720,6 +723,7 @@ func _begin_playing(frames: Array, button: Button, cameras: Array = []) -> void:
 	_frame_at = 0.0
 	_shown = -1
 	_playing = not frames.is_empty()
+	_playing_generation = world.generation()
 	_say(_stop_words if _cameras.is_empty() or not _playing else "%s %s" % [_stop_words, HELD_WORDS])
 	if not _playing:
 		return
@@ -757,8 +761,10 @@ func _show_camera(n: int) -> void:
 	eye.call("hold_at", _cameras[n], HELD_WORDS)
 
 
-## The view as it was before the motion's camera held it, eased back to.
-func _give_view_back() -> void:
+## The view as it was before the motion's camera held it, eased back to;
+## with [param aim_back] false, let go with the person's lens and left where
+## it is (the model it looked at is gone).
+func _give_view_back(aim_back: bool = true) -> void:
 	if not _holding_view:
 		return
 	_holding_view = false
@@ -767,13 +773,14 @@ func _give_view_back() -> void:
 	eye.projection = _projection_before as Camera3D.ProjectionType
 	eye.size = _size_before
 	eye.fov = _fov_before
-	eye.call("aim_at", _view_before)
+	if aim_back:
+		eye.call("aim_at", _view_before)
 
 
-func _stop_playing() -> void:
+func _stop_playing(aim_back: bool = true) -> void:
 	_playing = false
 	_frames = []
-	_give_view_back()
+	_give_view_back(aim_back)
 	if _stop_button != null and is_instance_valid(_stop_button):
 		_stop_button.text = "Play all" if _stop_button == _play_all else (
 			"Play backwards" if _stop_button.get_meta("backwards", false) else "Play")
@@ -1354,6 +1361,12 @@ func _move_key(joint: Motions.Joint, index: int, t: float) -> void:
 	if _picked.size() > 1 and _picked_at(joint, float(key[0])) >= 0:
 		move_picked(t - float(key[0]))
 		return
+	# Onto another key, it took that key's place without a word (camreview M2's sibling).
+	var near: float = Motions.key_near(track.keys, t, [float(key[0])])
+	if near >= 0.0:
+		_say("A key is at %s s already: this one was left where it was." % Motions.num(near, 2))
+		_fill_editor()
+		return
 	_change("moved a key of %s to %s s" % [player.joint_name(joint), Motions.num(t, 2)],
 		func(edited_motion: Motions.Motion) -> void:
 			var own: Motions.Track = _track_of(edited_motion, joint)
@@ -1482,25 +1495,35 @@ func remove_picked() -> void:
 		else "%d keys taken out together. Undo puts them all back." % picks.size())
 
 
-## Every key picked moved [param by] seconds in one step, none before 0.
+## Every key picked moved [param by] seconds in one step, all by as much:
+## none before 0 or past the longest, so the move is cut short there rather
+## than pushing the first past the start, and none onto a key not picked (or
+## within a frame of one), which is refused and said. Snapped past the start,
+## then clamped, two keys dragged to 0 s took the place of the one there
+## without a word (camreview M2); each is checked where it lands.
 func move_picked(by: float) -> void:
 	var motion: Motions.Motion = _edited()
 	if motion == null or _picked.is_empty():
 		return
 	var earliest: float = INF
+	var latest: float = 0.0
 	for pick: Array in _picked:
 		earliest = minf(earliest, float(pick[1]))
-	by = snappedf(maxf(by, -earliest), 0.05)
-	if is_zero_approx(by):
+		latest = maxf(latest, float(pick[1]))
+	by = clampf(snappedf(by, 0.001), -earliest, Motions.MOST_SECONDS - latest)
+	if absf(by) < 0.001:
 		return
 	var picks: Array = _picked.duplicate()
 	for pick: Array in picks:
-		var to: float = float(pick[1]) + by
-		for key: Array in _keys_of(motion, pick[0]):
-			if absf(float(key[0]) - to) < 0.001 and _picked_at(pick[0], float(key[0])) < 0:
-				_say("A key not picked is at %s s already: the keys were left where they were." % Motions.num(to, 2))
-				_fill_editor()
-				return
+		var to: float = snappedf(float(pick[1]) + by, 0.001)
+		var mine: Array = picks.filter(func(one: Array) -> bool: return _same_whose(one[0], pick[0])).map(
+			func(one: Array) -> float: return float(one[1]))
+		var near: float = Motions.key_near(_keys_of(motion, pick[0]), to, mine)
+		if near >= 0.0:
+			_say("A key not picked is at %s s, where the key at %s s would go: the keys were left where they were."
+				% [Motions.num(near, 2), Motions.num(float(pick[1]), 2)])
+			_fill_editor()
+			return
 	_change("moved %d keys by %s s" % [picks.size(), Motions.num(by, 2)], func(edited: Motions.Motion) -> void:
 		var taken: Array = []
 		for pick: Array in picks:
@@ -1511,13 +1534,13 @@ func move_picked(by: float) -> void:
 					keys.remove_at(n)
 		for one: Array in taken:
 			var key: Array = (one[1] as Array).duplicate()
-			key[0] = clampf(float(key[0]) + by, 0.0, Motions.MOST_SECONDS)
+			key[0] = clampf(snappedf(float(key[0]) + by, 0.001), 0.0, Motions.MOST_SECONDS)
 			if one[0] is String:
 				edited.camera.add_key(key)
 			else:
 				_track_of(edited, one[0]).add_key(float(key[0]), float(key[1]), str(key[2])))
 	for pick: Array in _picked:
-		pick[1] = float(pick[1]) + by
+		pick[1] = snappedf(float(pick[1]) + by, 0.001)
 	_at = clampf(_at + by, 0.0, Motions.MOST_SECONDS)
 	_key_index = -1
 	var keys: Array = _keys_of(_edited(), CAMERA if _key_camera else _key_joint)
@@ -1540,8 +1563,11 @@ func _lift() -> Vector3:
 
 ## The camera keyed at the editor's time where the window looks from: the
 ## point it looks at, the way it looks from, how far off, its lens. A key
-## there already is put in its place, its way there kept. Its turn is taken
-## the short way from the key before it (or after), so it goes round no
+## there already (or within a frame: Motions.LEAST_KEY_GAP) is put in its
+## place, its time and its way there kept, its turn taken the short way from
+## its own: a turntable's last key keyed again from where it stands kept its
+## full turn rather than going 0° round (camreview H1). A new key's turn is
+## taken the short way from the key before it (or after), so it goes round no
 ## further than the view did. One step to undo.
 func key_camera() -> void:
 	var motion: Motions.Motion = _edited()
@@ -1551,14 +1577,22 @@ func key_camera() -> void:
 	var focus: Array = aim["focus"]
 	var numbers: Array = MotionPlayer.camera_numbers([Vector3(float(focus[0]), float(focus[1]), float(focus[2])),
 		float(aim["yaw"]), float(aim["pitch"]), float(aim["distance"]), eye.fov], _lift())
+	var keys: Array = motion.camera.keys if motion.camera != null else []
 	var at: float = snappedf(_at, 0.001)
+	var there: float = Motions.key_near(keys, at)
+	var moved_to: bool = there >= 0.0 and absf(there - at) >= 0.001
+	if there >= 0.0:
+		at = there
 	var how: String = "EASE"
 	var near: Variant = null
-	if motion.camera != null:
-		for key: Array in motion.camera.keys:
-			if absf(float(key[0]) - at) < 0.001:
-				how = str(key[6])
-			elif float(key[0]) < at or near == null:
+	for key: Array in keys:
+		if absf(float(key[0]) - at) < 0.001:
+			how = str(key[6])
+			near = float(key[2])
+			break
+	if near == null:
+		for key: Array in keys:
+			if float(key[0]) < at or near == null:
 				near = float(key[2])
 	var turn: float = float(numbers[1])
 	if near != null:
@@ -1573,8 +1607,12 @@ func key_camera() -> void:
 				edited.camera = Motions.CameraTrack.new()
 			edited.camera.add_key(key))
 	_choose_camera_key(at)
-	_say("The camera keyed at %s s: where it stands, what it looks at and its lens. Play goes through its keys."
-		% Motions.num(at, 2))
+	if moved_to:
+		_say("The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
+			% Motions.num(at, 3))
+	else:
+		_say("The camera keyed at %s s: where it stands, what it looks at and its lens. Play goes through its keys."
+			% Motions.num(at, 2))
 
 
 ## A turntable: two keys round the middle of the model, the camera at the
@@ -2365,6 +2403,12 @@ func _set_buttons() -> void:
 func _process(delta: float) -> void:
 	if _recording:
 		_record_frame()
+	if _playing and world.generation() != _playing_generation:
+		# The world the frames are of is gone (another model opened, New, a
+		# Together join, a restore): stopped, and the view the motion's camera
+		# held is the person's, where whatever opened the next one puts it. A
+		# loop played on and held the view over the next model (camreview M3).
+		_stop_playing(false)
 	if _playing:
 		if grabbing != null and grabbing.is_grabbing():
 			_stop_playing()

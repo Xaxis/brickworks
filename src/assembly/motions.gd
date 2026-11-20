@@ -164,10 +164,8 @@ class Track extends RefCounted:
 				var span: float = float(b[0]) - float(a[0])
 				return lerpf(float(a[1]), float(b[1]), (t - float(a[0])) / span) if span > 0.0 \
 					else float(b[1])
-		var eased := PoseAnimation.new()
-		for key: Array in keys:
-			eased.add_key(float(key[0]), {"x": float(key[1])})
-		return eased.angle_at("x", t)
+		return Motions.eased_through(keys, func(key: Array) -> Dictionary: return {"x": float(key[1])}) \
+			.angle_at("x", t)
 
 
 ## The camera's keys in a motion (camerakeys): each [[seconds, at (LDraw's
@@ -200,9 +198,7 @@ class CameraTrack extends RefCounted:
 		var out: Array = []
 		if keys.is_empty():
 			return out
-		var eased := PoseAnimation.new()
-		for key: Array in keys:
-			eased.add_key(float(key[0]), CameraTrack._channels(key))
+		var eased: PoseAnimation = Motions.eased_through(keys, CameraTrack._channels)
 		for t_value: Variant in times:
 			var t: float = float(t_value)
 			if t <= float(keys[0][0]) or keys.size() == 1:
@@ -238,6 +234,37 @@ class CameraTrack extends RefCounted:
 
 	static func _view_of(key: Array) -> Array:
 		return [key[1], float(key[2]), float(key[3]), float(key[4]), float(key[5])]
+
+
+## The monotone cubic through every one of [param keys] ([[seconds, ...],
+## ...] in time order, none two at one time), each key's numbers as
+## [param channels] gives them. Put in as they are: PoseAnimation.add_key
+## takes a key under 10 ms from another as the same key, so of keys at 1.000
+## and 1.005 s the first was lost and the camera played 179.7° at its 90°
+## (camreview L1).
+static func eased_through(keys: Array, channels: Callable) -> PoseAnimation:
+	var eased := PoseAnimation.new()
+	for key: Array in keys:
+		eased.keys.append({"t": float(key[0]), "angles": channels.call(key)})
+	return eased
+
+
+## The least time between two keys of one track or the camera's, seconds:
+## a frame of the window's. Keys nearer than that are not made (a session's
+## are refused, a press keys the one there, a move onto one is refused):
+## nothing tells them apart as they play (camreview L1).
+const LEAST_KEY_GAP := 1.0 / 60.0
+
+
+## [param keys]' time within [constant LEAST_KEY_GAP] of [param t], not
+## one of [param skip] (their times); -1.0 when none is.
+static func key_near(keys: Array, t: float, skip: Array = []) -> float:
+	for key: Array in keys:
+		var at: float = float(key[0])
+		if absf(at - t) < LEAST_KEY_GAP and not skip.any(func(one: Variant) -> bool:
+				return absf(float(one) - at) < 0.001):
+			return at
+	return -1.0
 
 
 ## The camera's numbers the file keeps: a tilt short of the poles, a lens
