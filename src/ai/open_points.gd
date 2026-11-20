@@ -111,7 +111,9 @@ func points_of(ids: Array) -> Array[Point]:
 	var out: Array[Point] = []
 	var lattice: BrickLattice = assistant.builder.lattice
 	for raw: Variant in ids:
-		Fiber.pause(&"points_of")
+		# A reading told to stop (Fiber.stop) ends here, its answer unused.
+		if Fiber.pause(&"points_of"):
+			return out
 		var brick: BrickWorld.Brick = assistant.world.get_brick(int(raw))
 		if brick == null:
 			continue
@@ -147,9 +149,11 @@ func points_of(ids: Array) -> Array[Point]:
 				(at.basis * Vector3.DOWN).normalized(), frame, section)
 			point.by = _other_at(lattice, point.at + point.way * UNDER, brick.id)
 			out.append(point)
-	Fiber.pause(&"points_of: done")
+	if Fiber.pause(&"points_of: done"):
+		return out
 	_mate_round_ones(out)
-	Fiber.pause(&"mates: done")
+	if Fiber.pause(&"mates: done"):
+		return out
 	for point: Point in out:
 		if point.by == 0 and point.way.y < -0.7 and (point.at + point.way * UNDER).y < 0.0:
 			point.by = GROUND
@@ -187,7 +191,8 @@ func _mate_round_ones(points: Array[Point]) -> void:
 	var lattice: BrickLattice = assistant.builder.lattice
 	var cells: PackedInt32Array = _box_cells(box.grow(STUD * 2.0))
 	for other: int in lattice.near_bounds(cells):
-		Fiber.pause(&"mates: near")
+		if Fiber.pause(&"mates: near"):
+			return
 		var brick: BrickWorld.Brick = assistant.world.get_brick(other)
 		if brick == null:
 			continue
@@ -214,7 +219,8 @@ func _mate_round_ones(points: Array[Point]) -> void:
 			grid[square] = []
 		(grid[square] as Array).append(n)
 	for point: Point in round_ones:
-		Fiber.pause(&"mates")
+		if Fiber.pause(&"mates"):
+			return
 		var takes: Array = MATES[point.kind]
 		var around: Array = []
 		var mid: Vector3i = _mate_square(point.at)

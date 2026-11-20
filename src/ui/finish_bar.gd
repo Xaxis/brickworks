@@ -22,7 +22,8 @@
 ##   ._fits), and a finding that does not fit whole is left as it is;
 ## - with a selection, only what is on the selected parts is finished.
 ## A finger reaches all of it: the layout for a finger sizes every target 44
-## points or more (TouchSizing.place_panel).
+## points or more (TouchSizing.size_panel), and on a phone it is a sheet
+## under the model, the ghost in sight above it (Main._finish_surfaces).
 class_name FinishBar
 extends PanelContainer
 
@@ -63,11 +64,22 @@ var _world: BrickWorld
 var _builder: Builder
 var _library: PartLibrary
 var _scenery: Dictionary = {}
-## The assistant the pass reads the model through: one of the bar's own,
-## never in the tree, so the person's Claude's own pass (its findings, the
-## zones it was told to keep) is left as it is.
+## The assistant the shown findings were read through, and their pass: one
+## of the bar's own per reading, never in the tree, so the person's
+## Claude's own pass (its findings, the zones it was told to keep) is left
+## as it is. One per reading: a reading stopped part way had filled a
+## shared one's caches from a model since closed, and the next model's read
+## through it found none of its 22 (fpreview M1).
 var _reader: Assistant = null
 var _pass: SurfacePass = null
+## The world as the findings shown, or being read, were read from: its
+## generation (another model opened) and revision (any edit, an Undo, a
+## Together peer's). Either moving while the bar is open, what is shown is
+## taken down and read again (fpreview M2).
+var _seen_generation: int = -1
+var _seen_revision: int = -1
+## Laying: its own edits are not a change to read again for.
+var _laying: bool = false
 ## Each kind's parts as a ghost on the model.
 var _ghosts: Dictionary = {}
 var _title: Label
@@ -82,6 +94,8 @@ var _reading: int = 0
 
 func _ready() -> void:
 	visible = false
+	set_process(false)
+	visibility_changed.connect(func() -> void: set_process(visible))
 	if app != null:
 		_world = app.get("_world")
 		_builder = app.get("_builder")
@@ -103,9 +117,13 @@ func open() -> void:
 
 func close() -> void:
 	_reading += 1
+	# A reading still going ends at its next stopping place: opened again,
+	# the next one waits for it, never runs whole in one frame (H1).
+	Fiber.stop(self)
 	visible = false
 	_ghosts_off()
 	busy = false
+	phase = ""
 
 
 ## What a reading is doing now, for a probe timing its frames: "" when
@@ -114,15 +132,19 @@ var phase: String = ""
 
 
 ## Read the model again and show what the pass would lay now. Awaited.
+## A reading still going is stopped and waited for (Fiber.run), never
+## read whole beside it; this one reads through an assistant of its own.
 func refresh() -> void:
 	if _world == null:
 		return
 	_reading += 1
 	var mine: int = _reading
+	Fiber.stop(self)
 	busy = true
 	found = {}
 	left_alone = PackedStringArray()
 	more = 0
+	read_at = -1
 	_ghosts_off()
 	_show()
 	var picked: Dictionary = {}
@@ -130,27 +152,38 @@ func refresh() -> void:
 		if _world.get_brick(int(id)) != null and not _scenery.has(int(id)):
 			picked[int(id)] = true
 	var revision: int = _world.revision
+	_seen_generation = _world.generation()
+	_seen_revision = revision
 	var job: Working.Job = Working.begin(tr("Reading the model's studs, steps and edges…"))
 	await job.shown()
-	_make_pass()
+	var reader: Assistant = _make_reader()
+	var reading := SurfacePass.new(reader)
 	phase = "warm"
 	await _warm(mine)
 	phase = "read"
 	# The pass's own reading, the AI's, spread over frames (Fiber): on
 	# Orthanc it is seconds of work, and the window goes on meanwhile.
-	var reading: SurfacePass = _pass
-	var fiber_said: Variant = await Fiber.run(func() -> Variant: return reading.find(), _library,
-		_fetch, job)
-	var findings: Array = fiber_said if fiber_said is Array else []
-	phase = "ghosts"
+	var fiber_said: Variant = null
+	if mine == _reading:
+		fiber_said = await Fiber.run(func() -> Variant: return reading.find(), _library,
+			_fetch.bind(reader), job, self)
 	job.end()
-	if mine != _reading or not visible:
+	if mine != _reading or not visible or fiber_said == null:
+		# Stopped, closed or read again since: its reader goes with it.
+		_drop(reader)
+		if mine == _reading:
+			busy = false
+			phase = ""
+			_show()
 		return
-	if _world.revision != revision:
+	if _world.revision != revision or _world.generation() != _seen_generation:
 		# Changed while it was read: read again, as it stands now.
-		busy = false
+		_drop(reader)
 		await refresh()
 		return
+	phase = "ghosts"
+	_keep_reader(reader, reading)
+	var findings: Array = fiber_said if fiber_said is Array else []
 	read_at = revision
 	left_alone = _pass.left_alone
 	more = _pass.more
@@ -172,6 +205,22 @@ func refresh() -> void:
 	busy = false
 	phase = ""
 	_show()
+
+
+## The world changed under what the bar shows or reads (another model
+## opened, an edit, an Undo, a Together peer's part): the ghost of what
+## the pass would have laid on the model as it was is taken down at once,
+## and the model read again as it stands now. A reading going on is
+## stopped first (refresh).
+func _process(_delta: float) -> void:
+	if not visible or _laying or _world == null:
+		return
+	if _world.generation() == _seen_generation and _world.revision == _seen_revision:
+		return
+	_seen_generation = _world.generation()
+	_seen_revision = _world.revision
+	_ghosts_off()
+	refresh()
 
 
 ## Leave a kind out, or put it back.
@@ -197,6 +246,12 @@ func counts() -> Dictionary:
 
 ## Lay the ticked kinds, as Lay does: one undo step. last_laid says what it
 ## did; {} when there was nothing to lay. Awaited.
+##
+## Paced by the part: each part a finding lays is tried where it goes, and
+## the frame given back whenever its slice is spent, the status bar
+## counting the parts. Tried a finding at a time, Orthanc's 32-part round
+## held one frame 96 ms on its own, and the frame it ended in 182-205 ms
+## (fpreview M5).
 func lay_now() -> Dictionary:
 	last_laid = {}
 	if busy or _pass == null:
@@ -212,15 +267,19 @@ func lay_now() -> Dictionary:
 		await refresh()
 		return {}
 	var chosen: Array = []
+	var total: int = 0
 	for kind: String in KINDS:
 		if bool(ticked.get(kind, false)) and found.has(kind):
 			chosen.append_array(found[kind])
+	for one: SurfacePass.Finding in chosen:
+		total += one.add.size()
 	if chosen.is_empty():
 		say.call(tr("nothing ticked to lay"))
 		return {}
 	busy = true
+	_laying = true
 	_show()
-	var job: Working.Job = Working.begin(tr("Laying the finish…"), chosen.size())
+	var job: Working.Job = Working.begin(tr("Laying the finish…"), total)
 	await job.shown()
 	var depth: int = _builder.history_depth()
 	var laid: int = 0
@@ -228,26 +287,21 @@ func lay_now() -> Dictionary:
 	var taken: int = 0
 	var left := PackedStringArray()
 	var pace := FramePace.new()
-	var done: int = 0
 	# Each place's steps, newest first, kept as one step at the end: an edit
 	# of the person's made while this goes on is a step of its own, never
 	# folded into the finish.
 	var places: Array = []
-	var seen: int = _world.revision
+	var going: Dictionary = {"seen": _world.revision, "done": 0, "changed": false}
 	for one: SurfacePass.Finding in chosen:
-		done += 1
-		job.count(done)
-		if pace.due():
-			await pace.next()
-			if _world.revision != seen:
-				left.append(tr("the model was changed while it was laid: the rest is left"))
-				break
-		var why: String = _why_not_laid(one)
+		var why: String = await _why_not_laid(one, pace, job, going)
+		if bool(going["changed"]):
+			left.append(tr("the model was changed while it was laid: the rest is left"))
+			break
 		if not why.is_empty():
 			left.append(why)
 			continue
 		var steps: Array = _builder.swap_bricks(PackedInt64Array(one.remove), _adds_of(one))
-		seen = _world.revision
+		going["seen"] = _world.revision
 		if steps.is_empty():
 			continue
 		places.push_front({"undo": "group", "steps": steps, "words": "finish"})
@@ -255,6 +309,9 @@ func lay_now() -> Dictionary:
 		parts += one.add.size()
 		taken += one.remove.size()
 	job.end()
+	# What the app works out after an edit, in a frame of its own.
+	if not places.is_empty() and pace.due():
+		await pace.next()
 	if not places.is_empty():
 		_builder.record(places, tr("finished the surfaces: %d parts") % parts)
 		if app != null and app.has_method("_on_model_edited"):
@@ -262,6 +319,9 @@ func lay_now() -> Dictionary:
 	last_laid = {"laid": laid, "parts": parts, "taken": taken, "left": Array(left),
 		"undone": _builder.history_depth() <= depth}
 	busy = false
+	_laying = false
+	_seen_generation = _world.generation()
+	_seen_revision = _world.revision
 	if laid > 0 and _builder.history_depth() > depth:
 		say.call(Keymap.filled(tr("finished the surfaces: %d parts in %d places — {undo|takes it back}"))
 			% [parts, laid])
@@ -290,20 +350,35 @@ static func kind_of(one: SurfacePass.Finding) -> String:
 # -- reading --------------------------------------------------------------------
 
 
-func _make_pass() -> void:
-	if _reader == null:
-		_reader = Later.make(&"Assistant")
-	_reader.library = _library
-	_reader.world = _world
-	_reader.builder = _builder
-	_reader.scenery = _scenery
-	# What the model is called says whether it is a building (straight
-	# slopes first, its roof's edges kept) or a body (rounded): the pass
-	# reads it off the design's name, and a person's model is its name.
+## An assistant of the bar's own for one reading, reading the model as it
+## stands. What the model is called says whether it is a building (straight
+## slopes first, its roof's edges kept) or a body (rounded): the pass reads
+## it off the design's name, and a person's model is its name.
+func _make_reader() -> Assistant:
+	var reader: Assistant = Later.make(&"Assistant")
+	reader.library = _library
+	reader.world = _world
+	reader.builder = _builder
+	reader.scenery = _scenery
 	var bar: Node = app.get("_bar") if app != null else null
-	_reader._named_as = str(bar.call("model_name")) if bar != null and bar.has_method("model_name") \
+	reader._named_as = str(bar.call("model_name")) if bar != null and bar.has_method("model_name") \
 		else ""
-	_pass = SurfacePass.new(_reader)
+	return reader
+
+
+## The reading [param reader] made is the one shown: the last shown's goes.
+func _keep_reader(reader: Assistant, reading: SurfacePass) -> void:
+	if _reader != null and _reader != reader:
+		_drop(_reader)
+	_reader = reader
+	_pass = reading
+
+
+func _drop(reader: Assistant) -> void:
+	if reader == null or not is_instance_valid(reader) or reader == _reader:
+		return
+	if not reader.is_inside_tree():
+		reader.free()
 
 
 ## Whether a finding touches the selected parts only: each part it takes
@@ -351,13 +426,14 @@ static func _laid_parts() -> PackedStringArray:
 	return out
 
 
-## Parts a reading missed, fetched as a session's design fetches them.
-func _fetch(ids: PackedStringArray) -> void:
+## Parts a reading missed, fetched as a session's design fetches them,
+## through the reading's own [param reader].
+func _fetch(ids: PackedStringArray, reader: Assistant) -> void:
 	phase = "fetch"
 	var wanted := Assistant.Model.new()
 	for id: String in ids:
 		wanted.placements.append(Assistant.Placement.from_dict({"part": id}))
-	await _reader._ensure_parts(wanted)
+	await reader._ensure_parts(wanted)
 	phase = "read"
 
 
@@ -367,26 +443,48 @@ func _fetch(ids: PackedStringArray) -> void:
 ## Why [param one] is not laid as the model now stands, "" when it may be:
 ## every part it lays fits there with the rest of the finding, the parts it
 ## takes off are all still there, and whatever sat on a stud of one of them
-## is still held after.
-func _why_not_laid(one: SurfacePass.Finding) -> String:
+## is still held after. Each part tried, [param pace]'s frame given back
+## when its slice is spent and [param job] counting the parts; an edit of
+## the person's meanwhile sets [param going]'s changed, and the rest waits.
+func _why_not_laid(one: SurfacePass.Finding, pace: FramePace, job: Working.Job,
+		going: Dictionary) -> String:
 	for id: int in one.remove:
 		if _world.get_brick(id) == null or _builder.is_locked(id):
 			return tr("%s: a part it lays again is gone or locked") % _where(one)
 	var skip: Dictionary = {}
 	for id: int in one.remove:
 		skip[id] = true
+	var fits: bool = true
 	for n: int in one.add.size():
+		if await _breathe(pace, going):
+			return ""
+		going["done"] = int(going["done"]) + 1
+		job.count(int(going["done"]))
 		var others: Array = one.add.slice(0, n) + one.add.slice(n + 1)
-		if not _pass._fits(one.add[n], skip, others):
-			return tr("%s: no room for it as the model now stands") % _where(one)
-	if not _holds(one, skip):
-		return tr("%s: what stands on it would be left loose") % _where(one)
+		if fits and not _pass._fits(one.add[n], skip, others):
+			# Counted on to the finding's end, so the count stays the parts.
+			fits = false
+	if not fits:
+		return tr("%s: no room for it as the model now stands") % _where(one)
+	if not await _holds(one, skip, pace, going):
+		return "" if bool(going["changed"]) else tr("%s: what stands on it would be left loose") % _where(one)
 	return ""
+
+
+## The frame given back if [param pace]'s slice is spent: true when the
+## model was changed meanwhile by anyone but the Lay (going's changed).
+func _breathe(pace: FramePace, going: Dictionary) -> bool:
+	if pace.due():
+		await pace.next()
+		if _world.revision != int(going["seen"]):
+			going["changed"] = true
+	return bool(going["changed"])
 
 
 ## Whatever sits on a stud of a part [param one] takes off is still held
 ## once it is laid: a part holding studs others sit on is never tiled.
-func _holds(one: SurfacePass.Finding, skip: Dictionary) -> bool:
+func _holds(one: SurfacePass.Finding, skip: Dictionary, pace: FramePace,
+		going: Dictionary) -> bool:
 	if one.remove.is_empty():
 		return true
 	var on: Dictionary = {}
@@ -395,6 +493,8 @@ func _holds(one: SurfacePass.Finding, skip: Dictionary) -> bool:
 		if point.kind == "stud" and point.by > 0 and not skip.has(point.by):
 			on[point.by] = true
 	for id: Variant in on:
+		if await _breathe(pace, going):
+			return false
 		var placement: Assistant.Placement = _pass._read.by_id.get(int(id))
 		if placement == null:
 			return false
@@ -406,8 +506,13 @@ func _holds(one: SurfacePass.Finding, skip: Dictionary) -> bool:
 
 
 ## The finding's parts as Builder.swap_bricks puts them down: each where the
-## pass placed it, in the sub-model and step a part put down by hand goes in,
-## or, where it stands in the place of a part it takes off, that part's.
+## pass placed it. Where the finding takes parts off, every part it lays is
+## laid in the place of one of them, and takes that part's sub-model and
+## step: the one whose box it stands in, or else the nearest (a skin's
+## tiles stand on the face of the brick they replace). Matched one for one,
+## the castle's curtain walls lost the rest of a swap's parts to the main
+## model, 40 parts to 38 (fpreview M3). Where it takes none off (tiles on
+## open studs), the sub-model and step a part put down by hand goes in.
 func _adds_of(one: SurfacePass.Finding) -> Array:
 	var out: Array = []
 	var gone: Array = []          ## [brick, its box]
@@ -416,6 +521,8 @@ func _adds_of(one: SurfacePass.Finding) -> Array:
 		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id) if brick != null else null
 		if mesh != null:
 			gone.append([brick, (brick.transform * mesh.bounds).abs()])
+		elif brick != null:
+			gone.append([brick, AABB(brick.transform.origin, Vector3.ZERO)])
 	var path: String = _builder.place_group
 	var step: int = int(_builder.place_step.call(path)) if _builder.place_step.is_valid() else -1
 	for raw: Variant in one.add:
@@ -425,15 +532,36 @@ func _adds_of(one: SurfacePass.Finding) -> Array:
 			"at": at, "path": path, "step": step}
 		var mesh: Lbm.PartMesh = _library.mesh_for(str(placed["part"]))
 		var middle: Vector3 = (at * mesh.bounds).abs().get_center() if mesh != null else at.origin
-		for n: int in gone.size():
-			if (gone[n][1] as AABB).grow(0.5).has_point(middle):
-				var was: BrickWorld.Brick = gone[n][0]
-				item["path"] = Assemblies.path_of(was)
-				item["step"] = was.step
-				gone.remove_at(n)
-				break
+		var was: BrickWorld.Brick = _in_place_of(gone, middle)
+		if was != null:
+			item["path"] = Assemblies.path_of(was)
+			item["step"] = was.step
 		out.append(item)
 	return out
+
+
+## Which of [param gone] (each [brick, its box]) a part whose middle is at
+## [param middle] stands in the place of: the one whose box holds it, the
+## nearest such; else the nearest box. Null when nothing is taken off.
+static func _in_place_of(gone: Array, middle: Vector3) -> BrickWorld.Brick:
+	var best: BrickWorld.Brick = null
+	var best_d: float = INF
+	var inside: bool = false
+	for pair: Array in gone:
+		var box: AABB = pair[1]
+		var holds: bool = box.grow(0.5).has_point(middle)
+		var d: float = middle.distance_to(_nearest_in(box, middle))
+		if holds:
+			d = middle.distance_to(box.get_center())
+		if holds and not inside or holds == inside and d < best_d:
+			best = pair[0]
+			best_d = d
+			inside = inside or holds
+	return best
+
+
+static func _nearest_in(box: AABB, point: Vector3) -> Vector3:
+	return point.clamp(box.position, box.end)
 
 
 ## Where a placement of the pass's goes, in the world.
@@ -478,10 +606,18 @@ func _show() -> void:
 
 ## As tall as what it shows now: a panel grows with its words but never
 ## shrinks by itself, and the first reading's long words left it over the
-## model, its lower half empty. A phone's panel is TouchSizing's.
+## model, its lower half empty. In the tools' column (a finger's layout)
+## the column lays it out.
 func _fit_height() -> void:
-	if is_inside_tree() and not Phone.on():
+	if is_inside_tree() and not get_parent() is Container:
 		size = Vector2(size.x, 0.0)
+
+
+## The least the tools' sheet under the model is on a phone held upright
+## (Main._size_tool_sheet): all it holds, Lay with it, the model and its
+## ghost above.
+func least_tall() -> float:
+	return get_combined_minimum_size().y
 
 
 func _show_counts() -> void:
@@ -682,6 +818,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _exit_tree() -> void:
 	_ghosts_off()
+	Fiber.stop(self)
 	if _reader != null and not _reader.is_inside_tree():
 		_reader.free()
 		_reader = null

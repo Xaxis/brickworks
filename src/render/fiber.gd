@@ -18,6 +18,14 @@
 ## not loaded is read as having none, and [method run] loads what was
 ## missed and runs it again, as Assistant._laid_whole does.
 ##
+## One fiber runs at a time. A second [method run] waits, by frames, for
+## the running one to end before it starts: run whole on the main thread
+## instead, a reading closed and opened again held one frame 9.6 s on
+## Orthanc (fpreview H1). Its owner stops one it no longer wants
+## ([method stop]): [method pause] then says so, and the work's stopping
+## places return at once with nothing (SurfacePass.find's stages), so a
+## stopped reading ends in a few turns, every one of them still a turn.
+##
 ## Where a thread cannot be had (a browser engine built without them) the
 ## work runs whole, on the main thread, as before.
 ##
@@ -32,6 +40,11 @@ const SLICE_US := 25000
 ## nothing on any other. Written only while the main thread waits.
 static var _thread_id: int = 0
 static var _running: Fiber = null
+
+## The run this fiber is a round of: {"owner", "stop"}. Its stop is read
+## on the fiber's thread at a pause, written on the main thread while that
+## one waits.
+var _ticket: Dictionary = {}
 
 ## The stretches of work between two pauses longer than [constant LONG_US],
 ## of every fiber since a probe last cleared it: [ms, the pause before, the
@@ -56,11 +69,14 @@ var _answer: Variant = null
 
 ## Hand the turn back if this slice is spent, when called on a fiber's
 ## thread; nothing anywhere else. Called in the hot loops of work a fiber
-## may run.
-static func pause(site: StringName = &"") -> void:
+## may run. True when the fiber was told to stop ([method stop]): a
+## stopping place returns at once, its answer thrown away. Never true on
+## the main thread or a worker, so the work called there is as it was.
+static func pause(site: StringName = &"") -> bool:
 	if _thread_id == 0 or OS.get_thread_caller_id() != _thread_id:
-		return
+		return false
 	_running._maybe_give_back(site)
+	return bool(_running._ticket.get("stop", false))
 
 
 ## Whether this is called on a running fiber's thread.
@@ -73,22 +89,61 @@ static func busy() -> bool:
 	return _running != null
 
 
+## Stop what [param owner] ran ([method run]): the running fiber's work
+## returns at its next stopping place, a run still waiting for its turn or
+## between its rounds starts no other, and each answers null. On the main
+## thread.
+static func stop(owner: Object) -> void:
+	if owner == null:
+		return
+	for ticket: Dictionary in _runs:
+		if ticket["owner"] == owner:
+			ticket["stop"] = true
+
+
+## Every [method run] not yet answered: {"owner", "stop"}.
+static var _runs: Array[Dictionary] = []
+
+
 ## [param work]'s answer, run in turns of [constant SLICE_US] with a frame
 ## between each; [param job], when given, is told each turn is done. Read
 ## through [param library], whose missed parts are loaded (by
 ## [param fetch], awaited with them, when given) and the work run again,
-## three times at most. Awaited, on the main thread. Run whole when a fiber
-## is already running or no thread can be had.
+## three times at most. Awaited, on the main thread. A fiber already
+## running is waited for first, by frames, and each round waits again.
+## Null when [param owner] stopped it ([method stop]). Run whole only where
+## no thread can be had.
 static func run(work: Callable, library: PartLibrary, fetch: Callable = Callable(),
-		job: Working.Job = null) -> Variant:
-	if _running != null or not OS.has_feature("threads") and OS.has_feature("web"):
+		job: Working.Job = null, owner: Object = null) -> Variant:
+	if not OS.has_feature("threads") and OS.has_feature("web"):
 		return work.call()
+	var ticket: Dictionary = {"owner": owner, "stop": false}
+	_runs.append(ticket)
+	var answer: Variant = await _rounds(work, library, fetch, job, ticket)
+	_runs.erase(ticket)
+	return null if bool(ticket["stop"]) else answer
+
+
+static func _rounds(work: Callable, library: PartLibrary, fetch: Callable, job: Working.Job,
+		ticket: Dictionary) -> Variant:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var answer: Variant = null
 	for _round: int in 3:
+		# One at a time: what the running one reads is never written by
+		# another's turn, and the library's readers are one at a time.
+		while _running != null:
+			await tree.process_frame
+		if bool(ticket["stop"]):
+			return null
 		library.unread_by_readers()
 		var fiber := Fiber.new()
 		fiber._work = work
+		fiber._ticket = ticket
 		answer = await fiber._run_turns(library, job)
+		if bool(ticket["stop"]):
+			# Its parts missed were missed by a reading cut short.
+			library.unread_by_readers()
+			return null
 		var missed: PackedStringArray = library.unread_by_readers()
 		if missed.is_empty():
 			return answer

@@ -675,27 +675,34 @@ func find() -> Array[Finding]:
 		left_alone.append("a Brick Art mosaic: its studs are the picture")
 		return out
 	_read = OpenPoints.read(assistant)
-	Fiber.pause(&"find: read")
+	if Fiber.pause(&"find: read"):
+		return out
 	_taken_off = {}
 	var points: Array = _points()
-	Fiber.pause(&"find: points")
+	if Fiber.pause(&"find: points"):
+		return _given_up([points], [])
 	var tops: Dictionary = open_tops("", points)
-	Fiber.pause(&"find: tops")
+	if Fiber.pause(&"find: tops"):
+		return _given_up([points], [tops])
 	# And the tops already tiled, by the studs under their tiles: a staircase
 	# of tiled steps is still a staircase, and a tiled top still has an edge.
 	var levels: Dictionary = tile_tops()
-	Fiber.pause(&"find: tile_tops")
+	if Fiber.pause(&"find: tile_tops"):
+		return _given_up([points], [tops, levels])
 	levels.merge(tops)
 	var claimed: Dictionary = {}
 	var gone: Dictionary = {}
 	var stairs: Array[Finding] = _staircases(levels, claimed, gone)
-	Fiber.pause(&"find: staircases")
+	if Fiber.pause(&"find: staircases"):
+		return _given_up([points], [tops, levels])
 	var edges: Array[Finding] = []
 	if not _straight_first():
 		edges = _edges(levels, claimed)
-	Fiber.pause(&"find: edges")
+	if Fiber.pause(&"find: edges"):
+		return _given_up([points], [tops, levels])
 	var fields: Array[Finding] = _fields(tops, claimed)
-	Fiber.pause(&"find: fields")
+	if Fiber.pause(&"find: fields"):
+		return _given_up([points], [tops, levels])
 	# And each section's own: a wing laid at an angle is studs up in its own
 	# frame, and tiled in it. The starfighter's wings were open fields of
 	# studs, all in sections.
@@ -704,32 +711,39 @@ func find() -> Array[Finding]:
 	# (finishpass). open_tops keeps only a section's own points anyway.
 	var by_section: Dictionary = {}
 	for raw: Variant in points:
-		Fiber.pause(&"find: by section")
+		if Fiber.pause(&"find: by section"):
+			return _given_up([points], [by_section, tops, levels])
 		var point: OpenPoints.Point = raw
 		if not point.section.is_empty():
 			if not by_section.has(point.section):
 				by_section[point.section] = []
 			(by_section[point.section] as Array).append(point)
 	var model_box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
-	Fiber.pause(&"find: box")
+	if Fiber.pause(&"find: box"):
+		return _given_up([points], [by_section, tops, levels])
 	for name: Variant in _read.model.sections.keys():
-		Fiber.pause(&"find sections")
+		if Fiber.pause(&"find sections"):
+			return _given_up([points], [by_section, tops, levels])
 		if not by_section.has(str(name)):
 			continue
 		var tilted: Dictionary = open_tops(str(name), by_section[str(name)], model_box)
 		if not tilted.is_empty():
 			fields.append_array(_fields(tilted, {}, str(name)))
 	# And the studs on a part's side: a plate laid on its side, studs out.
-	Fiber.pause(&"find: sections")
+	if Fiber.pause(&"find: sections"):
+		return _given_up([points], [by_section, tops, levels])
 	fields.append_array(_side_fields(points))
-	Fiber.pause(&"find: side_fields")
+	if Fiber.pause(&"find: side_fields"):
+		return _given_up([points], [by_section, tops, levels])
 	# A building's long plain walls are textured; a body's flanks skinned,
 	# of brick courses and of plates.
 	var walls: Array[Finding] = _walls(gone) if _straight_first() else _flanks(gone)
-	Fiber.pause(&"find: walls or flanks")
+	if Fiber.pause(&"find: walls or flanks"):
+		return _given_up([points], [by_section, tops, levels])
 	if not _straight_first():
 		walls.append_array(_plate_flanks(gone, walls.duplicate()))
-	Fiber.pause(&"find: plate_flanks")
+	if Fiber.pause(&"find: plate_flanks"):
+		return _given_up([points], [by_section, tops, levels])
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
 	edges.sort_custom(by_size)
@@ -759,6 +773,17 @@ func find() -> Array[Finding]:
 		_let_go_keys(levels)
 		_let_go_keys(tops)
 	return out
+
+
+## A reading on a fiber told to stop (Fiber.stop, FinishBar): nothing,
+## what it made so far let go of a piece at a time, as an answer's is.
+## Never reached on the main thread, where Fiber.pause is always false.
+func _given_up(lists: Array, tables: Array) -> Array[Finding]:
+	for table: Dictionary in tables:
+		_let_go_keys(table)
+	for list: Array in lists:
+		_let_go(list)
+	return []
 
 
 ## [param list] emptied from its end a piece at a time, a fiber's turn
