@@ -196,7 +196,9 @@ func _looks_only_on_change() -> void:
 func _follows_standing_still() -> void:
 	var together: Together = _main.get("_together")
 	await _quiet(1.0, 5.0)
-	together.set_process(false)
+	# Off as its owner turns a node off, so a wake (-- --wake) does not
+	# run its session's steps, which would end a session it does not have.
+	Wake.off(together)
 	together.live = true
 	together.people = [{"who": "f0110we5", "name": "Ann", "here": true, "view": _camera.aim()}]
 	together.following = "f0110we5"

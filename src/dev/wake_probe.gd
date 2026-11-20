@@ -199,12 +199,13 @@ func _still_running() -> Array[String]:
 	return out
 
 
+## Counted in an array: a lambda captures a local int by value.
 func _asleep_count() -> int:
-	var n: int = 0
+	var n: Array[int] = [0]
 	_walk(root, func(node: Node) -> void:
 		if Wake.is_asleep(node):
-			n += 1)
-	return n
+			n[0] += 1)
+	return n[0]
 
 
 func _walk(node: Node, visit: Callable) -> void:
