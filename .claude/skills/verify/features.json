@@ -965,6 +965,14 @@
       "tests": []
     },
     {
+      "id": "cli:camerakeys probe",
+      "kind": "cli",
+      "entry": "src/dev/camerakeys_probe.gd",
+      "reach": "tools/probe.sh camerakeys_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1 keyed three times in the Motions panel, played in the window through each key within 1 LDU and 1 degree, the model still, a hand's turn held back and the view given back; filmed by render_motion and File, Render's Animation through the keys; Turntable two keys, first and last frames alike; saved and reopened byte for byte; three keys Ctrl+clicked and deleted in one undo; render_motion camera= turntable in one call; Orthanc's frame cost against turning by hand; pictures in shots/camerakeys/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:canary check",
       "kind": "cli",
       "entry": "tools/web/canary_check.mjs",
@@ -3985,6 +3993,14 @@
       "entry": "api/_builds.js",
       "reach": "/api/people?op=builds&page=N   (galleryBuilds: newest first, 24 a page; not hidden, no report waiting, builder and owner shown in public, the model in the gallery; tests/test_gallery_builds.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:camera keys in a motion",
+      "kind": "lib",
+      "entry": "src/assembly/motions.gd",
+      "reach": "tools/probe.sh camerakeys_probe   (0 !BRICKWORKS MOTION_CAMERA lines: the camera keyed at a time, AT the point it looks at in LDraw's coordinates, TURN, TILT, AWAY, FOV and its way there; Motions.CameraTrack, camera_key_of, turntable_keys; MotionPlayer.Played.cameras, CadCamera.hold_at and let_go, MotionRender.cameras, StudioRender.keyed_shot; the Motions panel's The camera: Key the camera, Turntable, its key strip; keys of any strip picked by Ctrl+click, Delete takes them out in one step; render_motion and define_motion camera=)",
+      "area": "view",
       "tests": []
     },
     {

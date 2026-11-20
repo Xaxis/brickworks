@@ -22,6 +22,14 @@
 ## the history (Builder's "motions"), so undo, the file and a session over
 ## MCP see the same motions, and a motion a session defines shows here.
 ##
+## The camera is keyed in a motion too (camerakeys, docs/APP_UX10.md gap
+## 12): Key the camera keeps where the window looks from at the editor's
+## time, Turntable makes two keys a full turn round the model; Play and
+## Render animation go through its keys, the person's own turning of the
+## view held back meanwhile and given back at Stop. Keys of any track, the
+## camera's among them, are picked together by Ctrl+click (Cmd on a Mac):
+## Delete takes them all out in one step, and a drag of one moves them all.
+##
 ## Render animation draws the chosen motion off screen a frame at a time
 ## (StudioRender.animate), as render_motion does: in a browser an animated
 ## WebP; on the desktop the frames, the WebP and, where ffmpeg is
@@ -173,6 +181,32 @@ var _at: float = 0.0
 ## The key chosen on a strip: its joint and its number in its track.
 var _key_joint: Motions.Joint = null
 var _key_index: int = -1
+## Whether the chosen key ([member _key_index]) is the camera's.
+var _key_camera: bool = false
+## Keys picked together (Ctrl+click, Cmd on a Mac): each [whose, seconds],
+## whose a Motions.Joint or [constant CAMERA]. Delete takes them all out in
+## one step; a drag of one moves them all.
+var _picked: Array = []
+const CAMERA := "camera"
+## Whether Delete takes the picked keys out: a key was pressed last, not
+## somewhere else.
+var _keys_hot: bool = false
+## The camera's section of the editor (camerakeys).
+var _camera_heading: Label
+var _camera_words: Label
+var _camera_key: Button
+var _camera_turn: Button
+var _camera_strip: KeyStrip
+## Where each frame playing puts the camera (MotionPlayer.camera_view, or
+## null), and the window's view as it was before: given back at Stop.
+var _cameras: Array = []
+var _view_before: Dictionary = {}
+var _fov_before: float = 0.0
+var _projection_before: int = Camera3D.PROJECTION_PERSPECTIVE
+var _size_before: float = 0.0
+var _holding_view: bool = false
+## What the status says while a motion's camera holds the view.
+const HELD_WORDS := "The view follows the motion's camera keys: Stop gives it back."
 ## The edited motion played to look (nothing changes), for the time slider:
 ## null when it must be played again.
 var _look: MotionPlayer.Played = null
@@ -613,9 +647,9 @@ func play(name: String, reverse: bool = false) -> void:
 	if not played.standing.is_empty():
 		_stop_words += " Now %s." % played.standing
 	_look = null
-	if played.drive != null:
+	if played.drive != null and played.cameras.is_empty():
 		_frame_drive(played)
-	_begin_playing(played.frames, button)
+	_begin_playing(played.frames, button, played.cameras)
 
 
 ## The view framed on all a path takes the model over, so it is seen
@@ -647,7 +681,7 @@ func _play_sequence(motion: Motions.Motion, reverse: bool, button: Button) -> vo
 		_stop_words += " Now %s." % run.standing()
 	player.results[motion.name.to_lower()] = _stop_words
 	_look = null
-	_begin_playing(run.frames, button)
+	_begin_playing(run.frames, button, run.cameras)
 
 
 ## Every motion in order of play (each after the one it follows), each
@@ -673,26 +707,73 @@ func play_all() -> void:
 		lines.append("%s: %s" % [Motions.quoted((order[k] as Motions.Motion).name), player.said(run.played[k])])
 	_stop_words = "Played all %d in order. %s." % [order.size(), "; ".join(lines)]
 	_look = null
-	_begin_playing(run.frames, _play_all)
+	_begin_playing(run.frames, _play_all, run.cameras)
 
 
-func _begin_playing(frames: Array, button: Button) -> void:
+## [param frames] drawn one after another, [param cameras] (one a frame,
+## MotionPlayer.camera_view or null) putting the window's view where a
+## motion's camera keys have it, the person's own hand held back until Stop.
+func _begin_playing(frames: Array, button: Button, cameras: Array = []) -> void:
 	_frames = frames
+	_cameras = cameras if cameras.size() == frames.size() and cameras.any(func(one: Variant) -> bool:
+		return one != null) else []
 	_frame_at = 0.0
 	_shown = -1
 	_playing = not frames.is_empty()
-	_say(_stop_words)
+	_say(_stop_words if _cameras.is_empty() or not _playing else "%s %s" % [_stop_words, HELD_WORDS])
 	if not _playing:
 		return
+	if not _cameras.is_empty():
+		_hold_view()
 	_stop_button = button
 	if button != null:
 		button.text = "Stop"
 	_set_buttons()
 
 
+## The window's view kept, to be given back at Stop, and held for the
+## motion's camera: a turn, slide or zoom by hand is put back and said.
+func _hold_view() -> void:
+	if _holding_view or eye == null or not eye.has_method("hold_at"):
+		return
+	_holding_view = true
+	_view_before = eye.call("aim")
+	_fov_before = eye.fov
+	_projection_before = eye.projection
+	_size_before = eye.size
+	if not eye.is_connected("held_back", _on_held_back):
+		eye.connect("held_back", _on_held_back)
+
+
+func _on_held_back(words: String) -> void:
+	if _holding_view and _status.text != words:
+		_say(words)
+
+
+## The view where frame [param n]'s camera has it, when it has one.
+func _show_camera(n: int) -> void:
+	if not _holding_view or n >= _cameras.size() or _cameras[n] == null:
+		return
+	eye.call("hold_at", _cameras[n], HELD_WORDS)
+
+
+## The view as it was before the motion's camera held it, eased back to.
+func _give_view_back() -> void:
+	if not _holding_view:
+		return
+	_holding_view = false
+	_cameras = []
+	eye.call("let_go")
+	eye.projection = _projection_before as Camera3D.ProjectionType
+	eye.size = _size_before
+	eye.fov = _fov_before
+	eye.call("aim_at", _view_before)
+
+
 func _stop_playing() -> void:
 	_playing = false
 	_frames = []
+	_give_view_back()
 	if _stop_button != null and is_instance_valid(_stop_button):
 		_stop_button.text = "Play all" if _stop_button == _play_all else (
 			"Play backwards" if _stop_button.get_meta("backwards", false) else "Play")
@@ -741,6 +822,8 @@ func edit(name: String) -> void:
 	_at = 0.0
 	_key_joint = null
 	_key_index = -1
+	_key_camera = false
+	_picked.clear()
 	_look = null
 	_refresh()
 	if motion.is_sequence():
@@ -761,6 +844,8 @@ func new_motion() -> void:
 	_at = FIRST_SECONDS
 	_key_joint = null
 	_key_index = -1
+	_key_camera = false
+	_picked.clear()
 	_look = null
 	_refresh()
 	# A phone's keyboard would come up over the sheet and its Record: the
@@ -782,6 +867,8 @@ func back_to_list() -> void:
 	_view = "list"
 	_draft = null
 	_editing_name = ""
+	_picked.clear()
+	_key_camera = false
 	_refresh()
 
 
@@ -809,7 +896,7 @@ func _change(words: String, edit_with: Callable) -> void:
 		return
 	edit_with.call(motion)
 	if _draft != null:
-		if motion.tracks.is_empty() and motion.driver == null and motion.path == null:
+		if not motion.has_own():
 			return
 		motion.name = motions.free_name(motion.name.strip_edges() if not motion.name.strip_edges().is_empty()
 			else "New motion")
@@ -877,6 +964,7 @@ func _fill_editor() -> void:
 			"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 1)]
 	_show_key()
 	_fill_path(motion)
+	_fill_camera(motion)
 	# Its rows changed: the lists as tall as they now need.
 	_fit_later()
 
@@ -989,9 +1077,10 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	if track != null:
 		for key: Array in track.keys:
 			strip.times.append(float(key[0]))
-	if _key_joint == joint:
+	if _key_joint == joint and not _key_camera:
 		strip.chosen = _key_index
-	strip.picked.connect(func(index: int) -> void: _pick_key(joint, index))
+	strip.also = _picked_indices(joint, track.keys if track != null else [])
+	strip.picked.connect(func(index: int, adding: bool) -> void: _pick_key(joint, index, adding))
 	strip.moved.connect(func(index: int, t: float) -> void: _move_key(joint, index, t))
 	strip.timed.connect(func(t: float) -> void: set_time(t))
 	strip.visible = track != null
@@ -1048,6 +1137,9 @@ func set_time(t: float) -> void:
 
 func _show_places(motion: Motions.Motion) -> void:
 	_quiet = true
+	if _camera_strip != null:
+		_camera_strip.now = _at
+		_camera_strip.queue_redraw()
 	for part: Dictionary in _joint_parts:
 		var place: float = _place_at(motion, part["joint"])
 		(part["slider"] as HSlider).set_value_no_signal(place)
@@ -1138,21 +1230,100 @@ func _let_go_slider(place: float = NAN) -> void:
 	_show_time(motion)
 
 
-func _pick_key(joint: Motions.Joint, index: int) -> void:
+## A key of [param whose] (a joint, or [constant CAMERA]) pressed: chosen,
+## the time there. [param adding] (Ctrl or Cmd held): picked with the keys
+## picked already, or let go of when it was one of them; otherwise the one
+## key picked.
+func _pick_key(whose: Variant, index: int, adding: bool = false) -> void:
 	var motion: Motions.Motion = _edited()
-	var track: Motions.Track = _track_of(motion, joint) if motion != null else null
-	if track == null or index >= track.keys.size():
+	var keys: Array = _keys_of(motion, whose) if motion != null else []
+	if index < 0 or index >= keys.size():
 		return
-	_key_joint = track.joint
+	var t: float = float(keys[index][0])
+	_keys_hot = true
+	var at: int = _picked_at(whose, t)
+	if not adding:
+		_picked = [[whose, t]]
+	elif at >= 0 and _picked.size() > 1:
+		# Let go of: the key chosen is the last of those still picked.
+		_picked.remove_at(at)
+		whose = _picked.back()[0]
+		t = float(_picked.back()[1])
+		keys = _keys_of(motion, whose)
+		index = -1
+		for n: int in keys.size():
+			if absf(float(keys[n][0]) - t) < 0.001:
+				index = n
+		if index < 0:
+			return
+	elif at < 0:
+		# The key chosen before is one of those picked.
+		if _picked.is_empty() and _key_index >= 0:
+			var before: Array = _keys_of(motion, CAMERA if _key_camera else _key_joint)
+			if _key_index < before.size():
+				_picked.append([CAMERA if _key_camera else _key_joint, float(before[_key_index][0])])
+		_picked.append([whose, t])
+	_key_camera = whose is String
+	_key_joint = null if _key_camera else _track_of(motion, whose).joint
 	_key_index = index
-	set_time(float(track.keys[index][0]))
-	for part: Dictionary in _joint_parts:
-		(part["strip"] as KeyStrip).chosen = index if part["joint"] == joint else -1
-		(part["strip"] as KeyStrip).queue_redraw()
+	set_time(t)
+	_mark_picked()
 	_show_key()
+	if _picked.size() > 1:
+		_say("%d keys picked: Delete takes them out together, a drag of one moves them all." % _picked.size())
 
 
-## The chosen key moved to [param t] seconds.
+## The keys of [param whose] in [param motion]: a joint's track's, or the
+## camera's ([constant CAMERA]); [] for none.
+func _keys_of(motion: Motions.Motion, whose: Variant) -> Array:
+	if motion == null or whose == null:
+		return []
+	if whose is String:
+		return motion.camera.keys if motion.camera != null else []
+	var track: Motions.Track = _track_of(motion, whose)
+	return track.keys if track != null else []
+
+
+## Where [param whose]'s key at [param t] is in [member _picked], or -1.
+func _picked_at(whose: Variant, t: float) -> int:
+	for n: int in _picked.size():
+		if _same_whose(_picked[n][0], whose) and absf(float(_picked[n][1]) - t) < 0.001:
+			return n
+	return -1
+
+
+func _same_whose(one: Variant, other: Variant) -> bool:
+	if one is String or other is String:
+		return one is String and other is String
+	return one == other or (one as Motions.Joint).same_ref(other)
+
+
+## Which of [param keys] (of [param whose]) are picked, by their place in it.
+func _picked_indices(whose: Variant, keys: Array) -> Array:
+	var out: Array = []
+	for n: int in keys.size():
+		if _picked_at(whose, float(keys[n][0])) >= 0:
+			out.append(n)
+	return out
+
+
+## Every strip drawn with the keys chosen and picked.
+func _mark_picked() -> void:
+	var motion: Motions.Motion = _edited()
+	for part: Dictionary in _joint_parts:
+		var strip: KeyStrip = part["strip"]
+		strip.chosen = _key_index if not _key_camera and _key_joint != null \
+			and _same_whose(part["joint"], _key_joint) else -1
+		strip.also = _picked_indices(part["joint"], _keys_of(motion, part["joint"]))
+		strip.queue_redraw()
+	if _camera_strip != null:
+		_camera_strip.chosen = _key_index if _key_camera else -1
+		_camera_strip.also = _picked_indices(CAMERA, _keys_of(motion, CAMERA))
+		_camera_strip.queue_redraw()
+
+
+## The chosen key moved to [param t] seconds; the keys picked with it, all
+## of them, by as much.
 func _move_key(joint: Motions.Joint, index: int, t: float) -> void:
 	var motion: Motions.Motion = _edited()
 	var track: Motions.Track = _track_of(motion, joint) if motion != null else null
@@ -1161,6 +1332,9 @@ func _move_key(joint: Motions.Joint, index: int, t: float) -> void:
 	t = clampf(snappedf(t, 0.05), 0.0, Motions.MOST_SECONDS)
 	var key: Array = (track.keys[index] as Array).duplicate()
 	if absf(float(key[0]) - t) < 0.001:
+		return
+	if _picked.size() > 1 and _picked_at(joint, float(key[0])) >= 0:
+		move_picked(t - float(key[0]))
 		return
 	_change("moved a key of %s to %s s" % [player.joint_name(joint), Motions.num(t, 2)],
 		func(edited_motion: Motions.Motion) -> void:
@@ -1180,20 +1354,34 @@ func _move_key(joint: Motions.Joint, index: int, t: float) -> void:
 
 func _show_key() -> void:
 	var motion: Motions.Motion = _edited()
-	var track: Motions.Track = _track_of(motion, _key_joint) if motion != null and _key_joint != null else null
-	_key_row.visible = track != null and _key_index >= 0 and _key_index < track.keys.size()
+	var keys: Array = _keys_of(motion, CAMERA if _key_camera else _key_joint)
+	_key_row.visible = _key_index >= 0 and _key_index < keys.size()
 	if not _key_row.visible:
 		return
-	var key: Array = track.keys[_key_index]
-	_key_words.text = "Key at %s s, %s:" % [Motions.num(float(key[0]), 2), player.joint_name(track.joint)]
+	var key: Array = keys[_key_index]
+	if _picked.size() > 1:
+		_key_words.text = "%d keys picked:" % _picked.size()
+	elif _key_camera:
+		_key_words.text = "Key at %s s, the camera:" % Motions.num(float(key[0]), 2)
+	else:
+		_key_words.text = "Key at %s s, %s:" % [Motions.num(float(key[0]), 2), player.joint_name(_key_joint)]
 	_quiet = true
-	_how.select(maxi(Motions.HOWS.find(str(key[2])), 0))
+	_how.select(maxi(Motions.HOWS.find(str(key.back())), 0))
 	_quiet = false
 	_fit_later()
 
 
 ## The chosen key's way there: one of Motions.HOWS.
 func set_how(how: String) -> void:
+	if _key_camera and _key_index >= 0 and how in Motions.HOWS:
+		var at: int = _key_index
+		_change("made a key of the camera %s" % HOW_WORDS[Motions.HOWS.find(how)].to_lower(),
+			func(motion: Motions.Motion) -> void:
+				if motion.camera != null and at < motion.camera.keys.size():
+					motion.camera.keys[at][6] = how)
+		_say("That key's way there is %s now." % HOW_WORDS[Motions.HOWS.find(how)].to_lower())
+		_fill_editor()
+		return
 	var joint: Motions.Joint = _key_joint
 	var index: int = _key_index
 	if joint == null or index < 0 or not how in Motions.HOWS:
@@ -1208,6 +1396,9 @@ func set_how(how: String) -> void:
 
 
 func remove_key() -> void:
+	if _picked.size() > 1 or _key_camera:
+		remove_picked()
+		return
 	var joint: Motions.Joint = _key_joint
 	var index: int = _key_index
 	var motion: Motions.Motion = _edited()
@@ -1215,7 +1406,8 @@ func remove_key() -> void:
 	if track == null or index < 0 or index >= track.keys.size():
 		return
 	var last: bool = track.keys.size() == 1
-	if last and motion.tracks.size() == 1 and motion.driver == null:
+	if last and motion.tracks.size() == 1 and motion.driver == null and motion.path == null \
+			and (motion.camera == null or motion.camera.keys.is_empty()):
 		_say("It is the motion's only key: Remove takes the motion out.")
 		return
 	_change("took a key of %s out" % player.joint_name(joint), func(edited_motion: Motions.Motion) -> void:
@@ -1225,8 +1417,240 @@ func remove_key() -> void:
 			edited_motion.tracks.erase(own))
 	_key_index = -1
 	_key_joint = null
+	_picked.clear()
 	_fill_editor()
 	_say("Key taken out%s. Undo puts it back." % (", and the joint with it" if last else ""))
+
+
+## Every key picked ([member _picked]: Ctrl+click), of any track and the
+## camera's, taken out in one step. A track left with none goes, and the
+## camera's with it; every key the motion has is not taken: Remove does that.
+func remove_picked() -> void:
+	var motion: Motions.Motion = _edited()
+	var picks: Array = _picked.duplicate()
+	if picks.is_empty() and _key_camera and _key_index >= 0:
+		var keys: Array = _keys_of(motion, CAMERA)
+		if _key_index < keys.size():
+			picks = [[CAMERA, float(keys[_key_index][0])]]
+	picks = picks.filter(func(pick: Array) -> bool:
+		return _keys_of(motion, pick[0]).any(func(key: Array) -> bool:
+			return absf(float(key[0]) - float(pick[1])) < 0.001))
+	if motion == null or picks.is_empty():
+		return
+	var total: int = 0
+	for track: Motions.Track in motion.tracks:
+		total += track.keys.size()
+	total += motion.camera.keys.size() if motion.camera != null else 0
+	if picks.size() >= total and motion.driver == null and motion.path == null:
+		_say("Those are all the motion's keys: Remove takes the motion out.")
+		return
+	_change(("took a key out of %s" % Motions.quoted(motion.name)) if picks.size() == 1
+		else "took %d keys out of %s" % [picks.size(), Motions.quoted(motion.name)], func(edited: Motions.Motion) -> void:
+			for pick: Array in picks:
+				var keys: Array = _keys_of(edited, pick[0])
+				for n: int in range(keys.size() - 1, -1, -1):
+					if absf(float(keys[n][0]) - float(pick[1])) < 0.001:
+						keys.remove_at(n)
+			edited.tracks = edited.tracks.filter(func(one: Motions.Track) -> bool: return not one.keys.is_empty())
+			if edited.camera != null and edited.camera.keys.is_empty():
+				edited.camera = null)
+	_key_index = -1
+	_key_joint = null
+	_key_camera = false
+	_picked.clear()
+	_fill_editor()
+	_set_buttons()
+	_say("Key taken out. Undo puts it back." if picks.size() == 1
+		else "%d keys taken out together. Undo puts them all back." % picks.size())
+
+
+## Every key picked moved [param by] seconds in one step, none before 0.
+func move_picked(by: float) -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or _picked.is_empty():
+		return
+	var earliest: float = INF
+	for pick: Array in _picked:
+		earliest = minf(earliest, float(pick[1]))
+	by = snappedf(maxf(by, -earliest), 0.05)
+	if is_zero_approx(by):
+		return
+	var picks: Array = _picked.duplicate()
+	for pick: Array in picks:
+		var to: float = float(pick[1]) + by
+		for key: Array in _keys_of(motion, pick[0]):
+			if absf(float(key[0]) - to) < 0.001 and _picked_at(pick[0], float(key[0])) < 0:
+				_say("A key not picked is at %s s already: the keys were left where they were." % Motions.num(to, 2))
+				_fill_editor()
+				return
+	_change("moved %d keys by %s s" % [picks.size(), Motions.num(by, 2)], func(edited: Motions.Motion) -> void:
+		var taken: Array = []
+		for pick: Array in picks:
+			var keys: Array = _keys_of(edited, pick[0])
+			for n: int in range(keys.size() - 1, -1, -1):
+				if absf(float(keys[n][0]) - float(pick[1])) < 0.001:
+					taken.append([pick[0], keys[n]])
+					keys.remove_at(n)
+		for one: Array in taken:
+			var key: Array = (one[1] as Array).duplicate()
+			key[0] = clampf(float(key[0]) + by, 0.0, Motions.MOST_SECONDS)
+			if one[0] is String:
+				edited.camera.add_key(key)
+			else:
+				_track_of(edited, one[0]).add_key(float(key[0]), float(key[1]), str(key[2])))
+	for pick: Array in _picked:
+		pick[1] = float(pick[1]) + by
+	_at = clampf(_at + by, 0.0, Motions.MOST_SECONDS)
+	_key_index = -1
+	var keys: Array = _keys_of(_edited(), CAMERA if _key_camera else _key_joint)
+	for n: int in keys.size():
+		if _picked_at(CAMERA if _key_camera else _key_joint, float(keys[n][0])) >= 0:
+			_key_index = n
+			break
+	_fill_editor()
+	_show_time(_edited())
+	_say("%d keys moved %s s together. Undo puts them back." % [picks.size(), Motions.num(by, 2)])
+
+
+# -- the camera's keys (camerakeys) ----------------------------------------------------------
+
+
+## How far the model stands above the file's coordinates.
+func _lift() -> Vector3:
+	return player.store.lift() if player != null and player.store != null else Vector3.ZERO
+
+
+## The camera keyed at the editor's time where the window looks from: the
+## point it looks at, the way it looks from, how far off, its lens. A key
+## there already is put in its place, its way there kept. Its turn is taken
+## the short way from the key before it (or after), so it goes round no
+## further than the view did. One step to undo.
+func key_camera() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or eye == null or not eye.has_method("aim") or _playing or _working or _recording:
+		return
+	var aim: Dictionary = eye.call("aim")
+	var focus: Array = aim["focus"]
+	var numbers: Array = MotionPlayer.camera_numbers([Vector3(float(focus[0]), float(focus[1]), float(focus[2])),
+		float(aim["yaw"]), float(aim["pitch"]), float(aim["distance"]), eye.fov], _lift())
+	var at: float = snappedf(_at, 0.001)
+	var how: String = "EASE"
+	var near: Variant = null
+	if motion.camera != null:
+		for key: Array in motion.camera.keys:
+			if absf(float(key[0]) - at) < 0.001:
+				how = str(key[6])
+			elif float(key[0]) < at or near == null:
+				near = float(key[2])
+	var turn: float = float(numbers[1])
+	if near != null:
+		turn = float(near) + rad_to_deg(angle_difference(deg_to_rad(float(near)), deg_to_rad(turn)))
+	var key: Variant = Motions.camera_key_of(at, numbers[0], turn, numbers[2], numbers[3], numbers[4], how)
+	if key is String:
+		_say("The camera is not keyed: %s." % key)
+		return
+	_change("keyed the camera at %s s in %s" % [Motions.num(at, 2), Motions.quoted(motion.name)],
+		func(edited: Motions.Motion) -> void:
+			if edited.camera == null:
+				edited.camera = Motions.CameraTrack.new()
+			edited.camera.add_key(key))
+	_choose_camera_key(at)
+	_say("The camera keyed at %s s: where it stands, what it looks at and its lens. Play goes through its keys."
+		% Motions.num(at, 2))
+
+
+## A turntable: two keys round the middle of the model, the camera at the
+## height and distance it stands at now, through its lens, a full turn over
+## the motion's length (8 s for one with none yet) at one speed. In place of
+## the camera's keys; one step to undo; any key may then be moved or changed.
+func make_turntable() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or eye == null or _playing or _working or _recording:
+		return
+	var box: AABB = player._model_box()
+	if box.size == Vector3.ZERO:
+		_say("There is no model to go round.")
+		return
+	var centre: Vector3 = box.get_center()
+	var offset: Vector3 = eye.global_position - centre
+	var away: float = maxf(offset.length(), Motions.LEAST_AWAY)
+	var seconds: float = motion.length() if motion.length() >= 1.0 else Motions.TURNTABLE_SECONDS
+	var keys: Variant = Motions.turntable_keys((centre - _lift()) * LdrModel.FLIP,
+		rad_to_deg(atan2(offset.x, offset.z)), rad_to_deg(asin(clampf(offset.y / away, -1.0, 1.0))), away,
+		eye.fov, seconds)
+	if keys is String:
+		_say("No turntable: %s." % keys)
+		return
+	_change("made the camera go round %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.camera = Motions.CameraTrack.new()
+		for key: Array in keys:
+			edited.camera.add_key(key))
+	_choose_camera_key(0.0)
+	_say(("A turntable: the camera goes once round the model in %s s, at the height and distance it stands at "
+		+ "now. Each key can be picked, moved or changed.") % Motions.num(seconds, 1))
+
+
+## The camera's key at [param t] chosen, the editor at its time.
+func _choose_camera_key(t: float) -> void:
+	var keys: Array = _keys_of(_edited(), CAMERA)
+	_key_camera = true
+	_key_joint = null
+	_key_index = -1
+	for n: int in keys.size():
+		if absf(float(keys[n][0]) - t) < 0.001:
+			_key_index = n
+	_picked = [[CAMERA, t]] if _key_index >= 0 else []
+	_at = t
+	_fill_editor()
+	_set_buttons()
+
+
+## The camera's key [param index] pressed on its strip: chosen (picked with
+## others with [param adding]), and the view put where it looks from, so a
+## person sees it and can key it again from there.
+func _pick_camera_key(index: int, adding: bool) -> void:
+	_pick_key(CAMERA, index, adding)
+	var keys: Array = _keys_of(_edited(), CAMERA)
+	if index < 0 or index >= keys.size() or eye == null or not eye.has_method("aim_at"):
+		return
+	var view: Array = MotionPlayer.camera_view(Motions.CameraTrack._view_of(keys[index]), _lift())
+	eye.call("aim_at", {"yaw": view[1], "pitch": view[2], "distance": view[3],
+		"focus": [(view[0] as Vector3).x, (view[0] as Vector3).y, (view[0] as Vector3).z]})
+	eye.fov = float(view[4])
+
+
+## The camera's key [param index] moved to [param t] on its strip, the keys
+## picked with it by as much.
+func _move_camera_key(index: int, t: float) -> void:
+	var keys: Array = _keys_of(_edited(), CAMERA)
+	if index < 0 or index >= keys.size():
+		return
+	var from: float = float(keys[index][0])
+	t = clampf(snappedf(t, 0.05), 0.0, Motions.MOST_SECONDS)
+	if absf(from - t) < 0.001:
+		return
+	if _picked_at(CAMERA, from) < 0:
+		_picked = [[CAMERA, from]]
+	move_picked(t - from)
+
+
+func _fill_camera(motion: Motions.Motion) -> void:
+	var keys: Array = motion.camera.keys if motion.camera != null else []
+	_camera_strip.visible = not keys.is_empty()
+	_camera_strip.span = _time.max_value
+	_camera_strip.now = _at
+	_camera_strip.times = keys.map(func(key: Array) -> float: return float(key[0]))
+	_camera_strip.chosen = _key_index if _key_camera else -1
+	_camera_strip.also = _picked_indices(CAMERA, keys)
+	_camera_strip.queue_redraw()
+	if keys.is_empty():
+		_camera_words.text = "The view stays the person's. Key the camera to fly round the model."
+	elif keys.size() == 1:
+		_camera_words.text = "One key: the camera stands there all through the motion."
+	else:
+		_camera_words.text = "%d keys over %s s, %s° round the model." % [keys.size(),
+			Motions.num(float(keys.back()[0]) - float(keys[0][0]), 2),
+			Motions.num(absf(float(keys.back()[2]) - float(keys[0][2])), 1)]
 
 
 ## The edited motion called [param words]: one step to undo. A motion
@@ -1667,7 +2091,7 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 	for k: int in SHEET_MOST:
 		sheet_at.append(roundi(float(k) * float(drawn.poses.size() - 1) / float(SHEET_MOST - 1)))
 	return await render_poses(drawn.poses, fps, func(_n: int) -> float: return 0.0, sheet_at, job, view,
-		motion.name)
+		motion.name, false, drawn.cameras)
 
 
 ## Draw [param poses] (one a frame: brick id -> Transform3D of the parts
@@ -1677,11 +2101,12 @@ func render_animation(job: Working.Job = null, view: String = "") -> int:
 ## named after the model and [param motion]. [param sheet_at]: the frames
 ## kept for [method sheet]. [param on_what_moves]: framed on what the parts
 ## sweep, from [param view]'s direction. A motion is rendered this way
-## (render_motion, Render animation), as its frames. Returns how many were
-## drawn.
+## (render_motion, Render animation), as its frames. [param cameras]: each
+## frame's camera where a motion keys it (MotionRender.cameras). Returns how
+## many were drawn.
 func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 		job: Working.Job = null, view: String = "", motion: String = "Animation",
-		on_what_moves: bool = false) -> int:
+		on_what_moves: bool = false, cameras: Array = []) -> int:
 	if _working or world == null or poses.is_empty():
 		return 0
 	_ready_renderer()
@@ -1713,7 +2138,7 @@ func render_poses(poses: Array, fps: int, turn_at: Callable, sheet_at: Array,
 			if sheet_at.has(n):
 				_sheet[n] = image
 			if job != null:
-				job.count(n + 1))
+				job.count(n + 1), cameras)
 	if job != null:
 		job.cancel_wanted.disconnect(stop)
 	var lines := PackedStringArray()
@@ -1893,7 +2318,9 @@ func _set_buttons() -> void:
 				button.disabled = still or (key == "up" and n == 0) \
 					or (key == "down" and n == _seq_buttons.size() - 1)
 	var motion: Motions.Motion = _edited()
-	var empty: bool = motion == null or (motion.tracks.is_empty() and motion.driver == null and motion.path == null)
+	var empty: bool = motion == null or not motion.has_own()
+	_camera_key.disabled = busy or _playing
+	_camera_turn.disabled = busy or _playing
 	_edit_play.disabled = busy or empty or (_playing and _stop_button != _edit_play)
 	_edit_reverse.disabled = busy or empty or (_playing and _stop_button != _edit_reverse)
 	_record.disabled = _working or _playing
@@ -1937,6 +2364,7 @@ func _process(delta: float) -> void:
 			if n >= 0 and n != _shown:
 				_shown = n
 				_draw_frame(_frames[n])
+				_show_camera(n)
 	elif not _recording and not _working and _held == null:
 		# Something else changed the motions or the model: an undo, a redo,
 		# a motion a session defined, another model opened.
@@ -2064,9 +2492,22 @@ func _same_history(seen: Array) -> bool:
 
 
 func _input(event: InputEvent) -> void:
-	if not visible or not (event is InputEventKey):
+	if not visible:
+		return
+	# A press anywhere but the panel: Delete is the view's again.
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+			and not get_global_rect().has_point((event as InputEventMouseButton).position):
+		_keys_hot = false
+	if not (event is InputEventKey):
 		return
 	var key: InputEventKey = event
+	if key.pressed and not key.echo and key.keycode in [KEY_DELETE, KEY_BACKSPACE] and _view == "edit" \
+			and _keys_hot and not _picked.is_empty() and not _playing and not _working \
+			and not get_viewport().gui_get_focus_owner() is LineEdit \
+			and not get_viewport().gui_get_focus_owner() is TextEdit:
+		remove_picked()
+		get_viewport().set_input_as_handled()
+		return
 	if not key.pressed or key.echo or key.keycode != KEY_ESCAPE:
 		return
 	# A drag's own Escape puts it back.
@@ -2364,6 +2805,7 @@ func _build_editor(into: Control) -> void:
 	_driver_words.visible = false
 	_edit_box.add_child(_driver_words)
 	_build_path(_edit_box)
+	_build_camera(_edit_box)
 	if Phone.on():
 		_for_a_finger([top, joints_heading, _joint_rows, _more, _key_row, playing, timing],
 			recording, naming, gap)
@@ -2391,6 +2833,38 @@ func _for_a_finger(order: Array, recording: HBoxContainer, naming: HBoxContainer
 	recording.visible = false
 	for n: int in order.size():
 		_edit_box.move_child(order[n] as Control, n)
+
+
+## The camera's section (camerakeys): what its keys do, Key the camera,
+## Turntable, and its keys on a strip of time as a joint's are.
+func _build_camera(into: Control) -> void:
+	_camera_heading = _heading(into, "The camera")
+	var making := HBoxContainer.new()
+	making.add_theme_constant_override("separation", 6)
+	into.add_child(making)
+	_camera_key = _button(making, "Key the camera", key_camera,
+		"A key at the time above where the view looks from: what it looks at, from where, and its lens")
+	_camera_turn = _button(making, "Turntable", make_turntable,
+		"Two keys: the camera once round the model over the motion, at the height and distance it is now")
+	_camera_strip = KeyStrip.new()
+	_camera_strip.custom_minimum_size = Vector2(0, 14)
+	if Phone.on():
+		_camera_strip.custom_minimum_size.y = Phone.px(get_viewport(), Phone.TARGET)
+		_camera_strip.near = Phone.px(get_viewport(), Phone.TARGET * 0.5)
+	_camera_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_camera_strip.tooltip_text = ("The camera's keys: a key pressed is chosen and the view goes there; "
+		+ "Ctrl+click picks several; dragged, they move in time")
+	_camera_strip.picked.connect(_pick_camera_key)
+	_camera_strip.moved.connect(_move_camera_key)
+	_camera_strip.timed.connect(func(t: float) -> void: set_time(t))
+	_camera_strip.visible = false
+	into.add_child(_camera_strip)
+	_camera_words = Label.new()
+	_camera_words.add_theme_font_size_override("font_size", 11)
+	_camera_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_camera_words.custom_minimum_size = Vector2(WIDE - 24, 0)
+	_camera_words.modulate = Color(1, 1, 1, 0.7)
+	into.add_child(_camera_words)
 
 
 # -- a path: where the whole model drives (unit drive) ---------------------------------------
@@ -2823,7 +3297,9 @@ func controls_by_name() -> Dictionary:
 	else:
 		out.merge({"motions_back": _back, "motions_remove": _remove, "motions_name": _name,
 			"motions_record": _record, "motions_play": _edit_play, "motions_reverse": _edit_reverse,
-			"motions_time": _time, "motions_how": _how, "motions_drop_key": _drop_key})
+			"motions_time": _time, "motions_how": _how, "motions_drop_key": _drop_key,
+			"motions_key_camera": _camera_key, "motions_turntable": _camera_turn,
+			"motions_camera_keys": _camera_strip})
 		for n: int in _joint_parts.size():
 			out["motions_joint_%d" % n] = _joint_parts[n]["slider"]
 			out["motions_lock_%d" % n] = _joint_parts[n]["lock"]
@@ -2897,7 +3373,9 @@ func _tell_page() -> void:
 ## A key pressed is chosen and can be dragged along; a press between the
 ## keys sets the time there.
 class KeyStrip extends Control:
-	signal picked(index: int)
+	## A key pressed; [param adding] with Ctrl held (Cmd on a Mac): picked
+	## with those picked already.
+	signal picked(index: int, adding: bool)
 	signal moved(index: int, t: float)
 	signal timed(t: float)
 
@@ -2906,6 +3384,8 @@ class KeyStrip extends Control:
 	var span: float = 4.0
 	var now: float = 0.0
 	var chosen: int = -1
+	## The keys picked together with others (Ctrl+click), drawn as chosen.
+	var also: Array = []
 	var _dragging: int = -1
 	var _drag_t: float = 0.0
 	## How near a press takes a key, px: half a fingertip for a finger.
@@ -2927,7 +3407,7 @@ class KeyStrip extends Control:
 			var t: float = _drag_t if n == _dragging else float(times[n])
 			var x: float = _x_of(t)
 			var r: float = maxf(4.5, size.y * 0.18)
-			var colour: Color = Look.ACCENT if n == chosen else Color(1, 1, 1, 0.85)
+			var colour: Color = Look.ACCENT if n == chosen or also.has(n) else Color(1, 1, 1, 0.85)
 			draw_colored_polygon(PackedVector2Array([Vector2(x, mid - r), Vector2(x + r, mid),
 				Vector2(x, mid + r), Vector2(x - r, mid)]), colour)
 
@@ -2946,7 +3426,7 @@ class KeyStrip extends Control:
 					chosen = nearest
 					_dragging = nearest
 					_drag_t = float(times[nearest])
-					picked.emit(nearest)
+					picked.emit(nearest, press.ctrl_pressed or press.meta_pressed)
 				else:
 					timed.emit(_t_of(press.position.x))
 				accept_event()

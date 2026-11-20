@@ -1153,6 +1153,65 @@ func aim_at(given: Variant) -> bool:
 	return true
 
 
+## A view the camera is held at, [focus, yaw, pitch, distance], while a
+## motion's camera keys play (camerakeys, PosePanel); empty when it is not.
+var _held: Array = []
+## What a person is told when they turn, slide or zoom a held view.
+var held_words: String = ""
+## A person tried to move a held view ([method hold_at]): the words to say.
+signal held_back(words: String)
+
+
+## The camera put at [param view] ([focus, yaw, pitch, distance, fov], the
+## window's coordinates, radians: MotionPlayer.camera_view) at once, with no
+## easing, upright and in perspective (straight-on is left), and held there: a turn, slide or zoom
+## by a person, by any hand, key or finger, is put back and [signal
+## held_back] says [param words]. [method let_go] lets it move again.
+func hold_at(view: Array, words: String) -> void:
+	_held_moved()
+	_target_frame = Basis.IDENTITY
+	_frame = Basis.IDENTITY
+	_target_focus = view[0]
+	_target_yaw = float(view[1])
+	_target_pitch = clampf(float(view[2]), -_PITCH_LIMIT, _PITCH_LIMIT)
+	_target_distance = clampf(float(view[3]), min_distance, max_distance)
+	focus = _target_focus
+	_yaw = _target_yaw
+	_pitch = _target_pitch
+	distance = _target_distance
+	if projection == Camera3D.PROJECTION_ORTHOGONAL:
+		projection = Camera3D.PROJECTION_PERSPECTIVE
+	fov = float(view[4])
+	_held = [_target_focus, _target_yaw, _target_pitch, _target_distance]
+	held_words = words
+	_apply(1.0)
+
+
+func is_held() -> bool:
+	return not _held.is_empty()
+
+
+## A held view let go: a person's hand moves it again.
+func let_go() -> void:
+	_held = []
+	held_words = ""
+
+
+## A held view a hand has moved since it was held put back, and said.
+func _held_moved() -> void:
+	if _held.is_empty():
+		return
+	if _target_focus == _held[0] and _target_yaw == float(_held[1]) and _target_pitch == float(_held[2]) \
+			and _target_distance == float(_held[3]) and _target_frame == Basis.IDENTITY:
+		return
+	_target_focus = _held[0]
+	_target_yaw = float(_held[1])
+	_target_pitch = float(_held[2])
+	_target_distance = float(_held[3])
+	_target_frame = Basis.IDENTITY
+	held_back.emit(held_words)
+
+
 ## One step in or out, as a wheel notch is, towards the middle of the view.
 func key_zoom(steps: int) -> void:
 	if steps == 0:
@@ -1327,6 +1386,7 @@ func _process(delta: float) -> void:
 		_dragging_right = false
 	if _touches.size() >= 2:
 		_two_fingers()
+	_held_moved()
 
 	# An exponential approach, framerate independent: the same fraction of
 	# the remaining distance per second whatever the frame time. Under

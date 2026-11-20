@@ -15683,3 +15683,68 @@ msgstr "Die Lage der Kopien des Modells wird gelesen…"
 
 msgid "Listing the model's parts…"
 msgstr "Die Teile des Modells werden aufgelistet…"
+
+# camerakeys: the camera keyed in a motion (pose_panel's The camera, Key the camera, Turntable)
+
+msgid "The camera"
+msgstr "Die Kamera"
+
+msgid "Key the camera"
+msgstr "Kamera-Key setzen"
+
+msgid "A key at the time above where the view looks from: what it looks at, from where, and its lens"
+msgstr "Ein Key zur Zeit oben, von wo die Ansicht schaut: worauf sie blickt, von wo und ihr Objektiv"
+
+msgid "Two keys: the camera once round the model over the motion, at the height and distance it is now"
+msgstr "Zwei Keys: die Kamera einmal um das Modell während der Bewegung, in der Höhe und dem Abstand von jetzt"
+
+msgid "The camera's keys: a key pressed is chosen and the view goes there; Ctrl+click picks several; dragged, they move in time"
+msgstr "Die Keys der Kamera: ein angeklickter wird gewählt und die Ansicht geht dorthin; Ctrl+Klick wählt mehrere; gezogen, verschieben sie sich in der Zeit"
+
+msgid "The view stays the person's. Key the camera to fly round the model."
+msgstr "Die Ansicht bleibt Ihre. Setzen Sie Kamera-Keys, um um das Modell zu fliegen."
+
+msgid "One key: the camera stands there all through the motion."
+msgstr "Ein Key: die Kamera steht während der ganzen Bewegung dort."
+
+msgid "%d keys over %s s, %s° round the model."
+msgstr "%d Keys über %s s, %s° um das Modell."
+
+msgid "The view follows the motion's camera keys: Stop gives it back."
+msgstr "Die Ansicht folgt den Kamera-Keys der Bewegung: Stopp gibt sie zurück."
+
+msgid "%d keys picked: Delete takes them out together, a drag of one moves them all."
+msgstr "%d Keys gewählt: Entf nimmt sie zusammen heraus, wer einen zieht, verschiebt alle."
+
+msgid "%d keys picked:"
+msgstr "%d Keys gewählt:"
+
+msgid "Key at %s s, the camera:"
+msgstr "Key bei %s s, die Kamera:"
+
+msgid "Those are all the motion's keys: Remove takes the motion out."
+msgstr "Das sind alle Keys der Bewegung: Entfernen nimmt die Bewegung heraus."
+
+msgid "Key taken out. Undo puts it back."
+msgstr "Key herausgenommen. Rückgängig setzt ihn zurück."
+
+msgid "%d keys taken out together. Undo puts them all back."
+msgstr "%d Keys zusammen herausgenommen. Rückgängig setzt alle zurück."
+
+msgid "%d keys moved %s s together. Undo puts them back."
+msgstr "%d Keys zusammen um %s s verschoben. Rückgängig setzt sie zurück."
+
+msgid "The camera is not keyed: %s."
+msgstr "Die Kamera ist nicht gesetzt: %s."
+
+msgid "The camera keyed at %s s: where it stands, what it looks at and its lens. Play goes through its keys."
+msgstr "Die Kamera bei %s s gesetzt: wo sie steht, worauf sie blickt und ihr Objektiv. Abspielen geht durch ihre Keys."
+
+msgid "There is no model to go round."
+msgstr "Es gibt kein Modell, um das sie kreisen kann."
+
+msgid "No turntable: %s."
+msgstr "Kein Drehteller: %s."
+
+msgid "A turntable: the camera goes once round the model in %s s, at the height and distance it stands at now. Each key can be picked, moved or changed."
+msgstr "Ein Drehteller: die Kamera kreist in %s s einmal um das Modell, in der Höhe und dem Abstand von jetzt. Jeder Key lässt sich wählen, verschieben oder ändern."

@@ -729,3 +729,62 @@ whole model along the ground, its wheels turning as they roll.
   Before, a rim that landed between the keep and its undo stayed a drive
   away from its tyre, and redone after landing it was left where the model
   had been, three of the four wheel joints lost both ways (drvrecheck F1).
+
+## What unit camerakeys built (camerakeys, 2026-11-20)
+
+The camera is keyed in a motion as a joint is (docs/APP_UX10.md gap 12:
+StudWorx keys any object; Brickworks keyed only joints and paths).
+
+- **The line.** One a key, after the motion's other lines:
+
+      0 !BRICKWORKS MOTION_CAMERA "Fly round" 0 AT 0 -40 0 TURN -35 TILT 26 AWAY 640 FOV 30 LINEAR
+      0 !BRICKWORKS MOTION_CAMERA "Fly round" 8 AT 0 -40 0 TURN 325 TILT 26 AWAY 640 FOV 30 LINEAR
+
+  The time; `AT` the point it looks at, LDraw's coordinates (LDU), so an
+  unedited model writes the same bytes whatever the floor lifts it by;
+  `TURN` degrees round the upright from the model's front (LDraw's -z side,
+  90 its +x side), never wrapped, so 360 more is a full turn; `TILT` degrees
+  above level, -89 to 89; `AWAY` LDU from what it looks at (8 to 40,000, the
+  window's own limits); `FOV` the lens top to bottom, 5 to 120 degrees; and
+  how it gets there, `EASE`, `LINEAR` or `HOLD`, as a joint's key. It is the
+  window's own orbit (CadCamera.aim, SavedViews), so a key is what the view
+  was, and a view is a key put back.
+- **Between keys** each number goes as a joint's place does
+  (`Track.place_at`: the monotone cubic Pose's keys use, the later key's how
+  deciding): never past a key, so the tilt never passes 89° and the camera
+  never flips through a pole, its up always the world's. A turntable is two
+  `LINEAR` keys 360° apart.
+- **The model is not moved by it.** A motion with only camera keys plays
+  and renders the model as it stands and keeps no step; with joints or a
+  path, they move it as before and the camera goes its own way.
+- **The window (Motions › a motion › The camera).** Key the camera keeps the
+  view at the time above, a key there already put in its place (its way
+  there kept), its turn taken the short way from its neighbour. Turntable
+  makes two keys round the model's middle at the height and distance the
+  view stands, over the motion's length (8 s for one with none). The
+  camera's keys are a strip like a joint's: a key pressed is chosen and the
+  view goes where it looks from; its way there and Remove key as a joint's.
+- **Keys picked together.** Ctrl+click (Cmd on a Mac) picks keys of any
+  strip, the camera's among them; Delete or Remove key takes them all out
+  in one step; a drag of one picked key moves them all by as much. Delete is
+  the keys' only after a key was pressed: typed in the name field, or after
+  a press in the view, it is not.
+- **Playing.** Play, Play all and a sequence put the window's view where the
+  keys have it each frame (`MotionPlayer.Played.cameras`, worked out once
+  at the start, a few numbers a frame); a sequence holds the last camera
+  through a motion that keys none. Meanwhile a turn, slide or zoom by any
+  hand is put back and the status says "The view follows the motion's
+  camera keys: Stop gives it back." (`CadCamera.hold_at`, `let_go`); at the
+  end, or at Stop, the view and its lens are given back as they were.
+- **Filming.** render_motion, the panel's Render animation and File, Render's
+  Animation draw each frame from where the keys put the camera
+  (`MotionRender.cameras`, `StudioRender.animate`'s camera_at,
+  `keyed_shot`), through its lens, the lights where Render puts them.
+- **Over MCP.** `render_motion camera={"turntable": true}` keys the camera
+  (the motion made when the model has none of that name) and films it in
+  one call, one undo step; `camera={"keys": [{"t": 0, "turn": 0}, ...]}` keys
+  any; `define_motion camera=` keeps keys alone or with tracks, and given
+  alone for a motion the model has, keeps its joints. list_motions says
+  each key.
+- **Checked by** `src/dev/camerakeys_probe.gd` (tools/suite/windowed.txt);
+  keep_text_probe's motion carries two camera lines.
