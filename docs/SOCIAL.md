@@ -23,6 +23,411 @@ with `tools/web/design_stand_in.mjs`'s people and models
 because the live site has no public profile and nobody signed in to show.
 That run passed: 68 pages and dialogs, 508 controls, 0 failures.
 
+## The scorecard (kept current: each research round updates it)
+
+**Round 8, 2026-11-20 (unit siteplan8).** The owner asked on 11-20: "Are you
+still effectively building to reach our goals of having the absolute best app
+(and site) of this type?" This section is the site's half of the answer. The
+studio has its own (docs/APP_UX11.md). The next round replaces this section's
+numbers and keeps its shape.
+
+**The count: 45 ahead, 36 level, 27 behind**, over 108 judged cells (14 rows
+against 8 columns, plus the row of people and activity, which is behind every
+column; 12 cells not judged: where a site could not be read, and the speed
+row, whose browser runs did not run). The three worst:
+
+1. **People and activity.** All 49 models in the gallery are the house's own
+   (`/api/share?op=list`, 3 pages, every one `by: brickworks`). The gallery has
+   never had a like (`model_likes`: 0 rows). This month's challenge, Microscale,
+   has 0 entries with 10 days to go. 9 real accounts were made in the last 30
+   days, and none of them has shared a model. Every other site in the table has
+   people's work on its first screen: Flickr's LEGO® pool alone holds 650,054
+   photos.
+2. **Challenges and contests.** Ours is the most complete contest page of the
+   LEGO® sites, but it has no prizes, no judges and no entries. Printables ran
+   38 contests so far in 2026, with a median of 218 entries. LEGO® Ideas and
+   BrickLink run judged rounds, then a fan vote, with prizes and a path to a
+   product.
+3. **Showing work.** A model can be shared only from inside the studio. Work
+   made elsewhere has to be opened in the studio first. Rebrickable, Printables
+   and MakerWorld take files on the web page, with many pictures and drafts.
+
+What we lead on: the model page (steps, versions, parts with three shops'
+exports, Tested, remixes and builds, embedded in 3D), comments (replies,
+@mentions, step comments), the feed, a model shared outside (link previews,
+oEmbed and structured data on every model), and a silent block. None of the
+LEGO® sites matches them.
+
+### The table
+
+**A** ahead, **L** level, **B** behind, **–** not judged (the site could not be
+read, or the measurement did not run). Each cell is Brickworks against that site on that row. The evidence for
+every cell is in the list under the table.
+
+| Row | brickworks.diy today | RB | BL | MB | BS | FL | LI | PR/TV | Best elsewhere |
+|---|---|---|---|---|---|---|---|---|---|
+| 1. Showing work | published from the studio: picture, file, steps, parts, versions, Tested, based-on, extra pictures | L | L | A | A | A | A | **B** | **B** MakerWorld |
+| 2. Finding work | Top (time windows), New, Following, Builds, Collections; search; filters by time, size and how it was made; shelves; More like | L | L | L | L | A | L | L | **B** MakerWorld, Sketchfab |
+| 3. The model page | 3D, Build it, Download, one action bar, 6 tabs, parts exports, More by, Like this | A | A | A | L | A | A | L | L Sketchfab |
+| 4. The profile | banner, avatar, links, numbers, pins, tabs, achievements with levels, More like | L | A | A | A | L | A | L | L Printables |
+| 5. The feed | cards from people you follow; Latest when signed out; people to follow | A | A | A | A | L | A | L | L Printables |
+| 6. Notifications | the avatar's count, grouped by model, 11 kinds, a daily email by choice | L | A | A | A | **B** | L | L | **B** GitHub |
+| 7. Comments | replies, @mentions, comments on steps, hide, off, report | A | A | A | A | A | A | L | **B** MakerWorld |
+| 8. Challenges and contests | monthly; rules checked; two groups; blind vote; notices; past winners | L | **B** | A | L | A | **B** | **B** | **B** MakerWorld |
+| 9. Sets, parts and lists | Own/Want on 1,576 set pages; lists; You can build now; BrickLink, Rebrickable and Pick a Brick exports | **B** | L | A | **B** | A | A | A | L Ravelry |
+| 10. First visit and sign-up | the studio's pitch first, then a call to help with the beta, then the house's models; email code or orangecheck; age; First steps | – | L | L | A | L | L | **B** | **B** MakerWorld |
+| 11. Shared outside | og and twitter cards, oEmbed (3D), JSON-LD on models and sets, sitemaps | – | A | A | A | L | – | A | **B** Sketchfab |
+| 12. Phones | every page sized for a phone (checked at 390 px by design_flow); the studio itself on a phone; no app, no push | L | A | A | L | **B** | – | **B** | **B** MakerWorld |
+| 13. Safety and moderation | 13+, report everywhere, hide, comments off, silent block, owner's console | A | L | A | A | L | L | A | **B** Instagram |
+| 14. Speed | answers in 0.14-0.16 s warm, 1.5-1.9 s cold; LCP p75 1.09 s in Edge, p50 4.24 s in Chrome (field, few loads) | – | – | – | – | – | – | – | – |
+| 15. People and activity | 49 models, all the house's; 0 likes; 0 entries | **B** | **B** | **B** | **B** | **B** | **B** | **B** | **B** |
+
+RB Rebrickable (MOCs) · BL BrickLink's and Studio's gallery · MB Mecabricks ·
+BS Brickset · FL Flickr's LEGO® groups · LI LEGO® Ideas · PR/TV Printables and
+Thingiverse · Best elsewhere: the site named.
+
+### The evidence, row by row
+
+Facts about other sites are from round 8's reading on 2026-11-20 ([R8-…] in
+Sources). Where a site blocked reading, the claim rests on a search excerpt,
+marked *(excerpt)*. Rebrickable was not fetched at all: the project reads it at
+most once a day, so its cells rest on guides and excerpts. BrickLink was offline
+the whole day ("temporarily unavailable … while we investigate unusual
+activity"), so its cells rest on Studio's help pages and an archived page.
+
+1. **Showing work.** Ours: Share in the studio publishes the render, a cut-out,
+   a 4:3 card picture, the .mpd, its steps and parts list, versions with what
+   changed, Tested, made-with and based-on. The designer can then Add a picture
+   on the model's page. Rebrickable takes up to 12 images, instructions from
+   any tool (PDFs, paid ones too) and a parts list in five steps on its site
+   [R8-RB]. Level: more media there, more done for you here. Studio's gallery
+   offers Private, Display or Full Access [R8-BL], level. Mecabricks publishes
+   from its workshop with a Renderings tab [R8-MB]; Brickset, Flickr and Ideas
+   take no model file. Behind Printables and MakerWorld: files of any kind
+   uploaded on the web page, many pictures, drafts, and MakerWorld's print
+   profiles [R8-PR], [R8-MW]. Our studio is the only way in, and there are no
+   drafts.
+2. **Finding work.** Ours has tabs, time windows, filters (including Hand-built
+   and With the assistant), This week's pick, You can build now and More like.
+   Level with Rebrickable's theme and Build searches [R8-RB], Mecabricks'
+   Library and Selection [R8-MB], Ideas' Staff Picks and Trending [R8-LI], and
+   Printables' search operators [R8-PR]. Ahead of a Flickr pool, which is a
+   stream by date. Behind MakerWorld's For You (78 of its home cards are
+   recommendations) and Sketchfab's daily Staff Picks [R8-MW], [R8-SK].
+3. **The model page.** No LEGO® site has steps in the browser, versions, Tested
+   and three shops' part exports on one page. Mecabricks comes closest: 3D,
+   inventory as CSV or BrickLink XML, embed and Suggested [R8-MB]. Brickset is
+   level on its own ground: a set page with 16 tabs, ratings and reviews
+   [R8-BS]. Printables is level with makes, ratings, collections and remix
+   parents [R8-PR]. Sketchfab is level: the 3D viewer is its page [R8-SK].
+4. **The profile.** Level with Rebrickable's custom profile and Workbench blog
+   [R8-RB], Flickr's photostream, and Printables' tabs, chosen badges, levels
+   and analytics tab [R8-PR]. Ahead of Studio's gallery, Mecabricks (no
+   Follow), Brickset and Ideas.
+5. **The feed.** Only Flickr and Printables have one [R8-FL], [R8-PR].
+   Printables folds likes of one item within 3 hours into one entry and shows a
+   collection only once it holds 4 models: level, since ours folds by model.
+6. **Notifications.** Ahead of the sites with none: Studio's gallery,
+   Mecabricks, Brickset. Level with Rebrickable's per-designer opt-in, Ideas'
+   bell and Printables' list. Behind Flickr: its own app pushes, and each kind
+   can be set for the site and for email [R8-FL]. Behind GitHub's inbox: Done
+   and Saved, per-thread watching, push on a phone [R8-GH]. We have no push,
+   and the choice by kind is for email only, not for what shows here.
+7. **Comments.** Replies, @mentions and comments on a step are ours alone among
+   the LEGO® sites. Brickset has Report and "hide this member's comments", no
+   threads [R8-BS]; Ideas has @-tags [R8-LI]. Printables is level, with
+   replies, comment likes and star ratings [R8-PR]. Behind MakerWorld: a
+   designer pins a comment or a picture, and makers rate after printing
+   [R8-MW].
+8. **Challenges and contests.** Rebrickable runs a quarterly competition,
+   entered by a tag on the MOC [RB-C]: level. Mecabricks and Flickr's pool run
+   none. Brickset ran its first in five years this month, with three prizes:
+   level. Behind Studio's Activities and Designer Program, judged, with prizes
+   and a fan vote [R8-BL]; behind Ideas: judges shortlist 5, then one fan vote,
+   prizes, past winners kept [R8-LI]. Behind Printables: 38 contests so far in
+   2026, a median of 218 entries, the largest 1,108 (its API, read today), a
+   monthly Designer Challenge themed by its Designer of the Month [R8-PR].
+   Behind MakerWorld: contests with countdowns and prizes on its home page
+   [R8-MW]. Our Microscale has 0 entries.
+9. **Sets, parts and lists.** Behind Rebrickable: it keeps loose parts as well
+   as sets, and its Build search ranks every MOC by what you own [R8-RB].
+   Behind Brickset: owned and wanted with flags (Trade, MISB), notes, a CSV
+   export and a sync with Rebrickable [R8-BS]. Level with Studio's wanted list
+   and Easy Buy [R8-BL], which our BrickLink export feeds. Ahead of Mecabricks'
+   export alone, and of the sites with no sets. Level with Ravelry, which
+   matches a stash to a queue [R8-RV], as our You can build now matches owned
+   sets to models.
+10. **First visit and sign-up.** A stranger's first screen, in the home page's
+    own order: the studio's pitch ("A CAD for LEGO® models, in your browser"),
+    then "Help shape Brickworks", a call to test the beta, and only then "Made
+    in Brickworks", the house's models. On Printables, MakerWorld and a Flickr
+    pool, people's work is the first screen. Sign-up is an emailed code or
+    orangecheck, with no password. Mecabricks shows 6 models and 6 renders on
+    its home page, but asks for a password and shows a stranger an ad: level.
+    Brickset opens on its news, asks for a password and shows ads: ahead
+    [R8-MB], [R8-BS]. Studio's gallery and Ideas use a LEGO® Account (Ideas
+    from 16) [R8-BL], [R8-LI]. Behind Printables and MakerWorld, which offer
+    Google and Apple as well as email [R8-PR], [R8-MW].
+11. **Shared outside.** Every /m/ page has og and twitter tags with its own
+    1200 x 630 picture, an oEmbed discovery link whose answer is the 3D embed,
+    and JSON-LD (`CreativeWork` with like and view counts). Set pages have the
+    tags and the JSON-LD, not oEmbed. 49 models and 1,576 set pages are in the
+    sitemaps (read today). Studio's archived page had no og tags [R8-BL].
+    Mecabricks has og:image only [R8-MB]. Brickset has og and twitter but no
+    JSON-LD [R8-BS]. Printables has og, twitter and `Product` JSON-LD but no
+    oEmbed [R8-PR]. Flickr is level: og, twitter, oEmbed and JSON-LD [R8-FL].
+    Behind Sketchfab, whose og:video and twitter `player` card play the model
+    inside X, Discord and Slack [R8-SK]. Ours are still pictures. Gaps of our
+    own: /u/ has no JSON-LD, and /gallery and /challenge show the site's
+    generic picture (each challenge's own `?id=` link has its own).
+12. **Phones.** Each page read today has a viewport tag (7 of 7), and the
+    site's own check (`design_flow`) draws every page at 390 px and fails one
+    that scrolls sideways. The studio itself runs on a phone (docs/PHONE.md:
+    first visit 10.5 s on Chromium, 12-21 s on WebKit). Studio is desktop-only
+    and Mecabricks has no viewport tag [R8-BL], [R8-MB]: ahead. Brickset is
+    responsive, with apps by others: level. Behind Flickr's apps, the Prusa
+    app's Printables browser, and Bambu Handy [R8-FL], [R8-PR], [R8-MW]. Our
+    site has a manifest but no service worker, so it cannot be installed with
+    an offline page and cannot push.
+13. **Safety and moderation.** Ahead of Printables (Report only; no block, its
+    admin said in 2025) [R8-PR], Mecabricks (no report or block), Brickset and
+    Rebrickable. Level with Flickr's silent block [R8-FL], Studio's review and
+    reporting [R8-BL], and Ideas' moderators (16+) [R8-LI]. Behind Instagram's
+    Restrict, Hidden Words and blocking a person's next accounts too [R8-IG].
+14. **Speed.** Not judged this round: the browser runs that time a first visit
+    beside the other sites' (`survey.mjs --pass=speed`, a phone on slow 4G at a
+    quarter of the CPU, and 1280 as it is) waited behind the release train's
+    timing checks all afternoon. What was read: the server's answer (below,
+    under the site measured by hand) and the field numbers people had (under
+    what people do). Chrome's own field verdicts, for the others: Printables,
+    MakerWorld, Sketchfab and Brickset fail Core Web Vitals and Thingiverse
+    passes [R8-SP].
+15. **People and activity.** Section "What people do on it" below.
+
+### Where the plan stands (2026-11-20)
+
+From `git log` on main (rel-m316, 7f25aa4bf, live since 07:38Z today) and the
+live pages. **Live** means on brickworks.diy now; **partly** means live with a
+named piece missing; **not built** means nothing of it is on main.
+
+| Section | Unit | State | Evidence |
+|---|---|---|---|
+| 5 | U1 Tokens and the theme choice | live | `web/theme.js` on every page; System, Light, Dark in the footer and Settings › Appearance |
+| 5 | U2 The component kit and one card | live | `web/card.js` and `api/_card.js`, one renderer |
+| 5 | U3 The gallery | live | Top · New · Following · Builds · Collections, pills, filters, Show more |
+| 5 | U4 The model page | live | action bar, tabs About · Comments · Builds · Remixes · Collections · Parts, More by, Add a picture |
+| 5 | U5 The public profile | live | `/u/brickworks`: banner, pins, tabs, `supabase/avatars.sql` |
+| 5 | U6 Your account as your profile | live | `/profile` and `/settings` apart |
+| 5 | U7 Notifications | live | `/notifications`, `supabase/notifications.sql` |
+| 5 | U8 Comments that talk | live | `supabase/replies.sql` |
+| 5 | U9 A feed you look at | live | `/feed` as cards, Latest when signed out |
+| 5 | U10 First steps and the house profile | live | `web/first-steps.js`, `supabase/house.sql` |
+| 5 | U11 Collections first-class | partly | live (`supabase/collection_follows.sql`); its rename to Lists is lists2's item 2, not built |
+| 5 | U12 Challenges between months | live | Coming next and Past challenges; the page redone 11-13 (challengepage) |
+| 5 | U13 Achievements | live | levels since phase 7 #2 (`supabase/achievements.sql`) |
+| 5 | U14 Embed and share | live | the share sheet on every page with Share (3e8f53cf2) |
+| 5 | U15 Pictures for both themes | live | `/m/X.cutout.png` and the 4:3 WebP at publish |
+| 5 | U16 Hand-built said by the app | live, changed | `made_with` kept; since 11-02 (the owner) said on the model's page only, not on cards |
+| 7 | 1 Share everywhere | live | sheet with networks; `/oembed` answers `rich` with the 3D embed (read today) |
+| 7 | 2 Achievements with levels | live | six tracks, the next level on your own page |
+| 7 | 3 Challenges people hear of | live | `supabase/challenge_notices.sql`; `/challenge?id=N` has its own preview |
+| 7 | 4 The embed in 3D | live | `/m/X/embed` answers 200, 4 KB (read today) |
+| 7 | 5 Based on | live | `supabase/model_bases.sql` |
+| 7 | 6 @mentions | live | `supabase/comment_mentions.sql`; @ searches shown profiles since socialtails |
+| 7 | 7 The week by email | not built | ranked low in phase 7; still low: nothing happens yet |
+| 7 | 8 Builds as a gallery tab | live | `/builds` |
+| 7 | 9 People to follow on a profile | live | More like, `supabase/designers_alike.sql` |
+| 8 | lists1 (Own, Want, lists, Save, the profile's Sets) | live | rel-m299, `supabase/lists.sql` |
+| 8 | lists2 items 1-9 (docs/LISTS.md section 5) | not built | no commit since lists1 names any of them |
+| 9 | Blocking a person | live | rel-m316 today, `supabase/block.sql`, Settings › Blocked people |
+| – | Owner's console at /admin | live | console1-3, Analytics since rel-m314 |
+| – | Sign in with orangecheck | live | rel-m305 (signinux), beside the emailed code |
+
+Of 30 units: 27 live, 1 partly, 2 not built (the week by email; lists2). The
+plan of sections 5 and 7 is done. What is left is not more of the same: the
+site has the parts of a community and no community (below).
+
+### The site measured by hand (2026-11-20)
+
+**What was set up.** Live brickworks.diy, signed out, in Chromium on
+SwiftShader at 390 x 844 (a phone: touch, twice the pixels), 768 x 1024 and
+1280 x 900, and in WebKit as an iPhone 13, each in light and dark, 14 pages,
+through `heavy` (`survey.mjs`); the first visit timed beside nine other sites'
+at the same moment, a phone on slow 4G at a quarter of the CPU and 1280 as it
+is (`survey.mjs --pass=speed`); and signed in, a newcomer's whole way through
+between two throwaway accounts of this round's own, deleted at the end
+(`journey.mjs`: sign up in the header's dialog on a phone, First steps, like,
+follow, comment, save, own a set, a list, the challenge's Enter, the feed, a
+notification, block, delete the account). Resend test addresses, so their
+models never reach a public list; nobody else's model or profile touched; the
+site's visit counter stopped for these browsers. The scripts and everything
+they write are in `bench/results/siteplan8-2026-11-20/` (git-ignored).
+
+**The browser runs did not run in this round's three hours.** All four were queued under `heavy` from 13:20Z and waited behind the rel-m317 train's preview checks, which run alone (together, arrival, cursor, pointat, progress and on), until the bound. So the cells of the first visit, phones and speed rest on what follows and on the research, and the next round runs the four scripts first, as they are.
+
+**The server's answer** (curl, three tries each, 14:25Z): every page answers
+in 0.14-0.16 s once warm. The first try at a model's page took 1.49 s and at a
+profile 1.86 s: a cold function. The field numbers (under what people do on
+it, below) say the same: Chrome on a desktop waited 3.56 s for the first byte
+(p50, 2 loads). Mecabricks' selection answered in 0.89-1.07 s and Brickset's
+year page in 0.37-0.64 s. Printables, MakerWorld and Thingiverse refused a
+reader that is not a browser (403).
+
+**The first screen, from the pages themselves.** The home page's sections run:
+the studio's pitch ("A CAD for LEGO® models, in your browser"), "Help shape
+Brickworks" (a call to test the beta), "Made in Brickworks" (the house's
+models, loaded late), "Everything a build needs", "Share it, and build with
+others", "Build something today". A stranger meets the tool and the beta
+before any model, and every model they then meet is the house's.
+
+### What people do on it (2026-11-20)
+
+**How it was read.** /admin › Analytics' own read, `GET /api/admin?op=analytics`,
+through `api/admin.js` run locally (`tools/web/relay_server.mjs` on port
+10840) against the live database. The relay's `MASTER_EMAIL` was the checks'
+shared test account, as docs/ADMIN_CLAUDE.md's local run has it, so the owner
+was never signed in. The relay had no `VIEW_SECRET` (it is kept only in
+Vercel), so the read could not join visits to accounts: its sign-ups and
+retention read 0 and are not used here. Account numbers are from the auth
+admin list instead, as counts only (`people_counts.mjs` in the results). Read
+only; nothing was written.
+
+**The numbers.**
+
+- **Counted visits: 6 since the counter went live** with rel-m314 (11-19,
+  11:24Z): 1 on 11-19 and 5 on 11-20. Sources: 4 direct, 2 from Bing. Few
+  visits are counted: anyone sending Do Not Track or GPC is left out, anyone in
+  the EU, UK or Switzerland only after saying yes, and a robot never.
+  Overlook counts the audience, but its API has no read of analytics
+  (docs/ANALYTICS.md).
+- **The visit funnel:** 6 visits, 2 opened the studio, 1 put down a part, 0
+  saved, 0 published.
+- **Where visits stopped** (each visit's last act): a set's page (2), the
+  studio's view button (1), the Select tool (1), the home page (1),
+  /profile (1).
+- **Speed as people had it** (1 visit in 4 is timed, so few): 4 loads in Edge
+  on a desktop, LCP p50 0.87 s and p75 1.09 s, TTFB p50 0.11 s; 2 loads in
+  Chrome on a desktop, LCP p50 4.24 s with TTFB p50 3.56 s, the time going
+  before the first byte. The studio's catalogue took 47 s (p50, 2 loads) in
+  Edge.
+- **Accounts** (the auth list, counts only): 160 in all; 141 are the checks'
+  (Resend test addresses); **19 are real**. 9 of those were made in the last
+  30 days and 5 in the last 7, all by the emailed code. 3 of them have a
+  public profile, the house's among them.
+- **Made and shared:** of 410 rows in `shared_models`, 49 are by real
+  accounts, and all 49 are the house's. **No person outside the house has
+  ever shared a model.** `model_likes`, `build_photos` and `collections`
+  have 0 rows; `model_builds` has 1.
+
+**Where people drop off.** At the first save and the first share. People
+come (9 new accounts this month, 5 this week) and look at sets and the studio.
+The one visit that put down a part saved nothing. None of the 18 real accounts
+other than the house's has shared a model, liked one or posted a build photo,
+and this month's challenge has no entry. Nothing in the site's own funnel is
+broken: there is no second person to meet. That is why the next plan opens
+with ways in for work people have already made (bringyours), and with every
+share outside working as an advertisement (turntable), before anything that
+needs a crowd.
+
+### The behinds, ranked
+
+Ranked by what each would change for a builder, given the finding above: the
+site has the parts of a community and one designer. A behind that brings people
+and their work in outranks one that serves a crowd we do not have yet.
+
+1. **People and activity** (row 15, behind all 8). Not a feature to copy: the
+   cure is ways in. Work people already made, shared from the site in a minute
+   (bringyours), and every share outside working as an advertisement
+   (turntable).
+2. **Showing work** (row 1: Printables, MakerWorld). A model can be shared only
+   from inside the studio. bringyours.
+3. **Challenges and contests** (row 8: Studio, Ideas, Printables, MakerWorld).
+   No judges, no honours, nothing on the home page while one runs.
+   challengehonours.
+4. **Phones** (row 12: Flickr, Printables, MakerWorld). No install, no
+   offline page, no push. homescreen.
+5. **Notifications** (row 6: Flickr, GitHub). No push, and kinds can be
+   chosen for email only. homescreen, then inbox.
+6. **First visit and sign-up** (row 10: Printables, MakerWorld). No Google
+   or Apple: signin-google (Apple needs a paid developer account, so it is
+   parked with payments). The home page shows the tool and a call to test the
+   beta before any model: challengehonours brings the open challenge and This
+   week's pick into its first two screens.
+7. **Sets, parts and lists** (row 9: Rebrickable, Brickset). No quantities,
+   no "what am I missing", no flags or notes. ownedparts, then lists2a.
+8. **Shared outside** (row 11: Sketchfab). Our previews are still pictures.
+   turntable.
+9. **Finding work** (row 2: MakerWorld's For You, Sketchfab's daily picks).
+   Not planned: recommendations over 49 models from one designer would
+   recommend the same designer. Revisit at 500 models from 50 designers.
+10. **Comments** (row 7: MakerWorld's pins and ratings). commentcare.
+11. **Safety** (row 13: Instagram's Hidden Words and Restrict). commentcare.
+
+### What no such site has, that builders would value most
+
+Each is a lead no LEGO® site has, built on what only Brickworks has: the
+model as data (parts, steps, joints), not as pictures.
+
+- **A model that turns in the link preview.** Paste a model into Discord, X
+  or Slack and it turns, its steps a click away. Among all the sites
+  read, only Sketchfab does this, and Sketchfab is not a LEGO® site (unit
+  turntable).
+- **Share a model you made anywhere, with its parts, steps and pictures worked
+  out for you.** Rebrickable asks for each by hand, in five steps. Studio's
+  gallery takes only Studio's files (unit bringyours).
+- **What you are missing, and one click to buy only that.** Rebrickable tells
+  you what share of a MOC you own. Nobody turns the gap into a BrickLink wanted
+  list or a Pick a Brick list of just the missing parts (unit ownedparts).
+- **A designer's numbers against last month.** Printables has this; no LEGO®
+  site does (unit insights2).
+
+### The units, in waves
+
+Sizes as section 5: **S** under half a unit, **M** one (about three hours),
+**L** two. **Review**: the unit touches accounts, user data or the database,
+so it gets one independent review before it merges, and its SQL is additive
+only (new tables, columns, functions; nothing dropped or rewritten). Every
+unit follows section 3 and docs/DESIGN_SYSTEM.md: the shared components only,
+standard controls (dates as dropdowns, choices as selects or radios, toggles as
+checkboxes), and the web's standard layouts (account at the far right, the
+primary action beside it, search at the left). Each is looked at 390, 768 and
+1280 px in light and dark, wired into `tools/release/preview_checks.sh`, and
+recorded in `.claude/skills/verify/`.
+
+**No two units in a wave share a file** beyond the registries
+(`tools/release/preview_checks.sh`, `.claude/skills/verify/`,
+`api/_insights_names.js`, `tools/site_shell.py`, the docs index). The files
+column is each unit's own.
+
+| Rank | Unit | Wave | Size | Risk | Review | Waits on | Its files | Bar (measured) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **bringyours**: share a model you already made, from the site | 1 | L | M | yes (publishes people's files) | nothing | new `web/share-model.html`, new `web/share-model.js`, new `web/studio-io.js` (reads a Studio .io in the browser), `web/gallery.html` (Share yours). It posts to `/api/share` as it stands and draws its picture with `web/viewer3d.js` unchanged. | An LDraw .mpd or a Studio .io of 300 parts goes from the file chosen to a live /m/ page in 60 s or less at 1280 and 120 s or less at 390 (this box, SwiftShader), in 4 taps or fewer after choosing. Its parts list is the server's own count of the file, as for a studio share; its steps are the file's. An LDD .lxf is opened in the studio instead, with one tap. A file that is not a model is refused in words. 13+ and `may_publish` as today. |
+| 2 | **turntable**: the model turns in link previews | 1 | L | H | yes (a new stored file per model, deleted with the account and on unpublish) | nothing | `api/share.js` (head tags, the clip's upload and route), `web/embed.js` (`?autoplay=1`), new `web/turntable-clip.js`, `web/model-page.js` (the designer's own visit records the clip once, from the 3D view, so studio, desktop and site shares all get one) | A model has `/m/X.mp4` (WebM where the browser cannot record MP4) within one visit of its designer: 4 s or less, a seamless loop, at most 1.5 MB. `/m/X` then carries `og:video` (type, width, height, secure_url) and a `twitter:card` `player` whose `twitter:player` is its embed. Fetched as Discordbot, Slackbot and Twitterbot, the page answers with those tags and the clip with 200. The embed plays muted with `?autoplay=1`. A model with no clip keeps today's picture card. `account_flow` proves that deleting the account deletes the clips; `share_probe` passes. |
+| 3 | **challengehonours**: judges, a fan vote, honours, and the challenge on the home page | 1 | M | L | yes (`supabase/challenge_rounds.sql`) | nothing | `web/challenge.js`, `web/challenge.html`, `api/_challenges.js`, `web/admin-challenges.js`, `api/_console_challenges.js`, `web/index.html`, new `supabase/challenge_rounds.sql` | A challenge can run as a shortlist of up to 5, chosen on /admin by the owner or a guest judge named on the page, then a one-vote fan round, each with its countdown. Winners are This week's pick the week after and carry an honour on their profile. While a challenge is open, the home page shows it, with its days left, and This week's pick within its first two screens at 390 and 1280. `/challenge` has the open challenge's own preview picture. `challenges_flow` passes; the blind vote and the rules are unchanged. |
+| 9 | **seo2**: people and lists in search results | 1 | S | L | no | nothing | `api/people.js` (the profile's head), `api/collection.js` | Every /u/ page carries `ProfilePage` JSON-LD whose `mainEntity` is a `Person` (name, url, image, followers and models as `interactionStatistic`). Every public /c/ page carries `CollectionPage` with `hasPart`. Both parse as schema.org. No visible change (`design_flow`'s pictures the same). |
+| 4 | **homescreen**: install the site, and push | 2 | L | M | yes (`supabase/push.sql`: subscriptions, deleted with the account) | nothing (the unit makes its own VAPID keys) | new `web/sw.js`, new `web/push.js`, new `api/_push.js`, new `supabase/push.sql` (a webhook on new notification rows), `web/site.webmanifest`, `web/settings.html`, `web/settings.js` | Chromium finds the site installable (manifest, service worker, offline page). Install is offered from the second visit, never the first. With push on (Settings › Notifications, per device), a comment on your model reaches Chromium as a push within 60 s, and an iPhone once the site is on its home screen, as Apple allows. Nothing is cached for `/app` or `/e/`. A deploy's pages are served on the next load (no stale shell). Deleting the account deletes its subscriptions. |
+| 8 | **lists2a**: one Save, Lists by name, link-only lists, import preview | 2 | M | L | yes (`supabase/lists_link.sql`) | turntable (`web/model-page.js`) | `web/model-page.js`, `web/keep.js`, `web/lists.html`, `web/lists.js`, `web/collections.html`, `web/collections.js`, `api/_lists.js`, `api/_mylists.js`, `docs/LISTS.md` | docs/LISTS.md section 5, items 1, 2, 3 and 6, each as written there: the model page's Save is keep.js's panel; Collections are Lists everywhere, and `/collections` redirects; a link-only list opens by its link and nowhere else, until the link is revoked; an import shows matched, not found and already there before anything is written. `lists_flow` and `collection_flow` pass. |
+| 5 | **ownedparts**: what you own, what you are missing, and only those to buy | 3 | M | M | yes (`supabase/owned_quantity.sql`) | lists2a (`web/keep.js`, `web/model-page.js`) | `web/card.js`, `api/_card.js`, `api/_owned.js`, `web/set-page.js`, `api/_sets.js`, `web/keep.js`, `web/model-page.js` (the Parts tab) | Signed in with owned sets (quantities 1-99 kept), every gallery card shows "You have 87%" when you have half or more. A model's Parts tab lists only what you are missing, with a BrickLink wanted list and a Pick a Brick list of just those: the model's list less your parts, by a test. Set pages say "In N lists". A gallery page of 24 cards answers no more than 50 ms slower. |
+| 7 | **inbox**: say what you hear of, and where; mute a model; done | 3 | M | L | yes (`supabase/notification_prefs.sql`) | homescreen (`web/settings.*`) | `web/notifications.js`, `web/notifications.html`, `api/_notifications.js`, `web/settings.html`, `web/settings.js`, new `supabase/notification_prefs.sql` | Each of the 11 kinds can come here, by email or by push, or not at all. Mute this model stops its count. Mark all done. The account menu shows the newest five with their pictures. `digest_flow` and `notifications_flow` pass. |
+| 11 | **insights2**: a designer's numbers against last month | 3 | M | L | yes (reads people's own numbers) | nothing | `web/designs.js`, `api/_designers.js`, new `supabase/designer_period.sql` (functions only) | Insights shows each model's views, builds, likes, saves and comments over 30 days beside the 30 before, with the change, and a chart by week. Nothing new is counted (D13). It answers within 1 s for 50 models. |
+| 6 | **signin-google**: Continue with Google | 4 | M | M | yes (accounts) | a Google OAuth client, free, in a Google Cloud project the lead can make; parked, and said so, if there is none | `web/account.js` (the sign-in dialog), `web/settings.html`, `web/settings.js`, `api/_auth.js`, `web/privacy.html` | Continue with Google sits in the sign-in dialog at 390 and 1280. A new account made through it meets the age question and First steps, as an emailed one does. An email account signing in with the same Google address lands in the same account, never a second one. Settings lists the ways in, each removable while one is left. Deleting the account removes the identity. |
+| 10 | **commentcare**: pin a comment and a build photo; held words | 4 | L | L | yes (`supabase/model_pins.sql`, `supabase/held_words.sql`) | ownedparts (`web/model-page.js`), insights2 (`web/designs.js`) | `web/model-page.js` (the designer's comment and photo controls), `api/_comments.js`, `api/_builds.js`, `web/designs.js` (the held words, beside Insights), new `supabase/model_pins.sql`, new `supabase/held_words.sql` | The model's designer pins one comment and one build photo; each shows first, marked Pinned, at 390 and 1280; hiding or deleting it unpins it. A designer keeps up to 50 held words or phrases: a comment with one, on any of their models, waits for them, its writer sees it as posted (as Instagram's Hidden Words does) and nobody else sees it until Approve. A base list is on by default and can be turned off. `comments_flow`, `mentions_flow` and `block_flow` pass. |
+
+
+Wave 1 runs four units at once: bringyours, turntable, challengehonours and
+seo2. Wave 2 is homescreen and lists2a. Wave 3 is ownedparts, inbox and
+insights2. Wave 4 is signin-google and commentcare. The ranks are by value;
+the waves follow what each waits on and which files it owns. signin-google
+ranks sixth but waits on a client and on Settings, which homescreen and inbox
+hold first.
+
+**Leave out** (section 6 of the brief): payments, Pro and prizes paid in money;
+the desktop downloads (paused, "Coming soon"); BrickBench submissions; new
+languages (the new words go into de, fr and es as every unit's do); provider
+API keys; posting from a real social account. A challenge's honours are
+non-cash for that reason. Sign in with Apple needs Apple's paid developer
+program, so it waits with payments.
+
 ## 0. The short of it
 
 The site already has most of a community's parts, more than most sites
@@ -1214,3 +1619,61 @@ Section 9's, read 2026-11-19 (most by search excerpt, as it says):
   https://www.engadget.com/reddit-updates-block-feature-000112208.html
 - [PR-B] Prusa forum, Printables' blocked creators under your account:
   https://forum.prusa3d.com/forum/english-forum-general-discussion-announcements-and-releases/printables-com-feature-request-improved-filtering-block-or-hide-selected-user-and-their-models
+
+### Round 8 (2026-11-20)
+
+Read on 2026-11-20. *(excerpt)* marks a claim resting on a search result's
+text where the page itself refused a reader.
+
+- [R8-RB] Rebrickable (never fetched; once a day at most): Bricknerd's guide
+  to sharing MOCs, https://bricknerd.com/home/mastering-rebrickable-a-guide-to-sharing-mocs-and-instructions-1-10-25 ;
+  custom profiles and per-designer notices, https://rebrickable.com/blog/572/new-feature-lego-workbench-custom-profiles *(excerpt)* ;
+  the Build search, https://www.eurobricks.com/forum/forums/topic/147089 *(excerpt)*
+- [R8-BL] BrickLink Studio's gallery: help, https://studiohelp.bricklink.com/hc/en-us/articles/5705436653847
+  and https://studiohelp.bricklink.com/hc/en-us/articles/360042355033 ; the
+  archived gallery page, https://web.archive.org/web/20260112074538/https://www.bricklink.com/v3/studio/design.page ;
+  LEGO® Account sign-in, https://brickset.com/article/124148 *(excerpt)* ;
+  the live gallery showed only its outage page all day,
+  https://www.bricklink.com/v3/studio/gallery.page
+- [R8-MB] Mecabricks: https://www.mecabricks.com/ , a model page
+  https://www.mecabricks.com/en/models/0Qa3x3lY2Mo , the selection
+  https://www.mecabricks.com/en/library/selection , a profile
+  https://www.mecabricks.com/en/user/instantea , sign-up
+  https://www.mecabricks.com/en/signup
+- [R8-BS] Brickset: https://brickset.com/ , https://brickset.com/faq , a set
+  page https://brickset.com/sets/10497-1/Galaxy-Explorer , its contest
+  https://brickset.com/article/136015 , sign-up https://brickset.com/signup ,
+  apps https://brickset.com/tools/apps
+- [R8-FL] Flickr: the LEGO® group https://www.flickr.com/groups/lego/ and its
+  pool https://www.flickr.com/groups/lego/pool/ ; a photo page
+  https://www.flickr.com/photos/127404146@N02/55659869943/ ; block and the
+  home feed, https://www.flickrhelp.com/hc/en-us/articles/4404057922324 *(excerpt)* ;
+  notifications, https://www.flickrhelp.com/hc/en-us/articles/4404377011476 *(excerpt)*
+- [R8-LI] LEGO® Ideas (refused every reader; all excerpts): policies
+  https://ideas.lego.com/agree_policies *(excerpt)* ; Staff Picks
+  https://www.lego.com/en-us/service/help-topics/article/what-are-lego-ideas-staff-picks-and-how-are-they-chosen *(excerpt)* ;
+  the code of conduct https://www.lego.com/en-us/legal/code-of-conduct *(excerpt)*
+- [R8-PR] Printables: its public API, https://api.printables.com/graphql/
+  (`competitions`, read twice today: 38 contests opened in 2026, median 218
+  entries, largest 1,108; `print`), https://www.printables.com/model ;
+  analytics, https://blog.prusa3d.com/revealing-the-new-detailed-analytics-on-printables_71849 *(excerpt)* ;
+  no block, https://forum.prusa3d.com/forum/english-forum-general-discussion-announcements-and-releases/printables-com-feature-request-improved-filtering-block-or-hide-selected-user-and-their-models
+- [R8-TV] Thingiverse: https://www.thingiverse.com/ ; its sale to
+  MyMiniFactory (February 2026) and its AI labels, from 3D Printing Industry's
+  and All3DP's news pages *(excerpt)*
+- [R8-MW] MakerWorld: https://makerworld.com/en ; uploading,
+  https://wiki.bambulab.com/en/makerworld/tutorials/how-to-upload-models ;
+  AI policy, https://wiki.bambulab.com/en/makerworld/ai-policy *(excerpt)* ;
+  profiles, https://forum.bambulab.com/t/137466 ; https://makerworld.com/en/faq
+- [R8-SK] Sketchfab: https://sketchfab.com/3d-models/popular ; oEmbed,
+  https://sketchfab.com/developers/oembed ; sharing,
+  https://help.sketchfab.com/en/articles/16152737-sharing-models-online ;
+  email notices, https://help.sketchfab.com/en/articles/16152184-editing-your-email-notifications
+- [R8-GH] GitHub, configuring notifications:
+  https://docs.github.com/en/subscriptions-and-notifications/get-started/configuring-notifications
+- [R8-IG] Instagram's Restrict, mute, block and report guide:
+  https://about.instagram.com/blog/tips-and-tricks/restrict-mute-block-report-guide
+- [R8-RV] Ravelry, faves, queue, library and stash:
+  https://blog.ravelry.com/thursday-tip-faves-queue-library-shopping-cart/ *(excerpt)*
+- [R8-SP] Field speed of the other sites (Chrome's users, by origin):
+  https://treo.sh/sitespeed/ (per domain)
