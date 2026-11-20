@@ -10,8 +10,9 @@
 ##   leaves is what is written.
 ## - renamed (M2): Save as another name unedited is the file but for its name
 ##   lines, its parts in its order. 11edff5b2 planned the kart again.
-## - restore, undo_open (M3): the working model restored, and an open undone,
-##   save byte for byte.
+## - restore, restore_later, undo_open (M3): the working model restored, and
+##   an open undone, save byte for byte; restore_edited: one restored with a
+##   part recoloured saves the new colour.
 ## - clear_undo, simulate: a Clear undone, and Simulate run and stopped, save
 ##   byte for byte; peer_step: a part's step set past the history is written.
 ## KBX_ONLY=a,b runs those acts; KBX_OUT=DIR keeps each file.
@@ -74,6 +75,7 @@ func _run() -> void:
 		["renamed", _renamed],
 		["restore", _restore],
 		["restore_later", _restore_later],
+		["restore_edited", _restore_edited],
 		["undo_open", _undo_open],
 		["clear_undo", _clear_undo],
 		["simulate", _simulate],
@@ -277,6 +279,27 @@ func _restore_later() -> Array:
 	await _settle()
 	var got: PackedByteArray = await _save()
 	return [got == _base, "restored=%d same_as_base=%s said=“%s”" % [back, got == _base, _store.order_words]]
+
+
+## A part recoloured, the autosave written then, restored, saved: the new
+## colour is written, never the file it was opened from.
+func _restore_edited() -> Array:
+	var part: BrickWorld.Brick = _first_part()
+	var was: int = part.color_code
+	var to: int = 4 if was != 4 else 1
+	var at: Transform3D = part.transform
+	var id: String = part.part_id
+	_builder.paint_brick(part.id, to)
+	await _frames(4)
+	_store.call("_write", ModelStore.autosave(), _store.title)
+	var back: int = _store.restore()
+	_bar.opened.emit(back)
+	await _settle()
+	var got: PackedByteArray = await _save()
+	await _reopened()
+	var colour: int = _colour_at(at, id)
+	return [got != _base and colour == to, "restored=%d changed_written=%s colour=%d (to %d, was %d)" % [
+		back, got != _base, colour, to, was]]
 
 
 ## M3: another model opened over it, the open undone, saved: byte for byte.

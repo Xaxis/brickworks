@@ -502,12 +502,13 @@ func _restored(text: String, result: Dictionary) -> int:
 ## parts in another ([method _note_written]).
 func _keep_restored() -> void:
 	var beside: String = _autosave_kept()
-	if FileAccess.file_exists(beside):
+	var kept_file: String = _autosave_kept_text()
+	if FileAccess.file_exists(beside) and FileAccess.file_exists(kept_file):
 		var said: Variant = JSON.parse_string(FileAccess.get_file_as_string(beside))
-		if said is Dictionary and not str(said.get("kept", "")).is_empty() \
-				and str(said.get("title", "")) == title \
-				and str(said.get("of", "")) == FileAccess.get_file_as_string(autosave()).sha256_text():
-			_keep_text(str(said["kept"]))
+		if said is Dictionary and str(said.get("title", "")) == title \
+				and str(said.get("of", "")) == FileAccess.get_sha256(autosave()) \
+				and str(said.get("kept", "")) == FileAccess.get_sha256(kept_file):
+			_keep_text(FileAccess.get_file_as_string(kept_file))
 			return
 	var path: String = saved_path(title) if title != UNTITLED else ""
 	if _live_source() == null and not path.is_empty() and FileAccess.file_exists(path):
@@ -515,27 +516,52 @@ func _keep_restored() -> void:
 		_state_due = false
 
 
-## Where the model's kept text is kept beside the autosave
-## ([method _note_beside_autosave]).
+## What says the autosave is at its model's kept moment, beside it
+## ([method _note_beside_autosave]): the name, and the sha-256 of the autosave
+## and of the kept text.
 static func _autosave_kept() -> String:
 	return autosave().get_basename() + ".kept.json"
+
+
+## And the kept text itself, as it was kept.
+static func _autosave_kept_text() -> String:
+	return autosave().get_basename() + ".kept.ldr"
+
+
+## Which kept text ([method _keep_text]) is in [method _autosave_kept_text],
+## by [member _kept_serial], and its sha-256.
+var _beside_serial: int = -1
+var _beside_sha: String = ""
 
 
 ## Beside the autosave just written, the model's kept text where the model is
 ## as it has it ([method _as_kept]), and which autosave it is of: a restore
 ## of that one puts the moment back ([method _keep_restored]). Taken away
-## otherwise, so none is ever read with another autosave.
+## otherwise, so none is ever read with another autosave. The text is
+## written once for each one kept, and only hashed: Orthanc's 660 KB put
+## into JSON at every autosave was most of a frame's 16 ms on its own.
 func _note_beside_autosave(name: String) -> void:
 	var beside: String = _autosave_kept()
 	if world != null and _as_kept(name):
-		var text: String = JSON.stringify({"title": name, "kept": _kept_now(),
-			"of": FileAccess.get_file_as_string(autosave()).sha256_text()})
-		var file: FileAccess = FileAccess.open(beside, FileAccess.WRITE)
-		if file != null:
-			file.store_string(text)
-			file.close()
-			_tell_page_wrote(beside, text.to_utf8_buffer().size())
-			return
+		var kept_file: String = _autosave_kept_text()
+		if _beside_serial != _kept_serial or not FileAccess.file_exists(kept_file):
+			_beside_serial = -1
+			var out: FileAccess = FileAccess.open(kept_file, FileAccess.WRITE)
+			if out != null:
+				out.store_string(_kept_now())
+				out.close()
+				_tell_page_wrote(kept_file, FileAccess.get_file_as_bytes(kept_file).size())
+				_beside_serial = _kept_serial
+				_beside_sha = FileAccess.get_sha256(kept_file)
+		if _beside_serial == _kept_serial:
+			var text: String = JSON.stringify({"title": name, "kept": _beside_sha,
+				"of": FileAccess.get_sha256(autosave())})
+			var file: FileAccess = FileAccess.open(beside, FileAccess.WRITE)
+			if file != null:
+				file.store_string(text)
+				file.close()
+				_tell_page_wrote(beside, text.to_utf8_buffer().size())
+				return
 	if FileAccess.file_exists(beside):
 		DirAccess.remove_absolute(beside)
 
@@ -601,7 +627,7 @@ func save_as(name: String) -> bool:
 ## model's name: save_model over MCP, which names a file of its own.
 func save_file(path: String, file_title: String = "Model") -> bool:
 	var was: Array = [_known_path, _known_time, _known_lines, _kept_text, _kept_in, _order_said,
-		_kept_at, _state_due, _kept_history, _bless_due]
+		_kept_at, _state_due, _kept_history, _bless_due, _kept_serial]
 	var ok: bool = _write(path, file_title, true)
 	if ok:
 		_views_kept = world.saved_views
@@ -620,6 +646,7 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 		_state_due = was[7]
 		_kept_history = was[8]
 		_bless_due = was[9]
+		_kept_serial = was[10]
 		if ok:
 			_saved_as = path
 	return ok
@@ -938,6 +965,7 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	# undone saved the model in a new build order.
 	var file: Array = kept.get("kept", ["", false])
 	_kept_text = str(file[0])
+	_kept_serial += 1
 	_kept_in = world.generation() if not _kept_text.is_empty() else -1
 	_order_said = bool(file[1])
 	_kept_at = []
@@ -1068,6 +1096,8 @@ var _kept_answer: Dictionary = {}
 ## for none: a model put back that was not as its text when it was taken off.
 var _kept_at: Array = []
 var _state_due: bool = false
+## Counts the texts kept, each one a new number ([method _note_beside_autosave]).
+var _kept_serial: int = 0
 ## The history when the text was kept, which the moment is taken at: one an
 ## edit moved meanwhile has none.
 var _kept_history: Array = []
@@ -1087,6 +1117,7 @@ func _kept_now() -> String:
 ## next frame.
 func _keep_text(text: String) -> void:
 	_kept_text = text.trim_prefix(LdrModel.bom())
+	_kept_serial += 1
 	_kept_in = world.generation() if world != null else -1
 	_kept_at = []
 	_kept_history = _history_now()
