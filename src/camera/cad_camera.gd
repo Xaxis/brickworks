@@ -201,6 +201,20 @@ func is_dragging() -> bool:
 	return _doing != Doing.NOTHING
 
 
+## The view is on the move: held by a drag or two fingers, or posed anew
+## in this frame or the last. What is worked out from where it looks for a
+## page or another tab, never drawn, can wait until it rests: on a phone
+## turning a frame every 400 ms, "twice a second" was every frame
+## (idleframes).
+func is_moving() -> bool:
+	return _doing != Doing.NOTHING or _touches.size() >= 2 \
+		or Engine.get_process_frames() - _posed_frame <= 1
+
+
+## The process frame the pose was last put on the camera in.
+var _posed_frame: int = -10
+
+
 ## The right button is down and has not moved far enough to be a turn,
 ## so letting go now is a click and takes a brick off.
 func right_pending() -> bool:
@@ -1358,6 +1372,7 @@ func _apply(weight: float) -> void:
 	var pose: Array = [_yaw, _pitch, distance, focus, _frame]
 	if pose != _posed or global_transform != _posed_at:
 		_posed = pose
+		_posed_frame = Engine.get_process_frames()
 		var offset := Vector3(
 			cos(_pitch) * sin(_yaw),
 			sin(_pitch),

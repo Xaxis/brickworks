@@ -124,6 +124,8 @@ var _pointer_key: Array = []
 var _pointer_found: Variant = null
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
+## How long the page may go untold while the view turns (_tell_page).
+const TELL_MOVING_MS := 2000
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
 var _told_moment: Array = []
 ## ...and how long telling it took the last time, which is a frame's work
@@ -328,6 +330,8 @@ func _add_frame_probes() -> void:
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
 var _hover_outline: SelectionOutline
+## What _select_hover last looked under the pointer for.
+var _hover_asked: Array = []
 var _hovered: int = 0
 var _hovered_from: Vector2 = Vector2(-1, -1)
 var _view_pointer: Vector2 = Vector2(-1, -1)
@@ -839,6 +843,13 @@ func _tell_page() -> void:
 	var now: int = Time.get_ticks_msec()
 	var moment: Array = _page_moment()
 	if now - _told_page_at < 500 and moment == _told_moment:
+		return
+	# While the view turns, told when it rests, or every TELL_MOVING_MS: on
+	# a phone at a quarter speed the telling was 13 ms of a car's frame and
+	# 30 of Orthanc's, and a frame there takes 400 ms, so twice a second was
+	# every frame of the turn. Nothing told is drawn.
+	if moment == _told_moment and _camera != null and _camera.is_moving() \
+			and now - _told_page_at < TELL_MOVING_MS:
 		return
 	_told_page_at = now
 	_told_moment = moment
@@ -5174,6 +5185,21 @@ func _select_hover() -> void:
 	# So while a model drawn before it is whole is still being laid.
 	if _world.is_being_laid():
 		return
+	# Looked at again only when what it is decided by moved: the pointer,
+	# whether a panel or a control is over it (one can open under a still
+	# pointer), the view, the model, the tool, the buttons. Looked at every
+	# frame of a model standing still, it cast a line through the model
+	# from the camera (idleframes).
+	var at: Vector2 = _pointer()
+	var asked: Array = [at, _over_interface(at), _camera.global_transform, _camera.h_offset,
+		_camera.v_offset, _camera.fov, _camera.size, get_viewport().get_visible_rect().size,
+		_builder.lattice.revision, _verbs.mode,
+		_verbs.shows_ghost(), _verbs.is_view_tool(), _dragging_part, Input.get_mouse_button_mask(),
+		get_viewport().gui_get_hovered_control(), _hovered,
+		_measure != null and _measure.active, _flex != null and _flex.active]
+	if asked == _hover_asked:
+		return
+	_hover_asked = asked
 	var under: int = 0
 	if _verbs.mode == "select" and not _verbs.shows_ghost() and not _verbs.is_view_tool() \
 			and not _dragging_part and Input.get_mouse_button_mask() == 0 \
@@ -9232,6 +9258,12 @@ const HOLD_AFTER := 0.22
 ## turning, shift and arrows sliding — but never while someone is typing,
 ## and the arrows only when a selection or the booklet is not using them.
 func _steer_from_keys(delta: float) -> void:
+	# Nothing held, nothing to steer by: asked key by key, a dozen keys
+	# every frame were a fifth of a millisecond of an idle phone's frame
+	# at a quarter speed (idleframes).
+	if not Input.is_anything_pressed():
+		_held_for = 0.0
+		return
 	# Nor while Tab has put the keys on a control: its arrows are its own.
 	if FocusGuard.keys_with_a_control(get_viewport()) or _camera == null or _gated():
 		_held_for = 0.0
@@ -9335,7 +9367,7 @@ var _out_of_view: bool = false
 
 
 func _watch_view() -> void:
-	var away: bool = _nobody_looking()
+	var away: bool = _page_away() if OS.has_feature("web") else _nobody_looking()
 	if away == _out_of_view:
 		return
 	_out_of_view = away
@@ -9345,6 +9377,28 @@ func _watch_view() -> void:
 		_verbs.out_of_view = away
 	if away and _playback != null and _playback.is_playing():
 		_playback.stop()
+
+
+## Whether the page is out of view, asked of it once and then again only
+## when its visibilitychange says it changed: asked every frame, it was a
+## script evaluated by the browser in every frame of the app's life.
+func _page_away() -> bool:
+	if _page_hidden == null:
+		_page_hidden = bool(JavaScriptBridge.eval("document.hidden", true))
+		if _on_visibility == null:
+			_on_visibility = JavaScriptBridge.create_callback(func(_args: Array) -> void:
+				_page_hidden = null)
+			var document: JavaScriptObject = JavaScriptBridge.get_interface("document")
+			document.call("addEventListener", "visibilitychange", _on_visibility)
+	return bool(_page_hidden)
+
+
+## What _page_away last heard: null until asked, or once the page said it
+## changed.
+var _page_hidden: Variant = null
+var _on_visibility: JavaScriptObject = null
+## A mouse (not a finger standing in for one) has moved over the window.
+var _mouse_seen: bool = false
 
 
 static func _nobody_looking() -> bool:
@@ -9363,6 +9417,10 @@ static func _nobody_looking() -> bool:
 func _watch_other_tabs() -> void:
 	var now: int = Time.get_ticks_msec()
 	if now - _tabs_looked < 1000:
+		return
+	# While the view turns, every 3 s: a frame of a phone turning Orthanc is
+	# longer than this look's second (main._tell_page).
+	if _camera != null and _camera.is_moving() and now - _tabs_looked < 3000:
 		return
 	_tabs_looked = now
 	for change: Dictionary in TabSession.changed_elsewhere():
@@ -9453,7 +9511,11 @@ func _process_main(_delta: float) -> void:
 		_play_frame()
 	else:
 		_select_hover()
-	if _cursors != null:
+	# The pointer's picture, where there is a pointer: a phone's fingers
+	# draw none, and working out what it would be (a line through the model
+	# under where the last finger was among it) was half a millisecond of
+	# every frame there at a quarter speed (idleframes).
+	if _cursors != null and (_mouse_seen or not DisplayServer.is_touchscreen_available()):
 		_cursors.show_for(_cursor_state())
 	# A box whose ending went somewhere else.
 	#
@@ -11092,6 +11154,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		if (event as InputEventMouseMotion).relative != Vector2.ZERO:
 			_aim_by_keys = false
+		if event.device != InputEvent.DEVICE_ID_EMULATION:
+			_mouse_seen = true
 		_pointer_at = (event as InputEventMouseMotion).position
 		_system_at = get_viewport().get_mouse_position()
 		_pointer_seen_ms = Time.get_ticks_msec()
