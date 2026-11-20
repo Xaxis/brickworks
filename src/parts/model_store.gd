@@ -1174,8 +1174,7 @@ func _take_moment(name: String = title) -> void:
 	var history: Array = _history_now()
 	if not bless and not _same_history(history, _kept_history):
 		return
-	_kept_at = [history, _scenery_now(), _own_state(name), name, scenery.duplicate(),
-		_bare_state(name)]
+	_kept_at = [history, _scenery_now(), _own_state(name), name, scenery.duplicate()]
 	world.mark_parts()
 
 
@@ -1233,19 +1232,11 @@ func _kept_as_is(title_now: String) -> String:
 	if _writing_whole or not _at_moment():
 		return ""
 	var then: String = str(_kept_at[3])
-	var bare: String = _bare_state(then)
-	if bare != str(_kept_at[5]):
+	if title_now == then:
+		return _kept_now() if _own_state(title_now) == str(_kept_at[2]) else ""
+	if _live_source() != null or _own_state(then) != str(_kept_at[2]):
 		return ""
-	var kept: String = _kept_now()
-	if title_now != then:
-		if _live_source() != null:
-			return ""
-		kept = _renamed(kept, then, title_now)
-	if kept.is_empty() or _with_who(bare) == str(_kept_at[2]):
-		return kept
-	# Only who laid it or where it came from changed: the kept text with
-	# those lines as a save says them, each where the file has it.
-	return _with_identity(kept, MetaIndex.of_text(kept))
+	return _renamed(_kept_now(), then, title_now)
 
 
 ## [param kept], the app's own file of the model called [param from], as the
@@ -1258,9 +1249,16 @@ func _kept_as_is(title_now: String) -> String:
 static func _renamed(kept: String, from: String, to: String) -> String:
 	var lines: PackedStringArray = kept.split("\n")
 	var titled: bool = false
-	# Under a FILE line the Name is the section's, which a whole write keeps
-	# as it was read (LdrModel._main_file): appedits' arm, "FILE untitled.ldr"
-	# saved as another name, had its Name renamed and its FILE not.
+	# In an MPD of more than one section the Name is its first section's,
+	# which a whole write keeps as it was read (LdrModel._main_file):
+	# appedits' arm, "FILE untitled.ldr" saved as another name, had its Name
+	# renamed and its FILE not. A file of one section is written whole as a
+	# single file, named anew (appedits' five, "FILE model.ldr").
+	var sections: int = 0
+	for line: String in lines:
+		var said_file: PackedStringArray = LdrModel._fields(line.strip_edges())
+		if said_file.size() > 1 and said_file[0] == "0" and said_file[1].to_upper() == "FILE":
+			sections += 1
 	var filed: bool = false
 	for n: int in lines.size():
 		var line: String = lines[n]
@@ -1273,7 +1271,7 @@ static func _renamed(kept: String, from: String, to: String) -> String:
 			break
 		var said: String = line.trim_suffix("\r").strip_edges().substr(1).strip_edges()
 		if fields.size() > 1 and fields[1].to_upper() == "FILE":
-			filed = true
+			filed = sections > 1
 			continue
 		if not titled:
 			if said.begins_with("!") or said.is_empty():
@@ -1296,21 +1294,6 @@ static func _renamed(kept: String, from: String, to: String) -> String:
 ## and where its copies' stand, its picture to build over, the sets in its
 ## bin, its links and credit.
 func _own_state(name: String) -> String:
-	return _with_who(_bare_state(name))
-
-
-## [param bare], a [method _bare_state], with who laid the model's parts and
-## where it came from: its [method _own_state].
-func _with_who(bare: String) -> String:
-	return str([bare, reference, bin_sets, share_id, remixed_from, remixed_from_version, credit,
-		made_with])
-
-
-## [method _own_state] but for the lines a save adds ([method _with_identity]):
-## who laid its parts and where it came from. A session's edit refused, or
-## made and undone, leaves the model "laid by the assistant" (laid_by), and
-## the file is still the save, its MADE line said (followfix's mcp_swap).
-func _bare_state(name: String) -> String:
 	var asked: Dictionary = _metas_asked(null)
 	asked.erase("metas")
 	# By the line it writes, not the object: a Clear undone lays the same
@@ -1318,7 +1301,8 @@ func _bare_state(name: String) -> String:
 	var ground: ModelFloor = asked["floor"]
 	asked["floor"] = ground.to_meta() if ground != null else ""
 	return str([name, asked, _by_key(world.step_looks), _by_key(world.unit_steps),
-		_by_key(world.section_lines), _by_key(world.section_frames)])
+		_by_key(world.section_lines), _by_key(world.section_frames), reference, bin_sets, share_id,
+		remixed_from, remixed_from_version, credit, made_with])
 
 
 ## [param table]'s entries in the order of their keys: a rename undone puts
@@ -2141,8 +2125,8 @@ func _model_text(paced: bool) -> String:
 ## who made it and who laid its parts; each line of them its open could not
 ## read where the file had it. What a save writes, and the autosave; not an
 ## export.
-func _with_identity(text: String, here: MetaIndex = null) -> String:
-	var metas: MetaIndex = here if here != null else _metas_now()
+func _with_identity(text: String) -> String:
+	var metas: MetaIndex = _metas_now()
 	return MetaIndex.written(text, [
 		_family(metas, ["REFERENCE", "REFERENCE_PICTURE"], ReferenceImage.lines_of(reference)),
 		_family(metas, ["BIN"], SetBin.lines_of(bin_sets), MetaIndex.TITLE, SetBin.said_in)]
@@ -4390,7 +4374,6 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 		# Its own lines as they are with them: its motions' joints, found now.
 		if at_moment:
 			_kept_at[2] = _own_state(str(_kept_at[3]))
-			_kept_at[5] = _bare_state(str(_kept_at[3]))
 	if awaited.is_empty():
 		_settle()
 	return landed
