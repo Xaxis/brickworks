@@ -211,6 +211,39 @@ func refresh() -> void:
 	busy = false
 	phase = ""
 	_show()
+	_ghost_in_sight()
+
+
+## What is shown first must be seen: a ghost out of the model's room has the
+## view framed on the model and it. On a phone held upright the room is the
+## strip above the bar's sheet, and the house's two pieces stood right of a
+## 390-wide screen, at x 791 and 802 of its 720 units (fpfix).
+func _ghost_in_sight() -> void:
+	var camera: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	if camera == null or not camera.has_method("frame") or app == null \
+			or not app.has_method("_model_rect"):
+		return
+	var room: Rect2 = app.call("_model_rect")
+	var box := AABB()
+	var any: bool = false
+	var out: bool = false
+	for kind: Variant in _ghosts:
+		var holder: Node3D = _ghosts[kind]
+		if not is_instance_valid(holder) or not holder.visible:
+			continue
+		for piece: Node in holder.get_children():
+			var shape: AABB = (piece as MeshInstance3D).global_transform \
+				* (piece as MeshInstance3D).get_aabb()
+			box = shape if not any else box.merge(shape)
+			any = true
+			var middle: Vector3 = shape.get_center()
+			if camera.is_position_behind(middle) \
+					or not room.has_point(camera.unproject_position(middle)):
+				out = true
+	if not any or not out:
+		return
+	var model: AABB = _world.model_bounds()
+	camera.call("frame", box.merge(model) if model.size.length_squared() > 0.0 else box)
 
 
 ## The world changed under what the bar shows or reads (another model
@@ -562,16 +595,34 @@ func _adds_of(one: SurfacePass.Finding) -> Array:
 			item["step"] = was.step
 		out.append(item)
 		middles.append(middle)
-	_none_emptied(out, gone, middles)
+	_none_emptied(out, gone, middles, _kept_by_group(gone))
 	return out
 
 
-## Every sub-model and step a part is taken off from keeps one of the parts
-## laid in their place, where the others have one to spare: the nearest to
-## it. Matched by box alone, a step of the castle's back curtain wall whose
+## How many parts each sub-model and step keeps that [param gone] does not
+## take off, read only where a step loses a part and is given none of those
+## laid: a step two findings empty between them is empty though each left it
+## a part (the castle's back curtain wall, fpfix).
+func _kept_by_group(gone: Array) -> Dictionary:
+	var off: Dictionary = {}
+	for pair: Array in gone:
+		off[(pair[0] as BrickWorld.Brick).id] = true
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not off.has(brick.id):
+			var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
+			out[key] = int(out.get(key, 0)) + 1
+	return out
+
+
+## Every sub-model and step a part is taken off from keeps a part: one it
+## still has ([param kept], parts left in each), or one of those laid in
+## their place, from a step that keeps something without it: the nearest.
+## Matched by box alone, a step of the castle's back curtain wall whose
 ## parts were all taken off got none of the tiles laid over them, and its
 ## line in the file went with it (fpfix).
-static func _none_emptied(out: Array, gone: Array, middles: Array) -> void:
+static func _none_emptied(out: Array, gone: Array, middles: Array,
+		kept: Dictionary = {}) -> void:
 	var given: Dictionary = {}
 	for item: Dictionary in out:
 		var key: String = "%s#%d" % [item["path"], int(item["step"])]
@@ -579,14 +630,14 @@ static func _none_emptied(out: Array, gone: Array, middles: Array) -> void:
 	for pair: Array in gone:
 		var brick: BrickWorld.Brick = pair[0]
 		var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
-		if given.has(key):
+		if given.has(key) or int(kept.get(key, 0)) > 0:
 			continue
 		var box: AABB = pair[1]
 		var pick: int = -1
 		var pick_d: float = INF
 		for n: int in out.size():
 			var from: String = "%s#%d" % [out[n]["path"], int(out[n]["step"])]
-			if int(given.get(from, 0)) < 2:
+			if from == key or int(given.get(from, 0)) < 2 and int(kept.get(from, 0)) == 0:
 				continue
 			var middle: Vector3 = middles[n]
 			var d: float = middle.distance_to(_nearest_in(box, middle))

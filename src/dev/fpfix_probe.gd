@@ -245,7 +245,9 @@ func _case_held() -> void:
 	for id: int in two:
 		_builder.selection[id] = true
 	_builder.lift_selection()
+	# Lifted, the model changed: the bar reads it again before Lay is offered.
 	await _frames(4)
+	await _until(func() -> bool: return not bar.busy, 300000)
 	var carrying: bool = _builder.is_carrying()
 	var said: Array = []
 	var was_say: Callable = bar.say
