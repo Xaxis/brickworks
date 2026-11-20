@@ -15525,6 +15525,18 @@ msgstr "Griff zum Drehen"
 msgid "Program for the motors"
 msgstr "Programm für die Motoren"
 
+msgid "Unlock"
+msgstr "Entsperren"
+
+msgid "Joints locked"
+msgstr "Gesperrte Gelenke"
+
+msgid "Locked, it keeps its angle and its slide: a drag, R, a handle, Simulate and Claude are refused until it is unlocked"
+msgstr "Gesperrt behält es seinen Winkel und seine Verschiebung: Ziehen, R, ein Griff, Simulieren und Claude werden abgelehnt, bis es entsperrt ist"
+
+msgid "Let it move again: a drag, R, a handle, Simulate and Claude may turn or slide it"
+msgstr "Wieder beweglich machen: Ziehen, R, ein Griff, Simulieren und Claude dürfen es drehen oder verschieben"
+
 # Compare with the set (setcheck, APP_UX10 #4): File's row, the panel's title,
 # field, button and what it says with nothing to list.
 

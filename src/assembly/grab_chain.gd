@@ -51,6 +51,9 @@ var placed: Dictionary = {}
 var _deepest: Dictionary = {}
 var said: String = ""
 var range_ms: float = 0.0
+## The words of the first joint locked on the way back (Motions.lock_words),
+## left as it is while the others turn; "" for none.
+var locked_why: String = ""
 
 
 ## Take hold of [param brick_id] at [param at] by the chain of joints back to
@@ -71,6 +74,7 @@ func begin(brick_id: int, at: Vector3) -> String:
 	# Nearest the anchor first, turning joints only (a ball or a slide
 	# stays as it is).
 	var started: int = Time.get_ticks_usec()
+	locked_why = ""
 	for n: int in range(links.size() - 1, -1, -1):
 		var link: Bodies.Link = links[n]
 		if link.axis == Vector3.ZERO or joints.size() >= MOST:
@@ -81,10 +85,15 @@ func begin(brick_id: int, at: Vector3) -> String:
 		grab.library = library
 		grab.bodies = bodies
 		if grab.begin_link(link, int(children[n]), at) != "moves":
+			# A joint the person locked (jointlock): the first is kept, to
+			# refuse with or to name as left (jlreview M1: dropped here, the
+			# answer said "no joint back from it turns", no lock named).
+			if locked_why.is_empty() and grab.why.contains(Motions.UNLOCK_WORDS):
+				locked_why = grab.why
 			continue
 		joints.append(grab)
 	if joints.is_empty():
-		return _refuse("no joint back from it turns")
+		return _refuse(locked_why if not locked_why.is_empty() else "no joint back from it turns")
 	angles.resize(joints.size())
 	angles.fill(0.0)
 	for n: int in joints.size():

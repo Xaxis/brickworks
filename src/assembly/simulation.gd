@@ -600,8 +600,40 @@ func _drag_of(body: int) -> Grab:
 		held.begin(key, world.get_brick(key).transform.origin)
 		if held.state == "moves" and held.mode == "turn":
 			_drags[body] = held
+		elif held.state == "locked" and held.why.contains(Motions.UNLOCK_WORDS):
+			# A joint the person locked holds it (jointlock): said by drive.
+			_lock_said[body] = held.why
 		break
 	return _drags[body]
+
+
+## Bodies a drag would turn but for a joint locked: body -> its words.
+var _lock_said: Dictionary = {}
+
+
+## The words of the first joint locked (Motions.locks) the drive just solved
+## turns, one of its parts against the other; "" for none. Simulate's driver
+## stops at a lock as a drag does (jointlock): a lock is the person's, set to
+## hold a pose, and a motor that turned through it would undo it.
+func _lock_turned() -> String:
+	if world == null or world.motions == null or world.motions.locks.is_empty():
+		return ""
+	var body_of: Dictionary = {}
+	for one: int in model.bodies:
+		for key: Variant in model.bodies[one]:
+			body_of[int(key)] = one
+	for lock: Motions.Lock in world.motions.locks:
+		var a: int = Motions.lock_part(lock.a, world, builder)
+		var b: int = Motions.lock_part(lock.b, world, builder)
+		if not body_of.has(a) or not body_of.has(b) or int(body_of[a]) == int(body_of[b]):
+			continue
+		var one: int = body_of[a]
+		var other: int = body_of[b]
+		var spun: Vector3 = (Vector3.ZERO if model.is_frame(one) else model.omega(one)) \
+			- (Vector3.ZERO if model.is_frame(other) else model.omega(other))
+		if spun.length() > STILL:
+			return Motions.lock_words(lock, world, library, builder)
+	return ""
 
 
 ## The body the model marks as its driver: what a motor's output turns, else
@@ -667,12 +699,19 @@ func drive(body: int) -> Dictionary:
 	followers.clear()
 	holds.clear()
 	if not can_drive(body):
-		solved = {"ok": false, "locked": false, "said": "that part turns on nothing",
-			"culprits": [], "meshes": [], "free": [], "freedoms": 0}
+		var why: String = str(_lock_said.get(body, ""))
+		solved = {"ok": false, "locked": false, "said": why if not why.is_empty()
+			else "that part turns on nothing", "culprits": [], "meshes": [], "free": [], "freedoms": 0,
+			"lock": why}
 		return solved
 	if not _on_joint(body):
 		return _drive_by_drag(body)
 	solved = model.solve({body: 1.0})
+	var held: String = _lock_turned() if bool(solved.get("ok", false)) else ""
+	if not held.is_empty():
+		solved = {"ok": false, "locked": false, "said": held, "culprits": [], "meshes": [], "free": [],
+			"freedoms": 0, "lock": held}
+		return solved
 	var unit: float = model.spin(body, axis_of(body))
 	if absf(unit) < 1e-12:
 		unit = 1.0
@@ -2128,6 +2167,8 @@ func _target_for(body: int, targets: Dictionary) -> Variant:
 ## that fight, by part), free bodies, gears that float, holes not read.
 func trouble_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
+	if not str(solved.get("lock", "")).is_empty():
+		lines.append("HELD: %s." % str(solved["lock"]))
 	if bool(solved.get("locked", false)):
 		var fights := PackedStringArray()
 		for pair: Array in solved.get("meshes", []):
