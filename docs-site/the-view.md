@@ -25,9 +25,12 @@ The view is how you look at the model: from any side, close up, two ways at once
 
 A drag that starts on a part moves the part. With nothing selected, the arrows turn the view, [[W]] [[A]] [[S]] [[D]] slide it and [[=]] [[-]] zoom. The **Orbit**, **Pan** and **Zoom** tools ([[O]], [[H]], [[Z]]) make every left drag move the view. The pointer shows what a drag will do. For touch screens, see [On a tablet or a phone](/docs/web-and-desktop#phone).
 
+The view stays over the floor while the model stands upright: no turn, slide, pinch or wheel takes it underneath, and some of the model is always on the screen. To look from below, press [[6]] or click the view cube's bottom.
+
 A still model costs nothing to leave open: the app draws only when something changes, and on a slow computer it draws a lighter look while you move.
 
 <!-- covers
+ui:the view kept over the floor and on the model
 ui:camera controls
 ui:left-button navigation
 ui:pointer cursors
@@ -124,12 +127,19 @@ Press **Lift** in Stress's panel, then click a part: the model is lifted off the
 
 An assistant reads the same with weakest_joints `"lift_by"`, a part's number: what comes away, every part of it by number, and the joints left nearest letting go.
 
+### Swing {#swing}
+
+Press **Swing** in Stress's panel, then click a part: the model is swung by that part the way a child swooshes a toy, about a metre of arc in half a second, a quarter turn, down through the bottom and up. Every joint then carries what is past it pulled by gravity and by the swing together, at the moment of the arc that is hardest on it: the bottom pulls hardest, more than three times the weight, and the start and the end of the swing lever things sideways. The first joint past what lets it go comes away with everything past it, and the swing goes on without it. The panel names it first, with when, its parts, its weight and its studs: "Swung by Brick 2 x 4: Plate 2 x 10 on the right comes away first, 0.19 s in: 5 parts, 8.3 g, at its 2 studs". Press its row and **Strengthen** offers a fix that makes it hold longer in the swing, or hold all the way; put it down and the model is swung again, so you see whether it now holds. Press **Lift** to hold it still by the same part, or **Swing** again to set it down.
+
+An assistant reads the same with weakest_joints `"swing"`, a part's number, and can change the arc with `"arc"` (metres, seconds, turn).
+
 ![The car lifted by a headlight's round plate in Stress: the plate blue, the rest of the car red, and the panel naming the one-stud joint that lets go and the 60 parts that come away.](/docs/img/the-view-lift.webp "Lift: the car hangs from one stud, and comes away whole.")
 
 <!-- covers
 ui:stress view
 ui:strengthen a weak joint
 ui:lift by a part
+ui:swing by a part
 -->
 
 ## Stud directions {#studs}

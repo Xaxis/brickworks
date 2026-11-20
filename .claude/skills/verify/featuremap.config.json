@@ -5692,7 +5692,7 @@
       "kind": "ui",
       "label": "finish the surfaces",
       "entry": "src/ui/finish_bar.gd",
-      "reach": "godot --path .  (Edit, Finish the surfaces\u2026: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a finger's size on a phone; tools/probe.sh finishpass_probe)",
+      "reach": "godot --path .  (Edit, Finish the surfaces…: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a finger's size on a phone; tools/probe.sh finishpass_probe)",
       "area": "building"
     },
     {
@@ -6079,6 +6079,48 @@
       "entry": "tools/web/block_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/block_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh block: throwaway Ada, Bob and Cy; or a relay on the live project, relay_server.mjs 10981 --static=web)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls9 probe",
+      "entry": "src/dev/smalls9_probe.gd",
+      "reach": "tools/probe.sh smalls9_probe   (headless, about five minutes: Orthanc and 10179, Find and Replace everywhere and the parts list as P opens it, no frame over 100 ms of the app's own work, the status bar saying so, the same frames and rows as Assemblies.file_frames and Inventory.of)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "swing by a part",
+      "entry": "src/assembly/swing_test.gd",
+      "reach": "tools/probe.sh swoosh   (by hand: View, Stress; press Swing, then click a part: the model is swung by it like a toy, 1 m in half a second and a quarter turn, down through the bottom; each joint carries what is past it pulled by gravity and the swing together, at its worst moment of the arc; the first to let go comes away and the swing goes on without it; the part in the hand blue, what comes away red and named first in the panel with when, its parts, weight and studs; a row that lets go offers Strengthen, and after it the model is swung again; Swing again sets it down; a session: weakest_joints swing=N)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "swoosh probe",
+      "entry": "src/dev/swoosh_probe.gd",
+      "reach": "tools/probe.sh swoosh   (headless: the walk's tower by its top brick, the car by its roof and a ship by its fuselage, each joint at the swing's worst within 1% of the hand's sums (bench/results/swoosh-2026-11-20/hand_sums.md), the ship's wing coming away first though Lift holds it, and at rest the swing's sums Balance's still ones; ten gallery seeds each held where it swings best of its 16 widest parts, the first to come away named, and after Strengthen later or not at all; in the app Stress's Swing on the ship, red and blue, Strengthen from its row, weakest_joints swing= the same in 1 call, g4 in 2; Orthanc and 10179 swung with no frame over 100 ms)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "the view kept over the floor and on the model",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "any turn, slide, pinch, wheel notch, key or Fit, mouse or fingers: the eye never goes from over the floor to under it while the model is upright (Bottom and Build's steps from below still look from under), and the middle of the view stays near the model so some of it is always on the screen  (CadCamera.floor_at, _floor_line, _keep_near_model, _pivot_near; tools/probe.sh viewfloor_probe; tools/web/phonewalk_flow.mjs --only=view_floor,view_floor_orthanc)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "viewfloor probe",
+      "entry": "src/dev/viewfloor_probe.gd",
+      "reach": "tools/probe.sh viewfloor_probe   (windowed, 390x844 by its header; -- --measure prints and fails nothing; pictures in shots/viewfloor/)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "seatswap probe",
+      "entry": "src/dev/seatswap_probe.gd",
+      "reach": "tools/probe.sh seatswap_probe   (headless, about 5 minutes; a pin in a beam, hips under legs and 7 real sets' seated parts swapped by replace_parts, each one undo and byte for byte back; a 1 x 6 for a 1 x 4 against a wall refused; the hand's Replace on the pin)",
+      "area": "building"
     }
   ]
 }

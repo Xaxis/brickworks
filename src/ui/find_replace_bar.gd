@@ -112,7 +112,12 @@ func where() -> String:
 	return str(_where.get_item_metadata(_where.selected)) if _where.selected >= 0 else "all"
 
 
-## Found again and said again, as everything stands now.
+## Found again and said again, as everything stands now. Where the copies'
+## frames are not to hand (a model with copies, opened or changed since),
+## they are worked out first a slice of a frame at a time, the status bar
+## saying so, and the find made once they are (FindReplace.frames_paced_for):
+## on 10179 they were one frame of 0.96 s (osfix). A model they take less
+## than a slice for is found at once, as before.
 func refresh() -> void:
 	if not visible or _finder.world == null:
 		return
@@ -122,6 +127,15 @@ func refresh() -> void:
 		found = {}
 		made = {}
 		_show()
+		return
+	if not _finder.frames_ready(where()):
+		# What was found was the model's before: nothing is shown found, or
+		# replaced, until the find at the frames' end (in this call, where
+		# they take less than a slice).
+		found = {}
+		made = {}
+		_show_reading()
+		_frames_then_refresh()
 		return
 	found = _finder.find(finding, where())
 	var putting: Dictionary = into()
@@ -141,9 +155,25 @@ func refresh() -> void:
 	_show()
 
 
+## The copies' frames worked out across frames, then found again: one at a
+## time, however often it is typed into meanwhile.
+func _frames_then_refresh() -> void:
+	if _framing:
+		return
+	_framing = true
+	await _finder.frames_paced_for(_finder.looked_in(where()))
+	_framing = false
+	refresh()
+
+
+var _framing: bool = false
+
+
 ## The replace, as the Replace button does it: {"changed", "room", "words"},
 ## {} when there was nothing to do.
 func replace_now() -> Dictionary:
+	if not _finder.frames_ready(where()):
+		await _finder.frames_paced_for(_finder.looked_in(where()))
 	refresh()
 	var putting: Dictionary = into()
 	if found.is_empty() or (found["ids"] as Array).is_empty() or not _changes(putting) \
@@ -168,6 +198,17 @@ func replace_now() -> Dictionary:
 
 
 # -- what it shows ------------------------------------------------------------------
+
+
+## While the copies' frames are worked out ([method refresh]): nothing to
+## select or replace yet, and the list says why.
+func _show_reading() -> void:
+	_show()
+	_select.disabled = true
+	_replace.disabled = true
+	for row: Node in _list.get_children():
+		row.queue_free()
+	_line(FindReplace.FRAMES_WORDS, 0.7)
 
 
 func _show() -> void:

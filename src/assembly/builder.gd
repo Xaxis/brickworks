@@ -1767,11 +1767,26 @@ func replace_selection_paced(part_id: String, in_place: bool = false) -> Vector2
 	var steps: Array = []
 	var swapped := PackedInt64Array()
 	var refused: int = 0
+	var asked_laid: bool = false
 	for n: int in alive.size():
 		if decided[n] == _REFUSED:
 			refused += 1
+		elif decided[n] == _ASK:
+			var ask: Array = where[n]
+			var brick: BrickWorld.Brick = world.get_brick(alive[n])
+			if _joined_as_before(brick, part_id, ask[0]) \
+					and _swap(brick, part_id, ask[0], ask[1], steps, swapped):
+				asked_laid = true
+			else:
+				refused += 1
 		elif decided[n] == _SWAPPED:
 			var put: Array = where[n]
+			# The plan asked the rest with an asked part's old one standing:
+			# after one is laid, each is asked again of the lattice as it now
+			# stands, which is the plan's but for those (a look, not a frame).
+			if asked_laid and not has_room_swapped(world.get_brick(alive[n]), part_id, put[0], put[1]):
+				refused += 1
+				continue
 			if not _swap(world.get_brick(alive[n]), part_id, put[0], put[1], steps, swapped):
 				# Not put down after all (_swap): the plan went on as if it
 				# had been, so the rest is asked as the original asks it.
@@ -1786,6 +1801,10 @@ func replace_selection_paced(part_id: String, in_place: bool = false) -> Vector2
 const _SAME := 0
 const _REFUSED := 1
 const _SWAPPED := 2
+## Runs into something, but a part of the old one's box laid where it stood:
+## whether it is joined as the old one was is asked on the main thread
+## ([method _joined_as_before]), which reads the shapes.
+const _ASK := 3
 
 
 ## The swaps of [method _replace_from] for [param ids], from their parts
@@ -1810,7 +1829,11 @@ func _replace_plan(ids: PackedInt64Array, parts: PackedStringArray, places: Arra
 			else _in_place_of(places[n], library.mesh_for(parts[n]), into)
 		var packed: PackedInt32Array = boxes_for(into, at)
 		if asked.collides_boxes(packed, ids[n]):
-			decided[n] = _REFUSED
+			if at.is_equal_approx(places[n]) and same_box(library.mesh_for(parts[n]), into):
+				decided[n] = _ASK
+				where[n] = [at, packed]
+			else:
+				decided[n] = _REFUSED
 			continue
 		asked.release(ids[n])
 		asked.occupy_boxes(-(n + 1), packed)
@@ -1838,12 +1861,53 @@ func _replace_from(alive: PackedInt64Array, start: int, part_id: String, into: L
 		# one with no room stays as it was, with nothing to put back. Taken
 		# out and put back each time, the 9,673 parts of Orthanc a 2 x 4 has
 		# no room for were most of a replace's second (bigmodels).
-		if lattice.collides_boxes(packed, brick_id):
+		if not has_room_swapped(brick, part_id, at, packed):
 			refused += 1
 			continue
 		if not _swap(brick, part_id, at, packed, steps, swapped):
 			refused += 1
 	return refused
+
+
+## Whether [param part_id] at [param at], whose cover is [param packed], has
+## room swapped in for [param brick] (Replace, Find and Replace, Use what I
+## own): it runs into nothing, or it is the same mould laid where the old
+## part stands, joined as that was ([method _joined_as_before]). Asked by
+## collides_boxes alone, a part a file seats in a joint was refused for the
+## part holding it: 2780 for 4459 in a beam's hole, 3815 for 3815b under the
+## legs (jlfix, 2026-11-19).
+func has_room_swapped(brick: BrickWorld.Brick, part_id: String, at: Transform3D,
+		packed: PackedInt32Array) -> bool:
+	return not lattice.collides_boxes(packed, brick.id) or _joined_as_before(brick, part_id, at)
+
+
+## Whether [param part_id], of [param brick]'s box ([method same_box]: a
+## print, a newer mould of the same part) and laid at [param at] exactly where
+## [param brick] stands, meets nothing but what the old part meets there, as
+## the file put them, and what it is joined to by the rule a part put down by
+## hand is (room_for: a pin in its hole, a leg on the hips' pins, a bar in
+## its clip), as the copies' follow lays a copy's part (Assemblies.
+## in_the_way). The obsolete hips 3815 meet nothing; 3815b's pins reach into
+## the legs they hold. Another box is not joined by the same joints, and
+## what the old part met excuses nothing: 10179's 1 x 2 plates made tiles
+## would lie in what stood on their studs (swapfind big_room), a beam made
+## a pin in the pin it held.
+func _joined_as_before(brick: BrickWorld.Brick, part_id: String, at: Transform3D) -> bool:
+	if brick == null or not at.is_equal_approx(brick.transform) \
+			or not same_box(library.mesh_for(brick.part_id), library.mesh_for(part_id)):
+		return false
+	var met: Dictionary = {}
+	for other: int in lattice.blockers_boxes(lattice.boxes_of(brick.id), brick.id):
+		met[other] = true
+	return room_for(part_id, at, false, false, brick.id, met)
+
+
+## Whether [param into] has [param was]'s box, its footprint and height to an
+## LDU: a printed version of the same mould, whose print can reach a hair
+## past the plain part's box, or a newer mould of the same part.
+static func same_box(was: Lbm.PartMesh, into: Lbm.PartMesh) -> bool:
+	return was != null and into != null and was.bounds.size.distance_to(into.bounds.size) < 1.0 \
+		and was.bounds.get_center().distance_to(into.bounds.get_center()) < 1.0
 
 
 ## [param brick] swapped for [param part_id] at [param at], whose cover is
@@ -1923,7 +1987,7 @@ func replace_bricks(changes: Array, words: String) -> Vector2i:
 		var into: Lbm.PartMesh = library.mesh_for(part)
 		var at: Transform3D = change["at"]
 		var packed: PackedInt32Array = boxes_for(into, at) if into != null else PackedInt32Array()
-		if into == null or lattice.collides_boxes(packed, brick.id) \
+		if into == null or not has_room_swapped(brick, part, at, packed) \
 				or not _swap(brick, part, at, packed, steps, changed, colour):
 			refused += 1
 	if steps.is_empty():
@@ -2615,10 +2679,13 @@ func _joint_of(ids: PackedInt64Array) -> Dictionary:
 	return found
 
 
-## Where a part goes to take another's place: the same turn, its middle on
-## the stud grid for its own footprint, its bottom where the other's was.
+## Where a part goes to take another's place: exactly there where the two
+## have one box ([method same_box]), else the same turn, its middle on the
+## stud grid for its own footprint, its bottom where the other's was. Find
+## and Replace kept a pin of the same box in its beam's hole; the hand's
+## Replace put its middle on the stud grid, out of the hole (smalls10).
 func _in_place_of(at: Transform3D, was: Lbm.PartMesh, into: Lbm.PartMesh) -> Transform3D:
-	if was == null or not BrickLattice.is_square_to_grid(at.basis) \
+	if was == null or same_box(was, into) or not BrickLattice.is_square_to_grid(at.basis) \
 			or absf((at.basis * Vector3.UP).y) < 0.99:
 		return at
 	var old_box: AABB = _rotated_bounds(was, at.basis)

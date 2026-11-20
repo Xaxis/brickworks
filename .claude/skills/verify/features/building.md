@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:seatswap probe, cli:smalls9 probe -->
 
 ## Sub-features
 
@@ -3207,6 +3207,20 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   them, Select ending it. `line`: "opened Car" not left over Motions.
   `words`: Simulate's and Measure's lines drawn without click, names kept, no
   visible label saying click with Simulate open. `--only=` any of those.
+- `seatswap probe` (`src/dev/seatswap_probe.gd`): headless, about five
+  minutes (smalls10). A part seated in a joint, swapped by replace_parts for
+  a part of its shape, is laid: 2780 for 4459 in a beam's hole, 3815 for
+  3815b under the legs, and real sets' axle pin, ball joint, hinge plate, two
+  clips back to back and bar in a clip; each in one undo step,
+  the undo saving the bytes saved before (less the MCP's MADE line). 3701 for
+  3894 against a wall still has no room; the hand's Replace lays the pin
+  alone. Each case prints what the old part meets where it stands and what
+  the new one would (`Builder.has_room_swapped`: no collision, or joined as
+  a part of its box laid where it stands, by `room_for`'s joint rule). Two
+  KNOWN rows: 4991-1's 32209 for 59426, whose cover reaches into the 32064a
+  it turns in; 6690-1's 3404 for 3404b, another box, moved onto its base.
+  The hand's Replace of 600 parts on a worker lays what it does on the main
+  thread, byte for byte.
 - `swapfind probe` (`src/dev/swapfind_probe.gd`): headless, about four
   minutes; `SWAPFIND_CASES=car,mcp` for some. The car
   (`src/dev/fixtures/swapfind_car.mpd`, the app's own settled save: each side
@@ -3401,7 +3415,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   more than 16 ms of its own work, ProbeTime.Frames, and the status bar
   saying so, the totals printed; on 501e38ab9 it fails, a 2.1 s frame, and
   it still fails on three calls of one frame each: 10179's
-  Assemblies.file_frames, the change, the list taken again).
+  Assemblies.file_frames, the change, the list taken again). Its bar is
+  live's own longest frame, timed in the same run as live now works them
+  out (smalls9: the copies' frames and the list a slice of a frame at a
+  time) or as live's Replace of the model's biggest lot, still one frame,
+  half again; the 16 ms target is said as KNOWN.
+- `smalls9 probe` (`src/dev/smalls9_probe.gd`): headless, about five
+  minutes. Orthanc and 10179: Find and Replace everywhere as the bar's
+  refresh does it, and the parts list as P opens it, each with no frame of
+  more than 100 ms of the app's own work (ProbeTime.Frames) and the status
+  bar saying so; the frames kept are Assemblies.file_frames', the find what
+  FindReplace.find_among gives over them, the rows and counts Inventory.of's
+  in its order; typed again on the model unchanged the frames are kept, a
+  part recoloured they are worked out again; P twice while the list is taken
+  leaves it hidden; Mirror's index of handed parts made a slice at a time is
+  the one made at once. The first working out of 10179's frames is held to
+  300 ms a frame and the 100 ms bar said as KNOWN (a copy's first fit reads
+  its shapes in one frame of 130 to 175 ms). On b80bc2c45 the frames were one
+  frame of 0.2 to 0.96 s on 10179 and the list one of 0.34 to 0.9 s.
 - `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
   names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`
   writes `lots.tsv` and `catalogue.tsv`. `lpub`, `inherit`, `motion`:

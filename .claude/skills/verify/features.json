@@ -2880,6 +2880,14 @@
       "tests": []
     },
     {
+      "id": "cli:seatswap probe",
+      "kind": "cli",
+      "entry": "src/dev/seatswap_probe.gd",
+      "reach": "tools/probe.sh seatswap_probe   (headless, about 5 minutes; a pin in a beam, hips under legs and 7 real sets' seated parts swapped by replace_parts, each one undo and byte for byte back; a 1 x 6 for a 1 x 4 against a wall refused; the hand's Replace on the pin)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:sections in a browser",
       "kind": "cli",
       "entry": "tools/web/sections_flow.mjs",
@@ -3055,6 +3063,14 @@
       "tests": []
     },
     {
+      "id": "cli:smalls9 probe",
+      "kind": "cli",
+      "entry": "src/dev/smalls9_probe.gd",
+      "reach": "tools/probe.sh smalls9_probe   (headless, about five minutes: Orthanc and 10179, Find and Replace everywhere and the parts list as P opens it, no frame over 100 ms of the app's own work, the status bar saying so, the same frames and rows as Assemblies.file_frames and Inventory.of)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:smoke a package",
       "kind": "cli",
       "entry": "tools/release.py",
@@ -3189,6 +3205,14 @@
       "entry": "src/dev/swapfind_probe.gd",
       "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:swoosh probe",
+      "kind": "cli",
+      "entry": "src/dev/swoosh_probe.gd",
+      "reach": "tools/probe.sh swoosh   (headless: the walk's tower by its top brick, the car by its roof and a ship by its fuselage, each joint at the swing's worst within 1% of the hand's sums (bench/results/swoosh-2026-11-20/hand_sums.md), the ship's wing coming away first though Lift holds it, and at rest the swing's sums Balance's still ones; ten gallery seeds each held where it swings best of its 16 widest parts, the first to come away named, and after Strengthen later or not at all; in the app Stress's Swing on the ship, red and blue, Strengthen from its row, weakest_joints swing= the same in 1 call, g4 in 2; Orthanc and 10179 swung with no frame over 100 ms)",
+      "area": "view",
       "tests": []
     },
     {
@@ -3593,6 +3617,14 @@
       "entry": "src/dev/viewer_tools_probe.gd",
       "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (-- --sizes packs 400 and 4,000 parts of Orthanc, times it, and writes scene_400.json and scene_4000.json for tools/viewer/first_paint.mjs)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:viewfloor probe",
+      "kind": "cli",
+      "entry": "src/dev/viewfloor_probe.gd",
+      "reach": "tools/probe.sh viewfloor_probe   (windowed, 390x844 by its header; -- --measure prints and fails nothing; pictures in shots/viewfloor/)",
+      "area": "view",
       "tests": []
     },
     {
@@ -7038,6 +7070,14 @@
       "tests": []
     },
     {
+      "id": "ui:swing by a part",
+      "kind": "ui",
+      "entry": "src/assembly/swing_test.gd",
+      "reach": "tools/probe.sh swoosh   (by hand: View, Stress; press Swing, then click a part: the model is swung by it like a toy, 1 m in half a second and a quarter turn, down through the bottom; each joint carries what is past it pulled by gravity and the swing together, at its worst moment of the arc; the first to let go comes away and the swing goes on without it; the part in the hand blue, what comes away red and named first in the panel with when, its parts, weight and studs; a row that lets go offers Strengthen, and after it the model is swung again; Swing again sets it down; a session: weakest_joints swing=N)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:swing on a hinge",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
@@ -7481,6 +7521,14 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/test_console3.py"
       ]
+    },
+    {
+      "id": "ui:the view kept over the floor and on the model",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "any turn, slide, pinch, wheel notch, key or Fit, mouse or fingers: the eye never goes from over the floor to under it while the model is upright (Bottom and Build's steps from below still look from under), and the middle of the view stays near the model so some of it is always on the screen  (CadCamera.floor_at, _floor_line, _keep_near_model, _pivot_near; tools/probe.sh viewfloor_probe; tools/web/phonewalk_flow.mjs --only=view_floor,view_floor_orthanc)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "ui:theme choice",

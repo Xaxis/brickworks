@@ -75,9 +75,13 @@ func _init(app: Node = null) -> void:
 ## locked, and left out, "locked_ids" which; "where", "inside": the
 ## sub-model being edited ("" for the model)}.
 func find(asked: Dictionary, where: String) -> Dictionary:
-	var inside: String = assemblies.entered if assemblies != null else ""
-	var looked: Array = _looked_in(where, inside)
+	var looked: Array = looked_in(where)
 	return find_among(looked, asked, where, _frames_for(looked))
+
+
+## The parts [method find] looks among in [param where], as it stands now.
+func looked_in(where: String) -> Array:
+	return _looked_in(where, assemblies.entered if assemblies != null else "")
 
 
 ## [method find]'s answer over [param looked] (bricks) alone, its copies'
@@ -177,13 +181,35 @@ func _as_defined(part_id: String, mirrored: bool) -> String:
 	return part_id if other.is_empty() else other
 
 
-## Each copy as the save writes it (Assemblies.file_frames), where any of
-## [param bricks] is in a copy of a sub-model the model has more than one
-## of; {} otherwise, and for the selection, which is changed as a hand
-## changes it.
+## Each copy as the save writes it (Assemblies.file_frames, kept until the
+## model changes: Assemblies.frames_now), where any of [param bricks] is in a
+## copy of a sub-model the model has more than one of; {} otherwise, and for
+## the selection, which is changed as a hand changes it.
 func _frames_for(bricks: Array, counted: Variant = null) -> Dictionary:
-	if assemblies == null:
+	return assemblies.frames_now() if _wants_frames(bricks, counted) else {}
+
+
+## [method _frames_for], worked out a slice of a frame at a time where they
+## are not kept already (Assemblies.frames_paced), the status bar saying so.
+func frames_paced_for(bricks: Array, counted: Variant = null) -> Dictionary:
+	if not _wants_frames(bricks, counted):
 		return {}
+	return await assemblies.frames_paced(FRAMES_WORDS)
+
+
+## Whether [method find] in [param where] has its copies' frames to hand, or
+## needs none: when not, [method frames_paced_for] of [method looked_in]
+## makes them so.
+func frames_ready(where: String) -> bool:
+	return assemblies == null or assemblies.frames_current() or not _wants_frames(looked_in(where))
+
+
+const FRAMES_WORDS := "Reading how the model's copies are placed…"
+
+
+func _wants_frames(bricks: Array, counted: Variant = null) -> bool:
+	if assemblies == null:
+		return false
 	var copies: Dictionary = counted if counted is Dictionary else _copies_by_definition()
 	for brick: BrickWorld.Brick in bricks:
 		var path: String = Assemblies.path_of(brick)
@@ -191,8 +217,8 @@ func _frames_for(bricks: Array, counted: Variant = null) -> Dictionary:
 			continue
 		for segment: String in Assemblies.segments(path):
 			if int(copies.get(Assemblies.definition(segment), 1)) > 1:
-				return assemblies.file_frames()
-	return {}
+				return true
+	return false
 
 
 ## The copy that mirrors a part at [param path]: the innermost of it and the
@@ -307,7 +333,7 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 			if shape == null:
 				out["missing"] = new_part
 				continue
-			at = _placed(brick.transform, library.mesh_for(brick.part_id), shape)
+			at = builder._in_place_of(brick.transform, library.mesh_for(brick.part_id), shape)
 		moving[brick_id] = {"part": new_part, "color": new_colour, "at": at, "follows": follows}
 		order.append(brick_id)
 	# Each with its twins: those found, and those its copies' follow reaches.
@@ -377,7 +403,8 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 					continue
 				var packed: PackedInt32Array = builder.boxes_for(shape, new[1])
 				boxes[brick_id] = packed
-				if builder.lattice.collides_boxes(packed, brick_id) or _meets_taken(packed, taken):
+				if not builder.has_room_swapped(brick, str(new[0]), new[1], packed) \
+						or _meets_taken(packed, taken, brick_id, builder.lattice):
 					no_room.append(brick_id)
 		if locked > 0 or not no_room.is_empty():
 			for brick_id: int in group:
@@ -392,7 +419,7 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 					"ids": group})
 			continue
 		for brick_id: int in boxes:
-			_take(boxes[brick_id], taken)
+			_take(boxes[brick_id], taken, brick_id)
 		for brick_id: int in group:
 			if not moving.has(brick_id):
 				(out["followers"] as Array).append(brick_id)
@@ -514,22 +541,30 @@ func _sub_model_of(brick_id: int) -> String:
 	return "" if path.is_empty() else Assemblies.definition(Assemblies.leaf(path))
 
 
-## Whether [param packed] meets a new part's place kept in [param taken]: two
-## parts a replace puts down that would run into each other, though each has
-## room as the model stands.
-static func _meets_taken(packed: PackedInt32Array, taken: Dictionary) -> bool:
+## Whether [param packed], the new part for [param brick_id], meets a new
+## part's place kept in [param taken]: two parts a replace puts down that
+## would run into each other, though each has room as the model stands.
+## With [param lattice], not where the two old parts meet each other where
+## they stand, as the room test excuses what the old part met
+## (Builder.has_room_swapped): 6632's two clips back to back, each swapped
+## for a newer clip.
+static func _meets_taken(packed: PackedInt32Array, taken: Dictionary, brick_id: int = 0,
+		lattice: BrickLattice = null) -> bool:
 	for key: Vector3i in _buckets(packed):
-		for other: PackedInt32Array in taken.get(key, []):
-			if BrickLattice.shared_cells(packed, other) > 0:
+		for other: Array in taken.get(key, []):
+			if BrickLattice.shared_cells(packed, other[0]) <= 0:
+				continue
+			if lattice == null or lattice.meeting_of(lattice.boxes_of(brick_id), [other[1]],
+					brick_id).is_empty():
 				return true
 	return false
 
 
-static func _take(packed: PackedInt32Array, taken: Dictionary) -> void:
+static func _take(packed: PackedInt32Array, taken: Dictionary, brick_id: int = 0) -> void:
 	for key: Vector3i in _buckets(packed):
 		if not taken.has(key):
 			taken[key] = []
-		(taken[key] as Array).append(packed)
+		(taken[key] as Array).append([packed, brick_id])
 
 
 ## The buckets of 20 cells each way [param packed]'s bound reaches.
@@ -543,21 +578,6 @@ static func _buckets(packed: PackedInt32Array) -> Array:
 			for z: int in range(floori(bound[2] / 20.0), floori((bound[5] - 1) / 20.0) + 1):
 				out.append(Vector3i(x, y, z))
 	return out
-
-
-## Where [param shape] goes to take the place of [param was] standing at
-## [param at]: exactly there where the two have one footprint and height (a
-## printed version of the same mould, whose print can reach a hair past the
-## plain part's box, is not moved by it), else its middle on the stud grid
-## for its own footprint and its bottom where the other's was
-## (Builder._in_place_of).
-func _placed(at: Transform3D, was: Lbm.PartMesh, shape: Lbm.PartMesh) -> Transform3D:
-	if was == null:
-		return at
-	if was.bounds.size.distance_to(shape.bounds.size) < 1.0 \
-			and was.bounds.get_center().distance_to(shape.bounds.get_center()) < 1.0:
-		return at
-	return builder._in_place_of(at, was, shape)
 
 
 ## Whether [param shape] at [param to] sits as [param was] at [param at]

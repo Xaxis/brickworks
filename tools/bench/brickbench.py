@@ -1024,6 +1024,9 @@ def main() -> int:
     batch = batch_dir(args.date)
     stages = {"prompts": do_prompts, "parts": do_parts, "design": do_design, "export": do_export,
               "verify": do_verify, "zip": do_zip, "fetch": do_fetch, "views": do_views, "pairs": do_pairs}
+    if args.what in ("design", "export", "verify", "views"):
+        bench.classes_current(Path(args.app).resolve() if args.app else bench.ROOT)
+        bench.classes_current()
     if args.what in stages:
         return stages[args.what](args, batch)
     arms = [a.strip() for a in args.arms.split(",") if a.strip()]

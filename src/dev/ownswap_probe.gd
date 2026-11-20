@@ -213,7 +213,13 @@ func _list_up() -> InventoryPanel:
 		list.hide_list()
 	_shell.run("parts_list")
 	await _frames(6)
-	return _list()
+	# A big model's list is made a slice of a frame at a time (smalls9).
+	var shown: InventoryPanel = _list()
+	for _n: int in 3000:
+		if not shown.is_filling():
+			break
+		await process_frame
+	return shown
 
 
 func _press(control: Control) -> bool:
@@ -263,7 +269,8 @@ func _use_pressed(list: InventoryPanel) -> bool:
 		return false
 	var until: int = Time.get_ticks_msec() + 60000
 	while Time.get_ticks_msec() < until:
-		if not bool(list.get("_swapping")) and not list.controls_by_name().has("parts_use_own"):
+		if not bool(list.get("_swapping")) and not list.is_filling() \
+				and not list.controls_by_name().has("parts_use_own"):
 			await _frames(4)
 			return true
 		await process_frame
@@ -622,11 +629,14 @@ func _case_mcp() -> void:
 ## ms on Orthanc, and nothing was on the bar.
 ##
 ## The bar each act must meet is what the same model already costs live, timed
-## here in the same run: one frame of Find and Replace's copies
-## (FindReplace._frames_for) or of the parts list opening as P opens it,
-## the longer, and half again (the lead, 11-19). On 10179 those are 961 and 366
-## ms, so Use what I own's 464 ms frames are no worse than what is live. The
-## 16 ms target is still said, as KNOWN, until all three are paced.
+## here in the same run: the longest frame of Find and Replace's copies'
+## frames (FindReplace.frames_paced_for), of the parts list opening as P opens
+## it, or of Find and Replace's Replace of the model's biggest lot, the
+## longest, and half again (the lead, 11-19). On 10179 the first
+## two were one frame of 961 and 366 ms before smalls9 worked them out a
+## slice of a frame at a time; the Replace, the same change Use what I own
+## makes, is still one frame (362 ms on 10179, osfix). The 16 ms target is
+## still said, as KNOWN, until all three are paced.
 func _case_time() -> void:
 	for path: String in TIMED:
 		var name: String = path.get_file()
@@ -645,7 +655,7 @@ func _case_time() -> void:
 			list.hide_list()
 			continue
 		var swapped: Array = await _timed_act(func() -> void: button.pressed.emit(),
-			func() -> bool: return not bool(list.get("_swapping")) and not list.controls_by_name().has("parts_use_own"))
+			func() -> bool: return not bool(list.get("_swapping")) and not list.is_filling() and not list.controls_by_name().has("parts_use_own"))
 		_time_said(name, "Use what I own", swapped, _builder.history_depth() - depth)
 		list.hide_list()
 		if _builder.history_depth() > depth:
@@ -701,25 +711,55 @@ func _time_said(name: String, what: String, timed: Array, count: int) -> void:
 
 
 ## What [param name] costs live in its longest single frame, timed now: Find
-## and Replace's frames of its copies, or the parts list opened as P opens it.
+## and Replace's frames of its copies, or the parts list opened as P opens it,
+## each worked out a slice of a frame at a time as live works them out
+## (smalls9). The frames are then forgotten, so Use what I own works them out
+## itself as it would on a model just opened.
 func _live_cost(name: String) -> float:
 	await _frames(4)
 	var finder := FindReplace.new(_main)
 	var copies: Dictionary = finder._copies_by_definition()
-	var t: int = Time.get_ticks_usec()
-	finder._frames_for(_world.bricks(), copies)
-	var frames_ms: float = (Time.get_ticks_usec() - t) / 1000.0
+	var assemblies: Assemblies = finder.assemblies
+	assemblies.set("_frames_kept", [])
+	var framing: Array = [true]
+	var framed: Array = await _timed_act(func() -> void:
+		await finder.frames_paced_for(_world.bricks(), copies)
+		framing[0] = false,
+		func() -> bool: return not framing[0])
+	assemblies.set("_frames_kept", [])
 	await _frames(2)
 	var list: InventoryPanel = _main.get("_inventory")
-	t = Time.get_ticks_usec()
-	list.show_for(_world, _library, _store.scenery, name)
-	var list_ms: float = (Time.get_ticks_usec() - t) / 1000.0
+	var listed: Array = await _timed_act(func() -> void: list.show_for(_world, _library, _store.scenery, name),
+		func() -> bool: return not list.is_filling())
 	await _frames(4)
 	list.hide_list()
 	await _frames(4)
-	print("  %s: live's own, Find and Replace's frames %.1f ms, the parts list opened %.1f ms" % [name,
-		frames_ms, list_ms])
-	return maxf(frames_ms, list_ms)
+	# Live's Replace, the change Use what I own makes: Find and Replace's
+	# Replace of the model's biggest lot, everywhere, to another colour.
+	var lots: Dictionary = {}
+	var standing: Array = assemblies.world.bricks()
+	for brick: BrickWorld.Brick in standing:
+		var key: String = "%s/%d" % [brick.part_id, brick.color_code]
+		lots[key] = int(lots.get(key, 0)) + 1
+	var biggest: String = ""
+	for key: String in lots:
+		if biggest.is_empty() or int(lots[key]) > int(lots[biggest]):
+			biggest = key
+	var replaced: Array = [0.0, 0, 0.0]
+	if not biggest.is_empty():
+		var colour: int = int(biggest.get_slice("/", 1))
+		var found: Dictionary = finder.find({"part": biggest.get_slice("/", 0), "color": colour}, "all")
+		var depth: int = _builder.history_depth()
+		replaced = await _timed_act(func() -> void: finder.replace(found, {"part": "", "color": 7 if colour != 7 else 71}),
+			func() -> bool: return _builder.history_depth() > depth)
+		await _frames(4)
+		if _builder.history_depth() > depth:
+			await _undone()
+		assemblies.set("_frames_kept", [])
+	print("  %s: live's own longest frame, Find and Replace's frames %.1f ms (over %d frames), the parts list opened %.1f ms (over %d), Replace of its biggest lot (%s, %d of %d parts) %.1f ms"
+		% [name, float(framed[2]), int(framed[1]), float(listed[2]), int(listed[1]), biggest,
+		int(lots.get(biggest, 0)), standing.size(), float(replaced[2])])
+	return maxf(maxf(float(framed[2]), float(listed[2])), float(replaced[2]))
 
 
 ## The row, the swaps, the button and what the row says after, in German,
