@@ -393,6 +393,7 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("--instructions none withholds what the relay serves: with --via relay")
         if args.no_claude_code and args.via != "relay":
             raise SystemExit("--no-claude-code starts a relay tab as a browser is: with --via relay")
+        bench.classes_current()     # this tree draws every design
         return run(args)
     if args.what == "report":
         text = report_arm(args.date, args.arm)

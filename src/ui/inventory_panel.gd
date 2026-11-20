@@ -316,30 +316,107 @@ func _build() -> void:
 	column.add_child(_note)
 
 
+## Shown, or on its way: a second P while it is taken hides it.
 func is_showing() -> bool:
-	return visible
+	return visible or _filling
 
 
-## Take stock and show it.
+## Whether the rows are still being made (a probe waits on it).
+func is_filling() -> bool:
+	return _filling
+
+
+## Take stock and show it: false, with nothing changed, when there is
+## nothing to list. A model whose list takes more than a slice of a frame
+## (FramePace) is listed a slice at a time, the status bar saying so, and
+## shown once it is: on Orthanc and 10179 it was one frame of 0.34 to 0.9 s
+## (osfix, smalls9). A small model's is shown in this call, as before.
 func show_for(world: BrickWorld, from_library: PartLibrary,
 		scenery: Dictionary, title: String) -> bool:
+	if not _lists_any(world, from_library, scenery):
+		return false
+	_fill(world, from_library, scenery, title)
+	return true
+
+
+## [method show_for], for a caller that goes on once the rows are in.
+func fill_for(world: BrickWorld, from_library: PartLibrary,
+		scenery: Dictionary, title: String) -> bool:
+	if not _lists_any(world, from_library, scenery):
+		return false
+	return await _fill(world, from_library, scenery, title)
+
+
+## Show it with the find ready to type into (Edit, Select by, Part number
+## or name).
+func show_finding(world: BrickWorld, from_library: PartLibrary,
+		scenery: Dictionary, title: String) -> bool:
+	if not _lists_any(world, from_library, scenery):
+		return false
+	_fill_finding(world, from_library, scenery, title)
+	return true
+
+
+func _fill_finding(world: BrickWorld, from_library: PartLibrary,
+		scenery: Dictionary, title: String) -> void:
+	if await _fill(world, from_library, scenery, title):
+		_scroll_to = -1
+		_find.grab_focus()
+
+
+## Whether [method show_for] has anything to list: a part of the model's
+## not in its scenery that Inventory counts (Inventory.of's pieces).
+static func _lists_any(world: BrickWorld, from_library: PartLibrary, scenery: Dictionary) -> bool:
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id) and Inventory.is_piece(brick.part_id, from_library):
+			return true
+	return false
+
+
+const FILL_WORDS := "Listing the model's parts…"
+
+
+## The fill going on ([method _fill]), and how many were begun: one begun
+## later, or the list hidden, stops the one before at its next slice.
+var _filling: bool = false
+var _fills: int = 0
+var _fill_job: Working.Job = null
+
+
+## The stock taken and its rows made and shown, a slice of a frame at a time
+## where it takes more than one: true once shown, false when stopped by a
+## later fill or by the list being hidden. The panel is as it was until the
+## stock is taken (the model changed meanwhile is taken again); then it is
+## shown with its counts, and its rows go in a slice at a time, each laid out
+## in its own frame: shown at the end, Orthanc's 226 were laid out in one of
+## 160 ms (smalls9).
+func _fill(world: BrickWorld, from_library: PartLibrary,
+		scenery: Dictionary, title: String) -> bool:
+	_end_fill()
+	_fills += 1
+	var mine: int = _fills
+	_filling = true
+	var pace := FramePace.new()
+	var going: Callable = func() -> bool:
+		if mine != _fills:
+			return false
+		_say_filling()
+		return true
+	var stock: Inventory = null
+	while stock == null:
+		var at: Array = [world.generation(), world.revision]
+		stock = await Inventory.of_paced(world, from_library, scenery, pace, going)
+		if mine != _fills:
+			return false
+		if [world.generation(), world.revision] != at:
+			stock = null
 	library = from_library
 	_title = title
 	_world = world
 	_scenery = scenery
-	_stock = Inventory.of(world, from_library, scenery)
-	if _stock.pieces == 0:
-		return false
-	_take_rare()
-	_take_own()
-	_show_rows()
-
-	_heading.text = _counts()
+	_stock = stock
 	_note.visible = false
-
-	for child: Node in _rows.get_children():
-		_rows.remove_child(child)
-		child.queue_free()
+	_find.text = ""
 	_made.clear()
 	_used = {}
 	if not held.is_empty():
@@ -348,42 +425,73 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 			_used[key] = int(_used.get(key, 0)) + lot.count
 	_rare_rows.clear()
 	_places = CollectionStore.places
-	for lot: Inventory.Lot in _stock.lots:
-		var row: Button = _row(lot)
-		_made.append([lot, row, _made.size()])
+	var made: Array = []
+	for lot: Inventory.Lot in stock.lots:
+		made.append([lot, _row(lot), made.size()])
+		if pace.due():
+			if not going.call():
+				return false
+			await pace.next()
+			if mine != _fills:
+				return false
+	_made = made
 	_sort.visible = not _places.is_empty()
 	_sort.select(1 if _sort.visible and bool(ShellPrefs.value("parts_by_place")) else 0)
 	_order()
+	_take_rare()
+	_take_own()
+	_show_rows()
+	_heading.text = _counts()
+	_scroll.scroll_vertical = 0
+	HudFront.show_panel(self)
+	for child: Node in _rows.get_children():
+		_rows.remove_child(child)
+		child.queue_free()
+		if pace.due():
+			if not going.call():
+				return false
+			await pace.next()
+			if mine != _fills:
+				return false
 	for pair: Array in _made:
 		_rows.add_child(pair[1])
+		if pace.due():
+			if not going.call():
+				return false
+			await pace.next()
+			if mine != _fills:
+				return false
+	_filling = false
+	_end_fill()
 	_tag_rare()
 	_tag_own()
 	_sight.forget()
-
-	HudFront.show_panel(self)
 	# Where it was, when it is the same model's list again: the way to find
 	# one part, look at it, and come back for the next.
 	var of: String = "%s %d %d" % [title, _stock.pieces, _stock.lot_count()]
 	var at: int = _was_at if of == _was_of else 0
 	_was_of = of
-	_find.text = ""
-	_scroll.scroll_vertical = 0
 	_scroll_to = at
 	return true
 
 
-## Show it with the find ready to type into (Edit, Select by, Part number
-## or name).
-func show_finding(world: BrickWorld, from_library: PartLibrary,
-		scenery: Dictionary, title: String) -> bool:
-	if not show_for(world, from_library, scenery, title):
-		return false
-	_scroll_to = -1
-	_find.grab_focus()
-	return true
+func _say_filling() -> void:
+	if _fill_job == null:
+		_fill_job = Working.begin(FILL_WORDS)
+
+
+## The fill going on stopped, and the status bar's words for it taken back.
+func _end_fill() -> void:
+	if _filling:
+		_fills += 1
+		_filling = false
+	if _fill_job != null:
+		_fill_job.end()
+		_fill_job = null
 
 
 func hide_list() -> void:
+	_end_fill()
 	_was_at = _scroll.scroll_vertical
 	_swapped_words = ""
 	_own_words = ""
@@ -432,7 +540,7 @@ func rows_listed() -> Array:
 
 ## Only the rows the find answers, in the list's own order.
 func _filter() -> void:
-	if _stock == null:
+	if _stock == null or _filling:
 		return
 	var said: String = _find.text.strip_edges()
 	var colours: Dictionary = {}
@@ -777,7 +885,8 @@ func _take_rare() -> void:
 ## the swaps shown worked out again where one of theirs was still to come
 ## (rsreview F3: a mould's file late, and 3070a was offered nothing).
 func _colour_sets_came() -> void:
-	if not visible or _stock == null or _swapping:
+	# A fill going on counts them at its end.
+	if not visible or _stock == null or _swapping or _filling:
 		return
 	# The person's own swaps shown: the rare counts taken again, kept for the
 	# rows, and the list left as it is (ownswap).
@@ -883,7 +992,7 @@ func show_swaps(again: bool = false) -> void:
 	if again and _rare.is_empty() and not _swapping:
 		_show_rows()
 		return
-	if _rare.is_empty() or not can_swap() or _swapping:
+	if _rare.is_empty() or not can_swap() or _swapping or _filling:
 		return
 	if _finder == null:
 		_finder = FindReplace.new(app)
@@ -1082,9 +1191,11 @@ func swap_picked() -> Dictionary:
 	said.emit(Keymap.filled("%s — {undo|takes it back}") % (words
 		+ ("" if stayed.is_empty() else "; stayed: " + "; ".join(stayed))))
 	var picked_at: int = _was_at
-	show_for(_world, library, _scenery, _title)
-	_was_at = picked_at
+	# Said as soon as the list taken again shows its row, a slice of a frame
+	# at a time on a big model (smalls9), not the count before the swap.
 	_swapped_words = "Swapped " + words.trim_prefix("swapped ")
+	await fill_for(_world, library, _scenery, _title)
+	_was_at = picked_at
 	_say_rare()
 	return done
 # end rareswap
@@ -1202,7 +1313,7 @@ func _tag_own() -> void:
 ## or "none you own", in the rows' place, as the rare lots' are shown: worked
 ## out a slice of a frame at a time (OwnSwap.SLICE_US), the note saying so.
 func show_own() -> void:
-	if _own.is_empty() or not can_swap() or _swapping:
+	if _own.is_empty() or not can_swap() or _swapping or _filling:
 		return
 	if _finder == null:
 		_finder = FindReplace.new(app)
@@ -1284,9 +1395,9 @@ func use_own() -> Dictionary:
 	await get_tree().process_frame
 	_swapping = false
 	var picked_at: int = _was_at
-	show_for(_world, library, _scenery, _title)
-	_was_at = picked_at
 	_own_words = "Swapped " + words.trim_prefix("swapped ")
+	await fill_for(_world, library, _scenery, _title)
+	_was_at = picked_at
 	_say_own()
 	return done
 # end ownswap

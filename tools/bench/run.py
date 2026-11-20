@@ -68,6 +68,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import fcntl
+import functools
 import hashlib
 import json
 import os
@@ -148,6 +149,49 @@ def commit(app: Path = ROOT) -> str:
     dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "src"],
                            cwd=app, capture_output=True, text=True).stdout.strip()
     return sha + ("-dirty" if dirty else "")
+
+
+CLASS_NAME = re.compile(r"^class_name[ \t]+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
+
+
+@functools.cache
+def classes_current(tree: Path = ROOT) -> None:
+    """Refuses a checkout whose class list lacks a class its src/ declares. Godot reads
+    the list (.godot/global_script_class_cache.cfg) and never writes it outside an
+    import, and every script naming a class missing from it fails to compile: a
+    realset run from the main checkout, its list made before CutShape, drew its
+    sheets with no pictures and said nothing (design25, 2026-11-19). Each class_name
+    in src/ (as Godot scans: no hidden folder, none under a .gdignore) must be in the
+    list at its own path."""
+    listed = set()
+    cache = tree / ".godot" / "global_script_class_cache.cfg"
+    if cache.exists():
+        name = ""
+        for line in cache.read_text(errors="replace").splitlines():
+            if line.startswith('"class": '):
+                name = line.split('"')[3]
+            elif line.startswith('"path": '):
+                listed.add((name, line.split('"')[3]))
+    missing = []
+    for folder, dirs, files in os.walk(tree / "src", followlinks=True):
+        if (Path(folder) / ".gdignore").exists():
+            dirs[:] = []
+            continue
+        dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+        for file in sorted(files):
+            if file.endswith(".gd"):
+                path = Path(folder) / file
+                found = CLASS_NAME.search(path.read_text(errors="replace"))
+                where = "res://" + path.relative_to(tree).as_posix()
+                if found and (found.group(1), where) not in listed:
+                    missing.append(f"{found.group(1)} ({where})")
+    if missing:
+        raise SystemExit(
+            f"{tree}: its class list (.godot/global_script_class_cache.cfg) lacks "
+            f"{len(missing)} of the classes src/ declares: {', '.join(missing[:8])}"
+            f"{', ...' if len(missing) > 8 else ''}. Every script that uses one fails, so "
+            f"its pictures and checks would come out empty. Run tools/fresh_import.sh in "
+            f"{tree} first.")
 
 
 _PORT_LOCKS: dict[int, object] = {}     # ports this process claimed, held till it exits
@@ -1192,7 +1236,8 @@ def main() -> int:
     ranked.add_argument("--dry-run", action="store_true", help="read the dry run's pairs")
     ranked.add_argument("--out", type=Path, default=None, help="also write the markdown here")
     args = parser.parse_args()
-
+    if args.what in ("anchors", "run", "calibrate"):
+        classes_current()
     if args.what in ("pairs", "calibrate", "rank"):
         return _pairwise_main(args)
     if args.what == "list":

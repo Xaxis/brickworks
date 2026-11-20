@@ -898,6 +898,12 @@ func _case_big_room() -> void:
 	_bar.call("set_into", "3069b", -1)
 	var began: int = Time.get_ticks_msec()
 	_bar.call("refresh")
+	# 10179's copies' frames are worked out a slice of a frame at a time,
+	# and found once they are (smalls9).
+	for _n: int in 3000:
+		if not bool(_bar.get("_framing")):
+			break
+		await process_frame
 	var plan_ms: int = Time.get_ticks_msec() - began
 	var found: int = (_bar.get("found")["ids"] as Array).size()
 	var made: Dictionary = _bar.get("made")
