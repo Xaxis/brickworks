@@ -526,6 +526,10 @@ func parts_as_marked(skip: Array = []) -> bool:
 				return false
 		elif then == null or fields_of(now) != then:
 			return false
+	# All as marked is the mark taken now: the next ask costs nothing. Orthanc
+	# turned whole and turned back compared its 10,101 parts in 30-37 ms at
+	# every ask until the next save (kbkfix's kbt3).
+	_ledger.was = {}
 	return true
 
 
