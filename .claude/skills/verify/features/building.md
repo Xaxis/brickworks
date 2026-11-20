@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:seatswap probe, cli:smalls9 probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:seatswap probe, cli:smalls9 probe -->
 
 ## Sub-features
 
@@ -1660,14 +1660,28 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   runs on a fiber (`src/render/fiber.gd`: a thread taking turns with the main
   thread, never beside it, `Fiber.pause` in the pass's loops), so Orthanc and
   10179 go on drawing, the status bar saying "Reading the model's studs…".
-  Untick a kind to leave it out; Lay puts the ticked ones down as one undo step
-  (`Builder.swap_bricks` per place, `fold_since`), a part standing in for one
-  taken off keeping its sub-model and step, and Undo puts the file back byte
-  for byte. A place is left as it is, said, when a part it lays has no room,
-  or what stood on a part it takes off would be left loose. With a selection
-  only what is on it is finished. On a phone the bar is placed as the
-  panels are (`TouchSizing.place_panel`), Lay and each tick 44 points.
-  `tools/probe.sh finishpass_probe` (10 models; `-- --phone` by hand).
+  One reading at a time: closed, read again, or overtaken by another model
+  opened or any edit (an Undo, a Together peer's), the reading is stopped
+  (`Fiber.stop`: `Fiber.pause` says so and `SurfacePass.find`'s stages and
+  `OpenPoints.points_of`'s loops return) and the next waits for it by frames,
+  never run whole on the main thread (fpfix H1); each reading has an
+  assistant of its own (M1); the ghost comes down the frame the world
+  changes and the model is read again (M2). Untick a kind to leave it out;
+  Lay puts the ticked ones down as one undo step (`Builder.swap_bricks` per
+  place), tried part by part with the frame given back between, the status
+  bar counting the parts (M5). Every part a swap lays takes the sub-model
+  and step of the part it stands in the place of (the one whose box holds it,
+  else the nearest), so no sub-model loses a part to the main model (M3); a
+  tile on open studs goes where a part put down by hand goes. Undo puts the
+  file back byte for byte. A place is left as it is, said, when a part it
+  lays has no room, or what stood on a part it takes off would be left loose.
+  With a selection only what is on it is finished. On a touch screen the bar
+  is one of the tools' panels (`Main._seat_tool_panel`): on a phone held
+  upright a sheet under the model, the model and its ghost above it, Lay
+  and each tick 44 points (M4). Without threads (the iPhone engine, off) the
+  reading runs whole, in one frame. `tools/probe.sh finishpass_probe` (10
+  models; `-- --phone` by hand) and `fpfix_probe` (the review's attacks, a
+  case each; `-- --phone` for the sheet).
 - `find and replace everywhere` (`src/ui/find_replace_bar.gd`, `src/assembly/find_replace.gd`;
   APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`, answered by
   `Shell.handle_key`, which `EditVerbs` leaves it to; under LDCad's keys, whose

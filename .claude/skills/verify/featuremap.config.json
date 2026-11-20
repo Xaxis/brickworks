@@ -5692,7 +5692,7 @@
       "kind": "ui",
       "label": "finish the surfaces",
       "entry": "src/ui/finish_bar.gd",
-      "reach": "godot --path .  (Edit, Finish the surfaces…: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a finger's size on a phone; tools/probe.sh finishpass_probe)",
+      "reach": "godot --path .  (Edit, Finish the surfaces…: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a reading closed, read again or overtaken by an edit or another model stops and is waited for, never run whole; the ghost taken down at any change of the world and read again; a swap's parts kept in the sub-model and step of what they replace; Lay paced by the part; on a phone a sheet under the model, the ghost above it; tools/probe.sh finishpass_probe, fpfix_probe)",
       "area": "building"
     },
     {
@@ -5700,6 +5700,13 @@
       "label": "finishpass probe",
       "entry": "src/dev/finishpass_probe.gd",
       "reach": "tools/probe.sh finishpass_probe   (headless, 10 hand-built models, a selection, Orthanc and 10179 timed; -- --phone for 390x844 by hand; FP_SHOTS=DIR windowed for pictures; FP_IDENTITY=1 reads the two speedups against the old reading)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fpfix probe",
+      "entry": "src/dev/fpfix_probe.gd",
+      "reach": "tools/probe.sh fpfix_probe   (headless: reopen (closed mid-read on Orthanc and opened again, no frame over 100 ms), openwhile (another model opened mid-read shows that model's own findings), ghost (taken down at an open, an Undo, another's edit), subs (19 models with sub-models: a swap's parts in the sub-model and step of what they replace, no line but parts lost, counts per sub-model and step), laytime (Lay on Orthanc and 10179 paced by the part); -- --phone: the bar a sheet under the model at 390x844, the ghost in sight above it; FPF_CASES=a,b to choose)",
       "area": "building"
     },
     {
