@@ -39,6 +39,7 @@ import { db, orUnknown } from "./_db.js";
 import { Unacceptable, escapeHtml } from "./_directory.js";
 import { counted, langAt, mosaicHtml, pictureOf } from "./_card.js";
 import { catalogCard, catalogSet } from "./_sets.js";
+import { refuseFor, standingBetween } from "./_blocks.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
@@ -122,6 +123,12 @@ export async function listFollow(request, response) {
   const id = idOf(body.id);
   if (!id) throw refused("nobody");
   if (typeof body.on !== "boolean") throw new Unacceptable("say on: true or on: false");
+  // Not a collection of somebody who blocked them, nor of whom they blocked
+  // (supabase/block.sql): refused as a person's follow is.
+  if (body.on) {
+    const owner = (await db(`model_collections?id=eq.${id}&select=owner`))[0]?.owner || null;
+    refuseFor(await standingBetween(asker, owner), "list");
+  }
   const said = await call("list_follow", { account: asker, list: id, following: body.on }, () => ({ missing: true }));
   if (said && said.missing) throw new Unacceptable(NOT_YET, 503);
   if (!said || said.refused) throw refused(said?.refused || "nobody");

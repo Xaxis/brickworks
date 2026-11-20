@@ -75,6 +75,17 @@ ui:more like on a profile
 lib:more like a designer
 -->
 
+### Block someone {#block}
+
+**Block** in the **More** menu on a person's profile, or beside one of their comments, blocks them after one question. Their models leave your gallery, feed and search, and you hear nothing more from them. Their comments on your models are hidden from everyone but them. Follows between you end both ways, and neither of you can follow, like, comment on, reply to, remix, put in a collection or `@`-name the other. Their remixes and public collections leave your model's page, for everyone. They are never told: if they try, they see only that it can't be done.
+
+**Settings › Blocked people** lists everyone you blocked, with **Unblock**. Unblocking brings back their models and comments, but not the follows. The site's owner sees only how many people blocked an account, never who.
+
+<!-- covers
+ui:block a person
+lib:blocking a person
+-->
+
 ## Your feed {#feed}
 
 [brickworks.diy/feed](/feed) is what the people you follow made, newest first: new models, new versions, photos of builds, and models added to collections you follow. With nothing new it shows **Latest on Brickworks** and designers to follow. In the app, **Account** says how many posts are new (*Account · 3*), with **Open your feed**.

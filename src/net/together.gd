@@ -1767,6 +1767,9 @@ func _on_fetched(part_id: String) -> void:
 		var s: Array = _awaiting[uid]
 		if str(s[0]) == part_id:
 			_put(uid, s)
+	# A lock of a part that was on its way holds from now (jointlock).
+	if world.motions != null and not world.motions.locks.is_empty():
+		world.motions.find_lock_parts(world, store.lift())
 	_heard = _model_now()
 
 
@@ -1832,14 +1835,28 @@ func _motion_words() -> String:
 	var back: Transform3D = (_moved_now() * _moved_base.affine_inverse()).affine_inverse()
 	var lift: Vector3 = store.lift()
 	var placed: Dictionary = {}
-	for joint: Motions.Joint in motions.joints:
+	# And each joint locked (jointlock): its two parts' refs placed as a
+	# motion's joints are, so a lock or an unlock goes as any motions change
+	# does, and another's words arriving keep it (jlreview H1: none went, and
+	# another person's motions arriving took every lock here off).
+	var refs: Array = motions.joints.duplicate()
+	var locked: Dictionary = {}
+	for lock: Motions.Lock in motions.locks:
+		refs.append_array([lock.a, lock.b])
+		locked[lock.a] = true
+		locked[lock.b] = true
+	for joint: Motions.Joint in refs:
 		if joint.by != "part":
 			continue
-		var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
-		var now: Vector3 = (lead.transform.origin - lift) * LdrModel.FLIP \
+		# A lock's part followed through an undo that put it back as another
+		# id, as the lock holds it (Motions.lock_part).
+		var id: int = Motions.lock_part(joint, world, builder) if locked.has(joint) else joint.lead
+		var lead: BrickWorld.Brick = world.get_brick(id) if id != 0 else null
+		# Where it is built (Motions.stands), as a save writes it.
+		var now: Vector3 = (Motions.stands(lead, world).origin - lift) * LdrModel.FLIP \
 			if lead != null and lead.part_id == joint.part else motions.moved_place(joint)
 		placed[joint] = (back * (now * LdrModel.FLIP)) * LdrModel.FLIP
-	return "\n".join(motions.lines(placed))
+	return "\n".join(motions.lines(placed) + motions.lock_lines(placed))
 
 
 ## The drives kept since the session began, as a move of the whole model
@@ -1997,12 +2014,19 @@ func _put_motions(words: String) -> void:
 		else (Motions.new() if not kept.is_equal_approx(Transform3D.IDENTITY) else null)
 	if motions != null:
 		var home: Transform3D = _moved_base.affine_inverse()
-		for joint: Motions.Joint in motions.joints:
+		var refs: Array = motions.joints.duplicate()
+		for lock: Motions.Lock in motions.locks:
+			refs.append_array([lock.a, lock.b])
+		for joint: Motions.Joint in refs:
 			if joint.by == "part":
 				joint.place = (home * (joint.place * LdrModel.FLIP)) * LdrModel.FLIP
 		motions.moved = kept
 	world.motions = motions
 	_moved_seen = kept
+	# A lock holds by its parts' ids (Motions.lock_part): found here at once,
+	# the model's parts put down before its own state (_take).
+	if motions != null and not motions.locks.is_empty():
+		motions.find_lock_parts(world, store.lift())
 
 
 ## The whole model's move put back from the session's words (_moved_words):

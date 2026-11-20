@@ -4739,7 +4739,7 @@
       "readOnlyHint": false,
       "title": "Pose a joint"
     },
-    "description": "Swing a part about its joint, as Build, Pose does: a sub-assembly on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its turns about x, y and z through the ball); and a part on a click hinge, a hinge or a turntable as a drag finds it, with no assembly named on it. With no joint it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= (from where it was built, -180 to 180) swings it as far as it has room; the answer says where it stopped if something is in the way, and whether the pose holds its own weight: each friction joint (a Technic ball, a friction pin) that droops under what hangs on it, with the share it holds, and the joints whose hold nobody has measured.",
+    "description": "Swing a part about its joint, as Build, Pose does: a sub-assembly on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its turns about x, y and z through the ball); and a part on a click hinge, a hinge or a turntable as a drag finds it, with no assembly named on it. With no joint it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= (from where it was built, -180 to 180) swings it as far as it has room; the answer says where it stopped if something is in the way, and whether the pose holds its own weight: each friction joint (a Technic ball, a friction pin) that droops under what hangs on it, with the share it holds, and the joints whose hold nobody has measured. lock=true locks the joint (after degrees=, if given): it keeps its angle and its slide, and a drag of either part, R, a handle, Simulate's driver, move_part and pose_model are refused until lock=false unlocks it; saved with the model, and the answer says what a turn of it now does (it tries one). A model with one joint needs no joint= and no list first: {\"lock\": true} locks it, {\"degrees\": 45, \"lock\": true} sets it and locks it there. A drag's joint may be named by a part of it (#12).",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4749,6 +4749,10 @@
         "joint": {
           "description": "its number or name in the list",
           "type": "string"
+        },
+        "lock": {
+          "description": "true locks the joint where it stands (after degrees=); false unlocks it (before degrees=)",
+          "type": "boolean"
         }
       },
       "type": "object"
@@ -6413,7 +6417,7 @@
       "readOnlyHint": false,
       "title": "Find and replace parts"
     },
-    "description": "Find and replace parts across the whole model in one call, as the person's Edit › Find and replace… does: find= a part, a colour or a part in a colour; replace= another part, another colour or both, each part keeping what it is not given. where= \"all\" (the default) is every part of the model, inside every sub-model and every copy of one; \"submodel\" the sub-model the person is editing and every copy of it; \"selection\" the parts selected. A sub-model's copies are one definition, so a part replaced in one is replaced in every copy, and a copy placed by a mirror is given the new part's other hand. One call is one undo step, and the model saves as the window's own replace saves it. The answer lists where the part is (the model and each sub-model, with counts and copies) and every colour it is used in, flags a part used in more than one colour, and says where a new part will not sit as the old one did (another footprint, other connection points) or would hold onto nothing, and where it has no room and is left. A part in a copy changes with its twin in every other copy or not at all: where one copy has no room for the new part, or the part is locked in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a number the library has (search_parts finds one), and the answer names the part it puts in. With no replace= or with preview=true it changes nothing and lists only. rare=true, in place of find= and replace=, lists the lots hard to buy (a part in a colour that comes in 3 sets or fewer, by Rebrickable's inventories) each with a swap that comes in 20 or more: the same shape in its colour (another mould, or a print's plain part) or the nearest colour of the same transparency and finish (ΔE), one colour for a colour's lots. It swaps, as one undo step, only those that keep the model's look, as the parts list's rare row picks them: the same shape in its colour, or a colour within ΔE 10 of the same finish; every other, a print's plain part among them, is listed as kept, with what it changes, and swaps only where lots= names it. lots= [\"3023b/379\", ...] swaps only those; with preview=true it lists and changes nothing. A part lifted in the person's hand goes back where it was first, as Escape puts it.",
+    "description": "Find and replace parts across the whole model in one call, as the person's Edit › Find and replace… does: find= a part, a colour or a part in a colour; replace= another part, another colour or both, each part keeping what it is not given. where= \"all\" (the default) is every part of the model, inside every sub-model and every copy of one; \"submodel\" the sub-model the person is editing and every copy of it; \"selection\" the parts selected. A sub-model's copies are one definition, so a part replaced in one is replaced in every copy, and a copy placed by a mirror is given the new part's other hand. One call is one undo step, and the model saves as the window's own replace saves it. The answer lists where the part is (the model and each sub-model, with counts and copies) and every colour it is used in, flags a part used in more than one colour, and says where a new part will not sit as the old one did (another footprint, other connection points) or would hold onto nothing, and where it has no room and is left. A part in a copy changes with its twin in every other copy or not at all: where one copy has no room for the new part, or the part is locked in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a number the library has (search_parts finds one), and the answer names the part it puts in. With no replace= or with preview=true it changes nothing and lists only. rare=true, in place of find= and replace=, lists the lots hard to buy (a part in a colour that comes in 3 sets or fewer, by Rebrickable's inventories) each with a swap that comes in 20 or more: the same shape in its colour (another mould, or a print's plain part) or the nearest colour of the same transparency and finish (ΔE), one colour for a colour's lots. It swaps, as one undo step, only those that keep the model's look, as the parts list's rare row picks them: the same shape in its colour, or a colour within ΔE 10 of the same finish; every other, a print's plain part among them, is listed as kept, with what it changes, and swaps only where lots= names it. lots= [\"3023b/379\", ...] swaps only those; with preview=true it lists and changes nothing. mine=true, in place of find= and replace=, rebuilds the model from the person's own collection (as the parts list's Use what I own does): each lot they own too few of, as submit_design mine=true counts it, is swapped, only its missing pieces, for a part or colour they have free that keeps the look (an equal part in its colour, or the same part in a colour within ΔE 10 of the same finish), two lots never taking the same pieces, or said to have none they own; a print's plain part only where lots= names it. The answer gives the owned share before and after and what is still missing. A part lifted in the person's hand goes back where it was first, as Escape puts it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -6432,11 +6436,15 @@
           "type": "object"
         },
         "lots": {
-          "description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part",
+          "description": "with rare=true or mine=true, only these lots, \"part/colour\" as its list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part",
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "mine": {
+          "description": "true: the lots the person owns too few of (their collection, as submit_design mine=true counts it), each swapped for a part or colour of their own that keeps the look, or said to have none; the owned share before and after and what is still missing said; no find= or replace= with it",
+          "type": "boolean"
         },
         "preview": {
           "description": "list what would change, and change nothing",

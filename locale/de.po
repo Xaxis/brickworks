@@ -15525,6 +15525,18 @@ msgstr "Griff zum Drehen"
 msgid "Program for the motors"
 msgstr "Programm für die Motoren"
 
+msgid "Unlock"
+msgstr "Entsperren"
+
+msgid "Joints locked"
+msgstr "Gesperrte Gelenke"
+
+msgid "Locked, it keeps its angle and its slide: a drag, R, a handle, Simulate and Claude are refused until it is unlocked"
+msgstr "Gesperrt behält es seinen Winkel und seine Verschiebung: Ziehen, R, ein Griff, Simulieren und Claude werden abgelehnt, bis es entsperrt ist"
+
+msgid "Let it move again: a drag, R, a handle, Simulate and Claude may turn or slide it"
+msgstr "Wieder beweglich machen: Ziehen, R, ein Griff, Simulieren und Claude dürfen es drehen oder verschieben"
+
 # Compare with the set (setcheck, APP_UX10 #4): File's row, the panel's title,
 # field, button and what it says with nothing to list.
 
@@ -15557,6 +15569,114 @@ msgstr "Auswählen und in der Ansicht einrahmen"
 
 msgid "Checking against %s…"
 msgstr "Wird mit %s verglichen…"
+# ownswap (APP_UX10 #2): the parts list's row for the lots the person owns too few of, their swaps from their own parts or none you own, put in as one undo step, and what is still missing
+
+msgid "%s you own too few of (%s short; %s): rebuild from what you own…"
+msgstr "%s, von denen du zu wenige hast (%s fehlen; %s): aus deinen eigenen Teilen bauen…"
+
+msgid "%d% of its %s are yours (%s)"
+msgstr "%d% seiner %s gehören dir (%s)"
+
+msgid "Swapped %s for parts you own, %s"
+msgstr "%s gegen eigene Teile getauscht, %s"
+
+msgid "Still missing: %s, which What do I need? lists"
+msgstr "Noch fehlend: %s, die „Was brauche ich?“ auflistet"
+
+msgid "Every piece is yours now"
+msgstr "Jetzt gehört dir jedes Teil"
+
+msgid "Against your collection, as My bricks counts it: each lot you own too few of, with a part or colour of yours that keeps its look, put in as one undo step"
+msgstr "Mit deiner Sammlung abgeglichen, wie Meine Steine sie zählt: jeder Posten, von dem du zu wenige hast, mit einem Teil oder einer Farbe von dir, die das Aussehen erhält, eingesetzt in einem einzigen Rückgängig-Schritt"
+
+msgid "Rebuilt from what you own: %s"
+msgstr "Aus deinen eigenen Teilen gebaut: %s"
+
+msgid "Finding a part or colour of yours for each…"
+msgstr "Suche für jeden ein Teil oder eine Farbe von dir…"
+
+msgid "Only the pieces you are short change, each to one you have free that the rest do not use: the same shape in its colour, or the same part in a colour within ΔE 10 of its finish"
+msgstr "Nur die Teile, die dir fehlen, werden getauscht, jedes gegen eines, das du frei hast und das der Rest nicht braucht: dieselbe Form in seiner Farbe oder dasselbe Teil in einer Farbe derselben Oberfläche innerhalb von ΔE 10"
+
+msgid "A print's plain part waits for you to tick it"
+msgstr "Das unbedruckte Teil für einen Druck wartet, bis du es ankreuzt"
+
+msgid "Use what I own: 1 lot"
+msgstr "Meine Teile nehmen: 1 Posten"
+
+msgid "Use what I own: %d lots"
+msgstr "Meine Teile nehmen: %d Posten"
+
+msgid "None of your parts stands in for it"
+msgstr "Keines deiner Teile kann es ersetzen"
+
+msgid "%d not yours"
+msgstr "%d nicht deine"
+
+msgid "you own none"
+msgstr "du hast keine"
+
+msgid "you own %s"
+msgstr "du hast %s"
+
+msgid "none you own: you have none of it in any colour to spare"
+msgstr "keines von dir: du hast es in keiner Farbe übrig"
+
+msgid "none you own: the nearest you have of it is %s (ΔE %s), not close"
+msgstr "keines von dir: das nächste, das du davon hast, ist %s (ΔE %s), nicht nah"
+
+msgid "the plain %s (%s) in its colour, without its print: %s"
+msgstr "das unbedruckte %s (%s) in seiner Farbe, ohne seinen Druck: %s"
+
+msgid "%s (%s), the same shape in its colour, holding all its connections and more: %s"
+msgstr "%s (%s), dieselbe Form in seiner Farbe, mit all seinen Verbindungen und weiteren: %s"
+
+msgid "%s (%s), the same shape and connections in its colour: %s"
+msgstr "%s (%s), dieselbe Form und dieselben Verbindungen in seiner Farbe: %s"
+
+msgid "%s (ΔE %s), a close colour: %s"
+msgstr "%s (ΔE %s), eine nahe Farbe: %s"
+
+msgid "all %s of yours free"
+msgstr "alle %s freien von dir"
+
+msgid "the 1 of yours free"
+msgstr "das eine freie von dir"
+
+msgid "%s of your %s free"
+msgstr "%s von deinen %s freien"
+
+msgid "%s still missing"
+msgstr "%s fehlen noch"
+
+msgid "no room for it"
+msgstr "kein Platz dafür"
+
+# osfix (osreview H2, H3, M1): a swap passed over for another lot's twin, the collection or the model changed under the swaps, the swap at work
+
+msgid "none you own for these alone: a swap would change their twins in other copies, which are another lot"
+msgstr "keines von dir nur für diese: ein Tausch würde ihre Zwillinge in anderen Kopien ändern, die ein anderer Posten sind"
+
+msgid "Your collection changed since these were worked out, so they are worked out again from what you own now: nothing was swapped"
+msgstr "Deine Sammlung hat sich geändert, seit diese ermittelt wurden, darum werden sie aus dem, was du jetzt hast, neu ermittelt: nichts wurde getauscht"
+
+msgid "the model changed while the swaps were worked out: nothing swapped, look at the swaps again"
+msgstr "das Modell hat sich geändert, während die Tausche ermittelt wurden: nichts getauscht, sieh dir die Tausche noch einmal an"
+
+msgid "Swapping in the parts you own…"
+msgstr "Deine eigenen Teile werden eingesetzt…"
+
+msgid "2-finger tap"
+msgstr "Tippen mit 2 Fingern"
+
+msgid "3-finger tap"
+msgstr "Tippen mit 3 Fingern"
+
+msgid "double-tap"
+msgstr "Doppeltippen"
+
+msgid "on a part, turn it as Turn does"
+msgstr "auf einem Teil: es drehen, wie Drehung es tut"
 
 msgid "its build steps were worked out again for the changes"
 msgstr "seine Bauschritte wurden für die Änderungen neu ausgearbeitet"

@@ -595,7 +595,7 @@ func _case_sample() -> void:
 				targets[key] = {}
 			targets[key][int(lot.get("into_colour"))] = true
 			if lot.get("picked") and (float(lot.get("delta_e")) > RareSwap.CLOSE_DE
-					or was.is_transparent() != now.is_transparent() or RareSwap.family(was) != RareSwap.family(now)):
+					or not _crossed(was, now).is_empty()):
 				wrong.append("%s %s picked: %s" % [file.get_file().get_basename(), lot.get("key"),
 					swapper.call("into_words", lot)])
 		if file.ends_with("red_fox.ldr"):
@@ -901,8 +901,9 @@ func _case_catalogue() -> void:
 				continue
 			offered += 1
 			var now: PartLibrary.BrickColor = _library.color(lot.into_colour)
-			var same_trans: bool = now.is_transparent() == was.is_transparent()
-			var same_family: bool = RareSwap.family(now) == RareSwap.family(was)
+			var same_trans: bool = now.is_transparent() == was.is_transparent() \
+				and (not was.is_transparent() or (was.alpha < 200) == (now.alpha < 200))
+			var same_family: bool = _crossed(was, now).is_empty()
 			if not same_trans or not same_family:
 				crossings += 1
 			if lot.picked:
@@ -949,3 +950,19 @@ func _case_attrib() -> void:
 		print("    orthanc round %d: show_for %.1f ms; _take_rare %.1f ms; _tag_rare %.1f ms; the library's moulds index %.1f ms; Inventory.of %.1f ms" % [
 			round, (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0, (t5 - t4) / 1000.0, (t6 - t5) / 1000.0])
 		await _frames(4)
+
+
+## What a swap from [param was] to [param now] crosses, worked out here from
+## the colours themselves (as ownswap_probe's crossed): "" for nothing. Its
+## finish exactly (osreview H1: milky had been solid's, metallic pearl's),
+## see-through and clear against clouded, and never into conductive plastic
+## or an ink.
+static func _crossed(was: PartLibrary.BrickColor, now: PartLibrary.BrickColor) -> String:
+	if not now.is_plastic() or now.name.contains("Conductive") or now.group == "fluorescent paint":
+		return "non-plastic"
+	if was.is_transparent() != now.is_transparent() \
+			or was.is_transparent() and (was.alpha < 200) != (now.alpha < 200):
+		return "see-through"
+	if was.drawn_as != now.drawn_as:
+		return "finish"
+	return ""

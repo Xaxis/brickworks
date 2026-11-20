@@ -4906,6 +4906,20 @@
     },
     {
       "kind": "ui",
+      "label": "finger taps to undo and redo and turn",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet laid out for a finger: two fingers tapped on the view undo and three redo, as the bar's Undo and Redo, saying what they took back; a double tap on a part in Select turns it 90 degrees as Turn does, one step  (CadCamera._gesture_ended, PhoneShell._fingers_tapped, _double_tapped; tools/probe.sh phonefingers_probe; tools/web/phonewalk_flow.mjs --only=fingers_still,undo_tap,redo_tap,double_turn)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "phonefingers probe",
+      "entry": "src/dev/phonefingers_probe.gd",
+      "reach": "tools/probe.sh phonefingers_probe; PROBE_SIZE=1024x768 tools/probe.sh phonefingers_probe --tablet   (windowed, 390x844 by its header; pictures in shots/phonefingers/)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "a set from a photo",
       "entry": "src/ui/collection_dialog.gd",
       "reach": "godot --path .  (Build, My collection…, What I own: Photo… beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",
@@ -6016,6 +6030,41 @@
       "entry": "src/dev/m3review_probe.gd",
       "reach": "BRICKWORKS_API=http://127.0.0.1:10910 tools/probe.sh m3review_probe -- --held-out=31058-1 --assistant=on, and again with --assistant=on alone, a stand-in for /api/collection on 10910 (python3 -I tools/collection_standin.py 10910)   (headless: godot --headless --path . --script src/dev/m3review_probe.gd. m3review's attacks on mcpreach3, made checks by m3fix: a held-out (realset) tab's save over unsettled features refused as pre261 refused it, a person's written with nothing laid; pose_model joint= an assembly's joint begins no reading of the drag joints; edit_collection sets= with built= checks every argument before the add, and a reply lost after the add or the Built marks is told it may have been made; M3REV_ONLY=save,pose,coll,hinge,motor)",
       "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "a model rebuilt from what you own",
+      "entry": "src/collection/own_swap.gd",
+      "reach": "godot --path .  (with a collection, signed in or on this device: P, the parts list: the row over the rows says how many lots you own too few of, the pieces short and the share that is yours, as submit_design mine=true counts it, each such row tagged N not yours; pressed, each with its swap from what you own and the rest of the model does not use, the same shape in its colour or the same part in a colour within ΔE 10 of its finish, or none you own; no owned piece taken twice; Use what I own, a part in hand put back first, one undo step, the row then says what is still missing; a session's replace_parts mine=true swaps the same in one call, lots= names some; tools/probe.sh ownswap_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "ownswap probe",
+      "entry": "src/dev/ownswap_probe.gd",
+      "reach": "tools/probe.sh ownswap_probe   (headless, about 15 minutes; OWNSWAP_CASES=gallery,mcp,... for some; OWNSWAP_OUT=DIR writes gallery.tsv, each of the 10 gallery models' lots short, swapped and none you own, and the owned share before and after)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "blocking a person",
+      "entry": "supabase/block.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/block.sql --dry --try=tools/block_try.sql --table=blocks   (applied live 2026-11-19; api/_blocks.js, the promises in tests/test_blocks.py; then tools/web/block_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "block a person",
+      "entry": "web/block.js",
+      "reach": "https://brickworks.diy/u/<handle> (More › Block <name>), /m/<id> (Block beside a comment), /settings#blocked-part (Blocked people, Unblock)   (POST /api/people?op=block, GET ?op=blocks)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "block browser flow",
+      "entry": "tools/web/block_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/block_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh block: throwaway Ada, Bob and Cy; or a relay on the live project, relay_server.mjs 10981 --static=web)",
+      "area": "web"
     }
   ]
 }

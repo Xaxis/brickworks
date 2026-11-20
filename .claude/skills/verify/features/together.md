@@ -223,6 +223,13 @@ signed in as someone else.
   "left ... changed since"), then the rims let go: 92 parts and 4 of 4 drive
   joints on both, each rim once and 0.00 LDU in its tyre, the same file on
   both. On pre261 (ee8773128) 7 of its checks fail (drvcheck3 T).
+  Section 6b (`--only=lock` alone, a few minutes): a Technic hinge's joint
+  locked by the owner holds for the one who joined (a drag on it and a move
+  of its pin by the keys refused by "Beam's joint"), unlocked by the one who
+  joined it turns for the owner, locked by them it is refused for the owner,
+  and the same file on both with one `0 !BRICKWORKS LOCK` line (jlfix: up to
+  then the room's `~motions` carried no lock, and another's motions arriving
+  took every lock off).
 - A page closed with a change on its way, about 10 minutes for 30 rounds:
   `node tools/web/together_close.mjs --url=http://127.0.0.1:9011
   --rounds=30 --held --frame=600` (the relay holding the together tables).

@@ -201,7 +201,7 @@ if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
     echo "SHIP: failed here: $other; each runs on brickworks.diy as it is now"
     rm -f $S/${TAG}_stale.{out,failing}
     echo "$other" > $S/${TAG}_stale.asked
-    built=$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1)
+    built=$(curl -s --max-time 20 https://brickworks.diy/app | grep -oE '/b/[0-9a-f]{7,40}/' | head -1)
     echo "$built" > $S/${TAG}_stale.build; built=${built#/b/}; built=${built%/}
     for name in $other; do
       script=$(sed -n "s/^[[:space:]]*\[$name\]=\"\([^ \"]*\).*/\1/p" tools/release/preview_checks.sh | head -1)

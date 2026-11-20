@@ -58,6 +58,7 @@ import { Unacceptable, cardOf } from "./_directory.js";
 import { catalogCard, catalogSet } from "./_sets.js";
 import { publicTrouble } from "./_trust.js";
 import { withFaces } from "./_faces.js";
+import { refuseFor, standing } from "./_blocks.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 /// An item of a list as the pages and the database name one.
@@ -279,6 +280,10 @@ export async function keep(request, response) {
   // Nothing wanted yet and nothing to take out: so already.
   if (!list && body.list === "want" && !body.on) return response.status(200).json({ list: null, items, on: false });
   if (!list) throw new Unacceptable("there is no list of yours at that id", 404);
+  // One model put in across a block, either way, is refused in words; a
+  // list filled many at once keeps the rest, the model left out
+  // (supabase/block.sql blocks_guard_collect). Saved is the person's own.
+  if (body.on && models.length === 1) refuseFor(await standing(account, { model: models[0] }), "collect");
   // What changed, so an Undo undoes that and no more: [added] what was not
   // in the list before; [taken] what left a list (this one, or the one it
   // was moved from), each with when it was put in and its place, which a

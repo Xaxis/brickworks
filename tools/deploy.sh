@@ -106,7 +106,7 @@ go_live() {
   for _ in $(seq 1 60); do
     # /app is the page itself now, which names its build's files; a
     # deployment from before that redirected to /b/<sha>/ instead.
-    live="$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1 || true)"
+    live="$(curl -s --max-time 20 https://brickworks.diy/app | grep -oE '/b/[0-9a-f]{7,40}/' | head -1 || true)"
     [ -z "$live" ] && live="$(curl -s -o /dev/null -w '%{redirect_url}' https://brickworks.diy/app || true)"
     case "$live" in */b/"$sha"/*) break ;; esac
     sleep 3

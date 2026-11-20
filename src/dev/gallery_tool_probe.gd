@@ -323,6 +323,21 @@ func _played() -> void:
 	said = _text_of(await fake.run({"shelves": true}))
 	_check("the front, signed in: what they can build now", said.contains("You can build now")
 		and str(fake.asked[-1][0]).contains("op=shelves&mine=1"))
+	# Signed in, every search and a model's comments and photos are asked
+	# as the person, as their pages are: nobody they blocked is in them
+	# (docs/SOCIAL.md section 9).
+	fake.asked.clear()
+	said = _text_of(await fake.run({"q": "racer"}))
+	_check("a search, signed in: asked as them, mine=1: %s" % [fake.asked.map(func(one: Array) -> String: return str(one[0]))],
+		fake.asked.size() == 1 and str(fake.asked[0][0]).contains("mine=1")
+		and str(fake.asked[0][1]) == "probe.gallery.signed.in" and said.contains("Played Racer"))
+	fake.asked.clear()
+	said = _text_of(await fake.run({"open": "Fake000001", "picture": false}))
+	var reads: Array = fake.asked.filter(func(one: Array) -> bool:
+		return str(one[0]).begins_with("/api/people?op=comments") or str(one[0]).begins_with("/api/people?op=photos"))
+	_check("a model's comments and photos, signed in: asked as them (%d)" % reads.size(), reads.size() == 2
+		and reads.all(func(one: Array) -> bool: return str(one[1]) == "probe.gallery.signed.in")
+		and said.contains("Comments: 2"))
 	account._access = ""
 	account.state = was
 	await _motions()
