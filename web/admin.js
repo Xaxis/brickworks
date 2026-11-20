@@ -600,6 +600,10 @@ async function person(account, again = false, told = "") {
     + `${ago(one.connectors.map((c) => c.seen_at).sort().at(-1))}; ` : "", one.claudes?.length ? `${one.claudes.length} `
     + `${one.claudes.length === 1 ? "Claude" : "Claudes"} let in; ` : "", toConnector);
   if (one.barred) fact("Taken out", `${when(one.barred.at)}${one.barred.reason ? `: ${one.barred.reason}` : ""}`);
+  // How many people blocked it (supabase/block.sql), never who: read only.
+  if (Number.isInteger(one.blocked_by)) {
+    fact("Blocked by", one.blocked_by === 0 ? "nobody" : one.blocked_by === 1 ? "1 person" : `${one.blocked_by} people`);
+  }
   if (one.test) fact("A test's", "an account of the site's checks (resend.dev)");
   parts.push(facts);
 

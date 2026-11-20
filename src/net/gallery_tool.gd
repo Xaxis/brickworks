@@ -337,9 +337,10 @@ func _search(input: Dictionary) -> String:
 	var sort: String = str(input.get("sort", "newest"))
 	if not SORTS.has(sort):
 		return "sort is %s (oldest, largest, smallest and name are library=true's)." % ", ".join(SORTS)
-	# Parts I own is the person's own question: with their session, and
-	# only once they are signed in.
-	var token: String = await _token() if sort == "owned" else ""
+	# Asked with the person's session whenever they are signed in, as the
+	# gallery's page asks (mine=1): nobody they blocked is in it (docs/
+	# SOCIAL.md section 9). Parts I own is their own question: only then.
+	var token: String = await _token()
 	if sort == "owned" and token.is_empty():
 		return ("sort=owned is Parts I own: the person signs in to Brickworks, with their parts kept in "
 			+ "Collection, and asks again.")
@@ -450,12 +451,14 @@ func _open(id: String, with_picture: bool) -> Variant:
 
 
 ## Its comments and the photos of real builds of it, as its page shows them
-## to anybody (api/people.js ?op=comments and ?op=photos). What people
-## wrote is quoted as theirs. Asked whether anybody had commented, a
+## to the person (api/people.js ?op=comments and ?op=photos), with their
+## session once they are signed in: nothing by anybody they blocked. What
+## people wrote is quoted as theirs. Asked whether anybody had commented, a
 ## session could only send the person to the page (mcpwalk2, t5).
 func _said_of(id: String) -> PackedStringArray:
 	var lines := PackedStringArray()
-	var answer: Dictionary = await _ask("/api/people?op=comments&id=" + id, 256 * 1024)
+	var token: String = await _token()
+	var answer: Dictionary = await _ask("/api/people?op=comments&id=" + id, 256 * 1024, token)
 	var body: Variant = _json(answer)
 	if int(answer["code"]) == 200 and body is Dictionary:
 		var shown: Array = ((body as Dictionary).get("comments", []) as Array).filter(func(one: Variant) -> bool:
@@ -470,7 +473,7 @@ func _said_of(id: String) -> PackedStringArray:
 				" (@%s)" % one["handle"] if one.get("handle") is String else "",
 				" (its designer)" if bool(one.get("by_owner", false)) else "",
 				str(one.get("body", "")).replace("\n", " ").left(240)])
-	answer = await _ask("/api/people?op=photos&id=" + id, 64 * 1024)
+	answer = await _ask("/api/people?op=photos&id=" + id, 64 * 1024, token)
 	body = _json(answer)
 	if int(answer["code"]) == 200 and body is Dictionary and (body as Dictionary).get("photos") is Array:
 		var photos: int = ((body as Dictionary)["photos"] as Array).size()

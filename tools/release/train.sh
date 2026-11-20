@@ -118,7 +118,7 @@ running() {
 }
 
 # The build brickworks.diy/app names, /b/SHA/: the page itself says which.
-serving() { curl -s --max-time 20 "$LIVE" 2>/dev/null | grep -o '/b/[^/"]*/' | head -1; }
+serving() { curl -s --max-time 20 "$LIVE" 2>/dev/null | grep -oE '/b/[0-9a-f]{7,40}/' | head -1; }
 
 # A spec file's words, into the array named.
 words() { read -r -d '' -a "$1" < "$SPEC/$2" || true; }

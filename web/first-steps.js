@@ -18,7 +18,7 @@
 // kit's, which escape their own. Every word is said in the visitor's
 // language as the sign-in's dialogs say theirs (web/account.js say), and
 // tools/site_lang.py --check fails on one that is not.
-import { call, learn, say, speaking } from "/account.js";
+import { call, learn, say, signedIn, speaking } from "/account.js";
 import { followButton, showFeedCount } from "/follow.js";
 import { avatarHtml, langAt, modelCard } from "/card.js";
 
@@ -106,7 +106,10 @@ export async function firstSteps({ pending = false } = {}) {
     // gallery's kinds and Top builds' cards, and the designers to follow.
     const me = call("/api/people?op=me").catch(() => null);
     const top = call(`/api/share?op=list&sort=top${tests ? `&${tests}` : ""}`).catch(() => null);
-    const latest = call(`/api/people?op=latest${tests ? `&${tests}` : ""}`).catch(() => null);
+    // As you (mine=1) once signed in: nobody you blocked is among the
+    // designers offered. Signed out, everybody's URL, which the CDN keeps.
+    const as = signedIn() ? "&mine=1" : "";
+    const latest = call(`/api/people?op=latest${as}${tests ? `&${tests}` : ""}`).catch(() => null);
     let chosen = [];
     let steps = [];
 

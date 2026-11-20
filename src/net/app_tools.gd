@@ -683,10 +683,18 @@ func definitions() -> Array:
 				+ "answer says where it stopped if something is in the way, and whether the pose "
 				+ "holds its own weight: each friction joint (a Technic ball, a friction pin) "
 				+ "that droops under what hangs on it, with the share it holds, and the joints "
-				+ "whose hold nobody has measured."),
+				+ "whose hold nobody has measured. lock=true locks the joint (after degrees=, if "
+				+ "given): it keeps its angle and its slide, and a drag of either part, R, a handle, "
+				+ "Simulate's driver, move_part and pose_model are refused until lock=false unlocks "
+				+ "it; saved with the model, and the answer says what a turn of it now does (it tries "
+				+ "one). A model with one joint needs no joint= and no list first: {\"lock\": true} "
+				+ "locks it, {\"degrees\": 45, \"lock\": true} sets it and locks it there. A drag's "
+				+ "joint may be named by a part of it (#12)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"joint": {"type": "string", "description": "its number or name in the list"},
 				"degrees": {"type": "number"},
+				"lock": {"type": "boolean", "description": "true locks the joint where it stands "
+					+ "(after degrees=); false unlocks it (before degrees=)"},
 			}},
 		},
 		{
@@ -2995,6 +3003,17 @@ const STUCK_DEGREES: Array[float] = [10.0, 90.0]
 
 func _pose(input: Dictionary) -> String:
 	var panel: PosePanel = app.get("_pose")
+	# lock= checked before anything is read or written (jointlock): false is
+	# the same as absent while nothing is locked.
+	if input.has("lock"):
+		if not input["lock"] is bool:
+			return "lock= is true (lock the joint) or false (unlock it). Nothing was changed."
+		var motions_now: Motions = (app.get("_world") as BrickWorld).motions
+		if not bool(input["lock"]) and (motions_now == null or motions_now.locks.is_empty()):
+			input = input.duplicate()
+			input.erase("lock")
+	if input.has("degrees") and not (input["degrees"] is float or input["degrees"] is int):
+		return "degrees= is a number, -180 to 180. Nothing was changed."
 	# The assemblies a design named are sub-models only once tagged, as a
 	# save tags them; until then nothing in it could turn.
 	if assistant != null:
@@ -3012,9 +3031,18 @@ func _pose(input: Dictionary) -> String:
 		drags = await _drag_joints(grabbing, joints)
 	if input.has("joint") and not drags.is_empty():
 		var picked: String = str(input["joint"]).strip_edges().trim_prefix("#")
+		# A drag joint by a part of it ("#357"), as a session read its number.
+		if picked.is_valid_int() and int(picked) > joints.size() + drags.size():
+			for n: int in drags.size():
+				if (drags[n][2] as PackedInt64Array).has(int(picked)):
+					picked = str(joints.size() + n + 1)
 		if picked.is_valid_int() and int(picked) > joints.size() \
 				and int(picked) <= joints.size() + drags.size():
-			return await _pose_drag(grabbing, drags[int(picked) - joints.size() - 1], input)
+			var drag: Array = drags[int(picked) - joints.size() - 1]
+			if not input.has("lock"):
+				return await _pose_drag(grabbing, drag, input)
+			return await _with_lock(panel, _drag_sides(drag), input, func() -> String:
+				return await _pose_drag(grabbing, drag, input))
 	if joints.is_empty() and drags.is_empty():
 		var world: BrickWorld = app.get("_world")
 		var builder: Builder = app.get("_builder")
@@ -3025,6 +3053,15 @@ func _pose(input: Dictionary) -> String:
 		var motors: String = _motors_driven(world, app.get("_store"), app.get("_library"))
 		return "Nothing here turns: " + NO_JOINTS + ("" if on_balls.is_empty() else " " + on_balls) \
 			+ ("" if motors.is_empty() else " " + motors) + await _pose_holds()
+	# A model with one joint: degrees= and lock= need no joint= (g2's session
+	# listed the joints only to read "1").
+	if not input.has("joint") and (input.has("degrees") or input.has("lock")):
+		if joints.size() + drags.size() == 1:
+			var one: Dictionary = input.duplicate()
+			one["joint"] = "1"
+			return await _pose(one)
+		return ("degrees= and lock= need joint=: this model has %d joints, listed by pose_model with no "
+			+ "arguments. Nothing was changed.") % (joints.size() + drags.size())
 	if not input.has("joint"):
 		var said := PackedStringArray()
 		var stuck: int = 0
@@ -3042,9 +3079,10 @@ func _pose(input: Dictionary) -> String:
 					break
 			if held:
 				stuck += 1
-			said.append("  %d. %s, on its %s, at %d° (%d parts)%s" % [n + 1,
+			said.append("  %d. %s, on its %s, at %d° (%d parts)%s%s" % [n + 1,
 				one.label(), one.kind(), roundi(one.angle), one.ids.size(),
-				", with no room to turn 10° or 90° either way" if held else ""])
+				", with no room to turn 10° or 90° either way" if held else "",
+				", locked" if not panel.poser.lock_words(one).is_empty() else ""])
 		for n: int in drags.size():
 			said.append("  %d. %s" % [joints.size() + n + 1, _drag_joint_words(grabbing, drags[n])])
 		if stuck > 0:
@@ -3062,12 +3100,25 @@ func _pose(input: Dictionary) -> String:
 	if joint == null:
 		return "No joint %s: there are %d, numbered in pose_model's list." % [asked,
 			joints.size() + drags.size()]
+	if input.has("lock"):
+		var moving: Dictionary = {}
+		for id: int in joint.ids:
+			moving[id] = true
+		var posed: Dictionary = input.duplicate()
+		posed.erase("lock")
+		return await _with_lock(panel, [moving, joint.pair], input, func() -> String:
+			return await _pose(posed) if posed.has("degrees") else "%s is at %d°." % [joint.label(),
+				roundi(joint.angle)])
 	if not input.has("degrees"):
-		return "%s is at %d°. Give degrees= to swing it." % [joint.label(), roundi(joint.angle)]
+		var held_said: String = panel.poser.lock_words(joint)
+		return "%s is at %d°%s. Give degrees= to swing it." % [joint.label(), roundi(joint.angle),
+			"" if held_said.is_empty() else "; " + held_said]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
 	var world: BrickWorld = app.get("_world")
 	var before: Vector3 = _middle_of(world, joint.ids)
 	var reached: float = panel.set_angle(joint.path, wanted)
+	if not panel.poser.refused.is_empty():
+		return "%s. Nothing was changed." % panel.poser.refused
 	# Which way it went, in the plates look_at_model counts: a turn goes by
 	# the right hand about its axis, so +30° about x takes a +z end down.
 	# f1's session read edit_model's pitch (+ lifts the +z end) into it,
@@ -3135,11 +3186,14 @@ func _drag_joint_words(grabbing: GrabDrag, drag: Array) -> String:
 		var built: float = (held as Grab).from_built()
 		if not is_nan(built) and roundi(wrapf(built, -180.0, 180.0)) != 0:
 			angle = "%d° from where it was built" % roundi(wrapf(built, -180.0, 180.0))
-	return "#%d %s%s, %s at %s, %s (%d part%s)%s" % [int(ids[0]),
+	var locked: bool = world.motions != null and not world.motions.locks.is_empty() \
+		and world.motions.lock_split(_drag_sides(drag)[0], world, app.get("_builder")) != null
+	return "#%d %s%s, %s at %s, %s (%d part%s)%s%s" % [int(ids[0]),
 		Inventory._tidy(info.name) if info != null else brick.part_id if brick != null else "?",
 		" and what is built on it" if ids.size() > 1 else "", link.words(),
 		GrabDrag.at_words(link.point), angle, ids.size(), "" if ids.size() == 1 else "s",
-		", clicking every %s°" % Balance.tidy(link.detent) if link.detent > 0.0 else ""]
+		", clicking every %s°" % Balance.tidy(link.detent) if link.detent > 0.0 else "",
+		", locked" if locked else ""]
 
 
 ## pose_model joint= one of [method _drag_joints]: turned to degrees= from
@@ -3161,6 +3215,55 @@ func _pose_drag(grabbing: GrabDrag, drag: Array, input: Dictionary) -> String:
 	var said: String = await grabbing.for_session({"part": part, "degrees": wanted - now})
 	return "%s, to %d° from where it was built:\n%s%s" % [part, roundi(wanted), said,
 		await _pose_holds()]
+
+
+## The parts a drag joint ([method _drag_joints]) turns, and the two it turns
+## between, [its own, the one it is on]: what its lock locks.
+static func _drag_sides(drag: Array) -> Array:
+	var link: Bodies.Link = drag[1]
+	var ids: PackedInt64Array = drag[2]
+	var moving: Dictionary = {}
+	for id: int in ids:
+		moving[id] = true
+	for pair: Array in link.pairs:
+		if moving.has(int(pair[0])) and not moving.has(int(pair[1])):
+			return [moving, [int(pair[0]), int(pair[1])]]
+		if moving.has(int(pair[1])) and not moving.has(int(pair[0])):
+			return [moving, [int(pair[1]), int(pair[0])]]
+	return [moving, []]
+
+
+## pose_model's lock= on the joint that turns [param sides] ([moving, pair]):
+## [param input]'s lock=false unlocks it before [param pose] runs, true locks
+## it after, each one step to undo; and [param pose]'s answer with what the
+## lock did. A joint the lock holds refuses [param pose] with its words.
+func _with_lock(panel: PosePanel, sides: Array, input: Dictionary, pose: Callable) -> String:
+	var lines := PackedStringArray()
+	if input.has("lock") and not bool(input["lock"]):
+		lines.append(panel.set_lock(sides[0], sides[1], false))
+	if input.has("degrees") or not input.has("lock"):
+		lines.append(await pose.call())
+	if input.has("lock") and bool(input["lock"]):
+		var refused: bool = lines.size() > 0 and lines[lines.size() - 1].contains(Motions.UNLOCK_WORDS)
+		if not refused:
+			lines.append(panel.set_lock(sides[0], sides[1], true))
+			# What a turn of it now does, tried on a drag's grab, nothing moved.
+			var turned: Variant = (app.get("_grab_drag") as GrabDrag).held_of(Array(sides[1]).slice(0, 1)) \
+				if (sides[1] as Array).size() == 2 else null
+			if turned is String and str(turned).contains(Motions.UNLOCK_WORDS):
+				lines.append(("Tried just now, the way a turn of it comes (a drag of its part, as "
+					+ "move_part takes it, and pose_model's swing): refused, and nothing moved, so it stands "
+					+ "exactly where it was locked. A turn tried again is refused the same way: %s.") % (
+					str(turned).get_slice(":", 0)))
+	# Which others are locked, so a session unlocking one knows what still holds.
+	var world: BrickWorld = app.get("_world")
+	if input.has("lock") and world.motions != null and not world.motions.locks.is_empty():
+		var named := PackedStringArray()
+		for lock: Motions.Lock in world.motions.locks.slice(0, 10):
+			named.append(Motions.lock_name(lock, world, app.get("_library"), app.get("_builder")))
+		var more: int = world.motions.locks.size() - named.size()
+		lines.append("Locked now: %s%s." % [", ".join(named), " and %d more" % more if more > 0 else ""])
+	return "\n".join(lines)
 
 
 ## Whether the model holds its pose as it stands now (posehold), as Pose
@@ -7408,14 +7511,9 @@ func _point_at(input: Dictionary) -> String:
 ## or only the lots= named, or listed with preview=true. Said as the rare
 ## count before and after.
 func _rare_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) -> String:
-	if input.has("find") or input.has("replace") or input.has("where"):
-		return ("rare=true takes no find=, replace= or where=: it finds the lots hard to buy "
-			+ "everywhere itself. Give lots= to swap only some.")
 	var library: PartLibrary = app.get("_library")
 	var named: Dictionary = {}
 	if input.has("lots"):
-		if not input.get("lots") is Array or (input.get("lots") as Array).is_empty():
-			return "lots= is a list of lots as the rare list names them: lots= [\"3794a/19\"]."
 		for key: Variant in input.get("lots"):
 			# The part before the slash tidied as find= tidies one ("3622.DAT"),
 			# and as the library has it where it moved (rsreview F9).
@@ -7467,13 +7565,17 @@ func _rare_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) 
 			+ "the look, lots= [...] only those named.")
 		return "\n".join(said)
 	var done: Dictionary = await swapper.call("swap", lots, finder)
-	if int(done.get("put_back", 0)) + put_back_first > 0:
-		said.append("The part in the person's hand went back where it was first, as Escape puts it.")
+	var put_back: bool = int(done.get("put_back", 0)) + put_back_first > 0
+	if put_back:
+		said.append(HAND_WORDS)
 	if int(done["changed"]) == 0:
-		said.append("Nothing changed%s." % (": " + "; ".join(done["stayed"])
+		# The hand put back is a change: "Nothing changed" would have the
+		# session send it again (self_attack MCP).
+		said.append("%s%s." % ["No lot was swapped" if put_back else "Nothing changed",
+			": " + "; ".join(done["stayed"])
 			if not (done["stayed"] as PackedStringArray).is_empty()
 			else ": no lot named in lots= has a swap" if not named.is_empty()
-			else ": no swap keeps the look as it is; name one in lots= to swap it"))
+			else ": no swap keeps the look as it is; name one in lots= to swap it"])
 		return "\n".join(said)
 	var after: Inventory = Inventory.of(app.get("_world"), library, store.scenery)
 	var left: Dictionary = swapper.call("rare_of", after)
@@ -7517,6 +7619,148 @@ func _rare_heading(rare: Dictionary, stock: Inventory) -> String:
 # end rareswap
 
 
+# -- ownswap (APP_UX10 #2): replace_parts mine=, a model rebuilt from what I own ------
+
+## How many of a list an answer names before it counts the rest
+## (self_attack: osreview L1 named 40 lots in 8,155 characters).
+const OWN_LINES := 10
+## Said where there is nothing of the person's to swap in.
+const OWN_NONE_WORDS := ("mine=true, but the person's collection is empty, or they are not signed in: there is "
+	+ "nothing of theirs to swap in. They add their sets and parts in Build, My collection. "
+	+ "Nothing was changed.")
+## Said where the part in the person's hand went back first.
+const HAND_WORDS := "The part in the person's hand went back where it was first, as Escape puts it."
+
+
+## replace_parts mine=true: the lots the person owns too few of (OwnSwap,
+## as submit_design mine=true counts them), each with the swap from their own
+## parts that keeps the look or none, swapped as one undo step as the parts
+## list's Use what I own swaps them, or only the lots= named, or listed with
+## preview=true. Said as the owned share before and after, and what is still
+## missing. Every argument is checked before anything is put back or changed
+## ([method _replace_refused]); a part put back first is said in every answer.
+func _own_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) -> String:
+	var library: PartLibrary = app.get("_library")
+	var named: Dictionary = {}
+	if input.has("lots"):
+		for key: Variant in input.get("lots"):
+			var said_key: String = str(key).strip_edges()
+			var slash: int = said_key.rfind("/")
+			var part: String = said_key.substr(0, slash if slash >= 0 else said_key.length()) \
+				.strip_edges().to_lower().trim_suffix(".dat")
+			var colour: String = said_key.substr(slash + 1).strip_edges() if slash >= 0 else ""
+			named["%s/%s" % [part, colour]] = said_key
+			if library.parts.has(part):
+				named["%s/%s" % [library.resolve(part), colour]] = said_key
+	var shell: Shell = app.get("_shell")
+	var mine: CollectionStore = shell.collection_store if shell != null else null
+	if mine != null and mine.on_hand.is_empty() and not mine.collection.is_empty():
+		await mine.refresh_pool()
+	var hand: String = ("\n" + HAND_WORDS) if put_back_first > 0 else ""
+	if mine == null or mine.on_hand.is_empty():
+		return OWN_NONE_WORDS.trim_suffix(" Nothing was changed.") + hand \
+			+ ("" if put_back_first > 0 else " Nothing was changed.")
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	if Inventory.of(world, library, store.scenery).pieces == 0:
+		return "The model has no parts yet." + hand
+	var swapper: RefCounted = Later.script(&"OwnSwap").new(library)
+	var before: Dictionary = swapper.call("short_of", world, store.scenery, mine.on_hand)
+	var lots: Array = before["lots"]
+	var said := PackedStringArray()
+	var short: int = 0
+	for lot: RefCounted in lots:
+		short += int(lot.call("short"))
+	said.append(("Against the person's collection (mine=true, as submit_design mine=true and the bin's "
+		+ "My bricks count it): %s.") % Later.script(&"OwnSwap").share_words(before))
+	if lots.is_empty():
+		said.append("Every piece is theirs: nothing to swap.")
+		return "\n".join(said) + hand
+	said.append("%s they own too few of, %s short in all:" % [Counted.of(lots.size(), "lot"),
+		Counted.of(short, "piece")])
+	await swapper.call("offer_all", lots, before["free"], finder)
+	var known: Dictionary = {}
+	for lot: RefCounted in lots:
+		if named.has(lot.get("key")):
+			known[named[lot.get("key")]] = true
+		if not named.is_empty():
+			lot.set("picked", named.has(lot.get("key")) and lot.call("offered"))
+	var unknown: Array = []
+	for key: String in named:
+		if not known.has(named[key]) and not unknown.has(named[key]):
+			unknown.append(named[key])
+	var offered: int = 0
+	for lot: RefCounted in lots:
+		if lot.call("offered"):
+			offered += 1
+	var listed: int = 0
+	for lot: RefCounted in lots:
+		# The swaps first, then those with none, as many as an answer holds.
+		if not lot.call("offered"):
+			continue
+		var tags := PackedStringArray()
+		if not lot.get("picked"):
+			tags.append("kept: its print stays; name it in lots= to swap it for the plain part"
+				if lot.call("drops_print") else "kept: not named in lots=")
+		if listed < OWN_LINES:
+			said.append("- %s [%s]%s" % [swapper.call("lot_words", lot), lot.get("key"),
+				"" if tags.is_empty() else " (" + "; ".join(tags) + ")"])
+		listed += 1
+	for lot: RefCounted in lots:
+		if lot.call("offered"):
+			continue
+		if listed < OWN_LINES:
+			said.append("- %s [%s]" % [swapper.call("lot_words", lot), lot.get("key")])
+		listed += 1
+	if listed > OWN_LINES:
+		said.append("  and %d more lots." % (listed - OWN_LINES))
+	said.append("%d of the %d have a swap from their own parts." % [offered, lots.size()])
+	if not unknown.is_empty():
+		said.append("No lot %s here that they own too few of: lots= names them as the list above does."
+			% ", ".join(unknown.slice(0, 10)) + ("" if unknown.size() <= 10
+			else " (and %d more)" % (unknown.size() - 10)))
+	if bool(input.get("preview", false)):
+		said.append("Nothing changed (preview): replace_parts mine=true swaps those that keep "
+			+ "the look, lots= [...] only those named.")
+		return "\n".join(said)
+	var done: Dictionary = await swapper.call("swap", lots, finder)
+	var put_back: bool = int(done.get("put_back", 0)) + put_back_first > 0
+	if put_back:
+		said.append(HAND_WORDS)
+	if int(done["changed"]) == 0:
+		# The hand put back is a change: "Nothing changed" would have the
+		# session send it again (self_attack MCP).
+		said.append("%s%s." % ["No lot was swapped" if put_back else "Nothing changed",
+			": " + "; ".join(done["stayed"])
+			if not (done["stayed"] as PackedStringArray).is_empty()
+			else ": no lot named in lots= has a swap" if not named.is_empty()
+			else ": none of the lots has a swap from their own parts"])
+		return "\n".join(said)
+	var after: Dictionary = swapper.call("short_of", world, store.scenery, mine.on_hand)
+	said.append("%s, as one undo step%s. Now %s (was %d%%)." % [
+		str(done["words"]).left(1).to_upper() + str(done["words"]).substr(1),
+		"" if (done["stayed"] as PackedStringArray).is_empty()
+			else "; stayed: " + "; ".join(done["stayed"]),
+		Later.script(&"OwnSwap").share_words(after),
+		int(floor(float(Later.script(&"OwnSwap").share(before)) * 100.0))])
+	var missing: String = Later.script(&"OwnSwap").missing_words(after)
+	if missing.is_empty():
+		said.append("Every piece is now theirs.")
+		return "\n".join(said)
+	var still := PackedStringArray()
+	for lot: RefCounted in after["lots"]:
+		if still.size() >= OWN_LINES:
+			break
+		still.append("  %d × %s (%s) in %s" % [int(lot.call("short")), lot.get("name"), lot.get("part"),
+			lot.get("colour_name")])
+	said.append("Still missing: %s, each with how many:\n%s%s\nTell them what to get, "
+		% [missing, "\n".join(still), "" if (after["lots"] as Array).size() <= OWN_LINES
+			else "\n  and %d more lots." % ((after["lots"] as Array).size() - OWN_LINES)]
+		+ "or change each to a part they own with edit_model; parts_list which=\"need\" lists what is short.")
+	return "\n".join(said)
+# end ownswap
+
+
 # -- swapfind (APP_UX8 #9): Find and Replace into every sub-model ---------------------
 
 static func _replace_parts_definition() -> Dictionary:
@@ -7555,8 +7799,16 @@ static func _replace_parts_definition() -> Dictionary:
 			+ "the same shape in its colour, or a colour within ΔE 10 of the same finish; "
 			+ "every other, a print's plain part among them, is listed as kept, with what it "
 			+ "changes, and swaps only where lots= names it. lots= [\"3023b/379\", ...] swaps "
-			+ "only those; with preview=true it lists and changes nothing. A part lifted in "
-			+ "the person's hand goes back where it was first, as Escape puts it."),
+			+ "only those; with preview=true it lists and changes nothing. mine=true, in place "
+			+ "of find= and replace=, rebuilds the model from the person's own collection (as "
+			+ "the parts list's Use what I own does): each lot they own too few of, as "
+			+ "submit_design mine=true counts it, is swapped, only its missing pieces, for a part "
+			+ "or colour they have free that keeps the look (an equal part in its colour, or the "
+			+ "same part in a colour within ΔE 10 of the same finish), two lots never taking the "
+			+ "same pieces, or said to have none they own; a print's plain part only where lots= "
+			+ "names it. The answer gives the owned share before and after and what is still "
+			+ "missing. A part lifted in the person's hand goes back where it was first, as "
+			+ "Escape puts it."),
 		"input_schema": {"type": "object", "additionalProperties": false,
 			"properties": {
 				"find": parts,
@@ -7569,7 +7821,10 @@ static func _replace_parts_definition() -> Dictionary:
 				"rare": {"type": "boolean",
 					"description": "true: the lots that come in 3 sets or fewer, each offered a common part or colour, those that keep the look swapped; no find= or replace= with it"},
 				"lots": {"type": "array", "items": {"type": "string"},
-					"description": "with rare=true, only these lots, \"part/colour\" as the rare list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part"},
+					"description": "with rare=true or mine=true, only these lots, \"part/colour\" as its list names each (\"3794a/19\"), whatever their swap changes; a print named here swaps to its plain part"},
+				# ownswap (APP_UX10 #2)
+				"mine": {"type": "boolean",
+					"description": "true: the lots the person owns too few of (their collection, as submit_design mine=true counts it), each swapped for a part or colour of their own that keeps the look, or said to have none; the owned share before and after and what is still missing said; no find= or replace= with it"},
 			}},
 	}
 
@@ -7589,10 +7844,76 @@ func put_back_first(name: String, input: Dictionary) -> void:
 	_put_back_first = 0
 	if name != "replace_parts" or input.get("preview") == true:
 		return
-	if input.get("rare") != true and not (input.get("replace") is Dictionary
+	if input.get("rare") != true and input.get("mine") != true and not (input.get("replace") is Dictionary
 			and not (input["replace"] as Dictionary).is_empty()):
 		return
+	# A call it will refuse changes nothing, the hand included: every
+	# argument is checked before anything is put back (osreview M2: lots="x"
+	# put the part back, then said "Nothing was changed").
+	if not _replace_refused(input).is_empty():
+		return
 	_put_back_first = maxi(int(Later.script(&"FindReplace").new(app).call("put_back_held")), 0)
+
+
+## What replace_parts refuses in what it was given, before anything is put
+## back or changed: "" when it takes it. rare=true and mine=true each take
+## no find=, replace= or where=, and lots= a list of them; a plain replace
+## its find= and replace= objects, a where= it knows, colours a part can
+## be, a part the library has and, for where="selection", a selection.
+func _replace_refused(input: Dictionary) -> String:
+	var rare: bool = input.get("rare") == true
+	var mine: bool = input.get("mine") == true
+	if rare and mine:
+		return ("rare=true and mine=true are two swaps: rare=true swaps the lots hard to buy for "
+			+ "common ones, mine=true the lots the person owns too few of for their own parts. "
+			+ "Give one. Nothing was changed.")
+	if rare or mine:
+		if input.has("find") or input.has("replace") or input.has("where"):
+			return ("rare=true takes no find=, replace= or where=: it finds the lots hard to buy "
+				+ "everywhere itself. Give lots= to swap only some.") if rare \
+				else ("mine=true takes no find=, replace= or where=: it finds the lots the person owns "
+				+ "too few of everywhere itself. Give lots= to swap only some. Nothing was changed.")
+		if input.has("lots") and (not input.get("lots") is Array or (input.get("lots") as Array).is_empty()):
+			return ("lots= is a list of lots as the rare list names them: lots= [\"3794a/19\"]." if rare
+				else "lots= is a list of lots as mine=true's list names them: lots= [\"3001/4\"]. Nothing was changed.")
+		if mine:
+			var shell: Shell = app.get("_shell")
+			var store: CollectionStore = shell.collection_store if shell != null else null
+			if store == null or store.on_hand.is_empty() and store.collection.is_empty():
+				return OWN_NONE_WORDS
+		return ""
+	if input.has("lots"):
+		return ("lots= goes with rare=true or mine=true: replace_parts rare=true lots= [\"3794a/19\"] "
+			+ "swaps only the rare lots named, mine=true lots= only those of the person's lots named. "
+			+ "A plain replace takes find= and replace=.")
+	for side: String in ["find", "replace"]:
+		if input.has(side) and not input.get(side) is Dictionary:
+			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]
+	var finder: RefCounted = Later.script(&"FindReplace").new(app)
+	var asked: Dictionary = input.get("find", {}) if input.get("find") is Dictionary else {}
+	var into: Dictionary = input.get("replace", {}) if input.get("replace") is Dictionary else {}
+	var where: String = str(input.get("where", "all"))
+	if not where in ["all", "submodel", "selection"]:
+		return "where= is \"all\", \"submodel\" or \"selection\"."
+	for side: Array in [["find", asked], ["replace", into]]:
+		if int(finder.call("colour_of", (side[1] as Dictionary).get("color"))) == -2:
+			return ("No colour %s in %s=: give an LDraw colour code (0 Black, 72 Dark Bluish "
+				+ "Grey), or a direct colour as a file writes it (\"0x2FF0000\"), as %s= "
+				+ "{\"color\": 72}.") % [(side[1] as Dictionary).get("color"), side[0], side[0]]
+	if str(asked.get("part", "")).strip_edges().is_empty() and int(finder.call("colour_of", asked.get("color"))) == -1:
+		return ("Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both; or "
+			+ "rare=true for the lots hard to buy.")
+	var not_a_colour: String = Later.script(&"FindReplace").not_a_part_colour(
+		int(finder.call("colour_of", into.get("color"))))
+	if not not_a_colour.is_empty():
+		return not_a_colour
+	var part: String = str(into.get("part", "")).strip_edges()
+	if not part.is_empty() and str(finder.call("known_part", part)).is_empty():
+		return ("No part %s in the library to replace with: give its number as search_parts "
+			+ "or look_at_model gives it, as replace= {\"part\": \"3023b\"}.") % part
+	if where == "selection" and (app.get("_builder") as Builder).selection.is_empty():
+		return "Nothing is selected: where=\"all\" looks in the whole model."
+	return ""
 
 
 ## replace_parts: Find and Replace (FindReplace), as the window's bar does it.
@@ -7606,46 +7927,28 @@ func _replace_parts(input: Dictionary) -> String:
 	var finder: RefCounted = Later.script(&"FindReplace").new(app)
 	var first: int = _put_back_first
 	_put_back_first = 0
+	var refused: String = _replace_refused(input)
+	if not refused.is_empty():
+		return refused
 	# Only rare=true is the rare swap: a client that sends every boolean
 	# sends rare=false with a plain find= and replace= (rsreview F4).
 	if input.get("rare") == true:
 		return await _rare_swap(input, finder, first)
-	if input.has("lots"):
-		return ("lots= goes with rare=true: replace_parts rare=true lots= [\"3794a/19\"] swaps "
-			+ "only the rare lots named. A plain replace takes find= and replace=.")
-	for side: String in ["find", "replace"]:
-		if input.has(side) and not input.get(side) is Dictionary:
-			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]
+	# ownswap: the same, only mine=true (a false one is as if not sent).
+	if input.get("mine") == true:
+		return await _own_swap(input, finder, first)
 	var asked: Dictionary = input.get("find", {}) if input.get("find") is Dictionary else {}
 	var into: Dictionary = input.get("replace", {}) if input.get("replace") is Dictionary else {}
 	var where: String = str(input.get("where", "all"))
-	if not where in ["all", "submodel", "selection"]:
-		return "where= is \"all\", \"submodel\" or \"selection\"."
 	var find: Dictionary = {"part": str(asked.get("part", "")).strip_edges(),
 		"color": finder.call("colour_of", asked.get("color"))}
 	var put: Dictionary = {"part": str(into.get("part", "")).strip_edges(),
 		"color": finder.call("colour_of", into.get("color"))}
-	for side: Array in [["find", find, asked], ["replace", put, into]]:
-		if int((side[1] as Dictionary)["color"]) == -2:
-			return ("No colour %s in %s=: give an LDraw colour code (0 Black, 72 Dark Bluish "
-				+ "Grey), or a direct colour as a file writes it (\"0x2FF0000\"), as %s= "
-				+ "{\"color\": 72}.") % [(side[2] as Dictionary).get("color"), side[0], side[0]]
-	if str(find["part"]).is_empty() and int(find["color"]) == -1:
-		return ("Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both; or "
-			+ "rare=true for the lots hard to buy.")
-	var not_a_colour: String = Later.script(&"FindReplace").not_a_part_colour(int(put["color"]))
-	if not not_a_colour.is_empty():
-		return not_a_colour
 	var puts: String = ""
 	if not str(put["part"]).is_empty():
 		var known: String = finder.call("known_part", put["part"])
-		if known.is_empty():
-			return ("No part %s in the library to replace with: give its number as search_parts "
-				+ "or look_at_model gives it, as replace= {\"part\": \"3023b\"}.") % put["part"]
 		put["part"] = known
 		puts = "\nPuts in %s (%s)." % [finder.call("part_name", known), known]
-	if where == "selection" and (app.get("_builder") as Builder).selection.is_empty():
-		return "Nothing is selected: where=\"all\" looks in the whole model."
 	# A part lifted and in the person's hand, back where it was before the
 	# find, so it is found and changed with the rest rather than lost (F5).
 	var put_back: int = 0

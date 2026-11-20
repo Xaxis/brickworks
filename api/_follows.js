@@ -34,6 +34,13 @@
 // nothing and opens no way to write to them. Who follows whom is answered
 // only as counts; a list only of whom somebody chose to show.
 //
+// A block (supabase/block.sql, api/_blocks.js) ends every follow between
+// two people, both ways, and neither may follow the other while it stands:
+// the person who blocked is told so (you_block, and why_not), the person
+// blocked only that the profile can't be followed, once they ask; what the
+// people blocked made, and their models in collections followed, leave the
+// feed of whoever blocked them.
+//
 // Until follows.sql is applied its functions are not there (404): a
 // profile shows no counts and no Follow, the feed says it is not open yet,
 // and the count is nothing. Everything else works as before.
@@ -45,6 +52,8 @@ import { SCORE, TESTS_CACHE, Unacceptable, cardOf, inLanguage, siteWords, testsA
 import { photoUrls, say } from "./_card.js";
 import { photosWhere } from "./_builds.js";
 import { shownPublicly } from "./_trust.js";
+import { WORDS as BLOCK_WORDS, blockedHandles, blockedModels, refuseFor, rowsWithout, standingWith, withoutBlocked }
+  from "./_blocks.js";
 
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -158,11 +167,24 @@ export function feedSaid(row, origin = "") {
 
 /// [handle]'s follows as [asker] sees them: {ready, followers, following,
 /// shows, you_follow, mine, may, why_not}, or null for nobody shown.
-export async function followsOf(handle, asker = null) {
-  const state = await call("follow_state", { asker, wanted: handle }, () => ({ missing: true }));
+export async function followsOf(handle, asker = null, { blocks = true } = {}) {
+  const [state, block] = await Promise.all([
+    call("follow_state", { asker, wanted: handle }, () => ({ missing: true })),
+    // [blocks] false: the caller left out whoever a block stands between.
+    asker && blocks ? standingWith(asker, handle) : null,
+  ]);
   if (state && state.missing) return { ready: false, followers: 0, following: 0, shows: false, you_follow: false,
     mine: false, may: false, why_not: NOT_YET };
-  return state ? stateSaid(state) : null;
+  return state ? blockSaid(stateSaid(state), block) : null;
+}
+
+/// [said] as the asker stands with them: you_block when the asker blocked
+/// them, and Follow not theirs to press, with why. Said only to the person
+/// who blocked; the person blocked is answered as anybody, and refused in
+/// neutral words only when they press Follow (follow).
+function blockSaid(said, block) {
+  return block === "blocked" ? { ...said, you_block: true, you_follow: false, may: false, why_not: BLOCK_WORDS.you_follow[1] }
+    : { ...said, you_block: false };
 }
 
 /// follow_state's answer, as the pages are given it.
@@ -198,11 +220,14 @@ export async function follow(request, response) {
   const handle = handleOf(body.handle);
   if (!handle) throw refused("nobody");
   if (typeof body.on !== "boolean") throw new Unacceptable("say on: true or on: false");
+  // Neither of two people one of whom blocked the other follows the other.
+  const block = body.on ? await standingWith(asker, handle) : null;
+  refuseFor(block, "follow");
   const said = await call("follow_person", { account: asker, wanted: handle, following: body.on },
     () => ({ missing: true }));
   if (said && said.missing) throw new Unacceptable(NOT_YET, 503);
   if (!said || said.refused) throw refused(said?.refused || "nobody");
-  return response.status(200).json({ handle, ...stateSaid(said), signed_in: true });
+  return response.status(200).json({ handle, ...blockSaid(stateSaid(said), null), signed_in: true });
 }
 
 /// Whom [account] follows, for them alone and whatever they chose to show:
@@ -274,7 +299,12 @@ export async function feed(request, response, { origin }) {
   const page = await call("follow_page", asked, () => call("feed_of", asked, () => ({ missing: true })));
   if (page && page.missing) return response.status(200).json({ ready: false, rows: [], more: false, seen_at: null });
   const seen = page?.seen_at ? Date.parse(page.seen_at) : null;
-  const found = page?.rows || [];
+  // Nothing by somebody they blocked, nor a model of theirs put in a
+  // collection the caller follows (api/_blocks.js).
+  const rowsRead = page?.rows || [];
+  const handles = await blockedHandles(asker);
+  const gone = handles.size ? await blockedModels(asker, rowsRead.map((row) => row.model)) : new Set();
+  const found = rowsWithout(rowsRead, handles, gone);
   // What each row shows (docs/SOCIAL.md U9): its model's card, a photo's
   // picture; and, with the first page, whom the caller follows, so the page
   // knows a feed empty for want of anybody followed and leaves them out of
@@ -389,16 +419,28 @@ async function newestPhotos(origin, tests, most) {
 
 /// ?op=latest: {models, photos, designers}, the same for everybody, so
 /// kept by the CDN; asked with tests=1 (a probe), test models too, never
-/// kept.
+/// kept. Asked with mine=1 and a session (the feed's rail and First steps),
+/// without what the people they blocked made or photographed, nor photos of
+/// those people's models (api/_blocks.js), and never kept: a URL of its own,
+/// so no answer kept for everybody is given in its place, nor one person's
+/// to another.
 export async function latest(request, response, { origin }) {
   const tests = testsAsked(request.query || {});
   const flag = tests ? { tests: true } : {};
+  const mine = ["1", "true"].includes(String(request.query?.mine ?? "").toLowerCase());
+  const asker = mine ? await who(request).catch(() => null) : null;
+  const handles = asker ? await blockedHandles(asker) : new Set();
+  // Read twice as many when some may be left out, so the rail stays full.
+  const more = handles.size ? 2 : 1;
   const [newest, top, photos] = await Promise.all([
-    listed({ sort: "newest", size: LATEST.models, skip: 0, ...flag }),
+    listed({ sort: "newest", size: LATEST.models * more, skip: 0, ...flag }),
     listed({ sort: "top", size: TOP_READ, skip: 0, ...flag }),
-    newestPhotos(origin, tests, LATEST.photos),
+    newestPhotos(origin, tests, LATEST.photos * more),
   ]);
-  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
-  return response.status(200).json(await withFaces({ models: (newest || []).slice(0, LATEST.models).map((row) => cardOf(origin, row)),
-    photos, designers: designersFrom((top || []).map((row) => cardOf(origin, row))) }));
+  const gone = handles.size ? await blockedModels(asker, [...(newest || []), ...(top || []), ...photos.map((one) => ({ id: one.model }))]
+    .map((one) => one.id)) : new Set();
+  const cards = (rows) => withoutBlocked((rows || []).map((row) => cardOf(origin, row)), gone, handles);
+  response.setHeader("Cache-Control", mine ? "private, no-store" : tests ? TESTS_CACHE : SHARED_CACHE);
+  return response.status(200).json(await withFaces({ models: cards(newest).slice(0, LATEST.models),
+    photos: rowsWithout(photos, handles, gone).slice(0, LATEST.photos), designers: designersFrom(cards(top)) }));
 }

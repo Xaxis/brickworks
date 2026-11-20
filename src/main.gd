@@ -961,6 +961,11 @@ func _tell_page() -> void:
 		# paints one by a swatch and undoes it).
 		"selected_colours": _selected_colours(),
 		"carrying": _builder.is_carrying(),
+		# The taps of two and three fingers and the double taps the camera
+		# has said, and the steps there are to undo and redo: a browser
+		# check counts an undo no gesture asked for (phonefingers).
+		"fingers": _camera.taps_said,
+		"history": [_builder.history_depth(), _builder._redo.size()],
 		# The timeline, while it is up: its order, caption and step's parts
 		# (tools/web/steps_flow.mjs).
 		"timeline": _steps.page_state() if _steps != null else {},

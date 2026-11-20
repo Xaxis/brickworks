@@ -158,12 +158,25 @@ const ACTS = [
     file: "src/ui/page_editor.gd (page_add_text, page_words)" },
   { id: "page_done", model: "car", needs: "page_open", what: "the page editor: Done", desktop: 1, how: "Done",
     file: "src/ui/page_editor.gd (page_done)" },
+  // phonefingers: two fingers turning, pinching and twisting on the car, fast
+  // and slow, undo nothing (a tap is short and still: CadCamera.TAP_MS, TAP_POINTS).
+  // Its own half hour: a move of two fingers is a frame, and at 390 x 844 in
+  // SwiftShader on a loaded box the 930 of them outran ten minutes (11-19).
+  { id: "fingers_still", model: "car", ms: 30 * 60 * 1000,
+    what: "100 two-finger turns, pinches and twists on the car undo nothing", desktop: 0,
+    how: "the view turned and zoomed: no press", file: "src/camera/cad_camera.gd (_gesture_ended: a tap is short and still)" },
   { id: "split_merge", model: "empty", what: "a 2 x 4 plate split, and merged back", desktop: 4,
     how: "the plate clicked, Alt+S; Ctrl+A, Alt+M (walk `round2`: 1 key each)",
     file: "src/ui/phone_shell.gd (a part's actions)" },
   { id: "turn", model: "empty", what: "a turn of 15°", desktop: 5,
     how: "the toolbar's turn step, 15° (2 clicks); the part clicked, R, a click (walk `turns`: 2 after the click)",
     file: "src/ui/phone_shell.gd (Turn turns by the turn step, 90°; only src/ui/toolbar.gd's chooser sets it), src/ui/inspector.gd (Properties' Turn, in the drawer)" },
+  { id: "undo_tap", model: "empty", what: "a part put down taken back by a two-finger tap", desktop: 1, how: "Ctrl+Z",
+    file: "src/ui/phone_shell.gd (_fingers_tapped: Shell's undo, as the bar's Undo)" },
+  { id: "redo_tap", model: "empty", needs: "undo_tap", what: "and put back by a three-finger tap", desktop: 1, how: "Ctrl+Shift+Z",
+    file: "src/ui/phone_shell.gd (_fingers_tapped: Shell's redo, as the bar's Redo)" },
+  { id: "double_turn", model: "empty", what: "a part turned 90° by a double tap", desktop: 2, how: "the part clicked, R",
+    file: "src/ui/phone_shell.gd (_double_tapped: EditVerbs.turn_by, one step)" },
   { id: "wall", model: "wall", what: "a wall of eight 1 x 4s from the search", desktop: 20,
     how: "a click in the search, \"1x4 brick\" (9 keys), the tile, 8 clicks, Esc (walk `wall`)",
     file: "src/main.gd (a tap puts the part in hand down)" },
@@ -355,7 +368,7 @@ async function walk(width, height, ratio, result) {
       try {
         result = await Promise.race([
           P.run(act.id),
-          new Promise((done) => setTimeout(() => done({ done: false, timedOut: true }), ACT_MS)),
+          new Promise((done) => setTimeout(() => done({ done: false, timedOut: true }), act.ms || ACT_MS)),
         ]);
       } catch (trouble) {
         result = { done: false, threw: String(trouble.stack || trouble).slice(0, 400) };
@@ -374,7 +387,7 @@ async function walk(width, height, ratio, result) {
       // [slow]: what an act done by finger spent its extra taps on, when it
       // was not only More's three.
       const why = result.threw ? `it could not run: ${result.threw.split("\n")[0]}`
-        : result.timedOut ? `it ran out of time (${Math.round(ACT_MS / 1000)} s)`
+        : result.timedOut ? `it ran out of time (${Math.round((act.ms || ACT_MS) / 1000)} s)`
           : over ? `${tally.n} taps for the desktop's ${act.desktop}${tally.more
             ? `, the command three taps deep in More (${tally.said.filter((l) => / the row$/.test(l)).join("; ")})` : ""}`
             + (result.slow ? `; ${result.slow}` : "")
@@ -1498,9 +1511,15 @@ function person(page, cdp, width, height, size, choosers) {
       m = await untilRead("brickworksMotions", (now) => (now.joints || []).length > 0, 10);
       const slider = await bringIn("motions_joint_0", "motions_close");
       if (!slider) return { why: "no joint's slider on the screen" };
+      // Where the joint stands once its slider is in sight (a swipe that
+      // brought it may have begun on it), and dragged toward the side it is
+      // not on: a door the recording left at its stop (#122 at 62°, the
+      // fence lattice) moves no further that way, though the drag is taken.
+      m = await read("brickworksMotions");
       const was = JSON.stringify((m.joints || [])[0]?.place);
+      const way = Number((m.joints || [])[0]?.place) > 0 ? -1 : 1;
       aim(slider);
-      await drag({ x: slider.x - slider.w * 0.3, y: slider.y }, { x: slider.x + slider.w * 0.3, y: slider.y });
+      await drag({ x: slider.x - way * slider.w * 0.3, y: slider.y }, { x: slider.x + way * slider.w * 0.3, y: slider.y });
       m = await untilRead("brickworksMotions", (now) => JSON.stringify((now.joints || [])[0]?.place) !== was, 8);
       note(`the joint from ${was} to ${JSON.stringify((m.joints || [])[0]?.place)}`);
       return { done: JSON.stringify((m.joints || [])[0]?.place) !== was, why: "a finger's drag of the slider moved no joint" };
@@ -1548,6 +1567,148 @@ function person(page, cdp, width, height, size, choosers) {
       }
       note(`the driver from ${was} to ${JSON.stringify(s.driver)}`);
       return { done: JSON.stringify(s.driver) !== was, why: "a tap on a part made no other driver" };
+    },
+
+    // phonefingers. Two fingers on the car turned, pinched and twisted 100
+    // times, from a flick of 2 moves to a slow 24, some begun on a part: the
+    // app says no tap of two or three fingers and no double tap, and nothing
+    // was undone. Not counted as presses: a person turns the view so.
+    async fingers_still() {
+      const before = await state();
+      if (!before.fingers) return { why: "the app says nothing of taps (brickworksState.fingers): an older build" };
+      const c = await centre();
+      let seed = 1119;
+      const rand = (lo, hi) => {
+        seed = (seed * 16807) % 2147483647;
+        return lo + (hi - lo) * (seed / 2147483647);
+      };
+      const kinds = { turn: 0, pinch: 0, twist: 0 };
+      let least = Infinity;
+      for (let n = 0; n < 100; n++) {
+        const kind = ["turn", "pinch", "twist"][n % 3];
+        kinds[kind] += 1;
+        const steps = [2, 3, 4, 6, 10, 16, 24][n % 7];
+        const mid = { x: c.x + rand(-0.15, 0.15) * width, y: c.y + rand(-0.1, 0.1) * height };
+        const apart = rand(0.12, 0.3) * Math.min(width, height);
+        const a = rand(0, Math.PI * 2);
+        const way = { x: Math.cos(a), y: Math.sin(a) };
+        const reach = rand(40, 160);
+        const by = { x: Math.cos(rand(0, 6.283)) * reach, y: Math.sin(rand(0, 6.283)) * reach };
+        const spread = (apart + reach * (n % 2 === 0 ? 1 : -0.6)) / apart;
+        const degrees = rand(25, 120) * (n % 2 === 0 ? 1 : -1);
+        const at = (t) => {
+          if (kind === "turn") return [{ x: mid.x - way.x * apart + by.x * t, y: mid.y - way.y * apart + by.y * t },
+            { x: mid.x + way.x * apart + by.x * t, y: mid.y + way.y * apart + by.y * t }];
+          if (kind === "pinch") {
+            const now = apart * (1 + (spread - 1) * t);
+            return [{ x: mid.x - way.x * now, y: mid.y - way.y * now }, { x: mid.x + way.x * now, y: mid.y + way.y * now }];
+          }
+          const r = (degrees * t) * Math.PI / 180;
+          const w = { x: (way.x * Math.cos(r) - way.y * Math.sin(r)) * apart, y: (way.x * Math.sin(r) + way.y * Math.cos(r)) * apart };
+          return [{ x: mid.x - w.x, y: mid.y - w.y }, { x: mid.x + w.x, y: mid.y + w.y }];
+        };
+        const from = at(0);
+        const to = at(1);
+        least = Math.min(least, Math.max(Math.hypot(to[0].x - from[0].x, to[0].y - from[0].y),
+          Math.hypot(to[1].x - from[1].x, to[1].y - from[1].y)));
+        await touch("touchStart", from);
+        for (let k = 1; k <= steps; k++) {
+          const t = k / steps;
+          await touch("touchMove", at(t * t * (3 - 2 * t)));
+          await page.waitForTimeout(16);
+        }
+        await touch("touchEnd", []);
+        await page.waitForTimeout(n % 5 === 0 ? 400 : 60);
+      }
+      await page.waitForTimeout(800);
+      const after = await state();
+      // The view put back, not counted: a hundred gestures leave it looking
+      // from under the floor or past the model, and New keeps the view, so
+      // every later act's tap on a part met none (the iPhone walk, 11-19).
+      await untimed(async () => {
+        await page.keyboard.press("0");
+        await page.waitForTimeout(1500);
+      });
+      const fired = ["two", "three", "double"].map((k) => (after.fingers?.[k] || 0) - (before.fingers?.[k] || 0));
+      const undone = (before.history?.[0] || 0) - (after.history?.[0] || 0);
+      note(`${kinds.turn} turns, ${kinds.pinch} pinches, ${kinds.twist} twists: taps of two ${fired[0]}, of three ${fired[1]}, `
+        + `double ${fired[2]}; ${undone} undone (steps ${before.history?.[0]} to ${after.history?.[0]}), `
+        + `parts ${before.bricks} to ${after.bricks}; the least a finger went ${least.toFixed(0)} px`);
+      const still = fired.every((f) => f === 0) && undone === 0 && after.bricks === before.bricks;
+      return { done: still, why: `a gesture fired: two ${fired[0]}, three ${fired[1]}, double ${fired[2]}, ${undone} undone` };
+    },
+
+    // A 2 x 4 put down (by code, not counted), then two fingers tapped on the
+    // view: it is taken back, as the bar's Undo takes it, saying so.
+    async undo_tap() {
+      const put = await untimed(async () => {
+        if ((await take("3001")) !== "3001") return null;
+        const c = await centre();
+        const down = await putDown({ x: c.x + width * 0.08, y: c.y - height * 0.04 });
+        await press("phone_select");
+        await until((now) => now.mode === "select" && !now.carrying, 5);
+        return down.put;
+      });
+      if (!put) throw new Error("a 2 x 4 brick could not be put down to take back");
+      const before = await state();
+      const c = await centre();
+      count();
+      await touch("touchStart", [{ x: c.x - width * 0.12, y: c.y + height * 0.08 }, { x: c.x + width * 0.12, y: c.y + height * 0.08 }]);
+      await page.waitForTimeout(80);
+      await touch("touchEnd", []);
+      const s = await until((now) => (now.bricks || 0) < (before.bricks || 0), 8);
+      note(`parts ${before.bricks} to ${s.bricks}; steps ${JSON.stringify(before.history)} to ${JSON.stringify(s.history)}; `
+        + `taps of two ${before.fingers?.two} to ${s.fingers?.two}; said "${s.said}"`);
+      return { done: (s.bricks || 0) === (before.bricks || 0) - 1 && /^undid/i.test(s.said || ""),
+        why: `a two-finger tap took nothing back (said "${s.said}")` };
+    },
+
+    async redo_tap() {
+      const before = await state();
+      const c = await centre();
+      count();
+      await touch("touchStart", [{ x: c.x - width * 0.15, y: c.y + height * 0.08 }, { x: c.x, y: c.y + height * 0.1 },
+        { x: c.x + width * 0.15, y: c.y + height * 0.08 }]);
+      await page.waitForTimeout(80);
+      await touch("touchEnd", []);
+      const s = await until((now) => (now.bricks || 0) > (before.bricks || 0), 8);
+      note(`parts ${before.bricks} to ${s.bricks}; steps ${JSON.stringify(before.history)} to ${JSON.stringify(s.history)}; `
+        + `taps of three ${before.fingers?.three} to ${s.fingers?.three}; said "${s.said}"`);
+      return { done: (s.bricks || 0) === (before.bricks || 0) + 1 && /^redid/i.test(s.said || ""),
+        why: `a three-finger tap put nothing back (said "${s.said}")` };
+    },
+
+    // A 2 x 4 put down (not counted), then tapped twice: it turns 90° round
+    // the up, one step to undo, as a click and R turn it.
+    async double_turn() {
+      const brick = await untimed(async () => {
+        if ((await take("3001")) !== "3001") return null;
+        const c = await centre();
+        const down = await putDown({ x: c.x - width * 0.1, y: c.y - height * 0.06 });
+        await press("phone_select");
+        await until((now) => now.mode === "select" && !now.carrying, 5);
+        for (let n = 0; n < 3 && ((await state()).selected || 0) > 0; n++) await page.keyboard.press("Escape");
+        return down.put;
+      });
+      if (!brick) throw new Error("a 2 x 4 brick could not be put down to turn");
+      const facing = (pose) => Math.atan2(-pose[5], pose[3]) * 180 / Math.PI;
+      const was = facing(brick.pose);
+      const on = (((await layout()) || {}).targets || []).find((t) => t.brick === brick.id) || laid.at(-1);
+      const before = await state();
+      count(2);
+      await touch("touchStart", [on]);
+      await page.waitForTimeout(50);
+      await touch("touchEnd", []);
+      await page.waitForTimeout(90);
+      await touch("touchStart", [on]);
+      await page.waitForTimeout(50);
+      await touch("touchEnd", []);
+      const s = await until((now) => now.put && Math.abs(facing(now.put.pose) - was) > 1, 8);
+      const by = s.put ? ((facing(s.put.pose) - was + 540) % 360) - 180 : 0;
+      note(`turned ${by.toFixed(1)}°; steps ${JSON.stringify(before.history)} to ${JSON.stringify(s.history)}; `
+        + `double taps ${before.fingers?.double} to ${s.fingers?.double}; said "${s.said}"`);
+      return { done: Math.abs(Math.abs(by) - 90) < 1 && (s.history?.[0] || 0) === (before.history?.[0] || 0) + 1,
+        why: `a double tap turned it ${by.toFixed(1)}° in ${(s.history?.[0] || 0) - (before.history?.[0] || 0)} steps` };
     },
   };
 

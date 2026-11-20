@@ -61,6 +61,13 @@
 .connections li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px;
 	font-size: var(--t-small); color: var(--ink-soft); }
 .connections b { color: var(--ink); }
+/* Blocked people: a row each, the face, the name and handle, Unblock at
+   the end; at a phone's width the name wraps above Unblock. */
+.blocked li { justify-content: flex-start; }
+.blocked .who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 12rem; color: var(--ink);
+	text-decoration: none; overflow-wrap: anywhere; }
+.blocked .who small { color: var(--ink-soft); }
+.blocked button { min-height: 44px; }
 .delete-form, .code-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
 #beta-bar-out { margin-top: var(--s-6); }
 </style>
@@ -117,6 +124,7 @@
 				<li><a href="#theme-part">Appearance</a></li>
 				<li><a href="#email-part">Email</a></li>
 				<li><a href="#privacy-part">Privacy</a></li>
+				<li><a href="#blocked-part">Blocked people</a></li>
 				<li><a href="#claude-part">Assistants</a></li>
 				<li><a href="#feedback">Your reports</a></li>
 				<li><a href="#sign-out-part">Sign out</a></li>
@@ -273,6 +281,16 @@
 							<label class="choice"><input type="checkbox" id="counting-on">
 								Count how I use Brickworks in this browser</label>
 							<p class="said" id="counting-said" role="status"></p>
+						</div>
+					</div>
+
+					<div class="setting" id="blocked-part">
+						<div class="wide">
+							<h2>Blocked people</h2>
+							<p id="blocked-said">Whom you blocked. Their models and comments stay out of your way, and
+								they can’t follow you or comment on your models. They aren’t told.</p>
+							<ul class="connections blocked" id="blocked" aria-label="Blocked people"></ul>
+							<p class="said" id="blocked-done" role="status"></p>
 						</div>
 					</div>
 

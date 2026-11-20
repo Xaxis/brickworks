@@ -127,6 +127,62 @@ func _ready() -> void:
 	_build()
 	get_viewport().size_changed.connect(_rebuild, CONNECT_DEFERRED)
 	set_process(true)
+	var camera: CadCamera = app.get("_camera") as CadCamera if app != null else null
+	if camera != null:
+		camera.tapped_with.connect(_fingers_tapped)
+		camera.double_tapped.connect(_double_tapped)
+
+
+## Two fingers tapped on the model undo and three redo, as an iPhone app
+## that edits does (Procreate; Brick Creator 3D's "two-finger tap to
+## undo"): the top bar's own Undo and Redo, and Ctrl+Z's (Shell's undo is
+## EditVerbs.own_undo, which in Together is the person's own), saying what
+## it took back. Where there is nothing to, it says so, as a key does: a
+## gesture has no greyed button to show it.
+func _fingers_tapped(fingers: int) -> void:
+	if shell == null or not str(app.get("_viewing")).is_empty():
+		return
+	shell.run_key("undo" if fingers == 2 else "redo")
+
+
+## A finger tapped twice on a part with the Select tool turns it as R does
+## (EditVerbs.turn_by, the turn step: 90° unless Settings says otherwise),
+## one step to undo: Brick Creator 3D's "double-tap a brick to rotate it".
+## The taps have selected it already (Main's click), and the turn is that
+## selection's, so a part of a sub-assembly turns its sub-assembly, as R
+## does. Where a tap already means something it keeps it, and a double tap
+## is two of them: with a part in hand each puts one down, in Delete each
+## takes one off, a tool's tap is the tool's (the Rotate tool's second tap
+## turns it), and with Select's adding on each adds or takes out. In
+## Motions and Simulate a tap picks the part to pose or drive, and a turn
+## there would be an edit in the middle of a pose: none. Nothing under the
+## finger, a locked part (the tap said so) or a shared model being looked
+## at: nothing.
+func _double_tapped(at: Vector2) -> void:
+	if shell == null or not str(app.get("_viewing")).is_empty():
+		return
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	if builder == null or verbs == null or verbs.mode != "select" or verbs.adding \
+			or verbs.shows_ghost() or builder.is_carrying() or builder.is_holding_figure():
+		return
+	for busy: String in ["_pose_made", "_simulate_made"]:
+		var panel: CanvasItem = app.get(busy) as CanvasItem
+		if panel != null and panel.is_visible_in_tree():
+			return
+	# Measure's and the hose tool's taps are their points.
+	for tool: String in ["_measure", "_flex"]:
+		var taking: Node = app.get(tool) as Node
+		if taking != null and bool(taking.get("active")):
+			return
+	var playback: BuildPlayback = app.get("_playback") as BuildPlayback
+	if playback != null and playback.is_playing():
+		return
+	var brick: int = verbs.brick_at(at)
+	if brick == 0 or builder.is_locked(brick) or not builder.selection.has(brick):
+		return
+	verbs.turn_by(verbs.turn_step)
+	app.call("_refresh_preview")
 
 
 func p(points: float) -> float:

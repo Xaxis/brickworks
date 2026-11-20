@@ -99,6 +99,13 @@
 //                                 yours: true on the caller's own page
 //                                 (api/_alike.js)
 //   POST ?op=follow_choice        (session) {shows}: show whom I follow
+//   GET  ?op=blocks               (session) whom the caller blocked, newest
+//                                 first (api/_blocks.js)
+//   POST ?op=block                (session) {handle, on}: block somebody, or
+//                                 unblock them (supabase/block.sql): their
+//                                 models leave your gallery and feed, their
+//                                 comments on yours are hidden, follows
+//                                 between you end, and they are never told
 //   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first,
 //                                 each row with its model's card; its first
 //                                 page counts as the feed opened
@@ -227,6 +234,7 @@ import {
   listShown, ownedChoice, ownedShowcase, ownedShown, setCounts, yourLists,
 } from "./_mylists.js";
 import { designerOf, designs } from "./_designers.js";
+import { blockedHandles, getBlocks, refuseFor, setBlock, standing } from "./_blocks.js";
 import { designersAlike } from "./_alike.js";
 import {
   AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
@@ -718,6 +726,9 @@ async function toggle(request, response, table) {
   if (typeof on !== "boolean") throw new Refusal("say on: true or on: false");
   if (!(await publishedModel(id))) throw new Refusal("there is no shared model at that link", 404);
   await counted(account, table === "model_likes" ? "like" : "favourite");
+  // No like across a block, either way (supabase/block.sql's trigger says
+  // it whatever writes): the one blocked is told only that it can't be.
+  if (on && table === "model_likes") refuseFor(await standing(account, { model: id }), "like");
   if (on) {
     if (table === "model_favourites") {
       // Counted by the database: a read stops at 1,000 rows (review of lists1).
@@ -840,6 +851,9 @@ async function collect(request, response) {
   await counted(account, "collect");
   if (body.on) {
     if (!(await publishedModel(model))) throw new Refusal("there is no shared model at that link", 404);
+    // Not a model of somebody either of them blocked: a public collection,
+    // named as its owner likes, is shown on the model's page.
+    refuseFor(await standing(account, { model }), "collect");
     const held = await db(`model_collection_items?collection=eq.${list.id}&select=model&limit=${MOST_IN_A_LIST + 1}`);
     if (held.length >= MOST_IN_A_LIST) throw new Refusal(`a list holds ${MOST_IN_A_LIST} models at most`, 409);
     await db("model_collection_items?on_conflict=collection,model", { method: "POST",
@@ -993,6 +1007,8 @@ async function photoStart(request, response) {
   const body = request.body && typeof request.body === "object" ? request.body : {};
   const model = await photoModel(String(body.model || ""));
   if (!model) throw new Refusal("there is no shared model at that link", 404);
+  // Not on the models of somebody who blocked them, nor of whom they blocked.
+  refuseFor(await standing(account, { model: model.id }), "photo");
   const started = await startPhoto(account, model.id, { type: String(body.type || ""), size: Number(body.size) },
     async () => {
       await oldEnough(account)();
@@ -1009,6 +1025,7 @@ async function photoKeep(request, response) {
   if (!model) throw new Refusal("there is no shared model at that link", 404);
   const words = cleanLine(body.words, MAX_WORDS) || null;
   checkNames({ "What you say about it": [words, "words"] });
+  refuseFor(await standing(account, { model: model.id }), "photo");
   const kept = await keepPhoto(account, model.id, String(body.ticket || ""), words, oldEnough(account));
   const origin = originOf(request);
   return response.status(201).json(photoSaid(origin, { ...kept, model: model.id, at: new Date().toISOString(),
@@ -1121,7 +1138,12 @@ async function peopleFind(request, response) {
   const q = String(request.query?.q || "").toLowerCase().slice(0, 23);
   if (!namedOf(q)) return response.status(200).json({ q, people: [] });
   await counted(who, "people_find");
-  return response.status(200).json({ q, people: await peopleFound(q, (account) => mayBeNamed(account, { tests })) });
+  const found = await peopleFound(q, (account) => mayBeNamed(account, { tests }));
+  // Never anybody the asker blocked (supabase/block.sql). Whoever blocked
+  // the asker is offered as to anybody: missing from the @ list, they would
+  // be told it; a comment names neither (api/_comments.js mention).
+  const barred = found.length && who ? await blockedHandles(who) : new Set();
+  return response.status(200).json({ q, people: found.filter((one) => !barred.has(one.handle)) });
 }
 
 /// The gallery's Builds tab, page N: the same for everybody, so kept briefly
@@ -1563,7 +1585,12 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     + `${escapeHtml(link.said)}</a></li>`).join("");
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}">${iconHtml("more")}</summary>`
     + `<div class="menu-list"><button type="button" data-report="${asText(say("this profile"))}" data-report-handle="${escapeHtml(person.handle)}" hidden>`
-    + `${asText(say("Report it"))}</button><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
+    + `${asText(say("Report it"))}</button>`
+    // Block, for whoever is signed in and not them (web/follow.js shows it
+    // once it knows, and says Unblock where they blocked them already).
+    + `<button type="button" data-block="${escapeHtml(person.handle)}" data-block-name="${name}" hidden>`
+    + `${asText(say("Block {name}", { name: person.name }))}</button>`
+    + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
   // The banner is its model's picture with nothing behind the model, on
   // the theme's own ground as a card's is (web/directory.css); the server
   // gives the picture itself for a model published before cut-outs.
@@ -1867,6 +1894,7 @@ async function handler(request, response) {
       if (op === "following") return await getFollowing(request, response);
       if (op === "alike") return await alike(request, response);
       if (op === "people_find") return await peopleFind(request, response);
+      if (op === "blocks") return await getBlocks(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "latest") return await latest(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
@@ -1907,6 +1935,7 @@ async function handler(request, response) {
       if (op === "follow") return await follow(request, response);
       if (op === "list_follow") return await listFollow(request, response);
       if (op === "follow_choice") return await followChoice(request, response);
+      if (op === "block") return await setBlock(request, response);
       if (op === "notifications_read") return await notificationsRead(request, response);
       if (op === "enter") return await enter(request, response);
       if (op === "withdraw") return await withdraw(request, response);

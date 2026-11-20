@@ -1421,7 +1421,10 @@ func _let_go() -> void:
 		_after = {"drag": was, "value": value, "depth": depth,
 			"at": was.get("pointer", Vector2.ZERO)}
 		return
-	if not _nowhere(value):
+	if not builder.refused_lock.is_empty():
+		# A joint locked holds it (jointlock): which, and how to unlock it.
+		say.call(builder.refused_lock)
+	elif not _nowhere(value):
 		flash.call(builder.refused_by)
 		say.call("no room there — what it would hit is lit up")
 	elif was.get("stuck") != null:
@@ -1548,7 +1551,7 @@ func typed_preview(what: Dictionary) -> String:
 	_drawn = []
 	if not builder.drag_fits(by):
 		flash.call(builder.refused_by)
-		return "no room there"
+		return builder.refused_lock if not builder.refused_lock.is_empty() else "no room there"
 	return ""
 
 

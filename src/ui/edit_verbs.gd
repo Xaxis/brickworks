@@ -216,6 +216,16 @@ func press(name: String) -> void:
 		set_mode("select")
 		say.call("put back where it was")
 		return
+	# So is Undo with parts lifted off the model in hand, the lift the last
+	# step: they go back where they were and are let go, as Esc does.
+	# Undoing the lift's step under the hand put them back and left them
+	# held, and the next tap put a second of each down (phonefingers: a
+	# two-finger tap while carrying). A step recorded since (the person's
+	# Claude) is undone as ever, the parts still in hand.
+	if name == "undo" and builder.is_carrying() and builder.carrying.lifted \
+			and builder._lift_on_top():
+		put_away()
+		return
 	match name:
 		"undo":
 			var job: Working.Job = await _say_first(builder.next_change_size(),
@@ -401,7 +411,8 @@ func swing(degrees: float) -> int:
 		return 0
 	var count: int = builder.swing_selection(degrees)
 	if count == 0:
-		say.call("that is not on a hinge, clip or turntable, or it would hit something")
+		say.call(builder.refused_lock if not builder.refused_lock.is_empty()
+			else "that is not on a hinge, clip or turntable, or it would hit something")
 		return 0
 	edited.call()
 	aim_again.call()
@@ -834,6 +845,8 @@ func duplicate_selection(again: bool = true) -> int:
 func lift(grab: Array = []) -> int:
 	var count: int = builder.lift_selection(grab)
 	if count == 0:
+		if not builder.refused_lock.is_empty():
+			say.call(builder.refused_lock)
 		return 0
 	edited.call()
 	# A copy of its sub-model could not take the lift (a twin locked): it was
@@ -899,6 +912,11 @@ func turn_by(degrees: float) -> int:
 ## and nothing else (docs/APP_UX.md, A3). Studio's arrows turn a part
 ## through others; here the collision stays exact and the way on is shown.
 func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
+	if not builder.refused_lock.is_empty():
+		# A joint locked holds it (jointlock): said, never taken into hand
+		# off its joint.
+		say.call(builder.refused_lock)
+		return 0
 	var blocking: PackedInt64Array = builder.refused_by
 	_flash(blocking)
 	var why: String = "what it would hit is lit up" if not blocking.is_empty() \
