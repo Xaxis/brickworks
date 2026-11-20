@@ -7531,6 +7531,248 @@ Why it fell short:
   of it ships. `1c0a64656` (merged as `48bb2b496`) holds what the screen
   ran.
 
+### A Technic set's seen parts laid on the studded body in the first build (2026-11-19, design26, `8de209498`, NO-GO)
+
+**Why.** The nine Technic subjects of the 44 lose on parts, not form: the
+judge sees a studded body where the set shows panels, beams and gears. October's studless levers
+(a bare beam frame for a Technic subject) lifted technique and lost likeness,
+38% to 19%. design25's real-set parts, laid at the close look, were kept as
+299 parts in 71 spots: what a lever adds after the first build mostly never
+reaches the build the session keeps. So this keeps the System body the
+session builds well and has its first build lay on that body's surface the
+parts a Technic set shows there.
+
+**The change** (`8de209498`, on pre261 `c49d6fe7a`):
+
+- `tools/technic_parts.py` reads the model repository's sets since 2000.
+  The 96 Technic sets among them are read by what shows, not by name: each
+  drawn as boxes from its parts' own geometry and seen from four sides and
+  above at 4 LDU, each part's role read from the catalogue's name, moved
+  parts followed. How a part is held on a studded body is read from the pin
+  and axle lines of every set since 2000. 114 sets are held out, as
+  `DesignMemory.holds` holds a subject out: the bench's 88 subjects by base
+  number, and any set whose name's words are all a subject's, or the
+  reverse. Ten roles: curved panels, flat panels, beams, bent liftarms, thin
+  liftarms, gears, wheels, connectors, mechanisms, mudguards. For each: its
+  share of what shows on the median set and at the 90th centile, the sides it
+  shows on, its commonest parts, the sets it came from, and the ways it is
+  held. It ships as `assets/knowledge/technic_parts.json.gz` (89 KB), read
+  by `src/ai/technic_parts.gd`, beside the build on the web.
+- A subject said to be in the style of LEGO® Technic sets (the word said of
+  the subject, not "Technic bricks" or "Technic link tracks" said of a
+  part: over 832 past realset sessions it read 126 of 147 Technic subjects
+  and none of 685 others) is told it once, after
+  `how_real_sets_build_this`'s own answer: each role's share and parts, the
+  four ways sets hold them (a pin in a Technic brick laid in the wall
+  course, 51%; another studded part's hole, 19%; an axle through an
+  axle-hole brick, 11%; the bracket way, 10%), and the hold written in
+  `submit_design`'s own words.
+- Its first full `submit_design` with no panel, or fewer than four beams
+  and liftarms, is sent back once with the same words, as joints are; sent
+  again as it was, it is built. No new tool.
+- The connector's first answer adds two sentences to the method for a
+  Technic subject. The feature pass puts a Technic set's piece first among
+  those that name a feature as well.
+- Any other subject is told what it was, byte for byte
+  (`design26-2026-11-19/told/`: five sessions' own first calls replayed on
+  both snapshots).
+
+Chosen as a designer would:
+- The body stays studded. The table's sets hold 629 beams on Technic bricks
+  in 116 sets: a studded body is how Technic sets of this size are built
+  under their skin, and it is where the session's likeness comes from. The
+  answer says so and never asks for a bare beam frame.
+- Panels and the frame's lines are what is asked for, because they are what
+  shows (beams 13% of what shows on the median set, curved panels 12%,
+  bent liftarms 9%), and wheels alone do not read as Technic: City and
+  Creator vehicles have them too. Gears are told where a mechanism would
+  show (2%), not asked for.
+- The hold given is the commonest one written in the session's own syntax,
+  each line built in the probe: a 3701 named in the wall course, a 2780
+  attached in its hole and turned out, a panel attached on the pin; a beam
+  laid flat on studs needs no pin.
+- Sent back once, not refused: the session may have a reason, and a second
+  refusal would be a rule, not a reminder.
+
+**Proof in the app.** The new `technic_parts_probe` passed through
+`tools/probe.sh` from the locked snapshot `snapd26lev`, as did
+`connector_method_probe`, `cad_sitting_probe`, `rules_probe`,
+`features_probe`, `design_memory_probe` and `kinds_probe`
+(`design26-2026-11-19/probes-8de209498/`). The new probe checks:
+- the table's ten roles, each with its parts, holds and sets, and none of the
+  bench's held-out sets among them;
+- that the app reads each listed part's role as the table does;
+- which words mark a subject as Technic;
+- that a subject is told once;
+- that a Technic tractor with no panel is sent back, and built when sent
+  again;
+- that a body laid with the answer's own hold (a fairing pinned on a Technic
+  brick, beams on studs) is built at once;
+- that a lighthouse is told `METHOD` byte for byte.
+
+`featuremap check` and `site_lang --check` passed. `check.sh --lists` found
+the new probe in no list, and `ci_gate` found the two new scripts missing
+from `api/_insights_names.js`. Both were fixed in `246ce235c`, after the
+snapshot, and neither changes what a session is told.
+
+Five realset sessions' own first calls were replayed on both snapshots
+(`told/diff_summary.txt`). The three non-Technic subjects (the Capitol, the
+combine harvester and Tokyo) are told the same, byte for byte. The two
+Technic ones gain the section and the send-back.
+
+**The screen.** The base is `d26base`, run the same night: pre261
+`c49d6fe7a`, the lever's parent, from its own locked, imported snapshot
+`snapd26base`. The lever (`d26lev`) ran from `snapd26lev` at `8de209498`.
+- Both arms ran on the owner's path (`--via relay --no-claude-code
+  --instructions none --audit-later`), on the owner's subscription with no
+  API key.
+- They ran one session at a time each, in the same hours (2026-11-19, 10:45
+  to 15:17), on the tune half's eight Technic subjects, and were judged
+  blind in both orders.
+- No session hit a usage limit or a lapsed sign-in.
+- The measure of reach was fixed before any result was read
+  (`screen_plan.txt`, `py/reach26.py`).
+
+- **Reach** (`reach26.txt`, `py/laid26.py`, `laid26.txt`):
+  - Every lever session was told. Four heard it from
+    `how_real_sets_build_this`, the other four first in the send-back.
+  - All 8 first submissions were sent back. None of them had a panel.
+  - The next submission laid panels in 5 of 8: two to four curved fairings
+    or flat panels.
+  - Panels reached the final model in 3: the excavator's 4 flat panels, and
+    2 curved ones each on the mine loader and the tractor. The mine loader
+    dropped its first four after a refusal and added two back one at a time
+    after its first build. The forklift's three went with a refused
+    submission. The telehandler built its pair and took it off later.
+  - Beams were laid in every lever session, 5 to 13 in each final model. In
+    the renders they lie flat along top edges.
+  - A Technic set's seen surface (a panel at 1% of what shows, the frame at
+    3%) is in 3 of the lever's 8 final designs and 1 of the base's 8. The
+    base's one is the Ducati, with panels at 17.5% of what shows.
+- **The first builds came harder** (`py/refused26.py`, `refused26.txt`,
+  `py/overlaps26.py`, `overlaps26.txt`):
+  - 39 submissions were refused before the first build, against the base's
+    11.
+  - 9 were the send-back. The mine loader had it twice: its tab was renamed
+    from "Car".
+  - 8 were the Ducati tipping over on its wheels, one after another.
+  - The other 22 were overlaps and collisions, parts below the ground,
+    floating parts, and one more tip.
+  - Of 18 overlap refusals, 3 named a panel the session had just laid and 7
+    a laid beam. The mine loader's 15-long beams met the ground, its bucket
+    or its bricks in five refusals running.
+  - The lever's eight sessions took 256 minutes, the base's 206.
+- **The holdout held** (`py/leak24.py`, `leak26.txt`): no answer carried a
+  set's own file or number (0 hits). The telehandler never searched the
+  real-set index in either arm. The table holds every bench set out itself.
+- **The build check** (realset's audit, `py/check24.py`, `check26.txt`): 6 of
+  8 clean in each arm.
+  - The lever: the excavator's liftarms run into its shock absorbers (52
+    overlaps), and the loader's pneumatic hoses run through its parts (354).
+  - The base: the excavator reads as floating whole (946), and the same
+    loader's hoses run through (279).
+
+| subjects | head to head: lever preferred, overall (95%) | likeness | surface | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|---|
+| 8 Technic | 38% (14-69) | 31% | 31% | 44% | 0%, 0%, +0 (+0, +0) |
+
+Against the set, on all 8 (`compare-d26lev-d26base.log`):
+- likeness held at 25%, +0 (-19, +19);
+- technique held at 0%, in both arms;
+- surface rose from 38% to 62%, +25 (-6, +62);
+- creativity fell from 44% to 12%, -31 (-50, -12);
+- colour fell from 25% to 12%, -12 (-38, +19).
+
+Each subject: the lever's overall wins head to head (of 2), and what the
+judge said (`persub26.txt`).
+- **Won both orders (2)**:
+  - The telehandler: "the right layout, a cleaner surface and more
+    Technic-style detail". Its final model has no panel.
+  - The pneumatic loader: "correct loader stance, off-road tyres and smooth,
+    consistent styling". It has no panel either.
+- **Split (2)**:
+  - The mine loader. The lever's won technique in both orders, for "a
+    working bucket linkage".
+  - The tractor.
+- **Lost both (4)**:
+  - The Ducati: the lever's is "a blocky stack of bricks with little Technic
+    about it". The base's has "a clear sportbike silhouette, real Technic
+    functions and printed detail", and panels of its own choosing.
+  - The forklift: the lever's "looks blocky and unfinished", "even though B
+    [the lever] uses more Technic-style parts". It has 188 Technic bricks
+    against the base's 49.
+  - The excavator: the base's has "its correct silhouette, cylinders on the
+    boom and varied colour".
+  - BASH!: the lever's is "a studded letter sign with Technic parts added
+    only as decoration". It read the set's name as a sign. The base built
+    the car with its hammer arm.
+
+All 16 corner views, lever and base, were looked at. What is seen agrees
+with the judge:
+- the beams read as trim. Black beams lie flat along the top edges of the
+  tractor's fenders and cab roof, the telehandler's boom and the forklift's
+  guard. On a Technic set the beams are the frame lines down the flanks.
+  Here they sit on top of a studded body;
+- the panels are missing where they matter most. The Ducati and the forklift
+  have none, and those two sets are the ones most made of panels;
+- where the lever put more Technic bricks in its walls, as told, its walls
+  look like Technic bricks: rows of holes under studs. The forklift's body
+  (188) and BASH!'s wall (106, against the base's 20) are stacks of them;
+- the excavator and the pneumatic loader carry booms with cylinders in both
+  arms. The lever's mine loader has a liftarm bucket linkage that the base's
+  lacks.
+
+**NO-GO.** The screen is not won:
+- wins head to head: 38% (14-69) overall, in both orders. This fails;
+- likeness against the set no worse than base: 25% against 25%, +0
+  (-19, +19). This holds;
+- technique up: 0% against 0% against the set. This fails. Head to head,
+  the lever's technique was preferred 44% of the time;
+- the set's seen Technic parts in the final design of at least half the
+  sessions: 3 of 8 (the base 1). This fails;
+- build check no worse: 6 of 8 clean in each arm. This holds;
+- the leak audit is clean. This holds.
+
+So the paired 44 was not run.
+
+Why it fell short:
+- **Told is not laid.** Every session heard what to lay and was sent back,
+  and the next submission laid panels in five. Those submissions were then
+  refused for faults around the new parts: of 18 overlap refusals, 3 named
+  a laid panel and 7 a laid beam. The mine loader and the forklift dropped
+  their panels to get a build. The answer gives a hold for each part but
+  not the room around it: a pinned panel or a beam meets the courses beside
+  it. So the send-back cost 39 refusals against 11, and 256 minutes against
+  206, and bought three kept panels.
+- **What was kept went where it is easiest, not where it shows.** A beam
+  laid flat on studs is the one hold that needs no attachment, and it is
+  what the sessions used: beams along top edges. On a real set the beams
+  stand on edge as the flank's frame lines, and the studded body sits under
+  panels. On ours they are a border on a studded top, which the judge does
+  not read as Technic.
+- **Technic bricks in the wall course made the walls Technic bricks.** The
+  answer's hold starts with a Technic brick in the wall. Where the session
+  then pinned nothing to it (the forklift, BASH!), the body is a stack of
+  holed bricks, and it lost its likeness to the smooth-bodied base.
+- **The base's best Technic design was its own.** The base's Ducati, with
+  panels and functions it chose itself, beat the lever's in both orders.
+  The lever's Ducati spent 11 refusals getting a body to stand and ended as
+  a stack.
+- **Next.**
+  - A panel or fairing must be laid by the app where it fits, not
+    described. The session names the face (a flank, the bonnet, an arch),
+    and the app places the panel there on its pins, clearing the room
+    around it, as the shape pattern places a hull. The table's parts and
+    holds are what it lays.
+  - Beams belong on edge along the flanks, held by pins in the wall's
+    Technic bricks, not flat on top. The sessions do not build that hold by
+    hand, so the app should make it in the same lay.
+  - Leave out the send-back until the app can lay the parts. It cost the
+    sessions a quarter more time and bought little they kept.
+- The change is taken back out on this branch (`ee184a90e`), so nothing of
+  it ships. `8de209498` holds what the screen ran; `tools/technic_parts.py`
+  and its table can be taken back from there.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
