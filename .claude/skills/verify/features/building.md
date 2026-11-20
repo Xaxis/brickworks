@@ -3387,7 +3387,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Assemblies.file_frames, the change, the list taken again). Its bar is
   live's own longest frame, timed in the same run as live now works them
   out (smalls9: the copies' frames and the list a slice of a frame at a
-  time), half again; the 16 ms target is said as KNOWN.
+  time) or as live's Replace of the model's biggest lot, still one frame,
+  half again; the 16 ms target is said as KNOWN.
 - `smalls9 probe` (`src/dev/smalls9_probe.gd`): headless, about five
   minutes. Orthanc and 10179: Find and Replace everywhere as the bar's
   refresh does it, and the parts list as P opens it, each with no frame of

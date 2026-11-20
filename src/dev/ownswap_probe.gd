@@ -631,8 +631,8 @@ func _case_mcp() -> void:
 ## The bar each act must meet is what the same model already costs live, timed
 ## here in the same run: the longest frame of Find and Replace's copies'
 ## frames (FindReplace.frames_paced_for), of the parts list opening as P opens
-## it, or of Find and Replace's Replace of one lot (osfix's: 3023 to Light
-## Grey), the longest, and half again (the lead, 11-19). On 10179 the first
+## it, or of Find and Replace's Replace of the model's biggest lot, the
+## longest, and half again (the lead, 11-19). On 10179 the first
 ## two were one frame of 961 and 366 ms before smalls9 worked them out a
 ## slice of a frame at a time; the Replace, the same change Use what I own
 ## makes, is still one frame (362 ms on 10179, osfix). The 16 ms target is
@@ -734,19 +734,21 @@ func _live_cost(name: String) -> float:
 	await _frames(4)
 	list.hide_list()
 	await _frames(4)
-	# Live's Replace, the change Use what I own makes: osfix's lot, Plate 1 x 2
-	# (3023) in the model's most used colour of it, to Light Grey.
-	var colours: Dictionary = {}
-	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id.get_basename() == "3023":
-			colours[brick.color_code] = int(colours.get(brick.color_code, 0)) + 1
-	var colour: int = -1
-	for code: int in colours:
-		if colour < 0 or int(colours[code]) > int(colours[colour]):
-			colour = code
+	# Live's Replace, the change Use what I own makes: Find and Replace's
+	# Replace of the model's biggest lot, everywhere, to another colour.
+	var lots: Dictionary = {}
+	var standing: Array = assemblies.world.bricks()
+	for brick: BrickWorld.Brick in standing:
+		var key: String = "%s/%d" % [brick.part_id, brick.color_code]
+		lots[key] = int(lots.get(key, 0)) + 1
+	var biggest: String = ""
+	for key: String in lots:
+		if biggest.is_empty() or int(lots[key]) > int(lots[biggest]):
+			biggest = key
 	var replaced: Array = [0.0, 0, 0.0]
-	if colour >= 0:
-		var found: Dictionary = finder.find({"part": "3023", "color": colour}, "all")
+	if not biggest.is_empty():
+		var colour: int = int(biggest.get_slice("/", 1))
+		var found: Dictionary = finder.find({"part": biggest.get_slice("/", 0), "color": colour}, "all")
 		var depth: int = _builder.history_depth()
 		replaced = await _timed_act(func() -> void: finder.replace(found, {"part": "", "color": 7 if colour != 7 else 71}),
 			func() -> bool: return _builder.history_depth() > depth)
@@ -754,9 +756,9 @@ func _live_cost(name: String) -> float:
 		if _builder.history_depth() > depth:
 			await _undone()
 		assemblies.set("_frames_kept", [])
-	print("  %s: live's own longest frame, Find and Replace's frames %.1f ms (over %d frames), the parts list opened %.1f ms (over %d), Replace of 3023 in %d (%d) %.1f ms"
-		% [name, float(framed[2]), int(framed[1]), float(listed[2]), int(listed[1]), colour,
-		int(colours.get(colour, 0)), float(replaced[2])])
+	print("  %s: live's own longest frame, Find and Replace's frames %.1f ms (over %d frames), the parts list opened %.1f ms (over %d), Replace of its biggest lot (%s, %d of %d parts) %.1f ms"
+		% [name, float(framed[2]), int(framed[1]), float(listed[2]), int(listed[1]), biggest,
+		int(lots.get(biggest, 0)), standing.size(), float(replaced[2])])
 	return maxf(maxf(float(framed[2]), float(listed[2])), float(replaced[2]))
 
 
