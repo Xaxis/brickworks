@@ -184,13 +184,18 @@ func lay_for(facing: String, gone: Dictionary = {}, paced: bool = false) -> Lay:
 	_read = OpenPoints.read(assistant)
 	_scratch = Assistant.Model.new()
 	var out: Vector3 = Assistant.FACES[facing]
-	var courses: Array = _courses(facing, gone)
-	var found: Array = _standing_mounts(out, gone)
+	await _breathe()
+	var courses: Array = await _courses(facing, gone)
+	var found: Array = await _standing_mounts(out, gone)
 	for n: int in courses.size():
 		found.append_array(_course_mounts(courses[n], n, out))
 	# Each hole's pin posed once, its end out of the face: a mount is where
 	# a part goes on. Tested only when a part is.
-	var mounts: Array = found.filter(func(m: Mount) -> bool: return _pose_pin(m, out))
+	var mounts: Array = []
+	for mount: Mount in found:
+		await _breathe()
+		if _pose_pin(mount, out):
+			mounts.append(mount)
 	if mounts.is_empty():
 		return null
 	_course_ids = {}
@@ -359,6 +364,7 @@ func _made(part: String, colour: int) -> bool:
 func _courses(facing: String, gone: Dictionary) -> Array:
 	var model: Assistant.Model = assistant._model_from_world()
 	var middle := Vector3.ZERO
+	await _breathe()
 	var standing: Array[BrickWorld.Brick] = assistant._bricks_inside({})
 	for brick: BrickWorld.Brick in standing:
 		middle += brick.transform.origin
@@ -366,6 +372,7 @@ func _courses(facing: String, gone: Dictionary) -> Array:
 		middle /= float(standing.size())
 	var rows: Dictionary = {}       ## "depth|y" -> entries
 	for placement: Assistant.Placement in model.placements:
+		await _breathe()
 		if gone.has(placement.id) or placement.face != "up" or not placement.section.is_empty() \
 				or placement.nudge != Vector3.ZERO:
 			continue
@@ -502,6 +509,7 @@ func _standing_mounts(out: Vector3, gone: Dictionary) -> Array:
 	var mounts: Array = []
 	var lattice: BrickLattice = assistant.builder.lattice
 	for brick: BrickWorld.Brick in assistant._bricks_inside({}):
+		await _breathe()
 		if gone.has(brick.id):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
@@ -631,6 +639,7 @@ func _clear_inside(piece: Piece, skip: Dictionary, mounts: Array) -> bool:
 	for id: int in assistant.builder.lattice.blockers_boxes(packed, 0, skip):
 		if held.has(id) or assistant.scenery.has(id):
 			continue
+		await _breathe()
 		var brick: BrickWorld.Brick = assistant.world.get_brick(id)
 		if brick != null and _pin_in(brick, holes):
 			continue
@@ -751,6 +760,9 @@ func _panels(part: String, colour: int, rows: Dictionary, out: Vector3) -> Array
 			for k: int in row.size():
 				if i == k:
 					continue
+				# Each pair's poses and room tests, a face's hundreds of
+				# mounts a plane, are a slice's work on their own.
+				await _breathe()
 				var b: Mount = row[k]
 				var way: Vector3 = b.end_at() - a.end_at()
 				var gap: float = way.length()
@@ -762,6 +774,7 @@ func _panels(part: String, colour: int, rows: Dictionary, out: Vector3) -> Array
 						- (pair[0] as Attach.Point).frame.origin).length()
 					if absf(gap - own_gap) > 1.5:
 						continue
+					await _breathe()
 					var piece: Piece = _posed_on(part, colour, a, b, pair, out, curved, true)
 					if piece == null:
 						continue
@@ -769,10 +782,12 @@ func _panels(part: String, colour: int, rows: Dictionary, out: Vector3) -> Array
 					if _seen.has(place):
 						continue
 					_seen[place] = true
-					if not _clear_inside(piece, _course_ids, [a, b]):
+					if not await _clear_inside(piece, _course_ids, [a, b]):
 						var met: String = _met
-						piece = _stood_off(piece, a, b, pair, out, curved) \
-							if _depth <= STAND_OFF else null
+						if _depth <= STAND_OFF:
+							piece = await _stood_off(piece, a, b, pair, out, curved)
+						else:
+							piece = null
 						if piece == null:
 							_no("panel meets %s" % met)
 							continue
@@ -833,9 +848,10 @@ static func _own_pairs(own: Array) -> Array:
 ## panel meet the beams it lies on (42079's 3 x 11 by 1.5 LDU), so a panel
 ## laid flush on a body is refused where LEGO® laid one.
 func _stood_off(flush: Piece, a: Mount, b: Mount, pair: Array, out: Vector3,
-		curved: bool) -> Piece:
+		curved: bool) -> Variant:
 	var tried: Array = []
 	for slide: int in range(-STAND_OFF - 2, STAND_OFF + 3):
+		await _breathe()
 		var piece: Piece = _posed_on(flush.part, flush.colour, a, b, pair, out, curved, true,
 			slide, [flush.flip])
 		if piece == null:
@@ -845,8 +861,9 @@ func _stood_off(flush: Piece, a: Mount, b: Mount, pair: Array, out: Vector3,
 			tried.append([outward, piece])
 	tried.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 	for one: Array in tried:
+		await _breathe()
 		var piece: Piece = one[1]
-		if _clear_inside(piece, _course_ids, [a, b]):
+		if await _clear_inside(piece, _course_ids, [a, b]):
 			return piece
 	return null
 
@@ -945,6 +962,7 @@ func _beams(colour: int, rows: Dictionary, out: Vector3) -> Array:
 				starts.sort_custom(func(p: int, q: int) -> bool:
 					return absi(p - mid) < absi(q - mid))
 				for start: int in starts.slice(0, 3):
+					await _breathe()
 					var first: Mount = one[start]
 					var last: Mount = one[start + holes - 1]
 					var piece: Piece = _beam_on(str(BEAMS[holes]), colour, first, last, out)
@@ -954,7 +972,7 @@ func _beams(colour: int, rows: Dictionary, out: Vector3) -> Array:
 					if _seen.has(place):
 						continue
 					_seen[place] = true
-					if not _clear_inside(piece, _course_ids, [first, last]):
+					if not await _clear_inside(piece, _course_ids, [first, last]):
 						_no("beam meets %s" % _met)
 						continue
 					var over: float = _over_body(piece, out)
