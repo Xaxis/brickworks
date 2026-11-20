@@ -959,6 +959,10 @@ def main(argv: list[str]) -> int:
     r.add_argument("out", type=Path)
     r.add_argument("--run", action="append", required=True)
     args = parser.parse_args(argv[1:])
+    if args.command in ("make", "build"):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from bench.run import classes_current
+        classes_current(args.app.resolve())
     if args.command == "make":
         make(args.model, args.out, args.app.resolve(), args.pages)
     elif args.command == "build":

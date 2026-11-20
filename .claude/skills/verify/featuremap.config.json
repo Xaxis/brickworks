@@ -6046,6 +6046,13 @@
       "area": "building"
     },
     {
+      "kind": "cli",
+      "label": "smalls9 probe",
+      "entry": "src/dev/smalls9_probe.gd",
+      "reach": "tools/probe.sh smalls9_probe   (headless, about five minutes: Orthanc and 10179, Find and Replace everywhere and the parts list as P opens it, no frame over 100 ms of the app's own work, the status bar saying so, the same frames and rows as Assemblies.file_frames and Inventory.of)",
+      "area": "building"
+    },
+    {
       "kind": "lib",
       "label": "blocking a person",
       "entry": "supabase/block.sql",
