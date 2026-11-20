@@ -1000,6 +1000,10 @@ def main(argv: list[str] | None = None) -> int:
         for f in choose_frames(info):
             print(f"frames     {info[f][0]:5d} parts {info[f][1]:4d} steps  {f}")
         return 0
+    if args.what in ("roundtrip", "frames", "build", "all"):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from bench.run import classes_current
+        classes_current(ROOT)
     if args.what in ("roundtrip", "all"):
         print(run_roundtrip(out, args.per_size, args.shards, args.timeout))
     if args.what in ("frames", "all"):

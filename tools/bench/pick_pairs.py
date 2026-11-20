@@ -211,6 +211,8 @@ def main() -> int:
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
     args = parser.parse_args()
+    if args.what == "run":
+        bench.classes_current()
     return run(args) if args.what == "run" else report(args)
 
 
