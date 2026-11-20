@@ -22,6 +22,7 @@
 // page (pickMentions).
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
+import { blockPerson } from "/block.js";
 import { avatarHtml } from "/kit.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
   told } from "/card.js";
@@ -687,6 +688,21 @@ function startComments(section) {
       acts.append(button(say("Remove it"), () => confirm(ask) && change(one, "remove")));
     }
     if (!one.mine) acts.append(button(say("Report it"), () => openReport({ comment: one.id }, reply ? say("this reply") : say("this comment"))));
+    // Block its writer (web/block.js): asked first in one line; their
+    // comments then leave the page as the server says.
+    if (!one.mine && one.handle && state.you?.signed_in) {
+      const name = one.by || one.handle;
+      const block = button(say("Block"), async () => {
+        block.disabled = true;
+        const done = await blockPerson(one.handle, name, true);
+        block.disabled = false;
+        if (done.ok) await load();
+        if (done.said) tell(done.said);
+      });
+      block.dataset.blockComment = one.handle;
+      block.setAttribute("aria-label", say("Block {name}", { name }));
+      acts.append(block);
+    }
     main.append(acts);
     if (!reply) {
       const under = document.createElement("ol");

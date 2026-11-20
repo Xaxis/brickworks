@@ -132,10 +132,12 @@ def test_a_mention_is_said_and_grouped_under_its_model() -> None:
 
 def test_the_api_and_the_page_go_together() -> None:
     api = (ROOT / "api/_comments.js").read_text()
-    assert 'call("comment_mention", { account: who, comment_id: id, handles: handles.slice(0, 12) }' in api
+    # At most 12 asked, and nobody a block bars (api/_blocks.js unnameable).
+    assert "mentionsIn(text).slice(0, 12)" in api and "named.filter((handle) => !barred.has(handle))" in api
+    assert 'call("comment_mention", { account: who, comment_id: id, handles }' in api
     assert api.count("await mention(who, comment.id, text)") == 3
     assert 'call("comment_mentions_of", { comment_ids: asked }' in api
-    assert "await withMentions((on.comments || []).map(" in api
+    assert "await withMentions(commentsShown((on.comments || []).map(" in api
     page = (ROOT / "web/model-page.js").read_text()
     drawn = page[page.index('words.className = "comment-body";'):page.index("main.append(head, words);")]
     # Words as text nodes and a link's text: never markup.

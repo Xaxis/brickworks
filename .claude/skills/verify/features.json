@@ -144,6 +144,7 @@
       "area": "web",
       "tests": [
         "tests/test_announce.py",
+        "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py",
@@ -739,6 +740,14 @@
       "entry": "src/dev/binrow_probe.gd",
       "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "cli:block browser flow",
+      "kind": "cli",
+      "entry": "tools/web/block_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/block_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh block: throwaway Ada, Bob and Cy; or a relay on the live project, relay_server.mjs 10981 --static=web)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3881,6 +3890,17 @@
       "tests": []
     },
     {
+      "id": "lib:blocking a person",
+      "kind": "lib",
+      "entry": "supabase/block.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/block.sql --dry --try=tools/block_try.sql --table=blocks   (applied live 2026-11-19; api/_blocks.js, the promises in tests/test_blocks.py; then tools/web/block_flow.mjs)",
+      "area": "web",
+      "tests": [
+        "tests/test_blocks.py",
+        "tests/test_start_abba.py"
+      ]
+    },
+    {
       "id": "lib:brickify",
       "kind": "lib",
       "entry": "src/assembly/brickify.gd",
@@ -5214,6 +5234,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
+        "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -5376,6 +5397,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
+        "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -5492,6 +5514,17 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_site_lang.py"
+      ]
+    },
+    {
+      "id": "ui:block a person",
+      "kind": "ui",
+      "entry": "web/block.js",
+      "reach": "https://brickworks.diy/u/<handle> (More \u203a Block <name>), /m/<id> (Block beside a comment), /settings#blocked-part (Blocked people, Unblock)   (POST /api/people?op=block, GET ?op=blocks)",
+      "area": "web",
+      "tests": [
+        "tests/test_blocks.py",
+        "tests/test_start_abba.py"
       ]
     },
     {
@@ -5958,7 +5991,9 @@
       "entry": "web/follow.js",
       "reach": "https://brickworks.diy/u/<handle> and /m/<id> (Follow); every page's header (signed in, your avatar and what is new for you, on Menu at a phone's width)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_blocks.py"
+      ]
     },
     {
       "id": "ui:gallery page",
@@ -6242,7 +6277,9 @@
       "entry": "web/follow.js",
       "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_blocks.py"
+      ]
     },
     {
       "id": "ui:more's first rows and adding to a selection by finger",
@@ -6575,6 +6612,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
+        "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
@@ -7029,7 +7067,9 @@
       "entry": "web/follow.js",
       "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_blocks.py"
+      ]
     },
     {
       "id": "ui:the app menu",
@@ -7401,6 +7441,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
+        "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",

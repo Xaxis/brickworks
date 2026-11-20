@@ -998,6 +998,97 @@ docs/LISTS.md (Own and Want on every set, Save on every gallery model,
 lists of your own holding both, Your lists at /lists, the profile's Sets
 tab; unit lists1, and what is left for lists2 in its order).
 
+## 9. Blocking a person (2026-11-19)
+
+Nobody could be blocked on brickworks.diy: a model's owner could hide a
+comment, but nothing stopped a person. Brick Creator 3D's gallery lets
+you "report creations or block authors" (docs/APP_UX10.md, item 6). Unit
+blockauthor read how five sites treat a block, then built one
+(`supabase/block.sql`, `api/_blocks.js`, `web/block.js`).
+
+### What the sites do
+
+Most help pages refused automated reading (X and Reddit 403, Instagram's
+loaded empty), so where a line says *excerpt* the words are a search
+result's quote of that page, not a full read.
+
+| | Instagram [IG-B] | X [X-B] | Reddit [RD-B] | Printables [PR-B] | Thingiverse |
+|---|---|---|---|---|---|
+| What the blocked person sees of you | nothing: they "can no longer search for your profile, view your content" | your public posts, but they "cannot engage (like, reply, repost)" (excerpt) | your posts as "[deleted]" / "[unavailable]"; not your profile (excerpt) | not documented; reads as a filter on your own view | no block found |
+| Follows | end both ways, not back on unblock (a guide only [IG-G]) | "will cause you to unfollow that account (and them to unfollow you)"; they "cannot follow you" (excerpt) | not documented | not documented | |
+| Old comments | stay; "you can delete their comments" (archived help, excerpt [IG-C]) | not documented (only "hide reply") | collapsed for the blocker [RD-E] | not documented | |
+| Notifications | a blocked mention "won't appear in your Activity" (archived, excerpt [IG-M]) | "you will not receive notifications from accounts you block" (excerpt) | not documented | | |
+| Is anybody told | no: "People aren't notified when you block them" | no notice, but they "will see they have been blocked" on your profile, and a follow says so [X-F] | no notice; a failed reply said "Something went wrong" (a user's report) | not documented | |
+
+They disagree most on two things: whether the blocked person learns of it
+(X says so on the profile; Instagram and Reddit stay silent), and whether
+old comments stay (Instagram leaves them for you to delete; Reddit folds
+them for you only). Printables has, from its forum, a "hide this creator
+from me" list under your account's settings, not a two-way block; we found
+nothing for Thingiverse.
+
+### What Brickworks does, and why
+
+The person who blocks (A) is the one to protect, and the person blocked (B)
+is the one who might retaliate if told. So each choice below is the one
+that leaves A safest without telling B anything B could act on.
+
+- **Never told.** No notification, mail, count or page says B was blocked.
+  B's own pages are as before. A refusal B meets says only that it cannot
+  be done ("You can't follow this profile.", "You can't comment on this
+  model.") with no word of a block, as Instagram and Reddit do. X's
+  "you have been blocked" is what we chose not to copy: it is the moment a
+  harasser starts a second account. A, who did it, is told plainly why and
+  where to undo it.
+- **B's comments on A's models are hidden from everybody**, not just from A,
+  with their replies. Instagram leaves them for A to delete one by one, and
+  Reddit folds them only for A. Both leave the abuse on A's page for
+  everyone else, which is the harm a block is for. B still sees their own
+  comments as before, so the page doesn't tell B anything. Comments on
+  other people's models stay, but are hidden from A wherever A reads.
+- **Both ways for writing, one way for reading.** Neither may follow the
+  other or the other's collections, comment on the other's models, reply
+  to the other's comment or in a thread the other started, post a photo of
+  a build on the other's model, like the other's model, remix it, put it in
+  a collection, or @name the other. A trigger on each table says it
+  whatever writes it. Likes are refused too because a day's likes reach A
+  as one row with a count, which no list can leave B's like out of.
+  Remixes and collections are refused because each sits on A's model's
+  page, and a collection's name is B's to choose: the same harm hiding B's
+  comments is for. A remix B made before keeps its link, and its republish
+  is B's own; a collection filled many at once leaves the model out and
+  keeps the rest. B's @ list still offers A, as anybody's does:
+  A missing from it would tell B. Reading stays open both ways on public pages: a
+  public model page is public signed out, so hiding it from a signed-in B
+  would protect nobody and would tell B.
+- **Follows end both ways, and unblocking doesn't bring them back**, as X
+  documents and Instagram's guides say. A follow brought back on its own
+  would tell B of the unblock and put B back in A's feed unasked.
+- **What leaves A's model pages, for everybody:** B's remixes and B's
+  public collections made before the block, and B's models among those
+  beside it, out of the page's counts too; the page is everybody's, so it
+  goes by A's blocks, as A's comments do. Back when A unblocks.
+- **What leaves A's view:** B's models from A's gallery (search included),
+  shelves, feed, Latest on Brickworks (the feed page's rail and First
+  steps, answered for A alone) and "More like"; the same where A's own
+  Claude reads the gallery and a model's comments and photos, and in the
+  app's Library, which ask with A's session once A is signed in; B's rows from
+  A's notifications and the daily mail, and rows about B's models (a remix
+  of A's model with no maker named, a reply on B's model); the count on
+  A's avatar, counted again without them (never the count less them: a
+  count stops at 99); B from A's @ list.
+- **Unblocking** brings back what was hidden (models, comments) and lets
+  either follow or comment again. Settings › Blocked people lists whom you
+  blocked, newest first, each with Unblock, as Printables' and Instagram's
+  settings do.
+- **The owner sees how many, never who.** /admin › People › the account
+  says "Blocked by N people" beside its reports (docs/ADMIN.md), so a run
+  of blocks can be weighed with reports. Who blocked whom is no client's
+  to read: the table has row security on and every client role revoked;
+  an account's export leaves out who blocked it, even the count.
+- **Limits.** At most 1,000 blocks an account, as Reddit's, and 60 an hour
+  (300 a day), so blocking can't be used to probe who is who.
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is
@@ -1103,3 +1194,23 @@ Phase 7's, read 2026-10-29:
 - [SK-O] Sketchfab's oEmbed, read directly: https://sketchfab.com/developers/oembed
 - [SK-SH] Sketchfab help, sharing (Facebook, X, Pinterest):
   https://help.sketchfab.com/en/articles/16152737-sharing-models-online
+Section 9's, read 2026-11-19 (most by search excerpt, as it says):
+
+- [IG-B] Instagram, restrict, mute, block and report:
+  https://about.instagram.com/blog/tips-and-tricks/restrict-mute-block-report-guide/
+- [IG-C] Instagram help (archived), what happens when you block someone:
+  https://help.instagram.com/426700567389543
+- [IG-M] Instagram help (archived), mentions from a blocked account:
+  https://help.instagram.com/454180787965921
+- [IG-G] A guide to Instagram's block (follows end, not restored):
+  https://macpaw.com/how-to/block-unblock-someone-instagram
+- [X-B] X help, blocking and unblocking accounts:
+  https://help.x.com/en/using-x/blocking-and-unblocking-accounts
+- [X-F] X help, common following issues ("blocked you from following"):
+  https://help.x.com/en/using-x/common-following-issues
+- [RD-B] Reddit help, how does blocking work:
+  https://support.reddithelp.com/hc/en-us/articles/4413520308372-How-does-blocking-work
+- [RD-E] Engadget, Reddit's block update (a blocked user's posts collapsed):
+  https://www.engadget.com/reddit-updates-block-feature-000112208.html
+- [PR-B] Prusa forum, Printables' blocked creators under your account:
+  https://forum.prusa3d.com/forum/english-forum-general-discussion-announcements-and-releases/printables-com-feature-request-improved-filtering-block-or-hide-selected-user-and-their-models

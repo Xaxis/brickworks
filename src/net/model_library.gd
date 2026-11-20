@@ -455,7 +455,7 @@ func _kept_or_fetched(path: String, most: int, fresh: bool, job: Working.Job = n
 ## One request: {code, bytes}, code 0 when nothing came back. Asked again
 ## twice when nothing did, as SharedModels.fetch does. [param job], when
 ## given, says how much has come: "… 12 of 36 MB".
-func fetch(url: String, most: int, job: Working.Job = null) -> Dictionary:
+func fetch(url: String, most: int, job: Working.Job = null, headers := PackedStringArray()) -> Dictionary:
 	var words: String = job.words.trim_suffix("…") if job != null else ""
 	for attempt: int in 3:
 		var request := HTTPRequest.new()
@@ -465,12 +465,12 @@ func fetch(url: String, most: int, job: Working.Job = null) -> Dictionary:
 		# 36 MB on a slow line is minutes; the index and a cover are not.
 		request.timeout = 600.0 if most > MOST_COVER else 60.0
 		add_child(request)
-		if request.request(url) != OK:
+		if request.request(url, headers) != OK:
 			request.queue_free()
 			return {"code": 0, "bytes": PackedByteArray()}
 		var got: Array = []
-		request.request_completed.connect(func(result: int, code: int, headers: PackedStringArray,
-				body: PackedByteArray) -> void: got.append_array([result, code, headers, body]),
+		request.request_completed.connect(func(result: int, code: int, answered: PackedStringArray,
+				body: PackedByteArray) -> void: got.append_array([result, code, answered, body]),
 			CONNECT_ONE_SHOT)
 		while got.is_empty():
 			await get_tree().process_frame

@@ -96,6 +96,15 @@ declare -A CMD=(
   # twice. Before the file, a comment names nobody and goes as ever.
   # Throwaway accounts, deleted after with their model.
   [mentions]="tools/web/mentions_flow.mjs --url=$P --out=$S/${TAG}_mentions"
+  # Blocking a person (docs/SOCIAL.md section 9, supabase/block.sql): Ada
+  # blocks Bob from his profile's menu at 390 px, asked first in one line;
+  # the follows end both ways, his shed leaves her gallery search and feed,
+  # his comment and its answers leave her tower for everybody but him, his
+  # rows leave her notifications and count; he is told nothing and refused
+  # in neutral words; nobody's key reads the blocks; Settings › Blocked
+  # people unblocks, the follows not back; a comment's row blocks too.
+  # Three throwaway accounts, deleted after with their models.
+  [block]="tools/web/block_flow.mjs --url=$P --out=$S/${TAG}_block"
   # The gallery's Builds tab (docs/SOCIAL.md section 7, item 8): /builds
   # lists everybody's photos of real builds newest first, each linking its
   # model's page at the photo and its builder's profile; a photo hidden by
