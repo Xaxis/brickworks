@@ -1175,7 +1175,7 @@ func _take_moment(name: String = title) -> void:
 
 
 ## Whether the model is at the moment its kept text stands for: the history
-## at the same step, with as many to redo; nothing changed outside it, not
+## at the same step (a redo makes a new one); nothing changed outside it, not
 ## a part (BrickWorld.parts_as_marked: a Build together room's, an MCP
 ## write's, one Simulate moved and put back is none), nor what is scenery.
 ## Its own lines beyond its parts are [method _as_kept]'s.
