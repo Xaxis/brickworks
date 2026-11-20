@@ -896,15 +896,18 @@ func _render_marked() -> void:
 		{"t": 2, "turn": 80, "tilt": 10, "away": 900}]}})
 	var before: PackedStringArray = _camera_lines(_store.to_text("Doors"))
 	var depth: int = _builder.history_depth()
+	# Called as a chat calls it: a step kept for the call is marked as that chat's, so its Undo is the
+	# session's. At f864b1f16 the call skipped _before_change, so its step was nobody's.
 	var said: String = _text(await _finished(await _rpc("tools/call", {"name": "render_motion",
-		"arguments": {"name": "Hand made", "camera": {"turntable": true}, "fps": 12, "size": "480x300"}})))
+		"arguments": {"name": "Hand made", "camera": {"turntable": true}, "fps": 12, "size": "480x300"},
+		"_meta": {CommandSocket.CHAT_KEY: {"chat": "camfix-chat"}}})))
 	_print(said.left(240))
 	var motion: Motions.Motion = _player.motions().named("Hand made")
-	var words: String = str(_builder.last_step().get("words", ""))
-	_check("M1 the turntable kept in place of the three keys, one step, the session's (%d keys, %d step, \"%s\")" % [
+	var by: String = str(_builder.last_step().get("by", ""))
+	_check("M1 the turntable kept in place of the three keys, one step, the chat's (%d keys, %d step, by \"%s\")" % [
 		motion.camera.keys.size() if motion != null and motion.camera != null else 0,
-		_builder.history_depth() - depth, words], motion != null and motion.camera != null
-		and motion.camera.keys.size() == 2 and _builder.history_depth() == depth + 1 and words.contains("render motion"))
+		_builder.history_depth() - depth, by], motion != null and motion.camera != null
+		and motion.camera.keys.size() == 2 and _builder.history_depth() == depth + 1 and by == "camfix-chat")
 	_shell.run("undo")
 	await _frames(10)
 	_check("M1 ...one Undo brings the three keys back byte for byte", _camera_lines(_store.to_text("Doors")) == before)
