@@ -14520,6 +14520,143 @@ msgstr "Seine Form ist noch nicht da: hebe es gleich noch einmal."
 msgid "There is no part #%d in the model to lift it by."
 msgstr "Im Modell gibt es kein Teil #%d, an dem es gehoben werden kann."
 
+# View, Stress's Swing (APP_UX10, swoosh): the model held by a part and swung like
+# a toy, what comes away first and when; and Swing's legend.
+msgid "Swing"
+msgstr "Schwingen"
+
+msgid "Swing the model by a part like a toy, 1 m in half a second and a quarter turn: press, then click the part. What comes away first is named, red"
+msgstr "Das Modell an einem Teil wie ein Spielzeug schwingen, 1 m in einer halben Sekunde und eine Vierteldrehung: drücken, dann auf das Teil klicken. Was zuerst abfällt, wird genannt, rot"
+
+msgid "Then it holds through the swing"
+msgstr "Dann hält es das Schwingen durch"
+
+msgid "Then it comes away later in the swing, %s s in"
+msgstr "Dann fällt es beim Schwingen später ab, nach %s s"
+
+msgid "In the hand: the part it is swung by"
+msgstr "In der Hand: das Teil, an dem es geschwungen wird"
+
+msgid "Comes away in the swing: a joint lets go"
+msgstr "Fällt beim Schwingen ab: eine Verbindung löst sich"
+
+msgid "Holds past its working load at its worst, or swings on a pin"
+msgstr "Hält im schlimmsten Moment über seiner Arbeitslast, oder schwingt an einem Pin"
+
+msgid "Holds through the swing: faded"
+msgstr "Hält das Schwingen durch: blass"
+
+msgid "Click the part to swing the model by."
+msgstr "Klicke auf das Teil, an dem das Modell geschwungen werden soll."
+
+msgid "Click another part to swing by it"
+msgstr "Klicke auf ein anderes Teil, um daran zu schwingen"
+
+msgid "Swing again sets it down."
+msgstr "Erneut Schwingen setzt es ab."
+
+msgid "Swinging it by %s…"
+msgstr "Wird an %s geschwungen…"
+
+msgid "swing: click the part to swing the model by"
+msgstr "Schwingen: klicke auf das Teil, an dem das Modell geschwungen werden soll"
+
+msgid "swing off: the model stands on the floor again"
+msgstr "Schwingen aus: das Modell steht wieder auf dem Boden"
+
+msgid "swing: the part it was swung by is gone"
+msgstr "Schwingen: das Teil, an dem es geschwungen wurde, ist weg"
+
+msgid "swing: swinging it by %s…"
+msgstr "Schwingen: wird an %s geschwungen…"
+
+msgid "Swung by %s: everything holds through the swing, %s g"
+msgstr "An %s geschwungen: alles hält das Schwingen durch, %s g"
+
+msgid "Swung by %s: %s comes away first, %s s in: %s"
+msgstr "An %s geschwungen: %s fällt zuerst ab, nach %s s: %s"
+
+msgid "Swung by %s: %s falls off first, %s s in: %s"
+msgstr "An %s geschwungen: %s fällt zuerst herunter, nach %s s: %s"
+
+msgid "Swung by %s: %s stays behind, %s s in: %s"
+msgstr "An %s geschwungen: %s bleibt zurück, nach %s s: %s"
+
+msgid "%d pieces in all, %s g of %s"
+msgstr "%d Stücke insgesamt, %s g von %s"
+
+msgid "%s, %s g, at its 1 stud"
+msgstr "%s, %s g, an seiner 1 Noppe"
+
+msgid "%s, %s g, at its %d studs"
+msgstr "%s, %s g, an seinen %d Noppen"
+
+msgid "%s, %s g, at the %d studs of %s"
+msgstr "%s, %s g, an den %d Noppen von %s"
+
+msgid "%s, %s g: it only stood on %s"
+msgstr "%s, %s g: es stand nur auf %s"
+
+msgid "%s, %s g: nothing joins it to %s"
+msgstr "%s, %s g: nichts verbindet es mit %s"
+
+msgid "%s on the left"
+msgstr "%s auf der linken Seite"
+
+msgid "%s on the right"
+msgstr "%s auf der rechten Seite"
+
+msgid "%s on the front"
+msgstr "%s vorne"
+
+msgid "%s on the back"
+msgstr "%s hinten"
+
+msgid "%s on the front-left"
+msgstr "%s vorne links"
+
+msgid "%s on the front-right"
+msgstr "%s vorne rechts"
+
+msgid "%s on the back-left"
+msgstr "%s hinten links"
+
+msgid "%s on the back-right"
+msgstr "%s hinten rechts"
+
+msgid "%s at the top"
+msgstr "%s oben"
+
+msgid "%s at the bottom"
+msgstr "%s unten"
+
+msgid "%s s in: %s"
+msgstr "nach %s s: %s"
+
+msgid "worst %s s in"
+msgstr "am schlimmsten nach %s s"
+
+msgid "%s: swung by it, it holds the rest"
+msgstr "%s: daran geschwungen, hält es den Rest"
+
+msgid "%s: comes away %s s in, as %s lets go of all it holds"
+msgstr "%s: fällt nach %s s ab, da %s alles loslässt, was es hält"
+
+msgid "%s: comes away %s s in with %s, which lets go"
+msgstr "%s: fällt nach %s s mit %s ab, das sich löst"
+
+msgid "%s: stays behind, joined to nothing swung"
+msgstr "%s: bleibt zurück, mit nichts Geschwungenem verbunden"
+
+msgid "The baseplate is the floor: swing the model by one of its own parts."
+msgstr "Die Grundplatte ist der Boden: schwinge das Modell an einem seiner eigenen Teile."
+
+msgid "Its shape has not come yet: swing it again in a moment."
+msgstr "Seine Form ist noch nicht da: schwinge es gleich noch einmal."
+
+msgid "There is no part #%d in the model to swing it by."
+msgstr "Im Modell gibt es kein Teil #%d, an dem es geschwungen werden kann."
+
 # From my bricks: the bin as what the person owns, counted down (ownlimit)
 msgid "Build from my bricks"
 msgstr "Aus meinen Steinen bauen"
@@ -15677,3 +15814,9 @@ msgstr "Doppeltippen"
 
 msgid "on a part, turn it as Turn does"
 msgstr "auf einem Teil: es drehen, wie Drehung es tut"
+
+msgid "Reading how the model's copies are placed…"
+msgstr "Die Lage der Kopien des Modells wird gelesen…"
+
+msgid "Listing the model's parts…"
+msgstr "Die Teile des Modells werden aufgelistet…"

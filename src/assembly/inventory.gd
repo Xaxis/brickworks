@@ -103,29 +103,59 @@ static func of(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> Inventory:
 	var inventory := Inventory.new()
 	var by_key: Dictionary = {}
+	inventory._take_whole(by_key, world, library, skip)
+	for brick: BrickWorld.Brick in world.bricks():
+		inventory._take(by_key, brick, library, skip)
+	inventory._sort()
+	return inventory
 
+
+## [method of], a slice of a frame at a time: [param pace] says when its
+## slice is spent, and [param giving] is asked before each frame given back
+## whether to go on (the parts list says so in the status bar, or has been
+## closed: then null). On Orthanc it was 0.15 to 0.3 s in one frame
+## (smalls9). The model must not change meanwhile: its caller takes stock
+## again when it has.
+static func of_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		pace: FramePace, giving: Callable) -> Inventory:
+	var inventory := Inventory.new()
+	var by_key: Dictionary = {}
+	inventory._take_whole(by_key, world, library, skip)
+	for brick: BrickWorld.Brick in world.bricks():
+		inventory._take(by_key, brick, library, skip)
+		if pace.due():
+			if not bool(giving.call()):
+				return null
+			await pace.next()
+	inventory._sort()
+	return inventory
+
+
+func _take_whole(by_key: Dictionary, world: BrickWorld, library: PartLibrary,
+		skip: Dictionary) -> void:
 	var whole: Dictionary = _sold_whole(world, library, skip)
 	for path: String in whole:
 		var item: Dictionary = whole[path]
-		var lot: Lot = inventory._add(by_key, library, str(item["part"]), int(item["color"]))
-		inventory.items[path] = lot
+		var lot: Lot = _add(by_key, library, str(item["part"]), int(item["color"]))
+		items[path] = lot
 		var first: int = -1
 		for brick: BrickWorld.Brick in item["bricks"]:
 			lot.bricks.append(brick.id)
-			inventory.whole_of[brick.id] = path
+			whole_of[brick.id] = path
 			if first < 0 or brick.id < first:
 				first = brick.id
-		inventory._first[path] = first
-	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id) or inventory.whole_of.has(brick.id):
-			continue
-		if not is_piece(brick.part_id, library):
-			inventory.drawn_in_pieces += 1
-			inventory._not_pieces[brick.id] = true
-			continue
-		inventory._add(by_key, library, brick.part_id, brick.color_code).bricks.append(brick.id)
-	inventory._sort()
-	return inventory
+		_first[path] = first
+
+
+func _take(by_key: Dictionary, brick: BrickWorld.Brick, library: PartLibrary,
+		skip: Dictionary) -> void:
+	if skip.has(brick.id) or whole_of.has(brick.id):
+		return
+	if not is_piece(brick.part_id, library):
+		drawn_in_pieces += 1
+		_not_pieces[brick.id] = true
+		return
+	_add(by_key, library, brick.part_id, brick.color_code).bricks.append(brick.id)
 
 
 ## A parts list of [param counts], Collection.key_of's "part/colour" -> how

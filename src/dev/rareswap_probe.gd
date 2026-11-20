@@ -170,7 +170,13 @@ func _list_up() -> InventoryPanel:
 		list.hide_list()
 	_shell.run("parts_list")
 	await _frames(6)
-	return _list()
+	# A big model's list is made a slice of a frame at a time (smalls9).
+	var shown: InventoryPanel = _list()
+	for _n: int in 3000:
+		if not shown.is_filling():
+			break
+		await process_frame
+	return shown
 
 
 ## The rare row's count: the number it starts with, 0 when it says none.
@@ -276,8 +282,8 @@ func _swap_pressed(list: InventoryPanel) -> bool:
 		return false
 	var until: int = Time.get_ticks_msec() + 30000
 	while Time.get_ticks_msec() < until:
-		if not bool(list.get("_swapping")) and not list.controls_by_name().has("parts_swap") \
-				and _builder.history_depth() != depth:
+		if not bool(list.get("_swapping")) and not list.is_filling() \
+				and not list.controls_by_name().has("parts_swap") and _builder.history_depth() != depth:
 			await _frames(4)
 			return true
 		await process_frame

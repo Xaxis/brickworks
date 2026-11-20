@@ -114,25 +114,66 @@ static func _index(library: PartLibrary) -> void:
 	_by_name.clear()
 	_other_hand.clear()
 	for id: String in library.ids():
-		var info: PartLibrary.PartInfo = library.parts[id]
-		if info.is_redirect() or not info.reachable:
-			continue
-		var name: String = Inventory._tidy(info.name)
-		var ids: PackedStringArray = _by_name.get(name, PackedStringArray())
-		ids.append(id)
-		_by_name[name] = ids
+		_name_into(_by_name, library, id)
 	for name: String in _by_name:
-		var swapped: String = _swap_hands(name)
-		# Each pair of names once, the same whichever is read first.
-		if swapped > name and _by_name.has(swapped):
-			_pair(_by_name[name], _by_name[swapped])
+		_pair_into(_other_hand, _by_name, name)
+
+
+static func _name_into(by_name: Dictionary, library: PartLibrary, id: String) -> void:
+	var info: PartLibrary.PartInfo = library.parts[id]
+	if info.is_redirect() or not info.reachable:
+		return
+	var name: String = Inventory._tidy(info.name)
+	var ids: PackedStringArray = by_name.get(name, PackedStringArray())
+	ids.append(id)
+	by_name[name] = ids
+
+
+static func _pair_into(hands: Dictionary, by_name: Dictionary, name: String) -> void:
+	var swapped: String = _swap_hands(name)
+	# Each pair of names once, the same whichever is read first.
+	if swapped > name and by_name.has(swapped):
+		_pair(by_name[name], by_name[swapped], hands)
+
+
+## Whether [method counterpart]'s index is made for [param library].
+static func indexed(library: PartLibrary) -> bool:
+	_lock.lock()
+	var made: bool = _indexed == library
+	_lock.unlock()
+	return made
+
+
+## [method counterpart]'s index of the bin's handed parts, made a slice of a
+## frame at a time ([param pace]) before a first look at a mirrored copy
+## needs it: made in the frame that asks, it was one of 100 to 340 ms
+## (smalls9, 10179's Find and Replace). The same index as made at once.
+static func index_paced(library: PartLibrary, pace: FramePace) -> void:
+	if indexed(library):
+		return
+	var by_name: Dictionary = {}
+	var hands: Dictionary = {}
+	for id: String in library.ids():
+		_name_into(by_name, library, id)
+		if pace.due():
+			await pace.next()
+	for name: String in by_name:
+		_pair_into(hands, by_name, name)
+		if pace.due():
+			await pace.next()
+	_lock.lock()
+	if _indexed != library:
+		_by_name = by_name
+		_other_hand = hands
+		_indexed = library
+	_lock.unlock()
 
 
 ## Pairs the parts of one name with those of its other hand's, the nearest
 ## numbers first (3816b with 3817b, 11477d11 with 11477d12), then the
 ## catalogue's order; a part left over takes the nearest, whose pair is
 ## another.
-static func _pair(one: PackedStringArray, other: PackedStringArray) -> void:
+static func _pair(one: PackedStringArray, other: PackedStringArray, hands: Dictionary) -> void:
 	var ways := PackedInt64Array()
 	for i: int in one.size():
 		for j: int in other.size():
@@ -141,19 +182,19 @@ static func _pair(one: PackedStringArray, other: PackedStringArray) -> void:
 	for way: int in ways:
 		var a: String = one[(way >> 20) & 0xFFFFF]
 		var b: String = other[way & 0xFFFFF]
-		if not _other_hand.has(a) and not _other_hand.has(b):
-			_other_hand[a] = b
-			_other_hand[b] = a
+		if not hands.has(a) and not hands.has(b):
+			hands[a] = b
+			hands[b] = a
 	for way: int in ways:
 		var a: String = one[(way >> 20) & 0xFFFFF]
 		var b: String = other[way & 0xFFFFF]
-		if not _other_hand.has(a):
-			_other_hand[a] = b
+		if not hands.has(a):
+			hands[a] = b
 	for way: int in ways:
 		var a: String = one[(way >> 20) & 0xFFFFF]
 		var b: String = other[way & 0xFFFFF]
-		if not _other_hand.has(b):
-			_other_hand[b] = a
+		if not hands.has(b):
+			hands[b] = a
 
 
 ## How many letters one part number differs from another by: those to

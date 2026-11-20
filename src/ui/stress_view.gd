@@ -36,6 +36,12 @@
 ## working load amber, the part lifted blue (LiftTest). Choosing another part
 ## lifts by that one; a change to the model lifts it again; Lift off, the
 ## model stands again.
+##
+## Its Swing (swoosh, APP_UX10): the same, but the model swung like a toy by
+## the part in the hand, through a child's arc, 1 m in 0.5 s and a quarter
+## turn (SwingTest): what comes away first and when, red, each joint's worst
+## load amber past its working load. Swing and Lift are one mode, the part
+## in the hand kept as one gives way to the other.
 class_name StressView
 extends Node
 
@@ -69,6 +75,8 @@ var panel: StressPanel = null
 ## null while nothing is lifted, and the model's revision it was of.
 var builder: Builder = null
 var lifting: bool = false
+## Lifting, whether the model is swung (Swing) rather than held still (Lift).
+var swinging: bool = false
 var lift: RefCounted = null
 var _lift_revision: int = -1
 var _lift_generation: int = -1
@@ -93,6 +101,13 @@ class Weak extends RefCounted:
 	## How many times over it holds what is past it: 0 for a piece on a
 	## touch past where it touches, which falls.
 	var margin: float = INF
+	## A swing's row (SwingTest): what comes away past the joint, id ->
+	## true, the side Strengthen makes hold; the part in the hand and the
+	## arc, by which Strengthen judges a fix, swung again. Empty and 0 for
+	## Stress's own rows and Lift's.
+	var side: Dictionary = {}
+	var swung_by: int = 0
+	var arc: Dictionary = {}
 
 
 ## Turn the view on or off. On, the model is drawn faded at once and its
@@ -104,6 +119,7 @@ func set_on(value: bool) -> void:
 	report = null
 	if not on:
 		lifting = false
+		swinging = false
 		lift = null
 		_lift_asked += 1
 	world.set_stress(on)
@@ -129,7 +145,8 @@ func show_report(weighed: Stability.Report) -> void:
 	if lifting and lift != null and world.generation() != _lift_generation:
 		lift = null
 		_lift_asked += 1
-		say.call("lift: click the part to lift the model by")
+		say.call("swing: click the part to swing the model by" if swinging
+			else "lift: click the part to lift the model by")
 	if lifting and lift != null:
 		if world.revision != _lift_revision:
 			_lift_again()
@@ -298,27 +315,48 @@ func line() -> String:
 
 ## Lift on or off. On, the one part selected, when there is one, is lifted by
 ## at once, and otherwise the next one chosen; off, the model stands again.
+## On while Swing is, the part swung by is lifted by instead.
 func set_lift(value: bool) -> void:
-	if value == lifting:
+	_hold(value, false)
+
+
+## Swing on or off (swoosh): as Lift, but the model swung by the part.
+func set_swing(value: bool) -> void:
+	_hold(value, true)
+
+
+## Lift ([param swing] false) or Swing on or off: one gives way to the other
+## with the part in the hand kept.
+func _hold(value: bool, swing: bool) -> void:
+	if value == (lifting and swinging == swing):
 		return
-	lifting = value
-	lift = null
-	_lift_asked += 1
-	if not lifting:
-		say.call("lift off: the model stands on the floor again")
+	var was: int = int(lift.get("by")) if lift != null and lifting else 0
+	if not value:
+		lifting = false
+		swinging = false
+		lift = null
+		_lift_asked += 1
+		say.call("swing off: the model stands on the floor again" if swing
+			else "lift off: the model stands on the floor again")
 		if report != null:
 			show_report(report)
 		elif panel != null:
 			panel.show_weak([])
 		return
+	lifting = true
+	swinging = swing
+	lift = null
+	_lift_asked += 1
 	if not on:
 		set_on(true)
 		lifting = true
-	var one: int = _one_chosen()
+		swinging = swing
+	var one: int = was if was != 0 and world.get_brick(was) != null else _one_chosen()
 	if one != 0:
 		lift_by(one)
 		return
-	say.call("lift: click the part to lift the model by")
+	say.call("swing: click the part to swing the model by" if swing
+		else "lift: click the part to lift the model by")
 	if panel != null:
 		panel.show_lift(null)
 
@@ -330,10 +368,18 @@ func lift_by(id: int) -> void:
 	var asked: int = _lift_asked
 	var revision: int = world.revision
 	var generation: int = world.generation()
+	var swing: bool = swinging
 	if panel != null:
 		panel.lifting_now(id)
-	var lifted: RefCounted = await lift_paced(id)
-	if asked != _lift_asked or not lifting or world.generation() != generation:
+	if swing:
+		# A worker's while: the status bar says so (the panel too).
+		say.call("swing: swinging it by %s…" % _named_part(id))
+	var lifted: RefCounted
+	if swing:
+		lifted = await swing_paced(id)
+	else:
+		lifted = await lift_paced(id)
+	if asked != _lift_asked or not lifting or swinging != swing or world.generation() != generation:
 		return
 	if lifted == null:
 		# A part the library had to add meanwhile: lifted again at the next
@@ -358,7 +404,8 @@ func _lift_again() -> void:
 	if world.get_brick(by) == null:
 		lift = null
 		_lift_asked += 1
-		say.call("lift: the part it was lifted by is gone — click another")
+		say.call("swing: the part it was swung by is gone — click another" if swinging
+			else "lift: the part it was lifted by is gone — click another")
 		if panel != null:
 			panel.show_lift(null)
 		return
@@ -405,22 +452,44 @@ func chosen(_count: int) -> void:
 ## their names, with their numbers when [param numbered] (a session's).
 ## Null when the library had to add a part meanwhile.
 func lift_paced(id: int, numbered: bool = false) -> RefCounted:
-	var lifter: RefCounted = Later.script(&"LiftTest").new()
-	lifter.library = library
-	lifter.floor_ids = scenery.duplicate()
+	return await _held_paced(Later.script(&"LiftTest").new(), id, numbered)
+
+
+## The model swung by part [param id] (SwingTest.Swung), what Swing draws and
+## a session's weakest_joints swing= reads, so the two agree: as [method
+## lift_paced], but on a worker whatever the model's size where there are
+## threads, its forty-three moments being Lift's sum each. [param arc]
+## {metres, seconds, turn}, each where given, in place of a child's.
+func swing_paced(id: int, numbered: bool = false, arc: Dictionary = {}) -> RefCounted:
+	var swinger: RefCounted = Later.script(&"SwingTest").new()
+	for key: String in ["metres", "seconds", "turn"]:
+		if arc.has(key):
+			swinger.set(key, float(arc[key]))
+	return await _held_paced(swinger, id, numbered, 0)
+
+
+## [param holder] (a LiftTest or a SwingTest) run on the model by part
+## [param id]: on the main thread under [param on_a_worker_from] parts or
+## with no threads, on a worker otherwise.
+func _held_paced(holder: RefCounted, id: int, numbered: bool,
+		on_a_worker_from: int = Stability.ON_A_WORKER_FROM) -> RefCounted:
+	var swing: bool = holder.has_method("swing")
+	holder.library = library
+	holder.floor_ids = scenery.duplicate()
 	var lifted: RefCounted
-	if world.brick_count() < Stability.ON_A_WORKER_FROM or OS.has_feature("nothreads"):
-		lifter.lattice = builder.lattice
-		lifted = lifter.lift(world.bricks(), id)
+	if world.brick_count() < on_a_worker_from or OS.has_feature("nothreads"):
+		holder.lattice = builder.lattice
+		lifted = holder.swing(world.bricks(), id) if swing else holder.lift(world.bricks(), id)
 	else:
-		lifter.lattice = builder.lattice.copy_for_reading()
-		lifter.stop = WorkerTasks.Stop.new()
+		holder.lattice = builder.lattice.copy_for_reading()
+		holder.stop = WorkerTasks.Stop.new()
 		var still: BrickWorld = world.copy_for_reading()
 		var out: Array = [null]
 		library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
-			out[0] = lifter.lift(still.bricks(), id), false, "lift the model")
-		library.reading_in(task, func() -> void: (lifter.stop as WorkerTasks.Stop).ask())
+			out[0] = holder.swing(still.bricks(), id) if swing else holder.lift(still.bricks(), id),
+			false, "swing the model" if swing else "lift the model")
+		library.reading_in(task, func() -> void: (holder.stop as WorkerTasks.Stop).ask())
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
 		WorkerTasks.collect(task)
@@ -496,6 +565,12 @@ static func margin_words(margin: float) -> String:
 
 func _name(part_id: String) -> String:
 	return _named(library, part_id)
+
+
+## Part [param id]'s name, "#id" for none.
+func _named_part(id: int) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(id)
+	return _name(brick.part_id) if brick != null else "#%d" % id
 
 
 static func _named(library: PartLibrary, part_id: String) -> String:

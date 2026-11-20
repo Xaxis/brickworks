@@ -2912,6 +2912,12 @@ since 2026-10-19 (every set that is no character, and one character of each
 kind), the ten a half of every earlier result first: `--first 10` runs or
 reports those alone. Never tune on proof's 34 new subjects.
 
+Every runner that draws or checks (realset run/one/calibrate/audit, run.py, brickbench,
+ideas, cadtask, booklet_follow, pick_pairs) first refuses, in under a second, a checkout
+whose `.godot` class list lacks a class src/ declares, naming each and saying to run
+tools/fresh_import.sh (`run.classes_current`): a run from such a tree drew no pictures and
+said nothing (design25). `python3 tools/minitest.py $PWD/tests/test_bench.py` proves it.
+
 ```sh
 python3 tools/minitest.py tests/test_realset.py              # exclusion, halves (the old ten first), brief, reading
 python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half

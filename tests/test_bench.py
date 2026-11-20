@@ -437,3 +437,56 @@ def test_records_are_collected_from_a_batch_folder():
         (batch / "anchors").mkdir()
         found = scores.collect(batch)
     assert [(r["subject"], r["run"]) for r in found] == [("car", 1), ("owl", 1), ("owl", 2)]
+
+
+# -- a checkout's class list ------------------------------------------------
+
+
+def _tree(where: Path, listed: list[tuple[str, str]]) -> Path:
+    """A checkout whose src/ declares Alpha and Beta (Gamma under a .gdignore,
+    which Godot never scans), its class list naming [listed]."""
+    for path, text in (("src/alpha.gd", "class_name Alpha\nextends Node\n"),
+                       ("src/b/beta.gd", "extends RefCounted\nclass_name Beta\n"),
+                       ("src/plain.gd", "extends Node\n"),
+                       ("src/off/gamma.gd", "class_name Gamma\n"), ("src/off/.gdignore", "")):
+        (where / path).parent.mkdir(parents=True, exist_ok=True)
+        (where / path).write_text(text)
+    (where / ".godot").mkdir()
+    (where / ".godot" / "global_script_class_cache.cfg").write_text("list=[" + "}, ".join(
+        '{\n"base": &"Node",\n"class": &"%s",\n"icon": "",\n"path": "%s"\n' % pair
+        for pair in listed) + "}]\n")
+    return where
+
+
+def _classes_said(tree: Path) -> str:
+    """What the class check says of [tree]: "" when it lets it run."""
+    from bench import run
+    run.classes_current.cache_clear()
+    try:
+        run.classes_current(tree)
+    except SystemExit as refused:
+        return str(refused)
+    return ""
+
+
+def test_a_checkout_whose_class_list_lacks_a_class_is_refused_by_name():
+    # A realset run from a checkout imported before CutShape drew no
+    # pictures and said nothing (design25, 2026-11-19).
+    with tempfile.TemporaryDirectory() as where:
+        said = _classes_said(_tree(Path(where), [("Alpha", "res://src/alpha.gd")]))
+    assert "lacks 1 of the classes" in said and "Beta (res://src/b/beta.gd)" in said, said
+    assert "Gamma" not in said and "tools/fresh_import.sh" in said, said
+
+
+def test_a_class_listed_at_another_path_is_missing_too():
+    with tempfile.TemporaryDirectory() as where:
+        said = _classes_said(_tree(Path(where), [("Alpha", "res://src/alpha.gd"),
+                                                 ("Beta", "res://src/beta.gd")]))
+    assert "Beta (res://src/b/beta.gd)" in said, said
+
+
+def test_a_checkout_with_every_class_listed_runs():
+    with tempfile.TemporaryDirectory() as where:
+        said = _classes_said(_tree(Path(where), [("Alpha", "res://src/alpha.gd"),
+                                                 ("Beta", "res://src/b/beta.gd")]))
+    assert said == ""

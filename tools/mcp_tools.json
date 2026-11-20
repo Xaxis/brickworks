@@ -4739,7 +4739,7 @@
       "readOnlyHint": false,
       "title": "Pose a joint"
     },
-    "description": "Swing a part about its joint, as Build, Pose does: a sub-assembly on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its turns about x, y and z through the ball); and a part on a click hinge, a hinge or a turntable as a drag finds it, with no assembly named on it. With no joint it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= (from where it was built, -180 to 180) swings it as far as it has room; the answer says where it stopped if something is in the way, and whether the pose holds its own weight: each friction joint (a Technic ball, a friction pin) that droops under what hangs on it, with the share it holds, and the joints whose hold nobody has measured.",
+    "description": "Swing a part about its joint, as Build, Pose does: a sub-assembly on a hinge, a turntable or a clip on a bar, or on a ball (three joints: its turns about x, y and z through the ball); and a part on a click hinge, a hinge or a turntable as a drag finds it, with no assembly named on it. With no joint it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= (from where it was built, -180 to 180) swings it as far as it has room; the answer says where it stopped if something is in the way, and whether the pose holds its own weight: each friction joint (a Technic ball, a friction pin) that droops under what hangs on it, with the share it holds, and the joints whose hold nobody has measured. lock=true locks the joint (after degrees=, if given): it keeps its angle and its slide, and a drag of either part, R, a handle, Simulate's driver, move_part and pose_model are refused until lock=false unlocks it; saved with the model, and the answer says what a turn of it now does (it tries one). A model with one joint needs no joint= and no list first: {\"lock\": true} locks it, {\"degrees\": 45, \"lock\": true} sets it and locks it there. A drag's joint may be named by a part of it (#12).",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4749,6 +4749,10 @@
         "joint": {
           "description": "its number or name in the list",
           "type": "string"
+        },
+        "lock": {
+          "description": "true locks the joint where it stands (after degrees=); false unlocks it (before degrees=)",
+          "type": "boolean"
         }
       },
       "type": "object"
@@ -6202,10 +6206,25 @@
       "readOnlyHint": true,
       "title": "Weigh the weakest joints"
     },
-    "description": "What gives first in the model as it stands, as View, Stress weighs it and the status bar's verdict says: every joint that alone holds what is past it (a cantilever's root, a part hung under another, a tower's foot), levered about the edge it would turn on, weakest first, each with the part that would come off, what it hangs from or stands on, its studs, the weight past it and its margin against the studs' working load (1 N a stud: under 1 is past it, under 2 within twice it; it lets go at about 1.9 times it, 3.1 times into a part a stud wide). A touch, one face resting on another with no stud between, carries only what stands on it, so it never shares a joint's load; a piece standing on touches alone past where it touches is said too. Read this instead of rebuilding the model in check_design to weigh it. Each joint past or near its working load comes with its fix, as Stress's Strengthen finds it: the fewest parts (up to three: a plate across the seam, a brick under it, a second pin) checked for room and weighed with the model, and the edit_model call that puts them down as one undo step; make that call as given. part= one part's number (look_at_model) for what holds it; count= how many joints (8); mine=true the fixes of the person's own parts (Parts, My bricks). lift_by= a part's number: the model lifted by that part off the floor, as Stress's Lift shows it (a car by its roof, a wall by a top brick): what each joint between it and the rest carries, which lets go first, and every part that comes away. Changes nothing.",
+    "description": "What gives first in the model as it stands, as View, Stress weighs it and the status bar's verdict says: every joint that alone holds what is past it (a cantilever's root, a part hung under another, a tower's foot), levered about the edge it would turn on, weakest first, each with the part that would come off, what it hangs from or stands on, its studs, the weight past it and its margin against the studs' working load (1 N a stud: under 1 is past it, under 2 within twice it; it lets go at about 1.9 times it, 3.1 times into a part a stud wide). A touch, one face resting on another with no stud between, carries only what stands on it, so it never shares a joint's load; a piece standing on touches alone past where it touches is said too. Read this instead of rebuilding the model in check_design to weigh it. Each joint past or near its working load comes with its fix, as Stress's Strengthen finds it: the fewest parts (up to three: a plate across the seam, a brick under it, a second pin) checked for room and weighed with the model, and the edit_model call that puts them down as one undo step; make that call as given. part= one part's number (look_at_model) for what holds it; count= how many joints (8); mine=true the fixes of the person's own parts (Parts, My bricks). lift_by= a part's number: the model lifted by that part off the floor, as Stress's Lift shows it (a car by its roof, a wall by a top brick): what each joint between it and the rest carries, which lets go first, and every part that comes away. swing= a part's number: the model held by that part and swung like a toy, as Stress's Swing does (a child swooshing it by its roof: the hand 1 m in 0.5 s, a quarter turn, down through the bottom and up): each joint's load at its worst moment, gravity and the swing's pull together, what comes away first, when, with its parts and weight, and Strengthen's fix for it as an edit_model call; arc= {metres, seconds, turn (degrees)} for another swing. Changes nothing.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "arc": {
+          "additionalProperties": false,
+          "properties": {
+            "metres": {
+              "type": "number"
+            },
+            "seconds": {
+              "type": "number"
+            },
+            "turn": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
         "count": {
           "type": "integer"
         },
@@ -6216,6 +6235,9 @@
           "type": "boolean"
         },
         "part": {
+          "type": "integer"
+        },
+        "swing": {
           "type": "integer"
         }
       },
