@@ -3397,8 +3397,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   FindReplace.find_among gives over them, the rows and counts Inventory.of's
   in its order; typed again on the model unchanged the frames are kept, a
   part recoloured they are worked out again; P twice while the list is taken
-  leaves it hidden. On b80bc2c45 the frames were one frame of 0.2 to 0.96 s
-  on 10179 and the list one of 0.34 to 0.9 s.
+  leaves it hidden; Mirror's index of handed parts made a slice at a time is
+  the one made at once. The first working out of 10179's frames is held to
+  300 ms a frame and the 100 ms bar said as KNOWN (a copy's first fit reads
+  its shapes in one frame of 130 to 175 ms). On b80bc2c45 the frames were one
+  frame of 0.2 to 0.96 s on 10179 and the list one of 0.34 to 0.9 s.
 - `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
   names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`
   writes `lots.tsv` and `catalogue.tsv`. `lpub`, `inherit`, `motion`:
