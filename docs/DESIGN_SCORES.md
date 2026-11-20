@@ -7773,6 +7773,237 @@ Why it fell short:
   it ships. `8de209498` holds what the screen ran; `tools/technic_parts.py`
   and its table can be taken back from there.
 
+### A Technic set's face laid by the app: panels on pins, beams on edge (2026-11-20, design27, `a364a7fb1`, NO-GO)
+
+**Why.** design26 told every Technic session what a set shows and how each
+part is held. The sessions laid panels, were refused for the room around
+them, and dropped them: told is not laid. So the app lays the face itself,
+the way the shape pattern lays a hull. The session builds the System body
+it builds well, and the app pins a set's panels and frame beams to it.
+
+**The change** (`74d06b4e3`, `a364a7fb1`, then pacing `7e12291a9` and the
+probe `d8808201c`, on pre261 `f9661d6e2`):
+
+- `src/ai/technic_lay.gd` lays one face of a body, a side named by its
+  facing, as a Technic set's:
+  - one or two of the wall's courses laid again as Technic bricks with
+    their holes out;
+  - a beam on edge pinned along them as the frame line;
+  - panels pinned flat over the wall on two pins at one depth, side by side
+    or one over the other.
+  The parts are the ones that show on real sets, from
+  `tools/technic_parts.py`'s table (design26's, taken back from
+  `8de209498`).
+- Each piece is posed by its pin and kept clear of the body, except for
+  what it is pinned to. It is tested by the two parts' exact shapes, as the
+  build check tests them.
+- A real set's own panel meets the beams under it by a hair in those shapes
+  (42079's by 1.5 LDU). So a panel within 4 LDU of what it lies against is
+  seated out along its pins by the least whole LDU that clears it, and the
+  edit says that slide.
+- A studless body's standing pins and open holes take the same parts.
+- The surface pass hands a Technic subject one finding a side (`flank`, of
+  `technic`). Each is one edit and one Undo, and is settled like any other
+  finding.
+- A Technic subject is told, in one paragraph of
+  `how_real_sets_build_this`, to build the body of studded bricks and leave
+  its panels and frame beams to the surface pass. The send-back is gone.
+
+Chosen as a designer would:
+- The body stays studded (the brief's rule). Under its skin a Technic set of
+  this size is a studded body, and the session's likeness comes from it.
+- A face is a set's three layers in the order a set builds them: a Technic
+  brick course to hold pins, a beam on edge as the frame line, then panels
+  on pins. design26's beams lay flat on top as trim. On a set they stand on
+  edge down the flank.
+- A panel goes only where its whole shape clears. A set's panel stands off
+  its frame by its pins, so the lay slides out by the least that clears,
+  not by a rule of thumb.
+
+**Proof in the app.** `technic_lay_probe` laid each face of the twelve
+bodies as a session's call is made: one step, then one Undo. It passed
+(`lay/technic_lay_probe.log`):
+- 10 of 12 bodies took a face: 23 faces, 13 panels and 32 beams, each held
+  and clear;
+- every face undoes with one Undo, and the body comes back part by part
+  where it stood;
+- a rejected face's course comes back;
+- a forklift not said to be Technic is handed no face.
+
+Paced as the surface pass runs it, the longest frame is still over 16 ms:
+101 ms on a 507-part first build, 341 ms on 42006-1's 698-part body. Four
+faces there take 305 s paced (`lay/paced_time.log`).
+
+The probe, `surface_probe`, `technic_probe`, `technic_hand_probe`,
+`design_memory_probe` and `undo_ids_probe` passed through `tools/probe.sh`
+from the locked snapshot `d27gate`. The gate run was stopped, before
+`fresh_eyes`, `ci_gate` and the lists, once the screen was lost.
+
+The session path was checked by replaying five realset sessions' own first
+calls on both snapshots (`told/diff_summary.txt`):
+- the three non-Technic subjects (21030-1, 21051-1, 7636-1) are told the
+  same, byte for byte;
+- the two Technic subjects gain the paragraph and their faces. In the 42079
+  replay, edit_model refused one face for a pin overlapping, so a lay the
+  probe passes can still be refused in a session's model.
+
+**The lay's own bar, before any session** (`lay/bar6_table.txt`, 12 sheets
+in `lay/`, all looked at): 4 of 12 bodies met it. The bar: every face held,
+nothing floating or overlapping that was not there before, and a panel at
+1% and the frame at 3% of what shows.
+- **Met:** design26's first builds of the mine loader 42049 (panel 9.1%,
+  frame 6.2%), the forklift 42079 (5.3%, 4.1%) and BASH! 42073 (17.7%,
+  6.8%). Also set 42049's own body with its panels off (11.2%, 42.4%).
+- **Missed:** the telehandler's first build has panels at 6.9% but its
+  frame at 2.7%. The tractor and the pneumatic loader took beams but no
+  panel. The sets 42061, 42079 and 42006 took frames (41% to 55%) but
+  panels at 0% to 0.3%. 8464 and 9393 offered no face.
+- Floating and overlap counts were unchanged on all twelve. On design26's
+  forklift, the laid panels stand out from the flanks like fenders.
+
+The lay did not meet its bar, so it is not kept as a studio feature.
+
+**The screen.** The base is `d27base`: pre261 `f9661d6e2`, the lever's
+parent, from its own locked, imported snapshot. The lever (`d27lev2`) ran
+`a364a7fb1` from `d27lev-snap`. The commits after it change only pacing and
+the probe. An earlier lever run (`d27lev`, `e7522be0c`) was stopped partway
+and is not read.
+- Both arms ran on the owner's path (`--via relay --no-claude-code
+  --instructions none --audit-later`), on the owner's subscription with no
+  API key.
+- Each ran one session at a time on the tune half's eight Technic subjects,
+  the same night: base 18:42 to 22:30, lever 23:41 to 03:13.
+- They were judged blind in both orders.
+- No session hit a usage limit or a lapsed sign-in.
+- The bars and the measure of reach were fixed before any lever result was
+  read (`screen_plan.txt`, `py/reach27.py`).
+
+- **Reach** (`reach27.txt`, `py/where27.py`):
+  - 7 of 8 lever sessions ran the surface pass. The pneumatic loader did
+    not.
+  - The pass handed 18 Technic faces, and 17 were accepted. BASH! rejected
+    one.
+  - The faces laid 24 Technic brick courses, 25 beams on edge and 8 panels.
+    The panels were in four sessions: the excavator 1, the mine loader 2,
+    the telehandler 2 and the forklift 3.
+  - The final designs keep 6 panels: the excavator's 1, the telehandler's
+    2 and the forklift's 3. The mine loader's two were gone by its final
+    design.
+  - A Technic set's seen surface (a panel at 1% of what shows, the frame at
+    3%) is in 2 of the lever's 8 final designs: the telehandler (panels
+    9.2%, frame 4.2%) and the forklift (6.9%, 20.0%). It is in 1 of the
+    base's 8, the Ducati (panels 40.0%), which the base session built
+    studless by its own choice.
+- **Refusals** (`py/refused27.py`, `refused27.txt`): the lever had 19 in 146
+  submissions and edits, the base 14 in 129. All were `submit_design`;
+  edit_model refused no laid face. Seven of the lever's 19 were its
+  Ducati, a tall System body tipping over and colliding. The base's Ducati
+  had none. The lever's sessions took 198 minutes, the base's 211.
+- **The holdout held** (`py/leak24.py`, `leak27.txt`): no answer carried a
+  set's own file or number (0 hits). The telehandler never searched the
+  real-set index.
+- **The build check** (realset's audit, `py/check24.py`, `check27.txt`):
+  - the lever: 6 of 8 clean. The excavator reads as floating whole (940),
+    as the base's did in design26, and the pneumatic loader's hoses run
+    through its parts;
+  - the base: 5 of 8 clean, with overlaps in the telehandler (5), BASH! (1)
+    and the Ducati (139).
+
+| subjects | head to head: lever preferred, overall (95%) | likeness | surface | technique | against the set, overall: base, lever, gap (95%) |
+|---|---|---|---|---|---|
+| 8 Technic | 38% (14-69) | 25% | 38% | 38% | 0%, 0%, +0 (+0, +0) |
+
+Against the set, on all 8 (`compare-d27lev2-d27base.log`):
+- likeness held at 38%, +0 (+0, +0);
+- surface held at 56%, +0 (+0, +0);
+- technique held at 0% in both arms;
+- creativity fell from 19% to 6%, -12 (-44, +12);
+- colour fell from 31% to 25%, -6 (-25, +12).
+
+For each subject: the lever's overall wins head to head (of 2), and what
+the judge said (`persub27.txt`).
+- **Won both orders (2):**
+  - The forklift, with its laid panels and beams: "Technic construction,
+    colour accents and pallet play", and "a working-looking mast, more
+    detail and a pallet to play with".
+  - The tractor: "the right wheel proportions, cleaner bodywork and a
+    functional rear hitch".
+- **Split (2):**
+  - The telehandler: its "smooth, well-detailed yellow body" against the
+    base's "raised telescoping boom".
+  - BASH!: the lever's session built the word in Technic-brick letters, the
+    base a buggy. Each order took a different reading of the name.
+- **Lost both (4):**
+  - The excavator: "short, stubby boom with a stick hanging straight down".
+  - The mine loader: "a grey stepped brick wedge rather than a bucket",
+    against the base's "real curved bucket on long Technic lift arms".
+  - The pneumatic loader: "short and boxy, with oversized flat fender
+    blocks".
+  - The Ducati: "a blocky System-brick shape that misses both the
+    subject's look and the Technic style".
+
+All 16 corner views were looked at (`pairs/`), and what is seen agrees with
+the judge:
+- where the lay put panels (the forklift, the telehandler), they read as
+  smooth yellow sides, and the beams stand on edge as frame lines;
+- where it laid only a course and a beam, the face reads as a holed band
+  across a studded body;
+- the Ducati is a red block, against the base's studless bike;
+- the loaders and the excavator lost on their working parts (the boom, the
+  bucket and its arms), which the lay does not touch.
+
+**NO-GO.** The screen is not won:
+- wins head to head: 38% (14-69) overall, in both orders. This fails;
+- likeness against the set no worse than base: 38% against 38%, +0. This
+  holds;
+- technique up: 0% against 0% against the set. This fails. Head to head,
+  the lever's technique was preferred 38% of the time;
+- the set's seen Technic surface in at least half the final designs: 2 of 8
+  (the base 1). This fails;
+- refusals per session no more than base: 19 against 14. This fails;
+- build check no worse: 6 of 8 clean against 5. This holds;
+- the leak audit is clean. This holds.
+
+So the paired 44 was not run.
+
+Why it fell short:
+- **A studded wall holds few panels.** A set's panel sits on a frame with a
+  pin hole every stud. A studded wall has holes only where a course is laid
+  again as Technic bricks, one row at a time. A panel wants two pins at one
+  depth and its whole shape clear. On most walls that leaves room for a
+  beam but not a panel: 8 panels in 18 faces. Of the sets' own bodies,
+  only 42049's took a panel at 1% of what shows.
+- **What a few panels add is small beside the body.** On a 400- to
+  700-part body, one to three panels are 1% to 9% of what shows. On the
+  median set, curved panels alone are 12%. The judge still saw a studded
+  body.
+- **The told line cost the subject that was built best.** Told to build the
+  body of studded bricks, the Ducati's session built 748 System parts and
+  tipped over seven times. The base's session, told nothing, built a
+  studless bike (266 connectors, 47 beams, 14 curved panels) and won both
+  orders. design26's base Ducati won the same way. Where the session
+  builds studless by its own choice, a rule to build studded takes away its
+  best Technic work.
+- **The judge decides a Technic subject on its working part.** In 7 of 8
+  subjects the judge's reasons turn on one: the boom and stick, the bucket
+  on its lift arms, the mast and forks, the fork and swingarm, the hitch.
+  The lay touches none of them.
+- **Next.**
+  - Leave a Technic subject's body to the session: no told line, so a
+    studless build is not turned studded.
+  - The working part is where Technic subjects lose: the boom and stick,
+    the bucket on its lift arms, the mast. Build it as a set does, in
+    liftarms on pins with a cylinder, at the set's proportions, as a
+    feature in design24's form. That is the next lever, and the judge's own
+    words point at it.
+  - A face of panels needs a frame of holes to hang on. If it comes back,
+    it goes on a studless frame the session or the app builds, not on a
+    studded wall.
+- The change is taken back out on this branch (`f8ed61fa8`), so nothing of
+  it ships. `d8808201c` holds the lay as it was measured (with
+  `tools/technic_parts.py`, its table and `technic_lay_probe`), and
+  `a364a7fb1` holds what the screen ran.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
