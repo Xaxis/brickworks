@@ -164,6 +164,50 @@ var support: Dictionary = {}
 ## 42082-1's took three seconds, and the next model opened waited for them
 ## (corefix, 2026-10-31).
 var stop: WorkerTasks.Stop = null
+## The model swung as one (SwingTest): what [method weigh_moving] and [method
+## ring_of] weigh with in place of gravity alone; null for a model held
+## still, which every other weighing is.
+var moving: Moving = null
+
+
+## A model moving as one rigid body about a point that does not move, a
+## child's shoulder (SwingTest), at one moment, all in the model's own frame.
+## Each part is pulled by m·(g − a) at its middle, a the acceleration there
+## (α × d + ω × (ω × d), d from the pivot): d'Alembert's sum, so a joint
+## carries what is past it as it carries its weight held still. And each is
+## turned by its own spin, −(I α + ω × I ω), I a solid box of its shape's
+## size and weight.
+class Moving extends RefCounted:
+	## Gravity, m/s², the way it points in the model's frame at this moment.
+	var gravity := Vector3(0.0, -GRAVITY, 0.0)
+	## The point that does not move, LDU.
+	var pivot := Vector3.ZERO
+	## The spin, rad/s, and how fast it changes, rad/s², about the pivot.
+	var spin := Vector3.ZERO
+	var spin_rate := Vector3.ZERO
+
+	## The pull on a gram at [param at] (LDU), m/s²: gravity less the
+	## acceleration there.
+	func pull_at(at: Vector3) -> Vector3:
+		var d: Vector3 = (at - pivot) * (MM_PER_LDU / 1000.0)
+		return gravity - (spin_rate.cross(d) + spin.cross(spin.cross(d)))
+
+	## What a part of [param inertia] (kg·m², [method box]) is turned by
+	## about its middle, N·LDU: −(I α + ω × I ω).
+	func couple(inertia: Basis) -> Vector3:
+		if spin == Vector3.ZERO and spin_rate == Vector3.ZERO:
+			return Vector3.ZERO
+		var torque: Vector3 = -(inertia * spin_rate + spin.cross(inertia * spin))
+		return torque * (1000.0 / MM_PER_LDU)
+
+	## A solid box's inertia about its middle, kg·m²: [param grams], [param
+	## size] LDU across in its own frame, turned by [param basis].
+	static func box(grams: float, basis: Basis, size: Vector3) -> Basis:
+		var s: Vector3 = size * (MM_PER_LDU / 1000.0)
+		var local := Basis.from_scale(Vector3(s.y * s.y + s.z * s.z, s.x * s.x + s.z * s.z,
+			s.x * s.x + s.y * s.y) * (grams / 1000.0 / 12.0))
+		var turn: Basis = basis.orthonormalized()
+		return turn * local * turn.transposed()
 
 
 ## One stud joint and what it carries.
@@ -746,6 +790,80 @@ func weigh_pose(placed: Dictionary, label: String = "") -> Report:
 		if one.ratio > 1.0:
 			report.over += 1
 	return report
+
+
+## Each joint's load with the model swung as [member moving] has it at one
+## moment, once [method prepare] has read the joints (SwingTest): what is
+## past a joint pulls it with F = Σ mᵢ(g − aᵢ) and turns it by Σ (rᵢ − J) ×
+## mᵢ(g − aᵢ) + Σ cᵢ, each part where it stands. The joints alone, as
+## [method weigh_pose] weighs them; no margin, no advice.
+func weigh_moving(label: String = "") -> Report:
+	var report := Report.new()
+	if _ids.is_empty() or moving == null:
+		return report
+	report.empty = false
+	report.grams = _weight()
+	var count: int = _ids.size()
+	var sum_m := PackedFloat64Array()
+	sum_m.resize(count + 1)
+	var force: Array[Vector3] = []
+	force.resize(count + 1)
+	force.fill(Vector3.ZERO)
+	var turning: Array[Vector3] = []
+	turning.resize(count + 1)
+	turning.fill(Vector3.ZERO)
+	var spun: Array[Basis] = _spin_inertia()
+	for n: int in count:
+		var middle: Vector3 = _rest[n] * _middle[n]
+		var pulled: Vector3 = moving.pull_at(middle) * (_mass[n] / 1000.0)
+		sum_m[n] = _mass[n]
+		force[n] = pulled
+		turning[n] = middle.cross(pulled) + moving.couple(spun[n])
+	for k: int in range(_reached.size() - 1, -1, -1):
+		var v: int = _reached[k]
+		var p: int = _parent[v]
+		if p >= 0 and p < count:
+			sum_m[p] += sum_m[v]
+			force[p] += force[v]
+			turning[p] += turning[v]
+	var still := Transform3D.IDENTITY
+	for b: int in _bridges.size():
+		var bridge: Dictionary = _bridges[b]
+		var child: int = bridge["child"]
+		var grams: float = sum_m[child]
+		if grams <= 0.0:
+			continue
+		var sums: Array = [force[child], turning[child]]
+		var one: JointLoad
+		if bridge.has("hold"):
+			one = _hold_load(bridge, still, grams, Vector3.ZERO, sums)
+		elif bridge.has("pins"):
+			one = _pin_load(bridge, still, grams, Vector3.ZERO, sums)
+		else:
+			one = _load(bridge, still, grams, Vector3.ZERO, sums)
+		one.pose = label
+		report.joints.append(one)
+	report.joints.sort_custom(func(a: JointLoad, b: JointLoad) -> bool:
+		return a.ratio > b.ratio)
+	for one: JointLoad in report.joints:
+		if one.ratio > 1.0:
+			report.over += 1
+	return report
+
+
+## Each part's own inertia (Moving.box), by its index, worked out once for
+## the parts read: the same at every moment of a swing.
+func _spin_inertia() -> Array[Basis]:
+	if _inertia_ids != _ids:
+		_inertia.clear()
+		for n: int in _ids.size():
+			_inertia.append(Moving.box(_mass[n], _rest[n].basis, _meshes[n].bounds.size))
+		_inertia_ids = _ids.duplicate()
+	return _inertia
+
+
+var _inertia: Array[Basis] = []
+var _inertia_ids := PackedInt64Array()
 
 
 ## What the parts read weigh: every part the catalogue knows, its shape
@@ -1604,8 +1722,11 @@ func _weigh(placed: Dictionary, label: String, worst_at: Dictionary, friction: b
 
 
 ## A joint's moment about the edge it would turn on, against what its studs
-## hold there: M = Σ F·dᵢ.
-func _load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3) -> JointLoad:
+## hold there: M = Σ F·dᵢ. [param sums], when given, is what is past it
+## swung (weigh_moving): [the force on it, N, its moment about the origin,
+## N·LDU], in place of its weight at [param carried].
+func _load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3,
+		sums: Array = []) -> JointLoad:
 	var joint: Vector3 = moved * (bridge["centre"] as Vector3)
 	var normal: Vector3 = (moved.basis * (bridge["normal"] as Vector3)).normalized()
 	var studs: PackedVector3Array = bridge["studs"]
@@ -1614,7 +1735,12 @@ func _load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector
 	var force := Vector3(0.0, -weight, 0.0)
 	# N·LDU about the joint's middle, the part of it that bends the joint
 	# rather than twisting it, and how hard it presses the two together.
-	var turning: Vector3 = (carried - joint).cross(force)
+	var turning: Vector3
+	if sums.is_empty():
+		turning = (carried - joint).cross(force)
+	else:
+		force = sums[0]
+		turning = (sums[1] as Vector3) - joint.cross(force)
 	var bending: Vector3 = turning - normal * turning.dot(normal)
 	var pressed: float = -force.dot(normal)
 	# The edge it would turn on: the way the far side tips, in the joint's
@@ -1675,7 +1801,8 @@ static func lets_go(mesh: Lbm.PartMesh) -> float:
 ## slips, the middle and the top of a range no one had measured. A pin with
 ## no friction ridges, or an axle in a round hole, holds nothing about its
 ## line.
-func _pin_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3) -> JointLoad:
+func _pin_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3,
+		sums: Array = []) -> JointLoad:
 	var lines: Array = bridge["pins"]
 	var child: int = bridge["child"]
 	var lower: int = bridge["lower"]
@@ -1709,7 +1836,10 @@ func _pin_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Ve
 		return one
 	var force := Vector3(0.0, -grams / 1000.0 * GRAVITY, 0.0)
 	var to_cm: float = MM_PER_LDU / 10.0
-	one.moment = absf((carried - origin).cross(force).dot(way)) * to_cm
+	if sums.is_empty():
+		one.moment = absf((carried - origin).cross(force).dot(way)) * to_cm
+	else:
+		one.moment = absf(((sums[1] as Vector3) - origin.cross(sums[0])).dot(way)) * to_cm
 	one.capacity = PIN_N_CM * friction
 	one.ultimate = PIN_LETS_GO_N_CM * friction
 	one.ratio = one.moment / maxf(one.capacity, 0.000001) if one.moment > 0.000001 else 0.0
@@ -1755,7 +1885,8 @@ static func _turning(at: Vector3, way: Vector3, grams: float, carried: Vector3) 
 
 ## A friction joint weighed against what its kind holds (PoseHold): a
 ## Technic ball turned by what is past it, any way.
-func _hold_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3) -> JointLoad:
+func _hold_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector3,
+		sums: Array = []) -> JointLoad:
 	var hold: Dictionary = bridge["hold"]
 	var child: int = bridge["child"]
 	var lower: int = bridge["lower"]
@@ -1768,7 +1899,13 @@ func _hold_load(bridge: Dictionary, moved: Transform3D, grams: float, carried: V
 	one.hold = str(hold["kind"])
 	one.kind = PoseHold.said(one.hold)
 	one.at = moved * (hold["at"] as Vector3)
-	one.moment = _turning(one.at, moved.basis * (hold["way"] as Vector3), grams, carried)
+	if sums.is_empty():
+		one.moment = _turning(one.at, moved.basis * (hold["way"] as Vector3), grams, carried)
+	else:
+		var turning: Vector3 = (sums[1] as Vector3) - one.at.cross(sums[0])
+		var line: Vector3 = moved.basis * (hold["way"] as Vector3)
+		one.moment = (turning.length() if line.length() < 0.000001
+			else absf(turning.dot(line.normalized()))) * (MM_PER_LDU / 10.0)
 	one.capacity = PoseHold.holds(one.hold)
 	one.ultimate = one.capacity
 	one.loose = PoseHold.every_held(one.hold)
@@ -2034,6 +2171,12 @@ func ring_of(id: int, boxes: Dictionary, carried: Array = []) -> JointLoad:
 	inside.resize(count + 1)
 	var grams: float = 0.0
 	var weighted := Vector3.ZERO
+	# Swung (moving), what it carries pulls and turns it as weigh_moving sums.
+	var pulled := Vector3.ZERO
+	var turned := Vector3.ZERO
+	var spun: Array[Basis] = []
+	if moving != null:
+		spun = _spin_inertia()
 	for v: int in _reached:
 		var p: int = _parent[v]
 		if v == n or v >= count or p < 0:
@@ -2041,8 +2184,13 @@ func ring_of(id: int, boxes: Dictionary, carried: Array = []) -> JointLoad:
 		inside[v] = 1 if through.has(v) else (0 if p == n else inside[p])
 		if inside[v] == 1:
 			grams += _mass[v]
-			weighted += (_rest[v] * _middle[v]) * _mass[v]
+			var middle: Vector3 = _rest[v] * _middle[v]
+			weighted += middle * _mass[v]
 			carried.append(_ids[v])
+			if moving != null:
+				var each: Vector3 = moving.pull_at(middle) * (_mass[v] / 1000.0)
+				pulled += each
+				turned += middle.cross(each) + moving.couple(spun[v])
 	if grams <= 0.0:
 		return null
 	var centre: Vector3 = weighted / grams
@@ -2055,6 +2203,9 @@ func ring_of(id: int, boxes: Dictionary, carried: Array = []) -> JointLoad:
 	var normal: Vector3 = Vector3.DOWN if on_top == 1 else Vector3.UP
 	var force := Vector3(0.0, -grams / 1000.0 * GRAVITY, 0.0)
 	var turning: Vector3 = (centre - joint).cross(force)
+	if moving != null:
+		force = pulled
+		turning = turned - joint.cross(force)
 	var bending: Vector3 = turning - normal * turning.dot(normal)
 	var pressed: float = -force.dot(normal)
 	var way: Vector3

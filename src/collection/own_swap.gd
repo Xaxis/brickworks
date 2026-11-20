@@ -560,9 +560,10 @@ func _look(finder: FindReplace) -> void:
 	_found = {}
 
 
-## The model's copies counted and its copies' frames read, each in a frame
-## of its own: each is one call over the whole model (Assemblies.file_frames
-## 60 ms on Orthanc), so none is added to a frame's other work.
+## The model's copies counted in a frame of its own, and its copies' frames
+## read a slice of a frame at a time (FindReplace.frames_paced_for): each is
+## a call over the whole model, and the frames were one frame of 0.96 s on
+## 10179 (osfix), so none is added to a frame's other work.
 func _prepare(finder: FindReplace) -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if _copies == null:
@@ -570,7 +571,7 @@ func _prepare(finder: FindReplace) -> void:
 		_copies = finder._copies_by_definition()
 	if _frames == null:
 		await tree.process_frame
-		_frames = finder._frames_for(finder.world.bricks(), _copies)
+		_frames = await finder.frames_paced_for(finder.world.bricks(), _copies)
 	# FindReplace.plan's own count of them, not read again.
 	if not _cache.has("copies"):
 		_cache["copies"] = _copies

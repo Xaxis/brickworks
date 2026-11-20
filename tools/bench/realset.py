@@ -1939,6 +1939,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.what == "sample":
         return _show(args.which, args.show, args.first)
+    if args.what in ("run", "one", "calibrate", "audit"):
+        bench.classes_current()     # this tree draws, checks and audits every design
     if args.what in ("run", "one"):      # one: a single subject, as run starts it under heavy
         args.checkout = args.checkout.resolve()
         if args.instructions == "none" and args.via != "relay":
@@ -1947,6 +1949,7 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("--no-claude-code hides it from the relay's tab: with --via relay")
         if args.what == "run" and not args.dry_run:
             _imported(args.checkout)
+        bench.classes_current(args.checkout)
         return run(args)
     if args.what == "calibrate":
         return calibrate_half(args)
