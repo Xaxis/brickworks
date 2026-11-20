@@ -250,6 +250,9 @@ func _process(_delta: float) -> void:
 	if _reorder:
 		_reorder = false
 		_prefer_in_sight()
+	# Nothing asked for, asleep (Wake): an ask wakes it.
+	if _queue.is_empty():
+		Wake.rest(self)
 
 
 func _free_stage() -> Stage:
@@ -274,6 +277,7 @@ func watch(owner: Object, tiles: Array[ThumbTile]) -> void:
 		_watching.push_front([id, tiles])
 	_look = true
 	_reorder = true
+	set_process(true)
 
 
 ## The next preview to draw: the first tile in sight still waiting, then
@@ -362,6 +366,7 @@ func request(part_id: String, color_code: int, printed: bool = false) -> ImageTe
 		_queued[key] = true
 		_queue.append({"part": part_id, "color": color_code, "key": key,
 			"printed": printed})
+		set_process(true)
 	return null
 
 
@@ -393,6 +398,7 @@ func _on_geometry_arrived(part_id: String) -> void:
 		if not _queued.has(job["key"]):
 			_queued[job["key"]] = true
 			_queue.append(job)
+			set_process(true)
 	_held.erase(part_id)
 
 
@@ -471,6 +477,7 @@ func _render(job: Dictionary, stage: Stage) -> void:
 			(_held[job["part"]] as Array).append(job)
 		if library.request_mesh(job["part"]):
 			_reorder = true
+			set_process(true)
 		else:
 			_fail(job["part"])
 		return
@@ -583,6 +590,7 @@ func _render_group(job: Dictionary, stage: Stage) -> void:
 		_awaiting[id] = true
 		_group_waits[id] = true
 		_reorder = true
+		set_process(true)
 		return
 	var mesh: ArrayMesh = group_mesh((entry[1] as Callable).call(int(job["color"])), library)
 	if mesh.get_surface_count() == 0:

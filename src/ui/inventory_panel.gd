@@ -590,6 +590,7 @@ func _choose(ids: PackedInt64Array, what: String) -> void:
 
 func _process(_delta: float) -> void:
 	if not visible:
+		Wake.rest(self)
 		return
 	if _scroll_to >= 0 and _rows.size.y > 0.0:
 		_scroll.scroll_vertical = _scroll_to

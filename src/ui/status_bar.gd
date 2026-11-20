@@ -181,6 +181,7 @@ func _process(_delta: float) -> void:
 	if work_only:
 		if visible != busy:
 			visible = busy
+		Wake.rest(self)
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
 	var said: String = message.text
@@ -226,6 +227,11 @@ func _process(_delta: float) -> void:
 		_settings.text = "snap %s · turn %d°" % [snap, roundi(shell.verbs.turn_step)]
 		_zoom.text = "1 stud ≈ %d px" % roundi(_stud_on_screen())
 	_fit()
+	# At rest, asleep (Wake), unless a step of the pointer's hint is
+	# waiting for the device's pace: anything said, an edit, the camera,
+	# the pointer and a drawn frame wake it.
+	if _hint_asked_us < 0:
+		Wake.rest(self)
 
 
 ## Room the line on the left keeps, px, before a field on the right goes.

@@ -376,6 +376,10 @@ func _process(_delta: float) -> void:
 		looked_again.emit()
 	if not _css.is_empty():
 		_crisp_on_the_web()
+	# At rest, asleep (Wake): the pointer moving, a button and a panel drawn
+	# under a still pointer wake it.
+	if not _recheck:
+		Wake.rest(self)
 
 
 ## Whether a button is down that went down on the interface, in which

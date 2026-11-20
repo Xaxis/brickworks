@@ -85,10 +85,25 @@ const _DEFAULT_PITCH := deg_to_rad(26.0)
 
 var _yaw: float = _DEFAULT_YAW
 var _pitch: float = _DEFAULT_PITCH
-var _target_yaw: float = _DEFAULT_YAW
-var _target_pitch: float = _DEFAULT_PITCH
-var _target_distance: float = 400.0
-var _target_focus: Vector3 = Vector3.ZERO
+## Where the camera is going. Sent anywhere, it is woken to go there: at
+## rest it sleeps (Wake), and the view is sent by keys, the connector, a
+## Together peer and the app's own fits as well as by a drag.
+var _target_yaw: float = _DEFAULT_YAW:
+	set(value):
+		_target_yaw = value
+		set_process(true)
+var _target_pitch: float = _DEFAULT_PITCH:
+	set(value):
+		_target_pitch = value
+		set_process(true)
+var _target_distance: float = 400.0:
+	set(value):
+		_target_distance = value
+		set_process(true)
+var _target_focus: Vector3 = Vector3.ZERO:
+	set(value):
+		_target_focus = value
+		set_process(true)
 ## How the turntable is turned ([method look_from]'s up): the camera stands
 ## where its yaw and pitch put it, turned about the focus by this. Build it
 ## turns it where a step's booklet page turns the model, so a step whose
@@ -96,7 +111,10 @@ var _target_focus: Vector3 = Vector3.ZERO
 ## the screen, and a drag turns the model about its own turned up. The
 ## identity, the model's own up, everywhere else.
 var _frame: Basis = Basis.IDENTITY
-var _target_frame: Basis = Basis.IDENTITY
+var _target_frame: Basis = Basis.IDENTITY:
+	set(value):
+		_target_frame = value
+		set_process(true)
 ## The frame last told ([signal frame_turned]).
 var _frame_told: Basis = Basis.IDENTITY
 
@@ -1493,6 +1511,19 @@ func _process(delta: float) -> void:
 	# the remaining distance per second whatever the frame time. Under
 	# Settings, Reduce motion, no approach: the view is where it was sent.
 	_apply(1.0 if ShellPrefs.reduce_motion() else 1.0 - exp(-smoothing * delta))
+	# At rest, asleep (Wake): nothing held, the pose where it was sent and
+	# put on the camera two frames ago, and the lens in the middle of the
+	# seen rect. A column folding is drawn, and a drawn frame wakes it.
+	if _doing == Doing.NOTHING and _touches.is_empty() and not _dragging_right \
+			and Engine.get_process_frames() - _posed_frame > 2 and _at_target():
+		Wake.rest(self)
+
+
+## Whether the pose and the lens are where they were sent.
+func _at_target() -> bool:
+	return _yaw == _target_yaw and _pitch == _target_pitch and distance == _target_distance \
+		and focus == _target_focus and _frame == _target_frame \
+		and (not _shift_known or _shift == seen_rect().get_center() - _room() * 0.5)
 
 
 ## The pose last put on the camera, and the transform it came to. A camera

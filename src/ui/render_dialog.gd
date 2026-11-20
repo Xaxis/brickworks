@@ -370,6 +370,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		_warm_when_idle()
+		# Hidden and warmed (or never to be), asleep (Wake).
+		if _warm_asked or not warms_when_idle:
+			Wake.rest(self)
 		return
 	# Main turns the window's drawing back on when the tab comes back into
 	# view, which it does not know is behind the panel.

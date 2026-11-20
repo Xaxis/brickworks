@@ -1592,6 +1592,9 @@ func controls_by_name() -> Dictionary:
 
 func _process(_delta: float) -> void:
 	_tell_page()
+	# Put away, asleep once the page has been told (Wake).
+	if not active and (not OS.has_feature("web") or not Wake.owed(_told_page_at)):
+		Wake.rest(self)
 
 
 ## What the tool is doing and where on the screen its targets are, for a

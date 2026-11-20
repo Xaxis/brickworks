@@ -336,12 +336,17 @@ func _process(_delta: float) -> void:
 	# a quarter speed was every frame (idleframes). Shown again, the first
 	# frame looks at once, the last look being long past.
 	if not is_visible_in_tree():
+		# Shown again, it is drawn, and a drawn frame wakes it (Wake).
+		Wake.rest(self)
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 200:
 		return
 	_looked_at = now
 	_show_state()
+	# Asleep once it has looked since the last thing that happened settled.
+	if not Wake.owed(_looked_at):
+		Wake.rest(self)
 
 
 func _show_state() -> void:

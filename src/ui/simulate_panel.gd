@@ -520,6 +520,7 @@ func _show_pose() -> void:
 
 func _process(delta: float) -> void:
 	if not visible:
+		Wake.rest(self)
 		return
 	# Something else changed the model: an edit, an undo. What turns is read
 	# again from the model as it now is.
