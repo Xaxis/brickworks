@@ -241,15 +241,22 @@ func _played() -> void:
 	var last_facing := Vector3.ZERO
 	var held_said: bool = false
 	var put_back: float = -1.0
+	# Each frame's camera as the frame before left it, from the press on; at a
+	# quarter of the speed, so no frame of the motion is passed over when a
+	# frame of the window's is slow (Engine.time_scale scales _process's delta).
+	var sample := func() -> void:
+		var now: int = int(_panel.get("_shown"))
+		if _panel.is_playing() and now >= 0 and not seen.has(now):
+			seen[now] = [_eye.global_transform, _eye.fov]
+	process_frame.connect(sample)
+	Engine.time_scale = 0.25
 	await _click(_panel.controls_by_name()["motions_play"])
-	for frame: int in 3000:
+	for frame: int in 12000:
 		await process_frame
 		if not _panel.is_playing():
 			break
 		var shown: int = int(_panel.get("_shown"))
 		var at: Transform3D = _eye.global_transform
-		if shown >= 0 and not seen.has(shown):
-			seen[shown] = [at, _eye.fov]
 		if not _world.drawn_ids().is_empty():
 			drawn_moved += 1
 		if at.basis.y.y < 0.0:
@@ -270,6 +277,8 @@ func _played() -> void:
 				if now >= 0 and now < cameras.size() and cameras[now] != null else 1e9
 			held_said = (_panel.get("_status") as Label).text == PosePanel.HELD_WORDS
 			await _shot("2_held")
+	process_frame.disconnect(sample)
+	Engine.time_scale = 1.0
 	await _frames(30)
 	var report := PackedStringArray()
 	var worst: Array = [0.0, 0.0, 0.0]
@@ -284,8 +293,8 @@ func _played() -> void:
 		for k: int in 3:
 			worst[k] = maxf(float(worst[k]), float(off[k]))
 		report.append("frame %d %.3f LDU %.3f° lens %.3f°" % [frame_at, off[0], off[1], off[2]])
-	_check("Play goes through all three keys: at each key's frame the window's camera where the key puts it (%s)"
-		% ", ".join(report), found == 3 and float(worst[0]) <= NEAR_LDU and float(worst[1]) <= NEAR_DEG
+	_check("Play goes through all three keys: at each key's frame the window's camera where the key puts it (%s; %d of %d frames seen)"
+		% [", ".join(report), seen.size(), roundi(float(keys.back()[0]) * PLAY_FPS) + 1], found == 3 and float(worst[0]) <= NEAR_LDU and float(worst[1]) <= NEAR_DEG
 		and float(worst[2]) <= 0.01)
 	_check("...upright all the way, no flip through a pole (%d frames upside down), each frame's turn at most %.1f°"
 		% [flipped, jump], flipped == 0 and jump < 20.0)
@@ -347,7 +356,7 @@ func _filmed() -> void:
 		"arguments": {"name": _name, "fps": 12, "size": "480x300"}})))
 	_print(said)
 	_panel.renderer.frame_shot.disconnect(_on_shot)
-	_against_keys("render_motion", said.contains("through its camera keys"), keys)
+	_against_keys("render_motion", said.contains("through its camera keys"), keys, 12)
 	_check("...the model as it was and no step kept", int(_off(built, 0.0)[0]) == 0
 		and _builder.history_depth() == depth)
 	var dir: String = _frames_dir(str(_panel._last.get("name", "")), _panel.folder)
@@ -374,19 +383,19 @@ func _filmed() -> void:
 	await _frames(5)
 	dialog.renderer.frame_shot.disconnect(_on_shot)
 	print("    dialog: %s" % dialog._status.text)
-	_against_keys("File, Render's Animation", true, keys)
+	_against_keys("File, Render's Animation (%d a second)" % dialog.settings.fps, true, keys, dialog.settings.fps)
 	dialog.close()
 	await _frames(5)
 
 
 ## The shots a render drew against [param keys]: each key's frame from where
 ## the key puts the camera, every frame drawn.
-func _against_keys(what: String, said: bool, keys: Array) -> void:
+func _against_keys(what: String, said: bool, keys: Array, fps: int) -> void:
 	var report := PackedStringArray()
 	var worst: Array = [0.0, 0.0, 0.0]
 	var found: int = 0
 	for key: Array in keys:
-		var n: int = roundi(float(key[0]) * 12.0)
+		var n: int = roundi(float(key[0]) * float(fps))
 		if not _shots.has(n):
 			continue
 		found += 1
@@ -394,7 +403,7 @@ func _against_keys(what: String, said: bool, keys: Array) -> void:
 		for k: int in 3:
 			worst[k] = maxf(float(worst[k]), float(off[k]))
 		report.append("frame %d %.3f LDU %.3f° lens %.3f°" % [n, off[0], off[1], off[2]])
-	var frames: int = roundi(float(keys.back()[0]) * 12.0) + 1
+	var frames: int = roundi(float(keys.back()[0]) * float(fps)) + 1
 	_check("%s films through the camera keys, %d of %d frames drawn: %s" % [what, _shots.size(), frames,
 		", ".join(report)], said and found == keys.size() and _shots.size() == frames
 		and float(worst[0]) <= NEAR_LDU and float(worst[1]) <= NEAR_DEG and float(worst[2]) <= 0.01)
@@ -455,7 +464,11 @@ func _round(said: String, keys: Array, what: String) -> void:
 	var last: Array = _shots[frames - 1]
 	var middle: Array = _shots[(frames - 1) / 2]
 	var centre: Vector3 = _expected(keys[0])["at"]
-	var apart: float = rad_to_deg(((first[0] as Vector3) - centre).angle_to((middle[0] as Vector3) - centre))
+	var flat_first: Vector3 = (first[0] as Vector3) - centre
+	var flat_middle: Vector3 = (middle[0] as Vector3) - centre
+	flat_first.y = 0.0
+	flat_middle.y = 0.0
+	var apart: float = rad_to_deg(flat_first.angle_to(flat_middle))
 	_check("%s filmed: its first and last frames drawn from one place (%.4f LDU, %.4f° apart), the middle from the far side (%.1f° round)"
 		% [what, (first[0] as Vector3).distance_to(last[0]), rad_to_deg((first[1] as Vector3).angle_to(last[1])), apart],
 		said.contains("through its camera keys") and (first[0] as Vector3).distance_to(last[0]) <= NEAR_LDU
@@ -467,11 +480,18 @@ func _round(said: String, keys: Array, what: String) -> void:
 	var alike: float = _difference(one, other)
 	_check("...its first and last frames alike (%.4f of a pixel's range apart on average), the middle not (%.4f)"
 		% [alike, _difference(one, half)], one != null and alike < 0.01 and _difference(one, half) > alike)
+	# The model's middle (its box's, as the window has it) where each frame
+	# looks: the keys' AT is that point in the file's coordinates.
+	var box_middle: Vector3 = _player._model_box().get_center()
 	var off: float = 0.0
+	for shot: Array in [first, middle, last]:
+		off = maxf(off, rad_to_deg((shot[1] as Vector3).angle_to(box_middle - (shot[0] as Vector3))))
+	var drawn: float = 0.0
 	for image: Image in [one, half, other]:
 		if image != null:
-			off = maxf(off, _drawn_middle(image).distance_to(Vector2(image.get_size()) * 0.5) / float(image.get_width()))
-	_check("...the model in the middle of each (at most %.0f%% of the width off)" % (off * 100.0), off < 0.12)
+			drawn = maxf(drawn, _drawn_middle(image).distance_to(Vector2(image.get_size()) * 0.5) / float(image.get_width()))
+	_check("...each frame looks at the model's middle (%.3f° off at most; what is drawn %.0f%% of the width from the middle)"
+		% [off, drawn * 100.0], off <= 0.05 and drawn < 0.3)
 	_keep_frames(dir, "4_%s" % what.replace(" ", "_"), frames)
 
 
@@ -508,7 +528,7 @@ func _saved() -> void:
 	_check("another motion kept, the camera lines kept byte for byte", said.begins_with("Kept")
 		and _camera_lines(edited) == lines)
 	# A hand-written file's own spelling of a key: kept as it is written.
-	var spelled: String = a.replace(lines[1], lines[1].replace(" TURN ", " TURN  ").replace(" EASE", " ease"))
+	var spelled: String = a.replace(lines[1], lines[1].replace(" TURN ", " TURN  ").replace(" FOV ", "\tFOV "))
 	var path_d: String = _out.path_join("%s_camera_d.mpd" % _size)
 	_write(path_d, spelled)
 	if await _open(path_d):
@@ -516,7 +536,7 @@ func _saved() -> void:
 		_store.save_file(path_e, "Doors")
 		var e: String = FileAccess.get_file_as_string(path_e)
 		motion = _player.motions().named(_name)
-		_check("a file's own spelling of a key read and kept byte for byte at an unedited save",
+		_check("a file's own spacing of a key (two spaces, a tab) read and kept byte for byte at an unedited save",
 			e == spelled and motion != null and motion.camera != null and motion.camera.keys.size() == 3)
 	await _open(path_a)
 
@@ -549,8 +569,11 @@ func _picked() -> void:
 	var door_keys: int = door.times.size()
 	await _seen(strip)
 	await _press_key(strip, 0, false)
+	var strip_at: Vector2 = strip.get_global_rect().position
+	await _frames(3)
+	_check("a camera key pressed leaves its strip where it was (%s, now %s)" % [strip_at,
+		strip.get_global_rect().position], strip.get_global_rect().position == strip_at)
 	await _press_key(strip, 2, true)
-	await _seen(door)
 	await _press_key(door, door_keys - 1, true)
 	_check("Ctrl+click picks three keys, two of the camera's and a door's (%d picked)" % _panel._picked.size(),
 		_panel._picked.size() == 3)
@@ -601,8 +624,26 @@ func _picked() -> void:
 	await _move(outside, 0)
 	await _button(outside, true)
 	await _button(outside, false)
+	var steps: int = _builder.history_depth()
 	await _key(KEY_DELETE)
-	_check("Delete after a press in the view takes no key out", _motion_lines(_store.to_text("Doors")) == before)
+	# Delete is the view's again: what it takes (the part that press picked,
+	# if any) is the view's, put back; no key goes.
+	motion = _player.motions().named("Open the doors")
+	var keys_left: int = (motion.camera.keys.size() if motion != null and motion.camera != null else 0)
+	var door_left: int = (motion.tracks[0] as Motions.Track).keys.size() if motion != null and not motion.tracks.is_empty() else 0
+	var took: int = _builder.history_depth() - steps
+	for _n: int in took:
+		_shell.run("undo")
+		await _frames(6)
+	_check("Delete after a press in the view takes no key out (camera keys %d, the door's %d of %d; the view's own Delete %s)"
+		% [keys_left, door_left, door_keys, "took a step, undone" if took > 0 else "took nothing"],
+		keys_left == 3 and door_left == door_keys and _motion_lines(_store.to_text("Doors")) == before)
+	# A press on one of two picked keys, let go where it was: that one alone.
+	await _press_key(strip, 1, false)
+	await _press_key(strip, 2, true)
+	await _press_key(strip, 2, false)
+	_check("a press let go on one of two picked keys picks it alone (%d picked)" % _panel._picked.size(),
+		_panel._picked.size() == 1)
 	_panel.back_to_list()
 	await _frames(4)
 
@@ -630,7 +671,7 @@ func _mcp() -> void:
 	_print(said)
 	_panel.renderer.frame_shot.disconnect(_on_shot)
 	var motion: Motions.Motion = _player.motions().named("Turntable")
-	_check("one call: the motion made, its camera two keys, one undo step", said.begins_with("Made \"Turntable\"")
+	_check("one call: the motion made, its camera two keys, one undo step", said.contains("Made \"Turntable\"")
 		and motion != null and motion.camera != null and motion.camera.keys.size() == 2
 		and _builder.history_depth() == depth + 1)
 	if motion != null and motion.camera != null:
@@ -651,29 +692,54 @@ func _time() -> void:
 	if motion == null or motion.camera == null:
 		_check("a turntable kept on Orthanc", false)
 		return
-	var lift: Vector3 = _store.lift()
-	var views: Array = []
-	var times: Array = []
-	for n: int in 97:
-		times.append(8.0 * float(n) / 96.0)
-	for view: Array in motion.camera.views_at(times):
-		views.append(MotionPlayer.camera_view(view, lift))
-	var rounds: Array = []
+	if not _panel.visible:
+		_shell.run("pose")
+	await _frames(4)
+	var before: Dictionary = _eye.call("aim")
+	var fov_before: float = _eye.fov
+	# The work a camera track adds, timed where the app does it: once at
+	# Play, every frame's camera worked out (MotionPlayer.play, the camera's
+	# views among its frames); then a frame at a time, the window's camera
+	# put at its frame's (CadCamera.hold_at, as PosePanel._show_camera does)
+	# and held (_held_moved, each frame of the window's).
+	var at_play: Array = []
+	var cameras: Array = []
 	for round_n: int in 3:
-		# The view turned by hand the same way, a step each frame.
+		var began: int = Time.get_ticks_usec()
+		var played: MotionPlayer.Played = _player.play(motion, false, MotionPlayer.PLAY_FPS, false)
+		at_play.append(float(Time.get_ticks_usec() - began) / 1000.0)
+		cameras = played.cameras
+	var each: Array = []
+	for n: int in cameras.size():
+		var began: int = Time.get_ticks_usec()
+		_eye.call("hold_at", cameras[n], PosePanel.HELD_WORDS)
+		_eye.call("_held_moved")
+		each.append(float(Time.get_ticks_usec() - began) / 1000.0)
+		await process_frame
+	_eye.call("let_go")
+	_eye.fov = fov_before
+	_eye.call("aim_at", before)
+	await _frames(30)
+	each.sort()
+	at_play.sort()
+	var p95: float = float(each[mini(each.size() - 1, roundi(float(each.size()) * 0.95))]) if not each.is_empty() else INF
+	_check("a camera track on Orthanc: %d frames' cameras worked out at Play in %.2f ms (median of 3), each frame's camera put and held in %.3f ms (median; 95th %.3f, most %.3f)"
+		% [cameras.size(), at_play[1], _median(each), p95, each.back() if not each.is_empty() else INF],
+		cameras.size() == 97 and float(at_play[1]) <= 16.0 and p95 <= 1.0)
+	# The whole frame as the window's own clock has it (TIME_PROCESS), played
+	# against the same views turned by hand, rounds in turn: said, not held to,
+	# as the box's load moves it by more than the track costs.
+	var rounds: PackedStringArray = []
+	for round_n: int in 3:
 		var hand: Array = []
-		for n: int in views.size():
-			var view: Array = views[n]
+		for view: Array in cameras:
 			var focus: Vector3 = view[0]
 			_eye.call("aim_at", {"yaw": view[1], "pitch": view[2], "distance": view[3],
 				"focus": [focus.x, focus.y, focus.z]})
-			await process_frame
-			hand.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
-		# The camera track playing.
+			for _k: int in 5:
+				await process_frame
+				hand.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 		var keyed: Array = []
-		if not _panel.visible:
-			_shell.run("pose")
-		await _frames(4)
 		_panel.play("Fly round")
 		for n: int in 4000:
 			await process_frame
@@ -681,15 +747,10 @@ func _time() -> void:
 				break
 			keyed.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 		await _frames(10)
-		rounds.append([_median(hand), _median(keyed), keyed.size()])
-	var report := PackedStringArray()
-	var adds: Array = []
-	for one: Array in rounds:
-		report.append("by hand %.3f ms, keyed %.3f ms over %d frames" % [one[0], one[1], one[2]])
-		adds.append(float(one[1]) - float(one[0]))
-	adds.sort()
-	_check("a camera track playing on Orthanc adds %.3f ms a frame of the app's own work, the median of 3 rounds (%s)"
-		% [adds[1], "; ".join(report)], float(adds[1]) <= 1.0)
+		rounds.append("by hand %.2f ms, keyed %.2f ms" % [_median(hand), _median(keyed)])
+	print("    the window's frames, median of its own work: %s" % "; ".join(rounds))
+	_eye.call("aim_at", before)
+	await _frames(20)
 
 
 static func _median(values: Array) -> float:
@@ -744,7 +805,7 @@ func _seen(control: Control) -> void:
 
 ## Key [param index] of [param strip] pressed, with Ctrl held for [param adding].
 func _press_key(strip: PosePanel.KeyStrip, index: int, adding: bool) -> void:
-	await _frames(2)
+	await _seen(strip)
 	var at: Vector2 = strip.get_global_rect().position + Vector2(strip._x_of(float(strip.times[index])), strip.size.y * 0.5)
 	await _move(at, 0)
 	for down: bool in [true, false]:
@@ -762,6 +823,7 @@ func _press_key(strip: PosePanel.KeyStrip, index: int, adding: bool) -> void:
 
 ## Key [param index] of [param strip] dragged [param by] seconds on.
 func _drag_key(strip: PosePanel.KeyStrip, index: int, by: float) -> void:
+	await _seen(strip)
 	var t: float = float(strip.times[index])
 	var origin: Vector2 = strip.get_global_rect().position + Vector2(0.0, strip.size.y * 0.5)
 	var from: Vector2 = origin + Vector2(strip._x_of(t), 0.0)

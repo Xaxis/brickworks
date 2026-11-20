@@ -15748,3 +15748,6 @@ msgstr "Sin plataforma giratoria: %s."
 
 msgid "A turntable: the camera goes once round the model in %s s, at the height and distance it stands at now. Each key can be picked, moved or changed."
 msgstr "Una plataforma giratoria: la cámara da una vuelta al modelo en %s s, a la altura y la distancia de ahora. Cada clave se puede elegir, mover o cambiar."
+
+msgid "A key not picked is at %s s already: the keys were left where they were."
+msgstr "Ya hay una clave no elegida a %s s: las claves se quedaron donde estaban."

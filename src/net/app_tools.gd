@@ -3936,12 +3936,25 @@ func _camera_from(player: MotionPlayer, given: Variant, length: float) -> Varian
 		if not MotionPlayer._is_number(over):
 			return "A turntable's seconds= is a number."
 		var seconds: float = length if length >= 1.0 else float(over)
-		# Round the middle, from where the window's view stands: its height and distance.
+		# Round the middle, from where the window's view stands: its height and distance,
+		# unless tilt= and away= say others.
 		var eye_at: Vector3 = eye.global_position if eye != null else box.get_center() + Vector3(0.0, 0.0, 400.0)
 		var offset: Vector3 = eye_at - box.get_center()
 		var away: float = maxf(offset.length(), Motions.LEAST_AWAY)
+		var tilt: float = rad_to_deg(asin(clampf(offset.y / away, -1.0, 1.0)))
+		if asked.has("tilt"):
+			if not MotionPlayer._is_number(asked["tilt"]) or absf(float(asked["tilt"])) > Motions.MOST_TILT:
+				return "A turntable's tilt= is degrees above level, -%d to %d." % [int(Motions.MOST_TILT),
+					int(Motions.MOST_TILT)]
+			tilt = float(asked["tilt"])
+		if asked.has("away"):
+			if not MotionPlayer._is_number(asked["away"]) or float(asked["away"]) < Motions.LEAST_AWAY \
+					or float(asked["away"]) > Motions.MOST_AWAY:
+				return "A turntable's away= is LDU from the model's middle, %d to %d." % [int(Motions.LEAST_AWAY),
+					int(Motions.MOST_AWAY)]
+			away = float(asked["away"])
 		var keys: Variant = Motions.turntable_keys(middle, rad_to_deg(atan2(offset.x, offset.z)),
-			rad_to_deg(asin(clampf(offset.y / away, -1.0, 1.0))), away, float(stands[4]), seconds)
+			tilt, away, float(stands[4]), seconds)
 		if keys is String:
 			return "%s." % keys
 		for key: Array in keys:
@@ -4230,10 +4243,12 @@ const MOTION_VIEWS: Array = ["hero", "front", "side", "back", "low", "top"]
 ## keys in the motion, as Motions' MOTION_CAMERA lines keep them.
 const CAMERA_SCHEMA: Dictionary = {"type": "object", "additionalProperties": false, "description": (
 	"the camera keyed in the motion: turntable=true, or keys=; turn=, tilt= and away= where the "
-	+ "window's view stands when omitted, at= the model's middle"), "properties": {
+	+ "window's view stands when omitted (a turntable's too), at= the model's middle"), "properties": {
 	"turntable": {"type": "boolean", "description": ("two keys: once round the model's middle at one "
 		+ "speed over the motion (seconds= when it has no length), its first frame and its last the same")},
 	"seconds": {"type": "number", "description": "a turntable's length when the motion has none; 8 when omitted"},
+	"tilt": {"type": "number", "description": "a turntable's height: degrees above level, -89 to 89"},
+	"away": {"type": "number", "description": "a turntable's distance: LDU from the model's middle"},
 	"keys": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["t"],
 		"properties": {
 			"t": {"type": "number", "description": "seconds from the start"},

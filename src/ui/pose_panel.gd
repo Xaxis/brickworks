@@ -1082,6 +1082,7 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	strip.also = _picked_indices(joint, track.keys if track != null else [])
 	strip.picked.connect(func(index: int, adding: bool) -> void: _pick_key(joint, index, adding))
 	strip.moved.connect(func(index: int, t: float) -> void: _move_key(joint, index, t))
+	strip.let_go.connect(func(index: int, adding: bool) -> void: _let_go_key(joint, index, adding))
 	strip.timed.connect(func(t: float) -> void: set_time(t))
 	strip.visible = track != null
 	row.add_child(strip)
@@ -1242,7 +1243,11 @@ func _pick_key(whose: Variant, index: int, adding: bool = false) -> void:
 	var t: float = float(keys[index][0])
 	_keys_hot = true
 	var at: int = _picked_at(whose, t)
-	if not adding:
+	if not adding and at >= 0 and _picked.size() > 1:
+		# One of several picked, pressed: they stay picked, so a drag moves
+		# them all; let go where it was, it is picked alone (_let_go_key).
+		pass
+	elif not adding:
 		_picked = [[whose, t]]
 	elif at >= 0 and _picked.size() > 1:
 		# Let go of: the key chosen is the last of those still picked.
@@ -1271,6 +1276,19 @@ func _pick_key(whose: Variant, index: int, adding: bool = false) -> void:
 	_show_key()
 	if _picked.size() > 1:
 		_say("%d keys picked: Delete takes them out together, a drag of one moves them all." % _picked.size())
+
+
+## A key of [param whose] let go where it was pressed, not dragged: one of
+## several picked, pressed with no Ctrl or Cmd, it is now picked alone.
+func _let_go_key(whose: Variant, index: int, adding: bool) -> void:
+	if adding or _picked.size() < 2:
+		return
+	var keys: Array = _keys_of(_edited(), whose)
+	if index < 0 or index >= keys.size() or _picked_at(whose, float(keys[index][0])) < 0:
+		return
+	_picked = [[whose, float(keys[index][0])]]
+	_mark_picked()
+	_show_key()
 
 
 ## The keys of [param whose] in [param motion]: a joint's track's, or the
@@ -2836,7 +2854,8 @@ func _for_a_finger(order: Array, recording: HBoxContainer, naming: HBoxContainer
 
 
 ## The camera's section (camerakeys): what its keys do, Key the camera,
-## Turntable, and its keys on a strip of time as a joint's are.
+## Turntable, and its keys on a strip of time as a joint's are, between the
+## joints' keys and the chosen key's row.
 func _build_camera(into: Control) -> void:
 	_camera_heading = _heading(into, "The camera")
 	var making := HBoxContainer.new()
@@ -2856,6 +2875,7 @@ func _build_camera(into: Control) -> void:
 		+ "Ctrl+click picks several; dragged, they move in time")
 	_camera_strip.picked.connect(_pick_camera_key)
 	_camera_strip.moved.connect(_move_camera_key)
+	_camera_strip.let_go.connect(func(index: int, adding: bool) -> void: _let_go_key(CAMERA, index, adding))
 	_camera_strip.timed.connect(func(t: float) -> void: set_time(t))
 	_camera_strip.visible = false
 	into.add_child(_camera_strip)
@@ -2865,6 +2885,13 @@ func _build_camera(into: Control) -> void:
 	_camera_words.custom_minimum_size = Vector2(WIDE - 24, 0)
 	_camera_words.modulate = Color(1, 1, 1, 0.7)
 	into.add_child(_camera_words)
+	# Under the joints' keys and above the chosen key's row, as a joint's
+	# strip is: a camera key pressed shows that row below its strip, so the
+	# strip stays under the pointer for the next Ctrl+click or drag. (A
+	# phone's editor puts the row and Play first; its camera stays below.)
+	if not Phone.on() and _key_row != null and _key_row.get_parent() == into:
+		for control: Control in [_camera_heading, making, _camera_strip, _camera_words]:
+			into.move_child(control, _key_row.get_index())
 
 
 # -- a path: where the whole model drives (unit drive) ---------------------------------------
@@ -3377,6 +3404,8 @@ class KeyStrip extends Control:
 	## with those picked already.
 	signal picked(index: int, adding: bool)
 	signal moved(index: int, t: float)
+	## A key let go where it was pressed, not dragged; [param adding] as its press.
+	signal let_go(index: int, adding: bool)
 	signal timed(t: float)
 
 	var times: Array = []
@@ -3388,6 +3417,7 @@ class KeyStrip extends Control:
 	var also: Array = []
 	var _dragging: int = -1
 	var _drag_t: float = 0.0
+	var _adding: bool = false
 	## How near a press takes a key, px: half a fingertip for a finger.
 	var near: float = NEAR
 	const NEAR := 7.0
@@ -3426,7 +3456,8 @@ class KeyStrip extends Control:
 					chosen = nearest
 					_dragging = nearest
 					_drag_t = float(times[nearest])
-					picked.emit(nearest, press.ctrl_pressed or press.meta_pressed)
+					_adding = press.ctrl_pressed or press.meta_pressed
+					picked.emit(nearest, _adding)
 				else:
 					timed.emit(_t_of(press.position.x))
 				accept_event()
@@ -3435,6 +3466,8 @@ class KeyStrip extends Control:
 				_dragging = -1
 				if absf(_drag_t - float(times[index])) > 0.02:
 					moved.emit(index, _drag_t)
+				else:
+					let_go.emit(index, _adding)
 				queue_redraw()
 				accept_event()
 		elif event is InputEventMouseMotion and _dragging >= 0:

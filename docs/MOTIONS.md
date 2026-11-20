@@ -762,11 +762,15 @@ StudWorx keys any object; Brickworks keyed only joints and paths).
   there kept), its turn taken the short way from its neighbour. Turntable
   makes two keys round the model's middle at the height and distance the
   view stands, over the motion's length (8 s for one with none). The
-  camera's keys are a strip like a joint's: a key pressed is chosen and the
-  view goes where it looks from; its way there and Remove key as a joint's.
+  camera's keys are a strip like a joint's, under the joints' strips and
+  above the chosen key's row (so a key pressed leaves its strip where it
+  was; a phone's editor keeps Play and the row first): a key pressed is
+  chosen and the view goes where it looks from; its way there and Remove
+  key as a joint's.
 - **Keys picked together.** Ctrl+click (Cmd on a Mac) picks keys of any
   strip, the camera's among them; Delete or Remove key takes them all out
-  in one step; a drag of one picked key moves them all by as much. Delete is
+  in one step; a drag of one picked key moves them all by as much, refused
+  with words when one would land on a key not picked. Delete is
   the keys' only after a key was pressed: typed in the name field, or after
   a press in the view, it is not.
 - **Playing.** Play, Play all and a sequence put the window's view where the
@@ -782,9 +786,17 @@ StudWorx keys any object; Brickworks keyed only joints and paths).
   `keyed_shot`), through its lens, the lights where Render puts them.
 - **Over MCP.** `render_motion camera={"turntable": true}` keys the camera
   (the motion made when the model has none of that name) and films it in
-  one call, one undo step; `camera={"keys": [{"t": 0, "turn": 0}, ...]}` keys
+  one call, one undo step, at the height and distance the window's view
+  stands unless `tilt=` and `away=` say others; `camera={"keys": [{"t": 0, "turn": 0}, ...]}` keys
   any; `define_motion camera=` keeps keys alone or with tracks, and given
   alone for a motion the model has, keeps its joints. list_motions says
   each key.
+- **Saving.** An unedited model writes its camera lines byte for byte, a
+  key's own spacing kept (MetaIndex's rule for every line of the app's); a
+  key spelled otherwise ("ease", "130.0") is written as the app writes it,
+  as any motion line is until kbkeep's unedited-save rule lands.
+- **Time.** Orthanc's 8 s turntable: its 97 frames' cameras are worked out
+  at Play in a few ms; each frame's camera is put and held in well under a
+  millisecond (camerakeys_probe section 8 holds both).
 - **Checked by** `src/dev/camerakeys_probe.gd` (tools/suite/windowed.txt);
   keep_text_probe's motion carries two camera lines.

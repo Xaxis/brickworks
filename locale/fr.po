@@ -15748,3 +15748,6 @@ msgstr "Pas de plateau tournant : %s."
 
 msgid "A turntable: the camera goes once round the model in %s s, at the height and distance it stands at now. Each key can be picked, moved or changed."
 msgstr "Un plateau tournant : la caméra fait une fois le tour du modèle en %s s, à la hauteur et la distance actuelles. Chaque clé peut être choisie, déplacée ou modifiée."
+
+msgid "A key not picked is at %s s already: the keys were left where they were."
+msgstr "Une clé non choisie est déjà à %s s : les clés sont restées où elles étaient."

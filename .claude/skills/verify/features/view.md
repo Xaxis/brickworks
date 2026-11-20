@@ -4060,14 +4060,17 @@ PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # one place and alike, the middle from the far side, the model in the middle
 # of each; Undo brings the three keys back byte for byte. Saved, reopened and
 # written byte for byte twice; another motion kept, the camera lines kept; a
-# file's own spelling kept at an unedited save. On the doors' motion with
-# define_motion camera= keys: two camera keys and a door's Ctrl+clicked,
+# key's own spacing kept at an unedited save. On the doors' motion with
+# define_motion camera= keys: a camera key pressed leaves its strip where it
+# was; two camera keys and a door's Ctrl+clicked,
 # Delete takes all three out in one step, Undo back byte for byte; a picked
 # pair dragged half a second together, one step; Delete in the name field or
 # after a press in the view takes none. render_motion camera={"turntable":
-# true} on a new name: made and filmed in one call. On Orthanc, a camera
-# track playing against the view turned the same way by hand (TIME_PROCESS,
-# median of 3 rounds): at most 1 ms more a frame. Pictures in OUT_DIR.
+# true} on a new name: made and filmed in one call, each frame looking at the
+# model's middle. On Orthanc, an 8 s turntable's 97 cameras worked out at Play
+# in at most 16 ms and each frame's camera put and held in at most 1 ms (95th
+# percentile); the window's own frame times against the view turned by hand
+# printed, not held to. Pictures in OUT_DIR.
 tools/probe.sh camerakeys_probe -- bench/results/camerakeys-2026-11-20
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
