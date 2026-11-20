@@ -103,6 +103,10 @@ var hose_worst_ms: float = 0.0
 var _hose_fits: Dictionary = {}
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
+## Grabs taken while this is set ([method held_of]) take a locked joint as
+## if unlocked (Grab.locks_off): Motions' list of joints sets it while it
+## asks which joints there are, so a locked one keeps its row. Main thread.
+var locks_off: bool = false
 var _judge: Balance = null
 var _judge_revision: int = -1
 var _mark: BalanceMark = null
@@ -204,7 +208,8 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 			grab = null
 			frames = 0
 			_said = ""
-			_tell("%s — drag the end where it should go" % _capital(links.said))
+			_tell("%s — drag the end where it should go%s" % [_capital(links.said),
+				"" if links.locked_why.is_empty() else "; left as it is: " + links.locked_why])
 			return true
 	grab = Grab.new()
 	grab.world = world
@@ -1039,16 +1044,31 @@ func _cells_for(held: Grab) -> Dictionary:
 		return out, "lay a session's move's cells")
 
 
+## A lock on a joint of [param ids]'s parts, said after why they do not
+## move (" Leg's joint is locked, ...: unlock it ..."), or "". A part broken
+## out of its section stands away from its joint, so what holds it is what
+## it stands on; its joint is still locked, and unlocking it is the way out.
+func _lock_on(ids: Array) -> String:
+	if world.motions == null or world.motions.locks.is_empty():
+		return ""
+	var moving: Dictionary = {}
+	for key: Variant in ids:
+		moving[int(key)] = true
+	var lock: Motions.Lock = world.motions.lock_split(moving, world, builder)
+	return "" if lock == null else " %s." % Motions.lock_words(lock, world, library, builder)
+
+
 func _move_for_session(ids: Array, input: Dictionary) -> String:
 	var held: Grab = await _worked(func() -> Variant: return _taken(ids), "take hold of a part")
 	var first: int = ids[0]
 	var state: String = held.state
 	if state == "rigid":
 		var held_said: String = _bodies.held_words(first)
+		var locked: String = _lock_on(ids)
 		if held_said.is_empty():
-			return ("#%d is held rigidly to what stays (%s): nothing it is built on turns. %s") % [
-				first, _bodies.summary(), held.why]
-		return "#%d will not move: %s. Nothing was changed." % [first, held_said]
+			return ("#%d is held rigidly to what stays (%s): nothing it is built on turns. %s%s") % [
+				first, _bodies.summary(), held.why, locked]
+		return "#%d will not move: %s.%s Nothing was changed." % [first, held_said, locked]
 	if state != "moves":
 		return held.why
 	var lines := PackedStringArray()
@@ -1294,6 +1314,7 @@ func _taken(ids: Array) -> Grab:
 	held.bodies = _bodies
 	held.hose_fits = _hose_fits
 	held.shared_mechanism = _mechanism
+	held.locks_off = locks_off
 	var selection: Dictionary = {}
 	if ids.size() > 1:
 		for key: int in ids:
@@ -1378,6 +1399,8 @@ func picked_of(ids: Array) -> Grab:
 	held.builder = builder
 	held.library = library
 	held.bodies = _bodies
+	# Which joint it is and its sides are the same locked or not.
+	held.locks_off = true
 	var selection: Dictionary = {}
 	if ids.size() > 1:
 		for key: int in ids:
@@ -1456,6 +1479,10 @@ func _chain_for_session(end: int, to: Variant) -> String:
 	links.library = library
 	links.bodies = _bodies
 	if links.begin(end, held_at) != "moves":
+		# A joint locked held it (jlreview M1): said as a lock refuses, with
+		# its way out.
+		if links.why.contains(Motions.UNLOCK_WORDS):
+			return "#%d will not move: %s. Nothing moved." % [end, links.why]
 		return "#%d has no chain of turning joints back to what stays: %s." % [end, links.why]
 	var off: float = links.reach(target)
 	var depth: int = builder.history_depth()
@@ -1465,6 +1492,8 @@ func _chain_for_session(end: int, to: Variant) -> String:
 	lines.append("%s; its middle is %s studs from the point%s." % [_capital(words),
 		Balance.studs(links.end_point().distance_to(target) / BrickLattice.STUD),
 		" (as near as its joints reach)" if off >= 2.0 else ""])
+	if not links.locked_why.is_empty():
+		lines.append("Left as it is: %s." % links.locked_why)
 	if builder.history_depth() > depth and _judge != null:
 		var after: Balance.Report = _judge.weigh_pose(links.placed)
 		last_report = after

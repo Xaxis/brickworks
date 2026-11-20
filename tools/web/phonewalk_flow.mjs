@@ -1511,9 +1511,15 @@ function person(page, cdp, width, height, size, choosers) {
       m = await untilRead("brickworksMotions", (now) => (now.joints || []).length > 0, 10);
       const slider = await bringIn("motions_joint_0", "motions_close");
       if (!slider) return { why: "no joint's slider on the screen" };
+      // Where the joint stands once its slider is in sight (a swipe that
+      // brought it may have begun on it), and dragged toward the side it is
+      // not on: a door the recording left at its stop (#122 at 62°, the
+      // fence lattice) moves no further that way, though the drag is taken.
+      m = await read("brickworksMotions");
       const was = JSON.stringify((m.joints || [])[0]?.place);
+      const way = Number((m.joints || [])[0]?.place) > 0 ? -1 : 1;
       aim(slider);
-      await drag({ x: slider.x - slider.w * 0.3, y: slider.y }, { x: slider.x + slider.w * 0.3, y: slider.y });
+      await drag({ x: slider.x - way * slider.w * 0.3, y: slider.y }, { x: slider.x + way * slider.w * 0.3, y: slider.y });
       m = await untilRead("brickworksMotions", (now) => JSON.stringify((now.joints || [])[0]?.place) !== was, 8);
       note(`the joint from ${was} to ${JSON.stringify((m.joints || [])[0]?.place)}`);
       return { done: JSON.stringify((m.joints || [])[0]?.place) !== was, why: "a finger's drag of the slider moved no joint" };

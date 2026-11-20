@@ -72,6 +72,7 @@ const READ_WORDS: Array[String] = [
 	"AUTHORED_STEPS", "WORKED_STEPS", "COPY", "IN", # LdrModel
 	"PAGES", "PAGE", # SharedPages
 	"PROGRAM", # HubProgram
+	"LOCK", # Motions (a joint locked)
 ]
 
 

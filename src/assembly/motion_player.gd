@@ -185,7 +185,7 @@ func _as_part(joint: Motions.Joint, id: int) -> void:
 	joint.lead = id
 	joint.part = brick.part_id
 	joint.colour = brick.color_code
-	joint.place = (brick.transform.origin - (store.lift() if store != null else Vector3.ZERO)) \
+	joint.place = (Motions.stands(brick, world).origin - (store.lift() if store != null else Vector3.ZERO)) \
 		* LdrModel.FLIP
 
 
@@ -216,7 +216,7 @@ func at_now(joint: Motions.Joint) -> float:
 	if not joint.measured:
 		var was: Variant = motions().snapshot.get(int(ids[0]))
 		var lead: BrickWorld.Brick = world.get_brick(int(ids[0]))
-		if was == null or (was as Transform3D).is_equal_approx(lead.transform):
+		if was == null or (was as Transform3D).is_equal_approx(Motions.stands(lead, world)):
 			return joint.at
 		_measure(joint, grabbing.picked_of(ids), true)
 		if not joint.measured:
@@ -228,8 +228,10 @@ func at_now(joint: Motions.Joint) -> float:
 	if ours == null or theirs == null:
 		joint.measured = false
 		return joint.at
-	return joint.at + _between(joint.base_rel, theirs.transform.affine_inverse() * ours.transform,
-		joint.line, joint.mode)
+	# Each where it is built: a section broken out across the joint is not a
+	# slide along it (jlfix, the sibling of jlreview H2).
+	return joint.at + _between(joint.base_rel, Motions.stands(theirs, world).affine_inverse()
+		* Motions.stands(ours, world), joint.line, joint.mode)
 
 
 ## [param joint]'s AT brought up to where it stands now, and measured from
@@ -246,7 +248,7 @@ func rebase(joint: Motions.Joint) -> void:
 			# Its part taken off: what it last knew stands, to be found again.
 			joint.measured = false
 			return
-		joint.base_rel = theirs.transform.affine_inverse() * ours.transform
+		joint.base_rel = Motions.stands(theirs, world).affine_inverse() * Motions.stands(ours, world)
 
 
 ## The joint's two sides found from [param held] (begun or picked): a part
@@ -271,7 +273,7 @@ func _measure(joint: Motions.Joint, held: Grab, from_file: bool) -> void:
 	if from_file and snapshot.has(ours) and snapshot.has(theirs):
 		joint.base_rel = (snapshot[theirs] as Transform3D).affine_inverse() * (snapshot[ours] as Transform3D)
 	else:
-		joint.base_rel = across.transform.affine_inverse() * mine.transform
+		joint.base_rel = Motions.stands(across, world).affine_inverse() * Motions.stands(mine, world)
 	joint.measured = true
 
 
@@ -1089,6 +1091,9 @@ func movable(most: int = 16) -> Array:
 		moving.append([order, ids.size(), int(body), by])
 	moving.sort_custom(func(x: Array, y: Array) -> bool:
 		return int(x[0]) < int(y[0]) or (int(x[0]) == int(y[0]) and int(x[1]) > int(y[1])))
+	# A joint locked is listed as it would move unlocked: its row is where
+	# it is unlocked (jointlock).
+	grabbing.locks_off = true
 	for one: Array in moving:
 		if _movable.size() >= most:
 			break
@@ -1101,6 +1106,7 @@ func movable(most: int = 16) -> Array:
 		if not moves_at_all(joint):
 			continue
 		_movable.append(joint)
+	grabbing.locks_off = false
 	return _movable
 
 
