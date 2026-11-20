@@ -183,7 +183,20 @@ func _list_up() -> InventoryPanel:
 		list.hide_list()
 	_shell.run("parts_list")
 	await _frames(6)
+	await _filled()
 	return _main.get("_inventory")
+
+
+## The parts list fills across frames since smalls9 (b13cdf5c8), so its rows
+## come a few frames after the command on a big model. Wait for it as a person
+## waits for the rows; a build without is_filling (the base) fills at once.
+func _filled() -> void:
+	for n: int in 3000:
+		var list: Object = _main.get("_inventory")
+		if list != null and (not list.has_method("is_filling") or not bool(list.call("is_filling"))):
+			return
+		await process_frame
+	_check("the parts list fills within 3000 frames", false)
 
 
 ## Every rare lot swapped as a person does (rsrev: the parts list's row,
@@ -632,6 +645,7 @@ func _case_speed() -> void:
 			_shell.run("parts_list")
 			var t1: int = Time.get_ticks_usec()
 			await _frames(6)
+			await _filled()
 			list = _main.get("_inventory")
 			var rare_ms: float = -1.0
 			if not _base():
@@ -733,6 +747,7 @@ func _case_control() -> void:
 	await _frames(6)
 	_shell.run("parts_list")
 	await _frames(10)
+	await _filled()
 	var list: Control = _main.get("_inventory")
 	var named: Dictionary = list.call("controls_by_name")
 	print("    held, the parts list says: %s" % (str((named["parts_rare"] as Button).text) if named.has("parts_rare") else "(no rare row)"))
@@ -816,6 +831,7 @@ func _case_speed2() -> void:
 			list.call("hide_list")
 			_shell.run("parts_list")
 			await _frames(10)
+			await _filled()
 			var row: Button = list.call("controls_by_name").get("parts_rare")
 			var s0: int = Time.get_ticks_usec()
 			row.pressed.emit()
@@ -930,6 +946,7 @@ func _case_attrib() -> void:
 	await _open(FileAccess.get_file_as_string("res://models/orthanc.ldr"))
 	_shell.run("parts_list")
 	await _frames(20)
+	await _filled()
 	var list: Control = _main.get("_inventory")
 	for round: int in 3:
 		var t0: int = Time.get_ticks_usec()
