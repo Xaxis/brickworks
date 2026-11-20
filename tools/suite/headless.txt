@@ -147,6 +147,7 @@ snippets
 standing
 subject_words
 surface
+technic_lay
 unrestored
 update
 viewer_tools

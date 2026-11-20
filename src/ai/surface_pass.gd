@@ -360,6 +360,8 @@ func hand() -> Variant:
 		return "The baseplate is bare: build the model before its surface."
 	assistant.progress.emit("the surface pass: reading the model's studs, steps and walls")
 	var found: Array[Finding] = find()
+	if _technic:
+		found.append_array(await _technic_faces(_technic_gone))
 	var to_lay: Array[Finding] = []
 	var offers: Array[Finding] = []
 	for one: Finding in found:
@@ -394,6 +396,45 @@ func hand() -> Variant:
 	if picture.is_empty():
 		return text
 	return [{"type": "text", "text": text}, picture]
+
+
+## Whether the last find() was of a body in the style of Technic sets, and
+## the bricks its other findings take off, which a face never lays again.
+var _technic: bool = false
+var _technic_gone: Dictionary = {}
+
+
+## Each side of a Technic body as one finding, as a Technic set's face is
+## laid (TechnicLay): a course laid again as Technic bricks, pins in its
+## holes, a panel on two of them and beams on edge as the frame lines. The
+## frames are given back between the parts tried.
+func _technic_faces(gone: Dictionary) -> Array[Finding]:
+	var out: Array[Finding] = []
+	assistant.progress.emit("the surface pass: a Technic set's panels and frame lines")
+	# The panels real Technic sets show most; the web build fetches them.
+	await TechnicParts.ensure(assistant)
+	for facing: String in TechnicLay.facings():
+		var lay: TechnicLay.Lay = await TechnicLay.new(assistant).lay_for(facing, gone, true)
+		if lay == null:
+			continue
+		var one := Finding.new()
+		one.kind = "flank"
+		one.of = "technic"
+		one.add = lay.add
+		one.remove = lay.remove
+		one.restore = lay.restore
+		one.box = lay.box
+		# Its size as a wall's is counted: studs along by bricks up.
+		one.studs = roundi(maxf(lay.box.size.x, lay.box.size.z) * lay.box.size.y
+			/ (STUD * PLATE * 3.0))
+		one.said = "%s." % lay.said
+		one.laid = _pieces_said(one)
+		one.seen_from = "corner" if facing.begins_with("+") else "far corner"
+		out.append(one)
+		# What this face lays again is not another's to lay again.
+		for id: int in lay.remove:
+			gone[id] = true
+	return out
 
 
 func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
@@ -699,9 +740,16 @@ func find() -> Array[Finding]:
 	# And the studs on a part's side: a plate laid on its side, studs out.
 	fields.append_array(_side_fields(points))
 	# A building's long plain walls are textured; a body's flanks skinned,
-	# of brick courses and of plates.
-	var walls: Array[Finding] = _walls(gone) if _straight_first() else _flanks(gone)
-	if not _straight_first():
+	# of brick courses and of plates. A body in the style of Technic sets is
+	# given a Technic set's faces instead, worked out in hand() a frame at a
+	# time (TechnicLay): panels on pins and beams on edge, not side studs.
+	_technic_gone = gone
+	_technic = not _straight_first() and TechnicLay.for_subject(assistant)
+	var walls: Array[Finding] = []
+	if _straight_first():
+		walls = _walls(gone)
+	elif not _technic:
+		walls = _flanks(gone)
 		walls.append_array(_plate_flanks(gone, walls.duplicate()))
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
@@ -3641,6 +3689,10 @@ func _share_out(ready: Array[Finding], ids: Array[int]) -> void:
 		one.ids = []
 		for raw: Variant in one.add:
 			var placed: Dictionary = raw
+			# Put where a joint puts it, it has no square place to know it
+			# by: it goes to the finding nearest it, below.
+			if not placed.has("x"):
+				continue
 			var mark: String = _signature(str(placed["part"]), str(placed.get("section", "")),
 				float(placed["x"]), float(placed["y"]), float(placed["z"]))
 			var list: Array = fresh.get(mark, [])

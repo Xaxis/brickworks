@@ -2497,7 +2497,30 @@ fixing what it got wrong.
   both sides skinned in one finding (two 30414s a side, 5520 at each end, a
   2 x 4 between, the three plates cut to 2 x 8s) in as many pieces; one
   course of 1 x 8 bricks under plates gets both sides; two side-stud bricks'
-  eight open side studs all tiled. And `wall`, for a building only, a
+  eight open side studs all tiled. A subject in the style of LEGO® Technic
+  sets (`TechnicParts.of_technic` of what the session said: "studded Technic
+  wheel loader", "LEGO Technic crane"; not "technic beam") gets its four
+  sides as `technic` findings instead of flank skins (`TechnicLay`,
+  `src/ai/technic_lay.gd`, 2026-11-20 design27): per side, one edit, a
+  course of the wall laid again as Technic bricks with their holes out, a
+  beam on edge pinned along it as the frame line (black on a light body,
+  grey on a dark one), and panels (`TechnicLay.panel_parts`, flat and curved
+  ones real sets show most) pinned flat over the wall on two pins at one
+  depth, side by side or one over the other; a studless body's standing pins
+  and open holes take the same parts. Each piece is posed by its pin
+  (`Attach.pose`), its own cover clear of the body but for what it is pinned
+  to and pins its holes meet, over the body not over air, at least 0.6 of
+  its face seen from outside (`_shown`, rays out along the face), and tested
+  as the check tests it (`OpenPoints`). Settled as any finding; one Undo
+  takes a face off. `technic_lay_probe`: 12 bodies (6 design26 first builds
+  in `src/dev/fixtures/technic_lay/`, 6 Technic sets from
+  `vendor/omr/files` with their panels off and what the check faults off),
+  each face laid by its own `edit_model`, held, nothing new floating or
+  overlapping, one Undo back to the body byte for byte; a Technic forklift's
+  `review_model {"surface": true}` gives two faces or more, rejecting one
+  takes off its parts alone; a forklift not said to be Technic gets none
+  and its session is told what it was before (`how_real_sets_build_this`
+  adds one paragraph for a Technic subject only). And `wall`, for a building only, a
   plain one-wide (or two-wide's outer row) wall open to the air, six studs by
   three courses or more, nine tenths one colour, laid again by `_restyle`
   in its box with masonry only (`"turned_out": false`: no stud turned out).
