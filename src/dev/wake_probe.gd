@@ -84,6 +84,7 @@ func _run() -> void:
 	_camera.frame(_world.model_bounds())
 	await _quiet(2.0, 60.0)
 	var awake_ms: float = await _process_ms(2.0)
+	var awake_running: Array[String] = _still_running()
 
 	Wake.begin()
 	print("")
@@ -91,11 +92,16 @@ func _run() -> void:
 	await _seconds(1.5)
 	_all_asleep("asleep after 1.5 s standing still")
 	var asleep_ms: float = await _process_ms(2.0)
+	# The engine's own measure of a frame's processing, said but not held
+	# to: in a window on a loaded box it swings 5 to 35 ms whatever runs
+	# (wake runs, 2026-11-20). What is held is which scripts still run.
 	print("    processing %.3f ms a frame awake, %.3f asleep" % [awake_ms, asleep_ms])
-	_check("a frame's processing is less asleep than awake", asleep_ms < awake_ms)
+	var asleep_running: Array[String] = _still_running()
+	_check("%d scripts processing standing still awake, %d asleep" % [awake_running.size(),
+		asleep_running.size()], awake_running.size() >= 15 and asleep_running.size() <= 3)
 	_check("and nothing woke them standing still (%d asleep)" % _asleep_count(),
 		_asleep_count() >= 8)
-	print("    still processing: %s" % ", ".join(_still_running()))
+	print("    still processing: %s" % ", ".join(asleep_running))
 
 	print("")
 	print("  what wakes them")
