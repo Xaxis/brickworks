@@ -3184,6 +3184,14 @@
       "tests": []
     },
     {
+      "id": "cli:swoosh probe",
+      "kind": "cli",
+      "entry": "src/dev/swoosh_probe.gd",
+      "reach": "tools/probe.sh swoosh   (headless: the walk's tower by its top brick, the car by its roof and a ship by its fuselage, each joint at the swing's worst within 1% of the hand's sums (bench/results/swoosh-2026-11-20/hand_sums.md), the ship's wing coming away first though Lift holds it, and at rest the swing's sums Balance's still ones; ten gallery seeds each held by its top, the first to come away named, and after Strengthen later or not at all; in the app Stress's Swing on the ship, red and blue, Strengthen from its row, weakest_joints swing= the same in 1 call, g4 in 2; Orthanc and 10179 swung with no frame over 100 ms)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
@@ -6114,6 +6122,14 @@
       "kind": "ui",
       "entry": "src/assembly/lift_test.gd",
       "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:swing by a part",
+      "kind": "ui",
+      "entry": "src/assembly/swing_test.gd",
+      "reach": "tools/probe.sh swoosh   (by hand: View, Stress; press Swing, then click a part: the model is swung by it like a toy, 1 m in half a second and a quarter turn, down through the bottom; each joint carries what is past it pulled by gravity and the swing together, at its worst moment of the arc; the first to let go comes away and the swing goes on without it; the part in the hand blue, what comes away red and named first in the panel with when, its parts, weight and studs; a row that lets go offers Strengthen, and after it the model is swung again; Swing again sets it down; a session: weakest_joints swing=N)",
       "area": "view",
       "tests": []
     },

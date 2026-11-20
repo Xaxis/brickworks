@@ -14520,6 +14520,137 @@ msgstr "Su forma aún no ha llegado: vuelve a levantarlo en un momento."
 msgid "There is no part #%d in the model to lift it by."
 msgstr "No hay ninguna pieza #%d en el modelo por la que levantarlo."
 
+# View, Stress's Swing (APP_UX10, swoosh): the model held by a part and swung like
+# a toy, what comes away first and when; and Swing's legend.
+msgid "Swing"
+msgstr "Balancear"
+
+msgid "Swing the model by a part like a toy, 1 m in half a second and a quarter turn: press, then click the part. What comes away first is named, red"
+msgstr "Balancear el modelo por una pieza como un juguete, 1 m en medio segundo y un cuarto de vuelta: pulsa y luego haz clic en la pieza. Lo que se desprende primero se nombra, en rojo"
+
+msgid "In the hand: the part it is swung by"
+msgstr "En la mano: la pieza por la que se balancea"
+
+msgid "Comes away in the swing: a joint lets go"
+msgstr "Se desprende al balancear: una unión se suelta"
+
+msgid "Holds past its working load at its worst, or swings on a pin"
+msgstr "Aguanta por encima de su carga de trabajo en el peor momento, o gira sobre un pasador"
+
+msgid "Holds through the swing: faded"
+msgstr "Aguanta todo el balanceo: atenuada"
+
+msgid "Click the part to swing the model by."
+msgstr "Haz clic en la pieza por la que balancear el modelo."
+
+msgid "Click another part to swing by it"
+msgstr "Haz clic en otra pieza para balancearlo por ella"
+
+msgid "Swing again sets it down."
+msgstr "Balancear de nuevo lo deja en el suelo."
+
+msgid "Swinging it by %s…"
+msgstr "Balanceándolo por %s…"
+
+msgid "swing: click the part to swing the model by"
+msgstr "balancear: haz clic en la pieza por la que balancear el modelo"
+
+msgid "swing off: the model stands on the floor again"
+msgstr "balancear desactivado: el modelo vuelve a estar en el suelo"
+
+msgid "swing: the part it was swung by is gone"
+msgstr "balancear: la pieza por la que se balanceaba ya no está"
+
+msgid "swing: swinging it by %s…"
+msgstr "balancear: balanceándolo por %s…"
+
+msgid "Swung by %s: everything holds through the swing, %s g"
+msgstr "Balanceado por %s: todo aguanta el balanceo, %s g"
+
+msgid "Swung by %s: %s comes away first, %s s in: %s"
+msgstr "Balanceado por %s: %s se desprende primero, a los %s s: %s"
+
+msgid "Swung by %s: %s falls off first, %s s in: %s"
+msgstr "Balanceado por %s: %s se cae primero, a los %s s: %s"
+
+msgid "Swung by %s: %s stays behind, %s s in: %s"
+msgstr "Balanceado por %s: %s se queda atrás, a los %s s: %s"
+
+msgid "%d pieces in all, %s g of %s"
+msgstr "%d piezas en total, %s g de %s"
+
+msgid "%s, %s g, at its 1 stud"
+msgstr "%s, %s g, en su única espiga"
+
+msgid "%s, %s g, at its %d studs"
+msgstr "%s, %s g, en sus %d espigas"
+
+msgid "%s, %s g, at the %d studs of %s"
+msgstr "%s, %s g, en las %d espigas de %s"
+
+msgid "%s, %s g: it only stood on %s"
+msgstr "%s, %s g: solo se apoyaba en %s"
+
+msgid "%s, %s g: nothing joins it to %s"
+msgstr "%s, %s g: nada la une a %s"
+
+msgid "%s on the left"
+msgstr "%s a la izquierda"
+
+msgid "%s on the right"
+msgstr "%s a la derecha"
+
+msgid "%s on the front"
+msgstr "%s delante"
+
+msgid "%s on the back"
+msgstr "%s detrás"
+
+msgid "%s on the front-left"
+msgstr "%s delante a la izquierda"
+
+msgid "%s on the front-right"
+msgstr "%s delante a la derecha"
+
+msgid "%s on the back-left"
+msgstr "%s detrás a la izquierda"
+
+msgid "%s on the back-right"
+msgstr "%s detrás a la derecha"
+
+msgid "%s at the top"
+msgstr "%s arriba"
+
+msgid "%s at the bottom"
+msgstr "%s abajo"
+
+msgid "%s s in: %s"
+msgstr "a los %s s: %s"
+
+msgid "worst %s s in"
+msgstr "en el peor momento a los %s s"
+
+msgid "%s: swung by it, it holds the rest"
+msgstr "%s: balanceado por ella, sujeta el resto"
+
+msgid "%s: comes away %s s in, as %s lets go of all it holds"
+msgstr "%s: se desprende a los %s s, porque %s suelta todo lo que sujeta"
+
+msgid "%s: comes away %s s in with %s, which lets go"
+msgstr "%s: se desprende a los %s s con %s, que se suelta"
+
+msgid "%s: stays behind, joined to nothing swung"
+msgstr "%s: se queda atrás, sin unión con nada balanceado"
+
+msgid "The baseplate is the floor: swing the model by one of its own parts."
+msgstr "La placa base es el suelo: balancea el modelo por una de sus propias piezas."
+
+msgid "Its shape has not come yet: swing it again in a moment."
+msgstr "Su forma aún no ha llegado: vuelve a balancearlo en un momento."
+
+msgid "There is no part #%d in the model to swing it by."
+msgstr "No hay ninguna pieza #%d en el modelo por la que balancearlo."
+
 # From my bricks: the bin as what the person owns, counted down (ownlimit)
 msgid "Build from my bricks"
 msgstr "Construir con mis piezas"

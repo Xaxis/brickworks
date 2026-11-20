@@ -1482,13 +1482,25 @@ func definitions() -> Array:
 				+ "part's number: the model lifted by that part off the floor, as Stress's Lift "
 				+ "shows it (a car by its roof, a wall by a top brick): what each joint between "
 				+ "it and the rest carries, which lets go first, and every part that comes away. "
-				+ "Changes nothing."),
+				+ "swing= a part's number: the model held by that part and swung like a toy, as "
+				+ "Stress's Swing does (a child swooshing it by its roof: the hand 1 m in 0.5 s, "
+				+ "a quarter turn, down through the bottom and up): each joint's load at its worst "
+				+ "moment, gravity and the swing's pull together, what comes away first, when, with "
+				+ "its parts and weight, and Strengthen's fix for it as an edit_model call; arc= "
+				+ "{metres, seconds, turn (degrees)} for another swing. Changes nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"part": {"type": "integer"},
 				"count": {"type": "integer"},
 				"mine": {"type": "boolean"},
 				# loadtest (APP_UX8 #13): Stress's Lift.
 				"lift_by": {"type": "integer"},
+				# swoosh (APP_UX10): Stress's Swing, and the arc swung through.
+				"swing": {"type": "integer"},
+				"arc": {"type": "object", "additionalProperties": false, "properties": {
+					"metres": {"type": "number"},
+					"seconds": {"type": "number"},
+					"turn": {"type": "number"},
+				}},
 			}},
 		},
 		GalleryTool.definition(),
@@ -7282,6 +7294,12 @@ func _weakest_joints(input: Dictionary) -> String:
 	if world.brick_count() <= store.scenery.size():
 		return "There is nothing on the baseplate to weigh."
 	var generation: int = world.generation()
+	# An optional field sent empty (null, 0) is as if it were not sent.
+	if input.get("swing") != null and int(input["swing"]) != 0:
+		if input.get("lift_by") != null and int(input["lift_by"]) != 0:
+			return ("lift_by= holds the model still and swing= swings it: send one of them. Nothing was "
+				+ "weighed.")
+		return await _swing(input, generation)
 	if input.has("lift_by"):
 		return await _lift_by(input, generation)
 	var report: Stability.Report = await app.call("weigh_joints")
@@ -7307,6 +7325,88 @@ func _lift_by(input: Dictionary, generation: int) -> String:
 	if world.generation() != generation:
 		return "Another model was opened while this one was lifted; ask again."
 	return lifted.call("said", clampi(int(input.get("count", 8)), 1, 40))
+
+
+## swoosh (APP_UX10): the model swung like a toy by part swing=, as Stress's
+## Swing swings it (StressView.swing_paced), so the two say the same; arc=
+## {metres, seconds, turn} each kept in what a hand can do. And the fix
+## Strengthen finds for the first joint that lets go, as an edit_model call,
+## so a session makes it hold and swings again: two calls.
+func _swing(input: Dictionary, generation: int) -> String:
+	var shell: Shell = app.get("_shell")
+	var world: BrickWorld = app.get("_world")
+	if shell == null or shell.stress == null:
+		return "This app cannot swing a model."
+	var arc: Dictionary = {}
+	var asked: Variant = input.get("arc")
+	var notes := PackedStringArray()
+	if asked != null and not asked is Dictionary:
+		return "arc= is {metres, seconds, turn}, each a number, any left out as a child swings (1 m, 0.5 s, 90°). Nothing was weighed."
+	if asked is Dictionary:
+		var limits: Dictionary = Later.script(&"SwingTest").get_script_constant_map()
+		for pair: Array in [["metres", limits["METRES_RANGE"], "m"], ["seconds", limits["SECONDS_RANGE"], "s"],
+				["turn", limits["TURN_RANGE"], "°"]]:
+			var given: Variant = (asked as Dictionary).get(pair[0])
+			if given == null:
+				continue
+			if not (given is float or given is int):
+				return "arc's %s is a number (%s). Nothing was weighed." % [pair[0], pair[2]]
+			var wanted: float = float(given)
+			var bounds: Vector2 = pair[1]
+			arc[pair[0]] = clampf(wanted, bounds.x, bounds.y)
+			if not is_equal_approx(float(arc[pair[0]]), wanted):
+				notes.append("%s kept to %s%s (between %s and %s)." % [pair[0], Balance.tidy(arc[pair[0]]),
+					pair[2], Balance.tidy(bounds.x), Balance.tidy(bounds.y)])
+	var swung: RefCounted = await shell.stress.swing_paced(int(input.get("swing", 0)), true, arc)
+	if swung == null:
+		return "The parts' shapes were still coming in; ask again in a moment."
+	if world.generation() != generation:
+		return "Another model was opened while this one was swung; ask again."
+	var said: String = swung.call("said", clampi(int(input.get("count", 8)), 1, 40))
+	if not notes.is_empty():
+		said = " ".join(notes) + "\n" + said
+	return said + await _swing_fix_words(swung, generation)
+
+
+## Strengthen's fix for the first joint [param swung] lets go at, as View,
+## Stress offers it on that row, and the edit_model call that puts it down;
+## empty when nothing lets go at a joint.
+func _swing_fix_words(swung: RefCounted, generation: int) -> String:
+	var shell: Shell = app.get("_shell")
+	var panel: StressPanel = shell.stress.panel if shell.stress != null else null
+	var fixer: RefCounted = panel.fixer_now() if panel != null else null
+	var first: Balance.JointLoad = null
+	var side: Dictionary = {}
+	for one: RefCounted in swung.get("away"):
+		if str(one.get("why")) == "lets go" and not bool(one.get("whole")):
+			first = one.get("joint")
+			for id: int in one.get("ids"):
+				side[id] = true
+			break
+	if fixer == null or first == null:
+		return ""
+	var report: Stability.Report = await app.call("weigh_joints")
+	var world: BrickWorld = app.get("_world")
+	if report == null or world.generation() != generation:
+		return ""
+	var weak := StressView.Weak.new()
+	weak.id = first.beyond
+	weak.ids = [first.beyond]
+	weak.around = first.held_by
+	weak.joint = first
+	weak.margin = 0.0
+	weak.side = side
+	weak.swung_by = int(swung.get("by"))
+	weak.arc = {"metres": swung.get("metres"), "seconds": swung.get("seconds"), "turn": swung.get("turn")}
+	var store: ModelStore = app.get("_store")
+	fixer.scenery = store.scenery
+	fixer.owned = {}
+	var fix: RefCounted = await fixer.find(report, weak)
+	if fix == null:
+		return ("\nStrengthen finds no fix of up to three parts with room that holds #%d's joint longer in "
+			+ "the swing: brace it by hand.") % first.beyond
+	return ("\nStrengthen, as Stress's Swing offers it on that row: %s. Call edit_model %s, then swing "
+		+ "again: it comes away later in the swing, or not at all.") % [fix.what, _fix_call(fix)]
 
 
 # -- strengthen: each weak joint's fix, as a call -----------------------------------

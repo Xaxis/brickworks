@@ -27,6 +27,12 @@
 ## with all it takes, then the joints that hold past their working load and
 ## the nearest letting go, and says the one stepped to in words; its own
 ## legend says the colours. Pressed again, the model stands again.
+##
+## Its Swing (swoosh), beside Lift: the same with the model swung like a toy
+## by the part (StressView.set_swing, SwingTest). The heading names what
+## comes away first, when and at how many studs; a row that lets go offers
+## Strengthen for its joint, and once that is down the model is swung again,
+## so the panel shows whether it now holds.
 class_name StressPanel
 extends PanelContainer
 
@@ -94,8 +100,10 @@ var _finding: bool = false
 ## Lift: its button, the two legends, and each lifted row's kind and words
 ## (LiftTest.Result.rows), by row.
 var _lift: Button
+var _swing: Button
 var _legend: VBoxContainer
 var _lift_legend: VBoxContainer
+var _swing_legend: VBoxContainer
 var _lift_rows: Array = []
 ## The part the lift shown is by: 0 while none is (a car lifted by its roof
 ## may list no row at all).
@@ -130,7 +138,8 @@ func show_weak(weak: Array) -> void:
 	var counted: Array = StressView.tally(weak)
 	_count.text = StressView.count_words(weak) if weighed else "Weighing every joint…"
 	if view != null and view.lifting:
-		_count.text = "Click the part to lift the model by."
+		_count.text = "Click the part to swing the model by." if view.swinging \
+			else "Click the part to lift the model by."
 	_tips.visible = false
 	if weighed:
 		for risk: Stability.Risk in view.report.risks:
@@ -201,6 +210,13 @@ func _say_chosen() -> void:
 		_fit_later()
 		return
 	if one == null or not _lift_rows.is_empty():
+		# Swung, a joint that lets go is offered Strengthen; once that is down
+		# the model is swung again (StressView.show_report), held or not.
+		if one != null and one.joint != null and view != null and view.swinging:
+			_why.text = str((_lift_rows[chosen] as Dictionary)["why"])
+			_look_for_fix(one)
+			_fit_later()
+			return
 		_forget_fix()
 		_offer.visible = false
 		_strengthen.visible = false
@@ -232,12 +248,15 @@ func show_lift(result: RefCounted) -> void:
 	entries = []
 	_lift_rows = []
 	_lifted_by = int(result.get("by")) if result != null else 0
+	var swung: bool = view != null and view.swinging
 	if result == null or int(result.get("by")) == 0:
-		_count.text = str(result.get("problem")) if result != null else "Click the part to lift the model by."
-		_of.text = "Lift again sets it down."
+		_count.text = str(result.get("problem")) if result != null else ("Click the part to swing the "
+			+ "model by." if swung else "Click the part to lift the model by.")
+		_of.text = "Swing again sets it down." if swung else "Lift again sets it down."
 	else:
 		_count.text = result.call("headline")
-		_of.text = "Click another part to lift by it; Lift again sets it down."
+		_of.text = ("Click another part to swing by it; Swing again sets it down." if swung
+			else "Click another part to lift by it; Lift again sets it down.")
 		_lift_rows = (result.call("rows", AT_LEAST) as Array).slice(0, MOST)
 		for row: Dictionary in _lift_rows:
 			var one := StressView.Weak.new()
@@ -245,6 +264,15 @@ func show_lift(result: RefCounted) -> void:
 			one.ids = row["ids"]
 			one.around = int(row["around"])
 			one.margin = 0.0 if str(row["kind"]) in ["lets go", "loose", "falls"] else INF
+			# Swung, the joint that lets go and what comes away past it, for
+			# Strengthen to make hold.
+			one.joint = row.get("joint")
+			if one.joint != null and swung:
+				for id: Variant in one.ids:
+					one.side[int(id)] = true
+				one.swung_by = int(result.get("by"))
+				one.arc = {"metres": result.get("metres"), "seconds": result.get("seconds"),
+					"turn": result.get("turn")}
 			entries.append(one)
 	_of.visible = true
 	while _row_buttons.size() < entries.size():
@@ -263,18 +291,21 @@ func show_lift(result: RefCounted) -> void:
 func lifting_now(id: int) -> void:
 	_lifted_look(true)
 	var brick: BrickWorld.Brick = view.world.get_brick(id) if view != null else null
-	_count.text = "Lifting it by %s…" % (StressView._named(view.library, brick.part_id)
-		if brick != null else "#%d" % id)
+	_count.text = ("Swinging it by %s…" if view != null and view.swinging else "Lifting it by %s…") % (
+		StressView._named(view.library, brick.part_id) if brick != null else "#%d" % id)
 
 
 ## The panel as lifting draws it ([param on]) or as standing does: its
-## legend, and Lift pressed while the view lifts.
+## legend, and Lift or Swing pressed while the view lifts or swings.
 func _lifted_look(on: bool) -> void:
 	if _lift == null:
 		return
-	_lift.set_pressed_no_signal(view != null and view.lifting)
+	var swung: bool = view != null and view.lifting and view.swinging
+	_lift.set_pressed_no_signal(view != null and view.lifting and not swung)
+	_swing.set_pressed_no_signal(swung)
 	_legend.visible = not on
-	_lift_legend.visible = on
+	_lift_legend.visible = on and not swung
+	_swing_legend.visible = on and swung
 	if not on:
 		_lift_rows = []
 		_lifted_by = 0
@@ -565,6 +596,13 @@ func _build() -> void:
 			view.set_lift(_lift.button_pressed),
 		"Lift the model by a part, off the floor: press, then click the part. What lets go comes away, red")
 	_lift.toggle_mode = true
+	# swoosh: Swing, the model swung like a toy by a part.
+	_swing = _button(header, "Swing", func() -> void:
+		if view != null:
+			view.set_swing(_swing.button_pressed),
+		"Swing the model by a part like a toy, 1 m in half a second and a quarter turn: press, then "
+			+ "click the part. What comes away first is named, red")
+	_swing.toggle_mode = true
 	_close = _button(header, "Close", func() -> void:
 		if view != null:
 			view.set_on(false), "Stress off: every part in its own colour again (View, Stress)")
@@ -580,6 +618,11 @@ func _build() -> void:
 			[StressView.AMBER, "Holds past its working load, or swings on a pin"],
 			[SAFE, "Holds: faded"]])
 	_lift_legend.visible = false
+	_swing_legend = _key(column, [[StressView.LIFTED, "In the hand: the part it is swung by"],
+			[StressView.RED, "Comes away in the swing: a joint lets go"],
+			[StressView.AMBER, "Holds past its working load at its worst, or swings on a pin"],
+			[SAFE, "Holds through the swing: faded"]])
+	_swing_legend.visible = false
 	column.add_child(HSeparator.new())
 	_of = _words(column, 11, 0.65)
 	_scroll = ScrollContainer.new()
@@ -661,7 +704,7 @@ func fields() -> Dictionary:
 		"at": _at.text, "offer": _offer.text if _offer.visible else "",
 		"strengthen": _strengthen.visible and not _strengthen.disabled,
 		"finding": _finding, "mine": _mine.visible and _mine.button_pressed,
-		"lift": _lift.button_pressed, "lifted": _lifted_by != 0,
+		"lift": _lift.button_pressed, "lifted": _lifted_by != 0, "swing": _swing.button_pressed,
 		"kinds": _lift_rows.map(func(row: Dictionary) -> String: return str(row["kind"]))}
 
 
@@ -669,7 +712,8 @@ func fields() -> Dictionary:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	var out: Dictionary = {"stress_close": _close, "stress_lift": _lift, "stress_previous": _previous,
+	var out: Dictionary = {"stress_close": _close, "stress_lift": _lift, "stress_swing": _swing,
+		"stress_previous": _previous,
 		"stress_next": _next, "stress_strengthen": _strengthen, "stress_mine": _mine}
 	for n: int in mini(entries.size(), 12):
 		out["stress_row_%d" % n] = _row_buttons[n]

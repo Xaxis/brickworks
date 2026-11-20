@@ -112,11 +112,13 @@ func find(weighed: Stability.Report, weak: StressView.Weak) -> Fix:
 	if weighed == null or weak == null or world.get_brick(weak.id) == null:
 		return null
 	var revision: int = world.revision
-	var side: Dictionary = {}
-	if weak.joint == null:
+	# What comes off: a swing's as given, a piece's own, or all past the joint
+	# in the model as it stands.
+	var side: Dictionary = weak.side.duplicate()
+	if side.is_empty() and weak.joint == null:
 		for id: Variant in weak.ids:
 			side[int(id)] = true
-	else:
+	elif side.is_empty():
 		if _tree == null or _tree_revision != revision:
 			_tree = await _read_tree()
 			_tree_revision = revision
@@ -128,16 +130,30 @@ func find(weighed: Stability.Report, weak: StressView.Weak) -> Fix:
 		return null
 	var found: Array = _candidates(weak, side)
 	var reds: int = _past(weighed.margins, weighed.tipping)
+	# A swing's row is judged swung: the part past the joint comes away
+	# later with the fix in, or not at all (SwingTest, the same arc).
+	var went: float = -1.0
+	if weak.swung_by != 0:
+		went = await _swung_away(weak, [])
+		if world.revision != revision or went == -INF:
+			return null
 	var tried: int = 0
 	for one: Dictionary in found:
 		if tried >= TRIES:
 			break
 		tried += 1
-		var after: Balance.Report = await _weigh_with(one["parts"])
-		if world.revision != revision:
-			return null
-		if after == null or not _holds(after, weak, reds):
-			continue
+		if weak.swung_by != 0:
+			var then: float = await _swung_away(weak, one["parts"])
+			if world.revision != revision:
+				return null
+			if then <= went:
+				continue
+		else:
+			var after: Balance.Report = await _weigh_with(one["parts"])
+			if world.revision != revision:
+				return null
+			if after == null or not _holds(after, weak, reds):
+				continue
 		var fix := Fix.new()
 		fix.kind = one["kind"]
 		fix.parts = one["parts"]
@@ -420,7 +436,11 @@ func _candidates(weak: StressView.Weak, side: Dictionary) -> Array:
 	if weak.joint != null and weak.joint.kind in ["friction pin", "free pin"]:
 		found.append_array(_pins(weak, near))
 	found.append_array(_ties(weak, side, near))
-	found.append_array(_props(weak, side))
+	for one: Dictionary in _props(weak, side):
+		# Swung, there is no floor: a prop up from it only adds weight.
+		if weak.swung_by != 0 and (int(one["standing"]) == 0 or scenery.has(int(one["standing"]))):
+			continue
+		found.append(one)
 	var mass: Array = _mass_of(side)
 	var kept: Array = []
 	var seen: Dictionary = {}
@@ -1113,18 +1133,63 @@ func _mass_of(side: Dictionary) -> Array:
 	return [grams, moment]
 
 
+## [param parts] as bricks numbered above the model's own, to weigh with it.
+func _twins(parts: Array) -> Array:
+	var spare: int = SPARE_FROM
+	for item: Variant in world.bricks():
+		spare = maxi(spare, (item as BrickWorld.Brick).id + 1)
+	var added: Array = []
+	for item: Dictionary in parts:
+		added.append(BrickWorld.Brick.new(spare + added.size(), str(item["part"]),
+			int(item.get("color", 71)), item["at"]))
+	return added
+
+
+## Seconds into [param weak]'s swing (its part in the hand, its arc) that
+## the part past its joint comes away with [param parts] put down; INF when
+## it holds through the swing. On a worker for a big model, on copies.
+func _swung_away(weak: StressView.Weak, parts: Array) -> float:
+	var added: Array = _twins(parts)
+	var swinger: RefCounted = Later.script(&"SwingTest").new()
+	for key: Variant in weak.arc:
+		swinger.set(str(key), float(weak.arc[key]))
+	swinger.library = library
+	swinger.floor_ids = scenery.duplicate()
+	var swung: RefCounted = null
+	if world.brick_count() < Stability.ON_A_WORKER_FROM or OS.has_feature("nothreads"):
+		swinger.lattice = builder.lattice
+		for twin: BrickWorld.Brick in added:
+			builder.lattice.occupy_boxes(twin.id, builder.boxes_for(
+				library.mesh_for(twin.part_id), twin.transform))
+		swung = swinger.swing(world.bricks() + added, weak.swung_by)
+		for twin: BrickWorld.Brick in added:
+			builder.lattice.release(twin.id)
+	else:
+		var lattice: BrickLattice = builder.lattice.copy_for_reading()
+		for twin: BrickWorld.Brick in added:
+			lattice.occupy_boxes(twin.id, builder.boxes_for(library.mesh_for(twin.part_id),
+				twin.transform))
+		swinger.lattice = lattice
+		var still: BrickWorld = world.copy_for_reading()
+		var by: int = weak.swung_by
+		swung = await WorkerTasks.awaited(func() -> Variant:
+			return swinger.swing(still.bricks() + added, by), "swing a fix", library)
+		still.free()
+	if swung == null or int(swung.get("by")) == 0:
+		return -INF
+	var away: Array = swung.get("away")
+	var times: Array = swung.get("times")
+	for n: int in away.size():
+		if Array((away[n] as LiftTest.Away).ids).has(weak.id):
+			return float(times[n])
+	return INF
+
+
 ## The model weighed as View, Stress weighs it with [param parts] in it
 ## (Balance.measure): on a worker for a big model, on copies.
 func _weigh_with(parts: Array) -> Balance.Report:
 	var bricks: Array = world.bricks()
-	var spare: int = SPARE_FROM
-	for item: Variant in bricks:
-		spare = maxi(spare, (item as BrickWorld.Brick).id + 1)
-	var added: Array = []
-	for item: Dictionary in parts:
-		var twin := BrickWorld.Brick.new(spare + added.size(), str(item["part"]),
-			int(item.get("color", 71)), item["at"])
-		added.append(twin)
+	var added: Array = _twins(parts)
 	var weigher := Balance.new()
 	weigher.library = library
 	weigher.floor_ids = scenery.duplicate()

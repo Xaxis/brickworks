@@ -143,6 +143,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# loadtest: View, Stress's Lift, the model lifted by a part, made the
 	# first time it is lifted (StressView.lift_paced), in the window or over MCP.
 	&"LiftTest": "res://src/assembly/lift_test.gd",
+	# swoosh: View, Stress's Swing, the model swung like a toy by a part, made
+	# the first time it is swung (StressView.swing_paced), in the window or over MCP.
+	&"SwingTest": "res://src/assembly/swing_test.gd",
 	# donenote: a long job says when it is done, made with the first job
 	# or Render's dialog (Main._done_note).
 	&"DoneNote": "res://src/ui/done_note.gd",
