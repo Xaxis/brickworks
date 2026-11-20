@@ -88,9 +88,9 @@ func _run() -> void:
 	# Every first build takes a face; a set's own body may offer no free place
 	# a part is held clear in (8464-1's and 9393-1's did not, design27).
 	_ok(_bodies_laid >= LAID_AT_LEAST and _first_laid == BODIES.size() and _panels > 0
-		and _beams > 0, "%d of %d bodies given a Technic face (every first build): %d faces, "
-		% [_bodies_laid, BODIES.size() + SET_BODIES.size()] + "%d panels, %d beams on edge"
-		% [_faces, _panels, _beams])
+		and _beams > 0, ("%d of %d bodies given a Technic face (every first build): %d faces, "
+		+ "%d panels, %d beams on edge") % [_bodies_laid, BODIES.size() + SET_BODIES.size(),
+		_faces, _panels, _beams])
 	await _surface_pass()
 	print("")
 	print("technic lay: each face of twelve bodies laid in its own call, held, clear, and "
@@ -270,13 +270,14 @@ func _laid_on(label: String, build: Callable) -> void:
 		var lay: TechnicLay.Lay = await TechnicLay.new(_assistant).lay_for(facing)
 		if lay == null:
 			continue
-		var before: Array = _signature()
+		var before: Array = _body()
 		var had: Dictionary = {}
 		for brick: BrickWorld.Brick in _world.bricks():
 			had[brick.id] = true
 		var input := {"add": lay.add, "remove": lay.remove}
-		var answer: String = _text(await _assistant._run_tool({"name": "edit_model",
-			"input": input}))
+		var depth: int = _builder.history_depth()
+		var answer: String = await _one_call(input)
+		var steps: int = _builder.history_depth() - depth
 		if not answer.begins_with("Done."):
 			_ok(false, "%s %s: laid by its own edit: %s" % [label, facing, answer.left(240)])
 			continue
@@ -288,7 +289,7 @@ func _laid_on(label: String, build: Callable) -> void:
 		var adrift: Array = laid.filter(func(id: int) -> bool: return floating.has(id))
 		var clashes: Array = _overlaps(laid)
 		var undone: bool = _builder.undo()
-		var back: bool = undone and _signature() == before
+		var back: bool = undone and steps == 1 and _body() == before
 		_ok(adrift.is_empty() and clashes.is_empty() and floating.size() <= floating_before
 			and back, "%s %s: %d parts in one edit (%s, %s, %d pins, %d course%s laid again); "
 			% [label, facing, laid.size(), "panels " + ", ".join(lay.panels) if not lay.panels.is_empty()
@@ -298,7 +299,7 @@ func _laid_on(label: String, build: Callable) -> void:
 			% ["all" if adrift.is_empty() else "%d adrift" % adrift.size(),
 			"none" if clashes.is_empty() else str(clashes.slice(0, 3)), "yes" if back else "NO"])
 		# Laid again, so the next face is laid beside it as the pass lays them.
-		await _assistant._run_tool({"name": "edit_model", "input": input})
+		await _one_call(input)
 		faces.append(facing)
 		_faces += 1
 		_panels += lay.panels.size()
@@ -339,14 +340,24 @@ func _surface_pass() -> void:
 	var others: Array[int] = []
 	for one: SurfacePass.Finding in technic.slice(1):
 		others.append_array(one.ids)
+	# Settling clears a finding's ids, and a course put back stands under new
+	# numbers: what it laid is read first, and the course found by its places.
+	var ids: Array[int] = first.ids.duplicate()
+	var course: Array = []
+	for one: Array in before:
+		if first.remove.has(int(one[0])):
+			course.append(_place_of(one[1], one[2], one[3]))
 	var said: String = _text(await _assistant.use_tool("settle_surface", {"finding": first.key,
 		"verdict": "reject", "reason": "probe: the face taken off alone"}))
-	var gone: bool = first.ids.all(func(id: int) -> bool: return _world.get_brick(id) == null)
+	var gone: bool = ids.all(func(id: int) -> bool: return _world.get_brick(id) == null)
 	var kept: bool = others.all(func(id: int) -> bool: return _world.get_brick(id) != null)
-	var restored: bool = first.remove.all(func(id: int) -> bool:
-		return _world.get_brick(id) != null) or first.remove.is_empty() or said.contains("put back")
-	_ok(gone and kept and restored, "rejecting %s takes off its %d parts alone and puts its "
-		% [first.key, first.ids.size()] + "course back: %s" % said.left(160))
+	var now: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		now[_place_of(brick.part_id, brick.color_code, brick.transform)] = true
+	var restored: bool = course.all(func(place: String) -> bool: return now.has(place))
+	_ok(not ids.is_empty() and gone and kept and restored, ("rejecting %s takes off its %d "
+		+ "parts alone (gone: %s, the other faces kept: %s) and puts its course of %d back (%s): %s")
+		% [first.key, ids.size(), gone, kept, course.size(), restored, said.left(160)])
 	await _assistant.use_tool("clear_model", {})
 	_assistant.heard("forklift truck", true)
 	_assistant._named_as = ""
@@ -403,6 +414,33 @@ func _signature() -> Array:
 		out.append([brick.id, brick.part_id, brick.color_code, brick.transform])
 	out.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
 	return out
+
+
+## The body as it stands, part by part where it is: an Undo puts a part it
+## took off back under a new number, and the body is the same.
+func _body() -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		out.append(_place_of(brick.part_id, brick.color_code, brick.transform))
+	out.sort()
+	return out
+
+
+func _place_of(part: String, colour: int, at: Transform3D) -> String:
+	var step := Vector3.ONE * 0.01
+	return "%s|%d|%s|%s|%s|%s" % [part, colour, at.origin.snapped(step),
+		at.basis.x.snapped(step), at.basis.y.snapped(step), at.basis.z.snapped(step)]
+
+
+## One edit as a session's call makes it: one step of the history, named as
+## Claude's (CommandSocket._one_step, ClaudeStep). The tool alone keeps none.
+func _one_call(input: Dictionary) -> String:
+	var mark: Dictionary = ClaudeStep.mark(_builder, _world, _assistant.scenery,
+		"Claude's edit model")
+	var answer: String = _text(await _assistant._run_tool({"name": "edit_model",
+		"input": input}))
+	ClaudeStep.record(_builder, _world, _assistant.scenery, mark)
+	return answer
 
 
 func _line_with(text: String, word: String) -> String:
