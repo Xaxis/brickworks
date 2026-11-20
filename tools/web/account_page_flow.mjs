@@ -510,7 +510,8 @@ try {
       // a minute and then gives it stale once more: signed in, Settings
       // hears the switch as it is now (op=beta), and a stale "off" read
       // minutes after console's flow flipped the switch failed the row
-      // betahome did (rel-m299).
+      // betahome did (rel-m299). Blocked people is always there
+      // (blockauthor, rel-m316), empty until someone is blocked.
       const betaOpen = await page.evaluate(async () => {
         const heard = await fetch(`/api/plans?op=beta_spots&fresh=${Date.now()}`, { cache: "no-store" })
           .then((r) => r.json()).catch(() => ({}));
@@ -518,7 +519,7 @@ try {
       });
       check(`${label}: ${rows.join(" · ")}${betaOpen ? " (the beta open)" : ""}`,
         rows.join(",").replace("Email,orangecheck,", "Email,")
-        === `Profile,${betaOpen ? "Beta," : ""}Appearance,Email,Privacy,Assistants,Your reports,Sign out,Delete this account…`);
+        === `Profile,${betaOpen ? "Beta," : ""}Appearance,Email,Privacy,Blocked people,Assistants,Your reports,Sign out,Delete this account…`);
       check(`${label}: her choices as she made them (comments ${choices.comments}, ${choices.kinds}, follows shown ${choices.follows})`,
         (!mailReady || (choices.comments && /models:true/.test(choices.kinds) && /remixes:false/.test(choices.kinds)))
         && (!followsReady || choices.follows) && choices.who.includes(adaEmail) && choices.edit === "/profile?edit=1");
