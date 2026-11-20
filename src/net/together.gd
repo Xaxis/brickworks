@@ -1683,9 +1683,6 @@ func _mine_on_the_way(uid: String) -> bool:
 ## Set [param uid] in the world to [param state] (null: taken off), past the
 ## builder's history: another side's change is not this side's to undo.
 func _put(uid: String, state: Variant) -> void:
-	# Not as its file was any more (ModelStore.changed_past_history).
-	if store != null:
-		store.changed_past_history()
 	if uid.begins_with("~"):
 		_put_meta(uid, str(state) if state != null else "")
 		return
@@ -1880,8 +1877,6 @@ static func _carried(key: String) -> bool:
 func _put_meta(key: String, words: String) -> void:
 	if not _carried(key):
 		return
-	if store != null:
-		store.changed_past_history()
 	var counts: Dictionary = timing.get("meta_put", {})
 	counts[key] = int(counts.get(key, 0)) + 1
 	timing["meta_put"] = counts

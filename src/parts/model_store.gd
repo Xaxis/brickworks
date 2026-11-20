@@ -319,6 +319,7 @@ func tick() -> void:
 	if _state_due and world != null:
 		_state_due = false
 		_kept_state = _own_state(title) if not _kept_now().is_empty() else ""
+		_kept_parts = _parts_now() if not _kept_state.is_empty() else 0
 	_hear()
 	if not _pending or not keeps:
 		return
@@ -823,7 +824,7 @@ func identity() -> Dictionary:
 		"cut": world.cut_kept.duplicate(true) if world != null else {},
 		"lights": world.scene_lights.duplicate(true) if world != null else [],
 		"kept": [_kept_now(), _order_said, world != null and _opened_whole == world.generation(),
-			_kept_state, _opened_parts]}
+			_kept_state, _opened_parts, _kept_parts]}
 
 
 ## The model made what [param kept] ([method identity]) says, in the world
@@ -887,9 +888,10 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_kept_in = world.generation() if not _kept_text.is_empty() else -1
 	_order_said = bool(file[1])
 	# As it was opened, if it was: a save of it then is its file to the byte.
-	_kept_state = str(file[3]) if file.size() > 4 else ""
+	_kept_state = str(file[3]) if file.size() > 5 else ""
+	_kept_parts = int(file[5]) if file.size() > 5 else 0
 	_state_due = false
-	if file.size() > 4 and bool(file[2]):
+	if file.size() > 5 and bool(file[2]):
 		_opened_whole = world.generation()
 		_opened_parts = int(file[4])
 	world.saved_views = (kept["views"] as Array).duplicate(true)
@@ -1005,6 +1007,8 @@ var _kept_answer: Dictionary = {}
 ## after the open or the save ([member _state_due]): "" until then.
 var _kept_state: String = ""
 var _state_due: bool = false
+## And its parts then ([method _parts_now]).
+var _kept_parts: int = 0
 
 
 ## [member _kept_text] while the model it was read for is on the baseplate,
@@ -1025,15 +1029,6 @@ func _keep_text(text: String) -> void:
 ## Build together room's, sent without its steps).
 func forget_kept() -> void:
 	_kept_in = -1
-	_kept_state = ""
-	_state_due = false
-
-
-## The model changed past this tab's history: a Build together room's edit
-## (Together._put), which no undo here takes back. It is no longer as its
-## file was, and a save compares it with the file from now: keep_text's room
-## edits were saved as the file opened, unchanged.
-func changed_past_history() -> void:
 	_kept_state = ""
 	_state_due = false
 
@@ -1059,13 +1054,27 @@ func _keeps_order() -> bool:
 func _as_kept(title_now: String) -> bool:
 	return not _state_due and not _kept_state.is_empty() and _opened_whole == world.generation() \
 		and builder != null and builder.history_depth() == 0 \
-		and _parts_with_awaited() == _opened_parts and _own_state(title_now) == _kept_state
+		and _parts_with_awaited() == _opened_parts and _own_state(title_now) == _kept_state \
+		and _parts_now() == _kept_parts
 
 
 ## What a save of the model called [param name] writes beyond its parts and
 ## steps, as one text to compare: its name, the app's own lines
 ## ([method _metas_asked]), the booklet's looks, its picture to build over,
 ## the sets in its bin, its links and credit.
+## The parts as they stand, in no order: each one's part, colour, place,
+## sub-model, copy and step. A change no step of the history made moves it:
+## a Build together room's sets a part's step past the history
+## (Together._put), and keep_text's room edits were saved as the file opened.
+## About 8 ms for 10,000 parts, and asked only of a model otherwise unedited.
+func _parts_now() -> int:
+	var sum: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		sum += hash([brick.part_id, brick.color_code, brick.transform, brick.group, brick.unit,
+			brick.step])
+	return sum
+
+
 func _own_state(name: String) -> String:
 	var asked: Dictionary = _metas_asked(null)
 	asked.erase("metas")
@@ -1073,8 +1082,19 @@ func _own_state(name: String) -> String:
 	# floor anew (copyfaults' Clear cases were written whole).
 	var ground: ModelFloor = asked["floor"]
 	asked["floor"] = ground.to_meta() if ground != null else ""
-	return str([name, asked, world.step_looks, reference, bin_sets, share_id, remixed_from,
-		remixed_from_version, credit, made_with])
+	return str([name, asked, _by_key(world.step_looks), _by_key(world.unit_steps), reference,
+		bin_sets, share_id, remixed_from, remixed_from_version, credit, made_with])
+
+
+## [param table]'s entries in the order of their keys: a rename undone puts
+## the copies' steps back in another order (copyfaults' rename_undo).
+static func _by_key(table: Dictionary) -> Array:
+	var keys: Array = table.keys()
+	keys.sort_custom(func(a: Variant, b: Variant) -> bool: return str(a) < str(b))
+	var out: Array = []
+	for key: Variant in keys:
+		out.append([key, table[key]])
+	return out
 
 
 ## What says the model is as it was at [method _kept_for]'s last answer: the

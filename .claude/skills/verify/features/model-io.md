@@ -160,8 +160,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   count, as each undo is exact; a change to the world outside the history,
   a Build together room's edit, does not) with nothing else
   a save writes changed since the frame after the open or save (`_as_kept`:
-  name, floor, views, lights, motions, program, looks, picture, links,
-  credit); then the file's own Name line, a floor it never said and a step's
+  name, floor, views, lights, motions, program, looks, copies' steps, picture,
+  links, credit, and the parts by a digest of each one's part, colour, place,
+  copy and step, `_parts_now`, about 8 ms for 10,000 parts); then the file's own Name line, a floor it never said and a step's
   parts in their order are kept. That holds for someone else's file too, whose
   writer put keepbytes' bk_odd "0 !brickworks page new" in capitals. Otherwise the kept text is still written
   while the model differs from it only in its build order (STEP lines and the
