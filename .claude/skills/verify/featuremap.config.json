@@ -6086,6 +6086,20 @@
       "entry": "tools/web/block_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/block_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh block: throwaway Ada, Bob and Cy; or a relay on the live project, relay_server.mjs 10981 --static=web)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "swing by a part",
+      "entry": "src/assembly/swing_test.gd",
+      "reach": "tools/probe.sh swoosh   (by hand: View, Stress; press Swing, then click a part: the model is swung by it like a toy, 1 m in half a second and a quarter turn, down through the bottom; each joint carries what is past it pulled by gravity and the swing together, at its worst moment of the arc; the first to let go comes away and the swing goes on without it; the part in the hand blue, what comes away red and named first in the panel with when, its parts, weight and studs; a row that lets go offers Strengthen, and after it the model is swung again; Swing again sets it down; a session: weakest_joints swing=N)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "swoosh probe",
+      "entry": "src/dev/swoosh_probe.gd",
+      "reach": "tools/probe.sh swoosh   (headless: the walk's tower by its top brick, the car by its roof and a ship by its fuselage, each joint at the swing's worst within 1% of the hand's sums (bench/results/swoosh-2026-11-20/hand_sums.md), the ship's wing coming away first though Lift holds it, and at rest the swing's sums Balance's still ones; ten gallery seeds each held where it swings best of its 16 widest parts, the first to come away named, and after Strengthen later or not at all; in the app Stress's Swing on the ship, red and blue, Strengthen from its row, weakest_joints swing= the same in 1 call, g4 in 2; Orthanc and 10179 swung with no frame over 100 ms)",
+      "area": "view"
     }
   ]
 }
