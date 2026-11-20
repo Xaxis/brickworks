@@ -31,10 +31,10 @@ still effectively building to reach our goals of having the absolute best app
 studio has its own (docs/APP_UX11.md). The next round replaces this section's
 numbers and keeps its shape.
 
-**The count: 45 ahead, 36 level, 27 behind**, over 108 judged cells (14 rows
+**The count: 49 ahead, 36 level, 27 behind**, over 112 judged cells (14 rows
 against 8 columns, plus the row of people and activity, which is behind every
-column; 12 cells not judged: where a site could not be read, and the speed
-row, whose browser runs did not run). The three worst:
+column; 8 cells not judged: where a site could not be read or timed). The
+three worst:
 
 1. **People and activity.** All 49 models in the gallery are the house's own
    (`/api/share?op=list`, 3 pages, every one `by: brickworks`). The gallery has
@@ -49,14 +49,17 @@ row, whose browser runs did not run). The three worst:
    BrickLink run judged rounds, then a fan vote, with prizes and a path to a
    product.
 3. **Showing work.** A model can be shared only from inside the studio. Work
-   made elsewhere has to be opened in the studio first. Rebrickable, Printables
-   and MakerWorld take files on the web page, with many pictures and drafts.
+   made elsewhere has to be opened in the studio first, and the challenge's
+   Enter tells a newcomer just that ([picture](img/social8/challenge-enter-390.webp)).
+   Rebrickable, Printables and MakerWorld take files on the web page, with
+   many pictures and drafts.
 
 What we lead on: the model page (steps, versions, parts with three shops'
 exports, Tested, remixes and builds, embedded in 3D), comments (replies,
 @mentions, step comments), the feed, a model shared outside (link previews,
-oEmbed and structured data on every model), and a silent block. None of the
-LEGO® sites matches them.
+oEmbed and structured data on every model), a silent block, and speed: of the
+sites that let a browser time them beside ours, every one drew its first screen
+later. None of the LEGO® sites matches them.
 
 ### The table
 
@@ -75,11 +78,11 @@ every cell is in the list under the table.
 | 7. Comments | replies, @mentions, comments on steps, hide, off, report | A | A | A | A | A | A | L | **B** MakerWorld |
 | 8. Challenges and contests | monthly; rules checked; two groups; blind vote; notices; past winners | L | **B** | A | L | A | **B** | **B** | **B** MakerWorld |
 | 9. Sets, parts and lists | Own/Want on 1,576 set pages; lists; You can build now; BrickLink, Rebrickable and Pick a Brick exports | **B** | L | A | **B** | A | A | A | L Ravelry |
-| 10. First visit and sign-up | the studio's pitch first, then a call to help with the beta, then the house's models; email code or orangecheck; age; First steps | – | L | L | A | L | L | **B** | **B** MakerWorld |
+| 10. First visit and sign-up | the studio's pitch and a call to test the beta first; the first model 2.8 phone screens down; email code or orangecheck; age; First steps | – | L | L | A | L | L | **B** | **B** MakerWorld |
 | 11. Shared outside | og and twitter cards, oEmbed (3D), JSON-LD on models and sets, sitemaps | – | A | A | A | L | – | A | **B** Sketchfab |
-| 12. Phones | every page sized for a phone (checked at 390 px by design_flow); the studio itself on a phone; no app, no push | L | A | A | L | **B** | – | **B** | **B** MakerWorld |
+| 12. Phones | no page scrolls sideways (112 visits at 390, 768, 1280 and as an iPhone); the studio itself on a phone; no app, no push | L | A | A | L | **B** | – | **B** | **B** MakerWorld |
 | 13. Safety and moderation | 13+, report everywhere, hide, comments off, silent block, owner's console | A | L | A | A | L | L | A | **B** Instagram |
-| 14. Speed | answers in 0.14-0.16 s warm, 1.5-1.9 s cold; LCP p75 1.09 s in Edge, p50 4.24 s in Chrome (field, few loads) | – | – | – | – | – | – | – | – |
+| 14. Speed | largest picture 0.6-1.0 s at 1280, 1.6-3.0 s on a slow phone; answers in 0.14 s warm | – | – | – | A | A | A | – | A Sketchfab |
 | 15. People and activity | 49 models, all the house's; 0 likes; 0 entries | **B** | **B** | **B** | **B** | **B** | **B** | **B** | **B** |
 
 RB Rebrickable (MOCs) · BL BrickLink's and Studio's gallery · MB Mecabricks ·
@@ -160,14 +163,19 @@ activity"), so its cells rest on Studio's help pages and an archived page.
 10. **First visit and sign-up.** A stranger's first screen, in the home page's
     own order: the studio's pitch ("A CAD for LEGO® models, in your browser"),
     then "Help shape Brickworks", a call to test the beta, and only then "Made
-    in Brickworks", the house's models. On Printables, MakerWorld and a Flickr
-    pool, people's work is the first screen. Sign-up is an emailed code or
-    orangecheck, with no password. Mecabricks shows 6 models and 6 renders on
-    its home page, but asks for a password and shows a stranger an ad: level.
-    Brickset opens on its news, asks for a password and shows ads: ahead
-    [R8-MB], [R8-BS]. Studio's gallery and Ideas use a LEGO® Account (Ideas
-    from 16) [R8-BL], [R8-LI]. Behind Printables and MakerWorld, which offer
-    Google and Apple as well as email [R8-PR], [R8-MW].
+    in Brickworks", the house's models. Measured, the first model sits 2,380 px
+    down on a 390 x 844 phone (2.8 screens) and 2,318 px down at 1280 x 900
+    (2.6 screens) ([picture](img/social8/home-390.webp)). On Printables,
+    MakerWorld and a Flickr pool, people's work is the first screen. Signing up
+    took 3 taps and 18 s from the header's Sign in to signed in on a phone (the
+    code read from a test inbox, so the wait for mail is extra), then the age
+    question and First steps' three screens: 11 taps to the feed. Sign-up is an
+    emailed code or orangecheck, with no password. Mecabricks shows 6 models
+    and 6 renders on its home page, but asks for a password and shows a
+    stranger an ad: level. Brickset opens on its news, asks for a password and
+    shows ads: ahead [R8-MB], [R8-BS]. Studio's gallery and Ideas use a LEGO®
+    Account (Ideas from 16) [R8-BL], [R8-LI]. Behind Printables and MakerWorld,
+    which offer Google and Apple as well as email [R8-PR], [R8-MW].
 11. **Shared outside.** Every /m/ page has og and twitter tags with its own
     1200 x 630 picture, an oEmbed discovery link whose answer is the 3D embed,
     and JSON-LD (`CreativeWork` with like and view counts). Set pages have the
@@ -180,28 +188,35 @@ activity"), so its cells rest on Studio's help pages and an archived page.
     inside X, Discord and Slack [R8-SK]. Ours are still pictures. Gaps of our
     own: /u/ has no JSON-LD, and /gallery and /challenge show the site's
     generic picture (each challenge's own `?id=` link has its own).
-12. **Phones.** Each page read today has a viewport tag (7 of 7), and the
-    site's own check (`design_flow`) draws every page at 390 px and fails one
-    that scrolls sideways. The studio itself runs on a phone (docs/PHONE.md:
-    first visit 10.5 s on Chromium, 12-21 s on WebKit). Studio is desktop-only
-    and Mecabricks has no viewport tag [R8-BL], [R8-MB]: ahead. Brickset is
-    responsive, with apps by others: level. Behind Flickr's apps, the Prusa
-    app's Printables browser, and Bambu Handy [R8-FL], [R8-PR], [R8-MW]. Our
-    site has a manifest but no service worker, so it cannot be installed with
-    an offline page and cannot push.
+12. **Phones.** 112 visits to 14 pages, at 390 x 844 and 768 x 1024 in
+    Chromium, at 1280 x 900, and as an iPhone 13 in WebKit, light and dark:
+    none scrolls sideways and none threw a script error. One page moves as it
+    loads: the challenge page (layout shift 0.19 at 390, 0.12 at 768, where
+    Google counts over 0.1 as needing work); every other page is at 0.05 or
+    under. The studio itself runs on a phone (docs/PHONE.md: first visit 10.5 s
+    on Chromium, 12-21 s on WebKit). Studio is desktop-only and Mecabricks has
+    no viewport tag [R8-BL], [R8-MB]: ahead. Brickset is responsive, with apps
+    by others: level. Behind Flickr's apps, the Prusa app's Printables browser,
+    and Bambu Handy [R8-FL], [R8-PR], [R8-MW]. Our site has a manifest but no
+    service worker, so it cannot be installed with an offline page and cannot
+    push.
 13. **Safety and moderation.** Ahead of Printables (Report only; no block, its
     admin said in 2025) [R8-PR], Mecabricks (no report or block), Brickset and
     Rebrickable. Level with Flickr's silent block [R8-FL], Studio's review and
     reporting [R8-BL], and Ideas' moderators (16+) [R8-LI]. Behind Instagram's
     Restrict, Hidden Words and blocking a person's next accounts too [R8-IG].
-14. **Speed.** Not judged this round: the browser runs that time a first visit
-    beside the other sites' (`survey.mjs --pass=speed`, a phone on slow 4G at a
-    quarter of the CPU, and 1280 as it is) waited behind the release train's
-    timing checks all afternoon. What was read: the server's answer (below,
-    under the site measured by hand) and the field numbers people had (under
-    what people do). Chrome's own field verdicts, for the others: Printables,
-    MakerWorld, Sketchfab and Brickset fail Core Web Vitals and Thingiverse
-    passes [R8-SP].
+14. **Speed.** Timed in one browser at the same moments as the others
+    (`survey.mjs --pass=speed`, median of 2 rounds; a phone on slow 4G at a
+    quarter of the CPU, then 1280 as it is). The largest picture drawn, phone /
+    1280: Brickworks' home 1.6 / 0.8 s, gallery 3.0 / 1.0 s, a model 2.9 / 0.6
+    s; LEGO® Ideas 4.6 / 2.3 s; Sketchfab 16.7 / 1.3 s; Brickset 15.1 / 7.5 s;
+    Flickr's LEGO® pool 17.3 / 4.9 s. Printables, MakerWorld and Thingiverse
+    showed the timing browser a Cloudflare check (403) and Mecabricks drew
+    nothing in time, so they are not judged; Rebrickable is read once a day and
+    was not, and Studio's gallery was not timed. Chrome's field verdicts for
+    the others: Printables, MakerWorld, Sketchfab and Brickset fail Core Web
+    Vitals and Thingiverse passes [R8-SP]. Ours, from the few loads people
+    timed (under what people do): LCP p75 1.09 s in Edge, p50 4.24 s in Chrome.
 15. **People and activity.** Section "What people do on it" below.
 
 ### Where the plan stands (2026-11-20)
@@ -252,7 +267,7 @@ site has the parts of a community and no community (below).
 **What was set up.** Live brickworks.diy, signed out, in Chromium on
 SwiftShader at 390 x 844 (a phone: touch, twice the pixels), 768 x 1024 and
 1280 x 900, and in WebKit as an iPhone 13, each in light and dark, 14 pages,
-through `heavy` (`survey.mjs`); the first visit timed beside nine other sites'
+through `heavy` (`survey.mjs`); the first visit timed beside eight other sites'
 at the same moment, a phone on slow 4G at a quarter of the CPU and 1280 as it
 is (`survey.mjs --pass=speed`); and signed in, a newcomer's whole way through
 between two throwaway accounts of this round's own, deleted at the end
@@ -263,7 +278,38 @@ models never reach a public list; nobody else's model or profile touched; the
 site's visit counter stopped for these browsers. The scripts and everything
 they write are in `bench/results/siteplan8-2026-11-20/` (git-ignored).
 
-**The browser runs did not run in this round's three hours.** All four were queued under `heavy` from 13:20Z and waited behind the rel-m317 train's preview checks, which run alone (together, arrival, cursor, pointat, progress and on), until the bound. So the cells of the first visit, phones and speed rest on what follows and on the research, and the next round runs the four scripts first, as they are.
+**What the browsers saw.** The runs started at 15:00Z, once the release train's
+timing checks let them, with the box under other work: the same for every site
+timed beside ours, but each number is a lab number, not a person's.
+
+- **The survey** (112 visits, 14 pages, every one answered 200): no page
+  scrolls sideways, no page threw a script error, and only the challenge page
+  shifts as it loads (0.19 at 390). The gallery's first card is 322 px down on
+  a phone; the home page's first model is 2,380 px down, 2.8 screens
+  ([picture](img/social8/home-390.webp)). The challenge has nothing to show:
+  "No entries yet: be the first", on day 20 of 30
+  ([picture](img/social8/challenge-390.webp)). Builds, collections and lists
+  are a heading and a "nothing yet" to a stranger.
+- **The first visit beside the others** (largest picture drawn, median of 2
+  rounds, a slow phone / 1280): Brickworks' home 1.6 / 0.8 s, gallery 3.0 / 1.0
+  s, a model 2.9 / 0.6 s; LEGO® Ideas 4.6 / 2.3 s; Sketchfab 16.7 / 1.3 s;
+  Brickset 15.1 / 7.5 s; Flickr's LEGO® pool 17.3 / 4.9 s. Printables,
+  MakerWorld and Thingiverse showed the timing browser a Cloudflare check, and
+  Mecabricks drew nothing: none of the four is judged.
+- **The journey** between two throwaway accounts (31 steps, the newcomer on a
+  390 phone, the designer at 1280): sign-up in 3 taps and 18 s, then 11 taps to
+  the feed through the age question and First steps. On a model page, Like and
+  Follow are in the first screen (692 and 532 px down) and the comment box
+  1,820 px down. A comment with an @mention reached the designer as New, with 3
+  on the header's bell, within the minute, and the followed designer's model
+  led the newcomer's feed. The challenge's Enter told the newcomer to build in
+  the app first ([picture](img/social8/challenge-enter-390.webp)). Two steps
+  failed by the script's fault, not the site's: it pressed Own on a set's 3D
+  model page instead of its set page, and Block and Delete my account ask with
+  the browser's own confirm box, which a test browser declines unless told, so
+  neither happened. The site's own checks cover both (`block_flow`,
+  `account_flow`). Both accounts and their model were deleted at the end, and
+  their pages answer 404.
 
 **The server's answer** (curl, three tries each, 14:25Z): every page answers
 in 0.14-0.16 s once warm. The first try at a model's page took 1.49 s and at a
@@ -351,7 +397,7 @@ and their work in outranks one that serves a crowd we do not have yet.
 6. **First visit and sign-up** (row 10: Printables, MakerWorld). No Google
    or Apple: signin-google (Apple needs a paid developer account, so it is
    parked with payments). The home page shows the tool and a call to test the
-   beta before any model: challengehonours brings the open challenge and This
+   beta before any model (the first is 2.8 phone screens down): challengehonours brings the open challenge and This
    week's pick into its first two screens.
 7. **Sets, parts and lists** (row 9: Rebrickable, Brickset). No quantities,
    no "what am I missing", no flags or notes. ownedparts, then lists2a.
@@ -403,7 +449,7 @@ column is each unit's own.
 |---|---|---|---|---|---|---|---|---|
 | 1 | **bringyours**: share a model you already made, from the site | 1 | L | M | yes (publishes people's files) | nothing | new `web/share-model.html`, new `web/share-model.js`, new `web/studio-io.js` (reads a Studio .io in the browser), `web/gallery.html` (Share yours). It posts to `/api/share` as it stands and draws its picture with `web/viewer3d.js` unchanged. | An LDraw .mpd or a Studio .io of 300 parts goes from the file chosen to a live /m/ page in 60 s or less at 1280 and 120 s or less at 390 (this box, SwiftShader), in 4 taps or fewer after choosing. Its parts list is the server's own count of the file, as for a studio share; its steps are the file's. An LDD .lxf is opened in the studio instead, with one tap. A file that is not a model is refused in words. 13+ and `may_publish` as today. |
 | 2 | **turntable**: the model turns in link previews | 1 | L | H | yes (a new stored file per model, deleted with the account and on unpublish) | nothing | `api/share.js` (head tags, the clip's upload and route), `web/embed.js` (`?autoplay=1`), new `web/turntable-clip.js`, `web/model-page.js` (the designer's own visit records the clip once, from the 3D view, so studio, desktop and site shares all get one) | A model has `/m/X.mp4` (WebM where the browser cannot record MP4) within one visit of its designer: 4 s or less, a seamless loop, at most 1.5 MB. `/m/X` then carries `og:video` (type, width, height, secure_url) and a `twitter:card` `player` whose `twitter:player` is its embed. Fetched as Discordbot, Slackbot and Twitterbot, the page answers with those tags and the clip with 200. The embed plays muted with `?autoplay=1`. A model with no clip keeps today's picture card. `account_flow` proves that deleting the account deletes the clips; `share_probe` passes. |
-| 3 | **challengehonours**: judges, a fan vote, honours, and the challenge on the home page | 1 | M | L | yes (`supabase/challenge_rounds.sql`) | nothing | `web/challenge.js`, `web/challenge.html`, `api/_challenges.js`, `web/admin-challenges.js`, `api/_console_challenges.js`, `web/index.html`, new `supabase/challenge_rounds.sql` | A challenge can run as a shortlist of up to 5, chosen on /admin by the owner or a guest judge named on the page, then a one-vote fan round, each with its countdown. Winners are This week's pick the week after and carry an honour on their profile. While a challenge is open, the home page shows it, with its days left, and This week's pick within its first two screens at 390 and 1280. `/challenge` has the open challenge's own preview picture. `challenges_flow` passes; the blind vote and the rules are unchanged. |
+| 3 | **challengehonours**: judges, a fan vote, honours, and the challenge on the home page | 1 | M | L | yes (`supabase/challenge_rounds.sql`) | nothing | `web/challenge.js`, `web/challenge.html`, `api/_challenges.js`, `web/admin-challenges.js`, `api/_console_challenges.js`, `web/index.html`, new `supabase/challenge_rounds.sql` | A challenge can run as a shortlist of up to 5, chosen on /admin by the owner or a guest judge named on the page, then a one-vote fan round, each with its countdown. Winners are This week's pick the week after and carry an honour on their profile. While a challenge is open, the home page shows it, with its days left, and This week's pick within its first two screens at 390 and 1280. The challenge page moves no more than 0.1 as it loads (layout shift, now 0.19 at 390). `/challenge` has the open challenge's own preview picture. `challenges_flow` passes; the blind vote and the rules are unchanged. |
 | 9 | **seo2**: people and lists in search results | 1 | S | L | no | nothing | `api/people.js` (the profile's head), `api/collection.js` | Every /u/ page carries `ProfilePage` JSON-LD whose `mainEntity` is a `Person` (name, url, image, followers and models as `interactionStatistic`). Every public /c/ page carries `CollectionPage` with `hasPart`. Both parse as schema.org. No visible change (`design_flow`'s pictures the same). |
 | 4 | **homescreen**: install the site, and push | 2 | L | M | yes (`supabase/push.sql`: subscriptions, deleted with the account) | nothing (the unit makes its own VAPID keys) | new `web/sw.js`, new `web/push.js`, new `api/_push.js`, new `supabase/push.sql` (a webhook on new notification rows), `web/site.webmanifest`, `web/settings.html`, `web/settings.js` | Chromium finds the site installable (manifest, service worker, offline page). Install is offered from the second visit, never the first. With push on (Settings › Notifications, per device), a comment on your model reaches Chromium as a push within 60 s, and an iPhone once the site is on its home screen, as Apple allows. Nothing is cached for `/app` or `/e/`. A deploy's pages are served on the next load (no stale shell). Deleting the account deletes its subscriptions. |
 | 8 | **lists2a**: one Save, Lists by name, link-only lists, import preview | 2 | M | L | yes (`supabase/lists_link.sql`) | turntable (`web/model-page.js`) | `web/model-page.js`, `web/keep.js`, `web/lists.html`, `web/lists.js`, `web/collections.html`, `web/collections.js`, `api/_lists.js`, `api/_mylists.js`, `docs/LISTS.md` | docs/LISTS.md section 5, items 1, 2, 3 and 6, each as written there: the model page's Save is keep.js's panel; Collections are Lists everywhere, and `/collections` redirects; a link-only list opens by its link and nowhere else, until the link is revoked; an import shows matched, not found and already there before anything is written. `lists_flow` and `collection_flow` pass. |
