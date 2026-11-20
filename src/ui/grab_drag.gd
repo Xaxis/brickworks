@@ -2087,6 +2087,10 @@ func _tell_page() -> void:
 	var now: int = Time.get_ticks_msec()
 	if now - _told_page_at < 500:
 		return
+	# Nor while the view turns and nothing is held, as the page is told
+	# (main._tell_page): a frame on a phone turning Orthanc is 400 ms long.
+	if grab == null and _swinging == null and camera.is_moving() and now - _told_page_at < 2000:
+		return
 	_told_page_at = now
 	var handles: Array = []
 	if grab == null and is_ready() and bool(JavaScriptBridge.eval("!!window.brickworksGrabAsk", true)):

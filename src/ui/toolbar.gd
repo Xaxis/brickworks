@@ -331,6 +331,12 @@ func _fit() -> void:
 ## Lit, ticked and greyed as things stand. Read a few times a second, which
 ## is often enough for a button and cheap.
 func _process(_delta: float) -> void:
+	# Hidden, as on a phone, whose own row shows the tools: lit and unlit
+	# for nobody, five times a second, which on a phone turning a model at
+	# a quarter speed was every frame (idleframes). Shown again, the first
+	# frame looks at once, the last look being long past.
+	if not is_visible_in_tree():
+		return
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 200:
 		return
