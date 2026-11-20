@@ -3596,6 +3596,14 @@
       "tests": []
     },
     {
+      "id": "cli:viewfloor probe",
+      "kind": "cli",
+      "entry": "src/dev/viewfloor_probe.gd",
+      "reach": "tools/probe.sh viewfloor_probe   (windowed, 390x844 by its header; -- --measure prints and fails nothing; pictures in shots/viewfloor/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
@@ -7473,6 +7481,14 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/test_console3.py"
       ]
+    },
+    {
+      "id": "ui:the view kept over the floor and on the model",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "any turn, slide, pinch, wheel notch, key or Fit, mouse or fingers: the eye never goes from over the floor to under it while the model is upright (Bottom and Build's steps from below still look from under), and the middle of the view stays near the model so some of it is always on the screen  (CadCamera.floor_at, _floor_line, _keep_near_model, _pivot_near; tools/probe.sh viewfloor_probe; tools/web/phonewalk_flow.mjs --only=view_floor,view_floor_orthanc)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "ui:theme choice",
