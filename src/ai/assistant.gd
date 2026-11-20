@@ -3414,7 +3414,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
 			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
-				+ _technic_faces_said(subject) + DesignMemory.recall(subject)
+				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			var described: String = _describe_world(args)
@@ -18943,21 +18943,6 @@ func _system_prompt() -> String:
 ## and build in tan and pearl gold.
 ##
 ## Lift and not count, or every answer would be the same list of plates.
-## For a subject in the style of LEGO Technic sets, what the surface pass lays
-## on its sides (TechnicLay), so the session leaves those parts to it; nothing
-## for any other subject. design26: sessions told a Technic set's panels laid
-## them themselves, met refusals from the room around, and dropped them.
-func _technic_faces_said(subject: String) -> Array:
-	if not TechnicParts.of_technic("%s %s" % [subject, _subject_of()]):
-		return []
-	return [{"type": "text", "text": "As a LEGO® Technic set: build the body of studded "
-		+ "bricks as for any set, and leave its panels and frame beams to the surface pass "
-		+ "(review_model {\"surface\": true}). It lays each side as a Technic set's face, one "
-		+ "finding a side: a course of the wall laid again as Technic bricks, a beam on edge "
-		+ "pinned along it as the frame line, and panels pinned flat over the wall where the "
-		+ "room around clears them. Settle each face as any finding."}]
-
-
 func _how_real_sets_build_this(subject: String) -> Dictionary:
 	if library == null or library.kinds.is_empty():
 		return {"content": "This build has no set data, so there is "
