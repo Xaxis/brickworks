@@ -70,10 +70,11 @@ func _run() -> void:
 	else:
 		var cases: String = OS.get_environment("FPF_CASES")
 		if cases.is_empty():
-			cases = "reopen,openwhile,ghost,subs,laytime"
+			cases = "reopen,openwhile,ghost,held,subs,laytime"
 		for name: String in cases.split(","):
 			print("\n== %s" % name)
 			match name:
+				"held": await _case_held()
 				"reopen": await _case_reopen()
 				"openwhile": await _case_open_while()
 				"ghost": await _case_ghost()
@@ -228,6 +229,68 @@ func _visible_ghosts(bar: FinishBar) -> int:
 	return n
 
 
+## What's held when Lay is pressed: parts carried are never laid round or
+## lost; Lay says to put them down first and changes nothing, and once they
+## are put back Lay lays as one undo.
+func _case_held() -> void:
+	await _open_model("res://models/house.ldr", "house")
+	var bar: FinishBar = await _open_bar()
+	var before: String = _store.saved_text()
+	var depth: int = _builder.history_depth()
+	var two: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if two.size() < 2 and not _store.scenery.has(brick.id):
+			two.append(brick.id)
+	_builder.selection.clear()
+	for id: int in two:
+		_builder.selection[id] = true
+	_builder.lift_selection()
+	await _frames(4)
+	var carrying: bool = _builder.is_carrying()
+	var said: Array = []
+	var was_say: Callable = bar.say
+	bar.say = func(line: String) -> void:
+		said.append(line)
+		was_say.call(line)
+	var laid: Dictionary = await bar.lay_now()
+	var still: bool = _builder.is_carrying()
+	_builder.cancel_carry()
+	await _frames(4)
+	_check("held: Lay with %d parts in hand lays nothing and says so (%s), the parts still in hand (%s), back where they were after"
+		% [two.size(), "; ".join(said), still],
+		carrying and laid.is_empty() and still and not said.is_empty()
+		and _store.saved_text() == before)
+	bar = await _open_bar()
+	await bar.lay_now()
+	await _frames(4)
+	var one: bool = _builder.history_depth() == depth + 1
+	await _undo()
+	_check("held: put back, Lay lays as one undo step (%s) and Undo puts the file back byte for byte" % one,
+		one and _store.saved_text() == before)
+	bar.say = was_say
+	bar.close()
+
+
+## The ghost's pieces as they are now.
+func _ghost_pieces(bar: FinishBar) -> Array:
+	var out: Array = []
+	for kind: Variant in bar._ghosts:
+		var holder: Node3D = bar._ghosts[kind]
+		if is_instance_valid(holder):
+			out.append_array(holder.get_children())
+	return out
+
+
+## How many of [param pieces] are still drawn.
+static func _shown_of(pieces: Array) -> int:
+	var n: int = 0
+	for piece: Variant in pieces:
+		if is_instance_valid(piece) and (piece as Node3D).is_inside_tree() \
+				and (piece as Node3D).is_visible_in_tree():
+			n += 1
+	return n
+
+
 ## Down, or drawn for the model as it now stands: the findings shown read
 ## at the world's revision, and what they lay the AI's own reading's.
 func _ghost_true(bar: FinishBar, name: String) -> bool:
@@ -241,14 +304,27 @@ func _case_ghost() -> void:
 	await _open_model("res://models/house.ldr", "house")
 	var bar: FinishBar = await _open_bar()
 	print("  shown: %d ghost pieces, bar visible %s" % [_visible_ghosts(bar), bar.visible])
-	# Another model opened, as File › Open does.
+	# Another model opened, as File › Open does: the house's ghost is
+	# watched frame by frame, as the car's own may be up again soon after.
+	var old: Array = _ghost_pieces(bar)
+	var watch: Dictionary = {"generation": _world.generation(), "late": 0, "changed_at": -1, "frame": 0}
+	var watcher := func() -> void:
+		watch["frame"] = int(watch["frame"]) + 1
+		if int(watch["changed_at"]) < 0 and _world.generation() != int(watch["generation"]):
+			watch["changed_at"] = int(watch["frame"])
+		# The frame after the one the world changed in: none of it drawn.
+		if int(watch["changed_at"]) >= 0 and int(watch["frame"]) > int(watch["changed_at"]) \
+				and _shown_of(old) > 0:
+			watch["late"] = int(watch["late"]) + 1
+	process_frame.connect(watcher)
 	await _open_model("res://models/car.ldr", "car")
-	await _frames(2)
-	var at_once: int = _visible_ghosts(bar)
 	await _until(func() -> bool: return not bar.busy, 300000)
 	await _frames(4)
-	_check("ghost: down the frame another model opens (%d pieces), then the car's own (read_at %d, revision %d)"
-		% [at_once, bar.read_at, _world.revision], at_once == 0 and _ghost_true(bar, "car"))
+	process_frame.disconnect(watcher)
+	_check("ghost: down the frame another model opens (%d of %d pieces drawn after, over %d frames), then the car's own (read_at %d, revision %d)"
+		% [_shown_of(old), old.size(), int(watch["late"]), bar.read_at, _world.revision],
+		old.size() > 0 and int(watch["changed_at"]) >= 0 and int(watch["late"]) == 0
+		and _ghost_true(bar, "car"))
 	bar.close()
 	# An edit, then Undo, while the ghost is shown.
 	await _open_model("res://models/house.ldr", "house")
@@ -479,8 +555,10 @@ func _case_phone_sheet() -> void:
 			pieces += 1
 			var middle: Vector3 = mesh.global_transform * mesh.get_aabb().get_center()
 			if camera.is_position_behind(middle):
+				print("    a piece behind the eye: %s" % middle)
 				continue
 			var at: Vector2 = camera.unproject_position(middle)
+			print("    a piece at %s on the screen (%s in the world)" % [at, middle])
 			if screen.has_point(at) and room.has_point(at) and not shown.has_point(at):
 				seen += 1
 	_check("phone: the ghost in sight above the bar (%d of %d pieces in the model's room %s, none under the bar %s)"

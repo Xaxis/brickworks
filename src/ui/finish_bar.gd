@@ -78,6 +78,10 @@ var _pass: SurfacePass = null
 ## taken down and read again (fpreview M2).
 var _seen_generation: int = -1
 var _seen_revision: int = -1
+## And the model's name it was read under: the pass reads a building or a
+## body off it, and a model opened is named after its parts are in. Read
+## under the last one's name, the house showed 30 places, not its 22.
+var _seen_name: String = ""
 ## Laying: its own edits are not a change to read again for.
 var _laying: bool = false
 ## Each kind's parts as a ghost on the model.
@@ -154,6 +158,7 @@ func refresh() -> void:
 	var revision: int = _world.revision
 	_seen_generation = _world.generation()
 	_seen_revision = revision
+	_seen_name = _model_name()
 	var job: Working.Job = Working.begin(tr("Reading the model's studs, steps and edges…"))
 	await job.shown()
 	var reader: Assistant = _make_reader()
@@ -176,7 +181,8 @@ func refresh() -> void:
 			phase = ""
 			_show()
 		return
-	if _world.revision != revision or _world.generation() != _seen_generation:
+	if _world.revision != revision or _world.generation() != _seen_generation \
+			or _model_name() != reader._named_as:
 		# Changed while it was read: read again, as it stands now.
 		_drop(reader)
 		await refresh()
@@ -215,7 +221,8 @@ func refresh() -> void:
 func _process(_delta: float) -> void:
 	if not visible or _laying or _world == null:
 		return
-	if _world.generation() == _seen_generation and _world.revision == _seen_revision:
+	if _world.generation() == _seen_generation and _world.revision == _seen_revision \
+			and _model_name() == _seen_name:
 		return
 	_seen_generation = _world.generation()
 	_seen_revision = _world.revision
@@ -300,8 +307,17 @@ func lay_now() -> Dictionary:
 		if not why.is_empty():
 			left.append(why)
 			continue
+		# The swap begins a frame of its own, and the frame after it, where
+		# the world works out what changed, is left to the world: a slice of
+		# the Lay's beside either held Orthanc's frames 119-147 ms (fpfix).
+		await pace.next()
+		if _world.revision != int(going["seen"]):
+			left.append(tr("the model was changed while it was laid: the rest is left"))
+			break
 		var steps: Array = _builder.swap_bricks(PackedInt64Array(one.remove), _adds_of(one))
 		going["seen"] = _world.revision
+		await get_tree().process_frame
+		await pace.next()
 		if steps.is_empty():
 			continue
 		places.push_front({"undo": "group", "steps": steps, "words": "finish"})
@@ -310,12 +326,16 @@ func lay_now() -> Dictionary:
 		taken += one.remove.size()
 	job.end()
 	# What the app works out after an edit, in a frame of its own.
-	if not places.is_empty() and pace.due():
+	if not places.is_empty():
 		await pace.next()
 	if not places.is_empty():
 		_builder.record(places, tr("finished the surfaces: %d parts") % parts)
 		if app != null and app.has_method("_on_model_edited"):
+			# What the app works out after an edit (56 ms on Orthanc), in a
+			# frame apart from the record and from the bar's close.
+			await get_tree().process_frame
 			app.call("_on_model_edited")
+			await get_tree().process_frame
 	last_laid = {"laid": laid, "parts": parts, "taken": taken, "left": Array(left),
 		"undone": _builder.history_depth() <= depth}
 	busy = false
@@ -360,10 +380,13 @@ func _make_reader() -> Assistant:
 	reader.world = _world
 	reader.builder = _builder
 	reader.scenery = _scenery
-	var bar: Node = app.get("_bar") if app != null else null
-	reader._named_as = str(bar.call("model_name")) if bar != null and bar.has_method("model_name") \
-		else ""
+	reader._named_as = _seen_name
 	return reader
+
+
+func _model_name() -> String:
+	var bar: Node = app.get("_bar") if app != null else null
+	return str(bar.call("model_name")) if bar != null and bar.has_method("model_name") else ""
 
 
 ## The reading [param reader] made is the one shown: the last shown's goes.
@@ -525,6 +548,7 @@ func _adds_of(one: SurfacePass.Finding) -> Array:
 			gone.append([brick, AABB(brick.transform.origin, Vector3.ZERO)])
 	var path: String = _builder.place_group
 	var step: int = int(_builder.place_step.call(path)) if _builder.place_step.is_valid() else -1
+	var middles: Array = []
 	for raw: Variant in one.add:
 		var placed: Dictionary = raw
 		var at: Transform3D = _at(placed)
@@ -537,7 +561,45 @@ func _adds_of(one: SurfacePass.Finding) -> Array:
 			item["path"] = Assemblies.path_of(was)
 			item["step"] = was.step
 		out.append(item)
+		middles.append(middle)
+	_none_emptied(out, gone, middles)
 	return out
+
+
+## Every sub-model and step a part is taken off from keeps one of the parts
+## laid in their place, where the others have one to spare: the nearest to
+## it. Matched by box alone, a step of the castle's back curtain wall whose
+## parts were all taken off got none of the tiles laid over them, and its
+## line in the file went with it (fpfix).
+static func _none_emptied(out: Array, gone: Array, middles: Array) -> void:
+	var given: Dictionary = {}
+	for item: Dictionary in out:
+		var key: String = "%s#%d" % [item["path"], int(item["step"])]
+		given[key] = int(given.get(key, 0)) + 1
+	for pair: Array in gone:
+		var brick: BrickWorld.Brick = pair[0]
+		var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
+		if given.has(key):
+			continue
+		var box: AABB = pair[1]
+		var pick: int = -1
+		var pick_d: float = INF
+		for n: int in out.size():
+			var from: String = "%s#%d" % [out[n]["path"], int(out[n]["step"])]
+			if int(given.get(from, 0)) < 2:
+				continue
+			var middle: Vector3 = middles[n]
+			var d: float = middle.distance_to(_nearest_in(box, middle))
+			if d < pick_d:
+				pick = n
+				pick_d = d
+		if pick < 0:
+			continue
+		var was: String = "%s#%d" % [out[pick]["path"], int(out[pick]["step"])]
+		given[was] = int(given[was]) - 1
+		out[pick]["path"] = Assemblies.path_of(brick)
+		out[pick]["step"] = brick.step
+		given[key] = 1
 
 
 ## Which of [param gone] (each [brick, its box]) a part whose middle is at
