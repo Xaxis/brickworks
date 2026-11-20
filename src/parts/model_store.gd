@@ -181,6 +181,10 @@ signal loaded(name: String, bricks: int)
 signal begun(name: String)
 
 const UNTITLED := "Untitled"
+## Titles that name no model: the open reads past them to the file's name
+## ([method _title_of]). The autosave written before it kept the name said
+## "Working model"; Studio starts every model "Untitled Model".
+const NO_TITLES: Array[String] = ["Working model", "Model", "model", "Untitled Model"]
 ## What the model on the baseplate is called: the name it was saved under,
 ## or the title inside the file it came from. The autosave carries it.
 ## It wrote "Working model" instead, so the app reopened a model the owner
@@ -1223,7 +1227,8 @@ func _kept_as_is(title_now: String) -> String:
 
 
 ## [param kept], the app's own file of the model called [param from], as the
-## file of the one called [param to]: its title line said anew, and its Name
+## file of the one called [param to]: its title line said anew (the old name,
+## or a placeholder the open read past: [constant NO_TITLES]), and its Name
 ## where a save made it of the old name, each as a whole write writes it, in
 ## the line ends it had; nothing else changed. "" where the file names its
 ## model otherwise.
@@ -1245,7 +1250,9 @@ static func _renamed(kept: String, from: String, to: String) -> String:
 		if not titled:
 			if said.begins_with("!") or said.is_empty():
 				continue
-			if said != from:
+			# A placeholder is the title line a whole write says the name on
+			# (the gallery's sports car says "Model", read as its file's name).
+			if said != from and not said in NO_TITLES:
 				return ""
 			lines[n] = "0 " + to + end
 			titled = true
@@ -2214,12 +2221,10 @@ func open_version(path: String, called: String = "", job: Working.Job = null) ->
 
 
 ## What a file calls its model: its first line, as LDraw has it, unless
-## that is a placeholder, and then its file name. The autosave written
-## before it kept the name said "Working model", which is no name; Studio
-## starts every model "Untitled Model", whatever it is called.
+## that is a placeholder ([constant NO_TITLES]), and then its file name.
 static func _title_of(model: LdrModel, file_name: String) -> String:
 	var said: String = model.main.title if model.main != null else ""
-	if not said.is_empty() and not said in ["Working model", "Model", "model", "Untitled Model"]:
+	if not said.is_empty() and not said in NO_TITLES:
 		return said
 	var stem: String = file_name.get_basename()
 	if stem.is_empty() or stem == autosave().get_file().get_basename():
@@ -2254,8 +2259,7 @@ static func title_in(text: String, file_name: String) -> String:
 		if said.begins_with("!"):
 			continue
 		if said.is_empty() or said.begins_with("Name:") \
-				or said.begins_with("Author:") or said in ["Working model", "Model", "model",
-				"Untitled Model"]:
+				or said.begins_with("Author:") or said in NO_TITLES:
 			break
 		return said
 	return file_name.get_basename().capitalize()

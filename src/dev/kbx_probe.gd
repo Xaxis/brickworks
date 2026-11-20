@@ -9,7 +9,8 @@
 ## - adopt_undo, colour_save_undo, name_save_undo, undo_redo: what the history
 ##   leaves is what is written.
 ## - renamed (M2): Save as another name unedited is the file but for its name
-##   lines, its parts in its order. 11edff5b2 planned the kart again.
+##   lines, its parts in its order. 11edff5b2 planned the kart again, and
+##   32700945d the sports car, titled "Model" (ModelStore.NO_TITLES).
 ## - restore, restore_later, undo_open (M3): the working model restored, and
 ##   an open undone, save byte for byte; restore_edited: one restored with a
 ##   part recoloured saves the new colour.
@@ -64,7 +65,11 @@ func _run() -> void:
 		["gears", FileAccess.get_file_as_bytes("res://src/dev/fixtures/gears_locked.ldr")],
 		["m267w", FileAccess.get_file_as_bytes("res://src/dev/fixtures/mlattack/m267_own_worked.mpd")],
 		# The app's own model the planner plans, which Save as reordered.
-		["kart", FileAccess.get_file_as_bytes("res://models/kart.ldr")]]
+		["kart", FileAccess.get_file_as_bytes("res://models/kart.ldr")],
+		# The gallery's sports car, whose title line says "Model", a name the
+		# open reads past: Save as planned it again until _renamed said the
+		# new name on that line.
+		["seed", FileAccess.get_file_as_bytes("res://tools/web/gallery_seeds/sports_car.ldr")]]
 	var acts: Array = [
 		["none", _none],
 		["adopt_save_undo", _adopt_save_undo],
