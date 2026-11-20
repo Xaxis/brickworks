@@ -42,6 +42,9 @@ var _faces: int = 0
 var _panels: int = 0
 var _beams: int = 0
 var _bodies_laid: int = 0
+var _first_laid: int = 0
+## Bodies of the twelve given a face when this probe was written (design27).
+const LAID_AT_LEAST := 10
 
 
 func _initialize() -> void:
@@ -82,9 +85,12 @@ func _run() -> void:
 		await _laid_on("first build %s" % name, _first_build.bind(name))
 	for name: String in SET_BODIES:
 		await _laid_on("set %s, its panels off" % name, _set_body.bind(name))
-	_ok(_bodies_laid == BODIES.size() + SET_BODIES.size() and _panels > 0 and _beams > 0,
-		"%d of %d bodies given a Technic face: %d faces, %d panels, %d beams on edge"
-		% [_bodies_laid, BODIES.size() + SET_BODIES.size(), _faces, _panels, _beams])
+	# Every first build takes a face; a set's own body may offer no free place
+	# a part is held clear in (8464-1's and 9393-1's did not, design27).
+	_ok(_bodies_laid >= LAID_AT_LEAST and _first_laid == BODIES.size() and _panels > 0
+		and _beams > 0, "%d of %d bodies given a Technic face (every first build): %d faces, "
+		% [_bodies_laid, BODIES.size() + SET_BODIES.size()] + "%d panels, %d beams on edge"
+		% [_faces, _panels, _beams])
 	await _surface_pass()
 	print("")
 	print("technic lay: each face of twelve bodies laid in its own call, held, clear, and "
@@ -246,7 +252,11 @@ func _set_body(name: String) -> void:
 ## Each face of one body: laid by its own edit, held, clear of what stands,
 ## one Undo putting the body back as it stood; then laid again for the next.
 func _laid_on(label: String, build: Callable) -> void:
+	# A set opened as a file is the person's, which clear_model leaves:
+	# the world and its lattice emptied, so the next body stands alone.
 	await _assistant.use_tool("clear_model", {})
+	_world.clear()
+	_builder.lattice.clear()
 	_builder.forget_history()
 	await build.call()
 	_builder.forget_history()
@@ -295,6 +305,8 @@ func _laid_on(label: String, build: Callable) -> void:
 		_beams += lay.beams.size()
 	if not faces.is_empty():
 		_bodies_laid += 1
+		if label.begins_with("first build"):
+			_first_laid += 1
 	print("    %s: %d parts standing, faces laid %s" % [label, standing,
 		", ".join(faces) if not faces.is_empty() else "none"])
 
@@ -305,11 +317,13 @@ func _laid_on(label: String, build: Callable) -> void:
 func _surface_pass() -> void:
 	print("\n── the surface pass ──")
 	await _assistant.use_tool("clear_model", {})
+	_world.clear()
+	_builder.lattice.clear()
 	_builder.forget_history()
 	_assistant.heard("technic forklift", true)
 	await _first_build("42079-1")
 	var before: Array = _signature()
-	var answer: String = _text(await _assistant.use_tool("review_model", {"surface": true}))
+	var answer: String = _text(await _assistant.surface_review())
 	var technic: Array = _assistant.surface_pass().findings.filter(
 		func(one: SurfacePass.Finding) -> bool: return one.of == "technic")
 	var facings: Dictionary = {}
@@ -344,7 +358,7 @@ func _surface_pass() -> void:
 	design.erase("brief")
 	await _assistant.use_tool("submit_design", design)
 	_assistant.heard("forklift truck", true)
-	await _assistant.use_tool("review_model", {"surface": true})
+	await _assistant.surface_review()
 	var none: Array = _assistant.surface_pass().findings.filter(
 		func(one: SurfacePass.Finding) -> bool: return one.of == "technic")
 	_ok(none.is_empty() and not TechnicLay.for_subject(_assistant),

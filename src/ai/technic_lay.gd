@@ -77,6 +77,9 @@ const MOST_BEAMS := 4
 ## How much of what a part covers must be the body behind it: a panel over
 ## air is no panel on a body.
 const OVER_BODY := 0.6
+## The most a panel is seated out along its pins, in LDU, to clear what it lies
+## against: its holes stay on the pins by far more than the check asks.
+const STAND_OFF := 4
 ## Dark colours a frame line is light bluish grey on.
 const DARK: Array = [0, 72, 308, 288, 320, 1, 272, 6, 70]
 
@@ -149,6 +152,7 @@ class Piece extends RefCounted:
 	var at := Transform3D.IDENTITY
 	var placement: Assistant.Placement
 	var worth: float = 0.0
+	var slide: Variant = null        ## its seat's slide along its pin, where stood off
 
 
 func _init(host: Assistant) -> void:
@@ -260,6 +264,9 @@ var why: Dictionary = {}
 
 ## The part the last room test met, for [member why].
 var _met: String = ""
+## How deep, in LDU, the exact shapes of the last room test's meeting are in
+## each other: INF where either has none.
+var _depth: float = INF
 
 
 func _no(reason: String) -> void:
@@ -601,10 +608,16 @@ func _open_ahead(at: Vector3, way: Vector3) -> bool:
 ## Whether a piece's own cover is clear of what stands, but for [param skip]
 ## and the standing pins it goes on: the lattice's own test, so most of what
 ## the check would refuse is refused before it is asked. Its cover, not its
-## box: a fairing's box takes in the room it curves round.
+## box: a fairing's box takes in the room it curves round. Where the covers
+## meet, the two parts' exact shapes decide, as they do in the check: a panel
+## flat on the wall shares the cells its back lies in with every brick and
+## beam it lies against (the 3 x 11 panels of 42079's flanks met the three
+## beams under each at the set's own place), and is clear of them.
 func _clear_inside(piece: Piece, skip: Dictionary, mounts: Array) -> bool:
 	var mesh: Lbm.PartMesh = library.mesh_for(piece.part)
 	var packed: PackedInt32Array = assistant.builder.boxes_for(mesh, piece.at)
+	var shape: Exact.Shape = Exact.shape_for(library, piece.part)
+	var mine: Exact.Item = Exact.Item.new(shape, piece.at) if shape != null else null
 	# What its pins go into it lies against.
 	var held: Dictionary = {}
 	for mount: Mount in mounts:
@@ -621,6 +634,15 @@ func _clear_inside(piece: Piece, skip: Dictionary, mounts: Array) -> bool:
 		var brick: BrickWorld.Brick = assistant.world.get_brick(id)
 		if brick != null and _pin_in(brick, holes):
 			continue
+		_depth = INF
+		if mine != null and brick != null:
+			var theirs: Exact.Shape = Exact.shape_for(library, brick.part_id)
+			if theirs != null:
+				var clash: Dictionary = Exact.clash(mine, Exact.Item.new(theirs, brick.transform),
+					true)
+				if clash.is_empty():
+					continue
+				_depth = float(clash["depth"])
 		_met = brick.part_id if brick != null else "?"
 		return false
 	return true
@@ -711,8 +733,10 @@ func _panels(part: String, colour: int, rows: Dictionary, out: Vector3) -> Array
 		.name)) == "curved_panel"
 	var size: Vector3 = mesh.bounds.size
 	var area: float = maxf(size.x * size.y, maxf(size.y * size.z, size.x * size.z))
-	# Any two pin ends at one depth of the face: a flat panel goes on two one
-	# above the other as often as on two side by side.
+	# Any two pin ends at one depth of the face, side by side or one above
+	# the other: a flat panel goes on either as often. Never aslant, where
+	# no panel goes square.
+	var along: Vector3 = Vector3.UP.cross(out).normalized()
 	var planes: Dictionary = {}
 	for key: String in rows:
 		var depth: String = key.get_slice("|", 1)
@@ -728,7 +752,11 @@ func _panels(part: String, colour: int, rows: Dictionary, out: Vector3) -> Array
 				if i == k:
 					continue
 				var b: Mount = row[k]
-				var gap: float = (b.end_at() - a.end_at()).length()
+				var way: Vector3 = b.end_at() - a.end_at()
+				var gap: float = way.length()
+				if gap < 1.0 or (absf(way.dot(along)) < gap - 1.0
+						and absf(way.y) < gap - 1.0):
+					continue
 				for pair: Array in pairs:
 					var own_gap: float = ((pair[1] as Attach.Point).frame.origin
 						- (pair[0] as Attach.Point).frame.origin).length()
@@ -742,8 +770,12 @@ func _panels(part: String, colour: int, rows: Dictionary, out: Vector3) -> Array
 						continue
 					_seen[place] = true
 					if not _clear_inside(piece, _course_ids, [a, b]):
-						_no("panel meets %s" % _met)
-						continue
+						var met: String = _met
+						piece = _stood_off(piece, a, b, pair, out, curved) \
+							if _depth <= STAND_OFF else null
+						if piece == null:
+							_no("panel meets %s" % met)
+							continue
 					var over: float = _over_body(piece, out)
 					if over < OVER_BODY:
 						_no("panel over air")
@@ -794,23 +826,57 @@ static func _own_pairs(own: Array) -> Array:
 	return pairs
 
 
+## A panel [param flush] on its pins' ends that meets what it lies against
+## by a hair: seated out along its pins by the least whole LDU, up to
+## [constant STAND_OFF], that clears it by the exact shapes, its holes still
+## on both pins; null where none does. The exact shapes of a real set's own
+## panel meet the beams it lies on (42079's 3 x 11 by 1.5 LDU), so a panel
+## laid flush on a body is refused where LEGO® laid one.
+func _stood_off(flush: Piece, a: Mount, b: Mount, pair: Array, out: Vector3,
+		curved: bool) -> Piece:
+	var tried: Array = []
+	for slide: int in range(-STAND_OFF - 2, STAND_OFF + 3):
+		var piece: Piece = _posed_on(flush.part, flush.colour, a, b, pair, out, curved, true,
+			slide, [flush.flip])
+		if piece == null:
+			continue
+		var outward: float = (piece.at.origin - flush.at.origin).dot(out)
+		if outward > 0.5 and outward < STAND_OFF + 0.5:
+			tried.append([outward, piece])
+	tried.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
+	for one: Array in tried:
+		var piece: Piece = one[1]
+		if _clear_inside(piece, _course_ids, [a, b]):
+			return piece
+	return null
+
+
 ## [param part] on mount [param a]'s pin by its socket pair[0], its pair[1]
-## on [param b]'s, its body out of the face; null where it does not go.
+## on [param b]'s, its body out of the face; null where it does not go. With
+## [param slide], seated that far along a's pin, and its other socket that
+## much off b's pin's end along it.
 func _posed_on(part: String, colour: int, a: Mount, b: Mount, pair: Array, out: Vector3,
-		hangs: bool, panel: bool = false) -> Piece:
+		hangs: bool, panel: bool = false, slide: Variant = null,
+		flips: Array = [false, true]) -> Piece:
 	var mesh: Lbm.PartMesh = library.mesh_for(part)
 	var mine: Attach.Point = pair[0]
 	var other: Attach.Point = pair[1]
 	var own_way: Vector3 = (other.frame.origin - mine.frame.origin).normalized()
 	var world_way: Vector3 = (b.end_at() - a.end_at()).normalized()
-	for flip: bool in [false, true]:
+	for flip: bool in flips:
 		var options: Dictionary = {"flip": flip, "align": [own_way, world_way]}
+		if slide != null:
+			options["slide"] = float(slide)
 		var at: Variant = _posed(a.end_frame, a.end_part, a.end, part, mine, options)
 		if at == null:
-			_no("pose")
+			if slide == null:
+				_no("pose")
 			continue
 		var t: Transform3D = at
-		if ((t * other.frame).origin - b.end_at()).length() > 1.5:
+		var off: Vector3 = (t * other.frame).origin - b.end_at()
+		var along: float = off.dot(out)
+		if (off.length() > 1.5 if slide == null
+				else (off - out * along).length() > 1.5 or absf(along) > STAND_OFF + 1.5):
 			_no("second pin")
 			continue
 		var box: AABB = (t * mesh.bounds).abs()
@@ -844,6 +910,7 @@ func _posed_on(part: String, colour: int, a: Mount, b: Mount, pair: Array, out: 
 		piece.align = [own_way, world_way]
 		piece.at = t
 		piece.placement = placement
+		piece.slide = slide
 		return piece
 	return null
 
@@ -1103,10 +1170,13 @@ func _laid(facing: String, chosen: Array, courses: Array) -> Lay:
 	for piece: Piece in chosen:
 		var own: Vector3 = piece.align[0]
 		var world: Vector3 = piece.align[1]
-		lay.add.append({"part": piece.part, "color": piece.colour, "attach": {
+		var attach: Dictionary = {
 			"to": "%s.%s" % [piece.on.name, piece.on.end.address()], "by": piece.by,
 			"flip": piece.flip, "align": [[_n(own.x), _n(own.y), _n(own.z)],
-				[_n(world.x), _n(world.y), _n(world.z)]]}})
+				[_n(world.x), _n(world.y), _n(world.z)]]}
+		if piece.slide != null:
+			attach["slide"] = float(piece.slide)
+		lay.add.append({"part": piece.part, "color": piece.colour, "attach": attach})
 		(lay.panels if piece.kind == "panel" else lay.beams).append(piece.part)
 		var one: AABB = (piece.at * library.mesh_for(piece.part).bounds).abs()
 		box = one if first else box.merge(one)
