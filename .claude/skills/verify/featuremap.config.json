@@ -5690,6 +5690,13 @@
     },
     {
       "kind": "cli",
+      "label": "seatswap probe",
+      "entry": "src/dev/seatswap_probe.gd",
+      "reach": "tools/probe.sh seatswap_probe   (headless, about 5 minutes; a pin in a beam, hips under legs and 7 real sets' seated parts swapped by replace_parts, each one undo and byte for byte back; a 1 x 6 for a 1 x 4 against a wall refused; the hand's Replace on the pin)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
       "label": "swapfind probe",
       "entry": "src/dev/swapfind_probe.gd",
       "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
