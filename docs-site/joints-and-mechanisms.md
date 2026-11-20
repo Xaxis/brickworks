@@ -123,6 +123,8 @@ A model can keep named movements in its file: *Open the doors*, *Steer left and 
 
 Anyone who opens your shared model can play them.
 
+A motion can move the camera too. Under **The camera**, set the time and press **Key the camera**: the key holds where the view looks from, what it looks at and its lens. Turn the view, move the time and key again. **Play** then flies through the keys, eased like a joint's, and the model moves only as its own joints do; while it plays the view is the motion's, and **Stop** gives it back. **Turntable** puts two keys that take the camera once round the model over the motion, at the height and distance it stands at now. Click a key to pick it and see the view from there; [[Ctrl]]-click ([[Cmd]] on a Mac) picks several, in any track. [[Delete]] takes the picked keys out in one undo, and dragging one moves them all. Render's **Animation** films a motion through its camera keys.
+
 A model on wheels can drive. Its suggestion *Drive and turn left* takes it 32 studs straight, then a quarter turn to the left. Under **Where it drives**, add a leg and pick **Straight**, **Left** or **Right**, with its length or its angle and radius in studs. As it drives, each wheel turns once for each round of its tyre, and the steering turns into the corners. **Play** leaves the model where the drive ends, as one undo step: the whole model moved, its wheels and steering at rest as they were, and a file from another program keeps every line but those that place its parts and sub-models. **Play backwards** drives it back the same way.
 
 <!-- covers
@@ -132,6 +134,7 @@ lib:playing motions
 lib:driving along a path
 lib:posing joints
 lib:keyframed animation
+lib:camera keys in a motion
 -->
 
 ## Hidden colours {#hidden-colours}
