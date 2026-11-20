@@ -281,6 +281,10 @@ func _r_shared() -> void:
 	await _bar_on(SHARED)
 	var before: String = _save()
 	print("  opened: %s" % _diff(SHARED, before))
+	# An unedited save is the file again (keepbytes); an edited one is the
+	# model written whole, as every save was before: the replace's lines are
+	# counted against that.
+	var whole: String = _store.call("_written", _store.title, true, {})
 	var found: Dictionary = _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
 	var said: String = _bar_said()
 	print("  bar all: %s" % said)
@@ -292,9 +296,9 @@ func _r_shared() -> void:
 	await _bar.call("replace_now")
 	await _frames(6)
 	var after: String = _save()
-	print("  after all: %s" % _diff(before, after))
-	_check("shared: one line changed, Sill once (%d, %d)" % [_minus(after, before).size(),
-		_defined(after, "sill.ldr")], _minus(after, before).size() == 1 and _defined(after, "sill.ldr") == 1)
+	print("  after all: %s" % _diff(whole, after))
+	_check("shared: one line changed, Sill once (%d, %d)" % [_minus(after, whole).size(),
+		_defined(after, "sill.ldr")], _minus(after, whole).size() == 1 and _defined(after, "sill.ldr") == 1)
 	var shown: Array = _looks(false)
 	await _open(after)
 	_check("shared: opened again as shown%s" % _unlike(shown, _looks(false)), shown == _looks(false))
@@ -321,9 +325,9 @@ func _r_shared() -> void:
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(6)
 	var in_side: String = _save()
-	print("  done %s; %s" % [done, _diff(before, in_side)])
+	print("  done %s; %s" % [done, _diff(whole, in_side)])
 	_check("shared: in Side, every Sill follows: 4 grey (%d), one line" % _count("3023", DARK_BLUISH_GREY),
-		_count("3023", DARK_BLUISH_GREY) == 4 and _minus(in_side, before).size() == 1)
+		_count("3023", DARK_BLUISH_GREY) == 4 and _minus(in_side, whole).size() == 1)
 	_check("shared: in Side, done counts what changed (%s, 4 changed)" % done,
 		int(done.get("changed", 0)) == 4)
 	_shell.assemblies.leave_to("")
