@@ -183,6 +183,13 @@ signal reveal_ended
 ## not from the picture (whether it stands, a copy to photograph) is
 ## worked out again only when this has moved.
 var revision: int = 0
+## Goes up with every change made past the history, and every change marked
+## (ModelStore.touch): a Together peer's, a session's tool, a floor or its
+## plates made part of the model or the floor again, a restore, whatever
+## [member revision] does not count (a light, a view, a name). With the
+## history's newest step and [member revision], the moment an unedited save
+## writes the file it was opened from at (ModelStore._moment).
+var outside: int = 0
 ## Goes up with every brick's group or unit changed, in any world: what an
 ## assembly holds can change with no other change to the model (a part put
 ## in a sub-assembly), so what is worked out from the tree (Assemblies'

@@ -206,6 +206,11 @@ func touch() -> void:
 	_dirty_at = Time.get_ticks_msec()
 	_pending = true
 	_autosave_is_model = false
+	# Whatever marks the model changed moves the moment an unedited save
+	# writes its file at (_kept_now), but the open's own follow-ups
+	# (as_opened).
+	if world != null and _as_opened == 0:
+		world.outside += 1
 	# Told of every change up to now: the watch ([method _hear]) takes up
 	# from here, and does not hear the same change again a frame later. It
 	# did, and each time pushed the write back, so an autosave that was due
@@ -466,6 +471,8 @@ func _restored(text: String, result: Dictionary) -> int:
 	if opened:
 		_opened_whole = -1
 		_autosave_is_model = true
+		# Nor is its text a file of the person's: a save works it out.
+		world.outside += 1
 	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
 	if back > 0:
 		return back
@@ -526,14 +533,20 @@ func save_as(name: String) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
-	if _saved_over_elsewhere(SAVE_DIR + clean + ".ldr", name):
+	var path: String = SAVE_DIR + clean + ".ldr"
+	if _saved_over_elsewhere(path, name):
 		return false
-	if _write(SAVE_DIR + clean + ".ldr", name, true):
+	# Unedited since its file was read or written: that text, and nothing
+	# worked out. Otherwise pre261's save, as it was.
+	var moment: Array = _moment()
+	var as_kept: bool = _kept_now(path, name)
+	if (_store(path, _kept_text) if as_kept else _write(path, name, true)):
 		title = name
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
 		_program_kept = world.program
+		_keep_moment(_stored, path.get_base_dir(), name, moment)
 		saved.emit(name)
 		return true
 	return false
@@ -545,11 +558,17 @@ func save_as(name: String) -> bool:
 ## model's name: save_model over MCP, which names a file of its own.
 func save_file(path: String, file_title: String = "Model") -> bool:
 	var was: Array = [_known_path, _known_time, _known_lines]
-	var ok: bool = _write(path, file_title, true)
+	var moment: Array = _moment()
+	var as_kept: bool = _kept_now(path, file_title)
+	var ok: bool = _store(path, _kept_text) if as_kept else _write(path, file_title, true)
 	if ok:
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
 		_program_kept = world.program
+		# The model's own file: what was written is the moment's text. Another
+		# file of it leaves that as it was.
+		if path == saved_path(file_title):
+			_keep_moment(_stored, path.get_base_dir(), file_title, moment)
 	# Still watching the model's own file for saves from elsewhere.
 	if path != saved_path(title):
 		_known_path = was[0]
@@ -1351,6 +1370,10 @@ func _opened_from(path: String, result: Dictionary) -> int:
 		example = path.begins_with(EXAMPLE_DIR)
 		if path.begins_with(SAVE_DIR):
 			know(path)
+		# The moment the open kept is this file's, in its folder, under the
+		# name the model now has.
+		_kept_dir = path.get_base_dir()
+		_kept_name = title
 	return int(result["placed"])
 
 
@@ -1661,6 +1684,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
+	# The file's text as it came, its BOM too, kept once the model is down
+	# (_keep_moment): the string itself, not a copy.
+	var file_text: String = text
 	var bom: bool = text.begins_with(LdrModel.bom())
 	text = text.substr(1) if bom else text
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
@@ -2084,6 +2110,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_phase("meta")
 	loaded.emit(title, placed)
 	_phase("loaded")
+	# The model down as its file says it: an unedited save writes the file.
+	# Its folder and name are a path open's alone (_opened_from).
+	_keep_moment(file_text, "", "")
 	# Still arriving: those asked for now, not every part whose geometry was
 	# not read yet. A desktop reads it from disk as each is put down, and a
 	# Studio file opened there said "4 are still arriving" of parts it had
@@ -5046,17 +5075,29 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
-	if _saved_over_elsewhere(SAVE_DIR + clean + ".ldr", name):
+	var path: String = SAVE_DIR + clean + ".ldr"
+	if _saved_over_elsewhere(path, name):
 		return false
-	var text: String = await to_text_paced(name, job)
-	if text.is_empty() or job.cancelled:
-		return false
-	if _write(SAVE_DIR + clean + ".ldr", name, true, text):
+	# Unedited: its file's text, written in this frame, with no order
+	# worked out over frames.
+	var moment: Array = _moment()
+	var ok: bool = false
+	if _kept_now(path, name):
+		ok = _store(path, _kept_text)
+	else:
+		var text: String = await to_text_paced(name, job)
+		if text.is_empty() or job.cancelled:
+			return false
+		ok = _write(path, name, true, text)
+	if ok:
 		title = name
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
 		_program_kept = world.program
+		# Kept as the moment it was made from: changed while its order was
+		# worked out, the next save works it out again (_kept_now).
+		_keep_moment(_stored, path.get_base_dir(), name, moment)
 		saved.emit(name)
 		return true
 	return false
@@ -5248,7 +5289,86 @@ func _store(path: String, text: String) -> bool:
 		# A browser asked to keep the person's models, now that there are some.
 		StorageKeep.ask()
 		kept_save.emit(path)
+	# Last, as what this call wrote: a write the signal led to is not it.
+	_stored = text
 	return true
+
+
+## The text [method _store] last wrote, as it wrote it.
+var _stored: String = ""
+
+
+## An unedited save writes the file the model was opened from, or last saved
+## to, as it is: one fast path in front of the save. keepbytes and kbkeep
+## (11-18 to 11-20) made the save itself keep an unedited file's bytes, and
+## each round broke another save; this leaves the save as it was and writes
+## the kept text only when nothing can have changed since it was read or
+## written. The text, and the moment it stands for ([method _moment]):
+var _kept_text: String = ""
+## the folder it was read from or written to, "" for an open of no file;
+var _kept_dir: String = ""
+## the name the model had then;
+var _kept_name: String = ""
+## and the moment, [] for none.
+var _kept_at: Array = []
+## While the open's own follow-ups run ([method as_opened]): the floor laid
+## under the model just opened, parts on their way landing where its file
+## has them. What they move of the world's revision, all told, is not the
+## model's change ([method _moment]).
+var _as_opened: int = 0
+var _opened_moves: int = 0
+
+
+## What says the model is as it was: the world's generation; its revision,
+## less what the open's own follow-ups moved; the revision of every change
+## made past the history (BrickWorld.outside: whatever marks the model
+## changed, a Together peer's, a session's, a floor's, a restore); and the
+## history's newest step, by identity, and depth. Any change at all moves
+## one of them, so a save at the same moment writes what was kept.
+func _moment() -> Array:
+	if world == null or builder == null:
+		return []
+	var depth: int = builder.history_depth()
+	return [world.generation(), world.revision - _opened_moves, world.outside, depth,
+		builder.last_step() if depth > 0 else null]
+
+
+## Whether a save of the model called [param name] to [param path] writes
+## the kept text: the same moment, the same name, its own file in the same
+## folder, and nothing pre261's save would refuse (read_only, a newer
+## build, a model of no parts).
+func _kept_now(path: String, name: String) -> bool:
+	if _kept_at.is_empty() or _kept_text.is_empty() or read_only or name != _kept_name \
+			or path != saved_path(name) or path.get_base_dir() != _kept_dir:
+		return false
+	# The moment before the text is read: an edited save asks only this.
+	var now: Array = _moment()
+	if now.size() != _kept_at.size() or now[0] != _kept_at[0] or now[1] != _kept_at[1] \
+			or now[2] != _kept_at[2] or now[3] != _kept_at[3] or not is_same(now[4], _kept_at[4]):
+		return false
+	return NewerBuild.may_write(path) and _has_parts(_kept_text)
+
+
+## Keep [param text], the file as it was read from or written to
+## [param dir] for the model called [param name], standing for
+## [param moment] (now, when not given).
+func _keep_moment(text: String, dir: String, name: String, moment: Array = []) -> void:
+	_kept_text = text
+	_kept_dir = dir
+	_kept_name = name
+	_kept_at = moment if not moment.is_empty() else _moment()
+
+
+## Run [param work], the open's own follow-up (Main: the floor laid under a
+## model just opened, a part on its way landing), as no change to the moment
+## an unedited save keeps: its touch and the world's revision it moves.
+func as_opened(work: Callable) -> void:
+	var revision: int = world.revision if world != null else 0
+	_as_opened += 1
+	work.call()
+	_as_opened -= 1
+	if world != null:
+		_opened_moves += world.revision - revision
 
 
 ## Whether LDraw [param text]'s model places anything: a line of type 1 in
