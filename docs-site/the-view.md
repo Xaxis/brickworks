@@ -136,6 +136,7 @@ An assistant reads the same with weakest_joints `"swing"`, a part's number, and 
 ui:stress view
 ui:strengthen a weak joint
 ui:lift by a part
+ui:swing by a part
 -->
 
 ## Stud directions {#studs}
