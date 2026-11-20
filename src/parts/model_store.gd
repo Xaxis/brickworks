@@ -1174,7 +1174,7 @@ func _take_moment(name: String = title) -> void:
 	var history: Array = _history_now()
 	if not bless and not _same_history(history, _kept_history):
 		return
-	_kept_at = [history, _scenery_now(), _own_state(name), name, scenery.duplicate()]
+	_kept_at = [history, _scenery_now(), _own_state(name), name, scenery.duplicate(), _who_state()]
 	world.mark_parts()
 
 
@@ -1220,23 +1220,37 @@ func _keeps_order() -> bool:
 ## said, its Name line, a step's parts in another order). An Undo after a
 ## save is not that moment, whatever the model's parts are (kbkreview2 H1).
 func _as_kept(title_now: String) -> bool:
-	return _at_moment() and _own_state(title_now) == str(_kept_at[2])
+	return _at_moment() and _own_state(title_now) == str(_kept_at[2]) \
+		and _who_state() == str(_kept_at[5])
 
 
 ## The kept text as a save of the model called [param title_now] writes it
 ## where the model is as the text has it ([method _as_kept]): itself, or for a
 ## Save as another name of the app's own model, itself with its name lines
 ## changed ([method _renamed]), the same file under a new name (kbkreview2
-## M2). "" otherwise.
+## M2). Where only the lines a save adds changed ([method _who_state]), it
+## with those as a save writes them. "" otherwise.
 func _kept_as_is(title_now: String) -> String:
 	if _writing_whole or not _at_moment():
 		return ""
 	var then: String = str(_kept_at[3])
-	if title_now == then:
-		return _kept_now() if _own_state(title_now) == str(_kept_at[2]) else ""
-	if _live_source() != null or _own_state(then) != str(_kept_at[2]):
+	if _own_state(then) != str(_kept_at[2]):
 		return ""
-	return _renamed(_kept_now(), then, title_now)
+	var kept: String = _kept_now()
+	if title_now != then:
+		if _live_source() != null:
+			return ""
+		kept = _renamed(kept, then, title_now)
+	if kept.is_empty() or _who_state() == str(_kept_at[5]):
+		return kept
+	# A session's edit made and undone leaves the model laid by the assistant
+	# (laid_by), which no undo takes back: the file is still the model, and
+	# the save says its MADE line (followfix's mcp_swap). Written by the
+	# open's own reading of those lines (_metas_now), as a whole save writes
+	# them: each line it read is said anew, one it could not read kept. An
+	# index of the kept text alone has read none of them, so a cleared link
+	# stayed (mlattack) and the gallery car gained its lines twice (kbx).
+	return _with_identity(kept)
 
 
 ## [param kept], the app's own file of the model called [param from], as the
@@ -1288,11 +1302,10 @@ static func _renamed(kept: String, from: String, to: String) -> String:
 	return "\n".join(lines) if titled else ""
 
 
-## What a save of the model called [param name] writes beyond its parts and
-## steps, as one text to compare: its name, the app's own lines
+## What [method to_text] of the model called [param name] writes beyond its
+## parts and steps, as one text to compare: its name, the app's own lines
 ## ([method _metas_asked]), the booklet's looks, each sub-model's own lines
-## and where its copies' stand, its picture to build over, the sets in its
-## bin, its links and credit.
+## and where its copies' stand.
 func _own_state(name: String) -> String:
 	var asked: Dictionary = _metas_asked(null)
 	asked.erase("metas")
@@ -1301,8 +1314,13 @@ func _own_state(name: String) -> String:
 	var ground: ModelFloor = asked["floor"]
 	asked["floor"] = ground.to_meta() if ground != null else ""
 	return str([name, asked, _by_key(world.step_looks), _by_key(world.unit_steps),
-		_by_key(world.section_lines), _by_key(world.section_frames), reference, bin_sets, share_id,
-		remixed_from, remixed_from_version, credit, made_with])
+		_by_key(world.section_lines), _by_key(world.section_frames)])
+
+
+## And what a save adds to it ([method _with_identity]): its picture to build
+## over, the sets in its bin, its links, credit and who laid its parts.
+func _who_state() -> String:
+	return str([reference, bin_sets, share_id, remixed_from, remixed_from_version, credit, made_with])
 
 
 ## [param table]'s entries in the order of their keys: a rename undone puts

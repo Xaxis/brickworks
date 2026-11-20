@@ -266,11 +266,14 @@ func _case(edit: String, twin: String) -> void:
 		_builder.lock_selection(true)
 	var through_before: Array = _through()
 	var before: String = _save()
+	# And as Save writes it, with the lines a save adds: who laid its parts.
+	var saved_before: String = _store.call("_saving", _store.title)
 	var depth: int = _builder.history_depth()
 	var was_twin: String = _state(theirs.id)
 	var said: String = await _make(edit, mine, sills[0])
 	await _frames(6)
 	var after: String = _save()
+	var saved_after: String = _store.call("_saving", _store.title)
 	var through: Array = _through()
 	var twin_now: String = _state(theirs.id)
 	var copies: String = _twin_part_now(sills[1], part, theirs.id)
@@ -302,6 +305,12 @@ func _case(edit: String, twin: String) -> void:
 				% [edit, twin, words.left(200)], after == before
 				and _builder.history_depth() == depth and twin_now == was_twin
 				and words.contains(wanted) and through.is_empty()) and ok
+			# Nothing was laid: the save says who laid its parts as before
+			# (kbkfix2: a session's refused edit left it "made with the
+			# assistant", on pre261 too).
+			ok = _check("%s, twin %s: Save writes the file as before, its MADE line with it (MADE '%s' -> '%s', %d -> %d chars)"
+				% [edit, twin, ModelStore.made_in(saved_before), ModelStore.made_in(saved_after),
+				saved_before.length(), saved_after.length()], saved_after == saved_before) and ok
 			if twin == "locked":
 				ok = _check("%s: the twin still locked" % edit,
 					_builder.is_locked(theirs.id)) and ok

@@ -1002,7 +1002,22 @@ func _before_change(name: String) -> Dictionary:
 	return {"depth": builder.history_depth(), "last": last,
 		"size": (last.get("steps", []) as Array).size(),
 		"was": SelectionScope.snapshot(assistant.world, assistant.scenery),
-		"kept": builder.steps_now()[0], "generation": assistant.world.generation()}
+		"kept": builder.steps_now()[0], "generation": assistant.world.generation(),
+		"made": _store_now().made_with if _store_now() != null else ""}
+
+
+func _store_now() -> ModelStore:
+	return app.get("_store") if app != null else null
+
+
+## A call no copy of its sub-model could take laid nothing: who laid the
+## model's parts is as it was before it (ModelStore.made_with). The
+## assistant says it laid parts as it keeps its step, before the copies are
+## asked, so a refused edit_model left the next save "made with the
+## assistant" (followfix's mcp_swap, refused by a locked or blocked twin).
+func _unlaid(before: Dictionary) -> void:
+	if _store_now() != null and before.has("made"):
+		_store_now().made_with = str(before["made"])
 
 
 ## Whatever a call from outside changed, as one step of the history, named
@@ -1031,6 +1046,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 		builder.fold_since(int(before["depth"]))
 		var followed: Array = _copies_follow()
 		if followed.size() > 2:
+			_unlaid(before)
 			return followed
 		_mark(builder, chat)
 		_laid(builder.last_step())
@@ -1048,6 +1064,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 		SelectionScope.words_for(steps)])
 	var followed: Array = _copies_follow()
 	if followed.size() > 2:
+		_unlaid(before)
 		return followed
 	_mark(builder, chat)
 	_laid(builder.last_step())
