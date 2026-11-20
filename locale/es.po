@@ -15665,3 +15665,9 @@ msgstr "doble toque"
 
 msgid "on a part, turn it as Turn does"
 msgstr "sobre una pieza, girarla como lo hace Giro"
+
+msgid "Reading how the model's copies are placed…"
+msgstr "Leyendo cómo están colocadas las copias del modelo…"
+
+msgid "Listing the model's parts…"
+msgstr "Listando las piezas del modelo…"

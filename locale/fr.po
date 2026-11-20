@@ -15665,3 +15665,9 @@ msgstr "toucher deux fois"
 
 msgid "on a part, turn it as Turn does"
 msgstr "sur une pièce, la tourner comme le fait Rotation"
+
+msgid "Reading how the model's copies are placed…"
+msgstr "Lecture de la place des copies du modèle…"
+
+msgid "Listing the model's parts…"
+msgstr "Liste des pièces du modèle…"

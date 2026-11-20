@@ -15665,3 +15665,9 @@ msgstr "Doppeltippen"
 
 msgid "on a part, turn it as Turn does"
 msgstr "auf einem Teil: es drehen, wie Drehung es tut"
+
+msgid "Reading how the model's copies are placed…"
+msgstr "Die Lage der Kopien des Modells wird gelesen…"
+
+msgid "Listing the model's parts…"
+msgstr "Die Teile des Modells werden aufgelistet…"

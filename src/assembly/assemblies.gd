@@ -2650,18 +2650,28 @@ func _model() -> Array:
 func contents_by_path() -> Dictionary:
 	var out: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
-		if scenery.has(brick.id):
-			continue
-		var own: String = path_of(brick)
-		var path: String = ""
-		for segment: String in segments(own):
-			path = join(path, segment)
-			if not out.has(path):
-				out[path] = []
-			(out[path] as Array).append({"part": brick.part_id, "color": brick.color_code,
-				"at": brick.transform, "rest": own.substr(path.length()).trim_prefix("/"),
-				"id": brick.id, "step": brick.step})
+		_content_into(out, brick)
 	return out
+
+
+## [param brick] in [param out] under its own path and every path above it,
+## as [method contents_by_path] has it, scenery left out; and each of those
+## paths in [param paths], scenery's too, as [method paths] lists them.
+func _content_into(out: Dictionary, brick: BrickWorld.Brick, paths: Variant = null) -> void:
+	var own: String = path_of(brick)
+	var path: String = ""
+	var skip: bool = scenery.has(brick.id)
+	for segment: String in segments(own):
+		path = join(path, segment)
+		if paths != null:
+			(paths as Dictionary)[path] = true
+		if skip:
+			continue
+		if not out.has(path):
+			out[path] = []
+		(out[path] as Array).append({"part": brick.part_id, "color": brick.color_code,
+			"at": brick.transform, "rest": own.substr(path.length()).trim_prefix("/"),
+			"id": brick.id, "step": brick.step})
 
 
 ## Whether ``a`` lies exactly on ``b``, as [method best_match] says it, but
@@ -3006,25 +3016,120 @@ static func in_file_order(found: Array) -> Array:
 ## while the save wrote the plan's, a truck in another colour wrote its
 ## wheels' yellow parts red (cf3check, 8143-1).
 func file_frames(figures: Dictionary = {}, held: Array = [], units: Variant = null) -> Dictionary:
-	var ctx: Dictionary = {"contents": contents_by_path(), "holding": held_by_path(held),
-		"figures": figures, "ordered": in_file_order(Array(paths())), "own": {},
-		"units": world.unit_steps if units == null else units}
-	# A copy laid on another before the colour its inner copies are placed in
-	# was settled is written as a definition of its own where that colour,
-	# settled, has the first's reference place one of them otherwise.
+	var ctx: Dictionary = _frames_ctx(contents_by_path(), paths(), figures, held, units)
 	while true:
 		_frames_pass(ctx)
-		var wrong: Array = _placed_otherwise(ctx)
-		if wrong.is_empty():
+		if _settled(ctx):
 			break
-		for path: String in wrong:
-			(ctx["own"] as Dictionary)[path] = true
 	return ctx["out"]
+
+
+func _frames_ctx(contents: Dictionary, all_paths: PackedStringArray, figures: Dictionary,
+		held: Array, units: Variant) -> Dictionary:
+	return {"contents": contents, "holding": held_by_path(held), "figures": figures,
+		"ordered": in_file_order(Array(all_paths)), "own": {},
+		"units": world.unit_steps if units == null else units}
+
+
+## Whether [param ctx]'s pass is the last. A copy laid on another before the
+## colour its inner copies are placed in was settled is written as a
+## definition of its own where that colour, settled, has the first's
+## reference place one of them otherwise: then another pass.
+func _settled(ctx: Dictionary) -> bool:
+	var wrong: Array = _placed_otherwise(ctx)
+	for path: String in wrong:
+		(ctx["own"] as Dictionary)[path] = true
+	return wrong.is_empty()
+
+
+## [method file_frames] of the model as it stands, as Find and Replace and Use
+## what I own read them (no figures, nothing held, the world's own steps),
+## kept until the model or its steps change: Find and Replace looked them up
+## again at each word typed, 0.2 to 0.96 s a time on 10179 (osfix).
+func frames_now() -> Dictionary:
+	if not frames_current():
+		_frames_kept = [_frames_key(), file_frames()]
+	return _frames_kept[1]
+
+
+## Whether [method frames_now] has them for the model as it stands.
+func frames_current() -> bool:
+	return _frames_kept.size() == 2 and _frames_kept[0] == _frames_key()
+
+
+## [method frames_now], worked out a slice of a frame at a time (FramePace),
+## so no frame of it is long: on 10179 it was one frame of 0.96 s, a copy of
+## four parts 159 ms of it while its shapes were read. Work that takes more
+## than a slice says so in the status bar ([param words]). A model changed
+## while it goes on is begun again; the same frames as [method file_frames].
+func frames_paced(words: String) -> Dictionary:
+	var pace := FramePace.new()
+	var job: Working.Job = null
+	# A mirrored copy's first look reads Mirror's index of handed parts:
+	# made here first, a slice at a time, not in that copy's frame.
+	var mirror: GDScript = Later.script(&"Mirror")
+	if not frames_current() and not mirror.indexed(library):
+		job = _say_paced(job, words)
+		await mirror.index_paced(library, pace)
+	while not frames_current():
+		var key: Array = _frames_key()
+		var contents: Dictionary = {}
+		var found: Dictionary = {}
+		var ctx: Dictionary = {}
+		var settled: bool = false
+		for brick: BrickWorld.Brick in world.bricks():
+			_content_into(contents, brick, found)
+			if pace.due():
+				job = _say_paced(job, words)
+				await pace.next()
+				if _frames_key() != key:
+					break
+		if _frames_key() == key:
+			var listed := PackedStringArray(found.keys())
+			listed.sort()
+			ctx = _frames_ctx(contents, listed, {}, [], null)
+		while not ctx.is_empty() and not settled and _frames_key() == key:
+			_pass_begin(ctx)
+			for path: String in ctx["ordered"]:
+				_written_as(path, ctx)
+				if pace.due():
+					job = _say_paced(job, words)
+					await pace.next()
+					if _frames_key() != key:
+						break
+			if _frames_key() == key:
+				_pass_end(ctx)
+				settled = _settled(ctx)
+		if settled and _frames_key() == key:
+			_frames_kept = [key, ctx["out"]]
+	if job != null:
+		job.end()
+	return _frames_kept[1]
+
+
+static func _say_paced(job: Working.Job, words: String) -> Working.Job:
+	return job if job != null else Working.begin(words)
+
+
+## [method frames_now]'s: [the model and its steps as they were worked out
+## for, the frames].
+var _frames_kept: Array = []
+
+
+func _frames_key() -> Array:
+	return _model() + [world.unit_steps.hash()]
 
 
 ## One pass of [method file_frames] over [param ctx]'s copies, each but
 ## those in its "own" laid on the copies written before it.
 func _frames_pass(ctx: Dictionary) -> void:
+	_pass_begin(ctx)
+	for path: String in ctx["ordered"]:
+		_written_as(path, ctx)
+	_pass_end(ctx)
+
+
+func _pass_begin(ctx: Dictionary) -> void:
 	var out: Dictionary = {}
 	## Each definition -> the copies written as definitions of it: its first,
 	## then each that went its own way.
@@ -3045,8 +3150,11 @@ func _frames_pass(ctx: Dictionary) -> void:
 		if not masters.has(def):
 			masters[def] = [path]
 			out[path] = {"frame": _figure_frame(ctx["figures"], path), "def": def}
-	for path: String in ctx["ordered"]:
-		_written_as(path, ctx)
+
+
+func _pass_end(ctx: Dictionary) -> void:
+	var out: Dictionary = ctx["out"]
+	var masters: Dictionary = ctx["masters"]
 	var hands: Dictionary = ctx["hands"]
 	for path: String in out:
 		var entry: Dictionary = out[path]

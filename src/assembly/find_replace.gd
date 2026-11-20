@@ -75,9 +75,13 @@ func _init(app: Node = null) -> void:
 ## locked, and left out, "locked_ids" which; "where", "inside": the
 ## sub-model being edited ("" for the model)}.
 func find(asked: Dictionary, where: String) -> Dictionary:
-	var inside: String = assemblies.entered if assemblies != null else ""
-	var looked: Array = _looked_in(where, inside)
+	var looked: Array = looked_in(where)
 	return find_among(looked, asked, where, _frames_for(looked))
+
+
+## The parts [method find] looks among in [param where], as it stands now.
+func looked_in(where: String) -> Array:
+	return _looked_in(where, assemblies.entered if assemblies != null else "")
 
 
 ## [method find]'s answer over [param looked] (bricks) alone, its copies'
@@ -177,13 +181,35 @@ func _as_defined(part_id: String, mirrored: bool) -> String:
 	return part_id if other.is_empty() else other
 
 
-## Each copy as the save writes it (Assemblies.file_frames), where any of
-## [param bricks] is in a copy of a sub-model the model has more than one
-## of; {} otherwise, and for the selection, which is changed as a hand
-## changes it.
+## Each copy as the save writes it (Assemblies.file_frames, kept until the
+## model changes: Assemblies.frames_now), where any of [param bricks] is in a
+## copy of a sub-model the model has more than one of; {} otherwise, and for
+## the selection, which is changed as a hand changes it.
 func _frames_for(bricks: Array, counted: Variant = null) -> Dictionary:
-	if assemblies == null:
+	return assemblies.frames_now() if _wants_frames(bricks, counted) else {}
+
+
+## [method _frames_for], worked out a slice of a frame at a time where they
+## are not kept already (Assemblies.frames_paced), the status bar saying so.
+func frames_paced_for(bricks: Array, counted: Variant = null) -> Dictionary:
+	if not _wants_frames(bricks, counted):
 		return {}
+	return await assemblies.frames_paced(FRAMES_WORDS)
+
+
+## Whether [method find] in [param where] has its copies' frames to hand, or
+## needs none: when not, [method frames_paced_for] of [method looked_in]
+## makes them so.
+func frames_ready(where: String) -> bool:
+	return assemblies == null or assemblies.frames_current() or not _wants_frames(looked_in(where))
+
+
+const FRAMES_WORDS := "Reading how the model's copies are placed…"
+
+
+func _wants_frames(bricks: Array, counted: Variant = null) -> bool:
+	if assemblies == null:
+		return false
 	var copies: Dictionary = counted if counted is Dictionary else _copies_by_definition()
 	for brick: BrickWorld.Brick in bricks:
 		var path: String = Assemblies.path_of(brick)
@@ -191,8 +217,8 @@ func _frames_for(bricks: Array, counted: Variant = null) -> Dictionary:
 			continue
 		for segment: String in Assemblies.segments(path):
 			if int(copies.get(Assemblies.definition(segment), 1)) > 1:
-				return assemblies.file_frames()
-	return {}
+				return true
+	return false
 
 
 ## The copy that mirrors a part at [param path]: the innermost of it and the
