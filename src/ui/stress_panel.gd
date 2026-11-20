@@ -210,9 +210,10 @@ func _say_chosen() -> void:
 		_fit_later()
 		return
 	if one == null or not _lift_rows.is_empty():
-		# Swung, a joint that lets go is offered Strengthen; once that is down
-		# the model is swung again (StressView.show_report), held or not.
-		if one != null and one.joint != null and view != null and view.swinging:
+		# Swung, what comes away (at a joint, or a piece nothing joins) is
+		# offered Strengthen; once that is down the model is swung again
+		# (StressView.show_report), held or not.
+		if one != null and one.swung_by != 0 and view != null and view.swinging:
 			_why.text = str((_lift_rows[chosen] as Dictionary)["why"])
 			_look_for_fix(one)
 			_fit_later()
@@ -264,10 +265,10 @@ func show_lift(result: RefCounted) -> void:
 			one.ids = row["ids"]
 			one.around = int(row["around"])
 			one.margin = 0.0 if str(row["kind"]) in ["lets go", "loose", "falls"] else INF
-			# Swung, the joint that lets go and what comes away past it, for
-			# Strengthen to make hold.
+			# Swung, what comes away and the joint it lets go at (none for a
+			# piece nothing joins), for Strengthen to make hold.
 			one.joint = row.get("joint")
-			if one.joint != null and swung:
+			if swung and str(row["kind"]) in ["lets go", "loose", "falls"]:
 				for id: Variant in one.ids:
 					one.side[int(id)] = true
 				one.swung_by = int(result.get("by"))

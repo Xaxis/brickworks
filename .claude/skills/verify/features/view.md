@@ -855,7 +855,8 @@ picture the assistant is shown.
   Lift is; the panel heads "Swung by Brick 2 x 4: Plate 2 x 10 on the right
   comes away first, 0.19 s in: 5 parts, 8.3 g, at its 2 studs", each row
   with when, and a row that lets go offers Strengthen: the fixer's ties and
-  props (none up from the floor, which a swing has not), each judged by
+  props for what comes away (at a joint, or a piece nothing joins; none up
+  from the floor, which a swing has not), each judged by
   swinging the model again with it in, offered only when the part comes away
   later or not at all; put down, the model is swung again by the same part.
   Lift and Swing give way to each other keeping the part. Always on a worker
@@ -865,7 +866,9 @@ picture the assistant is shown.
   (`bench/results/swoosh-2026-11-20/hand_sums.md`), ten gallery seeds before
   and after Strengthen, the panel and MCP, Orthanc and 10179 timed. Known
   gaps: drawn in place, not swinging; one arc (a child's), not every way a
-  toy is waved.
+  toy is waved; Strengthen finds no fix of up to three parts for some (2 of
+  the 10 gallery seeds); a frame while the worker swings 10179 can pass
+  100 ms, as Lift's does (KNOWN rows in the probe).
 - `stud directions` (`src/ui/stud_map.gd`, `StudMap`, `BrickWorld.set_painted`;
   APP_UX5 seeing2): View → Stud directions (under Stress) draws every part in
   the colour of where its studs point, from its male stud connectors turned

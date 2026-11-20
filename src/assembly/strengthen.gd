@@ -103,6 +103,9 @@ class Fix extends RefCounted:
 	var what: String = ""
 	## The model's revision it was found for.
 	var revision: int = 0
+	## Judged swung (a swing's row): seconds in the part then comes away,
+	## INF when it holds through the swing; -1 judged standing.
+	var swung_at: float = -1.0
 
 
 ## The fix for the weak place [param weak] (StressView.Weak) in the model as
@@ -142,8 +145,9 @@ func find(weighed: Stability.Report, weak: StressView.Weak) -> Fix:
 		if tried >= TRIES:
 			break
 		tried += 1
+		var then: float = -1.0
 		if weak.swung_by != 0:
-			var then: float = await _swung_away(weak, one["parts"])
+			then = await _swung_away(weak, one["parts"])
 			if world.revision != revision:
 				return null
 			if then <= went:
@@ -163,6 +167,7 @@ func find(weighed: Stability.Report, weak: StressView.Weak) -> Fix:
 		fix.mine = one["mine"]
 		fix.what = one["what"]
 		fix.revision = revision
+		fix.swung_at = then
 		return fix
 	return null
 
@@ -230,6 +235,10 @@ static func held_words(fix: Fix) -> String:
 	if fix.kind == "foot":
 		return "Then it stands, its weight %s studs inside its %s edge" % [Balance.studs(fix.held),
 			fix.edge]
+	if fix.swung_at == INF:
+		return "Then it holds through the swing"
+	if fix.swung_at >= 0.0:
+		return "Then it comes away later in the swing, %s s in" % ("%.2f" % fix.swung_at)
 	if fix.kind == "pin":
 		return "Then it is held square, on pins on two lines"
 	if fix.held >= 100.0:

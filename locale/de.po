@@ -14528,6 +14528,12 @@ msgstr "Schwingen"
 msgid "Swing the model by a part like a toy, 1 m in half a second and a quarter turn: press, then click the part. What comes away first is named, red"
 msgstr "Das Modell an einem Teil wie ein Spielzeug schwingen, 1 m in einer halben Sekunde und eine Vierteldrehung: drücken, dann auf das Teil klicken. Was zuerst abfällt, wird genannt, rot"
 
+msgid "Then it holds through the swing"
+msgstr "Dann hält es das Schwingen durch"
+
+msgid "Then it comes away later in the swing, %s s in"
+msgstr "Dann fällt es beim Schwingen später ab, nach %s s"
+
 msgid "In the hand: the part it is swung by"
 msgstr "In der Hand: das Teil, an dem es geschwungen wird"
 

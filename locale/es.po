@@ -14528,6 +14528,12 @@ msgstr "Balancear"
 msgid "Swing the model by a part like a toy, 1 m in half a second and a quarter turn: press, then click the part. What comes away first is named, red"
 msgstr "Balancear el modelo por una pieza como un juguete, 1 m en medio segundo y un cuarto de vuelta: pulsa y luego haz clic en la pieza. Lo que se desprende primero se nombra, en rojo"
 
+msgid "Then it holds through the swing"
+msgstr "Entonces aguanta todo el balanceo"
+
+msgid "Then it comes away later in the swing, %s s in"
+msgstr "Entonces se desprende más tarde en el balanceo, a los %s s"
+
 msgid "In the hand: the part it is swung by"
 msgstr "En la mano: la pieza por la que se balancea"
 

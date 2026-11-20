@@ -7368,31 +7368,30 @@ func _swing(input: Dictionary, generation: int) -> String:
 	return said + await _swing_fix_words(swung, generation)
 
 
-## Strengthen's fix for the first joint [param swung] lets go at, as View,
-## Stress offers it on that row, and the edit_model call that puts it down;
-## empty when nothing lets go at a joint.
+## Strengthen's fix for what [param swung] loses first (at a joint, or a
+## piece nothing joins), as View, Stress offers it on that row, and the
+## edit_model call that puts it down; empty when nothing comes away.
 func _swing_fix_words(swung: RefCounted, generation: int) -> String:
 	var shell: Shell = app.get("_shell")
 	var panel: StressPanel = shell.stress.panel if shell.stress != null else null
 	var fixer: RefCounted = panel.fixer_now() if panel != null else null
-	var first: Balance.JointLoad = null
-	var side: Dictionary = {}
-	for one: RefCounted in swung.get("away"):
-		if str(one.get("why")) == "lets go" and not bool(one.get("whole")):
-			first = one.get("joint")
-			for id: int in one.get("ids"):
-				side[id] = true
-			break
-	if fixer == null or first == null:
+	var away: Array = swung.get("away")
+	if fixer == null or away.is_empty():
 		return ""
+	var gone: LiftTest.Away = away[0]
+	var first: Balance.JointLoad = gone.joint if gone.why == "lets go" and not gone.whole else null
+	var named: int = first.beyond if first != null else int(gone.ids[0])
+	var side: Dictionary = {}
+	for id: int in gone.ids:
+		side[id] = true
 	var report: Stability.Report = await app.call("weigh_joints")
 	var world: BrickWorld = app.get("_world")
 	if report == null or world.generation() != generation:
 		return ""
 	var weak := StressView.Weak.new()
-	weak.id = first.beyond
-	weak.ids = [first.beyond]
-	weak.around = first.held_by
+	weak.id = named
+	weak.ids = Array(gone.ids)
+	weak.around = first.held_by if first != null else 0
 	weak.joint = first
 	weak.margin = 0.0
 	weak.side = side
@@ -7403,8 +7402,8 @@ func _swing_fix_words(swung: RefCounted, generation: int) -> String:
 	fixer.owned = {}
 	var fix: RefCounted = await fixer.find(report, weak)
 	if fix == null:
-		return ("\nStrengthen finds no fix of up to three parts with room that holds #%d's joint longer in "
-			+ "the swing: brace it by hand.") % first.beyond
+		return ("\nStrengthen finds no fix of up to three parts with room that holds #%d on longer in the "
+			+ "swing: brace it by hand.") % named
 	return ("\nStrengthen, as Stress's Swing offers it on that row: %s. Call edit_model %s, then swing "
 		+ "again: it comes away later in the swing, or not at all.") % [fix.what, _fix_call(fix)]
 
