@@ -727,9 +727,6 @@ func _taught(sitting: Dictionary, tool: String, answer: Variant) -> Variant:
 			return answer
 		_:
 			sitting["told"] = true
-			# And what a LEGO® Technic subject's first build lays, said with it.
-			if rpc != null and rpc.assistant != null:
-				words = rpc.assistant.method_for_subject()
 	var sent: Dictionary = (answer as Dictionary).duplicate()
 	var result: Dictionary = (sent["result"] as Dictionary).duplicate()
 	result["content"] = [{"type": "text", "text": words}] + (result["content"] as Array)
