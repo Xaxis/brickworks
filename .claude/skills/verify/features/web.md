@@ -2764,8 +2764,9 @@ plan with Claude as the client.
   them or about their models) and the avatar's count, counted again
   without them (`api/_notifications.js`, `block_counts`,
   `block_row_barred`), the daily mail (`digestShown`), Latest on
-  Brickworks as the feed page's rail and First steps ask it (`?op=latest&mine=1`
-  with the session, private, no-store), the connector's
+  Brickworks as the feed page's rail and First steps ask it signed in
+  (`?op=latest&mine=1` with the session, private, no-store; signed out
+  everybody's URL, kept by the CDN), the connector's
   gallery search and a model's comments and photos and the app's Library ›
   Community (`src/net/gallery_tool.gd`, `src/ui/library_dialog.gd`: the
   session and mine=1 once signed in; `src/dev/gallery_tool_probe.gd`), More
@@ -2791,7 +2792,8 @@ plan with Claude as the client.
   notifications and the count, Bob's answers and pages unchanged, his
   neutral refusals of a like, a collection and a new remix (his remix
   from before republished), Ada told plainly, the @ lists, Latest for Ada
-  and for Cy, Bob's remix and public collection on the tower's page
+  and for Cy, the feed page asking it as Ada (no-store) and signed out
+  (kept), Bob's remix and public collection on the tower's page
   before, left off for everybody once blocked and back after Unblock,
   the edges, the table and functions refused to the
   publishable key and to Bob's and Cy's tokens), Settings › Blocked

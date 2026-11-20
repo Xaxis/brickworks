@@ -271,6 +271,27 @@ try {
   check(`Latest for Ada: nothing of Bob's (${bobsIn(adaLatest).join(",") || "none"} of ${(adaLatest.models || []).length}); `
     + `for Cy his newest (${bobsIn(cyLatest).join(",") || "none"})`, bobsIn(adaLatest).length === 0
     && (adaLatest.models || []).length > 0 && bobsIn(cyLatest).some((id) => [shedId, remixId].includes(id)));
+  // The feed page asks Latest as Ada, kept for nobody; signed out, it asks
+  // everybody's URL, which the CDN keeps.
+  const latestAsked = async (made) => {
+    const feed = await made.newPage();
+    listen(feed, "the feed");
+    const said = feed.waitForResponse((answer) => answer.url().includes("/api/people?op=latest"), { timeout: 60000 })
+      .then((answer) => ({ url: answer.url(), cache: answer.headers()["cache-control"] || "" }))
+      .catch(() => ({ url: "", cache: "" }));
+    await feed.goto(`${site}/feed`, { waitUntil: "load" }).catch(() => null);
+    const got = await said;
+    await feed.close();
+    return got;
+  };
+  const visitorSite = await context();
+  const outLatest = await latestAsked(visitorSite);
+  await visitorSite.close();
+  const adaFeedLatest = await latestAsked(adaSite);
+  const askedAs = (got) => `${got.url ? new URL(got.url).search : "nothing asked"} "${got.cache}"`;
+  check(`the feed page's Latest, signed out: ${askedAs(outLatest)}; as Ada: ${askedAs(adaFeedLatest)}`,
+    Boolean(outLatest.url) && !outLatest.url.includes("mine=1") && !outLatest.cache.includes("no-store")
+    && adaFeedLatest.url.includes("mine=1") && adaFeedLatest.cache.includes("no-store"));
   const adaNoticesAfter = await noticesOf(ada);
   const adaAfter = await countOf(ada);
   check(`Ada's notifications: nothing by Bob (${adaNoticesAfter.length} rows); her count ${adaUnread.notifications} → ${adaAfter.notifications}`,

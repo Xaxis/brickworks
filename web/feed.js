@@ -212,9 +212,11 @@ function buildFigure(one) {
 /// nothing of its own to show, so the latest is shown in its place.
 async function suggest(mine, { withLatest, skip = new Set() }) {
   const tests = new URLSearchParams(location.search).get("tests") === "1" ? "&tests=1" : "";
-  // Asked as you (mine=1): nobody you blocked is in it (docs/SOCIAL.md
-  // section 9).
-  const answer = await call(`/api/people?op=latest&mine=1${tests}`).catch(() => null);
+  // Signed in, asked as you (mine=1, never kept): nobody you blocked is in
+  // it (docs/SOCIAL.md section 9). Signed out, everybody's URL, which the
+  // CDN keeps.
+  const as = signedIn() ? "&mine=1" : "";
+  const answer = await call(`/api/people?op=latest${as}${tests}`).catch(() => null);
   if (mine !== run || !answer || answer.status !== 200) return;
   const designers = (Array.isArray(answer.body.designers) ? answer.body.designers : [])
     .filter((one) => one && one.handle && !skip.has(one.handle)).slice(0, SUGGESTED);

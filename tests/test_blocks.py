@@ -171,9 +171,11 @@ def test_a_blocked_persons_work_leaves_the_model_page_and_the_latest() -> None:
     follows = (ROOT / "api/_follows.js").read_text()
     latest = re.search(r"export async function latest\(.*?\n\}", follows, re.S).group(0)
     assert '"private, no-store"' in latest and "withoutBlocked(" in latest and "rowsWithout(photos" in latest
-    # Its two pages ask as the person, at a URL of its own the CDN keeps for nobody.
+    # Its two pages ask as the person, at a URL of its own the CDN keeps for
+    # nobody, only once signed in: signed out they ask everybody's, kept.
     for page in ("web/feed.js", "web/first-steps.js"):
-        assert "/api/people?op=latest&mine=1" in (ROOT / page).read_text(), page
+        text = (ROOT / page).read_text()
+        assert 'const as = signedIn() ? "&mine=1" : "";' in text and "/api/people?op=latest${as}" in text, page
     # The connector's search and reads, and the app's Library, ask with the session.
     tool = (ROOT / "src/net/gallery_tool.gd").read_text()
     assert 'var token: String = await _token()\n\tif sort == "owned"' in tool
