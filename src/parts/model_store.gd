@@ -314,12 +314,11 @@ func tick() -> void:
 	# Heard once it is whole: what is down of a model being laid is not it.
 	if laying:
 		return
-	# What the kept text's file says beyond its parts, as the model has it the
-	# frame after it was read or written (the bar names it after the open).
+	# The moment the kept text stands for, the frame after it was read or
+	# written (the bar names it after the open).
 	if _state_due and world != null:
 		_state_due = false
-		_kept_state = _own_state(title) if not _kept_now().is_empty() else ""
-		_kept_parts = _parts_now() if not _kept_state.is_empty() else 0
+		_take_moment()
 	_hear()
 	if not _pending or not keeps:
 		return
@@ -472,8 +471,10 @@ func _restored(text: String, result: Dictionary) -> int:
 	if opened:
 		_opened_whole = -1
 		_autosave_is_model = true
-		# Written without its steps: not the file a save writes again.
+		# Written without its steps: not the file a save writes again. The
+		# kept text it was written at is (_keep_restored).
 		forget_kept()
+		_keep_restored()
 	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
 	if back > 0:
 		return back
@@ -490,6 +491,53 @@ func _restored(text: String, result: Dictionary) -> int:
 		# the sample in its place (sfreview F2).
 		left_empty = true
 	return back
+
+
+## The working model restored from the autosave: its kept text, and the
+## moment it stood for, put back where the autosave was written at it, as
+## [method _note_beside_autosave] wrote beside it (kbkreview2 M3: a save of
+## the car restored unedited moved seven of its lines, and said nothing).
+## Else the file saved under its name, kept to keep its build order where the
+## model is that file's but for it, and to say so once where a save puts its
+## parts in another ([method _note_written]).
+func _keep_restored() -> void:
+	var beside: String = _autosave_kept()
+	if FileAccess.file_exists(beside):
+		var said: Variant = JSON.parse_string(FileAccess.get_file_as_string(beside))
+		if said is Dictionary and not str(said.get("kept", "")).is_empty() \
+				and str(said.get("title", "")) == title \
+				and str(said.get("of", "")) == FileAccess.get_file_as_string(autosave()).sha256_text():
+			_keep_text(str(said["kept"]))
+			return
+	var path: String = saved_path(title) if title != UNTITLED else ""
+	if _live_source() == null and not path.is_empty() and FileAccess.file_exists(path):
+		_keep_text(LdrModel.text_of(FileAccess.get_file_as_bytes(path)))
+		_state_due = false
+
+
+## Where the model's kept text is kept beside the autosave
+## ([method _note_beside_autosave]).
+static func _autosave_kept() -> String:
+	return autosave().get_basename() + ".kept.json"
+
+
+## Beside the autosave just written, the model's kept text where the model is
+## as it has it ([method _as_kept]), and which autosave it is of: a restore
+## of that one puts the moment back ([method _keep_restored]). Taken away
+## otherwise, so none is ever read with another autosave.
+func _note_beside_autosave(name: String) -> void:
+	var beside: String = _autosave_kept()
+	if world != null and _as_kept(name):
+		var text: String = JSON.stringify({"title": name, "kept": _kept_now(),
+			"of": FileAccess.get_file_as_string(autosave()).sha256_text()})
+		var file: FileAccess = FileAccess.open(beside, FileAccess.WRITE)
+		if file != null:
+			file.store_string(text)
+			file.close()
+			_tell_page_wrote(beside, text.to_utf8_buffer().size())
+			return
+	if FileAccess.file_exists(beside):
+		DirAccess.remove_absolute(beside)
 
 
 ## What the person is told when the working model could not be opened at
@@ -552,7 +600,8 @@ func save_as(name: String) -> bool:
 ## parts, the page told), with its build steps, and without making it the
 ## model's name: save_model over MCP, which names a file of its own.
 func save_file(path: String, file_title: String = "Model") -> bool:
-	var was: Array = [_known_path, _known_time, _known_lines, _kept_text, _kept_in, _order_said]
+	var was: Array = [_known_path, _known_time, _known_lines, _kept_text, _kept_in, _order_said,
+		_kept_at, _state_due, _kept_history, _bless_due]
 	var ok: bool = _write(path, file_title, true)
 	if ok:
 		_views_kept = world.saved_views
@@ -567,6 +616,10 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 		_kept_text = was[3]
 		_kept_in = was[4]
 		_order_said = was[5]
+		_kept_at = was[6]
+		_state_due = was[7]
+		_kept_history = was[8]
+		_bless_due = was[9]
 		if ok:
 			_saved_as = path
 	return ok
@@ -824,7 +877,7 @@ func identity() -> Dictionary:
 		"cut": world.cut_kept.duplicate(true) if world != null else {},
 		"lights": world.scene_lights.duplicate(true) if world != null else [],
 		"kept": [_kept_now(), _order_said, world != null and _opened_whole == world.generation(),
-			_kept_state, _opened_parts, _kept_parts]}
+			_opened_parts, world != null and _as_kept(title)]}
 
 
 ## The model made what [param kept] ([method identity]) says, in the world
@@ -887,13 +940,18 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_kept_text = str(file[0])
 	_kept_in = world.generation() if not _kept_text.is_empty() else -1
 	_order_said = bool(file[1])
-	# As it was opened, if it was: a save of it then is its file to the byte.
-	_kept_state = str(file[3]) if file.size() > 5 else ""
-	_kept_parts = int(file[5]) if file.size() > 5 else 0
+	_kept_at = []
 	_state_due = false
-	if file.size() > 5 and bool(file[2]):
-		_opened_whole = world.generation()
-		_opened_parts = int(file[4])
+	_bless_due = false
+	if file.size() > 4:
+		if bool(file[2]):
+			_opened_whole = world.generation()
+			_opened_parts = int(file[3])
+		# At the moment its kept text stands for when it was cleared: so
+		# again once the undo has put it back (kbkfix), the next frame.
+		if bool(file[4]) and not _kept_text.is_empty():
+			_state_due = true
+			_bless_due = true
 	world.saved_views = (kept["views"] as Array).duplicate(true)
 	world.cut_kept = (kept["cut"] as Dictionary).duplicate(true)
 	world.scene_lights = (kept["lights"] as Array).duplicate(true)
@@ -1002,13 +1060,21 @@ const ORDER_WORDS := "its build steps were worked out again for the changes"
 ## at each of the writers it goes through, in one frame.
 var _kept_asked: Array = []
 var _kept_answer: Dictionary = {}
-## The model's own lines beyond its parts and steps as they stood when the
-## kept text was its file ([method _own_state]), taken at the first frame
-## after the open or the save ([member _state_due]): "" until then.
-var _kept_state: String = ""
+## The moment of the history the kept text stands for ([method _take_moment]):
+## [the history then ([method _history_now]), the scenery, the model's own
+## lines beyond its parts ([method _own_state]), its name]; the parts
+## themselves marked in the world then (BrickWorld.mark_parts). [] until it
+## is taken, the frame after the text was kept ([member _state_due]), and
+## for none: a model put back that was not as its text when it was taken off.
+var _kept_at: Array = []
 var _state_due: bool = false
-## And its parts then ([method _parts_now]).
-var _kept_parts: int = 0
+## The history when the text was kept, which the moment is taken at: one an
+## edit moved meanwhile has none.
+var _kept_history: Array = []
+## The moment is taken from the history as it is then, not as it was when
+## the text was kept: an Undo of a Clear puts the model back as it was, at
+## the step before the Clear ([method put_identity]).
+var _bless_due: bool = false
 
 
 ## [member _kept_text] while the model it was read for is on the baseplate,
@@ -1017,20 +1083,68 @@ func _kept_now() -> String:
 	return _kept_text if world != null and _kept_in == world.generation() else ""
 
 
-## [param text] kept as the model's file.
+## [param text] kept as the model's file, the moment it stands for taken the
+## next frame.
 func _keep_text(text: String) -> void:
 	_kept_text = text.trim_prefix(LdrModel.bom())
 	_kept_in = world.generation() if world != null else -1
-	_kept_state = ""
+	_kept_at = []
+	_kept_history = _history_now()
 	_state_due = true
+	_bless_due = false
 
 
 ## Nothing kept: the model on the baseplate is no file's as it stands (a
 ## Build together room's, sent without its steps).
 func forget_kept() -> void:
 	_kept_in = -1
-	_kept_state = ""
+	_kept_at = []
 	_state_due = false
+	_bless_due = false
+
+
+## The history's newest step, by identity (null for none): a step made or
+## redone is a new one (Builder.redo makes its own), so no redo ever comes
+## back to a moment, and only undoing all made since does. Not how many there
+## are to redo: an edit undone leaves the model as it was (each undo exact,
+## the parts as marked say so), and keepbytes' B, a part deleted and undone,
+## is the file's bytes and nothing to lose.
+func _history_now() -> Array:
+	if builder == null:
+		return [null]
+	return [builder.last_step() if builder.history_depth() > 0 else null]
+
+
+static func _same_history(a: Array, b: Array) -> bool:
+	return a.size() == 1 and b.size() == 1 and is_same(a[0], b[0])
+
+
+## The moment the kept text stands for ([member _kept_at]), taken now, of the
+## model called [param name]: where the history is still as it was when the
+## text was kept, or with [member _bless_due] as it is now. None where an edit
+## moved it meanwhile.
+func _take_moment(name: String = title) -> void:
+	_kept_at = []
+	var bless: bool = _bless_due
+	_bless_due = false
+	if _kept_now().is_empty():
+		return
+	var history: Array = _history_now()
+	if not bless and not _same_history(history, _kept_history):
+		return
+	_kept_at = [history, scenery.duplicate(), _own_state(name), name]
+	world.mark_parts()
+
+
+## Whether the model is at the moment its kept text stands for: the history
+## at the same step, with as many to redo; nothing changed outside it, not
+## a part (BrickWorld.parts_as_marked: a Build together room's, an MCP
+## write's, one Simulate moved and put back is none), nor what is scenery.
+## Its own lines beyond its parts are [method _as_kept]'s.
+func _at_moment() -> bool:
+	return not _kept_at.is_empty() and not _state_due and not _kept_now().is_empty() \
+		and _same_history(_history_now(), _kept_at[0]) and scenery == _kept_at[1] \
+		and world.parts_as_marked()
 
 
 ## Whether a save may write the kept text: the app's own model (someone
@@ -1042,39 +1156,73 @@ func _keeps_order() -> bool:
 	return not _kept_now().is_empty() and not _writing_whole and _live_source() == null
 
 
-## Whether the model is as its kept text has it: nothing done since it was
-## opened or saved, or all of it undone (no history, every part it opened
-## with: has_unsaved_work's own test, each undo exact) and nothing else a save
-## writes changed, its
-## name, floor, views, lights, motions, program, looks, picture, links and
-## credit as they stood the frame after ([method _own_state]). Then the kept
-## text is the save, whatever a whole write would make of its lines (a floor
-## the file never said, its Name line, a step's parts in another order). A
-## Save as another name, or anything changed, is compared ([method _kept_against]).
+## Whether the model is as its kept text has it: at the moment the text
+## stands for ([method _at_moment]), the history where it was when the text
+## was read or written, and nothing else a save writes changed, its name,
+## floor, views, lights, motions, program, looks, picture, links and credit
+## as they stood then ([method _own_state]). Then the kept text is the save,
+## whatever a whole write would make of its lines (a floor the file never
+## said, its Name line, a step's parts in another order). An Undo after a
+## save is not that moment, whatever the model's parts are (kbkreview2 H1).
 func _as_kept(title_now: String) -> bool:
-	return not _state_due and not _kept_state.is_empty() and _opened_whole == world.generation() \
-		and builder != null and builder.history_depth() == 0 \
-		and _parts_with_awaited() == _opened_parts and _own_state(title_now) == _kept_state \
-		and _parts_now() == _kept_parts
+	return _at_moment() and _own_state(title_now) == str(_kept_at[2])
+
+
+## The kept text as a save of the model called [param title_now] writes it
+## where the model is as the text has it ([method _as_kept]): itself, or for a
+## Save as another name of the app's own model, itself with its name lines
+## changed ([method _renamed]), the same file under a new name (kbkreview2
+## M2). "" otherwise.
+func _kept_as_is(title_now: String) -> String:
+	if _writing_whole or not _at_moment():
+		return ""
+	var then: String = str(_kept_at[3])
+	if title_now == then:
+		return _kept_now() if _own_state(title_now) == str(_kept_at[2]) else ""
+	if _live_source() != null or _own_state(then) != str(_kept_at[2]):
+		return ""
+	return _renamed(_kept_now(), then, title_now)
+
+
+## [param kept], the app's own file of the model called [param from], as the
+## file of the one called [param to]: its title line said anew, and its Name
+## where a save made it of the old name, each as a whole write writes it, in
+## the line ends it had; nothing else changed. "" where the file names its
+## model otherwise.
+static func _renamed(kept: String, from: String, to: String) -> String:
+	var lines: PackedStringArray = kept.split("\n")
+	var titled: bool = false
+	for n: int in lines.size():
+		var line: String = lines[n]
+		var end: String = "\r" if line.ends_with("\r") else ""
+		var fields: PackedStringArray = LdrModel._fields(line.trim_suffix("\r").strip_edges())
+		if fields.is_empty() or fields[0].is_empty():
+			continue
+		# Its header ends at its first part, or the next section.
+		if fields[0] != "0" or titled and fields.size() > 1 and fields[1].to_upper() == "FILE":
+			break
+		var said: String = line.trim_suffix("\r").strip_edges().substr(1).strip_edges()
+		if fields.size() > 1 and fields[1].to_upper() == "FILE":
+			continue
+		if not titled:
+			if said.begins_with("!") or said.is_empty():
+				continue
+			if said != from:
+				return ""
+			lines[n] = "0 " + to + end
+			titled = true
+			continue
+		if said.begins_with("Name:") and said.substr(5).strip_edges().to_lower() \
+				== LdrModel.new_file_name(from).to_lower():
+			lines[n] = "0 Name: " + LdrModel.new_file_name(to) + end
+	return "\n".join(lines) if titled else ""
 
 
 ## What a save of the model called [param name] writes beyond its parts and
 ## steps, as one text to compare: its name, the app's own lines
-## ([method _metas_asked]), the booklet's looks, its picture to build over,
-## the sets in its bin, its links and credit.
-## The parts as they stand, in no order: each one's part, colour, place,
-## sub-model, copy and step. A change no step of the history made moves it:
-## a Build together room's sets a part's step past the history
-## (Together._put), and keep_text's room edits were saved as the file opened.
-## About 8 ms for 10,000 parts, and asked only of a model otherwise unedited.
-func _parts_now() -> int:
-	var sum: int = 0
-	for brick: BrickWorld.Brick in world.bricks():
-		sum += hash([brick.part_id, brick.color_code, brick.transform, brick.group, brick.unit,
-			brick.step])
-	return sum
-
-
+## ([method _metas_asked]), the booklet's looks, each sub-model's own lines
+## and where its copies' stand, its picture to build over, the sets in its
+## bin, its links and credit.
 func _own_state(name: String) -> String:
 	var asked: Dictionary = _metas_asked(null)
 	asked.erase("metas")
@@ -1082,8 +1230,9 @@ func _own_state(name: String) -> String:
 	# floor anew (copyfaults' Clear cases were written whole).
 	var ground: ModelFloor = asked["floor"]
 	asked["floor"] = ground.to_meta() if ground != null else ""
-	return str([name, asked, _by_key(world.step_looks), _by_key(world.unit_steps), reference,
-		bin_sets, share_id, remixed_from, remixed_from_version, credit, made_with])
+	return str([name, asked, _by_key(world.step_looks), _by_key(world.unit_steps),
+		_by_key(world.section_lines), _by_key(world.section_frames), reference, bin_sets, share_id,
+		remixed_from, remixed_from_version, credit, made_with])
 
 
 ## [param table]'s entries in the order of their keys: a rename undone puts
@@ -1123,8 +1272,9 @@ func _same_moment(was: Array, now: Array) -> bool:
 func _kept_for(title_now: String) -> Dictionary:
 	# As it was opened, the file is the save, whoever made it: someone else's
 	# file too, whose writer put "0 !brickworks page new" in capitals.
-	if not _kept_now().is_empty() and not _writing_whole and _as_kept(title_now):
-		return {"saved": _kept_now(), "text": _without_identity(_kept_now())}
+	var as_is: String = _kept_as_is(title_now)
+	if not as_is.is_empty():
+		return {"saved": as_is, "text": _without_identity(as_is)}
 	if not _keeps_order():
 		return {}
 	var at: Array = _kept_moment(title_now)
@@ -1144,8 +1294,9 @@ func _kept_for(title_now: String) -> Dictionary:
 func _kept_for_paced(title_now: String) -> Dictionary:
 	# As it was opened, the file is the save, whoever made it: someone else's
 	# file too, whose writer put "0 !brickworks page new" in capitals.
-	if not _kept_now().is_empty() and not _writing_whole and _as_kept(title_now):
-		return {"saved": _kept_now(), "text": _without_identity(_kept_now())}
+	var as_is: String = _kept_as_is(title_now)
+	if not as_is.is_empty():
+		return {"saved": as_is, "text": _without_identity(as_is)}
 	if not _keeps_order():
 		return {}
 	if _same_moment(_kept_asked, _kept_moment(title_now)):
@@ -1396,7 +1547,7 @@ static func _shared(lines: Array, other: Array) -> Array:
 ## A save wrote [param text]: kept as the model's file from now, and said
 ## once ([member order_words]) where it put the parts its file had in another
 ## build order.
-func _note_written(text: String) -> void:
+func _note_written(text: String, name: String) -> void:
 	if world == null or _writing_whole or _live_source() != null:
 		return
 	var bare: String = text.trim_prefix(LdrModel.bom())
@@ -1406,7 +1557,12 @@ func _note_written(text: String) -> void:
 			and order_moved(kept, bare):
 		_order_said = true
 		order_words = ORDER_WORDS
+	# The moment it stands for is this one, under the name it was saved as:
+	# not the next frame's, which what follows a save (an autosave written at
+	# once, a listener to it) would be taken for.
 	_keep_text(bare)
+	_state_due = false
+	_take_moment(name)
 
 
 ## The model's parts, those still on their way counted: the same as each
@@ -1853,6 +2009,7 @@ func _set_aside(paced: bool) -> void:
 	if not keeps or read_only or laying or (_is_empty() and reference.is_empty()):
 		return
 	DirAccess.make_dir_recursive_absolute(TabSession.path(SET_ASIDE))
+	var as_kept: bool = _as_kept(title)
 	_asides += 1
 	var path: String = TabSession.path(SET_ASIDE + "%d-%d.ldr" % [
 		int(Time.get_unix_time_from_system() * 1000.0), _asides])
@@ -1871,7 +2028,11 @@ func _set_aside(paced: bool) -> void:
 	if _reopening.is_empty():
 		_drop(undone_over, 0)
 	# An example stays one: put back as it shipped, it is nobody's work to save.
-	into.append({"path": path, "name": title, "example": example})
+	# And its file as its kept text has it, and whether the model was as that
+	# has it then and when it was taken off: the copy is written without its
+	# steps, and is no file of it (reopen, kbkreview2 M3).
+	into.append({"path": path, "name": title, "example": example, "kept": _kept_now(),
+		"as_kept": as_kept and _as_kept(title)})
 	_drop(into, OPENS_KEPT)
 
 
@@ -1967,7 +2128,14 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 	DirAccess.remove_absolute(str(entry["path"]))
 	example = bool(entry["example"])
 	_opened_whole = -1
+	# The model before the open, whose own kept text applies: the moment it
+	# stood for too where the model was at it when the open took it off. Its
+	# copy was written without its steps, and is no file of it; a save of it
+	# unedited moved seven of the car's lines (kbkreview2 M3).
 	forget_kept()
+	if not str(entry.get("kept", "")).is_empty():
+		_keep_text(str(entry["kept"]))
+		_state_due = bool(entry.get("as_kept", false))
 	if title != str(entry["name"]):
 		title = str(entry["name"])
 		loaded.emit(title, int(result["placed"]))
@@ -4034,6 +4202,10 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 		return 0
 	var still: Array[LdrModel.Placement] = []
 	var landed: int = 0
+	# A part landing is its model's open completing, no change to it: not told
+	# to the mark of the moment its kept text stands for (_at_moment).
+	var at_moment: bool = _at_moment()
+	world.hold_marks(true)
 	for placement: LdrModel.Placement in awaited:
 		# One a session puts down, where the session has it (Together).
 		if placement.part_id != part_id or _session_puts.has(placement):
@@ -4066,9 +4238,13 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 				_late.clear()
 				_late_in = world.generation()
 			_late[brick_id] = true
+	world.hold_marks(false)
 	awaited = still
 	if landed > 0:
 		_find_joints()
+		# Its own lines as they are with them: its motions' joints, found now.
+		if at_moment:
+			_kept_at[2] = _own_state(str(_kept_at[3]))
 	if awaited.is_empty():
 		_settle()
 	return landed
@@ -5626,9 +5802,12 @@ func _write(path: String, title: String, with_steps: bool = false,
 		return false
 	if not _store(path, _with_bom(text)):
 		return false
-	# A save's text is the model's file from now; the autosave's is not.
+	# A save's text is the model's file from now; the autosave's is not, but
+	# what it was written at is kept beside it.
 	if with_steps:
-		_note_written(text)
+		_note_written(text, title)
+	elif path == autosave():
+		_note_beside_autosave(title)
 	return true
 
 

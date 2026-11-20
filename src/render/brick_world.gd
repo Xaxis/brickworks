@@ -65,6 +65,8 @@ class Brick extends RefCounted:
 	var group: String = "":
 		set(value):
 			if value != group:
+				if ledger != null:
+					ledger.note(self)
 				group = value
 				BrickWorld.paths_written += 1
 	## Which copy of which sub-model it was read from, for the booklet to
@@ -72,6 +74,8 @@ class Brick extends RefCounted:
 	var unit: String = "":
 		set(value):
 			if value != unit:
+				if ledger != null:
+					ledger.note(self)
 				unit = value
 				BrickWorld.paths_written += 1
 	## The build step it goes on in, as the model's author set it, counted
@@ -79,19 +83,52 @@ class Brick extends RefCounted:
 	## is in none); -1 for a part nobody gave one, whose step is worked out
 	## (Instructions.plan). A file's "0 STEP" lines were read and dropped,
 	## so a Studio model opened and saved here lost its designer's steps.
-	var step: int = -1
+	var step: int = -1:
+		set(value):
+			if value != step:
+				if ledger != null:
+					ledger.note(self)
+				step = value
 	## The line of someone else's file it was read from, and the copies
 	## round it there (LdrModel.Placement.origin): kept through a move, a
 	## turn, a new colour, a step edit and any change to the tree of
 	## sub-models, so a save writes it back on its own line (SourceFile).
 	## "" for a part put down here, copied or pasted.
 	var origin: String = ""
+	## The world's [Ledger], told before any of the fields a file keeps of
+	## it changes; none for a part in no world's model (a copy's, a ghost).
+	var ledger: Ledger = null
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id
 		part_id = part
 		color_code = color
 		transform = at
+
+
+## What the model's parts were before they changed, since the world was
+## marked ([method BrickWorld.mark_parts]): told by every writer of a part's
+## own fields (its part, colour, place, sub-model, copy and step) before it
+## writes, the world's own and the part's setters alike, so a change nobody
+## told the store of is in it too (a Build together room's step past the
+## history, kbkfix). Read by [method BrickWorld.parts_as_marked].
+class Ledger extends RefCounted:
+	## Whether a mark is kept: from [method BrickWorld.mark_parts] until the
+	## world is cleared.
+	var on: bool = false
+	## Brick id -> its fields at the mark ([method BrickWorld.fields_of]),
+	## or null for one not in the model then.
+	var was: Dictionary = {}
+	## Above 0 while nothing is told ([method BrickWorld.hold_marks]).
+	var held: int = 0
+
+	func note(brick: Brick) -> void:
+		if on and held == 0 and not was.has(brick.id):
+			was[brick.id] = BrickWorld.fields_of(brick)
+
+	func note_new(brick_id: int) -> void:
+		if on and held == 0 and not was.has(brick_id):
+			was[brick_id] = null
 
 
 ## A MultiMesh and the bricks currently drawn by it.
@@ -448,6 +485,50 @@ func names_held_now() -> Array:
 	return names_held.call() if names_held.is_valid() else []
 
 
+## The model's parts' fields as they are now: kept by [method mark_parts] and
+## told of every change to them from then ([Ledger]).
+var _ledger := Ledger.new()
+
+
+## What [Ledger] keeps of [param brick]: what a file says of it.
+static func fields_of(brick: Brick) -> Array:
+	return [brick.part_id, brick.color_code, brick.transform, brick.group, brick.unit, brick.step]
+
+
+## The model's parts as they are now, marked: [method parts_as_marked] says
+## whether they are so still. ModelStore marks them at the moment its kept
+## text stands for (kbkfix).
+func mark_parts() -> void:
+	_ledger.was = {}
+	_ledger.on = true
+
+
+## Whether every part of the model is as it was at [method mark_parts]: none
+## put down, taken off or changed since, or each change undone by another
+## (Simulate run and stopped). As long as what changed since takes, not the
+## model: a model left as it was asks nothing of its parts. False with no
+## mark, and once the world is cleared.
+func parts_as_marked() -> bool:
+	if not _ledger.on:
+		return false
+	for brick_id: int in _ledger.was:
+		var then: Variant = _ledger.was[brick_id]
+		var now: Brick = get_brick(brick_id)
+		if now == null:
+			if then != null:
+				return false
+		elif then == null or fields_of(now) != then:
+			return false
+	return true
+
+
+## With [param held], what changes in the parts is not told to the mark
+## until it is let go again: a part on its way landing is its model's open
+## completing, not a change to it (ModelStore.place_awaited).
+func hold_marks(held: bool) -> void:
+	_ledger.held += 1 if held else -1
+
+
 ## How many times the world has been cleared: what was placed in one
 ## generation is never put down in the next.
 func generation() -> int:
@@ -470,6 +551,9 @@ func key_of(brick_id: int) -> String:
 func add_brick(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -> int:
 	var brick_id: int = _place(part_id, color_code, at, as_id)
 	if brick_id != 0:
+		# Not in the model at the mark, unless it was and is put back.
+		_ledger.note_new(brick_id)
+		_bricks[brick_id].ledger = _ledger
 		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
 			"colour": color_code, "at": _bricks[brick_id].transform})
 	return brick_id
@@ -549,6 +633,7 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 func remove_brick(brick_id: int) -> bool:
 	if not _bricks.has(brick_id) or _ghosts.has(brick_id):
 		return false
+	_ledger.note(_bricks[brick_id])
 	_unplace(brick_id)
 	_note({"op": "remove", "id": brick_id})
 	return true
@@ -583,6 +668,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	if brick == null:
 		return false
 	_touching_brick(brick_id)
+	_ledger.note(brick)
 	brick.transform = to
 	_spans.erase(brick_id)
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
@@ -608,6 +694,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	if brick == null or brick.color_code == color_code:
 		return false
 	_touching_brick(brick_id)
+	_ledger.note(brick)
 
 	# Out of its old batches, into the ones for the new colour, under the
 	# same id throughout.
@@ -694,6 +781,9 @@ func clear(keep_numbers: bool = false) -> void:
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
+	# A mark is of the model it was made in.
+	_ledger.on = false
+	_ledger.was = {}
 
 
 ## Show only these bricks, hiding the rest. An empty set shows all of
@@ -801,6 +891,7 @@ func repaint_in_place(changes: Dictionary) -> void:
 				same_class = false
 		if not same_class:
 			continue
+		_ledger.note(brick)
 		brick.color_code = code
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			_mark_dirty(key)
@@ -1791,6 +1882,7 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		at.origin = at.origin.snapped(Vector3.ONE * 0.0001)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
+		_ledger.note(brick)
 		brick.transform = at
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			_mark_dirty(key)

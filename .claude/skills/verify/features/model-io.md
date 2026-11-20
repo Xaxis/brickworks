@@ -155,16 +155,30 @@ Whether what you built is still there tomorrow, and still means the same thing.
   rename changes (unit_steps' Sub renamed Crate). A file someone else made
   is saved as kept text and never planned. A model of the app's own is kept
   too, as its file's text (`ModelStore._kept_for`), and an unedited save
-  writes that text again, byte for byte. Unedited is has_unsaved_work's test
-  (no history, every part it opened with; edits undone and a Clear undone
-  count, as each undo is exact; a change to the world outside the history,
-  a Build together room's edit, does not) with nothing else
-  a save writes changed since the frame after the open or save (`_as_kept`:
-  name, floor, views, lights, motions, program, looks, copies' steps, picture,
-  links, credit, and the parts by a digest of each one's part, colour, place,
-  copy and step, `_parts_now`, about 8 ms for 10,000 parts); then the file's own Name line, a floor it never said and a step's
-  parts in their order are kept. That holds for someone else's file too, whose
-  writer put keepbytes' bk_odd "0 !brickworks page new" in capitals. Otherwise the kept text is still written
+  writes that text again, byte for byte. The kept text stands for one moment
+  of the history (kbkfix, `_kept_at`): the history's newest step, by
+  identity (a redo makes a new one), when the text was read or written,
+  with the parts marked then (`BrickWorld.mark_parts`). A save
+  writes it only at that moment (`_as_kept`): the history at the same step,
+  every part as marked (each writer of a part's part, colour, place, copy or
+  step tells the world's `Ledger` first, a Build together room's step past the
+  history and an MCP write too; one Simulate moved and put back is no
+  change, and nothing is asked of the parts when nothing changed), the
+  scenery the same, and nothing else a save writes changed (name, floor,
+  views, lights, motions, program, looks, copies' steps, each sub-model's own
+  lines and frames, picture, links, credit). An Undo after a save is another
+  moment, whatever its parts (kbkreview2 H1: the baseplate made part of the
+  model, saved and undone, came back in the file). Undoing a Clear or an open
+  puts back the moment the model was at, and the working model restored at
+  start-up gets back the moment its autosave was written at
+  (`autosave.kept.json` beside it, read only with that autosave), else
+  keeps its saved file to compare with and says once where a save moves its
+  order. Save as another name unedited writes the file with only its title and
+  Name lines changed (`_renamed`). At that moment the file's own Name line, a
+  floor it never said and a step's parts in their order are kept. That holds
+  for someone else's file too, whose writer put keepbytes' bk_odd "0
+  !brickworks page new" in capitals. `tools/probe.sh kbx_probe` (headless,
+  ~8 min) has 52 cases on the car, gears, m267's model and the kart. Otherwise the kept text is still written
   while the model differs from it only in its build order (STEP lines and the
   order of its parts, compared by value, so "1\t0" or "24.000" is the same
   line), or in other lines at the same place (its name after Save as, its
@@ -182,9 +196,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   once edited, they plan as keepbytes does: 19 otherwise than live, and better
   as steps_score.gd counts them (parts floating 1,265 to 991, hidden 509 to
   502, blocked 108 to 106), the castle alone worse anywhere (blocked 96 to
-  102, floating 355 to 298; kbreview, 2026-11-19). Not kept: the working
-  model restored at start-up and a Build together room's, both sent without
-  their steps (`forget_kept`). Known: the timeline and booklet of an unedited
+  102, floating 355 to 298; kbreview, 2026-11-19). Not kept: a Build
+  together room's model, sent without its steps (`forget_kept`). Known: the timeline and booklet of an unedited
   model an older build planned show the new plan while its file keeps the
   old one; nothing but an edit plans an app model's steps again.
   A saved model deleted and put back by Undo, renamed, or a set from the
