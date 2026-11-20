@@ -8285,6 +8285,51 @@ func _seat_find_replace() -> void:
 # end swapfind
 
 
+# -- finishpass (APP_UX10 #9): Edit › Finish the surfaces… ------------------------
+
+## The finishing pass's bar (src/ui/finish_bar.gd), made the first time it
+## opens.
+var _finish_made: PanelContainer = null
+
+
+## Edit › Finish the surfaces…: the bar over the top of the model's room, as
+## Find and replace's is, showing what the surface pass would lay before
+## anything changes; in the layout for a finger, placed and sized as its
+## panels are.
+func _finish_surfaces() -> void:
+	if _finish_made == null:
+		var bar: PanelContainer = Later.make(&"FinishBar")
+		bar.set("app", self)
+		bar.set("say", func(line: String) -> void: _bar.say(line))
+		_finish_made = bar
+		_add_to_hud(bar)
+		bar.add_to_group(FocusGuard.OVER)
+		if _touch != null:
+			_touch.place_panel(bar, Vector2(420.0, 360.0))
+		else:
+			_over_model.item_rect_changed.connect(_seat_finish)
+			_over_model.get_parent().item_rect_changed.connect(_seat_finish)
+	if _find_replace_made != null and _find_replace_made.visible:
+		_find_replace_made.call("close")
+	if _touch == null:
+		_seat_finish()
+	await _finish_made.call("open")
+
+
+## The bar at the top right of the model's room: its ghosts are drawn on the
+## model, which the middle of the room holds.
+func _seat_finish() -> void:
+	var bar: Control = _finish_made
+	if bar == null or _touch != null:
+		return
+	var room: Rect2 = _over_model.get_global_rect()
+	var wide: float = clampf(room.size.x - 24.0, 340.0, 420.0)
+	bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	bar.position = Vector2(maxf(room.end.x - wide - 12.0, room.position.x), room.position.y + 12.0)
+	bar.size = Vector2(wide, 0.0)
+# end finishpass
+
+
 ## The parts list told what the bin is built from holds, so a part past it
 ## is marked over there as on the bin's tile: a set's, or the person's own
 ## bricks (From my bricks, OwnCounts); nothing for the whole library.

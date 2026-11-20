@@ -15677,3 +15677,118 @@ msgstr "Doppeltippen"
 
 msgid "on a part, turn it as Turn does"
 msgstr "auf einem Teil: es drehen, wie Drehung es tut"
+
+# Edit › Finish the surfaces…: what a set designer would finish shown first, each kind left out by a tick, laid in one undo step (APP_UX10 #9, finishpass)
+
+msgid "Finish the surfaces…"
+msgstr "Oberflächen fertigstellen…"
+
+msgid "Tiles, slopes and rounded edges where a set would finish the model, shown before anything is laid"
+msgstr "Fliesen, Schrägen und runde Kanten, wo ein Set das Modell fertigstellen würde, gezeigt, bevor etwas gesetzt wird"
+
+msgid "1 part in 1 place"
+msgstr "1 Teil an 1 Stelle"
+
+msgid "A plain side skinned smooth, or a long wall given texture: its own bricks are swapped for others, so it starts unticked"
+msgstr "Eine glatte Seite verkleidet oder eine lange Wand strukturiert: ihre eigenen Steine werden gegen andere getauscht, darum ist es zuerst nicht angehakt"
+
+msgid "Curved slopes along a body's hard top edge"
+msgstr "Gebogene Schrägen entlang der harten Oberkante eines Körpers"
+
+msgid "%d more found past what is laid at once: Finish again lays them."
+msgstr "%d weitere gefunden, mehr als auf einmal gesetzt wird: Erneutes Fertigstellen setzt sie."
+
+msgid "%d parts in 1 place"
+msgstr "%d Teile an 1 Stelle"
+
+msgid "%d parts in %d places"
+msgstr "%d Teile an %d Stellen"
+
+msgid "finished the surfaces: %d parts"
+msgstr "Oberflächen fertiggestellt: %d Teile"
+
+msgid "finished the surfaces: %d parts in %d places — {undo|takes it back}"
+msgstr "Oberflächen fertiggestellt: %d Teile an %d Stellen — {undo|nimmt es zurück}"
+
+msgid "Finish the surfaces"
+msgstr "Oberflächen fertigstellen"
+
+msgid "Lay"
+msgstr "Setzen"
+
+msgid "Lay %d parts"
+msgstr "%d Teile setzen"
+
+msgid "Laying the finish…"
+msgstr "Die Oberfläche wird gesetzt…"
+
+msgid "Left as studs: %s."
+msgstr "Als Noppen gelassen: %s."
+
+msgid "none of it fits as the model stands"
+msgstr "nichts davon passt, so wie das Modell steht"
+
+msgid "nothing laid: %s"
+msgstr "nichts gesetzt: %s"
+
+msgid "nothing ticked to lay"
+msgstr "nichts zum Setzen angehakt"
+
+msgid "Nothing to finish here: no open stud field, no stud staircase, no hard top edge and no plain flank."
+msgstr "Hier gibt es nichts fertigzustellen: kein offenes Noppenfeld, keine Noppentreppe, keine harte Oberkante und keine schlichte Flanke."
+
+msgid "Nothing to finish on the selected parts."
+msgstr "An den ausgewählten Teilen gibt es nichts fertigzustellen."
+
+msgid "Only what is on the selected parts."
+msgstr "Nur was auf den ausgewählten Teilen liegt."
+
+msgid "Put down every ticked kind, as one undo step"
+msgstr "Jede angehakte Art setzen, als ein Rückgängig-Schritt"
+
+msgid "Reading the model's studs, steps and edges…"
+msgstr "Noppen, Stufen und Kanten des Modells werden gelesen…"
+
+msgid "Rounded edges"
+msgstr "Runde Kanten"
+
+msgid "%s: a part it lays again is gone or locked"
+msgstr "%s: ein Teil, das es neu setzt, ist weg oder gesperrt"
+
+msgid "Slopes"
+msgstr "Schrägen"
+
+msgid "Slopes on studs that step up, as a roof or a bonnet steps"
+msgstr "Schrägen auf Noppen, die ansteigen, wie ein Dach oder eine Motorhaube"
+
+msgid "Smooth sides"
+msgstr "Glatte Seiten"
+
+msgid "%s: no room for it as the model now stands"
+msgstr "%s: kein Platz dafür, so wie das Modell jetzt steht"
+
+msgid "%s: what stands on it would be left loose"
+msgstr "%s: was darauf steht, würde lose bleiben"
+
+msgid "The ground"
+msgstr "Der Boden"
+
+msgid "the model changed since the finish was shown: it is shown again"
+msgstr "das Modell hat sich geändert, seit die Oberfläche gezeigt wurde: sie wird neu gezeigt"
+
+msgid "The open ground, kept for figures to stand on unless ticked"
+msgstr "Der offene Boden, für Figuren freigehalten, außer er ist angehakt"
+
+msgid "Tiles"
+msgstr "Fliesen"
+
+msgid "Tiles on open studs where a top should be smooth, in the part's own colour"
+msgstr "Fliesen auf offenen Noppen, wo eine Oberseite glatt sein sollte, in der Farbe des Teils"
+
+msgid "What a set designer would finish, drawn on the model. Untick a kind to leave it out."
+msgstr "Was ein Set-Designer fertigstellen würde, auf das Modell gezeichnet. Hake eine Art ab, um sie wegzulassen."
+msgid "put down what you are carrying first: nothing was laid"
+msgstr "lege zuerst ab, was du trägst: nichts wurde gesetzt"
+
+msgid "the model was changed while it was laid: the rest is left"
+msgstr "das Modell wurde beim Setzen geändert: der Rest bleibt"

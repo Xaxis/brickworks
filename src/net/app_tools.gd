@@ -121,6 +121,9 @@ const COMMANDS: Dictionary = {
 	"together_point": "point_at",
 	# swapfind (APP_UX8 #9): Edit › Find and replace…, into every sub-model.
 	"find_replace": "replace_parts",
+	# finishpass (APP_UX10 #9): Edit › Finish the surfaces… is review_model's
+	# surface pass (surface=true), settled with settle_surface.
+	"finish_surfaces": "review_model",
 	# setcheck (APP_UX10 #4): File › Compare with the set….
 	"compare_set": "compare_with_set",
 }

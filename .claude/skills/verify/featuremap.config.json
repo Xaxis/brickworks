@@ -5690,6 +5690,20 @@
     },
     {
       "kind": "ui",
+      "label": "finish the surfaces",
+      "entry": "src/ui/finish_bar.gd",
+      "reach": "godot --path .  (Edit, Finish the surfaces\u2026: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a finger's size on a phone; tools/probe.sh finishpass_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "finishpass probe",
+      "entry": "src/dev/finishpass_probe.gd",
+      "reach": "tools/probe.sh finishpass_probe   (headless, 10 hand-built models, a selection, Orthanc and 10179 timed; -- --phone for 390x844 by hand; FP_SHOTS=DIR windowed for pictures; FP_IDENTITY=1 reads the two speedups against the old reading)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "missing and moved parts on open",
       "entry": "src/ui/moved_parts_dialog.gd",
       "reach": "godot --path .  (File, Open a file naming parts by numbers LDraw has moved, made aliases or has no file for, e.g. vendor/omr/files/4349-1_Dragon-Fly.mpd or 6056-1.mpd: moved and alias parts open with no list, only the strip over the model saying \"N parts have new numbers in the LDraw library\" with Update all (every sub-model, one undo, Edit, Undo puts the file back byte for byte and keeps earlier edits undoable), Review… (Missing and moved parts: each number, why, the part it points to and how many in which sub-models; Replace checked) and Keep as is; a part with no file opens the list by itself and offers Search; a sub-model or carried part named as a moved number keeps its name; shown after a person's own open only (File, Open, a file, Recent, the library), never a session's, Together's or an undo's; over MCP open_model names them and replace_moved=true replaces them in 1 call)  (tools/probe.sh movedparts_probe; tools/probe.sh movedparts_phone_probe; tools/probe.sh mvreview_probe)",

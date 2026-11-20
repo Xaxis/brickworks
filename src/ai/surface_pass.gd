@@ -675,34 +675,61 @@ func find() -> Array[Finding]:
 		left_alone.append("a Brick Art mosaic: its studs are the picture")
 		return out
 	_read = OpenPoints.read(assistant)
+	Fiber.pause(&"find: read")
 	_taken_off = {}
 	var points: Array = _points()
+	Fiber.pause(&"find: points")
 	var tops: Dictionary = open_tops("", points)
+	Fiber.pause(&"find: tops")
 	# And the tops already tiled, by the studs under their tiles: a staircase
 	# of tiled steps is still a staircase, and a tiled top still has an edge.
 	var levels: Dictionary = tile_tops()
+	Fiber.pause(&"find: tile_tops")
 	levels.merge(tops)
 	var claimed: Dictionary = {}
 	var gone: Dictionary = {}
 	var stairs: Array[Finding] = _staircases(levels, claimed, gone)
+	Fiber.pause(&"find: staircases")
 	var edges: Array[Finding] = []
 	if not _straight_first():
 		edges = _edges(levels, claimed)
+	Fiber.pause(&"find: edges")
 	var fields: Array[Finding] = _fields(tops, claimed)
+	Fiber.pause(&"find: fields")
 	# And each section's own: a wing laid at an angle is studs up in its own
 	# frame, and tiled in it. The starfighter's wings were open fields of
 	# studs, all in sections.
+	# Each from its own points, the model's box read once: every point
+	# of the model walked again for each of 10179's 430 sections was 30 s
+	# (finishpass). open_tops keeps only a section's own points anyway.
+	var by_section: Dictionary = {}
+	for raw: Variant in points:
+		Fiber.pause(&"find: by section")
+		var point: OpenPoints.Point = raw
+		if not point.section.is_empty():
+			if not by_section.has(point.section):
+				by_section[point.section] = []
+			(by_section[point.section] as Array).append(point)
+	var model_box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
+	Fiber.pause(&"find: box")
 	for name: Variant in _read.model.sections.keys():
-		var tilted: Dictionary = open_tops(str(name), points)
+		Fiber.pause(&"find sections")
+		if not by_section.has(str(name)):
+			continue
+		var tilted: Dictionary = open_tops(str(name), by_section[str(name)], model_box)
 		if not tilted.is_empty():
 			fields.append_array(_fields(tilted, {}, str(name)))
 	# And the studs on a part's side: a plate laid on its side, studs out.
+	Fiber.pause(&"find: sections")
 	fields.append_array(_side_fields(points))
+	Fiber.pause(&"find: side_fields")
 	# A building's long plain walls are textured; a body's flanks skinned,
 	# of brick courses and of plates.
 	var walls: Array[Finding] = _walls(gone) if _straight_first() else _flanks(gone)
+	Fiber.pause(&"find: walls or flanks")
 	if not _straight_first():
 		walls.append_array(_plate_flanks(gone, walls.duplicate()))
+	Fiber.pause(&"find: plate_flanks")
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
 	edges.sort_custom(by_size)
@@ -722,7 +749,33 @@ func find() -> Array[Finding]:
 				room -= 1
 			else:
 				more += 1
+	# On a fiber, what the reading made is let go of a piece at a time:
+	# 10179's points and open tops, freed at once as this returned, were a
+	# quarter second with no turn given back (finishpass). The section
+	# lists first, which hold the same points.
+	if Fiber.here():
+		_let_go_keys(by_section)
+		_let_go(points)
+		_let_go_keys(levels)
+		_let_go_keys(tops)
 	return out
+
+
+## [param list] emptied from its end a piece at a time, a fiber's turn
+## given back between pieces.
+static func _let_go(list: Array) -> void:
+	while not list.is_empty():
+		Fiber.pause(&"let go")
+		list.resize(maxi(0, list.size() - 1024))
+
+
+static func _let_go_keys(table: Dictionary) -> void:
+	var n: int = 0
+	for key: Variant in table.keys():
+		n += 1
+		if n % 1024 == 0:
+			Fiber.pause(&"let go")
+		table.erase(key)
 
 
 ## Every connection point of the model's bricks, read once.
@@ -740,16 +793,21 @@ func _points() -> Array:
 ## "here" in its frame, "brick", "colour", "part"}. Open is standing_free, up
 ## in its frame, on a part whose studs are finished, its square all part,
 ## outside every zone the design kept.
-func open_tops(section: String = "", points: Array = []) -> Dictionary:
+## [param model_box], when given, is the model's box, read once by a caller
+## asking for many sections.
+func open_tops(section: String = "", points: Array = [], model_box := AABB()) -> Dictionary:
 	var out: Dictionary = {}
-	var bricks: Array[BrickWorld.Brick] = assistant._bricks_inside({})
-	if bricks.is_empty():
-		return out
+	var box: AABB = model_box
+	if not box.has_volume():
+		var bricks: Array[BrickWorld.Brick] = assistant._bricks_inside({})
+		if bricks.is_empty():
+			return out
+		box = assistant._bounds_of(bricks)
 	if points.is_empty():
 		points = _points()
-	var box: AABB = assistant._bounds_of(bricks)
 	var library: PartLibrary = assistant.library
 	for raw: Variant in points:
+		Fiber.pause(&"open_tops")
 		var point: OpenPoints.Point = raw
 		if point.kind != "stud" or point.section != section:
 			continue
@@ -784,6 +842,7 @@ func tile_tops() -> Dictionary:
 	var box: AABB = assistant._bounds_of(bricks)
 	var lattice: BrickLattice = assistant.builder.lattice
 	for brick: BrickWorld.Brick in bricks:
+		Fiber.pause(&"tile_tops")
 		var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id)
 		if info == null or info.family_category() != "Tile" or _plain(info) != "tile":
 			continue
@@ -815,6 +874,7 @@ static func _cells_of(box: AABB) -> Array[Vector2i]:
 	while x < box.end.x - 1.0:
 		var z: float = box.position.z + 10.0
 		while z < box.end.z - 1.0:
+			Fiber.pause(&"_cells_of")
 			out.append(Vector2i(roundi(x / 10.0), roundi(z / 10.0)))
 			z += STUD
 		x += STUD
@@ -859,6 +919,7 @@ func standing_free(point: OpenPoints.Point, box: AABB) -> bool:
 ## it out to the edge of the model's [param box], or open to the outside on
 ## two sides at least.
 func _seen(at: Vector3, way: Vector3, own: int, box: AABB) -> bool:
+	Fiber.pause(&"_seen")
 	var reach: AABB = box.grow(8.0)
 	var up: Vector3 = at + way * 6.0
 	while reach.has_point(up):
@@ -951,6 +1012,7 @@ func _is_mosaic() -> bool:
 		return false
 	var dots: int = 0
 	for brick: BrickWorld.Brick in bricks:
+		Fiber.pause(&"_is_mosaic")
 		var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id)
 		if info != null and info.footprint_studs() == Vector2i.ONE \
 				and info.family_category() in ["Plate", "Tile"]:
@@ -980,10 +1042,12 @@ func _straight_first() -> bool:
 func _staircases(tops: Dictionary, claimed: Dictionary, gone: Dictionary) -> Array[Finding]:
 	var column: Dictionary = {}
 	for key: Vector3i in tops:
+		Fiber.pause(&"_staircases")
 		column[Vector2i(key.x, key.z)] = key
 	var out: Array[Finding] = []
 	var straight: bool = _straight_first()
 	for d: Vector2i in WAYS:
+		Fiber.pause(&"_staircases")
 		var perp := Vector2i(absi(d.y), absi(d.x))
 		var rise_of: Dictionary = {}    ## foot -> plates up to the next
 		for c: Vector2i in column:
@@ -1067,6 +1131,7 @@ func _cover_staircase(feet: Array, d: Vector2i, perp: Vector2i, column: Dictiona
 	# side, with the same rise and tread.
 	var rows: Dictionary = {}
 	for raw: Variant in feet:
+		Fiber.pause(&"_cover_staircase")
 		var c: Vector2i = raw
 		var along: int = c.x * absi(d.x) + c.y * absi(d.y)
 		var row_key: String = "%d|%d|%d|%d" % [along, (column[c] as Vector3i).y,
@@ -1151,6 +1216,7 @@ func _cover_pairs(one: Finding, feet: Array, d: Vector2i, perp: Vector2i, column
 	# Pairs up each run of plate steps, from its bottom: lower foot -> upper.
 	var on: Dictionary = {}
 	for raw: Variant in feet:
+		Fiber.pause(&"_cover_pairs")
 		on[raw as Vector2i] = true
 	var plate_step := func(c: Vector2i) -> bool:
 		return on.has(c) and int(rise_of.get(c, 0)) == 1
@@ -1732,6 +1798,7 @@ func _edges(levels: Dictionary, claimed: Dictionary) -> Array[Finding]:
 	var out: Array[Finding] = []
 	var cell_key: Dictionary = {}
 	for key: Vector3i in levels:
+		Fiber.pause(&"_edges")
 		var c := Vector2i(key.x, key.z)
 		if not claimed.has(c):
 			cell_key[c] = key
@@ -1748,6 +1815,7 @@ func _edges(levels: Dictionary, claimed: Dictionary) -> Array[Finding]:
 		return out
 	var seen: Dictionary = {}
 	for start: Vector2i in cell_key:
+		Fiber.pause(&"_edges")
 		if seen.has(start):
 			continue
 		var top: float = float((levels[cell_key[start]] as Dictionary)["top"])
@@ -1755,6 +1823,7 @@ func _edges(levels: Dictionary, claimed: Dictionary) -> Array[Finding]:
 		var queue: Array[Vector2i] = [start]
 		seen[start] = true
 		while not queue.is_empty():
+			Fiber.pause(&"_edges")
 			var c: Vector2i = queue.pop_back()
 			field[c] = true
 			for step: Vector2i in WAYS:
@@ -1767,6 +1836,7 @@ func _edges(levels: Dictionary, claimed: Dictionary) -> Array[Finding]:
 			continue
 		var keys: Array[Vector3i] = []
 		for c: Variant in field:
+			Fiber.pause(&"_edges")
 			keys.append(cell_key[c])
 		var box: AABB = _box_of(keys, levels)
 		if _ground(box, model_box) or _lived_on(box, living):
@@ -1899,12 +1969,14 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "",
 	var model_box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
 	var tiled: Dictionary = _tiled_levels() if section.is_empty() else {}
 	for start: Vector3i in tops:
+		Fiber.pause(&"_fields")
 		if seen.has(start) or claimed.has(Vector2i(start.x, start.z)):
 			continue
 		var field: Array[Vector3i] = []
 		var queue: Array[Vector3i] = [start]
 		seen[start] = true
 		while not queue.is_empty():
+			Fiber.pause(&"_fields")
 			var key: Vector3i = queue.pop_back()
 			field.append(key)
 			for step: Vector3i in [Vector3i(2, 0, 0), Vector3i(-2, 0, 0), Vector3i(0, 0, 2),
@@ -1954,6 +2026,7 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "",
 		var free: Dictionary = {}
 		var colours: Dictionary = {}
 		for key: Vector3i in field:
+			Fiber.pause(&"_fields")
 			var top: Dictionary = tops[key]
 			free[Vector2i(key.x, key.z)] = [top["here"], int(top["colour"])]
 			colours[int(top["colour"])] = true
@@ -2148,6 +2221,7 @@ func _tiles_over(free: Dictionary, y: float, accents: int, made: Array[int],
 	order.sort_custom(_before)
 	var by_colour: Dictionary = {}
 	for raw: Variant in order:
+		Fiber.pause(&"_tiles_over")
 		var c: Vector2i = raw
 		if not free.has(c):
 			continue
@@ -2235,11 +2309,13 @@ func _walls(gone: Dictionary) -> Array[Finding]:
 	var middle := Vector3.ZERO
 	var standing: Array[BrickWorld.Brick] = assistant._bricks_inside({})
 	for brick: BrickWorld.Brick in standing:
+		Fiber.pause(&"_walls")
 		middle += brick.transform.origin
 	if not standing.is_empty():
 		middle /= float(standing.size())
 	var walls: Dictionary = {}
 	for placement: Assistant.Placement in model.placements:
+		Fiber.pause(&"_walls")
 		if gone.has(placement.id) or placement.face != "up" or not placement.section.is_empty():
 			continue
 		var long: int = int(Patterns.ONE_WIDE.get(placement.part,
@@ -2271,6 +2347,7 @@ func _walls(gone: Dictionary) -> Array[Finding]:
 				"y": row.y, "long": long, "colour": placement.color, "along_x": along_x,
 				"depth": depth, "facing": facing})
 	for key: String in walls:
+		Fiber.pause(&"_walls")
 		var bricks: Array = walls[key]
 		var seen: Dictionary = {}
 		for n: int in bricks.size():
@@ -2280,6 +2357,7 @@ func _walls(gone: Dictionary) -> Array[Finding]:
 			var queue: Array[int] = [n]
 			seen[n] = true
 			while not queue.is_empty():
+				Fiber.pause(&"_walls")
 				var at: int = queue.pop_back()
 				region.append(bricks[at])
 				var one: Dictionary = bricks[at]
@@ -2307,6 +2385,7 @@ func _wall_finding(region: Array) -> Finding:
 	var area: int = 0
 	var ids: Dictionary = {}
 	for raw: Variant in region:
+		Fiber.pause(&"_wall_finding")
 		var one: Dictionary = raw
 		low_along = minf(low_along, float(one["along"]))
 		high_along = maxf(high_along, float(one["along"]) + int(one["long"]))
@@ -2405,6 +2484,7 @@ func _flanks(gone: Dictionary) -> Array[Finding]:
 	var middle := Vector3.ZERO
 	var standing: Array[BrickWorld.Brick] = assistant._bricks_inside({})
 	for brick: BrickWorld.Brick in standing:
+		Fiber.pause(&"_flanks")
 		middle += brick.transform.origin
 	if not standing.is_empty():
 		middle /= float(standing.size())
@@ -2412,6 +2492,7 @@ func _flanks(gone: Dictionary) -> Array[Finding]:
 	# is in and its course.
 	var faces: Dictionary = {}
 	for placement: Assistant.Placement in model.placements:
+		Fiber.pause(&"_flanks")
 		if gone.has(placement.id) or placement.face != "up" or not placement.section.is_empty() \
 				or _in_zone(Vector3(placement.x * STUD, placement.y * PLATE, placement.z * STUD)):
 			continue
@@ -2449,6 +2530,7 @@ func _flanks(gone: Dictionary) -> Array[Finding]:
 	var wheel_top: float = _wheel_top(standing)
 	var taken: Dictionary = {}
 	for key: String in faces:
+		Fiber.pause(&"_flanks")
 		var courses: Dictionary = faces[key]
 		# A flank is stacked: two courses of it at least.
 		if courses.size() < 2:
@@ -2459,10 +2541,12 @@ func _flanks(gone: Dictionary) -> Array[Finding]:
 		heights.reverse()
 		var skinned: Array = []    ## [low along, high along, bottom, top] in studs, LDU
 		for course: Variant in heights:
+			Fiber.pause(&"_flanks")
 			var row: Array = courses[course]
 			row.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 				return float(a["along"]) < float(b["along"]))
 			for run: Array in _flank_runs(row, taken, skinned, float(course)):
+				Fiber.pause(&"_flanks")
 				var why: String = _off_the_body(run, float(course), lowest, wheel_top)
 				if not why.is_empty():
 					left_alone.append(why)
@@ -2585,6 +2669,7 @@ func _flank_runs(row: Array, taken: Dictionary, skinned: Array, course: float) -
 				return false
 		return true
 	for entry: Dictionary in row:
+		Fiber.pause(&"_flank_runs")
 		var ok: bool = flush.call(entry)
 		var joined: bool = not run.is_empty() and absf(float(run[-1]["along"])
 			+ int(run[-1]["long"]) - float(entry["along"])) < 0.05
@@ -2928,6 +3013,7 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 	var owner: Dictionary = {}
 	var held: Dictionary = {}
 	for brick: BrickWorld.Brick in standing:
+		Fiber.pause(&"_plate_flanks")
 		if gone.has(brick.id) or _taken_off.has(brick.id):
 			continue
 		var placement: Assistant.Placement = _read.by_id.get(brick.id)
@@ -2946,13 +3032,16 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 		var tall: int = roundi((box.size.y - 4.0) / PLATE)
 		held[brick.id] = [bottom, tall, brick.color_code]
 		for c: Vector2i in _cells_of(box):
+			Fiber.pause(&"_plate_flanks")
 			for up: int in range(bottom, bottom + tall):
 				owner[Vector3i(c.x, up, c.y)] = brick.id
 	# Each of those cells open to a side, by the face and its row:
 	# "facing|row" -> {along -> {plate up -> id}}, in half studs.
 	var faces: Dictionary = {}
 	for key: Vector3i in owner:
+		Fiber.pause(&"_plate_flanks")
 		for way: Vector2i in WAYS:
+			Fiber.pause(&"_plate_flanks")
 			if _other_than(0, _beside(key, way, 2.0)):
 				continue
 			var name: String = "%s|%d" % [_facing_of(way), key.x if way.x != 0 else key.z]
@@ -2972,6 +3061,7 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 	# [ids, colour]}, "box" its skin's}.
 	var candidates: Array = []
 	for name: String in faces:
+		Fiber.pause(&"_plate_flanks")
 		var columns: Dictionary = faces[name]
 		var facing: String = name.get_slice("|", 0)
 		var row: int = int(name.get_slice("|", 1))
@@ -2981,6 +3071,7 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 		var ups: Dictionary = {}
 		var lowest: int = 1 << 30
 		for along: int in columns:
+			Fiber.pause(&"_plate_flanks")
 			var column: Dictionary = columns[along]
 			for up: int in column:
 				lowest = mini(lowest, up)
@@ -2996,9 +3087,11 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 		# another.
 		var claimed: Dictionary = {}
 		for up: int in levels:
+			Fiber.pause(&"_plate_flanks")
 			# By colour: a run is one colour, as the face over it is.
 			var by_colour: Dictionary = {}
 			for at: Vector2i in anchors:
+				Fiber.pause(&"_plate_flanks")
 				if at.y != up:
 					continue
 				var unclaimed: bool = true
@@ -3016,6 +3109,7 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 				alongs.sort()
 				runs.append_array(_runs_of(alongs))
 			for one_run: Array in runs:
+				Fiber.pause(&"_plate_flanks")
 				var courses: Dictionary = {}
 				for along: Variant in one_run:
 					courses[int(along)] = anchors[Vector2i(int(along), up)]
@@ -3038,8 +3132,10 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 	# of it has both its sides in the same plates, and two findings may not
 	# take off one part.
 	for group: Array in _sharing(_mirrored(candidates)):
+		Fiber.pause(&"_plate_flanks")
 		var tried: Array = group.duplicate()
 		while not tried.is_empty():
+			Fiber.pause(&"_plate_flanks")
 			var made: Array = _plate_skins(tried)
 			if made[0] != null:
 				out.append(made[0])
@@ -3055,12 +3151,14 @@ func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
 static func _mirrored(candidates: Array) -> Array:
 	var out: Array = []
 	for one: Dictionary in candidates:
+		Fiber.pause(&"_plate_flanks")
 		var facing: String = one["facing"]
 		var opposite: String = ("-" if facing.begins_with("+") else "+") + facing.substr(1)
 		var run: Array = one["run"]
 		var kept: Dictionary = {}
 		var partnered: bool = false
 		for other: Dictionary in candidates:
+			Fiber.pause(&"_mirrored")
 			var across: Array = other["run"]
 			if str(other["facing"]) != opposite or int(across[-1]) < int(run[0]) \
 					or int(across[0]) > int(run[-1]):
@@ -3074,9 +3172,11 @@ static func _mirrored(candidates: Array) -> Array:
 			continue
 		var alongs: Array = []
 		for along: Variant in run:
+			Fiber.pause(&"_mirrored")
 			if kept.has(int(along)):
 				alongs.append(along)
 		for piece: Array in _runs_of(alongs):
+			Fiber.pause(&"_mirrored")
 			var trimmed: Dictionary = one.duplicate()
 			trimmed["run"] = piece
 			trimmed["box"] = _skin_box(piece, int(one["up"]), facing, int(one["row"]))
@@ -3089,6 +3189,7 @@ static func _runs_of(alongs: Array) -> Array:
 	var runs: Array = []
 	var run: Array = []
 	for along: Variant in alongs + [null]:
+		Fiber.pause(&"_runs_of")
 		if along != null and not run.is_empty() and int(along) == int(run[-1]) + 2:
 			run.append(along)
 			continue
@@ -3108,9 +3209,11 @@ static func _sharing(candidates: Array) -> Array:
 	var groups: Array = []
 	var group_of: Dictionary = {}
 	for one: Dictionary in order:
+		Fiber.pause(&"_plate_flanks")
 		var joined: Array = []
 		var clash: bool = false
 		for along: Variant in one["run"]:
+			Fiber.pause(&"_sharing")
 			for id: int in ((one["courses"] as Dictionary)[int(along)] as Array)[0]:
 				if not group_of.has(id):
 					continue
@@ -3128,6 +3231,7 @@ static func _sharing(candidates: Array) -> Array:
 			joined.sort()
 			g = joined[0]
 			for other: int in joined.slice(1):
+				Fiber.pause(&"_sharing")
 				(groups[g] as Array).append_array(groups[other])
 				for moved: Dictionary in groups[other]:
 					for along: Variant in moved["run"]:
@@ -3140,12 +3244,14 @@ static func _sharing(candidates: Array) -> Array:
 				group_of[id] = g
 	var out: Array = []
 	for group: Array in groups:
+		Fiber.pause(&"_plate_flanks")
 		if group.is_empty():
 			continue
 		# A corner stud is one run's: the cells a run's bricks go in.
 		var used: Dictionary = {}
 		var kept: Array = []
 		for one: Dictionary in group:
+			Fiber.pause(&"_sharing")
 			var alongs: Array = []
 			for along: Variant in one["run"]:
 				if not used.has(_cell_of(one, int(along))):
@@ -3282,6 +3388,7 @@ func _plate_skins(group: Array) -> Array:
 	var plates: bool = false
 	var ends: bool = false
 	for n: int in group.size():
+		Fiber.pause(&"_plate_skins")
 		var one_run: Dictionary = group[n]
 		var run: Array = one_run["run"]
 		var up: int = one_run["up"]
@@ -3375,12 +3482,14 @@ func _side_fields(points: Array) -> Array[Finding]:
 	var out: Array[Finding] = []
 	var groups: Dictionary = {}
 	for raw: Variant in points:
+		Fiber.pause(&"_side_fields")
 		var point: OpenPoints.Point = raw
 		if point.kind != "stud" or not point.section.is_empty() or point.by != 0 \
 				or absf(point.way.y) > 0.1 or _in_zone(point.at):
 			continue
 		var facing: String = ""
 		for name: String in ["+x", "-x", "+z", "-z"]:
+			Fiber.pause(&"_side_fields")
 			if point.way.dot(Assistant.FACES[name]) > 0.99:
 				facing = name
 		var info: PartLibrary.PartInfo = assistant.library.parts.get(point.part)
@@ -3398,9 +3507,11 @@ func _side_fields(points: Array) -> Array[Finding]:
 			groups[key] = []
 		(groups[key] as Array).append(point.at)
 	for key: String in groups:
+		Fiber.pause(&"_side_fields")
 		var facing: String = key.get_slice("|", 0)
 		var colour: int = int(key.get_slice("|", 2))
 		for field: Array in _side_clusters(groups[key], facing):
+			Fiber.pause(&"_side_fields")
 			if field.size() < SMALLEST_FIELD:
 				continue
 			var one: Finding = _side_tiles(field, facing, colour)
@@ -3417,16 +3528,19 @@ static func _side_clusters(studs: Array, facing: String) -> Array:
 		return Vector2i(roundi(at.dot(along) / 10.0), roundi(at.y / 2.0))
 	var by_cell: Dictionary = {}
 	for at: Vector3 in studs:
+		Fiber.pause(&"_side_clusters")
 		by_cell[cell.call(at)] = at
 	var seen: Dictionary = {}
 	var out: Array = []
 	for start: Vector2i in by_cell:
+		Fiber.pause(&"_side_fields")
 		if seen.has(start):
 			continue
 		var field: Array = []
 		var todo: Array[Vector2i] = [start]
 		seen[start] = true
 		while not todo.is_empty():
+			Fiber.pause(&"_side_clusters")
 			var c: Vector2i = todo.pop_back()
 			field.append(by_cell[c])
 			for step: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 10),
@@ -3456,6 +3570,7 @@ func _side_tiles(field: Array, facing: String, colour: int) -> Finding:
 	var tiles: Array = []
 	var options: Array = _rectangles(TILES, colour)
 	for raw: Variant in order:
+		Fiber.pause(&"_side_tiles")
 		var c: Vector2i = raw
 		if covered.has(c):
 			continue
@@ -3738,6 +3853,9 @@ func _bricks(ids: Array[int]) -> Array[BrickWorld.Brick]:
 ## Whether a placement would fit and be held where the model stands now,
 ## the bricks in [param skip] taken off.
 func _fits(placed: Dictionary, skip: Dictionary, with_these: Array = []) -> bool:
+	# The pass read on a fiber (FinishBar), a turn given back: every stage
+	# tries its pieces here.
+	Fiber.pause(&"_fits")
 	if _read == null:
 		_read = OpenPoints.read(assistant)
 	var also: Array = []

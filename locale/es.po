@@ -15677,3 +15677,118 @@ msgstr "doble toque"
 
 msgid "on a part, turn it as Turn does"
 msgstr "sobre una pieza, girarla como lo hace Giro"
+
+# Edit › Finish the surfaces…: what a set designer would finish shown first, each kind left out by a tick, laid in one undo step (APP_UX10 #9, finishpass)
+
+msgid "Finish the surfaces…"
+msgstr "Terminar las superficies…"
+
+msgid "Tiles, slopes and rounded edges where a set would finish the model, shown before anything is laid"
+msgstr "Baldosas, pendientes y bordes redondeados donde un set terminaría el modelo, mostrados antes de colocar nada"
+
+msgid "1 part in 1 place"
+msgstr "1 pieza en 1 sitio"
+
+msgid "A plain side skinned smooth, or a long wall given texture: its own bricks are swapped for others, so it starts unticked"
+msgstr "Un lado liso revestido, o una pared larga con textura: sus propias piezas se cambian por otras, así que empieza sin marcar"
+
+msgid "Curved slopes along a body's hard top edge"
+msgstr "Pendientes curvas a lo largo del borde superior duro de una carrocería"
+
+msgid "%d more found past what is laid at once: Finish again lays them."
+msgstr "%d más encontrados además de lo que se coloca de una vez: terminar de nuevo los coloca."
+
+msgid "%d parts in 1 place"
+msgstr "%d piezas en 1 sitio"
+
+msgid "%d parts in %d places"
+msgstr "%d piezas en %d sitios"
+
+msgid "finished the surfaces: %d parts"
+msgstr "superficies terminadas: %d piezas"
+
+msgid "finished the surfaces: %d parts in %d places — {undo|takes it back}"
+msgstr "superficies terminadas: %d piezas en %d sitios — {undo|lo deshace}"
+
+msgid "Finish the surfaces"
+msgstr "Terminar las superficies"
+
+msgid "Lay"
+msgstr "Colocar"
+
+msgid "Lay %d parts"
+msgstr "Colocar %d piezas"
+
+msgid "Laying the finish…"
+msgstr "Colocando el acabado…"
+
+msgid "Left as studs: %s."
+msgstr "Dejados como espigas: %s."
+
+msgid "none of it fits as the model stands"
+msgstr "nada cabe tal como está el modelo"
+
+msgid "nothing laid: %s"
+msgstr "nada colocado: %s"
+
+msgid "nothing ticked to lay"
+msgstr "nada marcado para colocar"
+
+msgid "Nothing to finish here: no open stud field, no stud staircase, no hard top edge and no plain flank."
+msgstr "Nada que terminar aquí: ningún campo de espigas abierto, ninguna escalera de espigas, ningún borde superior duro y ningún flanco liso."
+
+msgid "Nothing to finish on the selected parts."
+msgstr "Nada que terminar en las piezas seleccionadas."
+
+msgid "Only what is on the selected parts."
+msgstr "Solo lo que está sobre las piezas seleccionadas."
+
+msgid "Put down every ticked kind, as one undo step"
+msgstr "Colocar cada tipo marcado, como un solo paso de deshacer"
+
+msgid "Reading the model's studs, steps and edges…"
+msgstr "Leyendo las espigas, escalones y bordes del modelo…"
+
+msgid "Rounded edges"
+msgstr "Bordes redondeados"
+
+msgid "%s: a part it lays again is gone or locked"
+msgstr "%s: una pieza que vuelve a colocar ya no está o está bloqueada"
+
+msgid "Slopes"
+msgstr "Pendientes"
+
+msgid "Slopes on studs that step up, as a roof or a bonnet steps"
+msgstr "Pendientes sobre espigas escalonadas, como un tejado o un capó"
+
+msgid "Smooth sides"
+msgstr "Lados lisos"
+
+msgid "%s: no room for it as the model now stands"
+msgstr "%s: no hay sitio tal como está ahora el modelo"
+
+msgid "%s: what stands on it would be left loose"
+msgstr "%s: lo que está encima quedaría suelto"
+
+msgid "The ground"
+msgstr "El suelo"
+
+msgid "the model changed since the finish was shown: it is shown again"
+msgstr "el modelo cambió desde que se mostró el acabado: se muestra de nuevo"
+
+msgid "The open ground, kept for figures to stand on unless ticked"
+msgstr "El suelo abierto, reservado para que se apoyen las figuras salvo que esté marcado"
+
+msgid "Tiles"
+msgstr "Baldosas"
+
+msgid "Tiles on open studs where a top should be smooth, in the part's own colour"
+msgstr "Baldosas sobre espigas abiertas donde una parte superior debería ser lisa, del color de la pieza"
+
+msgid "What a set designer would finish, drawn on the model. Untick a kind to leave it out."
+msgstr "Lo que terminaría un diseñador de sets, dibujado sobre el modelo. Desmarca un tipo para omitirlo."
+msgid "put down what you are carrying first: nothing was laid"
+msgstr "suelta primero lo que llevas: no se colocó nada"
+
+msgid "the model was changed while it was laid: the rest is left"
+msgstr "el modelo cambió mientras se colocaba: el resto se deja"

@@ -111,6 +111,7 @@ func points_of(ids: Array) -> Array[Point]:
 	var out: Array[Point] = []
 	var lattice: BrickLattice = assistant.builder.lattice
 	for raw: Variant in ids:
+		Fiber.pause(&"points_of")
 		var brick: BrickWorld.Brick = assistant.world.get_brick(int(raw))
 		if brick == null:
 			continue
@@ -121,6 +122,7 @@ func points_of(ids: Array) -> Array[Point]:
 		var frame: Transform3D = frame_of(brick.id)
 		var section: String = section_of(brick.id)
 		for connector: Lbm.Connector in mesh.connectors:
+			Fiber.pause(&"points_of")
 			var kind: String = connector.kind
 			if kind == "stud" and connector.gender != "male":
 				continue
@@ -140,11 +142,14 @@ func points_of(ids: Array) -> Array[Point]:
 		# them, on its underside.
 		var bottom: float = mesh.bounds.position.y
 		for socket: Vector2 in mesh.sockets:
+			Fiber.pause(&"points_of")
 			var point := _point("anti-stud", brick, at * Vector3(socket.x, bottom, socket.y),
 				(at.basis * Vector3.DOWN).normalized(), frame, section)
 			point.by = _other_at(lattice, point.at + point.way * UNDER, brick.id)
 			out.append(point)
+	Fiber.pause(&"points_of: done")
 	_mate_round_ones(out)
+	Fiber.pause(&"mates: done")
 	for point: Point in out:
 		if point.by == 0 and point.way.y < -0.7 and (point.at + point.way * UNDER).y < 0.0:
 			point.by = GROUND
@@ -172,6 +177,7 @@ func _mate_round_ones(points: Array[Point]) -> void:
 	var round_ones: Array[Point] = []
 	var box := AABB()
 	for point: Point in points:
+		Fiber.pause(&"_mate_round_ones")
 		if MATES.has(point.kind):
 			box = AABB(point.at, Vector3.ZERO) if round_ones.is_empty() else box.expand(point.at)
 			round_ones.append(point)
@@ -181,6 +187,7 @@ func _mate_round_ones(points: Array[Point]) -> void:
 	var lattice: BrickLattice = assistant.builder.lattice
 	var cells: PackedInt32Array = _box_cells(box.grow(STUD * 2.0))
 	for other: int in lattice.near_bounds(cells):
+		Fiber.pause(&"mates: near")
 		var brick: BrickWorld.Brick = assistant.world.get_brick(other)
 		if brick == null:
 			continue
@@ -188,19 +195,55 @@ func _mate_round_ones(points: Array[Point]) -> void:
 		if mesh == null:
 			continue
 		for connector: Lbm.Connector in mesh.connectors:
+			Fiber.pause(&"_mate_round_ones")
 			var kind: String = "bar" if connector.kind == "shaft" else connector.kind
 			if MATES.has(kind):
 				near.append([brick.id, kind, brick.transform * connector.position,
 					(brick.transform.basis * connector.axis).normalized()])
+	# Each round one asks only those within a lining-up's reach of it, by
+	# the square of the grid each is in: every one of [code]near[/code]
+	# asked of every one of the model's was most of the surface pass's
+	# 56 s on 10179 (finishpass). Asked in their order in near, so the
+	# first that lines up is the one it was.
+	# An Array each, not a packed one: a packed array read out of a
+	# Dictionary is a copy, and what is appended to it is lost.
+	var grid: Dictionary = {}    ## Vector3i -> Array of indices in near
+	for n: int in near.size():
+		var square: Vector3i = _mate_square(near[n][2])
+		if not grid.has(square):
+			grid[square] = []
+		(grid[square] as Array).append(n)
 	for point: Point in round_ones:
+		Fiber.pause(&"mates")
 		var takes: Array = MATES[point.kind]
-		for other: Array in near:
+		var around: Array = []
+		var mid: Vector3i = _mate_square(point.at)
+		for dx: int in range(-1, 2):
+			for dy: int in range(-1, 2):
+				for dz: int in range(-1, 2):
+					var those: Variant = grid.get(mid + Vector3i(dx, dy, dz))
+					if those != null:
+						around.append_array(those)
+		around.sort()
+		for n: int in around:
+			var other: Array = near[n]
 			if int(other[0]) == point.brick or not takes.has(other[1]):
 				continue
 			if Joints.lines_up(point.at, point.way, other[2], other[3]) \
 					or Joints.lines_up(other[2], other[3], point.at, point.way):
 				point.by = int(other[0])
 				break
+
+
+## How far apart two round ones that line up can be (Joints.lines_up: along
+## the axis and off it), with room to spare: the side of a square of
+## [method _mate_square].
+const MATE_REACH := 24.0
+
+
+static func _mate_square(at: Vector3) -> Vector3i:
+	return Vector3i(floori(at.x / MATE_REACH), floori(at.y / MATE_REACH),
+		floori(at.z / MATE_REACH))
 
 
 ## The brick whose cells hold this point, other than [param own]; 0 for none.

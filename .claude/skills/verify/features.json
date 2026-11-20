@@ -1501,6 +1501,14 @@
       "tests": []
     },
     {
+      "id": "cli:finishpass probe",
+      "kind": "cli",
+      "entry": "src/dev/finishpass_probe.gd",
+      "reach": "tools/probe.sh finishpass_probe   (headless, 10 hand-built models, a selection, Orthanc and 10179 timed; -- --phone for 390x844 by hand; FP_SHOTS=DIR windowed for pictures; FP_IDENTITY=1 reads the two speedups against the old reading)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:first build probe",
       "kind": "cli",
       "entry": "src/dev/first_build_probe.gd",
@@ -5967,6 +5975,14 @@
       "entry": "src/ui/phone_shell.gd",
       "reach": "on a phone or a tablet laid out for a finger: two fingers tapped on the view undo and three redo, as the bar's Undo and Redo, saying what they took back; a double tap on a part in Select turns it 90 degrees as Turn does, one step  (CadCamera._gesture_ended, PhoneShell._fingers_tapped, _double_tapped; tools/probe.sh phonefingers_probe; tools/web/phonewalk_flow.mjs --only=fingers_still,undo_tap,redo_tap,double_turn)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:finish the surfaces",
+      "kind": "ui",
+      "entry": "src/ui/finish_bar.gd",
+      "reach": "godot --path .  (Edit, Finish the surfaces\u2026: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a finger's size on a phone; tools/probe.sh finishpass_probe)",
+      "area": "building",
       "tests": []
     },
     {
