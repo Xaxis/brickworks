@@ -5323,14 +5323,40 @@ var _opened_moves: int = 0
 ## less what the open's own follow-ups moved; the revision of every change
 ## made past the history (BrickWorld.outside: whatever marks the model
 ## changed, a Together peer's, a session's, a floor's, a restore); and the
-## history's newest step, by identity, and depth. Any change at all moves
-## one of them, so a save at the same moment writes what was kept.
+## history's newest step, by identity, and depth; and what the file says
+## past its parts and steps, by value ([method _said_now]). Any change at
+## all moves one of them, so a save at the same moment writes what was kept.
 func _moment() -> Array:
 	if world == null or builder == null:
 		return []
 	var depth: int = builder.history_depth()
 	return [world.generation(), world.revision - _opened_moves, world.outside, depth,
-		builder.last_step() if depth > 0 else null]
+		builder.last_step() if depth > 0 else null, _said_now()]
+
+
+## The model's lines past its parts and steps, as a save writes them from:
+## each value an edit that is no step of the history changes (a view turned
+## or deleted, a light, the program, the cut, the hidden colours, the floor,
+## a pin, a motion or lock, the set, the share, the picture to build over,
+## the bin, the booklet's looks), copied, so a later save compares it by
+## value. mlattack: a view turned, the cut, the hidden colours or the link
+## cleared, each saved as it was opened while the moment was the history's.
+func _said_now() -> Array:
+	var pin_fields: Array = []
+	for pin: PinnedComments.Pin in pins.list:
+		pin_fields.append(pin.fields())
+	var motion_lines := PackedStringArray()
+	var lock_words := PackedStringArray()
+	if world.motions != null:
+		motion_lines = world.motions.lines()
+		for lock: Motions.Lock in world.motions.locks:
+			lock_words.append(lock.ref_words())
+	return [world.saved_views.duplicate(true), world.scene_lights.duplicate(true),
+		world.program, world.cut_kept.duplicate(true), hidden_scheme.duplicate(true),
+		model_floor.to_meta() if model_floor != null else "", _floor_unsaid, pin_fields,
+		motion_lines, lock_words, from_set, share_id, remixed_from, remixed_from_version,
+		credit.duplicate(true), made_with, reference.duplicate(true), bin_sets.duplicate(),
+		world.step_looks.duplicate(true)]
 
 
 ## Whether a save of the model called [param name] to [param path] writes
@@ -5344,7 +5370,8 @@ func _kept_now(path: String, name: String) -> bool:
 	# The moment before the text is read: an edited save asks only this.
 	var now: Array = _moment()
 	if now.size() != _kept_at.size() or now[0] != _kept_at[0] or now[1] != _kept_at[1] \
-			or now[2] != _kept_at[2] or now[3] != _kept_at[3] or not is_same(now[4], _kept_at[4]):
+			or now[2] != _kept_at[2] or now[3] != _kept_at[3] or not is_same(now[4], _kept_at[4]) \
+			or now[5] != _kept_at[5]:
 		return false
 	return NewerBuild.may_write(path) and _has_parts(_kept_text)
 
