@@ -1670,8 +1670,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Lay puts the ticked ones down as one undo step, tried part by part and
   laid part by part (`FinishBar._swap_paced`: a place's parts taken off in
   one `Builder.swap_bricks`, then each part it lays in one of its own), the
-  frame given back whenever the slice is spent and the status bar counting
-  the parts (M5). Each kind's ghost goes up a piece at a time, a piece at
+  frame after each slice of parts left to the world's own work on the change
+  and the status bar counting the parts (M5). The scripts that read and draw
+  the ghost are compiled on a worker first (`Later.script_in_background`). Each kind's ghost goes up a piece at a time, a piece at
   most 12 parts and 6,000 corners. Frames are timed less the wait for a CPU
   of the main thread and of a fiber's (`Fiber.count_waits`, which a
   `ProbeTime.Frames` sets): the main thread sleeps through a fiber's turn. Every part a swap lays takes the sub-model

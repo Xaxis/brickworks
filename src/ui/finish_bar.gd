@@ -161,6 +161,12 @@ func refresh() -> void:
 	_seen_name = _model_name()
 	var job: Working.Job = Working.begin(tr("Reading the model's studs, steps and edges…"))
 	await job.shown()
+	# What reads and what draws the ghost compiled on a worker the first
+	# time, the frames going on: compiled where first used, the ghost's
+	# script held Orthanc's first ghost frame 122-209 ms (fpfix).
+	phase = "scripts"
+	await Later.script_in_background(&"Assistant", job)
+	await Later.script_in_background(&"Strengthen", job)
 	var reader: Assistant = _make_reader()
 	var reading := SurfacePass.new(reader)
 	phase = "warm"
@@ -575,8 +581,8 @@ func _holds(one: SurfacePass.Finding, skip: Dictionary, pace: FramePace,
 
 
 ## [param one]'s swap, a part at a time: the parts it takes off in one go,
-## then each it lays, the frame given back whenever [param pace]'s slice is
-## spent. Made in one call, Orthanc's biggest swap held a frame 143 ms
+## then each it lays, whenever [param pace]'s slice is spent a frame left
+## to the world and the next slice begun after it. Made in one call, Orthanc's biggest swap held a frame 143 ms
 ## (fpfix). Its undo steps as Builder.swap_bricks gives them, the new parts
 ## off first, then the old ones back. Begun, it is finished: a change of
 ## someone else's meanwhile is said in [param going] (changed), and no
@@ -589,10 +595,15 @@ func _swap_paced(one: SurfacePass.Finding, pace: FramePace, going: Dictionary) -
 	var put: Array = []
 	for item: Dictionary in adds:
 		if pace.due():
-			phase = "lay: put down"
+			# What the world works out after a change it does in the frame
+			# after: that frame is left to it, never shared with a slice of
+			# parts (each was both, 113-222 ms on Orthanc, fpfix).
+			phase = "lay: the world"
+			await get_tree().process_frame
 			await pace.next()
 			if _world.revision != int(going["seen"]):
 				going["changed"] = true
+		phase = "lay: put down"
 		put.append_array(_builder.swap_bricks(PackedInt64Array(), [item]))
 		going["seen"] = _world.revision
 	return put + taken
