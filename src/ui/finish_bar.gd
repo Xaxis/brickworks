@@ -644,7 +644,37 @@ func _adds_of(one: SurfacePass.Finding) -> Array:
 		out.append(item)
 		middles.append(middle)
 	_none_emptied(out, gone, middles, _kept_by_group(gone))
+	_on_their_lines(out, gone, middles)
 	return out
+
+
+## Each part taken off that was read from a line of someone else's file
+## hands that line to the nearest part laid in its sub-model and step, as a
+## part swapped in by Replace part keeps it (Builder._swap): saved, the part
+## laid is written on that line, in the step and the run of its copy the
+## file had it in. Laid as new parts, the castle's back curtain wall was
+## written in three runs fewer, its copy's parts put at the ends of steps
+## (fpfix). One line to a part.
+static func _on_their_lines(out: Array, gone: Array, middles: Array) -> void:
+	for pair: Array in gone:
+		var brick: BrickWorld.Brick = pair[0]
+		if brick.origin.is_empty():
+			continue
+		var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
+		var box: AABB = pair[1]
+		var pick: int = -1
+		var pick_d: float = INF
+		for n: int in out.size():
+			var item: Dictionary = out[n]
+			if item.has("origin") or "%s#%d" % [item["path"], int(item["step"])] != key:
+				continue
+			var middle: Vector3 = middles[n]
+			var d: float = middle.distance_to(_nearest_in(box, middle))
+			if d < pick_d:
+				pick = n
+				pick_d = d
+		if pick >= 0:
+			out[pick]["origin"] = brick.origin
 
 
 ## How many parts each sub-model and step keeps that [param gone] does not
