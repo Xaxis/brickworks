@@ -483,6 +483,19 @@ func _case_subs(path: String) -> void:
 				removed_at.get(key, 0)])
 	_check("subs %s: no sub-model or step lost a part not taken off (%s)" % [name,
 		"; ".join(short.slice(0, 4)) if not short.is_empty() else "none"], short.is_empty())
+	# A step left with none of its parts: each place that took from it, how
+	# many parts it laid and from how many steps it took.
+	var emptied := PackedStringArray()
+	for key: String in paths0:
+		if int(paths1.get(key, 0)) > 0:
+			continue
+		var by := PackedStringArray()
+		for swap: Array in swaps:
+			if (swap[1] as Dictionary).has(key):
+				by.append("%d laid for %d steps" % [(swap[0] as Array).size(), (swap[1] as Dictionary).size()])
+		emptied.append("%s (%s)" % [key, ", ".join(by)])
+	if not emptied.is_empty():
+		print("  KNOWN subs %s: steps all of whose parts were taken off: %s" % [name, "; ".join(emptied)])
 	# In the file: every copy built in its parent's steps keeps its parts,
 	# but those taken off it (an IN line's copy is its path).
 	var taken_by_path: Dictionary = {}
