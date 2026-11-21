@@ -210,7 +210,13 @@ def _ask(where: Path, first: Path, second: Path, real_is: str, model: str) -> di
 
 def judge_tag(tag: str, out: Path, model: str, jobs: int, only: list[str] | None) -> int:
     out.mkdir(parents=True, exist_ok=True)
-    blind = ROOT / "bench" / "results" / "blind" / _opaque(f"tag:{tag}")
+    # The judge's copies go beside its verdicts, never into the checkout it
+    # runs in: a checkout's bench/ is not left out of the web export, and a
+    # unit's preview packed photoreal1's first copies into the app. The
+    # .gdignore keeps Godot from importing them when DIR is in a checkout.
+    (out / "blind").mkdir(parents=True, exist_ok=True)
+    (out / "blind" / ".gdignore").touch()
+    blind = out / "blind" / _opaque(f"tag:{tag}")
     blind.mkdir(parents=True, exist_ok=True)
     asks = []
     for shot in shots(only):

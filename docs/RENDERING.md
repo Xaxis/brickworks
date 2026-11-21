@@ -686,7 +686,7 @@ bench first, measured, then changed the tracer and measured again.
   Product look, matching its photograph: same model, angle, lens, framing,
   backdrop, depth of field and size, at 256 samples, path traced.
 - **The judge** (`tools/bench/photoreal.py judge`) is blind. It is Claude
-  (Opus, on the subscription) shown the photograph and the render under
+  (claude-opus-5-5, on the subscription) shown the photograph and the render under
   opaque names, both cropped to the same shape and size and saved as JPEG
   at 92. Each pair is shown in both orders. It is asked which picture is
   the photograph of real bricks, how sure it is, and what gives the render

@@ -3554,7 +3554,9 @@ picture the assistant is shown.
   --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
   subscription, `judge.call`) the photograph and the render under opaque
   names, both as JPEG at 92, in both orders, and asks which is the
-  photograph of real bricks and what gives the render away; it writes
+  photograph of real bricks and what gives the render away; its copies go
+  in `DIR/blind/` (a `.gdignore` in it: a checkout's `bench/` is not left
+  out of the web export), and it writes
   `judge_TAG.json` (each verdict, its confidence, reason and tells; the
   pick rate and mean confidence for close-ups, sets and all). A render as
   real as the photograph is picked half the time; the bar is a lower pick
