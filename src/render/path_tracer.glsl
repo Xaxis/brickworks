@@ -358,8 +358,26 @@ float gloss_noise(vec3 p) {
 			mix(gloss_hash(i + vec3(0, 1, 1)), gloss_hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
-// textured: the hit is on a straight slope's face (closest_hit's grain).
-Surface surface_of(Instance thing, vec3 at, vec3 local, float textured) {
+// A real part's wear, for the product look's moulded plastic: whether a
+// point of the part (its own space) is on a scuff across the coat, given
+// the part's own number from 0 to 1. Fine straight scratches a few LDU
+// long, each part's running its own way, in patches, as handling leaves
+// them. (Flecks of dust were tried and taken out: a judge shown them beside
+// a photograph called them the path tracer's fireflies.)
+bool worn(vec3 q, float own) {
+	float angle = own * 6.2832;
+	vec3 along = normalize(vec3(cos(angle), 0.4 * sin(angle * 1.7), sin(angle)));
+	vec3 across = normalize(cross(along, vec3(0.3, 1.0, 0.2)));
+	vec3 third = cross(along, across);
+	float lines = gloss_noise(vec3(dot(q, along) * 0.15, dot(q, across) * 2.2,
+		dot(q, third) * 2.2) + vec3(own * 13.0));
+	float patches = gloss_noise(q / 9.0 + vec3(own * 29.0, 5.0, 2.0));
+	return lines > 0.72 && patches > 0.1;
+}
+
+// textured: the hit is on a straight slope's face (closest_hit's grain);
+// which: the part's own number, so no two parts are worn alike.
+Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint which) {
 	Surface s;
 	vec3 body = thing.colour.rgb;
 	int finish = int(floor(thing.custom.w + 0.001));
@@ -395,9 +413,17 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured) {
 		// Polished in the mould: the studs are mirrored sharply in a top. A
 		// part that has been handled is not polished evenly: its gloss
 		// varies slowly across a face, as a photograph's reflections do.
-		float handled = gloss_noise(local / 16.0 + vec3(thing.colour.r * 7.0, 0.0, 0.0));
-		s.coat_roughness = mix(0.03, 0.085, smoothstep(-0.6, 0.8, handled));
+		// Each part is its own: moulded in its own batch, a shade lighter
+		// or darker than the next of its colour, and worn its own way.
+		float own = float(pcg(which * 747796405u + 2891336453u) & 0xffffu) / 65535.0;
+		body *= 1.0 + 0.07 * (own - 0.5);
+		float handled = gloss_noise(local / 16.0 + vec3(own * 97.0, own * 31.0, 0.0));
+		s.coat_roughness = mix(0.03, 0.085, smoothstep(-0.6, 0.8, handled)) + 0.02 * own;
 		s.roughness += 0.05 * handled;
+		if (worn(local, own)) {
+			s.coat_roughness = 0.3;
+			s.coat *= 0.6;
+		}
 		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: no mirror, a satin sheen.
 			s.roughness = 0.55;
@@ -814,7 +840,7 @@ void main() {
 			if (straight && thing.info.y != KIND_SWEEP) {
 				covered = 1.0;
 			}
-			Surface s = surface_of(thing, at, hit.local, hit.unused);
+			Surface s = surface_of(thing, at, hit.local, hit.unused, hit.instance);
 			// The sweep is brought to its colour for the eye alone, as the
 			// window brings it (StudioRender meters its level), and by
 			// scaling what it shows, so its shadows keep their depth. As

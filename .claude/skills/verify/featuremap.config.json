@@ -4432,7 +4432,7 @@
       "kind": "cli",
       "label": "photoreal probe",
       "entry": "src/dev/photoreal_probe.gd",
-      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/; --car times the car at Best, Product, 1280x720, three runs, median at most 8.4 s)",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
       "area": "view"
     },
     {

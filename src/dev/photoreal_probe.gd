@@ -18,9 +18,11 @@
 ##   -- --samples=N     samples a pixel (default 256, Best's own)
 ##   -- --yaws=0,90     each shot from these yaws instead of its own, named
 ##                      <name>_y<yaw>, to find which way a model faces
-##   -- --car           and Best on the car (the render probe's model), Product
+##   -- --car           only the car (the render probe's model) at Best, Product
 ##                      look, 1280x720, 256 samples, three times: the median at
-##                      most CAR_MOST s (twice the 3.3-4.2 s the window look took)
+##                      most CAR_MOST s (twice the 3.3-4.2 s the window look
+##                      took). Run bare, the probe draws every shot and then
+##                      times the car.
 ##
 ## Checks: every shot is drawn, path traced where the card can, at its size;
 ## and prints each one's time, for the bar on Best's speed.
@@ -90,7 +92,8 @@ func _run() -> void:
 		_render.rig_lights.append(_main.get_node(light_name) as DirectionalLight3D)
 	root.add_child(_render)
 	var bar: ModelBar = _main.get("_bar")
-	for shot: Dictionary in said["shots"]:
+	var car_only: bool = OS.get_cmdline_user_args().has("--car")
+	for shot: Dictionary in ([] if car_only else said["shots"]):
 		var name: String = str(shot["name"])
 		if not only.is_empty() and not name in only:
 			continue
@@ -110,7 +113,7 @@ func _run() -> void:
 				asked["yaw"] = float(turn)
 				called = "%s_y%s" % [name, turn]
 			await _draw(asked, called, samples, out)
-	if OS.get_cmdline_user_args().has("--car"):
+	if car_only or only.is_empty():
 		await _car(bar, out)
 	print("")
 	print("%d failed" % _failures if _failures else "every shot drawn, in %s" % out)

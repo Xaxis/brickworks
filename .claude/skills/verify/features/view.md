@@ -3541,10 +3541,10 @@ picture the assistant is shown.
   the photograph's backdrop, focal length, angle, size, depth of field and
   roll, 256 samples, seed 1; each must be path traced (a card without
   Vulkan ray tracing fails it), at its size, and drawn. Pictures in
-  `shots/photoreal/<tag>/`. `-- --tag=NAME --only=a,b --samples=N
-  --yaws=0,90`; `-- --car` instead times the car at Best, Product, 1280 x
-  720, three runs (own time), the median at most 8.4 s (twice the 4.2 s
-  of pathtrace's last measure). An edited `.glsl` is drawn only after
+  `shots/photoreal/<tag>/`. Run bare, it then times the car at Best,
+  Product, 1280 x 720, three runs (own time), the median at most 8.4 s
+  (twice the 4.2 s of pathtrace's last measure); `-- --car` times only the
+  car. `-- --tag=NAME --only=a,b --samples=N --yaws=0,90`. An edited `.glsl` is drawn only after
   `godot --headless --path . --import`.
 - `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
   pictures are judged on. `pairs TAG` writes each render beside its
