@@ -785,6 +785,14 @@ beside them.
    a cut-out on white with a soft shadow. Ours shows the sweep's floor
    meeting its wall (14 tells). It needs a shadow catcher: the backdrop
    drawn at exactly its colour wherever the model casts no shadow.
+   - Best cannot do this today. It never path traces a picture with
+     nothing behind the model (`RenderSettings.traced_here`), so a
+     transparent cut-out falls back to raster frames averaged.
+   - The tracer already carries the coverage it would need (the resolve's
+     alpha).
+   - A try at judging the sets cut out onto white stopped there:
+     comparing a raster cut-out with a traced render would mix two
+     changes.
 2. **Noise in out-of-focus areas** (17 tells). At f/11 to f/22, 256
    samples leave grain in the blur. Options: more samples for the lens
    alone, or a denoiser that knows depth, normal and albedo (the
