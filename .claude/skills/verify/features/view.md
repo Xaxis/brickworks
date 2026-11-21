@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe -->
 
 ## Sub-features
 
@@ -3532,6 +3532,34 @@ picture the assistant is shown.
   95th percentile at most 60), each its own view, the green brick only in
   the second and third. `-- --only=car,queue,light` runs parts. Pictures in
   `shots/pathtrace/`, the window's as `queue_window_<W>x<H>.png`.
+- `photoreal probe` (`src/dev/photoreal_probe.gd`, `tools/probe.sh
+  photoreal`, windowed on the GPU; photoreal1, docs/RENDERING.md 5e): each
+  shot in `tools/photoreal/shots.json` (six real bricks: a black 2x4, a red
+  2x4 slope, a grey 1x3, a clear round 1x1, three 2x2s from above, a green
+  plate's corner in macro; four real sets from 1985 to 1992, outside the
+  realset holdout's years) opened alone and drawn at Best, Product, with
+  the photograph's backdrop, focal length, angle, size, depth of field and
+  roll, 256 samples, seed 1; each must be path traced (a card without
+  Vulkan ray tracing fails it), at its size, and drawn. Pictures in
+  `shots/photoreal/<tag>/`. `-- --tag=NAME --only=a,b --samples=N
+  --yaws=0,90`; `-- --car` instead times the car at Best, Product, 1280 x
+  720, three runs (own time), the median at most 8.4 s (twice the 4.2 s
+  of pathtrace's last measure). An edited `.glsl` is drawn only after
+  `godot --headless --path . --import`.
+- `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
+  pictures are judged on. `pairs TAG` writes each render beside its
+  photograph (cropped to the render's aspect, both the same size);
+  `compare BEFORE AFTER --out DIR` writes photograph | before | after rows;
+  `env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge TAG
+  --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
+  subscription, `judge.call`) the photograph and the render under opaque
+  names, both as JPEG at 92, in both orders, and asks which is the
+  photograph of real bricks and what gives the render away; it writes
+  `judge_TAG.json` (each verdict, its confidence, reason and tells; the
+  pick rate and mean confidence for close-ups, sets and all). A render as
+  real as the photograph is picked half the time; the bar is a lower pick
+  rate after than before, judged the same day against a before drawn from
+  a locked tree.
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
   class `PosePanel`, in the column beside the model (`Main._tool_column`) so
   what moves is seen and no part to be dragged is under it; the
