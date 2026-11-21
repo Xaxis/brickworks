@@ -359,7 +359,11 @@ licences allow. Source, author and licence per file are also in
 
 The bench also judges renders of four sets beside their pictures in
 `vendor/rebrickable/set_pictures/` (6512-1, 6532-1, 6657-1, 6660-1:
-Rebrickable, credited as below). The side-by-side pictures it writes into
+Rebrickable, credited as below). The sets are drawn from their LDraw
+Official Model Repository files, each CCAL 2.0 (CC BY 2.0): 6512 Landscape
+Loader and 6660 Hook & Haul Wrecker modelled by Robert Paciorek, 6532
+Diesel Dumper by Tomas Kralicek, and 6657 Fire Patrol Copter by Victor Di
+Rienzo. The side-by-side pictures it writes into
 `bench/results/` carry the same credits in that folder's README.
 
 ## The booklet's type (Liberation Sans)
