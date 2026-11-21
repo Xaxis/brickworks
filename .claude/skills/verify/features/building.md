@@ -1667,9 +1667,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   never run whole on the main thread (fpfix H1); each reading has an
   assistant of its own (M1); the ghost comes down the frame the world
   changes and the model is read again (M2). Untick a kind to leave it out;
-  Lay puts the ticked ones down as one undo step (`Builder.swap_bricks` per
-  place), tried part by part with the frame given back between, the status
-  bar counting the parts (M5). Every part a swap lays takes the sub-model
+  Lay puts the ticked ones down as one undo step, tried part by part and
+  laid part by part (`FinishBar._swap_paced`: a place's parts taken off in
+  one `Builder.swap_bricks`, then each part it lays in one of its own), the
+  frame given back whenever the slice is spent and the status bar counting
+  the parts (M5). Each kind's ghost goes up a piece at a time, a piece at
+  most 12 parts and 6,000 corners. Frames are timed less the wait for a CPU
+  of the main thread and of a fiber's (`Fiber.count_waits`, which a
+  `ProbeTime.Frames` sets): the main thread sleeps through a fiber's turn. Every part a swap lays takes the sub-model
   and step of the part it stands in the place of (the one whose box holds it,
   else the nearest), so no sub-model loses a part to the main model (M3); a
   tile on open studs goes where a part put down by hand goes. Undo puts the
@@ -1679,7 +1684,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   is one of the tools' panels (`Main._seat_tool_panel`): on a phone held
   upright a sheet under the model, the model and its ghost above it, Lay
   and each tick 44 points (M4). Without threads (the iPhone engine, off) the
-  reading runs whole, in one frame. `tools/probe.sh finishpass_probe` (10
+  reading still runs whole, in one frame: `SurfacePass.find` answers the AI's
+  path at once, and a coroutine with an answer must be awaited, so pacing it
+  there needs the reading made a resumable stage list (fpfix, not done). `tools/probe.sh finishpass_probe` (10
   models; `-- --phone` by hand) and `fpfix_probe` (the review's attacks, a
   case each; `-- --phone` for the sheet).
 - `find and replace everywhere` (`src/ui/find_replace_bar.gd`, `src/assembly/find_replace.gd`;
