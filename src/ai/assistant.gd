@@ -3185,7 +3185,16 @@ func _run_tool(block: Dictionary) -> Variant:
 	_done_said = ""
 	_judged_said = {}
 	var before: int = world.brick_count() if world != null else 0
+	# One that may change the model, as it begins and ends: a save works the
+	# model out after it, never writes its file as it was opened
+	# (BrickWorld.outside, ModelStore._moment).
+	var changes: bool = world != null and not CommandSocket.leaves_the_model(
+		str(block.get("name", "")))
+	if changes:
+		world.outside += 1
 	var answer: Variant = await _tool_answer(block)
+	if changes:
+		world.outside += 1
 	if str(block.get("name", "")) == "find_techniques":
 		var named: String = _feature_named(str((block.get("input", {}) as Dictionary).get(
 			"query", "")))

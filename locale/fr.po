@@ -15935,3 +15935,77 @@ msgstr "Lecture de la place des copies du modèle…"
 
 msgid "Listing the model's parts…"
 msgstr "Liste des pièces du modèle…"
+
+# camerakeys: the camera keyed in a motion (pose_panel's The camera, Key the camera, Turntable)
+
+msgid "The camera"
+msgstr "La caméra"
+
+msgid "Key the camera"
+msgstr "Clé de caméra"
+
+msgid "A key at the time above where the view looks from: what it looks at, from where, and its lens"
+msgstr "Une clé au temps ci-dessus, là d'où regarde la vue : ce qu'elle regarde, d'où, et son objectif"
+
+msgid "Two keys: the camera once round the model over the motion, at the height and distance it is now"
+msgstr "Deux clés : la caméra fait une fois le tour du modèle pendant le mouvement, à la hauteur et la distance actuelles"
+
+msgid "The camera's keys: a key pressed is chosen and the view goes there; Ctrl+click picks several; dragged, they move in time"
+msgstr "Les clés de la caméra : une clé pressée est choisie et la vue y va ; Ctrl+clic en choisit plusieurs ; glissées, elles se déplacent dans le temps"
+
+msgid "The view stays the person's. Key the camera to fly round the model."
+msgstr "La vue reste la vôtre. Posez des clés de caméra pour survoler le modèle."
+
+msgid "One key: the camera stands there all through the motion."
+msgstr "Une clé : la caméra reste là pendant tout le mouvement."
+
+msgid "%d keys over %s s, %s° round the model."
+msgstr "%d clés sur %s s, %s° autour du modèle."
+
+msgid "The view follows the motion's camera keys: Stop gives it back."
+msgstr "La vue suit les clés de caméra du mouvement : Arrêter vous la rend."
+
+msgid "%d keys picked: Delete takes them out together, a drag of one moves them all."
+msgstr "%d clés choisies : Suppr les retire ensemble, en glisser une les déplace toutes."
+
+msgid "%d keys picked:"
+msgstr "%d clés choisies :"
+
+msgid "Key at %s s, the camera:"
+msgstr "Clé à %s s, la caméra :"
+
+msgid "Those are all the motion's keys: Remove takes the motion out."
+msgstr "Ce sont toutes les clés du mouvement : « Retirer » enlève le mouvement."
+
+msgid "Key taken out. Undo puts it back."
+msgstr "Clé retirée. Annuler la remet."
+
+msgid "%d keys taken out together. Undo puts them all back."
+msgstr "%d clés retirées ensemble. Annuler les remet toutes."
+
+msgid "%d keys moved %s s together. Undo puts them back."
+msgstr "%d clés déplacées ensemble de %s s. Annuler les remet."
+
+msgid "The camera is not keyed: %s."
+msgstr "La caméra n'a pas de clé : %s."
+
+msgid "The camera keyed at %s s: where it stands, what it looks at and its lens. Play goes through its keys."
+msgstr "Clé de caméra à %s s : où elle se tient, ce qu'elle regarde et son objectif. Lire passe par ses clés."
+
+msgid "There is no model to go round."
+msgstr "Il n'y a pas de modèle autour duquel tourner."
+
+msgid "No turntable: %s."
+msgstr "Pas de plateau tournant : %s."
+
+msgid "A turntable: the camera goes once round the model in %s s, at the height and distance it stands at now. Each key can be picked, moved or changed."
+msgstr "Un plateau tournant : la caméra fait une fois le tour du modèle en %s s, à la hauteur et la distance actuelles. Chaque clé peut être choisie, déplacée ou modifiée."
+
+msgid "A key not picked is at %s s, where the key at %s s would go: the keys were left where they were."
+msgstr "Une clé non choisie est à %s s, là où irait la clé à %s s : les clés restent où elles étaient."
+
+msgid "A key is at %s s already: this one was left where it was."
+msgstr "Une clé est déjà à %s s : celle-ci reste où elle était."
+
+msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
+msgstr "La clé à %s s posée à nouveau, à moins d’une image du temps : où se tient la caméra, ce qu’elle regarde et son objectif."

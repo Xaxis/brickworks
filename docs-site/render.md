@@ -89,7 +89,7 @@ ui:lights in the model
 Further down are three more, each with its own button, at the picture's quality, size, light and lens:
 
 - **Turntable**: the model turning round once, in 24, 36, 48 or 72 frames. **Render turntable**.
-- **Animation**: one of the model's [motions](/docs/joints-and-mechanisms#motions), or all of them in order, with the camera as you see it or framed on what moves. **Render animation**.
+- **Animation**: one of the model's [motions](/docs/joints-and-mechanisms#motions), or all of them in order, with the camera as you see it or framed on what moves; a motion with [camera keys](/docs/joints-and-mechanisms#motions) is filmed through them. **Render animation**.
 - **Building**: the model going up step by step as the [timeline](/docs/instructions#timeline) shows it, the camera turning slowly round to end on your view; 10, 20, 30 or 60 seconds. **Render building**.
 
 <!-- covers

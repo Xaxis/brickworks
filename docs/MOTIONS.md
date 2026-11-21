@@ -729,3 +729,100 @@ whole model along the ground, its wheels turning as they roll.
   Before, a rim that landed between the keep and its undo stayed a drive
   away from its tyre, and redone after landing it was left where the model
   had been, three of the four wheel joints lost both ways (drvrecheck F1).
+
+## What unit camerakeys built (camerakeys, 2026-11-20)
+
+The camera is keyed in a motion as a joint is (docs/APP_UX10.md gap 12:
+StudWorx keys any object; Brickworks keyed only joints and paths).
+
+- **The line.** One a key, after the motion's other lines:
+
+      0 !BRICKWORKS MOTION_CAMERA "Fly round" 0 AT 0 -40 0 TURN -35 TILT 26 AWAY 640 FOV 30 LINEAR
+      0 !BRICKWORKS MOTION_CAMERA "Fly round" 8 AT 0 -40 0 TURN 325 TILT 26 AWAY 640 FOV 30 LINEAR
+
+  The time; `AT` the point it looks at, LDraw's coordinates (LDU), so an
+  unedited model writes the same bytes whatever the floor lifts it by;
+  `TURN` degrees round the upright from the model's front (LDraw's -z side,
+  90 its +x side), never wrapped, so 360 more is a full turn; `TILT` degrees
+  above level, -89 to 89; `AWAY` LDU from what it looks at (8 to 40,000, the
+  window's own limits); `FOV` the lens top to bottom, 5 to 120 degrees; and
+  how it gets there, `EASE`, `LINEAR` or `HOLD`, as a joint's key. It is the
+  window's own orbit (CadCamera.aim, SavedViews), so a key is what the view
+  was, and a view is a key put back.
+- **Between keys** each number goes as a joint's place does
+  (`Track.place_at`: the monotone cubic Pose's keys use, the later key's how
+  deciding): never past a key, so the tilt never passes 89° and the camera
+  never flips through a pole, its up always the world's. A turntable is two
+  `LINEAR` keys 360° apart.
+- **The model is not moved by it.** A motion with only camera keys plays
+  and renders the model as it stands and keeps no step; with joints or a
+  path, they move it as before and the camera goes its own way.
+- **The window (Motions › a motion › The camera).** Key the camera keeps the
+  view at the time above, a key there already put in its place (its way
+  there kept), its turn taken the short way from its neighbour. Turntable
+  makes two keys round the model's middle at the height and distance the
+  view stands, over the motion's length (8 s for one with none). The
+  camera's keys are a strip like a joint's, under the joints' strips and
+  above the chosen key's row (so a key pressed leaves its strip where it
+  was; a phone's editor keeps Play and the row first): a key pressed is
+  chosen and the view goes where it looks from; its way there and Remove
+  key as a joint's.
+- **Keys picked together.** Ctrl+click (Cmd on a Mac) picks keys of any
+  strip, the camera's among them; Delete or Remove key takes them all out
+  in one step; a drag of one picked key moves them all by as much, refused
+  with words when one would land on a key not picked. Delete is
+  the keys' only after a key was pressed: typed in the name field, or after
+  a press in the view, it is not.
+- **Playing.** Play, Play all and a sequence put the window's view where the
+  keys have it each frame (`MotionPlayer.Played.cameras`, worked out once
+  at the start, a few numbers a frame); a sequence holds the last camera
+  through a motion that keys none. Meanwhile a turn, slide or zoom by any
+  hand is put back and the status says "The view follows the motion's
+  camera keys: Stop gives it back." (`CadCamera.hold_at`, `let_go`); at the
+  end, or at Stop, the view and its lens are given back as they were.
+- **Filming.** render_motion, the panel's Render animation and File, Render's
+  Animation draw each frame from where the keys put the camera
+  (`MotionRender.cameras`, `StudioRender.animate`'s camera_at,
+  `keyed_shot`), through its lens, the lights where Render puts them.
+- **Over MCP.** `render_motion camera={"turntable": true}` keys the camera
+  (the motion made when the model has none of that name) and films it in
+  one call, one undo step, at the height and distance the window's view
+  stands unless `tilt=` and `away=` say others; `camera={"keys": [{"t": 0, "turn": 0}, ...]}` keys
+  any; `define_motion camera=` keeps keys alone or with tracks, and given
+  alone for a motion the model has, keeps its joints. list_motions says
+  each key.
+- **Saving.** An unedited model writes its camera lines byte for byte, a
+  key's own spacing kept (MetaIndex's rule for every line of the app's); a
+  key spelled otherwise ("ease", "130.0") is written as the app writes it,
+  as any motion line is until kbkeep's unedited-save rule lands.
+- **Time.** Orthanc's 8 s turntable: its 97 frames' cameras are worked out
+  at Play in a few ms; each frame's camera is put and held in well under a
+  millisecond (camerakeys_probe section 8 holds both).
+- **Checked by** `src/dev/camerakeys_probe.gd` (tools/suite/windowed.txt);
+  keep_text_probe's motion carries two camera lines.
+
+### What camfix changed (camreview's findings, 2026-11-20)
+
+- **A key keyed again keeps its turn.** Key the camera where a key is takes
+  that key's own turn as the short way's start, not the key before it: a
+  turntable's 8 s key keyed again went from 325 to -35, 0° round.
+- **Keys stand a frame apart** (`Motions.LEAST_KEY_GAP`, 1/60 s). Play goes
+  through every key as it is (`Motions.eased_through`: PoseAnimation took
+  keys under 10 ms apart as one, so a key at 1.000 s played 179.7° where it
+  said 90°, a joint's as well as the camera's). A session's camera keys
+  under a frame apart are refused in words; Key the camera within a frame
+  of a key keys that one, and says so.
+- **Moving keys.** Picked keys move by as much as the drag, cut short at 0 s
+  and at the longest, each checked where it lands: onto (or within a frame
+  of) a key not picked, nothing moves and the bar says which. One joint key
+  dragged onto another is refused the same way (it took that key's place).
+- **render_motion and define_motion say they may take work away**
+  (destructiveHint): camera= puts its keys in place of the motion's, and
+  define_motion replaces a motion of the name or removes one. render_motion's
+  camera= is the session's one step (its change measured, not skipped).
+- **A world replaced stops the play.** Another model opened, New, a Together
+  join or a restore while a camera motion loops: it stops and the view is
+  the person's hand's again, with their lens, where the opening put it.
+- **Checked by** camerakeys_probe section 9 (`-- OUT --review` alone): 13
+  of its checks fail on f864b1f16 and pass here
+  (bench/results/camfix-2026-11-20/).

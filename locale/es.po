@@ -15935,3 +15935,77 @@ msgstr "Leyendo cómo están colocadas las copias del modelo…"
 
 msgid "Listing the model's parts…"
 msgstr "Listando las piezas del modelo…"
+
+# camerakeys: the camera keyed in a motion (pose_panel's The camera, Key the camera, Turntable)
+
+msgid "The camera"
+msgstr "La cámara"
+
+msgid "Key the camera"
+msgstr "Clave de cámara"
+
+msgid "A key at the time above where the view looks from: what it looks at, from where, and its lens"
+msgstr "Una clave en el tiempo de arriba, desde donde mira la vista: lo que mira, desde dónde y su objetivo"
+
+msgid "Two keys: the camera once round the model over the motion, at the height and distance it is now"
+msgstr "Dos claves: la cámara da una vuelta al modelo durante el movimiento, a la altura y la distancia de ahora"
+
+msgid "The camera's keys: a key pressed is chosen and the view goes there; Ctrl+click picks several; dragged, they move in time"
+msgstr "Las claves de la cámara: una clave pulsada queda elegida y la vista va allí; Ctrl+clic elige varias; arrastradas, se mueven en el tiempo"
+
+msgid "The view stays the person's. Key the camera to fly round the model."
+msgstr "La vista sigue siendo suya. Ponga claves de cámara para volar alrededor del modelo."
+
+msgid "One key: the camera stands there all through the motion."
+msgstr "Una clave: la cámara se queda ahí durante todo el movimiento."
+
+msgid "%d keys over %s s, %s° round the model."
+msgstr "%d claves en %s s, %s° alrededor del modelo."
+
+msgid "The view follows the motion's camera keys: Stop gives it back."
+msgstr "La vista sigue las claves de cámara del movimiento: Detener se la devuelve."
+
+msgid "%d keys picked: Delete takes them out together, a drag of one moves them all."
+msgstr "%d claves elegidas: Supr las quita juntas, arrastrar una las mueve todas."
+
+msgid "%d keys picked:"
+msgstr "%d claves elegidas:"
+
+msgid "Key at %s s, the camera:"
+msgstr "Clave a %s s, la cámara:"
+
+msgid "Those are all the motion's keys: Remove takes the motion out."
+msgstr "Son todas las claves del movimiento: Quitar elimina el movimiento."
+
+msgid "Key taken out. Undo puts it back."
+msgstr "Clave quitada. Deshacer la vuelve a poner."
+
+msgid "%d keys taken out together. Undo puts them all back."
+msgstr "%d claves quitadas juntas. Deshacer las vuelve a poner todas."
+
+msgid "%d keys moved %s s together. Undo puts them back."
+msgstr "%d claves movidas juntas %s s. Deshacer las vuelve a poner."
+
+msgid "The camera is not keyed: %s."
+msgstr "La cámara no tiene clave: %s."
+
+msgid "The camera keyed at %s s: where it stands, what it looks at and its lens. Play goes through its keys."
+msgstr "Clave de cámara a %s s: dónde está, lo que mira y su objetivo. Reproducir pasa por sus claves."
+
+msgid "There is no model to go round."
+msgstr "No hay ningún modelo alrededor del que girar."
+
+msgid "No turntable: %s."
+msgstr "Sin plataforma giratoria: %s."
+
+msgid "A turntable: the camera goes once round the model in %s s, at the height and distance it stands at now. Each key can be picked, moved or changed."
+msgstr "Una plataforma giratoria: la cámara da una vuelta al modelo en %s s, a la altura y la distancia de ahora. Cada clave se puede elegir, mover o cambiar."
+
+msgid "A key not picked is at %s s, where the key at %s s would go: the keys were left where they were."
+msgstr "Hay una clave no elegida en %s s, donde iría la clave de %s s: las claves se quedan donde estaban."
+
+msgid "A key is at %s s already: this one was left where it was."
+msgstr "Ya hay una clave en %s s: esta se queda donde estaba."
+
+msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
+msgstr "La clave de %s s fijada de nuevo, a menos de un fotograma del tiempo: dónde está la cámara, a qué mira y su objetivo."

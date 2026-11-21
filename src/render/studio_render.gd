@@ -62,6 +62,9 @@ extends Node
 signal progress(fraction: float, words: String)
 ## A piece of the picture is finished, at [param at] in it.
 signal piece_done(piece: Image, at: Vector2i)
+## An animation's frame [param n] about to be drawn from [param shot]
+## ([method animate]): where its camera stands and its lens, frame by frame.
+signal frame_shot(n: int, shot: Shot)
 
 const SUM := preload("res://src/render/studio_sum.gdshader")
 const RESOLVE := preload("res://src/render/studio_resolve.gdshader")
@@ -450,11 +453,14 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 ## [param framed_at] (frame -> [AABB in the model's place, float]) is what
 ## each frame is framed on and how far it has settled into the view chosen,
 ## the camera following it (_follow): a building video's what is built so
-## far.
+## far. [param camera_at] (frame -> [where the camera stands, its lens
+## top to bottom in degrees, how far off what it looks at], or null) is a
+## motion's camera keys (camerakeys): that frame drawn from exactly there,
+## the model unturned; null, as the settings frame it.
 func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: Callable,
 		turn_at: Callable, reach: AABB, each: Callable,
 		swept: PackedVector3Array = PackedVector3Array(),
-		framed_at: Callable = Callable()) -> int:
+		framed_at: Callable = Callable(), camera_at: Callable = Callable()) -> int:
 	if _busy or not possible() or world == null:
 		return 0
 	_busy = true
@@ -489,6 +495,11 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 			if following:
 				var framed: Array = framed_at.call(n)
 				_follow(whole, settings, framed[0], float(framed[1]))
+			if camera_at.is_valid():
+				var keyed: Variant = camera_at.call(n)
+				last_shot = keyed_shot(settings, keyed) if keyed is Array else whole
+				_shadow_reach(last_shot, _bounds)
+			frame_shot.emit(n, last_shot)
 			var from: float = 0.1 + 0.9 * float(n) / float(frames)
 			var image: Image = await _picture(settings, from, from + 0.9 / float(frames),
 				"frame %d of %d" % [n + 1, frames])
@@ -500,7 +511,7 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 			done += 1
 			if _cancelled:
 				break
-		if following:
+		if following or camera_at.is_valid():
 			last_shot = whole
 			_shadow_reach(whole, _bounds)
 	_pivot.rotation = Vector3.ZERO
@@ -513,6 +524,36 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 		_line.forget()
 	_finish()
 	return done
+
+
+## The shot of a camera key (camerakeys): [param keyed] is [where the
+## camera stands (the window's coordinates, as the stage has them), its lens
+## top to bottom in degrees, how far off what it looks at]. From exactly
+## there, through that lens: the clip planes round the model as [method aim]
+## puts them, and the focus on what it looks at.
+func keyed_shot(settings: RenderSettings, keyed: Array) -> Shot:
+	var at: Transform3D = keyed[0]
+	var shot := Shot.new()
+	shot.basis = at.basis.orthonormalized()
+	shot.origin = at.origin
+	shot.fov = clampf(float(keyed[1]), 1.0, 170.0)
+	var nearest: float = INF
+	var farthest: float = 0.0
+	for n: int in 8:
+		var depth: float = (_corner(_bounds, n) - shot.origin).dot(-shot.basis.z)
+		nearest = minf(nearest, depth)
+		farthest = maxf(farthest, depth)
+	shot.near = clampf(nearest * 0.5, 0.5, 200.0)
+	shot.far = maxf(farthest, 1.0) + _bounds.size.length() * 0.5 * 90.0
+	shot.focus_distance = maxf(float(keyed[2]), shot.near * 2.0)
+	if settings.f_stop > 0.0:
+		shot.aperture = settings.focal_mm / settings.f_stop * 0.5 / 0.4
+	var along: Vector3 = Vector3(shot.basis.z.x, 0.0, shot.basis.z.z)
+	if along.length() < 0.2:
+		along = Vector3(-shot.basis.y.x, 0.0, -shot.basis.y.z)
+	shot.toward = along.normalized() if along.length() > 0.0001 else Vector3.BACK
+	shot.heading = atan2(shot.toward.x, shot.toward.z)
+	return shot
 
 
 ## The camera for a frame framed on [param box] (part of the model, where

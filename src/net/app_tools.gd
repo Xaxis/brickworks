@@ -792,7 +792,9 @@ func definitions() -> Array:
 				+ "telescope\"]): a motion made of motions, each played from where the one before "
 				+ "left the model, backwards in reverse order. Or path= the whole model driven along "
 				+ "the ground (legs: straight studs, left or right degrees), its wheels turning as they "
-				+ "roll and its steering into the corners. suggested=true keeps list_motions' "
+				+ "roll and its steering into the corners. camera= keys the camera in it (alone, or with "
+				+ "the rest; given alone for a motion it has, its joints are kept): turntable=true once round "
+				+ "the model, or keys=. suggested=true keeps list_motions' "
 				+ "suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, "
 				+ "a save, an export, a shared link), one undo step, and answers by playing it "
 				+ "once and putting the model back: where each joint ended, or stopped and on what."),
@@ -835,6 +837,8 @@ func definitions() -> Array:
 						"eased": {"type": "boolean", "description": "gathers speed and slows to a stop; true when omitted"},
 					}},
 				# end unit drive
+				# camerakeys: the camera keyed in the motion.
+				"camera": CAMERA_SCHEMA,
 				"suggested": {"type": "boolean", "description": "keep list_motions' suggestion of this name"},
 				"remove": {"type": "boolean"},
 			}},
@@ -860,8 +864,12 @@ func definitions() -> Array:
 		{
 			"name": "render_motion",
 			"description": ("Render one of the model's motions as an animation, a WebP and an MP4 "
-				+ "(where ffmpeg is installed) where Render saves, framed on what it moves, without "
-				+ "changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= "
+				+ "(where ffmpeg is installed) where Render saves, framed on what it moves; through its "
+				+ "camera keys where it has them. Without camera= the model is unchanged. camera= keys the "
+				+ "camera first, in place of the keys the motion had (one undo step), a motion of that name "
+				+ "made for it when the model has none: {\"turntable\": true} films the model turned once "
+				+ "round in this one call. "
+				+ "reverse= and sequence= as play_motion; fps= 12 or 24; size= "
 				+ "480x300 or 720p; view= where the camera stands, hero (three-quarter from the front "
 				+ "left, the default) or back for what moves at the back. Needs the app in a window, "
 				+ "and is a job (job gives the result, with six of its frames in one picture, the "
@@ -874,6 +882,8 @@ func definitions() -> Array:
 				"fps": {"type": "integer", "enum": [12, 24]},
 				"size": {"type": "string", "enum": ["480x300", "720p"]},
 				"view": {"type": "string", "enum": MOTION_VIEWS},
+				# camerakeys: the camera keyed in the motion.
+				"camera": CAMERA_SCHEMA,
 			}},
 		},
 		{
@@ -3665,6 +3675,15 @@ func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> 
 			Motions.num(motion.path.seconds, 2), ", eased" if motion.path.how == "EASE" else "",
 			player.path_words(motion.path)])
 	# end unit drive
+	if motion.camera != null:
+		var keys := PackedStringArray()
+		for key: Array in motion.camera.keys:
+			var at: Vector3 = key[1]
+			keys.append("%s s turn %s° tilt %s° away %s at [%s, %s, %s] fov %s°%s" % [Motions.num(float(key[0]), 2),
+				Motions.num(float(key[2]), 1), Motions.num(float(key[3]), 1), Motions.num(float(key[4]), 0),
+				Motions.num(at.x, 0), Motions.num(at.y, 0), Motions.num(at.z, 0), Motions.num(float(key[5]), 1),
+				"" if str(key[6]) == "EASE" else " " + str(key[6]).to_lower()])
+		out.append("    The camera's keys: %s (%s)." % ["; ".join(keys), MotionPlayer.camera_words(motion.camera)])
 	if kept:
 		var last: String = str(player.results.get(motion.name.to_lower(), ""))
 		out.append("    Last played: %s." % last if not last.is_empty()
@@ -3707,8 +3726,14 @@ func _define_motion(input: Dictionary) -> String:
 				names.append(Motions.quoted(one.name))
 			return "No suggestion called %s: %s." % [Motions.quoted(name), "list_motions suggests "
 				+ ", ".join(names) if not names.is_empty() else "nothing here is suggested"]
+	elif input.has("camera") and not (input.has("tracks") or input.has("driver") or input.has("path")
+			or input.has("sequence")) and motions.named(name) != null:
+		var keyed: Variant = _camera_keyed(player, motions.named(name).name, input["camera"])
+		if keyed is String:
+			return "%s Nothing was kept." % keyed
+		motion = keyed
 	elif input.get("sequence") is Array:
-		if input.has("tracks") or input.has("driver") or input.has("path"):
+		if input.has("tracks") or input.has("driver") or input.has("path") or input.has("camera"):
 			return ("A motion is its own tracks or driver, or a sequence of the model's motions: not both. "
 				+ "Nothing was kept.")
 		var made: Variant = _sequence_from(motions, name, input["sequence"])
@@ -3749,6 +3774,10 @@ func _define_motion(input: Dictionary) -> String:
 	while builder.history_depth() > depth:
 		await verbs.press("undo")
 	var joints: int = motion.joints().size()
+	if joints == 0 and motion.camera != null:
+		return ("%s %s in the model (%s s): %s. It is saved with it; play_motion plays it in the window, "
+			+ "render_motion films it; one step: undo takes it out.%s") % ["Changed" if replaced else "Kept",
+			Motions.quoted(name), Motions.num(motion.length(), 2), MotionPlayer.camera_words(motion.camera), let_go]
 	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check%s, and the "
 		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.%s") % [
 		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
@@ -3859,10 +3888,123 @@ func _motion_from(player: MotionPlayer, name: String, input: Dictionary) -> Vari
 			return "%s" % path
 		motion.path = path
 	# end unit drive
-	if motion.tracks.is_empty() and motion.driver == null and motion.path == null:
+	if input.has("camera"):
+		var camera: Variant = _camera_from(player, input["camera"], motion.length())
+		if camera is String:
+			return "%s" % camera
+		motion.camera = camera
+	if not motion.has_own():
 		return ("Give tracks= (each a joint and its keys), driver= (a joint and how many times to "
-			+ "turn it) or path= (where the whole model drives); list_motions suggests some.")
+			+ "turn it), path= (where the whole model drives) or camera= (the camera's keys); "
+			+ "list_motions suggests some.")
 	return motion
+
+
+## The motion [param name] (the model's) with its camera keyed as
+## [param given] says (camera=), its own joints as they are; or why not.
+func _camera_keyed(player: MotionPlayer, name: String, given: Variant) -> Variant:
+	var motion: Motions.Motion = player.motions().copy().named(name)
+	var own: Motions.Motion = Motions.Motion.new()
+	own.tracks = motion.tracks
+	own.driver = motion.driver
+	own.driver_seconds = motion.driver_seconds
+	own.path = motion.path
+	own.seconds = motion.seconds
+	var camera: Variant = _camera_from(player, given, own.length())
+	if camera is String:
+		return camera
+	motion.camera = camera
+	if not motion.has_own():
+		return "Those are all of %s's keys: remove=true takes the motion out." % Motions.quoted(name)
+	return motion
+
+
+## camera= read (camerakeys): the camera's keys, null for remove=true, or
+## why not. A turntable goes once round the model's middle over
+## [param length] seconds (seconds=, else 8, when it has none); a key's turn,
+## tilt and away are where the window's view stands when not given, and the
+## point it looks at the model's middle.
+func _camera_from(player: MotionPlayer, given: Variant, length: float) -> Variant:
+	if not given is Dictionary:
+		return "camera= is {\"turntable\": true} or {\"keys\": [{\"t\": 0, \"turn\": 0}, {\"t\": 4, \"turn\": 180}]}."
+	var asked: Dictionary = given
+	if bool(asked.get("remove", false)):
+		return null
+	var eye: Camera3D = app.get("_camera")
+	var lift: Vector3 = player.store.lift() if player.store != null else Vector3.ZERO
+	var box: AABB = player._model_box()
+	var middle: Vector3 = (box.get_center() - lift) * LdrModel.FLIP
+	var stands: Array = [middle, 0.0, 26.0, maxf(box.size.length() * 1.6, 200.0), 30.0]
+	if eye != null and eye.has_method("aim"):
+		var aim: Dictionary = eye.call("aim")
+		var focus: Array = aim["focus"]
+		stands = MotionPlayer.camera_numbers([Vector3(float(focus[0]), float(focus[1]), float(focus[2])),
+			float(aim["yaw"]), float(aim["pitch"]), float(aim["distance"]), eye.fov], lift)
+	for word: String in ["turn", "tilt", "away", "fov"]:
+		for key: Variant in asked.get("keys", []):
+			if key is Dictionary and (key as Dictionary).has(word) and not MotionPlayer._is_number((key as Dictionary)[word]):
+				return "A camera key's %s= is a number." % word
+	var camera := Motions.CameraTrack.new()
+	if bool(asked.get("turntable", false)):
+		if asked.has("keys"):
+			return "camera= is a turntable or keys=, not both."
+		var over: Variant = asked.get("seconds", Motions.TURNTABLE_SECONDS)
+		if not MotionPlayer._is_number(over):
+			return "A turntable's seconds= is a number."
+		var seconds: float = length if length >= 1.0 else float(over)
+		# Round the middle, from where the window's view stands: its height and distance,
+		# unless tilt= and away= say others.
+		var eye_at: Vector3 = eye.global_position if eye != null else box.get_center() + Vector3(0.0, 0.0, 400.0)
+		var offset: Vector3 = eye_at - box.get_center()
+		var away: float = maxf(offset.length(), Motions.LEAST_AWAY)
+		var tilt: float = rad_to_deg(asin(clampf(offset.y / away, -1.0, 1.0)))
+		if asked.has("tilt"):
+			if not MotionPlayer._is_number(asked["tilt"]) or absf(float(asked["tilt"])) > Motions.MOST_TILT:
+				return "A turntable's tilt= is degrees above level, -%d to %d." % [int(Motions.MOST_TILT),
+					int(Motions.MOST_TILT)]
+			tilt = float(asked["tilt"])
+		if asked.has("away"):
+			if not MotionPlayer._is_number(asked["away"]) or float(asked["away"]) < Motions.LEAST_AWAY \
+					or float(asked["away"]) > Motions.MOST_AWAY:
+				return "A turntable's away= is LDU from the model's middle, %d to %d." % [int(Motions.LEAST_AWAY),
+					int(Motions.MOST_AWAY)]
+			away = float(asked["away"])
+		var keys: Variant = Motions.turntable_keys(middle, rad_to_deg(atan2(offset.x, offset.z)),
+			tilt, away, float(stands[4]), seconds)
+		if keys is String:
+			return "%s." % keys
+		for key: Array in keys:
+			camera.add_key(key)
+		return camera
+	var listed: Variant = asked.get("keys")
+	if not listed is Array or (listed as Array).is_empty():
+		return "camera= is {\"turntable\": true} or {\"keys\": [{\"t\": 0, \"turn\": 0}, {\"t\": 4, \"turn\": 180}]}."
+	var last_turn: float = float(stands[1])
+	for raw: Variant in listed:
+		if not raw is Dictionary or not MotionPlayer._is_number((raw as Dictionary).get("t")):
+			return "Each camera key is {\"t\": seconds, \"turn\": degrees, \"tilt\": degrees, \"away\": LDU}."
+		var one: Dictionary = raw
+		var at: Vector3 = middle
+		if one.has("at"):
+			var said: Variant = one["at"]
+			if not said is Array or (said as Array).size() != 3 or not (said as Array).all(MotionPlayer._is_number):
+				return "A camera key's at= is LDraw's [x, y, z], in LDU."
+			at = Vector3(float(said[0]), float(said[1]), float(said[2]))
+		var turn: float = float(one.get("turn", last_turn))
+		last_turn = turn
+		var key: Variant = Motions.camera_key_of(float(one["t"]), at, turn, float(one.get("tilt", stands[2])),
+			float(one.get("away", stands[3])), float(one.get("fov", stands[4])), str(one.get("how", "ease")))
+		if key is String:
+			return "%s%s." % [str(key).left(1).to_upper(), str(key).substr(1)]
+		# Under a frame apart nothing tells two keys apart as they play (camreview L1).
+		var near: float = Motions.key_near(camera.keys, float(key[0]))
+		if absf(near - float(key[0])) < 0.001:
+			return "Two camera keys at %s s: give each its own time." % Motions.num(float(key[0]), 3)
+		if near >= 0.0:
+			return "Camera keys at %s and %s s are under a frame (1/60 s) apart: give each its own time." % [
+				Motions.num(minf(near, float(key[0])), 3), Motions.num(maxf(near, float(key[0])), 3)]
+		camera.add_key(key)
+	return camera
 
 
 static func _motion_names(motions: Motions) -> String:
@@ -4015,9 +4157,18 @@ static func _sheet_of(played: MotionPlayer.Played, of: int = 1) -> Array:
 ## framed on what it moves, as File, Render's Animation draws it
 ## (MotionRender); the model as it was after.
 func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
+	var keyed: String = ""
+	if input.has("camera"):
+		if not StudioRender.possible():
+			return ("Rendering needs something to draw with, and this app is running without a window: "
+				+ "define_motion camera= keeps the keys, play_motion plays them.")
+		var made: Variant = _keep_camera(input)
+		if made is Array:
+			return str(made[0])
+		keyed = str(made)
 	var asked: Variant = _motions_asked(input)
 	if asked is String:
-		return asked
+		return asked if keyed.is_empty() else "%s\n%s" % [keyed, asked]
 	var order: Array = asked["order"]
 	if not StudioRender.possible():
 		return ("Rendering needs something to draw with, and this app is running without a window: "
@@ -4032,7 +4183,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	for words: String in asked["missing"]:
 		lines.append("%s: passed over." % words)
 	if poses.is_empty():
-		return "Nothing to draw: %s" % "; ".join(lines)
+		return "%sNothing to draw: %s" % ["" if keyed.is_empty() else keyed + "\n", "; ".join(lines)]
 	var settings: RenderSettings = panel.settings
 	var size_was: Vector2i = settings.size
 	settings.size = Vector2i(1280, 720) if str(input.get("size", "")) == "720p" else Vector2i(480, 300)
@@ -4042,13 +4193,16 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	if not view in MOTION_VIEWS:
 		view = "hero"
 	var frames: int = await panel.render_poses(poses, fps, func(_n: int) -> float: return 0.0,
-		sheet_at, work, view, title, true)
+		sheet_at, work, view, title, true, drawn.cameras)
 	settings.size = size_was
 	if frames <= 0 or not panel._last.has("kept"):
-		return "Nothing rendered: %s" % panel.rendered_words()
-	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s: %s." % [frames, fps,
-		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]), str(panel._last["kept"])])
-	var hidden: String = _hidden_from(view, order,
+		return "%sNothing rendered: %s" % ["" if keyed.is_empty() else keyed + "\n", panel.rendered_words()]
+	lines.insert(0, "Rendered %d frames, %d a second (%s s), drawn in %d s%s: %s." % [frames, fps,
+		Motions.num(float(frames - 1) / float(fps), 2), int(panel._last["seconds"]),
+		", through its camera keys" if not drawn.cameras.is_empty() else "", str(panel._last["kept"])])
+	if not keyed.is_empty():
+		lines.insert(0, keyed)
+	var hidden: String = "" if not drawn.cameras.is_empty() else _hidden_from(view, order,
 		drawn.played.map(func(one: MotionPlayer.Played) -> Array: return one.frames))
 	if not hidden.is_empty():
 		lines.append(hidden)
@@ -4061,8 +4215,73 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
 
 
+## render_motion's camera= kept before it renders (camerakeys): the motion
+## name= names keyed as camera= says, or made of the camera alone when the
+## model has no motion of that name, one undo step. The words said of it, or
+## [why not] when nothing was kept.
+func _keep_camera(input: Dictionary) -> Variant:
+	var player: MotionPlayer = app.get("_motions")
+	var builder: Builder = app.get("_builder")
+	if player == null:
+		return ["This app has no motions."]
+	var name: String = str(input.get("name", "")).strip_edges().replace('"', "'")
+	if name.is_empty():
+		return ["Give name= what the motion is called: a turntable is \"Turntable\"."]
+	var motions: Motions = player.motions()
+	var had_one: bool = motions.named(name) != null
+	var motion: Variant = null
+	if had_one:
+		if motions.named(name).is_sequence():
+			return ["%s is a sequence: key the camera in one of its motions. Nothing was kept." % Motions.quoted(name)]
+		motion = _camera_keyed(player, motions.named(name).name, input["camera"])
+	else:
+		var camera: Variant = _camera_from(player, input["camera"], 0.0)
+		if camera == null:
+			return ["No motion %s to take the camera out of: %s." % [Motions.quoted(name), _motion_names(motions)]]
+		if not camera is String:
+			var made := Motions.Motion.new()
+			made.name = name
+			made.camera = camera
+			motion = made
+		else:
+			motion = camera
+	if motion is String:
+		return ["%s Nothing was kept." % motion]
+	var had: Motions = motions.copy()
+	motions.put(motion)
+	builder.record([{"undo": "motions", "motions": had}], "keyed the camera in %s" % Motions.quoted(name))
+	var kept: Motions.Motion = motions.named(name)
+	if kept.camera == null:
+		return "Took the camera's keys out of %s (one undo step): it is rendered from view=." % Motions.quoted(name)
+	return "%s %s, its camera keyed and saved with the model (one undo step): %s." % [
+		"Kept" if had_one else "Made", Motions.quoted(name), MotionPlayer.camera_words(kept.camera)]
+
+
 ## Where render_motion's camera may stand (StudioRender.VIEWS).
 const MOTION_VIEWS: Array = ["hero", "front", "side", "back", "low", "top"]
+
+## define_motion's and render_motion's camera= (camerakeys): the camera's
+## keys in the motion, as Motions' MOTION_CAMERA lines keep them.
+const CAMERA_SCHEMA: Dictionary = {"type": "object", "additionalProperties": false, "description": (
+	"the camera keyed in the motion: turntable=true, or keys=; turn=, tilt= and away= where the "
+	+ "window's view stands when omitted (a turntable's too), at= the model's middle"), "properties": {
+	"turntable": {"type": "boolean", "description": ("two keys: once round the model's middle at one "
+		+ "speed over the motion (seconds= when it has no length), its first frame and its last the same")},
+	"seconds": {"type": "number", "description": "a turntable's length when the motion has none; 8 when omitted"},
+	"tilt": {"type": "number", "description": "a turntable's height: degrees above level, -89 to 89"},
+	"away": {"type": "number", "description": "a turntable's distance: LDU from the model's middle"},
+	"keys": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["t"],
+		"properties": {
+			"t": {"type": "number", "description": "seconds from the start"},
+			"at": {"type": "array", "items": {"type": "number"}, "description": "the point it looks at, LDraw's x y z (LDU)"},
+			"turn": {"type": "number", "description": "degrees round the upright from the model's front; 90 its +x side"},
+			"tilt": {"type": "number", "description": "degrees above level, -89 to 89"},
+			"away": {"type": "number", "description": "LDU from the point it looks at"},
+			"fov": {"type": "number", "description": "its lens top to bottom, degrees, 5 to 120"},
+			"how": {"type": "string", "enum": ["ease", "linear", "hold"]},
+		}}},
+	"remove": {"type": "boolean", "description": "the camera's keys taken out: the view is the person's"},
+}}
 
 
 ## Which of the motions [param asked] move parts on the far side of the
