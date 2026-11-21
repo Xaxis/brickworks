@@ -284,9 +284,11 @@ function namedParts(text) {
 
 /// What follows the first [n] fields of [line]: a file name may have spaces.
 function afterFields(line, n) {
-  const match = line.match(new RegExp(`^(?:\\S+\\s+){${n}}(.*)$`));
+  fieldsAt[n] ||= new RegExp(`^(?:\\S+\\s+){${n}}(.*)$`);
+  const match = line.match(fieldsAt[n]);
   return match ? match[1].trim() : "";
 }
+const fieldsAt = {};
 
 /// Whether [text] already has a section for [file].
 function carriedAlready(text, file) {

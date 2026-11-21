@@ -68,12 +68,20 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
 }
 .search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+/* Share yours at the head's end, beside the search (web/share-model.html):
+   on a phone its icon alone, its name its label. */
+.gallery-head .search { margin-left: auto; }
 @media (width < 600px) {
 	.browse-band { padding-top: var(--s-4); }
 	.gallery-head { flex-wrap: nowrap; align-items: center; }
 	.gallery-head .lede, .search .hint { display: none; }
 	.search { flex: 1 1 auto; max-width: none; }
 	.search input { padding-right: 12px; }
+	.gallery-head { column-gap: var(--s-3); }
+	.gallery-title, .share-yours { flex: none; }
+	.search { min-width: 0; }
+	.share-yours { padding: 0; width: var(--control-h); }
+	.share-yours .word { display: none; }
 }
 
 /* The tabs, and Top's time at the row's end. The tabs scroll inside
@@ -222,6 +230,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 							placeholder="Sammlungen nach Name oder Baumeister suchen" aria-keyshortcuts="/">
 						<kbd class="hint" aria-hidden="true">/</kbd>
 					</label>
+					<a class="cta share-yours" href="/de/share-model" aria-label="Teile deins"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"></use></svg><span class="word">Teile deins</span></a>
 				</div>
 			</form>
 			<div class="gallery-bar">
@@ -370,7 +379,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 		<!-- A list with nothing in it, each tab's own words and the way on. -->
 		<div class="state" id="empty" data-list="models" hidden>
 			Noch ist nichts gelistet. Teile ein Modell aus der App und hake <b>In der Galerie zeigen</b> an, dann ist es das erste hier.
-			<div class="actions"><a class="cta small" href="/app?lang=de">App öffnen</a></div>
+			<div class="actions"><a class="cta small" href="/app?lang=de">App öffnen</a> <a class="cta ghost small" href="/de/share-model">Modelldatei teilen</a></div>
 		</div>
 		<div class="state" id="builds-empty" data-list="builds" hidden>
 			Noch keine Nachbauten. Ein Nachbau ist ein Foto eines Modells aus der Galerie, das jemand mit echten Steinen gebaut hat. Eins gebaut? Öffne seine Seite, wähle <b>Ich habe es gebaut</b> und füge dein Foto hinzu, dann erscheint es hier.
@@ -415,7 +424,8 @@ html[data-tab="builds"] .toolbar { position: static; }
 			<p class="lede">
 				Wähle in der App <b>Datei › Teilen…</b>, gib dem Modell einen Namen, schreib ein wenig darüber, vergib Tags, wähle seine Lizenz und hake <b>In der Galerie zeigen</b> an. Es ist eine Kopie, so wie es in dem Moment ist; veröffentliche es noch einmal, um es zu aktualisieren, oder entferne den Haken, um es aus der Galerie zu nehmen und den Link zu behalten.
 			</p>
-			<div class="actions center"><a class="cta" href="/app?lang=de">App öffnen</a></div>
+			<p class="lede">In BrickLink Studio, LDCad oder einem anderen LDraw-Programm gebaut? Teile die Datei hier, mit Teileliste, Bauschritten und einem Bild.</p>
+			<div class="actions center"><a class="cta" href="/de/share-model">Modelldatei teilen</a> <a class="cta ghost" href="/app?lang=de">App öffnen</a></div>
 		</div>
 	</section>
 	<section class="wrap wide yours" aria-labelledby="sources-h" data-list="sets">

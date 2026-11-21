@@ -68,12 +68,20 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
 }
 .search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+/* Share yours at the head's end, beside the search (web/share-model.html):
+   on a phone its icon alone, its name its label. */
+.gallery-head .search { margin-left: auto; }
 @media (width < 600px) {
 	.browse-band { padding-top: var(--s-4); }
 	.gallery-head { flex-wrap: nowrap; align-items: center; }
 	.gallery-head .lede, .search .hint { display: none; }
 	.search { flex: 1 1 auto; max-width: none; }
 	.search input { padding-right: 12px; }
+	.gallery-head { column-gap: var(--s-3); }
+	.gallery-title, .share-yours { flex: none; }
+	.search { min-width: 0; }
+	.share-yours { padding: 0; width: var(--control-h); }
+	.share-yours .word { display: none; }
 }
 
 /* The tabs, and Top's time at the row's end. The tabs scroll inside
@@ -222,6 +230,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 							placeholder="Buscar colecciones por nombre o constructor" aria-keyshortcuts="/">
 						<kbd class="hint" aria-hidden="true">/</kbd>
 					</label>
+					<a class="cta share-yours" href="/es/share-model" aria-label="Comparte el tuyo"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"></use></svg><span class="word">Comparte el tuyo</span></a>
 				</div>
 			</form>
 			<div class="gallery-bar">
@@ -370,7 +379,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 		<!-- A list with nothing in it, each tab's own words and the way on. -->
 		<div class="state" id="empty" data-list="models" hidden>
 			Aún no hay nada en la galería. Comparte un modelo desde la aplicación y marca <b>Mostrarlo en la galería</b>, y será el primero aquí.
-			<div class="actions"><a class="cta small" href="/app?lang=es">Abrir la aplicación</a></div>
+			<div class="actions"><a class="cta small" href="/app?lang=es">Abrir la aplicación</a> <a class="cta ghost small" href="/es/share-model">Compartir un archivo de modelo</a></div>
 		</div>
 		<div class="state" id="builds-empty" data-list="builds" hidden>
 			Aún no hay construcciones. Una construcción es una foto de un modelo de la galería que alguien ha construido con piezas reales. ¿Has construido uno? Abre su página, elige <b>Lo construí</b> y añade tu foto, y aparecerá aquí.
@@ -415,7 +424,8 @@ html[data-tab="builds"] .toolbar { position: static; }
 			<p class="lede">
 				En la aplicación, elige <b>Archivo › Compartir…</b>, ponle un nombre al modelo, cuenta un poco sobre él, ponle etiquetas, elige su licencia y marca <b>Mostrarlo en la galería</b>. Es una copia tal como está en ese momento; publica de nuevo para actualizarla, o desmarca la casilla para sacarlo de la galería y conservar el enlace.
 			</p>
-			<div class="actions center"><a class="cta" href="/app?lang=es">Abrir la aplicación</a></div>
+			<p class="lede">¿Lo hiciste en BrickLink Studio, LDCad u otro programa LDraw? Comparte su archivo aquí, con su lista de piezas, sus pasos y una imagen.</p>
+			<div class="actions center"><a class="cta" href="/es/share-model">Compartir un archivo de modelo</a> <a class="cta ghost" href="/app?lang=es">Abrir la aplicación</a></div>
 		</div>
 	</section>
 	<section class="wrap wide yours" aria-labelledby="sources-h" data-list="sets">
