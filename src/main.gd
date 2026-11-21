@@ -5493,8 +5493,11 @@ func _build_ui() -> void:
 		_sample_untouched = false
 		if _assistant_made != null:
 			_assistant_made.forget_built()
-		_lay_baseplate()
-		_on_model_changed()
+		# The open's own: its floor under it is no edit, and an unedited save
+		# still writes its file (ModelStore.as_opened).
+		_store.as_opened(func() -> void:
+			_lay_baseplate()
+			_on_model_changed())
 		# Not again for a big model framed as it was first drawn: the
 		# person may have turned the view since.
 		if _framed_in != _world.generation():
@@ -8743,9 +8746,11 @@ func _on_part_chosen(part_id: String) -> void:
 
 func _on_part_fetched(part_id: String) -> void:
 	# Not there yet is not the same as not there: a model opened on the
-	# web before its parts were fetched gets them as they come.
-	if _store.place_awaited(part_id) > 0:
-		_on_landed()
+	# web before its parts were fetched gets them as they come: where the
+	# file has them, which is no edit (ModelStore.as_opened).
+	_store.as_opened(func() -> void:
+		if _store.place_awaited(part_id) > 0:
+			_on_landed())
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)

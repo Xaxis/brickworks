@@ -146,6 +146,28 @@ Whether what you built is still there tomorrow, and still means the same thing.
   castle, 7128-1 and 21008-1, each saved three times in a row to the byte,
   every copy by its name in the app and on the site
   (`tools/web/copy_names_check.mjs`).
+  An unedited save writes the file as it was read or last written, by one
+  fast path in front of the save (kbkeep3, `ModelStore._kept_now`): the open
+  and every save keep the text and stamp the moment (the world's generation,
+  its revision less what the open's own floor and landings moved, the count
+  of changes made past the history `BrickWorld.outside`, the history's
+  newest step by identity, and `ModelStore._said_now`: what the file says
+  past its parts and steps, copied and compared by value, as a view turned,
+  the cut, hidden colours or link cleared are no step and move no revision;
+  mlattack's dups and features cases). A save at the same moment, under the
+  same name, to its own file in the same folder writes that text; anything
+  else is the save as it was. `outside` moves wherever the model is marked changed
+  (`ModelStore.touch`), a Together peer's `_put`, a session's call that may
+  change the model (CommandSocket, Assistant), a floor put, adopted or
+  released, and a restore. Save as another name always works the model out.
+  **Check:** kbkeep3's kbk3u/kbx3/kbe3 probes
+  (bench/results/kbkeep3-2026-11-20/tools): 185 files (the 173 and 12 that
+  rel-m314/m315 saved; 2 empty New files have nothing to save) saved twice
+  unedited, byte for byte, every save by the fast path; 21 acts on 6 bases,
+  each save pre261's bytes or the file as opened (placing pre261's parts
+  within 0.02); 42 planner models edited three ways, pre261's bytes; and
+  `tools/probe.sh mlattack_probe` green (a view turned, the cut, hidden
+  colours or link cleared, each saved and read back).
   **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
   each as someone else's file and as the app's own: LDView's rule, read in the
   probe apart from LdrModel (with the app's one rule for a library's shortcut

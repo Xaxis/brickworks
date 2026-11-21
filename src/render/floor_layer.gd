@@ -234,6 +234,9 @@ func state() -> String:
 ## a new colour (AppTools set_floor) came back elsewhere: the step making it
 ## part of the model again found no plate, and it stayed the floor.
 func put(to: Variant) -> Variant:
+	# What the model stands on is in its file: a save works it out
+	# (ModelStore._moment), here as in adopt and release.
+	world.outside += 1
 	var was: Array = held()
 	var exact: Array = to as Array if to is Array else [to, [], AABB()]
 	var chosen: ModelFloor = ModelFloor.parse(str(exact[0]))
@@ -284,6 +287,7 @@ func choose(chosen: ModelFloor) -> bool:
 func adopt() -> int:
 	if has_own_plate():
 		return 0
+	world.outside += 1
 	var steps: Array = []
 	if not store.model_floor.is_plate():
 		# The size and colour it last had, or the dark green 32 x 32.
@@ -312,6 +316,7 @@ func release() -> int:
 	var own: Array[int] = own_plates()
 	if own.is_empty():
 		return 0
+	world.outside += 1
 	var first: BrickWorld.Brick = world.get_brick(own[0])
 	var steps: Array = []
 	for brick_id: int in own:

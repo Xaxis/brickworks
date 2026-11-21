@@ -1687,6 +1687,9 @@ func _mine_on_the_way(uid: String) -> bool:
 ## Set [param uid] in the world to [param state] (null: taken off), past the
 ## builder's history: another side's change is not this side's to undo.
 func _put(uid: String, state: Variant) -> void:
+	# Another's change, past this side's history: a save works the model
+	# out, never writes the file as it was opened (ModelStore._moment).
+	world.outside += 1
 	if uid.begins_with("~"):
 		_put_meta(uid, str(state) if state != null else "")
 		return

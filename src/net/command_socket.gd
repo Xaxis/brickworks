@@ -608,10 +608,15 @@ const HINTS := {
 	"move_part": ["Move a part on its joint", "add", "again"],
 	"animate_model": ["Animate the model", "add"],
 	"list_motions": ["List the model's motions", "look"],
-	# Its motions are lines in the model's file: one step to undo.
-	"define_motion": ["Keep a motion in the model", "add", "again"],
+	# Its motions are lines in the model's file: one step to undo. One of a
+	# name the model has is put in its place (its camera keys too), and
+	# remove=true takes one out.
+	"define_motion": ["Keep a motion in the model", "remove", "again"],
 	"play_motion": ["Play a motion", "add", "again"],
-	"render_motion": ["Render a motion", "file"],
+	# A file; and camera= keys the motion's camera first, in place of the
+	# keys it had, one step to undo (camreview M1: said to change nothing, it
+	# replaced three hand-made keys, its step unmarked).
+	"render_motion": ["Render a motion", "remove"],
 	"simulate_mechanism": ["Simulate the mechanism", "file"],
 	"undo": ["Undo or redo", "remove"],
 	# In place of the model, and with discard_changes its unsaved changes.
@@ -930,6 +935,12 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# took the part as one the call put down, and its undo took it away.
 	if _the_app_tools().has(name):
 		_the_app_tools().put_back_first(name, input)
+	# A session's call that may change the model, past the history or in it,
+	# done or refused: a save works the model out after it, never writes the
+	# file as it was opened (ModelStore._moment). Before and after, so a save
+	# made while it works is not taken for the model it leaves. An open's own
+	# moment is the open's, and a save changes nothing.
+	_outside(name, true)
 	var before: Dictionary = _before_change(name)
 	var held: Dictionary = _held()
 	var answer: Variant
@@ -968,8 +979,20 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# and one whose case swivels on single studs named at the check.
 	if name in ["attachment_points", "check_design", "edit_model", "submit_design"]:
 		answer = await _the_app_tools().motor_mount_said(name, answer, input)
+	_outside(name, false)
 	_hand_and_view_back(held)
 	return answer
+
+
+## A call to [param name] that may change the model moves the world's count
+## of changes past the history (BrickWorld.outside), as it begins
+## ([param first]) and as it ends; one that only looks or writes a file does
+## not, nor a save, nor an open as it ends.
+func _outside(name: String, first: bool) -> void:
+	if assistant == null or assistant.world == null or leaves_the_model(name) \
+			or name == "save_model" or (not first and name == "open_model"):
+		return
+	assistant.world.outside += 1
 
 
 ## What the person holds and sees as a call begins (Main.hand_and_view), {}
