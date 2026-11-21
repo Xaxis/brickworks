@@ -432,6 +432,13 @@ http.createServer(async (incoming, outgoing) => {
       if (withheld && found && found[1] === "mcp" && body && body.method === "initialize" && value?.result) {
         delete value.result.instructions;
       }
+      // A handler that answers twice (a long poll answered by its timer and
+      // then by what it waited for) is an error in its log on Vercel, not a
+      // server that stops: said here, and the second answer dropped.
+      if (outgoing.headersSent) {
+        console.log(`${url.pathname}: answered again after its answer; dropped`);
+        return this;
+      }
       outgoing.writeHead(this.statusCode, { "content-type": "application/json" });
       outgoing.end(JSON.stringify(value));
       return this;
@@ -461,7 +468,10 @@ http.createServer(async (incoming, outgoing) => {
   try {
     await handler(request, response);
   } catch (trouble) {
-    outgoing.writeHead(500);
+    // Thrown after it began answering (headers sent): the answer ends there,
+    // as Vercel ends it, and the server goes on serving everyone else.
+    console.log(`${url.pathname}: ${String(trouble?.stack || trouble).split("\n").slice(0, 2).join(" ")}`);
+    if (!outgoing.headersSent) outgoing.writeHead(500);
     outgoing.end(String(trouble));
   }
 }).listen(port, "127.0.0.1", () => {
