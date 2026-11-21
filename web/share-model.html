@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<!--
+  Share a model you made, at /share-model (bringyours, 2026-11-20,
+  docs/SOCIAL.md round 8): a builder chooses the file of a model made in
+  BrickLink Studio or any LDraw program, and it has its own page (/m/<id>):
+  the server's own count of its parts, the file's steps, its picture drawn
+  here by the site's 3D view. web/share-model.js does it, web/studio-io.js
+  reads a Studio file. The gallery's Share yours comes here. No inline
+  script.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Share a model you made · Brickworks</title>
+<meta name="description" content="Made a LEGO® model in BrickLink Studio, LDCad or another LDraw program? Choose its file and share it: a page of its own with its parts list, its steps and its picture.">
+<link rel="canonical" href="https://brickworks.diy/share-model">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/share-model">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/share-model">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/share-model">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/share-model">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/share-model">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Share a model you made · Brickworks">
+<meta property="og:description" content="Made a LEGO® model in BrickLink Studio, LDCad or another LDraw program? Choose its file and share it: a page of its own with its parts list, its steps and its picture.">
+<meta property="og:url" content="https://brickworks.diy/share-model">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Share a model you made · Brickworks">
+<meta name="twitter:description" content="Made a LEGO® model in BrickLink Studio, LDCad or another LDraw program? Choose its file and share it: a page of its own with its parts list, its steps and its picture.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+<style>
+/* Laid out here; the fields, the buttons and the words are site.css's and
+   directory.css's. The 3D view draws the pictures at their own size, scaled
+   to the column (web/share-model.js); its own controls are not shown here. */
+.share-model > * { max-width: 720px; }
+.share-model h2 { margin: 0 0 var(--s-3); }
+.share-model .callout { margin: var(--s-4) 0 0; }
+.share-drop { display: grid; gap: var(--s-3); justify-items: start; }
+.share-drop.over { border-style: solid; border-color: var(--focus); }
+.share-drop p { margin: 0; }
+.share-frame { position: relative; overflow: hidden; aspect-ratio: 1200 / 630; border-radius: var(--radius); background: var(--picture-ground); }
+.share-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; }
+.share-stage canvas { display: block; width: 100%; height: 100%; }
+.share-frame .view3d-tools, .share-frame .view3d-app, .share-frame .view3d-hint,
+.share-frame .view3d-said, .share-frame .view3d-bar { display: none !important; }
+.share-progress { margin: var(--s-4) 0 0; padding-left: 1.4em; color: var(--ink-soft); }
+.share-progress [aria-current="step"] { color: var(--ink); font-weight: 650; }
+.share-model .actions { margin-top: var(--s-4); }
+.share-model form .actions { margin-top: 0; }
+</style>
+<script src="/follow.js" type="module"></script>
+<script src="/share-model.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery" aria-current="page">Gallery</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans">Plans</a>
+			<a class="cta" href="/app">Open the app</a>
+			<a class="cta ghost" href="/profile?sign-in" data-account>Sign in</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery" aria-current="page">Gallery</a>
+					<a href="/docs">Docs</a>
+					<a href="/plans">Plans</a>
+					<a href="/download">Desktop app</a>
+					<a href="/profile?sign-in" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow"><a href="/gallery">Gallery</a></p>
+			<h1>Share a model you made</h1>
+			<p class="lede">Made it in BrickLink Studio, LDCad, MLCad or another LDraw program? Choose its file, and in a minute it has a page of its own: its parts list and its steps read from the file, its picture drawn here.</p>
+		</div>
+	</div>
+	<div class="wrap page-body share-model" id="share-model" data-state="choose">
+		<section class="share-step" id="choose" aria-labelledby="choose-h">
+			<h2 id="choose-h">Your model’s file</h2>
+			<div class="state share-drop" id="drop">
+				<button type="button" class="cta" id="pick" aria-describedby="drop-said">Choose a file</button>
+				<input type="file" id="file" accept=".ldr,.mpd,.dat,.io,.lxf,.lxfml" hidden>
+				<p id="drop-said">Or drop it on this page. An LDraw file (.ldr, .mpd or .dat) or a BrickLink Studio file (.io): it is read in your browser, and nothing is sent until you share it.</p>
+			</div>
+			<p class="callout warning" id="refused" role="alert" hidden></p>
+			<div class="callout" id="ldd" hidden>
+				<p class="callout-title">LEGO® Digital Designer files open in the app</p>
+				<p>The app turns an LDD model’s parts into LDraw’s. Open it there with File › Open…, then share it with File › Share….</p>
+				<div class="actions"><a class="cta" href="/app" id="ldd-open" target="_blank" rel="noopener">Open the app</a></div>
+			</div>
+		</section>
+
+		<form class="profile-form card form-card share-step" id="details" aria-labelledby="details-h" novalidate hidden>
+			<h2 id="details-h">About it</h2>
+			<p class="said" id="read" role="status"></p>
+			<label>Name
+				<input type="text" id="name" name="name" autocomplete="off" required aria-describedby="name-said"></label>
+			<p class="said" id="name-said" role="alert" hidden></p>
+			<label>What it is (optional)
+				<textarea id="about" name="about" rows="3" aria-describedby="about-said"></textarea></label>
+			<p class="said" id="about-said" role="alert" hidden></p>
+			<label>Licence
+				<select id="licence" name="licence" aria-describedby="licence-said">
+					<option value="cc-by-4.0" selected>CC BY 4.0</option>
+					<option value="cc-by-sa-4.0">CC BY-SA 4.0</option>
+					<option value="all-rights-reserved">All rights reserved</option>
+				</select></label>
+			<p class="said" id="licence-said">Anyone may share it, change it and build on it, crediting you.</p>
+			<label class="choice"><input type="checkbox" id="listed" name="listed" checked> List it in the gallery</label>
+			<p class="said">Its link works either way. What is listed follows the <a href="/guidelines">guidelines</a>.</p>
+			<p class="callout warning" id="form-said" role="alert" hidden></p>
+			<div class="actions">
+				<button type="submit" class="cta" id="share">Share it</button>
+				<button type="button" class="cta ghost" id="again">Choose another file</button>
+			</div>
+		</form>
+
+		<section class="share-step" id="working" aria-labelledby="working-h" hidden>
+			<h2 id="working-h">Sharing it</h2>
+			<div class="share-frame" id="frame">
+				<div class="stage share-stage" id="stage"></div>
+				<p class="view3d-said" hidden></p>
+				<div class="view3d-bar" hidden><span></span></div>
+			</div>
+			<ol class="share-progress" id="progress">
+				<li data-step="send">Sending its file</li>
+				<li data-step="draw">Drawing its picture</li>
+				<li data-step="publish">Putting it on its page</li>
+			</ol>
+			<p class="said" id="status" role="status"></p>
+			<div class="actions" id="stuck" hidden>
+				<button type="button" class="cta" id="retry">Try again</button>
+				<a class="cta" id="to-page" href="/gallery" hidden>Go to its page</a>
+			</div>
+		</section>
+	</div>
+	<noscript>
+		<div class="wrap"><p class="state">Sharing a model from its file takes JavaScript, which is off in this browser. In the app, File › Share… shares the model you have open.</p></div>
+	</noscript>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A CAD for LEGO® models.</p>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Language</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="More">
+				<div>
+					<p class="foot-h" id="foot-product">Product</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app">Open the app</a></li>
+						<li><a href="/download">Desktop app</a></li>
+						<li><a href="/plans">Plans</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/library">Sets</a></li>
+						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Help</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
+						<li><a href="/guidelines">Guidelines</a></li>
+						<li><a href="/feedback" data-feedback>Send feedback</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacy</a></li>
+						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). Claude, ChatGPT, Gemini and the other AI apps named here are trademarks of their owners. <a href="/terms#notices">Notices</a></p>
+		</div>
+	</div>
+</footer>
+
+</body>
+</html>

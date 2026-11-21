@@ -105,7 +105,7 @@ PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "
          "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "collections.html": "collections",
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
-         "feedback.html": "feedback", "beta.html": "beta", "terms.html": "terms",
+         "feedback.html": "feedback", "share-model.html": "share-model", "beta.html": "beta", "terms.html": "terms",
          "privacy.html": "privacy", "counting.html": "counting", "guidelines.html": "guidelines", "takedown.html": "takedown",
          "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize"}
 # The page not found has no address of its own: it answers every address
@@ -205,7 +205,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
             "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
             "web/feed.js": (), "web/notifications.js": (), "web/notice-view.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/betabar.js": (), "web/notice.js": (),
-            "web/keep.js": (), "web/lists.js": (), "web/block.js": (),
+            "web/keep.js": (), "web/lists.js": (), "web/block.js": (), "web/share-model.js": (),
             "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
             "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
 # And what the site is put together with says on a page (tools/site.py: the

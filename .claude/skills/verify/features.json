@@ -2980,6 +2980,14 @@
       ]
     },
     {
+      "id": "cli:share model browser flow",
+      "kind": "cli",
+      "entry": "tools/web/share_model_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/share_model_flow.mjs --url=<deployment> --out=DIR   (the refusals, LDD's way to the app, four Studio files read, a 353-part .mpd at 1280 and its Studio .io at 390 to their pages timed, the server's count, steps and pictures, signed out and under 13 refused, 390/768/1280 light and dark; throwaway accounts; preview check [share_model])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:share pages probe",
       "kind": "cli",
       "entry": "src/dev/share_pages_probe.gd",
@@ -3714,6 +3722,14 @@
       "kind": "lib",
       "entry": "supabase/discovery.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql --dry --try=tools/discovery_try.sql --table=gallery_picks   (after the live files; the weights held to the page's by tests/test_discovery.py; then the discovery browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:a BrickLink Studio file read in the browser",
+      "kind": "lib",
+      "entry": "web/studio-io.js",
+      "reach": "node tools/web/share_model_flow.mjs (Studio's 2021 and 2025 files, its AES-256 and ZipCrypto locks, Part Designer parts carried as their own sections, Studio's own prints left plain)   (readStudioIo(bytes) -> {text, carried, prints, error}; the error one of TROUBLE)",
       "area": "web",
       "tests": []
     },
@@ -6898,6 +6914,14 @@
         "tests/test_packaged_facts.py",
         "tests/test_social.py"
       ]
+    },
+    {
+      "id": "ui:share a model file from the site",
+      "kind": "ui",
+      "entry": "web/share-model.js",
+      "reach": "<deployment>/share-model, or the gallery's Share yours (its + on a phone), its empty state and Put yours here   (web/share-model.html: an LDraw .ldr/.mpd/.dat or a BrickLink Studio .io chosen or dropped, read in the browser and refused in words when it is no model; an LDD .lxf sent to the app; its name, words, licence and List it in the gallery; signed in and 13 or over, published by POST /api/share, its pictures drawn here from /m/<id>/scene.json by web/viewer3d.js and put on it; to /m/<id>; tools/web/share_model_flow.mjs)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:share panel",

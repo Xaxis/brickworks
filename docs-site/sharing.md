@@ -39,6 +39,21 @@ lib:what moves in a model
 lib:build pages
 -->
 
+## Share a model's file from the site {#from-a-file}
+
+A model made in BrickLink Studio, LDCad, MLCad or another LDraw program can be shared without opening it in the app: **Share yours** in [the gallery](/docs/gallery) opens [brickworks.diy/share-model](/share-model).
+
+1. **Choose a file**, or drop it on the page: an LDraw file (`.ldr`, `.mpd` or `.dat`) or a BrickLink Studio file (`.io`). It is read in your browser, and nothing is sent until you share it. A file that is no model is refused, saying why.
+2. Its **Name** is read from the file; change it if you like. **What it is**, the **Licence** and **List it in the gallery** are as in the app.
+3. Press **Share it**. Signed out, you are asked to sign in first.
+
+The model is sent, its picture is drawn on the page from the model as Brickworks reads it, and you arrive on its own page: its parts list counted from the file, the steps the file lays out, and its picture. A Studio file's parts made in Part Designer go with it; Studio's own prints and stickers show as their plain parts. A LEGO® Digital Designer file (`.lxf`) opens in the app instead (**File › Open…**, then **File › Share…**), which turns its parts into LDraw's.
+
+<!-- covers
+ui:share a model file from the site
+lib:a BrickLink Studio file read in the browser
+-->
+
 ## The Tested mark {#tested}
 
 As a model is shared, Brickworks builds it by its own steps and tests whether a person could:
