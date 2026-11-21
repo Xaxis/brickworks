@@ -25,7 +25,10 @@
 //   7. Signed out, Share it asks to sign in first and sends nothing; an
 //      account answered under 13 is refused in words and nothing is kept.
 //   And Studio's files read in the page: 2021's (PKWARE), AES-256's, and
-//   2025's with a Part Designer part, which is shared too.
+//   2025's with a Part Designer part, which is shared too. A share whose
+//   answer is lost after its link was taken down for its pictures says so,
+//   asks before the page is left, and Try again goes on to version 1; the
+//   form is each file's own.
 // Pictures of each state at 1280, 768 and 390 in light and dark in --out.
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -318,6 +321,65 @@ try {
     await judge(custom.id, "bay_2025.io", read.text);
   }
   await desk.close();
+
+  // A share stopped as it went back on its page (its answer lost after the
+  // link was taken down for its pictures): said so, leaving asked first,
+  // and Try again goes on from there to version 1 with its pictures. And
+  // the form is each file's: words typed for one are not carried onto the
+  // next.
+  const halt = await browser.newContext({ viewport: { width: 1280, height: 800 }, extraHTTPHeaders: headers });
+  const haltPage = await halt.newPage();
+  const haltSent = posts(haltPage);
+  let lost = 0;
+  await haltPage.route("**/api/share", (route) => {
+    const request = route.request();
+    let body = {};
+    try { body = request.postDataJSON() || {}; } catch {}
+    if (request.method() === "POST" && body.id && lost === 0) {
+      lost += 1;
+      return route.abort("connectionreset");
+    }
+    return route.continue();
+  });
+  await haltPage.goto(`${site}/share-model`, { waitUntil: "domcontentloaded" });
+  await haltPage.waitForFunction(() => window.brickworksShare, null, { timeout: 30000 });
+  await choose(haltPage, "three_core_rocket.mpd");
+  await haltPage.waitForSelector("#details:not([hidden])", { timeout: 15000 });
+  await haltPage.fill("#about", "Words for the rocket");
+  await haltPage.selectOption("#licence", "all-rights-reserved");
+  await choose(haltPage, "bay_2021.io", STUDIO_FIXTURES);
+  await haltPage.waitForFunction(() => document.getElementById("name").value === "bay_2021", null, { timeout: 15000 });
+  const carried = { about: await haltPage.inputValue("#about"), licence: await haltPage.inputValue("#licence") };
+  ok(carried.about === "" && carried.licence === "cc-by-4.0",
+    `another file chosen: the form is its own ("${carried.about}", ${carried.licence})`);
+  await haltPage.click("#share");
+  const stopped = await haltPage.waitForFunction(() => window.brickworksShare.state === "stuck", null, { timeout: 120000 })
+    .then(() => true).catch(() => false);
+  const stoppedSaid = (await haltPage.locator("#status").textContent().catch(() => "")) || "";
+  ok(stopped && /taken down/.test(stoppedSaid) && await haltPage.locator("#retry").isVisible(),
+    `its answer lost after the link was taken down: said, with Try again ("${stoppedSaid.trim().slice(0, 160)}")`);
+  const leaveAsked = await haltPage.evaluate(() => {
+    const leaving = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(leaving);
+    return leaving.defaultPrevented;
+  });
+  ok(leaveAsked, "and leaving the page then is asked first");
+  await shot(haltPage, "1280_stopped");
+  await haltPage.unroute("**/api/share");
+  await haltPage.click("#retry");
+  const resumed = await haltPage.waitForURL(/\/m\/[A-Za-z0-9]{10}(?:[?#].*)?$/, { timeout: 120000, waitUntil: "domcontentloaded" })
+    .then(() => true).catch(() => false);
+  const haltId = resumed ? new URL(haltPage.url()).pathname.split("/").pop() : "";
+  ok(resumed, `Try again went on to its own page (/m/${haltId})`);
+  const haltOps = haltSent.filter((one) => ["publish", "unpublish"].includes(one.op)).map((one) => `${one.op} ${one.status}`).join(", ");
+  ok(lost === 1 && /^publish 201, unpublish 200, publish 20\d$/.test(haltOps), `one link, taken down once (${haltOps}; ${lost} lost)`);
+  if (haltId) {
+    made.push(haltId);
+    const { readStudioIo } = await import("../../web/studio-io.js");
+    const read = await readStudioIo(readFileSync(path.join(STUDIO_FIXTURES, "bay_2021.io")));
+    await judge(haltId, "bay_2021.io (Try again)", read.text);
+  }
+  await halt.close();
 
   // Clauses 1-4 on a phone: the locked Studio file.
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,

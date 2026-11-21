@@ -59,8 +59,8 @@ for (const name of ["dragenter", "dragover"]) {
   document.addEventListener(name, (event) => {
     if (!event.dataTransfer || ![...event.dataTransfer.types].some((one) => one.toLowerCase() === "files")) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = busy ? "none" : "copy";
-    if (!busy) $("drop").classList.add("over");
+    event.dataTransfer.dropEffect = held() ? "none" : "copy";
+    if (!held()) $("drop").classList.add("over");
   });
 }
 document.addEventListener("dragleave", (event) => { if (!event.relatedTarget) $("drop").classList.remove("over"); });
@@ -68,8 +68,11 @@ document.addEventListener("drop", (event) => {
   if (!event.dataTransfer || !event.dataTransfer.files.length) return;
   event.preventDefault();
   $("drop").classList.remove("over");
-  if (!busy) choose(event.dataTransfer.files[0]);
+  if (!held()) choose(event.dataTransfer.files[0]);
 });
+/// Sharing, or stopped with its link taken down: a file dropped then is not
+/// another to share.
+function held() { return busy || Boolean(job?.down); }
 
 /// [file] read, and what it is said: the form to share it, the studio for
 /// an LDD file, or why it cannot be shared.
@@ -126,10 +129,15 @@ async function choose(file) {
   }
   chosen = { text, file: file.name, size };
   state.state = "details";
+  // The form is this file's: words typed for one chosen before are not
+  // carried onto it.
+  $("details").reset();
+  $("licence").dispatchEvent(new Event("change"));
   $("name").value = nameOf(text, file.name);
   $("read").textContent = [say("Read from {file}.", { file: file.name }), ...notes].join(" ");
   said("name-said", "");
   said("about-said", "");
+  said("form-said", "");
   show("details");
   mark("read");
   // Its picture is drawn by the site's 3D view: fetched while the form is
@@ -244,6 +252,7 @@ async function share() {
   if (!chosen) return;
   const given = asked();
   if (!given) return;
+  said("form-said", "");
   busy = true;
   $("share").disabled = true;
   try {
@@ -331,8 +340,13 @@ async function publish(given) {
     unlisted = told(again.body?.error, "");
     again = await send({ ...body, listed: false });
   }
-  if (again.status === 0) return stuck(say("The network did not answer as it went back on its page. Try again."));
-  if (again.status >= 400) return stuck(told(again.body?.error, say("Brickworks could not finish sharing it just now. Try again.")));
+  // Taken down for its pictures and not yet back: said, as its link says
+  // it, and kept here (the file and its pictures) for Try again.
+  const down = say("Until it is shared again its link says it was taken down: keep this page open and try again.");
+  if (again.status === 0) return stuck(`${say("The network did not answer as it went back on its page.")} ${down}`);
+  if (again.status >= 400) {
+    return stuck(`${told(again.body?.error, say("Brickworks could not finish sharing it just now."))} ${down}`);
+  }
   mark("done");
   job = null;
   if (unlisted) {
@@ -358,9 +372,18 @@ async function send(body) {
 }
 
 function arrive(id) {
+  job = null;
   state.state = "done";
   location.assign(`${langAt()}/m/${id}`);
 }
+
+// Leaving while its link is taken down for its pictures is asked first:
+// what puts it back (the file, its pictures) is only on this page.
+window.addEventListener("beforeunload", (event) => {
+  if (!job?.down) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 /// Back to the form, nothing kept, with why.
 function back(words) {

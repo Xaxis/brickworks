@@ -5045,8 +5045,11 @@ plan with Claude as the client.
   at the app's sizes (1200x630 link picture on its ground and cut-out,
   480x360 WebP card), taken down and shared again with them, so it is
   version 1 with its pictures; two publishes a share. A share stopped
-  part way goes on from where it stopped (Try again); an answer lost on the
-  first send says so and asks to look on the profile first.
+  part way goes on from where it stopped (Try again); while its link is
+  taken down for its pictures, the page says so, a dropped file is not
+  taken and leaving is asked first; an answer lost on the first send says
+  so and asks to look on the profile first. The form is each file's own
+  (words typed for one file are not carried onto the next).
 - `send feedback` (`web/feedback.js`, `web/feedback.html`, the footer's
   and the account menu's Send feedback, `web/follow.js`), `send feedback in
   the app` (`src/ui/feedback_dialog.gd`, `src/ui/recent_log.gd`, Help in
