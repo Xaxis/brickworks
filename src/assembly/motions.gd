@@ -14,6 +14,20 @@
 ##   0 !BRICKWORKS MOTION_PATH "Drive and turn left" SECONDS 7 EASE STRAIGHT 32 LEFT 90 RADIUS 24
 ##   0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 71 70 0 -70
 ##   0 !BRICKWORKS MOTION_STEER "Drive and turn left" AT 0 JOINT PART 3829c01 0 0 -24 -60
+##   0 !BRICKWORKS MOTION "Fly round" AFTER "" SECONDS 8
+##   0 !BRICKWORKS MOTION_CAMERA "Fly round" 0 AT 0 -40 0 TURN -35 TILT 26 AWAY 640 FOV 30 EASE
+##   0 !BRICKWORKS MOTION_CAMERA "Fly round" 8 AT 0 -40 0 TURN 325 TILT 26 AWAY 640 FOV 30 LINEAR
+##
+## A camera key (camerakeys, docs/APP_UX10.md gap 12) is where the camera is
+## at a time: the point it looks at (AT, LDraw's coordinates, LDU), the way
+## it looks from, as the window's camera has it (CadCamera.aim, SavedViews):
+## TURN degrees round the upright from the model's front (LDraw's -z side;
+## 90 is its +x side), TILT degrees above level (-89 to 89), AWAY LDU from
+## what it looks at, FOV its lens top to bottom (degrees), and how it gets
+## there, as a joint's key. Between keys each number goes as a joint's place
+## does (Track.place_at), so it never swings past a key, the up stays up and
+## the camera never flips through a pole; a TURN of 360 more is a full turn
+## round, so a turntable is two keys. The camera moves nothing of the model.
 ##
 ## A path moves the whole model (unit drive, docs/APP_UX6.md #12): along its
 ## legs, each a straight (studs; less than 0 backwards) or a turn left or right
@@ -150,10 +164,175 @@ class Track extends RefCounted:
 				var span: float = float(b[0]) - float(a[0])
 				return lerpf(float(a[1]), float(b[1]), (t - float(a[0])) / span) if span > 0.0 \
 					else float(b[1])
-		var eased := PoseAnimation.new()
-		for key: Array in keys:
-			eased.add_key(float(key[0]), {"x": float(key[1])})
-		return eased.angle_at("x", t)
+		return Motions.eased_through(keys, func(key: Array) -> Dictionary: return {"x": float(key[1])}) \
+			.angle_at("x", t)
+
+
+## The camera's keys in a motion (camerakeys): each [[seconds, at (LDraw's
+## coordinates), turn, tilt, away, fov, how], ...] in time order, as its line
+## writes them (the header's MOTION_CAMERA).
+class CameraTrack extends RefCounted:
+	var keys: Array = []
+
+	## A key at [param key]'s time, in place of one there.
+	func add_key(key: Array) -> void:
+		for n: int in keys.size():
+			if absf(float(keys[n][0]) - float(key[0])) < 0.001:
+				keys[n] = key.duplicate()
+				return
+		keys.append(key.duplicate())
+		keys.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+
+	func length() -> float:
+		return float(keys.back()[0]) if not keys.is_empty() else 0.0
+
+	func copy() -> CameraTrack:
+		var out := CameraTrack.new()
+		out.keys = keys.duplicate(true)
+		return out
+
+	## Where the camera is at each of [param times] (seconds): [at, turn,
+	## tilt, away, fov], each number between its keys as a joint's place
+	## goes (Track.place_at): its first key's before it, its last's after.
+	func views_at(times: Array) -> Array:
+		var out: Array = []
+		if keys.is_empty():
+			return out
+		var eased: PoseAnimation = Motions.eased_through(keys, CameraTrack._channels)
+		for t_value: Variant in times:
+			var t: float = float(t_value)
+			if t <= float(keys[0][0]) or keys.size() == 1:
+				out.append(CameraTrack._view_of(keys[0]))
+				continue
+			if t >= float(keys.back()[0]):
+				out.append(CameraTrack._view_of(keys.back()))
+				continue
+			var k: int = 0
+			while k < keys.size() - 2 and t > float(keys[k + 1][0]):
+				k += 1
+			var a: Array = keys[k]
+			var b: Array = keys[k + 1]
+			match str(b[6]):
+				"HOLD":
+					out.append(CameraTrack._view_of(a))
+				"LINEAR":
+					var span: float = float(b[0]) - float(a[0])
+					var share: float = (t - float(a[0])) / span if span > 0.0 else 1.0
+					out.append([(a[1] as Vector3).lerp(b[1], share), lerpf(float(a[2]), float(b[2]), share),
+						lerpf(float(a[3]), float(b[3]), share), lerpf(float(a[4]), float(b[4]), share),
+						lerpf(float(a[5]), float(b[5]), share)])
+				_:
+					out.append([Vector3(eased.angle_at("x", t), eased.angle_at("y", t), eased.angle_at("z", t)),
+						eased.angle_at("turn", t), eased.angle_at("tilt", t), eased.angle_at("away", t),
+						eased.angle_at("fov", t)])
+		return out
+
+	static func _channels(key: Array) -> Dictionary:
+		var at: Vector3 = key[1]
+		return {"x": at.x, "y": at.y, "z": at.z, "turn": float(key[2]), "tilt": float(key[3]),
+			"away": float(key[4]), "fov": float(key[5])}
+
+	static func _view_of(key: Array) -> Array:
+		return [key[1], float(key[2]), float(key[3]), float(key[4]), float(key[5])]
+
+
+## The monotone cubic through every one of [param keys] ([[seconds, ...],
+## ...] in time order, none two at one time), each key's numbers as
+## [param channels] gives them. Put in as they are: PoseAnimation.add_key
+## takes a key under 10 ms from another as the same key, so of keys at 1.000
+## and 1.005 s the first was lost and the camera played 179.7° at its 90°
+## (camreview L1).
+static func eased_through(keys: Array, channels: Callable) -> PoseAnimation:
+	var eased := PoseAnimation.new()
+	for key: Array in keys:
+		eased.keys.append({"t": float(key[0]), "angles": channels.call(key)})
+	return eased
+
+
+## The least time between two keys of one track or the camera's, seconds:
+## a frame of the window's. Keys nearer than that are not made (a session's
+## are refused, a press keys the one there, a move onto one is refused):
+## nothing tells them apart as they play (camreview L1).
+const LEAST_KEY_GAP := 1.0 / 60.0
+
+
+## [param keys]' time within [constant LEAST_KEY_GAP] of [param t], not
+## one of [param skip] (their times); -1.0 when none is.
+static func key_near(keys: Array, t: float, skip: Array = []) -> float:
+	for key: Array in keys:
+		var at: float = float(key[0])
+		if absf(at - t) < LEAST_KEY_GAP and not skip.any(func(one: Variant) -> bool:
+				return absf(float(one) - at) < 0.001):
+			return at
+	return -1.0
+
+
+## The camera's numbers the file keeps: a tilt short of the poles, a lens
+## and a distance a camera has, and a turn of at most a hundred rounds.
+const MOST_TILT := 89.0
+const LEAST_FOV := 5.0
+const MOST_FOV := 120.0
+const LEAST_AWAY := 8.0
+const MOST_AWAY := 40000.0
+const MOST_TURN := 36000.0
+## How far from the file's origin the point a camera looks at may be, LDU.
+const MOST_AT := 1000000.0
+## A turntable made where a motion has no length yet, seconds.
+const TURNTABLE_SECONDS := 8.0
+
+
+## A camera key read at the edge, each number snapped to what its line
+## writes: [t, at, turn, tilt, away, fov, how], or why not.
+static func camera_key_of(t: float, at: Vector3, turn: float, tilt: float, away: float, fov: float,
+		how: String = "EASE") -> Variant:
+	how = how.strip_edges().to_upper()
+	if not how in HOWS:
+		return "a key goes eased, linear or held, not %s" % how.to_lower()
+	for value: float in [t, at.x, at.y, at.z, turn, tilt, away, fov]:
+		if not is_finite(value):
+			return "a camera key's numbers are numbers, not %s" % given(value)
+	var seconds: float = snappedf(t, 0.001)
+	if seconds < 0.0 or seconds > MOST_SECONDS:
+		return "a key is at 0 to %d seconds, not %s" % [int(MOST_SECONDS), given(t)]
+	var place := Vector3(snappedf(at.x, 0.01), snappedf(at.y, 0.01), snappedf(at.z, 0.01))
+	if absf(place.x) > MOST_AT or absf(place.y) > MOST_AT or absf(place.z) > MOST_AT:
+		return "the camera looks at a point within %d LDU of the file's origin, not %s" % [int(MOST_AT),
+			str(at)]
+	var round_turn: float = snappedf(turn, 0.01)
+	if absf(round_turn) > MOST_TURN:
+		return "a camera turns at most %d degrees round, not %s" % [int(MOST_TURN), given(turn)]
+	var up: float = snappedf(tilt, 0.01)
+	if absf(up) > MOST_TILT:
+		return "a camera tilts -%d to %d degrees, not %s" % [int(MOST_TILT), int(MOST_TILT), given(tilt)]
+	var off: float = snappedf(away, 0.01)
+	if off < LEAST_AWAY or off > MOST_AWAY:
+		return "a camera stands %d to %d LDU away, not %s" % [int(LEAST_AWAY), int(MOST_AWAY), given(away)]
+	var lens: float = snappedf(fov, 0.01)
+	if lens < LEAST_FOV or lens > MOST_FOV:
+		return "a camera's lens is %d to %d degrees, not %s" % [int(LEAST_FOV), int(MOST_FOV), given(fov)]
+	return [seconds, place, round_turn, up, off, lens, how]
+
+
+## The shortest turntable: a full turn in less is a blur.
+const LEAST_TURNTABLE := 0.5
+
+## A turntable's two keys: round [param at] (LDraw's coordinates) from
+## [param turn], [param tilt] and [param away] as the camera stands, through
+## [param fov], a full turn over [param seconds] at one speed, so its first
+## frame and its last are the same view.
+static func turntable_keys(at: Vector3, turn: float, tilt: float, away: float, fov: float,
+		seconds: float) -> Variant:
+	if not is_finite(seconds) or seconds < LEAST_TURNTABLE:
+		return "a turntable takes at least %s seconds, not %s" % [num(LEAST_TURNTABLE, 1), given(seconds)]
+	var first: Variant = camera_key_of(0.0, at, turn, clampf(tilt, -MOST_TILT, MOST_TILT),
+		clampf(away, LEAST_AWAY, MOST_AWAY), clampf(fov, LEAST_FOV, MOST_FOV), "LINEAR")
+	if first is String:
+		return first
+	var last: Variant = camera_key_of(seconds, at, float(first[2]) + 360.0, float(first[3]), float(first[4]),
+		float(first[5]), "LINEAR")
+	if last is String:
+		return last
+	return [first, last]
 
 
 ## Where the whole model goes: its legs in order, over [member seconds],
@@ -281,6 +460,8 @@ class Motion extends RefCounted:
 	var driver_seconds: float = 0.0
 	## Where the whole model goes, or null (unit drive).
 	var path: Path = null
+	## The camera's keys, or null (camerakeys): it moves nothing of the model.
+	var camera: CameraTrack = null
 
 	func length() -> float:
 		var most: float = seconds
@@ -290,10 +471,18 @@ class Motion extends RefCounted:
 			most = maxf(most, driver_seconds)
 		if path != null:
 			most = maxf(most, path.seconds)
+		if camera != null:
+			most = maxf(most, camera.length())
 		return maxf(most, 0.0)
 
 	func is_sequence() -> bool:
 		return not sequence.is_empty()
+
+	## Whether it has anything of its own to play: a joint's keys, a driver,
+	## a path or the camera's keys.
+	func has_own() -> bool:
+		return not tracks.is_empty() or driver != null or path != null \
+			or (camera != null and not camera.keys.is_empty())
 
 	## Every joint it moves.
 	func joints() -> Array:
@@ -658,6 +847,8 @@ static func moved_into(text: String, whole: Transform3D) -> String:
 static func through_line(line: String, through: Transform3D) -> String:
 	var cr: String = "\r" if line.ends_with("\r") else ""
 	var text: String = line.trim_suffix("\r")
+	if text.strip_edges().begins_with(META + "_CAMERA "):
+		return _camera_through(line, through)
 	var at: int = text.rfind(" JOINT PART ")
 	if at < 0:
 		return line
@@ -854,6 +1045,8 @@ func copy() -> Motions:
 			kept.joint = map.get(track.joint, track.joint.copy())
 			kept.keys = track.keys.duplicate(true)
 			made.tracks.append(kept)
+		if motion.camera != null:
+			made.camera = motion.camera.copy()
 		out.list.append(made)
 	return out
 
@@ -1026,12 +1219,61 @@ func lines(placed: Dictionary = {}, with_unread: bool = true) -> PackedStringArr
 			if motion.path.steer != null:
 				out.append("%s_STEER %s AT %s JOINT %s" % [META, quoted(motion.name),
 					num(motion.path.steer.at, 2), _ref_written(motion.path.steer, placed)])
+		if motion.camera != null:
+			for key: Array in motion.camera.keys:
+				out.append(camera_line(motion.name, key))
 	# And the lines this could not read, as the file had them: after the rest
 	# here; a save puts each where the file had it (ModelStore, MetaIndex
 	# .lines_for), and a refused key stays between the keys either side.
 	if with_unread:
 		out.append_array(unread)
 	return out
+
+
+## A camera key's line (the header's MOTION_CAMERA) for [param motion].
+static func camera_line(motion: String, key: Array) -> String:
+	var at: Vector3 = key[1]
+	return "%s_CAMERA %s %s AT %s %s %s TURN %s TILT %s AWAY %s FOV %s %s" % [META, quoted(motion),
+		num(float(key[0]), 3), num(at.x, 2), num(at.y, 2), num(at.z, 2), num(float(key[2]), 2),
+		num(float(key[3]), 2), num(float(key[4]), 2), num(float(key[5]), 2), str(key[6])]
+
+
+## A camera line's words after the motion's name ("0 AT 0 -40 0 TURN -35 TILT
+## 26 AWAY 640 FOV 30 EASE") read: its key, or why not.
+static func _read_camera(rest: PackedStringArray) -> Variant:
+	if rest.size() != 14 or rest[1] != "AT" or rest[5] != "TURN" or rest[7] != "TILT" or rest[9] != "AWAY" \
+			or rest[11] != "FOV":
+		return "a camera line this does not read"
+	for n: int in [0, 2, 3, 4, 6, 8, 10, 12]:
+		if not rest[n].is_valid_float():
+			return "a camera line this does not read"
+	return camera_key_of(rest[0].to_float(), Vector3(rest[2].to_float(), rest[3].to_float(), rest[4].to_float()),
+		rest[6].to_float(), rest[8].to_float(), rest[10].to_float(), rest[12].to_float(), rest[13])
+
+
+## [param line], a camera key's, with the point it looks at carried by
+## [param through] (LDraw's coordinates to LDraw's) and the way it looks
+## from turned with it: a turn round the upright adds to its TURN, so a
+## turntable's full turn stays one; a mirror turns it the other way round.
+static func _camera_through(line: String, through: Transform3D) -> String:
+	var cr: String = "\r" if line.ends_with("\r") else ""
+	var words: PackedStringArray = tokens(line.trim_suffix("\r").strip_edges())
+	if words.size() < 5:
+		return line
+	var key: Variant = _read_camera(words.slice(4))
+	if key is String:
+		return line
+	var flip: Basis = Basis.from_scale(LdrModel.FLIP)
+	var turn: Basis = flip * through.basis.orthonormalized() * flip
+	var yaw: float = deg_to_rad(float(key[2]))
+	var pitch: float = deg_to_rad(float(key[3]))
+	var way: Vector3 = turn * Vector3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw))
+	var base: float = yaw if through.basis.determinant() > 0.0 else -yaw
+	var turned: float = base + angle_difference(base, atan2(way.x, way.z))
+	var moved: Variant = camera_key_of(float(key[0]), through * (key[1] as Vector3), rad_to_deg(turned),
+		clampf(rad_to_deg(asin(clampf(way.y, -1.0, 1.0))), -MOST_TILT, MOST_TILT), float(key[4]), float(key[5]),
+		str(key[6]))
+	return line if moved is String else camera_line(words[3], moved) + cr
 
 
 ## [param text] with [param motion_lines] in the head of its main model
@@ -1100,6 +1342,17 @@ static func read_from(metas: MetaIndex) -> Motions:
 					why = "a driver line this does not read"
 			"MOTION_PATH":
 				why = "it has two path lines" if motion.path != null else _read_path(motion, rest)
+			"MOTION_CAMERA":
+				var key: Variant = _read_camera(rest)
+				if key is String:
+					why = str(key)
+				elif motion.camera != null and motion.camera.keys.any(func(one: Array) -> bool:
+						return absf(float(one[0]) - float(key[0])) < 0.001):
+					why = "it has two camera keys at %s s" % num(float(key[0]), 3)
+				else:
+					if motion.camera == null:
+						motion.camera = CameraTrack.new()
+					motion.camera.add_key(key)
 			_:
 				why = "%s is not a motion line this reads" % words[2]
 		if why.is_empty():
@@ -1149,10 +1402,11 @@ static func read_from(metas: MetaIndex) -> Motions:
 			refused.append([int(entry[0]), str(entry[1]), name, why, 1])
 	# A sequence has no tracks of its own: those lines are not read.
 	for one: Motion in out.list:
-		if one.is_sequence() and (not one.tracks.is_empty() or one.driver != null or one.path != null):
+		if one.is_sequence() and one.has_own():
 			one.tracks.clear()
 			one.driver = null
 			one.path = null
+			one.camera = null
 			var kept: Array = []
 			for read_line: Array in lines_of.get(one, []):
 				if str(read_line[2]) == "MOTION":
@@ -1164,13 +1418,12 @@ static func read_from(metas: MetaIndex) -> Motions:
 	# A motion that moves nothing and plays nothing is nothing: its lines,
 	# read or not, are kept as they are.
 	for one: Motion in out.list:
-		if not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence():
+		if one.has_own() or one.is_sequence():
 			continue
 		for read_line: Array in lines_of.get(one, []):
 			refused.append([int(read_line[0]), str(read_line[1]), one.name,
 				"nothing it moves was read", 2])
-	out.list = out.list.filter(func(one: Motion) -> bool:
-		return not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence())
+	out.list = out.list.filter(func(one: Motion) -> bool: return one.has_own() or one.is_sequence())
 	out._tidy_joints()
 	out._read_locks(metas)
 	refused.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
