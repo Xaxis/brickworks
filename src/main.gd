@@ -1518,7 +1518,42 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 		# The second view's picture, while View, Split shows it.
 		"split": css.call(_split.picture_rect()) if _split != null and _split.is_showing() else [],
 		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
-		"targets": targets}
+		"targets": targets,
+		# Where the eye is, in the world, and how much of the model it sees:
+		# under the floor or lost (phonewalk_flow.mjs's view_floor).
+		"eye": [_camera.global_position.x, _camera.global_position.y, _camera.global_position.z],
+		"turned": _camera.is_turned(), "parts_seen": parts_seen()}
+
+
+## How many of up to [param most] of the model's parts, spread through it,
+## are drawn at least in part in the model's part of the window: the
+## corners of the part's box in front of the eye cover some of it. None is
+## a view that has lost the model (src/dev/viewfloor_probe.gd,
+## phonewalk_flow.mjs's view_floor). Zoomed in close on the car's edge a
+## part's middle can be off the screen with its side filling it, so the
+## middles alone said lost of a view half full of bumper.
+func parts_seen(most: int = 400) -> int:
+	var bricks: Array = _world.bricks().filter(func(b: BrickWorld.Brick) -> bool:
+		return not _store.scenery.has(b.id) and not b.hidden)
+	var room: Rect2 = _camera.seen_rect()
+	var seen: int = 0
+	for n: int in range(0, bricks.size(), maxi(1, bricks.size() / most)):
+		var brick: BrickWorld.Brick = bricks[n]
+		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		var box: AABB = (brick.transform * part.bounds) if part != null \
+			else AABB(brick.transform.origin, Vector3.ZERO)
+		var drawn := Rect2()
+		var any: bool = false
+		for corner: int in 8:
+			var at: Vector3 = box.get_endpoint(corner)
+			if _camera.is_position_behind(at):
+				continue
+			var on_screen: Vector2 = _camera.unproject_position(at)
+			drawn = drawn.expand(on_screen) if any else Rect2(on_screen, Vector2.ZERO)
+			any = true
+		if any and (room.intersects(drawn, true) or room.has_point(drawn.position)):
+			seen += 1
+	return seen
 
 
 ## Up to five parts and a point on each a click would find them at, spread
@@ -5446,8 +5481,11 @@ func _build_ui() -> void:
 		_sample_untouched = false
 		if _assistant_made != null:
 			_assistant_made.forget_built()
-		_lay_baseplate()
-		_on_model_changed()
+		# The open's own: its floor under it is no edit, and an unedited save
+		# still writes its file (ModelStore.as_opened).
+		_store.as_opened(func() -> void:
+			_lay_baseplate()
+			_on_model_changed())
 		# Not again for a big model framed as it was first drawn: the
 		# person may have turned the view since.
 		if _framed_in != _world.generation():
@@ -5914,6 +5952,12 @@ func _build_ui() -> void:
 		var ground := Plane(Vector3.UP, 0.0)
 		var landing: Variant = ground.intersects_ray(from, towards)
 		return landing if landing != null else null
+	# And what it keeps its eye over: the ground the model stands on, at
+	# y = 0 whatever the floor is (FloorLayer), so no turn, pinch or Fit
+	# leaves the view under it (CadCamera.floor_at); and what it keeps on
+	# the screen, so no slide or turn loses the model (CadCamera.bounds).
+	_camera.floor_at = 0.0
+	_camera.bounds = _camera_box
 
 	_outline = SelectionOutline.new()
 	_outline.world = _world
@@ -7439,6 +7483,22 @@ static var _booklet_starting: bool = false
 ## What was built, without the baseplate it was built on. Falls back to
 ## everything when the model *is* scenery, so a picture of a bare plate
 ## still gets framed rather than pointing at nothing.
+## What the camera keeps in view (CadCamera.bounds): [method _built_bounds],
+## worked out again only when the world has changed since. It reads every
+## part, and the camera asks at each gesture's start: on Orthanc a turn's
+## first frame paid all 10,101 parts each time.
+var _camera_box_was: Array = []
+var _camera_box_kept: AABB = AABB()
+
+
+func _camera_box() -> AABB:
+	var now: Array = [_world.revision, _world.brick_count(), _store.scenery.size()]
+	if now != _camera_box_was:
+		_camera_box_was = now
+		_camera_box_kept = _built_bounds()
+	return _camera_box_kept
+
+
 func _built_bounds() -> AABB:
 	var bounds: AABB = _model_bounds()
 	if bounds.size.length_squared() > 0.0:
@@ -8674,9 +8734,11 @@ func _on_part_chosen(part_id: String) -> void:
 
 func _on_part_fetched(part_id: String) -> void:
 	# Not there yet is not the same as not there: a model opened on the
-	# web before its parts were fetched gets them as they come.
-	if _store.place_awaited(part_id) > 0:
-		_on_landed()
+	# web before its parts were fetched gets them as they come: where the
+	# file has them, which is no edit (ModelStore.as_opened).
+	_store.as_opened(func() -> void:
+		if _store.place_awaited(part_id) > 0:
+			_on_landed())
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)

@@ -1,5 +1,101 @@
 # Brickworks against the field
 
+## The scorecard
+
+Kept current by each round of the app's plan. **Round eleven, 20 November
+2026** (uxplan11, [APP_UX11.md](APP_UX11.md)): Brickworks as live on
+brickworks.diy (rel-m316, `7f25aa4bf`) and on `pre261` (`0009db19e`), against
+each tool's latest version as its own pages gave it that day.
+
+**98 cells: Brickworks ahead in 78, level in 11, behind in 9.**
+
+How a cell is judged, for the tool in its column:
+- **ahead:** Brickworks does what the tool does in that row, and more;
+- **level:** each does what the other does, near enough;
+- **behind:** the tool does something in the row a builder reaches for that
+  Brickworks does not, whatever else Brickworks does there. A missing feature
+  is counted once, in the row it belongs to.
+
+| | Brickworks | Studio 2.26.10_1 (27 Oct) | Mecabricks | LeoCAD 26.09 (+ 19 Nov build) | LDCad 1.7 b2b | StudWorx 2026-11-19 | **new:** Kinebrick Studio 0.3.0 (20 Nov) | phone builders: Brick Creator 3D 1.1.1, Tumbly Blocks, Stackable Studio |
+|---|---|---|---|---|---|---|---|---|
+| **Parts** | 29,668: LDraw's official to 2026-09 and its unofficial of 23 Oct; bricks, plates, slopes and Technic bricks made at any size; prints, stickers; Studio's `bl_` parts read from the file [parts] [elements] | ahead: no new parts since 2.26.4 (Apr); custom parts need PartDesigner [sc-st-rel] [sc-st-pd] | ahead: its own library; 2.0 unreleased since 2023 [sc-mb] | level: the same LDraw, 2026-10's 129 parts official there; makes none [sc-lc] [sc-ldraw] | ahead: LDraw; flexible parts by template only [sc-ld] | level: fetches the official library at first start; renumbered parts swapped in a click, as movedparts does here [sc-sw] | ahead: LDraw parts; makes none [sc-kb] | ahead: 3,700 parts at most [sc-bc3d] |
+| **Building** | a 2 LDU lattice, collision always exact; studs, pins, axles, bars, clips, hinges, track ends and 1,109 of 1,109 ball joints seated; a part seats by the joint it was picked up by; connection points shown [building] [geometry] | level: snaps and turns to fit, a Connect tool, collision optional [sc-st-snap] | ahead: snap by hand, no collision [sc-mb] | ahead: studs snap only in a test build; no collision [sc-lc] | ahead: basic snapping; no collision [sc-ld] | ahead: snaps by LDCad's library and lays track; no collision or load check [sc-sw] | level: a part turns up to 45° to seat, gears mesh as they snap, hoses settle; no collision found [sc-kb] | ahead: tap to place on a grid [sc-bc3d] |
+| **Sub-models** | Ctrl+G, a tree, nested `.mpd`; Find and Replace into every one; each saved as its own file; one model put into another [building] [model-io] | level: linked copies [sc-st-sub] | ahead: groups only [sc-mb] | level: in place, files merged [sc-lc] | level: full MPD, nested editing [sc-ld] | level: in place, 40 a file, each exported [sc-sw] | ahead: none found | ahead: none |
+| **Steps and booklet** | worked out, or the file's own kept; steps moved, merged, split, named and found by part (72 ms); every page laid out by hand on rulers and guides; new parts outlined; callouts; "from drawer 3"; PDF and PNG [view] | level: Step Editor, Page Layout, BOM pages, PDF and PNG [sc-st-im] | ahead: no instructions [sc-mb] | ahead: a timeline, print and HTML; no page layout [sc-lc] | ahead: stepping only [sc-ld] | **behind:** an element inspector that shows each item's space around and inside, a page locked or frozen against changes made to all pages, the new parts' outline 1 to 72 wide, the booklet as HTML pages [sc-sw] | ahead: none found | **behind:** Tumbly has "a voice [that] reads every step" [sc-tumbly] |
+| **Render** | Best path traced in the app; HDRIs, lamps, depth of field, 4K; a turntable; the model built up as a video [view] | level: Eyesight path tracer, POV-Ray, build and turntable videos [sc-st-render] | level: a render farm (offline again 30 Jun) and a Blender add-on [sc-mb] | ahead: POV-Ray or Blender, outside the app [sc-lc] | ahead: OpenGL pictures, POV-Ray [sc-ld] | ahead: POV-Ray with LGEO or Blender, outside the app [sc-sw] | **behind:** a camera track on the timeline (camerakeys, in its fix) [sc-kb] | ahead: a build animation |
+| **Motion and Simulate** | Pose with hinges, ball joints and locks; Motions keyed and played; Simulate: gears, motors to their stall, hub programs; Lift and Swing; 391 of 1,224 real sets' functions work [view] [KINEFUNCS.md](KINEFUNCS.md) | ahead: minifigure posing only [sc-st-pose] | ahead: an animation editor, no physics [sc-mb] | ahead: keyframes [sc-lc] | ahead: script animation [sc-ld] | ahead: joints with a lock, named poses, a GIF; nothing simulated [sc-sw] | **behind:** gravity, friction and contact; cams, Geneva drives, ratchets, clutches, CV joints; Kinebrick works 701 of 1,226 functions [sc-kb] | ahead: none |
+| **Technic** | pins, axles, gears turning together, SPIKE and Powered Up motors to their stall, hub programs, rubber bands round pulleys, springs and shocks, hoses and flex axles by their ends [geometry] | ahead: flexible hoses; no motors [sc-st-snap] | ahead: gear parts [sc-mb] | ahead: Flex-System hoses [sc-lc] | ahead: springs, hoses and bands as here; nothing turns [sc-ld] | ahead: hoses that keep their length; nothing turns [sc-sw] | **behind:** pneumatics and chains that run; PF, 9V and Powered Up cables to battery boxes; Pybricks programs [sc-kb] | ahead: none |
+| **The collection** | sets by number, Built leaving the counts; loose parts; from Rebrickable or a BrickLink XML; What can I build? over every set; what is left at each step; Use what I own; where each part is kept; a wanted list; no prices [collection] | **behind:** Price Guide prices, a wanted list uploaded in a click; BrickLink offline since 19 Nov [sc-st-coll] [sc-bl] | ahead: none [sc-mb] | ahead: a set's inventory, an XML [sc-lc] | ahead: none [sc-ld] | ahead: a set from Rebrickable, an XML [sc-sw] | ahead: none | **behind:** a pile scanned by the camera into what you own (Stackable, Tumbly) [sc-stackable] [sc-tumbly] |
+| **Sharing** | a gallery with likes, comments, remixes, lists and block; links that keep their versions and say what changed; an embed; a viewer with steps [web] | ahead: a gallery, no embed [sc-st-gal] | ahead: a library with likes, comments and an embed [sc-mb] | ahead: by file | ahead: by file | ahead: by file | ahead: none | ahead: Brick Creator 3D's gallery with report and block, each here too [sc-bc3d] |
+| **Working together** | one model edited live by a link, in browsers and the desktop, each with their own undo; point at a part; locks held [together] | ahead: Build Together, desktop only [sc-st-bt] | ahead: none | ahead: none | ahead: none | ahead: none | ahead: none | ahead: none |
+| **Phones** | a layout for a finger; two fingers undo, three redo, a double tap turns; WebKit as an iPhone 13: first visit 20.3 s, a return 15.3 s, Wasm 432 MB at its height (this round's run) | ahead: Windows and Mac only [sc-st-intro] | ahead: browser, no phone layout [sc-mb] | ahead: no app [sc-lc] | ahead: none | ahead: none | ahead: desktop only [sc-kb] | **behind:** native apps that open at once, within an iPhone's memory [sc-bc3d] [sc-tumbly] |
+| **Files in and out** | in: ldr/mpd, io (locked too), lxf; OBJ, STL, glTF and more to Brickify. Out: ldr/mpd, io, glTF/GLB, OBJ, STL, 3MF, a BrickLink XML, a Rebrickable CSV, PDF [model-io] | **behind:** its `.io` opens in Studio; Brickworks' has never been seen to; it writes LXFML and COLLADA [sc-st-export] | ahead: no LDraw out [sc-mb] | ahead: OBJ, 3DS, COLLADA, HTML out [sc-lc] | ahead: POV-Ray out [sc-ld] | ahead: COLLADA, KMZ, POV-Ray, HTML out [sc-sw] | ahead: clean LDraw out [sc-kb] | ahead: an LDraw and a print file [sc-tumbly] |
+| **Speed on big models** | 200,000 bricks in 14 draw calls at 131 fps (M3 Max); Orthanc's 9,429 parts and 10179 open in a browser; their parts lists in 100 ms or less [view] | ahead: no figures; collision "can take a lot of resources" [sc-st-snap] | ahead: "workshop is broken … cannot save" (9 Nov) [sc-mb] | ahead: "optimized for large models", 4,000 parts shown [sc-lc] | ahead: threaded loading, no figures [sc-ld] | ahead: far parts drawn simpler, no figures [sc-sw] | ahead: none published | ahead: small builds |
+| **The AI** | the person's own Claude designs from a sentence or picture and edits the open model, 80 tools by connector or MCP, every brick checked; won 24% against the real sets on 44 held-out subjects (16 Nov) [assistant] [mcp] [DESIGN_SCORES.md](DESIGN_SCORES.md) | ahead: none; Sculpture and Mosaic are rules [sc-st-sculpt] | ahead: none | ahead: none | ahead: none | ahead: none | ahead: an agent can look at the model and set it up [sc-kb] | ahead: kits from a scanned pile, counted under the collection [sc-tumbly] [sc-stackable] |
+
+**The nine behinds, worst first** (by how many builders meet them):
+1. **Phones against the native phone builders.** A first visit is 20.3 s
+   and a return 15.3 s on an iPhone's engine, and the Wasm memory reaches
+   432 MB where an iPhone reliably gives about 300. Brick Creator 3D,
+   Tumbly and Stackable open at once (**webstart13**).
+2. **Motion and Technic against Kinebrick Studio 0.3.0.** It added gravity,
+   friction and contact, pneumatics, chains, wired electrics and Pybricks
+   on 20 November, and Kinebrick works 701 of 1,226 real sets' functions,
+   Simulate 391 (two cells; the functions are **kinefuncs2**, the owner's
+   choice; the cables are **wires**).
+3. **Files against Studio:** Brickworks' `.io` has never been seen opening
+   in Studio, the community's own format (**studioio**).
+4. **The booklet against StudWorx:** an element inspector, a page locked
+   or frozen, the outline's width and HTML pages (**pagetools**); the
+   rulers and guides Brickworks has.
+5. **The collection against Studio:** prices and a wanted list uploaded in a
+   click. Not planned: they need BrickLink's API keys under its terms,
+   which are the owner's, and BrickLink has been offline since 19 November.
+6. **The collection against the phone builders:** a pile scanned into what
+   you own (**pilescan**, measured first).
+7. **The booklet against Tumbly:** every step read aloud (**smalls13**).
+8. **Render against Kinebrick Studio:** a camera keyed on the timeline
+   (**camerakeys**, in its fix now).
+
+**Since round ten's survey:** Kinebrick Studio 0.3.0 is new (20 November,
+the largest change in the field this week); StudWorx 2026-11-19 added a joint
+overview and a picture that plays the joints' motion; BrickLink went offline
+again on 19 November. Studio, Mecabricks, LeoCAD, LDCad, BrickAgent and
+BrickBench did not change. BrickBench's leaders are GPT-6 Astra (ELO 1297),
+GPT-6.1 Sol (1293) and Claude Opus 5.5 (1249); Brickworks is not entered (the
+owner's).
+
+Scorecard sources, each read on 20 November 2026 (copies in
+`bench/results/uxplan11-2026-11-20/sources/`):
+- [sc-st-rel] Studio's release data, its download page's copy of 15 Nov in
+  the Wayback Machine: http://web.archive.org/web/20261115160300/https://www.bricklink.com/v3/studio/download.page
+- [sc-st-pd] [sc-st-snap] [sc-st-sub] [sc-st-im] [sc-st-render] [sc-st-pose]
+  [sc-st-coll] [sc-st-gal] [sc-st-bt] [sc-st-intro] [sc-st-export]
+  [sc-st-sculpt] Studio's help centre, https://studiohelp.bricklink.com/hc/en-us
+  (PartDesigner, Snap, Connect, Collision, Flexible parts, Submodel and
+  Linked submodels, Step Editor, Page Layout, BOM, Render and Animation,
+  Posing, My Collection palette, Wanted List and prices, Gallery, Build
+  Together, Introduction, Import and Export formats, Sculpture and Mosaic)
+- [sc-bl] BrickLink's maintenance page, https://www.bricklink.com/v3/studio/download.page
+- [sc-mb] https://www.mecabricks.com/ (home, workshop, parts, shop, forum
+  topics 69160, 76482 and 76310) and Brickset's articles 52336, 52611, 53762
+- [sc-lc] https://www.leocad.org/, https://www.leocad.org/docs/history.html
+  and https://github.com/leozide/leocad/releases (the 19 Nov build)
+- [sc-ldraw] https://library.ldraw.org/updates (Update 2026-10: 129 new parts)
+- [sc-ld] https://www.melkert.net/LDCad/features
+- [sc-sw] https://github.com/nathaneltitane/studworx/blob/main/SITE.md and
+  https://github.com/nathaneltitane/studworx/releases/tag/2026-11-19
+- [sc-kb] https://github.com/fhareide/kinebrick-studio-releases/releases/tag/v0.3.0
+  and https://github.com/erik-larsen/kinebrick (its README's table)
+- [sc-bc3d] https://apps.apple.com/us/app/brick-creator-3d/id6818529262
+- [sc-tumbly] https://tumbly.ai/blocks/
+- [sc-stackable] https://apps.apple.com/us/app/stackable-studio-scan-build/id6770308503
+- Brickworks' own: the recipes in `.claude/skills/verify/` named in
+  [Sources](#sources), and this round's runs in
+  `bench/results/uxplan11-2026-11-20/`.
+
+## The survey of 12 October
+
 Written 2026-10-12 against `next3` at `dc413fe`: what has shipped to
 brickworks.diy plus what is about to. It covers BrickLink Studio 2.26,
 Mecabricks, LEGO Digital Designer (retired), LeoCAD, LDCad, Bricksmith, the

@@ -260,6 +260,31 @@ var _spread: float = 0.0
 # the yaw axis degenerate and the view spin unpredictably.
 const _PITCH_LIMIT := deg_to_rad(89.0)
 
+## The plane the model stands on, y in LDU (Main gives the floor's, 0), or
+## NAN where there is none: a picture's camera, a probe's own. While the
+## model is the right way up its floor shows, and no drag, finger, wheel,
+## key or Fit takes the eye from over it to under it: seen from under the
+## floor the baseplate covers the model, the grid and the shadow are drawn
+## from behind. A phone's hundred random two-finger gestures left the eye
+## under the floor 46-56 times, and Fit kept the tilt and left it there; a
+## mouse's right drag 800 px down put it 832 LDU under the car at 89°
+## (viewfloor_probe, 2026-11-19). A view chosen from below (the view
+## cube's Bottom, a saved view, the owner's in Together) stays as chosen,
+## and a drag from there comes up through the floor but goes no further
+## down; turned over (Build's steps from below, [method look_from]) the
+## floor is put aside and the view goes anywhere.
+var floor_at: float = NAN
+## The box round what is built, for [method _keep_near_model]. Set by
+## whoever owns the scene; it takes nothing and returns an AABB, an empty
+## one when there is nothing. Read once a gesture.
+var bounds: Callable = Callable()
+var _box: AABB = AABB()
+var _box_used: int = -1000
+## How far over the floor's plane the eye is held: a baseplate's studs
+## stand 4 LDU over it (FloorLayer.STUD_HIGH), and a plate's height more
+## keeps the near plane off them.
+const FLOOR_CLEAR := 8.0
+
 
 func _ready() -> void:
 	# A brick is 24 units tall, so the near plane has to be far tighter
@@ -539,8 +564,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				if on_second:
 					second.zoom_by(change, _between())
 				else:
+					var line: float = _floor_line()
 					_target_distance = clampf(
 						_target_distance * change, min_distance, max_distance)
+					_keep_near_model(line)
 			_spread = now
 
 			# On a phone two fingers turn it, about the point between
@@ -731,7 +758,9 @@ func _begins_over_interface(event: InputEvent) -> bool:
 ## middle of the screen rather than jumping closer.
 func _centre_on(at: Vector2) -> void:
 	var aim: Vector3 = _under(at)
+	var line: float = _floor_line()
 	_target_focus = aim
+	_keep_near_model(line)
 	_pivot_on(aim)
 	pivot_shown = true
 
@@ -795,7 +824,7 @@ func _begin(doing: Doing, with_button: int, at: Vector2) -> void:
 	_grab_depth = maxf((aim - global_position).dot(
 		-global_transform.basis.z), 1.0)
 	if doing == Doing.ORBIT:
-		_pivot_on(aim)
+		_pivot_on(_pivot_near(aim))
 		pivot_shown = true
 
 
@@ -845,6 +874,19 @@ func _under(at: Vector2) -> Vector3:
 	return _on_focus_plane(at)
 
 
+## What a turn begun at [param aim] turns about: that point, or the focus
+## when it is farther from it than the eye is. With nothing under the
+## pointer the ray is met by the ground, and at a low tilt that is far away
+## (thousands of LDU past the car at 1°): a turn or a twist about it threw
+## the model off the screen. A right turn begun at the room's corner, 1800
+## px across, left the focus 2981 LDU off a car 265 across with none of it
+## on the screen (viewfloor_probe, 2026-11-19). Turned about a point of the
+## model, or about the middle of the view, the focus keeps its distance
+## from the model, and the model stays on the screen.
+func _pivot_near(aim: Vector3) -> Vector3:
+	return aim if aim.distance_to(_target_focus) <= _target_distance else _target_focus
+
+
 ## Turn around a point without moving the camera.
 ##
 ## The pivot is kept apart from the focus on purpose. The focus is what
@@ -868,23 +910,78 @@ func _turn_by(by: Vector2, rate: float) -> void:
 		return
 	var around_up: float = -by.x * rate * orbit_speed
 	var was: float = _target_pitch
-	_target_pitch = clampf(was - by.y * rate * orbit_speed,
-		-_PITCH_LIMIT, _PITCH_LIMIT)
-	# The delta that was actually applied, which at the poles is less
+	# The delta that can actually be applied, which at the poles is less
 	# than the one asked for — using the asked-for one would slide the
-	# pivot sideways every time somebody drags past straight down.
-	var around_right: float = _target_pitch - was
-	_target_yaw += around_up
-
-	if not _has_pivot or _target_focus.is_equal_approx(_pivot):
-		return
+	# pivot sideways every time somebody drags past straight down. And
+	# over the floor, less again: the tilt stops where the eye meets it.
+	var around_right: float = clampf(was - by.y * rate * orbit_speed,
+		-_PITCH_LIMIT, _PITCH_LIMIT) - was
+	var swings: bool = _has_pivot and not _target_focus.is_equal_approx(_pivot)
 	# Swing the focus about the pivot by the same rotation the camera
-	# just made, so their offset keeps the direction the angles say it
-	# has and the pivot stays where it is on screen. Round the turntable's
-	# up, which a model turned over has turned with it.
+	# makes, so their offset keeps the direction the angles say it has and
+	# the pivot stays where it is on screen. Round the turntable's up,
+	# which a model turned over has turned with it.
 	var right: Vector3 = global_transform.basis.x
-	var turn: Basis = Basis(_target_frame * Vector3.UP, around_up) * Basis(right, around_right)
-	_target_focus = _pivot + turn * (_target_focus - _pivot)
+	var swung := func(tilt: float) -> Vector3:
+		if not swings:
+			return _target_focus
+		var turn: Basis = Basis(_target_frame * Vector3.UP, around_up) * Basis(right, tilt)
+		return _pivot + turn * (_target_focus - _pivot)
+	var line: float = _floor_line()
+	if line > -INF and _eye_at(was + around_right, _target_distance, swung.call(around_right)).y < line:
+		# As much of the tilt as keeps the eye over the line: the eye's
+		# height goes one way with the tilt across the few degrees one move
+		# makes. Either way of tilting: about a pivot far down the screen,
+		# tilting up swings the eye down with the focus.
+		var lo: float = 0.0
+		var hi: float = 1.0
+		for _n: int in 20:
+			var mid: float = (lo + hi) * 0.5
+			if _eye_at(was + around_right * mid, _target_distance,
+					swung.call(around_right * mid)).y >= line:
+				lo = mid
+			else:
+				hi = mid
+		around_right *= lo
+	_target_pitch = was + around_right
+	_target_focus = swung.call(around_right)
+	_target_yaw += around_up
+	_keep_near_model(line)
+
+
+## Where the eye stands for the view's turn and [param pitch], [param far]
+## from [param at]: as [method _apply] puts it, at the targets.
+func _eye_at(pitch: float, far: float, at: Vector3) -> Vector3:
+	return at + _target_frame * (Vector3(cos(pitch) * sin(_target_yaw), sin(pitch),
+		cos(pitch) * cos(_target_yaw)) * far)
+
+
+## The lowest the eye may go from where it is going now ([member
+## floor_at]): the floor's plane and [constant FLOOR_CLEAR] over it, or as
+## low as it is when it is lower and still over the floor; -INF with no
+## floor to keep, the model turned over (its floor put aside), or the eye
+## under the floor already, in a view chosen from there.
+func _floor_line() -> float:
+	if is_nan(floor_at) or _target_frame != Basis.IDENTITY:
+		return -INF
+	var now: float = _eye_at(_target_pitch, _target_distance, _target_focus).y
+	if now < floor_at:
+		return -INF
+	return minf(floor_at + FLOOR_CLEAR, now)
+
+
+## After the distance or the focus has gone to where [param line] (a
+## [method _floor_line] read before) would have it under: the focus out of
+## the floor first, then the view tilted down about it just so far that the
+## eye is on the line, as a camera on a boom rides up over a table it was
+## pulled back along.
+func _keep_over_floor(line: float) -> void:
+	if line == -INF or _eye_at(_target_pitch, _target_distance, _target_focus).y >= line:
+		return
+	_target_focus.y = maxf(_target_focus.y, floor_at)
+	var rise: float = (line - _target_focus.y) / maxf(_target_distance, 0.001)
+	_target_pitch = clampf(maxf(_target_pitch, asin(clampf(rise, -1.0, 1.0))),
+		-_PITCH_LIMIT, _PITCH_LIMIT)
 
 
 ## Slide the view in its own plane, by a movement in screen pixels.
@@ -905,8 +1002,19 @@ func _slide_by(by: Vector2) -> void:
 	var depth: float = _grab_depth if _doing == Doing.SLIDE \
 		else _target_distance
 	var scale: float = _ldu_per_pixel(depth) * pan_speed
-	_target_focus -= global_transform.basis.x * by.x * scale
-	_target_focus += global_transform.basis.y * by.y * scale
+	_slide_focus(global_transform.basis.y * by.y * scale - global_transform.basis.x * by.x * scale)
+
+
+## The focus, and the eye with it, moved [param by], as far as the floor
+## lets the eye go ([method _floor_line]): a slide that would take it under
+## stops where it meets the line, the rest of the way along the floor kept.
+func _slide_focus(by: Vector3) -> void:
+	var line: float = _floor_line()
+	var eye_y: float = _eye_at(_target_pitch, _target_distance, _target_focus).y
+	if line > -INF and by.y < 0.0 and eye_y + by.y < line:
+		by.y = minf(line - eye_y, 0.0)
+	_target_focus += by
+	_keep_near_model(line)
 
 
 ## Where a point on the screen lands on the plane through the focus.
@@ -951,6 +1059,50 @@ func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
 	# this is the one place to say so.
 	if not is_equal_approx(factor, 1.0):
 		_note("zoom_in" if factor < 1.0 else "zoom_out")
+	var line: float = _floor_line()
+	_zoom_towards(factor, at_screen)
+	_keep_over_floor(line)
+
+
+## Keep the middle of the view near enough the model that some of it is
+## always on the screen: the focus no farther from the model's box than
+## a quarter of the view across, so the box's nearest point is drawn
+## inside the middle half of the view whatever its depth. After a pinch
+## and a turn too, though neither moves the focus: a pinch in shrinks the
+## view round a focus off to the side, and an iPhone's walk lost the car
+## so (phonewalk view_floor, 1 of 200, 2026-11-19). With nothing in
+## the way a slide went on for ever and a zoom out moved the focus away
+## from the pointer: a mouse's middle drag of 3000 px left nothing of the
+## car on the screen, and a phone's hundred random gestures lost the
+## model 72-94 times (viewfloor_probe, 2026-11-19), with no way back but
+## Fit for someone who did not know it. A part of the room beside the
+## model can still be put in the middle, zoomed out. Then over the floor
+## by [param line] ([method _floor_line], read before the move), as the
+## focus may have come down.
+func _keep_near_model(line: float) -> void:
+	_keep_near_box()
+	_keep_over_floor(line)
+
+
+func _keep_near_box() -> void:
+	if not bounds.is_valid():
+		return
+	var now: int = Engine.get_process_frames()
+	if now - _box_used > 10:
+		_box = bounds.call()
+	_box_used = now
+	if _box.size.length_squared() <= 0.0:
+		return
+	var nearest: Vector3 = _target_focus.clamp(_box.position, _box.end)
+	var off: Vector3 = _target_focus - nearest
+	var room: Vector2 = seen_rect().size
+	var reach: float = minf(room.x, room.y) * 0.25 * _ldu_per_pixel(_target_distance)
+	if off.length() > reach:
+		_target_focus = nearest + off.normalized() * reach
+
+
+## [method _zoom_by]'s move itself, before the floor is kept.
+func _zoom_towards(factor: float, at_screen: Vector2) -> void:
 	var was: float = _target_distance
 	_target_distance = clampf(was * factor, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
@@ -976,6 +1128,7 @@ func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
 	var aim: Vector3 = origin + towards * (
 		(focus - origin).dot(forward) / facing)
 	_target_focus = aim + (_target_focus - aim) * actual
+	_keep_near_box()
 
 
 # -- from the keyboard -----------------------------------------------------
@@ -1153,6 +1306,65 @@ func aim_at(given: Variant) -> bool:
 	return true
 
 
+## A view the camera is held at, [focus, yaw, pitch, distance], while a
+## motion's camera keys play (camerakeys, PosePanel); empty when it is not.
+var _held: Array = []
+## What a person is told when they turn, slide or zoom a held view.
+var held_words: String = ""
+## A person tried to move a held view ([method hold_at]): the words to say.
+signal held_back(words: String)
+
+
+## The camera put at [param view] ([focus, yaw, pitch, distance, fov], the
+## window's coordinates, radians: MotionPlayer.camera_view) at once, with no
+## easing, upright and in perspective (straight-on is left), and held there: a turn, slide or zoom
+## by a person, by any hand, key or finger, is put back and [signal
+## held_back] says [param words]. [method let_go] lets it move again.
+func hold_at(view: Array, words: String) -> void:
+	_held_moved()
+	_target_frame = Basis.IDENTITY
+	_frame = Basis.IDENTITY
+	_target_focus = view[0]
+	_target_yaw = float(view[1])
+	_target_pitch = clampf(float(view[2]), -_PITCH_LIMIT, _PITCH_LIMIT)
+	_target_distance = clampf(float(view[3]), min_distance, max_distance)
+	focus = _target_focus
+	_yaw = _target_yaw
+	_pitch = _target_pitch
+	distance = _target_distance
+	if projection == Camera3D.PROJECTION_ORTHOGONAL:
+		projection = Camera3D.PROJECTION_PERSPECTIVE
+	fov = float(view[4])
+	_held = [_target_focus, _target_yaw, _target_pitch, _target_distance]
+	held_words = words
+	_apply(1.0)
+
+
+func is_held() -> bool:
+	return not _held.is_empty()
+
+
+## A held view let go: a person's hand moves it again.
+func let_go() -> void:
+	_held = []
+	held_words = ""
+
+
+## A held view a hand has moved since it was held put back, and said.
+func _held_moved() -> void:
+	if _held.is_empty():
+		return
+	if _target_focus == _held[0] and _target_yaw == float(_held[1]) and _target_pitch == float(_held[2]) \
+			and _target_distance == float(_held[3]) and _target_frame == Basis.IDENTITY:
+		return
+	_target_focus = _held[0]
+	_target_yaw = float(_held[1])
+	_target_pitch = float(_held[2])
+	_target_distance = float(_held[3])
+	_target_frame = Basis.IDENTITY
+	held_back.emit(held_words)
+
+
 ## One step in or out, as a wheel notch is, towards the middle of the view.
 func key_zoom(steps: int) -> void:
 	if steps == 0:
@@ -1187,8 +1399,15 @@ func key_hold(delta: float, zoom: int, turn: Vector2, slide: Vector2) -> void:
 func _turn_degrees(by: Vector2) -> void:
 	_note("orbit")
 	_target_yaw -= deg_to_rad(by.x)
+	var line: float = _floor_line()
+	var was: float = _target_pitch
 	_target_pitch = clampf(_target_pitch + deg_to_rad(by.y), -_PITCH_LIMIT,
 		_PITCH_LIMIT)
+	# Tilted about the focus: the eye's height is the focus's and the
+	# tilt's sine, so the lowest tilt over the floor is read straight off.
+	if line > -INF and _target_pitch < was and _eye_at(_target_pitch, _target_distance, _target_focus).y < line:
+		_target_pitch = minf(was, asin(clampf((line - _target_focus.y) / maxf(_target_distance, 0.001),
+			-1.0, 1.0)))
 
 
 ## Slide by a share of what the view shows, so a step is the same on
@@ -1197,8 +1416,7 @@ func _slide_share(by: Vector2) -> void:
 	_note("slide")
 	var across: float = _ldu_per_pixel() * (get_viewport().get_visible_rect().size.y
 		if is_inside_tree() else 900.0)
-	_target_focus += global_transform.basis.x * by.x * across
-	_target_focus += global_transform.basis.y * by.y * across
+	_slide_focus(global_transform.basis.x * by.x * across + global_transform.basis.y * by.y * across)
 
 
 ## The point halfway between the first two fingers.
@@ -1305,12 +1523,14 @@ func _twist() -> void:
 		# fingers are: two fingers turned a quarter turn the model a quarter.
 		_twisting = true
 		by = _twist_total
-		_twist_about = _under(_between())
+		_twist_about = _pivot_near(_under(_between()))
 		_twist_way = 1.0 if _target_pitch >= 0.0 else -1.0
 	var angle: float = by * _twist_way
+	var line: float = _floor_line()
 	_target_yaw += angle
 	_target_focus = _twist_about + Basis(_target_frame * Vector3.UP, angle) \
 		* (_target_focus - _twist_about)
+	_keep_near_model(line)
 
 
 func _process(delta: float) -> void:
@@ -1327,6 +1547,7 @@ func _process(delta: float) -> void:
 		_dragging_right = false
 	if _touches.size() >= 2:
 		_two_fingers()
+	_held_moved()
 
 	# An exponential approach, framerate independent: the same fraction of
 	# the remaining distance per second whatever the frame time. Under
@@ -1602,6 +1823,7 @@ func is_square_on() -> bool:
 func frame(box: AABB, margin: float = 1.25) -> void:
 	if box.size.length_squared() <= 0.0:
 		return
+	var line: float = _floor_line()
 	_target_focus = box.get_center()
 	var radius: float = maxf(box.size.length() * 0.5, min_distance)
 	# The distance at which a sphere of this radius fits the narrower of
@@ -1621,6 +1843,7 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 		radius / sin(half) * margin, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
 		size = radius * 2.0 * margin / share
+	_keep_over_floor(line)
 	framed.emit(_target_focus)
 
 

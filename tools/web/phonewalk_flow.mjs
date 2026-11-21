@@ -16,7 +16,9 @@
 // --sizes=390x844,1024x768 (the default); --only=wall,measure,… runs those
 // acts alone; --bar fails unless every act run is done by finger in no more
 // than twice the desktop's presses, touching no control under 44 points
-// across (phonepanels' and fingertools' bar).
+// across (phonepanels' and fingertools' bar). view_floor and
+// view_floor_orthanc run only when --only names them: 200 gestures each,
+// every one waited out and looked at.
 //
 // On a phone's own engine and speed (phonetruth, docs/PHONE.md), the walk
 // tools/web/phonetruth_flow.mjs runs:
@@ -123,6 +125,7 @@ const ACT_MS = Number(args["act-ms"] || 10 * 60 * 1000);
 const DOORS = resolve("vendor/omr/files/1484-1.mpd");
 const ORRERY = resolve("src/dev/fixtures/orrery_two_planets.ldr");
 const CAR = resolve("models/car.ldr");
+const ORTHANC = resolve("models/orthanc.ldr");
 mkdirSync(out, { recursive: true });
 
 // The acts, in the order walked, with the desktop's presses for each: the
@@ -165,6 +168,15 @@ const ACTS = [
   { id: "fingers_still", model: "car", ms: 30 * 60 * 1000,
     what: "100 two-finger turns, pinches and twists on the car undo nothing", desktop: 0,
     how: "the view turned and zoomed: no press", file: "src/camera/cad_camera.gd (_gesture_ended: a tap is short and still)" },
+  // smalls10: two fingers turning, pinching, twisting and sweeping the view
+  // a hundred times, Fit, a hundred more: never under the floor, never with
+  // nothing of the model on the screen (CadCamera.floor_at, _keep_near_model).
+  { id: "view_floor", model: "car", ms: 60 * 60 * 1000, optional: true,
+    what: "200 two-finger gestures on the car, Fit between: never under the floor or lost", desktop: 0,
+    how: "the view turned and zoomed: no press", file: "src/camera/cad_camera.gd (floor_at, _keep_near_model)" },
+  { id: "view_floor_orthanc", model: "orthanc", ms: 90 * 60 * 1000, optional: true,
+    what: "200 two-finger gestures on Orthanc, Fit between: never under the floor or lost", desktop: 0,
+    how: "the view turned and zoomed: no press", file: "src/camera/cad_camera.gd (floor_at, _keep_near_model)" },
   { id: "split_merge", model: "empty", what: "a 2 x 4 plate split, and merged back", desktop: 4,
     how: "the plate clicked, Alt+S; Ctrl+A, Alt+M (walk `round2`: 1 key each)",
     file: "src/ui/phone_shell.gd (a part's actions)" },
@@ -199,7 +211,7 @@ const ACTS = [
 ];
 // An act that goes on from another (the page editor's, Motions' and
 // Simulate's go on in the panel the first opened) brings it along.
-const named = new Set(ONLY || ACTS.map((act) => act.id));
+const named = new Set(ONLY || ACTS.filter((act) => !act.optional).map((act) => act.id));
 for (const act of ACTS) if (named.has(act.id) && act.needs) named.add(act.needs);
 const wanted = ACTS.filter((act) => named.has(act.id));
 // Where an act done in over twice the presses only for being three taps deep
@@ -936,6 +948,96 @@ function person(page, cdp, width, height, size, choosers) {
     const view = (await controls()).view;
     return view ? { x: view.x, y: view.y } : { x: width / 2, y: height / 2 };
   };
+  // smalls10's view_floor: the gestures of src/dev/viewfloor_probe.gd, by
+  // touch, from the default view and again after Fit; after each, the view
+  // waited out (it eases to where the fingers left it) and the app asked
+  // where the eye is and how many of the model's parts are on the screen
+  // (main.gd parts_seen). Under: the eye below the floor's plane, the model
+  // upright. Lost: none of its parts in the model's part of the window.
+  const viewFloor = async (name) => {
+    const first = await layout();
+    if (!first || first.parts_seen === undefined) return { why: "the app says nothing of the eye (Layout's parts_seen): an older build" };
+    let seed = 1120;
+    const rand = (lo, hi) => {
+      seed = (seed * 16807) % 2147483647;
+      return lo + (hi - lo) * (seed / 2147483647);
+    };
+    const settled = async () => {
+      let was = JSON.stringify((await state()).view);
+      for (let n = 0; n < 40; n++) {
+        await page.waitForTimeout(150);
+        const now = JSON.stringify((await state()).view);
+        if (now === was) break;
+        was = now;
+      }
+      return layout();
+    };
+    const halves = {};
+    let lowest = null;
+    const bad = [];
+    for (const half of ["first", "after_fit"]) {
+      if (half === "after_fit") await untimed(() => press("phone_fit"));
+      else await untimed(async () => { await page.keyboard.press("0"); await page.waitForTimeout(1500); });
+      const counts = { under: 0, lost: 0, looking_up: 0 };
+      for (let n = 0; n < 100; n++) {
+        const [rx, ry, rw, rh] = first.view || [0, 0, width, height];
+        const kind = ["turn", "pinch", "twist", "pan"][n % 4];
+        const steps = [2, 3, 4, 6, 10, 16, 24][n % 7];
+        const mid = { x: rx + rw / 2 + rand(-0.3, 0.3) * rw, y: ry + rh / 2 + rand(-0.3, 0.3) * rh };
+        const apart = rand(0.1, 0.3) * Math.min(rw, rh);
+        const a = rand(0, Math.PI * 2);
+        const way = { x: Math.cos(a), y: Math.sin(a) };
+        const reach = rand(40, 220);
+        let at;
+        if (kind === "turn" || kind === "pan") {
+          const b = rand(0, Math.PI * 2);
+          const by = kind === "turn" ? { x: Math.cos(b) * reach, y: Math.sin(b) * reach }
+            : { x: rand(-0.3, 0.3) * rh * 0.6, y: (n % 8 < 4 ? 1 : -1) * rand(0.4, 0.9) * rh };
+          at = (t) => [{ x: mid.x - way.x * apart + by.x * t, y: mid.y - way.y * apart + by.y * t },
+            { x: mid.x + way.x * apart + by.x * t, y: mid.y + way.y * apart + by.y * t }];
+        } else if (kind === "pinch") {
+          const spread = Math.max((apart + reach * (n % 2 === 0 ? 1 : -0.6)) / apart, 0.1);
+          at = (t) => {
+            const now = apart * (1 + (spread - 1) * t);
+            return [{ x: mid.x - way.x * now, y: mid.y - way.y * now }, { x: mid.x + way.x * now, y: mid.y + way.y * now }];
+          };
+        } else {
+          const degrees = rand(25, 120) * (n % 2 === 0 ? 1 : -1);
+          at = (t) => {
+            const r = (degrees * t) * Math.PI / 180;
+            const w = { x: (way.x * Math.cos(r) - way.y * Math.sin(r)) * apart, y: (way.x * Math.sin(r) + way.y * Math.cos(r)) * apart };
+            return [{ x: mid.x - w.x, y: mid.y - w.y }, { x: mid.x + w.x, y: mid.y + w.y }];
+          };
+        }
+        await touch("touchStart", at(0));
+        for (let k = 1; k <= steps; k++) {
+          const t = k / steps;
+          await touch("touchMove", at(t * t * (3 - 2 * t)));
+          await page.waitForTimeout(16);
+        }
+        await touch("touchEnd", []);
+        const now = await settled();
+        const view = (await state()).view || {};
+        const eye = now?.eye || [0, 0, 0];
+        const under = !now?.turned && eye[1] < 0;
+        const lost = (now?.parts_seen || 0) === 0;
+        if (under) counts.under += 1;
+        if (lost) counts.lost += 1;
+        if ((view.pitch || 0) < 0) counts.looking_up += 1;
+        const words = `${half} #${n} ${kind}: eye ${eye[1].toFixed(1)} LDU over the floor, tilt `
+          + `${((view.pitch || 0) * 180 / Math.PI).toFixed(1)}°, ${(view.distance || 0).toFixed(0)} away, ${now?.parts_seen} parts seen`;
+        if ((under || lost) && bad.length < 6) bad.push(words);
+        if (!lowest || eye[1] < lowest.y) lowest = { y: eye[1], words };
+      }
+      halves[half] = counts;
+      await picture(`view_floor_${name}_${half}`);
+    }
+    note(`${name}: first ${JSON.stringify(halves.first)}, after Fit ${JSON.stringify(halves.after_fit)}; `
+      + `lowest eye ${lowest.words}${bad.length ? "; " + bad.join("; ") : ""}`);
+    await untimed(async () => { await page.keyboard.press("0"); await page.waitForTimeout(1500); });
+    const wrong = ["first", "after_fit"].reduce((sum, h) => sum + halves[h].under + halves[h].lost, 0);
+    return { done: wrong === 0, why: `${wrong} of 200 gestures left the view under the floor or lost` };
+  };
   const partsOnScreen = async (most = 1) => {
     const found = ((await layout()) || {}).targets || [];
     if (found.length >= most || laid.length < most) return found;
@@ -1000,6 +1102,9 @@ function person(page, cdp, width, height, size, choosers) {
       }
       const s = await until((now) => now.bricks === 0, 30);
       if (s.bricks !== 0) throw new Error(`New left ${s.bricks} parts`);
+    } else if (which === "orthanc") {
+      const s = await state();
+      if ((s.bricks || 0) !== 10101 && !(await openFile(ORTHANC, 10101))) throw new Error("Orthanc would not open");
     } else if (which === "doors") {
       if (!(await openFile(DOORS, 30))) throw new Error("1484-1 would not open");
     } else if (which === "orrery") {
@@ -1637,6 +1742,9 @@ function person(page, cdp, width, height, size, choosers) {
       const still = fired.every((f) => f === 0) && undone === 0 && after.bricks === before.bricks;
       return { done: still, why: `a gesture fired: two ${fired[0]}, three ${fired[1]}, double ${fired[2]}, ${undone} undone` };
     },
+
+    async view_floor() { return viewFloor("car"); },
+    async view_floor_orthanc() { return viewFloor("Orthanc"); },
 
     // A 2 x 4 put down (by code, not counted), then two fingers tapped on the
     // view: it is taken back, as the bar's Undo takes it, saying so.

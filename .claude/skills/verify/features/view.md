@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe -->
 
 ## Sub-features
 
@@ -154,7 +154,25 @@ picture the assistant is shown.
   (0, `Main.default_view`) turns to the usual angle and frames what is built,
   the baseplate when nothing is, as Fit does: it turned the camera alone, so
   a view lost in empty space stayed lost (walk180 A2; `default_view_probe`,
-  headless). Nothing that begins
+  headless). The view is kept over the floor and on the model, by the mouse,
+  fingers, the trackpad and the keys alike (smalls10): while the model is
+  upright no turn, slide, pinch, wheel or Fit takes the eye from over the
+  floor's plane (y 0, `CadCamera.floor_at`) to under it — it stops 8 LDU over
+  (`FLOOR_CLEAR`), and a turn that would go under turns as far as it can; a
+  view chosen from below (the cube's Bottom, a saved view, Together) stays,
+  and a drag from there comes up but goes no further down; turned over
+  (Build's steps from below, `look_from`) the floor is put aside. And the
+  middle of the view stays within a quarter of the view across of the
+  model's box (`_keep_near_model`, `CadCamera.bounds` = `Main._built_bounds`),
+  so a slide, a zoom away from the pointer or a turn begun off the model
+  never leaves nothing of it on the screen; a turn begun over empty floor
+  far off turns about the middle of the view (`_pivot_near`). Before:
+  100 random two-finger gestures left the eye under the floor 46-56 times
+  and lost the model 72-94; a right drag 800 px down put the eye 832 LDU
+  under the car; Fit kept the tilt and stayed under. `viewfloor probe`; in a
+  browser `tools/web/phonewalk_flow.mjs --only=view_floor,view_floor_orthanc
+  --sizes=390x844` and `--engine=webkit --device="iPhone 13"`
+  (Layout's `eye`, `turned` and `parts_seen`, `Main.parts_seen`). Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
   or a right or middle press over any panel, dialog, popup or the toolbar is
   dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:
@@ -226,6 +244,22 @@ picture the assistant is shown.
   and twists on the car fire nothing (the least travel printed). In a
   browser: `tools/web/phonewalk_flow.mjs --only=fingers_still,undo_tap,redo_tap,double_turn`
   at 390 x 844 and 1024 x 768, and `--engine=webkit --device="iPhone 13"`.
+- `viewfloor probe` (`src/dev/viewfloor_probe.gd`, `tools/probe.sh
+  viewfloor_probe`, windowed at 390 x 844 laid out for a phone; `-- --measure`
+  prints each count and fails nothing; pictures in shots/viewfloor/): on the
+  car and on Orthanc, 100 two-finger turns, pinches, twists and long sweeps
+  from the default view, Fit, 100 more: none leaves the eye under the floor
+  or none of the model's parts on the screen (inside a part and looking up
+  counted, not failed); Fit leaves neither. The mouse on the car: a right
+  drag 800 px down stops over the floor and 400 px up looks down again, a
+  middle drag of 3000 px keeps the car on the screen, and two fingers spread
+  from there to zoom in 4 times keep it (an iPhone walk lost the car so, 1 of
+  200, before the pinch was held too; picture `zoomed_in_at_the_edge`); a
+  right turn begun at the room's corner keeps it; 40 wheel notches in
+  printed. "On the screen" is `Main.parts_seen`: a part whose box's corners
+  in front of the eye cover some of the model's room. Bottom still looks
+  from under the model, and a drag from there goes no further down and comes
+  up.
 - `twist probe` (`src/dev/twist_probe.gd`, `tools/probe.sh twist_probe`,
   windowed on the GPU at 390 x 844 laid out for a phone; `PROBE_SIZE=1024x768
   tools/probe.sh twist_probe --tablet` a tablet's, `PROBE_SIZE=1280x720` or
@@ -4074,6 +4108,32 @@ PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5
 # pre261 ee8773128). Pictures in OUT_DIR, named by the window's size.
 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
+# The camera keyed in a motion (src/dev/camerakeys_probe.gd, docs/MOTIONS.md
+# camerakeys): 1484-1, a new motion keyed by Key the camera at 0, 2 and 4 s
+# from three views, three steps, each key the view's numbers; Play puts the
+# window's camera within 1 LDU and 1° of each key at its frame (the probe's
+# own sum from the line's AT, TURN, TILT, AWAY), upright all the way, the
+# model drawn as it stands and no step kept; a wheel turn and a hand zoom
+# part way put back with the status saying so; the view and lens given back
+# at the end and at a Stop part way. render_motion and File, Render's
+# Animation draw each key's frame from where it puts the camera
+# (StudioRender.frame_shot); Turntable makes two LINEAR keys 360° apart at
+# the camera's height and distance, filmed its first and last frames from
+# one place and alike, the middle from the far side, the model in the middle
+# of each; Undo brings the three keys back byte for byte. Saved, reopened and
+# written byte for byte twice; another motion kept, the camera lines kept; a
+# key's own spacing kept at an unedited save. On the doors' motion with
+# define_motion camera= keys: a camera key pressed leaves its strip where it
+# was; two camera keys and a door's Ctrl+clicked,
+# Delete takes all three out in one step, Undo back byte for byte; a picked
+# pair dragged half a second together, one step; Delete in the name field or
+# after a press in the view takes none. render_motion camera={"turntable":
+# true} on a new name: made and filmed in one call, each frame looking at the
+# model's middle. On Orthanc, an 8 s turntable's 97 cameras worked out at Play
+# in at most 16 ms and each frame's camera put and held in at most 1 ms (95th
+# percentile); the window's own frame times against the view turned by hand
+# printed, not held to. Pictures in OUT_DIR.
+tools/probe.sh camerakeys_probe -- bench/results/camerakeys-2026-11-20
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
 # 31070-1's back window posed out and back stands where it was built, Play

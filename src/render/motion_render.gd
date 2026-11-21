@@ -6,7 +6,9 @@
 ## The frames are the motions played through Grab (MotionPlayer), each
 ## from where the one before it ended; the camera is as the view is ("as I
 ## see it") or fitted to the points the moving parts pass through
-## ("framed on what moves", RenderSettings.on_what_moves); the files are
+## ("framed on what moves", RenderSettings.on_what_moves), or, where a
+## motion keys the camera (camerakeys), exactly where its keys put it, the
+## last of them held through a later motion that keys none; the files are
 ## named after the model and the motion (RenderOutput.begin_animation).
 class_name MotionRender
 extends RefCounted
@@ -23,6 +25,9 @@ var poses: Array = []
 var lines := PackedStringArray()
 ## Each motion as it played (MotionPlayer.Played), in order.
 var played: Array = []
+## Where the camera is in each of [member poses] (MotionPlayer.Run.cameras),
+## or empty when no motion keys it.
+var cameras: Array = []
 
 
 ## [param order] (Motions.Motion) played one after another at [param fps],
@@ -48,6 +53,8 @@ static func frames_of(player: MotionPlayer, order: Array, reverse: bool, fps: in
 		out.lines.append("%s: %s." % [Motions.quoted(motion.name), player.said(one)])
 	for frames: Array in whole_frames(each):
 		out.poses.append_array(frames)
+	if out.played.any(func(one: MotionPlayer.Played) -> bool: return not one.cameras.is_empty()):
+		out.cameras = MotionPlayer.run_cameras(out.played)
 	if builder.history_depth() > depth:
 		builder.take_back_to(depth, redo)
 		if player.grabbing != null:
@@ -89,8 +96,9 @@ static func whole_frames(each: Array) -> Array:
 ## and handed to [param output], begun by the caller: [param shown] gets
 ## each frame's number and picture as it is drawn. Returns how many were
 ## drawn, all of them unless cancelled; the caller finishes [param output].
+## [param cameras]: each frame's camera ([member cameras]), drawn from there.
 static func draw(renderer: StudioRender, world: BrickWorld, chosen: RenderSettings, poses: Array,
-		turn_at: Callable, output: RenderOutput, shown: Callable) -> int:
+		turn_at: Callable, output: RenderOutput, shown: Callable, cameras: Array = []) -> int:
 	var library: PartLibrary = renderer.library if renderer.library != null else world.library
 	var poser := Poser.new()
 	poser.world = world
@@ -101,9 +109,19 @@ static func draw(renderer: StudioRender, world: BrickWorld, chosen: RenderSettin
 		func(n: int, image: Image) -> void:
 			await shown.call(n, image)
 			await output.add_frame(n, image),
-		swept(world, library, poses))
+		swept(world, library, poses), Callable(), camera_at(cameras))
 	await output.settle()
 	return done
+
+
+## [param cameras] (each frame's: MotionPlayer.camera_view, or null) as
+## StudioRender.animate's camera_at; none when there are none.
+static func camera_at(cameras: Array) -> Callable:
+	if cameras.is_empty():
+		return Callable()
+	return func(n: int) -> Variant:
+		var view: Variant = cameras[n] if n < cameras.size() else null
+		return null if view == null else [MotionPlayer.camera_transform(view), float(view[4]), float(view[3])]
 
 
 ## The corners of every part that moves, in every frame (every few, past

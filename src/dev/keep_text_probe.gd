@@ -138,7 +138,9 @@ const CUT := {"shape": "box", "from": [-80, -100, -40], "to": [0, 10, 40], "ghos
 const MOTION := ['0 !BRICKWORKS MOTION "Turn the brick" AFTER "" SECONDS 2',
 	'0 !BRICKWORKS MOTION_TRACK "Turn the brick" 1 TURN AT 0 JOINT PART 3004 14 0 -48 0',
 	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 0 0 EASE',
-	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 2 90 EASE']
+	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 2 90 EASE',
+	'0 !BRICKWORKS MOTION_CAMERA "Turn the brick" 0 AT 0 -24 0 TURN -35 TILT 26 AWAY 640 FOV 30 LINEAR',
+	'0 !BRICKWORKS MOTION_CAMERA "Turn the brick" 2 AT 0 -24 0 TURN 325 TILT 26 AWAY 640 FOV 30 LINEAR']
 const SHARE := "kt3CrLfAbc"
 ## Another program's lines that open and close, by the line that opens and
 ## the line that closes: kt4review's analyze.py PAIRS, as written there.
@@ -1133,7 +1135,8 @@ func _meta_read(kind: String, text: String) -> bool:
 			return not CutShape.read(text).is_empty()
 		"motions":
 			var motions: Motions = Motions.read(text)
-			return motions.list.size() == 1 and motions.unread.is_empty()
+			return motions.list.size() == 1 and motions.unread.is_empty() and motions.list[0].camera != null \
+				and motions.list[0].camera.keys.size() == 2
 		"pins":
 			var pins: PinnedComments = PinnedComments.read(text)
 			return pins.list.size() == 1 and pins.list[0].text == "the author's favourite"
