@@ -56,6 +56,18 @@ const LONG_US := 40000
 var longest_us: int = 0
 var turns: int = 0
 
+## Whether the fiber's thread counts its wait for a CPU ([member waited_us]):
+## a probe timing frames sets it. The main thread waits on the work's turn,
+## asleep, so its own wait for a CPU (what a probe takes from a frame's
+## length) does not say the work's: on a busy box (load 195 of 24 cores) a
+## turn of 25 ms was 160-360 ms long, waiting (fpfix).
+static var count_waits: bool = false
+## How long the fiber's thread has waited for a CPU since it was cleared,
+## in usec: woken for a turn, or put aside in one. Written on the fiber's
+## thread while the main thread waits.
+static var waited_us: int = 0
+var _wait_seen: int = 0
+
 var _work: Callable
 var _go := Semaphore.new()
 var _back := Semaphore.new()
@@ -197,6 +209,8 @@ func _on_thread() -> void:
 	# of the thread calling them, this one has.
 	Thread.set_thread_safety_checks_enabled(false)
 	_thread_id = OS.get_thread_caller_id()
+	if count_waits:
+		_wait_seen = _thread_waited_us()
 	_started.post()
 	_go.wait()
 	_turn_began = Time.get_ticks_usec()
@@ -205,6 +219,7 @@ func _on_thread() -> void:
 	_stretch(Time.get_ticks_usec(), &"end")
 	_done = true
 	_thread_id = 0
+	_count_wait()
 	_back.post()
 
 
@@ -213,10 +228,31 @@ func _maybe_give_back(site: StringName) -> void:
 	_stretch(now, site)
 	if now - _turn_began < SLICE_US:
 		return
+	_count_wait()
 	_back.post()
 	_go.wait()
 	_turn_began = Time.get_ticks_usec()
 	_last_pause = _turn_began
+
+
+## The wait for a CPU since the last turn's end added to [member waited_us]:
+## the wake-up for this turn and every time it was put aside in it.
+func _count_wait() -> void:
+	if not count_waits:
+		return
+	var now: int = _thread_waited_us()
+	waited_us += now - _wait_seen
+	_wait_seen = now
+
+
+## How long this thread has waited for a CPU, in usec (field 2 of its
+## /proc schedstat); 0 where there is none.
+static func _thread_waited_us() -> int:
+	var stat: FileAccess = FileAccess.open("/proc/thread-self/schedstat", FileAccess.READ)
+	if stat == null:
+		return 0
+	var fields: PackedStringArray = stat.get_line().split(" ", false)
+	return fields[1].to_int() / 1000 if fields.size() > 1 else 0
 
 
 func _stretch(now: int, site: StringName) -> void:

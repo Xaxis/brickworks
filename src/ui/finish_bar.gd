@@ -333,6 +333,7 @@ func lay_now() -> Dictionary:
 	var places: Array = []
 	var going: Dictionary = {"seen": _world.revision, "done": 0, "changed": false}
 	for one: SurfacePass.Finding in chosen:
+		phase = "lay: check"
 		var why: String = await _why_not_laid(one, pace, job, going)
 		if bool(going["changed"]):
 			left.append(tr("the model was changed while it was laid: the rest is left"))
@@ -347,9 +348,11 @@ func lay_now() -> Dictionary:
 		if _world.revision != int(going["seen"]):
 			left.append(tr("the model was changed while it was laid: the rest is left"))
 			break
+		phase = "lay: swap"
 		var steps: Array = _builder.swap_bricks(PackedInt64Array(one.remove), _adds_of(one))
 		going["seen"] = _world.revision
 		await get_tree().process_frame
+		phase = "lay: after swap"
 		await pace.next()
 		if steps.is_empty():
 			continue
@@ -362,17 +365,21 @@ func lay_now() -> Dictionary:
 	if not places.is_empty():
 		await pace.next()
 	if not places.is_empty():
+		phase = "lay: record"
 		_builder.record(places, tr("finished the surfaces: %d parts") % parts)
 		if app != null and app.has_method("_on_model_edited"):
 			# What the app works out after an edit (56 ms on Orthanc), in a
 			# frame apart from the record and from the bar's close.
 			await get_tree().process_frame
+			phase = "lay: edited"
 			app.call("_on_model_edited")
 			await get_tree().process_frame
+			phase = "lay: after edited"
 	last_laid = {"laid": laid, "parts": parts, "taken": taken, "left": Array(left),
 		"undone": _builder.history_depth() <= depth}
 	busy = false
 	_laying = false
+	phase = ""
 	_seen_generation = _world.generation()
 	_seen_revision = _world.revision
 	if laid > 0 and _builder.history_depth() > depth:

@@ -376,6 +376,28 @@ static func _per_step(text: String) -> Dictionary:
 	return out
 
 
+## Each part line of [param text] counted by the copy an IN line names it
+## in (LdrModel.IN_META, to the next IN line or the step's end), "" for a
+## FILE's own: "file|copy" -> count.
+static func _per_copy(text: String) -> Dictionary:
+	var out: Dictionary = {}
+	var file: String = "(main)"
+	var copy: String = ""
+	for line: String in text.split("\n"):
+		var plain: String = line.strip_edges()
+		if plain.begins_with("0 FILE "):
+			file = plain.substr(7)
+			copy = ""
+		elif plain == "0 STEP" or plain.begins_with("0 ROTSTEP"):
+			copy = ""
+		elif plain.begins_with(LdrModel.IN_META):
+			copy = plain.substr(LdrModel.IN_META.length()).strip_edges()
+		elif plain.begins_with("1 "):
+			var key: String = "%s|%s" % [file, copy]
+			out[key] = int(out.get(key, 0)) + 1
+	return out
+
+
 ## The world's parts by sub-model (Assemblies.path_of) and step.
 func _per_path() -> Dictionary:
 	var out: Dictionary = {}
@@ -436,6 +458,7 @@ func _case_subs(path: String) -> void:
 		bar.close()
 		return
 	var paths1: Dictionary = _per_path()
+	var whole1: String = str(_store.last_whole)
 	# Where each new part stands, by its place.
 	var astray := PackedStringArray()
 	var checked: int = 0
@@ -460,14 +483,41 @@ func _case_subs(path: String) -> void:
 				removed_at.get(key, 0)])
 	_check("subs %s: no sub-model or step lost a part not taken off (%s)" % [name,
 		"; ".join(short.slice(0, 4)) if not short.is_empty() else "none"], short.is_empty())
+	# In the file: every copy built in its parent's steps keeps its parts,
+	# but those taken off it (an IN line's copy is its path).
+	var taken_by_path: Dictionary = {}
+	for key: String in removed_at:
+		var at: String = key.left(key.rfind("#"))
+		taken_by_path[at] = int(taken_by_path.get(at, 0)) + int(removed_at[key])
+	var copies0: Dictionary = _per_copy(s0)
+	var copies1: Dictionary = _per_copy(s1)
+	var fewer := PackedStringArray()
+	for key: String in copies0:
+		var copy: String = key.get_slice("|", 1)
+		var lost: int = int(copies0[key]) - int(copies1.get(key, 0))
+		if not copy.is_empty() and lost > int(taken_by_path.get(copy, 0)):
+			fewer.append("%s %d -> %d (%d taken off)" % [copy, copies0[key], copies1.get(key, 0),
+				taken_by_path.get(copy, 0)])
+	_check("subs %s: saved, every copy built in steps keeps its parts but those taken off (%s)"
+		% [name, "; ".join(fewer.slice(0, 4)) if not fewer.is_empty() else "all"], fewer.is_empty())
 	var before: Dictionary = _lines(s0)
 	var after: Dictionary = _lines(s1)
 	var lost_lines := PackedStringArray()
+	var lost_in := PackedStringArray()
 	for line: String in before:
 		if not line.begins_with("1 ") and int(after.get(line, 0)) < int(before[line]):
-			lost_lines.append(line.left(90))
-	_check("subs %s: no line but parts lost by Lay (%s)" % [name, " || ".join(lost_lines.slice(0, 4))],
-		lost_lines.is_empty())
+			if line.begins_with(LdrModel.IN_META):
+				lost_in.append("%s %d -> %d" % [line.substr(LdrModel.IN_META.length() + 1),
+					before[line], after.get(line, 0)])
+			else:
+				lost_lines.append(line.left(90))
+	_check("subs %s: no line but parts and steps' IN lines lost by Lay (%s)"
+		% [name, " || ".join(lost_lines.slice(0, 4))], lost_lines.is_empty())
+	if not lost_in.is_empty() or not whole1.is_empty():
+		# Written whole, the file's steps are numbered afresh (AuthorSteps):
+		# a copy's parts come in fewer runs, each named by its IN line.
+		print("  KNOWN subs %s: written whole because %s; IN lines fewer: %s" % [name,
+			whole1 if not whole1.is_empty() else "(a patch)", ", ".join(lost_in)])
 	# The count per sub-model and step, saved, before and after.
 	var steps0: Dictionary = _per_step(s0)
 	var steps1: Dictionary = _per_step(s1)
@@ -485,6 +535,16 @@ func _case_subs(path: String) -> void:
 		", ".join(changed)])
 	await _undo()
 	_check("subs %s: Undo back byte for byte" % name, _store.saved_text() == s0)
+	# Saved after Lay and opened again: the same file, and why each save
+	# was written whole (fpreview's reopen fails on the castle and the
+	# station with a part taken off by hand too).
+	await _open(s1)
+	await _frames(6)
+	var reopened: String = _store.saved_text()
+	if reopened != s1:
+		print("  KNOWN subs %s: saved after Lay (whole: %s), opened again, saved (whole: %s): not the same file"
+			% [name, whole1, str(_store.last_whole)])
+		_first_diff(s1, reopened)
 
 
 func _new_brick_at(part: String, at: Transform3D, before: Dictionary) -> BrickWorld.Brick:
