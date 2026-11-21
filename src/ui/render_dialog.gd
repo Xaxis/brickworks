@@ -1419,7 +1419,7 @@ func _animate(chosen: RenderSettings, output: RenderOutput, model: String) -> Pa
 			_show_scaled(image)
 			looped.append(_preview.texture as ImageTexture)
 			if _job != null:
-				_job.count(n + 1))
+				_job.count(n + 1), drawn.cameras)
 	if done < chosen.frames:
 		return PackedStringArray()
 	_putting_together(output)

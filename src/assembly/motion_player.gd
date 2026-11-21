@@ -364,6 +364,11 @@ class Played extends RefCounted:
 	## The steering tried (MotionPlayer._steer_tried), each place with
 	## where it carries each steered wheel.
 	var tried: Array = []
+	## The motion's camera keys (camerakeys), or null; and where the camera
+	## is in each frame, the window's way ([method MotionPlayer.camera_view]):
+	## empty without keys.
+	var camera: Motions.CameraTrack = null
+	var cameras: Array = []
 
 	func stopped() -> bool:
 		for item: Item in items:
@@ -586,15 +591,70 @@ func begin(motion: Motions.Motion, reverse: bool = false, fps: int = PLAY_FPS) -
 			if n > 0:
 				times[snappedf(played.drive.moment(float(played.drive.legs[n][4])), 0.001)] = true
 		times[snappedf(played.drive.seconds, 0.001)] = true
+	if motion.camera != null and not motion.camera.keys.is_empty():
+		played.camera = motion.camera
+		for key: Array in motion.camera.keys:
+			times[snappedf(length - float(key[0]) if reverse else float(key[0]), 0.001)] = true
 	played.key_times = times.keys()
 	played.key_times.sort()
-	if played.items.is_empty() and played.drive == null:
+	if played.items.is_empty() and played.drive == null and played.camera == null:
 		return played
 	# What carries another first: its parts are turned by both.
 	played.order = played.items.duplicate()
 	played.order.sort_custom(func(a: Item, b: Item) -> bool: return a.grab.moving.size() > b.grab.moving.size())
 	played.count = maxi(roundi(length * float(fps)), 1) + 1
+	if played.camera != null:
+		# Every frame's camera at once, a few numbers each: no part is read.
+		var at_times: Array = []
+		for n: int in played.count:
+			var t: float = minf(float(n) / float(fps), length)
+			at_times.append(length - t if reverse else t)
+		var lift: Vector3 = store.lift() if store != null else Vector3.ZERO
+		for view: Array in played.camera.views_at(at_times):
+			played.cameras.append(camera_view(view, lift))
 	return played
+
+
+## A camera key's numbers ([at, turn, tilt, away, fov], the file's: Motions
+## .CameraTrack.views_at) the window's way, the model [param lift] above the
+## file's coordinates: [focus, yaw, pitch (radians), distance, fov], as
+## CadCamera.aim says a view.
+static func camera_view(view: Array, lift: Vector3) -> Array:
+	return [(view[0] as Vector3) * LdrModel.FLIP + lift, deg_to_rad(float(view[1])), deg_to_rad(float(view[2])),
+		float(view[3]), float(view[4])]
+
+
+## Where a camera at [param view] ([method camera_view]) stands and faces:
+## CadCamera's own sum, its up the world's.
+static func camera_transform(view: Array) -> Transform3D:
+	var yaw: float = float(view[1])
+	var pitch: float = float(view[2])
+	var offset := Vector3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)) * float(view[3])
+	var focus: Vector3 = view[0]
+	return Transform3D(Basis.looking_at(-offset, Vector3.UP), focus + offset)
+
+
+## [param view] ([method camera_view]) as the file's numbers: [at, turn,
+## tilt, away, fov], the model [param lift] above the file's coordinates.
+static func camera_numbers(view: Array, lift: Vector3) -> Array:
+	return [((view[0] as Vector3) - lift) * LdrModel.FLIP, rad_to_deg(float(view[1])),
+		rad_to_deg(float(view[2])), float(view[3]), float(view[4])]
+
+
+## Each frame's camera of [param run], from each motion's own
+## ([member Run.cameras]).
+static func run_cameras(played: Array) -> Array:
+	var out: Array = []
+	var last: Variant = null
+	for one: Played in played:
+		if one.cameras.is_empty():
+			for _n: int in one.frames.size():
+				out.append(last)
+			continue
+		for view: Array in one.cameras:
+			out.append(view)
+		last = one.cameras.back()
+	return out
 
 
 ## [param played]'s next frames worked out, one at least, and then each
@@ -629,6 +689,8 @@ func advance(played: Played, until: int = 0) -> bool:
 ## model left where it ends, one step called [param words].
 func finish(played: Played, keep: bool = false, words: String = "") -> void:
 	if played.items.is_empty() and played.drive == null:
+		if played.camera != null:
+			results[played.name.to_lower()] = said(played)
 		return
 	var length: float = played.seconds
 	var reverse: bool = played.reverse
@@ -681,6 +743,10 @@ class Run extends RefCounted:
 	var frames: Array = []
 	## Each motion's own frames, as played.
 	var each: Array = []
+	## Where the camera is in each of [member frames] (camerakeys): a motion
+	## with keys of its own where it plays, the last of them held through the
+	## frames of a motion with none after it, null before any.
+	var cameras: Array = []
 
 	## How the model stands where the last that moved left it.
 	func standing() -> String:
@@ -785,6 +851,8 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 			if paced.at >= paced.order.size():
 				for frames: Array in MotionRender.whole_frames(paced.run.each):
 					paced.run.frames.append_array(frames)
+				if paced.run.played.any(func(one: Played) -> bool: return not one.cameras.is_empty()):
+					paced.run.cameras = run_cameras(paced.run.played)
 				if paced.keep:
 					builder.fold_since(paced.depth, paced.words)
 				# One step now: what arrived while it was made is put down.
@@ -1007,6 +1075,9 @@ func said(played: Played) -> String:
 	var lines := PackedStringArray()
 	if played.drive != null:
 		lines.append(_drive_words(played))
+	if played.camera != null:
+		lines.append(camera_words(played.camera) + (", the model left as it stands"
+			if played.items.is_empty() and played.drive == null else ""))
 	for item: Item in played.items:
 		if not item.role.is_empty():
 			continue
@@ -1026,6 +1097,16 @@ func said(played: Played) -> String:
 	for line: String in played.refused:
 		lines.append(line)
 	return "; ".join(lines)
+
+
+## What [param camera]'s keys do, said: "the camera went through 3 keys
+## round the model, 360° in all, the model left as it stands".
+static func camera_words(camera: Motions.CameraTrack) -> String:
+	if camera.keys.size() == 1:
+		return "the camera stood at its one key"
+	var turned: float = absf(float(camera.keys.back()[2]) - float(camera.keys[0][2]))
+	return "the camera went through %d keys over %s s, %s° round the model in all" % [
+		camera.keys.size(), Motions.num(camera.length() - float(camera.keys[0][0]), 2), Motions.num(turned, 1)]
 
 
 ## [param joint] taken hold of to be moved by hand (the motions panel's
