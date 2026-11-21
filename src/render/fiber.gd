@@ -198,7 +198,11 @@ func _run_turns(library: PartLibrary, job: Working.Job) -> Variant:
 			job.count(turns)
 		IdleDraw.keep_awake()
 		await tree.process_frame
+	# Its thread let go of: where that waits long, it is said as a stretch.
+	var ending: int = Time.get_ticks_usec()
 	thread.wait_to_finish()
+	if Time.get_ticks_usec() - ending > LONG_US / 4:
+		long_stretches.append([(Time.get_ticks_usec() - ending) / 1000.0, &"end", &"thread let go"])
 	_running = null
 	library.end_reading()
 	return _answer

@@ -173,6 +173,11 @@ func refresh() -> void:
 		fiber_said = await Fiber.run(func() -> Variant: return reading.find(), _library,
 			_fetch.bind(reader), job, self)
 	job.end()
+	if fiber_said != null and mine == _reading:
+		# The reading's last turn and its thread's end had the frame it ended
+		# in: what the bar makes of it begins in the next.
+		phase = "read: done"
+		await get_tree().process_frame
 	if mine != _reading or not visible or fiber_said == null:
 		# Stopped, closed or read again since: its reader goes with it.
 		_drop(reader)
@@ -187,7 +192,7 @@ func refresh() -> void:
 		_drop(reader)
 		await refresh()
 		return
-	phase = "ghosts"
+	phase = "ghosts: begin"
 	_keep_reader(reader, reading)
 	var findings: Array = fiber_said if fiber_said is Array else []
 	read_at = revision
@@ -348,9 +353,7 @@ func lay_now() -> Dictionary:
 		if _world.revision != int(going["seen"]):
 			left.append(tr("the model was changed while it was laid: the rest is left"))
 			break
-		phase = "lay: swap"
-		var steps: Array = _builder.swap_bricks(PackedInt64Array(one.remove), _adds_of(one))
-		going["seen"] = _world.revision
+		var steps: Array = await _swap_paced(one, pace, going)
 		await get_tree().process_frame
 		phase = "lay: after swap"
 		await pace.next()
@@ -431,10 +434,13 @@ func _model_name() -> String:
 
 ## The reading [param reader] made is the one shown: the last shown's goes.
 func _keep_reader(reader: Assistant, reading: SurfacePass) -> void:
-	if _reader != null and _reader != reader:
-		_drop(_reader)
+	var old: Assistant = _reader
 	_reader = reader
 	_pass = reading
+	if old != null and old != reader:
+		# Freed in the next frame, not beside the reading's end: Orthanc's
+		# reading is a hundred thousand points to let go of.
+		get_tree().process_frame.connect(_drop.bind(old), CONNECT_ONE_SHOT)
 
 
 func _drop(reader: Assistant) -> void:
@@ -566,6 +572,30 @@ func _holds(one: SurfacePass.Finding, skip: Dictionary, pace: FramePace,
 		if not _pass._fits(SurfacePass._as_dict(placement), alone, one.add):
 			return false
 	return true
+
+
+## [param one]'s swap, a part at a time: the parts it takes off in one go,
+## then each it lays, the frame given back whenever [param pace]'s slice is
+## spent. Made in one call, Orthanc's biggest swap held a frame 143 ms
+## (fpfix). Its undo steps as Builder.swap_bricks gives them, the new parts
+## off first, then the old ones back. Begun, it is finished: a change of
+## someone else's meanwhile is said in [param going] (changed), and no
+## finding after it is laid.
+func _swap_paced(one: SurfacePass.Finding, pace: FramePace, going: Dictionary) -> Array:
+	var adds: Array = _adds_of(one)
+	phase = "lay: take off"
+	var taken: Array = _builder.swap_bricks(PackedInt64Array(one.remove), [])
+	going["seen"] = _world.revision
+	var put: Array = []
+	for item: Dictionary in adds:
+		if pace.due():
+			phase = "lay: put down"
+			await pace.next()
+			if _world.revision != int(going["seen"]):
+				going["changed"] = true
+		put.append_array(_builder.swap_bricks(PackedInt64Array(), [item]))
+		going["seen"] = _world.revision
+	return put + taken
 
 
 ## The finding's parts as Builder.swap_bricks puts them down: each where the
@@ -783,20 +813,21 @@ func _ghosts_off() -> void:
 	_ghosts = {}
 
 
-## How many parts one piece of a kind's ghost is made of: a piece is made
-## in one go, so on a big model a kind is several, a frame given back
-## between them.
+## How many parts one piece of a kind's ghost is made of, at most, and how
+## many corners: a piece is made in one go, so on a big model a kind is
+## several, a frame given back between them. Twelve parts alone could be
+## twelve 6x6 plates' worth.
 const GHOST_PIECE := 12
+const GHOST_CORNERS := 6000
 
 
-## Each kind's parts, as one ghost, drawn where they would go: a node per
-## kind, its pieces under it, a frame given back between parts on a big
-## model.
+## Each kind's ghost put up, a piece at a time.
 func _show_ghosts(mine: int) -> void:
 	# Begun in a frame of its own: the reading's last turn was this one's.
 	await get_tree().process_frame
 	if mine != _reading:
 		return
+	phase = "ghosts: parts"
 	var pace := FramePace.new()
 	var strengthen: GDScript = Later.script(&"Strengthen")
 	for kind: String in KINDS:
@@ -807,26 +838,50 @@ func _show_ghosts(mine: int) -> void:
 		_builder.add_child(holder)
 		_ghosts[kind] = holder
 		var parts: Array = []
+		var corners: int = 0
 		for one: SurfacePass.Finding in found[kind]:
 			for raw: Variant in one.add:
 				if pace.due():
 					await pace.next()
 					if mine != _reading:
 						return
-				parts.append({"part": str(raw["part"]), "color": int(raw["color"]), "at": _at(raw)})
-				if parts.size() >= GHOST_PIECE:
-					if pace.due():
-						await pace.next()
-						if mine != _reading:
-							return
-					_ghost_piece(holder, strengthen.ghost_mesh(parts, _library))
+				var part: String = str(raw["part"])
+				var size: int = _corners_of(part)
+				if not parts.is_empty() and (parts.size() >= GHOST_PIECE
+						or corners + size > GHOST_CORNERS):
+					if not await _ghost_piece_paced(holder, strengthen, parts, pace, mine):
+						return
 					parts = []
+					corners = 0
+				parts.append({"part": part, "color": int(raw["color"]), "at": _at(raw)})
+				corners += size
 		if not parts.is_empty():
-			if pace.due():
-				await pace.next()
-				if mine != _reading:
-					return
-			_ghost_piece(holder, strengthen.ghost_mesh(parts, _library))
+			if not await _ghost_piece_paced(holder, strengthen, parts, pace, mine):
+				return
+
+
+## A piece of a ghost made of [param parts], in a slice of its own: false
+## when the reading was stopped meanwhile.
+func _ghost_piece_paced(holder: Node3D, strengthen: GDScript, parts: Array, pace: FramePace,
+		mine: int) -> bool:
+	if pace.due():
+		phase = "ghosts: piece"
+		await pace.next()
+		if mine != _reading:
+			return false
+	_ghost_piece(holder, strengthen.ghost_mesh(parts, _library))
+	return true
+
+
+## How many corners a part's mesh has, as a ghost is made of it.
+func _corners_of(part: String) -> int:
+	var mesh: Lbm.PartMesh = _library.mesh_for(part)
+	if mesh == null:
+		return 0
+	var out: int = 0
+	for s: int in mesh.surface_count():
+		out += mesh.surfaces[s].surface_get_array_len(0)
+	return out
 
 
 static func _ghost_piece(holder: Node3D, mesh: ArrayMesh) -> void:
