@@ -1412,43 +1412,53 @@ float segment(vec2 p, vec2 a, vec2 b) {
 	return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
 }
 
-// How far a point of a stud's top (LDU from its middle; x along the part's
-// x, y towards its -z) is from the strokes of the logo's four letters: a
-// slanted L, E, G and O about 9 LDU across, as the real one is about 3.6 mm.
-float logo_distance(vec2 p) {
-	p.x -= p.y * 0.22;
-	float d = segment(p, vec2(-4.2, 1.45), vec2(-4.2, -1.45));
-	d = min(d, segment(p, vec2(-4.2, -1.45), vec2(-2.75, -1.45)));
-	d = min(d, segment(p, vec2(-2.05, 1.45), vec2(-2.05, -1.45)));
-	d = min(d, segment(p, vec2(-2.05, 1.45), vec2(-0.65, 1.45)));
-	d = min(d, segment(p, vec2(-2.05, 0.0), vec2(-0.85, 0.0)));
-	d = min(d, segment(p, vec2(-2.05, -1.45), vec2(-0.65, -1.45)));
-	// G: an oval open at its upper right, and its bar.
-	vec2 g = (p - vec2(0.95, 0.0)) / vec2(0.9, 1.45);
-	float angle = atan(g.y, g.x);
-	float ring = abs(length(g) - 1.0) * 0.9;
-	if (angle > -0.05 && angle < 1.0) {
-		ring = min(length(p - vec2(0.95 + 0.9 * cos(1.0), 1.45 * sin(1.0))),
-			length(p - vec2(0.95 + 0.9, 0.0)));
-	}
-	d = min(d, ring);
-	d = min(d, segment(p, vec2(1.0, -0.05), vec2(1.85, -0.05)));
-	// O.
-	vec2 o = (p - vec2(3.35, 0.0)) / vec2(0.9, 1.45);
-	d = min(d, abs(length(o) - 1.0) * 0.9);
-	return d;
+// Half the logo's letters' height, and half the width of its O and G to
+// their strokes' middles, LDU.
+const float LOGO_HALF = 2.2;
+const float LOGO_ROUND = 0.8;
+
+// How far a point is from the stroke of a tall round letter (an O) whose
+// middle is at x: two straight sides and a half circle top and bottom, as
+// the logo's O and G are.
+float logo_o(vec2 p, float x) {
+	return abs(segment(p, vec2(x, LOGO_ROUND - LOGO_HALF), vec2(x, LOGO_HALF - LOGO_ROUND)) - LOGO_ROUND);
 }
 
-// The logo's height, LDU: letters 0.2 high (about 0.08 mm), their strokes
-// about 0.6 LDU wide as the real logo's are a fifth of its height, flat on
-// top with short steep flanks, as the moulding raises them (photoreal2), so
-// each letter reads as one shape outlined where its flanks catch the light.
-// The thin strokes with soft flanks photoreal1 drew lit both flanks of every
-// stroke, and each letter read doubled; strokes a whole LDU wide ran the
-// letters together ("LE¢O", a judge read). [param soft] widens the flank: a
+// How far a point of a stud's top (LDU from its middle; x along the part's
+// x, y towards its -z) is from the strokes of the logo's four letters, as a
+// macro photograph of a real stud shows them (photoreal5): tall narrow
+// letters slanted a fifth of their height, 4.4 LDU high (1.8 mm, two fifths
+// of the stud) and 8.5 across, the O and the G straight sided. The squat
+// letters before, 2.9 high with an oval G and O almost touching, read to
+// every judge as "garbled", "blobby" or "mirrored" (36 of 60 renders).
+float logo_distance(vec2 p) {
+	p.x -= p.y * 0.2 + 0.35;
+	float d = segment(p, vec2(-4.3, LOGO_HALF), vec2(-4.3, -LOGO_HALF));
+	d = min(d, segment(p, vec2(-4.3, -LOGO_HALF), vec2(-3.0, -LOGO_HALF)));
+	d = min(d, segment(p, vec2(-2.35, LOGO_HALF), vec2(-2.35, -LOGO_HALF)));
+	d = min(d, segment(p, vec2(-2.35, LOGO_HALF), vec2(-1.1, LOGO_HALF)));
+	d = min(d, segment(p, vec2(-2.35, 0.0), vec2(-1.3, 0.0)));
+	d = min(d, segment(p, vec2(-2.35, -LOGO_HALF), vec2(-1.1, -LOGO_HALF)));
+	// G: an O open on its right from just over its middle to where its top
+	// turns, and a bar in from the right at its middle.
+	const float G = 0.55;
+	float g = logo_o(p, G);
+	if (p.x > G && p.y > 0.05 && p.y < LOGO_HALF - LOGO_ROUND) {
+		g = min(length(p - vec2(G + LOGO_ROUND, LOGO_HALF - LOGO_ROUND)),
+			length(p - vec2(G + LOGO_ROUND, 0.05)));
+	}
+	d = min(d, g);
+	d = min(d, segment(p, vec2(G + 0.05, 0.05), vec2(G + LOGO_ROUND, 0.05)));
+	return min(d, logo_o(p, 3.0));
+}
+
+// The logo's height, LDU: letters 0.2 high (about 0.08 mm), each stroke
+// about half an LDU wide (0.2 mm), flat on top with short steep flanks, as
+// the moulding raises them, so each letter reads outlined where its flanks
+// catch the light, as the photographs' do. [param soft] widens the flank: a
 // worn mould's letters are softer.
 float logo_height(vec2 p, float soft) {
-	return 0.2 * smoothstep(0.42 + soft, 0.22, logo_distance(p));
+	return 0.2 * smoothstep(0.36 + soft, 0.18, logo_distance(p));
 }
 
 vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
@@ -1480,18 +1490,19 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	dy *= depth;
 	// The injection gate on some studs, as a judge saw on a photograph's
 	// and missed on ours: where the plastic went in, a small round nub in a
-	// shallow ring about a millimetre across (photoreal3: the half-millimetre
-	// dimple before it was too faint for any judge to see), off the middle
-	// by a hair. A gloss over it catches the light as a bright dot.
-	if (stud_hash(centre, 6u) < 0.3) {
+	// shallow ring half a millimetre across (three_2x2_top's photograph;
+	// photoreal3's ring twice that, over the letters, read as "garbled marks
+	// inside the logo"), off the middle by a hair. A gloss over it catches
+	// the light as a bright dot.
+	if (stud_hash(centre, 6u) < 0.25) {
 		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.6;
 		float r = length(g);
-		if (r > 0.001 && r < 2.2) {
-			// h = 0.2 exp(-(r / 0.45)^2) - 0.15 exp(-((r - 1.1) / 0.35)^2):
+		if (r > 0.001 && r < 1.2) {
+			// h = 0.15 exp(-(r / 0.25)^2) - 0.08 exp(-((r - 0.6) / 0.18)^2):
 			// its slope along g, downhill outwards.
-			float nub = -0.2 * 2.0 * r / (0.45 * 0.45) * exp(-(r * r) / (0.45 * 0.45));
-			float ring = 0.15 * 2.0 * (r - 1.1) / (0.35 * 0.35)
-				* exp(-((r - 1.1) * (r - 1.1)) / (0.35 * 0.35));
+			float nub = -0.15 * 2.0 * r / (0.25 * 0.25) * exp(-(r * r) / (0.25 * 0.25));
+			float ring = 0.08 * 2.0 * (r - 0.6) / (0.18 * 0.18)
+				* exp(-((r - 0.6) * (r - 0.6)) / (0.18 * 0.18));
 			float slope = nub + ring;
 			dx += slope * g.x / r;
 			dy += slope * g.y / r;
