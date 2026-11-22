@@ -1580,7 +1580,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				return _what_moves(grabbing)
 			# One half of a hinge, read before it moves: which half moves and
 			# which way, said with the move (mcpreach4).
-			var hinge: Dictionary = _hinge_reading(grabbing, str(input.get("part", "")),
+			var hinge: Dictionary = await _hinge_reading(grabbing, str(input.get("part", "")),
 				not input.has("along") and not input.has("to"))
 			# Asked to show it as well, the move answered pictured as
 			# edit_model's change is: f1's session raised an arm on its ball
@@ -3442,6 +3442,24 @@ func _hinge_reading(grabbing: GrabDrag, asked: String, sense: bool) -> Dictionar
 	var brick: BrickWorld.Brick = world.get_brick(int(number))
 	if brick == null or not _hinge_half(library, brick.part_id):
 		return {}
+	# Taken and turned on a worker, the model held still meanwhile, as the
+	# move itself is (GrabDrag.for_session): a Grab begun on a big model
+	# is more than a frame's work.
+	if not grabbing.is_ready():
+		await grabbing._ready_for_session()
+	var shaped: Dictionary = {}
+	for one: BrickWorld.Brick in world.bricks():
+		shaped[one.part_id] = true
+	grabbing._session_moving = true
+	var reading: Dictionary = await WorkerTasks.awaited(func() -> Variant:
+		Exact.shapes_for(library, shaped.keys())
+		return _hinge_read(grabbing, number, sense, world), "read a hinge's halves", library)
+	grabbing._session_moving = false
+	return reading
+
+
+## _hinge_reading's reading, on a worker.
+func _hinge_read(grabbing: GrabDrag, number: String, sense: bool, world: BrickWorld) -> Dictionary:
 	var taken: Variant = grabbing.held_for_session(number)
 	if taken is String:
 		var locked: String = _hinge_locked(grabbing, int(number))
@@ -4537,8 +4555,15 @@ func _simulate(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: SimulatePanel = app.get("_simulate")
 	if panel == null:
 		return "This app has no Simulate mechanism."
-	if not input.has("at"):
-		return await panel.for_session(input, work)
+	# Sent as null, as if not sent at all.
+	if input.get("at") == null:
+		var without: Dictionary = input.duplicate()
+		without.erase("at")
+		return await panel.for_session(without, work)
+	# Checked before program= writes anything: a refusal after the program
+	# was set would be sent again and set twice.
+	if not (input["at"] is float or input["at"] is int) or float(input["at"]) < 0.0:
+		return "at= is seconds into the program, a number 0 or more. Nothing was set or changed."
 	var set_first: Variant = null
 	if input.has("program"):
 		var only: Dictionary = {"program": input["program"]}
@@ -4574,8 +4599,6 @@ func _program_at(panel: SimulatePanel, at: float, ran_said: String) -> Variant:
 	if world == null or world.program.strip_edges().is_empty():
 		return ("The model has no program: at= reads one. program= sets it (with at=, in the "
 			+ "same call).")
-	if at < 0.0:
-		return "at= is seconds into the program, 0 or more."
 	var simulation: Simulation = await panel.read_mechanism()
 	var program: HubProgram = HubProgram.parse(world.program)
 	var made: Dictionary = await panel.prepare_run(program, simulation, false)

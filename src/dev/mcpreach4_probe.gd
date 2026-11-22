@@ -309,6 +309,10 @@ func _program_at() -> void:
 		and rising.contains("on line 1"))
 	var after: String = await _say("simulate_mechanism", {"at": 30})
 	_check("at= past its end: where it ended, A 0°", after.contains("(it ends sooner, so where it ended): A 0°"))
+	var bad: String = await _say("simulate_mechanism", {"program": "to 30° at 50%", "at": -1})
+	_check("at=-1 with program= is refused before the program is set: %s" % bad.left(60),
+		bad.begins_with("at= is seconds into the program") and _program_now() == program
+		and _builder.history_depth() == depth)
 	var both: Array = await _say_all("simulate_mechanism", {"program": "to 45° at 50%", "at": 5})
 	print("    " + str(both[0]).replace("\n", "\n    "))
 	_check("program= with at=: set, run and pictured at at= in 1 call, 1 picture",
