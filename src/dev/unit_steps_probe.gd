@@ -15,11 +15,8 @@
 ## Here each edit, as a person makes it (the menu's command on the
 ## selection, the naming dialog) and as a session does over MCP
 ## (make_unique, make_sections), on:
-## - the castle with its ten sub-models in sections of their own
-##   (fixtures/castle_sections.ldr, models/castle.ldr as shipped up to
-##   stepkeep2, which saved it in its worked-out steps, its sub-models built
-##   in them: no sections, no line placing a tower to copy), its STEP lines
-##   taken out (they are its steps when it opens), its steps made its own by one step
+## - the castle (models/castle.ldr, its STEP lines taken out: since stepkeep2
+##   they are its steps when it opens), its steps made its own by one step
 ##   edit over MCP, every tower and wall built in the castle's steps: a
 ##   tower renamed, one taken apart, two made a sub-assembly, the model's
 ##   sections made; and with a second north-east tower, one made unique;
@@ -54,7 +51,7 @@
 ## readers.py).
 extends SceneTree
 
-const CASTLE := "res://src/dev/fixtures/castle_sections.ldr"
+const CASTLE := "res://models/castle.ldr"
 const AUTHORED := "res://vendor/omr/files/7140-1.mpd"
 const NESTED := "res://tests/fixtures/steps/nested_own.ldr"
 

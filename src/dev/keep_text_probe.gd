@@ -30,11 +30,7 @@
 ##   files whole on every save, so of it every line of its own text, its
 ##   description, is kept, anywhere;
 ## - the castle as someone else's file with no steps of its own: its first
-##   step edit builds its ten sub-models in the castle's steps. Someone
-##   else's castle, here and below, is the castle with its sub-models in
-##   sections of their own, as shipped up to stepkeep2
-##   (fixtures/castle_sections.ldr): another program's file has no IN lines,
-##   and its mirrored copy goes in beside the line placing the gatehouse.
+##   step edit builds its ten sub-models in the castle's steps.
 ## Each saved file has every line of the file the edit did not touch, byte
 ## for byte, in its section, and opens again to the same parts, steps and
 ## tree. Undone, the save is the file again; redone, the edit's; the
@@ -100,7 +96,7 @@ const MODELS: Array = [
 	["6650-1, LDCad's rope", "res://vendor/omr/files/6650-1.mpd"],
 	["31037-1's helicopter, no steps, LDCad's rope", "res://vendor/omr/files/31037-1_Helicopter.mpd"],
 	["the castle", "res://models/castle.ldr"],
-	["the castle as another's file with no steps", "res://src/dev/fixtures/castle_sections.ldr", "another's"],
+	["the castle as another's file with no steps", "res://models/castle.ldr", "another's"],
 	["notes between every part (a file of the probe's own)", "res://src/dev/fixtures/keep_text_notes.mpd"],
 	# The review's (ktreview), each a file that lost a part or a line once.
 	["the castle with a part no library has, no steps", "res://src/dev/fixtures/kt_castle_unshown.ldr"],
@@ -114,8 +110,8 @@ const MODELS: Array = [
 	["names in another case, Unicode", "res://src/dev/fixtures/kt_names.mpd"],
 	["no NOFILE, no last line break", "res://src/dev/fixtures/kt_nonl.mpd"],
 	# kt3review's (keeptext4), each a file a save lost lines of once.
-	["the castle as another's file", "res://src/dev/fixtures/castle_sections.ldr", "foreign"],
-	["the castle with a copy placed mirrored", "res://src/dev/fixtures/castle_sections.ldr", "mirror"],
+	["the castle as another's file", "res://models/castle.ldr", "foreign"],
+	["the castle with a copy placed mirrored", "res://models/castle.ldr", "mirror"],
 	["a sub-model titled by its Author line", "res://src/dev/fixtures/kt3r_title_author.mpd"],
 	["a sub-model nothing places, a picture", "res://src/dev/fixtures/kt3r_whole.mpd"],
 	["an empty step with a ROTSTEP", "res://src/dev/fixtures/kt3r_emptystep.ldr"],
