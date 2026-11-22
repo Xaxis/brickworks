@@ -6311,9 +6311,13 @@ ms the middle of ten, 2026-11-22); the function the service role's alone;
 "rolled back, nothing kept". The tests: 7 passed. The flow proves it when
 it ends "designer_period: a designer's numbers against last month, for
 them alone (N checks, all ok)": ?op=designs within 1 s (the middle and the
-slowest of ten), every number against the rows read back, the six tiles
-and the chart's table the API's, sorted by the change and by another kind,
-the chart's keys, German words, her /u/ page, Bob's own only, by her handle
+slowest of ten), every number against the rows read back (comments,
+which only the API writes, as comments_on lists them to a visitor: Bob's 8
+and Cy's 4 today, not Ada's own, the hidden one, the reply under it or the
+removed one), the six tiles and the chart's table the API's, sorted by the
+change and by another kind, a choice of either within 16 ms, the newest
+week the UTC days in Kiritimati and Pago Pago, the chart's keys, German
+words, her /u/ page, Bob's own only, by her handle
 `{"mine":false}`, signed out 401, `private, no-store`; pictures
 `<width>_<light|dark>*.png`. Before the file it ends "(before the file)",
 having checked only the panel as before and the timing.

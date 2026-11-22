@@ -477,7 +477,8 @@ numbers of 50 made-up models against counts written plainly from the rows,
 comments against `designer_said` itself: 24.5 ms the middle of ten in SQL
 (26 KB of JSON); the owner with the most models (49) 8.4 ms.
 `tools/web/designer_period_flow.mjs` holds the same on a deployment, with
-the 1 s bar for 50 models.
+the 1 s bar for 50 models; its comments are written through the API (the
+secret key has no grant on them), so they are all today's.
 ## Play: what moves, on its link and on its card
 
 `supabase/play.sql` (2026-10-19), the words in `src/assembly/playable.gd`

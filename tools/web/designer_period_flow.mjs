@@ -8,15 +8,20 @@
 //      models, shared 70 days ago, by link. Rows are written straight into
 //      the project with the secret key, dated by hand: views (model_views,
 //      which the trigger counts into model_opens by the day), builds, likes,
-//      saves (Saved and lists), comments and remixes, by Bob and Cy (two more
+//      saves (Saved and lists) and remixes, by Bob and Cy (two more
 //      throwaways) and by Ada herself (never counted), some at the edges: the
 //      last 30 days' first instant, a second before it, the 30 before's
-//      first instant and a second before that.
+//      first instant and a second before that. Comments only the API writes
+//      (the secret key has no grant on them), so they are written through
+//      it, today: Bob's and Cy's, Ada's own, one Ada hides, one Cy removes
+//      and a reply under the hidden one (none of those three counted); the
+//      dry run (tools/designer_period_try.sql) holds comments on other days.
 //   2. The bar: ?op=designs as Ada answers within 1 s, the middle and the
 //      slowest of ten (after one to wake the function, which is said too).
 //   3. Numbers right: every model's six kinds, the last 30 days, the 30
 //      before, the 8 weeks and in all (3,300 numbers), each against a count
-//      of the same rows read straight back from the tables here, over the
+//      of the same rows read straight back from the tables here (comments as
+//      comments_on lists them on the model's page to a visitor), over the
 //      same UTC days (today and the 29 before; the 30 before those; weeks of
 //      7 days, the newest ending today).
 //   4. Insights (/profile?tab=insights) at 1280, 768 and 390 px, light and
@@ -100,16 +105,18 @@ async function restAll(pathname) {
 const insert = (table, rows) => rest(table, { method: "POST", body: rows, prefer: "return=minimal" });
 
 /// One request to the deployment's API: {status, body, headers, ms}.
-async function api(pathname, { token, again = true } = {}) {
+async function api(pathname, { token, method = "GET", body: payload, again = true } = {}) {
   const sent = { ...headers };
   if (token) sent.authorization = `Bearer ${token}`;
+  if (payload !== undefined) sent["content-type"] = "application/json";
   const began = performance.now();
-  const reply = await fetch(`${site}${pathname}`, { headers: sent });
+  const reply = await fetch(`${site}${pathname}`, { method, headers: sent,
+    body: payload === undefined ? undefined : JSON.stringify(payload) });
   const body = await reply.json().catch(() => ({}));
   const said = { status: reply.status, headers: reply.headers, body, ms: performance.now() - began };
   if (said.status === 503 && again && /sign-in service/.test(String(body.error || ""))) {
     await new Promise((done) => setTimeout(done, 1500));
-    return api(pathname, { token, again: false });
+    return api(pathname, { token, method, body: payload, again: false });
   }
   return said;
 }
@@ -253,22 +260,34 @@ try {
   await insert("model_collection_items", [{ collection: lists[0][0], model: models[0], at: iso(now - DAY) },
     { collection: lists[0][0], model: models[29], at: iso(now - 5 * DAY) }, { collection: lists[1][0], model: models[0], at: iso(now - 40 * DAY) },
     { collection: lists[1][0], model: models[1], at: iso(now) }, { collection: lists[2][0], model: models[0], at: iso(now) }]);
-  // Comments: Bob's on the first 30 (2n days ago); Ada's own; Cy's hidden and Cy's removed (none counted).
-  await insert("model_comments", [...Array.from({ length: 30 }, (_, n) => ({ model: models[n], version: 1, author: bobId,
-    body: `Period flow ${rand} ${n}`, at: iso(now - 2 * (n + 1) * DAY) })),
-  { model: models[0], version: 1, author: adaId, body: `Period flow ${rand}: thank you`, at: iso(now - DAY) },
-  { model: models[2], version: 1, author: cyId, body: `Period flow ${rand}: hidden`, at: iso(now - 3 * DAY) },
-  { model: models[3], version: 1, author: cyId, body: `Period flow ${rand}: removed`, at: iso(now - 4 * DAY) }]);
-  await rest(`model_comments?body=eq.${encodeURIComponent(`Period flow ${rand}: hidden`)}`, { method: "PATCH", body: { hidden_at: iso(now) } });
-  await rest(`model_comments?body=eq.${encodeURIComponent(`Period flow ${rand}: removed`)}`, { method: "PATCH",
-    body: { removed_at: iso(now), removed_by: "author" } });
+  // Comments, through the API as a person writes them (ten an hour each):
+  // Bob's on the first 8, Cy's on the next 4, Ada's own on the first; Cy's
+  // on the third, which Ada hides after Bob answers it, and Cy's on the
+  // fourth, which Cy removes. Counted: Bob's 8 and Cy's 4.
+  const comment = async (who, model, words) => {
+    const said = await api("/api/people?op=comment", { method: "POST", token: who.access_token,
+      body: { model, version: 1, body: `Period flow ${rand}: ${words}` } });
+    if (said.status !== 201 || !said.body.comment?.id) throw new Error(`a comment on ${model}: ${said.status} ${JSON.stringify(said.body).slice(0, 200)}`);
+    return said.body.comment.id;
+  };
+  for (let n = 0; n < 8; n++) await comment(bob, models[n], `Bob ${n}`);
+  for (let n = 8; n < 12; n++) await comment(cy, models[n], `Cy ${n}`);
+  await comment(ada, models[0], "thank you");
+  const hidden = await comment(cy, models[2], "hidden");
+  const gone = await comment(cy, models[3], "removed");
+  const answer = await api("/api/people?op=reply", { method: "POST", token: bob.access_token, body: { id: hidden, body: `Period flow ${rand}: under the hidden` } });
+  const hid = await api("/api/people?op=comment_change", { method: "POST", token: ada.access_token, body: { id: hidden, what: "hide" } });
+  const removed = await api("/api/people?op=comment_change", { method: "POST", token: cy.access_token, body: { id: gone, what: "remove" } });
+  if (answer.status !== 201 || hid.status !== 200 || removed.status !== 200) {
+    throw new Error(`reply ${answer.status}, hide ${hid.status}, remove ${removed.status}`);
+  }
   // In all: model_stats' views and builds, as count_view and count_build keep them.
   const byModel = (rows) => rows.reduce((map, row) => map.set(row.model, (map.get(row.model) || 0) + 1), new Map());
   const viewsOf = byModel(views);
   const buildsOf = byModel(builds);
   await rest("model_stats?on_conflict=model", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
     body: models.map((model) => ({ model, views: (viewsOf.get(model) || 0) + 9, builds: buildsOf.get(model) || 0 })) });
-  check(`made: 50 models, ${views.length} views, ${builds.length} builds, ${likes.length} likes, saves, 33 comments, 3 remixes`, true);
+  check(`made: 50 models, ${views.length} views, ${builds.length} builds, ${likes.length} likes, saves, 16 comments (12 counted), 3 remixes`, true);
 
   // --- 2. The bar: within 1 s for 50 models ----------------------------------
   console.log("the bar: ?op=designs as Ada, 50 models");
@@ -297,19 +316,19 @@ try {
       && period.before_from === win.before[0] && period.weeks_from === win.weeks[0][0]);
     const inList = `in.(${models.join(",")})`;
     const owners = new Map(lists.map(([list, owner]) => [list, owner]));
-    const [opened, built, liked, kept, held, said, remixed, stats, versions] = await Promise.all([
+    const [opened, built, liked, kept, held, listed, remixed, stats] = await Promise.all([
       restAll(`model_views?model=${inList}&select=model,day&order=model,day,visitor`),
       restAll(`model_builds?model=${inList}&select=model,at&order=model,device`),
       restAll(`model_likes?model=${inList}&select=model,account,at&order=model,account`),
       restAll(`model_favourites?model=${inList}&select=model,account,at&order=model,account`),
       restAll(`model_collection_items?model=${inList}&select=model,collection,at&order=model,collection`),
-      restAll(`model_comments?model=${inList}&select=model,author,at,hidden_at,removed_at,parent&order=id`),
+      // What each model's page lists to a visitor: hidden, removed and
+      // replies under a hidden comment are not there; by_owner says Ada's.
+      Promise.all(models.map((model) => rest("rpc/comments_on", { method: "POST", body: { model_id: model, asker: null } })
+        .then((page) => (page?.comments || []).map((c) => ({ ...c, model }))))).then((each) => each.flat()),
       restAll(`shared_models?remixed_from=${inList}&select=remixed_from,published,created_at&order=id`),
       restAll(`model_stats?model=${inList}&select=model,views,builds&order=model`),
-      restAll(`share_versions?model=${inList}&select=model,at&order=model,n`),
     ]);
-    const firstShared = new Map();
-    for (const v of versions) if (!firstShared.has(v.model) || v.at < firstShared.get(v.model)) firstShared.set(v.model, v.at);
     const ownerOf = (model) => (models.includes(model) ? adaId : null);
     // Each person once, from the oldest of their Saved and their lists that hold it.
     const keepers = new Map();
@@ -325,10 +344,13 @@ try {
       builds: built.map((b) => ({ model: b.model, day: day(b.at), n: 1 })),
       likes: liked.filter((l) => l.account !== ownerOf(l.model)).map((l) => ({ model: l.model, day: day(l.at), n: 1 })),
       saves: [...keepers.values()].map((k) => ({ model: k.model, day: day(k.at), n: 1 })),
-      comments: said.filter((c) => !c.hidden_at && !c.removed_at && c.author !== ownerOf(c.model) && c.parent === null
-        && Date.parse(c.at) >= Date.parse(firstShared.get(c.model))).map((c) => ({ model: c.model, day: day(c.at), n: 1 })),
+      comments: listed.filter((c) => !c.by_owner).map((c) => ({ model: c.model, day: day(c.at), n: 1 })),
       remixes: remixed.filter((r) => r.published).map((r) => ({ model: r.remixed_from, day: day(r.created_at), n: 1 })),
     };
+    // The pages list Bob's 8 and Cy's 4, today, and nothing else of theirs.
+    const visible = events.comments.map((e) => e.model).sort().join(",");
+    check(`the comments a visitor sees: ${events.comments.length}, on the first 12 models, today`,
+      visible === models.slice(0, 12).join(",") && events.comments.every((e) => e.day === today));
     const statsOf = new Map(stats.map((s) => [s.model, s]));
     let held30 = 0;
     const wrong = [];
@@ -427,6 +449,28 @@ try {
           Number(cells[1].replace(/\D/g, "")) === totals.likes.weeks[w]) && likes.rows.every((r) => r.weeksKind === "likes"
           && r.weeks === mine.body.models.find((m) => m.id === r.id).period.likes.weeks.join(","))
           && likes.rows.every((r, at) => at === 0 || likes.rows[at - 1].kinds.likes.now >= r.kinds.likes.now));
+        // A choice is one frame's work: the handler and the layout it forces,
+        // for 50 models, the worst of five of each.
+        const work = await page.evaluate(() => {
+          const worst = { kind: 0, sort: 0 };
+          const pick = (id, value) => {
+            const select = document.getElementById(id);
+            const began = performance.now();
+            select.value = value;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            void document.body.offsetHeight;
+            return performance.now() - began;
+          };
+          for (let n = 0; n < 5; n++) {
+            worst.kind = Math.max(worst.kind, pick("designs-kind", n % 2 ? "likes" : "views"));
+            worst.sort = Math.max(worst.sort, pick("designs-sort", n % 2 ? "most" : "gaining"));
+          }
+          return worst;
+        });
+        await page.selectOption("#designs-kind", "likes");
+        await page.selectOption("#designs-sort", "most");
+        check(`a choice within a frame: another kind ${work.kind.toFixed(1)} ms, another order ${work.sort.toFixed(1)} ms, the worst of five`,
+          work.kind < 16 && work.sort < 16);
         // The chart's keys: one Tab stop, the arrows move it, its tip says the week.
         await page.focus("#designs .period-chart .hit[tabindex='0']");
         await page.keyboard.press("ArrowLeft");
