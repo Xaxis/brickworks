@@ -2720,20 +2720,29 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 		if jpeg >= 1.0:
-			result = _through_jpeg(result, jpeg)
+			# Off the main thread: a megapixel's JPEG and back is more than a
+			# frame can spare. Nothing here touches the picture until it ends.
+			_doing("saving as the camera did")
+			if OS.has_feature("nothreads"):
+				_through_jpeg(result, jpeg)
+			else:
+				var task: int = WorkerTasks.add(_through_jpeg.bind(result, jpeg), false, "a camera's JPEG")
+				while not WorkerThreadPool.is_task_completed(task):
+					await get_tree().process_frame
+				WorkerTasks.collect(task)
 	return result
 
 
-## [param image] as the camera saved it (photoreal6): through a JPEG at
-## [param quality] (1 to 100, Godot's own encoder) and back, its blocks and
-## ringing kept.
-static func _through_jpeg(image: Image, quality: float) -> Image:
+## [param image], in place, as the camera saved it (photoreal6): through a
+## JPEG at [param quality] (1 to 100, Godot's own encoder) and back, its
+## blocks and ringing kept. Run on a worker: it touches only [param image].
+func _through_jpeg(image: Image, quality: float) -> void:
 	var saved: PackedByteArray = image.save_jpg_to_buffer(clampf(quality / 100.0, 0.01, 1.0))
 	var back := Image.new()
 	if saved.is_empty() or back.load_jpg_from_buffer(saved) != OK:
-		return image
+		return
 	back.convert(image.get_format())
-	return back
+	image.copy_from(back)
 
 
 ## What the tracer lights and sees, as path_tracer.glsl's Scene reads it:
