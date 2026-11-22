@@ -475,6 +475,13 @@ declare -A CMD=(
   # which the answer says). The account deleted after, and its row of
   # profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
+  # People and lists in search (seo2, docs/SOCIAL.md rank 9): every /u/ and
+  # /c/ page the sitemap lists, in four languages, each tab and next page,
+  # carries one ProfilePage (a Person, its numbers as the page shows them)
+  # or CollectionPage (hasPart, a card each), read against schema.org's own
+  # vocabulary; the Person's image answers and robots.txt lets a crawler
+  # fetch every address in it. Read-only, about 20 s.
+  [seo]="tools/web/seo_check.mjs --url=$P"
   # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
   # set all the old account page could (her name, words, links, banner and
   # pins, a favourite, a collection, her emails, whom she follows shown)

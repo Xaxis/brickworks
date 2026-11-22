@@ -16,6 +16,9 @@
 //                                 show them (supabase/avatars.sql)
 //   GET  ?op=avatar&id=P          picture P, a person's own avatar, while
 //                                 it may be shown
+//   GET  ?op=avatar&handle=X      X's avatar made from their handle, as an
+//                                 SVG: the image their page's structured
+//                                 data names when they have no picture
 //   POST ?op=avatar               (session) {picture: base64, type}: the
 //                                 caller's own picture as their avatar,
 //                                 the square Edit profile cropped, at most
@@ -247,7 +250,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
+import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -683,8 +686,36 @@ async function dropOwnAvatar(request, response) {
   return response.status(200).json(await dropAvatar(account));
 }
 
+// The eight avatar tiles' colours and the letter's (web/site.css :root
+// --avatar-1..8, --on-avatar): one set for both themes, as there.
+const TILES = ["#b42318", "#1f5fbf", "#1f7a3d", "#7a3fb0", "#9a4a00", "#0e6f8a", "#a3175a", "#4b5563"];
+const ON_TILE = "#ffffff";
+
+/// The avatar a person without a picture of their own is shown as
+/// (web/card.js avatarHtml), as an SVG: their handle's tile and their
+/// name's first letter. A search engine's image of them (seo2), as another
+/// site's default avatar is.
+function tileSvg({ handle, name }) {
+  const letter = ([...String(name || handle || "?").trim()][0] || "?").toUpperCase();
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">`
+    + `<circle cx="128" cy="128" r="128" fill="${TILES[avatarTone(handle || name) - 1]}"/>`
+    + `<text x="128" y="128" dy="0.35em" text-anchor="middle" fill="${ON_TILE}" font-family="system-ui, sans-serif" `
+    + `font-size="128" font-weight="700">${escapeHtml(letter)}</text></svg>`;
+}
+
 /// GET ?op=avatar&id=P: a person's own picture, while it may be shown.
+/// &handle=X instead: their tile (tileSvg), while their page may be shown.
 async function avatarServe(request, response) {
+  if (request.query?.handle !== undefined) {
+    const person = await personOf(String(request.query.handle).toLowerCase());
+    if (!person) return response.status(404).setHeader("Cache-Control", "no-store").end("");
+    response.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    // Opened by itself, an SVG is a document: nothing in it runs or loads.
+    response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    response.setHeader("Cache-Control", PICTURE_CACHE);
+    return response.status(200).end(tileSvg(person));
+  }
   const file = await avatarFile(String(request.query?.id || ""), shownPublicly);
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   response.setHeader("Content-Type", "image/jpeg");
@@ -1217,16 +1248,71 @@ function html(response, status, body, { tests = false } = {}) {
   return response.status(status).end(body);
 }
 
+/// What a search engine reads of a page (seo2): [data] in schema.org's
+/// words as JSON-LD, its fields left undefined left out. A data block,
+/// never run, so the page's policy has nothing to allow; its "<" written
+/// as \u003c, so nothing a person typed can end it.
+const structuredHtml = (data) => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>\n`;
+/// A count of [action]s, as schema.org's InteractionCounter.
+const counter = (action, n) => ({ "@type": "InteractionCounter", interactionType: `https://schema.org/${action}`,
+  userInteractionCount: Number(n) || 0 });
+
+/// A person's page, for a search engine: a ProfilePage about a Person, with
+/// the numbers the page shows, as Google reads a profile: their followers as
+/// interactionStatistic, what they did themselves (their models as
+/// WriteAction, whom they follow) as agentInteractionStatistic. A number not
+/// read is left out, never said to be 0. Their image is their picture, or
+/// the tile they are shown as (?op=avatar&handle=); [links], where else they
+/// are, as sameAs.
+function profileData(origin, { url, person, earned, about, follows, links }) {
+  const ready = follows && follows.ready;
+  const made = earned ? earned.models : about?.models;
+  const did = [...(made == null ? [] : [counter("WriteAction", made)]), ...(ready ? [counter("FollowAction", follows.following)] : [])];
+  return structuredHtml({
+    "@context": "https://schema.org", "@type": "ProfilePage", url,
+    mainEntity: {
+      "@type": "Person", name: person.name, alternateName: `@${person.handle}`, identifier: person.handle,
+      url: `${origin}/u/${person.handle}`, description: person.bio || undefined,
+      image: `${origin}${person.picture || `/api/people?op=avatar&handle=${person.handle}`}`,
+      sameAs: links.length ? links.map((link) => link.href) : undefined,
+      interactionStatistic: ready ? [counter("FollowAction", follows.followers)] : undefined,
+      agentInteractionStatistic: did.length ? did : undefined,
+    },
+  });
+}
+
+/// A public list's page, for a search engine: a CollectionPage whose parts
+/// are the [cards] on this page, each where its card links ([here], the
+/// page's language). A set is a CreativeWork named as its own page names
+/// it, never a Product (api/_sets.js). [about]: the page's description,
+/// when the list has none of its own.
+function listData(origin, { url, here, list, about, image, updated, follows, cards }) {
+  return structuredHtml({
+    "@context": "https://schema.org", "@type": "CollectionPage", name: list.name, url, description: list.description || about,
+    image: image || undefined, dateModified: Number.isFinite(updated) ? new Date(updated).toISOString() : undefined,
+    author: list.by ? { "@type": "Person", name: list.by.name, url: `${origin}/u/${list.by.handle}` } : undefined,
+    interactionStatistic: follows && follows.ready ? [counter("FollowAction", follows.followers)] : undefined,
+    hasPart: cards.map((card) => (card.library ? {
+      "@type": "CreativeWork", name: say("LEGO® set {title}", { title: `${card.library.set} ${card.name}` }),
+      url: `${origin}${here}${card.library.page}`, identifier: card.library.set,
+      image: card.library.picture ? `${origin}${card.library.picture}` : undefined,
+    } : {
+      "@type": "CreativeWork", name: card.name, url: `${origin}${here}/m/${card.id}`, image: card.image || undefined,
+    })),
+  });
+}
+
 /// A page's <head>; in a language, [lang], with [words] for its scripts
-/// (web/card.js say), and [alternates], the links to its copies.
+/// (web/card.js say), [alternates], the links to its copies, and [data],
+/// its structured data (structuredHtml).
 function head(origin, { title, about, url, image, robots = "", mine = false, share = false, paged = "", lang = "en", words = null,
-  alternates = "", photos = false }) {
+  alternates = "", photos = false, data = "" }) {
   const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(about)}">
-${robots ? `<meta name="robots" content="${robots}">\n` : ""}${url ? `<link rel="canonical" href="${escapeHtml(url)}">\n` : ""}${alternates ? `${alternates}\n` : ""}<meta property="og:type" content="profile">
+${robots ? `<meta name="robots" content="${robots}">\n` : ""}${url ? `<link rel="canonical" href="${escapeHtml(url)}">\n` : ""}${alternates ? `${alternates}\n` : ""}${data}<meta property="og:type" content="profile">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(about)}">
@@ -1259,13 +1345,13 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 /// In German, French or Spanish ([lang]) as a person's page is (/de/u/X),
 /// with that copy's header and footer and [words] for its scripts.
 function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [], paged = "", lang = "en",
-  words = null, alternates = "", photos = false }) {
+  words = null, alternates = "", photos = false, data = "" }) {
   const { header, footer } = siteChrome(lang);
   const quiet = quietMarks(cards.map(marksOf));
   return `<!doctype html>
 <html lang="${lang}">
 <head>
-${head(origin, { title, about, url, image, robots, mine, share, paged, lang, words, alternates, photos })}
+${head(origin, { title, about, url, image, robots, mine, share, paged, lang, words, alternates, photos, data })}
 </head>
 <body${quiet ? ` data-quiet="${quiet}"` : ""}>
 <a class="skip" href="#main">${asText(say("Skip to content"))}</a>
@@ -1718,6 +1804,7 @@ ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { n
       : say("{name} (@{handle}) — models built in Brickworks", { name: person.name, handle: person.handle }),
     about: person.bio ? summary(person.bio) : told,
     url, image: picture, main, mine: true, cards: drawn, paged, lang, words, alternates, photos: tab === "builds",
+    data: profileData(origin, { url, person, earned, about, follows, links: showcase.links }),
   });
 }
 
@@ -1822,14 +1909,15 @@ ${shareSheetHtml({ url, name: list.name, text: wish ? say("{name}: a wishlist on
     about: wish ? say("Its link opens this wishlist: the sets they want, to give or to know.")
       : say("Its link opens this collection: the models in it, and who collected them."),
     image })}`;
+  const about = list.description ? summary(list.description)
+    : list.by ? say("{things} on Brickworks, collected by {name}.", { things: counts, name: list.by.name })
+      : say("{things} on Brickworks, collected by a builder.", { things: counts });
   return page(origin, {
     title: wish ? say("{name} — a wishlist on Brickworks", { name: list.name })
       : say("{name} — a collection in the Brickworks gallery", { name: list.name }),
-    about: list.description ? summary(list.description)
-      : list.by ? say("{things} on Brickworks, collected by {name}.", { things: counts, name: list.by.name })
-        : say("{things} on Brickworks, collected by a builder.", { things: counts }),
-    url, image, main, share: true, cards,
+    about, url, image, main, share: true, cards,
     paged: pagerLinks({ at: shown.page, more: shown.more, href: pageHref }), lang, words, alternates: alternatesOf(origin, `c/${id}`),
+    data: listData(origin, { url, here, list, about, image, updated, follows, cards }),
   });
 }
 
