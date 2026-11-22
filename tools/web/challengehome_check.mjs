@@ -18,9 +18,9 @@
 //    /challenge.png answers with the picture of the challenge shown now: a
 //    model's (its cover, a winner or an entry) whenever it has one with a
 //    picture, the site's own only when it has none.
-// --admin: also the owner's panel of the challenge shown now
-//    (/admin#challenges/N, the checks' own account), at 390, 768 and 1280,
-//    light and dark, with How it runs on it.
+// --admin: also the panel of the checks' own test challenge shown now
+//    (/admin?tests=1#challenges/N, MASTER_EMAIL as the console flows sign
+//    in), at 390, 768 and 1280, light and dark, with How it runs on it.
 //
 // Read only: nothing is entered, voted for or set. Pictures in --out.
 import { launch } from "./browser.mjs";
@@ -182,14 +182,15 @@ try {
     && fetched?.status === 200 && /^image\//.test(fetched.headers.get("content-type") || ""));
 
   // --- The owner's panel -----------------------------------------------------
-  if (args.admin && shown?.id && shown.state === "ended") {
-    console.log(`  --    the owner's panel: "${shown.title}" has ended, and How it runs is set only before`);
-  } else if (args.admin && shown?.id) {
+  const tested = args.admin ? (await (await fetch(`${site}/api/people?op=challenge&tests=1`, { headers })).json().catch(() => ({})))?.challenge : null;
+  if (args.admin && (!tested?.id || tested.state === "ended")) {
+    console.log(`  --    the panel: no test challenge open or to come${tested?.title ? ` ("${tested.title}" has ended)` : ""}, and How it runs is set only before it ends`);
+  } else if (args.admin) {
     const master = await mintSession(process.env.MASTER_EMAIL);
     for (const [width, height, phone] of [[390, 844, true], [768, 1024, false], [1280, 900, false]]) {
       for (const dark of [false, true]) {
         const { context, page: p } = await page({ width, height, phone, dark, as: master });
-        await p.goto(`${site}/admin#challenges/${shown.id}`, { waitUntil: "load", timeout: 60000 });
+        await p.goto(`${site}/admin?tests=1#challenges/${tested.id}`, { waitUntil: "load", timeout: 60000 });
         const ready = await until(p, () => document.querySelector("#sheet[open] .rounds-part"), "the challenge's panel", 60).then(() => true, () => false);
         check(`the owner's panel at ${width}${dark ? " dark" : ""}: How it runs ${ready ? "on it" : "missing"}`, ready && !(await sideways(p)));
         await p.evaluate(() => document.querySelector(".rounds-part")?.scrollIntoView({ block: "start" }));

@@ -2670,8 +2670,9 @@ plan with Claude as the client.
   390 and 1280, light and dark; `/challenge` moves at most 0.1 as it loads
   (layout shifts without input, the largest burst) at 390, 768 and 1280;
   the head's `og:image` is `/challenge.png`, which redirects to a model's
-  picture whenever the shown challenge has one; `--admin` the owner's panel
-  with How it runs at the three widths. Pictures in `--out`.
+  picture whenever the shown challenge has one; `--admin` the panel of the
+  checks' own test challenge (`/admin?tests=1#challenges/N`) with How it
+  runs at the three widths. Pictures in `--out`.
 - `achievements on a profile` (`api/people.js` `achievementsOf`, `levelsOf`,
   `web/card.js` `awardsHtml`, `TRACKS`, `levelName`, `levelAwards`,
   `supabase/achievements.sql`, docs/SOCIAL.md U13 and section 7): `won`

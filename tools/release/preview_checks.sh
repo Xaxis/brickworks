@@ -182,7 +182,7 @@ declare -A CMD=(
   # The challenge on the home page with its days left and This week's pick,
   # both within the first two screens at 390 and 1280; /challenge moving no
   # more than 0.1 as it loads at 390, 768 and 1280; its own picture
-  # (/challenge.png); the owner's How it runs panel (challengehonours,
+  # (/challenge.png); the test challenge's How it runs panel (challengehonours,
   # supabase/challenge_rounds.sql). Read only, signed out but the panel.
   [challengehome]="tools/web/challengehome_check.mjs --url=$P --out=$S/${TAG}_challengehome --admin"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
