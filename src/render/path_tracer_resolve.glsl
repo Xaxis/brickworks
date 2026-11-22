@@ -15,6 +15,10 @@
 // grain is averaged out. A pixel far brighter than all eight round it (a
 // firefly) is first taken as their mean. Nothing round the model and the
 // model never mix (the coverage differs).
+//
+// Then the camera's own marks, for the product look on a backdrop
+// (photoreal4): its lens's fall-off to the corners, its colour fringes, and
+// its sensor's noise, each as much as the photograph it is matched to has.
 
 #[compute]
 
@@ -44,6 +48,15 @@ layout(push_constant, std430) uniform Resolve {
 	float denoise;
 	// The camera's saturation in linear light, before its curve (4 alone).
 	float linear_saturation;
+	// The product look's camera on a backdrop (photoreal4): its sensor's
+	// noise in 8-bit levels at mid grey, the share of the light its lens loses
+	// at a corner, and its colour fringes in pixels at a corner. 0 for none.
+	float grain;
+	float vignette;
+	float aberration;
+	// How soft its lens draws an edge (0 the picture's own pixels, 1 a third
+	// of a pixel's light spread to its neighbours).
+	float softness;
 	float unused_b;
 	float unused_c;
 } params;
@@ -175,15 +188,55 @@ vec4 cleaned(ivec2 pixel, ivec2 size) {
 	return total / weights;
 }
 
+// A sample of the picture's mean light at a pixel, cleaned as the look asks.
+vec4 light_at(ivec2 pixel, ivec2 size) {
+	return params.denoise > 0.0 ? cleaned(pixel, size)
+		: imageLoad(accum, clamp(pixel, ivec2(0), size - ivec2(1))) / max(params.samples, 1.0);
+}
+
+// A normal deviate from two hashes of the pixel (Box-Muller), for a sensor's
+// noise: each pixel and channel its own, the same for the same picture.
+float gaussian(vec2 p, float salt) {
+	float u = max(noise(p + vec2(salt, 3.1 * salt)), 1e-6);
+	float v = noise(p * 1.37 + vec2(17.3 + salt, 5.7));
+	return sqrt(-2.0 * log(u)) * cos(6.2831853 * v);
+}
+
 void main() {
 	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
 	ivec2 size = imageSize(picture);
 	if (pixel.x >= size.x || pixel.y >= size.y) {
 		return;
 	}
-	vec4 sum = params.denoise > 0.0 ? cleaned(pixel, size)
-		: imageLoad(accum, pixel) / max(params.samples, 1.0);
+	vec4 sum = light_at(pixel, size);
+	if (params.softness > 0.0) {
+		// A real lens and a camera's pipeline spread each point a little: an
+		// edge is a pixel's soft step, never a render's exact one.
+		vec4 round_it = vec4(0.0);
+		for (int y = -1; y <= 1; y++) {
+			for (int x = -1; x <= 1; x++) {
+				if (x != 0 || y != 0) {
+					round_it += light_at(pixel + ivec2(x, y), size) * (x == 0 || y == 0 ? 0.75 : 0.25);
+				}
+			}
+		}
+		sum = mix(sum, round_it / 4.0, params.softness / 3.0);
+	}
+	// Where the pixel is from the middle, 1 at a corner: a lens's fall-off and
+	// its fringes grow towards the edge of the frame (photoreal4).
+	vec2 from_middle = (vec2(pixel) + 0.5 - vec2(size) * 0.5) / (length(vec2(size)) * 0.5);
+	if (params.aberration > 0.0) {
+		// Lateral colour: red drawn a little larger than green, blue a little
+		// smaller, so an edge near a corner has a fringe of each.
+		ivec2 shift = ivec2(round(from_middle * params.aberration));
+		if (shift != ivec2(0)) {
+			sum.r = light_at(pixel - shift, size).r;
+			sum.b = light_at(pixel + shift, size).b;
+		}
+	}
 	vec3 color = max(sum.rgb * params.exposure, vec3(0.0));
+	// A lens's fall-off towards the corners (cos^4, as a share at a corner).
+	color *= 1.0 - params.vignette * dot(from_middle, from_middle);
 	if (params.tonemapper > 3.5) {
 		// A camera's colour, saturated in linear light as its colour matrix
 		// does, round the light's own luminance.
@@ -200,6 +253,17 @@ void main() {
 	color = mix(vec3(dot(vec3(1.0), color) * (1.0 / 3.0)), color, params.saturation);
 	float n = noise(vec2(pixel)) + noise(vec2(pixel) + 41.7) - 1.0;
 	color += vec3(n * params.dither / 255.0);
+	if (params.grain > 0.0) {
+		// A sensor's noise after its pipeline: mostly in lightness, a little in
+		// colour; largest in the middle tones, none on a white that is white
+		// (a cut-out's paper stays paper) and less in the deepest black.
+		float level = luma(color);
+		float amount = params.grain / 255.0 * (1.0 - pow(level, 6.0)) * (0.35 + 0.65 * sqrt(level));
+		vec2 at = vec2(pixel);
+		float lightness = gaussian(at, 0.0);
+		vec3 tint = vec3(gaussian(at, 7.0), gaussian(at, 13.0), gaussian(at, 29.0));
+		color += amount * (vec3(lightness) + 0.35 * tint);
+	}
 	float alpha = params.transparent > 0.5 ? clamp(sum.a, 0.0, 1.0) : 1.0;
 	imageStore(picture, pixel, vec4(clamp(color, vec3(0.0), vec3(1.0)), alpha));
 }

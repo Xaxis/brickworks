@@ -112,6 +112,12 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// light (photoreal3, StudioRender.TENT_BOX).
 	vec4 lamp_info;
 	Lamp lamps[8];
+	// The product look's wear (photoreal4): how played-with the parts are (0
+	// new, 1 decades: whites and greys yellowed, each part its own amount,
+	// colours a little dulled), the dust on their tops, and how much the
+	// backdrop shows a paper's or a table's grain and uneven light (0 a
+	// cut-out's seamless). All 0 in the window's look.
+	vec4 wear;
 } scene;
 
 struct Instance {
@@ -505,9 +511,25 @@ bool worn(vec3 q, float own) {
 	return lines > 0.72 && patches > 0.1;
 }
 
+// A backdrop's own grain and uneven light (photoreal4), as a factor round 1 at
+// a point of it (LDU): a paper's or a card's fibres, fine and faint, over
+// broad patches a little lighter and darker, as a sheet or a table is lit
+// unevenly. Amount 0 is none: a cut-out's seamless is its colour exactly.
+float paper(vec3 at, float amount) {
+	if (amount <= 0.0) {
+		return 1.0;
+	}
+	float broad = gloss_noise(at / 140.0 + vec3(3.1, 0.0, 7.7)) * 0.6
+		+ gloss_noise(at / 47.0 + vec3(11.0, 2.0, 5.0)) * 0.4;
+	float fibre = gloss_noise(vec3(at.x * 0.9, at.y * 0.9, at.z * 0.25) + vec3(1.7, 4.2, 0.3)) * 0.5
+		+ gloss_noise(at * 2.3 + vec3(9.1, 3.3, 1.2)) * 0.5;
+	return 1.0 + amount * (0.06 * broad + 0.025 * fibre);
+}
+
 // textured: the hit is on a straight slope's face (closest_hit's grain);
-// which: the part's own number, so no two parts are worn alike.
-Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint which) {
+// which: the part's own number, so no two parts are worn alike; ng: the
+// face's own normal in the world, for the dust that settles on tops.
+Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint which, vec3 ng) {
 	Surface s;
 	vec3 body = thing.colour.rgb;
 	int finish = int(floor(thing.custom.w + 0.001));
@@ -528,7 +550,7 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		vec3 flat_at = at - scene.sweep_origin.xyz;
 		float along = length(flat_at.xz) + max(flat_at.y, 0.0);
 		float lit = 1.0 - scene.sweep.y * smoothstep(scene.sweep.z, scene.sweep.w, along);
-		s.albedo = scene.sweep_colour.rgb * lit * lit;
+		s.albedo = scene.sweep_colour.rgb * lit * lit * paper(at, scene.wear.z);
 		s.roughness = 0.9;
 		s.specular = 0.08;
 		s.coat = 0.0;
@@ -553,8 +575,43 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		float own = float(pcg(which * 747796405u + 2891336453u) & 0xffffu) / 65535.0;
 		body *= 1.0 + 0.07 * (own - 0.5);
 		float handled = gloss_noise(local / 16.0 + vec3(own * 97.0, own * 31.0, 0.0));
-		s.coat_roughness = mix(0.03, 0.085, smoothstep(-0.6, 0.8, handled)) + 0.02 * own;
+		// A played-with part's gloss is worn in broad patches (photoreal4): its
+		// reflections uneven across a face, as an old set's are at arm's length.
+		s.coat_roughness = mix(0.03, 0.085 + 0.25 * scene.wear.x, smoothstep(-0.6, 0.8, handled))
+			+ 0.02 * own;
 		s.roughness += 0.05 * handled;
+		float age = scene.wear.x;
+		if (age > 0.0) {
+			// Played with (photoreal4): a white or grey part yellows as ABS does
+			// in light and years, each its own amount (a set's whites never
+			// match), and every colour dulls a little.
+			float own_age = float(pcg(which * 2246822519u + 3266489917u) & 0xffffu) / 65535.0;
+			float chroma = max(max(body.r, body.g), body.b) - min(min(body.r, body.g), body.b);
+			float pale = smoothstep(0.12, 0.55, dot(body, vec3(0.2126, 0.7152, 0.0722)))
+				* (1.0 - smoothstep(0.04, 0.2, chroma));
+			float yellowed = age * (0.3 + 0.7 * own_age) * pale;
+			body *= mix(vec3(1.0), vec3(1.0, 0.9, 0.62), yellowed);
+			float grey_of = dot(body, vec3(0.2126, 0.7152, 0.0722));
+			body = mix(body, vec3(grey_of), 0.08 * age * own_age);
+			// A few parts faded in the sun much more than the rest: greyer and
+			// lighter, a black gone blue-grey, as a set's odd part is.
+			float faded = age * own_age * own_age * own_age;
+			body = mix(body, vec3(grey_of) * 1.15 + vec3(0.01, 0.015, 0.03), 0.35 * faded);
+			s.coat_roughness += 0.02 * age;
+		}
+		float dust = scene.wear.y * smoothstep(0.55, 0.9, ng.y);
+		if (dust > 0.0) {
+			// Dust on what faces up: a faint film that greys a face and dulls
+			// its gloss, thicker in patches, with soft motes a few tenths of a
+			// millimetre across, never a sharp point (a judge called those
+			// fireflies, photoreal1).
+			float film = 0.5 + 0.5 * gloss_noise(at / 6.0 + vec3(own * 17.0, 3.0, 1.0));
+			float mote = smoothstep(0.35, 0.7, gloss_noise(at * 1.3 + vec3(5.0, own * 7.0, 2.0)));
+			float cover = clamp(dust * (0.25 * film + 0.8 * mote), 0.0, 0.8);
+			body = mix(body, vec3(0.5, 0.48, 0.45), cover);
+			s.coat *= 1.0 - cover;
+			s.roughness = mix(s.roughness, 0.9, cover);
+		}
 		if (worn(local, own)) {
 			// A hairline scratch scatters what a polished face mirrors
 			// (photoreal3): on a top that mirrors the dark camera it shows as a
@@ -1055,7 +1112,7 @@ void main() {
 			if (!met) {
 				met = true;
 				first = vec4(n, thing.info.y == KIND_GLASS ? 2.0 : (thing.info.y == KIND_SWEEP ? 3.0
-					: luminance(surface_of(thing, at, hit.local, hit.unused, hit.instance).albedo)));
+					: luminance(surface_of(thing, at, hit.local, hit.unused, hit.instance, hit.geometric).albedo)));
 			}
 			if (thing.info.y == KIND_GLASS) {
 				// Thin glass: what it reflects of the sky added at once, by a
@@ -1067,6 +1124,16 @@ void main() {
 				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, MASK_SOLID | MASK_SWEEP,
 						gl_RayFlagsOpaqueEXT)) {
 					radiance += carried * f * sky_light(mirrored);
+				}
+				if (scene.look.x > 0.5 && !inside && scene.wear.x > 0.0) {
+					// A handled clear part (photoreal4): fine scratches in its skin
+					// scatter some of the light that falls on it, each part's
+					// running its own way, as a set's windscreen shows them.
+					float own_glass = float(pcg(hit.instance * 747796405u + 2891336453u) & 0xffffu)
+						/ 65535.0;
+					if (worn(hit.local * 1.6, own_glass)) {
+						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
+					}
 				}
 				vec3 tint = sqrt(max(thing.colour.rgb, vec3(0.0)));
 				// A clear neon glowing in the Dark light: light of its own,
@@ -1132,10 +1199,11 @@ void main() {
 				vec3 flat_at = at - scene.sweep_origin.xyz;
 				float along = length(flat_at.xz) + max(flat_at.y, 0.0);
 				float lit = 1.0 - scene.sweep.y * smoothstep(scene.sweep.z, scene.sweep.w, along);
-				radiance += carried * scene.background.rgb * lit * lit * shadow_on(at + ng * 0.02, n);
+				radiance += carried * scene.background.rgb * lit * lit * paper(at, scene.wear.z)
+					* shadow_on(at + ng * 0.02, n);
 				break;
 			}
-			Surface s = surface_of(thing, at, hit.local, hit.unused, hit.instance);
+			Surface s = surface_of(thing, at, hit.local, hit.unused, hit.instance, hit.geometric);
 			// The sweep is brought to its colour for the eye alone, as the
 			// window brings it (StudioRender meters its level), and by
 			// scaling what it shows, so its shadows keep their depth. As

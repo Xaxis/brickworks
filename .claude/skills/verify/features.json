@@ -2479,7 +2479,7 @@
       "id": "cli:photoreal judge",
       "kind": "cli",
       "entry": "tools/bench/photoreal.py",
-      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; colour writes each close-up face's CIEDE2000 from its photograph's)",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; gloss NAME; camera NAME; masks; tally FILE...; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR; solo A=DIR B=DIR --name N --trials 2 --rounds 3 --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; solo shows every photograph and render ALONE, shuffled, and writes solo_N.json with the share called a photograph and the mean probability, photographs and each label's renders apart, per round; tally groups the tells; camera measures sensor noise; masks writes the set photographs' outlines; colour writes each close-up face's CIEDE2000 from its photograph's)",
       "area": "view",
       "tests": []
     },
@@ -2487,7 +2487,7 @@
       "id": "cli:photoreal probe",
       "kind": "cli",
       "entry": "src/dev/photoreal_probe.gd",
-      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car --turns=0,90 --lighting=window,daylight --raw]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr)",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car --turns=0,90 --lighting=window,daylight --raw --fit --without=dust,age --shots=PATH]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr; --fit fits each set's camera to its photograph's outline from shots/photoreal/masks/ (photoreal.py masks), writing NAME_fit.json and the two outlines over each other; --without zeroes a shot's camera and wear settings to measure each)",
       "area": "view",
       "tests": []
     },

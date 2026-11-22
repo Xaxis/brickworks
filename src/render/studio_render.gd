@@ -85,6 +85,18 @@ const HDRIS: Dictionary = {
 ## product look's denoise (path_tracer_resolve.glsl): a pixel differing from
 ## its neighbour by many times this over the root of the samples is an edge.
 const PRODUCT_DENOISE := 5.0
+## The product look's camera and wear (photoreal4), where a render asks for
+## none of its own (RenderSettings grain, vignette, aberration, softness,
+## age, dust, paper, seating): measured against the photo bench's photographs, each kept only
+## where a measure moved (docs/RENDERING.md 5h).
+const PRODUCT_GRAIN := 0.0
+const PRODUCT_VIGNETTE := 0.0
+const PRODUCT_ABERRATION := 0.0
+const PRODUCT_AGE := 0.0
+const PRODUCT_DUST := 0.3
+const PRODUCT_PAPER := 0.0
+const PRODUCT_SOFTNESS := 0.6
+const PRODUCT_SEATING := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2532,6 +2544,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 				if _cancelled:
 					return null
 	_tracer.product = settings.look == "product"
+	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
@@ -2620,6 +2633,14 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 			maxf(grey + (need.g - grey) / linear_saturation, 0.0) / at,
 			maxf(grey + (need.b - grey) / linear_saturation, 0.0) / at)
 	_tracer.scene = _traced_scene(settings, plan, shot, picture, level, true, most, caught)
+	# The camera's own marks, for the product look on a backdrop (photoreal4):
+	# its sensor's noise, its lens's fall-off and fringes (the fringes in
+	# pixels at a corner of a 1024-pixel picture, as many more as it is wider).
+	var lens := Vector4.ZERO
+	if catcher:
+		lens = Vector4(_own(settings.grain, PRODUCT_GRAIN), _own(settings.vignette, PRODUCT_VIGNETTE),
+			_own(settings.aberration, PRODUCT_ABERRATION) * float(picture.x) / 1024.0,
+			_own(settings.softness, PRODUCT_SOFTNESS))
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
@@ -2673,7 +2694,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
 			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-				saturation, settings.transparent, true, clean, linear_saturation)
+				saturation, settings.transparent, true, clean, linear_saturation, lens)
 			if so_far != null:
 				var half: int = picture.y / 2
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
@@ -2685,7 +2706,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	last_mean = _tracer.mean_image() if keep_mean else null
 	_doing("reading the picture back")
 	var result: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-		saturation, settings.transparent, true, clean, linear_saturation)
+		saturation, settings.transparent, true, clean, linear_saturation, lens)
 	if result != null and not settings.transparent:
 		await get_tree().process_frame
 		_doing("converting")
@@ -2832,7 +2853,17 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			var none := PackedFloat32Array()
 			none.resize(16)
 			data.append_array(none)
+	# The product look's wear (photoreal4): age, dust, the backdrop's grain.
+	var worn: bool = settings.look == "product"
+	data.append_array([_own(settings.age, PRODUCT_AGE) if worn else 0.0,
+		_own(settings.dust, PRODUCT_DUST) if worn else 0.0,
+		_own(settings.paper, PRODUCT_PAPER) if worn and _backdrop.visible else 0.0, 0.0])
 	return data
+
+
+## A product look's setting, or the look's own where none is asked (below 0).
+static func _own(asked: float, fallback: float) -> float:
+	return asked if asked >= 0.0 else fallback
 
 
 ## Whether the traced picture's sweep is a shadow catcher (photoreal2): the

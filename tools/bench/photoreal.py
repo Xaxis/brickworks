@@ -22,6 +22,16 @@ reasons, the things it names in the render that give it away, are the gap list.
         each close-up's highlights and shading, photograph against render (photoreal3)
     tools/bench/photoreal.py judge TAG [--out DIR] [--model opus] [--jobs 4] [--only a,b]
         the blind judge, both orders; DIR/judge_TAG.json and a summary printed
+    tools/bench/photoreal.py solo LABEL=DIR ... --name NAME [--trials 2] [--rounds 3] [--out DIR]
+        the solo judge (photoreal4): every photograph and render alone, shuffled in one pool;
+        the share called a photograph and the mean probability, photographs and each label's
+        renders apart, per round and over all; DIR/solo_NAME.json
+    tools/bench/photoreal.py camera TAG
+        each shot's sensor noise, photograph against render, in 8-bit levels (photoreal4)
+    tools/bench/photoreal.py masks [--only a,b]
+        each set photograph's outline, for photoreal_probe.gd --fit (photoreal4)
+    tools/bench/photoreal.py tally FILE ...
+        the tells in judge_*.json and solo_*.json files, grouped by what they are about
 
 TAG is the folder under shots/photoreal/ the probe drew into (-- --tag=TAG).
 """
@@ -288,6 +298,99 @@ def gloss(tag: str, out: Path, drawn: Path) -> int:
     return 0 if rows else 1
 
 
+def sensor_noise(image: Image.Image) -> float:
+    """A picture's noise, in 8-bit levels of lightness (photoreal4): the mean absolute
+    response to Immerkær's mask (1 -2 1 / -2 4 -2 / 1 -2 1, which flat shading and straight
+    gradients give nothing) over the pixels that are neither white paper (a cut-out's) nor deep
+    black nor on an edge, as a normal deviate's spread."""
+    grey = image.convert("L")
+    w, h = grey.size
+    px = grey.load()
+    found = []
+    for y in range(1, h - 1, 2):
+        for x in range(1, w - 1, 2):
+            c = px[x, y]
+            if c > 245 or c < 12:
+                continue
+            ring = [px[x - 1, y - 1], px[x, y - 1], px[x + 1, y - 1], px[x - 1, y], px[x + 1, y],
+                    px[x - 1, y + 1], px[x, y + 1], px[x + 1, y + 1]]
+            if max(ring) - min(ring) > 24:
+                continue
+            r = (ring[0] + ring[2] + ring[5] + ring[7]) - 2 * (ring[1] + ring[3] + ring[4] + ring[6]) + 4 * c
+            found.append(abs(r))
+    if not found:
+        return 0.0
+    return round((3.14159265 / 2) ** 0.5 * sum(found) / len(found) / 6.0, 2)
+
+
+def camera(tag: str, drawn: Path) -> int:
+    """Each shot's sensor noise, photograph against render (photoreal4), in 8-bit levels."""
+    print(f"| shot | photograph | render ({tag}) |")
+    print("|---|---|---|")
+    for shot in shots():
+        path = drawn / tag / f"{shot['name']}.png"
+        render = sensor_noise(Image.open(path).convert("RGB")) if path.exists() else None
+        print(f"| {shot['name']} | {sensor_noise(photo_of(shot)):.2f} | "
+              f"{'-' if render is None else f'{render:.2f}'} |")
+    return 0
+
+
+MASK_WIDTH = 320
+
+
+def silhouette(image: Image.Image, step: int = 7, far: int = 80) -> Image.Image:
+    """The model's outline in a photograph (photoreal4): white where the model is. The backdrop is
+    grown from the picture's border, a pixel at a time, into each neighbour no more than `step`
+    from the pixel it is grown from in any channel and no more than `far` from the border's own
+    colour: a soft shadow or a backdrop's falloff is crossed by small steps, a part's edge is not."""
+    from collections import deque
+    w, h = image.size
+    px = image.load()
+    border = sorted(px[x, y] for x in range(w) for y in (0, h - 1))
+    ref = border[len(border) // 2]
+    back = bytearray(w * h)
+    queue: deque = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            queue.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            queue.append((x, y))
+    for x, y in queue:
+        back[y * w + x] = 1
+    while queue:
+        x, y = queue.popleft()
+        here = px[x, y]
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < w and 0 <= ny < h and not back[ny * w + nx]:
+                there = px[nx, ny]
+                if (max(abs(there[k] - here[k]) for k in range(3)) <= step
+                        and max(abs(there[k] - ref[k]) for k in range(3)) <= far):
+                    back[ny * w + nx] = 1
+                    queue.append((nx, ny))
+    return Image.frombytes("L", (w, h), bytes(0 if b else 255 for b in back))
+
+
+def masks(out: Path, only: list[str] | None) -> int:
+    """Each set shot's photograph's outline at MASK_WIDTH wide (out/NAME.png, white the model),
+    for photoreal_probe.gd --fit, and the outline drawn over the photograph (out/NAME_over.jpg)."""
+    out.mkdir(parents=True, exist_ok=True)
+    (out / ".gdignore").touch()
+    for shot in shots(only):
+        if shot["kind"] != "set":
+            continue
+        photo = photo_of(shot)
+        small = photo.resize((MASK_WIDTH, round(MASK_WIDTH * photo.height / photo.width)), Image.LANCZOS)
+        mask = silhouette(small, **shot.get("mask", {}))
+        mask.save(out / f"{shot['name']}.png")
+        over = Image.composite(Image.new("RGB", small.size, (255, 0, 255)), small,
+                               mask.point(lambda v: 90 if v else 0))
+        over.save(out / f"{shot['name']}_over.jpg", quality=90)
+        print(f"  {shot['name']}: {sum(1 for v in mask.getdata() if v) / (small.width * small.height):.3f}"
+              f" of the picture is the model, {out / (shot['name'] + '.png')}")
+    return 0
+
+
 def _opaque(words: str) -> str:
     return hashlib.sha256(f"photoreal:{words}".encode()).hexdigest()[:10]
 
@@ -410,6 +513,245 @@ def summarise(found: dict[str, list[dict]]) -> dict:
     return {"closeups": over("closeup"), "sets": over("set"), "all": over(None)}
 
 
+# The solo judge (photoreal4). The paired judge above never moved while the pictures visibly
+# improved: shown a photograph beside a render it keys on any difference at all, staging as much
+# as rendering, and it found the photograph 18 to 20 times in 20 in every round. Shown ONE picture
+# with nothing beside it, it can only say how real that picture looks, so a render that reads a
+# little more real moves its probability even while it would still lose a side-by-side.
+SOLO_PROMPT_VERSION = 1
+
+SOLO_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "looked_at": {"type": "array", "items": {"type": "string"},
+                      "description": "the file name of the picture you opened"},
+        "answer": {"type": "string", "enum": ["photograph", "render"]},
+        "photograph_probability": {"type": "integer", "minimum": 0, "maximum": 100},
+        "reason": {"type": "string"},
+        "render_tells": {"type": "array", "items": {"type": "string"}},
+        "photo_tells": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["looked_at", "answer", "photograph_probability", "reason", "render_tells",
+                 "photo_tells"],
+}
+
+
+def solo_prompt(picture: Path) -> str:
+    return "\n".join([
+        "You are shown one picture of LEGO® bricks. It is either a photograph of real LEGO "
+        "bricks taken with a camera, or a computer render of a 3D model of LEGO bricks. Is it a "
+        "photograph of real LEGO bricks, or a computer render?",
+        "",
+        "Open the picture with the Read tool before you answer.",
+        f"  {picture}",
+        "",
+        "Look closely at the plastic and its gloss, the edges and corners, the studs, the light "
+        "and the shadows, the background, the camera (focus, grain, lens) and anything else that "
+        "tells a photograph from a render. Judge this picture on its own; you are not told how "
+        "many of either kind you will see.",
+        "",
+        "Reply with only the JSON object the schema asks for: answer (photograph or render), "
+        "photograph_probability (0 to 100, the chance that it is a photograph of real bricks), "
+        "reason (one or two sentences naming what decides it), render_tells (short phrases, each "
+        "one thing in the picture that looks computer generated, empty if none), photo_tells "
+        "(short phrases, each one thing that looks like a real photograph, empty if none), and "
+        "looked_at (the file name you opened).",
+    ])
+
+
+def _ask_solo(where: Path, picture: Path, model: str) -> dict:
+    text = solo_prompt(picture)
+    error = ""
+    for _attempt in (1, 2):
+        try:
+            reply, seconds = judge.call(text, where, [where], model=model, schema=SOLO_SCHEMA)
+        except Exception as failed:  # noqa: BLE001
+            error = str(failed)
+            continue
+        if reply.get("is_error"):
+            error = str(reply.get("result"))[:200]
+            continue
+        found = reply.get("structured_output")
+        if not isinstance(found, dict):
+            try:
+                found = judge._object(str(reply.get("result", "")))
+            except ValueError as failed:
+                error = str(failed)
+                continue
+        answer = str(found.get("answer", "")).strip().lower()
+        if answer not in ("photograph", "render"):
+            error = f"no answer: {found.get('answer')!r}"
+            continue
+        return {"answer": answer,
+                "p_photo": max(0, min(100, int(found.get("photograph_probability", 50)))) / 100,
+                "reason": " ".join(str(found.get("reason", "")).split()),
+                "render_tells": [str(t) for t in found.get("render_tells", [])],
+                "photo_tells": [str(t) for t in found.get("photo_tells", [])],
+                "looked_at": found.get("looked_at", []), "seconds": round(seconds, 1),
+                "model": ", ".join(sorted((reply.get("modelUsage") or {}).keys())) or model}
+    return {"error": error}
+
+
+def _drawn_dirs(given: list[str]) -> list[tuple[str, Path]]:
+    """Each LABEL=DIR, DIR or TAG (a folder under shots/photoreal/) as (label, folder)."""
+    found = []
+    for item in given:
+        label, _, where = item.rpartition("=") if "=" in item else ("", "", item)
+        path = Path(where) if ("/" in where or Path(where).is_dir()) else DRAWN / where
+        found.append((label or path.name, path))
+    return found
+
+
+def _solo_stats(vs: list[dict]) -> dict:
+    vs = [v for v in vs if "error" not in v]
+    if not vs:
+        return {"trials": 0}
+    return {"trials": len(vs), "called_photograph": sum(v["answer"] == "photograph" for v in vs),
+            "share_photograph": round(sum(v["answer"] == "photograph" for v in vs) / len(vs), 3),
+            "mean_p_photo": round(sum(v["p_photo"] for v in vs) / len(vs), 3)}
+
+
+def solo_summary(verdicts: list[dict]) -> dict:
+    """The share called a photograph and the mean probability of one, for the photographs and
+    for each label's renders, in all and by kind (close-ups, sets)."""
+    out: dict = {}
+    for who in sorted({v["who"] for v in verdicts}, key=lambda w: (w != "photo", w)):
+        mine = [v for v in verdicts if v["who"] == who]
+        out[who] = {"all": _solo_stats(mine),
+                    "closeups": _solo_stats([v for v in mine if v["kind"] == "closeup"]),
+                    "sets": _solo_stats([v for v in mine if v["kind"] == "set"])}
+    return out
+
+
+def solo(given: list[str], out: Path, name: str, model: str, jobs: int, trials: int, rounds: int,
+         seed: int, only: list[str] | None, photos: bool = True) -> int:
+    """The solo judge: every photograph and every render of each LABEL=DIR in one pool, each
+    shown ALONE, `trials` times a round in an order shuffled by the round, for `rounds` rounds.
+    out/solo_NAME.json holds every verdict and each round's summary, and the spread over rounds."""
+    import random
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "blind").mkdir(parents=True, exist_ok=True)
+    (out / "blind" / ".gdignore").touch()
+    blind = out / "blind" / _opaque(f"solo:{name}")
+    blind.mkdir(parents=True, exist_ok=True)
+    drawn = _drawn_dirs(given)
+    pool = []
+    for shot in shots(only):
+        size = tuple(shot["size"])
+        picture = blind / f"{_opaque('solo photo ' + shot['name'])}.jpg"
+        photo_of(shot).save(picture, quality=92)
+        if photos:
+            # A set picture that is itself a render (6512's, photoreal4) is asked as the others
+            # are, and counted apart: it is no photograph.
+            who = "reference render" if shot.get("photo_is_render") else "photo"
+            pool.append({"who": who, "shot": shot["name"], "kind": shot["kind"], "file": picture})
+        for label, where in drawn:
+            path = where / f"{shot['name']}.png"
+            if not path.exists():
+                print(f"  {label}: no {shot['name']} in {where}, left out")
+                continue
+            image = Image.open(path).convert("RGB")
+            image = image if image.size == size else image.resize(size, Image.LANCZOS)
+            picture = blind / f"{_opaque(f'solo render {label} {where} ' + shot['name'])}.jpg"
+            image.save(picture, quality=92)
+            pool.append({"who": label, "shot": shot["name"], "kind": shot["kind"], "file": picture})
+    record: dict = {"name": name, "prompt": SOLO_PROMPT_VERSION, "model": model, "trials": trials,
+                    "drawn": {label: str(where) for label, where in drawn}, "rounds": []}
+    for number in range(1, rounds + 1):
+        asks = [item for item in pool for _n in range(trials)]
+        random.Random(seed * 1000 + number).shuffle(asks)
+        with ThreadPoolExecutor(max_workers=jobs) as threads:
+            answers = list(threads.map(lambda item: _ask_solo(blind, item["file"], model), asks))
+        verdicts = [{**{k: v for k, v in item.items() if k != "file"}, "file": item["file"].name,
+                     **answer} for item, answer in zip(asks, answers)]
+        summary = solo_summary(verdicts)
+        record["rounds"].append({"round": number, "summary": summary, "verdicts": verdicts})
+        (out / f"solo_{name}.json").write_text(json.dumps(record, indent=1, ensure_ascii=False))
+        errors = sum("error" in v for v in verdicts)
+        print(f"round {number}: " + "; ".join(
+            f"{who} {s['all'].get('share_photograph', '-')} called a photograph, "
+            f"p {s['all'].get('mean_p_photo', '-')}" for who, s in summary.items())
+            + (f" ({errors} without a verdict)" if errors else ""))
+    record["overall"] = solo_summary([v for r in record["rounds"] for v in r["verdicts"]])
+    record["spread"] = {who: {f: [min(r["summary"][who]["all"].get(f, 0) for r in record["rounds"]),
+                                  max(r["summary"][who]["all"].get(f, 0) for r in record["rounds"])]
+                              for f in ("share_photograph", "mean_p_photo")}
+                        for who in record["overall"]}
+    (out / f"solo_{name}.json").write_text(json.dumps(record, indent=1, ensure_ascii=False))
+    print(json.dumps({"overall": record["overall"], "spread": record["spread"]}, indent=1))
+    return 0
+
+
+# What the judge's tells are about, by the words in them (photoreal4). The first group a tell's
+# words match is its group; one tell counts once.
+TELL_GROUPS: list[tuple[str, tuple[str, ...]]] = [
+    ("staging: a figure, a part, a pose or a print", (
+        "minifig", "figure", "pilot", "driver", "torso", "printed", "print ", "prints", "sticker",
+        "pose", "missing", "facing", "faces the", "empty", "no face")),
+    ("wear, dust and age", (
+        "clean", "wear", "worn", "dust", "scratch", "scuff", "pristine", "spotless", "yellow",
+        "aged", "age", "ageing", "aging", "imperfection", "fingerprint", "mould", "mold", "gate",
+        "flawless", "used", "played", "discolo", "fad")),
+    ("uniformity across parts and faces", (
+        "uniform", "identical", "even", "uneven", "same", "consistent", "flat colo", "variation",
+        "vary", "varied")),
+    ("backdrop", ("background", "backdrop", "sweep", "horizon", "seamless", "gradient", "paper",
+                  "table", "leather")),
+    ("noise or grain", ("noise", "grain", "speckle", "firefl", "sampling", "denois")),
+    ("focus and depth of field", ("depth of field", "focus", "blur", "sharp throughout", "bokeh",
+                                  "everything sharp", "sharp from")),
+    ("light and shadow", ("shadow", "light", "illuminat", "reflection", "highlight", "specular",
+                          "gloss", "sheen", "ambient", "shading")),
+    ("edges and geometry", ("edge", "corner", "bevel", "geometry", "facet", "seam", "outline",
+                            "silhouette", "crisp")),
+    ("colour", ("colour", "color", "saturat", "vivid", "hue", "tint")),
+    ("logos and studs", ("logo", "lettering", "stud")),
+    ("clear parts", ("transparent", "clear part", "clear brick", "refract", "glass", "trans",
+                     "windscreen", "windshield", "canopy")),
+    ("the camera: compression, vignette, lens", ("jpeg", "compression", "vignett", "chromatic",
+                                                  "lens", "exposure", "white balance", "iso",
+                                                  "sensor", "camera", "blown", "overexpos")),
+]
+
+
+def _group(tell: str) -> str:
+    import re
+    words = tell.lower() + " "
+    for name, keys in TELL_GROUPS:
+        if any(re.search(r"\b" + re.escape(k), words) for k in keys):
+            return name
+    return "other"
+
+
+def tally(paths: list[Path]) -> int:
+    """The judge's tells grouped by what they are about (TELL_GROUPS), for each verdict file:
+    a paired judge_TAG.json's render tells, and a solo file's render and photograph tells for
+    each label (photoreal4)."""
+    for path in paths:
+        record = json.loads(path.read_text())
+        counts: dict[str, dict[str, int]] = {}
+        if "rounds" in record:
+            for verdict in (v for r in record["rounds"] for v in r["verdicts"] if "error" not in v):
+                for field in ("render_tells", "photo_tells"):
+                    column = f"{verdict['who']} {field.split('_')[0]}"
+                    for tell in verdict[field]:
+                        here = counts.setdefault(column, {})
+                        here[_group(tell)] = here.get(_group(tell), 0) + 1
+        else:
+            for verdict in (v for vs in record["verdicts"].values() for v in vs if "error" not in v):
+                for tell in verdict["render_tells"]:
+                    here = counts.setdefault("render", {})
+                    here[_group(tell)] = here.get(_group(tell), 0) + 1
+        columns = sorted(counts)
+        print(f"\n{path.name}\n| tell | " + " | ".join(columns) + " |")
+        print("|---|" + "---|" * len(columns))
+        for name in [g for g, _ in TELL_GROUPS] + ["other"]:
+            row = [counts[c].get(name, 0) for c in columns]
+            if any(row):
+                print(f"| {name} | " + " | ".join(str(n) for n in row) + " |")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="what", required=True)
@@ -434,7 +776,33 @@ def main() -> int:
     j.add_argument("--model", default="opus")
     j.add_argument("--jobs", type=int, default=4)
     j.add_argument("--only", default="")
+    s = sub.add_parser("solo")
+    s.add_argument("drawn", nargs="+", help="LABEL=DIR, DIR or TAG for each set of renders")
+    s.add_argument("--name", required=True)
+    s.add_argument("--out", type=Path)
+    s.add_argument("--model", default="opus")
+    s.add_argument("--jobs", type=int, default=4)
+    s.add_argument("--trials", type=int, default=2)
+    s.add_argument("--rounds", type=int, default=3)
+    s.add_argument("--seed", type=int, default=1)
+    s.add_argument("--only", default="")
+    s.add_argument("--no-photos", action="store_true",
+                   help="renders alone, for a quick look at one change (the photographs are not asked)")
+    t = sub.add_parser("tally")
+    t.add_argument("files", nargs="+", type=Path)
+    n = sub.add_parser("camera")
+    n.add_argument("tag")
+    n.add_argument("--drawn", type=Path, default=DRAWN)
+    m = sub.add_parser("masks")
+    m.add_argument("--out", type=Path, default=DRAWN / "masks")
+    m.add_argument("--only", default="")
     args = parser.parse_args()
+    if args.what == "tally":
+        return tally(args.files)
+    if args.what == "camera":
+        return camera(args.tag, args.drawn)
+    if args.what == "masks":
+        return masks(args.out, [x for x in args.only.split(",") if x])
     out = args.out or (DRAWN / "pairs")
     if args.what == "pairs":
         return pairs(args.tag, out)
@@ -444,6 +812,9 @@ def main() -> int:
         return colour(args.tag, out, args.drawn)
     if args.what == "gloss":
         return gloss(args.tag, out, args.drawn)
+    if args.what == "solo":
+        return solo(args.drawn, out, args.name, args.model, args.jobs, args.trials, args.rounds,
+                    args.seed, [x for x in args.only.split(",") if x], not args.no_photos)
     return judge_tag(args.tag, out, args.model, args.jobs, [s for s in args.only.split(",") if s])
 
 

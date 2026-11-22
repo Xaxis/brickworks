@@ -1,5 +1,5 @@
 0 FILE 6660 - main.ldr
-0 photoreal2's copy of the OMR's 6660-1.mpd (Robert Paciorek, CCAL 2.0): the driver seated in the cab, legs bent, as the set's own picture has the figure; nothing else changed.
+0 photoreal2's copy of the OMR's 6660-1.mpd (Robert Paciorek, CCAL 2.0): the driver seated in the cab, legs bent, as the set's own picture has the figure. photoreal4: his hands forward to the wheel, and the windscreen and roof glass Trans Light Blue (43) as the photographed set's are, where the OMR has Trans Medium Blue (41).
 0 !LEOCAD MODEL BACKGROUND GRADIENT 0 0 0.74902 1 1 1
 0 main
 0 Name: 6660 - main.ldr
@@ -53,12 +53,12 @@
 1 46 -70 -14 -114 0 0 1 1 0 0 0 1 0 3024.dat
 1 46 -10 -14 -114 0 0 1 1 0 0 0 1 0 3024.dat
 1 4 -40 -32 -90 -1 0 0 0 1 0 0 0 -1 3068b.dat
-1 41 -40 -72 -40 1 0 0 0 1 0 0 0 1 3823.dat
+1 43 -40 -72 -40 1 0 0 0 1 0 0 0 1 3823.dat
 1 4 -40 -72 40 1 0 0 0 1 0 0 0 1 4083.dat
 0 STEP
 1 16 -40 -72 20 1 0 0 0 1 0 0 0 1 4214.dat
 1 16 -40 -80 -10 1 0 0 0 1 0 0 0 1 2349a.dat
-1 41 -40 -76 -25 1 0 0 0 1 0 0 0 1 2348b.dat
+1 43 -40 -76 -25 1 0 0 0 1 0 0 0 1 2348b.dat
 0 STEP
 1 4 -70 8 -10 0 0 1 0 1 0 -1 0 0 3023.dat
 1 4 -10 8 -10 0 0 1 0 1 0 -1 0 0 3023.dat
@@ -93,11 +93,10 @@
 1 14 2.26 -96 3.37 1 0 0 0 1 0 0 0 1 3626bp01.dat
 1 15 2.26 -72 3.37 1 0 0 0 1 0 0 0 1 973p1t.dat
 1 1 2.26 -40 3.37 1 0 0 0 1 0 0 0 1 3815.dat
-1 14 17.76 -64 3.37 0.99 0.17 0 -0.17 0.99 0 0 0 1 3819.dat
-1 14 -13.24 -64 3.37 0.99 -0.17 0 0.17 0.99 0 0 0 1 3818.dat
-1 14 25.92 -46.13 -6.63 0.99 0.12 -0.12 -0.17 0.7 -0.7 0 0.71 0.71 3820.dat
-1 14 -21.4 -46.13 -6.63 0.99 -0.12 0.12 0.17 0.7 -0.7 0 0.71 0.71 3820.dat
+1 14 17.76 -64 3.37 0.99 0.17 0 -0.139 0.811 0.574 0.098 -0.568 0.819 3819.dat
+1 14 -13.24 -64 3.37 0.99 -0.17 0 0.139 0.811 0.574 -0.098 -0.568 0.819 3818.dat
+1 14 25.92 -55.098 -15.071 0.99 0.12 -0.12 -0.139 0.981 -0.166 0.098 0.18 0.983 3820.dat
+1 14 -21.4 -55.098 -15.071 0.99 -0.12 0.12 0.139 0.981 -0.166 -0.098 0.18 0.983 3820.dat
 1 1 2.26 -28 3.37 1 0 0 0 0 1 0 -1 0 3817.dat
 1 1 2.26 -28 3.37 1 0 0 0 0 1 0 -1 0 3816.dat
-
 0 NOFILE

@@ -94,6 +94,32 @@ var on_what_moves: bool = false
 ## The key light casts no shadow. For a probe, to measure the shadow by
 ## what taking it away changes.
 var no_shadows: bool = false
+## The product look's camera (photoreal4), path traced on a backdrop: its
+## sensor's noise, in 8-bit levels at mid grey as a photograph's ISO gives it
+## (none on a white that is white); its lens's darkening towards the corners,
+## the share of the light lost at a corner; and its colour fringes, pixels at a
+## corner, red out and blue in. Below 0, the camera's own (StudioRender
+## PRODUCT_GRAIN, PRODUCT_VIGNETTE, PRODUCT_ABERRATION). The photo bench
+## matches each to its photograph (tools/photoreal/shots.json).
+var grain: float = -1.0
+var vignette: float = -1.0
+var aberration: float = -1.0
+## How soft that camera draws an edge (0 the picture's own pixels, 1 a third
+## of each pixel's light spread to its neighbours); below 0, PRODUCT_SOFTNESS.
+var softness: float = -1.0
+## The product look's wear (photoreal4), path traced: how played-with the
+## parts are (0 new, 1 decades: whites and greys yellowed, each part its own
+## amount), the dust on their tops (0 none, 1 a shelf's year), and how much
+## the backdrop shows a paper's or a table's grain and uneven light (0 a
+## cut-out's seamless). Below 0, the look's own (StudioRender PRODUCT_AGE,
+## PRODUCT_DUST, PRODUCT_PAPER).
+var age: float = -1.0
+var dust: float = -1.0
+var paper: float = -1.0
+## How far each part sits from exactly in place, as a built set's never sit
+## quite square (0 exactly, 1 up to PathTracer.SEAT_SHIFT off and SEAT_TURN
+## degrees turned); below 0, PRODUCT_SEATING.
+var seating: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

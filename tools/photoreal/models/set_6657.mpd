@@ -1,5 +1,5 @@
 0 FILE 6657 - Fire Patrol Copter.ldr
-0 photoreal2's copy of the OMR's 6657-1.mpd (Victor Di Rienzo, CCAL 2.0): the pilot who stood beside the copter taken out, as the set's own picture shows none; nothing else changed.
+0 photoreal4's copy of the OMR's 6657-1.mpd (Victor Di Rienzo, CCAL 2.0): the pilot, who stood beside the copter, seated in its cockpit and turned to look out of its side, as the set's own picture shows him; nothing else changed.
 0 Fire Patrol Copter
 0 Name: 6657 - Fire Patrol Copter.ldr
 0 Author: Victor Di Rienzo [tatubias]
@@ -81,6 +81,7 @@
 
 
 
+1 16 -25 19 5 0.866 0 -0.5 0 1 0 0.5 0 0.866 6657 - pilot.ldr
 0 FILE 6657 - Fire Patrol Copter flexHoseWithNorEnds-1.ldr
 0 Fire Patrol Copter flexHoseWithNorEnds-1
 0 Name: 6657 - Fire Patrol Copter flexHoseWithNorEnds-1.ldr
@@ -256,3 +257,19 @@
 
 
 
+
+
+0 FILE 6657 - pilot.ldr
+0 pilot
+0 Name: 6657 - pilot.ldr
+0 The OMR's pilot (white classic helmet, grin, fire fighter torso, black legs and arms) as a figure that can sit: hips and legs apart in place of 3815c01.
+1 15 0 -96 0 1 0 0 0 1 0 0 0 1 3842b.dat
+1 14 0 -96 0 1 0 0 0 1 0 0 0 1 3626ap01.dat
+1 0 0 -72 0 1 0 0 0 1 0 0 0 1 973p21.dat
+1 0 0 -40 0 1 0 0 0 1 0 0 0 1 3815.dat
+1 0 15.5 -64 0 1 0.17 0 -0.13 0.766 0.643 0.109 -0.643 0.766 3819.dat
+1 0 -15.5 -64 0 1 -0.17 0 0.13 0.766 0.643 -0.109 -0.643 0.766 3818.dat
+1 14 23.658 -56.736 -19.149 1 0.12 -0.12 -0.13 0.988 -0.079 0.109 0.094 0.99 3820.dat
+1 14 -23.658 -56.736 -19.149 1 -0.12 0.12 0.13 0.988 -0.079 -0.109 0.094 0.99 3820.dat
+1 0 0 -28 0 1 0 0 0 0 1 0 -1 0 3817.dat
+1 0 0 -28 0 1 0 0 0 0 1 0 -1 0 3816.dat

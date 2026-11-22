@@ -26,6 +26,18 @@
 ##   -- --raw           also each picture's light before its exposure and tone
 ##                      curve, <name>.exr, and what it was drawn at, <name>.json,
 ##                      for tools/bench/photoreal.py colour's fit (photoreal2)
+##   -- --fit           each set shot's camera fitted to its photograph's outline
+##                      (photoreal4): shots/photoreal/masks/<name>.png, from
+##                      tools/bench/photoreal.py masks, against the model's own
+##                      outline drawn from the camera; yaw, pitch, roll, zoom,
+##                      shift and lens moved one at a time while the overlap
+##                      (intersection over union) grows. Writes
+##                      shots/photoreal/<tag>/<name>_fit.json and _fit.png (the
+##                      two outlines over each other); draws nothing else.
+##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
+##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
+##                      aberration, softness, age, dust, paper, seating) at 0, to measure what
+##                      each brings (photoreal4)
 ##   -- --car           only the car (the render probe's model) at Best, Product
 ##                      look, 1280x720, 256 samples, three times: the median at
 ##                      most CAR_MOST s (twice the 3.3-4.2 s the window look
@@ -74,9 +86,10 @@ func _run() -> void:
 	var samples: int = int(_arg("samples", "256"))
 	var out: String = "res://shots/photoreal/%s/" % tag
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
-	var said: Variant = JSON.parse_string(FileAccess.get_file_as_string(SHOTS))
+	var shots_file: String = _arg("shots", SHOTS)
+	var said: Variant = JSON.parse_string(FileAccess.get_file_as_string(shots_file))
 	if not said is Dictionary or not (said as Dictionary).get("shots") is Array:
-		_check("%s read" % SHOTS, false)
+		_check("%s read" % shots_file, false)
 		quit(1)
 		return
 	_main = load("res://src/main.tscn").instantiate()
@@ -113,6 +126,10 @@ func _run() -> void:
 		if placed <= 0 or _world.brick_count() == 0:
 			_check("%s: %s opened" % [name, shot["model"]], false)
 			continue
+		if OS.get_cmdline_user_args().has("--fit"):
+			if str(shot.get("kind", "")) == "set":
+				await _fit(shot, name, out)
+			continue
 		var yaws: PackedStringArray = _arg("yaws", "").split(",", false)
 		var lit: PackedStringArray = _arg("turns", "").split(",", false)
 		var lightings: PackedStringArray = _arg("lighting", "").split(",", false)
@@ -134,7 +151,7 @@ func _run() -> void:
 						asked["lighting"] = lighting
 						called = "%s_%s" % [called, lighting]
 					await _draw(asked, called, samples, out)
-	if car_only or only.is_empty():
+	if (car_only or only.is_empty()) and not OS.get_cmdline_user_args().has("--fit"):
 		await _car(bar, out)
 	print("")
 	print("%d failed" % _failures if _failures else "every shot drawn, in %s" % out)
@@ -189,8 +206,105 @@ func _draw(shot: Dictionary, name: String, samples: int, out: String) -> void:
 		picture.get_size() == settings.size and (traced or not PathTracer.available()))
 
 
-## A shot's settings: Best, Product, the photograph's shape, and the eye
-## standing where its camera stood.
+## The camera a set's photograph was taken from, found by its outline (photoreal4):
+## the model's outline drawn quickly (the window's own look, nothing behind
+## it, no shadow) at the mask's size from each camera tried, and its overlap
+## with the photograph's outline. One setting moved at a time by its step,
+## either way, kept while the overlap grows; every step halved when none does.
+func _fit(shot: Dictionary, name: String, out: String) -> void:
+	var path: String = ProjectSettings.globalize_path("res://shots/photoreal/masks/%s.png"
+		% str(shot.get("mask_of", name)))
+	var target: Image = Image.load_from_file(path)
+	if target == null:
+		_check("%s: a mask at %s (tools/bench/photoreal.py masks)" % [name, path], false)
+		return
+	target.convert(Image.FORMAT_L8)
+	var want: PackedByteArray = target.get_data()
+	var size := Vector2i(target.get_width(), target.get_height())
+	var at: Dictionary = {"yaw": float(shot.get("yaw", -35.0)), "pitch": float(shot.get("pitch", 30.0)),
+		"roll": float(shot.get("roll", 0.0)), "zoom": float(shot.get("zoom", 1.0)),
+		"shift_x": float((shot.get("shift", [0.0, 0.0]) as Array)[0]),
+		"shift_y": float((shot.get("shift", [0.0, 0.0]) as Array)[1]),
+		"focal_mm": float(shot.get("focal_mm", 50.0))}
+	var step: Dictionary = {"yaw": 8.0, "pitch": 5.0, "roll": 2.0, "zoom": 0.1, "shift_x": 0.06,
+		"shift_y": 0.06, "focal_mm": 0.3}
+	var started: Dictionary = at.duplicate()
+	var best: float = await _overlap(shot, at, size, want, null)
+	var first: float = best
+	var tries: int = 0
+	while tries < 260:
+		var moved: bool = false
+		for key: String in step:
+			for sign: float in [1.0, -1.0]:
+				var trial: Dictionary = at.duplicate()
+				# The lens by a factor, the others by a step.
+				trial[key] = float(at[key]) * exp(sign * float(step[key])) if key == "focal_mm" \
+					else float(at[key]) + sign * float(step[key])
+				trial["pitch"] = clampf(float(trial["pitch"]), -5.0, 85.0)
+				trial["focal_mm"] = clampf(float(trial["focal_mm"]), 18.0, 400.0)
+				var score: float = await _overlap(shot, trial, size, want, null)
+				tries += 1
+				if score > best + 0.0005:
+					best = score
+					at = trial
+					moved = true
+					break
+		if not moved:
+			var small: bool = true
+			for key: String in step:
+				step[key] = float(step[key]) * 0.5
+				small = small and float(step[key]) < (0.25 if key in ["yaw", "pitch", "roll"] else 0.005)
+			if small:
+				break
+	var drawn := Image.create(size.x, size.y, false, Image.FORMAT_RGB8)
+	await _overlap(shot, at, size, want, drawn)
+	drawn.save_png(out + name + "_fit.png")
+	var said := FileAccess.open(out + name + "_fit.json", FileAccess.WRITE)
+	said.store_string(JSON.stringify({"name": name, "from": started, "to": at, "overlap_from": first,
+		"overlap_to": best, "tries": tries}, " "))
+	said.close()
+	_check("%s: camera fitted to the photograph's outline, overlap %.3f to %.3f in %d tries: yaw %.1f, pitch %.1f, roll %.1f, zoom %.3f, shift %.3f, %.3f, %.0f mm"
+		% [name, first, best, tries, at["yaw"], at["pitch"], at["roll"], at["zoom"], at["shift_x"],
+		at["shift_y"], at["focal_mm"]], best > first or best > 0.9)
+
+
+## How much of the model's outline from the camera [param at] and the
+## photograph's [param want] (one byte a pixel, the model non-zero) overlap:
+## their intersection over their union. With [param drawn], both are drawn
+## into it: the photograph's alone red, the render's alone blue, both white.
+func _overlap(shot: Dictionary, at: Dictionary, size: Vector2i, want: PackedByteArray,
+		drawn: Variant) -> float:
+	var asked: Dictionary = shot.duplicate()
+	for key: String in ["yaw", "pitch", "roll", "zoom", "focal_mm"]:
+		asked[key] = at[key]
+	asked["shift"] = [at["shift_x"], at["shift_y"]]
+	asked["size"] = [size.x, size.y]
+	var settings: RenderSettings = _settings(asked, 1)
+	settings.quality = RenderSettings.Quality.QUICK
+	settings.transparent = true
+	settings.contact_shadow = false
+	settings.no_shadows = true
+	settings.f_stop = 0.0
+	var picture: Image = await _render.render(_world, settings)
+	if picture == null:
+		return 0.0
+	if picture.get_size() != size:
+		picture.resize(size.x, size.y)
+	picture.convert(Image.FORMAT_RGBA8)
+	var got: PackedByteArray = picture.get_data()
+	var both: int = 0
+	var either: int = 0
+	for i: int in size.x * size.y:
+		var mine: bool = got[i * 4 + 3] > 25
+		var theirs: bool = want[i] > 127
+		if mine and theirs:
+			both += 1
+		if mine or theirs:
+			either += 1
+		if drawn != null:
+			(drawn as Image).set_pixel(i % size.x, i / size.x, Color.WHITE if mine and theirs
+				else Color(0.85, 0.1, 0.1) if theirs else Color(0.1, 0.3, 0.9) if mine else Color.BLACK)
+	return float(both) / float(maxi(either, 1))
 func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	var settings := RenderSettings.new()
 	settings.quality = RenderSettings.Quality.BEST
@@ -206,6 +320,15 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	settings.focal_mm = float(shot.get("focal_mm", 50.0))
 	settings.f_stop = float(shot.get("f_stop", 0.0))
 	settings.focus = float(shot.get("focus", 0.5))
+	# The photograph's camera and the photographed parts' wear (photoreal4),
+	# where the shot says; otherwise the product look's own.
+	var without: PackedStringArray = _arg("without", "").split(",", false)
+	for key: String in ["grain", "vignette", "aberration", "softness", "age", "dust", "paper",
+			"seating"]:
+		if key in without:
+			settings.set(key, 0.0)
+		elif shot.has(key):
+			settings.set(key, float(shot[key]))
 	var bounds: AABB = _world.model_bounds()
 	var yaw: float = deg_to_rad(float(shot.get("yaw", -35.0)))
 	var pitch: float = deg_to_rad(float(shot.get("pitch", 30.0)))

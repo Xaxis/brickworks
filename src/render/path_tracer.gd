@@ -109,6 +109,14 @@ var scene := PackedFloat32Array()
 ## logo raised on every stud, faces never quite flat), the window's as the
 ## window draws it.
 var product: bool = false
+## How far each of the product look's parts sits from exactly in place
+## (photoreal4), set before [method stage]: at 1, up to SEAT_SHIFT off and
+## SEAT_LIFT up, and SEAT_TURN degrees turned, each its own way, as a built
+## set's parts never sit quite square. 0 for exactly.
+var seating: float = 0.0
+const SEAT_SHIFT := 0.15
+const SEAT_LIFT := 0.2
+const SEAT_TURN := 0.3
 ## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
 ## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
 var _fitted: Dictionary = {}
@@ -267,6 +275,20 @@ func shape_of(mesh: Mesh) -> Array:
 
 ## Put the set on the card: every brick of [param batches] (the copy of the
 ## model's MultiMeshInstance3Ds), and [param sweep] when there is one.
+## A part's place a hair off exact (seating), its own way by its [param number]:
+## turned about its own origin, shifted across and lifted up.
+func _seated(place: Transform3D, number: int) -> Transform3D:
+	if seating <= 0.0 or not product:
+		return place
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2654435761 * (number + 1) + 97
+	var turn := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-1.0, 1.0),
+		rng.randf_range(-0.5, 0.5)) * deg_to_rad(SEAT_TURN) * seating
+	var shift := Vector3(rng.randf_range(-1.0, 1.0) * SEAT_SHIFT, rng.randf() * SEAT_LIFT,
+		rng.randf_range(-1.0, 1.0) * SEAT_SHIFT) * seating
+	return Transform3D(Basis.from_euler(turn) * place.basis, place.origin + shift)
+
+
 ## False when there is nothing to trace or no card to trace it on.
 func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	if not _make():
@@ -340,7 +362,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 			kinds.append_array([mesh_number, kind, 0, 0])
 			var instance := RDAccelerationStructureInstance.new()
 			instance.blas = shape[0]
-			instance.transform = whole * at
+			instance.transform = _seated(whole * at, placed.size())
 			instance.id = placed.size()
 			instance.mask = MASK_GLASS if kind == KIND_GLASS else MASK_SOLID
 			instance.hit_sbt_range = _range
@@ -600,14 +622,19 @@ func sample_ms() -> float:
 ## ([param tonemapper]: 2 Filmic, 3 ACES, 4 a camera's, at [param white]), with the
 ## product look's [param contrast] and [param saturation] after; the camera's
 ## response saturates by [param linear_saturation] in linear light first.
+## [param camera] is the product look's camera on a backdrop (photoreal4): its
+## sensor's noise in 8-bit levels, the light its lens loses at a corner, its
+## colour fringes in pixels at a corner, and how soft it draws an edge
+## (RenderSettings.grain, vignette, aberration, softness); zero for none.
 func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1.0,
 		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
-		denoise: float = 0.0, linear_saturation: float = 1.0) -> Image:
+		denoise: float = 0.0, linear_saturation: float = 1.0,
+		camera: Vector4 = Vector4.ZERO) -> Image:
 	if not _resolve_set.is_valid() or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
-		denoise, linear_saturation, 0.0, 0.0])
+		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, 0.0, 0.0])
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
