@@ -1392,10 +1392,23 @@ median: 2.46, 2.53, 2.46, 2.58, 2.49, 2.71 and 2.36 s; the final tree
 
 The solo judge calls the photographs a photograph at about 0.90 and our
 renders at 0.21 to 0.24 (5h, 5i). Two units tuned one tell at a time and
-moved the tree's mean by no more than the judge's own noise, about 0.05,
-against a gap of 0.65. Before building again, this unit asks how far a
-production path tracer gets with the same geometry, and which factor
-carries the gap.
+never moved the tree's mean much, against a gap of 0.65. So before building
+again, this unit asked two things: how far a production path tracer gets
+with the same geometry, and which factor carries the gap.
+
+**The answer.** The renderer does not carry the gap:
+- Cycles, with ldr_tools_blender's LEGO materials, drew our own scenes at
+  0.19, against our tracer's 0.23.
+- A real photograph keeps 0.85 even with its fine surface smoothed away
+  (dust, scratches, texture, noise, JPEG).
+
+What both renderers share is the staging: the light, the backdrop and its
+shadow, and the exposure. The judge names the backdrop in 74 to 77 of 80
+verdicts and the light in 70 to 75, in both renderers alike.
+
+One factor moved the judge well beyond its noise: the camera's processing.
+A camera's sharpening and the photograph's own JPEG took the close-ups from
+0.29 to 0.40-0.43 in three pools. The sets did not move.
 
 **The bench** (`tools/photoreal/cycles/`, the verify skill's `photoreal
 cycles`). It is a tool on this box and never part of the app or its build.
@@ -1403,52 +1416,138 @@ cycles`). It is a tool on this box and never part of the app or its build.
   official build, its sha256 checked). It is not bundled and not installed
   system-wide.
 - **ldr_tools_blender 0.5.3** (MIT), in
-  `~/.local/opt/ldr_tools_blender-0.5.3`. Blender 5.1 or later.
+  `~/.local/opt/ldr_tools_blender-0.5.3`. It needs Blender 5.1 or later.
 - **Cycles runs on the CPU.** The RX 6700 XT's HIP needs `/dev/kfd`, which
   belongs to the `render` group, and this user is not in it.
 - **One scene for both renderers.** `photoreal_probe -- --cycles` reads
-  each shot back from the render it has just drawn: the parts where they
-  stood, seated as the tracer seats them, as flat LDraw; and the camera,
-  lens, tent or place, key, sweep and the exposure the white card metered,
-  as JSON. `--draw=N` draws a tree again with the tracer's seed N.
+  each shot back from the render it has just drawn. It writes the parts
+  where they stood, seated as the tracer seats them, as flat LDraw. It
+  writes the camera, lens, tent or place, key, sweep and the exposure the
+  white card metered as JSON. `--draw=N` draws a tree again with the
+  tracer's seed N.
 - **`render.py`** imports the parts through ldr_tools_blender with its own
   materials: Cycles' subsurface (Burley), smudged gloss, a bevel, logo
-  studs, 48-sided round primitives and a hair of gap between parts. It
-  lights them by:
-  - the tracer's own tent formula as an environment, and its key as a sun
-    of the same size and strength;
-  - or the same HDRI, turned as the tracer turns it.
-  The sweep is a shadow catcher. Samples 1024 (adaptive), OpenImageDenoise.
+  studs, 48-sided round primitives and a hair of gap between parts.
+  - Colour: each colour takes the albedo our tracer draws it with, so the
+    plastic is the same. ldr_tools' own table drew the black brick slate
+    blue, because it uses #1B2A34 straight from LDConfig.
+  - Light: the tracer's own tent formula as an environment, with its key
+    as a sun of the same size and strength, or the same HDRI turned as the
+    tracer turns it.
+  - The sweep is a shadow catcher.
+  - Sampling: 256 samples, adaptive at 0.01, with OpenImageDenoise.
+    The brief asked for 1024. At the box's load of 50 to 140, a 1024-sample
+    tree took over five hours, so the trees were drawn at 256. Our own
+    tracer at 4096 samples scored as at 256 (below), so noise is not what
+    the judge reads.
 - **`finish.py`** draws the backdrop as the tracer's catcher draws it. Then
-  it gives the picture the tracer's finish: softness, the same exposure,
-  vignette, linear saturation, camera_curve, sRGB and grain. So the two
-  pictures differ only in how the light was drawn.
+  it gives the picture the tracer's own finish: softness, the same
+  exposure, vignette, linear saturation, camera_curve, sRGB and grain. So
+  the two pictures differ only in how the light was drawn.
+- **The photograph side** (`photo_trees.py`): each
+  photograph as the judge is shown it, judged as a tree of its own. It is
+  judged once as it is, as a control, and once through a 5-pixel median,
+  which takes out what a render lacks and keeps the shapes, light and
+  framing.
 
-**The trees**, each drawn twice (two seeds) and judged in one solo pool with
-the photographs (2 rounds of 2 trials a draw):
+**The pools.** Each tree was drawn twice (seeds 1 and 2). Each was judged
+solo (2 rounds of 2 trials a draw, so 80 verdicts a tree) in a pool with the
+ten photographs, as `solo_<pool>.json` and `table_<pool>.md` in
+`bench/results/photoreal6-2026-11-22/`. photoreal5's final tree (p5) is in
+every pool. Across five pools it scored 0.227, 0.238, 0.226, 0.220 and
+0.227, so the judge's noise on a two-draw tree is about ±0.01. Its
+close-ups are 0.28 to 0.31 and its sets 0.13 to 0.14.
 
-| tree | what differs from photoreal5's final | the factor it measures |
-|---|---|---|
-| p5 | photoreal5's final (acb6f2a18), our tracer at 256 samples | the baseline |
-| cy | Cycles at 1024 samples with ldr_tools' materials | the ceiling |
-| p5clean | our tracer at 4096 samples | noise |
-| p5camera, cycamera | each tree through a camera's sharpening and the photographs' own JPEG (90 for the close-ups, 75 for the sets) | the camera's pipeline |
-| cynosss | Cycles with no subsurface | the plastic lit from inside |
-| cyplaingeom | Cycles with plain studs, 16-sided primitives and no gap | geometry |
+| tree | what differs from p5 | pool | mean | close-ups, per round | sets, per round | called a photograph |
+|---|---|---|---|---|---|---|
+| photographs | | p6main | 0.912 | 0.908 0.906 | 0.922 0.923 | 36 of 36 |
+| p5 | photoreal5's final, our tracer, 256 samples | p6main | 0.227 | 0.302 0.273 | 0.139 0.136 | 10 of 80 |
+| **cy** (the ceiling) | Cycles with ldr_tools' materials | p6main | **0.192** | 0.192 0.183 | 0.189 0.206 | 8 of 80 |
+| p5clean | 4096 samples | p6main | 0.217 | 0.275 0.271 | 0.129 0.141 | 10 of 80 |
+| p5camera | a camera's sharpening, then the photograph's JPEG | p6main | 0.295 | 0.427 0.400 | 0.119 0.114 | 19 of 80 |
+| cycamera | cy, the same | p6main | 0.252 | 0.276 0.273 | 0.230 0.206 | 18 of 80 |
+| p5camera | the same, again | p6camera | 0.293 | 0.404 0.406 | 0.128 0.124 | 20 of 80 |
+| p5camera | the same, again | p6camparts | 0.264 | 0.360 0.367 | 0.110 0.119 | 14 of 80 |
+| p5jpeg | the JPEG alone | p6camparts | 0.250 | 0.358 0.318 | 0.121 0.114 | 14 of 80 |
+| p5sharp | the sharpening alone | p6camparts | 0.228 | 0.274 0.310 | 0.130 0.134 | 10 of 80 |
+| photoasis | a photograph, judged as a tree (control) | p6photo | 0.818 | 0.891 0.905 | 0.696 0.699 | 36 of 40 |
+| photosoft | the photograph through a 5-pixel median | p6photo | 0.768 | 0.844 0.848 | 0.650 0.655 | 36 of 40 |
+| cynosss | Cycles with no subsurface | p6cycles | (queued) | | | |
+| cyplaingeom | Cycles with plain studs, 16-sided primitives, no gap | p6cycles | (queued) | | | |
 
-**Why the camera's pipeline.** In photoreal5's final pool the judge named
-JPEG or compression in 29 of its 54 verdicts on photographs, as evidence of
-a photograph. It names the grey 1x3's "noise reduction smearing, sharpening
-halos and JPEG blockiness" for the one render it took for a photograph.
-The close-ups' photographs are Wikimedia copies at JPEG quality 90 and the
-sets' are Rebrickable pictures at 75 (their quantisation tables), all 4:2:0.
+The photograph side's sets include 6512, whose "photograph" is itself a
+render (0.05). Without it, the three photographed sets are 0.92 as they
+are and 0.86 smoothed.
 
-**Running it.** On 2026-11-22 the box held 75 brickworks jobs in heavy's
-queue at load 50 to 110, so these runs were queued, not drawn, within the
-unit's eight hours. The tables land in
-`bench/results/photoreal6-2026-11-22/table_p6ceiling.md` and
-`table_p6factors.md`. Each tree's pictures are in `shots/photoreal/<tag>/`
-of the snapshot worktree p6snap1 (10854b3a0).
+**The factors, ranked** (each against p5 in its own pool):
+1. **The camera's processing, +0.07** (+0.066, +0.026, +0.068 in three
+   pools; Cycles +0.060). It all comes from the close-ups (+0.13, +0.05,
+   +0.13); the sets lose 0.02. Neither half alone does it: the JPEG alone
+   gives +0.01 and the sharpening alone -0.01. The judge reads "sharpening
+   halos and JPEG blockiness" as a phone's picture.
+2. **The fine surface, 0.05 of a photograph.** A photograph with its dust,
+   scratches, plastic texture, sensor noise and JPEG blocks smoothed away
+   drops from 0.90 to 0.85 (close-ups) and from 0.92 to 0.86 (sets). The
+   judge names wear in 79 or 80 of every 80 render verdicts. Yet wear is
+   not what makes a photograph a photograph: it is only the easiest
+   difference to put into words.
+3. **The renderer, -0.035.** Cycles scored under ours:
+   - It gained on the sets (0.19-0.21 against 0.14), where its logo studs
+     and rounder primitives show. 6660 rose from 0.17 to 0.46.
+   - It lost on the close-ups, where its shadow catcher lost the contact
+     shadow. "Floating" or no contact shadow is named in 48 of its 80
+     verdicts, against 19 of ours. The grey 1x3's sky gave a blue shadow,
+     which the judge read as a "blue-tinted shadow polygon".
+   - Its logo tells were fewer (25 against 33) and its seam tells fewer
+     (27 against 42).
+4. **Noise, none.** 4096 samples scored 0.217 against 256's 0.227.
+5. **The plastic (subsurface) and geometry** were drawn as Cycles swaps,
+   cynosss and cyplaingeom. They were queued at the unit's end (below),
+   and they only rank what is inside a ceiling that is itself under ours.
+
+**What lies outside the renderer.** Both renderers stand at about 0.2 on
+the same staging. A photograph keeps 0.85 without its fine surface. So the
+gap is in what both were given:
+- the light: the tent formula and its key, or the HDRI turned;
+- the backdrop: a seamless sweep and its catcher's soft shadow;
+- the exposure and tone.
+
+The judge's tells after wear are exactly these. It names the backdrop in
+74 to 77 of 80 verdicts ("featureless", "seamless", "idealised soft
+shadow") and the light in 70 to 75 ("even studio lighting", "no real
+falloff"), in both renderers alike. The brief's light factor, an HDRI
+fitted per photograph, is the next measure. This unit did not draw it.
+
+**The ceiling is under the bar.** Cycles itself scores 0.19, under
+photoreal5's own trees. So no renderer swap meets photoreal5's bars:
+- the close-ups' and sets' lowest rounds above photoreal5's highest;
+- 15 of 60 called a photograph;
+- logo tells under 5 of 60.
+
+**Step 3: the camera's processing, built into our renderer.** The
+product look's camera gets two settings of its own, as it has grain and
+vignette (RenderSettings `sharpen`, `jpeg`):
+- `sharpen` is an unsharp mask after the curve, in the resolve shader: a
+  Gaussian 1.2 pixels wide over the samples' own mean, with a two-level
+  threshold.
+- `jpeg` sends the finished picture through Godot's JPEG at that quality
+  and back (StudioRender._through_jpeg).
+
+Both are on Best only. Compatibility gets neither, because its picture
+never passes the tracer's resolve. The Product look's own values are none
+(PRODUCT_SHARPEN, PRODUCT_JPEG 0), so a render outside the bench is
+unchanged and the car's time is untouched. The photo bench's shots ask
+for their photograph's own: sharpen 0.6, and JPEG 90 for the close-ups and
+75 for the sets (6512 none). Its numbers against the bar are below.
+
+**Running it.** On 2026-11-22 the box held up to 75 brickworks jobs in
+heavy's queue, at load 50 to 140. This unit's runs went through two slot
+servers in its scratch, one command file at a time. Each tree's pictures
+are in `shots/photoreal/<tag>/` of the snapshot worktrees:
+- p6snap1 (10854b3a0) holds p6_d1/d2 (p5), c_d1/d2 (cy), cns/cg (the Cycles
+  swaps), p6c (p5clean), p6j/p6s/p6q (camera, sharpening, JPEG), cj
+  (cycamera) and photoasis/photosoft.
+- p6snap2 (2b5b7b5d9) holds step 3's p6cam_d1/d2.
 
 ## 6. Web and desktop
 

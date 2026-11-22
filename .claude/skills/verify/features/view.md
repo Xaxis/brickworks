@@ -3580,7 +3580,15 @@ picture the assistant is shown.
   scene as drawn, read back from the render: `<name>.cycles.ldr` (the
   parts where they stood, seated, in LDraw's space) and
   `<name>.cycles.json` (camera, lens, tent or place, key, sweep, exposure,
-  the camera's marks), for `photoreal cycles`.
+  the camera's marks), for `photoreal cycles`. A shot may also name its
+  photograph's camera processing (photoreal6, docs/RENDERING.md 5j):
+  `sharpen`, an unsharp mask after the curve in the resolve (the share of
+  an edge's step added back), and `jpeg`, the finished picture through a
+  JPEG at that quality and back (StudioRender._through_jpeg); the shots
+  carry 0.6 and their photograph's quality (90 close-ups, 75 sets). The
+  Product look's own are none (PRODUCT_SHARPEN, PRODUCT_JPEG 0), so a
+  render outside the bench is unchanged; check a shot's picture differs
+  from `--without=sharpen,jpeg`'s at its edges and in 8x8 blocks.
 - `photoreal cycles` (`tools/photoreal/cycles/render.py` and its folder, photoreal6,
   docs/RENDERING.md 5j): the realism ceiling, a bench tool on this box and
   never part of the app or its build. Blender 5.2.4 LTS in
@@ -3602,7 +3610,10 @@ picture the assistant is shown.
   for `photoreal.py solo`. `render.py -- SCENE OUT --check` builds a scene
   and draws nothing. `camera_pipeline.py FROM TO` puts a tree's pictures
   through a camera's sharpening and the photographs' own JPEG (90 for the
-  close-ups, 75 for the sets). `decide.py SOLO_JSON` tables a solo run's
+  close-ups, 75 for the sets; `--only sharpen|jpeg` one half).
+  `photo_trees.py OUT` writes each photograph as the judge sees it as a
+  tree of its own, as it is (a control) and through a 5-pixel median (the
+  photograph side). `decide.py SOLO_JSON` tables a solo run's
   trees over their draws (labels `TREE_dN`): per round, close-ups and
   sets, called a photograph, each shot, the tells.
 - `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
