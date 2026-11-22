@@ -438,6 +438,33 @@ friends, build one set at one table.
   to one step, with the missing part named? As an MCP task first
   (`look_at_picture` against the step's render), then in Build mode if it
   holds.
+- **Measured (photostep, 2026-11-22): NO-GO.** 55 cases on 11 pages of four
+  library sets (7638 Tow Truck, 42004 Mini Backhoe Loader, 31009 Small
+  Cottage, 10179 Millennium Falcon): each page N right, a new part missing,
+  one moved a stud, one the wrong colour, and N-1 said to be N. The photos
+  are renders (Best, Product look, a hand-held angle never the booklet's,
+  laid on a desk or carpet, a phone's light, noise and JPEG), not
+  photographs. Claude Code on the subscription read each with what a
+  `check_step_photo` would give: the photo, steps N-1, N and N+1 with their
+  new parts ringed and their parts, other sides on request, the builder
+  saying step N.
+  - Against the bar: the step exact 87% (80%; saying the builder's step every
+    time scores 80%), a fault found 79% (75%), **named by kind, part and
+    place 39% (60%)**, **false alarms 23% of the right builds (10%)**; 22 s an
+    answer, 76 s at most.
+  - **A stud off is not seen:** named 1 time in 11. "Looks right" 4 times,
+    another part blamed 3, called missing 3.
+  - **A small part is not checked:** under 0.1% of the picture, named 0 of 6;
+    1% or more, 5 of 7. On 5 of 11 pages the right build itself drew a fault,
+    and the faulty builds there the very same one (the Falcon's grey 1 x 2s,
+    the Technic beam "moved down"): the answer did not follow the photo.
+  - **A step behind reads as a part missing:** N-1 named 5 times in 11.
+  - Missing and wrong colour named 6 of 11 each: right on large parts and
+    clear colours, Black for Dark Bluish Grey too; Dark Blue for Blue under
+    warm light flagged on a right build.
+  - The bench is kept: `src/dev/photostep_bench.gd`, `tools/bench/photostep.py`
+    (bench/results/photostep-2026-11-22/, score.md). A tool would need the
+    photo framed on the step's parts, and "can't tell" below a size, first.
 
 **4. A pile scanned into what I own.** Not past parity: Stackable and
 Tumbly do it, and Brick Finder finds parts in a pile. It is here because
@@ -578,7 +605,7 @@ track serves, and it takes no file a unit below owns. Then:
 10. **A pile scanned into the collection** (scorecard: collection, against
     the phone builders), measured first (**pilescan**).
 11. **A step checked by the camera** (past parity 3), measured first
-    (**photostep**).
+    (**photostep**). Measured 11-22: NO-GO (past parity 3 has the numbers).
 12. **One booklet for two builders** (past parity 2) (**twobuilders**).
 
 **Behinds not planned, each with its reason:**
@@ -840,6 +867,8 @@ rendered as a phone sees them, and 5 real photos:
 - the missing or misplaced part named in 70% or more.
 
 If it holds, Build mode's camera checks a step and says what is missing.
+Measured 2026-11-22 on 55 cases, all renders (a real photograph of a known step
+with a known fault needs the bricks in hand; none was used): NO-GO, past parity 3.
 
 **twobuilders, in full.**
 - **Instructions › For two builders** splits a model's steps into two
