@@ -2848,6 +2848,13 @@
     },
     {
       "kind": "cli",
+      "label": "smalls12 probe",
+      "entry": "src/dev/smalls12_probe.gd",
+      "reach": "tools/probe.sh smalls12_probe   (headless, seconds: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
       "label": "motions probe",
       "entry": "src/dev/motions_probe.gd",
       "reach": "tools/probe.sh motions_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1's doors, 8808-1's steering, 4096-1's boom, 8841-1's chassis driven from its wheel, 31070-1's windscreen stopped; each defined over MCP, saved as .mpd and opened again, played, reversed, rendered; an .ldr, an .io, the autosave)",

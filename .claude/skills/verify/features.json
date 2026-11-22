@@ -3079,6 +3079,14 @@
       "tests": []
     },
     {
+      "id": "cli:smalls12 probe",
+      "kind": "cli",
+      "entry": "src/dev/smalls12_probe.gd",
+      "reach": "tools/probe.sh smalls12_probe   (headless, seconds: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:smalls2 probe",
       "kind": "cli",
       "entry": "src/dev/smalls2_probe.gd",
