@@ -133,6 +133,10 @@ func _process(_delta: float) -> void:
 	if facing != _drawn_facing:
 		_drawn_facing = facing
 		queue_redraw()
+	else:
+		# Asleep while the camera is still (Wake): a turn is drawn, and a
+		# drawn frame wakes it.
+		Wake.rest(self)
 
 
 ## What the page is told is here, for a browser check to press: the cube,

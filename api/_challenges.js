@@ -34,6 +34,16 @@
 // and its winners, and the next one's theme and days once the owner's year
 // of themes tells it. Before that file, year is false and neither is said.
 //
+// Judges and a fan vote (2026-11-22, supabase/challenge_rounds.sql): a
+// challenge may run in rounds, entries to entries_until, then a shortlist
+// of up to five in each group that the owner or a guest judge named on the
+// page chooses (on /admin), then a fan vote from votes_from for the
+// shortlist alone. Its winners are This week's pick the week after
+// (challenge_settle_rounds), and a cover the owner chose is its picture
+// where it is shared (GET ?op=challenge&picture=1, routed from
+// /challenge.png, the hub's og:image).
+// Before that file every challenge runs in one round, as it always did.
+//
 // The rules are the database's (challenge_enter, challenge_vote), checked on
 // the model as it is stored; what is here is the words. A test account's
 // models enter only a test challenge, and it votes only in one: the flows'
@@ -48,6 +58,7 @@ import { SITE_LANGS, TESTS_CACHE, Unacceptable, cardOf, escapeHtml, inLanguage, 
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const WAYS = { hand: "Built by hand", assistant: "Built with the assistant" };
 /// What /challenge's answer may be kept for, asked without a sign-in.
 export const PAGE_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
@@ -76,6 +87,7 @@ const ENTER_SAID = {
   no_challenge: [409, "No challenge is open just now."],
   entered: [409, "It is in this challenge already."],
   three: [409, "Three of your models are in this challenge already: that is the most."],
+  closed: [409, "Entries to this challenge have closed: the judges are choosing their shortlist."],
 };
 
 /// Why a vote was refused, in words, with its status.
@@ -89,6 +101,8 @@ const VOTE_SAID = {
   own: [422, "You cannot vote for your own model."],
   breaks: [422, "That entry no longer keeps the challenge's rules, so it cannot be voted for."],
   voted: [409, "You have voted in this group already: one vote in each."],
+  not_yet: [409, "The fan vote has not opened yet: it opens once the judges have chosen their shortlist."],
+  not_shortlisted: [422, "Only the judges' shortlist is voted for, and that entry is not on it."],
 };
 
 /// The rules a challenge has, in words (web/card.js rulesSaid), and those a
@@ -116,13 +130,50 @@ async function caller(request) {
 
 const body = (request) => (request.body && typeof request.body === "object" ? request.body : {});
 
-/// A challenge as the pages are given it.
-function challengeOf(origin, page, wins = new Map()) {
+/// What a challenge's page says of its rounds (challenge_rounds_of), as
+/// the pages are given it: {rounds, entries_until, votes_from, round,
+/// shortlisted, judge: {name, handle} | null}. rounds false for one in one
+/// round, or before supabase/challenge_rounds.sql.
+export function roundsOf(said) {
+  if (!said || said.rounds !== true) {
+    return { rounds: false, entries_until: null, votes_from: null, round: null, shortlisted: false,
+      judge: judgeOf(said?.judge) };
+  }
+  return { rounds: true, entries_until: said.entries_until, votes_from: said.votes_from,
+    round: ["entries", "judging", "vote", "upcoming", "ended"].includes(said.round) ? said.round : null,
+    shortlisted: Boolean(said.shortlisted_at), judge: judgeOf(said.judge) };
+}
+
+const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
+/// The guest judge named on the page: their name, and their profile's
+/// handle while it is shown in public.
+function judgeOf(judge) {
+  if (!judge || typeof judge.name !== "string" || !judge.name.trim()) return null;
+  return { name: judge.name.trim(), handle: HANDLE.test(String(judge.handle || "")) ? judge.handle : null };
+}
+
+/// Challenge [id]'s rounds, judge, shortlist and cover
+/// (challenge_rounds_of), or null before supabase/challenge_rounds.sql.
+async function roundsAsked(id) {
+  if (!id) return null;
+  try {
+    return await db("rpc/challenge_rounds_of", { method: "POST", body: { challenge_id: id } });
+  } catch (trouble) {
+    if (missing(trouble)) return null;
+    throw trouble;
+  }
+}
+
+/// A challenge as the pages are given it; [rounds] its
+/// challenge_rounds_of (null: one round).
+function challengeOf(origin, page, wins = new Map(), rounds = null) {
   const entries = (page.entries || []).filter((one) => one && ID.test(String(one.model || "")) && one.card);
   const won = new Map((page.winners || []).map((one) => [`${one.way}/${one.model}`, n(one.votes)]));
+  const listed = new Set((rounds?.shortlist || []).map((one) => one.model));
   const entryOf = (one) => ({ ...cardOf(origin, one.card), way: one.way, entered_at: one.at, keeps: one.keeps === true,
     votes: one.votes === null || one.votes === undefined ? null : n(one.votes),
-    winner: won.has(`${one.way}/${one.model}`), won: wins.get(one.model) || [] });
+    winner: won.has(`${one.way}/${one.model}`), won: wins.get(one.model) || [],
+    ...(rounds?.rounds ? { shortlisted: listed.has(one.model) } : {}) });
   return {
     id: n(page.id), title: String(page.title), brief: String(page.brief), starts_on: page.starts_on, ends_on: page.ends_on,
     state: page.state, test: page.test === true, settled: page.settled === true,
@@ -135,7 +186,21 @@ function challengeOf(origin, page, wins = new Map()) {
       entries: entries.filter((one) => one.way === way).map(entryOf) })),
     winners: (page.winners || []).map((one) => ({ way: one.way, label: WAYS[one.way] || one.way, model: one.model,
       votes: n(one.votes) })),
+    ...roundsOf(rounds),
   };
+}
+
+/// Settles challenge [id] once it has ended: counting the shortlist alone
+/// where it ran in rounds, and its winners made the pick
+/// (challenge_settle_rounds); before supabase/challenge_rounds.sql, as
+/// challenge_settle always did.
+async function settle(id) {
+  try {
+    return await db("rpc/challenge_settle_rounds", { method: "POST", body: { challenge_id: id } });
+  } catch (trouble) {
+    if (!missing(trouble)) throw trouble;
+    return db("rpc/challenge_settle", { method: "POST", body: { challenge_id: id } });
+  }
 }
 
 /// The challenge page's facts, settling a challenge that has ended and was
@@ -152,7 +217,7 @@ async function pageOf(tests, id = null) {
     throw trouble;
   }
   if (page && page.state === "ended" && !page.settled) {
-    await db("rpc/challenge_settle", { method: "POST", body: { challenge_id: page.id } });
+    await settle(page.id);
     page = await ask();
   }
   return { ready: true, page };
@@ -181,13 +246,30 @@ function challengeFile(lang = "en") {
   return found;
 }
 
+/// Challenge [page]'s own picture (challenge_page_at's, with [rounds] its
+/// challenge_rounds_of): the cover the owner chose, else the first winner's,
+/// else the first shortlisted entry's, else its newest entry's; each only
+/// with a picture. Null when it has none of these. Pure.
+export function pictureFor(origin, page, rounds = null) {
+  if (!page) return null;
+  const cards = new Map((page.entries || []).filter((one) => one && one.card && one.card.has_image)
+    .map((one) => [one.model, one.card]));
+  const newest = [...(page.entries || [])].filter((one) => cards.has(one.model))
+    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))[0];
+  const card = (rounds?.cover && rounds.cover.has_image && ID.test(String(rounds.cover.id || "")) ? rounds.cover : null)
+    || (page.winners || []).map((one) => cards.get(one.model)).find(Boolean)
+    || (rounds?.shortlist || []).map((one) => cards.get(one.model)).find(Boolean)
+    || (newest ? cards.get(newest.model) : null);
+  return card ? cardOf(origin, card).image : null;
+}
+
 /// [html], /challenge's page, with the head of challenge [page]
 /// (challenge_page_at's): its title, its brief and days, its own address
-/// and its copies', and the first winner's picture once it has one, for
+/// and its copies', and its own picture (pictureFor, with [rounds]), for
 /// search engines and the cards chat apps draw of a link. In the page's
 /// language (say), its address the copy's ([lang]). Pure. [page] null:
 /// the page's own.
-export function challengeHead(html, origin, page, tests = false, lang = "en") {
+export function challengeHead(html, origin, page, tests = false, lang = "en", rounds = null) {
   if (!page || !page.id || !page.title) return html;
   const title = say("{title} · Brickworks challenge", { title: String(page.title).replace(/\s+/g, " ").trim() });
   const brief = String(page.brief || "").replace(/\s+/g, " ").trim();
@@ -200,9 +282,7 @@ export function challengeHead(html, origin, page, tests = false, lang = "en") {
   // The page in [code], English's for x-default.
   const copy = (code) => `${origin}${["en", "x-default"].includes(code) ? "" : `/${code}`}/challenge${asked}`;
   const url = copy(lang);
-  const entries = new Map((page.entries || []).filter((one) => one && one.card).map((one) => [one.model, one.card]));
-  const won = (page.winners || []).map((one) => entries.get(one.model)).find((card) => card && card.has_image);
-  const image = won ? cardOf(origin, won).image : `${origin}/share.png`;
+  const image = pictureFor(origin, page, rounds) || `${origin}/share.png`;
   const swaps = [
     [/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`],
     [/<meta name="description" content="[^"]*">/, `<meta name="description" content="${escapeHtml(about)}">`],
@@ -231,8 +311,21 @@ export async function challengePageHtml(origin, id, tests, lang = "en") {
   const html = challengeFile(code);
   if (!id) return html;
   const page = await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
+  const rounds = page && page.id ? await roundsAsked(page.id).catch(() => null) : null;
   return inLanguage(code, code === "en" ? null : siteWords(code),
-    () => challengeHead(html, origin, page && page.id ? page : null, tests, code));
+    () => challengeHead(html, origin, page && page.id ? page : null, tests, code, rounds));
+}
+
+/// GET ?op=challenge&picture=1: the picture of the challenge /challenge
+/// shows now (pictureFor), as a redirect, else the site's own; the hub's
+/// og:image and twitter:image, so a link to /challenge shows the challenge
+/// open now, while the page itself stays a file the CDN serves.
+async function pictureRedirect(response, origin, tests) {
+  const { page } = await pageOf(tests, null).catch(() => ({ page: null }));
+  const rounds = page && page.id ? await roundsAsked(page.id).catch(() => null) : null;
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : "public, max-age=0, s-maxage=300, stale-while-revalidate=600");
+  response.setHeader("Location", pictureFor(origin, page, rounds) || `${origin}/share.png`);
+  return response.status(302).end();
 }
 
 /// "1 to 31 October 2026", "28 September to 4 October 2026": a challenge's
@@ -262,7 +355,7 @@ async function pastOf(origin, tests, shown) {
   let rows = (await ask()) || [];
   const unsettled = rows.filter((row) => !row.settled);
   if (unsettled.length) {
-    for (const row of unsettled) await db("rpc/challenge_settle", { method: "POST", body: { challenge_id: row.id } });
+    for (const row of unsettled) await settle(row.id);
     rows = (await ask()) || [];
   }
   return rows.filter((row) => n(row.id) !== shown).map((row) => ({
@@ -330,16 +423,27 @@ export function wonSaid(win) {
   return say(win.way === "assistant" ? "Won “{title}”, with the assistant" : "Won “{title}”, by hand", { title: win.title });
 }
 
-/// The gallery front's line: the challenge open now, or the next to open,
-/// for anybody; null when there is none (or before challenges.sql).
+/// The gallery front's line and the home page's tile: the challenge open
+/// now, or the next to open, for anybody, with its rounds' days where it
+/// runs in rounds (entries_until, votes_from, shortlisted); null when there
+/// is none (or before challenges.sql). First, every challenge that ended
+/// and was never counted is counted (challenge_settle_due), so its winners
+/// are the pick the week after even when nobody opens its page.
+let dueMissing = false;
 export async function challengeLine(tests = false) {
+  // Before supabase/challenge_rounds.sql (404) it is not asked again here.
+  if (!dueMissing) {
+    await db("rpc/challenge_settle_due", { method: "POST", body: { tests } }).catch((trouble) => { dueMissing = missing(trouble); });
+  }
   const row = await db("rpc/challenge_shown", { method: "POST", body: { tests } }).catch(() => null);
   if (!row || !row.id) return null;
   const today = new Date().toISOString().slice(0, 10);
   const state = row.ended_at || String(row.ends_on) < today ? "ended" : String(row.starts_on) > today ? "upcoming" : "open";
   if (state === "ended") return null;
-  return { title: String(row.title), state, starts_on: row.starts_on, ends_on: row.ends_on,
-    days_said: `${dayOf(row.starts_on)} to ${dayOf(row.ends_on)}` };
+  const rounds = DATE.test(String(row.entries_until || "")) && DATE.test(String(row.votes_from || ""));
+  return { id: n(row.id), title: String(row.title), brief: String(row.brief || ""), state, starts_on: row.starts_on, ends_on: row.ends_on,
+    days_said: `${dayOf(row.starts_on)} to ${dayOf(row.ends_on)}`, test: row.test === true,
+    ...(rounds ? { entries_until: row.entries_until, votes_from: row.votes_from, shortlisted: Boolean(row.shortlisted_at) } : {}) };
 }
 
 /// GET ?op=challenge, and ?op=challenge&id=N.
@@ -347,6 +451,7 @@ export async function challenge(request, response, { origin }) {
   const tests = testsAsked(request.query || {});
   const asked = request.query?.id === undefined ? null : Number(request.query.id);
   if (asked !== null && !(Number.isInteger(asked) && asked >= 1)) throw new Unacceptable("name a challenge: ?id=<number>");
+  if (String(request.query?.picture || "") === "1") return pictureRedirect(response, origin, tests);
   const who = bearer(request) ? await caller(request) : null;
   response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : PAGE_CACHE);
   const { ready, page } = await pageOf(tests, asked);
@@ -361,19 +466,23 @@ export async function challenge(request, response, { origin }) {
     return response.status(200).json(await withFaces({ ready: true, challenge: null, ...between,
       ...(who ? { you: { signed_in: true } } : {}) }));
   }
-  const wins = (await orUnknown("challenges", winsOf((page.entries || []).map((one) => one.model), tests))) || new Map();
-  const shown = challengeOf(origin, page, wins);
+  const [wins, rounds] = await Promise.all([
+    orUnknown("challenges", winsOf((page.entries || []).map((one) => one.model), tests)).then((said) => said || new Map()),
+    orUnknown("challenges", roundsAsked(n(page.id)))]);
+  const shown = challengeOf(origin, page, wins, rounds);
   let you = null;
   if (who) {
     const mine = await orUnknown("challenges", db("rpc/challenge_mine", { method: "POST",
       body: { account: who.account, challenge_id: shown.id } }).then((said) => said || {}));
-    const open = shown.state === "open";
+    // In rounds, votes are cast only in the fan round (supabase/challenge_rounds.sql).
+    const open = shown.state === "open" && (!shown.rounds || shown.round === "vote");
     const kind = shown.test === who.test;
     // Not read: signed in, and nothing said of your vote, not "you may not".
     you = mine === null ? { signed_in: true } : { signed_in: true,
       voted: { hand: mine?.voted?.hand ?? null, assistant: mine?.voted?.assistant ?? null },
       entries: mine?.entries || [], may_vote: open && kind && mine?.may_vote === true,
-      why_not: !open ? (shown.state === "upcoming" ? "Voting opens with the challenge." : "Voting has closed.")
+      why_not: !open ? (shown.state === "upcoming" ? "Voting opens with the challenge."
+        : shown.state === "open" ? VOTE_SAID.not_yet[1] : "Voting has closed.")
         : !kind ? "A test account votes only in a test challenge."
           : mine?.under_13 ? VOTE_SAID.under_13[1] : mine?.may_vote !== true ? ASK_FIRST : null };
   }
@@ -399,6 +508,12 @@ export async function challengeEntry(request, response) {
   }
   if (!said?.challenge) return response.status(200).json({ mine: true, ready: true, challenge: null });
   const c = said.challenge;
+  // Entries closed (a challenge in rounds, its judges choosing or its fan
+  // vote open): nothing to enter, unless this one is in it already.
+  const rounds = roundsOf(await roundsAsked(n(c.id)).catch(() => null));
+  if (rounds.rounds && rounds.round !== "entries" && !said.entry) {
+    return response.status(200).json({ mine: true, ready: true, challenge: null });
+  }
   return response.status(200).json({ mine: true, ready: true,
     challenge: { id: n(c.id), title: String(c.title), starts_on: c.starts_on, ends_on: c.ends_on,
       days_said: `${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}`, rules_said: rulesSaid(c.rules),
@@ -419,7 +534,9 @@ export async function enter(request, response) {
   const way = String(given.way || "");
   if (!ID.test(model)) throw new Unacceptable("name a model by its link's id");
   if (!(way in WAYS)) throw new Unacceptable("say how it was built: way is hand or assistant");
-  const said = await db("rpc/challenge_enter", { method: "POST", body: { account: who.account, model_id: model, way } });
+  const entering = { account: who.account, model_id: model, way };
+  const said = await db("rpc/challenge_enter_round", { method: "POST", body: entering }).catch((trouble) => (missing(trouble)
+    ? db("rpc/challenge_enter", { method: "POST", body: entering }) : Promise.reject(trouble)));
   if (said?.entered) {
     return response.status(201).json({ entered: true, challenge: n(said.challenge), title: String(said.title), way,
       label: WAYS[way] });
@@ -453,8 +570,9 @@ export async function vote(request, response) {
   const id = Number(given.challenge);
   if (!ID.test(model)) throw new Unacceptable("name a model by its link's id");
   if (!Number.isInteger(id) || id < 1) throw new Unacceptable("name the challenge by its number");
-  const said = await db("rpc/challenge_vote", { method: "POST",
-    body: { account: who.account, challenge_id: id, model_id: model, tests: who.test } });
+  const voting = { account: who.account, challenge_id: id, model_id: model, tests: who.test };
+  const said = await db("rpc/challenge_vote_round", { method: "POST", body: voting }).catch((trouble) => (missing(trouble)
+    ? db("rpc/challenge_vote", { method: "POST", body: voting }) : Promise.reject(trouble)));
   if (said?.voted) return response.status(200).json({ voted: true, way: said.way, model: said.model });
   const [status, words] = VOTE_SAID[said?.refused] || [409, "That vote did not count."];
   return response.status(status).json({ error: words, refused: said?.refused ?? null, ...(said?.model ? { model: said.model } : {}) });

@@ -1238,6 +1238,7 @@ func show_selection(parts: PackedStringArray, colours: PackedInt32Array) -> void
 	_mark_swatches()
 	if _likeness == null and not by_part.is_empty() and library != null:
 		_likeness = PartLike.new(library)
+		set_process(true)
 	# Fits answers for what is selected now. Nothing selected leaves it on
 	# what it was about: a part taken from its list deselects.
 	if _category == FITS and not by_part.is_empty():
@@ -1614,6 +1615,7 @@ func _on_search_typed(text: String) -> void:
 		_search_soon(text)
 	else:
 		_pending = true
+		set_process(true)
 
 
 ## Another language chosen: each tile's name said in it and fitted again
@@ -1706,6 +1708,14 @@ func _process(_delta: float) -> void:
 			thumbnails.watch(self, _technique_tiles())
 	elif thumbnails != null and _sight != null and _sight.changed():
 		thumbnails.watch(self, _sight.tiles())
+	# At rest, asleep (Wake): no search on a worker, typed or waiting for its
+	# index, the likenesses read, the counts of the model as it stands and
+	# the first page whole. A key, a scroll, an edit and a drawn frame (a
+	# page grown, the dock folded) wake it.
+	if _seeking < 0 and not _pending and not _waiting and (_likeness == null or _likeness.ready()) \
+			and _coming <= 0 and (_set_bin == null or builder == null or builder.world == null
+				or builder.world.revision == _counted_at):
+		Wake.rest(self)
 
 
 ## [param query] searched for a person's act (a key, a category, a toggle): at
@@ -1718,6 +1728,7 @@ func _search_soon(query: String) -> void:
 	if library != null and not query.strip_edges().is_empty() and _set_bin == null \
 			and _category != TECHNIQUES and _category != PALETTES and not library.search_ready():
 		_waiting = true
+		set_process(true)
 		library.prepare_search(true)
 		return
 	if _seeks(query):
@@ -1793,6 +1804,7 @@ func _seek(query: String) -> void:
 	var out: Array = []
 	_seek_out = out
 	# Of the class, not the bin: nothing of it is read on the worker.
+	set_process(true)
 	_seeking = WorkerTasks.add(func() -> void:
 		var found: Array[PartLibrary.PartInfo] = PartsBin._searched(from, asked, needles, wanted,
 			spoken, listing)
@@ -2239,6 +2251,7 @@ func _liked(needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
 		return []
 	if _likeness == null:
 		_likeness = PartLike.new(library)
+		set_process(true)
 	# Read a few frames at a time (_process), and listed when it is.
 	_like_waiting = not _likeness.ready()
 	if _like_waiting:
@@ -2985,6 +2998,7 @@ var _coming_at: int = -1
 ## (_shown_at_once), or let go with 0.
 func _hold_page(page: int) -> void:
 	_coming = page
+	set_process(true)
 	_coming_at = Engine.get_process_frames()
 	if page <= 0:
 		_grid.custom_minimum_size.y = 0.0
@@ -4827,6 +4841,7 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 func _take_bin(bin: SetBin, records: Dictionary, one: String, booklet: String) -> int:
 	_offer = {}
 	_set_bin = bin
+	set_process(true)
 	_set_records = records
 	_booklet = null
 	_step_keys = PackedStringArray()
@@ -4972,6 +4987,7 @@ func follow_marks() -> void:
 	if bin == null or (bin.have == _set_bin.have and bin.left_out == _set_bin.left_out):
 		return
 	_set_bin = bin
+	set_process(true)
 	_count_chips()
 	_recount(false)
 	if _listing_set:
@@ -5375,12 +5391,8 @@ func _ask_photo() -> void:
 	if _telling == null:
 		_telling = ConfirmationDialog.new()
 		_telling.title = "Find a part from a photo"
-		_telling.dialog_text = ("The photo you choose is sent to Brickognize "
-			+ "(brickognize.com), a third party that identifies LEGO® parts. Under its "
-			+ "terms it may keep the photo and use it to train its recognition, and it is "
-			+ "for personal, non-commercial use: Pro’s licence for commercial use does not "
-			+ "cover it.\n\n"
-			+ "Nothing is sent until you choose a photo.")
+		# The words Build mode's "Where does this go?" says too (partstep).
+		_telling.dialog_text = Brickognize.TERMS
 		_telling.dialog_autowrap = true
 		_telling.ok_button_text = "Choose a photo"
 		_telling.confirmed.connect(func() -> void:

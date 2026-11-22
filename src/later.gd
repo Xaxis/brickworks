@@ -62,6 +62,7 @@ const PATHS: Dictionary[StringName, String] = {
 	&"TogetherDialog": "res://src/ui/together_dialog.gd",
 	# What they make: Brick Art, figures, motions played, the booklet.
 	&"BookletMaker": "res://src/render/booklet_maker.gd",
+	&"BookletHtml": "res://src/render/booklet_html.gd",
 	&"BookletOut": "res://src/net/booklet_out.gd",
 	&"BookletPdf": "res://src/render/booklet_pdf.gd",
 	&"BookletPng": "res://src/render/booklet_png.gd",
@@ -176,6 +177,10 @@ const PATHS: Dictionary[StringName, String] = {
 	# Simulate; the first screen reads and writes only its line (ProgramLine)
 	# and has it read the words of a program an open found (unread_words).
 	&"HubProgram": "res://src/assembly/hub_program.gd",
+	# wires (APP_UX11): motors run by their cables, read the first time a
+	# cable is laid (Flex.anchors_in) or Simulate or a session asks; it names
+	# Simulation and so Linkage, which the first screen compiled none of.
+	&"Wiring": "res://src/assembly/wiring.gd",
 	# webstart12: the figure rules' tables, 25k tokens of literals compiled
 	# at every start for a figure nobody had made (Minifig.table).
 	&"MinifigData": "res://src/minifig/minifig_data.gd",

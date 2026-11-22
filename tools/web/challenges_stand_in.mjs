@@ -28,6 +28,11 @@ const REST = `${SUPABASE}/rest/v1/`;
 const NAMES = ["challenge_set", "challenge_end", "challenge_list", "challenge_shown", "challenge_enter",
   "challenge_withdraw", "challenge_for_model", "challenge_vote", "challenge_settle", "challenge_page",
   "challenge_mine", "challenge_wins", "challenge_next", "challenge_past", "challenge_page_at", "challenge_plan"];
+// supabase/challenge_rounds.sql's: answered as a database without that file
+// answers them (404), so the API asks challenges.sql's own, held here, and
+// never the real tables for a challenge kept in this process.
+const NOT_HERE = ["challenge_rounds_of", "challenge_enter_round", "challenge_vote_round", "challenge_settle_rounds",
+  "challenge_settle_due"];
 const CARD = "id,owner,name,author,parts,published,listed,barred,test,has_image,has_thumb,listed_at,updated_at,kind,tags,"
   + "licence,steps,own_steps,technic";
 
@@ -392,6 +397,7 @@ export function hold() {
     const where = String(url);
     if (where.startsWith(`${REST}rpc/`)) {
       const name = where.slice(`${REST}rpc/`.length).split("?")[0];
+      if (NOT_HERE.includes(name)) return reply(404, { code: "PGRST202", message: `${name}: not held here` });
       if (NAMES.includes(name)) {
         let body = {};
         try {

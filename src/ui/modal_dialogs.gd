@@ -68,6 +68,9 @@ func _process(_delta: float) -> void:
 	# First to hear an event: the last of the window's nodes.
 	if up() != null and get_index() != window.get_child_count() - 1:
 		window.move_child(self, -1)
+	# With no dialog up, asleep (Wake): a popup is a drawn frame.
+	if up() == null:
+		Wake.rest(self)
 
 
 func _input(event: InputEvent) -> void:

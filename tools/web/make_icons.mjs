@@ -34,6 +34,9 @@ const WANTED = [
   ["web/favicon-180.png", 180, "bleed"],
   ["web/favicon-192.png", 192, "tile"],
   ["web/favicon-512.png", 512, "bleed"],
+  // The site installed (web/site.webmanifest): its "any" icon at 512, as the
+  // 192 is, beside the full-bleed one it lists as maskable.
+  ["web/app-icon-512.png", 512, "tile"],
   // The window, the dock and the web build's own favicon: Godot makes the
   // macOS .icns and the Windows .exe icon from this, so it is drawn big.
   ["assets/icon.png", 512, "tile"],

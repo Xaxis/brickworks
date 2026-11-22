@@ -59,18 +59,20 @@
 ## Use what I own took 31.8 s on 10179): each lot's parts from its own ids,
 ## the copies' frames read once (and kept from the list to Use what I own
 ## while the model is as it was), the copies counted once, and how copies
-## lie on each other kept across every plan. The work goes on a slice of a
-## frame at a time ([constant SLICE_US]), the status bar saying so
-## (Working). Still one frame each, measured by ownswap_probe's time case:
-## Assemblies.file_frames (30 ms on Orthanc, 0.97 s on 10179), the change
-## itself (one replace and its copies' follow, 100-115 ms) and the parts
-## list taken again after it as P opens it (440-480 ms).
+## lie on each other kept across every plan, and from the list to Use what I
+## own too while the model is as it was. An offer or a swap goes on a slice
+## of a frame at a time (FramePace, one for the whole act, every part judged
+## counted against it), the status bar saying so once a slice is spent
+## (Working), and the model asked after every wait whether it changed.
+## Still one frame: the change itself, every lot's replace and the copies'
+## follow in one change of the model (160 to 184 ms on Orthanc and 10179 at
+## load 60 to 66, smalls12i1). Made a lot at a time and folded into one
+## step, as RareSwap.swap makes its own, each lot's change laid every copy
+## it touched on the others again: every frame of it was worse, 260 to 350
+## ms on Orthanc and up to 680 ms on 10179, and the whole 3.8 and 17 s.
 class_name OwnSwap
 extends RefCounted
 
-## A frame's share of the work, in µs, as RareSwap's: the rest goes on in the
-## next frame, so the list never holds a frame on Orthanc.
-const SLICE_US := 8000
 ## What a lot's swap is when its pieces' groups would change another lot's
 ## parts (osreview H2).
 const TWIN_WORDS := "none you own for these alone: a swap would change their twins in other copies, which are another lot"
@@ -156,6 +158,13 @@ var _found: Dictionary = {}
 ## The last [method pieces_for] passed over a group only because it held
 ## another lot's part.
 var _twinned: bool = false
+## The act going on, an offer or a swap ([method _begin]): its slices of a
+## frame, what the status bar says once one is spent, and the job saying it,
+## begun only then (as the parts list's fill begins its own), so a small
+## model's act says nothing.
+var _pace: FramePace = null
+var _doing: String = ""
+var _job: Working.Job = null
 
 
 func _init(from: PartLibrary = null) -> void:
@@ -269,10 +278,11 @@ static func share(short: Dictionary) -> float:
 ## used up as each is chosen, the biggest shortfall first), picked when it
 ## keeps the look. A part's shape is fetched first where it is not here
 ## ([param finder]'s FindReplace.shape: the web fetches what it has not got).
-## The work goes on across frames ([constant SLICE_US]), the status bar
-## saying so.
+## The work goes on a slice of a frame at a time, the status bar saying so;
+## where the model changes meanwhile, it is looked at again and the lot
+## being worked out is worked out afresh in it.
 func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
-	var job: Working.Job = Working.begin("Finding a part or colour of yours for each…")
+	_begin("Finding a part or colour of yours for each…")
 	_look(finder)
 	var left: Dictionary = free.duplicate()
 	var by_family: Dictionary = {}       ## a part's family -> the free keys of it
@@ -281,10 +291,14 @@ func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
 		if not by_family.has(family):
 			by_family[family] = []
 		(by_family[family] as Array).append(key)
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	await _prepare(finder)
-	var slice: int = Time.get_ticks_usec()
-	for lot: Lot in lots:
+	var n: int = 0
+	while n < lots.size():
+		if _changed(finder):
+			_look(finder)
+			await _prepare(finder)
+			continue
+		var lot: Lot = lots[n]
 		lot.into_part = ""
 		lot.into_colour = -1
 		lot.takes = 0
@@ -302,10 +316,14 @@ func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
 		choices.sort_custom(_better)
 		var twinned: bool = false
 		for choice: Array in choices:
+			if _changed(finder):
+				break
 			var into: Dictionary = {"part": choice[1] if choice[0] == "part" else "",
 				"color": int(choice[1]) if choice[0] == "colour" else -1}
 			var took: Array = await pieces_for(lot, into, mini(int(choice[3]), lot.short()), int(choice[3]),
 				finder)
+			if _changed(finder):
+				break
 			if took.is_empty():
 				twinned = twinned or _twinned
 				continue
@@ -320,14 +338,16 @@ func offer_all(lots: Array, free: Dictionary, finder: FindReplace) -> void:
 			lot.from_key = str(choice[2])
 			left[str(choice[2])] = int(left[str(choice[2])]) - lot.takes
 			break
+		# Nothing of it taken yet: worked out again in the model as it now is.
+		if _changed(finder):
+			continue
 		if not lot.offered():
 			lot.twins = twinned
 			lot.nearest = _nearest(lot, left, by_family)
 		lot.picked = keeps_look(lot)
-		if Time.get_ticks_usec() - slice > SLICE_US:
-			await tree.process_frame
-			slice = Time.get_ticks_usec()
-	job.end()
+		n += 1
+		await _paced(finder)
+	_end()
 
 
 ## Whether [param lot]'s swap leaves the model looking as it did, and so is
@@ -439,7 +459,8 @@ func _nearest(lot: Lot, left: Dictionary, by_family: Dictionary) -> Array:
 ## the person owns none of, went Light Grey under the left wing's count) is
 ## passed over. A part of the model's own in no mirror's copy is a group of
 ## one, a colour put on it where it stands with no plan. The ids, each once;
-## [] for none.
+## [] for none, and where the model changed while the act's slices of a
+## frame went on ([method _paced]).
 func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindReplace) -> Array:
 	_twinned = false
 	if need <= 0 or most <= 0:
@@ -459,25 +480,30 @@ func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindRe
 	for brick_id: int in following:
 		followed[int(following[brick_id])] = true
 	var own: Array = []
+	var own_ids: Dictionary = {}
 	var copied: Array = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = finder.world.get_brick(brick_id)
 		if brick != null and Assemblies.path_of(brick).is_empty():
 			own.append(brick_id)
+			own_ids[brick_id] = true
 		else:
 			copied.append(brick_id)
 	var taken: Dictionary = {}
 	var seen: Dictionary = {}            ## the parts of a group already judged
 	var passed_twins: bool = false
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
-	var slice: int = Time.get_ticks_usec()
 	for brick_id: int in own + copied:
 		if taken.size() >= need:
 			break
+		# Every part counted against the act's slice, those passed over too,
+		# and the model asked after the wait: [] where it changed (the caller
+		# asks too, and works the lot out again or stops).
+		if not await _paced(finder):
+			return []
 		if seen.has(brick_id):
 			continue
 		var alone: bool = not swaps_part and not following.has(brick_id) and not followed.has(brick_id) \
-			and own.has(brick_id)
+			and own_ids.has(brick_id)
 		var group: Array = [brick_id] if alone \
 			else _changed_by(finder.plan(RareSwap.narrowed(found, {brick_id: true}, finder), into, _cache))
 		for each: int in group:
@@ -491,9 +517,6 @@ func pieces_for(lot: Lot, into: Dictionary, need: int, most: int, finder: FindRe
 			continue
 		for each: int in group:
 			taken[each] = true
-		if Time.get_ticks_usec() - slice > SLICE_US:
-			await tree.process_frame
-			slice = Time.get_ticks_usec()
 	_twinned = taken.is_empty() and passed_twins
 	return taken.keys()
 
@@ -547,37 +570,74 @@ func found_for(lot: Lot, finder: FindReplace) -> Dictionary:
 	return found
 
 
-## The model looked at afresh for an offer or a swap, what was kept of it
-## let go: [method found_for] finds each lot again in the model as it now
-## is, and FindReplace.plan lays copies on each other again.
+## The model looked at for an offer or a swap: where it changed since the
+## last look, what was kept of it is let go, so [method found_for] finds each
+## lot again in the model as it now is and FindReplace.plan lays copies on
+## each other again. Where it has not (Use what I own pressed on the list
+## just worked out), each lot as found and how the copies lie on each other
+## are kept: let go, the swap laid each copy a lot touches on every other
+## copy again (FindReplace._copy_on), a whole frame's work for a big one.
 func _look(finder: FindReplace) -> void:
 	_looked_as = _model_of(finder)
 	if _kept_as != _looked_as:
 		_frames = null
 		_copies = null
+		_cache = {}
+		_found = {}
 	_kept_as = _looked_as
-	_cache = {}
-	_found = {}
 
 
-## The model's copies counted in a frame of its own, and its copies' frames
-## read a slice of a frame at a time (FindReplace.frames_paced_for): each is
-## a call over the whole model, and the frames were one frame of 0.96 s on
-## 10179 (osfix), so none is added to a frame's other work.
+## The model's copies counted, and its copies' frames read a slice of a
+## frame at a time (FindReplace.frames_paced_for), each counted against the
+## act's slice: each is a call over the whole model, and the frames were one
+## frame of 0.96 s on 10179 (osfix).
 func _prepare(finder: FindReplace) -> void:
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if _copies == null:
-		await tree.process_frame
+		await _paced(finder)
 		_copies = finder._copies_by_definition()
 	if _frames == null:
-		await tree.process_frame
+		await _paced(finder)
 		_frames = await finder.frames_paced_for(finder.world.bricks(), _copies)
 	# FindReplace.plan's own count of them, not read again.
 	if not _cache.has("copies"):
 		_cache["copies"] = _copies
 		_cache["matches"] = {}
 		_cache["copied"] = {}
-	await tree.process_frame
+	await _paced(finder)
+
+
+## The act begun: its slices of a frame, and what the status bar says once
+## one is spent ([method _paced]).
+func _begin(words: String) -> void:
+	_end()
+	_pace = FramePace.new()
+	_doing = words
+
+
+## The act done, and the status bar's words for it taken back.
+func _end() -> void:
+	if _job != null:
+		_job.end()
+		_job = null
+	_pace = null
+
+
+## The frame given back where the act's slice is spent, the status bar saying
+## what goes on from then: whether the model is still as [method _look]
+## looked at it (no act going on, true).
+func _paced(finder: FindReplace) -> bool:
+	if _pace == null:
+		return true
+	if _pace.due():
+		if _job == null:
+			_job = Working.begin(_doing)
+		await _pace.next()
+	return not _changed(finder)
+
+
+## Whether the model changed since [method _look] looked at it.
+func _changed(finder: FindReplace) -> bool:
+	return _model_of(finder) != _looked_as
 
 
 ## What the model is, as [method _look] keeps it: whether it has changed
@@ -597,11 +657,12 @@ const CHANGED_WORDS := "the model changed while the swaps were worked out: nothi
 ## Replace, as one undo step: {"lots": how many lots changed, "changed": how
 ## many parts, "stayed": what stayed and why, a line a lot, "words": the
 ## step's, "put_back": how many parts in hand went back first}. Each lot's
-## parts are found in the model as it stands, worked out a slice of a frame
-## at a time with the status bar saying so, and changed together in one
-## change of the model (FindReplace.replace_all), no more of a lot's than
-## its swap was given. A model changed in between is left as it is and said
-## ([constant CHANGED_WORDS]).
+## parts are found in the model as it stands (as the list found them, where
+## it has not changed since), worked out a slice of a frame at a time with
+## the status bar saying so, and changed together in one change of the
+## model (FindReplace.replace_all), no more of a lot's than its swap was
+## given. A model changed in between is left as it is and said ([constant
+## CHANGED_WORDS]).
 func swap(lots: Array, finder: FindReplace) -> Dictionary:
 	var builder: Builder = finder.builder
 	var put_back: int = finder.put_back_held()
@@ -613,13 +674,15 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 	if put_back < 0:
 		stayed.append(FindReplace.HELD_WORDS)
 		return out
-	var job: Working.Job = Working.begin("Swapping in the parts you own…")
+	_begin("Swapping in the parts you own…")
+	# Its own, should an offer begin and end meanwhile (_begin, _end).
+	var pace: FramePace = _pace
 	_look(finder)
 	var jobs: Array = []
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	await _prepare(finder)
-	var slice: int = Time.get_ticks_usec()
 	for lot: Lot in lots:
+		if _changed(finder):
+			break
 		if not lot.picked or not lot.offered():
 			continue
 		var into: Dictionary = {"part": lot.into_part, "color": lot.into_colour}
@@ -628,6 +691,8 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 			if not other.is_empty():
 				await finder.shape(other)
 		var ids: Array = await pieces_for(lot, into, lot.takes, lot.takes, finder)
+		if _changed(finder):
+			break
 		if ids.is_empty():
 			var found: Dictionary = found_for(lot, finder)
 			stayed.append("%s: %s" % [lot.name, "; ".join(FindReplace.stay_words(found, {}))
@@ -638,13 +703,13 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 			kept[brick_id] = true
 		var narrowed: Dictionary = RareSwap.narrowed(found_for(lot, finder), kept, finder)
 		jobs.append({"found": narrowed, "into": into, "made": finder.plan(narrowed, into, _cache), "lot": lot})
-		if Time.get_ticks_usec() - slice > SLICE_US:
-			await tree.process_frame
-			slice = Time.get_ticks_usec()
+		await _paced(finder)
 	# The change in a frame of its own, none of the working out added to it.
-	await tree.process_frame
-	if _model_of(finder) != _looked_as:
-		job.end()
+	if _job == null:
+		_job = Working.begin(_doing)
+	await pace.next()
+	if _changed(finder):
+		_end()
 		stayed.append(CHANGED_WORDS)
 		return out
 	var done: Array = finder.replace_all(jobs)
@@ -658,7 +723,7 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 	if changed > 0:
 		builder.name_newest(words)
 	_look(finder)
-	job.end()
+	_end()
 	return {"lots": swapped, "changed": changed, "stayed": stayed, "words": words,
 		"put_back": maxi(put_back, 0)}
 

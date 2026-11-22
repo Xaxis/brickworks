@@ -138,6 +138,13 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     photos: null,
     /// The names each storage DELETE of build-photos asked for.
     storageDeletes: [],
+    /// shared_models' rows, {id, owner}, when the test has some, and the
+    /// files of its two buckets by name ({"shared-models": [...],
+    /// "shared-thumbs": [...]}), a deletion taking them away. [modelFilesDown]
+    /// answers the buckets' list 500.
+    sharedModels: null,
+    modelFiles: null,
+    modelFilesDown: false,
     /// The models each account keeps, by owner, then by name.
     models: new Map(),
     /// Each save the database was asked, {fn, body}, as sent.
@@ -226,6 +233,26 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     // Photos of real builds (supabase/builds.sql), when the test has some:
     // an account's own, and those of its models (none here); their files
     // deleted by name.
+    // Shared models (api/_model_files.js): an owner's rows, then each
+    // bucket's files listed by a search and deleted by name.
+    if (self.sharedModels && url.pathname === "/rest/v1/shared_models") {
+      const owner = /^eq\.(.+)$/.exec(url.searchParams.get("owner") || "")?.[1];
+      return json(200, self.sharedModels.filter((one) => one.owner === owner).map((one) => ({ id: one.id })));
+    }
+    const modelBucket = /^\/storage\/v1\/object\/(?:list\/)?(shared-models|shared-thumbs|shared-clips)$/.exec(url.pathname);
+    if (self.modelFiles && modelBucket) {
+      const names = self.modelFiles[modelBucket[1]] || [];
+      if (url.pathname.includes("/list/")) {
+        if (self.modelFilesDown) return json(500, { message: "down" });
+        const found = names.filter((name) => name.includes(asked.search || ""));
+        return json(200, found.slice(asked.offset || 0, (asked.offset || 0) + (asked.limit || 100))
+          .map((name) => ({ id: `id-${name}`, name })));
+      }
+      if (init.method === "DELETE") {
+        self.modelFiles[modelBucket[1]] = names.filter((name) => !(asked.prefixes || []).includes(name));
+        return json(200, (asked.prefixes || []).map((name) => ({ name })));
+      }
+    }
     if (self.photos && url.pathname === "/rest/v1/shared_models") return json(200, []);
     if (self.photos && url.pathname === "/rest/v1/build_photos") {
       const account = /^eq\.(.+)$/.exec(url.searchParams.get("account") || "")?.[1];

@@ -770,6 +770,7 @@ func _changed() -> void:
 
 func _process(delta: float) -> void:
 	if not visible:
+		Wake.rest(self)
 		return
 	if _dirty_at >= 0 and Time.get_ticks_msec() - _dirty_at >= SETTLE_MS:
 		# The part maker, compiled in this frame the first time, and the

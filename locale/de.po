@@ -16009,3 +16009,385 @@ msgstr "Bei %s s liegt schon ein Key: dieser bleibt, wo er war."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "Der Key bei %s s neu gesetzt, weniger als ein Bild von der Zeit entfernt: wo die Kamera steht, worauf sie blickt und ihr Objektiv."
+
+# Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
+msgstr "Das gewählte Foto wird an Brickognize (brickognize.com) geschickt, einen Drittanbieter, der LEGO® Teile erkennt. Nach seinen Bedingungen darf er das Foto behalten und damit seine Erkennung trainieren, und er ist nur für den privaten, nicht kommerziellen Gebrauch: Die Lizenz von Pro für den kommerziellen Gebrauch deckt ihn nicht ab.\n\nNur das Foto wird gesendet, nie dein Modell, und nichts wird gesendet, bevor du ein Foto wählst."
+
+msgid "Where does this go?"
+msgstr "Wo kommt das hin?"
+
+msgid "Where does this go? A photo of a part in your hand finds the step that places it"
+msgstr "Wo kommt das hin? Ein Foto des Teils in deiner Hand findet den Bauschritt, der es setzt"
+
+msgid "Asking Brickognize what part this is…"
+msgstr "Brickognize wird gefragt, welches Teil das ist…"
+
+msgid "This model has none of the parts Brickognize sees in that photo"
+msgstr "Dieses Modell hat keines der Teile, die Brickognize auf dem Foto sieht"
+
+msgid "Every step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "Jeder Bauschritt, der es setzt, ist gebaut: %s. Vielleicht ist es ein Ersatzteil: Ein Set hat ein paar kleine dabei"
+
+msgid "The step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "Der Bauschritt, der es setzt, ist gebaut: %s. Vielleicht ist es ein Ersatzteil: Ein Set hat ein paar kleine dabei"
+
+msgid "It goes in at step %s"
+msgstr "Es kommt in Bauschritt %s"
+
+msgid "%d go in at step %s"
+msgstr "%d kommen in Bauschritt %s"
+
+msgid "%s, the first of %d steps that place it; the others: %s"
+msgstr "%s, der erste von %d Bauschritten, die es setzen; die anderen: %s"
+
+msgid "Close where the part goes"
+msgstr "Schließen, wo das Teil hinkommt"
+
+msgid "Not in this model: %s"
+msgstr "Nicht in diesem Modell: %s"
+
+msgid "No part seen"
+msgstr "Kein Teil erkannt"
+
+msgid "Steps:"
+msgstr "Bauschritte:"
+
+msgid "Go to step %s"
+msgstr "Zu Bauschritt %s"
+
+msgid "Not it?"
+msgstr "Nicht das?"
+
+msgid "Brickognize is %d%% sure of it"
+msgstr "Brickognize ist sich zu %d %% sicher"
+
+msgid "Back to the step you were on"
+msgstr "Zurück zum Bauschritt, bei dem du warst"
+
+msgid "Back to step %d"
+msgstr "Zurück zu Bauschritt %d"
+
+msgid "Back to the start"
+msgstr "Zurück zum Anfang"
+
+msgid "The steps are still being worked out: try again in a moment"
+msgstr "Die Bauschritte werden noch ermittelt: versuch es gleich noch einmal"
+# Simulate's power row and the flex tool's cables (APP_UX11 wires)
+msgid "Power: click a battery box, receiver or hub to work its switch"
+msgstr "Strom: Klicke auf eine Batteriebox, einen Empfänger oder einen Hub, um seinen Schalter zu betätigen"
+
+msgid "Work its switch, as a finger moves it on the part"
+msgstr "Seinen Schalter betätigen, wie ein Finger ihn am Teil bewegt"
+
+msgid "Work its remote's lever for this output"
+msgstr "Den Hebel seiner Fernbedienung für diesen Ausgang betätigen"
+
+msgid "Power Functions cable"
+msgstr "Power Functions-Kabel"
+
+msgid "Powered Up cable"
+msgstr "Powered Up-Kabel"
+
+msgid "Power Functions motor's own cable, 20 cm"
+msgstr "eigenes Kabel eines Power Functions-Motors, 20 cm"
+
+msgid "Power Functions extension wire 8871, 50 cm"
+msgstr "Power Functions-Verlängerungskabel 8871, 50 cm"
+
+msgid "Powered Up motor's own cable, 25 cm"
+msgstr "eigenes Kabel eines Powered Up-Motors, 25 cm"
+
+msgid "Turn the plug"
+msgstr "Stecker drehen"
+
+msgid "Turn the plug half round on its contacts, so its motor runs the other way"
+msgstr "Den Stecker auf seinen Kontakten halb herumdrehen, damit sein Motor andersherum läuft"
+
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
+msgstr "Hier gibt nichts einem Motor Strom, also dreht Abspielen ihn von Hand: füge eine Batteriebox oder einen Hub hinzu und verlege sein Kabel (Erstellen, Schlauch, Rohr oder Kette…, Power Functions-Kabel)."
+
+msgid "Stopped at %s going back."
+msgstr "Beim Zurücklaufen bei %s angehalten."
+
+msgid "%s does not run: %s."
+msgstr "%s läuft nicht: %s."
+
+msgid "%s speed"
+msgstr "%s Geschwindigkeit"
+
+# Simulate's power words, said in the person's language (wfix: N1, 9 V, cables by their ends)
+msgid "its contacts"
+msgstr "seine Kontakte"
+
+msgid "the plug's own top"
+msgstr "die Oberseite des Steckers"
+
+msgid "the extension wire"
+msgstr "das Verlängerungskabel"
+
+msgid "its own cable"
+msgstr "sein eigenes Kabel"
+
+msgid "the cable"
+msgstr "das Kabel"
+
+msgid "turned half round in %s's port %d, which a Powered Up plug goes into one way only"
+msgstr "halb herumgedreht in %s, Anschluss %d, in den ein Powered Up-Stecker nur in einer Richtung passt"
+
+msgid "a quarter turn round on %s, so it makes no contact"
+msgstr "um eine Vierteldrehung verdreht auf %s, also ohne Kontakt"
+
+msgid "on %s"
+msgstr "auf %s"
+
+msgid ", turned half round"
+msgstr ", halb herumgedreht"
+
+msgid "on nothing"
+msgstr "auf nichts"
+
+msgid "on nothing, %d LDU from %s"
+msgstr "auf nichts, %d LDU von %s entfernt"
+
+msgid "the %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "a plug (#%d)"
+msgstr "ein Stecker (#%d)"
+
+msgid "%s's port %d"
+msgstr "%s, Anschluss %d"
+
+msgid "%s's contacts"
+msgstr "Kontakte von %s"
+
+msgid "its plug (#%d) is %s"
+msgstr "sein Stecker (#%d) ist %s"
+
+msgid "its own cable's plug is in nothing, so it turns by hand; put the plug on a box or lay a cable from it to run it by the box"
+msgstr "der Stecker seines eigenen Kabels steckt in nichts, also dreht er sich von Hand; stecke den Stecker auf eine Box oder verlege ein Kabel von ihm, damit die Box ihn antreibt"
+
+msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Hose, tube or chain…, a cable) to run it by the box"
+msgstr "im Modell ist kein Kabel von ihm gezeichnet, also dreht er sich von Hand; verlege eines von ihm zu einer Box (Erstellen › Schlauch, Rohr oder Kette…, ein Kabel), damit die Box ihn antreibt"
+
+msgid "its cable reaches no battery box, receiver or hub"
+msgstr "sein Kabel erreicht keine Batteriebox, keinen Empfänger und keinen Hub"
+
+msgid "nothing gives it power"
+msgstr "nichts gibt ihm Strom"
+
+msgid "%s is off: click it to switch it on"
+msgstr "%s ist aus: klicke darauf, um es einzuschalten"
+
+msgid "%s's own plug is %s"
+msgstr "der eigene Stecker von %s ist %s"
+
+msgid "%s's own cable reaches nothing that gives power"
+msgstr "das eigene Kabel von %s erreicht nichts, das Strom gibt"
+
+msgid "%s %s is off: click it to work its lever"
+msgstr "%s, %s, ist aus: klicke darauf, um seinen Hebel zu betätigen"
+
+msgid "%s's port %d is at 0%%"
+msgstr "%s, Anschluss %d, steht auf 0 %%"
+
+msgid "on %s %s"
+msgstr "an %s, %s"
+
+msgid "in %s's port %d"
+msgstr "in %s, Anschluss %d"
+
+msgid "%s output"
+msgstr "Ausgang %s"
+
+msgid "%s switched %s"
+msgstr "%s geschaltet: %s"
+
+msgid "%s's port %d at 100%%"
+msgstr "%s, Anschluss %d auf 100 %%"
+
+msgid ", its dial at %d%%"
+msgstr ", sein Regler auf %d %%"
+
+msgid " at %d%%"
+msgstr " auf %d %%"
+
+msgid "%s: turns by hand, as nothing here gives a motor power."
+msgstr "%s: dreht sich von Hand, da hier nichts einem Motor Strom gibt."
+
+msgid "%s: stopped, %s."
+msgstr "%s: steht, %s."
+
+msgid "%s: wired %s; stopped, as %s."
+msgstr "%s: verkabelt %s; steht, da %s."
+
+msgid "%s: wired %s; runs %s at %d%%."
+msgstr "%s: verkabelt %s; läuft %s mit %d %%."
+
+msgid "%s runs %s at %s rpm: %s."
+msgstr "%s läuft %s mit %s U/min: %s."
+
+msgid "The %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "%s #%d, %s output: %s"
+msgstr "%s #%d, Ausgang %s: %s"
+
+msgid "port %d"
+msgstr "Anschluss %d"
+
+msgid "Power Functions battery box"
+msgstr "Power Functions-Batteriebox"
+
+msgid "Power Functions AAA battery box"
+msgstr "Power Functions-AAA-Batteriebox"
+
+msgid "9 V battery box"
+msgstr "9-V-Batteriebox"
+
+msgid "Power Functions IR receiver"
+msgstr "Power Functions-IR-Empfänger"
+
+msgid "Power Functions pole reverser"
+msgstr "Power Functions-Polwender"
+
+msgid "Control+ hub"
+msgstr "Control+-Hub"
+
+msgid "Powered Up hub"
+msgstr "Powered Up-Hub"
+
+msgid "Boost Move hub"
+msgstr "Boost Move-Hub"
+
+msgid "SPIKE Prime hub"
+msgstr "SPIKE Prime-Hub"
+
+msgid "SPIKE Essential hub"
+msgstr "SPIKE Essential-Hub"
+
+msgid "9 V wire"
+msgstr "9-V-Kabel"
+
+msgid "Power Functions extension wire 8886, 20 cm"
+msgstr "Power Functions-Verlängerungskabel 8886, 20 cm"
+
+msgid "A Powered Up cable runs from a motor's outlet: Powered Up has no extension wire from contacts to contacts"
+msgstr "Ein Powered Up-Kabel geht vom Kabelausgang eines Motors aus: Powered Up hat kein Verlängerungskabel von Kontakten zu Kontakten"
+
+msgid "A cable runs from a motor's outlet to a plug's place (a battery box's, a receiver's or a plug's contacts, a hub's port): two outlets make none"
+msgstr "Ein Kabel geht vom Kabelausgang eines Motors zum Platz eines Steckers (den Kontakten einer Batteriebox, eines Empfängers oder eines Steckers, dem Anschluss eines Hubs): zwei Ausgänge ergeben keins"
+
+msgid "9 V wire, 11 studs"
+msgstr "9-V-Kabel, 11 Noppen"
+
+msgid "9 V wire, 15 studs"
+msgstr "9-V-Kabel, 15 Noppen"
+
+msgid "9 V wire, 17 studs"
+msgstr "9-V-Kabel, 17 Noppen"
+
+msgid "9 V wire, 20 studs"
+msgstr "9-V-Kabel, 20 Noppen"
+
+msgid "9 V wire, 21 studs"
+msgstr "9-V-Kabel, 21 Noppen"
+
+msgid "9 V wire, 26 studs"
+msgstr "9-V-Kabel, 26 Noppen"
+
+msgid "9 V wire, 33 studs"
+msgstr "9-V-Kabel, 33 Noppen"
+
+msgid "9 V wire, 36 studs"
+msgstr "9-V-Kabel, 36 Noppen"
+
+msgid "9 V wire, 46 studs"
+msgstr "9-V-Kabel, 46 Noppen"
+
+msgid "9 V wire, 69 studs"
+msgstr "9-V-Kabel, 69 Noppen"
+
+msgid "9 V wire, 162 studs"
+msgstr "9-V-Kabel, 162 Noppen"
+
+msgid "9 V wire, 378 studs"
+msgstr "9-V-Kabel, 378 Noppen"
+
+# A switch's, a lever's and an output's one word (Wiring._w): kept apart by
+# the context power from the camera's back view and the like.
+msgctxt "power"
+msgid "on"
+msgstr "an"
+
+msgctxt "power"
+msgid "off"
+msgstr "aus"
+
+msgctxt "power"
+msgid "forward"
+msgstr "vorwärts"
+
+msgctxt "power"
+msgid "back"
+msgstr "rückwärts"
+
+msgctxt "power"
+msgid "lever"
+msgstr "Hebel"
+
+msgctxt "power"
+msgid "red"
+msgstr "rot"
+
+msgctxt "power"
+msgid "blue"
+msgstr "blau"
+msgid "Outline width"
+msgstr "Umrissbreite"
+
+msgid "How wide the band round the parts each step adds is, printed as shown: 5 px a millimetre"
+msgstr "Wie breit das Band um die Teile ist, die jeder Schritt hinzufügt, gedruckt wie gezeigt: 5 px pro Millimeter"
+
+msgid "Lock page"
+msgstr "Seite sperren"
+
+msgid "Unlock page"
+msgstr "Seite entsperren"
+
+msgid "Freeze page"
+msgstr "Seite einfrieren"
+
+msgid "Unfreeze page"
+msgstr "Seite auftauen"
+
+msgid "Nothing on this page moves or changes until it is unlocked, Apply to later pages passes it by, and it keeps as many steps as it has now: a step put in or taken out among them changes which"
+msgstr "Nichts auf dieser Seite bewegt oder ändert sich, bis sie entsperrt wird, „Auf spätere Seiten anwenden“ lässt sie aus, und sie behält so viele Schritte, wie sie jetzt hat: Ein dazwischen eingefügter oder entfernter Schritt ändert, welche es sind"
+
+msgid "This page keeps its margins, colours, header, footer and step numbers as they are now when the booklet's page setup changes; its paper, picture and parts stay the booklet's"
+msgstr "Diese Seite behält ihre Ränder, Farben, Kopf- und Fußzeile und Schrittnummern wie jetzt, wenn sich die Seiteneinrichtung des Hefts ändert; Papier, Bild und Teile bleiben die des Hefts"
+
+msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
+msgstr "Alt gedrückt halten, um den Abstand des gewählten Elements zu den Seitenrändern, den Rändern und seinen Nachbarn zu sehen"
+
+msgid "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+msgstr "Der Abstand des gewählten Elements zu den Seitenrändern, den Rändern und seinen Nachbarn, wie ihn gedrücktes Alt zeigt"
+
+msgid "This page is locked: Unlock page to change what is on it."
+msgstr "Diese Seite ist gesperrt: „Seite entsperren“, um zu ändern, was darauf ist."
+
+msgid "Only a page of steps locks."
+msgstr "Nur eine Seite mit Schritten lässt sich sperren."
+
+msgid "Only a page of steps freezes."
+msgstr "Nur eine Seite mit Schritten lässt sich einfrieren."
+
+msgid "Frozen pages keep their own page setup: %d."
+msgstr "Eingefrorene Seiten behalten ihre eigene Seiteneinrichtung: %d."
+
+msgid "locked"
+msgstr "gesperrt"
+
+msgid "frozen"
+msgstr "eingefroren"

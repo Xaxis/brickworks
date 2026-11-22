@@ -50,7 +50,7 @@ export function ownOrigin(request) {
 export const RUNNABLE = {
   gallery_feature: { path: "/api/share/feature", said: "The front's choice: one a day, under its lock; again the same day changes nothing" },
   omr_watch: { path: "/api/share/omr", said: "The look at LDraw's OMR: a few pages, a second apart, under its lock" },
-  share_sweep: { path: "/api/share/sweep", said: "Files no published model owns: never more than a quarter unasked" },
+  share_sweep: { path: "/api/share/sweep", said: "Files no published model owns: a deleted model's always, others never more than a quarter unasked" },
   canary: { path: "/api/otp/canary", said: "A sign-in code sent to Resend's test inbox and read back" },
   social_due: { path: "/api/plans/social-due", said: "Sends only what you pressed Schedule on whose time came, then reads "
     + "what came in" },

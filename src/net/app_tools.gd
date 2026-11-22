@@ -478,7 +478,15 @@ func definitions() -> Array:
 				# stepsearch: the steps that place a part, as the timeline's find.
 				+ " find= lists only the steps that place a part, by its number, name or "
 				+ "colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; "
-				+ "a part in a sub-model is found in the sub-model's own step that puts it on."),
+				+ "a part in a sub-model is found in the sub-model's own step that puts it on."
+				# partstep: a photo of the part in the person's hand, to its step.
+				+ " picture_data= (base64) or picture_url= instead: a photo of a part the person "
+				+ "holds, named by photo search (Brickognize, a third party: only the photo is sent, "
+				+ "never the model), answered with its top three guesses, the model's parts first, "
+				+ "and the first step from from= that places it, with every other one. Brickognize "
+				+ "may keep the photo and train on it, and it is for personal, non-commercial use: "
+				+ "tell the person so and give agreed=true once they agree, unless they already "
+				+ "have in the parts bin."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete", "name"]},
@@ -489,6 +497,9 @@ func definitions() -> Array:
 				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
 				"find": {"type": "string", "description": "for list: only the steps that place this part: a number (3001), a name (brick 2 x 4), a colour (red) or both (red 3001)"},
+				"picture_data": {"type": "string", "description": "for list: a photo of a part the person holds, its bytes as base64 (or a data: URI): the steps that place it"},
+				"picture_url": {"type": "string", "description": "for list: an http(s) link to a photo of a part the person holds"},
+				"agreed": {"type": "boolean", "description": "with a picture: true once the person, told the photo goes to Brickognize, a third party, has agreed"},
 			}},
 		},
 		{
@@ -534,6 +545,11 @@ func definitions() -> Array:
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
 				+ "follow=true lays out every later page with as many steps as the page step= "
 				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
+				+ "lock= true locks the page step= starts: nothing on it moves or changes until "
+				+ "lock= false (place=, text=, arrow=, turn=, zoom=, size=, page= on its steps "
+				+ "are refused; follow= passes it by), and it holds as many steps as it has now, by "
+				+ "count. freeze= true keeps its margins, colours, header, footer and step numbers "
+				+ "as they are now when page_setup changes the booklet's; false undoes either. "
 				+ "Studio's extras: pull= studs (2 when true, 0 or false to put back) draws "
 				+ "the step's parts, or {studs, parts: [part ids]} those, pulled out along the "
 				+ "way each goes in with a red arrow in; colours= true lists the step's colours "
@@ -549,6 +565,8 @@ func definitions() -> Array:
 				"step": {"type": "integer"},
 				"callout_step": {"type": "integer", "description": "a step inside the callout step= puts on, from 1"},
 				"highlight": {"type": "boolean"},
+				"lock": {"type": "boolean", "description": "the page step= starts locked, or not"},
+				"freeze": {"type": "boolean", "description": "the page step= starts frozen, or not"},
 				"place": {"type": "object", "description": "{item, x, y, w, h, index, turn, opacity, remove}: w and h kept when omitted",
 					"properties": {
 						"item": {"type": "string", "enum": ["picture", "parts", "callout", "number", "note"]},
@@ -619,7 +637,8 @@ func definitions() -> Array:
 				+ "cover_picture_data= a picture of their own (cover_picture= \"model\" the "
 				+ "model drawn again). header= and footer= words on every page (\"\" none). "
 				+ "box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= "
-				+ "the step numbers, outline_colour= the band round the new parts; a colour "
+				+ "the step numbers, outline_colour= the band round the new parts and "
+				+ "outline_width= its width (px at 5 a mm, 1 to 72, 3 usual); a colour "
 				+ "\"usual\" is the booklet's own. A style keeps all of these but title= and "
 				+ "subtitle=, which stay each model's own: style= never changes them."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -650,6 +669,7 @@ func definitions() -> Array:
 				"box_corners": {"type": "number", "description": "mm, 0 to 8 (2.2 usual)"},
 				"number_colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
 				"outline_colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"outline_width": {"type": "integer", "description": "px at 5 a mm, 1 to 72 (3 usual)"},
 			}},
 		},
 		{
@@ -663,7 +683,15 @@ func definitions() -> Array:
 				+ "between new ends. band: a rubber belt round sprockets= (pulleys, wheels, "
 				+ "bushes or axles, in order round the loop); spring: between from= and to=, "
 				+ "its turns kept when a part it is on moves. part= picks the band, the "
-				+ "spring or the shock absorber by number."),
+				+ "spring or the shock absorber by number. pf_cable, pu_cable or 9v_wire: a "
+				+ "motor's cable, from= the motor (or an IR receiver or a pole reverser, by its "
+				+ "own cable) to= the battery box, receiver, hub or plug it goes on, in the real "
+				+ "cable's length; pf_cable or 9v_wire from= one part's contacts to= another's is "
+				+ "an extension wire (8886, 8871; 9 V's 5306 lengths), and to= a plug stacks it "
+				+ "on that plug's top. Its plug faces forward, reversed=true turns it half round "
+				+ "so the motor runs the other way (a Powered Up plug goes in one way only). It is "
+				+ "an item like a hose: item= lays it again, also after the model is reopened. "
+				+ "simulate_mechanism then runs the motor as Play does."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["kind"], "properties": {
 				"kind": {"type": "string", "enum": FlexTool.KIND_ORDER},
@@ -673,6 +701,8 @@ func definitions() -> Array:
 				"color": {"type": "integer", "description": "LDraw colour; black when omitted"},
 				"item": {"type": "string", "description": "a hose already laid, by its name in an earlier answer"},
 				"part": {"type": "string", "description": "a band, spring or shock absorber's number (85546, 73129)"},
+				"reversed": {"type": "boolean", "description": "a pf_cable's or 9v_wire's plug put on "
+					+ "turned half round, so its motor runs the other way; cables only"},
 			}},
 		},
 		{
@@ -710,7 +740,9 @@ func definitions() -> Array:
 				+ "what stays (a locked part, what stands on the baseplate, else the body "
 				+ "with the most parts, or a heavier one standing on the floor): a hinge, a "
 				+ "clip on a bar, a turntable, a pin or an axle in a round "
-				+ "hole, a ball, a 1x1 round part on one stud. part= a part's number "
+				+ "hole, a ball, a 1x1 round part on one stud; either half of a hinge moves "
+				+ "the half that is not held, and the answer says which half and which way "
+				+ "degrees= swings it. part= a part's number "
 				+ "(look_at_model) or a sub-assembly's name. With nothing else it changes "
 				+ "nothing and says what would move, on what, and how the model stands. "
 				+ "degrees= turns it that far from where it is (a ball: about axis=), along= "
@@ -908,9 +940,17 @@ func definitions() -> Array:
 				+ "where it ended. A line each: to 90° at 50% (to an angle from where it was "
 				+ "built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines "
 				+ "indented under it); with two hub motors or more, each line begins with its "
-				+ "port, A to F."),
+				+ "port, A to F. Motors run by their cables as Play runs them: it says each "
+				+ "motor's cable and what it reaches, and the driver's motor turns the way its "
+				+ "plugs face, what its cable reaches switched on where it is off; a motor whose "
+				+ "cable is pulled does not turn, and one with no cable drawn turns by hand. "
+				+ "power=on switches every battery box, receiver and hub on first, power=off "
+				+ "every one off. at= seconds pictures the model's program at that moment "
+				+ "instead (with program=, the one just set), each motor's angle and the line "
+				+ "running, without setting or changing anything."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
+				"at": {"type": "number", "description": "seconds into the model's program: its picture and each motor's angle at that moment, nothing set"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
 				"targets": {"type": "object", "description": "name -> the period wanted, in the reference's turns",
 					"additionalProperties": {"type": "number"}},
@@ -918,6 +958,7 @@ func definitions() -> Array:
 				"turns": {"type": "number", "description": "turns of the reference (or the driver) a recording covers; 1 when omitted"},
 				"record": {"type": "boolean"},
 				"program": {"type": "string", "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out"},
+				"power": {"type": "string", "enum": ["on", "off"], "description": "every battery box, IR receiver, pole reverser and hub switched on or off before it turns; not given, what the driver's cable reaches is switched on where it is off, as Play does"},
 			}},
 		},
 		{
@@ -1576,16 +1617,20 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				return "This app cannot move parts on their joints."
 			if str(input.get("part", "")).strip_edges().is_empty():
 				return _what_moves(grabbing)
+			# One half of a hinge, read before it moves: which half moves and
+			# which way, said with the move (mcpreach4).
+			var hinge: Dictionary = await _hinge_reading(grabbing, str(input.get("part", "")),
+				not input.has("along") and not input.has("to"))
 			# Asked to show it as well, the move answered pictured as
 			# edit_model's change is: f1's session raised an arm on its ball
 			# and then asked view_board to show the person.
 			if not (input.get("picture") is bool and bool(input["picture"])):
-				return await grabbing.for_session(input)
+				return _hinge_said(hinge, await grabbing.for_session(input))
 			var world: BrickWorld = app.get("_world")
 			var was: Dictionary = {}
 			for brick: BrickWorld.Brick in world.bricks():
 				was[brick.id] = brick.transform
-			var moved_said: String = await grabbing.for_session(input)
+			var moved_said: String = _hinge_said(hinge, await grabbing.for_session(input))
 			var moved := PackedInt64Array()
 			for brick: BrickWorld.Brick in world.bricks():
 				if not was.has(brick.id) or not (was[brick.id] as Transform3D).is_equal_approx(brick.transform):
@@ -2045,6 +2090,19 @@ func _edit_steps(input: Dictionary) -> String:
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
+	# partstep: a photo is the list's too, and words or a photo, not both.
+	var photo: bool = input.has("picture_data") or input.has("picture_url")
+	if photo and op != "list":
+		return "picture_data= or picture_url= finds the steps that place the part in a photo; give it with no op= (or op \"list\")."
+	if photo and input.has("find"):
+		return "Give find= a part in words, or picture_data= or picture_url= a photo of it, not both."
+	if photo and not bool(ShellPrefs.value("photo_told")) and not (input.get("agreed") is bool
+			and bool(input["agreed"])):
+		return ("Not sent. The photo goes to Brickognize (brickognize.com), a third party that "
+			+ "identifies LEGO® parts: under its terms it may keep the photo and use it to train its "
+			+ "recognition, and it is for personal, non-commercial use (Pro’s licence for commercial "
+			+ "use does not cover it). Only the photo is sent, never the model. Tell the person "
+			+ "this, and once they agree, call again with agreed=true.")
 	# stepsearch: find= is the list's, and changes nothing.
 	if input.has("find") and op != "list":
 		return "find= lists the steps that place a part; give it with no op= (or op \"list\")."
@@ -2065,6 +2123,8 @@ func _edit_steps(input: Dictionary) -> String:
 		return "There is nothing built to have steps."
 	match op:
 		"list":
+			if photo:
+				return await _photo_steps(steps, input)
 			if input.has("find"):
 				return _found_steps(steps, str(input["find"]).strip_edges())
 			return _list_steps(steps, int(input.get("from", 1)))
@@ -2246,7 +2306,7 @@ func _page_setup(input: Dictionary) -> String:
 		fields["picture"] = ""
 	# booklook: the cover, the words on every page, the booklet's colours.
 	for field: String in BookletSheet.TEXTS + ["box_frame", "box_fill", "box_corners",
-			"number_colour", "outline_colour"]:
+			"number_colour", "outline_colour", "outline_width"]:
 		if input.has(field):
 			fields[field] = input[field]
 	if input.has("cover_picture_url") or input.has("cover_picture_data"):
@@ -2303,10 +2363,20 @@ func _edit_booklet(input: Dictionary) -> String:
 		at = inside
 		var whole: Array = input.keys().filter(func(field: String) -> bool:
 			return not field in ["step", "callout_step", "turn", "tilt", "place", "text", "arrow", "guide"])
+		# A page of steps locks and freezes, not a callout's step (ptreview N6).
+		if whole.any(func(field: String) -> bool: return field in ["lock", "freeze"]):
+			return ("lock= and freeze= hold a page of steps: send them with step=%d alone, "
+				+ "without callout_step=. Nothing was changed.") % at.number
 		if not whole.is_empty():
 			return ("A callout's step takes turn= and tilt=, and on a callout with pages of its "
 				+ "own place=, text= and arrow=; %s= is the callout's own, set on step %d.") \
 				% [str(whole[0]), at.number]
+	# lock= and freeze= first, so no other field is acted on and the hold
+	# dropped (or the hold acted on and the other dropped).
+	if input.has("lock") or input.has("freeze"):
+		var held: String = await _hold_page(input, at)
+		if not held.is_empty():
+			return held
 	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) \
 			+ int(input.has("guide")) > 1:
 		return "One at a time: place=, text=, arrow= or guide=, each its own undo step."
@@ -2357,7 +2427,7 @@ func _edit_booklet(input: Dictionary) -> String:
 	fields.merge(extras)
 	if fields.is_empty():
 		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, sign=, callout=, "
-			+ "per_page=, pull=, colours=, colours_all=, actual_size= or preview=. "
+			+ "per_page=, pull=, colours=, colours_all=, actual_size=, preview=, lock= or freeze=. "
 			+ "booklet_layout says how each step is printed now.")
 	var said: String = shell.change_look("set", at, fields)
 	var now: String = ""
@@ -2662,12 +2732,74 @@ func _follow_page(at: Instructions.Step) -> String:
 				pages[index].entries.size()]
 		var said: String = (app.get("_shell") as Shell).place_pages(later["placed"],
 			"page %d's layout on %d later pages" % [pages[index].number, (later["laid"] as Array).size()])
+		if not (later["locked"] as Array).is_empty():
+			said += "; locked pages %s passed by" % ", ".join(PackedStringArray(
+				(later["locked"] as Array).map(func(page: int) -> String: return str(page))))
 		if not (later["left"] as Array).is_empty():
 			said += "; pages %s have another number of steps and were left as they were" \
 				% ", ".join(PackedStringArray((later["left"] as Array).map(
 					func(page: int) -> String: return str(page))))
 		return said + ". booklet_layout says where each thing is now."
 	return "Step %d is on no page of steps." % at.number
+
+
+## edit_booklet lock= and freeze= (pagetools): the page [param at] starts
+## locked or frozen, or not, as Lock page and Freeze page do; one at a
+## time, each one undo, and alone in its call, refused before anything is
+## written. A false where the page is not held is as if it were absent:
+## "" and [param input] without it, for the call's other fields. A step
+## that does not start its page is said with the step that does.
+func _hold_page(input: Dictionary, at: Instructions.Step) -> String:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var maker := BookletMaker.new()
+	maker.library = app.get("_library")
+	app.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(world, store.scenery, "Model")
+	maker.queue_free()
+	# The plan the booklet was laid out from, whose steps its entries name.
+	var plan: Array[Instructions.Step] = Instructions.plan(world, app.get("_library"), store.scenery,
+		{}, true)
+	var page: Booklet.Page = null
+	for each: Booklet.Page in pages:
+		if each.kind == "steps" and each.entries.any(func(entry: Booklet.Entry) -> bool:
+				return entry.number == at.number):
+			page = each
+			break
+	var now: Dictionary = {"lock": page != null and page.entries[0].lock > 0,
+		"freeze": page != null and page.entries[0].own_sheet != null}
+	for field: String in ["lock", "freeze"]:
+		if input.has(field) and not bool(input[field]) and not bool(now[field]):
+			input.erase(field)
+	if not input.has("lock") and not input.has("freeze"):
+		return ""
+	if input.has("lock") and input.has("freeze"):
+		return "One at a time: lock= or freeze=, each its own undo step. Nothing was changed."
+	var lock: bool = input.has("lock")
+	var others: Array = input.keys().filter(func(field: String) -> bool:
+		return not field in ["step", "lock", "freeze"])
+	if not others.is_empty():
+		return "%s= goes in a call of its own, its own undo step: send %s= in another. Nothing was changed." \
+			% ["lock" if lock else "freeze", str(others[0])]
+	if page == null:
+		return ("Step %d is on no page of steps (a callout's own pages neither lock nor freeze): "
+			+ "booklet_layout says which page each step is on. Nothing was changed.") % at.number
+	if page.entries[0].number != at.number:
+		return "Step %d is not the first on its page: page %d starts with step %d, so step=%d." % [
+			at.number, page.number, page.entries[0].number, page.entries[0].number]
+	# A false on a page not held was taken as absent above: a true here.
+	if bool(now["lock" if lock else "freeze"]) == bool(input["lock" if lock else "freeze"]):
+		return "Page %d is %s already." % [page.number, "locked" if lock else "frozen"]
+	# Locked, each of its items is placed where it is, as the page editor's
+	# Lock page places them (Booklet.held_places).
+	var placed: Array = []
+	for pair: Array in Booklet.held_places(page):
+		var entry: Booklet.Entry = pair[0]
+		var index: int = int(entry.get_meta("step", -1))
+		if index >= 0 and index < plan.size():
+			placed.append([plan[index], pair[1], BookletLooks.said_rect(entry.panel)])
+	return (app.get("_shell") as Shell).change_look("page_lock" if lock else "page_freeze", at,
+		{"steps": page.entries.size(), "placed": placed}) + " (page %d)." % page.number
 
 
 ## Whether an arrow's tip ([param points] x2, y2) is on what step [param
@@ -2900,6 +3032,98 @@ func _found_steps(steps: Array[Instructions.Step], said: String) -> String:
 	return "\n".join(lines)
 
 
+## The steps that place the part in a photo the person holds (partstep, as
+## Build mode's "Where does this go?"): the photo, and nothing else, asked of
+## Brickognize; its top three guesses, the model's parts first; and the first
+## step from from= that places it, how many there, and every other one.
+func _photo_steps(steps: Array[Instructions.Step], input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var picture: Image
+	if input.has("picture_data"):
+		var read: Dictionary = PictureFile.from_data(str(input["picture_data"]))
+		if read.has("error"):
+			return _sentence(str(read["error"]))
+		picture = read["image"]
+	else:
+		var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
+			PictureFile.MOST_BYTES)
+		if fetched.has("error"):
+			return str(fetched["error"])
+		picture = PictureFile.decode(fetched["bytes"])
+		if picture == null:
+			return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
+	var eye := Brickognize.new()
+	eye.url = photo_url
+	app.add_child(eye)
+	var heard: Array = []
+	eye.answered.connect(func(guesses: Array) -> void: heard.assign(["answered", guesses]))
+	eye.failed.connect(func(why: String) -> void: heard.assign(["failed", why]))
+	var asked: int = Time.get_ticks_msec()
+	eye.identify(picture)
+	while heard.is_empty() and Time.get_ticks_msec() - asked < int(Brickognize.WAIT * 1000.0) + 2000:
+		await app.get_tree().process_frame
+	var seen: Dictionary = eye.colour
+	eye.queue_free()
+	if heard.is_empty():
+		return Brickognize.trouble(HTTPRequest.RESULT_TIMEOUT, 0) + "."
+	if str(heard[0]) == "failed":
+		return _sentence(str(heard[1]))
+	var from: int = maxi(int(input.get("from", 1)), 1)
+	var first: int = steps.size()
+	for n: int in steps.size():
+		if steps[n].number >= from:
+			first = n
+			break
+	var bricks: Array = []
+	for step: Instructions.Step in steps:
+		bricks.append(step.brick_ids)
+	var answer: Dictionary = PartStep.place(heard[1], seen, library, world, bricks,
+		first)
+	var wheres: PackedStringArray = _steps_where(steps)
+	var name_of: Callable = func(index: int) -> String:
+		return "%d%s" % [steps[index].number, wheres[index]]
+	var lines := PackedStringArray(["The photo, as Brickognize sees it, most likely first (this "
+		+ "model's parts first; only the photo was sent):"])
+	var options: Array = answer["options"]
+	for n: int in options.size():
+		var option: Dictionary = options[n]
+		lines.append("  %d. %s %s, %d%% sure: %s" % [n + 1, option["part"] if not str(option["part"]).is_empty()
+			else "BrickLink " + str(option["bricklink"]), option["name"], roundi(float(option["score"]) * 100.0),
+			"in this model as %s" % ", ".join(PackedStringArray(option["parts"])) if bool(option["in_model"])
+			else "not in this model"])
+	var where: String = PartStep.where_words(answer, name_of)
+	if int(answer["picked"]) < 0:
+		lines.append(_sentence(where))
+		return "\n".join(lines)
+	var colour: PartLibrary.BrickColor = library.color(int(answer["colour"])) \
+		if int(answer["colour"]) >= 0 else null
+	lines.append("%s%s: %s" % [options[int(answer["picked"])]["name"],
+		", %s" % colour.name.replace("_", " ") if colour != null else " (any of its colours: the photo's "
+			+ "was not read)", _sentence(where)])
+	var characters: int = 0
+	for hit: Array in answer["hits"]:
+		var numbers := PackedStringArray()
+		for brick_id: int in hit[2]:
+			numbers.append("#%d" % brick_id)
+		if numbers.size() > 12:
+			var more: int = numbers.size() - 12
+			numbers = numbers.slice(0, 12)
+			numbers.append("and %d more" % more)
+		var line: String = "  %s: %d, %s%s" % [name_of.call(int(hit[0])), int(hit[1]), " ".join(numbers),
+			"  (the first from step %d)" % from if int(hit[0]) == int(answer["step"]) else ""]
+		characters += line.length()
+		if characters > 4000:
+			lines.append("  ... and more steps.")
+			break
+		lines.append(line)
+	return "\n".join(lines)
+
+
+## Where a session's photo of a part goes: Brickognize's, or a probe's stub.
+var photo_url: String = Brickognize.URL
+
+
 ## Whether [param step] is one of a sub-model's own, built where it stands
 ## rather than in a callout.
 static func _built_in_place(step: Instructions.Step) -> bool:
@@ -2926,16 +3150,25 @@ func _lay_flex(input: Dictionary) -> String:
 	if not Flex.KINDS.has(kind):
 		return "kind is one of %s." % ", ".join(FlexTool.KIND_ORDER)
 	var item: String = str(input.get("item", ""))
+	# A part laid again is not in its own way: its pieces, and a cable's plug,
+	# take no place its ends go (as the Make tool reshapes one).
+	var own: Dictionary = {}
 	if not item.is_empty():
 		var found: String = ""
-		for path: String in Flex.items_in(world).keys():
+		var items: Dictionary = Flex.items_in(world)
+		for path: String in items.keys():
 			if path == item or Assemblies.label(path) == item:
 				found = path
 		if found.is_empty():
-			return "No hose or chain called %s. There is: %s." % [item,
-				", ".join(PackedStringArray(Flex.items_in(world).keys().map(
-					func(path: String) -> String: return Assemblies.label(path))))]
+			# Ten named at most, and the rest counted: an answer is read whole.
+			var named: Array = Flex.items_in(world).keys().map(
+				func(path: String) -> String: return Assemblies.label(path))
+			return "No hose, chain or cable called %s. There is: %s%s." % [item,
+				", ".join(PackedStringArray(named.slice(0, 10))) if not named.is_empty() else "none",
+				"" if named.size() <= 10 else ", and %d more" % (named.size() - 10)]
 		item = found
+		for brick: BrickWorld.Brick in (items[found] as Dictionary)["bricks"]:
+			own[brick.id] = true
 	var colour: int = int(input.get("color", 0))
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
 	var anchors: Array = []
@@ -2957,7 +3190,11 @@ func _lay_flex(input: Dictionary) -> String:
 		if sprockets.size() < 2:
 			return "Give sprockets= two or more gears' part numbers, in one plane."
 	else:
-		var all: Array = Flex.anchors_in(world, library, kind, {})
+		# A cable's places, taken ones too: what its ends are decides first
+		# whether they make a cable at all, and only then is a taken one said.
+		var electric: bool = Flex.KINDS[kind].has("electric")
+		var all: Array = Wiring.places(world, library, kind, own) if electric \
+			else Flex.anchors_in(world, library, kind, own)
 		var ends: Array = [input.get("from", {}), input.get("to", {})]
 		var on: Array = []
 		for n: int in 2:
@@ -2968,10 +3205,40 @@ func _lay_flex(input: Dictionary) -> String:
 				return "No part numbered %d." % int((ends[n] as Dictionary)["brick"])
 			var mine: Array = all.filter(func(a: Flex.Anchor) -> bool: return a.brick == brick.id)
 			if mine.is_empty():
+				var other: String = Wiring.system_refusal(brick.part_id, kind) if electric else ""
+				if not other.is_empty():
+					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id, other]
 				return ("#%d (%s) has nothing a %s goes on: it takes %s."
 					% [brick.id, brick.part_id, kind.replace("_", " "),
 						", ".join(PackedStringArray(Flex.KINDS[kind].get("takes", []))).replace("_", " ")])
 			on.append(mine)
+		if electric:
+			# A cable runs from an outlet to a plug's place, or an extension
+			# wire from contacts to contacts, as the Make tool's ends
+			# (Flex.cable_ends_refusal): two outlets make none, free or not.
+			var refused: String = ""
+			var makes: bool = false
+			for a: Flex.Anchor in on[0]:
+				for b: Flex.Anchor in on[1]:
+					var why_not: String = Flex.cable_ends_refusal(kind, a.kind, b.kind)
+					makes = makes or why_not.is_empty()
+					refused = why_not if not why_not.is_empty() else refused
+			if not makes:
+				return "%s: give a motor's outlet and a plug's place%s." % [refused,
+					"" if Flex.lengths_between(null, kind, ["contacts", "contacts"]).is_empty()
+						else ", or two parts' contacts for an extension wire"]
+			# Then a place taken: its cable laid already, a plug on it.
+			for n: int in 2:
+				var free: Array = (on[n] as Array).filter(func(a: Flex.Anchor) -> bool: return a.taken.is_empty())
+				if free.is_empty():
+					var brick: BrickWorld.Brick = _brick(int((ends[n] as Dictionary)["brick"]))
+					var why: PackedStringArray = []
+					for a: Flex.Anchor in on[n]:
+						if not why.has(a.taken):
+							why.append(a.taken)
+					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id,
+						"; ".join(why.slice(0, 3))]
+				on[n] = free
 		# Each end on the connector asked for, else the two nearest each other.
 		for n: int in 2:
 			var asked: Dictionary = ends[n]
@@ -2982,17 +3249,33 @@ func _lay_flex(input: Dictionary) -> String:
 				on[n] = [_nearest(on[n], near)]
 		var best: Array = []
 		var gap: float = INF
+		var refused: String = ""
 		for a: Flex.Anchor in on[0]:
 			for b: Flex.Anchor in on[1]:
 				var apart: float = a.middle().distance_to(b.middle())
+				var why_not: String = Flex.cable_ends_refusal(kind, a.kind, b.kind) if electric else ""
+				if not why_not.is_empty():
+					refused = why_not
+					continue
 				if apart < gap and a != b:
 					gap = apart
 					best = [a, b]
+		if best.is_empty() and not refused.is_empty():
+			# The connectors asked for (x=, y=, z=) make no cable.
+			return "%s: give a motor's outlet and a plug's place." % refused
 		if best.is_empty():
 			return "Both ends are the same connector; give two."
 		anchors = best
+	var facing: int = 1
+	if input.get("reversed") is bool and bool(input["reversed"]):
+		if kind == "pu_cable":
+			return "A Powered Up plug goes into its port one way only; it cannot be reversed."
+		if not Flex.KINDS[kind].has("electric"):
+			return ("reversed= turns a cable's plug half round (pf_cable, 9v_wire); a %s has no plug "
+				+ "to turn: leave it out.") % kind.replace("_", " ")
+		facing = -1
 	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item,
-		str(input.get("part", "")))
+		str(input.get("part", "")), facing)
 	if laid == null or laid.pieces.is_empty():
 		var why: String = "" if laid == null else "; ".join(laid.warnings)
 		return "Nothing laid%s." % (": " + why if not why.is_empty() else
@@ -3001,6 +3284,23 @@ func _lay_flex(input: Dictionary) -> String:
 		laid.pieces.size(), "%.0f LDU along" % laid.length if laid.length > 0.0 else "round the sprockets"]
 	if not laid.warnings.is_empty():
 		said += " But: %s." % "; ".join(laid.warnings)
+	if Flex.KINDS[kind].has("electric"):
+		# What the cable does now: the motor it wires, and to what.
+		var wired: Wiring = Wiring.read_with(world.bricks(), library)
+		var ends: Dictionary = {}
+		for anchor: Flex.Anchor in anchors:
+			ends[anchor.brick] = true
+		var lines: Array = []
+		for motor: int in wired.motors:
+			if ends.has(motor):
+				lines.append(wired.motor_line(motor))
+		if lines.is_empty():
+			# A receiver's or a pole reverser's own cable: every motor it reaches.
+			for motor: int in wired.motors:
+				lines.append(wired.motor_line(motor))
+		if not lines.is_empty():
+			said += " " + " ".join(PackedStringArray(lines)) + (" simulate_mechanism runs it as Play "
+				+ "does, switching on what it reaches.")
 	return said
 
 
@@ -3373,9 +3673,15 @@ func _what_moves(grabbing: GrabDrag) -> String:
 		if not bodies.flexible.has(key):
 			moving.append([(bodies.members.get(key, PackedInt64Array()) as PackedInt64Array).size(), int(key)])
 	var motors: String = _motors_driven(world, store, library)
+	# A hinge whose halves one part grips is in neither list: r2's session
+	# asked what moves, was not told of its click hinge, and was refused on it
+	# (mcpreach3's walk; mcpreach4).
+	var held_hinges: String = _hinges_held(grabbing, bodies)
 	if moving.is_empty():
 		lines.append("Nothing in it hangs on a joint: every part is held rigidly to what stays (%s)."
 			% bodies.summary())
+		if not held_hinges.is_empty():
+			lines.append(held_hinges)
 		if not motors.is_empty():
 			lines.append(motors)
 		lines.append("Nothing was changed.")
@@ -3396,10 +3702,206 @@ func _what_moves(grabbing: GrabDrag) -> String:
 			link.words(), GrabDrag.at_words(link.point), "" if link.holds else ", turning freely"])
 	if moving.size() > MOST_MOVING:
 		lines.append("  and %d more." % (moving.size() - MOST_MOVING))
+	if not held_hinges.is_empty():
+		lines.append(held_hinges)
 	if not motors.is_empty():
 		lines.append(motors)
 	lines.append("Nothing was changed. move_part part=N says what moving it does; degrees= turns it.")
 	return "\n".join(lines)
+
+
+## Whether [param part_id] is one half of a hinge: a part with a hinge
+## connector (a click hinge brick, a hinge plate's either half).
+static func _hinge_half(library: PartLibrary, part_id: String) -> bool:
+	for point: Attach.Point in Attach.points_of(library, part_id):
+		if point.kind == Exact.HINGE:
+			return true
+	return false
+
+
+## move_part naming one half of a hinge, read as a drag takes it, before it
+## moves: {"moves": the half that moves, "stays": the half across, "beyond":
+## how many other parts move with it, "sense": which way degrees= above 0
+## swings it (with [param sense])}; {"locked": why it cannot turn as built}
+## when one part grips both halves; {} for any other part. r2's session was
+## refused twice on its click hinge's brick, both halves laid on one plate,
+## and turned the arm into the floor before it found which way was up
+## (mcpreach3's walk; mcpreach4).
+func _hinge_reading(grabbing: GrabDrag, asked: String, sense: bool) -> Dictionary:
+	var number: String = asked.strip_edges().trim_prefix("#")
+	if not number.is_valid_int():
+		return {}
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var brick: BrickWorld.Brick = world.get_brick(int(number))
+	if brick == null or not _hinge_half(library, brick.part_id):
+		return {}
+	# Taken and turned on a worker, the model held still meanwhile, as the
+	# move itself is (GrabDrag.for_session): a Grab begun on a big model
+	# is more than a frame's work.
+	if not grabbing.is_ready():
+		await grabbing._ready_for_session()
+	var shaped: Dictionary = {}
+	for one: BrickWorld.Brick in world.bricks():
+		shaped[one.part_id] = true
+	grabbing._session_moving = true
+	var reading: Dictionary = await WorkerTasks.awaited(func() -> Variant:
+		Exact.shapes_for(library, shaped.keys())
+		return _hinge_read(grabbing, number, sense, world), "read a hinge's halves", library)
+	grabbing._session_moving = false
+	return reading
+
+
+## _hinge_reading's reading, on a worker.
+func _hinge_read(grabbing: GrabDrag, number: String, sense: bool, world: BrickWorld) -> Dictionary:
+	var taken: Variant = grabbing.held_for_session(number)
+	if taken is String:
+		var locked: String = _hinge_locked(grabbing, int(number))
+		return {} if locked.is_empty() else {"locked": locked}
+	var held: Grab = taken
+	if held.link == null or not held.link.kind in ["hinge", "click"]:
+		return {}
+	var moving: Dictionary = {}
+	for body: Variant in held.moving_bodies:
+		for id: int in held.bodies.members.get(int(body), PackedInt64Array()):
+			moving[id] = true
+	var reading: Dictionary = {}
+	for pair: Array in held.link.pairs:
+		var a: int = int(pair[0])
+		var b: int = int(pair[1])
+		if moving.has(a) != moving.has(b):
+			reading = {"moves": a if moving.has(a) else b, "stays": b if moving.has(a) else a,
+				"beyond": moving.size() - 1}
+			break
+	if reading.is_empty():
+		return {}
+	if sense and held.mode == "turn":
+		reading["sense"] = _hinge_sense(grabbing, number, held, moving, world)
+	return reading
+
+
+## Which way a hinge's moving half goes for degrees= above 0 and below it, as
+## its middle goes: "degrees= above 0 swings it up (toward +y); below 0 it meets
+## the model at once". Each turned a step on a Grab of its own, nothing moved.
+func _hinge_sense(grabbing: GrabDrag, number: String, first: Grab, moving: Dictionary,
+		world: BrickWorld) -> String:
+	var step: float = first.link.detent if first.link.detent > 0.0 else 15.0
+	var said := PackedStringArray()
+	for way: float in [1.0, -1.0]:
+		var taken: Variant = first if way > 0.0 else grabbing.held_for_session(number)
+		if not taken is Grab:
+			return ""
+		var held: Grab = taken
+		var reached: float = held.turn_to(way * step)
+		var shift := Vector3.ZERO
+		var count: int = 0
+		for id: int in moving:
+			var brick: BrickWorld.Brick = world.get_brick(id)
+			if brick != null and held.placed.has(id):
+				shift += (held.placed[id] as Transform3D).origin - brick.transform.origin
+				count += 1
+		var words: String = "above 0" if way > 0.0 else "below 0"
+		if absf(reached) < 0.5 or count == 0 or shift.length() < 0.01:
+			said.append("%s it meets the model at once" % words)
+			continue
+		shift /= count
+		var along: String = "up" if shift.y > 0.0 else "down"
+		var level: float = Vector2(shift.x, shift.z).length()
+		if level > absf(shift.y) * 2.0:
+			along = ("toward +x" if shift.x > 0.0 else "toward -x") if absf(shift.x) >= absf(shift.z) \
+				else ("toward +z" if shift.z > 0.0 else "toward -z")
+		said.append("%s swings it %s" % [words, along])
+	return "degrees= %s." % "; ".join(said)
+
+
+## Why the hinge [param part] is a half of cannot turn as built, with the
+## part that grips both halves and what to do; "" when it is not that.
+func _hinge_locked(grabbing: GrabDrag, part: int) -> String:
+	var bodies: Bodies = grabbing.read_bodies()
+	if bodies == null:
+		return ""
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	for one: Array in bodies.overruled:
+		var a: int = int(one[0])
+		var b: int = int(one[1])
+		if not str(one[2]) in ["hinge", "click"] or (a != part and b != part):
+			continue
+		var grips: Array = []
+		var of_a: Dictionary = _joined_to(bodies, a)
+		for other: int in _joined_to(bodies, b):
+			if of_a.has(other) and other != a and other != b:
+				grips.append(other)
+		var named := func(id: int) -> String:
+			var brick: BrickWorld.Brick = world.get_brick(id)
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+			return "the %s (#%d)" % [Inventory._tidy(info.name) if info != null else "part", id]
+		if grips.is_empty():
+			return ("As built, its hinge cannot turn: #%d and #%d, its two halves, are held as one "
+				+ "by what is built on them. Real sets build the arm on the moving half alone.") % [a, b]
+		var gripping := PackedStringArray()
+		for id: int in grips.slice(0, 2):
+			gripping.append(named.call(id))
+		return ("As built, its hinge cannot turn: %s grip%s both its halves, #%d and #%d. Real sets "
+			+ "stand one half at a plate's edge with the other out past it, and build the arm on the "
+			+ "moving half alone: move %s so it holds one half only (edit_model move=), then "
+			+ "move_part again.") % [" and ".join(gripping), "s" if grips.size() == 1 else "",
+				a, b, "it" if grips.size() == 1 else "them"]
+	return ""
+
+
+## Of the hinges held still as built, at most this many are said.
+const HELD_HINGES_MOST := 3
+
+
+## The hinges whose two halves the model holds as one, each with why
+## (_hinge_locked), for move_part with no part=; "" for none.
+func _hinges_held(grabbing: GrabDrag, bodies: Bodies) -> String:
+	var said := PackedStringArray()
+	var seen: Dictionary = {}
+	for one: Array in bodies.overruled:
+		var key: String = "%d-%d" % [mini(int(one[0]), int(one[1])), maxi(int(one[0]), int(one[1]))]
+		if not str(one[2]) in ["hinge", "click"] or seen.has(key):
+			continue
+		seen[key] = true
+		if said.size() < HELD_HINGES_MOST:
+			said.append("  " + _hinge_locked(grabbing, int(one[0])).replace("As built, its hinge", "The hinge"))
+	if said.is_empty():
+		return ""
+	return "Hinges held still as built, which a drag does not turn:\n%s%s" % ["\n".join(said),
+		"\n  and %d more." % (seen.size() - HELD_HINGES_MOST) if seen.size() > HELD_HINGES_MOST else ""]
+
+
+## The parts joined to [param part] in the reading's joins, either way: id -> true.
+static func _joined_to(bodies: Bodies, part: int) -> Dictionary:
+	var out: Dictionary = {}
+	for edge: Array in bodies.joined_by.get(part, []):
+		out[int(edge[0])] = true
+	for other: Variant in bodies.joined_by:
+		for edge: Array in bodies.joined_by[other]:
+			if int(edge[0]) == part:
+				out[int(other)] = true
+	return out
+
+
+## move_part's answer [param said] with what [param hinge] read of a hinge's
+## half (_hinge_reading): which half moved, or would, and which way; or why the
+## hinge cannot turn as built, after a refusal.
+func _hinge_said(hinge: Dictionary, said: String) -> String:
+	if hinge.is_empty():
+		return said
+	if hinge.has("locked"):
+		return "%s\n%s" % [said, hinge["locked"]]
+	var moved: bool = said.contains("\nMoved ") or said.begins_with("Moved ")
+	var still: bool = said.contains("Nothing was changed") or said.contains("It did not move")
+	if not moved and not still:
+		return said
+	var half: String = ("On its hinge, #%d's half %s, with %d part%s beyond it; #%d's half stays." % [
+		int(hinge["moves"]), "moved" if moved else "is the one that moves", int(hinge["beyond"]),
+		"" if int(hinge["beyond"]) == 1 else "s", int(hinge["stays"])])
+	if still and not str(hinge.get("sense", "")).is_empty():
+		half += " " + str(hinge["sense"])
+	return "%s\n%s" % [said, half]
 
 
 ## The joint a session names: its number in pose_model's list, its path or
@@ -4347,7 +4849,86 @@ func _simulate(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: SimulatePanel = app.get("_simulate")
 	if panel == null:
 		return "This app has no Simulate mechanism."
-	return await panel.for_session(input, work)
+	# Sent as null, as if not sent at all.
+	if input.get("at") == null:
+		var without: Dictionary = input.duplicate()
+		without.erase("at")
+		return await panel.for_session(without, work)
+	# Checked before program= writes anything: a refusal after the program
+	# was set would be sent again and set twice.
+	if not (input["at"] is float or input["at"] is int) or float(input["at"]) < 0.0:
+		return "at= is seconds into the program, a number 0 or more. Nothing was set or changed."
+	var set_first: Variant = null
+	if input.has("program"):
+		var only: Dictionary = {"program": input["program"]}
+		set_first = await panel.for_session(only, work)
+		var said: String = _text_of(set_first)
+		if said.contains("cannot run") or said.begins_with("The program was not set") \
+				or said.begins_with("The program is taken out") or said.begins_with("The model has no program") \
+				or said.begins_with("This tab shows"):
+			return set_first
+	return await _program_at(panel, float(input["at"]), _text_of(set_first))
+
+
+## The text of a tool's answer, a String or blocks of text and pictures.
+static func _text_of(answer: Variant) -> String:
+	if answer is String:
+		return answer
+	var out := PackedStringArray()
+	if answer is Array:
+		for block: Variant in answer:
+			if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
+				out.append(str(block["text"]))
+	return "\n".join(out)
+
+
+## simulate_mechanism at=: the model's program read to [param at] seconds, and
+## pictured there: each motor's angle and the line running, the program and the
+## model left as they were (nothing set, no step to undo). With [param ran_said]
+## (program= set it in the same call), that run's words first, its picture at
+## the end replaced by this one. r1's session set and ran a second program only
+## to see the arm at 90°, then set the first again (mcpreach3's walk; mcpreach4).
+func _program_at(panel: SimulatePanel, at: float, ran_said: String) -> Variant:
+	var world: BrickWorld = app.get("_world")
+	if world == null or world.program.strip_edges().is_empty():
+		return ("The model has no program: at= reads one. program= sets it (with at=, in the "
+			+ "same call).")
+	var simulation: Simulation = await panel.read_mechanism()
+	var program: HubProgram = HubProgram.parse(world.program)
+	var made: Dictionary = await panel.prepare_run(program, simulation, false)
+	if made.has("refusal"):
+		return "The model's program cannot run: %s" % made["refusal"]
+	var ran: Dictionary = made["ran"]
+	if not str(ran.get("refusal", "")).is_empty():
+		return "The model's program cannot run: %s" % ran["refusal"]
+	var seconds: float = float(ran.get("seconds", 0.0))
+	var t: float = minf(at, seconds)
+	var angles: Dictionary = HubProgram.angles_at(ran, t)
+	var ends := PackedStringArray()
+	for port: String in angles:
+		ends.append("%s %s" % [port, HubProgram.degrees(float(angles[port]))])
+	var line: int = HubProgram.line_at(ran, t)
+	var lines := PackedStringArray()
+	if not ran_said.is_empty():
+		lines.append(ran_said.get_slice("\nThe picture:", 0))
+	lines.append("At %s s of the program's %s s%s: %s%s.%s" % [Simulation.figure(snappedf(t, 0.01)),
+		Simulation.figure(snappedf(seconds, 0.01)),
+		" (it ends sooner, so where it ended)" if at > seconds else "",
+		", ".join(ends) if not ends.is_empty() else "no motor turned",
+		", on line %d" % line if line > 0 and at <= seconds else "",
+		"" if not ran_said.is_empty() else " Read, not run again: the program and the model are as they were."])
+	var text: String = "\n".join(lines)
+	if not StudioRender.possible():
+		return text + "\n(No picture: this app is running without a window.)"
+	if (made["sims"] as Dictionary).is_empty():
+		return text
+	var first: Simulation = (made["sims"] as Dictionary).values()[0]
+	var image: Image = await panel.picture(first, 0.0, SimulatePanel.program_pose(ran, made["sims"], t))
+	if image == null:
+		return text
+	return [{"type": "text", "text": text + "\nThe picture: at %s s." % Simulation.figure(snappedf(t, 0.01))},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(image.save_png_to_buffer())}}]
 
 
 # -- undo -------------------------------------------------------------------------

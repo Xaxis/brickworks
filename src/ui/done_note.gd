@@ -119,6 +119,7 @@ func finished(kind: String, ok: bool = true) -> void:
 	else:
 		_attention()
 	waiting = true
+	set_process(true)
 	_looked_ms = Time.get_ticks_msec()
 	_show_waiting()
 
@@ -137,12 +138,15 @@ func prefix() -> String:
 ## Render's dialog (RenderDialog), whose renders are followed from here on.
 func follow_render(dialog: Node) -> void:
 	_render = dialog
+	set_process(true)
 
 
 func _process(_delta: float) -> void:
 	if _render != null and is_instance_valid(_render):
 		_watch_render()
 	if not waiting:
+		if _render == null or not is_instance_valid(_render):
+			Wake.rest(self)
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_ms < LOOK_MS:

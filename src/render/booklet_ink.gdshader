@@ -39,6 +39,13 @@ uniform bool mark_new = false;
 uniform vec3 new_colour = vec3(1.0, 0.52, 0.06);
 // How wide the band is, in pixels.
 uniform float halo = 6.0;
+// A band wider than the booklet's own (its designer's width, BookletSheet
+// outline_width): found exactly from booklet_band's pass, each pixel's
+// nearest new part along its row, in red as pixels / 255 (255 none). The
+// rings below look 36 ways, and at 72 px a thin part between two rays had
+// no band on that side. The pass carries the codes' token in its corner.
+uniform bool wide = false;
+uniform sampler2D band_tex : filter_nearest, repeat_disable;
 
 bool differs(vec3 a, vec3 b) {
 	return any(greaterThan(abs(a - b), vec3(3.5 / 255.0)));
@@ -62,7 +69,7 @@ void fragment() {
 	// The corner carries the two passes' tokens, so whoever reads this
 	// can tell that both were drawn for the picture it asked for.
 	if (at.y < 3.0 && at.x < 3.0) {
-		COLOR = vec4(texture(code_tex, UV).rgb, 1.0);
+		COLOR = vec4(wide ? texture(band_tex, UV).rgb : texture(code_tex, UV).rgb, 1.0);
 	} else if (at.y < 3.0 && at.x < 6.0) {
 		COLOR = vec4(texture(colour_tex, UV - vec2(3.0 * pixel.x, 0.0)).rgb, 1.0);
 	} else if (at.y < 12.0 && at.x < 12.0) {
@@ -126,7 +133,22 @@ void fragment() {
 		}
 		// Outside a new part, within the band of one: the band's colour.
 		bool banded = false;
-		if (mark_new && !(is_brick(mine) && is_new(mine)) && edge < 0.5) {
+		if (wide && mark_new && !(is_brick(mine) && is_new(mine)) && edge < 0.5) {
+			// The nearest down the column of each row's nearest: the true
+			// distance to a new part, as far as the band reaches.
+			float most = reach + halo;
+			int rows = int(ceil(most));
+			for (int dy = -rows; dy <= rows && !banded; dy++) {
+				// The pass's corner carries the token, not a distance.
+				if (at.x < 4.0 && at.y + float(dy) < 4.0) {
+					continue;
+				}
+				float along = floor(texture(band_tex, UV + vec2(0.0, float(dy)) * pixel).r * 255.0 + 0.5);
+				if (along < 254.5 && along * along + float(dy * dy) <= most * most) {
+					banded = true;
+				}
+			}
+		} else if (mark_new && !(is_brick(mine) && is_new(mine)) && edge < 0.5) {
 			for (int ring = 1; ring <= 3 && !banded; ring++) {
 				float r = reach + halo * float(ring) / 3.0;
 				for (int n = 0; n < 12; n++) {

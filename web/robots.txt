@@ -4,6 +4,9 @@
 User-agent: *
 Disallow: /admin
 Disallow: /api/
+# Except a person's picture, which their page's structured data names as
+# their image (api/people.js ?op=avatar): the longer rule wins (RFC 9309).
+Allow: /api/people?op=avatar
 Disallow: /oauth/
 Disallow: /b/
 Allow: /
