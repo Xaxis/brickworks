@@ -675,7 +675,11 @@ func _build_card() -> void:
 		if back >= 0:
 			page_wanted.emit(back))
 	_top.resized.connect(_place_card)
-	_card.resized.connect(_place_card)
+	# As tall as what it says and no taller: a flow's height is known only
+	# once it is laid out at the card's width, and a control never shrinks
+	# by itself. Its rows laid out at no width stacked every button and the
+	# card ran down over the parts, Back and Next.
+	_card.minimum_size_changed.connect(_place_card, CONNECT_DEFERRED)
 
 
 ## Under the top bar, as wide as the bars' column, in the middle.
@@ -684,7 +688,8 @@ func _place_card() -> void:
 		return
 	var room: float = get_viewport().get_visible_rect().size.x if is_inside_tree() else 1600.0
 	var wide: float = minf(room - 20.0 * _pt, WIDEST * _pt)
-	_card.size = Vector2(wide, 0.0)
+	_card.custom_minimum_size = Vector2(wide, 0.0)
+	_card.size = Vector2(wide, _card.get_combined_minimum_size().y)
 	_card.position = Vector2(roundf((room - wide) / 2.0), _top.size.y + 8.0 * _pt)
 
 

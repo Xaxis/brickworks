@@ -274,8 +274,12 @@ func _run() -> void:
 		"all" if small.is_empty() else ", ".join(small)))
 	var free: Rect2 = mode.free_rect()
 	var card_rect: Rect2 = (mode.get("_card") as Control).get_global_rect()
-	_ok(free.position.y >= card_rect.end.y, "the step framed below the card (%d below %d)" % [
-		roundi(free.position.y), roundi(card_rect.end.y)])
+	var tall: float = mode.get_global_rect().size.y
+	_ok(free.position.y >= card_rect.end.y and free.size.y >= tall * 0.25,
+		"the step framed below the card, in %d%% of the window's height (%d below %d)" % [
+			roundi(100.0 * free.size.y / tall), roundi(free.position.y), roundi(card_rect.end.y)])
+	_ok(card_rect.size.y <= tall * 0.4, "the card as tall as what it says: %d%% of the window" % roundi(
+		100.0 * card_rect.size.y / tall))
 	await _shot("8_card")
 	_close_card(mode)
 
