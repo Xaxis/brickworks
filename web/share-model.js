@@ -10,16 +10,21 @@
 //   An LDraw file (.ldr, .mpd, .dat) is read as it is, a Studio file (.io)
 //   through web/studio-io.js. An LDD file (.lxf) is the studio's to open,
 //   one tap away; anything else is refused in words.
-//   Share it publishes the file unlisted (api/share.js: every refusal, the
-//   age rule and may_publish among them, comes before anything is kept),
-//   draws its pictures from the site's own scene of it (/m/<id>/scene.json),
-//   takes the link down and shares it again with them, so the link starts
-//   at version 1 with its pictures and listed as chosen, then goes to it.
+//   Share it publishes the file, listed as chosen (api/share.js: every
+//   refusal, the age rule and may_publish among them, comes before anything
+//   is kept), draws its pictures from the site's own scene of it
+//   (/m/<id>/scene.json), and puts them on its version 1 (?op=pictures),
+//   then goes to it: one publish, as the app's Share is, and its link never
+//   taken down (byfix, 2026-11-21: taking it down and sharing it again cost
+//   two, and at the hour's last one left the link down for the hour).
+//   What a file says of its builder unasked is left out, and said
+//   (web/private-lines.js, which the server holds to as well).
 //
 // What a check reads (tools/web/share_model_flow.mjs): window.brickworksShare.
 
 import { askAgeIfAsked, askToSignIn, call, signedIn } from "/account.js";
 import { langAt, number, say, told } from "/card.js";
+import { withoutPrivateLines } from "/private-lines.js";
 import { readStudioIo, TROUBLE } from "/studio-io.js";
 
 const $ = (id) => document.getElementById(id);
@@ -40,6 +45,12 @@ const STUDIO = new Set(["io"]);
 const LDD = new Set(["lxf", "lxfml"]);
 /// How long its picture may take before it is shared without one.
 const DRAW_MS = 75000;
+/// The biggest Studio file looked into: a model in one is at most 2 MB
+/// unpacked, whatever else Studio keeps beside it.
+const MOST_STUDIO_FILE = 256 * 1024 * 1024;
+/// How recent a link of the person's must be to be the one a lost answer
+/// made (api/share.js PICTURES_WINDOW_MS is how long it can take pictures).
+const LOST_MS = 15 * 60 * 1000;
 
 const state = window.brickworksShare = { state: "choose", id: "", file: "", timings: {}, pictures: {}, errors: [] };
 const mark = (what) => { state.timings[what] = Math.round(performance.now()); };
@@ -70,13 +81,22 @@ document.addEventListener("drop", (event) => {
   $("drop").classList.remove("over");
   if (!held()) choose(event.dataTransfer.files[0]);
 });
-/// Sharing, or stopped with its link taken down: a file dropped then is not
-/// another to share.
-function held() { return busy || Boolean(job?.down); }
+/// Sharing: a file dropped then is not another to share.
+function held() { return busy; }
 
 /// [file] read, and what it is said: the form to share it, the studio for
-/// an LDD file, or why it cannot be shared.
+/// an LDD file, or why it cannot be shared. Whatever is in the file, said:
+/// one this page cannot follow is damaged.
 async function choose(file) {
+  try {
+    await readFile(file);
+  } catch (trouble) {
+    state.errors.push(String(trouble?.message || trouble));
+    refuse(studioTrouble(TROUBLE.DAMAGED, file.name));
+  }
+}
+
+async function readFile(file) {
   mark("chosen");
   state.file = file.name;
   state.id = "";
@@ -92,19 +112,27 @@ async function choose(file) {
     $("ldd-open").focus();
     return;
   }
-  const bytes = new Uint8Array(await file.arrayBuffer().catch(() => new ArrayBuffer(0)));
-  if (!bytes.length) return refuse(say("{file} is empty, or could not be read.", { file: file.name }));
+  const empty = say("{file} is empty, or could not be read.", { file: file.name });
+  if (!file.size) return refuse(empty);
   // A zip is read as Studio's whatever it is called; any other file as
   // LDraw's text, if it is text.
-  const zipped = bytes[0] === 0x50 && bytes[1] === 0x4b;
+  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer().catch(() => new ArrayBuffer(0)));
+  const zipped = head[0] === 0x50 && head[1] === 0x4b;
   if (!zipped && !LDRAW.has(ext) && !STUDIO.has(ext)) {
     return refuse(say("{file} is not a model file. Choose an LDraw file (.ldr, .mpd or .dat) or a BrickLink Studio file (.io).",
       { file: file.name }));
   }
+  // Too big to share, said before it is read at all: an LDraw file is its
+  // own text (UTF-8, or a code page that only grows as UTF-8, with a
+  // byte-order mark at most), and a Studio file far bigger than any model.
+  if (file.size > (zipped || STUDIO.has(ext) ? MOST_STUDIO_FILE : MOST.model + 3)) return refuse(tooBig(file.name, file.size));
+  const bytes = new Uint8Array(await file.arrayBuffer().catch(() => new ArrayBuffer(0)));
+  if (!bytes.length) return refuse(empty);
   let text = "";
   let notes = [];
   if (zipped) {
     const read = await readStudioIo(bytes);
+    if (read.error === TROUBLE.TOO_BIG) return refuse(tooBigUnpacked(file.name, read.size));
     if (read.error) return refuse(studioTrouble(read.error, file.name));
     text = read.text;
     if (read.carried) {
@@ -122,11 +150,14 @@ async function choose(file) {
   if (!/^\s*1\s/m.test(text)) {
     return refuse(say("{file} has no parts in it, so there is nothing to share.", { file: file.name }));
   }
+  // What it says of its builder unasked, left out, as the server leaves it
+  // out of whatever is published, and said.
+  const kept = withoutPrivateLines(text);
+  text = kept.text;
+  if (kept.emails) notes.push(say("The email address in its Author line is left out."));
+  if (kept.paths) notes.push(say("Lines naming folders on your computer are left out."));
   const size = new TextEncoder().encode(text).length;
-  if (size > MOST.model) {
-    return refuse(say("{file} is {size} MB; a shared model is at most 2 MB. Share it from the app, which keeps a big model smaller.",
-      { file: file.name, size: (size / 1048576).toLocaleString(globalThis.brickworksLang?.locale || "en-US", { maximumFractionDigits: 1 }) }));
-  }
+  if (size > MOST.model) return refuse(zipped ? tooBigUnpacked(file.name, size) : tooBig(file.name, size));
   chosen = { text, file: file.name, size };
   state.state = "details";
   // The form is this file's: words typed for one chosen before are not
@@ -145,6 +176,21 @@ async function choose(file) {
   import("/viewer3d.js").catch(() => {});
   $("share").focus();
 }
+
+/// A file too big to share, in words: its size, and the most.
+function tooBig(file, size) {
+  return say("{file} is {size} MB; a shared model is at most 2 MB. Share it from the app, which keeps a big model smaller.",
+    { file, size: megabytes(size) });
+}
+
+/// A Studio file whose model is too big once unpacked, in words.
+function tooBigUnpacked(file, size) {
+  return say("{file} is {size} MB unpacked; a shared model is at most 2 MB. Share it from the app, which keeps a big model smaller.",
+    { file, size: megabytes(size) });
+}
+
+/// Megabytes to a tenth, rounded up: just over the most is never said as it.
+const megabytes = (size) => (Math.ceil((size * 10) / 1048576) / 10).toLocaleString(globalThis.brickworksLang?.locale || "en-US", { maximumFractionDigits: 1 });
 
 /// Studio's file troubles, in words.
 function studioTrouble(key, file) {
@@ -281,28 +327,54 @@ function step(name) {
 }
 
 /// How far a share of the chosen file got, so Try again goes on from
-/// there: the link once made, its pictures once drawn (null for none), and
-/// whether the link was taken down to be shared again with them.
+/// there: the link once made and its version, its pictures once drawn (null
+/// for none), why it is not listed when it was asked to be, and whether the
+/// publish's answer was lost on the way back.
 let job = null;
 
 async function publish(given) {
   const model = chosen.text;
-  job = job || { id: "", pictures: undefined, down: false };
+  job = job || { id: "", version: 0, pictures: undefined, unlisted: "", lost: false };
   state.state = "working";
   show("working");
   $("stuck").hidden = true;
   status("");
+  // The form is gone, and with it the button pressed: what goes on now is
+  // said here, so the reader's place is here.
+  $("working-h").focus();
   mark("share");
+  if (!job.id && job.lost) {
+    // Shared already, perhaps, with only its answer lost: a link of theirs
+    // made a moment ago with this name and this file is that one.
+    step("send");
+    const made = await madeAlready(given.name, chosen.size);
+    if (made) {
+      job.id = state.id = made.id;
+      job.lost = false;
+    }
+  }
   if (!job.id) {
     step("send");
-    const first = await send({ name: given.name, model, description: given.description || undefined, licence: given.licence, listed: false });
+    const body = { name: given.name, model, description: given.description || undefined, licence: given.licence, listed: given.listed };
+    let first = await send(body);
+    // Kept from the gallery (the hour's listings, the age rule for a
+    // listing, a model taken out of it): shared by its link all the same.
+    // Refused, it was not counted, so this is still the one publish.
+    if (given.listed && first.status !== 0 && listingRefused(first)) {
+      job.unlisted = sentence(first);
+      first = await send({ ...body, listed: false });
+    }
     if (first.status === 0) {
-      return stuck(say("The network did not answer, so it is not known whether it was shared. Look on your profile before you share it again."), true);
+      job.lost = true;
+      return stuck(say("The network did not answer, so it is not known whether it was shared. Share it again, and a link it made already is used, not a second one."), true);
     }
     if (first.status >= 400 || !first.body?.id) {
-      return back(told(first.body?.error, say("Brickworks could not share it just now. Try again in a minute.")));
+      job = null;
+      return back(sentence(first, say("Brickworks could not share it just now. Try again in a minute.")));
     }
     job.id = state.id = first.body.id;
+    job.version = Number(first.body.version) || 0;
+    job.lost = false;
     mark("published");
   }
   const id = job.id;
@@ -315,43 +387,28 @@ async function publish(given) {
   }
   const pictures = job.pictures;
   step("publish");
-  status(pictures ? "" : say("Its picture could not be drawn here, so it is shared without one. Share it again from the app for a picture."));
-  // Shared unlisted and drawn without a picture: it is already as asked.
-  if (!pictures && !given.listed) return arrive(id);
-  if (!job.down) {
-    const down = await call(`/api/share?op=unpublish&id=${encodeURIComponent(id)}`, { method: "POST" }).catch(() => ({ status: 0 }));
-    if (down.status !== 200) {
-      // Still shared as it was, by its link, without its picture.
-      return stuck(told(down.body?.error, say("It is shared, but its picture could not be put on its page yet.")));
-    }
-    job.down = true;
+  status("");
+  let unpictured = "";
+  if (!pictures) {
+    unpictured = say("Its picture could not be drawn here, so it is shared without one. Share it again from the app for a picture.");
   } else {
-    // An answer the network dropped: shared again already, or not.
-    const there = await call(`/api/share?id=${encodeURIComponent(id)}`).catch(() => ({ status: 0 }));
-    if (there.status === 200 && there.body?.published) return arrive(id);
-  }
-  const body = { id, name: given.name, model, description: given.description || undefined, licence: given.licence, listed: given.listed, ...(pictures || {}) };
-  let again = await send(body);
-  // Kept from the gallery (the hour's listings, the age rule for a
-  // listing, a model taken out of it): shared by its link all the same.
-  // The hour's publishing used up is refused again, and said.
-  let unlisted = "";
-  if (given.listed && [409, 422, 429].includes(again.status)) {
-    unlisted = told(again.body?.error, "");
-    again = await send({ ...body, listed: false });
-  }
-  // Taken down for its pictures and not yet back: said, as its link says
-  // it, and kept here (the file and its pictures) for Try again.
-  const down = say("Until it is shared again its link says it was taken down: keep this page open and try again.");
-  if (again.status === 0) return stuck(`${say("The network did not answer as it went back on its page.")} ${down}`);
-  if (again.status >= 400) {
-    return stuck(`${told(again.body?.error, say("Brickworks could not finish sharing it just now."))} ${down}`);
+    // Its pictures put on the version just published: no second publish.
+    const put = await call(`/api/share?op=pictures&id=${encodeURIComponent(id)}`,
+      { method: "POST", body: { ...(job.version ? { version: job.version } : {}), ...pictures } }).catch(() => ({ status: 0, body: null }));
+    if (put.status === 0) {
+      return stuck(say("It is shared, but the network did not answer as its picture went on its page. Try again to put it there."));
+    }
+    if (put.status >= 400) {
+      unpictured = `${say("It is shared, but its picture could not be put on its page:")} ${sentence(put)}`;
+    }
   }
   mark("done");
+  const unlisted = job.unlisted;
   job = null;
-  if (unlisted) {
-    state.state = "unlisted";
-    status(say("It is shared by its link, but not listed in the gallery: {why}", { why: unlisted }));
+  if (unlisted || unpictured) {
+    state.state = unlisted ? "unlisted" : "unpictured";
+    status([unlisted ? say("It is shared by its link, but not listed in the gallery: {why}", { why: unlisted }) : "", unpictured]
+      .filter(Boolean).join(" "));
     $("retry").hidden = true;
     $("to-page").href = `${langAt()}/m/${id}`;
     $("to-page").hidden = false;
@@ -360,6 +417,44 @@ async function publish(given) {
     return;
   }
   arrive(id);
+}
+
+/// Whether a publish was refused only for its listing, so it can be shared
+/// by its link instead: a model taken out of the gallery (409), the age rule
+/// for a listing (422), the hour's listings (429, which says "listed"; the
+/// hour's publishing says "published", and is refused either way).
+function listingRefused(answer) {
+  const { error = "" } = answer.body || {};
+  if (answer.status === 409) return true;
+  if (answer.status === 422) return /\blist/i.test(String(error));
+  return answer.status === 429 && /\blisted\b/i.test(String(error));
+}
+
+/// What the server answered, as a sentence in the page's language: the
+/// hour's limits in the page's own words, anything else told() and made a
+/// sentence; [otherwise] when it said nothing.
+function sentence(answer, otherwise = "") {
+  const { error = "" } = answer?.body || {};
+  if (answer?.status === 429) {
+    return /\blisted\b/i.test(String(error))
+      ? say("You have listed a lot in the gallery in the last hour.")
+      : say("You have shared a lot in the last hour. Try again in an hour: your file and what you wrote stay here while this page is open.");
+  }
+  const said = told(error, otherwise);
+  if (!said) return "";
+  const capital = said.charAt(0).toLocaleUpperCase(globalThis.brickworksLang?.locale || "en-US") + said.slice(1);
+  return /[.!?]$/.test(capital) ? capital : `${capital}.`;
+}
+
+/// A link of the person's own made in the last few minutes with this name
+/// and this many bytes of model, or null: what a share whose answer was lost
+/// made, if it made anything.
+async function madeAlready(name, bytes) {
+  const mine = await call("/api/share?op=mine").catch(() => ({ status: 0, body: null }));
+  if (mine.status !== 200) return null;
+  const now = Date.now();
+  return (mine.body?.shared || []).find((row) => row.published && row.name === name && row.bytes === bytes
+    && now - Date.parse(row.updated_at || 0) < LOST_MS) || null;
 }
 
 /// A publish, with what went wrong on the way as a status of 0.
@@ -376,14 +471,6 @@ function arrive(id) {
   state.state = "done";
   location.assign(`${langAt()}/m/${id}`);
 }
-
-// Leaving while its link is taken down for its pictures is asked first:
-// what puts it back (the file, its pictures) is only on this page.
-window.addEventListener("beforeunload", (event) => {
-  if (!job?.down) return;
-  event.preventDefault();
-  event.returnValue = "";
-});
 
 /// Back to the form, nothing kept, with why.
 function back(words) {

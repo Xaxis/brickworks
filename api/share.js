@@ -132,6 +132,11 @@
 //                            step player or the viewer: counted once per
 //                            device, never for a robot (api/_builds.js)
 //   POST ?op=unpublish&id=X  the owner takes it down, every version of it
+//   POST ?op=pictures&id=X   {version, image, cutout?, thumb?}: the pictures
+//                            of the version its owner has just published
+//                            without any, put on it with no publish counted
+//                            (the site's Share from a file draws its
+//                            pictures once the server has the model)
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
@@ -247,6 +252,7 @@ import {
   inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, summary, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
+import { withoutPrivateLines } from "../web/private-lines.js";
 import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
 // What the front leads with, chosen once a day; and the weekly look at the OMR.
 import { featuredSaid, runFeatures } from "./_featured.js";
@@ -718,6 +724,20 @@ async function barredFile(text) {
 async function mayList(owner) {
   const allowed = await db("rpc/may_list", { method: "POST", body: { account: owner } });
   return allowed === true;
+}
+
+/// A publish that lists, counted as one of each or as neither
+/// (supabase/publish_listed.sql): "ok", "listings" or "publishes". Before
+/// that file is applied, the two counted one after the other, as they were.
+async function mayPublishListed(owner) {
+  try {
+    const said = await db("rpc/may_publish_listed", { method: "POST", body: { account: owner } });
+    if (said === "ok" || said === "listings" || said === "publishes") return said;
+  } catch (trouble) {
+    if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
+  }
+  if (!(await mayList(owner))) return "listings";
+  return (await mayPublish(owner)) ? "ok" : "publishes";
 }
 
 // ---------------------------------------------------------------------------
@@ -3095,17 +3115,22 @@ async function publish(request, response) {
   const claims = await verify(bearer(request), request);
   const owner = claims.sub;
   const body = request.body && typeof request.body === "object" ? request.body : {};
+  // What a file says of its builder without their asking (an Author line
+  // with an email address, a place on their computer: web/private-lines.js)
+  // is left out of what is kept, from the app, the connector or the site's
+  // Share from a file alike: anyone with the link can download the file.
+  const model = withoutPrivateLines(body.model).text;
 
   // Everything about the upload is checked before anything is counted
   // or stored, so a refused upload costs nobody a publish.
-  const { parts: lines, bytes, steps, ownSteps, technic, needs } = checkModel(body.model);
+  const { parts: lines, bytes, steps, ownSteps, technic, needs } = checkModel(model);
   // Kept as its page and the app's parts list count it, so its card says
   // what its page does (web295).
-  const parts = piecesIn(body.model, lines);
+  const parts = piecesIn(model, lines);
   // Who modelled it, when it is a model of the app's own Library: found
   // there and held to its file, never taken from what this file says of
   // itself (api/_omr_credit.js). Its licence is then the library model's.
-  const library = await libraryCredit(body.model, needs, { needsOf: (text) => checkModel(text).needs });
+  const library = await libraryCredit(model, needs, { needsOf: (text) => checkModel(text).needs });
   const modelledBy = library
     ? { name: library.name, page: library.page, ...(library.changed ? { changed: true } : {}) } : null;
   const picture = checkImage(body.image);
@@ -3113,12 +3138,13 @@ async function publish(request, response) {
   const cutout = checkImage(body.cutout, "the picture for its page");
   const thumb = checkThumb(body.thumb);
   const madeWith = checkMadeWith(body.made_with);
-  // What the app found, checked against this very file (api/_tested.js).
+  // What the app found, checked against this very file as the app sent it
+  // (api/_tested.js), which it hashed before anything was left out.
   const finding = checkTested(body.tested, body.model);
   // And what moves in it, from its joints (supabase/play.sql), and its own
   // motions' names, from the text itself (supabase/motions.sql).
   const moves = checkMoves(body.moves);
-  const motions = motionsIn(body.model);
+  const motions = motionsIn(model);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   // A credit is the person's profile, by its name, when they have one shown
@@ -3198,7 +3224,7 @@ async function publish(request, response) {
     throw new Refusal("Brickworks took your models out of the gallery, so this one cannot be listed. "
       + "It can still be shared by link: publish it without listing it.", 409);
   }
-  if (listed && (await barredFile(body.model))) {
+  if (listed && (await barredFile(model))) {
     throw new Refusal("Brickworks took this model out of the gallery, so it cannot be listed again, "
       + "at this link or another. It can still be shared by link: publish it without listing it.", 409);
   }
@@ -3211,11 +3237,14 @@ async function publish(request, response) {
     credit: Boolean(author) && author !== (existing?.author ?? null) });
   if (young) throw new Refusal(young, 422);
 
-  if (newlyListed && !(await mayList(owner))) {
+  // Counted as one of each or as neither (supabase/publish_listed.sql): a
+  // listed publish refused for the hour's publishes costs no listing.
+  const allowed = newlyListed ? await mayPublishListed(owner) : (await mayPublish(owner)) ? "ok" : "publishes";
+  if (allowed === "listings") {
     throw new Refusal("you have listed a lot in the gallery in a short time: try again in an hour, "
       + "or publish it without listing it", 429);
   }
-  if (!(await mayPublish(owner))) {
+  if (allowed !== "ok") {
     throw new Refusal("you have published a lot in a short time: try again in an hour", 429);
   }
 
@@ -3252,7 +3281,7 @@ async function publish(request, response) {
       await putFile(`${id}.v${last.n}.mpd`, before, "text/plain");
       // Read as the app reads them: a library's shortcut is its part.
       const table = partsTable();
-      changes = changesBetween(before.toString("utf8"), body.model,
+      changes = changesBetween(before.toString("utf8"), model,
         (id) => Boolean(table && Object.prototype.hasOwnProperty.call(table.parts, id)));
     }
     const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
@@ -3274,7 +3303,7 @@ async function publish(request, response) {
     remixedFromVersion = earlier[0].from_version ?? null;
   }
 
-  await putFile(`${id}.mpd`, body.model, "text/plain").catch(dropNew);
+  await putFile(`${id}.mpd`, model, "text/plain").catch(dropNew);
   if (picture) await putFile(`${id}.png`, picture, "image/png").catch(dropNew);
   else if (existing) await deleteFiles([`${id}.png`]).catch(() => {});
   // An app before cut-outs leaves none, and the picture is shown in its place.
@@ -3344,6 +3373,53 @@ async function publish(request, response) {
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
     made_with: madeKept, modelled_by: modelledKept, ...links(origin, id),
   });
+}
+
+/// How long after its publish a version may still be given its pictures.
+export const PICTURES_WINDOW_MS = 15 * 60 * 1000;
+
+/// ?op=pictures&id=X: the pictures of a version its owner published a
+/// moment ago without any (byfix, 2026-11-21). The site's Share from a file
+/// (web/share-model.js) can draw a model only once the server has it (its
+/// 3D view reads /m/X/scene.json), so it publishes the file, draws it, and
+/// puts the pictures on here: one publish counted, as the app's Share is,
+/// and the link never taken down to do it. Only the owner's link, only its
+/// newest version (the one named, when one is), only within
+/// PICTURES_WINDOW_MS of its publish, and only while it has no picture:
+/// a version that has one is answered as done, with nothing written. Each
+/// picture checked as a publish checks it.
+async function pictures(request, response) {
+  const owner = await signedIn(request);
+  const id = String(request.query?.id || request.body?.id || "");
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const picture = checkImage(body.image);
+  const cutout = checkImage(body.cutout, "the picture for its page");
+  const thumb = checkThumb(body.thumb);
+  if (!picture) throw new Refusal("there is no picture to put on it");
+  const version = body.version;
+  if (version !== undefined && version !== null && !(Number.isInteger(version) && version >= 1)) {
+    throw new Refusal("version is a version's number, from 1");
+  }
+  const row = await ownRow(id);
+  if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
+  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  const newest = (await versionsOf(id, row, 1))[0];
+  if (version !== undefined && version !== null && version !== newest.n) {
+    throw new Refusal("that is not its newest version, so its pictures are not this one's: share it again to give it pictures", 409);
+  }
+  const origin = originOf(request);
+  if (newest.has_image) return response.status(200).json({ id, version: newest.n, pictures: true, already: true, ...links(origin, id) });
+  if (newest.implied || !(Date.now() - Date.parse(newest.at) <= PICTURES_WINDOW_MS)) {
+    throw new Refusal("it was published too long ago to be given pictures now: share it again to give it pictures", 409);
+  }
+  await putFile(`${id}.png`, picture, "image/png");
+  if (cutout) await putFile(`${id}.cutout.png`, cutout, "image/png");
+  if (thumb) await putFile(`${id}.webp`, thumb, "image/webp");
+  // The row first, which its page and card read; the version last, which
+  // says it is done: a write that fails between is put right by asking again.
+  await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { has_image: true, has_thumb: Boolean(thumb) } });
+  await db(`share_versions?model=eq.${id}&n=eq.${newest.n}`, { method: "PATCH", body: { has_image: true } });
+  return response.status(200).json({ id, version: newest.n, pictures: true, already: false, ...links(origin, id) });
 }
 
 async function unpublish(request, response) {
@@ -3520,6 +3596,7 @@ async function handler(request, response) {
     response.setHeader("Cache-Control", "no-store");
     const op = String(request.query?.op || "");
     if (op === "unpublish") return await unpublish(request, response);
+    if (op === "pictures") return await pictures(request, response);
     if (op === "seen") return await seen(request, response);
     if (op === "built") return await built(request, response);
     if (op === "bases") return await basesPut(request, response);

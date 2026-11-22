@@ -20,12 +20,19 @@
 // Nothing here says words: each trouble is a key (TROUBLE), which the page
 // says in its language.
 //
-//   readStudioIo(bytes) -> {text, carried, prints, error}
+//   readStudioIo(bytes) -> {text, carried, prints, error, size}
 //     text      the LDraw text, "" when there is none
 //     carried   how many Part Designer parts came with it
 //     prints    how many of Studio's own prints and stickers it names
 //               (bl_…), which come as the plain part where LDraw has one
 //     error     "" or one of TROUBLE
+//     size      with TROUBLE.TOO_BIG, how many bytes it would unpack to
+//
+// A stranger's file is read as a hostile one (byfix, after byreview,
+// 2026-11-21): no member is inflated that its zip says is bigger than a
+// shared model may be (MOST_BYTES), an inflate is cut off where the member
+// said it ends, and nothing in the file makes this throw, or hold the
+// page's frames for long.
 
 /// Every Studio file's password, published by everyone who has read one.
 const PASSWORD = "soho0909";
@@ -38,22 +45,46 @@ export const TROUBLE = Object.freeze({
   LOCKED: "locked",
   AES192: "aes-192",
   BROWSER: "browser",
+  TOO_BIG: "too-big",
 });
+
+/// The most a shared model may be (api/share.js MAX_MODEL_BYTES): the model
+/// and the parts it carries together.
+export const MOST_BYTES = 2 * 1024 * 1024;
+
+/// The most it inflates in all, the parts it carries with the model: each
+/// is at most MOST_BYTES, and what is kept of them (their faces, not
+/// Studio's pictures for them) is at most that all together.
+const INFLATED_MOST = 4 * MOST_BYTES;
+
+/// How long the reader works before it lets the page draw a frame.
+const SLICE_MS = 12;
 
 const SIGNATURE = { end: 0x06054b50, central: 0x02014b50, local: 0x04034b50 };
 
 /// The model inside [bytes] (an ArrayBuffer or a Uint8Array), as above.
+/// Whatever the bytes are, an answer: a file this cannot follow is damaged.
 export async function readStudioIo(bytes) {
-  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  const none = (error) => ({ text: "", carried: 0, prints: 0, error });
+  try {
+    return await read(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+  } catch {
+    return none(TROUBLE.DAMAGED);
+  }
+}
+
+const none = (error, size = 0) => ({ text: "", carried: 0, prints: 0, error, size });
+
+async function read(data) {
   const entries = entriesOf(data);
   if (typeof entries === "string") return none(entries);
   const model = entries.get("model.ldr");
   if (!model) return none(TROUBLE.NO_MODEL);
+  if (model.size > MOST_BYTES) return none(TROUBLE.TOO_BIG, model.size);
   const unpacked = await unpack(data, model);
   if (typeof unpacked === "string") return none(unpacked);
-  let text = textOf(unpacked);
+  const text = textOf(unpacked);
   const named = namedParts(text);
+  const prints = [...named].filter((one) => one.startsWith("bl_")).length;
   // Part Designer's parts, by the name a part line gives them: Studio keeps
   // them as LDraw's library keeps its own (CustomParts/parts/x.dat named
   // x.dat, parts/s/y.dat named s/y.dat, p/z.dat named z.dat).
@@ -62,23 +93,42 @@ export async function readStudioIo(bytes) {
     if (!name.startsWith("customparts/") || !name.endsWith(".dat")) continue;
     custom.set(name.slice("customparts/".length).replace(/^(?:parts|p)\//, ""), entry);
   }
-  // Each the model names and does not carry, and each those name in turn.
+  // Each the model names and does not carry, and each those name in turn,
+  // added after the model as a section of its own. The sections there are
+  // known by name as they come, so a file with thousands is read once.
+  const sections = sectionsIn(text);
+  const added = [];
+  let inflated = unpacked.length;
+  let kept = text.length;
   let carried = 0;
   const wanted = [...named].filter((one) => custom.has(one));
   const done = new Set();
-  while (wanted.length) {
-    const file = wanted.shift();
-    if (done.has(file) || carriedAlready(text, file)) continue;
+  let slice = performance.now();
+  for (let next = 0; next < wanted.length; next += 1) {
+    const file = wanted[next];
+    if (done.has(file) || sections.has(file)) continue;
     done.add(file);
-    const part = await unpack(data, custom.get(file));
+    const entry = custom.get(file);
+    if (entry.size > MOST_BYTES || inflated + entry.size > INFLATED_MOST) return none(TROUBLE.TOO_BIG, inflated + entry.size);
+    const part = await unpack(data, entry);
     if (typeof part === "string") continue;
+    inflated += part.length;
     const lines = plainLines(textOf(part));
-    text = `${text.replace(/\s*$/, "")}\r\n0 NOFILE\r\n0 FILE ${originalName(custom.get(file), file)}\r\n${lines}\r\n`;
+    const own = originalName(entry, file);
+    added.push(`\r\n0 NOFILE\r\n0 FILE ${own}${lines ? `\r\n${lines}` : ""}`);
+    // Each character at least a byte: past the most, whatever the page counts.
+    kept += added[added.length - 1].length;
+    if (kept > MOST_BYTES) return none(TROUBLE.TOO_BIG, kept);
+    for (const one of sectionsIn(`0 FILE ${own}\r\n${lines}`)) sections.add(one);
     carried += 1;
     for (const one of namedParts(lines)) if (custom.has(one) && !done.has(one)) wanted.push(one);
+    if (performance.now() - slice > SLICE_MS) {
+      await new Promise((go) => setTimeout(go, 0));
+      slice = performance.now();
+    }
   }
-  const prints = [...named].filter((one) => one.startsWith("bl_")).length;
-  return { text, carried, prints, error: "" };
+  if (!carried) return { text, carried, prints, error: "", size: 0 };
+  return { text: `${text.replace(/\s*$/, "")}${added.join("")}\r\n`, carried, prints, error: "", size: 0 };
 }
 
 /// The zip's members by their lower-case path: where each starts and how it
@@ -100,6 +150,8 @@ function entriesOf(data) {
   const utf8 = new TextDecoder("utf-8");
   for (let k = 0; k < count; k += 1) {
     if (at + 46 > data.length || u32(at) !== SIGNATURE.central) return TROUBLE.DAMAGED;
+    // Its name, extra field and comment all inside the file, as stated.
+    if (at + 46 + u16(at + 28) + u16(at + 30) + u16(at + 32) > data.length) return TROUBLE.DAMAGED;
     const flags = u16(at + 8);
     const method = u16(at + 10);
     const time = u16(at + 12);
@@ -140,8 +192,15 @@ function aesField(view, from, length) {
   return null;
 }
 
-/// A member's bytes, unlocked and inflated, or a TROUBLE key.
+/// A member's bytes, unlocked and inflated, or a TROUBLE key. Only a
+/// member the page could share is unpacked: one stated bigger than a shared
+/// model is refused before anything is done with it, one whose packed bytes
+/// could never inflate to what it states is damaged, and one that inflates
+/// past what it states is cut off there.
 async function unpack(data, entry) {
+  if (entry.size > MOST_BYTES) return TROUBLE.TOO_BIG;
+  // Deflate makes nothing much bigger than it was: 5 bytes a block at worst.
+  if (entry.packed > entry.size + (entry.size >> 3) + 1024) return TROUBLE.DAMAGED;
   let raw = data.subarray(entry.start, entry.start + entry.packed);
   let method = entry.method;
   // AE-2 states no CRC: what vouches for the data is the cipher's own check.
@@ -163,7 +222,7 @@ async function unpack(data, entry) {
   let out;
   if (method === 0) out = raw;
   else if (method === 8) {
-    out = await inflate(raw).catch((trouble) => (trouble instanceof TypeError ? TROUBLE.BROWSER : TROUBLE.DAMAGED));
+    out = await inflate(raw, entry.size);
     if (typeof out === "string") return out;
   } else return TROUBLE.DAMAGED;
   if (out.length !== entry.size) return TROUBLE.DAMAGED;
@@ -171,11 +230,35 @@ async function unpack(data, entry) {
   return out;
 }
 
-/// Raw deflate, inflated by the browser. A browser without "deflate-raw"
-/// throws a TypeError as the stream is made.
-async function inflate(raw) {
-  const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+/// Raw deflate, inflated by the browser a piece at a time, and stopped as
+/// soon as it is more than the [most] bytes its member said: the bytes or a
+/// TROUBLE key. A browser without "deflate-raw" throws as the stream is
+/// made; deflate that does not hold, as it is read.
+async function inflate(raw, most) {
+  let unpacking;
+  try {
+    unpacking = new DecompressionStream("deflate-raw");
+  } catch {
+    return TROUBLE.BROWSER;
+  }
+  const reader = new Blob([raw]).stream().pipeThrough(unpacking).getReader();
+  const out = new Uint8Array(most);
+  let length = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (length + value.length > most) {
+        reader.cancel().catch(() => {});
+        return TROUBLE.DAMAGED;
+      }
+      out.set(value, length);
+      length += value.length;
+    }
+  } catch {
+    return TROUBLE.DAMAGED;
+  }
+  return out.subarray(0, length);
 }
 
 let crcTable = null;
@@ -263,10 +346,12 @@ async function openAes(data, strength) {
   return plain;
 }
 
+const utf8 = new TextDecoder("utf-8");
+
 /// A member's bytes as text: Studio starts its text with a byte-order mark.
 function textOf(bytes) {
   const start = bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0;
-  return new TextDecoder("utf-8").decode(bytes.subarray(start));
+  return utf8.decode(bytes.subarray(start));
 }
 
 /// Every file name the model's part lines name, in lower case, as LDraw
@@ -290,10 +375,14 @@ function afterFields(line, n) {
 }
 const fieldsAt = {};
 
-/// Whether [text] already has a section for [file].
-function carriedAlready(text, file) {
-  return text.split(/\r?\n/).some((raw) => /^0\s+FILE\s/i.test(raw.trim())
-    && afterFields(raw.trim(), 2).toLowerCase() === file);
+/// The sections [text] has, by the name its 0 FILE lines give, in lower case.
+function sectionsIn(text) {
+  const out = new Set();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (/^0\s+FILE\s/i.test(line)) out.add(afterFields(line, 2).toLowerCase());
+  }
+  return out;
 }
 
 /// The part's own name as the zip spells it.

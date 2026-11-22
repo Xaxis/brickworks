@@ -104,20 +104,19 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
 }
 .search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
-/* Share yours at the head's end, beside the search (web/share-model.html):
-   on a phone its icon alone, its name its label. */
+/* Share yours at the head's end, beside the search (web/share-model.html).
+   On a phone it stays a word, beside the title, and the search has a row
+   of its own, so its words are read whole (byfix: three controls in one
+   row left an icon alone and the search's words cut off). */
 .gallery-head .search { margin-left: auto; }
 @media (width < 600px) {
 	.browse-band { padding-top: var(--s-4); }
-	.gallery-head { flex-wrap: nowrap; align-items: center; }
+	.gallery-head { align-items: center; column-gap: var(--s-3); }
 	.gallery-head .lede, .search .hint { display: none; }
-	.search { flex: 1 1 auto; max-width: none; }
+	.gallery-title { flex: 1 1 auto; }
+	.share-yours { flex: none; }
+	.gallery-head .search { order: 1; flex: 1 1 100%; max-width: none; margin-left: 0; }
 	.search input { padding-right: 12px; }
-	.gallery-head { column-gap: var(--s-3); }
-	.gallery-title, .share-yours { flex: none; }
-	.search { min-width: 0; }
-	.share-yours { padding: 0; width: var(--control-h); }
-	.share-yours .word { display: none; }
 }
 
 /* The tabs, and Top's time at the row's end. The tabs scroll inside

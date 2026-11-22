@@ -25,10 +25,14 @@
 //   7. Signed out, Share it asks to sign in first and sends nothing; an
 //      account answered under 13 is refused in words and nothing is kept.
 //   And Studio's files read in the page: 2021's (PKWARE), AES-256's, and
-//   2025's with a Part Designer part, which is shared too. A share whose
-//   answer is lost after its link was taken down for its pictures says so,
-//   asks before the page is left, and Try again goes on to version 1; the
-//   form is each file's own.
+//   2025's with a Part Designer part, which is shared too. A share is one
+//   publish and its pictures put on its version 1 (?op=pictures), its link
+//   never taken down (byfix). A publish whose answer is lost after the
+//   server kept it says so, and Share it again uses the link it made, not a
+//   second; pictures whose answer is lost are put on by Try again. A file's
+//   Author line with an address and its folders are left out, and said; the
+//   form says anyone with the link can download the file. The form is each
+//   file's own, and the focus goes to the progress as the form goes.
 // Pictures of each state at 1280, 768 and 390 in light and dark in --out.
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -85,6 +89,8 @@ writeFileSync(at("empty.ldr"), "");
 writeFileSync(at("title_only.ldr"), "0 Just a title\n0 Name: title_only.ldr\n0 STEP\n");
 copyFileSync(path.join(root, "tests/fixtures/studio/libarchive_aes256.zip"), at("no_model.io"));
 writeFileSync(at("wrong_line.ldr"), "0 Wrong line\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\nhello there\n");
+writeFileSync(at("authored.ldr"), ["0 Authored", "0 Name: C:\\Users\\jane\\authored.ldr", "0 Author: Jane <jane@example.com>",
+  "0 !LEOCAD MODEL BACKGROUND IMAGE_NAME C:\\Users\\jane\\Pictures\\sky.png", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", ""].join("\r\n"));
 copyFileSync(path.join(root, "src/dev/fixtures/49311_test.lxf"), at("model.lxf"));
 const STUDIO_FIXTURES = path.join(root, "tests/fixtures/studio");
 
@@ -180,6 +186,12 @@ async function shareOne(page, file, { from = files, phone = false, shotName = ""
     await page.keyboard.press("Enter");
   } else if (phone) await page.tap("#share"); else await page.click("#share");
   taps += 1;
+  // The form goes as it shares, and the focus with it to the progress.
+  if (!twice) {
+    await page.waitForSelector("#working:not([hidden])", { timeout: 15000 }).catch(() => null);
+    const focused = await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName).catch(() => "");
+    ok(focused === "working-h", `${file}: the focus on the progress as the form goes (${focused})`);
+  }
   if (shotName && working) {
     await page.waitForSelector("#working:not([hidden])", { timeout: 15000 }).catch(() => null);
     await page.waitForFunction(() => window.brickworks3d?.state === "ready", null, { timeout: 90000 }).catch(() => null);
@@ -205,8 +217,8 @@ async function shareOne(page, file, { from = files, phone = false, shotName = ""
     await shot(page, `${shotName}_page`);
   }
   console.log(`  (${file}: POSTs ${sent.map((one) => `${one.op} ${one.status}`).join(", ")})`);
-  const ops = sent.filter((one) => ["publish", "unpublish"].includes(one.op)).map((one) => one.op).join(",");
-  ok(!arrived || ops === "publish,unpublish,publish", `${file}: one share sent${twice ? " for Enter pressed twice" : ""} (${ops})`);
+  const ops = sent.filter((one) => ["publish", "unpublish", "pictures"].includes(one.op)).map((one) => one.op).join(",");
+  ok(!arrived || ops === "publish,pictures", `${file}: one publish and its pictures${twice ? ", for Enter pressed twice" : ""}, its link never taken down (${ops})`);
   return { id, seconds, taps };
 }
 
@@ -293,6 +305,20 @@ try {
   const longAbout = (await page.locator("#about-said:not([hidden])").textContent({ timeout: 5000 }).catch(() => "")) || "";
   ok(/1[,.\u00a0\u202f]?000/.test(longAbout), `words of 1001 characters refused in words ("${longAbout.trim()}")`);
   ok(sent.length === 0, `nothing sent for any of those (${sent.length} POSTs)`);
+  // What a file says of its builder unasked: left out, and said; and the
+  // form says the file itself can be downloaded.
+  await page.click("#again");
+  await choose(page, "authored.ldr");
+  await page.waitForSelector("#details:not([hidden])", { timeout: 15000 });
+  const readSaid = (await page.locator("#read").textContent()) || "";
+  const downloadSaid = await page.locator("#download-said").isVisible() ? (await page.locator("#download-said").textContent()) || "" : "";
+  ok(/email address in its Author line is left out/.test(readSaid) && /folders on your computer are left out/.test(readSaid),
+    `authored.ldr: its address and its folders left out, and said ("${readSaid.trim()}")`);
+  ok(/download the file itself/.test(downloadSaid), `the form says anyone with the link can download the file ("${downloadSaid.trim().slice(0, 80)}")`);
+  await shot(page, "1280_authored");
+  await choose(page, "three_core_rocket.mpd");
+  await page.waitForSelector("#details:not([hidden])", { timeout: 15000 });
+  await page.fill("#name", "Rocket");
   await page.fill("#about", "");
   await choose(page, "wrong_line.ldr");
   await page.waitForSelector("#details:not([hidden])", { timeout: 15000 });
@@ -322,21 +348,18 @@ try {
   }
   await desk.close();
 
-  // A share stopped as it went back on its page (its answer lost after the
-  // link was taken down for its pictures): said so, leaving asked first,
-  // and Try again goes on from there to version 1 with its pictures. And
-  // the form is each file's: words typed for one are not carried onto the
-  // next.
+  // A publish whose answer is lost after the server kept it: said so, and
+  // Share it again uses the link it made (op=mine), not a second. And the
+  // form is each file's: words typed for one are not carried onto the next.
   const halt = await browser.newContext({ viewport: { width: 1280, height: 800 }, extraHTTPHeaders: headers });
   const haltPage = await halt.newPage();
   const haltSent = posts(haltPage);
   let lost = 0;
-  await haltPage.route("**/api/share", (route) => {
+  await haltPage.route("**/api/share", async (route) => {
     const request = route.request();
-    let body = {};
-    try { body = request.postDataJSON() || {}; } catch {}
-    if (request.method() === "POST" && body.id && lost === 0) {
+    if (request.method() === "POST" && !new URL(request.url()).searchParams.get("op") && lost === 0) {
       lost += 1;
+      await route.fetch();
       return route.abort("connectionreset");
     }
     return route.continue();
@@ -356,30 +379,68 @@ try {
   const stopped = await haltPage.waitForFunction(() => window.brickworksShare.state === "stuck", null, { timeout: 120000 })
     .then(() => true).catch(() => false);
   const stoppedSaid = (await haltPage.locator("#status").textContent().catch(() => "")) || "";
-  ok(stopped && /taken down/.test(stoppedSaid) && await haltPage.locator("#retry").isVisible(),
-    `its answer lost after the link was taken down: said, with Try again ("${stoppedSaid.trim().slice(0, 160)}")`);
-  const leaveAsked = await haltPage.evaluate(() => {
-    const leaving = new Event("beforeunload", { cancelable: true });
-    window.dispatchEvent(leaving);
-    return leaving.defaultPrevented;
-  });
-  ok(leaveAsked, "and leaving the page then is asked first");
+  const again = (await haltPage.locator("#retry").textContent().catch(() => "")) || "";
+  ok(stopped && /not known whether it was shared/.test(stoppedSaid) && again.trim() === "Share it again" && await haltPage.locator("#retry").isVisible(),
+    `its publish's answer lost: said, with ${again.trim()} ("${stoppedSaid.trim().slice(0, 160)}")`);
   await shot(haltPage, "1280_stopped");
   await haltPage.unroute("**/api/share");
   await haltPage.click("#retry");
   const resumed = await haltPage.waitForURL(/\/m\/[A-Za-z0-9]{10}(?:[?#].*)?$/, { timeout: 120000, waitUntil: "domcontentloaded" })
     .then(() => true).catch(() => false);
   const haltId = resumed ? new URL(haltPage.url()).pathname.split("/").pop() : "";
-  ok(resumed, `Try again went on to its own page (/m/${haltId})`);
-  const haltOps = haltSent.filter((one) => ["publish", "unpublish"].includes(one.op)).map((one) => `${one.op} ${one.status}`).join(", ");
-  ok(lost === 1 && /^publish 201, unpublish 200, publish 20\d$/.test(haltOps), `one link, taken down once (${haltOps}; ${lost} lost)`);
+  ok(resumed, `Share it again went on to its own page (/m/${haltId})`);
+  const haltOps = haltSent.filter((one) => ["publish", "unpublish", "pictures"].includes(one.op)).map((one) => `${one.op} ${one.status}`).join(", ");
+  const mine = await haltPage.evaluate(async () => {
+    const { call } = await import("/account.js");
+    return (await call("/api/share?op=mine")).body;
+  }).catch(() => null);
+  const named = (mine?.shared || []).filter((row) => row.name === "bay_2021");
+  ok(lost === 1 && /^pictures 200$/.test(haltOps) && (!mine || named.length === 1),
+    `one link: the lost publish's, given its pictures (${haltOps || "none"} after the lost one; ${mine ? `${named.length} named bay_2021` : "its list not read here"})`);
   if (haltId) {
     made.push(haltId);
     const { readStudioIo } = await import("../../web/studio-io.js");
     const read = await readStudioIo(readFileSync(path.join(STUDIO_FIXTURES, "bay_2021.io")));
-    await judge(haltId, "bay_2021.io (Try again)", read.text);
+    await judge(haltId, "bay_2021.io (Share it again)", read.text);
   }
   await halt.close();
+
+  // Its pictures' answer lost after the server kept them: Try again puts
+  // them on (answered as done), and nothing is published again.
+  const late = await browser.newContext({ viewport: { width: 1280, height: 800 }, extraHTTPHeaders: headers });
+  const latePage = await late.newPage();
+  const lateSent = posts(latePage);
+  let lateLost = 0;
+  await latePage.route((url) => url.pathname === "/api/share" && url.searchParams.get("op") === "pictures", async (route) => {
+    if (lateLost === 0) {
+      lateLost += 1;
+      await route.fetch();
+      return route.abort("connectionreset");
+    }
+    return route.continue();
+  });
+  await latePage.goto(`${site}/share-model`, { waitUntil: "domcontentloaded" });
+  await latePage.waitForFunction(() => window.brickworksShare, null, { timeout: 30000 });
+  await choose(latePage, "gatehouse_2025.io", STUDIO_FIXTURES);
+  await latePage.waitForSelector("#details:not([hidden])", { timeout: 15000 });
+  await latePage.click("#share");
+  const lateStopped = await latePage.waitForFunction(() => window.brickworksShare.state === "stuck", null, { timeout: 120000 })
+    .then(() => true).catch(() => false);
+  const lateSaid = (await latePage.locator("#status").textContent().catch(() => "")) || "";
+  ok(lateStopped && /It is shared/.test(lateSaid), `its pictures' answer lost: said it is shared, with Try again ("${lateSaid.trim().slice(0, 140)}")`);
+  await latePage.click("#retry");
+  const lateArrived = await latePage.waitForURL(/\/m\/[A-Za-z0-9]{10}(?:[?#].*)?$/, { timeout: 120000, waitUntil: "domcontentloaded" })
+    .then(() => true).catch(() => false);
+  const lateId = lateArrived ? new URL(latePage.url()).pathname.split("/").pop() : "";
+  const lateOps = lateSent.filter((one) => ["publish", "unpublish", "pictures"].includes(one.op)).map((one) => `${one.op} ${one.status}`).join(", ");
+  ok(lateArrived && /^publish 201, pictures 200$/.test(lateOps), `Try again went on to its page with its pictures, one publish (${lateOps} after the lost one; /m/${lateId})`);
+  if (lateId) {
+    made.push(lateId);
+    const { readStudioIo } = await import("../../web/studio-io.js");
+    const read = await readStudioIo(readFileSync(path.join(STUDIO_FIXTURES, "gatehouse_2025.io")));
+    await judge(lateId, "gatehouse_2025.io (Try again)", read.text);
+  }
+  await late.close();
 
   // Clauses 1-4 on a phone: the locked Studio file.
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
