@@ -384,6 +384,11 @@ http.createServer(async (incoming, outgoing) => {
     handler = await route("people");
     Object.assign(query, { op: "challenge_page" }, challenged[1] ? { lang: challenged[1] } : {});
   }
+  // /challenge.png: the picture of the challenge shown now (challengehonours).
+  if (!handler && url.pathname === "/challenge.png") {
+    handler = await route("people");
+    Object.assign(query, { op: "challenge", picture: "1" });
+  }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.
   if (site && /^\/app\/?$/.test(url.pathname)) {

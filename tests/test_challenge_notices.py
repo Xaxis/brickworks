@@ -162,6 +162,10 @@ def test_a_challenges_link_shows_that_challenge() -> None:
       console.log(JSON.stringify({
         ended: tags(challengeHead(html, "https://x", page)),
         open: tags(challengeHead(html, "https://x", { ...page, state: "open", winners: [], test: true }, true)),
+        bare: tags(challengeHead(html, "https://x", { ...page, state: "open", winners: [],
+          entries: page.entries.map((one) => ({ ...one, card: { ...one.card, has_image: false } })) })),
+        covered: tags(challengeHead(html, "https://x", { ...page, state: "open", winners: [] }, false, "en",
+          { cover: { id: "SamModel01", has_image: true } })),
         same: challengeHead(html, "https://x", null) === html,
         body: challengeHead(html, "https://x", page).split("</head>")[1] === html.split("</head>")[1],
       }));
@@ -177,9 +181,13 @@ def test_a_challenges_link_shows_that_challenge() -> None:
     # The first winner with a picture: the hand's has none, the assistant's has.
     assert ended["og:image"] == ended["twitter:image"] == "https://x/m/PriyaSpc01.png"
     assert "robots" not in ended
-    # A test challenge, asked as a test: its own address, never found, and the site's picture.
+    # A test challenge, asked as a test: its own address, never found.
     assert opened["og:url"] == "https://x/challenge?id=7&amp;tests=1" and opened["robots"] == "noindex"
-    assert opened["og:description"].endswith("Open 1 to 31 October 2026.") and opened["og:image"] == "https://x/share.png"
+    # Open, its own picture (challengehonours): its newest entry with one,
+    # the site's only when no entry has a picture; its cover before either.
+    assert opened["og:description"].endswith("Open 1 to 31 October 2026.") and opened["og:image"] == "https://x/m/PriyaSpc01.png"
+    assert out["bare"]["og:image"] == out["bare"]["twitter:image"] == "https://x/share.png"
+    assert out["covered"]["og:image"] == "https://x/m/SamModel01.png"
     assert out["same"] is True and out["body"] is True
 
 

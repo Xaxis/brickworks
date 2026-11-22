@@ -27,10 +27,20 @@
   (web/share-sheet.js) with the challenge's own page, /challenge?id=N, so a
   link posted while one runs still opens it once the next has begun.
 
+  Judges and a fan vote (challengehonours, supabase/challenge_rounds.sql): a
+  challenge may run in rounds, entries to a day, then a shortlist of up to
+  five in each group chosen by Brickworks or a guest judge named here, then
+  a fan vote for the shortlist alone, each round with its countdown. Its
+  link's picture (og:image) is the challenge open now's own: its cover, its
+  winner or an entry (/challenge.png, which tools/deploy.sh routes to
+  /api/people?op=challenge&picture=1; robots.txt keeps crawlers off /api/).
+
   challenge.js draws it from /api/people?op=challenge, every name as text
   and never as markup, with the gallery's own cards. No inline script: the
-  site's content security policy allows none it has not hashed. No style of
-  its own: the look is /site.css and /directory.css.
+  site's content security policy allows none it has not hashed. Its look is
+  /site.css and /directory.css; the few lines below only hold the head
+  unseen until it is drawn, so nothing in it moves as it loads (it moved
+  0.19 at 390 before), and lay out the rounds.
 -->
 <html lang="en">
 <head>
@@ -54,18 +64,32 @@
 <meta property="og:title" content="This month’s Brickworks challenge">
 <meta property="og:description" content="Build to the brief, keep the rules Brickworks checks, and vote for the best built by hand and with the assistant.">
 <meta property="og:url" content="https://brickworks.diy/challenge">
-<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image" content="https://brickworks.diy/challenge.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="This month’s Brickworks challenge">
 <meta name="twitter:description" content="Build to the brief, keep the rules Brickworks checks, and vote for the best built by hand and with the assistant.">
-<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="twitter:image" content="https://brickworks.diy/challenge.png">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<style>
+/* The head unseen until challenge.js has drawn it (<html data-challenge>),
+   then drawn whole in one frame: what it says moves nothing in view. */
+:root:not([data-challenge]) .challenge-top { visibility: hidden; }
+/* The rounds, where it runs in rounds: each a line with its days, the one
+   it is in marked. */
+.rounds { display: grid; gap: var(--s-2); margin: var(--s-4) 0 0; padding: var(--s-4) 0 0; border-top: 1px solid var(--line); list-style: none; }
+.rounds[hidden] { display: none; }
+.rounds li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
+.rounds li b { color: var(--ink); font-weight: 650; }
+.rounds li[aria-current="step"] b::before { content: "● "; color: var(--accent-edge); }
+.challenge-head .judge { margin: var(--s-3) 0 0; color: var(--ink-soft); font-size: var(--t-small); }
+</style>
+<noscript><style>:root:not([data-challenge]) .challenge-top { visibility: visible; }</style></noscript>
 <script src="/follow.js" type="module"></script>
 <script src="/challenge.js" type="module"></script>
 </head>
@@ -113,6 +137,7 @@
 					<p class="challenge-status"><span class="badge" id="status" hidden></span><span class="eyebrow" id="eyebrow">Monthly challenge</span></p>
 					<h1 id="title">This month’s challenge</h1>
 					<p class="lede" id="brief"><span class="bone wide"></span><span class="bone"></span></p>
+					<p class="judge" id="judge" hidden></p>
 					<div class="rules-box" id="rules-part" hidden>
 						<p class="rules-h" id="rules-h">The rules Brickworks checks</p>
 						<ul class="ticks" id="rules" aria-labelledby="rules-h"></ul>
@@ -137,6 +162,7 @@
 					</div>
 					<p class="days" id="days"><span class="bone"></span></p>
 					<div class="reach" id="reach" aria-hidden="true" hidden><span></span></div>
+					<ol class="rounds" id="rounds" aria-label="Its rounds" hidden></ol>
 					<ul class="numbers" id="numbers" hidden></ul>
 				</aside>
 			</div>
@@ -177,6 +203,13 @@
 				<div>
 					<p>People signed in and 13 or over vote, once in each group, and never for a model of their own. A vote cannot be moved once it is cast.</p>
 					<p>The votes stay hidden until the challenge ends, so nobody follows the crowd. Then they are counted, and the most voted entry in each group wins; a tie goes to the one entered first.</p>
+				</div>
+			</details>
+			<details class="qa">
+				<summary>How judging works</summary>
+				<div>
+					<p>Some challenges run in rounds. Entries come in first. Then the judges, Brickworks or a guest judge named on the page, choose a shortlist of up to five in each group. Then everyone votes once in each group, for the shortlist alone.</p>
+					<p>The winners are This week’s pick in the gallery the week after, and each carries the win on their profile.</p>
 				</div>
 			</details>
 			<details class="qa">

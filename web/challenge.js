@@ -17,6 +17,14 @@
 // does (op=enter), the server checking the rules; signed out, it asks you to
 // sign in first.
 //
+// Judges and a fan vote (challengehonours): a challenge in rounds (c.rounds)
+// takes entries to entries_until, then Brickworks or the guest judge named
+// in the head (#judge) chooses a shortlist of up to five in each group,
+// then everyone votes once in each group for the shortlist alone from
+// votes_from. The head's badge, eyebrow and countdown follow the round, its
+// days are listed under the countdown (#rounds), Enter is there only while
+// entries come in, and a shortlisted card says so and leads its group.
+//
 // Names and credits were typed by strangers, so every one goes on the page
 // as text, never as markup; a link is built from a model's id alone. Its
 // words are the page's language's (web/de/challenge.html and the others,
@@ -50,6 +58,14 @@ const daysOf = (from, to) => DAY.formatRange(startOf(from), startOf(to));
 /// A group's name, by its way (api/_challenges.js WAYS).
 const wayName = (way) => (way === "assistant" ? say("Built with the assistant") : say("Built by hand"));
 const all = (c) => (c.groups || []).flatMap((one) => (one.entries || []).filter((entry) => ID.test(String(entry.id))));
+/// Where challenge [c] is: its state, or for one open in rounds its round
+/// (entries, judging, vote).
+const roundOf = (c) => (c.state === "open" && c.rounds ? c.round || "entries" : c.state);
+/// Whether entries come in now, and whether votes may be cast now.
+const entering = (c) => c.state === "open" && (!c.rounds || roundOf(c) === "entries");
+const voting = (c) => c.state === "open" && (!c.rounds || roundOf(c) === "vote");
+/// Whether [entry] may be voted for in [c]: in rounds, the shortlist alone.
+const votable = (c, entry) => voting(c) && (!c.rounds || entry.shortlisted === true);
 
 let state = null;
 // The tab shown and the order, from the address until a press changes them.
@@ -142,7 +158,7 @@ function numbers(c) {
     item.append(el("b", "", number(n)), " ", el("span", "", say(n === 1 ? one : many)));
     return item;
   });
-  if (!items.length && c.state === "open") {
+  if (!items.length && entering(c)) {
     const item = el("li");
     item.dataset.number = "none";
     item.append(el("span", "", say("No entries yet: be the first.")));
@@ -152,20 +168,64 @@ function numbers(c) {
   list.hidden = !items.length;
 }
 
+/// Who chooses the shortlist, in the head: the guest judge named, with a
+/// link to their profile while it is shown, else Brickworks.
+function drawJudge(c) {
+  const line = $("judge");
+  line.replaceChildren();
+  line.hidden = !c.rounds;
+  if (!c.rounds) return;
+  const judge = c.judge?.name ? el(c.judge.handle ? "a" : "b", "", c.judge.name) : null;
+  if (judge && c.judge.handle) judge.href = `${langAt()}/u/${encodeURIComponent(c.judge.handle)}`;
+  if (judge) {
+    sayInto(line, c.state === "ended" || c.shortlisted ? say("Shortlist chosen by guest judge {judge}")
+      : say("Guest judge {judge} chooses the shortlist"), { judge });
+  } else {
+    line.textContent = c.state === "ended" || c.shortlisted ? say("Shortlist chosen by Brickworks") : say("Brickworks chooses the shortlist");
+  }
+}
+
+/// The rounds under the countdown: entries, the judges' shortlist and the
+/// fan vote, each with its days, the one it is in marked.
+function drawRounds(c) {
+  const list = $("rounds");
+  list.hidden = !c.rounds;
+  if (!c.rounds) return list.replaceChildren();
+  const round = roundOf(c);
+  const dayAfter = (iso) => new Date(startOf(iso) + 86400000).toISOString().slice(0, 10);
+  const lastJudged = new Date(startOf(c.votes_from) - 86400000).toISOString().slice(0, 10);
+  const steps = [
+    ["entries", say("Entries"), daysOf(c.starts_on, c.entries_until)],
+    ["judging", say("The judges’ shortlist"), c.shortlisted ? say("Out now") : dayAfter(c.entries_until) <= lastJudged
+      ? daysOf(dayAfter(c.entries_until), lastJudged) : say("Before the fan vote")],
+    ["vote", say("Fan vote"), daysOf(c.votes_from, c.ends_on)],
+  ];
+  list.replaceChildren(...steps.map(([step, name, when]) => {
+    const item = el("li");
+    item.dataset.round = step;
+    if (step === round) item.setAttribute("aria-current", "step");
+    item.append(el("b", "", name), el("span", "", when));
+    return item;
+  }));
+}
+
 function drawHead(c) {
   const open = c.state === "open";
   const ended = c.state === "ended";
+  const round = roundOf(c);
   $("crumbs").hidden = !asked;
   $("crumb").textContent = c.title;
   const status = $("status");
   status.hidden = false;
   status.className = `badge ${open ? "good" : ended ? "" : "accent"}`.trim();
-  status.textContent = open ? say("Open") : ended ? say("Ended") : say("Opens soon");
+  status.textContent = round === "entries" && c.rounds ? say("Entries open") : round === "judging" ? say("Judging")
+    : round === "vote" ? say("Fan vote") : open ? say("Open") : ended ? say("Ended") : say("Opens soon");
   $("eyebrow").textContent = open ? say("This month’s challenge") : c.state === "upcoming" ? say("The next challenge")
     : asked ? say("A past challenge") : say("The last challenge");
   $("title").textContent = c.title;
   document.title = say("{title} · a Brickworks challenge", { title: c.title });
   $("brief").textContent = c.brief;
+  drawJudge(c);
   // Said from the rules themselves (web/card.js rulesSaid), as the model's
   // page says them, not as the server wrote them.
   const said = rulesSaid({ most_parts: c.rules?.most_parts, set_number: c.rules?.set?.number, set_name: c.rules?.set?.name,
@@ -175,9 +235,9 @@ function drawHead(c) {
   $("no-rules").hidden = said.length > 0;
   $("rules-part").hidden = false;
 
-  // The way in: Enter while it is open; before it opens, the app.
-  $("enter").hidden = !open;
-  $("enter-note").hidden = !open;
+  // The way in: Enter while entries come in; before it opens, the app.
+  $("enter").hidden = !entering(c);
+  $("enter-note").hidden = !entering(c);
   $("start").hidden = c.state !== "upcoming";
   $("to-hub").hidden = !asked;
   $("to-hub").href = `${langAt()}/challenge${tests ? "?tests=1" : ""}`;
@@ -194,16 +254,26 @@ function drawHead(c) {
   // through its days it is; once ended, what came of it.
   clearInterval(ticking);
   $("countdown").hidden = true;
-  $("clock-h").textContent = open ? say("Ends in") : ended ? say("Final results") : say("Opens in");
+  $("clock-h").textContent = round === "entries" && c.rounds ? say("Entries close in") : round === "judging"
+    ? (startOf(c.votes_from) > Date.now() ? say("Fan vote opens in") : say("The judges are choosing"))
+    : round === "vote" ? say("Fan vote ends in") : open ? say("Ends in") : ended ? say("Final results") : say("Opens in");
   const days = daysOf(c.starts_on, c.ends_on);
   const reach = $("reach");
   reach.hidden = !open;
-  if (open) {
+  drawRounds(c);
+  if (open && c.rounds && round !== "vote") {
     const total = Math.round((endOf(c.ends_on) - startOf(c.starts_on)) / 86400000);
     const today = Math.min(total, Math.floor((Date.now() - startOf(c.starts_on)) / 86400000) + 1);
     $("days").textContent = say("{days} · day {day} of {total}", { days, day: number(today), total: number(total) });
     reach.firstElementChild.style.width = `${Math.max(2, Math.min(100, (today / total) * 100)).toFixed(1)}%`;
-    countdown(endOf(c.ends_on), (time) => say("Ends in {time}", { time }));
+    if (round === "entries") countdown(endOf(c.entries_until), (time) => say("Entries close in {time}", { time }));
+    else if (startOf(c.votes_from) > Date.now()) countdown(startOf(c.votes_from), (time) => say("Fan vote opens in {time}", { time }));
+  } else if (open) {
+    const total = Math.round((endOf(c.ends_on) - startOf(c.starts_on)) / 86400000);
+    const today = Math.min(total, Math.floor((Date.now() - startOf(c.starts_on)) / 86400000) + 1);
+    $("days").textContent = say("{days} · day {day} of {total}", { days, day: number(today), total: number(total) });
+    reach.firstElementChild.style.width = `${Math.max(2, Math.min(100, (today / total) * 100)).toFixed(1)}%`;
+    countdown(endOf(c.ends_on), (time) => (c.rounds ? say("Fan vote ends in {time}", { time }) : say("Ends in {time}", { time })));
   } else if (c.state === "upcoming") {
     $("days").textContent = days;
     countdown(startOf(c.starts_on), (time) => say("Opens in {time}", { time }));
@@ -335,8 +405,11 @@ function enterDialog(c, models) {
       done.type = "button";
       done.addEventListener("click", end);
       form.remove();
-      lede.textContent = way === "assistant" ? say("It is in, built with the assistant. People signed in vote until the challenge ends.")
-        : say("It is in, built by hand. People signed in vote until the challenge ends.");
+      lede.textContent = c.rounds ? (way === "assistant"
+        ? say("It is in, built with the assistant. Once entries close, the judges choose the shortlist that everyone votes for.")
+        : say("It is in, built by hand. Once entries close, the judges choose the shortlist that everyone votes for."))
+        : way === "assistant" ? say("It is in, built with the assistant. People signed in vote until the challenge ends.")
+          : say("It is in, built by hand. People signed in vote until the challenge ends.");
       dialog.append(done);
       done.focus();
       root.dataset.challengeEntered = model;
@@ -433,7 +506,11 @@ function voteLine(c, entry) {
     if (voted === entry.id) line.append(badge("voted", say("Your vote"), "check"));
     return line;
   }
-  if (c.state !== "open") return line;
+  if (c.state !== "open") {
+    if (entry.shortlisted) line.append(badge("shortlisted", say("Shortlisted"), "award"));
+    return line;
+  }
+  if (entry.shortlisted && c.shortlisted) line.append(badge("accent shortlisted", say("Shortlisted"), "award"));
   if (!entry.keeps) line.append(el("small", "broken", say("No longer keeps the rules: a newer version broke one")));
   if ((you?.entries || []).includes(entry.id)) {
     line.append(badge("mine", say("Your entry")));
@@ -444,7 +521,7 @@ function voteLine(c, entry) {
     return line;
   }
   const may = !you || (you.may_vote && !voted);
-  if (may && entry.keeps) {
+  if (may && entry.keeps && votable(c, entry)) {
     const button = el("button", "cta ghost small vote");
     button.type = "button";
     button.insertAdjacentHTML("afterbegin", iconHtml("check"));
@@ -468,6 +545,7 @@ function entryCard(c, entry) {
   if (line.querySelector(".voted")) card.classList.add("voted");
   if (line.querySelector(".mine")) card.classList.add("mine");
   if (entry.winner) card.classList.add("won");
+  if (entry.shortlisted && (c.shortlisted || c.state === "ended")) card.classList.add("shortlisted");
   return card;
 }
 
@@ -480,9 +558,12 @@ function orderOf(c) {
   return ended ? "votes" : "newest";
 }
 
-function sorted(entries, order) {
+/// [entries] in [order]; in a challenge whose shortlist is out
+/// ([shortlisted]), the shortlist first.
+function sorted(entries, order, shortlisted = false) {
   const at = (one) => Date.parse(one.entered_at || "") || 0;
-  return [...entries].sort((a, b) => (order === "votes" ? (Number(b.votes) || 0) - (Number(a.votes) || 0) || at(a) - at(b)
+  const listed = (one) => (shortlisted && one.shortlisted ? 0 : 1);
+  return [...entries].sort((a, b) => listed(a) - listed(b) || (order === "votes" ? (Number(b.votes) || 0) - (Number(a.votes) || 0) || at(a) - at(b)
     : order === "oldest" ? at(a) - at(b) : at(b) - at(a)) || (a.id < b.id ? -1 : 1));
 }
 
@@ -500,8 +581,15 @@ function voteSaid(c, way) {
   const you = state.you;
   const voted = you?.voted?.[way];
   const entry = voted ? all(c).find((one) => one.id === voted) : null;
-  if (c.state === "open") {
-    if (!you) line.textContent = say("Everyone signed in and 13 or over has one vote in each group. Votes stay hidden until it ends.");
+  if (c.state === "open" && c.rounds && roundOf(c) !== "vote") {
+    line.textContent = roundOf(c) === "entries"
+      ? say("Entries close on {close}. Then the judges choose up to five in each group, and from {vote} everyone votes for the shortlist.",
+        { close: dayOf(c.entries_until), vote: dayOf(c.votes_from) })
+      : c.shortlisted ? say("The judges have chosen their shortlist. The fan vote opens on {vote}.", { vote: dayOf(c.votes_from) })
+        : say("Entries have closed, and the judges are choosing their shortlist. The fan vote opens on {vote}.", { vote: dayOf(c.votes_from) });
+  } else if (c.state === "open") {
+    if (!you) line.textContent = c.rounds ? say("The fan vote: everyone signed in and 13 or over has one vote in each group, for the shortlist. Votes stay hidden until it ends.")
+      : say("Everyone signed in and 13 or over has one vote in each group. Votes stay hidden until it ends.");
     else if (entry) {
       // The words in a span of their own, beside the tick, one sentence.
       const said = el("span", "said");
@@ -572,7 +660,7 @@ function drawEntries(c, focus = "") {
   const groups = $("groups");
   groups.replaceChildren();
   // Why this account has no Vote, said once over the entries.
-  if (c.state === "open" && state.you?.why_not && !state.you.may_vote) {
+  if (voting(c) && state.you?.why_not && !state.you.may_vote) {
     groups.append(el("p", "callout why-not", told(state.you.why_not)));
   }
   for (const one of c.groups || []) {
@@ -583,12 +671,13 @@ function drawEntries(c, focus = "") {
     panel.setAttribute("aria-labelledby", `tab-${one.way}`);
     panel.hidden = one.way !== way;
     groups.append(panel);
-    const entries = sorted((one.entries || []).filter((entry) => ID.test(String(entry.id))), order);
+    const entries = sorted((one.entries || []).filter((entry) => ID.test(String(entry.id))), order,
+      c.rounds && (c.shortlisted || c.state === "ended"));
     if (!entries.length) {
       const empty = el("div", "state");
       empty.append(el("p", "", c.state === "upcoming" ? say("Entries open with the challenge, on {day}.", { day: dayOf(c.starts_on) })
         : c.state === "ended" ? say("Nobody entered in this group.") : say("Nobody has entered in this group yet. Be the first.")));
-      if (c.state === "open") {
+      if (entering(c)) {
         const go = el("button", "cta ghost small", say("Enter a model"));
         go.type = "button";
         go.addEventListener("click", enter);
@@ -812,6 +901,9 @@ async function load() {
 }
 
 $("enter").addEventListener("click", enter);
+// The head is held unseen until it is drawn (challenge.html): an answer that
+// is slow to come shows it as it stands after five seconds.
+setTimeout(() => { if (!root.dataset.challenge) root.dataset.challenge = "loading"; }, 5000);
 $("again").addEventListener("click", () => {
   root.dataset.challenge = "loading";
   $("again").hidden = true;

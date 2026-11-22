@@ -1021,6 +1021,14 @@
       "tests": []
     },
     {
+      "id": "cli:challenge home check",
+      "kind": "cli",
+      "entry": "tools/web/challengehome_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:challenges browser flow",
       "kind": "cli",
       "entry": "tools/web/challenges_flow.mjs",
@@ -4324,6 +4332,14 @@
       ]
     },
     {
+      "id": "lib:judges and a fan vote and honours",
+      "kind": "lib",
+      "entry": "supabase/challenge_rounds.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:keep a run to a list of parts",
       "kind": "lib",
       "entry": "src/parts/parts_only.gd",
@@ -7556,6 +7572,17 @@
         "tests/test_model_bases.py",
         "tests/test_search.py",
         "tests/test_sets.py"
+      ]
+    },
+    {
+      "id": "ui:this month's challenge on the home page",
+      "kind": "ui",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#now under the app's picture: #challenge with its days left, or its round, and #pick, This week's pick, both from GET /api/share?op=shelves, asked at once)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/test_insights.py"
       ]
     },
     {

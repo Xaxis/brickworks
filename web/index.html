@@ -111,11 +111,30 @@
 .benefits .pic { aspect-ratio: 16 / 10; }
 @media (width >= 600px) and (width < 900px) { .benefits > :nth-child(3) .pic { aspect-ratio: 8 / 3; } }
 
-/* The community: this month's challenge beside Build together, what a
-   builder does here, then the gallery's Top. */
+/* Now on Brickworks, under the app's picture: this month's challenge with
+   its days left beside This week's pick, both in the first two screens at
+   390 and 1280 (challengehonours). Side by side from 900 px; the pick a
+   picture beside its words at every width, so the two stay short. Each
+   holds its place from the first frame, so what fills them moves nothing. */
+.section.now { padding-top: var(--s-7); }
+.now-row { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+@media (width >= 900px) { .now-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.now-row .badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
+#challenge-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.tile.pick > a.open { flex-direction: row; align-items: stretch; }
+.tile.pick .pic { flex: 0 0 42%; aspect-ratio: 4 / 3; border-bottom: 0; border-right: 1px solid var(--line); }
+.tile.pick .pic img[hidden] { display: none; }
+.tile.pick .words { justify-content: center; }
+
+/* The community: Build together, what a builder does here, then the
+   gallery's Top. */
 .together-row { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
-@media (width >= 900px) { .together-row { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); } }
 .together-row .wide .pic { aspect-ratio: 1200 / 630; }
+@media (width >= 900px) {
+	.together-row .wide { flex-direction: row; }
+	.together-row .wide .pic { flex: 0 0 62%; border-bottom: 0; border-right: 1px solid var(--line); }
+	.together-row .wide .words { justify-content: center; }
+}
 .acts { display: grid; gap: var(--s-3) var(--s-5); grid-template-columns: minmax(0, 1fr); margin: var(--s-6) 0 var(--s-7); }
 @media (width >= 600px) { .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (width >= 1200px) { .acts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -204,6 +223,33 @@
 					width="2400" height="1350" fetchpriority="high" decoding="async"
 					alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
 			</figure>
+		</div>
+	</section>
+
+	<!-- Now on Brickworks (web/landing.js, from /api/share?op=shelves, asked
+	     at once): this month's challenge, its days left and the way in, or
+	     the next one told, or what a challenge is; and This week's pick from
+	     the gallery. Each holds its place from the first frame. -->
+	<section class="section now" id="now" aria-labelledby="now-h">
+		<div class="wrap">
+			<h2 class="visually-hidden" id="now-h">Now on Brickworks</h2>
+			<div class="now-row">
+				<article class="tile challenge" id="challenge" aria-labelledby="challenge-h">
+					<div class="words">
+						<p class="badges"><span class="badge accent" id="challenge-when">Every month</span><span class="badge good" id="challenge-left" hidden></span></p>
+						<h3 id="challenge-h">A new challenge</h3>
+						<p id="challenge-brief">Build to the month’s brief, by hand or with help, and the builders vote for their favourites.</p>
+						<p class="note" id="challenge-days">A new theme each month</p>
+						<p class="go-on"><a class="cta ghost" href="/challenge" id="challenge-go">See the challenge</a></p>
+					</div>
+				</article>
+				<article class="tile pick" id="pick" aria-labelledby="pick-h">
+					<a class="open" href="/gallery" id="pick-go">
+						<span class="pic"><img id="pick-img" alt="" width="480" height="360" decoding="async" hidden></span>
+						<span class="words"><span class="eyebrow" id="pick-h">This week’s pick</span><b id="pick-name">The best of the gallery this week</b><span id="pick-by">From the gallery</span></span>
+					</a>
+				</article>
+			</div>
 		</div>
 	</section>
 
@@ -353,18 +399,6 @@
 				<a href="/collections">Browse collections</a>
 			</div>
 			<div class="together-row">
-				<!-- This month's challenge, or the next one, from
-				     /api/people?op=challenge (web/landing.js); until it comes,
-				     and if it never does, what a challenge is. -->
-				<article class="tile challenge" id="challenge" aria-labelledby="challenge-h">
-					<div class="words">
-						<p><span class="badge accent" id="challenge-when">Every month</span></p>
-						<h3 id="challenge-h">A new challenge</h3>
-						<p id="challenge-brief">Build to the month’s brief, by hand or with help, and the builders vote for their favourites.</p>
-						<p class="note" id="challenge-days" hidden></p>
-						<p class="go-on"><a class="cta ghost" href="/challenge" id="challenge-go">See the challenge</a></p>
-					</div>
-				</article>
 				<article class="tile wide">
 					<span class="pic"><img src="/img/together-720.webp" srcset="/img/together-720.webp 720w, /img/together-930.webp 930w"
 						sizes="(min-width: 1180px) 754px, (min-width: 900px) 66vw, calc(100vw - 32px)" width="930" height="488" loading="lazy" decoding="async"
