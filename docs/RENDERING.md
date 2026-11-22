@@ -1597,9 +1597,13 @@ turn at load 57 to 77, as the probe's median of three:
 At that load photoreal5's own code is over 2.9 s too.
 
 **The probes**, from p6snap2, all passed: photoreal (11), product_render
-(18), pathtrace (20), lights (102), render (41), edges (25) and lineart
-(36). motions_render, ci_gate, `tools/check.sh --lists`, `site_lang
---check` and `featuremap check` are listed with the unit's report.
+(18), pathtrace (20), lights (102), render (41), edges (25), lineart (36)
+and motions_render (33). `tools/check.sh --lists`, `site_lang --check`
+and `featuremap check` passed. ci_gate's suite failed only on the docs
+site's list, which now names the Cycles bench as internal. pre261 moved by
+95 commits after p6snap2, so it was merged again (7bcbdbd60, none of them
+touching the tracer or the bench). The eight probes and ci_gate were
+queued again on that merge (p6snap3), with the unit's report.
 
 **Running it.** On 2026-11-22 the box held up to 75 brickworks jobs in
 heavy's queue, at load 50 to 140. This unit's runs went through two slot
