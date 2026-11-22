@@ -6,7 +6,8 @@
     heavy python3 tools/design_ladder.py order [--which proof] [--jobs 6] [--cap 1500]
     heavy python3 tools/design_ladder.py place --arm d24p44base --date 2026-11-16 --which proof
     heavy python3 tools/design_ladder.py place ... --again      (the same designs, judged afresh)
-    python3 tools/design_ladder.py report [--out DIR]
+    python3 tools/design_ladder.py seed [--before DIR]      (an earlier ladder's verdicts)
+    python3 tools/design_ladder.py report [--out DIR] [--before DIR]
     python3 tools/design_ladder.py sheet [--subjects N,N]
     python3 tools/design_ladder.py leaks ARM_DIR...
     python3 tools/design_ladder.py reach [--port 10830]
@@ -18,23 +19,32 @@ was smaller than the noise (docs/APP_UX11.md, "The design track"). A ladder
 gives the judge rungs between the set and nothing:
 
   1. the set as it is;
+  1.5. half its SNOT taken out (ladder2): on a Technic set its skin (panels,
+     fairings and the System parts on it) laid as plates and its working part
+     left (beams, pins, gears, links); on any other set its SNOT parts laid
+     smallest first while they are no more than half its SNOT's volume;
   2. its SNOT taken out: every part whose studs do not point up (style.py's
      `facing`) replaced, in its own colour, by plain plates studs up filling
-     the room it took;
-  3. its curves stepped: every part style.py calls a curve (curved slopes,
-     arches, rounds, cones, domes, wedges) replaced by plain plates, in
-     columns a stud across, each as high as the part's own top over it, so a
-     curved slope steps down and an arch is filled in;
+     the room it took, but its wheels, tyres and axles, which a studs-up build
+     still rolls on (ladder2: they were laid as slabs, and half the designs sat
+     between the set and this rung);
+  3. its curves stepped: rung 2 with its wheels laid too, and every part
+     style.py calls a curve (curved slopes, arches, rounds, cones, domes,
+     wedges) replaced by plain plates, in columns a stud across, each as high
+     as the part's own top over it, so a curved slope steps down and an arch
+     is filled in;
   4. its colours flattened: every solid colour made the nearest of the three
      the model has most of, by volume; glass keeps its own;
   5. a naive stack of its outline in plain bricks, studs up, in three
      colours (calibrate.naive_stack, realset's own calibration anchor).
 
-Rungs 2 to 4 are cumulative, each the one above it with one more thing taken
-away, so a rung is never better than the one above it. Each is drawn by
+Rungs 1.5 to 4 each keep only parts the rung above kept, where they were, so a
+rung is never better than the one above it. Each is drawn by
 realset's renderer (run.render: the same cameras, views and GPU) and judged
 by realset's judge as it is (realset.ask, both orders, its prompt untouched):
-the judge sees only pictures under names that say nothing.
+the judge sees only pictures under names that say nothing. A rung remade is a
+new version with a new key (`ladder:N:r2:v2`), so `seed` can copy an earlier
+ladder's verdicts in and only what changed is asked again.
 
 The ladder is made from the sets' own files, so it is an answer key. It lives
 in the main checkout's bench/ladder/, which nothing a design session runs can
@@ -51,7 +61,7 @@ until a verdict splits or the end is reached, both orders each time; the
 design's own verdicts against the set (its record) are rung 1's, asked afresh
 on a second judging (--again). Its place is a number from 0.5 (above the set)
 to 5.5 (below the naive stack): a rung it ties is its place, and between two
-rungs it sits halfway.
+rungs it sits halfway (between 1 and 1.5 is 1.25).
 """
 
 from __future__ import annotations
@@ -82,10 +92,23 @@ from bench import run as bench  # noqa: E402
 from ldraw.parser import Matrix  # noqa: E402
 
 LADDER = bench.RESULTS.parent / "ladder"
-OUT = bench.RESULTS / "designmeasure-2026-11-20"
-RUNGS = {1: "the set as it is", 2: "its SNOT taken out, laid studs up",
-         3: "its curves stepped", 4: "its colours flattened to the main three",
-         5: "a naive stack of its outline in bricks"}
+OUT = bench.RESULTS / "ladder2-2026-11-22"      # the ladder's verdicts, from designmeasure's on
+BEFORE = bench.RESULTS / "designmeasure-2026-11-20"
+RUNGS: dict[float, str] = {
+    1: "the set as it is",
+    1.5: "half its SNOT taken out: a Technic set's skin, or the smaller half of a set's SNOT",
+    2: "its SNOT taken out, laid studs up, its wheels kept",
+    3: "its curves stepped", 4: "its colours flattened to the main three",
+    5: "a naive stack of its outline in bricks"}
+ORDER = tuple(RUNGS)                    # best first
+ADJACENT = tuple(zip(ORDER, ORDER[1:]))
+PAIRS = ADJACENT + ((1, 5),)
+# What rolls: kept at rung 2, since a studs-up build still rolls on them.
+ROLLING = re.compile(r"(?<!steering )\b(wheel|tyre|tire|tread|track)s?\b(?! arch)"
+                     r"|^technic axle \d", re.I)
+# A Technic set's skin, laid at rung 1.5; its beams, pins, gears and links, its
+# working part, are left. Its parts of other categories (tiles, plates, slopes) are skin too.
+SKIN = re.compile(r"\b(panel|fairing|hose|mudguard|bumper|windscreen|spoiler)s?\b", re.I)
 PLATE, STUD = 8.0, 20.0
 # A cell a stud across and a plate high is laid when this share of it is
 # taken by the parts it replaces, and left when half of it is a kept part's.
@@ -221,22 +244,75 @@ def _lay(rung: Rung, votes: dict[tuple[int, int, int], Counter], parts: style.Pa
     return laid
 
 
-def snot_out(rung: Rung, parts: style.Parts) -> Rung:
-    """Rung 2: every part whose studs do not point up, laid as plates studs up."""
-    out, gone = [], []
-    for p, info in rung.kept:
-        if (info is not None and info.box is not None and info.oriented
-                and style.building(info) and style.facing(p.matrix) != "up"):
-            gone.append((p, info))
-        else:
-            out.append((p, info))
+def off_up(p: style.Placed, info: style.PartInfo | None) -> bool:
+    """A building part, with a place in space, whose studs do not point up."""
+    return (info is not None and info.box is not None and info.oriented
+            and style.building(info) and style.facing(p.matrix) != "up")
+
+
+def rolling(info: style.PartInfo) -> bool:
+    return bool(ROLLING.search(f"{info.name}|{info.category}"))
+
+
+def snot_out(rung: Rung, parts: style.Parts, keep_rolling: bool = False,
+             only: set[int] | None = None, said: str = "") -> Rung:
+    """Rung 2: every part whose studs do not point up, laid as plates studs up; its
+    wheels, tyres and axles kept as the set has them when keep_rolling. With `only`
+    (indexes into rung.kept), just those parts: rung 1.5."""
+    out, gone, rolled = [], [], 0
+    for n, (p, info) in enumerate(rung.kept):
+        laid = off_up(p, info)
+        if laid and keep_rolling and info is not None and rolling(info):
+            laid, rolled = False, rolled + 1
+        if laid and only is not None and n not in only:
+            laid = False
+        (gone if laid else out).append((p, info))
     made = Rung(out, dict(rung.cells), rung.origin, rung.fix, rung.embedded, list(rung.said))
     cover: dict = {}
     votes: dict = {}
     _cover(made, style._boxes(gone, parts), cover, votes)
     laid = _lay(made, {c: v for c, v in votes.items() if cover[c] >= FILL}, parts)
-    made.said.append(f"SNOT out: {len(gone)} parts not studs up, laid as {laid} plate cells")
+    if said:
+        made.said.append(f"{said}: {len(gone)} parts laid as {laid} plate cells")
+    else:
+        made.said.append(f"SNOT out: {len(gone)} parts not studs up, laid as {laid} plate cells"
+                         + (f"; {rolled} wheels, tyres and axles kept" if rolled else ""))
     return made
+
+
+def _volume(info: style.PartInfo) -> float:
+    lo, hi = info.box or ((0, 0, 0), (0, 0, 0))
+    return abs((hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]))
+
+
+def half_out(rung: Rung, parts: style.Parts, technic: bool) -> Rung:
+    """Rung 1.5: half of what rung 2 lays, so it sits between the set and rung 2.
+
+    A Technic set's skin is laid (its panels and fairings, and the System parts
+    on it) and its working part left: beams, pins, gears and links. Rung 2 lays
+    those too, and fills the frame solid; the judge named that every time it
+    put rung 2 under the set, and a design with an open frame beats it.
+
+    Any other set's SNOT is laid smallest part first while the parts laid are no
+    more than half its volume: the details go and the big sideways walls stay.
+    Rung 2 lays the rest.
+    Either way rung 1.5 lays only parts rung 2 lays, never a wheel."""
+    laid_at_two = [(n, p, info) for n, (p, info) in enumerate(rung.kept)
+                   if off_up(p, info) and info is not None and not rolling(info)]
+    if technic:
+        chosen = {n for n, _p, info in laid_at_two
+                  if info.category.lower() != "technic" or SKIN.search(info.name)}
+        said = "half the SNOT out (the Technic skin, its working part left)"
+    else:
+        whole = sum(_volume(info) for _n, _p, info in laid_at_two)
+        chosen, so_far = set(), 0.0
+        for n, _p, info in sorted(laid_at_two, key=lambda row: (_volume(row[2]), row[0])):
+            if so_far + _volume(info) > whole / 2:
+                break               # a set of one big SNOT part keeps it for rung 2
+            chosen.add(n)
+            so_far += _volume(info)
+        said = "half the SNOT out (its smaller parts, half its volume)"
+    return snot_out(rung, parts, keep_rolling=True, only=chosen, said=said)
 
 
 _PROFILES: dict[str, list[tuple[float, float, int, float]] | None] = {}
@@ -416,17 +492,33 @@ def _identity(m: Matrix) -> bool:
         (m.a, m.b, m.c, m.d, m.e, m.f, m.g, m.h, m.i), (1, 0, 0, 0, 1, 0, 0, 0, 1)))
 
 
-def ladder(text: str, parts: style.Parts, palette: dict[int, dict]) -> dict[int, tuple[str, str]]:
-    """Rungs 2 to 5 of a set's file: each rung's LDraw text and a line saying what was done."""
+def ladder(text: str, parts: style.Parts, palette: dict[int, dict],
+           technic: bool = False) -> dict[float, tuple[str, str]]:
+    """Rungs 1.5 to 5 of a set's file: each rung's LDraw text and a line saying what was done.
+
+    Each rung is never better than the one above it: 1.5 lays half of what 2
+    lays; 2 lays every part off studs up but what rolls; 3 is the SNOT out with
+    the wheels too, and its curves stepped; 4 is 3 with its colours flattened."""
     first = start(text, parts)
-    second = snot_out(first, parts)
-    third = curves_stepped(second, parts)
+    half = half_out(first, parts, technic)
+    second = snot_out(first, parts, keep_rolling=True)
+    third = curves_stepped(snot_out(first, parts), parts)
     fourth = colours_flattened(third, parts, palette)
     naive, said = calibrate.naive_stack(text, parts, palette)
-    return {2: (write(second, RUNGS[2]), second.said[-1]),
+    return {1.5: (write(half, RUNGS[1.5]), half.said[-1]),
+            2: (write(second, RUNGS[2]), second.said[-1]),
             3: (write(third, RUNGS[3]), third.said[-1]),
             4: (write(fourth, RUNGS[4]), fourth.said[-1]),
             5: (naive, f"naive stack: {said}")}
+
+
+def label(rung: float) -> str:
+    """A rung's name in its files and keys: 1, 1.5, 2."""
+    return f"{rung:g}"
+
+
+def is_technic(theme: str) -> bool:
+    return theme.split(">")[0].strip().lower() == "technic"
 
 
 # -- the sets ---------------------------------------------------------------------
@@ -454,27 +546,72 @@ def _guard() -> None:
         "files. An answer key: never put within a design session's reach.\n")
 
 
+def _parts_of(text: str) -> list[str]:
+    """A rung file's part lines: what it draws, whatever its comments say."""
+    return [line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("0")]
+
+
 def build(args: argparse.Namespace) -> int:
+    """Each set's rungs written. A rung whose parts changed gets a new version: its
+    pictures move to the results' superseded/ to be drawn again, and its key changes,
+    so no verdict on the old one is read back for it."""
     _guard()
     parts, palette = style.Parts(), calibrate.palette()
     for c in wanted(args.which, args.subjects):
         where = LADDER / c.number
         where.mkdir(parents=True, exist_ok=True)
         text = (realset.FILES / c.file).read_text(errors="replace")
-        made = ladder(text, parts, palette)
+        made = ladder(text, parts, palette, is_technic(c.theme))
+        before = (json.loads((where / "ladder.json").read_text())
+                  if (where / "ladder.json").exists() else {})
+        versions = dict(before.get("versions", {}))
         record = {"number": c.number, "name": c.name, "theme": c.theme, "which": args.which,
-                  "rungs": {"1": RUNGS[1]}}
+                  "rungs": {"1": RUNGS[1]}, "versions": versions}
         (where / "r1.mpd").write_text(text)
+        changed = []
         for k, (body, said) in made.items():
-            (where / f"r{k}.mpd").write_text(body)
-            record["rungs"][str(k)] = said
+            name, target = label(k), where / f"r{label(k)}.mpd"
+            if target.exists() and _parts_of(target.read_text(errors="replace")) != _parts_of(body):
+                old = int(versions.get(name, 1))
+                versions[name] = old + 1
+                gone = Path(args.out) / "superseded" / c.number
+                gone.mkdir(parents=True, exist_ok=True)
+                for path in where.glob(f"r{name}[._]*"):
+                    shutil.move(str(path), gone / f"{path.name.replace(f'r{name}', f'r{name}v{old}', 1)}")
+                changed.append(name)
+            target.write_text(body)
+            record["rungs"][name] = said
         bench._write_json(where / "ladder.json", record)
-        print(c.number, c.name, "|", " | ".join(s for _b, s in made.values()), flush=True)
+        _VERSIONS.pop(c.number, None)
+        print(c.number, c.name, "|", " | ".join(s for _b, s in made.values()),
+              f"| changed: {', '.join(changed) or 'none'}", flush=True)
     return 0
 
 
-def views(number: str, rung: int) -> list[Path]:
-    return [LADDER / number / f"r{rung}_{v}.png" for v in realset.VIEWS]
+_VERSIONS: dict[str, dict[str, int]] = {}
+
+
+def version(number: str, rung: float) -> int:
+    """A rung's version: 1 as first built, one more each time its parts changed."""
+    if number not in _VERSIONS:
+        made = LADDER / number / "ladder.json"
+        _VERSIONS[number] = (json.loads(made.read_text()).get("versions", {})
+                             if made.exists() else {})
+    return int(_VERSIONS[number].get(label(rung), 1))
+
+
+def key_of(number: str, rung: float) -> str:
+    """The rung's name to the judge's ledger: a new version is a new key."""
+    v = version(number, rung)
+    return f"ladder:{number}:r{label(rung)}" + (f":v{v}" if v > 1 else "")
+
+
+def rung_of(key: str) -> float:
+    return float(key.split(":")[2][1:])
+
+
+def views(number: str, rung: float) -> list[Path]:
+    return [LADDER / number / f"r{label(rung)}_{v}.png" for v in realset.VIEWS]
 
 
 def set_pictures(number: str) -> list[Path]:
@@ -494,18 +631,18 @@ def render(args: argparse.Namespace) -> int:
                 if not kept.exists():
                     shutil.copyfile(got, kept)
         for k in RUNGS:
-            model = LADDER / c.number / f"r{k}.mpd"
+            model = LADDER / c.number / f"r{label(k)}.mpd"
             if model.exists() and not all(p.exists() for p in views(c.number, k)):
-                jobs.append((model, LADDER / c.number / f"r{k}",
-                             LADDER / c.number / f"r{k}_render.log"))
+                jobs.append((model, LADDER / c.number / f"r{label(k)}",
+                             LADDER / c.number / f"r{label(k)}_render.log"))
 
     def one(job) -> str:
         model, prefix, log = job
         got = bench.render(model, prefix, log)
         return f"{prefix.parent.name} {prefix.name}: {len(got)} views"
 
-    # Rung 2 last: a design is placed from rung 3 down, and rarely climbs to 2.
-    jobs.sort(key=lambda job: job[1].name == "r2")
+    # The best rungs last: a design is placed from rung 3 down, and fewer climb to them.
+    jobs.sort(key=lambda job: job[1].name in ("r1.5", "r2"))
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:
         for said in workers.map(one, jobs):
             print(said, flush=True)
@@ -547,8 +684,8 @@ def _brief(number: str, c: realset.Candidate | None = None) -> str:
     return realset.brief(c, tuple(record["plan"]))
 
 
-def rung_side(number: str, rung: int) -> tuple[str, tuple]:
-    key = f"ladder:{number}:r{rung}"
+def rung_side(number: str, rung: float) -> tuple[str, tuple]:
+    key = key_of(number, rung)
     return key, realset.shown(key, views(number, rung), number)
 
 
@@ -556,7 +693,7 @@ def order(args: argparse.Namespace) -> int:
     """Adjacent rungs, both orders, and the set against its naive stack."""
     out = Path(args.out)
     _count_calls(out, args.cap)
-    pairs = [(k, k + 1) for k in range(1, 5)] + [(1, 5)]
+    pairs = PAIRS
     tasks = []
     for c in wanted(args.which, args.subjects):
         if not all(all(p.exists() for p in views(c.number, k)) for k in RUNGS):
@@ -597,7 +734,7 @@ def place_one(record: dict, arm_folder: Path, number: str, into: Path, model: st
     if not all(p.exists() for p in pictures):
         return {"number": number, "place": None, "asked": {}}
     side = (ours, realset.shown(ours, pictures, number))
-    asked: dict[int, float] = {}
+    asked: dict[float, float] = {}
 
     def vs(rung: int) -> float | None:
         if rung == 1 and not fresh:
@@ -618,28 +755,29 @@ def place_one(record: dict, arm_folder: Path, number: str, into: Path, model: st
     return {"number": number, "place": place, "asked": asked}
 
 
-def walk(vs) -> float | None:
+def walk(vs, rungs: tuple[float, ...] = ORDER, first: float = 3) -> float | None:
     """The place from shares won against rungs: from rung 3 up while it wins both, down
-    while it loses both; a split is the rung's own place, else halfway between two."""
-    s = vs(3)
+    while it loses both; a split is the rung's own place, else halfway between two
+    (between 1.5 and 2 is 1.75); above the set is 0.5, below the stack 5.5."""
+    at = rungs.index(first)
+    s = vs(rungs[at])
     if s is None:
         return None
-    if s == 0.5 or 0 < s < 1:
-        return 3.0
+    if 0 < s < 1:
+        return float(rungs[at])
     step = -1 if s == 1 else 1
-    rung = 3
     while True:
-        nxt = rung + step
-        if nxt < 1 or nxt > 5:
-            return rung + step * 0.5
-        s = vs(nxt)
+        nxt = at + step
+        if nxt < 0 or nxt >= len(rungs):
+            return rungs[at] + step * 0.5
+        s = vs(rungs[nxt])
         if s is None:
             return None
         if 0 < s < 1:
-            return float(nxt)
-        if (s == 1) != (step == -1):        # turned: it sits between rung and nxt
-            return rung + step * 0.5
-        rung = nxt
+            return float(rungs[nxt])
+        if (s == 1) != (step == -1):        # turned: it sits between the two
+            return (rungs[at] + rungs[nxt]) / 2
+        at = nxt
 
 
 def place(args: argparse.Namespace) -> int:
@@ -650,21 +788,37 @@ def place(args: argparse.Namespace) -> int:
     if args.subjects:
         keep = {s.strip() for s in args.subjects.split(",")}
         numbers = [n for n in numbers if n in keep]
-    label = "place2" if args.again else "place"
+    kind = "place2" if args.again else "place"
 
     def one(number: str) -> dict:
         record = json.loads((folder / number / "record.json").read_text())
         if not record.get("keys") or not (LADDER / number / "r1.mpd").exists():
             return {"number": number, "place": None, "asked": {}, "why": "no design or ladder"}
-        return place_one(record, folder, number, out / label / args.arm / number,
+        return place_one(record, folder, number, out / kind / args.arm / number,
                          args.judge_model, fresh=args.again)
 
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:
         found = list(workers.map(one, numbers))
-    bench._write_json(out / f"{label}-{args.arm}.json", found)
+    bench._write_json(out / f"{kind}-{args.arm}.json", found)
     for row in found:
         print(row["number"], row["place"], row["asked"], flush=True)
     print(f"{calls_made(out)} judge calls made in all", flush=True)
+    return 0
+
+
+def seed(args: argparse.Namespace) -> int:
+    """An earlier ladder's verdicts copied in, so only what changed is asked again: a
+    verdict is read back by its two keys, and a remade rung has a new key."""
+    before, out = Path(args.before), Path(args.out)
+    copied = 0
+    for kind in ("order", "place", "place2"):
+        for path in (before / kind).rglob("*-*.json") if (before / kind).exists() else ():
+            target = out / path.relative_to(before)
+            if not target.exists():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, target)
+                copied += 1
+    print(f"{copied} verdicts copied from {before} into {out}")
     return 0
 
 
@@ -686,8 +840,10 @@ def order_table(out: Path, numbers: list[str]) -> dict:
     reasons: dict = defaultdict(list)
     for number in numbers:
         for found in _verdicts(out / "order" / number):
-            hi_key, lo_key = sorted((found.first, found.second))      # r1 < r2 < ...
-            hi, lo = int(hi_key[-1]), int(lo_key[-1])
+            hi_key, lo_key = sorted((found.first, found.second), key=rung_of)
+            hi, lo = rung_of(hi_key), rung_of(lo_key)
+            if key_of(number, hi) != hi_key or key_of(number, lo) != lo_key:
+                continue                # a verdict on a rung since remade
             first_better = found.first == hi_key
             for dim in realset.DIMS:
                 row = table.setdefault((hi, lo, dim), {"n": 0, "right": 0, "n_first": 0,
@@ -708,10 +864,18 @@ TECHNIC = {"42033-1", "42060-1", "42062-1", "42063-1", "42072-1", "42075-1", "42
            "42093-1", "42111-1"}
 
 
+def technic(number: str) -> bool:
+    """A Technic set, by the theme its ladder was built with (the tune half's too)."""
+    made = LADDER / number / "ladder.json"
+    if made.exists():
+        return is_technic(json.loads(made.read_text()).get("theme", ""))
+    return number in TECHNIC
+
+
 SEEN = 0.005        # a step under half a percent of a picture's pixels is no step to see
 
 
-def step_seen(number: str, hi: int, lo: int) -> float:
+def step_seen(number: str, hi: float, lo: float) -> float:
     """The share of pixels two rungs' pictures differ in, the most of the three views:
     a rung that took nothing away from a set (no curves to step) shows the same picture."""
     from PIL import Image, ImageChops
@@ -727,14 +891,14 @@ def step_seen(number: str, hi: int, lo: int) -> float:
     return most
 
 
-def agreement(out: Path, numbers: list[str], hi: int, lo: int) -> dict[str, int]:
+def agreement(out: Path, numbers: list[str], hi: float, lo: float) -> dict[str, int]:
     """Per set, how many of the pair's two orders put the higher rung first (overall)."""
     got: dict[str, int] = {}
     for number in numbers:
         found = [v for v in _verdicts(out / "order" / number)
-                 if {v.first, v.second} == {f"ladder:{number}:r{hi}", f"ladder:{number}:r{lo}"}]
+                 if {v.first, v.second} == {key_of(number, hi), key_of(number, lo)}]
         if len(found) == 2:
-            got[number] = sum(v.winners["overall"] == f"ladder:{number}:r{hi}" for v in found)
+            got[number] = sum(v.winners["overall"] == key_of(number, hi) for v in found)
     return got
 
 
@@ -744,7 +908,7 @@ def seen_rows(out: Path, numbers: list[str], name: str) -> list[str]:
     rows = [f"Pairs whose pictures differ, {name} ({len(numbers)}):", "",
             "| rungs | verdicts | right (95%) | better shown first | better shown second "
             "| sets with the same picture |", "|---|---|---|---|---|---|"]
-    for hi, lo in [(1, 2), (2, 3), (3, 4), (4, 5), (1, 5)]:
+    for hi, lo in PAIRS:
         got = agreement(out, numbers, hi, lo)
         seen = [n for n in got if step_seen(n, hi, lo) >= SEEN]
         row = order_table(out, seen)["table"].get((hi, lo, "overall"))
@@ -768,7 +932,7 @@ def report(args: argparse.Namespace) -> int:
              f"{calls_made(out)} judge calls)", ""]
     lines += ["| rungs | verdicts | overall right (95%) | better shown first | better shown second "
               "| likeness | surface | colour | technique | creativity |", "|---|---|---|---|---|---|---|---|---|---|"]
-    for hi, lo in [(1, 2), (2, 3), (3, 4), (4, 5), (1, 5)]:
+    for hi, lo in PAIRS:
         row = read["table"].get((hi, lo, "overall"))
         if not row:
             continue
@@ -783,8 +947,8 @@ def report(args: argparse.Namespace) -> int:
         lines.append(f"| {hi} over {lo} | {row['n']} | {100 * p:.0f}% ({100 * low:.0f}-"
                      f"{100 * high:.0f}) | {100 * first:.0f}% | {100 * second:.0f}% | "
                      + " | ".join(dims) + " |")
-    adjacent = [read["table"][(h, h + 1, "overall")] for h in range(1, 5)
-                if (h, h + 1, "overall") in read["table"]]
+    adjacent = [read["table"][(h, lo, "overall")] for h, lo in ADJACENT
+                if (h, lo, "overall") in read["table"]]
     if adjacent:
         n = sum(r["n"] for r in adjacent)
         right = sum(r["right"] for r in adjacent)
@@ -795,13 +959,13 @@ def report(args: argparse.Namespace) -> int:
         # (no curves left to step) is the same picture twice, and no judge can order it.
         seen_n = seen_right = 0
         unseen = []
-        for h in range(1, 5):
-            for number, both in agreement(out, numbers, h, h + 1).items():
-                share = step_seen(number, h, h + 1)
+        for h, lo in ADJACENT:
+            for number, both in agreement(out, numbers, h, lo).items():
+                share = step_seen(number, h, lo)
                 if share >= SEEN:
                     seen_n, seen_right = seen_n + 2, seen_right + both
                 else:
-                    unseen.append(f"{number} r{h}-r{h + 1} ({100 * share:.2f}% of pixels, "
+                    unseen.append(f"{number} r{label(h)}-r{label(lo)} ({100 * share:.2f}% of pixels, "
                                   f"{both} of 2 right)")
         if seen_n:
             p, low, high = wilson(seen_right, seen_n)
@@ -809,29 +973,31 @@ def report(args: argparse.Namespace) -> int:
                           f"view's pixels): {seen_right} of {seen_n} right, {100 * p:.0f}% "
                           f"({100 * low:.0f}-{100 * high:.0f}). Left out as no step to see: "
                           f"{len(unseen)} pairs" + (": " + "; ".join(unseen) if unseen else "") + "."]
-        technic = [n for n in numbers if n in TECHNIC]
-        for name, group in (("every set", numbers), ("Technic sets", technic),
-                            ("the rest", [n for n in numbers if n not in TECHNIC])):
+        technic_sets = [n for n in numbers if technic(n)]
+        for name, group in (("every set", numbers), ("Technic sets", technic_sets),
+                            ("the rest", [n for n in numbers if not technic(n)])):
             if group:
                 lines += ["", *seen_rows(out, group, name)]
     lines += ["", "## Where it was wrong, in its words (overall)", ""]
     for (hi, lo), rows in sorted(read["wrong"].items()):
-        lines.append(f"### Rung {lo} preferred to rung {hi}: {len(rows)}")
+        lines.append(f"### Rung {lo:g} preferred to rung {hi:g}: {len(rows)}")
         for number, reason in rows:
             lines.append(f"- {number}: {reason}")
         lines.append("")
     lines += ["## Each pair of a set, both orders together (overall)", "",
               "| rungs | both right | one right (the order decided) | both wrong |",
               "|---|---|---|---|"]
-    for hi, lo in [(1, 2), (2, 3), (3, 4), (4, 5), (1, 5)]:
+    for hi, lo in PAIRS:
         tally = Counter(agreement(out, numbers, hi, lo).values())
         lines.append(f"| {hi} over {lo} | {tally[2]} | {tally[1]} | {tally[0]} |")
-    technic = [n for n in numbers if n in TECHNIC]
-    if technic:
-        lines += ["", f"Technic sets apart ({len(technic)}: their sideways beams fill solid at rung 2):"]
-        for name, group in (("Technic", technic), ("the rest", [n for n in numbers if n not in technic])):
+    technic_sets = [n for n in numbers if technic(n)]
+    if technic_sets:
+        lines += ["", f"Technic sets apart ({len(technic_sets)}: their sideways beams fill solid at "
+                      "rung 2):"]
+        for name, group in (("Technic", technic_sets),
+                            ("the rest", [n for n in numbers if n not in technic_sets])):
             t = order_table(out, group)["table"]
-            rows = [t[(h, h + 1, "overall")] for h in range(1, 5) if (h, h + 1, "overall") in t]
+            rows = [t[(h, lo, "overall")] for h, lo in ADJACENT if (h, lo, "overall") in t]
             n, right = sum(r["n"] for r in rows), sum(r["right"] for r in rows)
             if n:
                 p, low, high = wilson(right, n)
@@ -839,11 +1005,12 @@ def report(args: argparse.Namespace) -> int:
                              f"({100 * low:.0f}-{100 * high:.0f})")
     lines += ["", "## Designs placed", "",
               "A place is a rung (it split its verdicts with that rung) or halfway between two "
-              "(it beat the lower, lost to the higher). 1 is the set, 5 its naive stack; 0.5 is "
-              "above the set, 5.5 below the stack. Smaller is better.", ""]
+              "(it beat the lower, lost to the higher). 1 is the set, 1.5 half its SNOT out, 2 "
+              "the rest of it out but the wheels, 5 its naive stack; 0.5 is above the set, 5.5 "
+              "below the stack. Smaller is better.", ""]
     placed_by: dict[str, dict[str, float]] = {}
-    for label in ("place", "place2"):
-        for path in sorted(out.glob(f"{label}-*.json")):
+    for kind in ("place", "place2"):
+        for path in sorted(out.glob(f"{kind}-*.json")):
             rows = json.loads(path.read_text())
             placed_by[path.stem] = {r["number"]: r["place"] for r in rows if r["place"] is not None}
             placed = list(placed_by[path.stem].values())
@@ -874,6 +1041,25 @@ def report(args: argparse.Namespace) -> int:
         lines.append(f"- One design judged twice (design24's base, {len(again)} designs): within one "
                      f"rung {near} of {len(again)}, {100 * p:.0f}% ({100 * low:.0f}-{100 * high:.0f}); "
                      f"the same place {same}")
+    if args.before:
+        lines += ["", f"### Where the designs that sat between the set and rung 2 went "
+                      f"(before: {args.before})", "",
+                  "| arm | between 1 and 2 before | now 0.5 to 1 | 1.25 | 1.5 | 1.75 | 2 | below 2 "
+                  "| of them Technic: 1 or above / 1.25 to 1.75 / 2 or below |",
+                  "|---|---|---|---|---|---|---|---|---|"]
+        for stem, now in sorted(placed_by.items()):
+            old_path = Path(args.before) / f"{stem}.json"
+            if not old_path.exists():
+                continue
+            old = {r["number"]: r["place"] for r in json.loads(old_path.read_text())}
+            sat = [n for n, v in old.items() if v == 1.5 and n in now]
+            went = [now[n] for n in sat]
+            tech = [now[n] for n in sat if technic(n)]
+            lines.append(
+                f"| {stem} | {len(sat)} | {sum(v <= 1 for v in went)} | {went.count(1.25)} | "
+                f"{went.count(1.5)} | {went.count(1.75)} | {went.count(2)} | "
+                f"{sum(v > 2 for v in went)} | {sum(v <= 1 for v in tech)} / "
+                f"{sum(1 < v < 2 for v in tech)} / {sum(v >= 2 for v in tech)} of {len(tech)} |")
     text = "\n".join(lines) + "\n"
     (out / "ladder_report.md").write_text(text)
     print(text)
@@ -889,15 +1075,16 @@ def sheet(args: argparse.Namespace) -> int:
                else sorted(p.name for p in LADDER.iterdir() if (p / "ladder.json").exists()))
     size = args.size
     view = args.view
-    rows = [n for n in numbers if all((LADDER / n / f"r{k}_{view}.png").exists() for k in RUNGS)]
-    canvas = Image.new("RGB", (size * 5, (size + 18) * len(rows)), 0xFFFFFF)
+    rows = [n for n in numbers
+            if all((LADDER / n / f"r{label(k)}_{view}.png").exists() for k in RUNGS)]
+    canvas = Image.new("RGB", (size * len(ORDER), (size + 18) * len(rows)), 0xFFFFFF)
     draw = ImageDraw.Draw(canvas)
     for r, number in enumerate(rows):
-        for k in RUNGS:
-            pic = Image.open(LADDER / number / f"r{k}_{view}.png").convert("RGB")
+        for column, k in enumerate(ORDER):
+            pic = Image.open(LADDER / number / f"r{label(k)}_{view}.png").convert("RGB")
             pic.thumbnail((size, size))
-            canvas.paste(pic, ((k - 1) * size, r * (size + 18) + 18))
-            draw.text(((k - 1) * size + 4, r * (size + 18) + 3), f"{number} rung {k}",
+            canvas.paste(pic, (column * size, r * (size + 18) + 18))
+            draw.text((column * size + 4, r * (size + 18) + 3), f"{number} rung {label(k)}",
                       fill="black")
     target = Path(args.into)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -910,8 +1097,8 @@ def sheet(args: argparse.Namespace) -> int:
 
 SEARCH = ("find_reference", "gallery", "how_real_sets_build_this", "search_parts",
           "find_techniques", "find_parts_like", "plan_scale", "parts_list")
-LADDER_SAID = re.compile(r"bench/ladder|design.ladder|ladder\.(ldr|mpd)|\br[1-5]_(corner|front|close)"
-                         r"\.png|\br[1-5]\.mpd", re.I)
+LADDER_SAID = re.compile(r"bench/ladder|design.ladder|ladder\.(ldr|mpd)|\br[1-5](\.5)?_(corner|front|close)"
+                         r"\.png|\br[1-5](\.5)?\.mpd", re.I)
 
 
 def _texts(content) -> str:
@@ -1012,6 +1199,10 @@ def reach(args: argparse.Namespace) -> int:
         ("open_model", {"into": True, "name": str(target)}),
         ("brickify", {"file": str(target)}),
         ("brickify", {"file": str(LADDER / number / "r2_corner.png")}),
+        ("open_model", {"name": str(LADDER / number / "r1.5.mpd")}),
+        ("open_model", {"name": "r1.5"}),
+        ("brickify", {"file": str(LADDER / number / "r1.5.mpd")}),
+        ("brickify", {"file": str(LADDER / number / "r1.5_corner.png")}),
         ("gallery", {"library": True, "q": realset.clean_name(c.name)}),
         ("gallery", {"library": True, "q": "ladder"}),
         ("compare_with_set", {"set": number}),
@@ -1071,7 +1262,8 @@ def reach(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("build", "render", "order", "place", "report", "sheet", "leaks", "reach"):
+    for name in ("build", "render", "seed", "order", "place", "report", "sheet", "leaks",
+                 "reach"):
         p = sub.add_parser(name)
         p.add_argument("--which", default="proof", choices=realset.HALVES)
         p.add_argument("--subjects", default="")
@@ -1089,12 +1281,14 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--into", default=str(OUT / "ladder_sheet.png"))
         if name == "leaks":
             p.add_argument("arms", nargs="+")
+        if name in ("seed", "report"):
+            p.add_argument("--before", default=str(BEFORE) if name == "seed" else "")
         if name == "reach":
             p.add_argument("--subject", default="21013-1")
             p.add_argument("--port", type=int, default=10830)
             p.add_argument("--home", default=str(OUT / "reach_home"))
     args = parser.parse_args(argv)
-    return {"build": build, "render": render, "order": order, "place": place,
+    return {"build": build, "render": render, "seed": seed, "order": order, "place": place,
             "report": report, "sheet": sheet, "leaks": leaks, "reach": reach}[args.command](args)
 
 

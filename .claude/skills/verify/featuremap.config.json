@@ -6140,7 +6140,7 @@
       "kind": "cli",
       "label": "place designs on a ladder of each real set",
       "entry": "tools/design_ladder.py",
-      "reach": "python3 tools/minitest.py tests/test_design_ladder.py; python3 tools/design_ladder.py build --subjects 21013-1; python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM   (for real: build | render (gpu) | heavy ... order | heavy ... place --arm A --date D [--again] | report | sheet; reach --port P starts the app as realset does and asks every file-opening tool for a ladder file; the ladder lives in the main checkout's bench/ladder/, never in a session's reach; the recipe is The design ladder in features/assistant.md)",
+      "reach": "python3 tools/minitest.py tests/test_design_ladder.py; python3 tools/design_ladder.py build --subjects 21013-1; python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM   (for real: build | render (gpu) | seed | heavy ... order | heavy ... place --arm A --date D [--again] | report [--before DIR] | sheet; six rungs, 1.5 half the SNOT out; reach --port P starts the app as realset does and asks every file-opening tool for a ladder file; the ladder lives in the main checkout's bench/ladder/, never in a session's reach; the recipe is The design ladder in features/assistant.md)",
       "area": "assistant"
     }
   ]
