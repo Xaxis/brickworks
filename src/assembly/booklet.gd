@@ -1407,15 +1407,19 @@ static func _head(document: Document, with_parts: bool = true) -> String:
   :root { --mm: min(3.78px, calc((100vw - 24px) / %s)); }
   body { background: #5f6b78; }
   .page { margin: 12px auto; box-shadow: 0 2px 14px rgba(0,0,0,.35); }
-  .bar { position: sticky; top: 0; z-index: 9; display: flex; gap: 12px;
+  .bar { position: sticky; top: 0; z-index: 9; display: flex; flex-wrap: wrap; gap: 12px;
     align-items: center; justify-content: center; padding: 8px;
     background: #27313c; color: #e8eef4; font: 14px system-ui, sans-serif; }
   .bar button { font: inherit; padding: 5px 14px; border-radius: 6px;
     border: 0; background: #e3ecf4; color: #17202a; cursor: pointer; }
+  .bar select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 0;
+    background: #e3ecf4; color: #17202a; }
+  #save-web:not([hidden]) { display: inline-flex; gap: 6px; align-items: center; }
 }
 @media screen and (pointer: coarse) {
   .bar { flex-wrap: wrap; font-size: 16px; }
-  .bar button { min-height: 44px; min-width: 44px; padding: 10px 16px; }
+  .bar button, .bar select { min-height: 44px; min-width: 44px; padding: 10px 16px; }
+  #save-web:not([hidden]) { flex-wrap: wrap; justify-content: center; }
 }
 @media print {
   @page { size: %s; margin: 0; }
@@ -1458,7 +1462,7 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
   margin-right: calc(1 * var(--mm)); box-shadow: inset 0 0 0 calc(.2 * var(--mm)) rgba(0,0,0,.3); }
 %s
 </style>
-<div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
+<div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="save-web" hidden><select id="web-layout" aria-label="How the web page lays out the steps"><option value="long">One long page</option><option value="steps">A page per step</option></select><select id="web-theme" aria-label="Light or dark"><option value="light">Light</option><option value="dark">Dark</option></select><button id="save-html">Save as web page</button></span><span id="saved" role="status" hidden></span></div>
 %s
 <main>""" % [policy(), _escape(document.title), sheet.colour.to_html(false),
 		sheet.box_fill.to_html(false), sheet.box_frame.to_html(false), _whole(size.x),
@@ -1468,10 +1472,11 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
 		_escape(document.title), SAVE_SCRIPT]
 
 
-## Save as PDF and Save pages as PNG, shown where they work: on the
+## Save as PDF, Save pages as PNG and Save as web page (one long page or a
+## page per step, light or dark), shown where they work: on the
 ## desktop, while Brickworks serves the booklet to the browser (BookletOut),
 ## each asks Brickworks, which asks where to save it and writes it
-## (BookletPdf, BookletPng); on the web the app shows and answers them in
+## (BookletPdf, BookletPng, BookletHtml); on the web the app shows and answers them in
 ## its tab itself (BookletOut.finish), where this does not run. A booklet
 ## opened from its file has no Brickworks to ask, and shows Print alone.
 const SAVE_SCRIPT := "<script>" + SAVE_JS + "</script>"
@@ -1481,15 +1486,19 @@ const SAVE_JS := """
 document.querySelector(".bar button").addEventListener("click", () => print());
 if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventListener("DOMContentLoaded", () => {
   const said = document.getElementById("saved");
-  for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"]]) {
+  document.getElementById("save-web").hidden = false;
+  for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"], ["save-html", "html"]]) {
     const button = document.getElementById(id);
     button.hidden = false;
     button.onclick = async () => {
       button.disabled = true;
       said.hidden = false;
       said.textContent = "Saving\u2026";
+      // Save as web page: its layout and its look, as chosen beside it.
+      const asked = kind != "html" ? kind : ["html", document.getElementById("web-layout").value,
+        document.getElementById("web-theme").value].join("-");
       try {
-        const answer = await fetch("/save?" + kind, {method: "POST"});
+        const answer = await fetch("/save?" + asked, {method: "POST"});
         said.textContent = await answer.text();
       } catch (error) {
         said.textContent = "Brickworks is closed: open the instructions from it again to save them";

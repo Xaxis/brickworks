@@ -62,6 +62,7 @@ const PATHS: Dictionary[StringName, String] = {
 	&"TogetherDialog": "res://src/ui/together_dialog.gd",
 	# What they make: Brick Art, figures, motions played, the booklet.
 	&"BookletMaker": "res://src/render/booklet_maker.gd",
+	&"BookletHtml": "res://src/render/booklet_html.gd",
 	&"BookletOut": "res://src/net/booklet_out.gd",
 	&"BookletPdf": "res://src/render/booklet_pdf.gd",
 	&"BookletPng": "res://src/render/booklet_png.gd",
