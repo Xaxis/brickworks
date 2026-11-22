@@ -2476,6 +2476,22 @@
       "tests": []
     },
     {
+      "id": "cli:photoreal judge",
+      "kind": "cli",
+      "entry": "tools/bench/photoreal.py",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:photoreal probe",
+      "kind": "cli",
+      "entry": "src/dev/photoreal_probe.gd",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:picker folder probe",
       "kind": "cli",
       "entry": "src/dev/picker_folder_probe.gd",

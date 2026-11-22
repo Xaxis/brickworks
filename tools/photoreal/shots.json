@@ -1,0 +1,225 @@
+{
+ "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md.",
+ "shots": [
+  {
+   "name": "black_2x4",
+   "kind": "closeup",
+   "model": "res://tools/photoreal/models/black_2x4.ldr",
+   "photo": "tools/photoreal/photos/black_2x4.jpg",
+   "size": [
+    1024,
+    860
+   ],
+   "yaw": -35,
+   "pitch": 58,
+   "zoom": 1.55,
+   "shift": [
+    0.0,
+    0.0
+   ],
+   "focal_mm": 60,
+   "backdrop": "#3c3a38",
+   "lighting": "studio",
+   "roll": -10,
+   "f_stop": 16,
+   "focus": 0.45
+  },
+  {
+   "name": "red_slope_2x4",
+   "kind": "closeup",
+   "model": "res://tools/photoreal/models/red_slope_2x4.ldr",
+   "photo": "tools/photoreal/photos/red_slope_2x4.jpg",
+   "size": [
+    1024,
+    572
+   ],
+   "yaw": -20,
+   "pitch": 25,
+   "zoom": 1.12,
+   "shift": [
+    0.0,
+    0.0
+   ],
+   "focal_mm": 85,
+   "backdrop": "#ffffff",
+   "lighting": "studio",
+   "f_stop": 16,
+   "focus": 0.45
+  },
+  {
+   "name": "grey_1x3",
+   "kind": "closeup",
+   "model": "res://tools/photoreal/models/grey_1x3.ldr",
+   "photo": "tools/photoreal/photos/grey_1x3.jpg",
+   "size": [
+    1024,
+    768
+   ],
+   "yaw": -25,
+   "pitch": 32,
+   "zoom": 0.6,
+   "shift": [
+    -0.15,
+    0.15
+   ],
+   "focal_mm": 28,
+   "backdrop": "#bdbdbd",
+   "lighting": "studio",
+   "f_stop": 16,
+   "focus": 0.5
+  },
+  {
+   "name": "trans_round_1x1",
+   "kind": "closeup",
+   "model": "res://tools/photoreal/models/trans_round_1x1.ldr",
+   "photo": "tools/photoreal/photos/trans_round_1x1.jpg",
+   "size": [
+    507,
+    527
+   ],
+   "yaw": 0,
+   "pitch": 10,
+   "zoom": 1.0,
+   "shift": [
+    0.0,
+    -0.08
+   ],
+   "focal_mm": 85,
+   "backdrop": "#ffffff",
+   "lighting": "studio",
+   "f_stop": 11,
+   "focus": 0.4
+  },
+  {
+   "name": "three_2x2_top",
+   "kind": "closeup",
+   "model": "res://tools/photoreal/models/three_2x2_top.ldr",
+   "photo": "tools/photoreal/photos/three_2x2_top.jpg",
+   "size": [
+    1024,
+    581
+   ],
+   "yaw": 0,
+   "pitch": 89,
+   "zoom": 0.92,
+   "shift": [
+    0.0,
+    0.0
+   ],
+   "focal_mm": 85,
+   "backdrop": "#ececec",
+   "lighting": "studio"
+  },
+  {
+   "name": "green_plate_macro",
+   "kind": "closeup",
+   "model": "res://tools/photoreal/models/green_plate_macro.ldr",
+   "photo": "tools/photoreal/photos/green_plate_macro.jpg",
+   "size": [
+    1024,
+    683
+   ],
+   "yaw": 35,
+   "pitch": 42,
+   "zoom": 1.8,
+   "shift": [
+    -0.5,
+    0.35
+   ],
+   "focal_mm": 100,
+   "f_stop": 11,
+   "focus": 0.12,
+   "backdrop": "#8c8070",
+   "lighting": "studio"
+  },
+  {
+   "name": "set_6512",
+   "kind": "set",
+   "model": "res://vendor/omr/files/6512-1.mpd",
+   "photo": "vendor/rebrickable/set_pictures/6512-1.jpg",
+   "size": [
+    1024,
+    768
+   ],
+   "yaw": 135,
+   "pitch": 26,
+   "zoom": 1.45,
+   "shift": [
+    0.0,
+    0.0
+   ],
+   "focal_mm": 70,
+   "backdrop": "#ffffff",
+   "lighting": "studio",
+   "f_stop": 22,
+   "focus": 0.45
+  },
+  {
+   "name": "set_6532",
+   "kind": "set",
+   "model": "res://vendor/omr/files/6532-1.mpd",
+   "photo": "vendor/rebrickable/set_pictures/6532-1.jpg",
+   "size": [
+    1024,
+    1024
+   ],
+   "yaw": 50,
+   "pitch": 25,
+   "zoom": 1.3,
+   "shift": [
+    0.0,
+    0.0
+   ],
+   "focal_mm": 70,
+   "backdrop": "#ffffff",
+   "lighting": "studio",
+   "f_stop": 22,
+   "focus": 0.45
+  },
+  {
+   "name": "set_6657",
+   "kind": "set",
+   "model": "res://vendor/omr/files/6657-1.mpd",
+   "photo": "vendor/rebrickable/set_pictures/6657-1.jpg",
+   "size": [
+    1024,
+    768
+   ],
+   "yaw": 18,
+   "pitch": 8,
+   "zoom": 1.3,
+   "shift": [
+    0.0,
+    0.0
+   ],
+   "focal_mm": 70,
+   "backdrop": "#e4e4e2",
+   "gradient": true,
+   "lighting": "studio",
+   "f_stop": 22,
+   "focus": 0.45
+  },
+  {
+   "name": "set_6660",
+   "kind": "set",
+   "model": "res://vendor/omr/files/6660-1.mpd",
+   "photo": "vendor/rebrickable/set_pictures/6660-1.jpg",
+   "size": [
+    1024,
+    1024
+   ],
+   "yaw": -50,
+   "pitch": 22,
+   "zoom": 1.45,
+   "shift": [
+    0.12,
+    0.0
+   ],
+   "focal_mm": 70,
+   "backdrop": "#ffffff",
+   "lighting": "studio",
+   "f_stop": 22,
+   "focus": 0.45
+  }
+ ]
+}

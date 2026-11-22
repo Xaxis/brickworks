@@ -42,6 +42,10 @@ Since APP_UX3 pathtrace (2026-10-31), Best is path traced in the app itself
 where the card has Vulkan's ray tracing pipeline: soft shadows and light
 bounced off the floor and between parts, in seconds (section 5c). Cycles is
 still the way to a real bevel and caustics, and the web still has no tracer.
+Since photoreal1 (2026-11-21), Best in the Product look is judged blind
+beside real photographs. Its studs carry the logo, its edges and slopes are
+moulded, and light bends through clear parts. The judge still finds the
+photograph every time, now less sure (section 5e, with what is left).
 
 ## 1. What makes a LEGO® product render read as real
 
@@ -263,9 +267,11 @@ closed, and 6 is a film curve. What is still visibly short of a LEGO
 product shot:
 - edges that are not on a part's box (slopes, curves) are still sharp
   (stud rims rounded in render353);
-- no logo on the studs;
+- no logo on the studs (traced at Best, Product look, since photoreal1,
+  section 5e);
 - clear behind clear (closed in render353, section 5b);
-- no light through clear parts;
+- no light through clear parts (refracted at Best, Product look, since
+  photoreal1);
 - black read as mid-grey, and at Good grey faces were hatched (both
   fixed in render342, section 5a);
 - no lifestyle scenes.
@@ -656,6 +662,163 @@ Pictures, `bench/results/render353-2026-10-29/`:
   sweep (the car's roof is black), and the plate round a neon 1 x 1 three
   times as light as round a Trans Green one.
 
+## 5e. Beside real photographs (photoreal1)
+
+On 2026-11-21 the owner asked whether Render makes bricks look like real
+bricks. Until then no render had been put beside a photograph: the path
+tracer had been measured for speed and noise only. This unit built the
+bench first, measured, then changed the tracer and measured again.
+
+**The bench.**
+- **Six close-ups** of real parts in free-licence photographs
+  (`tools/photoreal/photos/`, credited in docs/ATTRIBUTION.md):
+  - a black 2x4 on leather;
+  - a red 2x4 slope;
+  - a grey 1x3 on a table;
+  - a clear round 1x1;
+  - three 2x2s from above;
+  - a green plate's corner in macro.
+- **Four real sets** beside their own product pictures
+  (`vendor/rebrickable/set_pictures/`): 6512 Landscape Loader, 6532 Diesel
+  Dumper, 6657 Fire Patrol Copter and 6660 Hook & Haul Wrecker. All are from
+  before 2000, so none is in realset's held-out pool (which starts at 2000).
+- **The probe** (`tools/probe.sh photoreal`) draws each shot at Best,
+  Product look, matching its photograph: same model, angle, lens, framing,
+  backdrop, depth of field and size, at 256 samples, path traced.
+- **The judge** (`tools/bench/photoreal.py judge`) is blind. It is Claude
+  (claude-opus-5-5, on the subscription) shown the photograph and the render under
+  opaque names, both cropped to the same shape and size and saved as JPEG
+  at 92. Each pair is shown in both orders. It is asked which picture is
+  the photograph of real bricks, how sure it is, and what gives the render
+  away. That makes 20 trials a round.
+  - A render as real as the photograph is picked half the time.
+  - Each "before" round was drawn the same day, from a locked worktree at
+    pre261 (16744b131).
+
+**What changed** (Best, Product look only: `PathTracer.product`). The
+window's own look and its Best are drawn as before.
+- **The logo on every stud**, raised 0.15 LDU with rounded flanks. It is
+  drawn as a normal from the letters' distance field in the closest-hit
+  shader, on any stud top whose part has studs (`part_body_top`). No mesh
+  build is needed.
+- **Rounded edges.** The product look's bevel and stud rim, from
+  `plastic_body.gdshaderinc`, are now in the tracer and drawn exactly,
+  with no pixel-averaging. A part alone no longer gets the painted dark seam.
+- **A slope's moulded grain**: two octaves of normal noise on a straight
+  slope's face, with a satin coat instead of a mirror.
+- **Light bent through clear parts.** The tracer refracts at index 1.585
+  (polycarbonate), with total internal reflection inside.
+- **Gloss that varies across a face.** Each part also gets its own shade
+  and faint scuffs. These made no measurable difference; see the rounds
+  below.
+- **No sampling sparkle.**
+  - One sample may give at most 3x what its exposure draws as white
+    (`PRODUCT_MOST`; the window look's Best keeps 40).
+  - The resolve cleans the picture: each pixel becomes the weighted mean
+    of its neighbours within 3 px. A neighbour is weighed down by how far
+    it is, and by how unlike it is in units of the noise a mean of 256
+    samples carries (`PRODUCT_DENOISE` 3.0). Edges and logos are kept.
+
+**The numbers.** Pick rate means how often the judge chose the photograph;
+"sure" is its mean confidence, from 0.5 to 1.
+
+| Round | Code | Close-ups (12) | Sets (8) | All (20) |
+|---|---|---|---|---|
+| before | pre261 | 12 found, sure 0.963 | 8 found, 0.877 | 1.00, 0.929 |
+| after1 | logo, bevel, refraction | 12, 0.932 | 8, 0.866 | 1.00, 0.906 |
+| before2 | pre261, depth of field added to the shots | 12, 0.958 | 8, 0.885 | 1.00, 0.929 |
+| after2 | + denoise 1.2, uneven gloss | 12, 0.920 | 8, 0.861 | 1.00, 0.896 |
+| before3 | pre261, the macro reframed | 12, 0.958 | 8, 0.895 | 1.00, 0.933 |
+| after5 | + sample cap, denoise 3.0 | 12, 0.920 | 8, 0.849 | 1.00, 0.891 |
+| after7 | + per-part tone, scuffs, dust | 12, 0.927 | 8, 0.866 | 1.00, 0.903 |
+| **final** | dust taken out (c95d80f51) | **12, 0.920** | **8, 0.868** | **1.00, 0.899** |
+
+Read plainly:
+- **The judge still finds the photograph every time**, before and after,
+  in close-ups and sets, in both orders. The bar was a lower pick rate,
+  and it was not met.
+- **It is less sure.** The three before-rounds scored 0.929, 0.929 and
+  0.933; the five after-rounds 0.891 to 0.906. No shot became more certain.
+  The closest is set 6512, at 68 (before 72 and 80).
+- **Dust backfired.** Flecks of dust were called "white firefly speckles"
+  and taken out. The scuffs and the per-part shade moved nothing that
+  can be measured (0.891 against 0.899).
+
+What it said, verbatim:
+- The black 2x4, before: *"B is a flat, matte, untextured model with
+  path-tracer noise."*
+- The black 2x4, after: *"B looks like a clean CG model with a flat,
+  featureless background and noisy blur that comes from the renderer."*
+- Three 2x2s, before: *"B's studs are blank, its surfaces are perfectly
+  flat and matte, and its edges are razor sharp."*
+- Three 2x2s, after: *"B's bricks look perfectly uniform, with the same
+  logo and the same shadow on every stud."*
+
+The render's tells it named, out of about 100 a round:
+
+| Tell | before3 | final |
+|---|---|---|
+| too clean: no wear, dust, scratches, mould or gate marks | 22 | 24 |
+| too uniform: colour, gloss, every stud alike | 16 | 29 |
+| sampling noise or grain, mostly in out-of-focus areas | 17 | 17 |
+| backdrop: featureless sweep, hard horizon | 16 | 14 |
+| edges too sharp | 9 | 10 |
+| logos (missing before; "too perfect" after) | 11 | 8 |
+| faceted round parts | 4 | 3 |
+| clear parts | 10 | 8 |
+| a figure stood beside the vehicle | 5 | 3 |
+
+**Time.** The car at Best, Product, 1280x720, 256 samples, three runs
+each. The pre261 tree and this one ran at the same moment, twice:
+- 3.20 s against 3.86 s;
+- 4.06 s against 3.50 s.
+
+Both are well under the 8.4 s bar, and the difference is the card's noise.
+
+**Pictures.** `bench/results/photoreal1-2026-11-21/side_by_side/` has one
+row per shot: the photograph, before3, and final. `all_before_after.jpg`
+holds all ten rows. Each judge's every verdict is in `judge_<round>.json`
+beside them.
+
+**What is left, in order** (biggest share of the tells first):
+1. **The sweep on pure white for set shots.** Every set's own picture is
+   a cut-out on white with a soft shadow. Ours shows the sweep's floor
+   meeting its wall (14 tells). It needs a shadow catcher: the backdrop
+   drawn at exactly its colour wherever the model casts no shadow.
+   - Best cannot do this today. It never path traces a picture with
+     nothing behind the model (`RenderSettings.traced_here`), so a
+     transparent cut-out falls back to raster frames averaged.
+   - The tracer already carries the coverage it would need (the resolve's
+     alpha).
+   - A try at judging the sets cut out onto white stopped there:
+     comparing a raster cut-out with a traced render would mix two
+     changes.
+2. **Noise in out-of-focus areas** (17 tells). At f/11 to f/22, 256
+   samples leave grain in the blur. Options: more samples for the lens
+   alone, or a denoiser that knows depth, normal and albedo (the
+   tracer's first hit can write them).
+3. **Variety a real part has.**
+   - Uniformity was named more after than before (16 to 29), once the
+     logo made every stud alike.
+   - Each stud's logo should differ slightly in depth and sharpness, as
+     moulds wear.
+   - Gate marks belong on the studs of the parts that have them.
+   - Scuffs a judge does not read as procedural.
+   - Any added point detail must be larger and softer than a firefly.
+4. **Clear parts tinted too deep.** The tint is the colour at each face,
+   so a pane seen through both faces gets its colour squared. 6660's
+   Trans Medium Blue windscreen came out deep blue where the photograph
+   shows it pale. The fix is absorption by thickness (Beer–Lambert).
+5. **Faceted round parts**: the silhouettes of 16-sided primitives. This
+   needs higher-resolution primitives (48-sided) in the mesh build, which
+   was not this unit's. Prove it on the harness parts first.
+6. **What the bench cannot fix in the renderer.**
+   - The close-ups' photographs sit on leather, stone and tabletops; ours
+     on a plain sweep. That is R5's lifestyle scenes.
+   - OMR stands 6657's and 6660's figures beside the vehicle; the box
+     seats them.
+   - Old sets' plastic is yellowed and faded in their photographs.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
@@ -696,7 +859,10 @@ so patchable on the web", and "takes something away".
 
 ## 8. The remaining units, in order
 
-Each says what it does and the bar it must reach.
+Each says what it does and the bar it must reach. What Best's own look
+still lacks beside real photographs, ranked by how often a blind judge
+named it, is in section 5e's last list. Those come first: the bar for each
+is a lower pick rate on `tools/bench/photoreal.py` than a same-day before.
 
 1. **R2 Cycles on the desktop.**
    - **What:** Render's fourth grade, "Studio (path traced)". It writes
