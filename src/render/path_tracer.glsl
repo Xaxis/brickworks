@@ -478,6 +478,18 @@ float seam_at(vec3 at, vec3 low, vec3 high, float width) {
 	return 1.0 - smoothstep(width * 0.5, width, second);
 }
 
+// How much a point of a moulded part (its own space) is in the groove under
+// its bottom edge (photoreal5): 1 on its side faces' lowest quarter LDU,
+// falling to 0 at 0.6 LDU up, and 0 off its box's sides (the underside's
+// tubes and walls, a round part's curve).
+float bottom_rim(vec3 at, vec3 low, vec3 high) {
+	if (high.x <= low.x || high.y <= low.y) {
+		return 0.0;
+	}
+	float side = min(min(at.x - low.x, high.x - at.x), min(at.z - low.z, high.z - at.z));
+	return (1.0 - smoothstep(0.25, 0.6, at.y - low.y)) * (1.0 - smoothstep(0.15, 0.35, side));
+}
+
 float gloss_hash(vec3 p) {
 	p = fract(p * 0.3183099 + 0.1);
 	p *= 17.0;
@@ -622,6 +634,16 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat = 1.0;
 			s.coat_roughness = 0.1;
 		}
+		// The joint under a part (photoreal5): a real part's bottom edge is
+		// rounded and stands a tenth of a millimetre off what it sits on,
+		// and the groove that leaves is in shade, so every joint of a
+		// stack, and the line where a part meets the floor, reads as a dark
+		// hairline. The geometry is flush, so the side faces' lowest 0.6 LDU
+		// are darkened and lose their gloss as that groove is: a judge called
+		// our stacks seamless and our parts floating.
+		float rim = bottom_rim(local, thing.box_min.xyz, thing.box_max.xyz);
+		body *= 1.0 - 0.8 * rim;
+		s.coat *= 1.0 - 0.85 * rim;
 		// A stud's top is satin, not polished (photoreal3): the logo's plate of
 		// the mould is left rough, so it shows the tent's light blurred where a
 		// polished top mirrors the dark camera. In three_2x2_top's photograph
