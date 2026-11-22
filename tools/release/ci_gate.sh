@@ -11,6 +11,10 @@ cd "$1" || exit 1
 # 600 s held rel-m270 without a word: the suite had grown to 815 s at load 35
 # (2026-11-07), and timeout killed it before it could say what it was doing.
 if [ -z "${BOX_HEAVY_HELD:-}" ]; then
+  # A timeout round this script counts the queue (idlesleep's gate, 11-22).
+  # shellcheck source=queue_wrap.sh
+  . "$(dirname "$0")/queue_wrap.sh"
+  queue_wrap_check || exit 2
   ~/.claude/claude-core/bin/heavy timeout 1800 "$0" "$PWD"; code=$?
   [ "$code" = 124 ] && echo "ci gate: timed out after 1800 s in its slot, before its verdict"
   exit "$code"
