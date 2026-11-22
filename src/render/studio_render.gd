@@ -91,6 +91,17 @@ const PRODUCT_DENOISE := 3.0
 ## and was a sparkle in a mean of 256.
 const PRODUCT_MOST := 3.0
 
+## Best's product look in the studio on a light backdrop is a light tent
+## (photoreal2, path_tracer.glsl's tent()): white walls all round and a soft
+## panel overhead this many times brighter, in place of the rig's hard key,
+## whose shadow drew a crescent inside every stud that no product photograph
+## has. A dark backdrop keeps the rig's pool of light.
+const TENT_TOP := 3.0
+## How light a backdrop is at least to be a tent's paper rather than a pool
+## of light, and to be the photograph's white the exposure is metered to.
+const TENT_BACKDROP := 0.2
+const PAPER_WHITE := 0.8
+
 ## Where the camera looks from: key -> [words, direction from the model].
 ## Front is +z, as ModelShot has it.
 const VIEWS: Dictionary = {
@@ -2511,9 +2522,14 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var small := Vector2i(maxi(roundi(120.0 * aspect), 16), 120)
 	var scale: float = 1.0
 	var goal: float = minf(settings.backdrop.get_luminance(), 0.95)
-	# In the set's light alone, as the raster is metered: the model's own
-	# lights add to it (SceneLights). None of it in the Dark light, as dark
-	# as it is.
+	# The product look on a backdrop is metered as a photographer meters a
+	# product shot: a white card where the model stands, exposed to the
+	# photograph's white (_meter_card), so the model is as light as its light
+	# and its colour make it, and the backdrop drawn at its own colour round
+	# it (the shadow catcher). Otherwise in the set's light alone, as the
+	# raster is metered: the model's own lights add to it (SceneLights). None
+	# of it in the Dark light, as dark as it is.
+	var catcher: bool = _catches(settings)
 	for round: int in (0 if settings.lighting == "dark" else 5):
 		_tracer.scene = _traced_scene(settings, plan, shot, small, level, false)
 		if not _tracer.begin(small):
@@ -2534,7 +2550,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 				if got <= 0.001 or absf(got / _wanted_lightness - 1.0) < 0.02:
 					break
 				scale *= clampf(pow(_wanted_lightness / got, 1.4), 0.4, 2.5)
-		if not _backdrop.visible:
+		if not _backdrop.visible or catcher:
 			break
 		var floor_image: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
 			saturation, true, false)
@@ -2547,7 +2563,15 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# The picture itself.
 	var most: float = PRODUCT_MOST * white / maxf(exposure * scale, 0.0001) \
 		if settings.look == "product" else 0.0
-	_tracer.scene = _traced_scene(settings, plan, shot, picture, level, true, most)
+	# The light the backdrop gives the eye, so the picture shows it at
+	# exactly its colour.
+	var caught := Color(-1.0, 0.0, 0.0)
+	if catcher:
+		var at: float = maxf(exposure * scale, 0.0001)
+		caught = Color(_untoned(settings.backdrop.r, tonemapper, white, contrast) / at,
+			_untoned(settings.backdrop.g, tonemapper, white, contrast) / at,
+			_untoned(settings.backdrop.b, tonemapper, white, contrast) / at)
+	_tracer.scene = _traced_scene(settings, plan, shot, picture, level, true, most, caught)
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
@@ -2621,8 +2645,12 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 
 ## What the tracer lights and sees, as path_tracer.glsl's Scene reads it:
 ## with the model's own lights, unless [param lamps] is false (metering).
+## [param caught], when its red is not below 0, is the light the shadow
+## catcher shows the backdrop at; [param card] lays a white card for the
+## sweep, metering (_meter_card).
 func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Vector2i,
-		level: float, lamps: bool = true, most: float = 0.0) -> PackedFloat32Array:
+		level: float, lamps: bool = true, most: float = 0.0, caught := Color(-1.0, 0.0, 0.0),
+		card: bool = false) -> PackedFloat32Array:
 	var tan_half: float = tan(deg_to_rad(shot.fov) * 0.5)
 	var aspect: float = float(picture.x) / float(maxi(picture.y, 1))
 	var across: Vector3 = shot.basis.x * tan_half * aspect
@@ -2640,16 +2668,28 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# The sky: a photographed place (the product look's softbox when no
 	# place is chosen), or the window's own.
 	var place: StudioPanorama = _lit_by
+	var tent: bool = _tented(settings)
+	if tent:
+		place = null
 	var energy: float = 0.0
 	if place != null:
 		energy = HDRI_LEVEL / maxf(place.average, 0.0001)
 		if product and settings.lighting == "studio":
 			energy *= _ambient
-	data.append_array([_ambient, _ambient, _ambient, 1.0 if place != null else 0.0])
+	# A tent's walls are the colour of its paper's light: a warm backdrop in
+	# a photograph is a warm light on the model too.
+	var sky := Color(_ambient, _ambient, _ambient)
+	if tent:
+		sky = _paper_tint(settings)
+	data.append_array([sky.r, sky.g, sky.b, 1.0 if place != null else 0.0])
 	data.append_array([energy, _turn, _room, float(PathTracer.PLACE_CELLS.x)])
 	var behind: Color = settings.backdrop.srgb_to_linear()
 	var beyond: Color = behind * (DARK_BACKDROP if settings.lighting == "dark" else 1.0)
+	if caught.r >= 0.0:
+		beyond = caught
 	data.append_array([beyond.r, beyond.g, beyond.b, 0.0 if settings.transparent else 1.0])
+	if card:
+		behind = Color(1, 1, 1)
 	var dark: bool = settings.backdrop.get_luminance() < 0.2
 	var fall: float = 0.0 if not settings.backdrop_gradient \
 		else (FALL_DARK if dark else FALL_GRADIENT)
@@ -2661,7 +2701,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# The lights: the rig as dressed, the key from anywhere on its area. A
 	# photographed place is its own key.
 	var lights: Array = []
-	if place == null or (product and settings.lighting == "studio"):
+	if not tent and (place == null or (product and settings.lighting == "studio")):
 		for n: int in _lights.size():
 			var light: DirectionalLight3D = _lights[n]
 			if not light.visible or light.light_energy <= 0.0:
@@ -2672,7 +2712,8 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			# Shadows where the window's light casts them: the key's alone.
 			lights.append([toward, plan.key_spread * 0.5 if n == 0 else 0.0, colour,
 				1.0 if light.shadow_enabled else 0.0])
-	data.append_array([1.0 if product else 0.0, float(lights.size()), most, 0.0])
+	data.append_array([1.0 if product else 0.0, float(lights.size()), most,
+		1.0 if caught.r >= 0.0 else 0.0])
 	# The window's sky (main.tscn's), as its ambient light lights the model.
 	var top := Color(0.53, 0.545, 0.565)
 	var horizon := Color(0.735, 0.74, 0.75)
@@ -2724,7 +2765,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 				lit.r, lit.g, lit.b, 1.0 if shadows else 0.0,
 				float(light.get("size", 4.0)), SceneLights.EDGE, float(node.get_meta("reach", 1e6)),
 				0.0])
-	data.append_array([float(rows.size()), _glow, 0.0, 0.0])
+	data.append_array([float(rows.size()), _glow, TENT_TOP if tent else 0.0, 0.0])
 	for n: int in SceneLights.MOST:
 		if n < rows.size():
 			data.append_array(rows[n])
@@ -2733,6 +2774,124 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			none.resize(16)
 			data.append_array(none)
 	return data
+
+
+## Whether the traced picture's sweep is a shadow catcher (photoreal2): the
+## product look on a backdrop, as a product photograph's white seamless is
+## its own colour wherever the model casts no shadow, with no line where the
+## floor meets the wall.
+func _catches(settings: RenderSettings) -> bool:
+	return settings.look == "product" and _backdrop.visible and not settings.transparent \
+		and settings.lighting != "dark"
+
+
+## Whether the traced product look is lit by a light tent (TENT_TOP).
+func _tented(settings: RenderSettings) -> bool:
+	return settings.look == "product" and settings.lighting == "studio" and _backdrop.visible \
+		and settings.backdrop.get_luminance() >= TENT_BACKDROP
+
+
+## The colour of a tent's light: its paper's, at its brightest channel 1.
+## A paper darker than PAPER_WHITE is grey card, and the light white.
+static func _paper_tint(settings: RenderSettings) -> Color:
+	if settings.backdrop.get_luminance() < PAPER_WHITE:
+		return Color(1, 1, 1)
+	var paper: Color = settings.backdrop.srgb_to_linear()
+	var most: float = maxf(paper.r, maxf(paper.g, paper.b))
+	return Color(paper.r / most, paper.g / most, paper.b / most) if most > 0.0 else Color(1, 1, 1)
+
+
+## The exposure (a scale on [param exposure]) that draws a white card where
+## the model stands at the photograph's white: the backdrop's own colour
+## when it is paper (PAPER_WHITE or lighter), white otherwise. The card is
+## the sweep, lit by the set's light, read where nothing shadows it; the
+## picture is read dimmed, so the card is never past white, and its light
+## worked back from the tone curve (_untoned). 0 when cancelled.
+func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector2i,
+		exposure: float, tonemapper: int, white: float, contrast: float,
+		saturation: float) -> float:
+	var goal: float = settings.backdrop.get_luminance()
+	if goal < PAPER_WHITE:
+		goal = 1.0
+	var want: float = _untoned(goal, tonemapper, white, contrast)
+	var scale: float = 1.0
+	const DIM := 0.2
+	for round: int in 2:
+		_tracer.scene = _traced_scene(settings, plan, shot, small, 1.0, false, 0.0,
+			Color(-1.0, 0.0, 0.0), true)
+		if not _tracer.begin(small):
+			return 0.0
+		_doing("metering")
+		for _part: int in 4:
+			_tracer.trace(12, round)
+			await get_tree().process_frame
+			if _cancelled:
+				return 0.0
+		var seen: Image = _tracer.picture(exposure * scale * DIM, tonemapper, white, contrast,
+			saturation, true, false)
+		var card: float = _open_floor(seen)
+		if card <= 0.0005:
+			break
+		var light: float = _untoned(card, tonemapper, white, contrast) / (exposure * scale * DIM)
+		scale = want / maxf(light * exposure, 1e-6)
+	return scale
+
+
+## The open floor's lightness in a metering picture: the lightest tenth of
+## what is not the model, where nothing shadows the card.
+static func _open_floor(image: Image) -> float:
+	if image == null:
+		return 0.0
+	var levels := PackedFloat32Array()
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var c: Color = image.get_pixel(x, y)
+			if c.a < 0.1:
+				levels.append(Color(c.r, c.g, c.b).get_luminance())
+	if levels.is_empty():
+		return 0.0
+	levels.sort()
+	return levels[int(float(levels.size() - 1) * 0.9)]
+
+
+## A grey's light (exposed) as path_tracer_resolve.glsl draws it, 0 to 1:
+## the tone curve at [param white], to sRGB, the contrast after.
+static func _toned(light: float, tonemapper: int, white: float, contrast: float) -> float:
+	var c: float = 0.0
+	if tonemapper > 2:
+		c = _aces(light * 1.8) / _aces(white * 1.8)
+	else:
+		c = _filmic(light) / _filmic(white)
+	c = clampf(c, 0.0, 1.0)
+	c = 12.92 * c if c < 0.0031308 else 1.055 * pow(c, 1.0 / 2.4) - 0.055
+	return lerpf(0.5, c, contrast)
+
+
+## The light (exposed) [method _toned] draws as [param shown].
+static func _untoned(shown: float, tonemapper: int, white: float, contrast: float) -> float:
+	var low: float = 0.0
+	var high: float = white * 2.0
+	for _step: int in 48:
+		var middle: float = (low + high) * 0.5
+		if _toned(middle, tonemapper, white, contrast) < shown:
+			low = middle
+		else:
+			high = middle
+	return (low + high) * 0.5
+
+
+static func _filmic(x: float) -> float:
+	const A := 0.22 * 4.0
+	const B := 0.30 * 2.0
+	const C := 0.10
+	const D := 0.20
+	const E := 0.01
+	const F := 0.30
+	return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F
+
+
+static func _aces(c: float) -> float:
+	return (c * (c + 0.0245786) - 0.000090537) / (c * (0.983729 * c + 0.432951) + 0.238081)
 
 
 ## The model's mean lightness in a metering picture: its pixels are those

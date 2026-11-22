@@ -95,15 +95,20 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	vec4 sweep_colour;
 	// Where the model stands on it, and the panorama's cells down.
 	vec4 sweep_origin;
-	// The look (0 the window's, 1 the product's), how many lights, the
-	// sky's top and horizon (the window's procedural sky) packed below.
+	// The look (0 the window's, 1 the product's), how many lights, the most
+	// one sample may give, and 1 where the sweep is a shadow catcher (the
+	// product look on a backdrop, photoreal2): the eye sees the backdrop at
+	// exactly its colour (background) wherever the model casts no shadow, as
+	// a product photograph's white seamless is. The sky's top and horizon
+	// (the window's procedural sky) packed below.
 	vec4 look;
 	vec4 sky_top;
 	vec4 sky_horizon;
 	vec4 sky_ground;
 	Light lights[4];
-	// How many lamps, and how much light the glowing plastics give off (0
-	// but in the Dark light).
+	// How many lamps, how much light the glowing plastics give off (0 but in
+	// the Dark light), and for a light tent (photoreal2) how many times
+	// brighter its top is than its walls (0 for none), unused.
 	vec4 lamp_info;
 	Lamp lamps[8];
 } scene;
@@ -254,7 +259,43 @@ vec3 place_way(vec2 uv) {
 	return vec3(c * own.x + s * own.z, own.y, -s * own.x + c * own.z);
 }
 
+// A light tent (photoreal2), the product look's studio on a light backdrop:
+// white walls all round (the even sky) and a large soft panel overhead, 90
+// degrees across, scene.lamp_info.z times as bright. A product photograph is
+// lit so, from every side and most from above: no hard key, and no crescent
+// of shadow inside a stud.
+const float TENT_COS_OUT = 0.7071;
+const float TENT_COS_IN = 0.866;
+
+bool tent() {
+	return scene.sky.w < 0.5 && scene.lamp_info.z > 0.0;
+}
+
+vec3 tent_light(vec3 way) {
+	if (way.y < 0.0) {
+		return scene.sky.rgb * 0.6;
+	}
+	return scene.sky.rgb * (1.0 + scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y));
+}
+
+// The tent's panel picked half the time (evenly over its cone), the
+// hemisphere by its cosine the other half.
+float tent_pdf(vec3 way, vec3 n) {
+	float cone = way.y >= TENT_COS_OUT ? 1.0 / (2.0 * PI * (1.0 - TENT_COS_OUT)) : 0.0;
+	return 0.5 * cone + 0.5 * max(dot(n, way), 0.0) / PI;
+}
+
+vec3 tent_pick(vec3 n, out float pdf) {
+	vec3 way = rand() < 0.5 ? in_cone(vec3(0.0, 1.0, 0.0), acos(TENT_COS_OUT), rand2())
+		: cosine_around(n, rand2());
+	pdf = tent_pdf(way, n);
+	return way;
+}
+
 vec3 sky_light(vec3 way) {
+	if (tent()) {
+		return tent_light(way);
+	}
 	if (scene.sky.w > 0.5) {
 		vec3 light = textureLod(place_map, place_uv(way), 0.0).rgb * scene.place.x;
 		if (scene.place.z < 1.0) {
@@ -567,8 +608,8 @@ bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
 
 // How much light gets through from a point towards a light [far] away:
 // none past anything solid, tinted by the clear plastic on the way.
-vec3 through_far(vec3 from, vec3 way, float far) {
-	if (trace(from, way, far, MASK_SOLID | MASK_SWEEP,
+vec3 through_masked(vec3 from, vec3 way, float far, uint solid) {
+	if (trace(from, way, far, solid,
 			gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT)) {
 		return vec3(0.0);
 	}
@@ -596,8 +637,62 @@ vec3 through_far(vec3 from, vec3 way, float far) {
 	return let;
 }
 
+vec3 through_far(vec3 from, vec3 way, float far) {
+	return through_masked(from, way, far, MASK_SOLID | MASK_SWEEP);
+}
+
 vec3 through(vec3 from, vec3 way) {
 	return through_far(from, way, 1e7);
+}
+
+float luminance(vec3 c) {
+	return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// How much of the light that would reach a point of the sweep the model
+// lets through (photoreal2's shadow catcher): 1 in the open, less in the
+// model's shadow, tinted under clear parts. Each light once, and the sky
+// twice (once by its own pick, once by the cosine), each weighed by the
+// light it brings (the balance heuristic over the two picks), so a soft
+// overhead panel's shadow is as soft as the panel is large.
+vec3 shadow_on(vec3 at, vec3 n) {
+	vec3 kept = vec3(0.0);
+	float all = 0.0;
+	int lights = int(scene.look.y);
+	for (int i = 0; i < lights; i++) {
+		Light light = scene.lights[i];
+		vec3 l = in_cone(light.toward.xyz, light.toward.w, rand2());
+		float c = max(dot(n, l), 0.0) * luminance(light.colour.rgb);
+		if (c <= 0.0) {
+			continue;
+		}
+		all += c;
+		kept += c * (light.colour.w > 0.5 ? through_masked(at, l, 1e7, MASK_SOLID) : vec3(1.0));
+	}
+	for (int k = 0; k < 2; k++) {
+		vec3 l;
+		float own = 0.0;
+		if (k == 1) {
+			l = cosine_around(n, rand2());
+		} else if (tent()) {
+			l = in_cone(vec3(0.0, 1.0, 0.0), acos(TENT_COS_OUT), rand2());
+		} else if (scene.sky.w > 0.5) {
+			l = place_pick(rand2(), own);
+		} else {
+			l = cosine_around(n, rand2());
+		}
+		float facing = max(dot(n, l), 0.0);
+		if (facing <= 0.0) {
+			continue;
+		}
+		// The two picks' chances of this direction, summed.
+		float first = tent() ? 2.0 * tent_pdf(l, n) - facing / PI
+			: (scene.sky.w > 0.5 ? place_pdf(l) : facing / PI);
+		float c = luminance(sky_light(l)) * facing / max(first + facing / PI, 1e-6);
+		all += c;
+		kept += c * through_masked(at, l, 1e7, MASK_SOLID);
+	}
+	return all > 0.0 ? kept / all : vec3(1.0);
 }
 
 // The light arriving at a point of a surface straight from the lamps placed
@@ -688,6 +783,9 @@ float balance(float a, float b) {
 // How likely the sky's own pick is to be this direction from a surface
 // facing n: the place's table, or the even sky's cosine.
 float sky_pdf(vec3 way, vec3 n) {
+	if (tent()) {
+		return tent_pdf(way, n);
+	}
 	return scene.sky.w > 0.5 ? place_pdf(way) : max(dot(n, way), 0.0) / PI;
 }
 
@@ -711,7 +809,9 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 	// over the hemisphere otherwise, and weighed against the bounce.
 	float pdf_light;
 	vec3 l;
-	if (scene.sky.w > 0.5) {
+	if (tent()) {
+		l = tent_pick(n, pdf_light);
+	} else if (scene.sky.w > 0.5) {
 		l = place_pick(rand2(), pdf_light);
 	} else {
 		l = cosine_around(n, rand2());
@@ -839,6 +939,16 @@ void main() {
 			}
 			if (straight && thing.info.y != KIND_SWEEP) {
 				covered = 1.0;
+			}
+			if (straight && thing.info.y == KIND_SWEEP && scene.look.w > 0.5) {
+				// The shadow catcher: the backdrop as the eye sees it, at its
+				// colour (falling away as the sweep's paper does), darker only
+				// where the model keeps light from it.
+				vec3 flat_at = at - scene.sweep_origin.xyz;
+				float along = length(flat_at.xz) + max(flat_at.y, 0.0);
+				float lit = 1.0 - scene.sweep.y * smoothstep(scene.sweep.z, scene.sweep.w, along);
+				radiance += carried * scene.background.rgb * lit * lit * shadow_on(at + ng * 0.02, n);
+				break;
 			}
 			Surface s = surface_of(thing, at, hit.local, hit.unused, hit.instance);
 			// The sweep is brought to its colour for the eye alone, as the

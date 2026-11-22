@@ -1,5 +1,5 @@
 {
- "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md.",
+ "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. backdrop: the photograph's own backdrop, measured (photoreal2); lighting: studio is a light tent on a light backdrop (Best), window a room's daylight where the photograph was taken in a room; faces: flat lit faces of the part, fractions [left, top, right, bottom] of the photograph and of the render, for tools/bench/photoreal.py colour. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md.",
  "shots": [
   {
    "name": "black_2x4",
@@ -10,17 +10,17 @@
     1024,
     860
    ],
-   "yaw": -35,
-   "pitch": 58,
-   "zoom": 1.55,
+   "yaw": 135.9,
+   "pitch": 40.3,
+   "zoom": 1.211,
    "shift": [
-    0.0,
-    0.0
+    0.035,
+    0.11
    ],
-   "focal_mm": 60,
-   "backdrop": "#3c3a38",
-   "lighting": "studio",
-   "roll": -10,
+   "focal_mm": 119.6,
+   "backdrop": "#9c9585",
+   "lighting": "window",
+   "roll": 6.6,
    "f_stop": 16,
    "focus": 0.45
   },
@@ -33,18 +33,19 @@
     1024,
     572
    ],
-   "yaw": -20,
-   "pitch": 25,
-   "zoom": 1.12,
+   "yaw": -36.7,
+   "pitch": 13.2,
+   "zoom": 1.048,
    "shift": [
-    0.0,
-    0.0
+    0.007,
+    -0.022
    ],
-   "focal_mm": 85,
+   "focal_mm": 223.8,
    "backdrop": "#ffffff",
    "lighting": "studio",
    "f_stop": 16,
-   "focus": 0.45
+   "focus": 0.45,
+   "roll": -1.3
   },
   {
    "name": "grey_1x3",
@@ -56,14 +57,14 @@
     768
    ],
    "yaw": -25,
-   "pitch": 32,
-   "zoom": 0.6,
+   "pitch": 40,
+   "zoom": 0.55,
    "shift": [
     -0.15,
     0.15
    ],
    "focal_mm": 28,
-   "backdrop": "#bdbdbd",
+   "backdrop": "#c4bcae",
    "lighting": "studio",
    "f_stop": 16,
    "focus": 0.5
@@ -78,8 +79,8 @@
     527
    ],
    "yaw": 0,
-   "pitch": 10,
-   "zoom": 1.0,
+   "pitch": 15,
+   "zoom": 0.95,
    "shift": [
     0.0,
     -0.08
@@ -101,13 +102,13 @@
    ],
    "yaw": 0,
    "pitch": 89,
-   "zoom": 0.92,
+   "zoom": 0.9,
    "shift": [
     0.0,
     0.0
    ],
    "focal_mm": 85,
-   "backdrop": "#ececec",
+   "backdrop": "#ebebe9",
    "lighting": "studio"
   },
   {
@@ -119,18 +120,19 @@
     1024,
     683
    ],
-   "yaw": 35,
-   "pitch": 42,
-   "zoom": 1.8,
+   "yaw": 29.9,
+   "pitch": 40.9,
+   "zoom": 1.804,
    "shift": [
-    -0.5,
-    0.35
+    -0.431,
+    0.7
    ],
-   "focal_mm": 100,
+   "focal_mm": 176.2,
    "f_stop": 11,
    "focus": 0.12,
-   "backdrop": "#8c8070",
-   "lighting": "studio"
+   "backdrop": "#b4a98e",
+   "lighting": "window",
+   "roll": 1.7
   },
   {
    "name": "set_6512",
@@ -179,7 +181,7 @@
   {
    "name": "set_6657",
    "kind": "set",
-   "model": "res://vendor/omr/files/6657-1.mpd",
+   "model": "res://tools/photoreal/models/set_6657.mpd",
    "photo": "vendor/rebrickable/set_pictures/6657-1.jpg",
    "size": [
     1024,
@@ -193,7 +195,7 @@
     0.0
    ],
    "focal_mm": 70,
-   "backdrop": "#e4e4e2",
+   "backdrop": "#dcd5c8",
    "gradient": true,
    "lighting": "studio",
    "f_stop": 22,
@@ -202,7 +204,7 @@
   {
    "name": "set_6660",
    "kind": "set",
-   "model": "res://vendor/omr/files/6660-1.mpd",
+   "model": "res://tools/photoreal/models/set_6660.mpd",
    "photo": "vendor/rebrickable/set_pictures/6660-1.jpg",
    "size": [
     1024,
