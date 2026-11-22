@@ -69,3 +69,4 @@ push.sql	push_on_mention	push_2.sql	query_canceled
 push.sql	push_on_photo	push_2.sql	query_canceled
 push.sql	push_on_remix	push_2.sql	query_canceled
 push.sql	push_on_settled	push_2.sql	query_canceled
+push_2.sql	push_collect	talk.sql	'talk-' || (w.item->>'thread')

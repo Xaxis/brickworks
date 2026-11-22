@@ -16,8 +16,15 @@ let searched = "";
 
 const threadLink = (id, title) => link(`/talk/t/${Number(id)}${TESTS ? "?tests=1" : ""}`, title || `thread ${id}`);
 
-/// One act on Talk, said at [where], then everything read again.
-const act = (body, where, said) => post("op=talk_act", where, said, { body, after: () => loadTalk() });
+/// One act on Talk, then everything read again. Its row is drawn again
+/// (a report let go is gone from the list), so what it did is said above
+/// the tabs; a refusal stays at [where], on the row that is still there.
+async function act(body, where, said) {
+  const went = await post("op=talk_act", where, said, { body, after: () => loadTalk() });
+  if (went) say("talk-said", said);
+  return went;
+}
+const quote = (title) => `“${String(title || "").slice(0, 80)}”`;
 
 /// The open reports, a post at a time: its words, the reasons and notes
 /// given, and Hide, Remove, Ban its writer, or Let it go.
@@ -43,13 +50,14 @@ function drawReports(reports) {
     }
     const where = make("p", "note");
     where.setAttribute("role", "status");
+    const whose = `${one.handle ? `@${one.handle}’s` : "the"} post in ${quote(one.title)}`;
     const acts = make("p", "actions");
     acts.append(
-      one.hidden ? rowAct("Show it, and let the reports go", () => act({ act: "show", post: one.post }, where, "Shown again."))
-        : rowAct("Hide it", () => act({ act: "hide", post: one.post }, where, "Hidden.")),
+      one.hidden ? rowAct("Show it, and let the reports go", () => act({ act: "show", post: one.post }, where, `Shown again: ${whose}.`))
+        : rowAct("Hide it", () => act({ act: "hide", post: one.post }, where, `Hidden: ${whose}.`)),
       rowAct("Remove it", () => (confirm("Remove this post from Talk for good?")
-        ? act({ act: "remove", post: one.post }, where, "Removed.") : Promise.resolve(false))),
-      rowAct("Let the reports go", () => act({ act: "dismiss", post: one.post }, where, "Let go.")));
+        ? act({ act: "remove", post: one.post }, where, `Removed: ${whose}.`) : Promise.resolve(false))),
+      rowAct("Let the reports go", () => act({ act: "dismiss", post: one.post }, where, `Reports let go: ${whose}.`)));
     if (!one.banned) {
       const length = make("select");
       length.setAttribute("aria-label", "How long the ban lasts");
@@ -61,7 +69,7 @@ function drawReports(reports) {
       acts.append(length, rowAct("Ban the writer from Talk", () => {
         const days = Number(length.value);
         const until = days ? new Date(Date.now() + days * 864e5).toISOString() : "";
-        return act({ act: "ban", post: one.post, until, reason: `Reported: ${one.why.map((r) => r.reason).join(", ")}` }, where, "Banned.");
+        return act({ act: "ban", post: one.post, until, reason: `Reported: ${one.why.map((r) => r.reason).join(", ")}` }, where, `Banned from Talk: ${one.handle ? `@${one.handle}` : "the writer"}.`);
       }));
     }
     item.append(head, words, why, acts, where);
@@ -96,9 +104,12 @@ function drawThreads(threads) {
     const acts = make("div", "actions");
     if (!one.removed) {
       acts.append(
-        rowAct(one.pinned ? "Unpin" : "Pin", () => act({ act: one.pinned ? "unpin" : "pin", thread: one.id }, where, "Done.")),
-        rowAct(one.locked ? "Unlock" : "Lock", () => act({ act: one.locked ? "unlock" : "lock", thread: one.id }, where, "Done.")),
-        rowAct(one.hidden ? "Show" : "Hide", () => act({ act: one.hidden ? "show" : "hide", thread: one.id }, where, "Done.")));
+        rowAct(one.pinned ? "Unpin" : "Pin", () => act({ act: one.pinned ? "unpin" : "pin", thread: one.id }, where,
+          `${one.pinned ? "Unpinned" : "Pinned"}: ${quote(one.title)}.`)),
+        rowAct(one.locked ? "Unlock" : "Lock", () => act({ act: one.locked ? "unlock" : "lock", thread: one.id }, where,
+          `${one.locked ? "Unlocked" : "Locked"}: ${quote(one.title)}.`)),
+        rowAct(one.hidden ? "Show" : "Hide", () => act({ act: one.hidden ? "show" : "hide", thread: one.id }, where,
+          `${one.hidden ? "Shown again" : "Hidden"}: ${quote(one.title)}.`)));
       const to = make("select");
       to.setAttribute("aria-label", `Move “${one.title}” to`);
       for (const [id, name] of Object.entries(BOARDS)) {
@@ -107,9 +118,10 @@ function drawThreads(threads) {
         option.selected = id === one.board;
         to.append(option);
       }
-      acts.append(to, rowAct("Move", () => act({ act: "move", thread: one.id, board: to.value }, where, "Moved.")),
+      acts.append(to, rowAct("Move", () => act({ act: "move", thread: one.id, board: to.value }, where,
+        `Moved to ${BOARDS[to.value] || to.value}: ${quote(one.title)}.`)),
         rowAct("Remove", () => (confirm(`Remove “${one.title}” and every post in it from Talk?`)
-          ? act({ act: "remove", thread: one.id }, where, "Removed.") : Promise.resolve(false))));
+          ? act({ act: "remove", thread: one.id }, where, `Removed: ${quote(one.title)}.`) : Promise.resolve(false))));
     }
     acts.append(where);
     cell(row, acts);
@@ -129,7 +141,7 @@ function drawBans(bans) {
     list.append(make("li", "talk-queue-item", one.handle ? link(`/u/${encodeURIComponent(one.handle)}`, `@${one.handle}`) : one.account,
       ` · since ${ago(one.at)} · ${one.until ? `until ${new Date(one.until).toLocaleString()}` : "for good"}`,
       one.reason ? ` · ${one.reason}` : "", " ",
-      rowAct("Unban", () => act({ act: "unban", account: one.account }, where, "Unbanned.")), where));
+      rowAct("Unban", () => act({ act: "unban", account: one.account }, where, `Unbanned: ${one.handle ? `@${one.handle}` : "the account"}.`)), where));
   }
   say("talk-bans-note", bans.length ? "" : "Nobody is banned from Talk.");
   const n = $("tab-talk-bans");

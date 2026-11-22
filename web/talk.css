@@ -15,22 +15,6 @@
 .talk-layout { display: grid; gap: var(--s-7); grid-template-columns: minmax(0, 1fr); }
 @media (width >= 960px) { .talk-layout { grid-template-columns: minmax(0, 1fr) 300px; } }
 
-.talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.talk-row {
-	display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start;
-	border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px 14px; background: var(--panel);
-}
-.talk-row:has(.talk-row-picture) { grid-template-columns: 96px minmax(0, 1fr); }
-.talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
-.talk-row-picture { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
-.talk-row-title { margin: 0; font-size: var(--t-body); line-height: 1.35; overflow-wrap: anywhere; }
-.talk-row-title a { color: var(--ink); text-decoration: none; }
-.talk-row-title a:hover { text-decoration: underline; }
-.talk-row .pills { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.talk-row-said { margin: 6px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
-.talk-row-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
-.talk-row-meta a { color: var(--ink); }
-.talk-empty, .talk-searched { color: var(--ink-soft); }
 .talk-more { margin: var(--s-5) 0 0; }
 
 .talk-aside h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
@@ -92,8 +76,11 @@
 .talk-how ul { padding-left: 1.2em; color: var(--ink-soft); }
 
 @media (width < 600px) {
-	.talk-row:has(.talk-row-picture) { grid-template-columns: 72px minmax(0, 1fr); }
-	.talk-row-picture { width: 72px; height: 54px; }
 	.talk-embed img, .talk-model img { width: 88px; height: 66px; }
 	.talk-search { max-width: none; }
 }
+
+/* A box's count (web/talk.js measured): what is left near the end, and why
+   Post waits once over; the words are never cut. */
+.talk-count { display: block; margin-top: var(--s-1, 4px); min-height: 1.2em; }
+.talk-count.bad { color: var(--bad); }

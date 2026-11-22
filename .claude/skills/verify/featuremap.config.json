@@ -6359,6 +6359,55 @@
       "entry": "src/dev/mcpreach4_probe.gd",
       "reach": "tools/probe.sh mcpreach4_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach4_probe.gd. mcpreach4, the latest MCP walk's five stalls in their tools' own answers: attachment_points on a part with no studs (the SPIKE motor, a Technic beam) gives every face it can stand on in one call, the motor's output on each where a call with that face= puts it, and how real sets mount it, a click hinge's brick how to build on a hinge; move_part on a click hinge's brick on the plate moves the hinge's other half and says which half and which way degrees= raises it, not refused, and both halves on one plate are named held still with the plate, in the list and the refusal; submit_design names its parts' numbers against the check's brick N and edit_model takes the last; simulate_mechanism at= pictures the program at a moment with nothing written (program, history, parts), program= with at= in 1 call; check_design edit= says what the copy showed first, the model as it was after, no stale numbers)",
       "area": "mcp"
+    },
+    {
+      "kind": "lib",
+      "label": "talk threads and posts",
+      "entry": "supabase/talk.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry --try=tools/talk_try.sql --table=talk_threads   (not applied yet; api/_talk.js; docs/SOCIAL.md section 10; then tools/web/talk_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the talk forum",
+      "entry": "web/talk.js",
+      "reach": "https://brickworks.diy/talk (/talk/b/<board>, ?q= search, /talk/new, /de|fr|es/talk; ?tests=1 the checks' pool)   (api/_talk.js talkPage; GET /api/people?op=talk, ?op=talk_latest; RSS /talk.rss, /talk/b/<board>.rss)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a thread in talk",
+      "entry": "api/_talk.js",
+      "reach": "https://brickworks.diy/talk/t/<n>/<title>   (GET /api/people?op=talk_thread&id=N[&html=1]; POST ?op=talk_start, ?op=talk_reply, ?op=talk_change, ?op=talk_follow, ?op=talk_read, ?op=talk_photo_start, ?op=report {post})",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the latest in talk on the home page",
+      "entry": "web/talk-strip.js",
+      "reach": "https://brickworks.diy/ (#talk-latest, filled from GET /api/people?op=talk_latest&n=4&html=1)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "talk in the owner's console",
+      "entry": "web/admin-talk.js",
+      "reach": "<deployment>/admin#talk as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=talk; POST ?op=talk_act {act, post|thread|account, board, until, reason}, each in the audit log",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "talk browser flow",
+      "entry": "tools/web/talk_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/relay.env tools/web/talk_flow.mjs --url=http://127.0.0.1:11170 --out=DIR over relay_server.mjs 11170 --hold=talk (MASTER_EMAIL a throwaway at resend.dev); on a preview once talk.sql is applied, BW_BYPASS=$VERCEL_BYPASS ... --url=<preview> (preview_checks.sh talk)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the talk stand-in",
+      "entry": "tools/web/talk_stand_in.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
+      "area": "web"
     }
   ]
 }

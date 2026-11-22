@@ -126,3 +126,12 @@ create temporary table t_photo on commit drop as select public.talk_reply('00000
 select r->'post'->'photo' as photo, public.talk_photo_shown('TalkTryPhot1') as shown, public.talk_photo_shown('NoSuchPhoto1') as unknown_shown, 'TalkTryPhot1' = any (public.talk_photos_of('00000000-0000-4000-8000-0000000fa001')) as in_adas_photos from t_photo;
 select public.talk_admin_act('remove', null, (select (r->'post'->>'id')::bigint from t_photo))->'photos' as removed_photos;
 select public.talk_photo_shown('TalkTryPhot1') as shown_after_removal;
+-- A push for Talk's rows: push_collect is Talk's where push_2.sql made one, and an account with no device is pushed nothing.
+select case when to_regprocedure('public.push_collect(uuid, integer)') is null then 'push_2.sql not applied'
+            else (select (position('talk_mention' in p.prosrc) > 0)::text from pg_proc p where p.oid = to_regprocedure('public.push_collect(uuid, integer)')) end as push_collect_talks,
+       case when to_regprocedure('public.push_collect(uuid, integer)') is null then null
+            else public.push_collect('00000000-0000-4000-8000-0000000fa004') is null end as dee_no_device_no_push;
+select has_function_privilege('anon', 'public.push_collect(uuid, integer)', 'execute') as anon_collects,
+       has_function_privilege('authenticated', 'public.push_collect(uuid, integer)', 'execute') as signed_in_collects,
+       has_function_privilege('service_role', 'public.push_collect(uuid, integer)', 'execute') as server_collects
+ where to_regprocedure('public.push_collect(uuid, integer)') is not null;

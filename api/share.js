@@ -1648,6 +1648,7 @@ function commentsSection(id, shown, newest, steps) {
     <h2 id="comments-h">${asText(say("Comments"))}</h2>
     <p class="note comments-lede">${sayHtml("What builders said about it and its steps, the newest first, with the replies under each. "
       + "Plain words only; {guidelines} say what is welcome.", { guidelines: `<a href="${langAt()}/guidelines">${asText(say("the guidelines"))}</a>` })}</p>
+    <p class="note talk-about" id="talk-about" hidden></p>
     <ol class="comment-list"></ol>
     <form class="comment-new" hidden>
       <div class="comment-on"><label for="comment-step">${asText(say("On"))}</label> ${picker}

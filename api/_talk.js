@@ -69,6 +69,11 @@ const SITE_HOSTS = new Set(["brickworks.diy", "www.brickworks.diy"]);
 const MODEL = /^[A-Za-z0-9]{10}$/;
 const PHOTO = /^[A-Za-z0-9]{12}$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+// schema.org's types and RSS's head: code, never words to translate.
+const PERSON = "Person";
+const COMMENT = "Comment";
+const RSS_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" '
+  + 'xmlns:dc="http://purl.org/dc/elements/1.1/">';
 
 // What a refusal from talk.sql says, and its status.
 export const WORDS = {
@@ -138,27 +143,27 @@ const whole = (given) => {
 /// counts them; no word the gallery does not show (api/_names.js).
 export function cleanPost(given) {
   if (typeof given !== "string") return { trouble: say("Say something first: a post is 1 to 4,000 characters.") };
-  const text = given.replace(/\r\n?/g, "\n")
-    .replace(/[\u0000-\u0009\u000b-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]+/g, " ")
-    .split("\n").map((line) => line.replace(/[ \u00a0]+/g, " ").trimEnd()).join("\n")
+  // Every space of Unicode's one space (an em space, a no-break or an
+  // ideographic one, the BOM), and a line or paragraph separator a line end.
+  const text = given.replace(/\r\n?|[\u2028\u2029]/g, "\n")
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069]+/g, " ")
+    .split("\n").map((line) => line.replace(/\s+/g, " ").trimEnd()).join("\n")
     .replace(/\n{3,}/g, "\n\n").trim();
   const length = [...text].length;
   if (length === 0) return { trouble: say("Say something first: a post is 1 to 4,000 characters.") };
   if (length > MOST_CHARACTERS) return { trouble: say("A post is at most 4,000 characters; that is {n}.", { n: number(length) }) };
-  const words = namesTrouble({ "Your post": [text, "words"] });
-  if (words) return { trouble: words };
+  if (namesTrouble({ post: [text, "words"] })) return { trouble: say("Your post has a word in it Talk does not show: say it another way.") };
   return { text };
 }
 
 /// A thread's title: one line, 3 to 120 characters, checked as a post is.
 export function cleanTitle(given) {
   if (typeof given !== "string") return { trouble: say("A title is 3 to 120 characters on one line.") };
-  const text = given.replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]+/g, " ")
+  const text = given.replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069]+/g, " ")
     .replace(/\s+/g, " ").trim();
   const length = [...text].length;
   if (length < 3 || length > MOST_TITLE) return { trouble: say("A title is 3 to 120 characters on one line.") };
-  const words = namesTrouble({ "Your title": [text, "words"] });
-  if (words) return { trouble: words };
+  if (namesTrouble({ title: [text, "words"] })) return { trouble: say("Your title has a word in it Talk does not show: say it another way.") };
   return { text };
 }
 
@@ -199,6 +204,9 @@ export function linkOf(raw, hosts = SITE_HOSTS) {
     return part && /^[A-Za-z0-9][A-Za-z0-9._-]{0,29}$/.test(part) ? { kind: "part", part } : null;
   }
   if (!hosts.has(host) || (url.protocol !== "https:" && url.protocol !== "http:")) return null;
+  // "https://brickworks.diy//elsewhere.example": its path would be a link
+  // to another site that looks like ours. Words, then.
+  if (/^\/[/\\]/.test(url.pathname)) return null;
   const path = url.pathname.replace(/^\/(?:de|fr|es)(?=\/)/, "");
   const href = `${url.pathname}${url.search}${url.hash}`;
   const n = (given) => (/^[1-9][0-9]{0,8}$/.test(String(given || "")) ? Number(given) : null);
@@ -479,7 +487,7 @@ export function threadSchema(page, origin, url) {
   const thread = page.thread || {};
   const posts = page.posts || [];
   const first = posts.find((one) => one.first) || null;
-  const person = (one) => ({ "@type": "Person", name: one.by || say("A builder"),
+  const person = (one) => ({ "@type": PERSON, name: one.by || say("A builder"),
     ...(one.handle ? { url: `${origin}/u/${encodeURIComponent(one.handle)}` } : {}) });
   const replies = posts.filter((one) => !one.first);
   const data = {
@@ -491,13 +499,13 @@ export function threadSchema(page, origin, url) {
     text: first ? first.body : thread.said || thread.title,
     datePublished: thread.at,
     ...(first?.edited_at ? { dateModified: first.edited_at } : {}),
-    author: first ? person(first) : { "@type": "Person", name: thread.by?.name || say("A builder") },
+    author: first ? person(first) : { "@type": PERSON, name: thread.by?.name || say("A builder") },
     isPartOf: { "@type": "CollectionPage", name: boardSaid(thread.board).name, url: `${origin}/talk/b/${thread.board}` },
     interactionStatistic: { "@type": "InteractionCounter", interactionType: "https://schema.org/CommentAction",
       userInteractionCount: replies.length },
     ...(first?.photo && PHOTO.test(first.photo.id || "") ? { image: `${origin}/talk/p/${first.photo.id}.jpg` } : {}),
     ...(thread.model?.id ? { sharedContent: { "@type": "WebPage", url: `${origin}/m/${thread.model.id}`, headline: thread.model.name } } : {}),
-    comment: replies.slice(0, 100).map((one) => ({ "@type": "Comment", url: `${url}#post-${Number(one.id)}`, text: one.body,
+    comment: replies.slice(0, 100).map((one) => ({ "@type": COMMENT, url: `${url}#post-${Number(one.id)}`, text: one.body,
       datePublished: one.at, author: person(one) })),
   };
   return JSON.stringify(data).replace(/</g, "\\u003c");
@@ -519,10 +527,10 @@ export function rssOf(threads, { origin, board = null, lang = "en" }) {
       + `<dc:creator>${rssText(one.by?.name || say("A builder"))}</dc:creator><category>${rssText(boardSaid(one.board).name)}</category>`
       + `<description>${rssText(summary(one.said || "", 400))}</description></item>`;
   });
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">`
+  return `${RSS_HEAD}`
     + `<channel><title>${rssText(board ? say("Brickworks Talk: {board}", { board: said.name }) : say("Brickworks Talk"))}</title>`
     + `<link>${rssText(page)}</link><description>${rssText(said.about)}</description><language>${lang}</language>`
-    + `<atom:link href="${rssText(`${origin}/talk${board ? `/b/${board}` : ""}.rss${lang === "en" ? "" : `?lang=${lang}`}`)}" rel="self" type="application/rss+xml"/>`
+    + `<atom:link href="${rssText(`${origin}${at}/talk${board ? `/b/${board}` : ""}.rss`)}" rel="self" type="application/rss+xml"/>`
     + `${items.join("")}</channel></rss>\n`;
 }
 
@@ -609,9 +617,13 @@ async function foundFor(posts, hosts, tests) {
     for (const row of rows) found.models.set(row.id, row);
   }
   const numbers = [...challenges].slice(0, 20);
+  // Through challenges.sql's own list: its table is no client's to read,
+  // the server's key included.
   if (numbers.length) {
-    const rows = await db(`challenges?id=in.(${numbers.join(",")})&select=id,title,test`).catch(() => []);
-    for (const row of rows) if (tests || !row.test) found.challenges.set(Number(row.id), row);
+    const rows = await call("challenge_list", { tests }, () => []).catch(() => []);
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (numbers.map(Number).includes(Number(row.id)) && (tests || !row.test)) found.challenges.set(Number(row.id), row);
+    }
   }
   return found;
 }
@@ -695,7 +707,7 @@ function talkShell(origin, { title, about, path, lang, words, robots = "", main,
 <meta name="description" content="${escapeHtml(about)}">
 ${robots ? `<meta name="robots" content="${robots}">\n` : ""}<link rel="canonical" href="${escapeHtml(url)}">
 ${alternates}
-${rss ? `<link rel="alternate" type="application/rss+xml" title="${escapeHtml(rss.title)}" href="${escapeHtml(rss.href)}">\n` : ""}<meta property="og:type" content="website">
+${rss ? `<link rel="alternate" type="application/rss+xml" title="${escapeHtml(rss.title)}" href="${escapeHtml(`${lang === "en" ? "" : `/${lang}`}${rss.href}`)}">\n` : ""}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(about)}">
@@ -806,7 +818,7 @@ ${model}${challenge}
 ${thread.locked ? `<p class="note">${asText(say("This thread is locked: it takes no new posts."))}</p>` : `<form class="comment-new talk-form" data-reply-form hidden>
 <p class="talk-answering" data-answering hidden><span></span> <button type="button" class="cta ghost small" data-act="unanswer">${asText(say("Not an answer to them"))}</button></p>
 <label for="talk-reply-words">${asText(say("Your reply"))}</label>
-<textarea id="talk-reply-words" name="body" rows="5" maxlength="4000" required></textarea>
+<textarea id="talk-reply-words" name="body" rows="5" required data-most="4000"></textarea>
 <p class="note">${asText(say("Plain text. A link to a model, a step, a set or a challenge on Brickworks shows as a card; @handle tells somebody."))}</p>
 <p class="talk-photo-chosen" data-photo-chosen hidden></p>
 <div class="actions"><button class="cta" type="submit">${asText(say("Post the reply"))}</button>
@@ -833,9 +845,9 @@ ${BOARDS.filter((id) => id !== "news").map((id) => `<label class="choice"><input
 </fieldset>
 ${model ? `<p class="talk-about-model" data-model="${escapeHtml(model.id)}">${sayHtml("About your model {name}", { name: `<a href="${at}/m/${encodeURIComponent(model.id)}">${escapeHtml(model.name)}</a>` })}</p>` : ""}
 <label for="talk-title">${asText(say("Title"))}</label>
-<input id="talk-title" name="title" type="text" minlength="3" maxlength="120" required value="${model ? escapeHtml(model.name) : ""}">
+<input id="talk-title" name="title" type="text" required data-most="120" value="${model ? escapeHtml(model.name) : ""}">
 <label for="talk-words">${asText(say("What you want to say"))}</label>
-<textarea id="talk-words" name="body" rows="8" maxlength="4000" required></textarea>
+<textarea id="talk-words" name="body" rows="8" required data-most="4000"></textarea>
 <p class="note">${asText(say("Plain text. A link to a model, a step, a set or a challenge on Brickworks shows as a card; @handle tells somebody."))}</p>
 <p class="talk-photo-chosen" data-photo-chosen hidden></p>
 <div class="actions"><button class="cta" type="submit">${asText(say("Start the thread"))}</button>

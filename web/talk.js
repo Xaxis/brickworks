@@ -8,7 +8,7 @@
 // posts' HTML it draws (api/_talk.js postsHtml); nothing typed is put on
 // the page here but as text.
 import { askToSignIn, call, say, signedIn } from "/account.js";
-import { langAt, told } from "/card.js";
+import { langAt, number, told } from "/card.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 
@@ -22,6 +22,46 @@ const $ = (selector, from = root) => from?.querySelector(selector) || null;
 function tell(form, words) {
   const said = $("[data-said]", form);
   if (said) said.textContent = words;
+}
+
+/// Characters as the server counts them (api/_talk.js cleanPost): a
+/// character outside the BMP is one, not the two a maxlength would count.
+const length = (text) => [...String(text || "")].length;
+
+/// [field]'s words against its most ([data-most]): never cut, as a
+/// maxlength cuts a paste without a word; what is left said near the end,
+/// and over it the reason Post waits. Its count is under the field.
+function measured(field) {
+  const most = Number(field.dataset.most) || 4000;
+  const note = document.createElement("small");
+  note.className = "note talk-count";
+  note.setAttribute("aria-live", "polite");
+  field.after(note);
+  const show = () => {
+    const n = length(field.value);
+    note.textContent = n > most ? overSaid(field, n) : most > 200 && n > most - 200 ? say("{n} characters left", { n: number(most - n) }) : "";
+    note.classList.toggle("bad", n > most);
+  };
+  field.addEventListener("input", show);
+  show();
+}
+
+/// Why [field]'s [n] characters cannot go, in the server's own words.
+const overSaid = (field, n) => (Number(field.dataset.most) === 120 ? say("A title is 3 to 120 characters on one line.")
+  : say("A post is at most 4,000 characters; that is {n}.", { n: number(n) }));
+
+/// The first of [form]'s fields over its most, said in [form]: true when
+/// one is, so nothing is sent (nor a photo stored for a post that waits).
+function overInForm(form) {
+  for (const field of form.querySelectorAll("[data-most]")) {
+    const n = length(field.value);
+    if (n > Number(field.dataset.most)) {
+      tell(form, overSaid(field, n));
+      field.focus();
+      return true;
+    }
+  }
+  return false;
 }
 
 /// The photo chosen in [form], sent to storage (talk_photo_start): its
@@ -110,7 +150,7 @@ async function load() {
   if (place) {
     place.hidden = got.body.you?.may_write === true;
     const words = $("p", place);
-    if (words && got.body.you?.why_not) words.textContent = told(got.body.you.why_not);
+    if (words) words.textContent = told(got.body.you?.why_not, words.textContent);
     const button = $("[data-act='sign-in']", place);
     if (button) button.hidden = true;
   }
@@ -144,7 +184,7 @@ function edit(post) {
   label.textContent = say("Your post");
   const words = document.createElement("textarea");
   words.rows = 5;
-  words.maxLength = 4000;
+  words.dataset.most = "4000";
   words.required = true;
   words.value = mine.get(id) ?? body.textContent;
   label.append(words);
@@ -166,6 +206,7 @@ function edit(post) {
   box.append(label, row);
   body.hidden = true;
   body.after(box);
+  measured(words);
   words.focus();
   cancel.addEventListener("click", () => {
     box.remove();
@@ -173,6 +214,7 @@ function edit(post) {
   });
   box.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (overInForm(box)) return;
     save.disabled = true;
     const done = await call(asked("op=talk_change"), { method: "POST", body: { post: id, what: "edit", body: words.value } });
     save.disabled = false;
@@ -228,12 +270,14 @@ function threadPage() {
   const form = $("[data-reply-form]");
   if (form) {
     photoPicked(form);
+    form.querySelectorAll("[data-most]").forEach(measured);
     $("[data-act='unanswer']", form)?.addEventListener("click", () => {
       answering = null;
       $("[data-answering]", form).hidden = true;
     });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (overInForm(form)) return;
       const send = $("button[type='submit']", form);
       send.disabled = true;
       try {
@@ -244,6 +288,7 @@ function threadPage() {
           body: { thread, body: $("textarea", form).value, ...(answering ? { answers: answering } : {}), ...(photo ? { photo } : {}) } });
         if (done.status !== 201) return tell(form, told(done.body?.error, say("That did not go just now. Try again in a minute.")));
         form.reset();
+        form.querySelectorAll("[data-most]").forEach((field) => field.dispatchEvent(new Event("input")));
         answering = null;
         $("[data-answering]", form).hidden = true;
         $("[data-photo-chosen]", form).hidden = true;
@@ -295,9 +340,11 @@ function newPage() {
   $("[data-signin]").hidden = true;
   form.hidden = false;
   photoPicked(form);
+  form.querySelectorAll("[data-most]").forEach(measured);
   const model = $("[data-model]", form)?.dataset.model || "";
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (overInForm(form)) return;
     const send = $("button[type='submit']", form);
     send.disabled = true;
     try {
