@@ -41,14 +41,12 @@
 ## said. shipped: every model the app ships (res://models/, the examples;
 ## tools/web/gallery_seeds/, the gallery's own) whose saved steps open as they
 ## are (LdrModel.steps_are_saved): its steps test, as a share runs it, puts no
-## part in the air. Those are ours, not an owner's: an older build's planner
-## wrote the castle's, and held, they put 48 of its parts down in the air (the
-## gallery's potted cactus 1, its sports car 25); worked out again and saved,
-## none (stepkeep2, 2026-11-22). SK_SHIP_OUT=DIR works out again each that
-## puts one there (Plan steps) and writes it as Save does into DIR; reopened,
-## the steps the ones worked out, none in the air, saved again byte for byte.
-## Save writes it whole: a sub-model built in its model's steps has no section
-## of its own (IN lines), the floor's line is written, the title is its name.
+## part in the air; opened as File > Open opens it, its steps its own, and
+## saved unedited byte for byte. Those are ours, not an owner's: an older
+## build's planner wrote the castle's, and held, they put 48 of its parts
+## down in the air (the gallery's potted cactus 1, its sports car 25). Their
+## lines were moved among their sections' STEP lines by restep_probe, every
+## other line of each file as it was (stepkeep2, 2026-11-22).
 ##
 ##   godot --headless --path . --script src/dev/stepkeep_probe.gd
 ##   SK_ONLY=castle,station,robot,10179,edits,callouts,nosteps,time,shipped  only those
@@ -716,9 +714,6 @@ func _time() -> void:
 
 func _shipped() -> void:
 	print("\n== shipped")
-	var out: String = OS.get_environment("SK_SHIP_OUT")
-	if not out.is_empty():
-		DirAccess.make_dir_recursive_absolute(out)
 	var seen: int = 0
 	for folder: String in SHIPPED:
 		for file_name: String in DirAccess.get_files_at(folder):
@@ -733,13 +728,12 @@ func _shipped() -> void:
 				continue
 			seen += 1
 			var faults: Array = await _air(text)
-			if out.is_empty() or int(faults[0]) == 0:
-				_check("shipped %s: its saved steps put no part in the air (%d in the air, %d hidden)"
-					% [path, faults[0], faults[1]], int(faults[0]) == 0)
-				continue
-			print("  shipped %s: its saved steps put %d parts in the air (%d hidden): worked out again"
-				% [path, faults[0], faults[1]])
-			await _planned_again(path, text, out.path_join(file_name), faults)
+			_check("shipped %s: its saved steps put no part in the air (%d in the air, %d hidden)"
+				% [path, faults[0], faults[1]], int(faults[0]) == 0)
+			await _reopen(path)
+			var saved: String = _store.to_text(_store.title, true)
+			_check("shipped %s: opened, its steps its own (%s); saved unedited, byte for byte"
+				% [path, _own_steps()], _own_steps() and saved == text)
 	_check("shipped: %d of the models it ships hold their saved steps" % seen, seen > 0)
 
 
@@ -756,62 +750,6 @@ func _air(text: String) -> Array:
 	var said: Array = Tested.said_all.get("steps", [])
 	var air: int = said.filter(func(line: Variant) -> bool: return str(line).ends_with("in the air")).size()
 	return [air, said.size() - air]
-
-
-## The shipped model at [param path] worked out again as Plan steps does and
-## saved as Save writes it, to [param into]: reopened, every part in the step
-## worked out; its steps test, no part in the air; saved again, byte for byte.
-## Its lines besides its parts and steps, as the file had them.
-func _planned_again(path: String, text: String, into: String, before: Array) -> void:
-	await _open(path)
-	var called: String = _store.title
-	var said: String = _shell.change_steps("plan", [], null)
-	await _frames(4)
-	var planned: Array = _plan()
-	var sig: Dictionary = _signatures()
-	_forget(called)
-	if not _check("shipped %s: worked out again (\"%s\") and saved as %s" % [path, said, called],
-			_store.save_as(called)):
-		return
-	var saved_at: String = ModelStore.saved_path(called)
-	var saved: String = FileAccess.get_file_as_string(saved_at)
-	var file: FileAccess = FileAccess.open(into, FileAccess.WRITE)
-	file.store_string(saved)
-	file.close()
-	var gone: Array = _besides_steps(text).filter(func(line: String) -> bool:
-		return not _besides_steps(saved).has(line))
-	var new: Array = _besides_steps(saved).filter(func(line: String) -> bool:
-		return not _besides_steps(text).has(line))
-	print("  note  shipped %s: written whole, its lines besides its parts and steps: %d gone %s, %d new %s"
-		% [path, gone.size(), gone.slice(0, 3), new.size(), new.slice(0, 3)])
-	_check("shipped %s: the same parts, %d (were %d)" % [path, ModelStore.count_in(saved),
-		ModelStore.count_in(text)], ModelStore.count_in(saved) == ModelStore.count_in(text))
-	await _reopen(saved_at)
-	var reopened: Array = _plan()
-	var moved: int = _moved_between(planned, sig, reopened, _signatures())
-	_check("shipped %s: opened again, the steps worked out (%d steps, were %d; parts in another step %d), its own (%s)"
-		% [path, reopened.size(), planned.size(), moved, _own_steps()],
-		moved == 0 and reopened.size() == planned.size() and _own_steps())
-	var after: Array = await _air(saved)
-	_check("shipped %s: its steps test puts no part in the air (%d, were %d; hidden %d, were %d)"
-		% [path, after[0], before[0], after[1], before[1]], int(after[0]) == 0)
-	_store.save_as(called)
-	var again: String = FileAccess.get_file_as_string(saved_at)
-	_check("shipped %s: saved again unedited, byte for byte (%d bytes)" % [path, saved.length()],
-		again == saved)
-	_forget(called)
-
-
-## [param text]'s lines that are neither a part, a reference to a sub-model nor
-## a step: its header, sub-models' names and the app's own lines.
-static func _besides_steps(text: String) -> Array:
-	var out: Array = []
-	for raw: String in text.replace("\r\n", "\n").split("\n"):
-		var line: String = raw.strip_edges()
-		if line.is_empty() or line.begins_with("1 ") or line == "0 STEP" or line.begins_with("0 ROTSTEP"):
-			continue
-		out.append(line)
-	return out
 
 
 # -- reading the plan --------------------------------------------------------------
