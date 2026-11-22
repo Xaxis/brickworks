@@ -1240,7 +1240,7 @@
       "kind": "api",
       "label": "GET/POST /api/share",
       "entry": "api/share.js",
-      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
+      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down, ?op=pictures puts its pictures on the version its owner just published without any, no publish counted; bench/results/byfix-2026-11-21/byfix_api.mjs)",
       "area": "web"
     },
     {
@@ -6260,6 +6260,34 @@
       "label": "turntable browser flow",
       "entry": "tools/web/turntable_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/turntable_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh turntable: a throwaway designer's visit records the clip in a worker from version 1's own scene, 4 s or less, 1.5 MB or less, a seamless loop; two cold bytes=0- asks, the second the CDN's 206 (x-vercel-cache HIT); Discordbot, Slackbot and Twitterbot read og:video and the player's tags beside summary_large_image; the embed plays it at 390, 768 and 1280 light and dark; republished within the CDN's minute, version 2 recorded from its own scene; the clip's refusals; unpublished, its file gone from storage and its address 404. Needs supabase/model_clips.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "share a model file from the site",
+      "entry": "web/share-model.js",
+      "reach": "<deployment>/share-model, or the gallery's Share yours (a word beside the title on a phone too), its empty state and Put yours here   (web/share-model.html: an LDraw .ldr/.mpd/.dat or a BrickLink Studio .io chosen or dropped, read in the browser and refused in words when it is no model; an LDD .lxf sent to the app; its name, words, licence and List it in the gallery; signed in and 13 or over, published once by POST /api/share listed as chosen, its pictures drawn here from /m/<id>/scene.json by web/viewer3d.js and put on its version 1 by POST /api/share?op=pictures, its link never taken down; a lost answer's Share it again uses the link it made (op=mine); to /m/<id>; tools/web/share_model_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a BrickLink Studio file read in the browser",
+      "entry": "web/studio-io.js",
+      "reach": "node tools/web/share_model_flow.mjs (Studio's 2021 and 2025 files, its AES-256 and ZipCrypto locks, Part Designer parts carried as their own sections, Studio's own prints left plain); hostile files: bench/results/byfix-2026-11-21/bomb_frames.mjs (zip bombs refused by their stated size, a lying size cut off, a damaged directory, 3,000 carried parts, no task over 200 ms)   (readStudioIo(bytes) -> {text, carried, prints, error, size}; the error one of TROUBLE; never throws)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a file's private lines left out of a shared model",
+      "entry": "web/private-lines.js",
+      "reach": "node --env-file=.env bench/results/byfix-2026-11-21/byfix_api.mjs --worktree=. --url=<deployment> --only=meta   (withoutPrivateLines(text) -> {text, emails, paths}: an Author line with an email address and a meta line naming a place on a computer left out, a Name: keeping its file's name; api/share.js publish holds every publish to it, the app's and the connector's too, and web/share-model.js says what it left out)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share model browser flow",
+      "entry": "tools/web/share_model_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/share_model_flow.mjs --url=<deployment> --out=DIR   (the refusals, LDD's way to the app, four Studio files read, a file's address and folders left out and said, a 353-part .mpd at 1280 and its Studio .io at 390 to their pages timed with one publish and its pictures each, a lost publish's and a lost picture's answer gone on from without a second link, the server's count, steps and pictures, signed out and under 13 refused, 390/768/1280 light and dark; throwaway accounts; preview check [share_model])",
       "area": "web"
     }
   ]

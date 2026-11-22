@@ -409,6 +409,15 @@ declare -A CMD=(
   # its own run is local, with a throwaway owner (the flow's head).
   # Throwaway accounts, deleted after.
   [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
+  # Share a model you made (bringyours): /share-model and the gallery's
+  # Share yours. Files that are no model refused in words with nothing sent,
+  # an LDD file's one tap to the app, four BrickLink Studio files read in
+  # the page; a 353-part .mpd at 1280 (60 s) and its Studio .io at 390
+  # (120 s) chosen to their own pages with one tap, each with the server's
+  # count, the file's steps, version 1 and its three pictures; signed out
+  # asked to sign in, under 13 refused, nothing kept. Throwaway accounts,
+  # deleted after with what they shared.
+  [share_model]="tools/web/share_model_flow.mjs --url=$P --out=$S/${TAG}_share_model"
   # Report a bug (bugreport): window.brickworksReportBug over the page at 390
   # and 1280, the page's picture drawn, a box marked on it and found in the
   # kept picture where it was drawn (within 2 px), Your reports listing each

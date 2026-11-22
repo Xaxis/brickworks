@@ -44,7 +44,7 @@ STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # their own addresses (tools/browse_pages.py) are the gallery.
 OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/gallery",
        "collections.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
-       "settings.html": "/profile", "plans.html": "/plans"}
+       "settings.html": "/profile", "plans.html": "/plans", "share-model.html": "/gallery"}
 
 
 def shell() -> tuple[str, str, str]:
