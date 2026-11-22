@@ -383,6 +383,14 @@ func _mcp(lead: int, second: int) -> void:
 		and said.contains("frozen"))
 	said = str(await tools.run("edit_booklet", {"step": lead, "lock": false}))
 	_check("edit_booklet lock=false: \"%s\"" % said, _history() == history + 3 and said.contains("unlocked"))
+	# A lock beside another field is refused before anything is written; a
+	# false where the page is not held is as if it were absent.
+	var both: String = str(await tools.run("edit_booklet", {"step": lead, "lock": true, "zoom": 1.2}))
+	_check("lock= beside zoom= refused, nothing written: \"%s\"" % both, _history() == history + 3
+		and both.contains("Nothing was changed"))
+	var absent: String = str(await tools.run("edit_booklet", {"step": lead, "lock": false, "zoom": 1.2}))
+	_check("lock=false on an unlocked page is as if absent: zoom= done (\"%s\"), one undo" % absent,
+		_history() == history + 4 and not absent.contains("lock"))
 	while _history() > history:
 		_builder.undo()
 	await _frames(2)

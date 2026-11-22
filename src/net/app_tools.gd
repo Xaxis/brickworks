@@ -2311,6 +2311,12 @@ func _edit_booklet(input: Dictionary) -> String:
 			return ("A callout's step takes turn= and tilt=, and on a callout with pages of its "
 				+ "own place=, text= and arrow=; %s= is the callout's own, set on step %d.") \
 				% [str(whole[0]), at.number]
+	# lock= and freeze= first, so no other field is acted on and the hold
+	# dropped (or the hold acted on and the other dropped).
+	if input.has("lock") or input.has("freeze"):
+		var held: String = await _hold_page(input, at)
+		if not held.is_empty():
+			return held
 	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) \
 			+ int(input.has("guide")) > 1:
 		return "One at a time: place=, text=, arrow= or guide=, each its own undo step."
@@ -2320,8 +2326,6 @@ func _edit_booklet(input: Dictionary) -> String:
 		return await _edit_page(input, at)
 	if bool(input.get("follow", false)):
 		return await _follow_page(at)
-	if input.has("lock") or input.has("freeze"):
-		return await _hold_page(input, at)
 	var fields: Dictionary = {}
 	if input.has("highlight"):
 		var on: String = shell.change_look("highlight", at, {"highlight": bool(input["highlight"])})
@@ -2681,11 +2685,11 @@ func _follow_page(at: Instructions.Step) -> String:
 
 ## edit_booklet lock= and freeze= (pagetools): the page [param at] starts
 ## locked or frozen, or not, as Lock page and Freeze page do; one at a
-## time, each one undo. A step that does not start its page is said with
-## the step that does.
+## time, each one undo, and alone in its call, refused before anything is
+## written. A false where the page is not held is as if it were absent:
+## "" and [param input] without it, for the call's other fields. A step
+## that does not start its page is said with the step that does.
 func _hold_page(input: Dictionary, at: Instructions.Step) -> String:
-	if input.has("lock") and input.has("freeze"):
-		return "One at a time: lock= or freeze=, each its own undo step."
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var maker := BookletMaker.new()
@@ -2693,22 +2697,38 @@ func _hold_page(input: Dictionary, at: Instructions.Step) -> String:
 	app.add_child(maker)
 	var pages: Array[Booklet.Page] = await maker.lay_out_only(world, store.scenery, "Model")
 	maker.queue_free()
-	for page: Booklet.Page in pages:
-		if page.kind != "steps" or not page.entries.any(func(entry: Booklet.Entry) -> bool:
+	var page: Booklet.Page = null
+	for each: Booklet.Page in pages:
+		if each.kind == "steps" and each.entries.any(func(entry: Booklet.Entry) -> bool:
 				return entry.number == at.number):
-			continue
-		if page.entries[0].number != at.number:
-			return "Step %d is not the first on its page: page %d starts with step %d, so step=%d." % [
-				at.number, page.number, page.entries[0].number, page.entries[0].number]
-		var lock: bool = input.has("lock")
-		var want: bool = bool(input["lock" if lock else "freeze"])
-		var now: bool = page.entries[0].lock > 0 if lock else page.entries[0].own_sheet != null
-		if want == now:
-			return "Page %d is %s%s already." % [page.number, "" if want else "not ",
-				"locked" if lock else "frozen"]
-		return (app.get("_shell") as Shell).change_look("page_lock" if lock else "page_freeze", at,
-			{"steps": page.entries.size()}) + " (page %d)." % page.number
-	return "Step %d is on no page of steps." % at.number
+			page = each
+			break
+	var now: Dictionary = {"lock": page != null and page.entries[0].lock > 0,
+		"freeze": page != null and page.entries[0].own_sheet != null}
+	for field: String in ["lock", "freeze"]:
+		if input.has(field) and not bool(input[field]) and not bool(now[field]):
+			input.erase(field)
+	if not input.has("lock") and not input.has("freeze"):
+		return ""
+	if input.has("lock") and input.has("freeze"):
+		return "One at a time: lock= or freeze=, each its own undo step. Nothing was changed."
+	var lock: bool = input.has("lock")
+	var others: Array = input.keys().filter(func(field: String) -> bool:
+		return not field in ["step", "lock", "freeze"])
+	if not others.is_empty():
+		return "%s= goes in a call of its own, its own undo step: send %s= in another. Nothing was changed." \
+			% ["lock" if lock else "freeze", str(others[0])]
+	if page == null:
+		return "Step %d is on no page of steps." % at.number
+	if page.entries[0].number != at.number:
+		return "Step %d is not the first on its page: page %d starts with step %d, so step=%d." % [
+			at.number, page.number, page.entries[0].number, page.entries[0].number]
+	var want: bool = bool(input["lock" if lock else "freeze"])
+	if want == bool(now["lock" if lock else "freeze"]):
+		return "Page %d is %s%s already." % [page.number, "" if want else "not ",
+			"locked" if lock else "frozen"]
+	return (app.get("_shell") as Shell).change_look("page_lock" if lock else "page_freeze", at,
+		{"steps": page.entries.size()}) + " (page %d)." % page.number
 
 
 ## Whether an arrow's tip ([param points] x2, y2) is on what step [param
