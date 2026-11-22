@@ -132,6 +132,9 @@ const SERVER = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", (m) => ({ op: "page", id: m[1], v: m[2] })],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", (m) => ({ op: "page", handle: m[1] })],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", (m) => ({ op: "list_page", id: m[1] })],
+  [/^\/talk\/?$/, "people", () => ({ op: "talk_page" })],
+  [/^\/talk\/b\/(show|help|ideas|challenges|news)\/?$/, "people", (m) => ({ op: "talk_page", board: m[1] })],
+  [/^\/talk\/t\/([1-9][0-9]{0,11})(?:\/[a-z0-9-]{0,80})?\/?$/, "people", (m) => ({ op: "talk_page", thread: m[1] })],
 ];
 const DB = "https://db.docs.example";
 let asking = { db: {}, unanswered: [] };

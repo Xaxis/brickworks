@@ -649,7 +649,13 @@ try {
   check("address: a code mailed to it (pasted with zero-width and no-break spaces), kept without the code", asked.status === 200 && asked.json?.pending === "no•••@resend.dev"
     && codeMail?.to?.join() === "notes@resend.dev" && Boolean(code)
     && rows("owner_notify_mails").find((row) => row.kind === "confirm")?.body.includes("••••••")
-    && !rows("owner_notify_mails").some((row) => row.body.includes(code)), { asked, text: codeMail?.text });
+    && !rows("owner_notify_mails").some((row) => row.body.includes(code)), {
+    // Each part by itself, first: a failure once in some 25 runs (rel-m319's reship gate, 11-22) was cut
+    // off before it said which.
+    parts: { asked: asked.status === 200 && asked.json?.pending === "no•••@resend.dev", to: codeMail?.to?.join() ?? null,
+      code: Boolean(code), kept_hidden: Boolean(rows("owner_notify_mails").find((row) => row.kind === "confirm")?.body.includes("••••••")),
+      code_in: rows("owner_notify_mails").filter((row) => code && row.body.includes(code)).map((row) => `${row.kind}: ${row.subject}`) },
+    mails_since: mailsSince(n0).map((mail) => `${mail.to?.join()}: ${mail.subject}`), text: codeMail?.text });
   const badCode = await admin("notify_confirm", { body: { code: code === "000000" ? "000001" : "000000" } });
   // Typed on a phone's full-width keys, with a space in it.
   const wide = [...code].map((digit) => String.fromCharCode(0xFF10 + Number(digit))).join("");

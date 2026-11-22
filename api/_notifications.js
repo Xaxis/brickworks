@@ -10,8 +10,9 @@
 //   POST ?op=notifications_read  (session) {model}: that model's read, as
 //                                its group is opened; {achievements: true}:
 //                                the achievements' group read; {challenge}:
-//                                that challenge's; {announcement, clicked?}:
-//                                that announcement's, its link followed or
+//                                that challenge's; {talk}: that thread of
+//                                Talk's, read up to now; {announcement,
+//                                clicked?}: that announcement's, its link followed or
 //                                not; {all: true}: Mark all read
 //   GET  ?op=feed_count          (session) {count, notifications, feed, me}:
 //                                what is new for the avatar (the two
@@ -36,7 +37,9 @@
 // you hear of it already as its designer or in its thread. Since
 // announce.sql, what the site's owner announced to you (/admin ›
 // Announcements, api/_announce.js), each in a group of its own, until it is
-// withdrawn. Nothing says
+// withdrawn. Since talk.sql, a post in a thread of Talk you follow (yours,
+// or one you posted in) and a post there that names you, in a group a
+// thread, read as the thread is opened. Nothing says
 // who followed you: a follow tells nobody anything (supabase/follows.sql).
 // Nothing by somebody you blocked (supabase/block.sql): their rows leave
 // the list and the count on your avatar (api/_blocks.js).
@@ -123,6 +126,10 @@ const written = (text, most) => {
   return words.length > most ? `${words.slice(0, most - 1)}…` : words;
 };
 
+/// A thread of Talk, at the post (api/_talk.js), a test one's as a test asks for it.
+const talkLink = (row, origin) => `${origin}/talk/t/${Number(row.thread) || 0}${row.test === true ? "?tests=1" : ""}`
+  + `#post-${Number(row.post) || 0}`;
+
 /// A challenge's own page, a test one's as a test asks for it.
 const challengeLink = (row, origin) =>
   `${origin}/challenge?id=${Number(row.challenge) || 0}${row.test === true ? "&tests=1" : ""}`;
@@ -159,6 +166,12 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
       link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
       line: row.parent ? stepped(say("{who} mentioned you in a reply on step {step}"), say("{who} mentioned you in a reply"))
         : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
+  }
+  if (row.kind === "talk_reply" || row.kind === "talk_mention") {
+    // In Talk (supabase/talk.sql): a post in a thread followed, or naming you.
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240), link: talkLink(row, origin),
+      line: row.kind === "talk_mention" ? say("{who} mentioned you in Talk")
+        : row.yours === true ? say("{who} replied in your thread") : say("{who} replied in a thread you follow") };
   }
   if (row.kind === "announcement") {
     // From the site's owner (supabase/announce.sql): its words, as written.
@@ -225,11 +238,12 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
     const levelled = row.kind === "achievement";
     const challenge = CHALLENGE.has(row.kind) ? Number(row.challenge) || 0 : 0;
     const told = row.kind === "announcement";
+    const talk = row.kind === "talk_reply" || row.kind === "talk_mention" ? Number(row.thread) || 0 : 0;
     const on = levelled ? "achievements" : challenge ? `challenge-${challenge}` : told ? `announcement-${Number(row.announcement) || 0}`
-      : String(row.on || "");
-    if (!levelled && !challenge && !told && !ID.test(on)) continue;
+      : talk ? `talk-${talk}` : String(row.on || "");
+    if (!levelled && !challenge && !told && !talk && !ID.test(on)) continue;
     const at = Date.parse(row.at);
-    const readTo = levelled || challenge || told ? (row.read === true ? Infinity : allRead)
+    const readTo = levelled || challenge || told || talk ? (row.read === true ? Infinity : allRead)
       : Math.max(allRead, reads[on] ? Date.parse(reads[on]) : -Infinity);
     const said = { ...noticeSaid(row, origin, now), new: seen === null || at > seen, unread: at > readTo };
     if (said.unread) unread += 1;
@@ -241,6 +255,10 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
     if (challenge && !groups.has(on)) {
       groups.set(on, { model: "", challenge, name: say("Challenge: {title}", { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
         link: challengeLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
+    }
+    if (talk && !groups.has(on)) {
+      groups.set(on, { model: "", talk, name: say("Talk: {title}", { title: quoted(row.title || say("a thread"), 100) }), picture: null,
+        link: talkLink(row, origin).replace(/#.*$/, ""), at: row.at, new: false, unread: false, rows: [] });
     }
     if (told && !groups.has(on)) {
       groups.set(on, { model: "", announcement: Number(row.announcement) || 0, name: quoted(row.title || say("News"), 120),
@@ -335,6 +353,12 @@ export async function notificationsRead(request, response) {
       () => ({ missing: true }));
     if (said?.refused) throw new Unacceptable("There is no such announcement for you.", 404);
     return response.status(200).json({ read: !said?.missing, kept: !said?.missing });
+  }
+  if (body.talk !== undefined) {
+    // A thread of Talk opened: read up to now (supabase/talk.sql talk_read).
+    if (!Number.isSafeInteger(body.talk) || body.talk < 1) throw new Unacceptable("say which thread, by its number");
+    const said = await call("talk_read", { account: asker, p_thread: body.talk }, () => ({ missing: true }));
+    return response.status(200).json({ read: said?.read === true, kept: !said?.missing });
   }
   if (body.challenge !== undefined) {
     if (!Number.isSafeInteger(body.challenge) || body.challenge < 1) throw new Unacceptable("say which challenge, by its number");

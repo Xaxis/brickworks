@@ -101,6 +101,22 @@ export async function erase(account) {
         body: JSON.stringify({ prefixes: photos.slice(at, at + 100).flatMap((one) => [`${one.id}.jpg`, `${one.id}.card.jpg`]) }) });
       if (!files.ok) throw new Error(`storage DELETE build-photos: ${files.status}`);
     }
+    // The photos it posted in Talk (supabase/talk.sql), in the same bucket
+    // as talk-<id>.jpg and its card's copy (api/_talk.js), by name too.
+    let talked = [];
+    try {
+      const ids = await db("rpc/talk_photos_of", { method: "POST", body: { account } });
+      talked = (Array.isArray(ids) ? ids : []).filter((id) => /^[A-Za-z0-9]{12}$/.test(String(id)))
+        .flatMap((id) => [`talk-${id}.jpg`, `talk-${id}.card.jpg`]);
+    } catch (trouble) {
+      if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
+    }
+    for (let at = 0; at < talked.length; at += 100) {
+      const files = await reach("storage DELETE build-photos", 20, `${base}/storage/v1/object/build-photos`, {
+        method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify({ prefixes: talked.slice(at, at + 100) }) });
+      if (!files.ok) throw new Error(`storage DELETE build-photos: ${files.status}`);
+    }
     // Its own picture as its avatar (api/_avatars.js AVATARS), by name too.
     let avatars = [];
     try {

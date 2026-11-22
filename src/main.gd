@@ -7335,7 +7335,8 @@ func _warm_booklet() -> void:
 
 ## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
 ## "pdf" or "png"): the booklet read again from itself, a page at a time,
-## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng). On the
+## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng); Save as
+## web page ("html-..."), [method _save_booklet_html]. On the
 ## desktop where the person chooses, asked as every export asks (SaveTo);
 ## on the web, a download. [param reply] is said back in the booklet.
 func _save_booklet(kind: String, reply: Callable) -> void:
@@ -7347,6 +7348,8 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		return "the booklet is not there to save: make the instructions again"
 	if _booklet_writing:
 		return "already saving the booklet…"
+	if kind.begins_with("html"):
+		return await _save_booklet_html(kind, to)
 	var pdf: bool = kind != "png"
 	var name: String = _booklet_out.base_name() + (".pdf" if pdf else "_pages.zip")
 	var web: bool = OS.has_feature("web")
@@ -7414,6 +7417,52 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		written, _pdf_missed]
 	_bar.say(line)
 	return line
+
+
+## Save as web page, pressed in the booklet ([param kind] "html-" its layout,
+## long or steps, and its look, light or dark): the booklet read again from
+## itself into one long page, NAME_web.html, or a page a step in
+## NAME_web.zip (BookletHtml). "_web" so the page is never saved over the
+## booklet it was read from, whose name it would otherwise have.
+func _save_booklet_html(kind: String, to: String) -> String:
+	var words: PackedStringArray = kind.split("-")
+	var layout: String = words[1] if words.size() > 1 and words[1] in ["long", "steps"] else "long"
+	var theme: String = words[2] if words.size() > 2 and words[2] in ["light", "dark"] else "light"
+	var long: bool = layout == "long"
+	var name: String = _booklet_out.base_name() + ("_web.html" if long else "_web.zip")
+	var web: bool = OS.has_feature("web")
+	if to.is_empty() and not web:
+		DisplayServer.window_move_to_foreground()
+		to = await SaveTo.ask(name, "", "Save the instructions as a web page" if long
+			else "Save the instructions as a web page a step")
+		if to.is_empty():
+			return "not saved"
+	_booklet_writing = true
+	var job: Working.Job = Working.begin("Writing the web page…")
+	var written: String = to if not web else "user://" + name
+	var part: String = written + ".part"
+	var writer: RefCounted = Later.make(&"BookletHtml")
+	var steps: int = await writer.write(_booklet_out.source(), part, layout, theme, 0 if web else 8)
+	var ok: bool = steps > 0
+	if web:
+		if ok:
+			JavaScriptBridge.download_buffer(FileAccess.get_file_as_bytes(part), name,
+				"text/html" if long else "application/zip")
+		DirAccess.remove_absolute(part)
+	else:
+		ok = _into_place(part, written, ok)
+	job.end()
+	_booklet_writing = false
+	var said: String
+	if not ok:
+		said = "could not save the booklet as a web page" if web else "could not write %s" % written
+	elif web:
+		said = "downloaded %s, %d steps" % [name, steps]
+	else:
+		SaveTo.wrote(written)
+		said = "wrote %s, %d steps: %s" % [written.get_file(), steps, written]
+	_bar.say(said)
+	return said
 
 
 var _booklet_writing: bool = false

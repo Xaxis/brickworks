@@ -1,0 +1,385 @@
+{
+ "shots": [
+  {
+   "id": "talk-list",
+   "source": "site",
+   "route": "/talk",
+   "viewport": [
+    1280,
+    1240
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": ".talk-row",
+   "db": {
+    "rest/v1/rpc/talk_threads_of": {
+     "threads": [
+      {
+       "id": 2,
+       "board": "news",
+       "title": "Welcome to Talk",
+       "by": {
+        "name": "Brickworks",
+        "handle": "brickworks"
+       },
+       "said": "Talk is where builders on Brickworks talk about anything, not only under one model.",
+       "at": "2026-10-01T08:00:00Z",
+       "last_at": "2026-10-09T17:20:00Z",
+       "last_by": {
+        "name": "Sam Reyes",
+        "handle": "sam-reyes"
+       },
+       "replies": 7,
+       "model": null,
+       "photo": null,
+       "hidden": false,
+       "locked": false,
+       "pinned": true,
+       "unread": false,
+       "following": false,
+       "mine": false,
+       "by_house": true,
+       "challenge": null
+      },
+      {
+       "id": 12,
+       "board": "show",
+       "title": "Sports car and its driver",
+       "by": {
+        "name": "Test builder",
+        "handle": "test-builder"
+       },
+       "said": "My first car with a driver who fits. Step 3 is where the doors go on.",
+       "at": "2026-10-06T10:00:00Z",
+       "last_at": "2026-10-08T15:40:00Z",
+       "last_by": {
+        "name": "Mira Okafor",
+        "handle": "mira-builds"
+       },
+       "replies": 2,
+       "model": {
+        "id": "DocsSprt01",
+        "name": "Sports car and its driver",
+        "has_image": true,
+        "has_thumb": false,
+        "updated_at": "2026-10-02T09:00:00Z"
+       },
+       "photo": null,
+       "hidden": false,
+       "locked": false,
+       "pinned": false,
+       "unread": false,
+       "following": false,
+       "mine": false,
+       "by_house": false,
+       "challenge": null
+      },
+      {
+       "id": 9,
+       "board": "help",
+       "title": "How do I make a slope meet a curved wall?",
+       "by": {
+        "name": "Jon Lund",
+        "handle": "jon-lund"
+       },
+       "said": "The wall is 1 x 4 x 6 curved panels and the roof slopes stop short by half a plate.",
+       "at": "2026-10-05T19:12:00Z",
+       "last_at": "2026-10-07T21:05:00Z",
+       "last_by": {
+        "name": "Test builder",
+        "handle": "test-builder"
+       },
+       "replies": 4,
+       "model": null,
+       "photo": null,
+       "hidden": false,
+       "locked": false,
+       "pinned": false,
+       "unread": false,
+       "following": false,
+       "mine": false,
+       "by_house": false,
+       "challenge": null
+      },
+      {
+       "id": 1,
+       "board": "challenges",
+       "title": "Microscale",
+       "by": {
+        "name": "Brickworks",
+        "handle": "brickworks"
+       },
+       "said": "Build anything big, small: a city, a ship or a mountain in under 200 parts.",
+       "at": "2026-10-01T00:05:00Z",
+       "last_at": "2026-10-07T12:30:00Z",
+       "last_by": {
+        "name": "Mira Okafor",
+        "handle": "mira-builds"
+       },
+       "replies": 11,
+       "model": null,
+       "photo": null,
+       "hidden": false,
+       "locked": false,
+       "pinned": false,
+       "unread": false,
+       "following": false,
+       "mine": false,
+       "by_house": true,
+       "challenge": {
+        "id": 108,
+        "title": "Microscale",
+        "starts_on": "2026-10-01",
+        "ends_on": "2026-10-31",
+        "test": false
+       }
+      },
+      {
+       "id": 5,
+       "board": "ideas",
+       "title": "What should Brickworks do next?",
+       "by": {
+        "name": "Brickworks",
+        "handle": "brickworks"
+       },
+       "said": "Tell us what you would like the studio or the site to do, and what gets in your way.",
+       "at": "2026-10-01T08:00:00Z",
+       "last_at": "2026-10-06T09:45:00Z",
+       "last_by": {
+        "name": "Jon Lund",
+        "handle": "jon-lund"
+       },
+       "replies": 9,
+       "model": null,
+       "photo": null,
+       "hidden": false,
+       "locked": false,
+       "pinned": false,
+       "unread": false,
+       "following": false,
+       "mine": false,
+       "by_house": true,
+       "challenge": null
+      },
+      {
+       "id": 4,
+       "board": "show",
+       "title": "What are you building this week?",
+       "by": {
+        "name": "Brickworks",
+        "handle": "brickworks"
+       },
+       "said": "One thread for whatever is on your table or your screen right now, finished or not.",
+       "at": "2026-10-01T08:00:00Z",
+       "last_at": "2026-10-05T20:10:00Z",
+       "last_by": {
+        "name": "Sam Reyes",
+        "handle": "sam-reyes"
+       },
+       "replies": 15,
+       "model": null,
+       "photo": null,
+       "hidden": false,
+       "locked": false,
+       "pinned": false,
+       "unread": false,
+       "following": false,
+       "mine": false,
+       "by_house": true,
+       "challenge": null
+      }
+     ],
+     "more": false,
+     "searched": false
+    },
+    "rest/v1/rpc/talk_board_counts": {
+     "news": 4,
+     "show": 14,
+     "help": 9,
+     "ideas": 6,
+     "challenges": 3
+    },
+    "rest/v1/rpc/talk_talking": [
+     {
+      "comment": 41,
+      "parent": null,
+      "model": "DocsShop01",
+      "name": "Corner shop",
+      "has_image": true,
+      "has_thumb": true,
+      "updated_at": "2026-10-03T09:00:00Z",
+      "version": 1,
+      "step": 12,
+      "said": "The awning on step 12 is lovely. Which tile is that?",
+      "at": "2026-10-08T11:00:00Z",
+      "by": {
+       "name": "Mira Okafor",
+       "handle": "mira-builds"
+      }
+     },
+     {
+      "comment": 40,
+      "parent": null,
+      "model": "DocsRckt01",
+      "name": "Rocket",
+      "has_image": true,
+      "has_thumb": true,
+      "updated_at": "2026-10-03T09:00:00Z",
+      "version": 2,
+      "step": null,
+      "said": "Built it with my daughter tonight. The fins took two goes.",
+      "at": "2026-10-07T19:30:00Z",
+      "by": {
+       "name": "Jon Lund",
+       "handle": "jon-lund"
+      }
+     }
+    ],
+    "rest/v1/shared_models?listed=is.true": []
+   },
+   "alt": "Talk at brickworks.diy/talk: Start a thread and Search Talk, the tabs Latest, Show and tell, Help, Ideas, Challenges and News with their counts, the newest threads with their board, first words, who started them and how many replies, and beside them what builders said under the models, then the boards.",
+   "caption": "brickworks.diy/talk.",
+   "features": [
+    "ui:the talk forum"
+   ]
+  },
+  {
+   "id": "talk-thread",
+   "source": "site",
+   "route": "/talk/t/12",
+   "viewport": [
+    1280,
+    1300
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "#talk-posts .comment",
+   "db": {
+    "rest/v1/rpc/talk_thread_page": {
+     "thread": {
+      "id": 12,
+      "board": "show",
+      "title": "Sports car and its driver",
+      "by": {
+       "name": "Test builder",
+       "handle": "test-builder"
+      },
+      "said": "My first car with a driver who fits. Step 3 is where the doors go on.",
+      "at": "2026-10-06T10:00:00Z",
+      "last_at": "2026-10-08T15:40:00Z",
+      "last_by": {
+       "name": "Mira Okafor",
+       "handle": "mira-builds"
+      },
+      "replies": 2,
+      "model": {
+       "id": "DocsSprt01",
+       "name": "Sports car and its driver",
+       "has_image": true,
+       "has_thumb": false,
+       "updated_at": "2026-10-02T09:00:00Z"
+      },
+      "photo": null,
+      "hidden": false,
+      "locked": false,
+      "pinned": false,
+      "unread": false,
+      "following": false,
+      "mine": false,
+      "by_house": false,
+      "challenge": null
+     },
+     "posts": [
+      {
+       "id": 31,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "body": "My first car with a driver who fits. Step 3 is where the doors go on, and I am still not sure about the hinges: https://brickworks.diy/app?view=DocsSprt01&step=3\n\n@mira-builds, you did a van with doors like these, how did you hold them?",
+       "at": "2026-10-06T10:00:00Z",
+       "first": true,
+       "answers": null,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": true
+      },
+      {
+       "id": 33,
+       "by": "Mira Okafor",
+       "handle": "mira-builds",
+       "body": "Clips on the door and a bar in the frame: they swing and stay put. Try 2 x 2 hinge bricks one plate lower and the doors close flush.",
+       "at": "2026-10-06T18:22:00Z",
+       "first": false,
+       "answers": 31,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": false
+      },
+      {
+       "id": 36,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "body": "That did it, thank you. Version 2 has the lower hinges.",
+       "at": "2026-10-08T15:40:00Z",
+       "first": false,
+       "answers": 33,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": true
+      }
+     ],
+     "blocked_some": false,
+     "you": {
+      "trouble": "sign_in",
+      "standing": null,
+      "pool": true,
+      "starter": false
+     }
+    },
+    "rest/v1/rpc/talk_mentions_of": [
+     {
+      "post": 31,
+      "handle": "mira-builds",
+      "name": "Mira Okafor"
+     }
+    ],
+    "rest/v1/shared_models?id=in.(DocsSprt01)": [
+     {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "has_image": true,
+      "has_thumb": false,
+      "updated_at": "2026-10-02T09:00:00Z"
+     }
+    ]
+   },
+   "alt": "A Show and tell thread: its title, the model's card, the first post with the step it names as a card of its own and @mira-builds as a link, Mira's answer and the builder's reply, each with Reply and Report, and under them Sign in to reply.",
+   "caption": "A thread, with a model and a step pasted as links.",
+   "features": [
+    "ui:a thread in talk"
+   ]
+  }
+ ]
+}

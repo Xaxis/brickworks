@@ -132,6 +132,14 @@ class Entry extends RefCounted:
 	var zoom: float = 1.0
 	var size: float = 1.0
 	var page_break: String = ""
+	## The page this step starts locked (BookletLooks "lock"): how many steps
+	## it holds, 0 when it is not locked. Its own page set up when frozen
+	## (BookletLooks.page_sheet), null when it is the booklet's.
+	var lock: int = 0
+	var own_sheet: BookletSheet = null
+	## On a locked page (Layout): what is placed on it stays where it was
+	## placed, in page mm, whatever room the page gives the step now.
+	var held: bool = false
 	## The step's look's name (BookletLooks.key), "" for a worked-out step.
 	var look: String = ""
 	## Placed by hand (BookletLooks "place"): item -> [x, y, w, h] in page
@@ -372,7 +380,9 @@ class Layout extends RefCounted:
 
 	## The steps the next page may take are those before this.
 	func reach() -> int:
-		return mini(at + most, entries.size())
+		if at >= entries.size():
+			return entries.size()
+		return mini(at + maxi(most, entries[at].lock), entries.size())
 
 	## The next page, after the pages of its step's callout when it has any.
 	func next() -> Array[Page]:
@@ -389,18 +399,30 @@ class Layout extends RefCounted:
 				for page: Page in Booklet._callout_pages(entry.callout,
 						float(at) / float(_total), sheet):
 					pages.append(page)
-		var area: Rect2 = Booklet.content(sheet)
+		# A frozen page on the page it kept (pagetools); a locked one holds
+		# the steps it held, whatever page breaks, sections or steps a page
+		# say since, and no more: its things stay where they were put.
+		var on: BookletSheet = entry.own_sheet if entry.own_sheet != null else sheet
+		var area: Rect2 = Booklet.content(on)
 		if not banner.is_empty():
 			area = Rect2(area.position + Vector2(0.0, BANNER),
 				area.size - Vector2(0.0, BANNER))
 		var run: Array[Entry] = []
-		for index: int in range(at, mini(at + most, entries.size())):
+		var holds: int = entry.lock if entry.lock > 0 else most
+		for index: int in range(at, mini(at + holds, entries.size())):
 			var next_one: Entry = entries[index]
-			if index > at and (next_one.section != _section or next_one.callout != null
+			if index > at and (next_one.callout != null or next_one.lock > 0
+					or next_one.own_sheet != null):
+				break
+			if index > at and entry.lock <= 0 and (next_one.section != _section
 					or not next_one.page_break.is_empty() or entries[index - 1].page_break == "alone"):
 				break
+			next_one.held = entry.lock > 0
 			run.append(next_one)
-		var page := Booklet._best_page(run, area, false, most, sheet)
+		# A locked page holds exactly its steps, however they now fit
+		# (ptreview F4): never split by the sizes a page of four needs.
+		var page := Booklet._held_page(run, area, on) if entry.lock > 0 \
+			else Booklet._best_page(run, area, false, most, on)
 		page.banner = banner
 		Booklet._settle(page)
 		page.progress = float(at + page.entries.size()) / float(_total)
@@ -412,6 +434,55 @@ class Layout extends RefCounted:
 			for one: Entry in laid.entries:
 				one.page = laid.number
 		return pages
+
+
+## A locked page: every step of [param run] on it, as many as it held when
+## it was locked, at the best of the arrangements of that many (three in
+## three of the four panels of four), however small that is.
+static func _held_page(run: Array[Entry], area: Rect2, sheet: BookletSheet) -> Page:
+	var count: int = run.size()
+	var best: Array = []
+	var best_scale: float = -1.0
+	for panels: Array in _arrangements(4 if count == 3 else count, area):
+		var scale: float = _page_scale(run, panels.slice(0, count))
+		if scale > best_scale:
+			best_scale = scale
+			best = panels
+	var page := Page.new()
+	page.kind = "steps"
+	page.sheet = sheet
+	for index: int in count:
+		_place(run[index], best[index], best_scale, sheet.size())
+		page.entries.append(run[index])
+	return page
+
+
+## Where each item of [param page]'s steps is now, as BookletLooks "place"
+## keeps it, for a lock to hold them there (Shell.change_look "page_lock"):
+## [[entry, place]], each step's own placed items as they were, and the
+## booklet's laid-out ones where it laid them, the picture as big as it is
+## drawn so it is drawn no bigger, the number under the parts list going
+## with it. As Apply to later pages places a page.
+static func held_places(page: Page) -> Array:
+	var out: Array = []
+	for entry: Entry in page.entries:
+		var place: Dictionary = entry.place.duplicate(true)
+		if not place.has("picture"):
+			var need: Vector2 = entry.subject.size.max(Vector2.ONE) * entry.scale / 0.94
+			place["picture"] = BookletLooks.said_rect(Rect2(entry.free.get_center() - need * 0.5,
+				need))
+		if not entry.lots.is_empty() and not place.has("parts"):
+			# As wide as the box is drawn: the width it wraps at is wider, and
+			# a placed list is drawn at least as wide as it was placed.
+			place["parts"] = [snappedf(entry.parts_rect.position.x, 0.1),
+				snappedf(entry.parts_rect.position.y, 0.1), snappedf(entry.parts_rect.size.x, 0.1)]
+		# The number under the parts list goes with it, as the booklet puts it.
+		if not place.has("number") and entry.lots.is_empty():
+			place["number"] = [snappedf(entry.number_at.x, 0.1), snappedf(entry.number_at.y, 0.1)]
+		if entry.callout != null and entry.callout.inline and not place.has("callout"):
+			place["callout"] = BookletLooks.said_rect(entry.callout.box)
+		out.append([entry, place])
+	return out
 
 
 ## The fullest page the run can make that is still big enough to read.
@@ -570,8 +641,10 @@ static func _place(entry: Entry, panel: Rect2, scale: float, page: Vector2 = PAG
 ## page [param page] mm.
 static func _by_hand(entry: Entry, page: Vector2 = PAGE) -> void:
 	# Placed in a room the step no longer has (a step edit or a page break
-	# moved it): what was placed goes with the step, into its room now.
-	if entry.room.size.x > 0.0 and not BookletLooks.same_room(entry.room, entry.panel):
+	# moved it): what was placed goes with the step, into its room now. On
+	# a locked page it stays where it was put (ptreview F3).
+	if entry.room.size.x > 0.0 and not entry.held \
+			and not BookletLooks.same_room(entry.room, entry.panel):
 		var moved: Dictionary = BookletLooks.rebased({"place": entry.place, "notes": entry.notes,
 			"arrows": entry.drawn_arrows, "panel": BookletLooks.said_rect(entry.room)}, entry.panel)
 		entry.place = moved.get("place", {})
@@ -1407,15 +1480,22 @@ static func _head(document: Document, with_parts: bool = true) -> String:
   :root { --mm: min(3.78px, calc((100vw - 24px) / %s)); }
   body { background: #5f6b78; }
   .page { margin: 12px auto; box-shadow: 0 2px 14px rgba(0,0,0,.35); }
-  .bar { position: sticky; top: 0; z-index: 9; display: flex; gap: 12px;
+  .bar { position: sticky; top: 0; z-index: 9; display: flex; flex-wrap: wrap; gap: 12px;
     align-items: center; justify-content: center; padding: 8px;
     background: #27313c; color: #e8eef4; font: 14px system-ui, sans-serif; }
   .bar button { font: inherit; padding: 5px 14px; border-radius: 6px;
     border: 0; background: #e3ecf4; color: #17202a; cursor: pointer; }
+  .bar select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 0;
+    background: #e3ecf4; color: #17202a; }
+  #save-web:not([hidden]) { display: inline-flex; gap: 6px; align-items: center; }
 }
 @media screen and (pointer: coarse) {
   .bar { flex-wrap: wrap; font-size: 16px; }
-  .bar button { min-height: 44px; min-width: 44px; padding: 10px 16px; }
+  .bar button, .bar select { min-height: 44px; min-width: 44px; padding: 10px 16px; }
+  #save-web:not([hidden]) { flex-wrap: wrap; justify-content: center; }
+}
+@media screen and (max-width: 600px) {
+  .bar { position: static; }
 }
 @media print {
   @page { size: %s; margin: 0; }
@@ -1458,7 +1538,7 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
   margin-right: calc(1 * var(--mm)); box-shadow: inset 0 0 0 calc(.2 * var(--mm)) rgba(0,0,0,.3); }
 %s
 </style>
-<div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
+<div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="save-web" hidden><select id="web-layout" aria-label="How the web page lays out the steps"><option value="long">One long page</option><option value="steps">A page per step</option></select><select id="web-theme" aria-label="Light or dark"><option value="light">Light</option><option value="dark">Dark</option></select><button id="save-html">Save as web page</button></span><span id="saved" role="status" hidden></span></div>
 %s
 <main>""" % [policy(), _escape(document.title), sheet.colour.to_html(false),
 		sheet.box_fill.to_html(false), sheet.box_frame.to_html(false), _whole(size.x),
@@ -1468,10 +1548,11 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
 		_escape(document.title), SAVE_SCRIPT]
 
 
-## Save as PDF and Save pages as PNG, shown where they work: on the
+## Save as PDF, Save pages as PNG and Save as web page (one long page or a
+## page per step, light or dark), shown where they work: on the
 ## desktop, while Brickworks serves the booklet to the browser (BookletOut),
 ## each asks Brickworks, which asks where to save it and writes it
-## (BookletPdf, BookletPng); on the web the app shows and answers them in
+## (BookletPdf, BookletPng, BookletHtml); on the web the app shows and answers them in
 ## its tab itself (BookletOut.finish), where this does not run. A booklet
 ## opened from its file has no Brickworks to ask, and shows Print alone.
 const SAVE_SCRIPT := "<script>" + SAVE_JS + "</script>"
@@ -1481,15 +1562,19 @@ const SAVE_JS := """
 document.querySelector(".bar button").addEventListener("click", () => print());
 if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventListener("DOMContentLoaded", () => {
   const said = document.getElementById("saved");
-  for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"]]) {
+  document.getElementById("save-web").hidden = false;
+  for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"], ["save-html", "html"]]) {
     const button = document.getElementById(id);
     button.hidden = false;
     button.onclick = async () => {
       button.disabled = true;
       said.hidden = false;
       said.textContent = "Saving\u2026";
+      // Save as web page: its layout and its look, as chosen beside it.
+      const asked = kind != "html" ? kind : ["html", document.getElementById("web-layout").value,
+        document.getElementById("web-theme").value].join("-");
       try {
-        const answer = await fetch("/save?" + kind, {method: "POST"});
+        const answer = await fetch("/save?" + asked, {method: "POST"});
         said.textContent = await answer.text();
       } catch (error) {
         said.textContent = "Brickworks is closed: open the instructions from it again to save them";
@@ -1523,15 +1608,16 @@ static func _class_of(key: String, document: Document) -> String:
 
 
 static func _page(page: Page, document: Document) -> String:
-	var sheet: BookletSheet = document.sheet
+	var sheet: BookletSheet = frozen_sheet(page, document)
 	var size: Vector2 = sheet.size()
 	var margin: float = sheet.margin
 	var out := PackedStringArray()
 	var numbers := PackedStringArray()
 	for entry: Entry in page.entries:
 		numbers.append(str(entry.number))
-	out.append("<section class=\"page %s\" id=\"page-%d\"%s>" % [page.kind, page.number,
-		(" data-steps=\"%s\"" % " ".join(numbers)) if not numbers.is_empty() else ""])
+	out.append("<section class=\"page %s\" id=\"page-%d\"%s%s>" % [page.kind, page.number,
+		(" data-steps=\"%s\"" % " ".join(numbers)) if not numbers.is_empty() else "",
+		_frozen_style(sheet, document.sheet)])
 	var svg := PackedStringArray()
 	match page.kind:
 		"cover":
@@ -1578,7 +1664,7 @@ static func _page(page: Page, document: Document) -> String:
 							_mark_words(mark, false), "q mk",
 							"color:#fff;width:calc(61 * var(--mm));text-align:right"))
 			for entry: Entry in page.entries:
-				_entry(entry, document, out, svg, in_banner)
+				_entry(entry, document, out, svg, in_banner, sheet)
 			# What its designer put on the page, over the rest: pictures, then words,
 			# and the arrows they drew over all.
 			for entry: Entry in page.entries:
@@ -1621,8 +1707,32 @@ static func _page(page: Page, document: Document) -> String:
 	return "\n".join(out)
 
 
+## The page [param page] is printed on: its own when its first step's page
+## is frozen (pagetools, BookletLooks "freeze"), else the booklet's.
+static func frozen_sheet(page: Page, document: Document) -> BookletSheet:
+	if not page.entries.is_empty() and page.entries[0].own_sheet != null:
+		return page.entries[0].own_sheet
+	return document.sheet
+
+
+## A frozen page's colours where they are not the booklet's: its own
+## --page, --box and --box-line on its section, which the stylesheet's
+## rules and BookletRead both take.
+static func _frozen_style(sheet: BookletSheet, booklet: BookletSheet) -> String:
+	if sheet == booklet:
+		return ""
+	var vars := PackedStringArray()
+	for pair: Array in [["--page", sheet.colour, booklet.colour], ["--box", sheet.box_fill,
+			booklet.box_fill], ["--box-line", sheet.box_frame, booklet.box_frame]]:
+		if not BookletSheet.same_colour(pair[1], pair[2]):
+			vars.append("%s:#%s" % [pair[0], (pair[1] as Color).to_html(false)])
+	return (" style=\"%s\"" % ";".join(vars)) if not vars.is_empty() else ""
+
+
 static func _entry(entry: Entry, document: Document, out: PackedStringArray,
-		svg: PackedStringArray, in_banner: Array = []) -> void:
+		svg: PackedStringArray, in_banner: Array = [], sheet: BookletSheet = null) -> void:
+	if sheet == null:
+		sheet = document.sheet
 	if not entry.image.is_empty():
 		# Escaped once, by _image: escaped here too, "&" read "&amp;amp;"
 		# (snreview).
@@ -1639,7 +1749,8 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		line += MARK_LINE
 	_guides(entry, out, svg)
 	if not entry.lots.is_empty():
-		out.append(_div(entry.parts_rect, "box"))
+		out.append(_div(entry.parts_rect, "box", "" if is_equal_approx(sheet.box_corners,
+			document.sheet.box_corners) else "border-radius:calc(%s * var(--mm))" % _n(sheet.box_corners)))
 		var y: float = entry.parts_rect.position.y + PAD
 		for row: Array in _rows(entry.lots, entry.parts_width):
 			var x: float = entry.parts_rect.position.x + PAD
@@ -1658,7 +1769,7 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 				x += cell + PAD
 			y += tallest + QUANTITY + 1.0 + float(row[3])
 	out.append(_text(entry.number_at, entry.number_size, str(entry.number), "n",
-		document.sheet.number_style()))
+		sheet.number_style()))
 	if not entry.name.is_empty():
 		# Beside the number, wrapped to its room (name_rect), in the
 		# booklet's ink: a line each, so the browser, the PDF and the PNG
@@ -1686,7 +1797,7 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 					"%s, step %d" % [callout.name, index + 1])
 			if callout.inline and callout.steps.size() > 1:
 				out.append(_text(callout.cells[index].position + Vector2(0.6, 0.4),
-					CALLOUT_NUMBER, str(index + 1), "n", document.sheet.number_style()))
+					CALLOUT_NUMBER, str(index + 1), "n", sheet.number_style()))
 		if callout.times > 1:
 			out.append(_text(callout.box.end - Vector2(PAD + 7.0, PAD + QUANTITY + 0.6),
 				QUANTITY * 1.15, "%dx" % callout.times, "n"))
