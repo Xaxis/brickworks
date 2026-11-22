@@ -1778,7 +1778,10 @@ picture the assistant is shown.
   session's clear keeps the flag for its undo (`Main._clear_undone`;
   copyfaults clear_lit). **Check:** `tools/probe.sh
   stepkeep_probe` (headless; `SK_ONLY=castle`, `station`, `robot`, `10179`,
-  `edits`, `callouts`, `nosteps` or `time`). `Instructions.plan(...,
+  `edits`, `callouts`, `nosteps`, `time` or `shipped`: every model in
+  models/ and tools/web/gallery_seeds/ that opens in its saved steps puts no
+  part in the air; `SK_SHIP_OUT=DIR` works out again any that does, saved as
+  Save writes it). `Instructions.plan(...,
   authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
   share, `plan_paced`, what holds what is read a slice at a time, as for a
   worked-out plan: in one go the Wizard's Tower's own steps held a frame for
