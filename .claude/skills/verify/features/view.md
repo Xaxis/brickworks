@@ -3570,8 +3570,12 @@ picture the assistant is shown.
   lit each way, named `<name>_t<turn>_<lighting>`, to find where a
   photograph's light stood; `--raw` also writes each picture's light before
   exposure and curve, `<name>.exr`, and what it was drawn at, `<name>.json`
-  (photoreal2, docs/RENDERING.md 5f). An edited `.glsl` is drawn only after
-  `godot --headless --path . --import`.
+  (photoreal2, docs/RENDERING.md 5f). A shot may name what its
+  photograph's part stands on (`surface`: 0 paper, 1 leather, 2 stone, 3 a
+  matte desk; photoreal5, docs/RENDERING.md 5i), drawn as its backdrop's
+  grain; `--without=KEY` draws a shot with one of its camera, wear or
+  surface settings at none, to measure what each brings. An edited `.glsl`
+  is drawn only after `godot --headless --path . --import`.
 - `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
   pictures are judged on. `pairs TAG` writes each render beside its
   photograph (cropped to the render's aspect, both the same size);
