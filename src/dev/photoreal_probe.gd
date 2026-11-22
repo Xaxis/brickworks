@@ -330,7 +330,7 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 		elif shot.has(key):
 			settings.set(key, float(shot[key]))
 	# What the photograph's parts stand on (photoreal5): 0 paper, 1 leather,
-	# 2 stone.
+	# 2 stone, 3 a desk.
 	settings.surface = 0 if "surface" in without else int(shot.get("surface", 0))
 	var bounds: AABB = _world.model_bounds()
 	var yaw: float = deg_to_rad(float(shot.get("yaw", -35.0)))

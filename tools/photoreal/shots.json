@@ -219,7 +219,8 @@
    "dust": 0.6,
    "paper": 1.0,
    "softness": 0.6,
-   "seating": 1.0
+   "seating": 1.0,
+   "surface": 3
   },
   {
    "name": "trans_round_1x1",

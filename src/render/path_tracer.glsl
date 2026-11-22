@@ -561,6 +561,7 @@ vec3 cells(vec2 p) {
 
 const float SURFACE_LEATHER = 1.0;
 const float SURFACE_STONE = 2.0;
+const float SURFACE_DESK = 3.0;
 
 // A backdrop's own grain and uneven light (photoreal4), as a factor round 1 at
 // a point of it (LDU): broad patches a little lighter and darker, as a sheet
@@ -569,8 +570,9 @@ const float SURFACE_STONE = 2.0;
 // fine and faint; a leather's pebbled cells, each a little domed, with dark
 // creases between, about 3 mm across, as black_2x4's; or a stone counter's
 // grains, most its colour and some darker, browner or lighter, about a
-// millimetre across, as green_plate_macro's. Amount 0 is none: a cut-out's
-// seamless is its colour exactly.
+// millimetre across, as green_plate_macro's; or a matte desk's specks and
+// smudges, as grey_1x3's. Amount 0 is none: a cut-out's seamless is its
+// colour exactly.
 vec3 paper(vec3 at, float amount) {
 	if (amount <= 0.0) {
 		return vec3(1.0);
@@ -588,6 +590,16 @@ vec3 paper(vec3 at, float amount) {
 		float tone = big.z - 0.5;
 		return vec3(1.0 + amount * (0.06 * broad + 0.12 * dome * dome + 0.06 * tone - 0.45 * crease
 			- 0.12 * fine));
+	}
+	if (abs(scene.wear.w - SURFACE_DESK) < 0.5) {
+		// A matte desk's top: its colour mottled faintly, a few dark and
+		// light specks, and smudges where hands have been, as grey_1x3's.
+		vec3 specks = cells(flat_at / 0.9);
+		float speck = specks.z < 0.04 ? -0.25 : (specks.z > 0.975 ? 0.1 : 0.0);
+		speck *= 1.0 - smoothstep(0.15, 0.3, specks.x);
+		float smudge = gloss_noise(vec3(flat_at / 26.0, 3.0)) * 0.6 + gloss_noise(vec3(flat_at / 9.0, 8.0)) * 0.4;
+		float mottle = gloss_noise(vec3(flat_at * 0.7, 1.0));
+		return vec3(1.0 + amount * (0.06 * broad + 0.04 * smudge + 0.015 * mottle + speck));
 	}
 	if (abs(scene.wear.w - SURFACE_STONE) < 0.5) {
 		vec3 grain = cells(flat_at / 1.1);
