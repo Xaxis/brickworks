@@ -221,7 +221,8 @@
         "tests/test_oauth_clients.py",
         "tests/fixtures/insights/db_check.mjs",
         "tests/fixtures/oauth/world.mjs",
-        "tests/test_insights.py"
+        "tests/test_insights.py",
+        "tests/test_photostep.py"
       ]
     },
     {
@@ -2489,6 +2490,22 @@
       "entry": "src/dev/photoreal_probe.gd",
       "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:photostep bench",
+      "kind": "cli",
+      "entry": "src/dev/photostep_bench.gd",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a -s '-screen 0 1400x1000x24' godot --path . --resolution 1280x960 --script src/dev/photostep_bench.gd -- --pictures=DIR [--sets=7638-1,42004-1,31009-1,10179-1] [--samples=N]   (windowed, on the GPU: each library set paged as Build mode pages it, three main-line steps N a set chosen by rule; for each, five builds drawn at Best, Product look, from one hand-held camera never the booklet's: N right, a new part missing, one moved a stud, one the wrong colour, and N-1; each with a Good mask, and steps N-1, N and N+1 at Good from four corners and the top; the truth in DIR/cases.json; a set drawn already is skipped)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:photostep reading",
+      "kind": "cli",
+      "entry": "tools/bench/photostep.py",
+      "reach": "python3 tools/minitest.py tests/test_photostep.py; uv run --no-project --with numpy --with pillow python tools/bench/photostep.py dress DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photostep.py read DIR [--jobs 3] [--only KEY]; python3 tools/bench/photostep.py score DIR   (the photos laid on a desk or carpet and made a phone's picture; each case read by Claude Code on the subscription, its only tools this bench's MCP server (check_step_photo: the photo, steps N-1, N and N+1 with their new parts ringed, and their parts; step_picture: a step from another side), the builder saying step N; DIR/score.md: step exact and within one, faults found and named by kind, part and place, false alarms, seconds an answer, every case)",
+      "area": "assistant",
       "tests": []
     },
     {
