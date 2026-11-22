@@ -18,7 +18,11 @@
 // than twice the desktop's presses, touching no control under 44 points
 // across (phonepanels' and fingertools' bar). view_floor and
 // view_floor_orthanc run only when --only names them: 200 gestures each,
-// every one waited out and looked at.
+// every one waited out and looked at. --gestures=N --from=K walk only
+// gestures K to K+N-1 of each half (100 a half), each drawn as the whole
+// walk draws it, so runs of 25 from 0, 25, 50 and 75 are its 200 gestures
+// (smalls12: Orthanc's 200 took 46 s each in Chromium, past any act's
+// limit, and its counts were never written). --act-ms then holds them too.
 //
 // On a phone's own engine and speed (phonetruth, docs/PHONE.md), the walk
 // tools/web/phonetruth_flow.mjs runs:
@@ -122,6 +126,9 @@ const BAR = Boolean(args.bar);
 // The most one act may take, setup included: past it the act is said to
 // have run out of time and the walk goes on to the next.
 const ACT_MS = Number(args["act-ms"] || 10 * 60 * 1000);
+// The view_floor walks' share of each half's 100 gestures (--gestures, --from).
+const WALK_FROM = Math.max(Number(args.from || 0), 0);
+const WALK_GESTURES = Math.max(Number(args.gestures || 100), 0);
 const DOORS = resolve("vendor/omr/files/1484-1.mpd");
 const ORRERY = resolve("src/dev/fixtures/orrery_two_planets.ldr");
 const CAR = resolve("models/car.ldr");
@@ -380,7 +387,8 @@ async function walk(width, height, ratio, result) {
       try {
         result = await Promise.race([
           P.run(act.id),
-          new Promise((done) => setTimeout(() => done({ done: false, timedOut: true }), act.ms || ACT_MS)),
+          new Promise((done) => setTimeout(() => done({ done: false, timedOut: true }),
+            args["act-ms"] ? ACT_MS : (act.ms || ACT_MS))),
         ]);
       } catch (trouble) {
         result = { done: false, threw: String(trouble.stack || trouble).slice(0, 400) };
@@ -974,6 +982,7 @@ function person(page, cdp, width, height, size, choosers) {
     };
     const halves = {};
     let lowest = null;
+    let walked = 0;
     const bad = [];
     for (const half of ["first", "after_fit"]) {
       if (half === "after_fit") await untimed(() => press("phone_fit"));
@@ -1009,6 +1018,9 @@ function person(page, cdp, width, height, size, choosers) {
             return [{ x: mid.x - w.x, y: mid.y - w.y }, { x: mid.x + w.x, y: mid.y + w.y }];
           };
         }
+        // Drawn as the whole walk draws it, walked only in this run's share.
+        if (n < WALK_FROM || n >= WALK_FROM + WALK_GESTURES) continue;
+        walked += 1;
         await touch("touchStart", at(0));
         for (let k = 1; k <= steps; k++) {
           const t = k / steps;
@@ -1033,10 +1045,11 @@ function person(page, cdp, width, height, size, choosers) {
       await picture(`view_floor_${name}_${half}`);
     }
     note(`${name}: first ${JSON.stringify(halves.first)}, after Fit ${JSON.stringify(halves.after_fit)}; `
-      + `lowest eye ${lowest.words}${bad.length ? "; " + bad.join("; ") : ""}`);
+      + `gestures ${WALK_FROM} to ${WALK_FROM + WALK_GESTURES - 1} of each half, ${walked} walked; `
+      + `lowest eye ${lowest ? lowest.words : "none"}${bad.length ? "; " + bad.join("; ") : ""}`);
     await untimed(async () => { await page.keyboard.press("0"); await page.waitForTimeout(1500); });
     const wrong = ["first", "after_fit"].reduce((sum, h) => sum + halves[h].under + halves[h].lost, 0);
-    return { done: wrong === 0, why: `${wrong} of 200 gestures left the view under the floor or lost` };
+    return { done: wrong === 0, why: `${wrong} of ${walked} gestures left the view under the floor or lost` };
   };
   const partsOnScreen = async (most = 1) => {
     const found = ((await layout()) || {}).targets || [];
