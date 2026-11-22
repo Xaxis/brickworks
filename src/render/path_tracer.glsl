@@ -1436,6 +1436,8 @@ vec3 normal_at(uint v) {
 
 const float ROUND = 0.6;
 
+float wave_noise(vec3 p);
+
 vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 	vec3 size = high - low;
 	if (size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
@@ -1455,8 +1457,15 @@ vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 			|| any(greaterThan(out_of, vec3(slack)))) {
 		return n;
 	}
-	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(ROUND)), vec3(0.0));
-	q = mix(q, vec3(ROUND), axis);
+	// A worn mould's edge is not rounded alike all along it (photoreal5):
+	// the rounding is a half to one and a half times ROUND, changing over a
+	// few LDU, so the light it catches swells and thins along each edge as a
+	// photograph's does. Rounded alike, every highlight was one even thread
+	// ("razor-thin, perfectly even edge highlights", "uniform bevels on
+	// every brick edge").
+	float r = ROUND * (0.5 + smoothstep(-0.5, 0.5, wave_noise(at * 0.3 + vec3(7.0, 3.0, 11.0))));
+	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(r)), vec3(0.0));
+	q = mix(q, vec3(r), axis);
 	return normalize(sign(p) * q);
 }
 
