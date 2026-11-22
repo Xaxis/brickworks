@@ -454,12 +454,17 @@ const TARGETS = {
   announce_limit: () => ["setting", "announce_limit"],
   announce_mail_most: () => ["setting", "news_mail_most"],
   announce_mail_address: () => ["setting", "news_mail_address"],
+  // Talk (api/_console_talk.js): a post, a thread, or whom a ban is on.
+  talk_act: (_, b, a) => (b.post ? ["talk_post", b.post] : b.thread ? ["talk_thread", b.thread]
+    : ["account", a?.account ?? b.account]),
 };
 const ASKED = ["id", "v", "days", "why", "reason", "decision", "note", "status", "words", "mode", "title", "starts_on",
   "ends_on", "most_parts", "set_number", "tested", "tone", "job", "provider", "kind", "community", "at", "url", "ends", "most",
   "phone_parts", "phone_start_s", "on",
   // claude_settings: the model, effort and monthly cap chosen (never the key).
-  "model", "effort", "cap_usd"];
+  "model", "effort", "cap_usd",
+  // talk_act: which act, and the board a thread was moved to.
+  "act", "board"];
 // Part C's answers too: whose account an act was on is kept by its address,
 // since a deleted one's is nowhere else afterwards; an export's counts, never
 // its rows; a cron's outcome.

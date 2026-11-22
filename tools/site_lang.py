@@ -123,7 +123,7 @@ BINDING = {"terms.html", "privacy.html", "guidelines.html", "takedown.html"}
 BOUND = 'This is a translation. The <a href="{english}">English text</a> is the one that binds.'
 # The pages the server makes in each language too, at /<code>/<where>: a
 # copy's link to one opens it in the copy's language.
-SERVED = ("c/", "u/", "m/", "library/")
+SERVED = ("c/", "u/", "m/", "library/", "talk", "talk/")
 
 BLOCK = {"html", "head", "body", "header", "nav", "main", "section", "article", "aside", "footer",
          "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "figure", "figcaption",
@@ -167,7 +167,7 @@ COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})
 TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
         "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
         "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js", "api/_beta.js",
-        "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js", "api/_push.js")
+        "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js", "api/_push.js", "api/_talk.js")
 # And what a profile can be refused with, in First steps, the profile's own
 # page and settings, in the functions that refuse it: every sentence, ended
 # with a full stop or not.
@@ -210,7 +210,13 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/feed.js": (), "web/notifications.js": (), "web/notice-view.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/betabar.js": (), "web/notice.js": (),
             "web/keep.js": (), "web/lists.js": (), "web/block.js": (), "web/share-model.js": (), "web/push.js": (),
             "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
-            "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
+            "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups"),
+            # Talk, the builders' forum (talk, 2026-11-22): its pages, drawn
+            # whole on the server, and what they do in the browser.
+            "api/_talk.js": ("cleanPost", "cleanTitle", "bodyHtml", "boardSaid", "whenSaid", "threadRowHtml", "embedsHtml",
+                             "postHtml", "postsHtml", "talkingHtml", "boardsHtml", "threadSchema", "rssOf", "listPageHtml",
+                             "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell"),
+            "web/talk.js": (), "web/talk-strip.js": ()}
 # And what the site is put together with says on a page (tools/site.py: the
 # changelog's heads, links and dates), each say("...") of it.
 WRITTEN = ("tools/site.py",)

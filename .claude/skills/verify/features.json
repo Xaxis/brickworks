@@ -3372,6 +3372,14 @@
       "tests": []
     },
     {
+      "id": "cli:talk browser flow",
+      "kind": "cli",
+      "entry": "tools/web/talk_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/relay.env tools/web/talk_flow.mjs --url=http://127.0.0.1:11170 --out=DIR over relay_server.mjs 11170 --hold=talk (MASTER_EMAIL a throwaway at resend.dev); on a preview once talk.sql is applied, BW_BYPASS=$VERCEL_BYPASS ... --url=<preview> (preview_checks.sh talk)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:technic stress probe",
       "kind": "cli",
       "entry": "src/dev/technic_stress_probe.gd",
@@ -3401,7 +3409,9 @@
       "entry": "tools/bench/ideas.py",
       "reach": "python3 tools/minitest.py tests/test_ideas.py; python3 tools/bench/ideas.py list   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... BENCH_PORTS=... python3 tools/bench/ideas.py run --arm A --checkout DIR --via relay --jobs 2 | report --arm A | compare --arms A,B; the recipe is Owner-style ideas in features/assistant.md)",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_talk.py"
+      ]
     },
     {
       "id": "cli:tested browser flow",
@@ -3506,6 +3516,14 @@
       "kind": "cli",
       "entry": "tools/web/start_phases.mjs",
       "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] --out=DIR   (webstart11, local servers only: two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; DIR/phases.md and pairs.json)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the talk stand-in",
+      "kind": "cli",
+      "entry": "tools/web/talk_stand_in.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
       "area": "web",
       "tests": []
     },
@@ -5054,6 +5072,17 @@
       "tests": []
     },
     {
+      "id": "lib:talk threads and posts",
+      "kind": "lib",
+      "entry": "supabase/talk.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry --try=tools/talk_try.sql --table=talk_threads   (not applied yet; api/_talk.js; docs/SOCIAL.md section 10; then tools/web/talk_flow.mjs)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/test_insights.py"
+      ]
+    },
+    {
       "id": "lib:the Admission client",
       "kind": "lib",
       "entry": "api/_admission.js",
@@ -5218,7 +5247,8 @@
       "tests": [
         "tests/test_challenges.py",
         "tests/test_challenge_year.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_talk.py"
       ]
     },
     {
@@ -5619,6 +5649,14 @@
       "entry": "src/assembly/booklet_looks.gd",
       "reach": "godot --path .  (Build \u203a Timeline, a step: the Booklet row's Name\u2026, Build \u203a Steps \u203a Name the step\u2026 or Shift-F2, a name typed, Return: \"Step 3 of 24 \u00b7 Build the cockpit\" on the timeline, cut at 40 characters; on its own line under \"Step 3 of 24\" in Build it; beside the step's number on the booklet page, wrapped at 64 mm; kept in the file as 0 !BRICKWORKS STEP_NAME in its step; edit_steps {\"op\": \"name\", \"step\": N, \"name\": \"...\"} over MCP, \"\" takes it off)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a thread in talk",
+      "kind": "ui",
+      "entry": "api/_talk.js",
+      "reach": "https://brickworks.diy/talk/t/<n>/<title>   (GET /api/people?op=talk_thread&id=N[&html=1]; POST ?op=talk_start, ?op=talk_reply, ?op=talk_change, ?op=talk_follow, ?op=talk_read, ?op=talk_photo_start, ?op=report {post})",
+      "area": "web",
       "tests": []
     },
     {
@@ -7372,6 +7410,14 @@
       ]
     },
     {
+      "id": "ui:talk in the owner's console",
+      "kind": "ui",
+      "entry": "web/admin-talk.js",
+      "reach": "<deployment>/admin#talk as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=talk; POST ?op=talk_act {act, post|thread|account, board, until, reason}, each in the audit log",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:techniques in the bin",
       "kind": "ui",
       "entry": "src/ai/techniques.gd",
@@ -7691,6 +7737,14 @@
       "tests": []
     },
     {
+      "id": "ui:the latest in talk on the home page",
+      "kind": "ui",
+      "entry": "web/talk-strip.js",
+      "reach": "https://brickworks.diy/ (#talk-latest, filled from GET /api/people?op=talk_latest&n=4&html=1)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:the loader's words for a phone and a browser without WebGL 2",
       "kind": "ui",
       "entry": "src/boot/shell.html",
@@ -7806,6 +7860,17 @@
       ]
     },
     {
+      "id": "ui:the talk forum",
+      "kind": "ui",
+      "entry": "web/talk.js",
+      "reach": "https://brickworks.diy/talk (/talk/b/<board>, ?q= search, /talk/new, /de|fr|es/talk; ?tests=1 the checks' pool)   (api/_talk.js talkPage; GET /api/people?op=talk, ?op=talk_latest; RSS /talk.rss, /talk/b/<board>.rss)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/test_insights.py"
+      ]
+    },
+    {
       "id": "ui:the view kept over the floor and on the model",
       "kind": "ui",
       "entry": "src/camera/cad_camera.gd",
@@ -7864,7 +7929,8 @@
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_talk.py"
       ]
     },
     {
