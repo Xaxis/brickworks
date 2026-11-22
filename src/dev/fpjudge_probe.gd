@@ -350,6 +350,10 @@ func _case_defaults(path: String) -> void:
 	if bar == null:
 		_check("%s defaults: bar read" % name, false)
 		return
+	# The bar keeps a person's ticks from one opening to the next: files
+	# ticked every kind.
+	for kind: String in FinishBar.KINDS:
+		bar.set_kind(kind, not FinishBar.OFF_AT_FIRST.has(kind))
 	var laid: Dictionary = await bar.lay_now()
 	await _frames(6)
 	var s1: String = _store.saved_text()
