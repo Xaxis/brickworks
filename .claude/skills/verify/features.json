@@ -2492,6 +2492,14 @@
       "tests": []
     },
     {
+      "id": "cli:place designs on a ladder of each real set",
+      "kind": "cli",
+      "entry": "tools/design_ladder.py",
+      "reach": "python3 tools/minitest.py tests/test_design_ladder.py; python3 tools/design_ladder.py build --subjects 21013-1; python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM   (for real: build | render (gpu) | heavy ... order | heavy ... place --arm A --date D [--again] | report | sheet; reach --port P starts the app as realset does and asks every file-opening tool for a ladder file; the ladder lives in the main checkout's bench/ladder/, never in a session's reach; the recipe is The design ladder in features/assistant.md)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:placing in a browser",
       "kind": "cli",
       "entry": "tools/web/placing_flow.mjs",
@@ -3728,6 +3736,7 @@
         "tests/fixtures/adminclaude/live_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
+        "tests/test_design_ladder.py",
         "tests/test_realset.py"
       ]
     },
@@ -3886,6 +3895,7 @@
         "tests/fixtures/adminclaude/live_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
+        "tests/test_design_ladder.py",
         "tests/test_realset.py"
       ]
     },
@@ -4129,6 +4139,7 @@
         "tests/fixtures/adminclaude/live_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
+        "tests/test_design_ladder.py",
         "tests/test_realset.py"
       ]
     },
@@ -4646,6 +4657,7 @@
         "tests/fixtures/adminclaude/live_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
+        "tests/test_design_ladder.py",
         "tests/test_realset.py"
       ]
     },
@@ -5250,6 +5262,7 @@
         "tests/fixtures/adminclaude/live_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_challenge_notices.py",
+        "tests/test_design_ladder.py",
         "tests/test_realset.py"
       ]
     },
