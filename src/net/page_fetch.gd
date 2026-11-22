@@ -57,7 +57,7 @@ static func ask(host: Node, url: String, headers: PackedStringArray = PackedStri
 		http.queue_free()
 		return [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray()]
 	var done: Array = await http.request_completed
-	Wake.all()
+	Wake.all("fetch")
 	_untag(tag, http)
 	http.queue_free()
 	return done
@@ -191,5 +191,5 @@ func _on_answer(args: Array) -> void:
 		PackedStringArray(str(heads).split("\n", false)) if heads is String else PackedStringArray(),
 		bytes if bytes is PackedByteArray else PackedByteArray()]
 	# An answer can change what any panel shows (Wake), with no input.
-	Wake.all()
+	Wake.all("fetch")
 	_answered.emit(id)

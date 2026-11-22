@@ -850,7 +850,7 @@ func _catalogue_read() -> bool:
 	_current_lock.unlock()
 
 	_load_colors()
-	Wake.all()
+	Wake.all("part")
 	loaded.emit(parts.size())
 	return true
 
@@ -1717,7 +1717,7 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 		return false
 	if _mesh_cache.has(info.mesh_hash) or _custom_meshes.has(info.mesh_hash) \
 			or _arrived.has(info.mesh_hash):
-		Wake.all()
+		Wake.all("part")
 		fetched.emit(part_id)
 		return true
 	# Here on disk, this build's or the web build's later part come since it
@@ -2215,7 +2215,7 @@ func _kept_read(item: Array, made: Variant) -> void:
 		Exact.keep_shape(hash_name, made, _reading_shapes.has(hash_name))
 		_fetching_exact.erase(hash_name)
 		_reading_shapes.erase(hash_name)
-		Wake.all()
+		Wake.all("part")
 		exact_fetched.emit(part_id)
 		return
 	var asked_for: Array = _fetching.get(hash_name, [part_id])
@@ -2232,7 +2232,7 @@ func _kept_read(item: Array, made: Variant) -> void:
 	# Everyone who asked for this geometry, not only whoever asked
 	# first.
 	for asked: String in asked_for:
-		Wake.all()
+		Wake.all("part")
 		fetched.emit(asked)
 
 
@@ -2358,7 +2358,7 @@ func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
 	else:
 		_fetching_exact.erase(hash_name)
 		Exact.keep(hash_name, PackedByteArray())
-		Wake.all()
+		Wake.all("part")
 		exact_fetched.emit(part_id)
 	_next_exact()
 

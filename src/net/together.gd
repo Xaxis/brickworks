@@ -3331,7 +3331,7 @@ func _ask(op: String, body: Dictionary, timeout: float = 20.0) -> Array:
 		return [0, {}]
 	var done: Array = await http.request_completed
 	# A peer's edit, or who is in, can change what any panel shows (Wake).
-	Wake.all()
+	Wake.all("together")
 	http.queue_free()
 	return [int(done[1]) if int(done[0]) == HTTPRequest.RESULT_SUCCESS else 0,
 		_parsed((done[3] as PackedByteArray).get_string_from_utf8())]
@@ -3414,14 +3414,14 @@ func _page_headers(session: String) -> Dictionary:
 
 
 func _on_page_answer(args: Array) -> void:
-	Wake.all()
+	Wake.all("together")
 	_page_answers[int(args[0])] = [int(args[1]), str(args[2])]
 	_page_answered.emit(int(args[0]))
 
 
 ## A line of the page's poll, which waits on: who is in it, now.
 func _on_page_heard(args: Array) -> void:
-	Wake.all()
+	Wake.all("together")
 	if live and int(args[0]) == _page_poll:
 		_heard_people(_parsed(str(args[1])), _unix_ms())
 

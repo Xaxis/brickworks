@@ -76,7 +76,7 @@ static func begin() -> void:
 	# A frame drawn: something on screen changed (the camera moved, a part's
 	# shape came, a panel folded, a dialog opened), and at rest none is
 	# drawn (IdleDraw), so whatever shows what follows from it looks again.
-	RenderingServer.frame_pre_draw.connect(Wake.all)
+	RenderingServer.frame_pre_draw.connect(Wake._drawing)
 	if OS.has_feature("web"):
 		_listen_to_page()
 
@@ -91,6 +91,9 @@ static func _listen_to_page() -> void:
 	_page_wakes = JavaScriptBridge.create_callback(Wake._page_said)
 	var window: JavaScriptObject = JavaScriptBridge.get_interface("window")
 	window.set(&"brickworksWake", _page_wakes)
+	_trace = bool(JavaScriptBridge.eval("Array.isArray(window.brickworksWakeTrace)", true))
+	if _trace:
+		(Engine.get_main_loop() as SceneTree).process_frame.connect(Wake._traced.bind("frame"))
 	JavaScriptBridge.eval("""(function () {
 	var wake = function () { if (window.brickworksWake) window.brickworksWake(); };
 	document.addEventListener("visibilitychange", wake);
@@ -112,7 +115,33 @@ static var _page_wakes: JavaScriptObject = null
 
 
 static func _page_said(_args: Array) -> void:
-	all()
+	all("page")
+
+
+static func _drawing() -> void:
+	if _trace:
+		_traced("draw")
+	all("drawn")
+
+
+## A check's trace of every wake, rest and drawn frame (process frame,
+## frames drawn, what), kept on the page in window.brickworksWakeTrace when
+## the page made it an array before the app began: off otherwise, one look.
+static var _trace: bool = false
+
+
+## Something worth seeing in that trace (TRACE: a check's question only).
+static func trace(what: String) -> void:
+	if _trace:
+		_traced(what)
+
+
+static func _traced(what: String) -> void:
+	if not OS.has_feature("web"):
+		print("  wake %d/%d %s" % [Engine.get_process_frames(), Engine.get_frames_drawn(), what])
+		return
+	JavaScriptBridge.eval("window.brickworksWakeTrace.push([performance.now(), %d, %d, %s])" % [
+		Engine.get_process_frames(), Engine.get_frames_drawn(), JSON.stringify(what)], true)
 
 
 ## Sleeping off: every sleeper woken, and none put to sleep again.
@@ -121,8 +150,8 @@ static func end() -> void:
 	on = false
 
 
-static func _heard(_event: InputEvent) -> void:
-	all()
+static func _heard(event: InputEvent) -> void:
+	all("input " + event.get_class() if _trace else "input")
 
 
 ## Something happened that may give any node work: every node asleep is
@@ -130,15 +159,19 @@ static func _heard(_event: InputEvent) -> void:
 ## [constant MS] ms. Cheap when called again in the same frame (a model's
 ## every brick changed). Only on the main thread: a world changed on a
 ## worker is a copy that nobody is shown.
-static func all() -> void:
+static func all(why: String = "") -> void:
 	var frame: int = Engine.get_process_frames()
 	if frame == _woke_frame:
+		if _trace:
+			_traced("again " + why)
 		return
 	if OS.get_thread_caller_id() != OS.get_main_thread_id():
 		return
 	_woke_frame = frame
 	woke_ms = Time.get_ticks_msec()
 	wakes += 1
+	if _trace:
+		_traced("all %s %d" % [why, _asleep.size()])
 	if _asleep.is_empty():
 		return
 	var woken: PackedInt64Array = _asleep
@@ -163,6 +196,8 @@ static func rest(node: Node) -> void:
 	if not _asleep.has(id):
 		_asleep.append(id)
 	slept += 1
+	if _trace:
+		_traced("rest " + node.name)
 
 
 ## Whether something happened within the last [constant FRAMES] frames and
