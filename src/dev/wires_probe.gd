@@ -439,7 +439,7 @@ func _laid() -> void:
 	var reopened: Array = _parts_in_file()
 	var second: String = await _save("wires_laid.ldr")
 	_check("opened again, stood %s up: every part where it was laid (%d)" % [_store.lift(), laid.size()],
-		laid == reopened)
+		_same_parts(laid, reopened))
 	if not _check("saved, opened again and saved: byte for byte (%d bytes)" % first.length(),
 			not first.is_empty() and first == second):
 		print(_difference(first, second))
@@ -495,22 +495,44 @@ func _wiring() -> Wiring:
 	return Wiring.read_with(_world.bricks(), _library)
 
 
-## Each part of the model where its file has it (the model's lift taken off),
-## part, colour, place and turn to the hundredth, sorted.
+## Each part of the model where its file has it (the model's lift taken
+## off): [part and colour, its place], each.
 func _parts_in_file() -> Array:
 	var back := Transform3D(Basis.IDENTITY, -_store.lift())
 	var out: Array = []
 	for brick: BrickWorld.Brick in _world.bricks():
-		if _store.scenery.has(brick.id):
-			continue
-		var at: Transform3D = back * brick.transform
-		var numbers := PackedStringArray()
-		for value: float in [at.origin.x, at.origin.y, at.origin.z, at.basis.x.x, at.basis.x.y, at.basis.x.z,
-				at.basis.y.x, at.basis.y.y, at.basis.y.z, at.basis.z.x, at.basis.z.y, at.basis.z.z]:
-			numbers.append("%.2f" % (0.0 if absf(value) < 0.005 else value))
-		out.append("%s %d %s" % [brick.part_id, brick.color_code, " ".join(numbers)])
-	out.sort()
+		if not _store.scenery.has(brick.id):
+			out.append(["%s %d" % [brick.part_id, brick.color_code], back * brick.transform])
 	return out
+
+
+## Whether each part of [param a] has one of [param b] of its number and
+## colour within 0.01 LDU and a thousandth of its turn, and as many: a file
+## keeps a place to a few decimals, so where a piece was laid and where it
+## is read back differ past the fifth figure.
+static func _same_parts(a: Array, b: Array) -> bool:
+	var left: Array = b.duplicate()
+	var unmatched: Array = []
+	for one: Array in a:
+		var found: int = -1
+		for n: int in left.size():
+			var other: Array = left[n]
+			var x: Transform3D = one[1]
+			var y: Transform3D = other[1]
+			if other[0] == one[0] and x.origin.distance_to(y.origin) <= 0.01 \
+					and x.basis.x.distance_to(y.basis.x) <= 0.001 and x.basis.y.distance_to(y.basis.y) <= 0.001 \
+					and x.basis.z.distance_to(y.basis.z) <= 0.001:
+				found = n
+				break
+		if found < 0:
+			unmatched.append(one)
+		else:
+			left.remove_at(found)
+	for one: Array in unmatched.slice(0, 4):
+		print("      was %s at %s, now nowhere near" % [one[0], (one[1] as Transform3D).origin])
+	if a.size() != b.size():
+		print("      %d parts, then %d" % [a.size(), b.size()])
+	return unmatched.is_empty() and a.size() == b.size()
 
 
 ## F4: a laid cable after a reopen is an item as a hose is: found among the

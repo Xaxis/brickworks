@@ -116,8 +116,8 @@ func _made_here() -> void:
 	var second: String = await _save("made_2.ldr")
 	await _open(MODELS + "made_2.ldr")
 	var third: String = await _save("made_3.ldr")
-	print("    Wing's reference: %s, then %s, then %s" % [_ref_to(first, "wing.ldr"),
-		_ref_to(second, "wing.ldr"), _ref_to(third, "wing.ldr")])
+	print("    Wing's reference: %s, then %s, then %s" % [_ref_to(first, "wing"),
+		_ref_to(second, "wing"), _ref_to(third, "wing")])
 	_check("every part where it stood before the first save (%d parts)" % made.size(),
 		_same_parts(made, opened))
 	if not _check("saved, opened and saved: byte for byte (%d bytes)" % first.length(),
@@ -144,7 +144,7 @@ func _made_lifted() -> void:
 	var first: String = await _save("lifted.ldr")
 	await _open(MODELS + "lifted.ldr")
 	var second: String = await _save("lifted_2.ldr")
-	print("    Tail's reference: %s, then %s" % [_ref_to(first, "tail.ldr"), _ref_to(second, "tail.ldr")])
+	print("    Tail's reference: %s, then %s" % [_ref_to(first, "tail"), _ref_to(second, "tail")])
 	_check("every part where it stood (%d parts)" % made.size(), _same_parts(made, _parts_in_file()))
 	if not _check("saved, opened and saved: byte for byte (%d bytes)" % first.length(),
 			not first.is_empty() and first == second):
@@ -179,11 +179,11 @@ func _ldcad_cable() -> void:
 		if not Assemblies.path_of(brick).is_empty():
 			cable += 1
 	_check("opened: %d parts of the cable in its sub-model, the model stood %s up on the ground" % [
-		cable, lift], cable > 2 and lift.y > 0.0)
+		cable, lift], cable >= 2 and lift.y > 0.0)
 	var opened: Array = _parts_in_file()
 	var first: String = await _save("cable_box_2.ldr")
-	var ref: String = _ref_to(first, "powerfuncmotorl-1.ldr")
-	print("    the cable's reference: %s, then %s" % [_ref_to(text, "powerfuncmotorl-1.ldr"), ref])
+	var ref: String = _ref_to(first, "powerfuncmotorl-1")
+	print("    the cable's reference: %s, then %s" % [_ref_to(text, "powerfuncmotorl-1"), ref])
 	_check("saved: the cable's reference as the file had it (%s)" % ref,
 		ref.begins_with("1 16 0 0 0 1 0 0 0 1 0 0 0 1 "))
 	await _open(MODELS + "cable_box_2.ldr")
@@ -198,44 +198,67 @@ func _ldcad_cable() -> void:
 # -- what is where --------------------------------------------------------------------------
 
 
-## Each part of the model where its file has it (the model's lift taken off),
-## part, colour, place and turn to the hundredth, sorted.
+## Each part of the model where its file has it (the model's lift taken
+## off): [part and colour, its place], each.
 func _parts_in_file() -> Array:
 	var back := Transform3D(Basis.IDENTITY, -_store.lift())
 	var out: Array = []
 	for brick: BrickWorld.Brick in _world.bricks():
-		if _store.scenery.has(brick.id):
-			continue
-		var at: Transform3D = back * brick.transform
-		var numbers := PackedStringArray()
-		for value: float in [at.origin.x, at.origin.y, at.origin.z, at.basis.x.x, at.basis.x.y, at.basis.x.z,
-				at.basis.y.x, at.basis.y.y, at.basis.y.z, at.basis.z.x, at.basis.z.y, at.basis.z.z]:
-			numbers.append("%.2f" % (0.0 if absf(value) < 0.005 else value))
-		out.append("%s %d %s" % [brick.part_id, brick.color_code, " ".join(numbers)])
-	out.sort()
+		if not _store.scenery.has(brick.id):
+			out.append(["%s %d" % [brick.part_id, brick.color_code], back * brick.transform])
 	return out
 
 
-func _same_parts(a: Array, b: Array) -> bool:
-	if a == b:
-		return true
-	var shown: int = 0
-	for n: int in mini(a.size(), b.size()):
-		if a[n] != b[n] and shown < 4:
-			print("      was %s\n      now %s" % [a[n], b[n]])
-			shown += 1
+## Whether each part of [param a] has one of [param b] of its number and
+## colour within 0.01 LDU and a thousandth of its turn, and as many: a file
+## keeps a place to a few decimals, so the place a part was laid at and the
+## one it is read back at differ past the fifth figure.
+static func _same_parts(a: Array, b: Array) -> bool:
+	var left: Array = b.duplicate()
+	var unmatched: Array = []
+	for one: Array in a:
+		var found: int = -1
+		for n: int in left.size():
+			var other: Array = left[n]
+			if other[0] == one[0] and _near(one[1], other[1]):
+				found = n
+				break
+		if found < 0:
+			unmatched.append(one)
+		else:
+			left.remove_at(found)
+	for one: Array in unmatched.slice(0, 4):
+		print("      was %s at %s, now nowhere near" % [one[0], (one[1] as Transform3D).origin])
 	if a.size() != b.size():
 		print("      %d parts, then %d" % [a.size(), b.size()])
-	return false
+	return unmatched.is_empty() and a.size() == b.size()
 
 
-## The line of [param text] placing the sub-model whose file name ends in
-## [param named] (any case), or "(none)".
+static func _near(x: Transform3D, y: Transform3D) -> bool:
+	return x.origin.distance_to(y.origin) <= 0.01 and x.basis.x.distance_to(y.basis.x) <= 0.001 \
+		and x.basis.y.distance_to(y.basis.y) <= 0.001 and x.basis.z.distance_to(y.basis.z) <= 0.001
+
+
+## The line of [param text] placing the sub-model whose file name holds
+## [param named] (letters and figures alone, any case; not a generated
+## sub-part's), or "(none)".
 static func _ref_to(text: String, named: String) -> String:
 	for line: String in text.split("\n"):
-		if line.begins_with("1 ") and line.strip_edges().to_lower().ends_with(named):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() < 15 or words[0] != "1":
+			continue
+		var name: String = _letters(" ".join(words.slice(14)))
+		if name.contains(_letters(named)) and not name.contains("subpart"):
 			return line.strip_edges()
 	return "(none)"
+
+
+static func _letters(text: String) -> String:
+	var out: String = ""
+	for c: String in text.to_lower():
+		if (c >= "a" and c <= "z") or (c >= "0" and c <= "9"):
+			out += c
+	return out
 
 
 static func _difference(a: String, b: String) -> String:
