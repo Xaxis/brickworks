@@ -76,6 +76,15 @@
 // Then its link: /challenge?id=N has this challenge's own title, words and
 // winner's picture in its head, under the page's security policy.
 //
+// Judges and a fan vote (challengehonours, supabase/challenge_rounds.sql): in
+// 7 the owner sets a second challenge in rounds on its own panel, Bob its
+// guest judge and the house its cover; /challenge.png is the cover while it
+// runs; entries close, the owner publishes a shortlist of the tower and the
+// shed, the house left out; in the fan vote only the shortlist has Vote; it
+// ends, the tower wins, is This week's pick (part 6's winner, the house,
+// was before) and Ada carries the win. Before
+// the file is applied the panel and the API say it is not open yet.
+//
 // Pictures in --out.
 import { launch } from "./browser.mjs";
 import { drawn, judged } from "./challenge_page.mjs";
@@ -868,11 +877,181 @@ try {
   check(`the admin's list: ${row?.state}, entries ${JSON.stringify(row?.entries)}, votes ${JSON.stringify(row?.votes)}, winners ${row?.winners?.length}`,
     row?.state === "ended" && row.entries.hand === 1 && row.entries.assistant === 1 && row.votes.hand === 2 && row.votes.assistant === 1
       && row.winners.length === 2);
+
+  // --- 7. Judges and a fan vote (challengehonours) -------------------------
+  // supabase/challenge_rounds.sql: the owner sets a second challenge in
+  // rounds on its panel, Bob named its guest judge and Ada's house its
+  // cover; entries come in, the hub's picture is the cover; entries close
+  // and the owner publishes a shortlist (the tower and the shed, not the
+  // house); the fan vote opens, only the shortlist has Vote; it ends, the
+  // tower wins and is This week's pick in place of part 6's house, and Ada
+  // carries the win. Before the
+  // file is applied, the panel says it is not open and the API refuses in
+  // words, and nothing else is asked.
+  {
+    console.log("a challenge in rounds: entries, the judges' shortlist, a fan vote");
+    const ROUNDS = `Judged towers ${rand}`;
+    const dayFrom = (days) => new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
+    // The year's themes are proven above; ended now, so these days are free.
+    for (const id of ids.year || []) {
+      await api(`/api/admin?op=end_challenge&challenge=${id}&tests=1`, { method: "POST", token: master.access_token });
+    }
+    const set = await api("/api/admin?op=challenge&tests=1", { method: "POST", token: master.access_token,
+      body: { title: ROUNDS, brief: "A tower, judged first, then voted for.", starts_on: dayFrom(-1), ends_on: dayFrom(4), tested: false } });
+    ids.rounds = Number(set.body.challenge) || null;
+    check(`the owner sets "${ROUNDS}" from yesterday (${set.status})`, set.status === 200 && Boolean(ids.rounds));
+    const view = await api(`/api/admin?op=challenge_view&challenge=${ids.rounds}&tests=1`, { token: master.access_token });
+    const adminContext = await context({ as: master, width: 1280, height: 900, dark: true });
+    const admin = await adminContext.newPage();
+    listen(admin, "the rounds' panel");
+    admin.on("dialog", (dialog) => dialog.accept());
+    const panel = async () => {
+      await admin.goto(`${site}/admin?tests=1#challenges/${ids.rounds}`, { waitUntil: "load" });
+      await until(admin, () => document.querySelector("#sheet[open] .rounds-part"), "the challenge's panel", 60);
+    };
+    await panel();
+    if (view.body.rounds_ready !== true) {
+      const said = await admin.evaluate(() => document.querySelector(".rounds-part .note")?.textContent || "");
+      const refused = await api(`/api/admin?op=challenge_rounds&challenge=${ids.rounds}&tests=1`, { method: "POST", token: master.access_token,
+        body: { entries_until: dayFrom(0), votes_from: dayFrom(1) } });
+      check(`before supabase/challenge_rounds.sql: the panel says "${said}"; setting rounds ${refused.status} "${refused.body.error}"`,
+        /not open yet/.test(said) && refused.status === 503 && /challenge_rounds\.sql/.test(refused.body.error));
+      console.log("  --    rounds, the shortlist and the fan vote are asked once supabase/challenge_rounds.sql is applied");
+    } else {
+      // How it runs, set on its panel as the owner would: in rounds, entries
+      // to today and the fan vote from tomorrow, Bob its guest judge by his
+      // handle, Ada's house its cover by its link.
+      const saveRounds = async (entriesUntil, votesFrom, label) => {
+        await admin.check('.rounds-form input[name="rounds"]');
+        for (const [name, iso] of [["entries_until", entriesUntil], ["votes_from", votesFrom]]) {
+          const [y, m, d] = iso.split("-").map(Number);
+          await admin.selectOption(`.rounds-form select[name="${name}_day"]`, String(d));
+          await admin.selectOption(`.rounds-form select[name="${name}_month"]`, String(m));
+          await admin.selectOption(`.rounds-form select[name="${name}_year"]`, String(y));
+        }
+        await admin.fill('.rounds-form input[name="judge_handle"]', BOB);
+        await admin.fill('.rounds-form input[name="cover"]', `${site}/m/${ids.house}`);
+        await admin.click('.rounds-form button[type="submit"]');
+        const said = await until(admin, () => document.querySelector("#sheet .note.good")?.textContent
+          || document.querySelector(".rounds-form .note.bad, .rounds-form .note[data-bad]")?.textContent, `${label}: saved`, 30);
+        return said;
+      };
+      const saved = await saveRounds(dayFrom(0), dayFrom(1), "the rounds");
+      const facts = await admin.evaluate(() => Object.fromEntries([...document.querySelectorAll("#sheet .facts dt")]
+        .map((dt) => [dt.textContent, dt.nextElementSibling?.textContent || ""])));
+      check(`on its panel: "${saved}"; Rounds "${facts.Rounds}", Guest judge "${facts["Guest judge"]}", Cover "${facts.Cover}"`,
+        /^Saved: entries to/.test(saved) && /now entries coming in/.test(facts.Rounds || "") && facts["Guest judge"] === "Bob Challenges"
+        && facts.Cover === `Challenge House ${rand}`);
+      await shot(admin, "11_rounds_panel-1280.png", false);
+      // Entries come in: Ada's house and tower by hand, Bob's shed with the assistant.
+      const entered = [await api("/api/people?op=enter", { method: "POST", token: who.ada.access_token, body: { model: ids.house, way: "hand" } }),
+        await api("/api/people?op=enter", { method: "POST", token: who.ada.access_token, body: { model: ids.tower, way: "hand" } }),
+        await api("/api/people?op=enter", { method: "POST", token: who.bob.access_token, body: { model: ids.shed, way: "assistant" } })];
+      check(`entries come in: ${entered.map((one) => one.status).join(", ")}`, entered.every((one) => one.status === 201 && one.body.challenge === ids.rounds));
+      const early = await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.house } });
+      check(`a vote while entries come in: ${early.status} "${early.body.error}"`, early.status === 409 && early.body.refused === "not_yet");
+      // The hub's picture is the open challenge's own: its cover.
+      const picture = await fetch(`${site}/challenge.png?tests=1`, { headers, redirect: "manual" });
+      check(`/challenge.png while it runs: ${picture.status} to ${(picture.headers.get("location") || "").replace(site, "")}`,
+        picture.status === 302 && picture.headers.get("location") === `${site}/m/${ids.house}.png`);
+      const roundPage = async (label, width, height, phone, dark, as = null) => {
+        const made = await context({ as, width, height, phone, dark });
+        const page = await made.newPage();
+        listen(page, `${label} at ${width} px`);
+        await page.goto(`${site}/challenge?id=${ids.rounds}&tests=1`, { waitUntil: "load" });
+        await until(page, () => document.documentElement.dataset.challenge, `${label}: drawn`);
+        await pictures(page);
+        const seen = await page.evaluate(() => ({
+          status: document.getElementById("status")?.textContent || "", clock: document.getElementById("clock-h")?.textContent || "",
+          countdown: !document.getElementById("countdown")?.hidden,
+          judge: document.getElementById("judge")?.textContent || "", judgeLink: document.querySelector("#judge a")?.getAttribute("href") || "",
+          rounds: [...document.querySelectorAll("#rounds li")].map((li) => `${li.dataset.round}${li.getAttribute("aria-current") ? "*" : ""}`).join(","),
+          enter: !document.getElementById("enter")?.hidden,
+          votes: [...document.querySelectorAll("#groups .model button.vote")].map((b) => b.closest(".model").dataset.entry),
+          listed: [...document.querySelectorAll("#groups .model.shortlisted")].map((m) => m.dataset.entry),
+          said: document.getElementById("vote-said")?.textContent || "" }));
+        return { page, made, seen };
+      };
+      {
+        const { page, made, seen } = await roundPage("entries", 390, 844, true, false);
+        check(`entries round at 390: ${JSON.stringify(seen)}`, seen.status === "Entries open" && seen.clock === "Entries close in" && seen.countdown
+          && seen.judge === "Guest judge Bob Challenges chooses the shortlist" && seen.judgeLink === `/u/${BOB}`
+          && seen.rounds === "entries*,judging,vote" && seen.enter && !seen.votes.length && /^Entries close on /.test(seen.said));
+        check("...nothing sideways", !(await sideways(page)));
+        await shot(page, "12_rounds_entries-390.png");
+        await made.close();
+      }
+      // Entries close (their last day yesterday), and the owner publishes the shortlist.
+      await panel();
+      const closed = await saveRounds(dayFrom(-1), dayFrom(1), "entries closed");
+      const late = await api("/api/people?op=enter", { method: "POST", token: who.ada.access_token, body: { model: ids.plain, way: "hand" } });
+      check(`entries closed ("${closed}"): a late entry ${late.status} "${late.body.error}"`, late.status === 409 && late.body.refused === "closed");
+      await admin.check(`.shortlist-form input[value="${ids.tower}"]`);
+      await admin.check(`.shortlist-form input[value="${ids.shed}"]`);
+      await admin.click('.shortlist-form button[type="submit"]');
+      const published = await until(admin, () => document.querySelector("#sheet .note.good")?.textContent === "Published."
+        && [...document.querySelectorAll("#sheet .badge")].filter((b) => b.textContent === "Shortlisted").length, "the shortlist published", 30);
+      check(`the shortlist published on the panel: ${published} marked Shortlisted`, published === 2);
+      await shot(admin, "13_rounds_shortlist-1280.png", false);
+      {
+        const { page, made, seen } = await roundPage("judging", 1280, 900, false, true);
+        check(`judged, the vote tomorrow, at 1280: ${JSON.stringify(seen)}`, seen.status === "Judging" && seen.clock === "Fan vote opens in"
+          && seen.judge === "Shortlist chosen by guest judge Bob Challenges" && seen.rounds === "entries,judging*,vote" && !seen.enter
+          && seen.listed.sort().join() === [ids.tower, ids.shed].sort().join() && !seen.votes.length
+          && /^The judges have chosen their shortlist/.test(seen.said));
+        await shot(page, "14_rounds_judged-1280.png");
+        await made.close();
+      }
+      // The fan vote opens today: only the shortlist has Vote.
+      await panel();
+      await saveRounds(dayFrom(-1), dayFrom(0), "the fan vote open");
+      const house = await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.house } });
+      check(`a vote for the house, not shortlisted: ${house.status} "${house.body.error}"`, house.status === 422 && house.body.refused === "not_shortlisted");
+      const pickBefore = (await api("/api/share?op=shelves&tests=1")).body?.pick?.model?.id || null;
+      {
+        const { page, made, seen } = await roundPage("Ed in the fan vote", 390, 844, true, true, who.ed);
+        check(`the fan vote at 390, Ed signed in: ${JSON.stringify(seen)}`, seen.status === "Fan vote" && seen.clock === "Fan vote ends in"
+          && seen.rounds === "entries,judging,vote*" && seen.votes.includes(ids.tower) && !seen.votes.includes(ids.house));
+        await page.click(`#groups .model[data-entry="${ids.tower}"] button.vote`);
+        await page.click("dialog.vote-confirm button.cta:not(.ghost)");
+        await until(page, (id) => document.querySelector(`#groups .model[data-entry="${id}"].voted`), "Ed's vote for the tower", 30, ids.tower);
+        await shot(page, "15_rounds_vote-390.png");
+        await made.close();
+      }
+      const more = [await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.shed } }),
+        await api("/api/people?op=vote", { method: "POST", token: who.bob.access_token, body: { challenge: ids.rounds, model: ids.tower } })];
+      check(`Ed for the shed, Bob for the tower: ${more.map((one) => one.status).join(", ")}`, more.every((one) => one.status === 200));
+      const blind = (await api(`/api/people?op=challenge&id=${ids.rounds}&tests=1`)).body?.challenge;
+      check("...and no votes shown while it runs", (blind?.groups || []).flatMap((g) => g.entries).every((e) => e.votes === null));
+      // It ends: the tower wins by hand, the shed with the assistant; the
+      // tower is This week's pick, and Ada carries the win on her page.
+      await api(`/api/admin?op=end_challenge&challenge=${ids.rounds}&tests=1`, { method: "POST", token: master.access_token });
+      const over = (await api(`/api/people?op=challenge&id=${ids.rounds}&tests=1`)).body?.challenge;
+      check(`it ends: winners ${JSON.stringify(over?.winners?.map((w) => [w.way, w.model, w.votes]))}`, over?.winners?.length === 2
+        && over.winners.some((w) => w.way === "hand" && w.model === ids.tower && w.votes === 2)
+        && over.winners.some((w) => w.way === "assistant" && w.model === ids.shed && w.votes === 1));
+      const shelves = await api("/api/share?op=shelves&tests=1");
+      check(`This week's pick: ${shelves.body?.pick?.model?.id} (chosen ${shelves.body?.pick?.chosen}), ${pickBefore} before it ended`,
+        pickBefore !== ids.tower && shelves.body?.pick?.model?.id === ids.tower && shelves.body.pick.chosen === true);
+      const profile = await context({ width: 390, height: 844, phone: true });
+      const page = await profile.newPage();
+      listen(page, "Ada's honours");
+      await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
+      const wins = await until(page, () => {
+        const said = [...document.querySelectorAll('.awards li[data-award="won"] a')].map((a) => a.textContent.replace(/\s+/g, " ").trim());
+        return said.length ? said : null;
+      }, "her honours", 30).catch(() => []);
+      check(`Ada's page carries the win: ${JSON.stringify(wins)}`, wins.includes(`Won “${ROUNDS}”, by hand`));
+      await shot(page, "16_rounds_honour-390.png", false);
+      await profile.close();
+    }
+    await adminContext.close();
+  }
 } catch (trouble) {
   failed += 1;
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
 } finally {
-  for (const id of master ? [ids.challenge, ...(ids.year || [])].filter(Boolean) : []) {
+  for (const id of master ? [ids.challenge, ids.rounds, ...(ids.year || [])].filter(Boolean) : []) {
     await api(`/api/admin?op=end_challenge&challenge=${id}&tests=1`, { method: "POST", token: master.access_token }).catch(() => {});
   }
   for (const [id, owner] of made.reverse()) {

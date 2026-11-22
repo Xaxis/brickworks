@@ -6226,6 +6226,27 @@
       "entry": "tools/web/designer_period_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designer_period_flow.mjs --url=<preview> --out=DIR   (preview check [designer_period]; ends \"(before the file)\" until designer_period_2.sql is applied)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "judges and a fan vote and honours",
+      "entry": "supabase/challenge_rounds.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this month's challenge on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#now under the app's picture: #challenge with its days left, or its round, and #pick, This week's pick, both from GET /api/share?op=shelves, asked at once)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge home check",
+      "entry": "tools/web/challengehome_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "area": "web"
     }
   ]
 }

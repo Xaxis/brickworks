@@ -186,6 +186,12 @@ declare -A CMD=(
   # Notifications, and its link's own head: API routes only, with the bypass
   # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
+  # The challenge on the home page with its days left and This week's pick,
+  # both within the first two screens at 390 and 1280; /challenge moving no
+  # more than 0.1 as it loads at 390, 768 and 1280; its own picture
+  # (/challenge.png); the test challenge's How it runs panel (challengehonours,
+  # supabase/challenge_rounds.sql). Read only, signed out but the panel.
+  [challengehome]="tools/web/challengehome_check.mjs --url=$P --out=$S/${TAG}_challengehome --admin"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its
