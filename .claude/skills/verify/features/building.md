@@ -3199,10 +3199,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   3894 against a wall still has no room; the hand's Replace lays the pin
   alone. Each case prints what the old part meets where it stands and what
   the new one would (`Builder.has_room_swapped`: no collision, or joined as
-  a part of its box laid where it stands, by `room_for`'s joint rule). Two
-  KNOWN rows: 4991-1's 32209 for 59426, whose cover reaches into the 32064a
-  it turns in; 6690-1's 3404 for 3404b, another box, moved onto its base.
-  The hand's Replace of 600 parts on a worker lays what it does on the main
+  a part of its box laid where it stands, by `room_for`'s joint rule). A
+  part of another box with no room where Replace moves it to sit its own way
+  is laid where the old part stood when it makes every joint the old one
+  made there and meets nothing else (`Builder.swap_place`, `_keeps_joints`;
+  smalls12): 4991-1's 32209 for 59426 in the holes the old axle was in, and
+  6690-1's 3404 for 3404b on its base. The hand's Replace of 600 parts on a worker lays what it does on the main
   thread, byte for byte.
 - `swapfind probe` (`src/dev/swapfind_probe.gd`): headless, about four
   minutes; `SWAPFIND_CASES=car,mcp` for some. The car

@@ -1832,6 +1832,12 @@ func _replace_plan(ids: PackedInt64Array, parts: PackedStringArray, places: Arra
 			if at.is_equal_approx(places[n]) and same_box(library.mesh_for(parts[n]), into):
 				decided[n] = _ASK
 				where[n] = [at, packed]
+			elif not at.is_equal_approx(places[n]) \
+					and _meets_only_as_was(asked, ids[n], boxes_for(into, places[n])):
+				# Moved to sit its own way it has no room: asked on the main
+				# thread where the old part stood ([method _joined_as_before]).
+				decided[n] = _ASK
+				where[n] = [places[n], boxes_for(into, places[n])]
 			else:
 				decided[n] = _REFUSED
 			continue
@@ -1853,9 +1859,7 @@ func _replace_from(alive: PackedInt64Array, start: int, part_id: String, into: L
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick.part_id == part_id:
 			continue
-		var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		var at: Transform3D = brick.transform if in_place \
-			else _in_place_of(brick.transform, was, into)
+		var at: Transform3D = brick.transform if in_place else swap_place(brick, part_id, into)
 		var packed: PackedInt32Array = boxes_for(into, at)
 		# Asked with the old part still standing, left out of the question:
 		# one with no room stays as it was, with nothing to put back. Taken
@@ -1888,18 +1892,74 @@ func has_room_swapped(brick: BrickWorld.Brick, part_id: String, at: Transform3D,
 ## hand is (room_for: a pin in its hole, a leg on the hips' pins, a bar in
 ## its clip), as the copies' follow lays a copy's part (Assemblies.
 ## in_the_way). The obsolete hips 3815 meet nothing; 3815b's pins reach into
-## the legs they hold. Another box is not joined by the same joints, and
-## what the old part met excuses nothing: 10179's 1 x 2 plates made tiles
-## would lie in what stood on their studs (swapfind big_room), a beam made
-## a pin in the pin it held.
+## the legs they hold. Another box is not joined by the same joints as a
+## rule, and what the old part met excuses nothing for it: 10179's 1 x 2
+## plates made tiles would lie in what stood on their studs (swapfind
+## big_room), a beam made a pin in the pin it held.
+##
+## Unless it is joined by them: of another box, where it makes every joint
+## the old part made, laid where that stood ([method _keeps_joints]):
+## 4991-1's axle with a stop 32209 made 59426, 2 LDU longer, sits in the
+## holes the old one did; 6690-1's turntable top 3404 made 3404b sits on its
+## base and under its parts as the old one did. Moved to sit its own way,
+## each met what it is joined to (smalls12). A 1 x 6 for a 1 x 4 against a wall makes the 1 x 4's joints
+## too, and runs into the wall the 1 x 4 never met: no room.
 func _joined_as_before(brick: BrickWorld.Brick, part_id: String, at: Transform3D) -> bool:
-	if brick == null or not at.is_equal_approx(brick.transform) \
-			or not same_box(library.mesh_for(brick.part_id), library.mesh_for(part_id)):
+	if brick == null or not at.is_equal_approx(brick.transform):
+		return false
+	if not same_box(library.mesh_for(brick.part_id), library.mesh_for(part_id)) \
+			and not _keeps_joints(brick, library.mesh_for(part_id)):
 		return false
 	var met: Dictionary = {}
 	for other: int in lattice.blockers_boxes(lattice.boxes_of(brick.id), brick.id):
 		met[other] = true
 	return room_for(part_id, at, false, false, brick.id, met)
+
+
+## Where a swap lays [param part_id] ([param into]'s shape) for [param brick]:
+## where Replace lays a part of another box ([method _in_place_of]: its
+## bottom where the old one's was, its middle on the studs), or, where that
+## has no room, where the old part stood if it has room there as the old
+## one was joined ([method _joined_as_before]). Main thread.
+func swap_place(brick: BrickWorld.Brick, part_id: String, into: Lbm.PartMesh) -> Transform3D:
+	var moved: Transform3D = _in_place_of(brick.transform, library.mesh_for(brick.part_id), into)
+	if moved.is_equal_approx(brick.transform) or has_room_swapped(brick, part_id, moved, boxes_for(into, moved)):
+		return moved
+	var stood: PackedInt32Array = boxes_for(into, brick.transform)
+	if _meets_only_as_was(lattice, brick.id, stood) and _joined_as_before(brick, part_id, brick.transform):
+		return brick.transform
+	return moved
+
+
+## Whether [param packed], a new part laid where [param brick_id] stands in
+## [param asked], meets nothing the old part does not meet there: asked
+## before the joints are (a look at the lattice), so a part of another box
+## that runs into anything new is refused at once. Safe on a worker.
+static func _meets_only_as_was(asked: BrickLattice, brick_id: int, packed: PackedInt32Array) -> bool:
+	var met: Dictionary = {}
+	for other: int in asked.blockers_boxes(asked.boxes_of(brick_id), brick_id):
+		met[other] = true
+	for other: int in asked.blockers_boxes(packed, brick_id):
+		if not met.has(other):
+			return false
+	return true
+
+
+## Whether [param into], laid where [param brick] stands, is joined to every
+## part the old part is joined to there (by a pin, an axle, a stud or
+## something round in something round, as [method _joins_made] counts
+## them): a part that joins nothing keeps nothing.
+func _keeps_joints(brick: BrickWorld.Brick, into: Lbm.PartMesh) -> bool:
+	if into == null:
+		return false
+	var was: Dictionary = _joined_with(brick.transform, library.mesh_for(brick.part_id), brick.id)
+	if was.is_empty():
+		return false
+	var now: Dictionary = _joined_with(brick.transform, into, brick.id)
+	for other: Variant in was:
+		if not now.has(other):
+			return false
+	return true
 
 
 ## Whether [param into] has [param was]'s box, its footprint and height to an
@@ -3999,7 +4059,12 @@ func _turn_on_joint(by: int) -> void:
 ## How many parts down the part in hand would be joined to at a pose, by a
 ## pin, an axle or something round in something round.
 func _joins_made(at: Transform3D) -> int:
-	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	return _joined_with(at, library.mesh_for(held_part)).size()
+
+
+## The parts down [param part] at [param at] would be joined to, id -> how,
+## [param without] (the part it stands for) left out.
+func _joined_with(at: Transform3D, part: Lbm.PartMesh, without: int = 0) -> Dictionary:
 	var box: AABB = (at * part.bounds).abs().grow(BrickLattice.CELL * 2.0)
 	var reach := PackedInt32Array([floori(box.position.x / BrickLattice.CELL),
 		floori(box.position.y / BrickLattice.CELL), floori(box.position.z / BrickLattice.CELL),
@@ -4008,11 +4073,11 @@ func _joins_made(at: Transform3D) -> int:
 	var entries: Array = [[0, at, part]]
 	for other: int in lattice.near_bounds(reach):
 		var brick: BrickWorld.Brick = world.get_brick(other)
-		if brick != null:
+		if brick != null and other != without:
 			entries.append([other, brick.transform, library.mesh_for(brick.part_id)])
 	var joined: Dictionary = (Joints.both_ways(entries).get(0, {}) as Dictionary).duplicate()
 	joined.merge(Joints.rounds(entries).get(0, {}))
-	return joined.size()
+	return joined
 
 
 ## Whether a part has room at a place: nothing in its way but parts it is
