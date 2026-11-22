@@ -105,6 +105,15 @@ declare -A CMD=(
   # people unblocks, the follows not back; a comment's row blocks too.
   # Three throwaway accounts, deleted after with their models.
   [block]="tools/web/block_flow.mjs --url=$P --out=$S/${TAG}_block"
+  # Talk, the builders' forum (docs/SOCIAL.md section 10, supabase/talk.sql):
+  # the boards signed out and never empty, a Show and tell thread with its
+  # model and a step, a mention and a reply told, a paste over 4,000 kept
+  # and refused, Post pressed twice one reply, search, RSS, a block, a
+  # report (three, as no check signs in as the owner) hiding a post, the
+  # month's challenge thread, German and a phone. Four throwaway accounts,
+  # deleted after with their model. Before talk.sql is applied, only its
+  # waiting page: /talk says it is not open, the homepage leaves it out.
+  [talk]="tools/web/talk_flow.mjs --url=$P --out=$S/${TAG}_talk"
   # The gallery's Builds tab (docs/SOCIAL.md section 7, item 8): /builds
   # lists everybody's photos of real builds newest first, each linking its
   # model's page at the photo and its builder's profile; a photo hidden by

@@ -3019,8 +3019,12 @@ plan with Claude as the client.
   and @Bea, Bea told and answering, Ann told, search, RSS, Dee blocked
   (gone for Ann and a visitor, refused neutrally), Cy's report hidden from
   the console (a throwaway's) and kept in the audit, the challenge's
-  thread, German, and a phone. On a preview once applied, the console's
-  step is three reports instead. Passes when it ends "talk: all ok".
+  thread, German, and a phone. On a preview (`preview_checks.sh talk`) once
+  applied, the console's step is three reports instead. Passes when it
+  ends "talk: all ok". Before talk.sql is applied it checks only the
+  waiting page (/talk answers 503 "Talk is not open on Brickworks yet.",
+  the homepage leaves #talk-latest out) and ends "talk: supabase/talk.sql
+  is not applied here, so only its waiting page was checked".
 - `the gallery's builds tab` (`web/builds.js`, `web/card.js`
   `buildCardHtml` / `buildCard`, `.build-card` in `web/site.css`):
   `/builds`, the gallery's tab between New (Following) and Collections,

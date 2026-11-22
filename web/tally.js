@@ -61,10 +61,14 @@ const LANGS = /^\/(de|fr|es)(?=\/|$)/;
 // The pages with an id in their address, as templates: each pattern, and
 // its name in the rows (names, never links: tools/site_lang.py's check of
 // a script's links reads a quoted page address as one).
-const TEMPLATE_NAMES = "/m/:id/v/:n /m/:id /u/:handle /c/:id /library/set/:n /library/:id /app".split(" ");
+// Talk's pages are the server's (api/_talk.js), so they are templates too: a
+// thread never by its number, a board by none of its names.
+const TEMPLATE_NAMES = "/m/:id/v/:n /m/:id /u/:handle /c/:id /library/set/:n /library/:id /app /talk/t/:n /talk/b/:board /talk/new /talk"
+  .split(" ");
 const TEMPLATES = [/^\/m\/[A-Za-z0-9]{10}\/v\/\d+\/?$/, /^\/m\/[A-Za-z0-9]{10}\/?$/, /^\/u\/[a-z0-9-]{3,24}\/?$/,
   /^\/c\/[A-Za-z0-9]{10}\/?$/, /^\/library\/set\/[^/]+\/?$/, /^\/library\/[a-z]{2,8}-[^/]+\/?$/,
-  /^\/(?:app|b\/[0-9a-f]{7,40})(?:\/.*)?$/].map((pattern, at) => [pattern, TEMPLATE_NAMES[at]]);
+  /^\/(?:app|b\/[0-9a-f]{7,40})(?:\/.*)?$/, /^\/talk\/t\/[1-9][0-9]{0,11}(?:\/[a-z0-9-]{0,80})?\/?$/,
+  /^\/talk\/b\/[a-z]{2,12}\/?$/, /^\/talk\/new\/?$/, /^\/talk\/?$/].map((pattern, at) => [pattern, TEMPLATE_NAMES[at]]);
 
 /// This page's address as a template, and its language: an id never, and
 /// an address the site did not make (a 404's) as /other. A page names

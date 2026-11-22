@@ -13,10 +13,17 @@ async function fill() {
   const reply = await fetch(`/api/people?op=talk_latest&n=${n}&html=1${code ? `&lang=${code}` : ""}${tests ? "&tests=1" : ""}`)
     .catch(() => null);
   const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
+  // Where supabase/talk.sql is not applied yet, Talk is not offered here.
+  if (body && body.ready === false) {
+    place.hidden = true;
+    return;
+  }
+  // Nothing more to wait for: the room kept for the rows goes, and the
+  // section's words and links stand.
+  list.removeAttribute("aria-busy");
   // The server's own escaped rows: every word typed in them is escaped there.
   if (!body || !body.count || typeof body.html !== "string") return;
   list.innerHTML = body.html;
-  list.removeAttribute("aria-busy");
   place.dataset.filled = String(body.count);
 }
 

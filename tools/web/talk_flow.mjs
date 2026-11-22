@@ -64,7 +64,11 @@ if (/^(?:www\.)?brickworks\.diy$/.test(host)) {
   process.exit(2);
 }
 const local = /^(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(host);
-if (local && await fetch(`${site}/__held/talk`).then((reply) => reply.status, () => 0) !== 200) {
+// A server of this machine holds Talk itself, so nothing is written to the
+// project's Talk; one that does not may only show the waiting page.
+if (local && await fetch(`${site}/__held/talk`).then((reply) => reply.status, () => 0) !== 200
+  && await fetch(`${site}/api/people?op=talk_latest&n=1&tests=1`).then((reply) => reply.json(), () => null)
+    .then((said) => said?.ready !== false, () => true)) {
   console.error("talk_flow: this machine's server is to hold Talk itself (relay_server.mjs PORT --hold=talk)");
   process.exit(2);
 }
@@ -148,8 +152,48 @@ const postsOf = async (thread, who) => ((await api(`/api/people?op=talk_thread&i
 const people = {};
 let consoleWho = null;
 let modelId = "";
+// Where supabase/talk.sql is not applied yet (a preview before the lead
+// applies it): /talk says so, the homepage leaves its Talk section out, and
+// that is all there is to check; said plainly, never "all ok".
+async function waitingOnly() {
+  const latest = await api("/api/people?op=talk_latest&n=1&tests=1");
+  if (!(latest.status === 200 && latest.body?.ready === false)) return false;
+  console.log("0. supabase/talk.sql is not applied on this deployment");
+  const page = await fetch(`${site}/talk`, { headers });
+  const text = await page.text();
+  check(`/talk says Talk is not open yet: ${page.status}`, page.status === 503 && /Talk is not open on Brickworks yet/.test(text));
+  const home = await open("/index.html");
+  await home.evaluate(() => document.getElementById("talk-latest")?.scrollIntoView());
+  const hidden = await until(home, () => document.getElementById("talk-latest")?.hidden === true || null,
+    "the homepage's Talk section left out", 60).catch(() => false);
+  check("the homepage leaves its Talk section out", hidden === true);
+  await home.context().close();
+  return true;
+}
+
+if (await waitingOnly()) {
+  await browser.close();
+  for (const error of errors) console.log(`  page: ${error}`);
+  check("no page errors", errors.length === 0);
+  console.log(failed ? `${failed} FAILED` : "talk: supabase/talk.sql is not applied here, so only its waiting page was checked");
+  process.exit(failed ? 1 : 0);
+}
+
 try {
   console.log("1. The boards, signed out");
+  // The homepage's latest talk (#talk-latest), filled as it nears the screen.
+  const landing = await open("/index.html?tests=1");
+  await landing.evaluate(() => document.getElementById("talk-latest")?.scrollIntoView());
+  const strip = await until(landing, () => {
+    const place = document.getElementById("talk-latest");
+    const rows = [...(place?.querySelectorAll(".talk-row") || [])];
+    return place && !place.hidden && Number(place.dataset.filled) > 0 && rows.length
+      ? { rows: rows.length, title: rows[0].querySelector(".talk-row-title a")?.getAttribute("href") || "",
+        all: place.querySelector("a[href$='/talk'], a[href*='/talk?']")?.textContent.trim() || "" } : null;
+  }, "the homepage's latest talk", 60);
+  check(`the homepage shows the latest talk: ${strip.rows} threads, "${strip.all}"`, strip.rows >= 1 && strip.rows <= 4
+    && /^\/talk\/t\/\d+/.test(strip.title));
+  await landing.context().close();
   const visitor = await open("/talk?tests=1");
   const tabs = await textOf(visitor, "nav.talk-boards a");
   check(`six tabs, Latest and the five boards: ${tabs.join(" | ")}`, tabs.length === 6 && /Latest/.test(tabs[0]) && tabs.some((one) => /Show and tell/.test(one)));
