@@ -2714,7 +2714,13 @@ func exact_match(a: Array, b: Array) -> Dictionary:
 
 
 func _exact_mirrored(a: Array, b: Array) -> Dictionary:
+	var wanted: int = (_wanted as Array).size() if _trying() else 0
 	var from: Array = a.map(func(item: Dictionary) -> Dictionary: return _mirrored(item))
+	# Tried with parts not mirrored yet (frames_paced): no fit, and none of
+	# the covers of parts laid where no mirror puts them wanted.
+	if _trying() and (_wanted as Array).size() > wanted:
+		return {"at": Transform3D.IDENTITY, "score": 0, "exact": false, "colours": false,
+			"bases": false, "mirrored": true}
 	var found: Dictionary = _rigid_match(from, b, true)
 	found["mirrored"] = true
 	return found
@@ -2756,6 +2762,11 @@ static func _voted(votes: Dictionary, step: int) -> int:
 ## put where its reflection is, turned to look reflected, its other hand
 ## where it has one.
 func _mirrored(item: Dictionary) -> Dictionary:
+	# Tried (frames_paced): a part not looked at yet is looked at first, in
+	# a slice of its own.
+	if _trying() and not _imaged.has(item["part"]):
+		(_wanted as Array).append(str(item["part"]))
+		return item
 	var image: Dictionary = Later.script(&"Mirror").image(library, item["part"], item["at"], 0, 0.0)
 	return {"part": image["part"], "color": item["color"], "at": image["at"]}
 
@@ -2934,6 +2945,15 @@ func _same_place(part: String, here: Transform3D, there: Transform3D) -> bool:
 	var mesh: Lbm.PartMesh = library.mesh_for(part)
 	if mesh == null:
 		return false
+	# Tried (frames_paced): a cover not kept yet is worked out first, in a
+	# slice of its own.
+	if _trying():
+		var before: int = (_wanted as Array).size()
+		for basis: Basis in [here.basis, there.basis]:
+			if builder.cover_wanted(mesh, basis):
+				(_wanted as Array).append([mesh, basis])
+		if (_wanted as Array).size() > before:
+			return false
 	# A part that looks the same turned: the same cells filled.
 	return builder.boxes_for(mesh, here) == builder.boxes_for(mesh, there)
 
@@ -3062,9 +3082,18 @@ func frames_current() -> bool:
 ## four parts 159 ms of it while its shapes were read. Work that takes more
 ## than a slice says so in the status bar ([param words]). A model changed
 ## while it goes on is begun again; the same frames as [method file_frames].
+##
+## A copy's first fit is tried before it is written ([member _wanted]): its
+## first looks at shapes, each cover of a part tilted as it lies and each
+## part's mirror image, were up to 440 ms of one frame for a copy of four
+## parts on 10179, its tilted parts' covers worked out for each way it might
+## lie. Each look a try wants is worked out on its own, a slice at a time,
+## and the copy tried again, until a try wants none: that try, the same code
+## reading only what is kept, is the copy written.
 func frames_paced(words: String) -> Dictionary:
 	var pace := FramePace.new()
 	var job: Working.Job = null
+	_imaged = {}
 	# A mirrored copy's first look reads Mirror's index of handed parts:
 	# made here first, a slice at a time, not in that copy's frame.
 	var mirror: GDScript = Later.script(&"Mirror")
@@ -3091,7 +3120,24 @@ func frames_paced(words: String) -> Dictionary:
 		while not ctx.is_empty() and not settled and _frames_key() == key:
 			_pass_begin(ctx)
 			for path: String in ctx["ordered"]:
-				_written_as(path, ctx)
+				while not (ctx["out"] as Dictionary).has(path) and _frames_key() == key:
+					var tried: Dictionary = _trial(ctx)
+					_wanted = []
+					_written_as(path, tried)
+					var wanted: Array = _wanted
+					_wanted = null
+					if wanted.is_empty():
+						ctx.merge(tried, true)
+						break
+					for look: Variant in wanted:
+						_look(look)
+						if pace.due():
+							job = _say_paced(job, words)
+							await pace.next()
+							if _frames_key() != key:
+								break
+				if _frames_key() != key:
+					break
 				if pace.due():
 					job = _say_paced(job, words)
 					await pace.next()
@@ -3103,12 +3149,51 @@ func frames_paced(words: String) -> Dictionary:
 		if settled and _frames_key() == key:
 			_frames_kept = [key, ctx["out"]]
 	if job != null:
+		# Spread over frames: what is done with them (Find and Replace's find
+		# over every copy) has a frame of its own, not the rest of this one's
+		# last slice. In one with it, 10179's was 93 to 99 ms.
+		await pace.next()
 		job.end()
 	return _frames_kept[1]
 
 
 static func _say_paced(job: Working.Job, words: String) -> Working.Job:
 	return job if job != null else Working.begin(words)
+
+
+## While [method frames_paced] tries a copy's fit: the first looks at shapes
+## the try wants, each taken in a slice of its own ([method _look]): [a
+## PartMesh, a Basis] for a cover not kept yet, a part id for a part Mirror
+## has not looked at this time. The try answers as though each were not
+## there, and is dropped. Null at all other times; asked only on the main
+## thread, so a fit on a worker never sees it.
+var _wanted: Variant = null
+## The parts [method frames_paced] has had Mirror look at this time.
+var _imaged: Dictionary = {}
+
+
+func _trying() -> bool:
+	return OS.get_thread_caller_id() == OS.get_main_thread_id() and _wanted != null
+
+
+## One look [member _wanted] asked for, taken: the cover worked out and kept,
+## or the part mirrored once, its shape and its other hand's weighed.
+func _look(look: Variant) -> void:
+	if look is String:
+		if not _imaged.has(look):
+			_mirrored({"part": look, "color": 0, "at": Transform3D.IDENTITY})
+			_imaged[look] = true
+	elif builder.cover_wanted(look[0], look[1]):
+		builder.boxes_for(look[0], Transform3D(look[1], Vector3.ZERO))
+
+
+## [param ctx] with what [method _written_as] writes copied, to try a copy
+## on and drop or keep.
+static func _trial(ctx: Dictionary) -> Dictionary:
+	var out: Dictionary = ctx.duplicate()
+	for key: String in ["out", "masters", "taken", "hands", "laid"]:
+		out[key] = (ctx[key] as Dictionary).duplicate(key == "masters")
+	return out
 
 
 ## [method frames_now]'s: [the model and its steps as they were worked out
