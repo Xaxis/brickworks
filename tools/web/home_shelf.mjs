@@ -156,6 +156,8 @@ export function filled(page, code, plan, copied) {
     const marker = new RegExp(`<!--shelf:${tab}-->[\\s\\S]*?<!--/shelf:${tab}-->`);
     if (!marker.test(text)) throw new Error(`the shelf's ${tab} has no <!--shelf:${tab}--> markers`);
     const cards = plan.cards[tab] || [];
+    // A tab with nothing to show keeps what it holds (the top's skeletons).
+    if (!cards.length) continue;
     const html = inLanguage(code, words, () => cards.map((m, i) => {
       const shownFirst = tab === plan.first;
       let card = cardHtml(m, { eager: shownFirst && i < EAGER, pick: shownFirst && i === 0 && m.id === plan.pick });
