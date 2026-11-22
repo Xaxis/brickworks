@@ -97,6 +97,10 @@ const PRODUCT_DUST := 0.3
 const PRODUCT_PAPER := 0.0
 const PRODUCT_SOFTNESS := 0.6
 const PRODUCT_SEATING := 1.0
+## The camera's processing (photoreal6, RenderSettings sharpen and jpeg):
+## none of its own, so a render is the light as drawn unless asked for.
+const PRODUCT_SHARPEN := 0.0
+const PRODUCT_JPEG := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2641,6 +2645,10 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		lens = Vector4(_own(settings.grain, PRODUCT_GRAIN), _own(settings.vignette, PRODUCT_VIGNETTE),
 			_own(settings.aberration, PRODUCT_ABERRATION) * float(picture.x) / 1024.0,
 			_own(settings.softness, PRODUCT_SOFTNESS))
+	# Its processing (photoreal6): the sharpening in the resolve, the JPEG on
+	# the finished picture.
+	var sharpen: float = _own(settings.sharpen, PRODUCT_SHARPEN) if catcher else 0.0
+	var jpeg: float = _own(settings.jpeg, PRODUCT_JPEG) if catcher else 0.0
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
@@ -2694,7 +2702,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
 			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-				saturation, settings.transparent, true, clean, linear_saturation, lens)
+				saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen)
 			if so_far != null:
 				var half: int = picture.y / 2
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
@@ -2706,12 +2714,26 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	last_mean = _tracer.mean_image() if keep_mean else null
 	_doing("reading the picture back")
 	var result: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-		saturation, settings.transparent, true, clean, linear_saturation, lens)
+		saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen)
 	if result != null and not settings.transparent:
 		await get_tree().process_frame
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
+		if jpeg >= 1.0:
+			result = _through_jpeg(result, jpeg)
 	return result
+
+
+## [param image] as the camera saved it (photoreal6): through a JPEG at
+## [param quality] (1 to 100, Godot's own encoder) and back, its blocks and
+## ringing kept.
+static func _through_jpeg(image: Image, quality: float) -> Image:
+	var saved: PackedByteArray = image.save_jpg_to_buffer(clampf(quality / 100.0, 0.01, 1.0))
+	var back := Image.new()
+	if saved.is_empty() or back.load_jpg_from_buffer(saved) != OK:
+		return image
+	back.convert(image.get_format())
+	return back
 
 
 ## What the tracer lights and sees, as path_tracer.glsl's Scene reads it:

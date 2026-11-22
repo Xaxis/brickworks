@@ -36,7 +36,7 @@
 ##                      two outlines over each other); draws nothing else.
 ##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
-##                      aberration, softness, age, dust, paper, seating) at 0, and its
+##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
 ##   -- --draw=N        the tracer's seed (default 1): another draw of the same
 ##                      tree, its noise and lens samples only (photoreal6)
@@ -289,6 +289,7 @@ func _cycles_scene(settings: RenderSettings, name: String, out: String) -> bool:
 		"grain": settings.grain, "vignette": settings.vignette, "aberration": settings.aberration,
 		"softness": settings.softness, "paper": settings.paper, "surface": settings.surface,
 		"seating": settings.seating, "age": settings.age, "dust": settings.dust,
+		"sharpen": settings.sharpen, "jpeg": settings.jpeg,
 	}
 	file = FileAccess.open(out + name + ".cycles.json", FileAccess.WRITE)
 	if file == null:
@@ -419,8 +420,8 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	# The photograph's camera and the photographed parts' wear (photoreal4),
 	# where the shot says; otherwise the product look's own.
 	var without: PackedStringArray = _arg("without", "").split(",", false)
-	for key: String in ["grain", "vignette", "aberration", "softness", "age", "dust", "paper",
-			"seating"]:
+	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
+			"dust", "paper", "seating"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):

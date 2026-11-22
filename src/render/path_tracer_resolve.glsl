@@ -57,7 +57,9 @@ layout(push_constant, std430) uniform Resolve {
 	// How soft its lens draws an edge (0 the picture's own pixels, 1 a third
 	// of a pixel's light spread to its neighbours).
 	float softness;
-	float unused_b;
+	// Its processing's sharpening (photoreal6): the share of an edge's step
+	// added back after the curve, as an unsharp mask; 0 for none.
+	float sharpen;
 	float unused_c;
 } params;
 
@@ -202,6 +204,16 @@ float gaussian(vec2 p, float salt) {
 	return sqrt(-2.0 * log(u)) * cos(6.2831853 * v);
 }
 
+// The camera's colour from a pixel's light (the product look's camera,
+// tonemapper 4), with [param fall] its lens's fall-off there: for the
+// sharpening's blur, finished as the pixel is.
+vec3 finished(vec3 light, float fall) {
+	vec3 color = max(light * params.exposure, vec3(0.0)) * fall;
+	float level = luma(color);
+	color = max(vec3(level) + (color - vec3(level)) * params.linear_saturation, vec3(0.0));
+	return linear_to_srgb(clamp(camera_curve(color / params.white), vec3(0.0), vec3(1.0)));
+}
+
 void main() {
 	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
 	ivec2 size = imageSize(picture);
@@ -249,6 +261,26 @@ void main() {
 		color = filmic_curve(color) / filmic_curve(vec3(params.white)).x;
 	}
 	color = linear_to_srgb(clamp(color, vec3(0.0), vec3(1.0)));
+	if (params.sharpen > 0.0 && params.tonemapper > 3.5) {
+		// A camera's sharpening (photoreal6): an unsharp mask on the finished
+		// picture, a Gaussian 1.2 pixels wide, so an edge gets the light and
+		// dark halos a phone's picture has. The blur is of the samples' own
+		// mean, 25 of them: its grain averages out, and a step under two
+		// levels (the grain's) is left alone, as a camera's threshold does.
+		float fall = 1.0 - params.vignette * dot(from_middle, from_middle);
+		vec3 blur = vec3(0.0);
+		float weights = 0.0;
+		for (int y = -2; y <= 2; y++) {
+			for (int x = -2; x <= 2; x++) {
+				float w = exp(-float(x * x + y * y) / (2.0 * 1.2 * 1.2));
+				blur += mean_at(pixel + ivec2(x, y), size).rgb * w;
+				weights += w;
+			}
+		}
+		vec3 step_seen = color - finished(blur / weights, fall);
+		step_seen *= step(vec3(2.0 / 255.0), abs(step_seen));
+		color = clamp(color + step_seen * params.sharpen, vec3(0.0), vec3(1.0));
+	}
 	color = mix(vec3(0.5), color, params.contrast);
 	color = mix(vec3(dot(vec3(1.0), color) * (1.0 / 3.0)), color, params.saturation);
 	float n = noise(vec2(pixel)) + noise(vec2(pixel) + 41.7) - 1.0;

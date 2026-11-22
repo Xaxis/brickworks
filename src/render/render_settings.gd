@@ -107,6 +107,14 @@ var aberration: float = -1.0
 ## How soft that camera draws an edge (0 the picture's own pixels, 1 a third
 ## of each pixel's light spread to its neighbours); below 0, PRODUCT_SOFTNESS.
 var softness: float = -1.0
+## That camera's own processing (photoreal6), as a phone's or a compact's
+## picture has been through it before anyone sees it: its sharpening, the
+## share of an edge's step added back (an unsharp mask a pixel and a bit
+## wide, its halos), and the JPEG it saved, at this quality (1 to 100; 0 for
+## none). Below 0, PRODUCT_SHARPEN and PRODUCT_JPEG. The photo bench matches
+## each to its photograph's (tools/photoreal/shots.json).
+var sharpen: float = -1.0
+var jpeg: float = -1.0
 ## The product look's wear (photoreal4), path traced: how played-with the
 ## parts are (0 new, 1 decades: whites and greys yellowed, each part its own
 ## amount), the dust on their tops (0 none, 1 a shelf's year), and how much

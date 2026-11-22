@@ -638,15 +638,17 @@ func sample_ms() -> float:
 ## sensor's noise in 8-bit levels, the light its lens loses at a corner, its
 ## colour fringes in pixels at a corner, and how soft it draws an edge
 ## (RenderSettings.grain, vignette, aberration, softness); zero for none.
+## [param sharpen] is its processing's sharpening (RenderSettings.sharpen,
+## photoreal6): the share of an edge's step added back after the curve.
 func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1.0,
 		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
 		denoise: float = 0.0, linear_saturation: float = 1.0,
-		camera: Vector4 = Vector4.ZERO) -> Image:
+		camera: Vector4 = Vector4.ZERO, sharpen: float = 0.0) -> Image:
 	if not _resolve_set.is_valid() or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
-		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, 0.0, 0.0])
+		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, sharpen, 0.0])
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
