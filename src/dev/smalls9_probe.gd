@@ -18,7 +18,6 @@
 ##   godot --headless --path . --script src/dev/smalls9_probe.gd
 extends "res://src/dev/ownswap_probe.gd"
 
-const BAR_MS := 100.0
 
 ## The list whose fill a frame's label names, while it is timed.
 var _phase_of: InventoryPanel = null

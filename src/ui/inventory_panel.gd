@@ -403,6 +403,7 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 		_say_filling()
 		return true
 	var stock: Inventory = null
+	var began: int = Engine.get_process_frames()
 	while stock == null:
 		var at: Array = [world.generation(), world.revision]
 		stock = await Inventory.of_paced(world, from_library, scenery, pace, going)
@@ -439,11 +440,33 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 	_sort.select(1 if _sort.visible and bool(ShellPrefs.value("parts_by_place")) else 0)
 	_order()
 	_take_rare()
+	# What the person owns too few of reads every part of the model again
+	# (OwnSwap.short_of, 58 to 65 ms on Orthanc and 10179 at load 66,
+	# smalls12i1): a list already taken across frames gives it a frame of its
+	# own, and a small model's list is still shown in one.
+	if pace.due() or Engine.get_process_frames() != began and not _pool().is_empty():
+		if not going.call():
+			return false
+		await pace.next()
+		if mine != _fills:
+			return false
 	_take_own()
+	if pace.due():
+		if not going.call():
+			return false
+		await pace.next()
+		if mine != _fills:
+			return false
 	_show_rows()
 	_heading.text = _counts()
 	_scroll.scroll_vertical = 0
 	HudFront.show_panel(self)
+	# Each row's marks made before it goes in, so they are laid out with it a
+	# slice at a time: made once every row was in, 10179's 280 "not yours"
+	# went into the last frame with the last rows' layout (72 to 110 ms,
+	# smalls12i1).
+	_tag_rare()
+	_tag_own()
 	for child: Node in _rows.get_children():
 		_rows.remove_child(child)
 		child.queue_free()
@@ -463,8 +486,6 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 				return false
 	_filling = false
 	_end_fill()
-	_tag_rare()
-	_tag_own()
 	_sight.forget()
 	# Where it was, when it is the same model's list again: the way to find
 	# one part, look at it, and come back for the next.
@@ -1311,7 +1332,9 @@ func _tag_own() -> void:
 
 ## The lots the person owns too few of, each with its swap from what they own
 ## or "none you own", in the rows' place, as the rare lots' are shown: worked
-## out a slice of a frame at a time (OwnSwap.SLICE_US), the note saying so.
+## out a slice of a frame at a time (OwnSwap.offer_all, the status bar saying
+## so), and the rows put in a slice at a time too (FramePace), each laid out
+## in its own frame.
 func show_own() -> void:
 	if _own.is_empty() or not can_swap() or _swapping or _filling:
 		return
@@ -1333,14 +1356,13 @@ func show_own() -> void:
 	_swap_now.disabled = true
 	_offering = true
 	await (_own_swapper as OwnSwap).offer_all(_own, _own_short["free"], _finder)
-	var slice: int = Time.get_ticks_usec()
+	var pace := FramePace.new()
 	for lot: RefCounted in _own:
 		if not _swaps_scroll.visible or not _listing_own:
 			break
 		_swaps.add_child(_swap_row(lot))
-		if Time.get_ticks_usec() - slice > OwnSwap.SLICE_US:
-			await get_tree().process_frame
-			slice = Time.get_ticks_usec()
+		if pace.due():
+			await pace.next()
 	_offering = false
 	_swapping = false
 	if not _swaps_scroll.visible or not _listing_own:
