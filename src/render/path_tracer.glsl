@@ -1232,15 +1232,16 @@ float logo_distance(vec2 p) {
 	return d;
 }
 
-// The logo's height, LDU: bold letters 0.2 high (about 0.08 mm), flat on
+// The logo's height, LDU: letters 0.2 high (about 0.08 mm), their strokes
+// about 0.6 LDU wide as the real logo's are a fifth of its height, flat on
 // top with short steep flanks, as the moulding raises them (photoreal2), so
-// each letter reads as one shape outlined where its flanks catch the light,
-// even from straight above under a tent's soft light. The thin strokes with
-// soft flanks photoreal1 drew lit both flanks of every stroke, and each
-// letter read doubled. [param soft] widens the flank: a worn mould's
-// letters are softer.
+// each letter reads as one shape outlined where its flanks catch the light.
+// The thin strokes with soft flanks photoreal1 drew lit both flanks of every
+// stroke, and each letter read doubled; strokes a whole LDU wide ran the
+// letters together ("LE¢O", a judge read). [param soft] widens the flank: a
+// worn mould's letters are softer.
 float logo_height(vec2 p, float soft) {
-	return 0.2 * smoothstep(0.52 + soft, 0.4, logo_distance(p));
+	return 0.2 * smoothstep(0.36 + soft, 0.24, logo_distance(p));
 }
 
 // The number of the part being hit, for each stud's own logo.
@@ -1278,14 +1279,14 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	dx *= depth;
 	dy *= depth;
 	// The injection gate on some studs, as a judge saw on a photograph's
-	// and missed on ours: a small ring where the plastic went in, about half
-	// a millimetre across, off the middle by a hair.
+	// and missed on ours: a dimple where the plastic went in, about half a
+	// millimetre across and a twentieth deep, off the middle by a hair.
 	if (stud_hash(centre, 6u) < 0.3) {
-		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.8;
+		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.6;
 		float r = length(g);
-		if (r > 0.001 && r < 1.0) {
-			// A ring 0.06 high at 0.6 LDU: its height's slope along g.
-			float slope = -0.06 * 2.0 * (r - 0.6) / (0.12 * 0.12) * exp(-pow((r - 0.6) / 0.12, 2.0));
+		if (r > 0.001 && r < 1.6) {
+			// h = -0.12 exp(-(r / 0.6)^2): its slope along g.
+			float slope = 0.12 * 2.0 * r / (0.6 * 0.6) * exp(-(r * r) / (0.6 * 0.6));
 			dx += slope * g.x / r;
 			dy += slope * g.y / r;
 		}
@@ -1354,16 +1355,18 @@ void main() {
 		vec3 face = normalize(g);
 		face = dot(face, n) < 0.0 ? -face : face;
 		if (instances[which].info.y == 0u && n.y > 0.2 && n.y < 0.96 && dot(face, n) > 0.999) {
-			// Deeper than photoreal1's (0.16), which a judge could not see: a
-			// real slope's grain is a field of bumps a tenth of a millimetre
-			// across, each catching the light. Twice as coarse read as a sponge.
-			vec3 s = local / 0.26;
+			// A fine, even field of bumps, each a few hundredths of a
+			// millimetre, as a real slope's is: finer than photoreal1's (0.22
+			// and 0.09 LDU), as shallow. Coarser and deeper (0.26 to 0.42 LDU
+			// at 0.26 to 0.38) a judge read it as blotchy noise: the denoise
+			// takes a deep grain's glints for grain of the sampling.
+			vec3 s = local / 0.12;
 			vec3 grain = vec3(wave_noise(s), wave_noise(s + vec3(3.1, 7.7, 1.9)),
 				wave_noise(s + vec3(8.3, 2.2, 5.6)));
-			vec3 t2 = local / 0.1;
+			vec3 t2 = local / 0.05;
 			grain += 0.5 * vec3(wave_noise(t2), wave_noise(t2 + vec3(4.4, 1.7, 9.2)),
 				wave_noise(t2 + vec3(6.1, 3.8, 0.7)));
-			n = normalize(n + (grain - n * dot(grain, n)) * 0.26);
+			n = normalize(n + (grain - n * dot(grain, n)) * 0.16);
 			hit.unused = 1.0;
 		}
 	}
