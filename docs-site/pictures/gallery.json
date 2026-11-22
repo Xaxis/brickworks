@@ -17,7 +17,7 @@
    ],
    "wait": "#shelf .model img",
    "crop": "viewport",
-   "alt": "The home page on a computer: Gallery, Challenges and Docs across the top; Build, share and find LEGO® models over a search for models, builders and sets and Start building; the month's challenge beside them; then the tabs Top, New and Real sets in 3D over a row of model cards, the first marked Week's pick.",
+   "alt": "The home page on a computer: Gallery, Talk, Challenges and Docs across the top; Build, share and find LEGO® models over a search for models, builders and sets and Start building; the month's challenge beside them; then the tabs Top, New and Real sets in 3D over a row of model cards, the first marked Week's pick.",
    "caption": "The home page: the search, the challenge and the gallery's models first.",
    "features": [
     "ui:landing page",

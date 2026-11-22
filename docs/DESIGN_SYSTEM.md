@@ -26,9 +26,12 @@ sized its own titles, from 26 to 74 px. Now:
   differs, or the header has more than four things. The server's pages
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
-  copy. The header (site356, 2026-10-29, the owner asking for pricing in
-  the site): Gallery · Docs · Plans (Pricing until 2026-11-03) in the middle (the Library left it
-  when it became the gallery's Sets tab, browse, 2026-11-02), then
+  copy. The header (landing, 2026-11-22, the owner: the forum and the
+  gallery "available immediately upon landing"): Gallery · Talk ·
+  Challenges · Docs in the middle; Plans, a link here from site356
+  (2026-10-29) until then, is in the footer, Menu and the account's menu
+  (the Library left the bar when it became the gallery's Sets tab,
+  browse, 2026-11-02), then
   **Open the app** · Account (Sign in, a `.cta.ghost`, until you are,
   then your avatar: the account menu, below), the account last at the
   far right (the owner, 2026-10-23: "an obvious pattern"; design_flow.mjs

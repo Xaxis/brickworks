@@ -26,7 +26,9 @@ The [home page](/) opens on the gallery. Under one line of what Brickworks is, a
 - **New**, the newest first.
 - **Real sets in 3D**, the biggest sets with a 3D model, as **Sets** orders them by Most parts.
 
-![The home page on a computer: Gallery, Challenges and Docs across the top; Build, share and find LEGO® models over a search for models, builders and sets and Start building; the month's challenge beside them; then the tabs Top, New and Real sets in 3D over a row of model cards, the first marked Week's pick.](/docs/img/home-first-screen.webp "The home page: the search, the challenge and the gallery's models first.")
+Under the row, **What builders are talking about** shows the newest threads in [Talk](/docs/talk), the builders' forum, once there are three; **All of Talk** opens it.
+
+![The home page on a computer: Gallery, Talk, Challenges and Docs across the top; Build, share and find LEGO® models over a search for models, builders and sets and Start building; the month's challenge beside them; then the tabs Top, New and Real sets in 3D over a row of model cards, the first marked Week's pick.](/docs/img/home-first-screen.webp "The home page: the search, the challenge and the gallery's models first.")
 
 Swipe or scroll the row; the arrow keys move along the tabs. **See all** opens the tab's whole list in the gallery. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
 
