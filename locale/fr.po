@@ -15933,3 +15933,9 @@ msgstr "Seule une page d’étapes se fige."
 
 msgid "Frozen pages keep their own page setup: %d."
 msgstr "Les pages figées gardent leur propre mise en page : %d."
+
+msgid "locked"
+msgstr "verrouillée"
+
+msgid "frozen"
+msgstr "figée"

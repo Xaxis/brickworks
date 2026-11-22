@@ -554,6 +554,14 @@ func _show_page() -> void:
 	_title.text = "Page %d (%sstep%s %s)" % [page.number,
 		("the %s, built on its own: " % page.name) if page.kind == "callout" else "",
 		"" if numbers.size() == 1 else "s", ", ".join(numbers)]
+	# Locked or frozen, said where the page is named (pagetools).
+	var held := PackedStringArray()
+	if not page.entries.is_empty() and page.entries[0].lock > 0:
+		held.append(tr("locked"))
+	if not page.entries.is_empty() and page.entries[0].own_sheet != null:
+		held.append(tr("frozen"))
+	if not held.is_empty():
+		_title.text += " · " + " · ".join(held)
 	for entry: Booklet.Entry in page.entries:
 		var index: int = int(entry.get_meta("step", -1))
 		var step: Instructions.Step = _plan[index] if index >= 0 and index < _plan.size() else null
@@ -986,8 +994,9 @@ func _draw_inspector(seen: Dictionary, k: float, font: Font) -> void:
 			var b: Vector2 = Vector2(to.end.x if side == "left" else to.position.x, lane) if across \
 				else Vector2(lane, to.end.y if side == "top" else to.position.y)
 			_measure_line(a, b, float(near["gap"]), INSPECT, k, font, 1.0)
+	# Its own size inside its top, clear of the line up to the page's edge.
 	var label: String = "%s × %s mm" % [_mm_said(box.size.x), _mm_said(box.size.y)]
-	_pill(Vector2(middle.x, box.position.y) * k - Vector2(0, 12), label, INSPECT, font)
+	_pill(Vector2(middle.x, box.position.y) * k + Vector2(0, 12), label, INSPECT, font)
 
 
 ## A line from [param a] to [param b] (page mm) with its length's label at

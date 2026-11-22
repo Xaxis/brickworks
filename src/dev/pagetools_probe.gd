@@ -192,7 +192,15 @@ func _words() -> void:
 func _pages() -> void:
 	print("")
 	print("the page editor")
+	# Two steps a page, as a designer laying a booklet out sets it, so a
+	# page holds more than one step and the lock has steps to hold.
+	_steps.refresh(1)
+	_shell.change_look("set", _steps.current_step(), {"per_page": 2})
 	var pages: Array[Booklet.Page] = await _laid()
+	var counts := PackedStringArray()
+	for page: Booklet.Page in pages:
+		counts.append("%s:%d" % [page.kind, page.entries.size()])
+	print("  the pages: %s" % " ".join(counts))
 	# Two pages of steps with as many steps: the first to lay out from, the
 	# later one to lock and freeze.
 	var first: Booklet.Page = null
@@ -231,7 +239,7 @@ func _pages() -> void:
 	var items: Dictionary = state.get("items", {})
 	var name: String = ""
 	for item: String in items:
-		if item.begins_with("picture"):
+		if item.begins_with("page_picture_"):
 			name = item
 			break
 	var at: int = editor.item_named(name)
@@ -242,8 +250,9 @@ func _pages() -> void:
 	editor._select(editor.item_named(name))
 	editor._pressed("page_put_back")
 	await _until_laid(editor)
-	_check("a drag on it refused (\"%s\") and Put back refused: nothing moved, no undo" % moved,
-		_history() == history + 1 and editor.page_state().get("items", {}) == items)
+	_check("a drag of %s on it refused (\"%s\") and Put back refused: nothing moved, no undo" % [name, moved],
+		at >= 0 and moved.contains("locked") and _history() == history + 1
+		and editor.page_state().get("items", {}) == items)
 
 	# Its page break kept until it is unlocked.
 	var step: Instructions.Step = _steps.current_step()
@@ -276,7 +285,7 @@ func _pages() -> void:
 	var source: Dictionary = editor.page_state().get("items", {})
 	var picture: int = -1
 	for item: String in source:
-		if item.begins_with("picture"):
+		if item.begins_with("page_picture_"):
 			picture = editor.item_named(item)
 			break
 	var history_apply: int = _history()
@@ -318,7 +327,11 @@ func _pages() -> void:
 		own != null and BookletSheet.same_colour(own.colour, BookletSheet.PAGE_COLOUR)
 		and is_equal_approx(own.margin, BookletSheet.MARGIN) and other != null
 		and is_equal_approx(other.sheet.margin, 15.0) and frozen.sheet == own)
-	_check("...and the page editor shows it on its own page", editor.shown_sheet() == own)
+	var shown: BookletSheet = editor.shown_sheet()
+	_check("...and the page editor shows it on its own page (%s, %s mm)" % [shown.colour.to_html(false),
+		shown.margin], bool(editor.page_state().get("frozen", false))
+		and BookletSheet.same_colour(shown.colour, BookletSheet.PAGE_COLOUR)
+		and is_equal_approx(shown.margin, BookletSheet.MARGIN))
 	await _shot("pagetools_frozen_1280x720")
 	var document := Booklet.Document.new()
 	document.sheet = BookletSheet.of(_world)
@@ -347,6 +360,7 @@ func _mcp(lead: int, second: int) -> void:
 	var tools := AppTools.new()
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
+	await tools.run("edit_booklet", {"step": 1, "per_page": 2})
 	var history: int = _history()
 	var said: String = str(await tools.run("edit_booklet", {"step": lead, "lock": true}))
 	var again: String = str(await tools.run("edit_booklet", {"step": lead, "lock": true}))
@@ -379,7 +393,7 @@ func _inspector(editor: PageEditor) -> void:
 	var items: Dictionary = editor.page_state().get("items", {})
 	var name: String = ""
 	for item: String in items:
-		if item.begins_with("picture"):
+		if item.begins_with("page_picture_"):
 			name = item
 			break
 	editor._select(editor.item_named(name))

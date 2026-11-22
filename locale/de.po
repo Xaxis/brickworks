@@ -15933,3 +15933,9 @@ msgstr "Nur eine Seite mit Schritten lässt sich einfrieren."
 
 msgid "Frozen pages keep their own page setup: %d."
 msgstr "Eingefrorene Seiten behalten ihre eigene Seiteneinrichtung: %d."
+
+msgid "locked"
+msgstr "gesperrt"
+
+msgid "frozen"
+msgstr "eingefroren"
