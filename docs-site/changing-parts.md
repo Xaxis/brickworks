@@ -85,6 +85,18 @@ ui:replace part
 ui:find and replace everywhere
 -->
 
+## Finish the surfaces {#finish}
+
+- **Edit › Finish the surfaces…** finishes the model the way a set designer would, and shows what it would lay before anything changes. It lists tiles where a top should be smooth, slopes where a top steps up, rounded edges along a body's hard top edge, and smooth sides. Each kind gets a count and is drawn as a ghost on the model. Untick a kind to leave it out. Smooth sides start unticked, since they swap a side's own bricks for others, and so does the open ground, kept for figures to stand on.
+- **Lay** puts it all in as one undo step, and Undo puts the file back exactly as it was. A part with a stud that something else sits on is never tiled, and nothing is laid where it would float or overlap. Where a place can't be laid as the model now stands, the bar says why.
+- With parts selected, it finishes only those.
+- On a big model the reading is spread over frames, with the status bar saying so.
+- Your Claude reaches the same pass with review_model and settle_surface.
+
+<!-- covers
+ui:finish the surfaces
+-->
+
 ## Split and merge {#split-merge}
 
 - [[Alt+S]] splits the selection: a plate, brick or tile into 1 × 1s, a 1 × 1 brick into three plates, a slope into 1-wide slopes.

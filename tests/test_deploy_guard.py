@@ -40,7 +40,7 @@ def test_the_ship_asks_for_both_of_its_production_steps():
     # of the run's own (smalls6: a stopped ship's promotion went on).
     assert 'run_owned "$own" env SHIP_DEPLOY=1 "$@"' in ship
     assert "prod_deploy timeout 900 tools/deploy.sh --promote=" in ship
-    assert "prod_deploy timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod" in ship
+    assert "prod_deploy ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod" in ship
     # And no production step goes round it.
     calls = [line for line in ship.splitlines() if "tools/deploy.sh --p" in line
              and not line.lstrip().startswith(("#", "echo"))]

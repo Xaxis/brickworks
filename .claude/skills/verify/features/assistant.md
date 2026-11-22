@@ -3,9 +3,38 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, cli:place designs on a ladder of each real set, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, cli:place designs on a ladder of each real set, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe, cli:photostep bench, cli:photostep reading -->
 
 ## Sub-features
+### A step checked from a photo: the photostep bench
+
+Measure first for APP_UX11 past parity 3 (a photo of the build so far, told "step 12 is
+done, but the 2 x 4 plate is one stud to the left"). `src/dev/photostep_bench.gd` draws,
+for each of four library sets (7638-1, 42004-1, 31009-1, 10179-1, none a realset
+subject), three main-line steps N chosen by rule, five builds each at Best, Product look,
+from a hand-held camera never the booklet's: N right, a new part missing, one moved a stud,
+one the wrong colour (a near shade on two pages of three), and N-1. They are RENDERS, laid
+on a procedural desk or carpet and made a phone's picture by `photostep.py dress`, never
+photographs. `read` asks each case of Claude Code on the subscription, its only tools the
+bench's own MCP server (what a `check_step_photo` would hand over: the photo, steps N-1, N
+and N+1 with new parts ringed, their parts, other sides on request), the builder saying
+step N. `score` writes `score.md` against the bar (step exact 80%, a fault found 75%, named
+by kind, part and place 60%, false alarms 10% or less).
+
+```sh
+python3 tools/minitest.py $PWD/tests/test_photostep.py      # the score on right, half right and wrong answers; the server over stdio
+gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a -s '-screen 0 1400x1000x24' godot --path . --resolution 1280x960 \
+  --script src/dev/photostep_bench.gd -- --pictures=DIR      # ~2 min a page on the card; DIR/cases.json, DIR/raw/
+uv run --no-project --with numpy --with pillow python tools/bench/photostep.py dress DIR
+env -u ANTHROPIC_API_KEY python3 tools/bench/photostep.py read DIR --jobs 3
+python3 tools/bench/photostep.py score DIR                   # DIR/score.md and score.json
+```
+
+Gotchas: the path tracer's shaders run from `.godot/imported`; a tree whose import is
+older than `src/render/path_tracer*.glsl` draws a black frame of speckles at Best with
+"requires (32) bytes of push constant data, supplied: (48)" in the log. Read a case's
+`answers/<case>.stream.jsonl` and `.tools.jsonl` for what the session looked at.
+
 
 - `design loop`: the real loop in `src/ai/assistant.gd`. It is given the part
   catalogue, the rules, and tools to search, place, read back the world and look at
