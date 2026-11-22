@@ -982,6 +982,13 @@ plan with Claude as the client.
   `held` in its answer (`api/_cron.js` `sweepHeld`;
   `tests/test_gallery_builds.py`
   `test_a_sweep_that_would_take_most_of_what_it_saw_takes_nothing`).
+  A model's row deleted, however (an account's deletion, every check's
+  throwaway), leaves its link in `shared_models_gone` (`supabase/models_gone.sql`,
+  applied 2026-11-22: an after-delete trigger, RLS on, service role only):
+  those links' files go whatever their number, outside the quarter, and the
+  notes are pruned after 7 days (`test_a_deleted_links_files_go_however_many`).
+  An account's own deletion removes its models' files at once (`api/_erase.js`
+  `modelFilesGone`; `tests/test_account_erase.py`).
   `?only=<id,...>&photos=<id,...>` scopes it to those models' and photos'
   files alone, all of them (views, `act_log` and uploads left for the
   cron): a hand-run check always scopes it, never the whole sweep.
