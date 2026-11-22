@@ -741,9 +741,14 @@ func identify(photo: Image) -> void:
 func _identify(photo: Image) -> void:
 	if _brickognize == null:
 		_brickognize = Brickognize.new()
+		# An answer that comes in after Build it closed is dropped: it would
+		# turn the pages and frame the model behind whatever is open now.
 		_brickognize.answered.connect(func(guesses: Array) -> void:
-			_read_answer(guesses, _brickognize.colour, -1))
-		_brickognize.failed.connect(func(why: String) -> void: _card.failed(why))
+			if is_open():
+				_read_answer(guesses, _brickognize.colour, -1))
+		_brickognize.failed.connect(func(why: String) -> void:
+			if is_open():
+				_card.failed(why))
 		add_child(_brickognize)
 	_brickognize.url = photo_url
 	if _home < 0:
@@ -815,9 +820,6 @@ func _read_answer(guesses: Array, seen: Dictionary, pick: int) -> void:
 
 
 func open() -> void:
-	# Read again for the first photo: closed, the model may have changed its
-	# colours, which leaves the same pages.
-	_indexed = null
 	HudFront.show_panel(self)
 	_fit()
 
@@ -827,6 +829,14 @@ func close() -> void:
 	comments.close()
 	_card.hide_card()
 	_home = -1
+	# Nothing of a photo is kept closed: the pages it read (10179's would stay
+	# alive after another model replaced them), nor its answer. And opened
+	# again it reads them afresh, since a recolour leaves the same pages.
+	_indexed = null
+	_index = {}
+	_steps_read = []
+	_guesses = []
+	_seen = {}
 	if thumbnails != null:
 		thumbnails.watch(self, [] as Array[ThumbTile])
 

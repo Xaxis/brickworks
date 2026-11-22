@@ -33,6 +33,8 @@
 ##   9. edit_steps over MCP with picture_data: refused, nothing sent, until
 ##      agreed=true (or agreed in the app); then in 1 call the same step and
 ##      the others.
+##  10. Build it closed while the photo is away: the answer is dropped, no
+##      page turned and no card behind the viewer.
 ##
 ## Pictures in shots/partstep/.
 extends SceneTree
@@ -324,6 +326,21 @@ func _run() -> void:
 	heard = await _say("edit_steps", {"picture_data": data})
 	_ok(_asked == asked_before + 1 and not heard.begins_with("Not sent."),
 		"agreed in the app already: sent without agreed=")
+
+	print("\n10. Build it closed while the photo is away")
+	await _go(main, 1)
+	asked_before = _asked
+	mode.identify(photo)
+	await _tap(mode.controls_by_name()["build_close"])
+	var until: int = Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < until:
+		_serve()
+		await process_frame
+	said = main.call("build_state")
+	_ok(_asked == asked_before + 1 and not mode.is_open() and int(said["page"]) == 1
+		and not bool(said["partstep"]["shown"]),
+		"the answer came (%d) and was dropped: closed, still page 1 (%d), no card" % [
+			_asked - asked_before, int(said["page"])])
 
 	_server.stop()
 	await _close(main)
