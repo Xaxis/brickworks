@@ -2934,6 +2934,7 @@ func _bricks_inside(where: Dictionary) -> Array[BrickWorld.Brick]:
 	if world == null:
 		return out
 	for brick: BrickWorld.Brick in world.bricks():
+		Fiber.pause(&"_bricks_inside")
 		if scenery.has(brick.id):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
@@ -2951,6 +2952,7 @@ func _bounds_of(bricks: Array[BrickWorld.Brick]) -> AABB:
 	var box := AABB()
 	var first: bool = true
 	for brick: BrickWorld.Brick in bricks:
+		Fiber.pause(&"_bounds_of")
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if part == null:
 			continue
@@ -3746,6 +3748,8 @@ func _model_from_world() -> Model:
 		model.sections[section.name] = section
 	model.link_sections()
 	for brick: BrickWorld.Brick in world.bricks():
+		# Read on a fiber (Edit › Finish the surfaces…), a turn given back.
+		Fiber.pause(&"model_from_world")
 		if scenery.has(brick.id):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
@@ -3837,6 +3841,7 @@ func _forget_moved_sections() -> void:
 	linked.sections = _sections.duplicate()
 	linked.link_sections()
 	for brick_id: int in _section_of.keys():
+		Fiber.pause(&"_forget_moved_sections")
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var section: Section = linked.sections.get(_section_of[brick_id])
 		var kept: Array = _local_of.get(brick_id, [])
@@ -3906,6 +3911,7 @@ func _adopted() -> Dictionary:
 		_adoptions_of = world.generation()
 	var middle := Vector3.INF
 	for brick: BrickWorld.Brick in world.bricks():
+		Fiber.pause(&"_adopted")
 		# A figure stands on no stud grid, and its parts nest in each other.
 		if scenery.has(brick.id) or _section_of.has(brick.id) or _figure_part(brick.part_id):
 			continue
