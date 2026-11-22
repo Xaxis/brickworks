@@ -19,7 +19,8 @@
 ## (SourceFile).
 ##
 ## Each case opens its file (src/dev/fixtures/kt3r_*, the castle made from
-## models/castle.ldr) as the app opens it, makes its edit as a person makes
+## fixtures/castle_sections.ldr, its sub-models in sections of their own as
+## another program writes them) as the app opens it, makes its edit as a person makes
 ## it, and saves as Save saves. Since keeptext5 a save is a patch of the
 ## file or what live writes: where live's, the checks below of what only a
 ## patch keeps say "live" and do not fail. Each time:
@@ -36,7 +37,7 @@
 extends SceneTree
 
 const FX := "res://src/dev/fixtures/"
-const CASTLE := "res://models/castle.ldr"
+const CASTLE := "res://src/dev/fixtures/castle_sections.ldr"
 const CASES: Array = ["title", "whole", "emptystep", "emptystep2", "laststep", "move_copy",
 	"move_copy_7140", "leocad", "ungroup", "delete_unshown_copy", "move_unshown",
 	"unshown_edits", "odd",
