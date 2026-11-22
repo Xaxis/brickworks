@@ -165,6 +165,15 @@ whole cycle.
 
 ### Changed
 
+- **The home page opens on the community.** Its first screen, on a phone
+  and on a computer, is a search over models, builders and real sets (what
+  it finds shows as you type), **Start building**, this month's challenge
+  with its days left, and a row of the gallery's models with their
+  pictures, in tabs: Top, its first card this week's pick, New, and real
+  sets in 3D. The models are in the page as it arrives, so they show at
+  once and nothing moves when the newest arrive. The header on every page
+  leads with Gallery, Sets and Challenges, then Docs; Plans and the desktop
+  app are in the menu and the footer.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say

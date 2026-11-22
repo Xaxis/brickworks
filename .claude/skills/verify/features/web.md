@@ -2802,7 +2802,11 @@ plan with Claude as the client.
   `web/_home.json`, `--offline` reads only that. Says which tab is first,
   the pick, how many cards and pictures, the challenge, and whether each
   answer was live or kept. Never fails a deploy for an answer it could not
-  read.
+  read. `tests/test_home_shelf.py` drives its `decide` and `filled` on the
+  cases a deploy meets: nothing read (the skeletons stay), today's gallery
+  (the pick first, ten cards, Trending hidden), a busy week in German
+  (Trending first, See all to the week), a test challenge (never written)
+  and an open one with its days in French.
 - `achievements on a profile` (`api/people.js` `achievementsOf`, `levelsOf`,
   `web/card.js` `awardsHtml`, `TRACKS`, `levelName`, `levelAwards`,
   `supabase/achievements.sql`, docs/SOCIAL.md U13 and section 7): `won`
