@@ -392,6 +392,9 @@ var floor_kind: Callable = Callable()
 ## is cancelled, or loses the network used to leave them with nothing.
 var _before: Array[Dictionary] = []
 var _placed_ids: PackedInt64Array = PackedInt64Array()
+## The last design put down: each placement's index (the "brick N" a check
+## names) -> the number of the part it stands as ([method _numbers_said]).
+var _placed_of: Dictionary = {}
 ## Main is taking the example off for a design just submitted ([signal
 ## designing]): what was heard of the subject stays.
 var _making_room: bool = false
@@ -3359,10 +3362,17 @@ func _tool_answer(block: Dictionary) -> Variant:
 				+ ("" if what_if or running else _where_it_would_stand(trial, report)) \
 				+ ("" if weighed.is_empty() else "\n\n" + weighed)
 			if what_if:
-				var asked: String = _what_changed(args["edit"])
-				checked = ("What if, on a copy of the model as it stands%s: nothing on the "
+				# What the copy showed first, then that the model is as it was:
+				# said the other way round, "nothing on the baseplate changed"
+				# read as nothing done, and g1's, y6's and t7's sessions each
+				# checked again (mcpreach3's walk; mcpreach4). Nothing is put
+				# down, so no part numbers: the last edit's were named here as
+				# if this one had laid them (y6, call 11).
+				var asked: String = _what_changed(args["edit"], false)
+				checked = ("What if, on a copy of the model as it stands%s: the copy showed this.\n"
 					% ("" if asked.is_empty() else " (" + asked.trim_suffix(".").to_lower() + ")")
-					+ "baseplate changed. #N is a part standing; edit_model makes it.\n" + checked)
+					+ checked + "\n\nThat was the copy. The model itself is as it was: nothing on "
+					+ "the baseplate changed, and #N is a part standing. edit_model makes the change.")
 			# From outside nothing a check is given goes on the baseplate,
 			# so a picture is of what stands there, not of what was checked:
 			# walk180's four checks of a bow were handed the same picture of
@@ -4439,8 +4449,9 @@ func _bricks_numbered(ids: Variant) -> Array[BrickWorld.Brick]:
 
 
 ## What an edit asked for, in one line: "Moved 36 by dy 1; put down 12;
-## recoloured 12 Dark Blue (272)."
-func _what_changed(args: Dictionary) -> String:
+## recoloured 12 Dark Blue (272)." With [param numbered] false, a what-if's,
+## no part numbers: nothing was put down.
+func _what_changed(args: Dictionary, numbered: bool = true) -> String:
 	var said := PackedStringArray()
 	for raw: Variant in args.get("move", []):
 		if not raw is Dictionary:
@@ -4458,7 +4469,7 @@ func _what_changed(args: Dictionary) -> String:
 			said.append("turned %d" % ((raw as Dictionary).get("bricks", []) as Array).size())
 	var added: int = (args.get("add", []) as Array).size() if args.get("add") is Array else 0
 	if added > 0:
-		said.append("put down %d%s" % [added, _numbered_said(_added_ids)])
+		said.append("put down %d%s" % [added, _numbered_said(_added_ids) if numbered else ""])
 	var taken: int = (args.get("remove", []) as Array).size() if args.get("remove") is Array else 0
 	if taken > 0:
 		said.append("took off %d" % taken)
@@ -5159,6 +5170,13 @@ func _attachment_points(args: Dictionary) -> String:
 	# the part the whole of Technic is built from.
 	var holes: String = _output_said(part_id, part, at, prefix) + _holes_in(part, at, part_id) \
 		+ _connectors_said(part_id, at, prefix, args.get("near"))
+	# Every way it can stand, in the same answer, for a part with no studs
+	# asked before it is put down: r1's and y6's sessions asked of the SPIKE
+	# motor face by face, 3 and 4 calls, to find where its output would point
+	# (mcpreach3's walk; mcpreach4).
+	if found == 0 and not holes.is_empty() and not args.has("brick"):
+		holes += _every_way(part_id, part, args) + _joined_as_real_sets(part_id, part)
+	holes += _hinge_mount_said(part_id)
 
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
@@ -5181,6 +5199,106 @@ func _attachment_points(args: Dictionary) -> String:
 		+ "-x or -z it hangs the other way, so its corner is further "
 		+ "back along that direction by its own thickness: a brick is "
 		+ "three plates, so three plates or one and a half studs.")
+
+
+## The faces a part can stand on, in the order [method _every_way] says them.
+const EVERY_FACE: Array[String] = ["up", "down", "+x", "-x", "+z", "-z"]
+## A side of a part's box, by the face that points out of it.
+const SIDE_WORDS: Dictionary = {"up": "top", "down": "bottom", "+x": "+x side", "-x": "-x side",
+	"+z": "+z side", "-z": "-z side"}
+
+
+## A part with no studs, asked of before it is put down ([param asked]: part=
+## with x, y and z), stood on each face from the same low corner: its size,
+## where a motor's output then points and which side it is on, and its joints
+## counted by the way they run, a line a face. What the window's connection
+## points show at once, turned every way, so no call is spent a face; "" for a
+## part given by its axis (a middle, not a corner).
+func _every_way(part_id: String, part: Lbm.PartMesh, asked: Dictionary) -> String:
+	if asked.has("axis"):
+		return ""
+	var motor: String = Simulation.motor_of(library, part_id)
+	var output: Dictionary = {}
+	if not motor.is_empty():
+		output = Simulation.split_output(part, (Simulation.MOTORS[motor] as Array)[4])[1]
+	var joints: Array = _joint_lines(part, part_id)
+	var lines := PackedStringArray()
+	for face: String in EVERY_FACE:
+		var turned: Dictionary = asked.duplicate()
+		turned["face"] = face
+		var placement := Placement.from_dict(turned)
+		var at: Transform3D = _transform(placement, part)
+		var box: AABB = at * part.bounds
+		var said: String = "  face=%s: %s x %s studs, %s plates tall" % [face,
+			Placement._num(snappedf(box.size.x / STUD, 0.1)), Placement._num(snappedf(box.size.z / STUD, 0.1)),
+			Placement._num(snappedf(box.size.y / PLATE, 0.25))]
+		if not output.is_empty():
+			var way: Vector3 = (at.basis * (output["way"] as Vector3)).normalized()
+			var point: Vector3 = at * (output["point"] as Vector3)
+			var out_of: Vector3 = way * signf((point - box.get_center()).dot(way))
+			var side: String = "up"
+			var best: float = -2.0
+			for name: String in FACES:
+				var d: float = out_of.dot(FACES[name])
+				if d > best:
+					best = d
+					side = name
+			said += "; its output %s on its %s, about x=%s y=%s z=%s" % [_which_axis(way),
+				SIDE_WORDS[side], Placement._num(point.x / STUD), Placement._num(point.y / PLATE),
+				Placement._num(point.z / STUD)]
+		var counted: Dictionary = {}   ## kind -> {way: count}
+		for joint: Array in joints:
+			var kind: String = str(joint[0])
+			var runs: String = _which_axis((at.basis * (joint[2] as Vector3)).normalized())
+			if runs.begins_with("at an angle"):
+				runs = "at an angle"
+			var by_way: Dictionary = counted.get(kind, {})
+			by_way[runs] = int(by_way.get(runs, 0)) + 1
+			counted[kind] = by_way
+		var kinds := PackedStringArray()
+		for kind: String in counted:
+			var ways := PackedStringArray()
+			var total: int = 0
+			for runs: String in counted[kind]:
+				ways.append("%d %s" % [int(counted[kind][runs]), runs])
+				total += int(counted[kind][runs])
+			kinds.append("%d %s%s (%s)" % [total, kind, "" if total == 1 else "s", ", ".join(ways)])
+		if not kinds.is_empty():
+			said += "; " + ", ".join(kinds)
+		lines.append(said)
+	if lines.is_empty():
+		return ""
+	return ("\n\nEvery way it can stand, from the same low corner (face= with these x, y and z; rot= "
+		+ "then turns it a quarter at a time about that face):\n%s%s") % ["\n".join(lines),
+		"\nIts output level (along x or z) swings an arm up and down; upright, it turns a "
+		+ "turntable." if not output.is_empty() else ""]
+
+
+## How real sets join a part with no studs that has holes, a motor's case
+## apart (AppTools.MOTOR_MOUNT_WORDS says that): "" for a motor or a part
+## with no hole.
+func _joined_as_real_sets(part_id: String, part: Lbm.PartMesh) -> String:
+	if not Simulation.motor_of(library, part_id).is_empty():
+		return ""
+	for joint: Array in _joint_lines(part, part_id):
+		if str(joint[0]).ends_with("hole"):
+			return ("\nHow real sets join a part with no studs: pins or axles through two of its "
+				+ "holes or more, not all on one line, into a beam, a Technic brick or a frame hold "
+				+ "it rigid; one pin or a round axle alone lets it turn there, as an arm turns.")
+	return ""
+
+
+## For a part that is one half of a hinge, how real sets build on it so the
+## hinge turns; "". r2's session laid both halves of a click hinge on one 2 x 4
+## plate, and move_part on the hinge brick was refused twice (mcpreach3's
+## walk; mcpreach4).
+func _hinge_mount_said(part_id: String) -> String:
+	for point: Attach.Point in Attach.points_of(library, part_id):
+		if point.kind == Exact.HINGE:
+			return ("\n\nA hinge turns only while no one part grips both its halves: real sets "
+				+ "stand one half at a plate's edge with the other out past it, and build the arm "
+				+ "on the moving half alone. move_part on either half then swings the moving one.")
+	return ""
 
 
 ## A motor's output, which turns in its case, with the holes that turn with
@@ -18766,6 +18884,7 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false) -> voi
 			world.remove_brick(brick_id)
 	_sketched_ids = PackedInt64Array()
 	_placed_ids = PackedInt64Array()
+	_placed_of = {}
 	fresh_ids = PackedInt64Array()
 
 	var order: Array = at_of.keys()
@@ -18781,6 +18900,7 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false) -> voi
 			builder.register(brick_id, placement.part, at_of[index])
 			fresh_ids.append(brick_id)
 		_remember_section(brick_id, placement, model)
+		_placed_of[index] = brick_id
 		if placement.mine:
 			_placed_ids.append(brick_id)
 		if gradually and pace.due():
@@ -21723,6 +21843,9 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	var said := PackedStringArray()
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
+	var numbers: String = _numbers_said()
+	if not numbers.is_empty():
+		said.append(numbers)
 	var on_balls: String = JointSnap.balls_said(world, library, builder.lattice, _placed_ids)
 	if not on_balls.is_empty():
 		said.append(on_balls)
@@ -21751,6 +21874,38 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 			and design.assemblies.size() >= HiddenColours.OFFER_SECTIONS:
 		said.append(OFFER_HIDDEN_COLOURS)
 	return "\n\n".join(said)
+
+
+## Of a design's runs of numbers, at most this many are said.
+const NUMBER_RUNS_MOST := 12
+
+
+## The numbers the last design's parts stand as, against the "brick N" a
+## check counted them by, in runs: "bricks 0-14 are #102-#116". f3's session,
+## told only "Built. 15 bricks", moved "brick 14" with edit_model and was told
+## no brick has number 14 (mcpreach3's walk; mcpreach4). "" for none.
+func _numbers_said() -> String:
+	var indices: Array = _placed_of.keys()
+	if indices.is_empty():
+		return ""
+	indices.sort()
+	var runs := PackedStringArray()
+	var start: int = 0
+	for n: int in range(1, indices.size() + 1):
+		if n < indices.size() and int(indices[n]) == int(indices[n - 1]) + 1 \
+				and int(_placed_of[indices[n]]) == int(_placed_of[indices[n - 1]]) + 1:
+			continue
+		var first: int = indices[start]
+		var last: int = indices[n - 1]
+		runs.append("brick %d is #%d" % [first, int(_placed_of[first])] if first == last
+			else "bricks %d-%d are #%d-#%d" % [first, last, int(_placed_of[first]), int(_placed_of[last])])
+		start = n
+	var more: String = ""
+	if runs.size() > NUMBER_RUNS_MOST:
+		more = "; and %d runs more (look_at_model lists each part)" % (runs.size() - NUMBER_RUNS_MOST)
+		runs = runs.slice(0, NUMBER_RUNS_MOST)
+	return ("Its parts by number, against the brick N a check counts them by: %s%s. edit_model, "
+		+ "look_at_model and move_part take these numbers, not the brick N.") % ["; ".join(runs), more]
 
 
 const OFFER_HIDDEN_COLOURS := """  6. At the very end, for a model this big in \
@@ -24752,7 +24907,8 @@ func _tools() -> Array:
 				+ "at it. And every connector by the address attach takes "
 				+ "(\"#41.hinge[0]\", \"hinge[0]\"): its type and number, "
 				+ "where it is and the way it points. Several parts in one call: "
-				+ "parts=[{...}, {...}]."),
+				+ "parts=[{...}, {...}]. A part with no studs asked by part= says "
+				+ "every face it can stand on as well, a line each, so no call is spent a face."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

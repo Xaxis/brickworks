@@ -6026,6 +6026,13 @@
     },
     {
       "kind": "cli",
+      "label": "mcpreach4 probe",
+      "entry": "src/dev/mcpreach4_probe.gd",
+      "reach": "tools/probe.sh mcpreach4_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach4_probe.gd. mcpreach4, the latest MCP walk's five stalls in their tools' own answers: attachment_points on a part with no studs (the SPIKE motor, a Technic beam) gives every face it can stand on in one call, the motor's output on each where a call with that face= puts it, and how real sets mount it, a click hinge's brick how to build on a hinge; move_part on a click hinge's brick on the plate moves the hinge's other half and says which half and which way degrees= raises it, not refused, and both halves on one plate are named held still with the plate, in the list and the refusal; submit_design names its parts' numbers against the check's brick N and edit_model takes the last; simulate_mechanism at= pictures the program at a moment with nothing written (program, history, parts), program= with at= in 1 call; check_design edit= says what the copy showed first, the model as it was after, no stale numbers)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
       "label": "m3review probe",
       "entry": "src/dev/m3review_probe.gd",
       "reach": "BRICKWORKS_API=http://127.0.0.1:10910 tools/probe.sh m3review_probe -- --held-out=31058-1 --assistant=on, and again with --assistant=on alone, a stand-in for /api/collection on 10910 (python3 -I tools/collection_standin.py 10910)   (headless: godot --headless --path . --script src/dev/m3review_probe.gd. m3review's attacks on mcpreach3, made checks by m3fix: a held-out (realset) tab's save over unsettled features refused as pre261 refused it, a person's written with nothing laid; pose_model joint= an assembly's joint begins no reading of the drag joints; edit_collection sets= with built= checks every argument before the add, and a reply lost after the add or the Built marks is told it may have been made; M3REV_ONLY=save,pose,coll,hinge,motor)",

@@ -707,7 +707,9 @@ func definitions() -> Array:
 				+ "what stays (a locked part, what stands on the baseplate, else the body "
 				+ "with the most parts, or a heavier one standing on the floor): a hinge, a "
 				+ "clip on a bar, a turntable, a pin or an axle in a round "
-				+ "hole, a ball, a 1x1 round part on one stud. part= a part's number "
+				+ "hole, a ball, a 1x1 round part on one stud; either half of a hinge moves "
+				+ "the half that is not held, and the answer says which half and which way "
+				+ "degrees= swings it. part= a part's number "
 				+ "(look_at_model) or a sub-assembly's name. With nothing else it changes "
 				+ "nothing and says what would move, on what, and how the model stands. "
 				+ "degrees= turns it that far from where it is (a ball: about axis=), along= "
@@ -905,9 +907,12 @@ func definitions() -> Array:
 				+ "where it ended. A line each: to 90° at 50% (to an angle from where it was "
 				+ "built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines "
 				+ "indented under it); with two hub motors or more, each line begins with its "
-				+ "port, A to F."),
+				+ "port, A to F. at= seconds pictures the model's program at that moment instead "
+				+ "(with program=, the one just set), each motor's angle and the line running, "
+				+ "without setting or changing anything."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
+				"at": {"type": "number", "description": "seconds into the model's program: its picture and each motor's angle at that moment, nothing set"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
 				"targets": {"type": "object", "description": "name -> the period wanted, in the reference's turns",
 					"additionalProperties": {"type": "number"}},
@@ -1573,16 +1578,20 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				return "This app cannot move parts on their joints."
 			if str(input.get("part", "")).strip_edges().is_empty():
 				return _what_moves(grabbing)
+			# One half of a hinge, read before it moves: which half moves and
+			# which way, said with the move (mcpreach4).
+			var hinge: Dictionary = _hinge_reading(grabbing, str(input.get("part", "")),
+				not input.has("along") and not input.has("to"))
 			# Asked to show it as well, the move answered pictured as
 			# edit_model's change is: f1's session raised an arm on its ball
 			# and then asked view_board to show the person.
 			if not (input.get("picture") is bool and bool(input["picture"])):
-				return await grabbing.for_session(input)
+				return _hinge_said(hinge, await grabbing.for_session(input))
 			var world: BrickWorld = app.get("_world")
 			var was: Dictionary = {}
 			for brick: BrickWorld.Brick in world.bricks():
 				was[brick.id] = brick.transform
-			var moved_said: String = await grabbing.for_session(input)
+			var moved_said: String = _hinge_said(hinge, await grabbing.for_session(input))
 			var moved := PackedInt64Array()
 			for brick: BrickWorld.Brick in world.bricks():
 				if not was.has(brick.id) or not (was[brick.id] as Transform3D).is_equal_approx(brick.transform):
@@ -3370,9 +3379,15 @@ func _what_moves(grabbing: GrabDrag) -> String:
 		if not bodies.flexible.has(key):
 			moving.append([(bodies.members.get(key, PackedInt64Array()) as PackedInt64Array).size(), int(key)])
 	var motors: String = _motors_driven(world, store, library)
+	# A hinge whose halves one part grips is in neither list: r2's session
+	# asked what moves, was not told of its click hinge, and was refused on it
+	# (mcpreach3's walk; mcpreach4).
+	var held_hinges: String = _hinges_held(grabbing, bodies)
 	if moving.is_empty():
 		lines.append("Nothing in it hangs on a joint: every part is held rigidly to what stays (%s)."
 			% bodies.summary())
+		if not held_hinges.is_empty():
+			lines.append(held_hinges)
 		if not motors.is_empty():
 			lines.append(motors)
 		lines.append("Nothing was changed.")
@@ -3393,10 +3408,188 @@ func _what_moves(grabbing: GrabDrag) -> String:
 			link.words(), GrabDrag.at_words(link.point), "" if link.holds else ", turning freely"])
 	if moving.size() > MOST_MOVING:
 		lines.append("  and %d more." % (moving.size() - MOST_MOVING))
+	if not held_hinges.is_empty():
+		lines.append(held_hinges)
 	if not motors.is_empty():
 		lines.append(motors)
 	lines.append("Nothing was changed. move_part part=N says what moving it does; degrees= turns it.")
 	return "\n".join(lines)
+
+
+## Whether [param part_id] is one half of a hinge: a part with a hinge
+## connector (a click hinge brick, a hinge plate's either half).
+static func _hinge_half(library: PartLibrary, part_id: String) -> bool:
+	for point: Attach.Point in Attach.points_of(library, part_id):
+		if point.kind == Exact.HINGE:
+			return true
+	return false
+
+
+## move_part naming one half of a hinge, read as a drag takes it, before it
+## moves: {"moves": the half that moves, "stays": the half across, "beyond":
+## how many other parts move with it, "sense": which way degrees= above 0
+## swings it (with [param sense])}; {"locked": why it cannot turn as built}
+## when one part grips both halves; {} for any other part. r2's session was
+## refused twice on its click hinge's brick, both halves laid on one plate,
+## and turned the arm into the floor before it found which way was up
+## (mcpreach3's walk; mcpreach4).
+func _hinge_reading(grabbing: GrabDrag, asked: String, sense: bool) -> Dictionary:
+	var number: String = asked.strip_edges().trim_prefix("#")
+	if not number.is_valid_int():
+		return {}
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var brick: BrickWorld.Brick = world.get_brick(int(number))
+	if brick == null or not _hinge_half(library, brick.part_id):
+		return {}
+	var taken: Variant = grabbing.held_for_session(number)
+	if taken is String:
+		var locked: String = _hinge_locked(grabbing, int(number))
+		return {} if locked.is_empty() else {"locked": locked}
+	var held: Grab = taken
+	if held.link == null or not held.link.kind in ["hinge", "click"]:
+		return {}
+	var moving: Dictionary = {}
+	for body: Variant in held.moving_bodies:
+		for id: int in held.bodies.members.get(int(body), PackedInt64Array()):
+			moving[id] = true
+	var reading: Dictionary = {}
+	for pair: Array in held.link.pairs:
+		var a: int = int(pair[0])
+		var b: int = int(pair[1])
+		if moving.has(a) != moving.has(b):
+			reading = {"moves": a if moving.has(a) else b, "stays": b if moving.has(a) else a,
+				"beyond": moving.size() - 1}
+			break
+	if reading.is_empty():
+		return {}
+	if sense and held.mode == "turn":
+		reading["sense"] = _hinge_sense(grabbing, number, held, moving, world)
+	return reading
+
+
+## Which way a hinge's moving half goes for degrees= above 0 and below it, as
+## its middle goes: "degrees= above 0 swings it up (toward +y); below 0 it meets
+## the model at once". Each turned a step on a Grab of its own, nothing moved.
+func _hinge_sense(grabbing: GrabDrag, number: String, first: Grab, moving: Dictionary,
+		world: BrickWorld) -> String:
+	var step: float = first.link.detent if first.link.detent > 0.0 else 15.0
+	var said := PackedStringArray()
+	for way: float in [1.0, -1.0]:
+		var taken: Variant = first if way > 0.0 else grabbing.held_for_session(number)
+		if not taken is Grab:
+			return ""
+		var held: Grab = taken
+		var reached: float = held.turn_to(way * step)
+		var shift := Vector3.ZERO
+		var count: int = 0
+		for id: int in moving:
+			var brick: BrickWorld.Brick = world.get_brick(id)
+			if brick != null and held.placed.has(id):
+				shift += (held.placed[id] as Transform3D).origin - brick.transform.origin
+				count += 1
+		var words: String = "above 0" if way > 0.0 else "below 0"
+		if absf(reached) < 0.5 or count == 0 or shift.length() < 0.01:
+			said.append("%s it meets the model at once" % words)
+			continue
+		shift /= count
+		var along: String = "up" if shift.y > 0.0 else "down"
+		var level: float = Vector2(shift.x, shift.z).length()
+		if level > absf(shift.y) * 2.0:
+			along = ("toward +x" if shift.x > 0.0 else "toward -x") if absf(shift.x) >= absf(shift.z) \
+				else ("toward +z" if shift.z > 0.0 else "toward -z")
+		said.append("%s swings it %s" % [words, along])
+	return "degrees= %s." % "; ".join(said)
+
+
+## Why the hinge [param part] is a half of cannot turn as built, with the
+## part that grips both halves and what to do; "" when it is not that.
+func _hinge_locked(grabbing: GrabDrag, part: int) -> String:
+	var bodies: Bodies = grabbing.read_bodies()
+	if bodies == null:
+		return ""
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	for one: Array in bodies.overruled:
+		var a: int = int(one[0])
+		var b: int = int(one[1])
+		if not str(one[2]) in ["hinge", "click"] or (a != part and b != part):
+			continue
+		var grips: Array = []
+		var of_a: Dictionary = _joined_to(bodies, a)
+		for other: int in _joined_to(bodies, b):
+			if of_a.has(other) and other != a and other != b:
+				grips.append(other)
+		var named := func(id: int) -> String:
+			var brick: BrickWorld.Brick = world.get_brick(id)
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+			return "the %s (#%d)" % [Inventory._tidy(info.name) if info != null else "part", id]
+		if grips.is_empty():
+			return ("As built, its hinge cannot turn: #%d and #%d, its two halves, are held as one "
+				+ "by what is built on them. Real sets build the arm on the moving half alone.") % [a, b]
+		var gripping := PackedStringArray()
+		for id: int in grips.slice(0, 2):
+			gripping.append(named.call(id))
+		return ("As built, its hinge cannot turn: %s grip%s both its halves, #%d and #%d. Real sets "
+			+ "stand one half at a plate's edge with the other out past it, and build the arm on the "
+			+ "moving half alone: move %s so it holds one half only (edit_model move=), then "
+			+ "move_part again.") % [" and ".join(gripping), "s" if grips.size() == 1 else "",
+				a, b, "it" if grips.size() == 1 else "them"]
+	return ""
+
+
+## Of the hinges held still as built, at most this many are said.
+const HELD_HINGES_MOST := 3
+
+
+## The hinges whose two halves the model holds as one, each with why
+## (_hinge_locked), for move_part with no part=; "" for none.
+func _hinges_held(grabbing: GrabDrag, bodies: Bodies) -> String:
+	var said := PackedStringArray()
+	var seen: Dictionary = {}
+	for one: Array in bodies.overruled:
+		var key: String = "%d-%d" % [mini(int(one[0]), int(one[1])), maxi(int(one[0]), int(one[1]))]
+		if not str(one[2]) in ["hinge", "click"] or seen.has(key):
+			continue
+		seen[key] = true
+		if said.size() < HELD_HINGES_MOST:
+			said.append("  " + _hinge_locked(grabbing, int(one[0])).replace("As built, its hinge", "The hinge"))
+	if said.is_empty():
+		return ""
+	return "Hinges held still as built, which a drag does not turn:\n%s%s" % ["\n".join(said),
+		"\n  and %d more." % (seen.size() - HELD_HINGES_MOST) if seen.size() > HELD_HINGES_MOST else ""]
+
+
+## The parts joined to [param part] in the reading's joins, either way: id -> true.
+static func _joined_to(bodies: Bodies, part: int) -> Dictionary:
+	var out: Dictionary = {}
+	for edge: Array in bodies.joined_by.get(part, []):
+		out[int(edge[0])] = true
+	for other: Variant in bodies.joined_by:
+		for edge: Array in bodies.joined_by[other]:
+			if int(edge[0]) == part:
+				out[int(other)] = true
+	return out
+
+
+## move_part's answer [param said] with what [param hinge] read of a hinge's
+## half (_hinge_reading): which half moved, or would, and which way; or why the
+## hinge cannot turn as built, after a refusal.
+func _hinge_said(hinge: Dictionary, said: String) -> String:
+	if hinge.is_empty():
+		return said
+	if hinge.has("locked"):
+		return "%s\n%s" % [said, hinge["locked"]]
+	var moved: bool = said.contains("\nMoved ") or said.begins_with("Moved ")
+	var still: bool = said.contains("Nothing was changed") or said.contains("It did not move")
+	if not moved and not still:
+		return said
+	var half: String = ("On its hinge, #%d's half %s, with %d part%s beyond it; #%d's half stays." % [
+		int(hinge["moves"]), "moved" if moved else "is the one that moves", int(hinge["beyond"]),
+		"" if int(hinge["beyond"]) == 1 else "s", int(hinge["stays"])])
+	if still and not str(hinge.get("sense", "")).is_empty():
+		half += " " + str(hinge["sense"])
+	return "%s\n%s" % [said, half]
 
 
 ## The joint a session names: its number in pose_model's list, its path or
@@ -4344,7 +4537,81 @@ func _simulate(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: SimulatePanel = app.get("_simulate")
 	if panel == null:
 		return "This app has no Simulate mechanism."
-	return await panel.for_session(input, work)
+	if not input.has("at"):
+		return await panel.for_session(input, work)
+	var set_first: Variant = null
+	if input.has("program"):
+		var only: Dictionary = {"program": input["program"]}
+		set_first = await panel.for_session(only, work)
+		var said: String = _text_of(set_first)
+		if said.contains("cannot run") or said.begins_with("The program was not set") \
+				or said.begins_with("The program is taken out") or said.begins_with("The model has no program") \
+				or said.begins_with("This tab shows"):
+			return set_first
+	return await _program_at(panel, float(input["at"]), _text_of(set_first))
+
+
+## The text of a tool's answer, a String or blocks of text and pictures.
+static func _text_of(answer: Variant) -> String:
+	if answer is String:
+		return answer
+	var out := PackedStringArray()
+	if answer is Array:
+		for block: Variant in answer:
+			if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
+				out.append(str(block["text"]))
+	return "\n".join(out)
+
+
+## simulate_mechanism at=: the model's program read to [param at] seconds, and
+## pictured there: each motor's angle and the line running, the program and the
+## model left as they were (nothing set, no step to undo). With [param ran_said]
+## (program= set it in the same call), that run's words first, its picture at
+## the end replaced by this one. r1's session set and ran a second program only
+## to see the arm at 90°, then set the first again (mcpreach3's walk; mcpreach4).
+func _program_at(panel: SimulatePanel, at: float, ran_said: String) -> Variant:
+	var world: BrickWorld = app.get("_world")
+	if world == null or world.program.strip_edges().is_empty():
+		return ("The model has no program: at= reads one. program= sets it (with at=, in the "
+			+ "same call).")
+	if at < 0.0:
+		return "at= is seconds into the program, 0 or more."
+	var simulation: Simulation = await panel.read_mechanism()
+	var program: HubProgram = HubProgram.parse(world.program)
+	var made: Dictionary = await panel.prepare_run(program, simulation, false)
+	if made.has("refusal"):
+		return "The model's program cannot run: %s" % made["refusal"]
+	var ran: Dictionary = made["ran"]
+	if not str(ran.get("refusal", "")).is_empty():
+		return "The model's program cannot run: %s" % ran["refusal"]
+	var seconds: float = float(ran.get("seconds", 0.0))
+	var t: float = minf(at, seconds)
+	var angles: Dictionary = HubProgram.angles_at(ran, t)
+	var ends := PackedStringArray()
+	for port: String in angles:
+		ends.append("%s %s" % [port, HubProgram.degrees(float(angles[port]))])
+	var line: int = HubProgram.line_at(ran, t)
+	var lines := PackedStringArray()
+	if not ran_said.is_empty():
+		lines.append(ran_said.get_slice("\nThe picture:", 0))
+	lines.append("At %s s of the program's %s s%s: %s%s.%s" % [Simulation.figure(snappedf(t, 0.01)),
+		Simulation.figure(snappedf(seconds, 0.01)),
+		" (it ends sooner, so where it ended)" if at > seconds else "",
+		", ".join(ends) if not ends.is_empty() else "no motor turned",
+		", on line %d" % line if line > 0 and at <= seconds else "",
+		"" if not ran_said.is_empty() else " Read, not run again: the program and the model are as they were."])
+	var text: String = "\n".join(lines)
+	if not StudioRender.possible():
+		return text + "\n(No picture: this app is running without a window.)"
+	if (made["sims"] as Dictionary).is_empty():
+		return text
+	var first: Simulation = (made["sims"] as Dictionary).values()[0]
+	var image: Image = await panel.picture(first, 0.0, SimulatePanel.program_pose(ran, made["sims"], t))
+	if image == null:
+		return text
+	return [{"type": "text", "text": text + "\nThe picture: at %s s." % Simulation.figure(snappedf(t, 0.01))},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(image.save_png_to_buffer())}}]
 
 
 # -- undo -------------------------------------------------------------------------
