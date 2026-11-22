@@ -1220,11 +1220,11 @@ moved.
 | dust | a film on tops that face up, and motes | 0.270 | 0.238 | on (`PRODUCT_DUST` 0.3) |
 | the backdrop's paper | broad unevenness and fibre in the sweep and the shadow catcher | 0.155 | 0.139 | per shot only (`paper`) |
 | the camera | sensor grain matched to each photograph's measured noise, fall-off, fringes | 0.155 | 0.137 | per shot only (`grain`, `vignette`, `aberration`) |
-| age | whites yellowed, colours faded and dulled, gloss worn in patches | 0.155 | 0.159 | per shot only (`age`): it moved the whites' colour, not the judge |
+| age | whites yellowed, colours dulled, gloss worn in patches | 0.155 | 0.159 | per shot only (`age`): it moved the whites' colour, not the judge |
 
 - **Age** moved the measure it was for: the pale parts' b* (a white's
   yellow) inside each set's outline, photograph against render, 6532 10.3
-  against 1.0 before and 5.4 after; 6660 10.1 against 0.0 and 8.4. It did
+  against 1.0 before and 7.8 after; 6660 10.1 against 0.0 and 8.4. It did
   not move the solo judge (0.159 without, 0.155 with). It is a shot's
   setting, off in the app.
 - **The camera** settings match each photograph's own (sensor noise from
@@ -1233,39 +1233,67 @@ moved.
 - Glass scratches and the worn gloss ride on age; neither changes a part
   with `age` 0.
 
+**Tried and taken out.**
+- **Each part's own tone and broad swirls** across a face (older parts
+  differ by batch; flow lines): renders 0.245 against 0.252 beside them,
+  paired 19 of 20 at 0.839. It moved nothing.
+- **The sun fade** ("a few parts faded much more than the rest"): it was
+  never measured alone, and in a close-up of one part which way its number
+  fell decided the shot: the red slope went to ΔE2000 5.7 from its
+  photograph, past the tent's 5.
+
+**Each part is one number.** A part with a print or a window is drawn in
+one batch per surface (a printed head in two, a torso in four), and the
+tracer numbered each batch's instance on its own: seating moved a print
+apart from its part, and each surface wore its own way. The number is now
+the part's place (`PathTracer._part_key`), the same for all its surfaces,
+checked on a printed head, a torso and a window drawn in a window.
+
 **The judges** (the same day; the solo three rounds of two trials, with the
-photographs):
+photographs; f3 the final renders):
 
-| | solo: renders called a photograph | solo: mean chance | paired: found | paired: sure |
+| | solo: renders called a photograph | solo: mean chance, per round | paired: found | paired: sure |
 |---|---|---|---|---|
-| photographs | 54 of 54 | 0.893 to 0.896 | | |
-| photoreal3 (a7) | 0 of 60 | 0.105 to 0.113 | 18 of 20 (5g) | 0.859 (5g) |
-| photoreal4 (f1) | 12 of 60 (each round 0.20) | 0.259 to 0.265 | 18 of 20 | 0.829 |
+| photographs | 54 of 54 | 0.893 to 0.899 | | |
+| photoreal3 (a7) | 0 of 60 | 0.116 to 0.137 | 18 of 20 (5g) | 0.859 (5g) |
+| photoreal4 (f3) | 7 of 60 | 0.209 to 0.237 | 18 of 20 | 0.824 |
 
-- **The solo bar is met.** Photoreal4's renders are called a photograph
-  20% of the time in each round against none, and given 0.26 against 0.11;
-  the rounds spread 0.008.
-- The gain is in the close-ups: the black 2x4 0.07 to 0.78 (called a
-  photograph 6 of 6), the green plate 0.35 to 0.67 (6 of 6), the slope
-  0.17 to 0.31. The sets rose a little (6532 0.08 to 0.15, 6657 0.09 to
-  0.17, 6660 0.07 to 0.11) and none is called a photograph.
+- **The solo bar is met.** Photoreal4's lowest round (0.209) is above
+  photoreal3's highest (0.137); the rounds spread 0.021 and 0.028.
+  Photoreal4's renders are called a photograph 7 times in 60, photoreal3's
+  never.
+- The gain is in the close-ups (0.165 to 0.285): the green plate 0.33 to
+  0.71 (called a photograph 6 of 6), the 2x2s 0.12 to 0.33, the slope 0.24
+  to 0.38. The sets rose a little (0.064 to 0.120: 6532 0.07 to 0.14, 6657
+  0.10 to 0.14, 6660 0.04 to 0.16) and none is called a photograph.
+- **One shot's number is a lottery.** f1, with each part numbered by its
+  instance, had the black 2x4 at 0.78 (6 of 6 called a photograph: "small
+  dust specks, fine scratches, tiny nicks"); f3, the same code with the
+  parts numbered by place, has it at 0.09. Where the specks and scratches
+  fall decided it. f1's renders came to 0.259 to 0.265 in all, f2's (with
+  the fade) 0.215 to 0.233: a tree's mean over ten shots holds, a shot's
+  does not.
 - **The paired bar is not met**: 18 of 20 (both misses set 6512, a render
-  beside a render) at 0.829, against at most 16 or 0.80. Beside its
-  photograph every other shot is still found, sure 0.72 to 0.93; the
-  three 2x2s fell most (0.83 to 0.72).
-- **What both still name:** uniform plastic across parts and faces (76 of
-  the solo's render tells for photoreal4), no wear (74), the backdrop
-  (37), and logos and studs (34).
+  beside a render) at 0.824, against at most 16 or 0.80. Beside its
+  photograph every other shot is still found, sure 0.62 to 0.95; the
+  three 2x2s fell most (0.83 to 0.70).
+- **What both still name:** no wear (79 of the solo's render tells for
+  photoreal4), uniform plastic across parts and faces (76), logos and
+  studs (32) and the backdrop (30).
 
 **Colour, gloss and time.** The tent's faces against their photographs:
-green top 1.7, red top 3.2, blue top 0.3, the slope 3.2 (all within 5;
-5g's 2.6, 2.6, 0.3, 1.6). Highlights and L* spreads are where 5g left
-them (the green top's spread 1.8 against 7.8). The car at Best, Product,
-1280x720, 256 samples: 2.29, 2.40 and 2.57 s (the bar is 8.4 s).
+green top 2.5, red top 2.9, blue top 0.8, the slope 1.8 (all within 5;
+5g's 2.6, 2.6, 0.3, 1.6). The sets' whites (b* of their pale parts inside
+the photograph's outline): 6532 7.8 against the photograph's 10.3 (a7
+1.0), 6660 8.4 against 10.1 (a7 0.0); 6657 4.7 against 14.3. Highlights
+and L* spreads are where 5g left them (the green top's spread 2.8 against
+7.8). The car at Best, Product, 1280x720, 256 samples: 2.48, 2.53 and
+2.55 s (the bar is 8.4 s).
 
 **Pictures.** `bench/results/photoreal4-2026-11-22/side_by_side/`: one row
-per shot, the photograph, photoreal3 (a7) and this (f1). The verdicts are
-`solo_p2p3.json`, `solo_p3p4_f1.json` and `judge_f1.json`.
+per shot, the photograph, photoreal3 (a7) and this (f3). The verdicts are
+`solo_p2p3.json`, `solo_p3p4_f3.json` and `judge_f3.json` (f1 and f2 beside
+them).
 
 **What is left, in order:**
 1. **Uniformity across a set's parts.** Real parts of one colour differ a
