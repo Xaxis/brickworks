@@ -3407,9 +3407,25 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		"new_page", "alone":
 			var page: String = "new" if op == "new_page" else "alone"
 			var off: bool = str(own.get("page", "")) == page
+			# A locked page is not taken away until it is unlocked (pagetools).
+			if off and int(own.get("lock", 0)) > 0:
+				_take_back(undo)
+				return "step %d starts a locked page: unlock it first" % number
 			change = {"page": null if off else page}
 			words = ("step %d " % number) + ("back with the steps before it" if off
 				else ("starts a new page" if page == "new" else "on a page alone"))
+		# pagetools: the page this step starts locked (steps= how many it
+		# holds), or frozen with the page set up as it is now; again undoes it.
+		"page_lock":
+			var locked: bool = int(own.get("lock", 0)) > 0
+			change = {"lock": null if locked else clampi(int(fields.get("steps", 1)), 1,
+				BookletLooks.LOCK_MOST)}
+			words = "the page step %d starts %s" % [number, "unlocked" if locked else "locked"]
+		"page_freeze":
+			var frozen: bool = own.get("freeze") is Dictionary
+			change = {"freeze": null if frozen else {"sheet": BookletLooks.frozen_of(BookletSheet.of(world))}}
+			words = "the page step %d starts %s" % [number, "no longer frozen: it takes the booklet's page setup"
+				if frozen else "frozen: it keeps its page setup as it is now"]
 		"parts":
 			var shown: bool = bool(own.get("parts", true))
 			change = {"parts": not shown}

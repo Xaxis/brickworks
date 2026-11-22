@@ -803,6 +803,11 @@ func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
 	entry.zoom = clampf(float(own.get("zoom", 1.0)), 0.25, 4.0)
 	entry.size = clampf(float(own.get("size", 1.0)), 0.4, 3.0)
 	entry.page_break = str(own.get("page", ""))
+	# The page it starts locked, or frozen on the page it kept (pagetools).
+	entry.lock = int(own.get("lock", 0))
+	if own.get("freeze") is Dictionary:
+		entry.own_sheet = BookletLooks.page_sheet(_sheet, own["freeze"])
+		entry.number_scale = entry.own_sheet.number_scale()
 	_hand_look(entry, step)
 	entry.sign_off = not bool(own.get("sign", true))
 	var turn: Dictionary = BookletLooks.turn_at(_world, section, step.authored_step)
@@ -1867,7 +1872,8 @@ func _draw(into: Array, entry: Booklet.Entry) -> void:
 	# in the picture's box and must not be painted over.
 	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
 		int(where[1]), view, size,
-		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else _sheet.behind()),
+		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else (entry.own_sheet
+			if entry.own_sheet != null else _sheet).behind()),
 		(5.0 * px_per_mm) if entry.cropped else 0.0)
 	_later([shot], func() -> void:
 		entry.image = _uri(shot)

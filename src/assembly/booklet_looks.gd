@@ -100,6 +100,22 @@
 ## themselves as sub-models, and so does Studio; the line names which
 ## sub-model's build or which stage each chapter of the booklet starts at.
 ##
+## A page locked or frozen (pagetools, StudWorx's page lock and
+## snowflake) is kept on the step its page starts with. "lock": the number
+## of steps the page holds: the booklet starts a page there and puts those
+## steps on it whatever else changes (Booklet.Layout), the page editor
+## moves nothing on it, Apply to later pages passes it by, and its page
+## break cannot be taken off until it is unlocked. "freeze": {"sheet": the
+## page set up as it was when frozen, its FROZEN fields alone}: the page
+## keeps those when the booklet's page setup changes; its paper, the
+## pictures behind it and the cover stay the booklet's, one paper a
+## booklet. In the file, inside the step: "0 !BRICKWORKS PAGE LOCK 2",
+## "... PAGE FREEZE MARGIN 12 COLOUR #FFFFFF" (PAGE_SETUP's words, none for
+## the booklet's own page) and "... PAGE FREEZE_TEXT HEADER words" a line
+## for each of its words. A build before these keeps them as lines it does
+## not read ("PAGE" is a word it reads, these values are not), and writes
+## them back.
+##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
 ## had (follow), and each section's start with the step that begins it.
@@ -147,10 +163,48 @@ const ZOOMS: Array[float] = [0.5, 0.67, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0]
 const SIZES: Array[float] = [0.6, 0.8, 1.0, 1.25, 1.5, 2.0]
 ## How far up or down a tilt may go, from level, in degrees.
 const PITCH_MOST := 80.0
+## What a frozen page keeps of the booklet's page setup (BookletSheet): all
+## but the paper, the pictures, the cover's words and what a later build
+## wrote, which are the booklet's. The new parts' outline is drawn by the
+## booklet as a whole and stays the booklet's too.
+const FROZEN: Array[String] = ["margin", "colour", "number", "header", "footer", "box_frame",
+	"box_fill", "box_corners", "number_colour"]
+## The most steps a locked page holds: four is the most a page has.
+const LOCK_MOST := 4
 
 
 static func key(definition: String, step: int) -> String:
 	return "%s|%d" % [definition, step]
+
+
+## What a frozen page keeps of [param sheet]: its [constant FROZEN] fields
+## that are not the booklet's own.
+static func frozen_of(sheet: BookletSheet) -> Dictionary:
+	var said: Dictionary = sheet.said()
+	var out: Dictionary = {}
+	for field: String in FROZEN:
+		if said.has(field):
+			out[field] = said[field]
+	return out
+
+
+## The page a step's [param freeze] ("freeze" of its look) is laid out on:
+## [param booklet]'s, with what the page kept when it was frozen in place
+## of the booklet's own of those fields. [param booklet] itself when the
+## page is not frozen.
+static func page_sheet(booklet: BookletSheet, freeze: Variant) -> BookletSheet:
+	if not freeze is Dictionary:
+		return booklet
+	var said: Dictionary = booklet.said()
+	for field: String in FROZEN:
+		said.erase(field)
+	said.merge(frozen_of(BookletSheet.from((freeze as Dictionary).get("sheet", {}))), true)
+	var out: BookletSheet = BookletSheet.from(said)
+	out.picture_uri = booklet.picture_uri
+	out.missing = booklet.missing
+	out.cover_uri = booklet.cover_uri
+	out.cover_missing = booklet.cover_missing
+	return out
 
 
 ## The most letters a step's name keeps, each as a reader sees it (a letter
@@ -687,6 +741,10 @@ static func _usual(field: String, value: Variant) -> bool:
 			return name_of(value).is_empty()
 		"per_page":
 			return int(value) <= 0
+		"lock":
+			return int(value) <= 0
+		"freeze":
+			return not (value is Dictionary)
 	return false
 
 
@@ -1633,6 +1691,24 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				if value in ["NEW", "ALONE"]:
 					_put_in(out, key(definition, step), "page", value.to_lower())
 					took = true
+				# pagetools: the page this step starts locked, or frozen with
+				# the page set up as it was.
+				elif value == "LOCK" and words.size() == 5 and words[4].is_valid_int() \
+						and words[4].to_int() >= 1:
+					_put_in(out, key(definition, step), "lock", mini(words[4].to_int(), LOCK_MOST))
+					took = true
+				elif value in ["FREEZE", "FREEZE_TEXT"]:
+					var frozen: Dictionary = (out.get(key(definition, step), {}) as Dictionary).get(
+						"freeze", {"sheet": {}})
+					var sheet: Dictionary = BookletSheet.read_line(
+						"PAGE_SETUP" if value == "FREEZE" else "PAGE_TEXT", words.slice(4),
+						_rest_after(line, 5), frozen["sheet"])
+					var kept: Dictionary = frozen_of(BookletSheet.from(sheet))
+					# A word of the page setup this build does not keep on a
+					# frozen page is not taken: the line is kept as written.
+					if kept == sheet:
+						_put_in(out, key(definition, step), "freeze", {"sheet": kept})
+						took = true
 			"ZOOM":
 				if value.is_valid_float() and value.to_float() > 0.0:
 					_put_in(out, key(definition, step), "zoom", clampf(value.to_float(), 0.25, 4.0))
@@ -2101,6 +2177,13 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 			return _typed_number(value, 0.4, 3.0)
 		"page":
 			return value if value is String and value in ["new", "alone"] else null
+		"lock":
+			return clampi(int(value), 1, LOCK_MOST) if (value is int or value is float) \
+				and float(value) >= 1.0 else null
+		"freeze":
+			if not value is Dictionary or not (value as Dictionary).get("sheet", {}) is Dictionary:
+				return null
+			return {"sheet": frozen_of(BookletSheet.from((value as Dictionary).get("sheet", {})))}
 		"parts", "sign", "colours", "preview", "callout", "highlight", "colours_all":
 			return value if value is bool else null
 		"per_page":
@@ -2733,6 +2816,13 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		out.append(str(other) + eol)
 	if look.has("page"):
 		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
+	if int(look.get("lock", 0)) > 0:
+		out.append(META + "PAGE LOCK %d" % int(look["lock"]) + eol)
+	if look.get("freeze") is Dictionary:
+		var frozen: BookletSheet = BookletSheet.from((look["freeze"] as Dictionary).get("sheet", {}))
+		out.append((META + "PAGE FREEZE " + frozen.line_words()).strip_edges() + eol)
+		for words: String in frozen.text_lines():
+			out.append(META + "PAGE FREEZE_TEXT " + words + eol)
 	if look.has("zoom"):
 		out.append(META + "ZOOM " + _number(float(look["zoom"])) + eol)
 	if look.has("size"):
@@ -3125,6 +3215,10 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 			parts.append("new page")
 		"alone":
 			parts.append("a page alone")
+	if int(own.get("lock", 0)) > 0:
+		parts.append("its page locked")
+	if own.get("freeze") is Dictionary:
+		parts.append("its page frozen")
 	if own.has("parts") and not bool(own["parts"]):
 		parts.append("no parts list")
 	var place: Dictionary = own.get("place", {})
