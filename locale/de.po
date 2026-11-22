@@ -15894,3 +15894,39 @@ msgstr "Bei %s s liegt schon ein Key: dieser bleibt, wo er war."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "Der Key bei %s s neu gesetzt, weniger als ein Bild von der Zeit entfernt: wo die Kamera steht, worauf sie blickt und ihr Objektiv."
+
+msgid "Outline width"
+msgstr "Umrissbreite"
+
+msgid "How wide the band round the parts each step adds is, printed as shown: 5 px a millimetre"
+msgstr "Wie breit das Band um die Teile ist, die jeder Schritt hinzufügt, gedruckt wie gezeigt: 5 px pro Millimeter"
+
+msgid "Lock page"
+msgstr "Seite sperren"
+
+msgid "Unlock page"
+msgstr "Seite entsperren"
+
+msgid "Freeze page"
+msgstr "Seite einfrieren"
+
+msgid "Unfreeze page"
+msgstr "Seite auftauen"
+
+msgid "Nothing on this page moves, Apply to later pages passes it by, and its steps stay on it until it is unlocked"
+msgstr "Nichts auf dieser Seite bewegt sich, „Auf spätere Seiten anwenden“ lässt sie aus, und ihre Schritte bleiben auf ihr, bis sie entsperrt wird"
+
+msgid "This page keeps its page setup as it is now when the booklet's page setup changes"
+msgstr "Diese Seite behält ihre Seiteneinrichtung wie jetzt, wenn sich die Seiteneinrichtung des Hefts ändert"
+
+msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
+msgstr "Alt gedrückt halten, um den Abstand des gewählten Elements zu den Seitenrändern, den Rändern und seinen Nachbarn zu sehen"
+
+msgid "This page is locked: Unlock page to change what is on it."
+msgstr "Diese Seite ist gesperrt: „Seite entsperren“, um zu ändern, was darauf ist."
+
+msgid "Only a page of steps locks."
+msgstr "Nur eine Seite mit Schritten lässt sich sperren."
+
+msgid "Only a page of steps freezes."
+msgstr "Nur eine Seite mit Schritten lässt sich einfrieren."

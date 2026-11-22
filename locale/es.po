@@ -15894,3 +15894,39 @@ msgstr "Ya hay una clave en %s s: esta se queda donde estaba."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clave de %s s fijada de nuevo, a menos de un fotograma del tiempo: dónde está la cámara, a qué mira y su objetivo."
+
+msgid "Outline width"
+msgstr "Ancho del contorno"
+
+msgid "How wide the band round the parts each step adds is, printed as shown: 5 px a millimetre"
+msgstr "El ancho de la banda alrededor de las piezas que añade cada paso, impresa tal como se ve: 5 px por milímetro"
+
+msgid "Lock page"
+msgstr "Bloquear la página"
+
+msgid "Unlock page"
+msgstr "Desbloquear la página"
+
+msgid "Freeze page"
+msgstr "Congelar la página"
+
+msgid "Unfreeze page"
+msgstr "Descongelar la página"
+
+msgid "Nothing on this page moves, Apply to later pages passes it by, and its steps stay on it until it is unlocked"
+msgstr "Nada se mueve en esta página, «Aplicar a las páginas siguientes» la salta y sus pasos se quedan en ella hasta desbloquearla"
+
+msgid "This page keeps its page setup as it is now when the booklet's page setup changes"
+msgstr "Esta página conserva su configuración actual cuando cambia la configuración de página del folleto"
+
+msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
+msgstr "Mantén Alt para ver el espacio del elemento elegido hasta los bordes de la página, sus márgenes y sus vecinos"
+
+msgid "This page is locked: Unlock page to change what is on it."
+msgstr "Esta página está bloqueada: «Desbloquear la página» para cambiar lo que tiene."
+
+msgid "Only a page of steps locks."
+msgstr "Solo se bloquea una página de pasos."
+
+msgid "Only a page of steps freezes."
+msgstr "Solo se congela una página de pasos."

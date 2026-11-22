@@ -2413,6 +2413,37 @@ picture the assistant is shown.
   first, the cap, nothing on anything or off the page, the callouts where
   the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
   and a reopen laid out the same.
+- `pagetools probe` (APP_UX11 pagetools, 2026-11-22; StudWorx's page tools in
+  the page editor): **the element inspector**, Alt held over the selected
+  item (`PageEditor.inspected`, `_draw_inspector`): its distance to the
+  page's edges, its margins and its nearest neighbour on each side, and its
+  size, in page mm, drawn on the editor alone, never printed;
+  `page_state().inspected`. **Lock page** (`page_lock`; `PageEditor.lock_page`,
+  `Shell.change_look "page_lock"`, BookletLooks `"lock"`: the steps the page
+  holds, `0 !BRICKWORKS PAGE LOCK 2` on its first step): drags, handles,
+  Put back and adds refused on it; `later_layout` passes it by (said
+  "locked page N passed by"); `Booklet.Layout` keeps its steps on it
+  whatever Steps a page, page breaks or sections say; its page break is
+  refused off until unlocked. **Freeze page** (`page_freeze`; BookletLooks
+  `"freeze"` {"sheet": its `FROZEN` fields}, `page_sheet`; `PAGE FREEZE
+  <PAGE_SETUP words>` and `PAGE FREEZE_TEXT HEADER words`): the page keeps
+  its margins, colour, numbers, parts box and header/footer when Page
+  setup changes, in the editor (`shown_sheet`), the booklet's section
+  (`Booklet._frozen_style` --page/--box/--box-line, `frozen_sheet`) and the
+  PDF's reading (`BookletRead._page`); paper, pictures and the outline stay
+  the booklet's. `pagetools_probe` (windowed, gatehouse): the words read
+  and a paper word kept unread, a peer's typed in range; the inspector's
+  numbers against the items' own boxes, shot; lock and freeze one undo
+  each, refusals, Steps a page 1, Apply to later passing it by, the frozen
+  page white-proof in editor, HTML and PDF reading; saved, reopened byte
+  for byte, autosave, an unlock after reopen changing that one line.
+- `outline width probe` (pagetools): **Outline width** in Page setup's Steps
+  tab and `page_setup outline_width=` (`BookletSheet.outline_width`, 1 to
+  72 px at the booklet's 5 px a mm, `OUTLINE_WIDTH 12` on PAGE_SETUP): the
+  band drawn exactly by `booklet_band.gdshader` and booklet_ink's column
+  pass when not the booklet's own 3, scaled by `px_per_mm` so screen, web
+  and PDF match; `outline_width_probe` (windowed) measures it round a lone
+  plate on 360 rays at 1, 3, 12 and 72, one undo, kept byte for byte.
 - `booklet safe probe` and `a file's booklet runs nothing in a browser`
   (booksafe, 2026-11-06): a booklet is HTML, on the web written into a tab
   of the site's own, and its words and pictures come from a model file that
@@ -2718,6 +2749,14 @@ picture the assistant is shown.
   opened; the first step edit of a stepless file numbering its held part
   with the 3020 before it (`AuthorSteps._held_as_filed`), undone to the
   stepless file.
+- `the booklet as a web page` (pagetools): **Save as web page** in the
+  booklet's bar, One long page or A page per step, Light or Dark
+  (`BookletHtml`, reading the booklet's own file as `BookletRead` does;
+  `Main._save_booklet_html`, `NAME_web.html` / `NAME_web.zip` with
+  index.html and step-NNN.html linked Previous / Contents / Next): pictures
+  on the booklet's page colour in both themes, no script, words escaped,
+  only data: pictures. `booklet_html_probe` (headless `--by-hand`, and on
+  the gatehouse's real booklet); `booklet_flow.mjs` downloads it on the web.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,
