@@ -66,6 +66,7 @@ var _box_frame: ColorPickerButton
 var _box_fill: ColorPickerButton
 var _box_corners: SpinBox
 var _outline: ColorPickerButton
+var _outline_width: SpinBox
 var _usual_colours: Button
 ## Which picture the picker is choosing: "behind" or "cover".
 var _picking: String = "behind"
@@ -194,12 +195,19 @@ func _ready() -> void:
 	_row(steps, "Parts box corners", _box_corners)
 	_outline = _colour_field("outline_colour", "The colour round the parts each step adds")
 	_row(steps, "New parts outline", _outline)
+	# pagetools: StudWorx's Highlight Width, 1 to 72. In the booklet's own
+	# pixels, 5 a millimetre, so the band printed is the band shown.
+	_outline_width = _spin(Vector2(BookletSheet.OUTLINE_WIDTH_RANGE), 1.0, " px",
+		"How wide the band round the parts each step adds is, printed as shown: 5 px a millimetre",
+		"outline_width")
+	_row(steps, "Outline width", _outline_width)
 	_usual_colours = Button.new()
 	_usual_colours.text = "Usual colours"
 	_usual_colours.tooltip_text = "The booklet's own parts box, step numbers and outline again"
 	_usual_colours.pressed.connect(func() -> void:
 		_apply({"box_frame": "usual", "box_fill": "usual", "box_corners": BookletSheet.BOX_CORNERS,
-			"number_colour": "usual", "outline_colour": "usual"}))
+			"number_colour": "usual", "outline_colour": "usual",
+			"outline_width": BookletSheet.OUTLINE_WIDTH}))
 	_row(steps, "", _usual_colours)
 
 	column.add_child(HSeparator.new())
@@ -448,6 +456,7 @@ func fill() -> void:
 	for field: String in _colours:
 		(_colours[field] as ColorPickerButton).color = sheet.get(field)
 	_box_corners.value = sheet.box_corners
+	_outline_width.value = sheet.outline_width
 	_style.clear()
 	_style.add_item("Choose a style…")
 	var names: Array = BookletSheet.styles().keys()
@@ -473,6 +482,12 @@ func _apply(fields: Dictionary) -> void:
 	var said: String = shell.page_setup(fields)
 	shell.bar.say(said)
 	_said.text = said.left(1).to_upper() + said.substr(1)
+	# Pages frozen in the page editor keep their own (pagetools): said, so a
+	# change that leaves them as they were is not a surprise.
+	var frozen: int = shell.world.step_looks.values().filter(func(look: Variant) -> bool:
+		return look is Dictionary and (look as Dictionary).get("freeze") is Dictionary).size()
+	if frozen > 0:
+		_said.text += " " + tr("Frozen pages keep their own page setup: %d.") % frozen
 	_refill()
 
 

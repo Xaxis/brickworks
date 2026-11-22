@@ -31,6 +31,19 @@
 ## before anything else; dragged off the page, a guide is gone. Each is one
 ## undo, and printed as the page shows it (Booklet.note_style,
 ## BookletLooks.arrow_line); the guides are not printed.
+##
+## StudWorx's page tools (pagetools). With Alt held, or Measure on (a
+## finger has no Alt), the selected item shows the room round it, as a
+## designer's inspector does: to the page's edges, to its margins and to the
+## nearest thing on each side, and its own size, all in millimetres of the
+## page ([method inspected]); drawn here alone, never printed. Lock page
+## keeps the page as it is: each item placed where it is, nothing on it
+## changed by anyone until it is unlocked (Shell.change_look refuses it),
+## Apply to later pages passes it by, and the booklet keeps as many steps on
+## it (Booklet.Layout); Freeze page keeps its margins, colours, words and
+## numbers as they are now when the booklet's change, and the page is drawn
+## and snapped to by them here ([method shown_sheet]) (BookletLooks "lock"
+## and "freeze", one undo each).
 class_name PageEditor
 extends Control
 
@@ -117,6 +130,15 @@ var _ruler: float = RULER
 var _stem: float = KNOB_STEM
 ## The words were all selected when the finger came down on their field.
 var _words_whole: bool = false
+## Alt held, or Measure on: the selected item's room drawn round it
+## ([method inspected]).
+var _inspecting: bool = false
+## Measure: the inspector kept on without Alt, for a finger (ptreview N1).
+var _measure: Button = null
+## The inspector's labels drawn so far this frame, so none lands on another.
+var _pills: Array[Rect2] = []
+const INSPECT := Color(0.0, 0.55, 0.42)
+const INSPECT_EDGE := Color(0.45, 0.5, 0.56)
 
 const PAGE_COLOUR := Color8(220, 236, 248)
 const CALLOUT_COLOUR := Color8(255, 243, 200)
@@ -176,6 +198,12 @@ func _ready() -> void:
 			["page_apply_later", "Apply to later pages", "This page's layout on every later page "
 				+ "with as many steps: each step's picture, parts list, number and callout where "
 				+ "this page has them"],
+			["page_lock", "Lock page", "Nothing on this page moves or changes until it is unlocked, "
+				+ "Apply to later pages passes it by, and it keeps as many steps as it has now: a step "
+				+ "put in or taken out among them changes which"],
+			["page_freeze", "Freeze page", "This page keeps its margins, colours, header, footer and "
+				+ "step numbers as they are now when the booklet's page setup changes; its paper, "
+				+ "picture and parts stay the booklet's"],
 			["page_done", "Done", "Back to the model"]]:
 		var button := Button.new()
 		button.text = spec[1]
@@ -207,10 +235,21 @@ func _ready() -> void:
 	_opacity_box.value_changed.connect(func(value: float) -> void: _set_note("opacity", value / 100.0))
 	row.add_child(_opacity_box)
 	_named["page_opacity"] = _opacity_box
+	# The inspector for a finger, which has no Alt to hold (ptreview N1).
+	_measure = Button.new()
+	_measure.text = "Measure"
+	_measure.toggle_mode = true
+	_measure.tooltip_text = "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+	_measure.focus_mode = Control.FOCUS_NONE
+	_measure.add_theme_font_size_override("font_size", 12)
+	_measure.toggled.connect(func(_on: bool) -> void: _canvas.queue_redraw())
+	row.add_child(_measure)
+	_named["page_measure"] = _measure
 	_said = Label.new()
 	_said.add_theme_font_size_override("font_size", 11)
 	_said.modulate = Color(1, 1, 1, 0.75)
 	_said.text = "Drag an item to place it; drag its corner to size it."
+	_said.tooltip_text = "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
 	column.add_child(_said)
 	var holder := Control.new()
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -410,6 +449,11 @@ func _process(_delta: float) -> void:
 		if not visible:
 			Wake.rest(self)
 		return
+	# The inspector, while Alt is held (pagetools).
+	var held: bool = Input.is_key_pressed(KEY_ALT) or _measure.button_pressed
+	if held != _inspecting:
+		_inspecting = held
+		_canvas.queue_redraw()
 	var builder: Builder = app.get("_builder")
 	var now: Array = [builder._history.size(), builder._redo.size()]
 	if now != _seen_history and _drag.is_empty() and _guide_drag.is_empty():
@@ -521,12 +565,26 @@ func _show_page() -> void:
 		return
 	var page: Booklet.Page = _pages[_at]
 	_callout_shown = page.number if page.kind == "callout" else -1
+	# pagetools: Lock page and Freeze page say what pressing them does now.
+	var steps_page: bool = page.kind == "steps"
+	(_named["page_lock"] as Button).text = "Unlock page" if locked() else "Lock page"
+	(_named["page_lock"] as Button).disabled = not steps_page
+	(_named["page_freeze"] as Button).text = "Unfreeze page" if shown_sheet() != _sheet else "Freeze page"
+	(_named["page_freeze"] as Button).disabled = not steps_page
 	var numbers := PackedStringArray()
 	for number: int in _page_steps():
 		numbers.append(str(number))
 	_title.text = "Page %d (%sstep%s %s)" % [page.number,
 		("the %s, built on its own: " % page.name) if page.kind == "callout" else "",
 		"" if numbers.size() == 1 else "s", ", ".join(numbers)]
+	# Locked or frozen, said where the page is named (pagetools).
+	var held := PackedStringArray()
+	if not page.entries.is_empty() and page.entries[0].lock > 0:
+		held.append(tr("locked"))
+	if not page.entries.is_empty() and page.entries[0].own_sheet != null:
+		held.append(tr("frozen"))
+	if not held.is_empty():
+		_title.text += " · " + " · ".join(held)
 	for entry: Booklet.Entry in page.entries:
 		var index: int = int(entry.get_meta("step", -1))
 		var step: Instructions.Step = _plan[index] if index >= 0 and index < _plan.size() else null
@@ -863,7 +921,8 @@ static func _box_of(item: Dictionary) -> Rect2:
 func _draw_page() -> void:
 	var k: float = _scale()
 	var font: Font = ThemeDB.fallback_font
-	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), _sheet.colour)
+	var sheet: BookletSheet = shown_sheet()
+	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), sheet.colour)
 	if _behind != null:
 		# Covering the page, as the booklet lays it (BookletRead).
 		var natural := Vector2(_behind.get_width(), _behind.get_height())
@@ -871,7 +930,7 @@ func _draw_page() -> void:
 		var seen: Rect2 = Rect2((covering - _canvas.size) * 0.5, _canvas.size)
 		_canvas.draw_texture_rect_region(_behind, Rect2(Vector2.ZERO, _canvas.size),
 			Rect2(seen.position / covering * natural, seen.size / covering * natural))
-	var area: Rect2 = Booklet.content(_sheet)
+	var area: Rect2 = Booklet.content(sheet)
 	_canvas.draw_rect(Rect2(area.position * k, area.size * k), Color(0.24, 0.43, 0.59, 0.35),
 		false, 1.0)
 	if _at >= 0 and _at < _pages.size():
@@ -882,20 +941,20 @@ func _draw_page() -> void:
 			_canvas.draw_rect(Rect2(page.frame.position * k, page.frame.size * k), INK, false,
 				maxf(1.0, 0.5 * k))
 		if not page.banner.is_empty():
-			_canvas.draw_rect(Rect2(Vector2(_sheet.margin, _sheet.margin) * k,
+			_canvas.draw_rect(Rect2(Vector2(sheet.margin, sheet.margin) * k,
 				Vector2(area.size.x, Booklet.BANNER - 3.0) * k), Color8(35, 82, 124))
-		_canvas.draw_string(font, Vector2(_sheet.size().x - _sheet.margin - 8.0,
-			_sheet.size().y - _sheet.margin + 4.0) * k, str(page.number), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		_canvas.draw_string(font, Vector2(sheet.size().x - sheet.margin - 8.0,
+			sheet.size().y - sheet.margin + 4.0) * k, str(page.number), HORIZONTAL_ALIGNMENT_LEFT, -1,
 			int(3.6 * k), INK)
 		# The designer's words at the head and foot of every page (booklook).
 		var words := Color8(59, 70, 82)
-		if not _sheet.header.is_empty():
-			_canvas.draw_string(font, Vector2(_sheet.margin, _sheet.margin * 0.5 + 1.2) * k,
-				_sheet.header, HORIZONTAL_ALIGNMENT_CENTER, (_sheet.size().x - _sheet.margin * 2.0) * k,
+		if not sheet.header.is_empty():
+			_canvas.draw_string(font, Vector2(sheet.margin, sheet.margin * 0.5 + 1.2) * k,
+				sheet.header, HORIZONTAL_ALIGNMENT_CENTER, (sheet.size().x - sheet.margin * 2.0) * k,
 				maxi(8, int(Booklet.HEADER_SIZE * k)), words)
-		if not _sheet.footer.is_empty():
-			var foot: Rect2 = Booklet.footer_rect(_sheet)
-			_canvas.draw_string(font, Vector2(foot.position.x, foot.end.y - 0.4) * k, _sheet.footer,
+		if not sheet.footer.is_empty():
+			var foot: Rect2 = Booklet.footer_rect(sheet)
+			_canvas.draw_string(font, Vector2(foot.position.x, foot.end.y - 0.4) * k, sheet.footer,
 				HORIZONTAL_ALIGNMENT_CENTER, foot.size.x * k, maxi(8, int(Booklet.FOOTER_SIZE * k)), words)
 	for at: int in _items.size():
 		_draw_item(_items[at], k, font)
@@ -926,6 +985,132 @@ func _draw_page() -> void:
 			_canvas.draw_line(Vector2(mm, 0), Vector2(mm, _canvas.size.y), GUIDE, 1.0)
 		else:
 			_canvas.draw_line(Vector2(0, mm), Vector2(_canvas.size.x, mm), GUIDE, 1.0)
+	if _inspecting and _selected >= 0 and _selected < _items.size() and _drag.is_empty():
+		_draw_inspector(inspected(_selected), k, font)
+
+
+## The selected item's room as the inspector draws it: a line to each page
+## edge and margin, and to the nearest thing on each side, each with its
+## length in mm; its own size over it.
+func _draw_inspector(seen: Dictionary, k: float, font: Font) -> void:
+	_pills.clear()
+	var box: Rect2 = seen["box"]
+	var middle: Vector2 = box.get_center()
+	var size: Vector2 = shown_sheet().size()
+	var margin: float = shown_sheet().margin
+	for side: String in ["left", "right", "top", "bottom"]:
+		var across: bool = side in ["left", "right"]
+		var from: Vector2 = Vector2(box.position.x if side == "left" else box.end.x, middle.y) if across \
+			else Vector2(middle.x, box.position.y if side == "top" else box.end.y)
+		var edge: Vector2 = Vector2(0.0 if side == "left" else size.x, from.y) if across \
+			else Vector2(from.x, 0.0 if side == "top" else size.y)
+		_measure_line(from, edge, float(seen["edges"][side]), INSPECT_EDGE, k, font, 1.0)
+		var inset: Vector2 = Vector2((margin if side == "left" else size.x - margin), from.y) if across \
+			else Vector2(from.x, margin if side == "top" else size.y - margin)
+		var off: Vector2 = Vector2(0.0, 3.0) if across else Vector2(3.0, 0.0)
+		_measure_line(from + off, inset + off, float(seen["margins"][side]), RULER_GUIDE, k, font, 0.7)
+		var near: Variant = (seen["neighbours"] as Dictionary).get(side)
+		if near is Dictionary:
+			var to: Rect2 = near["box"]
+			var lane: float = (maxf(box.position.y, to.position.y) + minf(box.end.y, to.end.y)) * 0.5 \
+				if across else (maxf(box.position.x, to.position.x) + minf(box.end.x, to.end.x)) * 0.5
+			var a: Vector2 = Vector2(from.x, lane) if across else Vector2(lane, from.y)
+			var b: Vector2 = Vector2(to.end.x if side == "left" else to.position.x, lane) if across \
+				else Vector2(lane, to.end.y if side == "top" else to.position.y)
+			_measure_line(a, b, float(near["gap"]), INSPECT, k, font, 1.0)
+	# Its own size inside its top, clear of the line up to the page's edge.
+	var label: String = "%s × %s mm" % [_mm_said(box.size.x), _mm_said(box.size.y)]
+	_pill(Vector2(middle.x, box.position.y) * k + Vector2(0, 12), label, INSPECT, font)
+
+
+## A line from [param a] to [param b] (page mm) with its length's label at
+## its middle; nothing for a length under a tenth of a millimetre.
+func _measure_line(a: Vector2, b: Vector2, mm: float, colour: Color, k: float, font: Font,
+		width: float) -> void:
+	if absf(mm) < 0.05:
+		return
+	_canvas.draw_line(a * k, b * k, colour, width * 1.5, true)
+	for end: Vector2 in [a, b]:
+		var cross: Vector2 = (b - a).orthogonal().normalized() * 3.0
+		_canvas.draw_line(end * k - cross, end * k + cross, colour, 1.5, true)
+	_pill((a + b) * 0.5 * k, _mm_said(mm), colour, font)
+
+
+func _pill(at: Vector2, words: String, colour: Color, font: Font) -> void:
+	var size: int = 11
+	var wide: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var box := Rect2(at - Vector2(wide * 0.5 + 4.0, 8.0), Vector2(wide + 8.0, 16.0))
+	# Clear of the labels drawn before it: a margin's beside its edge's was
+	# drawn over it (ptreview N7).
+	for _try: int in 8:
+		if not _pills.any(func(other: Rect2) -> bool: return other.grow(1.0).intersects(box)):
+			break
+		box.position.y += box.size.y + 2.0
+	_pills.append(box)
+	_canvas.draw_rect(box, colour)
+	_canvas.draw_string(font, box.position + Vector2(4.0, 12.0), words, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		size, Color.WHITE)
+
+
+static func _mm_said(mm: float) -> String:
+	return BookletLooks._number(snappedf(mm, 0.1))
+
+
+## Item [param at]'s room, in page mm: {"box" (as it stands, turned),
+## "size" [w, h], "edges" and "margins" {left, right, top, bottom} (to a
+## margin less than nothing where it is past it), "neighbours" {side:
+## {"name", "gap", "box"}}, the nearest thing it faces on each side, none
+## where nothing faces it there}.
+func inspected(at: int) -> Dictionary:
+	var box: Rect2 = _box_of(_items[at])
+	var size: Vector2 = shown_sheet().size()
+	var margin: float = shown_sheet().margin
+	var near: Dictionary = {}
+	for other: int in _items.size():
+		if other == at:
+			continue
+		var them: Rect2 = _box_of(_items[other])
+		var level: bool = them.position.y < box.end.y and them.end.y > box.position.y
+		var upright: bool = them.position.x < box.end.x and them.end.x > box.position.x
+		for side: String in ["left", "right", "top", "bottom"]:
+			var gap: float = -1.0
+			match side:
+				"left":
+					gap = box.position.x - them.end.x if level else -1.0
+				"right":
+					gap = them.position.x - box.end.x if level else -1.0
+				"top":
+					gap = box.position.y - them.end.y if upright else -1.0
+				"bottom":
+					gap = them.position.y - box.end.y if upright else -1.0
+			if gap >= 0.0 and (not near.has(side) or gap < float(near[side]["gap"])):
+				near[side] = {"name": _item_name(other), "gap": snappedf(gap, 0.1), "box": them}
+	return {"box": box, "size": [snappedf(box.size.x, 0.1), snappedf(box.size.y, 0.1)],
+		"edges": {"left": snappedf(box.position.x, 0.1), "top": snappedf(box.position.y, 0.1),
+			"right": snappedf(size.x - box.end.x, 0.1), "bottom": snappedf(size.y - box.end.y, 0.1)},
+		"margins": {"left": snappedf(box.position.x - margin, 0.1),
+			"top": snappedf(box.position.y - margin, 0.1),
+			"right": snappedf(size.x - margin - box.end.x, 0.1),
+			"bottom": snappedf(size.y - margin - box.end.y, 0.1)},
+		"neighbours": near}
+
+
+## The page shown's own page setup when it is frozen, else the booklet's.
+func shown_sheet() -> BookletSheet:
+	if _at >= 0 and _at < _pages.size() and not _pages[_at].entries.is_empty() \
+			and _pages[_at].entries[0].own_sheet != null:
+		return _pages[_at].entries[0].own_sheet
+	return _sheet
+
+
+## Whether the page shown is locked (BookletLooks "lock").
+func locked() -> bool:
+	return _at >= 0 and _at < _pages.size() and not _pages[_at].entries.is_empty() \
+		and _pages[_at].entries[0].lock > 0
+
+
+func _say_locked() -> void:
+	_say_soft("This page is locked: Unlock page to change what is on it.")
 
 
 ## A guide [param axis] "x" (upright) or "y" (across), [param at] pixels in.
@@ -976,8 +1161,8 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 				free.size.x, int(clampf(3.4 * k, 9, 18)), Color(0.15, 0.3, 0.45))
 		"parts":
 			# In the colours its page was set up with (BookletSheet, booklook).
-			_canvas.draw_rect(rect, _sheet.box_fill)
-			_canvas.draw_rect(rect, _sheet.box_frame, false, maxf(1.0, 0.35 * k))
+			_canvas.draw_rect(rect, shown_sheet().box_fill)
+			_canvas.draw_rect(rect, shown_sheet().box_frame, false, maxf(1.0, 0.35 * k))
 			# The parts in the rows the booklet puts them in (Booklet._entry).
 			var y: float = (item["rect"] as Rect2).position.y + Booklet.PAD
 			for row: Array in Booklet._rows(entry.lots, entry.parts_width):
@@ -1018,7 +1203,7 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 		"number":
 			_canvas.draw_string(font, rect.position + Vector2(0, entry.number_size * k * 0.82),
 				str(entry.number), HORIZONTAL_ALIGNMENT_LEFT, -1, int(entry.number_size * k),
-				_sheet.number_colour)
+				shown_sheet().number_colour)
 		"arrow":
 			var arrow: Dictionary = item["arrow"]
 			_draw_arrow(_shown_points(item), str(arrow.get("colour", "red")),
@@ -1300,7 +1485,7 @@ func _snap_point(at: Vector2) -> Vector2:
 		if item["kind"] != "arrow":
 			others.append(item["rect"])
 	var snapped: Dictionary = Booklet.snapped_to(Rect2(at, Vector2.ZERO), others, false, _guide_lines,
-		_sheet)
+		shown_sheet())
 	_guides = snapped["lines"]
 	return (snapped["rect"] as Rect2).position
 
@@ -1333,6 +1518,9 @@ func add_arrow(from: Vector2, to: Vector2, bends: Array = []) -> String:
 ## (a new point, after the stretch's first). A double-click on a bend takes
 ## it off. One undo each.
 func _on_point_input(which: String, event: InputEvent) -> void:
+	if locked() and event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		_say_locked()
+		return
 	if _selected < 0 or _selected >= _items.size() or _items[_selected]["kind"] != "arrow":
 		return
 	var item: Dictionary = _items[_selected]
@@ -1394,7 +1582,10 @@ func _on_item_input(at: int, event: InputEvent) -> void:
 		if button.pressed:
 			_select(at)
 			# The turn sign stays under its number: selected, to take off.
-			if _items[at]["kind"] != "sign":
+			# Nothing moves on a locked page; selected, it is inspected.
+			if locked():
+				_say_locked()
+			elif _items[at]["kind"] != "sign":
 				_drag = {"mode": "move", "from": _on_canvas(button),
 					"rect": _items[at]["rect"]}
 		elif not _drag.is_empty():
@@ -1409,7 +1600,9 @@ func _on_handle_input(event: InputEvent) -> void:
 	if _selected < 0:
 		return
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		if (event as InputEventMouseButton).pressed:
+		if (event as InputEventMouseButton).pressed and locked():
+			_say_locked()
+		elif (event as InputEventMouseButton).pressed:
 			_drag = {"mode": "resize", "from": _on_canvas(event as InputEventMouse),
 				"rect": _items[_selected]["rect"]}
 		elif not _drag.is_empty():
@@ -1425,6 +1618,9 @@ func _on_handle_input(event: InputEvent) -> void:
 ## KNOB_SNAP of (0, 15, 30, 45 ...). One undo when it is let go.
 func _on_knob_input(event: InputEvent) -> void:
 	if _selected < 0 or _selected >= _items.size() or not _items[_selected]["kind"] in ["text", "image"]:
+		return
+	if locked():
+		_say_locked()
 		return
 	var item: Dictionary = _items[_selected]
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
@@ -1530,7 +1726,7 @@ func _dragged(event: InputEventMouse) -> void:
 		else:
 			item["rect"] = Rect2(was.position + by, was.size)
 			var box: Rect2 = _box_of(item)
-			var snapped: Dictionary = Booklet.snapped_to(box, others, false, _guide_lines, _sheet)
+			var snapped: Dictionary = Booklet.snapped_to(box, others, false, _guide_lines, shown_sheet())
 			var onto: Rect2 = _on_page(snapped["rect"], false, _sheet.size())
 			item["rect"] = Rect2((item["rect"] as Rect2).position + onto.position - box.position, was.size)
 			_guides = snapped["lines"]
@@ -1539,7 +1735,7 @@ func _dragged(event: InputEventMouse) -> void:
 			was.size + (by if resize else Vector2.ZERO))
 		moved.size = moved.size.max(Vector2(6, 4))
 		var snapped: Dictionary = Booklet.snapped_to(_on_page(moved, resize, _sheet.size()), others, resize,
-			_guide_lines, _sheet)
+			_guide_lines, shown_sheet())
 		# Kept on the page as the booklet keeps it (Booklet._on_page), so what is
 		# dragged is where it prints.
 		item["rect"] = _on_page(snapped["rect"], resize, _sheet.size())
@@ -1629,9 +1825,20 @@ func _change(op: String, item: Dictionary, fields: Dictionary) -> String:
 
 
 func _pressed(name: String) -> void:
+	# What only starts an edit (a file to choose, an arrow to draw) is not
+	# begun on a locked page; every edit itself is refused where it is
+	# written, whoever asks (Shell.change_look), so an arrow armed or a
+	# picture chosen before the lock is refused too.
+	if locked() and name in ["page_add_image", "page_add_arrow"]:
+		_say_locked()
+		return
 	match name:
 		"page_done":
 			close()
+		"page_lock":
+			await lock_page()
+		"page_freeze":
+			await freeze_page()
 		"page_prev", "page_next":
 			if _pages.is_empty():
 				return
@@ -1697,6 +1904,54 @@ func _pressed(name: String) -> void:
 			await _lay_out((item["entry"] as Booklet.Entry).number)
 
 
+## The page shown locked, or unlocked when it is: one undo, kept on its
+## first step (Shell.change_look "page_lock").
+func lock_page() -> String:
+	var first: Dictionary = _first_step()
+	if first.is_empty():
+		_say_soft("Only a page of steps locks.")
+		return "only a page of steps locks"
+	# Each item placed where it is, so a page setup changed after moves
+	# nothing on it (ptreview F3): as Apply to later pages places them.
+	var placed: Array = []
+	for pair: Array in Booklet.held_places(_pages[_at]):
+		var entry: Booklet.Entry = pair[0]
+		var index: int = int(entry.get_meta("step", -1))
+		if index >= 0 and index < _plan.size():
+			placed.append([_plan[index], pair[1], BookletLooks.said_rect(entry.panel)])
+	var said: String = _shell.change_look("page_lock", first["step"],
+		{"steps": _pages[_at].entries.size(), "placed": placed})
+	_say(said)
+	await _lay_out((first["entry"] as Booklet.Entry).number)
+	return said
+
+
+## The page shown frozen with its page setup as it is now, or thawed: one
+## undo (Shell.change_look "page_freeze").
+func freeze_page() -> String:
+	var first: Dictionary = _first_step()
+	if first.is_empty():
+		_say_soft("Only a page of steps freezes.")
+		return "only a page of steps freezes"
+	var said: String = _shell.change_look("page_freeze", first["step"])
+	_say(said)
+	await _lay_out((first["entry"] as Booklet.Entry).number)
+	return said
+
+
+## The page shown's first step, {entry, step}, when it is a page of the
+## model's steps; {} for a callout's own page, whose steps are the
+## sub-model's.
+func _first_step() -> Dictionary:
+	if _at < 0 or _at >= _pages.size() or _pages[_at].kind != "steps" or _pages[_at].entries.is_empty():
+		return {}
+	var entry: Booklet.Entry = _pages[_at].entries[0]
+	var index: int = int(entry.get_meta("step", -1))
+	if index < 0 or index >= _plan.size():
+		return {}
+	return {"entry": entry, "step": _plan[index]}
+
+
 ## This page's layout on the later pages with as many steps (Shell
 ## .place_pages): one undo. Says what it did, and what the pages then had
 ## to move off something else.
@@ -1716,6 +1971,10 @@ func apply_to_later() -> String:
 			_pages[_at].number, laid.size(), "" if laid.size() == 1 else "s"])
 		# Their pictures drawn for their old boxes are drawn again when shown.
 		_shots.clear()
+		var passed: Array = later["locked"]
+		if not passed.is_empty():
+			said += "; locked page%s %s passed by" % ["" if passed.size() == 1 else "s",
+				", ".join(PackedStringArray(passed.map(func(page: int) -> String: return str(page))))]
 		var left: Array = later["left"]
 		if not left.is_empty():
 			said += "; %d with another number of steps left as %s (page%s %s)" % [left.size(),
@@ -1758,12 +2017,16 @@ static func later_layout(pages: Array[Booklet.Page], at: int,
 	var source: Booklet.Page = pages[at]
 	var placed_any: bool = source.entries.any(func(entry: Booklet.Entry) -> bool:
 		return not entry.place.is_empty())
-	var out: Dictionary = {"placed": [], "laid": [], "left": [], "placed_any": placed_any}
+	var out: Dictionary = {"placed": [], "laid": [], "left": [], "locked": [], "placed_any": placed_any}
 	if not placed_any:
 		return out
 	for index: int in range(at + 1, pages.size()):
 		var page: Booklet.Page = pages[index]
 		if page.kind != source.kind or page.kind == "callout" and page.name != source.name:
+			continue
+		# A locked page is as its designer left it (pagetools).
+		if not page.entries.is_empty() and page.entries[0].lock > 0:
+			(out["locked"] as Array).append(page.number)
 			continue
 		if page.entries.size() != source.entries.size():
 			(out["left"] as Array).append(page.number)
@@ -1907,7 +2170,8 @@ func add_image(image: Image) -> String:
 		high = 80.0
 	var said: String = _change("image", first, {
 		"data": Marshalls.raw_to_base64(bytes),
-		"at": [_sheet.size().x - _sheet.margin - wide, Booklet.content(_sheet).end.y - high, wide, high]})
+		"at": [_sheet.size().x - shown_sheet().margin - wide, Booklet.content(shown_sheet()).end.y - high,
+			wide, high]})
 	_say(said)
 	_pictures.clear()
 	await _lay_out((first["entry"] as Booklet.Entry).number)
@@ -1978,7 +2242,32 @@ func page_state() -> Dictionary:
 		# The page's steps whose pictures are drawn on it so far.
 		"drawn": _page_steps().filter(func(number: int) -> bool:
 			return _shots.has(_shot_key(_pages[_at].number if _at >= 0 and _at < _pages.size() else 0, number))),
-		"kind": _pages[_at].kind if _at >= 0 and _at < _pages.size() else ""}
+		"kind": _pages[_at].kind if _at >= 0 and _at < _pages.size() else "",
+		# pagetools: the page locked or frozen, and the inspector's reading
+		# of the selected item while Alt is held.
+		"locked": locked(), "frozen": shown_sheet() != _sheet,
+		"inspecting": _inspecting and _selected >= 0, "measure": _measure.button_pressed,
+		"labels": _pills.size(), "labels_apart": _pills_apart(),
+		"inspected": _inspected_state()}
+
+
+## Whether no two of the inspector's labels drawn last overlap.
+func _pills_apart() -> bool:
+	for a: int in _pills.size():
+		for b: int in range(a + 1, _pills.size()):
+			if _pills[a].intersects(_pills[b]):
+				return false
+	return true
+
+
+func _inspected_state() -> Dictionary:
+	if _selected < 0 or _selected >= _items.size():
+		return {}
+	var seen: Dictionary = inspected(_selected)
+	var near: Dictionary = {}
+	for side: String in seen["neighbours"]:
+		near[side] = [seen["neighbours"][side]["name"], seen["neighbours"][side]["gap"]]
+	return {"size": seen["size"], "edges": seen["edges"], "margins": seen["margins"], "neighbours": near}
 
 
 func _arrows_state() -> Dictionary:
