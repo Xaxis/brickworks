@@ -1160,6 +1160,123 @@ in `judge_<round>.json`; the colour and gloss tables are
    a window panel per shot could let the black 2x4's top mirror its window.
 5. **A clear part's photograph needs its surround**, as 5f said.
 
+## 5h. One picture at a time, the scenes matched, the judge's tells (photoreal4)
+
+The owner's ask, 2026-11-22, continued: the bricks in a render should look
+like real LEGO® bricks, judged blind beside real photographs.
+
+**A measure that can see progress.** The paired judge (5e) found the
+photograph 18 to 20 times in 20 in every round of 5f and 5g while the
+pictures visibly improved: shown two pictures, it keys on any difference
+between them, staging as much as rendering. `photoreal.py solo` shows
+every photograph and every render alone, shuffled into one pool in a
+random order, and asks "a photograph of real LEGO bricks, or a computer
+render?" with the chance it gives a photograph and why (`SOLO_PROMPT_VERSION`
+1; the paired prompt is unchanged). It reports the photographs and each
+tree's renders apart, close-ups and sets apart, per round, and the spread
+of the rounds. `photoreal.py tally` groups the tells either judge names.
+- **It is stable**: three rounds of two trials each move a tree's mean by
+  0.01 at most.
+- **It did not separate photoreal2 from photoreal3** (the same day, three
+  rounds each): photoreal2's renders 0.119 to 0.129, photoreal3's 0.117 to
+  0.122, none called a photograph; the photographs 0.807 to 0.812. Both
+  trees' renders read as renders alone; 5g's gloss moved neither judge.
+- **Set 6512's picture is itself a render.** Alone, the judge gives it
+  0.05, as low as our renders, and every paired miss of 5e to 5g was it.
+  It is marked `photo_is_render` in `shots.json` and counted apart from the
+  photographs ("reference render"); the paired judge still shows it, so its
+  two trials are found in no round.
+
+**Scenes that differ only in the rendering.** A set's camera is fitted to
+its photograph's outline, not by eye: `photoreal.py masks` floods each
+photograph from its border to its parts' outline (a soft shadow is
+backdrop; `mask.far` where a shadow is darker), and `photoreal_probe
+--fit` renders the outline alone at a quarter size and moves yaw, pitch,
+roll, zoom, shift and focal length while the overlap (intersection over
+union) grows, halving its steps. The fitted camera is in `shots.json`.
+
+| shot | what differed from the photograph | what changed | outline overlap before, after |
+|---|---|---|---|
+| set 6512 | camera by eye; the model's own file absent | its own `set_6512.mpd`, camera fitted, `mask.far` 130 | 0.62, 0.85 |
+| set 6532 | camera by eye; the tractor straight on its trailer joint; the driver turned | `set_6532.mpd`: the tractor turned 20 degrees on its joint, the driver seated and facing as photographed; camera fitted | 0.72, 0.87 |
+| set 6657 | the pilot stood beside the copter, out of the photograph | the pilot seated in the cockpit facing the camera, as photographed; camera fitted | 0.58, 0.89 |
+| set 6660 | the cab's glass a darker blue; the driver's arms down | glass trans light blue (43, from 41); arms forward 35 degrees; camera fitted | 0.64, 0.82 |
+
+The prints were already the photographs' (5f). 6660's overlap stops at
+0.82 because its photograph's white B-pillar meets its white paper, and
+the flood takes the pillar as backdrop. Matching the scenes did not move
+the solo judge on the sets (0.045 before, 0.048 after): it never named the
+staging alone, only beside the photograph.
+
+**The judge's tells, biggest first.** Each was measured by the solo judge
+on the renders alone (one round of three trials, all on, then each taken
+away with `photoreal_probe --without=KEY`); kept only where a measure
+moved.
+
+| tell | what it is | renders' mean, on | without it | kept as |
+|---|---|---|---|---|
+| a lens's softness | the camera's own blur: each pixel blended with its eight neighbours | 0.270 | 0.157 | on in the product look (`PRODUCT_SOFTNESS` 0.6) |
+| parts never quite square | each part turned and lifted a hair, its own (`_seated`) | 0.270 | 0.186 | on (`PRODUCT_SEATING` 1.0; sets 2.5) |
+| dust | a film on tops that face up, and motes | 0.270 | 0.238 | on (`PRODUCT_DUST` 0.3) |
+| the backdrop's paper | broad unevenness and fibre in the sweep and the shadow catcher | 0.155 | 0.139 | per shot only (`paper`) |
+| the camera | sensor grain matched to each photograph's measured noise, fall-off, fringes | 0.155 | 0.137 | per shot only (`grain`, `vignette`, `aberration`) |
+| age | whites yellowed, colours faded and dulled, gloss worn in patches | 0.155 | 0.159 | per shot only (`age`): it moved the whites' colour, not the judge |
+
+- **Age** moved the measure it was for: the pale parts' b* (a white's
+  yellow) inside each set's outline, photograph against render, 6532 10.3
+  against 1.0 before and 5.4 after; 6660 10.1 against 0.0 and 8.4. It did
+  not move the solo judge (0.159 without, 0.155 with). It is a shot's
+  setting, off in the app.
+- **The camera** settings match each photograph's own (sensor noise from
+  `photoreal.py camera`, Immerkær's estimate over its non-white pixels):
+  the app has no photograph to match, so they are off there.
+- Glass scratches and the worn gloss ride on age; neither changes a part
+  with `age` 0.
+
+**The judges** (the same day; the solo three rounds of two trials, with the
+photographs):
+
+| | solo: renders called a photograph | solo: mean chance | paired: found | paired: sure |
+|---|---|---|---|---|
+| photographs | 54 of 54 | 0.893 to 0.896 | | |
+| photoreal3 (a7) | 0 of 60 | 0.105 to 0.113 | 18 of 20 (5g) | 0.859 (5g) |
+| photoreal4 (f1) | 12 of 60 (each round 0.20) | 0.259 to 0.265 | 18 of 20 | 0.829 |
+
+- **The solo bar is met.** Photoreal4's renders are called a photograph
+  20% of the time in each round against none, and given 0.26 against 0.11;
+  the rounds spread 0.008.
+- The gain is in the close-ups: the black 2x4 0.07 to 0.78 (called a
+  photograph 6 of 6), the green plate 0.35 to 0.67 (6 of 6), the slope
+  0.17 to 0.31. The sets rose a little (6532 0.08 to 0.15, 6657 0.09 to
+  0.17, 6660 0.07 to 0.11) and none is called a photograph.
+- **The paired bar is not met**: 18 of 20 (both misses set 6512, a render
+  beside a render) at 0.829, against at most 16 or 0.80. Beside its
+  photograph every other shot is still found, sure 0.72 to 0.93; the
+  three 2x2s fell most (0.83 to 0.72).
+- **What both still name:** uniform plastic across parts and faces (76 of
+  the solo's render tells for photoreal4), no wear (74), the backdrop
+  (37), and logos and studs (34).
+
+**Colour, gloss and time.** The tent's faces against their photographs:
+green top 1.7, red top 3.2, blue top 0.3, the slope 3.2 (all within 5;
+5g's 2.6, 2.6, 0.3, 1.6). Highlights and L* spreads are where 5g left
+them (the green top's spread 1.8 against 7.8). The car at Best, Product,
+1280x720, 256 samples: 2.29, 2.40 and 2.57 s (the bar is 8.4 s).
+
+**Pictures.** `bench/results/photoreal4-2026-11-22/side_by_side/`: one row
+per shot, the photograph, photoreal3 (a7) and this (f1). The verdicts are
+`solo_p2p3.json`, `solo_p3p4_f1.json` and `judge_f1.json`.
+
+**What is left, in order:**
+1. **Uniformity across a set's parts.** Real parts of one colour differ a
+   little from each other in tone and gloss, by batch and by age; ours are
+   one material. The first tell in the sets.
+2. **The close-ups' backdrops** (leather, stone, desk), as 5g said.
+3. **A top's broad sheen** and its shading across it (L* spread a third of
+   the photographs').
+4. **The paired judge** will find any staging left: 6660's B-pillar, the
+   minifigs' printing on a small face, and 6512, which no render can pass.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
