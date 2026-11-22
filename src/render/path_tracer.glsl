@@ -108,7 +108,8 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	Light lights[4];
 	// How many lamps, how much light the glowing plastics give off (0 but in
 	// the Dark light), and for a light tent (photoreal2) how many times
-	// brighter its top is than its walls (0 for none), unused.
+	// brighter its top is than its walls (0 for none), and its strip lights'
+	// light (photoreal3, StudioRender.TENT_STRIP).
 	vec4 lamp_info;
 	Lamp lamps[8];
 } scene;
@@ -260,12 +261,12 @@ vec3 place_way(vec2 uv) {
 }
 
 // A light tent (photoreal2), the product look's studio on a light backdrop:
-// white walls all round (the even sky) and a large soft panel overhead, 90
+// white walls all round (the even sky) and a large soft panel overhead, 60
 // degrees across, scene.lamp_info.z times as bright. A product photograph is
 // lit so, from every side and most from above: no hard key, and no crescent
 // of shadow inside a stud.
-const float TENT_COS_OUT = 0.7071;
-const float TENT_COS_IN = 0.866;
+const float TENT_COS_OUT = 0.866;
+const float TENT_COS_IN = 0.94;
 // The walls' light, against the panel's 1 + lamp_info.z and the key's
 // (studio_render.gd's TENT_KEY): a photographed tent's walls fill the shade
 // in, never to the panel's level (the red slope's shaded end is a fifth of
@@ -274,6 +275,54 @@ const float TENT_FILL = 0.4;
 
 bool tent() {
 	return scene.sky.w < 0.5 && scene.lamp_info.z > 0.0;
+}
+
+// The tent's strip lights (photoreal3): four tall narrow soft boxes round the
+// model, two behind it and two beside it, as a product photographer stands
+// them, each TENT_STRIP_WIDE radians across and rising from TENT_STRIP_LOW to
+// TENT_STRIP_HIGH (the sines of their elevations), lamp_info.w as bright. A
+// gloss is the lights it mirrors: ABS reflects about 5% of what it faces, so
+// a tent of paper-white walls left every highlight a few L* over the face,
+// where a photograph's stud rims, edges and logo flanks show the lights as
+// bright crescents and bands. Small and bright, they light the faces little.
+const float TENT_STRIP_BEHIND = 0.55;
+const float TENT_STRIP_BESIDE = 1.75;
+const float TENT_STRIP_WIDE = 0.3;
+const float TENT_STRIP_LOW = 0.05;
+const float TENT_STRIP_HIGH = 0.64;
+
+float tent_strip_at(int k) {
+	float at = k < 2 ? TENT_STRIP_BEHIND : TENT_STRIP_BESIDE;
+	return (k % 2 == 0) ? at : -at;
+}
+
+// Into the picture along the floor, and to its right: the strips' frame.
+void tent_frame(out vec3 into, out vec3 right) {
+	vec3 ahead = vec3(-scene.back.x, 0.0, -scene.back.z) + vec3(scene.up.x, 0.0, scene.up.z);
+	into = dot(ahead, ahead) > 1e-8 ? normalize(ahead) : vec3(0.0, 0.0, -1.0);
+	right = vec3(-into.z, 0.0, into.x);
+}
+
+// Which strip a direction is in (0 to 3), or -1.
+int tent_strip(vec3 way) {
+	if (scene.lamp_info.w <= 0.0 || way.y < TENT_STRIP_LOW || way.y > TENT_STRIP_HIGH) {
+		return -1;
+	}
+	vec3 into;
+	vec3 right;
+	tent_frame(into, right);
+	float around = atan(dot(way, right), dot(way, into));
+	for (int k = 0; k < 4; k++) {
+		if (abs(around - tent_strip_at(k)) < TENT_STRIP_WIDE * 0.5) {
+			return k;
+		}
+	}
+	return -1;
+}
+
+// Each strip's chance per steradian, picked evenly over its span.
+float tent_strip_pdf() {
+	return 1.0 / (TENT_STRIP_WIDE * (TENT_STRIP_HIGH - TENT_STRIP_LOW));
 }
 
 vec3 tent_light(vec3 way) {
@@ -285,20 +334,43 @@ vec3 tent_light(vec3 way) {
 	// (a top-down shot's tops came out milky, mirroring the panel).
 	vec3 to_eye = normalize(scene.origin.xyz - scene.sweep_origin.xyz);
 	float port = smoothstep(0.978, 0.988, dot(way, to_eye));
-	return scene.sky.rgb * (TENT_FILL + scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y))
-		* (1.0 - 0.97 * port);
+	float strip = tent_strip(way) >= 0 ? scene.lamp_info.w : 0.0;
+	return scene.sky.rgb * (TENT_FILL + strip
+		+ scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y)) * (1.0 - 0.97 * port);
 }
 
-// The tent's panel picked half the time (evenly over its cone), the
-// hemisphere by its cosine the other half.
-float tent_pdf(vec3 way, vec3 n) {
+// The tent's own pick: its panel (evenly over its cone), or with strips a
+// strip half the time (evenly over its span of turn and of sine).
+float tent_own_pdf(vec3 way) {
 	float cone = way.y >= TENT_COS_OUT ? 1.0 / (2.0 * PI * (1.0 - TENT_COS_OUT)) : 0.0;
-	return 0.5 * cone + 0.5 * max(dot(n, way), 0.0) / PI;
+	if (scene.lamp_info.w <= 0.0) {
+		return cone;
+	}
+	return 0.5 * cone + (tent_strip(way) >= 0 ? 0.125 * tent_strip_pdf() : 0.0);
+}
+
+vec3 tent_own_pick() {
+	if (scene.lamp_info.w <= 0.0 || rand() < 0.5) {
+		return in_cone(vec3(0.0, 1.0, 0.0), acos(TENT_COS_OUT), rand2());
+	}
+	vec3 into;
+	vec3 right;
+	tent_frame(into, right);
+	vec2 u = rand2();
+	float around = tent_strip_at(min(int(u.x * 4.0), 3)) + (fract(u.x * 4.0) - 0.5) * TENT_STRIP_WIDE;
+	float up = mix(TENT_STRIP_LOW, TENT_STRIP_HIGH, u.y);
+	float flat_part = sqrt(max(1.0 - up * up, 0.0));
+	return normalize((into * cos(around) + right * sin(around)) * flat_part + vec3(0.0, up, 0.0));
+}
+
+// The tent's own pick half the time, the hemisphere by its cosine the other
+// half.
+float tent_pdf(vec3 way, vec3 n) {
+	return 0.5 * tent_own_pdf(way) + 0.5 * max(dot(n, way), 0.0) / PI;
 }
 
 vec3 tent_pick(vec3 n, out float pdf) {
-	vec3 way = rand() < 0.5 ? in_cone(vec3(0.0, 1.0, 0.0), acos(TENT_COS_OUT), rand2())
-		: cosine_around(n, rand2());
+	vec3 way = rand() < 0.5 ? tent_own_pick() : cosine_around(n, rand2());
 	pdf = tent_pdf(way, n);
 	return way;
 }
@@ -437,8 +509,13 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 	s.emission = vec3(0.0);
 	s.metallic = 0.0;
 	s.roughness = product ? 0.3 : 0.35;
-	s.specular = product ? 0.35 : 0.5;
-	s.coat = product ? 0.55 : 0.0;
+	// The product look's plastic is ABS (photoreal3): its colour lies under a
+	// smooth clear skin that reflects as a dielectric of index 1.55 does
+	// (ABS_F0 face on, rising to all of it at a glance), and that one sharp
+	// reflection is all its gloss. Half that coat over a broad lobe of its
+	// own blurred every light it mirrored into the face's colour.
+	s.specular = product ? 0.0 : 0.5;
+	s.coat = product ? 1.0 : 0.0;
 	s.coat_roughness = 0.07;
 	if (thing.info.y == KIND_SWEEP) {
 		// Paper: matte, its colour falling away from under the model.
@@ -477,12 +554,9 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat *= 0.6;
 		}
 		if (textured > 0.5) {
-			// A slope's face is roughened in the mould: no mirror, each bump
-			// of its grain a small glint.
-			s.roughness = 0.42;
-			s.specular = 0.35;
-			s.coat = 0.25;
-			s.coat_roughness = 0.18;
+			// A slope's face is roughened in the mould: the same skin, no
+			// mirror, each bump of its grain a small glint.
+			s.coat_roughness = 0.2;
 		}
 	}
 	s.albedo = body;
@@ -513,6 +587,9 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 	}
 	return s;
 }
+
+// A coat's reflection face on: ((1.55 - 1) / (1.55 + 1))^2, ABS's.
+const float ABS_F0 = 0.0465;
 
 float ggx_d(float n_h, float a) {
 	float a2 = a * a;
@@ -562,7 +639,8 @@ float ggx_pdf(vec3 n, vec3 v, vec3 l, float a) {
 vec3 lobe_shares(Surface s) {
 	float diffuse = (1.0 - s.metallic) * max(dot(s.albedo, vec3(0.333)), 0.05);
 	float spec = mix(0.25 * s.specular, 1.0, s.metallic);
-	float coat = 0.25 * s.coat;
+	// A coat that is all of a plastic's gloss is picked as often as it shows.
+	float coat = 0.4 * s.coat;
 	float total = diffuse + spec + coat;
 	return vec3(diffuse, spec, coat) / total;
 }
@@ -589,9 +667,9 @@ vec3 reflect_light(Surface s, vec3 n, vec3 v, vec3 l, out float pdf) {
 	pdf = shares.x * n_l / PI + shares.y * ggx_pdf(n, v, l, a);
 	if (s.coat > 0.0) {
 		float ac = max(s.coat_roughness * s.coat_roughness, 0.002);
-		float fc = schlick(vec3(0.04), v_h).x * s.coat;
+		float fc = schlick(vec3(ABS_F0), v_h).x * s.coat;
 		float coat = fc * ggx_d(n_h, ac) * smith_g1(n_v, ac) * smith_g1(n_l, ac) / max(4.0 * n_v * n_l, 1e-6);
-		float under = 1.0 - schlick(vec3(0.04), n_v).x * s.coat;
+		float under = 1.0 - schlick(vec3(ABS_F0), n_v).x * s.coat;
 		result = result * under + vec3(coat);
 		pdf += shares.z * ggx_pdf(n, v, l, ac);
 	}
@@ -710,7 +788,7 @@ vec3 shadow_on(vec3 at, vec3 n) {
 		if (k % 2 == 1) {
 			l = cosine_around(n, rand2());
 		} else if (tent()) {
-			l = in_cone(vec3(0.0, 1.0, 0.0), acos(TENT_COS_OUT), rand2());
+			l = tent_own_pick();
 		} else if (scene.sky.w > 0.5) {
 			l = place_pick(rand2(), own);
 		} else {
@@ -721,7 +799,7 @@ vec3 shadow_on(vec3 at, vec3 n) {
 			continue;
 		}
 		// The two picks' chances of this direction, summed.
-		float first = tent() ? 2.0 * tent_pdf(l, n) - facing / PI
+		float first = tent() ? tent_own_pdf(l)
 			: (scene.sky.w > 0.5 ? place_pdf(l) : facing / PI);
 		float c = luminance(sky_light(l)) * facing / max(first + facing / PI, 1e-6);
 		all += c;

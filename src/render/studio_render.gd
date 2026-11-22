@@ -96,13 +96,18 @@ const PRODUCT_MOST := 3.0
 ## panel overhead this many times brighter, in place of the rig's hard key,
 ## whose shadow drew a crescent inside every stud that no product photograph
 ## has. A dark backdrop keeps the rig's pool of light.
-const TENT_TOP := 3.0
+const TENT_TOP := 6.0
 ## The tent's key (photoreal2): a soft box this bright at its face, against
 ## the panel's 1 and the walls' TENT_FILL (path_tracer.glsl), this many
 ## radians from its middle to its edge. A photograph's tent is never even:
 ## the red slope's photograph has its lit face five times its shaded end.
 const TENT_KEY := 2.5
 const TENT_KEY_SPREAD := 0.45
+## The tent's two strip lights (photoreal3, path_tracer.glsl's tent_strip):
+## tall narrow soft boxes behind the model to each side, this bright against
+## the walls' TENT_FILL. They are what a glossy part mirrors: its stud rims,
+## edges and logo flanks show them as a photograph's do.
+const TENT_STRIP := 16.0
 ## How light a backdrop is at least to be a tent's paper rather than a pool
 ## of light, and to be the photograph's white the exposure is metered to.
 const TENT_BACKDROP := 0.2
@@ -118,7 +123,7 @@ const PAPER_WHITE := 0.8
 ## the tent close-ups' photographs from the tracer's raw light
 ## (tools/bench/photoreal.py colour, docs/RENDERING.md 5f).
 const PHOTO_EV := 0.33
-const PHOTO_LINEAR_SATURATION := 1.6
+const PHOTO_LINEAR_SATURATION := 1.3
 const CAMERA_KNEE := 0.6
 const CAMERA_TOP := 2.5
 
@@ -2818,7 +2823,8 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 				lit.r, lit.g, lit.b, 1.0 if shadows else 0.0,
 				float(light.get("size", 4.0)), SceneLights.EDGE, float(node.get_meta("reach", 1e6)),
 				0.0])
-	data.append_array([float(rows.size()), _glow, TENT_TOP if tent else 0.0, 0.0])
+	data.append_array([float(rows.size()), _glow, TENT_TOP if tent else 0.0,
+		TENT_STRIP if tent else 0.0])
 	for n: int in SceneLights.MOST:
 		if n < rows.size():
 			data.append_array(rows[n])

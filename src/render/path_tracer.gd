@@ -35,6 +35,24 @@ const PASS_MS := 28.0
 ## those let no light through, clear or not.
 const SOLID_FINISHES: Array[int] = [6, 7, 11]
 
+## The product look's plastic, fitted to photographs (photoreal3): a solid
+## colour's sRGB as the colour table gives it (0-255, "r,g,b") -> the linear
+## albedo a camera's picture of the real part needs, through the camera's
+## curve and PHOTO_LINEAR_SATURATION (StudioRender). Red, green and blue from
+## the tent close-ups' faces (tools/bench/photoreal.py colour; red is the
+## mean of the slope and the 2x2's, which want 0.46 and 0.78); black from the
+## black 2x4's shaded side, L* 2 in its photograph, which the table's
+## blue-grey black drew at 25. Colours not here keep the table's own. Fitting
+## each colour's albedo keeps a face's light and shade, where the camera's
+## saturation of 1.6 that photoreal2 fitted drew a lit red face one flat red
+## and swallowed every highlight a red face took under its clipped channels.
+const PRODUCT_ALBEDO: Dictionary = {
+	"180,0,0": Color(0.60, 0.003, 0.003),
+	"0,133,43": Color(0.004, 0.235, 0.031),
+	"30,90,168": Color(0.019, 0.146, 0.564),
+	"27,42,52": Color(0.009, 0.010, 0.012),
+}
+
 const KIND_PLASTIC := 0
 const KIND_GLASS := 1
 const KIND_SWEEP := 2
@@ -88,6 +106,9 @@ var scene := PackedFloat32Array()
 ## logo raised on every stud, faces never quite flat), the window's as the
 ## window draws it.
 var product: bool = false
+## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
+## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
+var _fitted: Dictionary = {}
 ## Samples in the running sum so far.
 var samples: int = 0
 ## Instances in the last picture staged, and distinct shapes.
@@ -306,6 +327,8 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 				else KIND_PLASTIC
 			_has_glass = _has_glass or kind == KIND_GLASS
 			var lin: Color = colour.srgb_to_linear()
+			if product and kind == KIND_PLASTIC:
+				lin = _fitted_albedo(colour, lin)
 			var fleck: Color = Color(custom.r, custom.g, custom.b).srgb_to_linear()
 			records.append_array([lin.r, lin.g, lin.b, colour.a,
 				fleck.r, fleck.g, fleck.b, custom.a,
@@ -606,6 +629,21 @@ func mean_image() -> Image:
 		floats[n] *= share
 	return Image.create_from_data(_size.x, _size.y, false, Image.FORMAT_RGBAF,
 		floats.to_byte_array())
+
+
+## The product look's albedo for a solid colour drawn [param colour]: the
+## photographs' fit where PRODUCT_ALBEDO has one, else [param own].
+func _fitted_albedo(colour: Color, own: Color) -> Color:
+	if _fitted.is_empty():
+		for key: String in PRODUCT_ALBEDO:
+			var rgb: PackedStringArray = key.split(",")
+			var shown: Color = PartLibrary.shown_for(Color8(int(rgb[0]), int(rgb[1]), int(rgb[2])))
+			_fitted[_byte_key(shown)] = PRODUCT_ALBEDO[key]
+	return _fitted.get(_byte_key(colour), own)
+
+
+static func _byte_key(colour: Color) -> String:
+	return "%d,%d,%d" % [roundi(colour.r * 255.0), roundi(colour.g * 255.0), roundi(colour.b * 255.0)]
 
 
 # -- freeing -------------------------------------------------------------------

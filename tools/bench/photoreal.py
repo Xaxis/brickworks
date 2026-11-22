@@ -18,6 +18,8 @@ reasons, the things it names in the render that give it away, are the gap list.
         each photograph beside its render, and all of them in one sheet
     tools/bench/photoreal.py compare BEFORE AFTER [--out DIR]
         photograph, before and after, side by side
+    tools/bench/photoreal.py gloss TAG [--out DIR]
+        each close-up's highlights and shading, photograph against render (photoreal3)
     tools/bench/photoreal.py judge TAG [--out DIR] [--model opus] [--jobs 4] [--only a,b]
         the blind judge, both orders; DIR/judge_TAG.json and a summary printed
 
@@ -231,6 +233,61 @@ def colour(tag: str, out: Path, drawn: Path) -> int:
     return 0 if rows else 1
 
 
+def _lightness(image: Image.Image, box: list[float]) -> list[float]:
+    """Each pixel's CIELAB L* in the box (fractions [left, top, right, bottom]), sorted."""
+    w, h = image.size
+    part = image.crop((round(box[0] * w), round(box[1] * h), round(box[2] * w), round(box[3] * h)))
+    return sorted(_lab(p)[0] for p in part.getdata())
+
+
+def _at(values: list[float], share: float) -> float:
+    return values[min(len(values) - 1, int(share * len(values)))]
+
+
+def gloss(tag: str, out: Path, drawn: Path) -> int:
+    """How glossy each close-up reads (photoreal3): in each box on a part's tops and studs
+    (shots.json "gloss"), the highlight's share (pixels over the box's median L* by 15 or more)
+    and its peak (the 99.5th percentile's L* over the median); and the shading across each main
+    face (its L* from the 10th to the 90th percentile). Photograph against render, beside ΔE."""
+    out.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for shot in shots():
+        path = drawn / tag / f"{shot['name']}.png"
+        if shot.get("kind") != "closeup" or not path.exists():
+            continue
+        photo = photo_of(shot)
+        render = Image.open(path).convert("RGB").resize(tuple(shot["size"]))
+        for box in shot.get("gloss", []):
+            row = {"shot": shot["name"], "box": box["name"], "what": "gloss"}
+            for who, image in (("photo", photo), ("render", render)):
+                values = _lightness(image, box["box"])
+                middle = _at(values, 0.5)
+                row[who] = {"median": round(middle, 1),
+                            "share": round(sum(v >= middle + 15 for v in values) / len(values), 4),
+                            "peak": round(_at(values, 0.995) - middle, 1)}
+            rows.append(row)
+        for face in shot.get("faces", []):
+            if not face.get("main"):
+                continue
+            row = {"shot": shot["name"], "box": face["name"], "what": "spread"}
+            for who, image, box in (("photo", photo, face["photo"]), ("render", render, face["render"])):
+                values = _lightness(image, box)
+                row[who] = {"spread": round(_at(values, 0.9) - _at(values, 0.1), 1)}
+            rows.append(row)
+    (out / f"gloss_{tag}.json").write_text(json.dumps(rows, indent=1))
+    print(f"| shot | box | photograph | render ({tag}) |")
+    print("|---|---|---|---|")
+    for row in rows:
+        if row["what"] == "gloss":
+            p, r = row["photo"], row["render"]
+            print(f"| {row['shot']} | {row['box']}: highlight share, peak | {p['share'] * 100:.1f}%, "
+                  f"+{p['peak']:.0f} L* | {r['share'] * 100:.1f}%, +{r['peak']:.0f} L* |")
+        else:
+            print(f"| {row['shot']} | {row['box']}: L* spread | {row['photo']['spread']:.1f} "
+                  f"| {row['render']['spread']:.1f} |")
+    return 0 if rows else 1
+
+
 def _opaque(words: str) -> str:
     return hashlib.sha256(f"photoreal:{words}".encode()).hexdigest()[:10]
 
@@ -367,6 +424,10 @@ def main() -> int:
     k.add_argument("tag")
     k.add_argument("--out", type=Path)
     k.add_argument("--drawn", type=Path, default=DRAWN)
+    g = sub.add_parser("gloss")
+    g.add_argument("tag")
+    g.add_argument("--out", type=Path)
+    g.add_argument("--drawn", type=Path, default=DRAWN)
     j = sub.add_parser("judge")
     j.add_argument("tag")
     j.add_argument("--out", type=Path)
@@ -381,6 +442,8 @@ def main() -> int:
         return compare(args.before, args.after, out)
     if args.what == "colour":
         return colour(args.tag, out, args.drawn)
+    if args.what == "gloss":
+        return gloss(args.tag, out, args.drawn)
     return judge_tag(args.tag, out, args.model, args.jobs, [s for s in args.only.split(",") if s])
 
 
