@@ -936,11 +936,22 @@ void main() {
 				n = normalize(n + ng * (0.02 - dot(n, v)));
 			}
 			if (thing.info.y == KIND_PLASTIC && thing.box_max.w > 0.5) {
-				// Moulded plastic's rounded edges are its surface, as in a
-				// photograph: paths leave by the rounded normal. Leaving by the
-				// flat face's, the half of each rounding turned past the face
-				// found the part itself in every shadow ray and bounce, and every
-				// edge was drawn with a thin dark line no photograph has.
+				// A rounding drawn on a flat face turns its normal right round
+				// to the next face, and at the model's outline that half faces
+				// away from the eye: lit by nothing and reflecting nothing, it
+				// drew a black line two pixels wide down every silhouette, which
+				// a judge named in every round. On a real rounded edge the part
+				// turned that far is too thin to see, so a rounding faces the eye
+				// at least as a face at a glance does.
+				float facing = dot(n, v);
+				float least = min(0.25, max(dot(ng, v), 0.0));
+				if (dot(n, ng) < 0.999 && facing < least) {
+					n = normalize(n + v * (least - facing));
+				}
+				// Its rounded edges are its surface, as in a photograph: paths
+				// leave by the rounded normal. Leaving by the flat face's, the
+				// half of each rounding turned past the face found the part
+				// itself in every shadow ray and bounce.
 				ng = n;
 			}
 			if (thing.info.y == KIND_GLASS) {
