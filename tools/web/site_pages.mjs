@@ -377,6 +377,20 @@ export function sitePages({ remote = "" } = {}) {
     { name: "guidelines", path: "/guidelines" },
     { name: "privacy", path: "/privacy" },
     { name: "takedown", path: "/takedown" },
+    // Share a model you made (/share-model, web/share-model.js): an LDD
+    // file's way to the app, then a file read in the page and its form.
+    // Nothing is sent: the form is judged, not submitted.
+    { name: "share-model", path: "/share-model",
+      ready: (page) => until(page, () => window.brickworksShare),
+      open: async (page, { judge }) => {
+        await page.setInputFiles("#file", { name: "model.lxf", mimeType: "application/octet-stream", buffer: Buffer.from("PK\u0003\u0004") });
+        const ldd = await until(page, () => !document.getElementById("ldd").hidden);
+        await judge(ldd ? "LDD file" : "LDD file (missing)", "#ldd");
+        await page.setInputFiles("#file", { name: "brick.ldr", mimeType: "text/plain",
+          buffer: Buffer.from("0 A brick\r\n0 Name: brick.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n") });
+        const form = await until(page, () => !document.getElementById("details").hidden);
+        return [[form ? "its form" : "its form (missing)", "#details"]];
+      } },
     { name: "404", path: "/no-such-page-here" },
     // Every component once (web/_kit.html, never published): what no page
     // uses yet is judged as the pages are, its "more" menu open.

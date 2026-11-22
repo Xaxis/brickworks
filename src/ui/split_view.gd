@@ -346,6 +346,8 @@ func show_side(which: String) -> void:
 func _process(_delta: float) -> void:
 	if visible:
 		_follow()
+	if not visible and _keep_at == 0:
+		Wake.rest(self)
 	if _keep_at > 0 and Time.get_ticks_msec() >= _keep_at:
 		_keep_at = 0
 		ShellPrefs.put("split_zoom", _own_size)

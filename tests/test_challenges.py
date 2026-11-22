@@ -159,8 +159,14 @@ def test_the_admin_sets_a_test_one_only_when_asked() -> None:
 def test_the_stand_in_answers_what_the_api_asks() -> None:
     asked = set(re.findall(r'"rpc/(challenge_[a-z_]+)"', API + ADMIN))
     held = set(re.findall(r'"(challenge_[a-z_]+)"', STAND_IN.split("];", 1)[0]))
-    assert asked <= held, asked - held
-    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text()))
+    # challenge_rounds.sql's are answered 404 there, as before the file, so
+    # the API falls back to the ones held.
+    unheld = STAND_IN[STAND_IN.index("const NOT_HERE = ["):]
+    unheld = set(re.findall(r'"(challenge_[a-z_]+)"', unheld.split("];", 1)[0]))
+    assert asked <= held | unheld, asked - held - unheld
+    rounds = set(defined((ROOT / "supabase/challenge_rounds.sql").read_text()))
+    assert unheld <= rounds and not unheld & held, (unheld - rounds, unheld & held)
+    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text())) | rounds
     assert asked <= both, asked - both
 
 

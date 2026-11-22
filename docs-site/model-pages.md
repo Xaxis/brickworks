@@ -51,6 +51,20 @@ ui:build it step player
 ui:open a shared model at a step
 -->
 
+### Where does this part go? {#where-does-this-go}
+
+Holding a part and can't find its step? Press **Where does this go?** (the camera beside the step's words) and take a photo of it, or choose a picture on a computer.
+
+1. The first time, Build it says where the photo goes: to Brickognize, a service that recognises parts. Only the photo is sent, never the model, and nothing goes until you choose one. Agreeing here or in the parts bin counts for both.
+2. Build it goes to the first step you haven't built yet that uses that part, with the part's place outlined. Building **One part** at a time, it goes to that part itself.
+3. A card under the top bar names the part and its colour. If the part goes in more than one step, it says how many and lists them, each a button. **Not it?** offers Brickognize's other guesses, and **Back to step N** takes you back to where you were.
+
+If every step that uses the part is already built, it says so: the part may be a spare, since sets come with a few. An assistant can do the same with `edit_steps` and a photo (see [edit_steps](/docs/mcp-tools#edit_steps)).
+
+<!-- covers
+ui:where does this part go
+-->
+
 ### Build together {#build-together}
 
 **Build together** on the viewer's bar shares the model out among up to four people, each on their own phone: see [Build a shared model together](/docs/build-together#party).

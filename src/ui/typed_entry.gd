@@ -205,6 +205,8 @@ func _input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if visible and not bool(still_held.call()):
 		close()
+	elif not visible:
+		Wake.rest(self)
 
 
 func _submit() -> void:

@@ -118,6 +118,7 @@ func _begin() -> bool:
 	_clock = 0.0
 	_started_ms = Time.get_ticks_msec()
 	_running = true
+	set_process(true)
 	_per_step = clampf(TARGET_MS / float(_step_ends.size()), FASTEST_MS, SLOWEST_MS)
 	_per_step = minf(_per_step, LONGEST_MS / float(_step_ends.size()))
 	set_process(true)
@@ -175,6 +176,7 @@ func stop() -> void:
 
 func _process(delta: float) -> void:
 	if not _running:
+		Wake.rest(self)
 		return
 	# By the frames' time, and never behind the clock on the wall. The engine
 	# smooths the time it says a frame took towards the display's rate, so

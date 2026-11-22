@@ -136,6 +136,10 @@ func _take_whole(by_key: Dictionary, world: BrickWorld, library: PartLibrary,
 	var whole: Dictionary = _sold_whole(world, library, skip)
 	for path: String in whole:
 		var item: Dictionary = whole[path]
+		if str(item["part"]).is_empty():
+			for brick: BrickWorld.Brick in item["bricks"]:
+				whole_of[brick.id] = path
+			continue
 		var lot: Lot = _add(by_key, library, str(item["part"]), int(item["color"]))
 		items[path] = lot
 		var first: int = -1
@@ -254,7 +258,8 @@ static var _model_counted_at: Array = []
 ## one a builder means, whether it stands in the world or is a file read.
 static func pieces_among(bricks: Array, library: PartLibrary, skip: Dictionary = {}) -> int:
 	var whole: Dictionary = _sold_whole_among(bricks, library, skip)
-	var count: int = whole.size()
+	var count: int = whole.values().filter(func(item: Dictionary) -> bool:
+		return not str(item["part"]).is_empty()).size()
 	var in_whole: Dictionary = {}
 	for path: String in whole:
 		for brick: BrickWorld.Brick in whole[path]["bricks"]:
@@ -343,7 +348,9 @@ static func _sold_whole_among(bricks: Array, library: PartLibrary,
 			pieces.append({"part": brick.part_id, "at": brick.transform})
 			colours[brick.color_code] = int(colours.get(brick.color_code, 0)) + 1
 		var part: String = Flex.real_part(library, str(item["kind"]), pieces)
-		if part.is_empty():
+		# A motor's own cable laid is its motor's: no part of its own, and
+		# none of its pieces either.
+		if part.is_empty() and not (Flex.KINDS[str(item["kind"])] as Dictionary).has("electric"):
 			continue
 		var colour: int = int(colours.keys()[0])
 		for code: int in colours:

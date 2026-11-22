@@ -468,9 +468,10 @@ async function main() {
   check(after.every((s) => s === 400 || s === 404), `they are gone from the bucket (${after.join(", ")})`);
   r = await call(`/api/share?id=${id}`);
   check(r.status === 200 && r.json?.model === MODEL, "the published model is as it was");
-  r = await call("/api/share/sweep", { token: CRON });
-  check(r.status === 200 && Number.isInteger(r.json?.looked_at) && !(r.json?.removed || []).some((n) => n.startsWith(id)),
-    `the whole bucket swept: ${r.json?.looked_at} files an hour old or more, ${r.json?.removed?.length} removed, none of a published model's`);
+  // The whole sweep is the cron's alone: a check's run of it was written in
+  // the owner's console as a by-hand run, and held there as failed when the
+  // checks' own leftovers passed the quarter (11-22). Its rules are proved
+  // in tests/test_gallery_builds.py.
 
   r = await call(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: tokenA });
   check(r.status === 200, "taken down again");

@@ -3,8 +3,9 @@
 // person's request, console3): its plan at Admission first while billing is
 // on, the orangecheck account Connect made for it, the files storage keeps
 // of it by name (its build photos and those of its models, its avatar, its
-// feedback's), then the account, and with it every row that names it. One
-// place for both, so the two can never delete differently.
+// shared models' files and clips, its feedback's), then the account, and
+// with it every row that names it. One place for both, so the two can never
+// delete differently.
 //
 // Who may ask is the caller's to check: here is only what is done.
 
@@ -113,6 +114,25 @@ export async function erase(account) {
         body: JSON.stringify({ prefixes: avatars.map((one) => `${one.id}.jpg`) }) });
       if (!files.ok) throw new Error(`storage DELETE avatars: ${files.status}`);
     }
+    // Its shared models' files, every version's and every picture's: the
+    // models' rows go with the account, and storage has no other way to
+    // them. Kept, they stayed in the public bucket after the person had gone.
+    let modelIds = [];
+    try {
+      modelIds = (await db(`shared_models?owner=eq.${account}&select=id`)).map((one) => one.id);
+    } catch (trouble) {
+      if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
+    }
+    if (modelIds.length) await modelFilesGone(base, key, modelIds);
+    // Their clips (api/share.js, supabase/model_clips.sql), by name: <id>.mp4
+    // and <id>.webm of every model it shared, published or not. Before that
+    // SQL storage deletes nothing from a bucket it has not got, and says 200.
+    for (let at = 0; at < modelIds.length; at += 50) {
+      const files = await reach("storage DELETE shared-clips", 20, `${base}/storage/v1/object/shared-clips`, {
+        method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify({ prefixes: modelIds.slice(at, at + 50).flatMap((id) => [`${id}.mp4`, `${id}.webm`]) }) });
+      if (!files.ok) throw new Error(`storage DELETE shared-clips: ${files.status}`);
+    }
     // The files of its feedback (api/_feedback.js): its reports go with the
     // account, their files by name first. Imported here, not above: this
     // route answers every start of the app.
@@ -147,5 +167,41 @@ export async function erase(account) {
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return { status: 502, body: { error: NOT_DELETED } };
+  }
+}
+
+// A shared model's files in storage, found by its link: its file and every
+// version's, its pictures, its cut-out, its card's copy (api/share.js BUCKET
+// and THUMBS). Not imported from there: this route answers every start of
+// the app.
+const MODEL_BUCKETS = ["shared-models", "shared-thumbs"];
+
+/// The files of the models [ids] deleted from both buckets. A bucket that is
+/// not there has none; any other answer throws, so the deletion stops before
+/// the account goes and can be asked again.
+async function modelFilesGone(base, key, ids) {
+  const headers = { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" };
+  for (const bucket of MODEL_BUCKETS) {
+    const names = [];
+    for (const id of new Set(ids)) {
+      if (!/^[A-Za-z0-9]{10}$/.test(id)) continue;
+      for (let offset = 0; ; offset += 1000) {
+        const listed = await reach(`storage list ${bucket}`, 20, `${base}/storage/v1/object/list/${bucket}`, {
+          method: "POST", headers,
+          body: JSON.stringify({ prefix: "", search: id, limit: 1000, offset, sortBy: { column: "name", order: "asc" } }) });
+        if (listed.status === 400 || listed.status === 404) break;
+        if (!listed.ok) throw new Error(`storage list ${bucket}: ${listed.status}`);
+        const page = await listed.json();
+        // The search matches anywhere in a name: this model's own files only.
+        names.push(...page.filter((file) => file.id !== null && String(file.name).startsWith(`${id}.`))
+          .map((file) => file.name));
+        if (page.length < 1000) break;
+      }
+    }
+    for (let at = 0; at < names.length; at += 100) {
+      const gone = await reach(`storage DELETE ${bucket}`, 20, `${base}/storage/v1/object/${bucket}`, {
+        method: "DELETE", headers, body: JSON.stringify({ prefixes: names.slice(at, at + 100) }) });
+      if (!gone.ok && gone.status !== 404) throw new Error(`storage DELETE ${bucket}: ${gone.status}`);
+    }
   }
 }

@@ -3251,10 +3251,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   3894 against a wall still has no room; the hand's Replace lays the pin
   alone. Each case prints what the old part meets where it stands and what
   the new one would (`Builder.has_room_swapped`: no collision, or joined as
-  a part of its box laid where it stands, by `room_for`'s joint rule). Two
-  KNOWN rows: 4991-1's 32209 for 59426, whose cover reaches into the 32064a
-  it turns in; 6690-1's 3404 for 3404b, another box, moved onto its base.
-  The hand's Replace of 600 parts on a worker lays what it does on the main
+  a part of its box laid where it stands, by `room_for`'s joint rule). A
+  part of another box with no room where Replace moves it to sit its own way
+  is laid where the old part stood when it makes every joint the old one
+  made there and meets nothing else (`Builder.swap_place`, `_keeps_joints`;
+  smalls12): 4991-1's 32209 for 59426 in the holes the old axle was in, and
+  6690-1's 3404 for 3404b on its base. The hand's Replace of 600 parts on a worker lays what it does on the main
   thread, byte for byte.
 - `swapfind probe` (`src/dev/swapfind_probe.gd`): headless, about four
   minutes; `SWAPFIND_CASES=car,mcp` for some. The car
@@ -3412,9 +3414,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   another lot's part (a mirrored twin, 41769a beside 41770a) is passed over,
   "none you own for these alone", so a lot's swap changes only its own
   bricks. A print's plain part is offered unpicked. The list and Use what I
-  own are worked out a slice of a frame at a time (`OwnSwap.SLICE_US`, one
-  look at the model for every lot), the status bar saying "Finding a part or
-  colour of yours for each…" and "Swapping in the parts you own…". Use what
+  own are worked out a slice of a frame at a time (one FramePace for the
+  whole act, every part judged counted against it, one look at the model for
+  every lot, kept from the list to Use what I own while the model is
+  unchanged, the model asked after every wait), the status bar saying
+  "Finding a part or colour of yours for each…" and "Swapping in the parts
+  you own…" once a slice is spent. Use what
   I own puts the picked in, a part in hand put back first, as one undo step
   named "swapped 3 lots for parts you own, 9 parts"; the row then says that
   and "Still missing: 4 lots, 9 pieces, which What do I need? lists", or
@@ -3449,12 +3454,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `time` (Orthanc and 10179, listed and then Use what I own: no frame with
   more than 16 ms of its own work, ProbeTime.Frames, and the status bar
   saying so, the totals printed; on 501e38ab9 it fails, a 2.1 s frame, and
-  it still fails on three calls of one frame each: 10179's
-  Assemblies.file_frames, the change, the list taken again). Its bar is
-  live's own longest frame, timed in the same run as live now works them
-  out (smalls9: the copies' frames and the list a slice of a frame at a
-  time) or as live's Replace of the model's biggest lot, still one frame,
-  half again; the 16 ms target is said as KNOWN.
+  its bar is the parts list's, no frame over 100 ms of its own, and the
+  16 ms target is said as KNOWN. Use what I own's change itself, every lot's
+  replace and the copies' follow in one change of the model, is still one
+  frame (160 to 184 ms at load 60 to 66, smalls12): that frame is held to
+  300 ms and said as KNOWN against 100, every other frame held to 100.
 - `smalls9 probe` (`src/dev/smalls9_probe.gd`): headless, about five
   minutes. Orthanc and 10179: Find and Replace everywhere as the bar's
   refresh does it, and the parts list as P opens it, each with no frame of
@@ -3465,8 +3469,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   part recoloured they are worked out again; P twice while the list is taken
   leaves it hidden; Mirror's index of handed parts made a slice at a time is
   the one made at once. The first working out of 10179's frames is held to
-  300 ms a frame and the 100 ms bar said as KNOWN (a copy's first fit reads
-  its shapes in one frame of 130 to 175 ms). On b80bc2c45 the frames were one
+  the 100 ms bar too: each copy is tried first, and each cover or mirror
+  image the try wants is worked out in a slice of its own before the copy is
+  written (smalls12; a copy's first fit was one frame of 130 to 175 ms, its
+  tilted parts' stretched covers). On b80bc2c45 the frames were one
   frame of 0.2 to 0.96 s on 10179 and the list one of 0.34 to 0.9 s.
 - `rsreview probe` (`src/dev/rsreview_probe.gd`): headless; `RSR_CASES=`
   names its cases (the suite runs them all but `speed`), `RSR_OUT=DIR`

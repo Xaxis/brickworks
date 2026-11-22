@@ -563,7 +563,10 @@ try {
             said: document.getElementById("beta-said").textContent.trim(),
             terms: document.getElementById("beta-terms")?.checkVisibility() ? document.getElementById("beta-terms").textContent.trim() : "",
             termsTo: document.querySelector("#beta-terms a")?.getAttribute("href") || "",
-            afterHero: hero !== band && band.previousElementSibling === hero,
+            // Under the hero, with only Now on Brickworks (#now: this month's
+            // challenge and This week's pick, challengehonours) between.
+            afterHero: hero !== band && (band.previousElementSibling === hero
+              || (band.previousElementSibling?.id === "now" && band.previousElementSibling.previousElementSibling === hero)),
             heroBottom: Math.round(hero.getBoundingClientRect().bottom + scrollY), top: Math.round(band.getBoundingClientRect().top + scrollY),
             points: band.querySelectorAll(".beta-points li").length };
         });

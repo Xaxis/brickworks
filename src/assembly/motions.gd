@@ -1309,9 +1309,12 @@ static func read_from(metas: MetaIndex) -> Motions:
 	var own: Array[MetaIndex.Line] = metas.own(["MOTION*"])
 	for n: int in own.size():
 		var raw: String = own[n].raw
-		# 0 !BRICKWORKS MOTION_TRACK "name" ..., its words as one space apart.
-		var line: String = own[n].clean()
-		var words: PackedStringArray = tokens(line)
+		# 0 !BRICKWORKS MOTION_TRACK "name" ...: its words split on any run of
+		# spaces, but a quoted name kept whole. The name is the person's, and
+		# a line made one space apart (MetaIndex clean) read "Fly  round"
+		# back as "Fly round" (camreview F2).
+		var words: PackedStringArray = tokens("%s %s %s" % [MetaIndex.LEAD.strip_edges(), own[n].word,
+			own[n].said])
 		if words.size() < 4 or words[3].strip_edges().is_empty():
 			refused.append([n, raw, "", "a motion line with no motion's name", 0])
 			continue

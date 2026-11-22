@@ -451,6 +451,8 @@ func _process(_delta: float) -> void:
 		_fence = GpuFence.put()
 	if visible:
 		_refresh(false)
+	elif _changed_frames < 0:
+		Wake.rest(self)
 
 
 ## Bring the words and the bar up to date: at once when a job begins or
@@ -480,6 +482,7 @@ func _refresh(now: bool) -> void:
 	changed = _bar.show_job(job.total, job.done, ticks - job.began_ms) or changed
 	if changed and OS.has_feature("web"):
 		_changed_frames = Engine.get_frames_drawn()
+		set_process(true)
 
 
 ## Say on the page when [param job] was first drawn: the first frame drawn
