@@ -423,4 +423,7 @@ function near(id, work, margin = "150% 0px") {
 
 // The talk's place is hidden until it has talk, so the section under it says when it nears.
 near("community", talk);
-near("why", sets);
+// The sets' own tile, not the section it ends: the shorter home page has
+// #why within a screen and a half of the top, so its four pictures (139 KB
+// with their list) came with the first screen, which shows none of them.
+near("sets", sets);
