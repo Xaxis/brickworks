@@ -266,7 +266,7 @@ import {
   inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, summary, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
-import { withoutPrivateLines } from "../web/private-lines.js";
+import { withoutPrivateLines } from "./_private_lines.js";
 import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
 // What the front leads with, chosen once a day; and the weekly look at the OMR.
 import { featuredSaid, runFeatures } from "./_featured.js";
