@@ -312,7 +312,10 @@ try {
   const id = (await shared.json().catch(() => ({}))).id || "";
   check(shared.status === 201 && /^[A-Za-z0-9]{10}$/.test(id), `the throwaway shares a model: ${shared.status} ${id}`);
   const clip = readFileSync(new URL("../../tests/fixtures/clip/turn.webm", import.meta.url)).toString("base64");
-  const sent = await asked(`/api/share?op=clip&id=${id}`, { method: "POST", token, body: { version: 1, clip } });
+  // Of its version 1 as it was made, as its page asks what to record.
+  const need = await (await asked(`/api/share?op=clip_need&id=${id}`, { token })).json().catch(() => ({}));
+  const sent = await asked(`/api/share?op=clip&id=${id}`, { method: "POST", token,
+    body: { version: need.version ?? 1, at: need.at ?? "", clip } });
   check(sent.status === 200, `...and gives it a clip: ${sent.status}`);
   const before = await clipsOf(id);
   check(before.includes(`${id}.webm`), `its clip is in storage: ${before.join(", ") || "nothing"}`);

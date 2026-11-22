@@ -20,7 +20,7 @@
 // words; an @handle the server told (docs/SOCIAL.md section 7, item 6) is
 // a link to that profile, and typing @ in a box offers the people on the
 // page (pickMentions).
-import { askToSignIn, call, signedIn } from "/account.js";
+import { askToSignIn, call, email, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 import { avatarHtml } from "/kit.js";
@@ -108,70 +108,121 @@ const partsPart = document.getElementById("parts");
 if (partsPart && partsPart.dataset.parts) startParts(partsPart);
 // Its clip (unit turntable): the model turning once round, which its link's
 // preview plays in Discord, Slack and X (api/share.js, og:video). Recorded
-// here by its designer's own visit to its newest version's page, once for
-// each version, from the 3D view's own drawing of it out of sight
-// (tools/viewer/inline.js turntable, web/turntable-clip.js), then sent to
-// be kept: a model shared from the studio, the desktop app or the site gets
-// one alike. Signed in on the page, the same. <html data-clip> says how it
-// went (tools/web/turntable_flow.mjs reads it).
+// on its designer's own visit to its newest version's page, once for each
+// version, in a worker off this page's thread (tools/viewer/clip_worker.js,
+// built as web/turntable-worker.js: ttreview F6), from that very version's
+// scene (F2), then sent to be kept: a model shared from the studio, the
+// desktop app or the site gets one alike. Signed in on the page, the same.
+// <html data-clip> says how it went (tools/web/turntable_flow.mjs reads it).
 let clipAsked = false;
 const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && frame?.dataset.scene === `/m/${id}/scene.json`;
 if (newestScene && signedIn()) clipOwn();
 else if (newestScene) addEventListener("brickworks:signed-in-done", () => clipOwn(), { once: true });
 
+/// What this browser remembers of this model's clip for the account
+/// signed in here (localStorage): {mine: false} where it is somebody
+/// else's, so their visits ask nothing (ttreview N3); {at, how} where
+/// recording the version made at [at] failed here, so it is not tried
+/// again on every visit (F6). [given] writes it.
+function clipMemo(given) {
+  const key = `brickworks.clip:${email()}:${id}`;
+  try {
+    if (given) localStorage.setItem(key, JSON.stringify(given));
+    return JSON.parse(localStorage.getItem(key) || "null") || {};
+  } catch {
+    return {};
+  }
+}
+
 /// The designer's own visit: its clip recorded and sent where it has none
 /// of the newest version, or only a WebM where this browser records MP4
-/// (X, iMessage and Safari play MP4 alone), once the page has settled. Said
-/// on <html data-clip>: kept (nothing to do), not-open (no clips on this
-/// deployment yet), cannot (no WebCodecs encoder here), save-data,
-/// recording, cannot-draw (no WebGL 2, past this device's budget, or a part
-/// that did not come), failed, made, or refused-<status>. Anybody else's
-/// visit asks nothing more than whether it is theirs.
+/// (X, iMessage and Safari play MP4 alone), once the page has settled and
+/// only while it is shown. Said on <html data-clip>: kept (nothing to do),
+/// not-open (no clips on this deployment yet), cannot (no WebCodecs encoder
+/// here), save-data, tried-<how> (it failed here before, for this version),
+/// recording, cannot-draw (no WebGL 2 in a worker here, past the clip's
+/// budget, or a part that did not come), slow (past its time), stale (the
+/// scene came of another version), failed, made, or refused-<status>.
+/// Anybody else's visit asks once whether it is theirs, and then never.
 async function clipOwn() {
   if (clipAsked) return;
   clipAsked = true;
   const said = (how) => { document.documentElement.dataset.clip = how; };
-  const answer = await call(`/api/share?op=clip_need&id=${id}`).catch(() => null);
-  if (!answer || answer.status !== 200 || !answer.body.mine) return;
-  if (!answer.body.ready) return said("not-open");
-  const { CLIP, clipKind, recordClip } = await import("/turntable-clip.js");
+  // A clip of its newest version its page names already: an MP4 is the
+  // best there is, for its designer or anybody.
+  const named = document.querySelector('meta[property="og:video:type"]')?.getAttribute("content") || "";
+  if (named === "video/mp4") return said("kept");
+  const memo = clipMemo();
+  if (memo.mine === false) return;
+  const { clipKind } = await import("/turntable-clip.js");
   const kind = await clipKind();
+  if (named === "video/webm" && kind !== "mp4") return said("kept");
+  const answer = await call(`/api/share?op=clip_need&id=${id}`).catch(() => null);
+  if (!answer || answer.status !== 200) return;
+  if (!answer.body.mine) {
+    clipMemo({ mine: false });
+    return;
+  }
+  if (!answer.body.ready) return said("not-open");
+  const { version, at } = answer.body;
   const has = answer.body.clip;
-  if (has && has.version === answer.body.version && !(has.kind === "webm" && kind === "mp4")) return said("kept");
+  if (has && !(has.kind === "webm" && kind === "mp4")) return said("kept");
   if (!kind) return said("cannot");
   // The parts' geometry is data a person on a metered connection asked to save.
   if (navigator.connection && navigator.connection.saveData) return said("save-data");
+  if (memo.at === at && memo.how) return said(`tried-${memo.how}`);
+  const failed = (how) => {
+    clipMemo({ at, how });
+    said(how);
+  };
+  if (typeof Worker !== "function" || typeof OffscreenCanvas !== "function") return failed("cannot-draw");
   await new Promise((settled) => {
     const idle = () => (window.requestIdleCallback ? requestIdleCallback(() => settled(), { timeout: 4000 }) : setTimeout(settled, 1500));
     if (document.readyState === "complete") idle();
     else addEventListener("load", idle, { once: true });
   });
+  await shown();
   said("recording");
-  // Out of sight, the clip's size: what the View draws at and frames for.
-  const stage = document.createElement("div");
-  stage.setAttribute("aria-hidden", "true");
-  stage.inert = true;
-  Object.assign(stage.style, { position: "fixed", left: "-10000px", top: "0", width: `${CLIP.width}px`,
-    height: `${CLIP.height}px`, overflow: "hidden", pointerEvents: "none" });
-  document.body.append(stage);
-  let spin = null;
-  try {
-    const { turntable } = await import("/viewer3d.js");
-    spin = await turntable(stage, { scene: frame.dataset.scene, look: "app" });
-    if (!spin) return said("cannot-draw");
-    const made = await recordClip((share) => spin.frame(share), { kind });
-    if (!made) return said("failed");
-    let text = "";
-    for (let at = 0; at < made.bytes.length; at += 0x8000) text += String.fromCharCode(...made.bytes.subarray(at, at + 0x8000));
-    const sent = await call(`/api/share?op=clip&id=${id}`, { method: "POST",
-      body: { version: answer.body.version, clip: btoa(text) } });
-    said(sent.status === 200 ? "made" : `refused-${sent.status}`);
-  } catch {
-    said("failed");
-  } finally {
-    if (spin) spin.stop();
-    stage.remove();
-  }
+  const made = await new Promise((done) => {
+    const worker = new Worker("/turntable-worker.js");
+    // It draws only while the page is shown.
+    const seen = () => worker.postMessage({ visible: document.visibilityState === "visible" });
+    const end = (answer) => {
+      document.removeEventListener("visibilitychange", seen);
+      worker.terminate();
+      done(answer && typeof answer.how === "string" ? answer : { how: "failed" });
+    };
+    worker.addEventListener("message", (event) => end(event.data));
+    worker.addEventListener("error", () => end(null));
+    document.addEventListener("visibilitychange", seen);
+    seen();
+    // That version's scene, at an address no CDN has kept for an earlier
+    // version of the same number, and which must say it is that version.
+    worker.postMessage({ scene: `/m/${id}/scene.json?v=${version}&at=${encodeURIComponent(at)}`, of: `m:${id}:${version}`,
+      kind, coarse: matchMedia("(pointer: coarse)").matches });
+  });
+  // The version the scene it drew said it was (<html data-clip-of>, which
+  // tools/web/turntable_flow.mjs holds to the version sent).
+  if (made.of) document.documentElement.dataset.clipOf = String(made.of);
+  if (made.how === "stale") return said("stale");
+  if (made.how !== "recorded") return failed(made.how);
+  const sent = await call(`/api/share?op=clip&id=${id}`, { method: "POST", body: { version, at, clip: made.clip } })
+    .catch(() => ({ status: 0 }));
+  if (sent.status === 200) return said("made");
+  return failed(`refused-${sent.status}`);
+}
+
+/// Once the page is shown (now, where it is).
+function shown() {
+  return new Promise((done) => {
+    if (document.visibilityState === "visible") return done();
+    const look = () => {
+      if (document.visibilityState !== "visible") return;
+      document.removeEventListener("visibilitychange", look);
+      done();
+    };
+    document.addEventListener("visibilitychange", look);
+  });
 }
 
 /// How this browser places a model in a room, as <model-viewer> judges it

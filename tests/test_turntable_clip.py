@@ -130,6 +130,47 @@ def tools() -> None:
             pytest.skip(f"no {tool}")
 
 
+def small(out: Path, seconds: int, codec: list[str]) -> None:
+    """[seconds] of the fixtures' pattern (64 x 36, 24 fps), as [codec] says."""
+    done = subprocess.run(
+        ["nice", "-n", "19", "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=64x36:rate=24",
+         "-t", str(seconds), "-pix_fmt", "yuv420p", "-an", *codec, str(out)],
+        capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
+    assert done.returncode == 0, done.stderr[-2000:]
+
+
+def test_a_clip_is_as_long_as_its_pictures_whatever_its_headers_say(tmp_path):
+    # ttreview F4 (bench/results/ttreview-2026-11-22/lie.mjs): each was kept
+    # as 4 s or less, and each plays longer. ffmpeg's own fragmented MP4,
+    # whose moov tells of its first fragment alone; an MP4 whose movie,
+    # track and media headers were rewritten to 4 s, its frames' times
+    # (stts) left; a WebM whose Duration was rewritten to 4 s, its blocks'
+    # times left.
+    tools()
+    x264 = ["-c:v", "libx264", "-profile:v", "baseline", "-preset", "ultrafast"]
+    small(tmp_path / "frag.mp4", 8, [*x264, "-movflags", "frag_keyframe"])
+    small(tmp_path / "long.webm", 6, ["-c:v", "libvpx-vp9", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "20k"])
+    said = node(
+        f"const T = {json.dumps(str(tmp_path))};"
+        "const lie = fs.readFileSync(`${F}/long.mp4`);"
+        "const at = (type) => lie.indexOf(Buffer.from(type));"
+        "for (const type of ['mvhd', 'mdhd']) {"
+        "  const box = at(type); lie.writeUInt32BE(lie.readUInt32BE(box + 16) * 4, box + 20); }"
+        "lie.writeUInt32BE(lie.readUInt32BE(at('mvhd') + 20), at('tkhd') + 24);"
+        "const webm = fs.readFileSync(`${T}/long.webm`);"
+        "const d = webm.indexOf(Buffer.from([0x44, 0x89]));"
+        "if (webm[d + 2] === 0x88) webm.writeDoubleBE(4000, d + 3); else webm.writeFloatBE(4000, d + 3);"
+        "return { frag: readClip(fs.readFileSync(`${T}/frag.mp4`)), mp4: readClip(lie), webm: readClip(webm),"
+        "  mp4Said: lie.readUInt32BE(at('mvhd') + 20) / lie.readUInt32BE(at('mvhd') + 16) };"
+    )
+    assert said == {
+        "frag": {"error": "the clip is in fragments: one moov that describes every picture"},
+        "mp4": {"error": "the clip is longer than 4 seconds"},
+        "webm": {"error": "the clip is longer than 4 seconds"},
+        "mp4Said": 4,
+    }
+
+
 def encode(out: Path, codec: list[str]) -> None:
     """96 frames of a moving test pattern, 768 x 432 at 24 fps, a key frame
     every 48, written by ffmpeg as [codec] says."""

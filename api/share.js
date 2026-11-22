@@ -860,9 +860,11 @@ function describe(row) {
 /// What a link preview reads: the title, a sentence, the picture; [url]
 /// the page's own address, and [alternates] its copies in each language.
 /// With a [clip] (clipShown), the model turning as well: og:video for
-/// Discord, Slack, Facebook and the rest, and a twitter:card player for X,
-/// whose player is the embed playing it (?autoplay=1, web/embed.js); the
-/// picture stays, as the video's poster.
+/// Discord, Slack, Facebook and the rest, and beside X's large picture card
+/// the player's tags, its player the embed playing it (?autoplay=1,
+/// web/embed.js). The card stays summary_large_image: X shows a player card
+/// only on a domain it has allowed, and anywhere else the link would lose
+/// its picture (ttreview F5). The picture stays, as the video's poster.
 function pageHead(origin, row, id, title, { about = "", canonical = "", url = links(origin, id).url, alternates = "",
   clip = null } = {}) {
   const link = links(origin, id);
@@ -876,7 +878,8 @@ function pageHead(origin, row, id, title, { about = "", canonical = "", url = li
 <meta property="og:video:width" content="${Number(clip.width)}">
 <meta property="og:video:height" content="${Number(clip.height)}">
 ` : "";
-  // The player is the embed's card, at the size its code gives (links).
+  // The player is the embed's card, at the size its code gives (links):
+  // read by X once it shows player cards here, and by nothing else.
   const player = clip ? `<meta name="twitter:player" content="${escapeHtml(clip.player)}">
 <meta name="twitter:player:width" content="560">
 <meta name="twitter:player:height" content="420">
@@ -895,7 +898,7 @@ ${canonical ? `<link rel="canonical" href="${escapeHtml(canonical)}">\n` : ""}${
 <meta property="og:image" content="${escapeHtml(image)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-${video}<meta name="twitter:card" content="${clip ? "player" : "summary_large_image"}">
+${video}<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
@@ -1836,7 +1839,7 @@ ${scriptWords}${siteChrome().head}
 <div class="media">
 <a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
   data-scene="/m/${id}/scene.json">${clip
-    ? `<video src="${escapeHtml(clip.path)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>`
+    ? `<video src="${escapeHtml(clip.path)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
     : `<img src="${escapeHtml(poster)}" alt="">`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 ${clip ? iconButtonHtml({ icon: "pause", name: say("Pause"), small: true, attrs: 'data-clip-toggle hidden' }) : ""}
 </div>
@@ -2302,7 +2305,7 @@ async function read(request, response) {
     // Each person on it with their own picture, where they have one.
     await withFaces([page, ordered, next]);
     return html(response, 200, speak(() => sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted,
-      lists, parts, lang, words, clipShown(origin, id, clip, versions[0].n, lang === "en" ? "" : `/${lang}`))));
+      lists, parts, lang, words, clipShown(origin, id, clip, versions[0], lang === "en" ? "" : `/${lang}`))));
   }
 
   const row = await publishedRow(id);
@@ -2321,10 +2324,12 @@ async function read(request, response) {
     }
     // Its clip, which it plays muted in its picture's place when its
     // address asks (?autoplay=1, X's player for it: web/embed.js), while it
-    // is of the newest version; without, the picture, as it always was.
+    // is of the newest version; without, the picture, as it always was, and
+    // nothing of the clip read.
+    const autoplay = request.query?.autoplay === "1";
     const [by, clip, versions] = await Promise.all([orUnknown("share", profileOf(id, row.author)),
-      orUnknown("share", clipOf(id)), orUnknown("share", versionsOf(id, row, 1))]);
-    const playing = versions && request.query?.autoplay === "1" ? clipShown(origin, id, clip, versions[0].n) : null;
+      autoplay ? orUnknown("share", clipOf(id)) : null, autoplay ? orUnknown("share", versionsOf(id, row, 1)) : null]);
+    const playing = versions ? clipShown(origin, id, clip, versions[0]) : null;
     return html(response, 200, speak(() => embedCard(origin, id, { ...row, by }, lang, words, playing)), { embed: true });
   }
 
@@ -3317,6 +3322,9 @@ async function publish(request, response) {
     const cutBefore = picturedBefore ? await getFile(`${id}.cutout.png`) : null;
     if (cutBefore) await putFile(`${id}.v${last.n}.cutout.png`, cutBefore, "image/png");
   } else if (existing) {
+    // Its versions start again from 1: a clip an unpublish failed to take
+    // goes first, as it would have gone there (dropClip).
+    await dropClip(id);
     await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
   }
   const n = republish ? earlier[0].n + 1 : 1;
@@ -3414,33 +3422,36 @@ async function unpublish(request, response) {
   await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, {
     method: "PATCH", body: { published: false, listed: false, listed_at: null,
       updated_at: new Date().toISOString() } });
+  // Its clip first, whatever fails after: published again, the versions
+  // start again from 1, and a clip of the old model must never pass for
+  // the new one's (ttreview F3; clipCurrent holds it to its version's
+  // time as well).
+  await dropClip(id);
   // The row stays, so the link can say it was taken down, and a
   // republish from the same model keeps the same link. The files go, every
   // version's, and then the versions themselves.
   const versions = await db(`share_versions?model=eq.${id}&select=n`);
-  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`, ...clipFiles(id),
+  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`,
     ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`])]);
   await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
-  // Its clip's row with its file: published again, the versions start
-  // again from 1, and a clip of the old model must not pass for one.
-  await forgetClip(id);
   return response.status(200).json({ id, published: false, versions: versions.length });
 }
 
 // ---------------------------------------------------------------------------
 // The clip (unit turntable, supabase/model_clips.sql).
 //
-// The model turning once round, recorded in its designer's own browser
-// from its page's 3D view the first time they visit it with no clip of its
-// newest version (web/model-page.js, web/turntable-clip.js), so a model
-// shared from the studio, the desktop app or the site gets one alike. Its
-// page names it in og:video and a twitter:card player while it is of the
-// newest version; a model with none keeps its picture card. One file per
-// model, deleted on unpublish, with the account (api/_erase.js), and by
-// the sweep where no published model owns it.
+// The model turning once round, recorded in its designer's own browser,
+// in a worker off the page's own thread, the first time they visit its
+// page with no clip of its newest version (web/model-page.js,
+// web/turntable-worker.js), so a model shared from the studio, the desktop
+// app or the site gets one alike. Its page names it in og:video, and in
+// the player's tags beside X's picture card, while it is of the newest
+// version; a model with none keeps its picture card. A file per model,
+// deleted on unpublish, with the account (api/_erase.js), and by the sweep
+// where no published model owns it or its row names the other kind.
 
-/// The two names a model's clip can have: what an unpublish, a deletion
-/// or a new clip of the other kind takes away.
+/// The two names a model's clip can have: what an unpublish or a deletion
+/// takes away.
 const clipFiles = (id) => [`${id}.mp4`, `${id}.webm`];
 
 /// A model's clip as its row says, {version, kind, width, height, ms,
@@ -3453,94 +3464,108 @@ async function clipOf(id) {
 }
 
 /// Its row gone, where there is a table to have one (before the SQL there
-/// is none, and nothing to forget).
-async function forgetClip(id) {
-  await db(`model_clips?model=eq.${id}`, { method: "DELETE" }).catch((trouble) => {
+/// is none, and nothing to forget); with [made], only the row of the clip
+/// made then.
+async function forgetClip(id, made = "") {
+  const which = made ? `&made_at=eq.${encodeURIComponent(made)}` : "";
+  await db(`model_clips?model=eq.${id}${which}`, { method: "DELETE" }).catch((trouble) => {
     if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
   });
 }
 
-/// The clip's own address, with the version it is of: an address a CDN and
-/// a link preview may keep, which a new clip changes.
-const clipPath = (id, clip) => `/m/${id}.${clip.kind}?v=${clip.version}`;
+/// A model's clip taken wherever its versions start again from 1: its row
+/// first, so nothing names the clip whatever fails after, then its files,
+/// which the sweep takes on a later day if storage fails now.
+async function dropClip(id) {
+  await forgetClip(id);
+  await deleteFiles(clipFiles(id)).catch((trouble) => console.error(`share: clip files of ${id}: ${trouble?.message || trouble}`));
+}
+
+/// Whether [clip] is of the [newest] version ({n, at, implied}): its number,
+/// and made after that version was, so a clip a failed unpublish left of a
+/// version 1 never passes for the version 1 of the model published again.
+function clipCurrent(clip, newest) {
+  if (!clip || !newest || !CLIP_TYPES[clip.kind] || clip.version !== newest.n) return false;
+  return Boolean(newest.implied) || Date.parse(clip.made_at) >= Date.parse(newest.at);
+}
+
+/// Which clip of a model an address is of: when it was made, in base 36.
+const clipMark = (clip) => (Date.parse(clip.made_at) || 0).toString(36);
+/// The clip's own address, with its version and its mark: an address only
+/// this clip ever has, which a CDN and a link preview may keep, and which a
+/// new clip, a republish or a model published again changes.
+const clipPath = (id, clip) => `/m/${id}.${clip.kind}?v=${clip.version}&c=${clipMark(clip)}`;
 const clipUrl = (origin, id, clip) => `${origin}${clipPath(id, clip)}`;
 
-/// What a page's head says of a model's [clip] (og:video, a twitter:card
-/// player, web/embed.js playing it with ?autoplay=1 as the player), or null
-/// where it has none of the [newest] version. [at] the page's language's
-/// part of an address ("/de"), for the player's card in it.
+/// What a page's head says of a model's [clip] (og:video, the player's
+/// tags, web/embed.js playing it with ?autoplay=1 as the player), or null
+/// where it has none of the [newest] version (clipCurrent). [at] the page's
+/// language's part of an address ("/de"), for the player's card in it.
 function clipShown(origin, id, clip, newest, at = "") {
-  if (!clip || clip.version !== newest || !CLIP_TYPES[clip.kind]) return null;
+  if (!clipCurrent(clip, newest)) return null;
   return { url: clipUrl(origin, id, clip), path: clipPath(id, clip), type: CLIP_TYPES[clip.kind], width: clip.width,
     height: clip.height, player: `${origin}${at}/m/${id}/embed?autoplay=1` };
 }
 
-// Kept by the CDN ten minutes at an address with its version (clipUrl): a
-// clip played in an embed on a busy page is a read of storage every ten
-// minutes, not every visit, and one taken down is gone from the CDN within
-// them. Without a version, as briefly as the pictures.
+// Kept by the CDN ten minutes at its own address (clipPath), and every
+// range a player asks of it answered by the CDN from that one copy: a clip
+// played on a busy page is a read here every ten minutes a region, not one
+// a play (ttreview F1). Another address, as briefly as the pictures.
 const CLIP_CACHE = "public, max-age=300, s-maxage=600, stale-while-revalidate=60";
-// The last few clips this instance read, by file and when each was made:
-// Safari asks for a video in two or three ranges, each a request here.
+// The last few clips this instance read, by file and when each was made,
+// the latest asked last: what a CDN region's miss reads again.
 const CLIPS_KEPT = 8;
 const clipsKept = new Map();
 
 /// /m/X.mp4 or /m/X.webm: the model's clip while the model is published,
-/// in the kind asked; with ?v=N only while it is of version N. A range of
-/// it where one is asked: Safari asks for the first two bytes of a video
-/// before it plays it at all, and plays nothing from a server that does
-/// not answer 206.
+/// in the kind asked; with ?v=N only while it is of version N, and with
+/// ?c=K only while it is the clip K says (clipMark). Always the whole file
+/// with 200: Vercel's CDN keeps it and answers each Range from it (206,
+/// Safari's two bytes first among them), where a 206 from here could never
+/// be kept and every play of it came here (ttreview F1).
 async function clipAnswer(request, response, row, id) {
   const as = String(request.query?.as || "");
   const v = String(request.query?.v ?? "");
   const asked = v === "" ? null : VERSION.test(v) ? Number(v) : -1;
+  const mark = request.query?.c === undefined ? null : String(request.query.c);
   const clip = row && CLIP_TYPES[as] ? await orUnknown("share", clipOf(id)) : null;
   const none = () => response.status(404).setHeader("Cache-Control", "no-store").end("");
-  if (!clip || clip.kind !== as || (asked !== null && asked !== clip.version)) return none();
+  if (!clip || clip.kind !== as || (asked !== null && asked !== clip.version) || (mark !== null && mark !== clipMark(clip))) {
+    return none();
+  }
   const key = `${id}.${as}@${clip.made_at}`;
   let bytes = clipsKept.get(key);
-  if (!bytes) {
+  if (bytes) {
+    clipsKept.delete(key);
+  } else {
     bytes = await getFile(`${id}.${as}`);
     if (!bytes) return none();
-    clipsKept.set(key, bytes);
-    while (clipsKept.size > CLIPS_KEPT) clipsKept.delete(clipsKept.keys().next().value);
   }
+  clipsKept.set(key, bytes);
+  while (clipsKept.size > CLIPS_KEPT) clipsKept.delete(clipsKept.keys().next().value);
   response.setHeader("Content-Type", CLIP_TYPES[as]);
   // A link preview on any site, and an embed in any page, may play it.
   response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   response.setHeader("X-Content-Type-Options", "nosniff");
+  // The CDN's ranges, from the whole file kept.
   response.setHeader("Accept-Ranges", "bytes");
-  response.setHeader("Cache-Control", asked !== null ? CLIP_CACHE : SHARED_CACHE);
-  const range = /^bytes=(\d*)-(\d*)$/.exec(String(request.headers?.range || "").trim());
-  if (range && (range[1] !== "" || range[2] !== "")) {
-    const size = bytes.length;
-    // "bytes=-N" is the last N; "bytes=N-" from N to the end.
-    const start = range[1] === "" ? Math.max(0, size - Number(range[2])) : Number(range[1]);
-    const end = range[1] === "" || range[2] === "" ? size - 1 : Math.min(size - 1, Number(range[2]));
-    if (start >= size || start > end) {
-      return response.status(416).setHeader("Cache-Control", "no-store").setHeader("Content-Range", `bytes */${size}`).end("");
-    }
-    response.setHeader("Content-Range", `bytes ${start}-${end}/${size}`);
-    // A part is never the CDN's to keep: kept at the clip's address, it
-    // would be given to the next visitor who asks for the whole clip.
-    response.setHeader("Cache-Control", "public, max-age=300, s-maxage=0");
-    return response.status(206).end(bytes.subarray(start, end + 1));
-  }
+  response.setHeader("Cache-Control", asked !== null && mark !== null ? CLIP_CACHE : SHARED_CACHE);
   return response.status(200).end(bytes);
 }
 
-/// The owner's own: {mine, ready, version, clip}: whether the model is
+/// The owner's own: {mine, ready, version, at, clip}: whether the model is
 /// theirs and published, whether clips can be kept here yet (ready: before
-/// supabase/model_clips.sql there is nowhere), its newest version, and the
-/// clip it has ({version, kind}, or null), from which their page decides
-/// whether to record one (web/model-page.js).
+/// supabase/model_clips.sql there is nowhere), its newest version's number
+/// and when it was made, and its clip of that version ({version, kind}, or
+/// null), from which their page decides whether to record one
+/// (web/model-page.js) and what it records it from.
 async function clipNeed(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const owner = await signedIn(request);
   const id = String(request.query?.id || "");
   const row = await ownRow(id);
   if (!row || !row.published || row.owner !== owner) return response.status(200).json({ mine: false });
-  const versions = await versionsOf(id, row, 1);
+  const [newest] = await versionsOf(id, row, 1);
   let clip = null;
   let ready = true;
   try {
@@ -3549,8 +3574,8 @@ async function clipNeed(request, response) {
     if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
     ready = false;
   }
-  return response.status(200).json({ mine: true, ready, version: versions[0].n,
-    clip: clip ? { version: clip.version, kind: clip.kind } : null });
+  return response.status(200).json({ mine: true, ready, version: newest.n, at: newest.at,
+    clip: clipCurrent(clip, newest) ? { version: clip.version, kind: clip.kind } : null });
 }
 
 // A clip a model is a recording of its newest version, made once a visit
@@ -3558,12 +3583,15 @@ async function clipNeed(request, response) {
 // anything past it is something else.
 const CLIP_LIMIT = { per_hour: 20, per_day: 60 };
 
-/// POST ?op=clip&id=X {version, clip}: the owner's browser sends the clip
-/// it recorded of version [version] (web/turntable-clip.js), base64. Read
-/// here before anything is kept (api/_clip.js readClip: one picture track,
-/// H.264 in an MP4 or VP8/VP9 in a WebM, 4 s or less, 1.5 MB or less), and
-/// only while that version is still the newest; then kept at <id>.mp4 or
-/// <id>.webm, the other kind's taken away, and its row written.
+/// POST ?op=clip&id=X {version, at, clip}: the owner's browser sends the
+/// clip it recorded of version [version], made at [at] (clip_need's,
+/// web/turntable-worker.js), base64. Read here before anything is kept
+/// (api/_clip.js readClip: one picture track, H.264 in an MP4 or VP8/VP9 in
+/// a WebM, 4 s or less by its frames' own times, 1.5 MB or less), and only
+/// while that very version is still the newest; then kept at <id>.mp4 or
+/// <id>.webm and its row written. A clip of the other kind is left for the
+/// sweep: two browsers recording at once each keep their own file, and the
+/// row names one (ttreview N2).
 async function clipPut(request, response) {
   const owner = await signedIn(request);
   const id = String(request.query?.id || "");
@@ -3578,8 +3606,11 @@ async function clipPut(request, response) {
   const bytes = Buffer.from(given, "base64");
   const facts = readClip(bytes);
   if (facts.error) throw new Refusal(facts.error, bytes.length > MAX_CLIP_BYTES ? 413 : 415);
-  const newest = (await versionsOf(id, row, 1))[0].n;
-  if (!VERSION.test(String(body.version ?? "")) || Number(body.version) !== newest) {
+  // The version it was recorded of, by its number and when it was made: a
+  // version 1 of the model as it was before an unpublish is not this one.
+  const ofThis = (one) => one.n === Number(body.version) && String(one.at) === String(body.at ?? "");
+  const [newest] = await versionsOf(id, row, 1);
+  if (!VERSION.test(String(body.version ?? "")) || !ofThis(newest)) {
     throw new Refusal("the model has a newer version than this clip: its page records one again", 409);
   }
   // Before supabase/model_clips.sql there is nowhere to keep one.
@@ -3592,20 +3623,24 @@ async function clipPut(request, response) {
   const allowed = await db("rpc/may_act", { method: "POST", body: { actor: owner, act: "clip", ...CLIP_LIMIT } });
   if (allowed !== true) throw new Refusal("that is a lot of clips in a short time: try again in an hour", 429);
   await putFile(`${id}.${facts.kind}`, bytes, CLIP_TYPES[facts.kind]);
-  const clip = { version: newest, kind: facts.kind, width: facts.width, height: facts.height, ms: facts.ms,
-    bytes: bytes.length };
+  const made = new Date().toISOString();
+  const clip = { version: newest.n, kind: facts.kind, width: facts.width, height: facts.height, ms: facts.ms,
+    bytes: bytes.length, made_at: made };
   await db("model_clips?on_conflict=model", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
-    body: { model: id, ...clip, made_at: new Date().toISOString() } });
-  // An older clip of the other kind (a WebM, before a browser that records
-  // MP4 came by) goes.
-  await deleteFiles(clipFiles(id).filter((name) => !name.endsWith(`.${facts.kind}`)));
-  // Taken down while it came: nothing of it kept for a link that says it
-  // was taken down (the sweep would take the file within the day).
+    body: { model: id, ...clip } });
+  // Taken down while it came, or published anew: nothing of it kept for a
+  // link that says it was taken down, nor named for a version it is not of
+  // (the sweep takes a file left within the day).
   const still = await ownRow(id);
   if (!still || !still.published) {
-    await deleteFiles(clipFiles(id));
-    await forgetClip(id);
+    await forgetClip(id, made);
+    await deleteFiles(clipFiles(id)).catch(() => {});
     throw new Refusal("there is no shared model at that link", 404);
+  }
+  const [now] = await versionsOf(id, still, 1);
+  if (!ofThis(now)) {
+    await forgetClip(id, made);
+    throw new Refusal("the model has a newer version than this clip: its page records one again", 409);
   }
   return response.status(200).json({ id, clip, url: clipUrl(originOf(request), id, clip) });
 }
@@ -3660,7 +3695,23 @@ async function sweepRun(request, response, started) {
     const rows = await db(`shared_models?id=in.(${ids.slice(at, at + 100).join(",")})&published=is.true&select=id`);
     for (const row of rows) kept.add(row.id);
   }
-  const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0]));
+  // A published model's clip file its row does not name goes too: the other
+  // kind, when two browsers recorded at once (clipPut), or one whose row an
+  // unpublish forgot while storage failed (dropClip).
+  const clipsOf = [...new Set(files.filter((file) => bucketOf(file.name) === CLIPS).map((file) => file.name.split(".")[0])
+    .filter((id) => kept.has(id)))];
+  const named = new Set();
+  for (let at = 0; at < clipsOf.length; at += 100) {
+    const rows = await db(`model_clips?model=in.(${clipsOf.slice(at, at + 100).join(",")})&select=model,kind`).catch((trouble) => {
+      if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
+      return null;
+    });
+    // No table yet: nothing is known of them, and nothing goes.
+    if (rows === null) for (const id of clipsOf) for (const name of clipFiles(id)) named.add(name);
+    else for (const row of rows) named.add(`${row.model}.${row.kind}`);
+  }
+  const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0])
+    || (bucketOf(name) === CLIPS && !named.has(name)));
   // Most of what it looked at, unasked: the rows' read is wrong, not the
   // files (api/_cron.js sweepHeld). None of them, said.
   const held = scoped ? "" : sweepHeld(files.length, gone.length);

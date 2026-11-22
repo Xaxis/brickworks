@@ -13,26 +13,33 @@
 //      today's picture card: og:image, a summary_large_image card, no
 //      og:video; its embed with ?autoplay=1 is the picture.
 //   2. Their first visit to its page (Chromium on SwiftShader, 1280, signed
-//      in): within that visit <html data-clip> says made, timed.
-//   3. /m/X.mp4 (or .webm where this browser cannot record MP4): 200, its
-//      type, at most 1.5 MB, 4 s or less (api/_clip.js reads it), kept in
-//      DIR; decoded with ffmpeg, it turns (half a turn on, it looks unlike
-//      its first frame) and loops with no seam (its last frame is no
-//      further from its first than one frame is from the next).
+//      in): within that visit <html data-clip> says made, timed, recorded
+//      in a worker from version 1's own scene (data-clip-of).
+//   3. /m/X.mp4 (or .webm where this browser cannot record MP4) at the
+//      address its page names (?v=1&c=): two cold bytes=0- asks, the first
+//      reaching the function and the next a 206 the CDN cut from its copy
+//      (x-vercel-cache HIT); then 200, its type, at most 1.5 MB, 4 s or
+//      less (api/_clip.js reads it), kept in DIR; decoded with ffmpeg, it
+//      turns (half a turn on, it looks unlike its first frame) and loops
+//      with no seam (its last frame is no further from its first than one
+//      frame is from the next); Safari's bytes=0-1 a 206 HIT.
 //   4. Fetched as Discordbot, Slackbot and Twitterbot, the page answers
-//      with og:video (type, width, height, secure_url) and a twitter:card
-//      player whose twitter:player is its embed with ?autoplay=1, and the
-//      clip with 200.
+//      with og:video (type, width, height, secure_url), X's
+//      summary_large_image card with the player's tags beside it (its
+//      twitter:player the embed with ?autoplay=1), and the clip with 200.
 //   5. That embed in a blog's page plays the clip muted, looping, its time
 //      going on; Pause stops it and Play starts it again; for a person who
 //      asks for less motion it waits for Play. Pictures at 390, 768 and
 //      1280, light and dark. Nothing refused by its policy.
-//   6. Their second visit records nothing (data-clip kept).
+//   6. Their second visit records nothing (data-clip kept). Republished
+//      while the CDN still keeps version 1's unversioned scene, their next
+//      visit records version 2 from version 2's own scene.
 //   7. The clip's refusals: no session 401, somebody else's model 403, not
 //      a video 415, longer than 4 s 415, larger than 1.5 MB 413, a version
-//      that is not the newest 409.
+//      that is not the newest 409, the newest's number with another
+//      version's time 409.
 //   8. Unpublished, its clip is gone from storage (asked with the secret
-//      key) and its address answers 404.
+//      key) and the address its page named answers 404 past the CDN.
 //
 // Storage: the parts' geometry comes through this machine's mirror
 // (browser.mjs); the clip is read from the bucket once a run.
@@ -68,6 +75,9 @@ const ROBOTS = {
   Slackbot: "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
   Twitterbot: "Twitterbot/1.0",
 };
+
+// What <html data-clip> says when the designer's page is done with it.
+const ENDED = /^(made|refused|failed|cannot|not-open|save-data|kept|slow|stale|tried)/;
 
 let failures = 0;
 let checks = 0;
@@ -184,12 +194,14 @@ async function main() {
     const t0 = Date.now();
     await page.goto(first, { waitUntil: "load", timeout: 180000 });
     let how = "";
-    for (let i = 0; i < 1200 && !/^(made|refused|failed|cannot|not-open|save-data|kept)/.test(how); i++) {
+    for (let i = 0; i < 1200 && !ENDED.test(how); i++) {
       how = await page.evaluate(() => document.documentElement.dataset.clip || "").catch(() => "");
-      if (!/^(made|refused|failed|cannot|not-open|save-data|kept)/.test(how)) await page.waitForTimeout(500);
+      if (!ENDED.test(how)) await page.waitForTimeout(500);
     }
     const took = (Date.now() - t0) / 1000;
     check(how === "made", `within the visit, its clip is recorded and kept: data-clip ${how || "(nothing)"} in ${took.toFixed(1)} s`);
+    const drewOf = await page.evaluate(() => document.documentElement.dataset.clipOf || "").catch(() => "");
+    check(drewOf === `m:${id}:1`, `it drew version 1's own scene: ${drewOf || "(none said)"}`);
     check(errors.length === 0, `no script errors on the page${errors.length ? `: ${errors[0]}` : ""}`);
     await page.screenshot({ path: path.join(out, "1_designer_page_1280.png") });
 
@@ -198,9 +210,30 @@ async function main() {
     const kind = r.json?.clip?.kind || "";
     check(r.status === 200 && r.json?.mine === true && r.json?.clip?.version === r.json?.version,
       `its row: a ${kind} of version ${r.json?.clip?.version}, the newest (${r.json?.version})`);
-    // At its address with its version, as the page names it and the CDN
+    // At its own address, as the page names it (og:video) and the CDN
     // keeps it: the bucket read once a run, not once a fetch.
-    const clipAt = `/m/${id}.${kind}?v=${r.json?.clip?.version}`;
+    const named = metas((await call(`/m/${id}`)).text)["og:video"] || "";
+    const clipAt = named ? new URL(named).pathname + new URL(named).search : `/m/${id}.${kind}?v=${r.json?.clip?.version}`;
+    check(new RegExp(`^/m/${id}\\.${kind}\\?v=1&c=[0-9a-z]+$`).test(clipAt), `its page names it at its own address: ${clipAt}`);
+    // Cold, as a browser plays it (Chrome and Firefox ask bytes=0- of
+    // every <video>): the first from the function, the second from the
+    // CDN, a 206 it cut from the copy it kept (ttreview F1: the function's
+    // own 206 was kept by no CDN, and every play reached it).
+    const ranged = [];
+    for (let n = 0; n < 6; n++) {
+      const one = await call(clipAt, { range: "bytes=0-", cached: true });
+      ranged.push({ status: one.status, cache: one.headers.get("x-vercel-cache"), range: one.headers.get("content-range"),
+        size: one.bytes.length });
+      if (n > 0 && one.headers.get("x-vercel-cache") === "HIT") break;
+      await new Promise((done) => setTimeout(done, 1000));
+    }
+    const [cold, warm] = [ranged[0], ranged[ranged.length - 1]];
+    check(cold.cache !== "HIT" && (cold.status === 200 || cold.status === 206),
+      `a cold bytes=0- reaches the function: ${cold.status} ${cold.cache}`);
+    check(ranged.length > 1 && warm.cache === "HIT" && warm.status === 206 && warm.size === cold.size
+      && warm.range === `bytes 0-${cold.size - 1}/${cold.size}`,
+      `the next bytes=0- is the CDN's: ${warm.status} ${warm.cache} ${warm.range} (${ranged.length} asked)`);
+    writeFileSync(path.join(out, "ranges.json"), JSON.stringify(ranged, null, 1));
     r = await call(clipAt, { cached: true });
     const facts = readClip(r.bytes);
     const file = path.join(out, `clip.${kind || "bin"}`);
@@ -235,8 +268,9 @@ async function main() {
       check(false, `ffmpeg decodes its frames: ${n}`);
     }
     r = await call(clipAt, { range: "bytes=0-1", cached: true });
-    check(r.status === 206 && r.bytes.length === 2 && /^bytes 0-1\//.test(r.headers.get("content-range") || ""),
-      `a range of it, as Safari asks first: ${r.status} ${r.headers.get("content-range")}`);
+    check(r.status === 206 && r.bytes.length === 2 && /^bytes 0-1\//.test(r.headers.get("content-range") || "")
+      && r.headers.get("x-vercel-cache") === "HIT",
+      `a range of it, as Safari asks first, from the CDN: ${r.status} ${r.headers.get("content-range")} ${r.headers.get("x-vercel-cache")}`);
 
     console.log("4. as Discord, Slack and X read it");
     let player = "";
@@ -244,11 +278,13 @@ async function main() {
     for (const [name, agent] of Object.entries(ROBOTS)) {
       r = await call(`/m/${id}`, { agent });
       tags = metas(r.text);
-      const ok = r.status === 200 && /\/m\/\w{10}\.(mp4|webm)\?v=\d+$/.test(tags["og:video"] || "")
+      // X's card stays the large picture (ttreview F5), the player's tags
+      // beside it.
+      const ok = r.status === 200 && /\/m\/\w{10}\.(mp4|webm)\?v=\d+&c=[0-9a-z]+$/.test(tags["og:video"] || "")
         && tags["og:video:secure_url"] === tags["og:video"] && /^https:/.test(tags["og:video:secure_url"] || "x")
         && tags["og:video:type"] === (kind === "mp4" ? "video/mp4" : "video/webm")
         && Number(tags["og:video:width"]) === facts.width && Number(tags["og:video:height"]) === facts.height
-        && tags["twitter:card"] === "player" && tags["twitter:player"] === `${base}/m/${id}/embed?autoplay=1`
+        && tags["twitter:card"] === "summary_large_image" && tags["twitter:player"] === `${base}/m/${id}/embed?autoplay=1`
         && Boolean(tags["og:image"]);
       check(ok, `${name}: og:video ${tags["og:video"]} (${tags["og:video:type"]}, ${tags["og:video:width"]}x${tags["og:video:height"]}), `
         + `secure_url, twitter:card ${tags["twitter:card"]}, twitter:player ${tags["twitter:player"]}`);
@@ -312,6 +348,30 @@ async function main() {
       if (!again) await page.waitForTimeout(500);
     }
     check(again === "kept" && sends.length === 0, `records nothing: data-clip ${again}, ${sends.length} sent`);
+
+    console.log("6b. republished within the CDN's minute, it records the new version's own scene");
+    // ttreview F2: /m/X/scene.json, unversioned, is kept by the CDN 30 s
+    // and 30 s more stale; a recorder that drew it stored version 1's model
+    // as version 2's clip, and every later visit said kept.
+    const warmed = await call(`/m/${id}/scene.json`, { cached: true });
+    r = await call("/api/share", { method: "POST", token: a.access_token, body: { name: "Turntable test", id,
+      model: MODEL.replace("0 NOFILE", "1 4 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n0 NOFILE") } });
+    check(r.status === 200 && r.json?.version === 2, `republished: ${r.status} version ${r.json?.version}`);
+    const stale = await call(`/m/${id}/scene.json`, { cached: true });
+    const staleOf = stale.json?.of || "";
+    sends.length = 0;
+    await page.evaluate(() => { delete document.documentElement.dataset.clip; delete document.documentElement.dataset.clipOf; });
+    await page.goto(`${base}/m/${id}?again=${rand}`, { waitUntil: "load", timeout: 180000 });
+    how = "";
+    for (let i = 0; i < 1200 && !ENDED.test(how); i++) {
+      how = await page.evaluate(() => document.documentElement.dataset.clip || "").catch(() => "");
+      if (!ENDED.test(how)) await page.waitForTimeout(500);
+    }
+    const drew = await page.evaluate(() => document.documentElement.dataset.clipOf || "").catch(() => "");
+    const kept2 = (await call(`/api/share?op=clip_need&id=${id}`, { token: a.access_token })).json;
+    check(how === "made" && drew === `m:${id}:2` && kept2?.clip?.version === 2 && sends.length === 1,
+      `data-clip ${how}, drew ${drew || "(none said)"}, kept as version ${kept2?.clip?.version}, ${sends.length} sent `
+      + `(the CDN's unversioned scene said ${staleOf || "nothing"}, warmed ${warmed.json?.of || warmed.status})`);
     await context.close();
   } finally {
     await browser.close();
@@ -319,25 +379,34 @@ async function main() {
 
   console.log("7. what a clip is refused for");
   const fixture = (name) => readFileSync(new URL(name, FIXTURES)).toString("base64");
-  const newest = (await call(`/api/share?op=clip_need&id=${id}`, { token: a.access_token })).json?.version || 1;
-  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", body: { version: newest, clip: fixture("turn.webm") } });
+  const need = (await call(`/api/share?op=clip_need&id=${id}`, { token: a.access_token })).json || {};
+  const newest = need.version || 1;
+  const at = need.at || "";
+  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", body: { version: newest, at, clip: fixture("turn.webm") } });
   check(r.status === 401, `no session: ${r.status}`);
-  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: b.access_token, body: { version: newest, clip: fixture("turn.webm") } });
+  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: b.access_token, body: { version: newest, at, clip: fixture("turn.webm") } });
   check(r.status === 403, `somebody else's model: ${r.status}`);
   r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token,
-    body: { version: newest, clip: Buffer.from("not a video at all").toString("base64") } });
+    body: { version: newest, at, clip: Buffer.from("not a video at all").toString("base64") } });
   check(r.status === 415, `not a video: ${r.status} ${r.json?.error}`);
-  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token, body: { version: newest, clip: fixture("long.mp4") } });
+  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token, body: { version: newest, at, clip: fixture("long.mp4") } });
   check(r.status === 415, `longer than 4 s: ${r.status} ${r.json?.error}`);
   r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token,
-    body: { version: newest, clip: randomBytes(1600 * 1024).toString("base64") } });
+    body: { version: newest, at, clip: randomBytes(1600 * 1024).toString("base64") } });
   check(r.status === 413, `larger than 1.5 MB: ${r.status} ${r.json?.error}`);
-  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token, body: { version: newest + 1, clip: fixture("turn.webm") } });
+  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token, body: { version: newest + 1, at, clip: fixture("turn.webm") } });
   check(r.status === 409, `a version that is not the newest: ${r.status} ${r.json?.error}`);
+  // ttreview F3: the newest number made at another time is another
+  // version of it (a model published again after an unpublish).
+  r = await call(`/api/share?op=clip&id=${id}`, { method: "POST", token: a.access_token,
+    body: { version: newest, at: "2026-01-01T00:00:00+00:00", clip: fixture("turn.webm") } });
+  check(r.status === 409, `the newest version's number with another version's time: ${r.status} ${r.json?.error}`);
   r = await call(`/api/share?op=clip_need&id=${id}`, { token: b.access_token });
   check(r.status === 200 && r.json?.mine === false && !("clip" in r.json), `somebody else asking what it needs is told only it is not theirs`);
 
   console.log("8. unpublished, its clip goes");
+  // The address its page names now (version 2's clip, 6b).
+  const latest = metas((await call(`/m/${id}`)).text)["og:video"] || "";
   const before = await stored(id);
   check(before.length === 1, `in storage while it is shared: ${before.join(", ")}`);
   r = await call(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: a.access_token });
@@ -345,8 +414,12 @@ async function main() {
   published.splice(published.indexOf(id), 1);
   const after = await stored(id);
   check(after.length === 0, `its clip is gone from storage: ${after.join(", ") || "nothing left"}`);
-  r = await call(video ? new URL(video).pathname : `/m/${id}.webm`);
-  check(r.status === 404, `its address answers 404: ${r.status}`);
+  // Its own address, as the page named it, asked past the CDN (fresh=):
+  // the function forgets it at once. The CDN's copy goes within its ten
+  // minutes (CLIP_CACHE).
+  const own = latest ? new URL(latest).pathname + new URL(latest).search : "";
+  r = await call(own || `/m/${id}.webm`);
+  check(Boolean(own) && r.status === 404, `its address answers 404: ${own} ${r.status}`);
 }
 
 async function cleanUp() {

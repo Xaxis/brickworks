@@ -1371,51 +1371,73 @@ plan with Claude as the client.
   script errors. With no `--url` the stand-in's watchtower; with one, the
   deployment's first model, signed out.
 - `the model turning in its link's preview` (unit turntable, docs/SOCIAL.md
-  rank 2, 2026-11-22; `web/turntable-clip.js`, `web/model-page.js`
-  `clipOwn`, `tools/viewer/inline.js` `turntable` built into
-  `web/viewer3d.js`, `api/share.js` `clipNeed`/`clipPut`/`clipAnswer`/
-  `clipShown`/`pageHead`/`embedCard`, `api/_clip.js` `readClip`,
+  rank 2, 2026-11-22, fixed by ttfix; `web/turntable-clip.js`,
+  `web/model-page.js` `clipOwn`, `tools/viewer/clip_worker.js` built into
+  `web/turntable-worker.js` by `tools/viewer/build.mjs`, `api/share.js`
+  `clipNeed`/`clipPut`/`clipAnswer`/`clipShown`/`clipCurrent`/`dropClip`/
+  `pageHead`/`embedCard` and the sweep, `api/_clip.js` `readClip`,
   `api/_erase.js`, `web/embed.js`, `supabase/model_clips.sql`): the
-  designer's own visit to their model's newest page asks
-  `?op=clip_need`; with no clip of that version (or only a WebM where this
-  browser records MP4) it waits for the page to settle, draws the model
-  out of sight at 768 x 432 with the 3D view's own View (framed for all
-  its turns), 96 frames each exactly i/96 of a turn (so it loops with no
-  seam), on a light backdrop with `brickworks.diy` in the corner, encodes
-  them with WebCodecs (H.264 in an MP4 written here, moov first; else VP9
-  or VP8 in a WebM with its Duration) and posts `?op=clip` {version,
-  clip}. The server reads the file itself (one picture track, H.264/VP9/
-  VP8, 16-1920 px, 4 s or less, 1.5 MB or less), only for the newest
-  version and the model's owner, 20 an hour (`may_act` "clip"), keeps
-  `<id>.mp4` or `<id>.webm` in the private `shared-clips` bucket and a
-  `model_clips` row. `/m/<id>.mp4|.webm` (`op=clip`, `?v=` the version,
-  kept 10 minutes by the CDN with it) answers ranges (Safari). `/m/<id>`'s
-  head, while the clip is of the newest version: `og:type video.other`,
-  `og:video` (+ `secure_url`, `type`, `width`, `height`), `twitter:card
-  player`, `twitter:player` the embed with `?autoplay=1` (560 x 420),
-  `twitter:player:stream`; `og:image` stays. `/m/<id>/embed?autoplay=1`
-  plays it muted and looping in the picture's place (`media-src 'self'`)
-  with Pause and Play (icons `pause`, `play`) in its corner; still for
-  reduced motion until Play; View in 3D still opens the 3D view and stops
-  it. A model with no clip keeps today's picture card. Its file goes on
-  unpublish, with the account (`api/_erase.js`, by name), and with the
-  daily sweep where no published model owns it. `<html data-clip>`: kept,
-  not-open, cannot, save-data, recording, cannot-draw, failed, made,
-  refused-<status>.
+  designer's own visit to their model's newest page asks `?op=clip_need`
+  (not when its head names an MP4 clip already, nor once this browser knows
+  the account is not its owner); with no clip of that version (or only a
+  WebM where this browser records MP4), once the page has settled and only
+  while it is shown, a worker (`/turntable-worker.js`) fetches that
+  version's own scene (`/m/<id>/scene.json?v=N&at=<when it was made>`,
+  refused unless it says `m:<id>:N`), draws it on an OffscreenCanvas at 768
+  x 432 with the 3D view's own View (framed for all its turns, at most 1.5
+  million triangles on a phone and 3 million elsewhere), 96 frames each
+  exactly i/96 of a turn (so it loops with no seam), on a light backdrop
+  with `brickworks.diy` in the corner, and encodes them with WebCodecs
+  (H.264 in an MP4 written here, moov first; else VP9 or VP8 in a WebM with
+  its Duration); nothing of it on the page's thread, paused while the page
+  is hidden, stopped past 2 minutes of drawing. The page posts `?op=clip`
+  {version, at, clip}. A failure is remembered in localStorage for that
+  version and not tried again. The server reads the file itself (one
+  picture track, H.264/VP9/VP8, 16-1920 px, 1.5 MB or less, 4 s or less by
+  the longest of its headers and its frames' own times: stts and ctts, a
+  WebM's blocks; a fragmented MP4 refused), only for the newest version by
+  number and time and the model's owner, 20 an hour (`may_act` "clip"),
+  keeps `<id>.mp4` or `<id>.webm` in the private `shared-clips` bucket and a
+  `model_clips` row. A clip counts only while it is of the newest version
+  and made after it (`clipCurrent`). `/m/<id>.mp4|.webm?v=N&c=K` (`op=clip`,
+  K when it was made) answers the whole file with 200, kept 10 minutes by
+  the CDN, which answers every Range from it; any other address as briefly
+  as the pages. `/m/<id>`'s head, while the clip is current: `og:type
+  video.other`, `og:video` (+ `secure_url`, `type`, `width`, `height`),
+  `twitter:card summary_large_image` with `twitter:player` (the embed with
+  `?autoplay=1`, 560 x 420) and `twitter:player:stream` beside it;
+  `og:image` stays. `/m/<id>/embed?autoplay=1` plays it muted and looping
+  in the picture's place (`preload="metadata"`, `media-src 'self'`) with
+  Pause and Play (icons `pause`, `play`) in its corner; still for reduced
+  motion until Play; View in 3D still opens the 3D view and stops it; with
+  no `?autoplay=1` nothing of the clip is read. A model with no clip keeps
+  today's picture card. Its row and then its files go on unpublish and
+  wherever its versions start again (a republish after a takedown), with
+  the account (`api/_erase.js`, by name), and with the daily sweep where no
+  published model owns the file or its row names the other kind.
+  `<html data-clip>`: kept, not-open, cannot, save-data, tried-<how>,
+  recording, cannot-draw, slow, stale, failed, made, refused-<status>;
+  `data-clip-of` the version the scene drawn said it was.
 - `turntable browser flow` (`tools/web/turntable_flow.mjs`, preview check
   `turntable`; needs `supabase/model_clips.sql` applied): throwaway
   designer and stranger; the model shared with no clip is today's card;
-  the designer's first visit says `data-clip=made` (timed); the clip 200,
-  its type, 1.5 MB or less, 4 s or less by `readClip`, decoded by ffmpeg:
-  half a turn on unlike frame 0, its last frame no further from its first
-  than a frame from the next; a 206 for `bytes=0-1`; Discordbot, Slackbot
-  and Twitterbot each get the tags and the clip 200; the embed in a blog
-  at 390, 768, 1280, light and dark plays it muted and looping, Pause and
-  Play, reduced motion waits; the second visit records nothing; 401, 403,
-  415 (not a video, 5 s), 413, 409; unpublished, gone from storage (listed
-  with the secret key) and 404. Pictures and `clip.*`, `loop.json`,
-  `head.json` in `--out`. `account_flow` deletes an account with a clipped
-  model and finds its file gone from storage.
+  the designer's first visit says `data-clip=made` (timed) and
+  `data-clip-of=m:<id>:1`; the page names the clip at `?v=1&c=`; two cold
+  `bytes=0-` asks of it, the second a 206 with `x-vercel-cache: HIT`; the
+  clip 200, its type, 1.5 MB or less, 4 s or less by `readClip`, decoded by
+  ffmpeg: half a turn on unlike frame 0, its last frame no further from its
+  first than a frame from the next; `bytes=0-1` a 206 HIT; Discordbot,
+  Slackbot and Twitterbot each get the tags (summary_large_image with the
+  player's tags) and the clip 200; the embed in a blog at 390, 768, 1280,
+  light and dark plays it muted and looping, Pause and Play, reduced motion
+  waits; the second visit records nothing; republished while the CDN keeps
+  version 1's unversioned scene, the next visit records version 2 from
+  `m:<id>:2`; 401, 403, 415 (not a video, 5 s), 413, 409 (another version,
+  and the newest number with another time); unpublished, gone from storage
+  (listed with the secret key) and the address its page named 404 past the
+  CDN. Pictures and `clip.*`, `loop.json`, `head.json`, `ranges.json` in
+  `--out`. `account_flow` deletes an account with a clipped model and finds
+  its file gone from storage.
 - `the model in your room` (APP_UX5 #13, arview, 2026-11-07; `web/room.js`
   `openRoom`, `web/glb.js`, `web/model-page.js` `roomWay`/`offerRoom`,
   `web/view3d.css` `.room-go`, `web/room.css`): on a phone or tablet whose

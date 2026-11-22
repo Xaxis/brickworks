@@ -1,16 +1,17 @@
 // The model turning once round, as a short video for its link's preview
 // (docs/SOCIAL.md, unit turntable): what Discord, Slack and X play when
 // somebody pastes a model's link, where today they show a still picture.
-// Its designer's own visit to its page records it (web/model-page.js),
-// from the page's own 3D view (tools/viewer/inline.js turntable), and
+// Its designer's own visit to its page records it in a worker, off the
+// page's own thread (web/model-page.js, tools/viewer/clip_worker.js built
+// as web/turntable-worker.js), drawn as the page's 3D view draws it, and
 // sends it to api/share.js ?op=clip, which reads it again (api/_clip.js)
 // before keeping it.
 //
 // Recorded frame by frame with WebCodecs, not filmed off the screen with
 // MediaRecorder: each frame is the model turned exactly i/96 of a turn, so
 // the 97th would be the first again and the clip loops with no seam,
-// however slowly the device draws; nothing is dropped, and a tab put in
-// the background goes on (no timers, no frames from the screen). The file
+// however slowly the device draws; nothing is dropped, and nothing is
+// timed by the screen (no timers, no frames from it). The file
 // is written here, an MP4 of H.264 where the browser can encode that, the
 // kind every preview and phone plays, and a WebM of VP9 or VP8 where it
 // cannot (Firefox without H.264, Chromium as the checks run it). moov
@@ -70,16 +71,17 @@ export async function clipKind() {
 /// with the model turned [share] (0 to 1) of a whole turn, the clip's
 /// shape, and is asked for 0, 1/96, ... 95/96. {kind, type, codec, bytes,
 /// width, height, ms}, or null where it cannot be made here or [signal]
-/// stops it. Written at half the bitrate once more where it comes out past
-/// 1.5 MB. Never throws.
-export async function recordClip(draw, { kind = "", signal = null } = {}) {
+/// stops it. [gate], where given, is waited on before each frame (the
+/// worker holds it while the page is hidden). Written at half the bitrate
+/// once more where it comes out past 1.5 MB. Never throws.
+export async function recordClip(draw, { kind = "", signal = null, gate = null } = {}) {
   try {
     if (!encodes()) return null;
     const wanted = kind || (await clipKind());
     const codec = wanted ? await codecFor(wanted) : "";
     if (!codec) return null;
     for (const bitrate of [BITRATE, BITRATE / 2]) {
-      const made = await encodeOnce(draw, wanted, codec, bitrate, signal);
+      const made = await encodeOnce(draw, wanted, codec, bitrate, signal, gate);
       if (!made) return null;
       if (made.bytes.length <= CLIP.maxBytes) return made;
     }
@@ -127,7 +129,7 @@ function breathe() {
   });
 }
 
-async function encodeOnce(draw, kind, codec, bitrate, signal) {
+async function encodeOnce(draw, kind, codec, bitrate, signal, gate) {
   const { fps, frames } = CLIP;
   const chunks = [];
   let description = null;
@@ -153,6 +155,7 @@ async function encodeOnce(draw, kind, codec, bitrate, signal) {
     const page = easel();
     const step = 1e6 / fps;
     for (let i = 0; i < frames; i++) {
+      if (gate) await gate();
       if (signal && signal.aborted) { close(); return null; }
       if (failure) { close(); return null; }
       // Drawn and copied in one go: a WebGL canvas is only readable in
