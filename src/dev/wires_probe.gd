@@ -21,8 +21,10 @@
 ##      laid from the motor's outlet to the box by lay_flex (MCP, as a
 ##      session lays one): its plug on the box, the cable 500 LDU (its real
 ##      20 cm), one undo; read by Wiring as the motor's cable; saved, opened
-##      again and saved: the file byte for byte, the cable's sub-model the
-##      same and still the motor's cable; simulate_mechanism power=on says the
+##      again and saved, and again (the box set into the ground, so each
+##      open stands the model up): the file byte for byte, every piece where
+##      it was laid, the cable's sub-model the same and still the motor's
+##      cable; simulate_mechanism power=on says the
 ##      motor runs; undo takes the cable away and the motor is not wired.
 ##      After the reopen the cable is an item (F4): found by name, laid again
 ##      by lay_flex item=, Reshape reads its two ends and offers Turn the plug;
@@ -429,12 +431,22 @@ func _laid() -> void:
 	_check("a second cable's plug on the first's, turned half round: its motor runs back, the first forward",
 		stacked.begins_with("Laid") and is_equal_approx(float(both.power_of(other)["run"]), -1.0)
 		and is_equal_approx(float(both.power_of(motor)["run"]), 1.0))
+	var laid: Array = _parts_in_file()
 	var first: String = await _save("wires_laid.ldr")
 	await _open(MODELS + "wires_laid.ldr")
+	# Opened stood on the ground (the box is set 70 LDU into it): every piece
+	# where it was laid, the cables' sub-models written where they were.
+	var reopened: Array = _parts_in_file()
 	var second: String = await _save("wires_laid.ldr")
+	_check("opened again, stood %s up: every part where it was laid (%d)" % [_store.lift(), laid.size()],
+		laid == reopened)
 	if not _check("saved, opened again and saved: byte for byte (%d bytes)" % first.length(),
 			not first.is_empty() and first == second):
 		print(_difference(first, second))
+	await _open(MODELS + "wires_laid.ldr")
+	var again_saved: String = await _save("wires_laid.ldr")
+	if not _check("opened and saved a third time: byte for byte", not second.is_empty() and second == again_saved):
+		print(_difference(second, again_saved))
 	var again: Wiring = _wiring()
 	var box_again: int = -1
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -481,6 +493,24 @@ func _laid() -> void:
 
 func _wiring() -> Wiring:
 	return Wiring.read_with(_world.bricks(), _library)
+
+
+## Each part of the model where its file has it (the model's lift taken off),
+## part, colour, place and turn to the hundredth, sorted.
+func _parts_in_file() -> Array:
+	var back := Transform3D(Basis.IDENTITY, -_store.lift())
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var at: Transform3D = back * brick.transform
+		var numbers := PackedStringArray()
+		for value: float in [at.origin.x, at.origin.y, at.origin.z, at.basis.x.x, at.basis.x.y, at.basis.x.z,
+				at.basis.y.x, at.basis.y.y, at.basis.y.z, at.basis.z.x, at.basis.z.y, at.basis.z.z]:
+			numbers.append("%.2f" % (0.0 if absf(value) < 0.005 else value))
+		out.append("%s %d %s" % [brick.part_id, brick.color_code, " ".join(numbers)])
+	out.sort()
+	return out
 
 
 ## F4: a laid cable after a reopen is an item as a hose is: found among the
