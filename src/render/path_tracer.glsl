@@ -1390,7 +1390,11 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 		return n;
 	}
 	vec2 centre = box_min.xz + 10.0 + 20.0 * floor((at.xz - box_min.xz) / 20.0);
-	vec2 p = vec2(at.x - centre.x, centre.y - at.z);
+	// The logo reads across the part (photoreal3): along z, the letters'
+	// tops towards +x, so a 1x3's or a 2x4's runs over its width as the
+	// photographs' do. Along x, it ran down the length, and a judge read the
+	// black 2x4's as "mirrored, garbled lettering".
+	vec2 p = vec2(at.z - centre.y, at.x - centre.x);
 	if (length(p) > 5.4) {
 		return n;
 	}
@@ -1427,8 +1431,8 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 			dy += slope * g.y / r;
 		}
 	}
-	// p.y runs towards -z.
-	return normalize(vec3(-dx, 1.0, dy));
+	// p.x runs along z, p.y along x.
+	return normalize(vec3(-dy, 1.0, -dx));
 }
 
 // A moulded face is never quite flat: a slow waviness, a few thousandths of
