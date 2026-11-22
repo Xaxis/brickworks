@@ -2945,9 +2945,12 @@ func _lay_flex(input: Dictionary) -> String:
 			if path == item or Assemblies.label(path) == item:
 				found = path
 		if found.is_empty():
-			return "No hose or chain called %s. There is: %s." % [item,
-				", ".join(PackedStringArray(Flex.items_in(world).keys().map(
-					func(path: String) -> String: return Assemblies.label(path))))]
+			# Ten named at most, and the rest counted: an answer is read whole.
+			var named: Array = Flex.items_in(world).keys().map(
+				func(path: String) -> String: return Assemblies.label(path))
+			return "No hose, chain or cable called %s. There is: %s%s." % [item,
+				", ".join(PackedStringArray(named.slice(0, 10))) if not named.is_empty() else "none",
+				"" if named.size() <= 10 else ", and %d more" % (named.size() - 10)]
 		item = found
 	var colour: int = int(input.get("color", 0))
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
