@@ -2935,7 +2935,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		return "this model is open to look at, not to change"
 	if op in ["prev", "next", "new", "to"] and ids.is_empty():
 		return "select the parts first"
-	if not op in ["prev", "next", "new", "close"] and at == null:
+	if not op in ["prev", "next", "new", "close", "plan"] and at == null:
 		return "go to a step on the timeline first"
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number if at != null else -1
@@ -2943,6 +2943,8 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	var level: String = assemblies.entered if assemblies != null else ""
 	if op == "close":
 		return _close_step(level, skip)
+	if op == "plan":
+		return _plan_again(skip)
 	# Parts of the sub-model whose step the timeline shows are its parts to
 	# move, as they are once it is entered: a booklet's steps are a
 	# sub-model's steps as often as the model's own.
@@ -3953,6 +3955,28 @@ func _close_step(level: String, skip: Dictionary) -> String:
 	store.adopt()
 	store.touch()
 	(app.get("_steps") as StepsBar).refresh(-1, 0, planned)
+	return words
+
+
+## The model's steps worked out afresh from the model as it is, its own taken
+## off, as a model nobody gave steps has them: the timeline's Plan steps and
+## edit_steps "plan", one undo (AuthorSteps.cleared). A model opens in the
+## steps its file was saved in, and is planned again only when asked, here
+## (stepkeep2); a save writes the steps worked out then. Not someone else's
+## file, whose author's steps are kept as they made them.
+func _plan_again(skip: Dictionary) -> String:
+	if store._live_source() != null:
+		return "these are the steps of the file's author, kept as they made them"
+	if not AuthorSteps.any(world, skip):
+		return "the steps are worked out already, from the model as it is"
+	var undo: Array = AuthorSteps.cleared(world, skip)
+	if undo.is_empty():
+		return "the steps are as they were"
+	var words: String = "worked the steps out again from the model as it is"
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	(app.get("_steps") as StepsBar).replan()
 	return words
 
 

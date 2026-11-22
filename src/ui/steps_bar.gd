@@ -342,7 +342,11 @@ func _build() -> void:
 			["new", "New step from selection", "The selected parts in a step of their own, "
 				+ "after this one ({step_new})"],
 			["to", "Move to step…", "The selected parts into any step, its number typed "
-				+ "({step_to}), or dragged from their yellow mark above onto the step"]]:
+				+ "({step_to}), or dragged from their yellow mark above onto the step"],
+			# stepkeep2: a model opens in the steps it was saved in, and they
+			# are worked out again only when the person asks.
+			["plan", "Plan steps", "Work the steps out again from the model as it is, "
+				+ "in place of these. One undo"]]:
 		var op: String = edit[0]
 		var made: Button = _button(edit[1], "")
 		Keymap.tell(made, edit[2])
@@ -547,6 +551,16 @@ func start(world: BrickWorld, library: PartLibrary,
 		else 1)
 	job.end()
 	return true
+
+
+## The steps laid out again a slice at a time, from the first step, as the
+## timeline opens: after Plan steps took the model's own off, they are
+## worked out afresh from the model as it is, and in one go Orthanc's were a
+## frame of seconds (stepkeep2). Nothing while the timeline is put away.
+func replan() -> void:
+	if not visible or _world == null:
+		return
+	await start(_world, _library, _scenery)
 
 
 ## [method start] with the steps already worked out, by whoever shared the

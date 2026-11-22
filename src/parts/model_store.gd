@@ -1711,9 +1711,11 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 
 	var flattened: Array = model.flatten(library.parts)
 	_phase("flatten")
-	# The author's steps go on to every part; steps Brickworks worked out
-	# and wrote are no one's, and are worked out again (LdrModel).
-	var authored: bool = model.steps_are_authored()
+	# The steps the file carries go on to every part: an author's, and the
+	# app's own saved ones, kept as they were saved and still no one's
+	# (LdrModel.steps_are_saved, BrickWorld.steps_own). Worked out afresh
+	# only for a file with none (stepkeep2).
+	var authored: bool = model.steps_are_kept()
 	# Each part's number as the file has it, before it is made what is put
 	# down: what the list of moved and missing parts names ([member moved]).
 	var numbers_said: PackedStringArray = MovedParts.said_of(flattened)
@@ -1839,6 +1841,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
+	world.steps_own = model.steps_are_saved()
 	# And how its booklet shows them: ROTSTEP's turns and the app's own
 	# lines (BookletLooks); where the steps are not the author's, only the
 	# whole booklet's, its page set up and guides (_read_text).
@@ -4154,7 +4157,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
 			world.section_files)
-	if authored:
+	# Not the app's own steps read back from its file (BrickWorld.steps_own):
+	# kept, and still no one's, the file says no more than it did.
+	if authored and not model.steps_own:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,
 	# its steps still no one's when Brickworks worked them out.
@@ -4268,9 +4273,41 @@ func looks_follow_edit() -> void:
 	if _held_go_with(step):
 		held = _held_placements()
 	_steps_follow_grafts(step)
+	_steps_follow_saved(step)
 	_held_follow(Assemblies.moves_in(builder, step))
 	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
+
+
+## After [param step], on a model whose steps are the app's own saved ones
+## (BrickWorld.steps_own): each part it put down in the step of what it rests
+## on, and each it moved where its step would leave it in the air after what
+## it rests on now, in the same undo (AuthorSteps.follow_saved). Every other
+## part keeps its step, so the booklet saved is the booklet reopened, edited
+## only where the edit was.
+func _steps_follow_saved(step: Dictionary) -> void:
+	if not world.steps_own or builder.lattice == null:
+		return
+	var added: Array = []
+	var moved: Array = []
+	_bricks_edited(step, added, moved)
+	if added.is_empty() and moved.is_empty():
+		return
+	builder.extend_last(AuthorSteps.follow_saved(world, builder.lattice, added, moved, scenery))
+
+
+## The parts [param step] put down ([param added]) and moved ([param moved]),
+## by their ids now, its groups read through.
+func _bricks_edited(step: Dictionary, added: Array, moved: Array) -> void:
+	match str(step.get("undo", "")):
+		"group":
+			for inner: Variant in step.get("steps", []):
+				if inner is Dictionary:
+					_bricks_edited(inner, added, moved)
+		"remove":
+			added.append(builder._live(int(step["brick"])))
+		"move":
+			moved.append(builder._live(int(step["brick"])))
 
 
 ## After [param step] took the last model put into someone else's file with

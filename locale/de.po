@@ -16009,3 +16009,18 @@ msgstr "Bei %s s liegt schon ein Key: dieser bleibt, wo er war."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "Der Key bei %s s neu gesetzt, weniger als ein Bild von der Zeit entfernt: wo die Kamera steht, worauf sie blickt und ihr Objektiv."
+
+msgid "Plan steps"
+msgstr "Schritte planen"
+
+msgid "Work the steps out again from the model as it is, in place of these. One undo"
+msgstr "Die Schritte neu aus dem Modell, wie es ist, ermitteln, anstelle dieser. Ein Rückgängig"
+
+msgid "these are the steps of the file's author, kept as they made them"
+msgstr "das sind die Schritte des Autors der Datei, so behalten, wie er sie gemacht hat"
+
+msgid "the steps are worked out already, from the model as it is"
+msgstr "die Schritte sind schon aus dem Modell, wie es ist, ermittelt"
+
+msgid "worked the steps out again from the model as it is"
+msgstr "die Schritte neu aus dem Modell, wie es ist, ermittelt"

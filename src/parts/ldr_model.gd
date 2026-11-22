@@ -354,6 +354,25 @@ func steps_are_authored() -> bool:
 		and (marked_authored or author.strip_edges() != "Brickworks")
 
 
+## Whether the file is one of the app's own that carries the steps it worked
+## out and saved: "Author: Brickworks", 0 STEP lines, and no mark saying they
+## are someone's. Those are the model's steps on opening it again, kept as
+## the file has them and still no one's (BrickWorld.steps_own): read as no
+## one's, they were worked out afresh at every open, and the castle saved and
+## opened again had 2,363 of its 2,496 parts in another step (fpjudge,
+## stepkeep2). A file of the app's own with no 0 STEP line (one step, or an
+## older build's autosave) has nothing to keep, and is worked out as before.
+func steps_are_saved() -> bool:
+	return stepped and not marked_authored and not marked_worked \
+		and author.strip_edges() == "Brickworks"
+
+
+## Whether an open takes the file's steps as the model's: an author's, or the
+## app's own saved ones.
+func steps_are_kept() -> bool:
+	return steps_are_authored() or steps_are_saved()
+
+
 static func load_file(path: String) -> LdrModel:
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:

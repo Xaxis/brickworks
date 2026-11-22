@@ -289,6 +289,15 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## Whether the steps the parts have ([member Brick.step], [member unit_steps])
+## are the ones the app worked out and saved in its own file, read back
+## (LdrModel.steps_are_saved): the model's steps, kept as they are, and still
+## no one's. A save writes them with no AUTHORED_STEPS line, so the file says
+## no more than it did; a part put down goes in the step of what it rests on,
+## and one moved where its step would leave it in the air, after that
+## (AuthorSteps.follow_saved); a step edit by the person makes them theirs
+## (AuthorSteps.ensure). Set by an open, changed only by the history's steps.
+var steps_own: bool = false
 ## The parts of the model that are not here and that a save writes back in
 ## their steps (ModelStore: those on their way, and those the catalogue has
 ## not got), LdrModel.Placement each, as a Callable gives them; unset for
@@ -677,6 +686,7 @@ func clear(keep_numbers: bool = false) -> void:
 	_drawn.clear()
 	_out_of_order = false
 	unit_steps.clear()
+	steps_own = false
 	unit_chains.clear()
 	step_looks.clear()
 	section_lines.clear()
@@ -911,6 +921,7 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	copy.keeps_history = false
 	copy.held = held
 	copy.unit_steps = unit_steps.duplicate()
+	copy.steps_own = steps_own
 	copy.step_looks = step_looks.duplicate(true)
 	copy.motions = motions
 	for brick_id: int in _bricks:

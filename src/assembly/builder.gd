@@ -698,6 +698,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		stepped.step = int(step["step"])
 		return {"undo": "restep", "brick": stepped.id, "step": had}
 
+	# The app's own saved steps made the person's by their first step edit,
+	# or back (BrickWorld.steps_own, AuthorSteps.ensure): its own reverse.
+	if step.get("undo", "") == "stepsown":
+		var was_own: bool = world.steps_own
+		world.steps_own = bool(step["own"])
+		return {"undo": "stepsown", "own": was_own}
+
 	# A part the model holds and does not show put in another step
 	# (AuthorSteps, BrickWorld.held), its own reverse; and the brick it was
 	# put down as, when it came after the edit (ModelStore.place_awaited).

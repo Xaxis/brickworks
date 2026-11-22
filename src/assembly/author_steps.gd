@@ -369,9 +369,15 @@ static func steps_of(items: Array) -> Array:
 static func ensure(world: BrickWorld, library: PartLibrary, skip: Dictionary = {}) -> Array:
 	if not any(world, skip):
 		return adopt_plan(world, library, skip)
-	if _all_given(world, skip):
-		return []
 	var undo: Array = []
+	# The app's own saved steps (BrickWorld.steps_own) a person changes are
+	# theirs from now on, as the worked-out ones are once adopted: kept with
+	# AUTHORED_STEPS, a model they made one step is still theirs reopened.
+	if world.steps_own:
+		undo.append({"undo": "stepsown", "own": true})
+		world.steps_own = false
+	if _all_given(world, skip):
+		return undo
 	var numbers: Dictionary = numbers_for_file(world, library, skip, true)
 	var bricks: Dictionary = numbers["bricks"]
 	var changed: bool = false
@@ -1066,6 +1072,234 @@ static func name_of(item: Dictionary) -> String:
 ## step's look (BookletLooks.item_name) name it.
 static func held_name(placement: Object) -> String:
 	return "h%d" % placement.get_instance_id()
+
+
+# -- the app's own saved steps, after an edit ---------------------------------
+
+
+## After an edit of a model whose steps are the app's own, read back from its
+## file (BrickWorld.steps_own): each part it put down ([param added], ids)
+## given the step of what it rests on, the latest where it rests on several,
+## or a new last step of its section where it rests on nothing of it (on the
+## floor, or held by what stands beside it); and each part it moved
+## ([param moved]) left in its step unless everything it now rests on comes
+## later, when it goes in the step of what it rests on. No other part's step
+## changes, and a step the edit emptied is gone with its last part, as the
+## writer writes only steps with something in them. What a part rests on is
+## what its boxes, one cell lower, meet in the builder's [param lattice], as
+## a part lifted one cell is what its studs reach (BrickLattice.moved_by):
+## read about the parts themselves. A part put on one put down in the same
+## edit takes that one's step, the lowest read first. A copy of a sub-model
+## put down whole (pasted) is built as the sub-model's other copies are, its
+## parts in their steps ([method _steps_as_twin], the one time the whole
+## model is read), and put on in the step of what it rests on, or a new last
+## step, as a part is: left with none, it was planned after the last, and
+## opened again from its save, in the step its line was written in (the
+## nested model's pasted copy, 8 of 10 parts in another step). Worked out afresh at each
+## open, these steps were the plan of a model given its parts in another
+## order: a part put on the castle's top moved 240 of its 400 steps
+## (stepkeep2). Returns the undo for it.
+static func follow_saved(world: BrickWorld, lattice: BrickLattice, added: Array,
+		moved: Array, skip: Dictionary = {}) -> Array:
+	var undo: Array = []
+	if not world.steps_own or lattice == null or not any(world, skip):
+		return undo
+	var placed: Array = []
+	var copies: Dictionary = {}     ## a copy put down whole -> its parts
+	for id: Variant in added:
+		var brick: BrickWorld.Brick = world.get_brick(int(id))
+		if brick == null or skip.has(brick.id) or lattice.boxes_of(brick.id).is_empty():
+			continue
+		placed.append(brick)
+		var copy: String = _unstepped_copy(world, Assemblies.path_of(brick))
+		if not copy.is_empty():
+			(copies.get_or_add(copy, []) as Array).append(brick)
+	var lowest: Callable = func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		var low_a: int = BrickLattice._bound_of(lattice.boxes_of(a.id))[1]
+		var low_b: int = BrickLattice._bound_of(lattice.boxes_of(b.id))[1]
+		return low_a < low_b if low_a != low_b else a.id < b.id
+	var given: Dictionary = {}      ## a part put down in this edit -> the step it was given
+	var last: Dictionary = {}       ## section -> the new last step given in this edit
+	var order: Array = copies.keys()
+	for copy: String in order:
+		(copies[copy] as Array).sort_custom(lowest)
+	order.sort_custom(func(a: String, b: String) -> bool:
+		return lowest.call((copies[a] as Array)[0], (copies[b] as Array)[0]))
+	for copy: String in order:
+		_steps_as_twin(world, copy, skip, undo)
+		var section: String = home(world, Assemblies.parent_of(copy))
+		var at: int = -1
+		for brick: BrickWorld.Brick in copies[copy]:
+			for step: int in _rests_in(world, lattice, brick, section, skip, given):
+				at = maxi(at, step)
+		if at < 0:
+			at = _new_last(world, section, skip, last)
+		undo.append({"undo": "unitstep", "unit": copy, "step": -1})
+		world.unit_steps[copy] = at
+	var fresh: Array = placed.filter(func(brick: BrickWorld.Brick) -> bool: return brick.step < 0)
+	fresh.sort_custom(lowest)
+	for brick: BrickWorld.Brick in fresh:
+		var section: String = home(world, Assemblies.path_of(brick))
+		var under: Array = _rests_in(world, lattice, brick, section, skip, given)
+		var at: int = -1
+		for step: int in under:
+			at = maxi(at, step)
+		if at < 0:
+			at = _new_last(world, section, skip, last)
+		undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
+		brick.step = at
+		given[brick.id] = at
+	for id: Variant in moved:
+		var brick: BrickWorld.Brick = world.get_brick(int(id))
+		if brick == null or brick.step < 0 or given.has(brick.id) or skip.has(brick.id) \
+				or lattice.boxes_of(brick.id).is_empty():
+			continue
+		var section: String = home(world, Assemblies.path_of(brick))
+		var under: Array = _rests_in(world, lattice, brick, section, skip, given)
+		if under.is_empty():
+			continue
+		var first: int = 1 << 30
+		var latest: int = -1
+		for step: int in under:
+			first = mini(first, step)
+			latest = maxi(latest, step)
+		if first <= brick.step:
+			continue
+		undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
+		brick.step = latest
+	return undo
+
+
+## The step after [param section]'s last, the same for every part an edit
+## puts there ([param last] keeps it).
+static func _new_last(world: BrickWorld, section: String, skip: Dictionary,
+		last: Dictionary) -> int:
+	if not last.has(section):
+		var steps: Array = steps_of(items_of(world, section, skip))
+		last[section] = (int(steps.back()) if not steps.is_empty() else -1) + 1
+	return int(last[section])
+
+
+## The outermost copy round [param path] that has no step in the section
+## that places it: one put down since the model was read. "" for none.
+static func _unstepped_copy(world: BrickWorld, path: String) -> String:
+	var at: String = ""
+	for segment: String in Assemblies.segments(path):
+		at = Assemblies.join(at, segment)
+		if not world.unit_steps.has(at):
+			return at
+	return ""
+
+
+## The copy [param copy] given the steps another copy of its sub-model has:
+## each of its own parts and each of its own copies', the same parts in the
+## same order, the step of the same part there, and each copy inside it the
+## step the same copy has there. A sub-model has one set of steps, which the
+## file writes once. Nothing where no other copy is built of the same.
+static func _steps_as_twin(world: BrickWorld, copy: String, skip: Dictionary, undo: Array) -> void:
+	var definition: String = Assemblies.definition(Assemblies.leaf(copy))
+	var own: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id):
+			(own.get_or_add(Assemblies.path_of(brick), []) as Array).append(brick)
+	for path: String in own:
+		(own[path] as Array).sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+			return a.id < b.id)
+	var mine: Array = own.keys().filter(func(path: String) -> bool:
+		return path == copy or path.begins_with(copy + "/"))
+	for twin: String in world.unit_steps:
+		if twin == copy or Assemblies.definition(Assemblies.leaf(twin)) != definition \
+				or twin.begins_with(copy + "/"):
+			continue
+		var same: bool = true
+		for path: String in mine:
+			var theirs: Array = own.get(twin + path.substr(copy.length()), [])
+			var ours: Array = own[path]
+			same = same and theirs.size() == ours.size()
+			for n: int in ours.size() if same else 0:
+				same = same and (ours[n] as BrickWorld.Brick).part_id \
+					== (theirs[n] as BrickWorld.Brick).part_id
+		if not same:
+			continue
+		for path: String in mine:
+			var theirs: Array = own[twin + path.substr(copy.length())]
+			var ours: Array = own[path]
+			for n: int in ours.size():
+				var brick: BrickWorld.Brick = ours[n]
+				var step: int = (theirs[n] as BrickWorld.Brick).step
+				if brick.step != step:
+					undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
+					brick.step = step
+			if path != copy and not world.unit_steps.has(path):
+				var there: String = twin + path.substr(copy.length())
+				if world.unit_steps.has(there):
+					undo.append({"undo": "unitstep", "unit": path, "step": -1})
+					world.unit_steps[path] = int(world.unit_steps[there])
+		return
+
+
+## Every step the model has taken off it: each part's, each copy's, each
+## part it holds and does not show, the looks of single steps (the whole
+## booklet's stay), and its steps no longer the app's own saved ones, so they
+## are worked out afresh from the model as it is, as a model nobody gave steps
+## has them (Shell's Plan steps, edit_steps "plan"). Returns the undo for it.
+static func cleared(world: BrickWorld, skip: Dictionary = {}) -> Array:
+	var undo: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step >= 0 and not skip.has(brick.id):
+			undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
+			brick.step = -1
+	for path: String in world.unit_steps.keys():
+		var was: int = int(world.unit_steps[path])
+		undo.append({"undo": "unitstep", "unit": path, "step": was, "kept": was == -1})
+	world.unit_steps.clear()
+	for item: Variant in world.held_parts():
+		var placement: LdrModel.Placement = item
+		if placement.step >= 0:
+			undo.append({"undo": "heldstep", "held": placement, "step": placement.step})
+			placement.step = -1
+	var wide: Dictionary = BookletLooks.booklet_wide(world.step_looks)
+	if wide != world.step_looks:
+		undo.append({"undo": "steplooks", "looks": world.step_looks.duplicate(true)})
+		world.step_looks = wide
+	if world.steps_own:
+		undo.append({"undo": "stepsown", "own": true})
+		world.steps_own = false
+	return undo
+
+
+## The steps of [param section] that put on what [param brick] rests on: a
+## part of the section by its own step ([param given]'s, for one put down
+## in the same edit), a part of a copy built on the side inside it by the
+## step the section puts that copy on. What is outside the section (the
+## model round a copy built on the side, which is built apart from it), and
+## what has no step yet, says nothing.
+static func _rests_in(world: BrickWorld, lattice: BrickLattice, brick: BrickWorld.Brick,
+		section: String, skip: Dictionary, given: Dictionary) -> Array:
+	var out: Array = []
+	var below: PackedInt32Array = BrickLattice.moved_by(lattice.boxes_of(brick.id),
+		Vector3i(0, -1, 0))
+	for other_id: int in lattice.blockers_boxes(below, brick.id, skip):
+		var other: BrickWorld.Brick = world.get_brick(other_id)
+		if other == null:
+			continue
+		var path: String = Assemblies.path_of(other)
+		var step: int = -1
+		if home(world, path) == section:
+			step = int(given.get(other.id, other.step))
+		elif section.is_empty() or path.begins_with(section + "/"):
+			# The copy directly in the section's steps that holds it: the
+			# outermost one under the section built in steps of its own.
+			var at: String = section
+			for segment: String in Assemblies.segments(path).slice(
+					Assemblies.segments(section).size()):
+				at = Assemblies.join(at, segment)
+				if not in_parent(world, at):
+					step = int(world.unit_steps.get(at, -1))
+					break
+		if step >= 0:
+			out.append(step)
+	return out
 
 
 # -- the edits ---------------------------------------------------------------
