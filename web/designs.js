@@ -9,6 +9,14 @@
 // (api/_designers.js), which answers nobody else with anything of yours and
 // is never kept by the CDN; the page the CDN keeps has none of it.
 //
+// Against last month (insights2, 2026-11-22; supabase/designer_period.sql):
+// when the server sends `period`, each model's views, builds finished,
+// likes, saves, comments and remixes in the last 30 UTC days (today so far)
+// beside the 30 before, with the change (up, down, new, none), the last 8
+// weeks as a chart (the console's: one series, a hairline grid, a tip on
+// hover and focus, and its numbers as a table), each model's weeks as a
+// line, and the models sorted by any of it. Without it, as before.
+//
 // Everything is put on the page as text, in the page's language (say: a
 // person's page in German at /de/u/<you>).
 import { call, signedIn } from "/account.js";
@@ -95,6 +103,318 @@ function builders(model) {
     strip);
 }
 
+// ---------------------------------------------------------------------------
+// Against the 30 days before.
+
+const KINDS = ["views", "builds", "likes", "saves", "comments", "remixes"];
+const WEEKS = 8;
+const DAY_MS = 86400000;
+/// Each kind's heading, and its count's words for one and for more.
+const NAMED = {
+  views: () => [say("Views"), say("view"), say("views")],
+  builds: () => [say("Builds finished"), say("build finished"), say("builds finished")],
+  likes: () => [say("Likes"), say("like"), say("likes")],
+  saves: () => [say("Saves"), say("save"), say("saves")],
+  comments: () => [say("Comments"), say("comment"), say("comments")],
+  remixes: () => [say("Remixes"), say("remix"), say("remixes")],
+};
+/// What each counts, said beside the numbers (supabase/designer_period.sql).
+const MEANS = {
+  views: () => say("Visitors who opened its page: each once a day, never a robot, your own visits too."),
+  builds: () => say("Devices that reached its last step, each once, on the day it first did."),
+  likes: () => say("People who like it now, on the day they liked it. Not yours; a like taken back is not counted."),
+  saves: () => say("People who keep it in Saved or one of their lists, each once, from the day they first did. Not yours."),
+  comments: () => say("Comments anybody can see on its page, on the day they were written. Not yours, and only since its link was last shared."),
+  remixes: () => say("Remixes of it shared, on the day each was."),
+};
+const SHORT = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", timeZone: "UTC" });
+const PERCENT = new Intl.NumberFormat(globalThis.brickworksLang?.locale || "en-US",
+  { style: "percent", maximumFractionDigits: 0, signDisplay: "exceptZero" });
+/// Under ten per cent, a tenth of one: +0.2%, not +0%.
+const PERCENT_FINE = new Intl.NumberFormat(globalThis.brickworksLang?.locale || "en-US",
+  { style: "percent", maximumFractionDigits: 1, signDisplay: "exceptZero" });
+const percent = (ratio) => (Math.abs(ratio) < 0.1 ? PERCENT_FINE : PERCENT).format(ratio);
+/// A day the server named ("2026-11-22"), at its noon UTC, [plus] days on.
+const dayAt = (day, plus = 0) => Date.parse(`${day}T12:00:00Z`) + plus * DAY_MS;
+const short = (day, plus = 0) => SHORT.format(dayAt(day, plus));
+
+/// How [counts] moved: up, down, new (none in the 30 days before) or none
+/// (the same, nought included).
+function changeOf(counts) {
+  const now = Number(counts?.now) || 0;
+  const before = Number(counts?.before) || 0;
+  if (now === before) return "none";
+  if (!before) return "new";
+  return now > before ? "up" : "down";
+}
+
+/// The change, in words and marked: "▲ +12 (+40%)", "▼ −3 (−20%)", New, No change.
+function changeSaid(counts) {
+  const how = changeOf(counts);
+  const now = Number(counts?.now) || 0;
+  const before = Number(counts?.before) || 0;
+  const mark = make("small", `change ${how}`);
+  mark.dataset.change = how;
+  if (how === "none") mark.append(say("No change"));
+  else if (how === "new") mark.append(say("New"));
+  else {
+    const arrow = make("span", "", how === "up" ? "▲" : "▼");
+    arrow.setAttribute("aria-hidden", "true");
+    mark.append(arrow, ` ${how === "up" ? "+" : "−"}${number(Math.abs(now - before))} (${percent((now - before) / before)})`);
+  }
+  return mark;
+}
+
+/// One kind's counts as the page keeps them for the checks: data-now and the rest.
+function marked(element, kind, counts) {
+  element.dataset.kind = kind;
+  element.dataset.now = String(Number(counts.now) || 0);
+  element.dataset.before = String(Number(counts.before) || 0);
+  element.dataset.ever = String(Number(counts.ever) || 0);
+  element.dataset.change = changeOf(counts);
+  return element;
+}
+
+/// A total: the last 30 days large, the change, the 30 before and in all.
+function periodTile(kind, counts, lead) {
+  const [, one, many] = NAMED[kind]();
+  const li = make("li", lead ? "lead" : "", make("b", "", number(counts.now)), " ",
+    make("span", "", Number(counts.now) === 1 ? one : many), changeSaid(counts),
+    make("small", "", say("{n} the 30 days before", { n: number(counts.before) })),
+    make("small", "", say("{n} in all", { n: number(counts.ever) })));
+  marked(li, kind, counts).dataset.earned = kind;
+  return li;
+}
+
+/// A model's six numbers, each as a total's.
+function periodNumbers(model) {
+  const box = make("dl", "design-numbers period");
+  for (const kind of KINDS) {
+    const counts = model.period[kind];
+    const dd = marked(make("dd", "", make("b", "", number(counts.now)), changeSaid(counts),
+      make("small", "", say("{n} the 30 days before", { n: number(counts.before) })),
+      make("small", "", say("{n} in all", { n: number(counts.ever) }))), kind, counts);
+    box.append(make("div", "", make("dt", "", NAMED[kind]()[0]), dd));
+  }
+  return box;
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}) {
+  const made = document.createElementNS(SVG, tag);
+  for (const [key, value] of Object.entries(attrs)) made.setAttribute(key, String(value));
+  return made;
+}
+
+/// A model's weeks of [kind] as a line, the newest week marked; its numbers
+/// said for a screen reader.
+function weeksLine(model, kind) {
+  const values = model.period[kind].weeks;
+  const [name] = NAMED[kind]();
+  const w = 120;
+  const h = 28;
+  const most = Math.max(1, ...values);
+  const x = (at) => (at / (values.length - 1)) * (w - 6) + 3;
+  const y = (v) => h - 3 - (v / most) * (h - 6);
+  const shape = svg("svg", { viewBox: `0 0 ${w} ${h}`, width: w, height: h, role: "img",
+    "aria-label": say("{kind} by week, the oldest first: {numbers}", { kind: name, numbers: values.map(number).join(", ") }) });
+  shape.append(svg("polyline", { points: values.map((v, at) => `${x(at)},${y(v)}`).join(" "), class: "line" }),
+    svg("circle", { cx: x(values.length - 1), cy: y(values.at(-1)), r: 3, class: "dot" }));
+  const line = make("div", "design-weeks", make("span", "", say("{kind} by week", { kind: name })), shape);
+  line.dataset.kind = kind;
+  line.dataset.weeks = values.join(",");
+  return line;
+}
+
+/// A clean top for an axis that reaches [most], and its ticks (as the console's).
+function ticksOf(most) {
+  if (most <= 0) return [0, 1];
+  const step = 10 ** Math.floor(Math.log10(most));
+  const nice = [1, 2, 2.5, 5, 10].map((k) => k * step).find((s) => most / s <= 4) || step * 10;
+  const top = Math.ceil(most / nice) * nice;
+  const out = [];
+  for (let at = 0; at <= top + 1e-9; at += nice) out.push(Math.round(at * 100) / 100);
+  return out;
+}
+
+/// Week [at] (0 the oldest) of [period], in words: "28 Sep to 4 Oct".
+function weekSaid(period, at) {
+  const from = short(period.weeks_from, 7 * at);
+  const to = short(period.weeks_from, 7 * at + 6);
+  return at === WEEKS - 1 ? say("{from} to {to} (today so far)", { from, to }) : say("{from} to {to}", { from, to });
+}
+
+// The chart's width followed, let go when it is made again.
+let watching = null;
+
+/// Every model's [kind] added up, a column a week, with its table.
+function chartOf(period, kind) {
+  watching?.disconnect();
+  const [name, one, many] = NAMED[kind]();
+  const values = period.totals[kind].weeks;
+  const figure = make("figure", "period-chart");
+  figure.dataset.kind = kind;
+  figure.append(make("figcaption", "", make("span", "", say("{kind} by week, all your models", { kind: name })),
+    make("small", "", say("8 weeks, {from} to {to}, UTC", { from: short(period.weeks_from), to: short(period.today) }))));
+  const plot = make("div", "plot");
+  figure.append(plot);
+  const tip = make("div", "tip");
+  tip.hidden = true;
+  const words = (at) => `${number(values[at])} ${values[at] === 1 ? one : many}`;
+  const tipAt = (target, at) => {
+    tip.replaceChildren(make("b", "", words(at)), make("span", "", weekSaid(period, at)));
+    tip.hidden = false;
+    const box = plot.getBoundingClientRect();
+    const bar = target.getBoundingClientRect();
+    tip.style.left = `${Math.min(Math.max(0, bar.left - box.left + bar.width / 2 - tip.offsetWidth / 2), box.width - tip.offsetWidth)}px`;
+    tip.style.top = `${bar.top - box.top - tip.offsetHeight + 8}px`;
+  };
+  // The week a key is on: the chart's one Tab stop; the arrows, Home and End move it.
+  let lit = values.length - 1;
+  const draw = () => {
+    const w = Math.max(240, plot.clientWidth - 24);
+    const h = 150;
+    const left = 40;
+    const bottom = 20;
+    const ticks = ticksOf(Math.max(0, ...values));
+    const top = ticks.at(-1) || 1;
+    const y = (v) => h - (v / top) * (h - 8);
+    const shape = svg("svg", { viewBox: `0 0 ${w} ${h + bottom}`, role: "group",
+      "aria-label": say("{kind} by week, a column a week; the arrow keys go from week to week", { kind: name }) });
+    for (const t of ticks) {
+      shape.append(svg("line", { x1: left, x2: w, y1: y(t), y2: y(t), class: t === 0 ? "base" : "grid" }));
+      const label = svg("text", { x: left - 6, y: y(t) + 4, "text-anchor": "end" });
+      label.textContent = number(t);
+      shape.append(label);
+    }
+    const slot = (w - left) / values.length;
+    const width = Math.max(2, Math.min(40, slot - 8));
+    const hits = [];
+    values.forEach((value, at) => {
+      const hit = svg("rect", { x: left + at * slot, y: 0, width: slot, height: h, class: "hit", tabindex: at === lit ? 0 : -1,
+        role: "img", "aria-label": `${weekSaid(period, at)}: ${words(at)}` });
+      hits.push(hit);
+      hit.addEventListener("keydown", (event) => {
+        const to = { ArrowLeft: at - 1, ArrowDown: at - 1, ArrowRight: at + 1, ArrowUp: at + 1, Home: 0, End: values.length - 1 }[event.key];
+        if (to === undefined) return;
+        event.preventDefault();
+        lit = Math.max(0, Math.min(values.length - 1, to));
+        hits.forEach((other, n) => other.setAttribute("tabindex", n === lit ? "0" : "-1"));
+        hits[lit].focus();
+      });
+      hit.addEventListener("pointerenter", () => tipAt(hit, at));
+      hit.addEventListener("focus", () => tipAt(hit, at));
+      hit.addEventListener("pointerleave", () => { tip.hidden = true; });
+      hit.addEventListener("blur", () => { tip.hidden = true; });
+      shape.append(hit);
+      const x = left + at * slot + (slot - width) / 2;
+      if (value > 0) {
+        const height = Math.max(1, h - y(value));
+        const r = Math.min(4, width / 2, height);
+        // Rounded at its top, square at the baseline.
+        shape.append(svg("path", { class: "bar", d: `M${x},${h} v${-(height - r)} q0,${-r} ${r},${-r} h${width - 2 * r} `
+          + `q${r},0 ${r},${r} v${height - r} z` }));
+      } else shape.append(svg("g"));
+      // Each week's first day under it; every other one, the newest kept, where they would touch.
+      if (slot >= 52 || (values.length - 1 - at) % 2 === 0) {
+        const label = svg("text", { x: left + at * slot + slot / 2, y: h + 15, "text-anchor": "middle" });
+        label.textContent = short(period.weeks_from, 7 * at);
+        shape.append(label);
+      }
+    });
+    plot.replaceChildren(shape, tip);
+  };
+  watching = new ResizeObserver(() => draw());
+  watching.observe(plot);
+  // Its numbers as words, for anybody: a screen reader's and a reader's.
+  const table = make("table", "",
+    make("thead", "", make("tr", "", make("th", "", say("Week")), make("th", "n", name))),
+    make("tbody", "", ...values.map((value, at) => make("tr", "", make("td", "", weekSaid(period, at)), make("td", "n", number(value))))));
+  for (const th of table.querySelectorAll("th")) th.scope = "col";
+  const holder = make("div", "table", table);
+  holder.setAttribute("role", "region");
+  holder.setAttribute("aria-label", say("{kind} by week, as a table", { kind: name }));
+  holder.tabIndex = 0;
+  figure.append(make("details", "as-table", make("summary", "", say("As a table")), holder));
+  return figure;
+}
+
+/// The orders a designer can put their models in, by the kind chosen; ties
+/// kept in the server's order.
+const SORTS = {
+  most: (a, b) => b.now - a.now,
+  gaining: (a, b) => (b.now - b.before) - (a.now - a.before) || b.now - a.now,
+  fading: (a, b) => (a.now - a.before) - (b.now - b.before) || b.before - a.before,
+  ever: (a, b) => b.ever - a.ever,
+};
+
+/// A labelled dropdown of [options] ([value, words]).
+function choice(id, words, options) {
+  const select = make("select");
+  select.id = id;
+  for (const [value, said] of options) {
+    const option = make("option", "", said);
+    option.value = value;
+    select.append(option);
+  }
+  const label = make("label", "", words, select);
+  label.htmlFor = id;
+  return { label, select };
+}
+
+/// What each number counts, and the days.
+function meaning(period) {
+  const list = make("dl", "period-means");
+  for (const kind of KINDS) list.append(make("dt", "", NAMED[kind]()[0]), make("dd", "", MEANS[kind]()));
+  list.append(make("dt", "", say("The days")), make("dd", "", say("The last 30 days are today so far and the 29 days before it; "
+    + "the 30 days before are the 30 before those; a week is 7 days, the newest ending today. Days begin at midnight UTC.")));
+  const why = Date.parse(period.views_from || "") > Date.parse(period.before_from || "")
+    ? make("p", "", say("Views are kept by the day only from {day}, so their 30 days before hold only the days since.",
+      { day: DATE.format(dayAt(period.views_from)) })) : null;
+  return make("details", "qa period-what", make("summary", "", say("What each number counts")), make("div", "", list, why));
+}
+
+/// Draw [models] against the 30 days before, into [box] after [title] and [only].
+function drawPeriod(box, title, only, period, models) {
+  const t = period.totals;
+  const days = make("p", "period-days", say("The last 30 days, {from} to {to} (today so far), beside the 30 before, {before} to {last}.",
+    { from: short(period.now_from), to: short(period.today), before: short(period.before_from), last: short(period.now_from, -1) }));
+  const totals = make("ul", "earned mine-totals period",
+    ...KINDS.map((kind, at) => periodTile(kind, t[kind], at < 2)));
+  totals.setAttribute("aria-label", say("All your models, the last 30 days"));
+  const kindChoice = choice(`${box.id || "designs"}-kind`, say("Numbers of"), KINDS.map((kind) => [kind, NAMED[kind]()[0]]));
+  const sortChoice = choice(`${box.id || "designs"}-sort`, say("Sort models by"), [["most", say("Most in the last 30 days")],
+    ["gaining", say("Gaining the most")], ["fading", say("Fading the most")], ["ever", say("Most in all")]]);
+  const controls = make("form", "period-controls", kindChoice.label, sortChoice.label);
+  controls.addEventListener("submit", (event) => event.preventDefault());
+  const rows = models.map((model) => {
+    const item = row(model);
+    item.querySelector(".design-numbers").after(weeksLine(model, "views"));
+    return { model, item };
+  });
+  const list = make("ol", "design-rows", ...rows.map((one) => one.item));
+  let chart = chartOf(period, "views");
+  const order = () => {
+    const kind = kindChoice.select.value;
+    const how = SORTS[sortChoice.select.value] || SORTS.most;
+    list.dataset.kind = kind;
+    list.dataset.sort = sortChoice.select.value;
+    list.append(...rows.slice().sort((a, b) => how(a.model.period[kind], b.model.period[kind])).map((one) => one.item));
+  };
+  kindChoice.select.addEventListener("change", () => {
+    const kind = kindChoice.select.value;
+    const made = chartOf(period, kind);
+    chart.replaceWith(made);
+    chart = made;
+    for (const one of rows) one.item.querySelector(".design-weeks").replaceWith(weeksLine(one.model, kind));
+    order();
+  });
+  sortChoice.select.addEventListener("change", order);
+  order();
+  box.replaceChildren(title, only, days, totals, controls, chart, meaning(period), list);
+  return list;
+}
+
 function row(model) {
   const picture = model.thumb ? `/m/${model.id}.webp${/\?v=[a-z0-9]+$/.test(model.thumb) ? model.thumb.slice(model.thumb.indexOf("?")) : ""}`
     : model.image ? `/m/${model.id}.png` : "";
@@ -115,7 +435,7 @@ function row(model) {
   }
   const item = make("li", "design-row", frame, make("div", "design-main",
     make("h3", "", link(`${AT}/m/${model.id}`, String(model.name))), make("p", "design-meta", whatItIs(model)),
-    numbers(model), builders(model)));
+    model.period ? periodNumbers(model) : numbers(model), builders(model)));
   item.dataset.id = model.id;
   return item;
 }
@@ -151,7 +471,9 @@ export async function showDesigns(box, { handle = null, heading = say("Your mode
   const title = make("h2", "", heading);
   title.id = `${box.id || "designs"}-h`;
   box.setAttribute("aria-labelledby", title.id);
-  const only = make("p", "private", `${say("Only you see this: it is read with your sign-in and never kept by the site’s cache.")} `
+  const period = periodIn(mine);
+  const only = make("p", "private", period ? say("Only you see this: it is read with your sign-in and never kept by the site’s cache.")
+    : `${say("Only you see this: it is read with your sign-in and never kept by the site’s cache.")} `
     + say("The last {days} days, and in all since each model was shared.", { days: number(mine.days || 30) }));
   if (!mine.ready) {
     box.replaceChildren(title, make("p", "note", say("How your models are doing is not open on Brickworks yet.")));
@@ -164,6 +486,13 @@ export async function showDesigns(box, { handle = null, heading = say("Your mode
       + "and how many open it, build it and remix it is here.")));
     box.hidden = false;
     return said("empty");
+  }
+  document.documentElement.dataset.period = period ? "ready" : "none";
+  if (period) {
+    const list = drawPeriod(box, title, only, period, models);
+    box.hidden = false;
+    eager(list);
+    return said("ready");
   }
   const t = mine.totals || {};
   const totals = make("ul", "earned mine-totals",
@@ -181,16 +510,32 @@ export async function showDesigns(box, { handle = null, heading = say("Your mode
   const list = make("ol", "design-rows", ...models.map(row));
   box.replaceChildren(title, only, totals, counting, list);
   box.hidden = false;
-  // The models' pictures on the first screen asked for at once: a lazy one
-  // there came last (the first row at 1280 and 1920, site277). Which they
-  // are is known once they are laid out. The builds' photos stay lazy, so
-  // each is measured as it is drawn (web/card.js photoPicture).
+  eager(list);
+  return said("ready");
+}
+
+/// The models' pictures on the first screen asked for at once: a lazy one
+/// there came last (the first row at 1280 and 1920, site277). Which they are
+/// is known once they are laid out. The builds' photos stay lazy, so each is
+/// measured as it is drawn (web/card.js photoPicture).
+function eager(list) {
   for (const img of list.querySelectorAll(".pic img")) {
     const at = img.getBoundingClientRect();
     if (at.top < innerHeight && at.bottom > 0) img.loading = "eager";
   }
   sharpPhotos(list);
-  return said("ready");
+}
+
+/// The server's `period`, when it sent one whole: its days, and every
+/// model's six kinds (api/_designers.js periodOf). Null otherwise: drawn as before.
+function periodIn(mine) {
+  const period = mine?.period;
+  const day = /^\d{4}-\d{2}-\d{2}$/;
+  if (!period || !["today", "now_from", "before_from", "weeks_from"].every((key) => day.test(String(period[key] || "")))) return null;
+  const whole = (counts) => counts && Array.isArray(counts.weeks) && counts.weeks.length === WEEKS;
+  if (!KINDS.every((kind) => whole(period.totals?.[kind]))) return null;
+  if (!(mine.models || []).every((model) => !ID.test(String(model.id)) || KINDS.every((kind) => whole(model.period?.[kind])))) return null;
+  return period;
 }
 
 // On a profile's page: drawn only when it is the signed-in designer's own.

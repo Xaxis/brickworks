@@ -173,6 +173,12 @@ declare -A CMD=(
   # them alone and never cached: API routes only, with the bypass
   # (supabase/designers.sql).
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
+  # A designer's numbers against last month (insights2): 50 test models with
+  # rows dated by hand, ?op=designs within 1 s, its 3,300 numbers against the
+  # rows read back, Insights at 1280, 768 and 390 in both themes and German,
+  # and nobody else's (supabase/designer_period.sql; "(before the file)"
+  # until it is applied).
+  [designer_period]="tools/web/designer_period_flow.mjs --url=$P --out=$S/${TAG}_designer_period"
   # The monthly challenge: set on /admin?tests=1 (a test one, which no
   # visitor sees), entered from a model's page with each broken rule named,
   # voted in its two groups, ended and won, the winners told to a voter in

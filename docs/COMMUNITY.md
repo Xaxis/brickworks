@@ -44,6 +44,9 @@ the pages say what the site does.
   before (no tiles, its models newest first), and the designer's own
   numbers say "not open on Brickworks yet". Opens are counted by the day
   from the moment it is applied.
+- `supabase/designer_period.sql` after designers.sql and replies.sql (it
+  reads `model_opens` and `comment_parent_shown`): one function, nothing
+  else. Until then Insights is drawn as before.
 - `supabase/challenges.sql` after designers.sql (it reads `model_needs`,
   the Tested mark, `gallery_shows`, `directory_card` and trust's and
   moderation's rules), and after follows.sql, whose `feed_rows` it
@@ -433,6 +436,48 @@ remixes, best of three: the page 21 to 31 ms and their own numbers 46 to
 59 ms (185 KB of JSON). Who is shown
 in public is asked once a person, not once a comment or photo: asked of
 every one, the two took 110 to 250 ms.
+
+**Against last month** (insights2, 2026-11-22; `supabase/designer_period.sql`,
+`api/_designers.js` `periodOf`, `web/designs.js` `drawPeriod`). Totals say
+nothing of whether a model is gaining or fading; Printables shows a
+designer that, no LEGO® site did. `designer_period(designer)` gives each
+model `designer_mine` lists, for six kinds, the last 30 days, the 30
+before, each of the last 8 weeks and in all, and `?op=designs` adds it as
+`period` (null until the file is applied, and the panel is drawn as
+before). Nothing new is counted (docs/SOCIAL.md D13): each kind is rows the
+database already kept, by the UTC day they were made.
+
+| Kind | Counted as |
+|---|---|
+| Views | `model_opens`, as opens above; in all `model_stats.views` |
+| Builds finished | `model_builds`, a device once, the day it first reached the last step; in all `model_stats.builds` |
+| Likes | `model_likes` standing now, the day each was made; not the designer's own |
+| Saves | a person once, from the oldest of their Saved (`model_favourites`) and their lists (`model_collection_items`) still holding it; not the designer |
+| Comments | `designer_said`'s rule, the day each was written |
+| Remixes | published remixes, the day each was shared |
+
+**The days, one rule everywhere:** UTC days; the last 30 are today so far
+and the 29 before it, the 30 before are the 30 days before those, and week
+w (0 the oldest) is the 7 days from today − 55 + 7w, the newest ending
+today. Each kind's change is up, down, new (none in the 30 before) or none
+(the same, nought included), with its number and per cent. Views are kept
+by the day only from 2026-10-19, so until 2026-12-17 their 30 before hold
+only the days since, and the panel says so.
+
+The panel: six tiles (the last 30 days large, the change, the 30 before and
+in all), two dropdowns (which kind, and the order: most in the last 30
+days, gaining the most, fading the most, most in all), the kind's weeks for
+all the models as the console's chart (`--viz-*`: one series, a hairline
+grid, a tip on hover and on focus, one Tab stop moved by the arrows) with
+its numbers as a table under As a table, What each number counts, and every
+model's six with its change and its weeks of the chosen kind as a line
+(`role="img"`, its numbers in its name). The same on the designer's own
+`/u/` page. The dry run (`tools/designer_period_try.sql`) holds all 3,300
+numbers of 50 made-up models against counts written plainly from the rows,
+comments against `designer_said` itself: 24.5 ms the middle of ten in SQL
+(26 KB of JSON); the owner with the most models (49) 8.4 ms.
+`tools/web/designer_period_flow.mjs` holds the same on a deployment, with
+the 1 s bar for 50 models.
 ## Play: what moves, on its link and on its card
 
 `supabase/play.sql` (2026-10-19), the words in `src/assembly/playable.gd`
