@@ -815,6 +815,9 @@ func _read_answer(guesses: Array, seen: Dictionary, pick: int) -> void:
 
 
 func open() -> void:
+	# Read again for the first photo: closed, the model may have changed its
+	# colours, which leaves the same pages.
+	_indexed = null
 	HudFront.show_panel(self)
 	_fit()
 

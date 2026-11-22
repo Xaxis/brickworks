@@ -78,6 +78,7 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 	# reads the whole catalogue, 0.9 s of one frame on the box.
 	var named: Array = []
 	var seen_numbers: Dictionary = {}
+	var seen_parts: Dictionary = {}
 	for raw: Variant in guesses:
 		if not raw is Dictionary:
 			continue
@@ -94,11 +95,17 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 			parts.merge(by_key.get(one, {}))
 		var ids: Array = parts.keys()
 		ids.sort()
-		var info: PartLibrary.PartInfo = library.parts.get(ids[0]) if not ids.is_empty() else null
+		# Two guesses that are the same parts here (3245c and 3245b, both the
+		# castle's 3245a) are one choice.
+		if not ids.is_empty() and seen_parts.has(str(ids)):
+			continue
+		seen_parts[str(ids)] = true
+		var here: String = str(ids[0]) if not ids.is_empty() \
+			else (library.resolve(key) if library.parts.has(key) else "")
+		var info: PartLibrary.PartInfo = library.parts.get(here) if not here.is_empty() else null
 		named.append({"bricklink": number,
 			"name": info.name.strip_edges().replace("  ", " ") if info != null else str(guess.get("name", number)),
-			"score": float(guess.get("score", 0.0)), "part": str(ids[0]) if not ids.is_empty() else "",
-			"parts": ids, "in_model": not ids.is_empty()})
+			"score": float(guess.get("score", 0.0)), "part": here, "parts": ids, "in_model": not ids.is_empty()})
 	var options: Array = named.filter(func(one: Dictionary) -> bool: return bool(one["in_model"]))
 	options.append_array(named.filter(func(one: Dictionary) -> bool: return not bool(one["in_model"])))
 	options = options.slice(0, SHOWN)
@@ -121,17 +128,23 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 		for code: int in colours_of[part_id]:
 			colours[code] = int(colours.get(code, 0)) + int(colours_of[part_id][code])
 	var colour: int = colour_for(library, seen, colours)
-	var hits: Array = []
-	for at: int in steps.size():
-		var count: int = 0
-		var lit: Dictionary = {}
-		for brick_id: int in steps[at]:
-			var brick: BrickWorld.Brick = world.get_brick(brick_id)
-			if brick != null and wanted.has(brick.part_id) and (colour < 0 or brick.color_code == colour):
-				count += 1
-				lit[brick_id] = true
-		if count > 0:
-			hits.append([at, count, lit])
+	# Only the bricks of the part, from the index: 10179's every brick, read
+	# again, was half a frame.
+	var where: Dictionary = index["where"]
+	var by_step: Dictionary = {}
+	for part_id: String in wanted:
+		var placed_at: PackedInt64Array = where.get(part_id, PackedInt64Array())
+		for n: int in range(0, placed_at.size(), 3):
+			if colour >= 0 and placed_at[n + 2] != colour:
+				continue
+			var at: int = placed_at[n]
+			if not by_step.has(at):
+				by_step[at] = [at, 0, {}]
+			var hit: Array = by_step[at]
+			hit[1] = int(hit[1]) + 1
+			(hit[2] as Dictionary)[placed_at[n + 1]] = true
+	var hits: Array = by_step.values()
+	hits.sort_custom(func(one: Array, other: Array) -> bool: return int(one[0]) < int(other[0]))
 	var step: int = -1
 	var placed: int = 0
 	var built: int = 0
@@ -149,27 +162,36 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 ## The model's parts, for [method place] to read photos against: each
 ## part's colours ({"colours_of": part id -> {LDraw code -> how many}}), and
 ## its parts by every number they go by ({"by_key": number -> {part id ->
-## true}}, numbers_of). [param steps] as [method place] has them. Kept by a
+## true}}, numbers_of), and where each is placed ({"where": part id ->
+## [step, brick id, LDraw code] after each other, from 0}). [param steps] as
+## [method place] has them. Kept by a
 ## caller reading several photos against the same steps: on 10179 it is most
 ## of a frame.
 static func index_of(library: PartLibrary, world: BrickWorld, steps: Array) -> Dictionary:
 	var colours_of: Dictionary = {}
-	for bricks: Variant in steps:
-		for brick_id: int in bricks:
+	var where: Dictionary = {}
+	for at: int in steps.size():
+		for brick_id: int in steps[at]:
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
 			if brick == null:
 				continue
 			if not colours_of.has(brick.part_id):
 				colours_of[brick.part_id] = {}
+				where[brick.part_id] = PackedInt64Array()
 			var counted: Dictionary = colours_of[brick.part_id]
 			counted[brick.color_code] = int(counted.get(brick.color_code, 0)) + 1
+			var placed_at: PackedInt64Array = where[brick.part_id]
+			placed_at.append(at)
+			placed_at.append(brick_id)
+			placed_at.append(brick.color_code)
+			where[brick.part_id] = placed_at
 	var by_key: Dictionary = {}
 	for part_id: String in colours_of:
 		for key: String in numbers_of(library, part_id):
 			if not by_key.has(key):
 				by_key[key] = {}
 			(by_key[key] as Dictionary)[part_id] = true
-	return {"colours_of": colours_of, "by_key": by_key}
+	return {"colours_of": colours_of, "by_key": by_key, "where": where}
 
 
 ## The numbers a part of the model goes by, in lower case, for a photo's
