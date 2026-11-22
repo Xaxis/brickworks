@@ -355,7 +355,8 @@ if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
     || ! prod_deploy timeout 900 tools/deploy.sh --promote="$URL"; then
   echo "SHIP: $URL not promoted; deploying production afresh"
   LIVE=$SHA
-  prod_deploy timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${DEPLOY_DIR[@]}"
+  # The queue is bounded by heavy's BOX_HEAVY_WAIT, the run by the inner timeout (preview_lib.sh).
+  prod_deploy ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${DEPLOY_DIR[@]}"
   deployed=$?
 fi
 # A failed deploy is a failed ship. m174's lost one size of its start check
