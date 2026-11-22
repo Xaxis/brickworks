@@ -5710,6 +5710,13 @@
       "area": "building"
     },
     {
+      "kind": "cli",
+      "label": "fpjudge probe",
+      "entry": "src/dev/fpjudge_probe.gd",
+      "reach": "tools/probe.sh fpjudge_probe   (headless: files (fpreview's 14 files, every kind ticked: Lay, Undo, Redo, Save, opened from the saved file as File, Open does, Save again unedited byte for byte; the model reopened holds every part in colour, place and sub-model copy; someone's steps planned the same again), controls (castle and station, a part taken off by hand, the same), defaults (the bar's own ticks: no line but parts, steps and IN lines lost by Lay, each part it leaves in its copy), ghost (another model opened: none of the old model's ghost drawn, what is drawn the new model's own reading); byturns by hand (Lay on Orthanc against ten parts put down by hand at the same moment); FPJ_CASES=a,b, FPJ_FILES=castle,station, FPJ_OUT=DIR keeps the texts)",
+      "area": "building"
+    },
+    {
       "kind": "ui",
       "label": "missing and moved parts on open",
       "entry": "src/ui/moved_parts_dialog.gd",
