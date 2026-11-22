@@ -1266,6 +1266,14 @@
       "tests": []
     },
     {
+      "id": "cli:designer period browser flow",
+      "kind": "cli",
+      "entry": "tools/web/designer_period_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designer_period_flow.mjs --url=<preview> --out=DIR   (preview check [designer_period]; ends \"(before the file)\" until designer_period_2.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:designer words probe",
       "kind": "cli",
       "entry": "src/dev/designer_words_probe.gd",
@@ -3843,6 +3851,14 @@
       "entry": "src/ai/stream.gd",
       "reach": "tools/probe.sh provider_apis_probe   (Anthropic's, Gemini's and Responses' replies streamed: the tower drawn brick by brick before its reply ends, gone before it is built; one reply streamed and whole on all four adapters, the same body read back); tools/probe.sh provider_loop_probe   (the same on Chat Completions, its usage from the last chunk, and a stream lost half way asked again whole)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:a designer's numbers against last month",
+      "kind": "lib",
+      "entry": "supabase/designer_period_2.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designer_period_2.sql --dry --try=tools/designer_period_try.sql --table=model_opens   (replaces designer_period.sql's one function, after it, designers.sql and replies.sql; the promises around it in tests/test_designer_period.py; then the designer period flow)",
+      "area": "web",
       "tests": []
     },
     {
@@ -7464,6 +7480,7 @@
       "tests": [
         "tests/test_gallery_builds.py",
         "tests/test_browse_pages.py",
+        "tests/test_designer_period.py",
         "tests/test_designers.py",
         "tests/test_discovery.py",
         "tests/test_gallery_crons.py",
@@ -7899,9 +7916,10 @@
       "id": "ui:your models as a designer",
       "kind": "ui",
       "entry": "web/designs.js",
-      "reach": "signed in, your own /u/<handle> (How your models are doing) and /profile (Your models, as a designer); GET /api/people?op=designs with your sign-in",
+      "reach": "signed in, your own /u/<handle> (How your models are doing) and /profile?tab=insights (Your models, as a designer: with designer_period_2.sql applied, each kind against the 30 days before where both were counted in full, else Counted since, the chart by week from the first counted, the two dropdowns); GET /api/people?op=designs with your sign-in",
       "area": "web",
       "tests": [
+        "tests/test_designer_period.py",
         "tests/test_designers.py"
       ]
     },

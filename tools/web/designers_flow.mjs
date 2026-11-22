@@ -225,11 +225,13 @@ const mineDrawn = (page, box) => page.evaluate((id) => {
   return {
     shown: Boolean(panel && !panel.hidden), state: document.documentElement.dataset.designs || "",
     heading: panel?.querySelector("h2")?.textContent || "", note: panel?.querySelector(".private")?.textContent || "",
-    totals: Object.fromEntries([...(panel?.querySelectorAll(".mine-totals li") || [])].map((li) => [li.dataset.earned,
-      li.querySelector("b")?.textContent || ""])),
+    // Against the 30 days before (insights2), opens are views: the same count.
+    totals: Object.fromEntries([...(panel?.querySelectorAll(".mine-totals li") || [])].map((li) => [li.dataset.earned === "views" ? "opens"
+      : li.dataset.earned, li.querySelector("b")?.textContent || ""])),
     rows: [...(panel?.querySelectorAll(".design-row") || [])].map((li) => ({ id: li.dataset.id,
       meta: li.querySelector(".design-meta")?.textContent || "",
-      n: Object.fromEntries([...li.querySelectorAll("dd[data-kind]")].map((dd) => [dd.dataset.kind, dd.querySelector("b")?.textContent || ""])),
+      n: Object.fromEntries([...li.querySelectorAll("dd[data-kind]")].map((dd) => [dd.dataset.kind === "views" ? "opens" : dd.dataset.kind,
+        dd.querySelector("b")?.textContent || ""])),
       builders: li.querySelector(".design-builders p")?.textContent.replace(/\s+/g, " ").trim() || "",
       who: [...li.querySelectorAll(".design-builders figcaption a")].map((a) => a.getAttribute("href")),
       loaded: [...li.querySelectorAll(".design-builders img, .pic img")].every((img) => img.complete && img.naturalWidth > 0) })),

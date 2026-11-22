@@ -45,13 +45,14 @@ Under your numbers are your achievements, for everybody to see: each challenge y
 | **Tested** | your models marked [Tested](/docs/sharing#tested) | 1, 5, 10, 25 |
 | **Challenger** | [challenges](/docs/challenges) you entered | 1, 3, 6, 12 |
 
-The **Achievements** tab shows every track: your level, how many more reach the next and what gets you there. Reaching a level is a [notification](#notifications). **Insights** (*How your models are doing* on your own `/u/` page) says, for you alone, how each of your models is doing.
+The **Achievements** tab shows every track: your level, how many more reach the next and what gets you there. Reaching a level is a [notification](#notifications). **Insights** (*How your models are doing* on your own `/u/` page) says, for you alone, how each of your models is doing, each number set against the same number of days before it, in whole days up to yesterday.
 
 <!-- covers
 ui:achievements on a profile
 lib:achievements with levels
 ui:your achievements tab
 ui:your models as a designer
+lib:a designer's numbers against last month
 -->
 
 ## First steps {#first-steps}
