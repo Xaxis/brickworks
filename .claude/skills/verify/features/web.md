@@ -4903,9 +4903,10 @@ plan with Claude as the client.
   same size (each card's words a fixed height), so nothing moves;
   `<html data-shelf-live>` same / changed / short. A checkout's own page
   (no deploy) has only skeletons, fills from the answer, or takes the
-  shelf away. Then `#talk` (hidden; shown only once
-  `/api/talk?op=latest` answers 3 threads and its place is under the
-  window, `data-talk`), `#community` (Build together and four things a
+  shelf away. Then `#talk-latest` (hidden; asked only once the header
+  links to Talk, shown only once `/api/people?op=talk_latest&html=1`
+  answers 3 threads and its place is under the window, `data-talk`),
+  `#community` (Build together and four things a
   builder does), `#beta`, `#why` (The studio: the app's picture, now
   lazy, stability, the booklet, `#sets-models` four real sets live,
   free, your own AI) and `#start`. The header (`web/_shell.html`) is

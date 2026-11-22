@@ -36,9 +36,10 @@ The first screen now, at 390 x 844 and at 1280 x 800:
 
 Then:
 
-4. **What builders are talking about** (`#talk`), the forum's latest
-   threads (unit talk, `/api/talk?op=latest`), hidden until it answers with
-   three, never an empty box.
+4. **What builders are talking about** (`#talk-latest`), the forum's
+   latest threads (unit talk, `/api/people?op=talk_latest&html=1`, its rows
+   drawn by Talk), asked only once the header links to Talk and hidden
+   until it answers with three, never an empty box.
 5. **Build together**, and four things a builder does here.
 6. **The beta**, while it is open.
 7. **The studio**: the app's picture (no longer the first screen's), will
