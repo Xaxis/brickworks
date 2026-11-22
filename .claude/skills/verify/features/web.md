@@ -4213,6 +4213,46 @@ plan with Claude as the client.
   first step of five parts, do it with taps and a swipe, reading what the
   world draws: each tap exactly one part in full colour, in its own colour,
   the one before pale.
+- `where does this part go` (`src/ui/part_step.gd`, `BuildMode._ask_photo`,
+  `main._build_place`, APP_UX11 partstep, 2026-11-22): **Where does this
+  go?**, first on the row under the parts card (a camera alone where the
+  column is under 520 points, its words beside it wider), a fingertip each
+  way. The first press says where the photo goes in the parts bin's own
+  words (`Brickognize.TERMS`: Brickognize, a third party, may keep and
+  train on it, personal non-commercial use, only the photo and never the
+  model, nothing until a photo is chosen), agreed once for the bin and Build
+  mode alike (`ShellPrefs` `photo_told`); cancelled, nothing is asked for
+  or sent. A photo (the camera on a touch screen, a file on the desktop,
+  `PickImage`) goes to Brickognize as the bin's does; its guesses are read
+  against the pages' own new parts (`PartStep.place` over
+  `BuildSteps.added`): the parts this model has first (a part in hand comes
+  from the set's pile; matched by the part made now, the plain part of a
+  print and BrickLink's number), the top three offered; the colour the
+  model has nearest to the one the photo shows (Brickognize's colour,
+  mapped by `PartLibrary.by_bricklink`; the one colour where there is one);
+  and the first step at or after the page the builder asked from (the steps
+  before it built) that places it. The player goes there with only the
+  part's place outlined (`_build_outline`), or, a part at a time, at that
+  part itself (`BuildSteps.part_of`); the step is framed below the card
+  (`free_rect`). A card under the top bar names the part and colour with
+  its picture, says "It goes in at step 12, the first of 3 steps that place
+  it; the others: 18 and 25", lists each step as a button (built ones
+  dimmed), "Not it?" the other guesses the model has, and Back to step N.
+  Every step built: "Every step that places it is built: 4 and 9. It may be
+  a spare", the page left. None the model has, or a failure (offline, busy,
+  garbled): said on the card, the page left. Hidden in a build party.
+  `brickworksShare.build.partstep` {shown, title, where, steps, others,
+  back, step, part, colour, options, photo_ms, home}; on the web
+  `window.brickworksPartStep` = [page, photo_ms, performance.now()].
+  Over MCP, `edit_steps` with `picture_data=` (base64 or a data: URI) or
+  `picture_url=`: refused with the terms, nothing sent, until `agreed=true`
+  (or the bin's agreement), then in 1 call the top three (the model's parts
+  first) and every step that places it, the first from `from=` marked.
+  `partstep_probe` (390 x 844; `PROBE_SIZE=1024x768` for the words)
+  drives all of it with taps against a stub on port 10830;
+  `partstep_bench` measures 30 photos (car and 10179: 10 renders dressed as
+  a phone's photo, 5 of Brickognize's own pictures, each) against the real
+  Brickognize, mid-build, through `BuildMode.identify`.
 - `build party` (`src/net/build_party.gd`, APP_UX5 buildparty, 2026-11-06):
   **Build together** on a shared link's viewer (beside Build it on the bar;
   on a phone a pill over the big Build it, `view_together`) opens a card:

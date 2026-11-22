@@ -37,6 +37,14 @@
 ## the model's part of the window, with a box to add one for somebody who
 ## may (StepComments). The cover's are the whole model's.
 ##
+## "Where does this go?" (APP_UX11 partstep, 2026-11-22): beside the step's
+## words, a photo of the part in hand (the camera on a phone, a file on the
+## desktop) is named by photo search and the player goes to the first step
+## not yet built that places it, the part's place lit; a card under the top
+## bar says the part, where it goes, every other step that places it, and
+## the other guesses (PartStep). Said first, once, as the parts bin says it:
+## the photo goes to Brickognize, a third party, and nothing else does.
+##
 ## This only shows a page and says what was pressed; main.gd turns the
 ## page (BuildSteps says what is on it) and keeps the place.
 class_name BuildMode
@@ -49,6 +57,9 @@ signal close_wanted
 signal page_wanted(page: int)
 ## One part or Whole step chosen: main.gd shows the page again that way.
 signal by_part_changed(on: bool)
+## A photo's part found on [param page], or a step chosen on its card: the
+## page shown with [param bricks], the part's place, lit (partstep).
+signal place_wanted(page: int, bricks: Dictionary)
 
 ## Points.
 const BUTTON := 60.0
@@ -66,6 +77,10 @@ const WIDEST := 600.0
 const TARGET := 44.0
 ## Where this device keeps One part or Whole step, in the browser.
 const BY_PART_KEPT := "brickworks.build.by_part"
+## "Where does this go?"'s camera, and how wide the row is, in points, for
+## its words to show beside it.
+const PHOTO := "res://assets/ui/tools/photo.svg"
+const WHERE_WORDS_FROM := 520.0
 
 var thumbnails: PartThumbnails
 
@@ -112,6 +127,25 @@ var _pt: float = 0.0
 ## The comments on the page's step: the count in the top bar, the panel
 ## over the model.
 var comments: StepComments
+## What "Where does this go?" reads the pages by: main.gd's, set as it makes
+## them.
+var pages: BuildSteps
+var world: BrickWorld
+var library: PartLibrary
+var _where: Button
+var _card: PartStep
+var _picker: PickImage
+var _brickognize: Brickognize
+var _terms: ConfirmationDialog
+## The page the builder was on when they asked, while the card is up: the
+## steps before it are built, and Back to it is on the card. -1 none.
+var _home: int = -1
+## When the photo was chosen, and how long after it the step was shown, in
+## ms (-1 while none is): the bar is 3 s on broadband.
+var _asked_at: int = 0
+var photo_ms: int = -1
+## Where photos go: Brickognize's, or a probe's stub.
+var photo_url: String = Brickognize.URL
 
 
 func _ready() -> void:
@@ -125,6 +159,7 @@ func _ready() -> void:
 	add_child(comments)
 	_build_top()
 	_build_bottom()
+	_build_card()
 	get_viewport().size_changed.connect(_fit)
 	_fit()
 
@@ -220,6 +255,13 @@ func _build_bottom() -> void:
 	# in the middle, under the card.
 	telling.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(telling)
+	# "Where does this go?", first on the row: a photo of the part in hand.
+	_where = _button("Where does this go?",
+		"Where does this go? A photo of a part in your hand finds the step that places it")
+	_where.accessibility_name = "Where does this go?"
+	_where.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_where.pressed.connect(_ask_photo)
+	telling.add_child(_where)
 	_told = Label.new()
 	_told.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_told.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -338,7 +380,25 @@ func _fit() -> void:
 		_choice_face(button, button == _one_part)
 		button.add_theme_font_size_override("font_size", roundi(16.0 * pt))
 		button.custom_minimum_size = Vector2(0.0, TARGET * pt)
+	_fit_where(column.custom_minimum_size.x)
 	_lay_strip()
+
+
+## "Where does this go?" in words where the row has room for them beside the
+## choice, a camera alone on a phone's width; a fingertip either way.
+func _fit_where(across: float) -> void:
+	_face(_where, false)
+	_where.add_theme_font_size_override("font_size", roundi(16.0 * _pt))
+	_where.custom_minimum_size = Vector2(TARGET * _pt, TARGET * _pt)
+	_where.icon = Icons.texture_for(PHOTO, 20.0 * _pt, Icons.density(self))
+	_where.text = "Where does this go?" if across >= WHERE_WORDS_FROM * _pt else ""
+	for state: String in ["normal", "hover", "pressed", "disabled"]:
+		var face: StyleBoxFlat = _where.get_theme_stylebox(state)
+		face.content_margin_left = (14.0 if not _where.text.is_empty() else 10.0) * _pt
+		face.content_margin_right = face.content_margin_left
+	if _card != null:
+		_card.fit(_pt)
+		_place_card()
 
 
 func _face(button: Button, bright: bool) -> void:
@@ -591,6 +651,137 @@ func _hide_changed() -> void:
 	_changed.visible = false
 
 
+# -- "Where does this go?" (APP_UX11 partstep) ----------------------------------
+
+
+func _build_card() -> void:
+	_card = PartStep.new()
+	_card.thumbnails = thumbnails
+	add_child(_card)
+	_card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_card.place_wanted.connect(func(index: int, bricks: Dictionary) -> void:
+		place_wanted.emit(index + 1, bricks))
+	_card.option_wanted.connect(func(option: int) -> void:
+		_read_answer(_guesses, _seen, option))
+	_card.closed.connect(func() -> void: _home = -1)
+	# Back to the page the builder asked from, the card put away.
+	_card.back_wanted.connect(func() -> void:
+		var back: int = _home
+		_card.hide_card()
+		_home = -1
+		if back >= 0:
+			page_wanted.emit(back))
+	_top.resized.connect(_place_card)
+	_card.resized.connect(_place_card)
+
+
+## Under the top bar, as wide as the bars' column, in the middle.
+func _place_card() -> void:
+	if _card == null or _top == null:
+		return
+	var room: float = get_viewport().get_visible_rect().size.x if is_inside_tree() else 1600.0
+	var wide: float = minf(room - 20.0 * _pt, WIDEST * _pt)
+	_card.size = Vector2(wide, 0.0)
+	_card.position = Vector2(roundf((room - wide) / 2.0), _top.size.y + 8.0 * _pt)
+
+
+## The camera pressed: the photo goes to Brickognize, a third party, which
+## is said before the first one, in the parts bin's words, and never sent
+## without one chosen.
+func _ask_photo() -> void:
+	if _picker == null:
+		_picker = PickImage.new()
+		_picker.picked.connect(_identify)
+		_picker.failed.connect(func(why: String) -> void:
+			if why != "no picture chosen":
+				_card.failed(why))
+		add_child(_picker)
+	# A phone or a tablet takes the photo there and then.
+	_picker.camera = DisplayServer.is_touchscreen_available()
+	if bool(ShellPrefs.value("photo_told")):
+		# Straight from the press: a browser opens its picker only while a
+		# real click is still being handled (PickImage).
+		_picker.ask()
+		return
+	if _terms == null:
+		_terms = ConfirmationDialog.new()
+		_terms.title = "Where does this go?"
+		_terms.dialog_text = Brickognize.TERMS
+		_terms.dialog_autowrap = true
+		_terms.ok_button_text = "Choose a photo"
+		_terms.confirmed.connect(func() -> void:
+			ShellPrefs.put("photo_told", true)
+			_picker.ask())
+		add_child(_terms)
+	_terms.popup_centered(Vector2i(roundi(minf(420.0 * _pt,
+		get_viewport().get_visible_rect().size.x - 20.0 * _pt)), 0))
+
+
+## A photo chosen: asked of Brickognize, the card saying so meanwhile.
+func identify(photo: Image) -> void:
+	_identify(photo)
+
+
+func _identify(photo: Image) -> void:
+	if _brickognize == null:
+		_brickognize = Brickognize.new()
+		_brickognize.answered.connect(func(guesses: Array) -> void:
+			_read_answer(guesses, _brickognize.colour, -1))
+		_brickognize.failed.connect(func(why: String) -> void: _card.failed(why))
+		add_child(_brickognize)
+	_brickognize.url = photo_url
+	if _home < 0:
+		_home = page
+	_asked_at = Time.get_ticks_msec()
+	photo_ms = -1
+	_card.asking("Asking Brickognize what part this is…")
+	_brickognize.identify(photo)
+
+
+## The photo's last answer, kept for another of its guesses to be read.
+var _guesses: Array = []
+var _seen: Dictionary = {}
+
+
+## [param guesses] read against the pages: the card says what and where, and
+## the player goes to the first step not yet built that places it, the part
+## lit. [param pick] one of the options, -1 the first the model has.
+func _read_answer(guesses: Array, seen: Dictionary, pick: int) -> void:
+	_guesses = guesses
+	_seen = seen
+	if pages == null or world == null or library == null:
+		_card.failed("The steps are still being worked out: try again in a moment")
+		return
+	var steps: Array = []
+	for at: int in range(1, pages.last() + 1):
+		steps.append(pages.added(at))
+	_card.library = library
+	_card.name_of = func(index: int) -> String:
+		return StepsBar.found_words(pages.steps[index], 1) if index < pages.steps.size() \
+			else str(index + 1)
+	# Built: every step before the page the builder asked from.
+	var read: Dictionary = PartStep.place(guesses, seen, library, world, steps,
+		maxi(_home - 1, 0), pick)
+	var step: int = int(read["step"])
+	_card.home = _home
+	_card.show_answer(read, step)
+	if step < 0:
+		return
+	var bricks: Dictionary = {}
+	for hit: Array in read["hits"]:
+		if int(hit[0]) == step:
+			bricks = hit[2]
+	# A frame for the card to be laid out, so the view is framed below it.
+	await get_tree().process_frame
+	place_wanted.emit(step + 1, bricks)
+	if pick >= 0:
+		return
+	photo_ms = Time.get_ticks_msec() - _asked_at
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksPartStep = [%d, %d, performance.now()]"
+			% [step + 1, photo_ms], true)
+
+
 func open() -> void:
 	HudFront.show_panel(self)
 	_fit()
@@ -599,6 +790,8 @@ func open() -> void:
 func close() -> void:
 	visible = false
 	comments.close()
+	_card.hide_card()
+	_home = -1
 	if thumbnails != null:
 		thumbnails.watch(self, [] as Array[ThumbTile])
 
@@ -612,13 +805,18 @@ func is_open() -> bool:
 func free_rect() -> Rect2:
 	var room: Rect2 = get_global_rect()
 	var top: float = _top.get_global_rect().end.y
+	# The part's card under the top bar, while it is up: the step is framed
+	# below it, where the part it lights is not behind it.
+	if _card != null and _card.visible:
+		top = maxf(top, _card.get_global_rect().end.y + 4.0 * _pt)
 	var bottom: float = _bottom.get_global_rect().position.y
 	return Rect2(room.position.x, top, room.size.x, maxf(bottom - top, 1.0))
 
 
 func covers(point: Vector2) -> bool:
 	return visible and (_top.get_global_rect().has_point(point)
-		or _bottom.get_global_rect().has_point(point) or comments.covers(point))
+		or _bottom.get_global_rect().has_point(point) or comments.covers(point)
+		or (_card.visible and _card.get_global_rect().has_point(point)))
 
 
 ## A finger, or the mouse, drawn across a bar: to the left is Next, to the
@@ -690,7 +888,9 @@ func controls_by_name() -> Dictionary:
 		return {}
 	var named: Dictionary = {"build_next": _next, "build_back": _back, "build_close": _close,
 		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom,
-		"build_progress": _progress, "build_one_part": _one_part, "build_whole_step": _whole_step}
+		"build_progress": _progress, "build_one_part": _one_part, "build_whole_step": _whole_step,
+		"build_where": _where}
+	named.merge(_card.controls_by_name())
 	if _changed.is_visible_in_tree():
 		named["build_changed_go"] = _changed_go
 	named.merge(comments.controls_by_name())
@@ -724,7 +924,10 @@ func page_state() -> Dictionary:
 		"part_count": (counted as Label).text if counted != null else "",
 		"changed_from": changed_from, "changed": _changed_words.text if _changed.visible else "",
 		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt),
-		"comment_step": comments.step, "party": _party_page_state()}.merged(comments.page_state())
+		"comment_step": comments.step, "party": _party_page_state(),
+		"partstep": _card.card_state().merged({"photo_ms": photo_ms, "home": _home,
+			"button": _where.text, "telling": _terms != null and _terms.visible})}.merged(
+			comments.page_state())
 
 
 # -- A build party's page (APP_UX5 buildparty, 2026-11-06) --------------------
@@ -763,6 +966,8 @@ func _party_row_made() -> void:
 ## after [method show_page], and again whenever someone's progress changes.
 func show_party(board: Array, waiting: bool, joining: bool) -> void:
 	_party_row_made()
+	# A share of the model is not the model a part in hand is found in.
+	_where.visible = false
 	party_on = true
 	party_waiting = waiting
 	party_joining = joining
@@ -856,6 +1061,7 @@ func end_party() -> void:
 	party_waiting = false
 	party_joining = false
 	_party_board = []
+	_where.visible = true
 	if _party_row != null:
 		_party_row.visible = false
 	if _next != null:

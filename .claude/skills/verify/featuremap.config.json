@@ -1510,6 +1510,27 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "where does this part go",
+      "entry": "src/ui/part_step.gd",
+      "reach": "https://brickworks.diy/m/<id>, Build it, then \"Where does this go?\" beside the step's words (a camera alone on a phone): told first where the photo goes (Brickognize.TERMS, the bin's words, agreed once for both), a photo of a part in hand (the camera on a phone, a file on the desktop) named by Brickognize, the guesses the model has first, and the player at the first step not yet built that places it in the model's colour nearest the photo's, the part outlined (a part at a time: that part itself); a card under the top bar names it, says how many steps place it and which, each a button, \"Not it?\" with the other guesses, Back to step N; edit_steps {\"picture_data\": base64, \"agreed\": true, \"from\": N} over MCP answers the same in 1 call (refused, nothing sent, until agreed=true or the bin's agreement); tools/probe.sh partstep_probe",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partstep probe",
+      "entry": "src/dev/partstep_probe.gd",
+      "reach": "tools/probe.sh partstep_probe; PROBE_SIZE=1024x768 tools/probe.sh partstep_probe   (the car as a link, Brickognize stubbed on port 10830: told first and nothing sent until agreed, a photo sent once as a JPEG alone, the car's guesses first, the first step that places it with its part outlined, the card's steps and Back, mid-build the next step and the earlier built, every step built at the last, Not it?, a part at a time, none the car has, offline, 44-point targets, the step framed below the card; edit_steps picture_data= refused until agreed=true, then in 1 call; pictures in shots/partstep/)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partstep bench",
+      "entry": "src/dev/partstep_bench.gd",
+      "reach": "gpu xvfb-run -a -s '-screen 0 1400x900x24' godot --path . --resolution 390x844 --script src/dev/partstep_bench.gd -- --render --out=DIR, then -- --ask --out=DIR [--only=car|10179]   (30 photos: 10 renders dressed as a phone's photo and 5 of Brickognize's own pictures per model, the car and 10179; each through Build mode's own path to the real Brickognize, mid-build: the right part in the top 3, the right step, ms from the photo to the step; DIR/bench.json)",
+      "area": "web"
+    },
+    {
       "kind": "lib",
       "label": "build pages",
       "entry": "src/assembly/build_steps.gd",

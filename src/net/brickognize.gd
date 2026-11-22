@@ -35,6 +35,16 @@
 class_name Brickognize
 extends Node
 
+## What is said before the first photo of a part goes, by the parts bin and
+## by Build mode's "Where does this go?" alike, and agreed once for both
+## (ShellPrefs "photo_told"). Only the photo goes: never the model, which
+## stays on the device (partstep).
+const TERMS := ("The photo you choose is sent to Brickognize (brickognize.com), a third "
+	+ "party that identifies LEGO® parts. Under its terms it may keep the photo and use it to "
+	+ "train its recognition, and it is for personal, non-commercial use: Pro’s licence for "
+	+ "commercial use does not cover it.\n\n"
+	+ "Only the photo is sent, never your model, and nothing is sent until you choose a photo.")
+
 const BASE := "https://api.brickognize.com/predict/"
 const URL := BASE + "parts/"
 ## What a node asks about: "parts", "sets" or "figs", the endpoint's own

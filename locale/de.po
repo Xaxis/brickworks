@@ -15894,3 +15894,73 @@ msgstr "Bei %s s liegt schon ein Key: dieser bleibt, wo er war."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "Der Key bei %s s neu gesetzt, weniger als ein Bild von der Zeit entfernt: wo die Kamera steht, worauf sie blickt und ihr Objektiv."
+
+# Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
+msgstr "Das gewählte Foto wird an Brickognize (brickognize.com) geschickt, einen Drittanbieter, der LEGO® Teile erkennt. Nach seinen Bedingungen darf er das Foto behalten und damit seine Erkennung trainieren, und er ist nur für den privaten, nicht kommerziellen Gebrauch: Die Lizenz von Pro für den kommerziellen Gebrauch deckt ihn nicht ab.\n\nNur das Foto wird gesendet, nie dein Modell, und nichts wird gesendet, bevor du ein Foto wählst."
+
+msgid "Where does this go?"
+msgstr "Wo kommt das hin?"
+
+msgid "Where does this go? A photo of a part in your hand finds the step that places it"
+msgstr "Wo kommt das hin? Ein Foto des Teils in deiner Hand findet den Bauschritt, der es setzt"
+
+msgid "Asking Brickognize what part this is…"
+msgstr "Brickognize wird gefragt, welches Teil das ist…"
+
+msgid "This model has none of the parts Brickognize sees in that photo"
+msgstr "Dieses Modell hat keines der Teile, die Brickognize auf dem Foto sieht"
+
+msgid "Every step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "Jeder Bauschritt, der es setzt, ist gebaut: %s. Vielleicht ist es ein Ersatzteil: Ein Set hat ein paar kleine dabei"
+
+msgid "The step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "Der Bauschritt, der es setzt, ist gebaut: %s. Vielleicht ist es ein Ersatzteil: Ein Set hat ein paar kleine dabei"
+
+msgid "It goes in at step %s"
+msgstr "Es kommt in Bauschritt %s"
+
+msgid "%d go in at step %s"
+msgstr "%d kommen in Bauschritt %s"
+
+msgid "%s, the first of %d steps that place it; the others: %s"
+msgstr "%s, der erste von %d Bauschritten, die es setzen; die anderen: %s"
+
+msgid "%s and %s"
+msgstr "%s und %s"
+
+msgid "and %d more"
+msgstr "und %d weitere"
+
+msgid "Close where the part goes"
+msgstr "Schließen, wo das Teil hinkommt"
+
+msgid "Not in this model: %s"
+msgstr "Nicht in diesem Modell: %s"
+
+msgid "No part seen"
+msgstr "Kein Teil erkannt"
+
+msgid "Steps:"
+msgstr "Bauschritte:"
+
+msgid "Go to step %s"
+msgstr "Zu Bauschritt %s"
+
+msgid "Not it?"
+msgstr "Nicht das?"
+
+msgid "Brickognize is %d%% sure of it"
+msgstr "Brickognize ist sich zu %d %% sicher"
+
+msgid "Back to the step you were on"
+msgstr "Zurück zum Bauschritt, bei dem du warst"
+
+msgid "Back to step %d"
+msgstr "Zurück zu Bauschritt %d"
+
+msgid "Back to the start"
+msgstr "Zurück zum Anfang"
+
+msgid "The steps are still being worked out: try again in a moment"
+msgstr "Die Bauschritte werden noch ermittelt: versuch es gleich noch einmal"

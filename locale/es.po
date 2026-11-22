@@ -15894,3 +15894,73 @@ msgstr "Ya hay una clave en %s s: esta se queda donde estaba."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clave de %s s fijada de nuevo, a menos de un fotograma del tiempo: dónde está la cámara, a qué mira y su objetivo."
+
+# Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
+msgstr "La foto que eliges se envía a Brickognize (brickognize.com), un servicio de terceros que identifica piezas LEGO®. Según sus condiciones, puede guardar la foto y usarla para entrenar su reconocimiento, y es solo para uso personal y no comercial: la licencia comercial de Pro no lo cubre.\n\nSolo se envía la foto, nunca tu modelo, y no se envía nada hasta que eliges una foto."
+
+msgid "Where does this go?"
+msgstr "¿Dónde va esta pieza?"
+
+msgid "Where does this go? A photo of a part in your hand finds the step that places it"
+msgstr "¿Dónde va esta pieza? Una foto de la pieza que tienes en la mano encuentra el paso que la coloca"
+
+msgid "Asking Brickognize what part this is…"
+msgstr "Preguntando a Brickognize qué pieza es…"
+
+msgid "This model has none of the parts Brickognize sees in that photo"
+msgstr "Este modelo no tiene ninguna de las piezas que Brickognize ve en esa foto"
+
+msgid "Every step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "Todos los pasos que la colocan están construidos: %s. Puede ser una pieza de repuesto: un set trae algunas pequeñas"
+
+msgid "The step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "El paso que la coloca está construido: %s. Puede ser una pieza de repuesto: un set trae algunas pequeñas"
+
+msgid "It goes in at step %s"
+msgstr "Va en el paso %s"
+
+msgid "%d go in at step %s"
+msgstr "%d van en el paso %s"
+
+msgid "%s, the first of %d steps that place it; the others: %s"
+msgstr "%s, el primero de %d pasos que la colocan; los demás: %s"
+
+msgid "%s and %s"
+msgstr "%s y %s"
+
+msgid "and %d more"
+msgstr "y %d más"
+
+msgid "Close where the part goes"
+msgstr "Cerrar dónde va la pieza"
+
+msgid "Not in this model: %s"
+msgstr "No está en este modelo: %s"
+
+msgid "No part seen"
+msgstr "No se ve ninguna pieza"
+
+msgid "Steps:"
+msgstr "Pasos:"
+
+msgid "Go to step %s"
+msgstr "Ir al paso %s"
+
+msgid "Not it?"
+msgstr "¿No es esta?"
+
+msgid "Brickognize is %d%% sure of it"
+msgstr "Brickognize está seguro al %d %%"
+
+msgid "Back to the step you were on"
+msgstr "Volver al paso en el que estabas"
+
+msgid "Back to step %d"
+msgstr "Volver al paso %d"
+
+msgid "Back to the start"
+msgstr "Volver al principio"
+
+msgid "The steps are still being worked out: try again in a moment"
+msgstr "Los pasos aún se están calculando: inténtalo de nuevo en un momento"
