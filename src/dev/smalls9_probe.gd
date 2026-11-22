@@ -12,17 +12,13 @@
 ##
 ## On b80bc2c45 (pre261) this fails: the frames were one frame of 0.2 to
 ## 0.96 s on 10179, and the list one of 0.34 to 0.9 s (osfix, smalls9).
-## The first working out of 10179's frames is held to FIRST_MS, and the 100
-## ms bar is said for it as KNOWN until a copy's first fit is paced too.
+## On 2ef38b078 the first working out of 10179's frames fails: a copy's first
+## fit worked out its tilted parts' covers in one frame of 131 to 174 ms.
 ##
 ##   godot --headless --path . --script src/dev/smalls9_probe.gd
 extends "res://src/dev/ownswap_probe.gd"
 
 const BAR_MS := 100.0
-## The first working out of 10179's frames: a copy's first fit reads its
-## shapes in one frame (130 to 175 ms at load 20 to 65, smalls9); pre261 took
-## all of it in one of 961 ms.
-const FIRST_MS := 300.0
 
 ## The list whose fill a frame's label names, while it is timed.
 var _phase_of: InventoryPanel = null
@@ -134,12 +130,8 @@ func _case_find(name: String) -> void:
 		bar.set_find(str(asked["part"]), int(asked["color"]))
 		bar.refresh(),
 		func() -> bool: return not bool(bar.get("_framing")) and not bar.found.is_empty())
-	# The first working out still has a copy or two whose first fit reads
-	# its shapes in one frame of 130 to 175 ms: the 100 ms bar is said as
-	# KNOWN, and held to FIRST_MS, well under pre261's one frame of 961.
 	_said_time(name, "Find and Replace, %s in %d everywhere, its copies' frames worked out%s" % [asked["part"],
-		asked["color"], ", Mirror's index of handed parts made first" if not indexed else ""], timed, true,
-		FIRST_MS)
+		asked["color"], ", Mirror's index of handed parts made first" if not indexed else ""], timed, true)
 	# Mirror's index made a slice at a time is the one made in one go.
 	var hands: Dictionary = Mirror._other_hand.duplicate()
 	var names: Dictionary = Mirror._by_name.duplicate()
@@ -254,16 +246,13 @@ func _case_list(name: String) -> void:
 ## [param timed] (ownswap_probe._timed_act) against the bar: done, no frame
 ## over [constant BAR_MS] of its own, and, where [param paced] and it took
 ## more than one frame, the status bar said so.
-func _said_time(name: String, what: String, timed: Array, paced: bool, ceiling: float = BAR_MS) -> void:
+func _said_time(name: String, what: String, timed: Array, paced: bool) -> void:
 	for frame: Array in _long:
 		print("    a frame of %.1f ms of its own: %s" % [float(frame[0]), str(frame[1])])
 	print("  %s: %s, %.0f ms over %d frames, the longest frame %.1f ms of its own, %d over %.0f ms, the bar %s"
 		% [name, what, float(timed[0]), int(timed[1]), float(timed[2]), int(timed[3]),
 		16.0 * float(timed[5]), "said it" if bool(timed[4]) else "said nothing"])
 	var said: bool = bool(timed[4]) or not paced or int(timed[1]) <= 2
-	if ceiling > BAR_MS:
-		print("  KNOWN %s: %s, the bar of no frame over %.0f ms of its own: %s (the longest %.1f ms)" % [name,
-			what, BAR_MS, "met" if float(timed[2]) <= BAR_MS else "not yet", float(timed[2])])
 	_check("time %s: %s done, no frame over %.0f ms of its own (the longest %.1f ms), the bar saying so"
-		% [name, what, ceiling, float(timed[2])],
-		bool(timed[6]) and float(timed[2]) <= ceiling and said)
+		% [name, what, BAR_MS, float(timed[2])],
+		bool(timed[6]) and float(timed[2]) <= BAR_MS and said)

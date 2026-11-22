@@ -5161,6 +5161,20 @@ func turned_wanted(part: Lbm.PartMesh, basis: Basis) -> bool:
 	return not _turned_cache.has("%d|%s" % [part.get_instance_id(), basis])
 
 
+## Whether [method boxes_for] on this thread would work out a cover for
+## [param part] at [param basis] afresh, turned or stretched: what work paced
+## a slice at a time asks before it (Assemblies.frames_paced). A file whose
+## turns are written to four places has every tilted part stretched a hair,
+## and each such cover of 10179's was 10 to 30 ms of one frame.
+func cover_wanted(part: Lbm.PartMesh, basis: Basis) -> bool:
+	if part == null or OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return false
+	var stretch := Vector3(basis.x.length(), basis.y.length(), basis.z.length())
+	if not stretch.is_equal_approx(Vector3.ONE) and basis.determinant() > 0.0:
+		return not _stretched_cache.has([part.get_instance_id(), basis])
+	return turned_wanted(part, basis)
+
+
 ## Keep a turned cover worked out elsewhere (Grab, side by side on workers)
 ## as [method boxes_for] keeps its own on this thread.
 func keep_turned(part: Lbm.PartMesh, basis: Basis, shape: PackedInt32Array) -> void:
