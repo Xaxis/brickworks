@@ -901,9 +901,9 @@ faces from that light, so each try costs no render:
 | grey 1x3 (tabletop) | long side, main | 26.5 | 18.3 |
 | clear round 1x1 (cut-out) | body, main | 32.9 | 48.2 |
 | three 2x2s (tent) | green top, main | 8.2 | **4.2** |
-| | red top, main | 13.7 | **3.2** |
+| | red top, main | 13.7 | **3.1** |
 | | blue top, main | 7.1 | **3.5** |
-| green plate (room) | top, main | 13.4 | 23.7 |
+| green plate (room) | top, main | 13.4 | 23.6 |
 
 Read plainly:
 - **Every tent face is under 5**, on two photographs from two cameras.
@@ -930,9 +930,15 @@ Read plainly:
 - **Variety without fireflies.** Each stud's logo is turned, offset,
   deepened and softened a hair by its own hash. A third of the studs
   carry a gate dimple.
-- **Edges.** A rounded edge's paths now leave by its rounded normal. By
-  the flat face's, half of each rounding found the part itself in every
-  shadow ray, and every edge had a thin dark line.
+- **Edges.** A rounding drawn on a flat face turns its normal right round
+  to the next face. At the model's outline that half faced away from the
+  eye: lit by nothing and reflecting nothing, it drew two pixels of black
+  down every silhouette. The judge named it on the black 2x4 in every
+  round until it was fixed.
+  - A rounding now faces the eye at least as its face does at a glance
+    (0.25), and its paths leave by the rounded normal.
+  - The outline shows a soft highlight instead, as the photograph's does.
+  - The last round named no outline.
 - **The slope's grain**: finer than photoreal1's, as shallow. A deeper,
   coarser grain was read as "blotchy procedural noise": the denoise
   takes its glints for sampling grain.
@@ -944,15 +950,19 @@ Read plainly:
 | Round | Code | Close-ups (12) | Sets (8) | All (20) |
 |---|---|---|---|---|
 | before, three rounds | photoreal1's renderer, staged (4b3250dbf) | 12, 0.914 to 0.917 | 7, 0.815 to 0.825 | 19, 0.877 to 0.879 |
-| after (first) | camera, tent key, Beer–Lambert (da72622af) | 12, 0.913 | 8, 0.843 | 20, 0.885 |
-| **after** | + legible logo, fine grain, gate dimples (aa773ad1b) | **12, 0.902** | **6, 0.811** | **18, 0.865** |
+| after1 | camera, tent key, Beer–Lambert (da72622af) | 12, 0.913 | 8, 0.843 | 20, 0.885 |
+| after2 | + legible logo, fine grain, gate dimples (aa773ad1b) | 12, 0.902 | 6, 0.811 | 18, 0.865 |
+| **after3** | + no black outline (2b0e8db15) | **12, 0.908** | **7, 0.820** | **19, 0.872** |
 
 - **The bar was not met.** It was the photograph found 16 times or fewer
   in 20, or a mean confidence of 0.80 or less.
-- Found 18 against 19, sure 0.865 against 0.878.
-- Set 6512 was taken for the photograph in both orders (at 55 and 58).
-  Every close-up was still found, in both orders.
-- **What it names now** (tells a round, before1 against after):
+- **The judge cannot tell after from before.** The three after-rounds
+  found it 18 to 20 times, sure 0.865 to 0.885, mean 0.874. The before's
+  three rounds were 19 times, 0.877 to 0.879.
+- Set 6512 is a coin toss in every round (55 to 60), taken for the
+  photograph in one order or both. Every close-up was found, in both
+  orders, in every round.
+- **What it names** (tells a round, before1 against after2):
   - clean, no wear: 28 against 30;
   - uniform: 34 against 29;
   - backdrop: 18 against 15;
@@ -963,8 +973,9 @@ Read plainly:
   within 5 of the photograph's. It is the flatness of a saturated face
   with no wear on it, not its colour.
 
-**Time.** The car at Best, Product, 1280x720, 256 samples: 1.99, 2.08 and
-2.26 s (the bar is 8.4 s).
+**Time.** The car at Best, Product, 1280x720, 256 samples: 1.99, 2.01 and
+2.33 s, against the before's 1.20 to 1.64 s the same day (the bar is
+8.4 s). The white card's metering and the tent's key cost the difference.
 
 **Pictures.** `bench/results/photoreal2-2026-11-21/side_by_side/` has one
 row per shot: the photograph, photoreal1's renderer staged, and
