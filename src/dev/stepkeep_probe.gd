@@ -201,6 +201,8 @@ func _case(label: String, path: String) -> void:
 	var undone: Array = _plan()
 	_check("%s: Undo gives back the plan before it (changed %d)" % [label, _changed_steps(reopened, undone)],
 		_changed_steps(reopened, undone) == 0)
+	_check("%s: ...and the save before it, byte for byte" % label,
+		_store.to_text(_store.title, true) == rewritten)
 	_builder.redo()
 	await _frames(2)
 	var redone: Array = _plan()
@@ -230,6 +232,7 @@ func _case(label: String, path: String) -> void:
 	var gone: int = int(ids[0])
 	var gone_brick: BrickWorld.Brick = _world.get_brick(gone)
 	var gone_said: String = "%s in %s" % [gone_brick.part_id, Assemblies.path_of(gone_brick)]
+	var before_taking: String = _store.to_text(_store.title, true)
 	_builder.remove_brick_id(gone)
 	await _edited()
 	var taken: Array = _plan()
@@ -249,6 +252,8 @@ func _case(label: String, path: String) -> void:
 	_builder.undo()
 	await _frames(2)
 	_check("%s: Undo puts it back in its step" % label, _changed_steps(now, _plan()) == 0)
+	_check("%s: ...and the save before it, byte for byte" % label,
+		_store.to_text(_store.title, true) == before_taking)
 	_forget(called)
 
 
@@ -376,6 +381,7 @@ func _station_edits() -> void:
 	# P: planned again only when asked: the timeline's Plan steps, then
 	# edit_steps "plan" over MCP, each one undo.
 	var plan4: Array = _plan()
+	var text4: String = _store.to_text(_store.title, true)
 	var depth: int = _builder.history_depth()
 	var steps_bar: Node = _main.get("_steps")
 	var button: Button = (steps_bar.get("_named") as Dictionary).get("steps_plan") as Button
@@ -408,6 +414,8 @@ func _station_edits() -> void:
 		_check("P: undone, the saved steps back, own (%s), every step as it was (changed %d)"
 			% [_own_steps(), _changed_steps(plan4, _plan())],
 			_own_steps() and _changed_steps(plan4, _plan()) == 0)
+		_check("P: ...and the save before it, byte for byte",
+			_store.to_text(_store.title, true) == text4)
 	var tools := AppTools.new()
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
@@ -423,6 +431,7 @@ func _station_edits() -> void:
 	await _frames(2)
 	_check("P: undone, every step as it was (changed %d)" % _changed_steps(plan4, _plan()),
 		_own_steps() and _changed_steps(plan4, _plan()) == 0)
+	_check("P: ...and the save before it, byte for byte", _store.to_text(_store.title, true) == text4)
 
 	# N2: the autosave's text with a part put on, as Save's.
 	var high: BrickWorld.Brick = _top_of(func(_brick: BrickWorld.Brick) -> bool: return true)
@@ -661,6 +670,31 @@ func _time() -> void:
 		var planned: float = float(Time.get_ticks_usec() - start) / 1000.0
 		print("  %s: opened in %.0f ms, its %d steps read in %.0f ms (steps own %s, any %s)" % [path.get_file(),
 			opened, plan.size(), planned, _own_steps(), AuthorSteps.any(_world, _store.scenery)])
+	# Orthanc as the app's own held steps, its AUTHORED_STEPS line taken out:
+	# the biggest model whose edits are followed. Its open, one part put on and
+	# followed, and Plan steps, each the work of one frame (16 ms is the bar).
+	var own_path: String = "user://stepkeep_orthanc_own.ldr"
+	var file: FileAccess = FileAccess.open(own_path, FileAccess.WRITE)
+	file.store_string(FileAccess.get_file_as_string(ORTHANC).replace(AUTHORED + "\n", ""))
+	file.close()
+	_main.call("clear_model")
+	await _frames(4)
+	var began: int = Time.get_ticks_usec()
+	_store.open(own_path)
+	var open_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
+	await _frames(4)
+	var own: bool = _own_steps()
+	var top: BrickWorld.Brick = _top_of(func(_brick: BrickWorld.Brick) -> bool: return true)
+	began = Time.get_ticks_usec()
+	var put: int = _put_on(top) if top != null else 0
+	_main.call("_on_model_edited")
+	var edit_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
+	await _frames(2)
+	began = Time.get_ticks_usec()
+	var answer: String = _shell.change_steps("plan", [], null)
+	var plan_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
+	print("  orthanc as its own (steps own %s): opened in %.0f ms; a part put on (%s) and followed in %.1f ms; Plan steps (\"%s\") in %.1f ms"
+		% [own, open_ms, put != 0, edit_ms, answer.left(60), plan_ms])
 
 
 # -- reading the plan --------------------------------------------------------------
