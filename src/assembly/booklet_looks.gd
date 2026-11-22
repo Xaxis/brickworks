@@ -3173,8 +3173,16 @@ static func layout_said(world: BrickWorld, pages: Array, from: int = 2) -> Strin
 					(" (%s)" % ", ".join(posed)) if not posed.is_empty() else ""])
 			each.append("%d%s" % [entry.number, (" (" + "; ".join(how) + ")") if not how.is_empty()
 				else ""])
-		var line: String = "  page %d%s: step%s %s" % [page.number,
+		# Locked or frozen (pagetools): said, so a session knows why its
+		# follow= passed a page by or its page_setup left one as it was.
+		var held := PackedStringArray()
+		if not page.entries.is_empty() and int(page.entries[0].get("lock")) > 0:
+			held.append("locked")
+		if not page.entries.is_empty() and page.entries[0].get("own_sheet") != null:
+			held.append("frozen")
+		var line: String = "  page %d%s%s: step%s %s" % [page.number,
 			(" (the %s, built on its own)" % page.name) if page.kind == "callout" else "",
+			(" (%s)" % " and ".join(held)) if not held.is_empty() else "",
 			"" if page.entries.size() == 1 else "s", ", ".join(each)]
 		if not page.overlaps.is_empty():
 			line += "; overlapping: " + Later.script(&"Booklet").overlaps_said(page)

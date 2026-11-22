@@ -335,6 +335,43 @@ func _pages() -> void:
 		and BookletSheet.same_colour(read_pages[1].colour, Color.WHITE))
 	editor.close()
 	await _kept(lead)
+	await _mcp(lead, int(held[1]) if held.size() > 1 else 0)
+
+
+## The same over MCP, as a person's own Claude would: edit_booklet lock=
+## and freeze=, booklet_layout saying them, follow= passing a locked page by.
+func _mcp(lead: int, second: int) -> void:
+	print("")
+	print("over MCP")
+	await _open(ProjectSettings.globalize_path(GATEHOUSE))
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var history: int = _history()
+	var said: String = str(await tools.run("edit_booklet", {"step": lead, "lock": true}))
+	var again: String = str(await tools.run("edit_booklet", {"step": lead, "lock": true}))
+	var layout: String = str(await tools.run("booklet_layout", {}))
+	var line: String = ""
+	for one: String in layout.split("\n"):
+		if one.contains(": step") and one.contains(" %d" % lead) and one.strip_edges().begins_with("page"):
+			line = one.strip_edges()
+			break
+	_check("edit_booklet lock=true: \"%s\", one undo; again: \"%s\"; booklet_layout: \"%s\"" % [said,
+		again, line.left(80)], _history() == history + 1 and again.contains("already")
+		and line.contains("(locked)"))
+	# The page's second step is not the one that starts it.
+	if second > 0:
+		var wrong: String = str(await tools.run("edit_booklet", {"step": second, "lock": true}))
+		_check("its second step is said with the first: \"%s\"" % wrong,
+			wrong.contains("step=%d" % lead) and _history() == history + 1)
+	said = str(await tools.run("edit_booklet", {"step": lead, "freeze": true}))
+	_check("edit_booklet freeze=true: \"%s\", one undo" % said, _history() == history + 2
+		and said.contains("frozen"))
+	said = str(await tools.run("edit_booklet", {"step": lead, "lock": false}))
+	_check("edit_booklet lock=false: \"%s\"" % said, _history() == history + 3 and said.contains("unlocked"))
+	while _history() > history:
+		_builder.undo()
+	await _frames(2)
 
 
 ## The inspector on the page shown: Alt held over a selected item.

@@ -15930,3 +15930,6 @@ msgstr "Solo se bloquea una página de pasos."
 
 msgid "Only a page of steps freezes."
 msgstr "Solo se congela una página de pasos."
+
+msgid "Frozen pages keep their own page setup: %d."
+msgstr "Las páginas congeladas conservan su propia configuración: %d."

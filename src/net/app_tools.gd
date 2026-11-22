@@ -531,6 +531,9 @@ func definitions() -> Array:
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
 				+ "follow=true lays out every later page with as many steps as the page step= "
 				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
+				+ "lock= true locks the page step= starts (nothing on it moves, follow= passes "
+				+ "it by, its steps stay on it), freeze= true keeps its page setup as it is now "
+				+ "when page_setup changes the booklet's; false undoes either. "
 				+ "Studio's extras: pull= studs (2 when true, 0 or false to put back) draws "
 				+ "the step's parts, or {studs, parts: [part ids]} those, pulled out along the "
 				+ "way each goes in with a red arrow in; colours= true lists the step's colours "
@@ -546,6 +549,8 @@ func definitions() -> Array:
 				"step": {"type": "integer"},
 				"callout_step": {"type": "integer", "description": "a step inside the callout step= puts on, from 1"},
 				"highlight": {"type": "boolean"},
+				"lock": {"type": "boolean", "description": "the page step= starts locked, or not"},
+				"freeze": {"type": "boolean", "description": "the page step= starts frozen, or not"},
 				"place": {"type": "object", "description": "{item, x, y, w, h, index, turn, opacity, remove}: w and h kept when omitted",
 					"properties": {
 						"item": {"type": "string", "enum": ["picture", "parts", "callout", "number", "note"]},
@@ -2315,6 +2320,8 @@ func _edit_booklet(input: Dictionary) -> String:
 		return await _edit_page(input, at)
 	if bool(input.get("follow", false)):
 		return await _follow_page(at)
+	if input.has("lock") or input.has("freeze"):
+		return await _hold_page(input, at)
 	var fields: Dictionary = {}
 	if input.has("highlight"):
 		var on: String = shell.change_look("highlight", at, {"highlight": bool(input["highlight"])})
@@ -2661,11 +2668,46 @@ func _follow_page(at: Instructions.Step) -> String:
 				pages[index].entries.size()]
 		var said: String = (app.get("_shell") as Shell).place_pages(later["placed"],
 			"page %d's layout on %d later pages" % [pages[index].number, (later["laid"] as Array).size()])
+		if not (later["locked"] as Array).is_empty():
+			said += "; locked pages %s passed by" % ", ".join(PackedStringArray(
+				(later["locked"] as Array).map(func(page: int) -> String: return str(page))))
 		if not (later["left"] as Array).is_empty():
 			said += "; pages %s have another number of steps and were left as they were" \
 				% ", ".join(PackedStringArray((later["left"] as Array).map(
 					func(page: int) -> String: return str(page))))
 		return said + ". booklet_layout says where each thing is now."
+	return "Step %d is on no page of steps." % at.number
+
+
+## edit_booklet lock= and freeze= (pagetools): the page [param at] starts
+## locked or frozen, or not, as Lock page and Freeze page do; one at a
+## time, each one undo. A step that does not start its page is said with
+## the step that does.
+func _hold_page(input: Dictionary, at: Instructions.Step) -> String:
+	if input.has("lock") and input.has("freeze"):
+		return "One at a time: lock= or freeze=, each its own undo step."
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var maker := BookletMaker.new()
+	maker.library = app.get("_library")
+	app.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(world, store.scenery, "Model")
+	maker.queue_free()
+	for page: Booklet.Page in pages:
+		if page.kind != "steps" or not page.entries.any(func(entry: Booklet.Entry) -> bool:
+				return entry.number == at.number):
+			continue
+		if page.entries[0].number != at.number:
+			return "Step %d is not the first on its page: page %d starts with step %d, so step=%d." % [
+				at.number, page.number, page.entries[0].number, page.entries[0].number]
+		var lock: bool = input.has("lock")
+		var want: bool = bool(input["lock" if lock else "freeze"])
+		var now: bool = page.entries[0].lock > 0 if lock else page.entries[0].own_sheet != null
+		if want == now:
+			return "Page %d is %s%s already." % [page.number, "" if want else "not ",
+				"locked" if lock else "frozen"]
+		return (app.get("_shell") as Shell).change_look("page_lock" if lock else "page_freeze", at,
+			{"steps": page.entries.size()}) + " (page %d)." % page.number
 	return "Step %d is on no page of steps." % at.number
 
 

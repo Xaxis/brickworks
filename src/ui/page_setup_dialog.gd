@@ -482,6 +482,12 @@ func _apply(fields: Dictionary) -> void:
 	var said: String = shell.page_setup(fields)
 	shell.bar.say(said)
 	_said.text = said.left(1).to_upper() + said.substr(1)
+	# Pages frozen in the page editor keep their own (pagetools): said, so a
+	# change that leaves them as they were is not a surprise.
+	var frozen: int = shell.world.step_looks.values().filter(func(look: Variant) -> bool:
+		return look is Dictionary and (look as Dictionary).get("freeze") is Dictionary).size()
+	if frozen > 0:
+		_said.text += " " + tr("Frozen pages keep their own page setup: %d.") % frozen
 	_refill()
 
 

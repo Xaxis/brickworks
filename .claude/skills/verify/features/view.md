@@ -2431,12 +2431,17 @@ picture the assistant is shown.
   setup changes, in the editor (`shown_sheet`), the booklet's section
   (`Booklet._frozen_style` --page/--box/--box-line, `frozen_sheet`) and the
   PDF's reading (`BookletRead._page`); paper, pictures and the outline stay
-  the booklet's. `pagetools_probe` (windowed, gatehouse): the words read
+  the booklet's. Over MCP `edit_booklet lock=` / `freeze=` on the page's
+  first step (`AppTools._hold_page`; another step is told the first's
+  number), `booklet_layout` saying "(locked)" / "(frozen)", `follow=`
+  saying the locked pages it passed by; Page setup says how many frozen
+  pages kept their own. `pagetools_probe` (windowed, gatehouse): the words read
   and a paper word kept unread, a peer's typed in range; the inspector's
   numbers against the items' own boxes, shot; lock and freeze one undo
   each, refusals, Steps a page 1, Apply to later passing it by, the frozen
   page white-proof in editor, HTML and PDF reading; saved, reopened byte
-  for byte, autosave, an unlock after reopen changing that one line.
+  for byte, autosave, an unlock after reopen changing that one line; the
+  same lock and freeze over MCP, one undo each.
 - `outline width probe` (pagetools): **Outline width** in Page setup's Steps
   tab and `page_setup outline_width=` (`BookletSheet.outline_width`, 1 to
   72 px at the booklet's 5 px a mm, `OUTLINE_WIDTH 12` on PAGE_SETUP): the
