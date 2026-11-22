@@ -2,8 +2,8 @@
 ## the car and 10179, through Build mode's own path to the real Brickognize.
 ##
 ##   gpu xvfb-run -a -s '-screen 0 1400x900x24' godot --path . --resolution 390x844 \
-##     --script src/dev/partstep_bench.gd -- --render --out=DIR     the photos
-##   gpu xvfb-run ... --script src/dev/partstep_bench.gd -- --ask --out=DIR   the measure
+##     --script src/dev/partstep_bench.gd -- --render --dir=DIR     the photos
+##   gpu xvfb-run ... --script src/dev/partstep_bench.gd -- --measure --dir=DIR [--just=car|10179]   the measure
 ##
 ## --render: for each model, ten of its lots (part and colour) chosen by rule
 ## (sorted most first, every tenth of the list, no stickers), each drawn alone
@@ -15,7 +15,7 @@
 ## its answers show): 20 renders and 10 of Brickognize's own. DIR/photos.json
 ## says what each is.
 ##
-## --ask: each model opened as a shared link and Build it opened, as a builder
+## --measure: each model opened as a shared link and Build it opened, as a builder
 ## does; for each photo the builder is put mid-build (on the step after the
 ## first that places the part, where it is placed more than once, so the
 ## first is built), and the photo goes through Build mode's own path
@@ -62,20 +62,20 @@ func _initialize() -> void:
 func _run() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	for arg: String in args:
-		if arg.begins_with("--out="):
+		if arg.begins_with("--dir="):
 			_out = arg.get_slice("=", 1)
 	if _out.is_empty():
-		print("partstep_bench: give --out=DIR")
+		print("partstep_bench: give --dir=DIR")
 		quit(2)
 		return
 	DirAccess.make_dir_recursive_absolute(_out + "/photos")
 	await process_frame
 	if args.has("--render"):
 		await _render()
-	elif args.has("--ask"):
+	elif args.has("--measure"):
 		await _ask_all()
 	else:
-		print("partstep_bench: --render or --ask")
+		print("partstep_bench: --render or --measure")
 		quit(2)
 		return
 	quit(1 if _failures > 0 else 0)
@@ -250,7 +250,7 @@ func _ask_all() -> void:
 	var rows: Array = []
 	var only: String = ""
 	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--only="):
+		if arg.begins_with("--just="):
 			only = arg.get_slice("=", 1)
 	for model: Array in MODELS:
 		if not only.is_empty() and str(model[0]) != only:

@@ -1527,7 +1527,7 @@
       "kind": "cli",
       "label": "partstep bench",
       "entry": "src/dev/partstep_bench.gd",
-      "reach": "gpu xvfb-run -a -s '-screen 0 1400x900x24' godot --path . --resolution 390x844 --script src/dev/partstep_bench.gd -- --render --out=DIR, then -- --ask --out=DIR [--only=car|10179]   (30 photos: 10 renders dressed as a phone's photo and 5 of Brickognize's own pictures per model, the car and 10179; each through Build mode's own path to the real Brickognize, mid-build: the right part in the top 3, the right step, ms from the photo to the step; DIR/bench.json)",
+      "reach": "gpu xvfb-run -a -s '-screen 0 1400x900x24' godot --path . --resolution 390x844 --script src/dev/partstep_bench.gd -- --render --dir=DIR, then -- --measure --dir=DIR [--just=car|10179]   (30 photos: 10 renders dressed as a phone's photo and 5 of Brickognize's own pictures per model, the car and 10179; each through Build mode's own path to the real Brickognize, mid-build: the right part in the top 3, the right step, ms from the photo to the step; DIR/bench.json)",
       "area": "web"
     },
     {

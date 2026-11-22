@@ -294,8 +294,13 @@ func _run() -> void:
 	var heard: String = await _say("edit_steps", {"picture_data": data})
 	_ok(heard.begins_with("Not sent.") and heard.contains("agreed=true") and _asked == asked_before,
 		"not agreed: refused, nothing sent (\"%s\")" % heard.left(90))
+	# A shared link's viewer refuses any change first; the editor, the photo
+	# with another op (AppTools._edit_steps). Either way, nothing is sent.
 	heard = await _say("edit_steps", {"picture_data": data, "op": "to", "step": 2, "agreed": true})
-	_ok(heard.begins_with("picture_data= or picture_url= finds"), "with another op: refused")
+	var own: String = await tools._edit_steps({"picture_data": data, "op": "to", "step": 2, "agreed": true})
+	_ok(_asked == asked_before and own.begins_with("picture_data= or picture_url= finds"),
+		"with another op: refused, nothing sent (\"%s\"; the viewer's socket: \"%s\")" % [own.left(70),
+			heard.left(70)])
 	asked_before = _asked
 	var since: int = Time.get_ticks_msec()
 	heard = await _say("edit_steps", {"picture_data": data, "agreed": true})
