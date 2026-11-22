@@ -532,7 +532,7 @@ async function push() {
     return;
   }
   const tower = await api("/api/share", { method: "POST", token: ada.access_token,
-    body: { name: "Home Flow Tower", author: "Ada Home", model: model("Home Flow Tower"), image: readFileSync(path.join(root, "web/share.png")).toString("base64"), listed: false } });
+    body: { name: "Home Flow Tower", author: "Ada Home", model: model("Home Flow Tower"), image: readFileSync(path.join(root, "web/share.png")).toString("base64"), listed: true } });
   made.push([tower.body.id, ada]);
   check(`her model: ${tower.status} /m/${tower.body.id}`, tower.status === 201 && Boolean(tower.body.id));
 
@@ -551,24 +551,23 @@ async function push() {
     + `${drawn.disabled ? "disabled" : "enabled"} "${drawn.said}"`, asked === "default" && drawn.checked === false);
   await plain.close();
 
-  const dir = mkdtempSync(path.join(tmpdir(), "homescreen-device-"));
-  const display = args.headed ? await screen() : null;
-  const device = await chromium.launchPersistentContext(dir, { headless: !args.headed, args: SOFTWARE,
-    viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, colorScheme: "dark",
-    ...(display ? { env: { ...process.env, DISPLAY: display } } : {}) });
+  // Headless first; where its push service cannot be reached, in a window
+  // (a screen of its own, Xvfb), and said which.
+  let opened = null;
+  for (const headed of args.headed ? [true] : [false, true]) {
+    opened = await openDevice(headed).catch((trouble) => ({ on: String(trouble.message || trouble), close: async () => {} }));
+    if (/On for this device/.test(opened.on)) {
+      note(`her device: ${headed ? "Chromium in a window (Xvfb)" : "headless Chromium"}, its push service reached`);
+      break;
+    }
+    note(`${headed ? "Chromium in a window" : "headless Chromium"} could not be turned on: "${opened.on}"`);
+    await opened.close();
+    opened = null;
+  }
+  if (!check("a device of hers turned on in Settings", Boolean(opened))) return;
+  const { page } = opened;
   try {
-    // As launch() gives its contexts: scrolls that land at once, and the
-    // visit counter answered here.
-    await quietCounter(await instantScroll(device));
-    await device.grantPermissions(["notifications"], { origin: site });
-    await seed(device, ada);
-    const page = device.pages()[0] || await device.newPage();
-    listen(page, "Ada's device");
-    await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
-    await until(page, () => document.getElementById("push-on")?.disabled === false, "the box enabled", 30);
-    await page.click("#push-on");
-    const on = await until(page, () => /On for this device|This browser’s push service/.test(document.getElementById("push-said")?.textContent || "")
-      && document.getElementById("push-said").textContent, "on for this device", 60);
+    const on = opened.on;
     const endpoint = await page.evaluate(async () => (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.endpoint || "");
     const told = await api(`/api/people?op=push&endpoint=${encodeURIComponent(endpoint)}`, { token: ada.access_token });
     if (!check(`turned on: "${on}", the account knows this device (${told.body.on}, ${told.body.devices} device), at ${endpoint ? new URL(endpoint).host : "no push service"}`,
@@ -622,9 +621,41 @@ async function push() {
   } catch (trouble) {
     check(`push: ${trouble.message}`, false);
   } finally {
+    await opened.close();
+  }
+}
+
+/// Ada's device: Chromium with a profile of its own (push is off in a
+/// private context), Settings opened, Notify me on this device pressed.
+/// {page, on: what Settings then said, close}.
+async function openDevice(headed) {
+  const dir = mkdtempSync(path.join(tmpdir(), "homescreen-device-"));
+  const display = headed ? await screen() : null;
+  const device = await chromium.launchPersistentContext(dir, { headless: !headed, args: SOFTWARE,
+    viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, colorScheme: "dark",
+    ...(display ? { env: { ...process.env, DISPLAY: display } } : {}) });
+  const close = async () => {
     await device.close().catch(() => null);
     rmSync(dir, { recursive: true, force: true });
-    xvfb?.kill();
+    if (headed) xvfb?.kill();
+  };
+  try {
+    // As launch() gives its contexts: scrolls that land at once, and the
+    // visit counter answered here.
+    await quietCounter(await instantScroll(device));
+    await device.grantPermissions(["notifications"], { origin: site });
+    await seed(device, ada);
+    const page = device.pages()[0] || await device.newPage();
+    listen(page, `Ada's device${headed ? " (a window)" : ""}`);
+    await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+    await until(page, () => document.getElementById("push-on")?.disabled === false, "the box enabled", 30);
+    await page.click("#push-on");
+    const on = await until(page, () => /On for this device|push service|did not work/.test(document.getElementById("push-said")?.textContent || "")
+      && document.getElementById("push-said").textContent, "on for this device", 60);
+    return { page, on, close };
+  } catch (trouble) {
+    await close();
+    throw trouble;
   }
 }
 

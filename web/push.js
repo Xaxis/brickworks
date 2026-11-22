@@ -238,7 +238,12 @@ export async function turnOn(key) {
     subscription = null;
   }
   try {
-    subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+    // A push service that never answers (a browser without one) is said
+    // as one that refused, after half a minute, never a wait without end.
+    subscription ||= await Promise.race([
+      registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) }),
+      new Promise((resolve, refuse) => setTimeout(() => refuse(new Error("no answer")), 30000)),
+    ]);
   } catch {
     return { state: "failed" };
   }
