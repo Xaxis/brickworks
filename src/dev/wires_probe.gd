@@ -2,7 +2,8 @@
 ##
 ##   godot --headless --path . --script src/dev/wires_probe.gd
 ##   godot --headless --path . --script src/dev/wires_probe.gd -- --sets=LISTING --rows=ROWS
-##   godot --headless --path . --script src/dev/wires_probe.gd -- --only=hand   (1. alone)
+##   godot --headless --path . --script src/dev/wires_probe.gd -- --only=hand,laid,42042,time
+##     (those parts alone: hand is 1., laid 2., 42042 3., time 4.)
 ##
 ## With nothing given:
 ##   1. Wiring read off parts placed by hand: a Power Functions L motor's
@@ -32,8 +33,9 @@
 ##      the pointer), the motor plays at 390 rpm and turns its train; Play
 ##      with the box off switches it on and runs; a selection made otherwise
 ##      flips no switch (N6); the plug pulled off the box, it stops and says
-##      why; undone, it runs again. And 42042's file saved untouched: each
-##      LDCad cable path in it byte for byte.
+##      why; undone, it runs again. And 42042's file saved untouched, and
+##      again once Simulate has read, switched and played it: the whole
+##      file byte for byte, its LDCad cable path with it.
 ##   4. The wiring read, and where a cable's ends may go, each under 16 ms
 ##      (the best of five) on Orthanc and on 42042.
 ##
@@ -92,25 +94,29 @@ func _run() -> void:
 		print("wires_probe: FAILED, not finished in %d s" % int(limit))
 		quit(1))
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
-	var only: String = ""
+	# --only=hand,laid,42042,time: those parts alone (all four when not given).
+	var only: PackedStringArray = PackedStringArray(["hand", "laid", "42042", "time"])
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--only="):
-			only = arg.trim_prefix("--only=")
-	if listing.is_empty():
+			only = arg.trim_prefix("--only=").split(",", false)
+	if listing.is_empty() and only.has("hand"):
 		print("\n1. wiring read off parts placed by hand")
 		_by_hand()
-	if only == "hand":
+	if listing.is_empty() and Array(only) == ["hand"]:
 		print("\nwires_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 		quit(1 if _failures else 0)
 		return
 	await _start()
 	if listing.is_empty():
-		print("\n2. a Power Functions cable laid from a motor to a box")
-		await _laid()
-		print("\n3. 42042's L motor in Simulate: the box switched on, the plug pulled")
-		await _simulate_42042()
-		print("\n4. time: the wiring read on Orthanc and on 42042, inside a frame")
-		await _timed()
+		if only.has("laid"):
+			print("\n2. a Power Functions cable laid from a motor to a box")
+			await _laid()
+		if only.has("42042"):
+			print("\n3. 42042's L motor in Simulate: the box switched on, the plug pulled")
+			await _simulate_42042()
+		if only.has("time"):
+			print("\n4. time: the wiring read on Orthanc and on 42042, inside a frame")
+			await _timed()
 	else:
 		await _sets(listing, rows)
 	print("\nwires_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
@@ -426,8 +432,9 @@ func _laid() -> void:
 	var first: String = await _save("wires_laid.ldr")
 	await _open(MODELS + "wires_laid.ldr")
 	var second: String = await _save("wires_laid.ldr")
-	_check("saved, opened again and saved: byte for byte (%d bytes)" % first.length(),
-		not first.is_empty() and first == second)
+	if not _check("saved, opened again and saved: byte for byte (%d bytes)" % first.length(),
+			not first.is_empty() and first == second):
+		print(_difference(first, second))
 	var again: Wiring = _wiring()
 	var box_again: int = -1
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -543,16 +550,13 @@ func _simulate_42042() -> void:
 	var problem: String = await _open_file(SET_42042)
 	if not _check("42042 opened (%d parts)" % _world.brick_count(), problem.is_empty()):
 		return
-	# Its file saved untouched: every LDCad path byte for byte.
+	# Its file saved untouched: the whole of it byte for byte, its LDCad
+	# cable path and hose paths with it (reading wiring changes nothing).
 	var source: String = FileAccess.get_file_as_string(SET_42042)
 	var saved: String = await _save("wires_42042.mpd")
-	var paths: Array = _ldcad_sections(source)
-	var kept: int = 0
-	for section: String in paths:
-		if saved.contains(section):
-			kept += 1
-	_check("saved untouched: %d of its %d LDCad cable and hose paths byte for byte" % [kept, paths.size()],
-		not paths.is_empty() and kept == paths.size())
+	if not _check("saved untouched: the whole file byte for byte (%d bytes, %d LDCad paths in it)" % [
+			source.length(), _ldcad_sections(source).size()], saved == source):
+		print(_difference(source, saved))
 	await _main.call("open_simulate")
 	await _settled()
 	var wiring: Wiring = _panel.wiring
@@ -618,6 +622,13 @@ func _simulate_42042() -> void:
 	_check("the box off, Play: switches it on and runs (%s)" % _panel._status.text,
 		_panel.playing and _panel._power_rate != 0.0 and _panel.wiring.switch_index(box) != 0)
 	_panel.close()
+	await _settled()
+	# What Simulate read and switched is no edit: with the plug's pull
+	# undone, the file is written as it was opened, byte for byte.
+	var after: String = await _save("wires_42042_after.mpd")
+	if not _check("Simulate read, switched, played and closed, the pull undone: saved, the whole file byte for byte",
+			after == source):
+		print(_difference(source, after))
 
 
 ## Click [param brick] as a person does: the camera turned to it from a
@@ -669,14 +680,19 @@ func _timed() -> void:
 			continue
 		var reading: float = INF
 		var placing: float = INF
+		var motors: float = INF
 		for _n: int in 5:
 			var began: int = Time.get_ticks_usec()
 			_wiring()
 			reading = minf(reading, (Time.get_ticks_usec() - began) / 1000.0)
 			began = Time.get_ticks_usec()
-			Flex.electric_anchors(_world, _library, "pf_cable")
+			Flex.anchors_in(_world, _library, "pf_cable")
 			placing = minf(placing, (Time.get_ticks_usec() - began) / 1000.0)
+			began = Time.get_ticks_usec()
+			Simulation.motors_in(_world.bricks(), _library)
+			motors = minf(motors, (Time.get_ticks_usec() - began) / 1000.0)
 			await process_frame
+		print("    of which the motors found (Simulation.motors_in) %.1f ms" % motors)
 		_check("%s, %d parts: the wiring read in %.1f ms, a cable's places found in %.1f ms, each under 16"
 			% [path.get_file(), _world.brick_count(), reading, placing], reading < 16.0 and placing < 16.0)
 
@@ -690,6 +706,35 @@ static func _plug_of(wired: Wiring, motor: int) -> int:
 				if key.begins_with("p:"):
 					return int(key.get_slice(":", 1))
 	return -1
+
+
+## Where [param a] and [param b] part: their sizes, the first line that
+## differs with three before it, and up to ten lines each has that the other
+## has not.
+static func _difference(a: String, b: String) -> String:
+	var one: PackedStringArray = a.split("\n")
+	var two: PackedStringArray = b.split("\n")
+	var out := PackedStringArray(["    %d bytes, %d lines; then %d bytes, %d lines" % [a.length(), one.size(),
+		b.length(), two.size()]])
+	for n: int in mini(one.size(), two.size()):
+		if one[n] != two[n]:
+			for k: int in range(maxi(0, n - 3), mini(n + 2, one.size())):
+				out.append("    %s %d: %s" % ["-" if k >= n else " ", k + 1, one[k].c_escape()])
+			for k: int in range(n, mini(n + 2, two.size())):
+				out.append("    + %d: %s" % [k + 1, two[k].c_escape()])
+			break
+	var count: Dictionary = {}
+	for line: String in one:
+		count[line] = int(count.get(line, 0)) + 1
+	for line: String in two:
+		count[line] = int(count.get(line, 0)) - 1
+	var shown: int = 0
+	for line: String in count:
+		if int(count[line]) != 0 and shown < 20:
+			out.append("    %s%d x %s" % ["only before: " if int(count[line]) > 0 else "only after: ",
+				absi(int(count[line])), line.c_escape().left(160)])
+			shown += 1
+	return "\n".join(out)
 
 
 ## Each FILE section of [param text] that is an LDCad path, whole.

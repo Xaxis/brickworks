@@ -179,10 +179,9 @@ const OWN_PLUGS := {
 }
 
 ## Where a part's cable leaves it, and the way out (LDraw, its frame): a
-## motor's, a receiver's or a pole reverser's, and a plug's, which the flex
-## tool lays a cable from and reads one laid back by. A 9 V plug's wire
-## leaves along its +x: 5306's from the end of the stub it is drawn with,
-## 2726c01's and 6625c01's from its side (6988's and 8868's first pieces).
+## motor's, a receiver's or a pole reverser's, which the flex tool lays a
+## cable from and reads one laid back by. A plug's own is the flex tool's
+## (Flex.KINDS "stub").
 const OUTLETS := {
 	"58120": [Vector3(0, -23, 118), Vector3(0, -0.7071, 0.7071)],
 	"58121": [Vector3(0, -42, 108), Vector3(0, -0.7071, 0.7071)],
@@ -196,14 +195,6 @@ const OUTLETS := {
 	"26913": [Vector3(0, 7, 56), Vector3(0, 0, 1)],
 	"54675": [Vector3(0, 14, 142), Vector3(0, 0, 1)],
 	"69730": [Vector3(0, 14, 142), Vector3(0, 0, 1)],
-	"58124c01": [Vector3(30, 7, 0), Vector3(1, 0, 0)],
-	"58124c02": [Vector3(30, 7, 0), Vector3(1, 0, 0)],
-	"58124c03": [Vector3(30, 7, 0), Vector3(1, 0, 0)],
-	"23816c01": [Vector3(0, 0, -14), Vector3(0, 0, -1)],
-	"23816c02": [Vector3(0, 0, -14), Vector3(0, 0, -1)],
-	"5306": [Vector3(40, 5.25, 0), Vector3(1, 0, 0)],
-	"2726c01": [Vector3(16, 4.5, 0), Vector3(1, 0, 0)],
-	"6625c01": [Vector3(16, 4.5, 0), Vector3(1, 0, 0)],
 }
 const OUTLET_SAME := {
 	"58120c01": "58120", "58121c01": "58121", "99499c01": "99499", "58123c01": "58123",
@@ -310,24 +301,65 @@ var local: bool = false
 ## The cables and plugs among [param bricks] (BrickWorld.Brick), with
 ## [param motors] each motor's brick id -> its key in Simulation.MOTORS, as
 ## Simulation.motors_in reads them (a motor drawn in its pieces is keyed by
-## its hub's piece).
+## its hub's piece): Simulate's, read with the rest of its model.
 static func read(bricks: Array, motors: Dictionary, in_language: bool = false) -> Wiring:
+	return Wiring._read(bricks, motors, null, in_language)
+
+
+## The motors among [param bricks] and their cables, as [method read] reads
+## them, for a caller with the library and no Simulation at hand: the
+## motors found in the same pass, as Simulation.motors_in finds them.
+static func read_with(bricks: Array, library: PartLibrary) -> Wiring:
+	return Wiring._read(bricks, {}, library, false)
+
+
+## [method read], the motors given in [param motors] or, with
+## [param library], found as each part is read. One pass over the parts, a
+## look at each part's number: on Orthanc's 10,101 a second pass to find
+## the motors first held the read at 57 ms (wfix2).
+static func _read(bricks: Array, motors: Dictionary, library: PartLibrary, in_language: bool) -> Wiring:
 	var out := Wiring.new()
 	# Said in the person's language from the first word read, as the joins
 	# and loose plugs are said once, here.
 	out.local = in_language
+	var finds: bool = library != null
 	var slots: Dictionary = {}     ## sub-model path -> {"tips": [point keys], "pieces": [bricks]}
 	var ends: Array = []           ## bricks a laid cable's far end can be at
 	# Each part number asked once: Orthanc's thousands of parts are a few
 	# hundred numbers, and none of them a motor, a box, a plug or a cable.
-	var known: Dictionary = {}     ## part id -> [its base part, a cable's piece] or [""]
+	var known: Dictionary = {}     ## part id -> [method _class_of]
+	var drawn: Dictionary = {}     ## a hub piece's sub-model -> [the drawn motor's sub-model, its key] or ["", ""]
+	var keyed: Dictionary = {}     ## a drawn motor's sub-model whose hub piece is read
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
-		var motor: String = str(motors.get(brick.id, ""))
 		var seen: Variant = known.get(brick.part_id)
 		if seen == null:
-			seen = Wiring._class_of(brick.part_id)
+			seen = Wiring._class_of(brick.part_id, library, finds)
 			known[brick.part_id] = seen
+		var motor: String = ""
+		if seen is bool:
+			# Nothing wiring reads, unless Simulate's motors say it is one.
+			if finds or not motors.has(brick.id):
+				continue
+			motor = str(motors[brick.id])
+			seen = [""]
+		elif not finds:
+			motor = str(motors.get(brick.id, ""))
+		elif (seen as Array).size() > 2:
+			motor = str((seen as Array)[2])
+		if finds and (seen as Array).size() > 3 and bool((seen as Array)[3]):
+			# A motor drawn in its pieces: the first hub piece in the
+			# sub-model named for it is the motor (Simulation.motors_in).
+			var holder: String = Assemblies.path_of(brick)
+			var found: Variant = drawn.get(holder)
+			if found == null:
+				var it: Array = Simulation.drawn_motor_at(holder)
+				found = [str(it[0]), str(it[1])] if not it.is_empty() else ["", ""]
+				drawn[holder] = found
+			var at: String = str((found as Array)[0])
+			if not at.is_empty() and not keyed.has(at):
+				keyed[at] = true
+				motor = str((found as Array)[1])
 		var part: String = (seen as Array)[0]
 		if part.is_empty():
 			if motor.is_empty():
@@ -413,22 +445,102 @@ static func read(bricks: Array, motors: Dictionary, in_language: bool = false) -
 	return out
 
 
-## The motors among [param bricks] and their cables, as [method read] reads
-## them, for a caller with the library and no Simulation at hand.
-static func read_with(bricks: Array, library: PartLibrary) -> Wiring:
-	return Wiring.read(bricks, Simulation.motors_in(bricks, library))
+## Where an end of a cable of Flex kind [param kind] may go among
+## [param world]'s parts shown, but those in [param skip] (a cable laid
+## again: its own pieces and plug): each motor's, receiver's and pole
+## reverser's outlet ("outlet") when the kind runs from one, and each
+## battery box's, receiver output's, pole reverser's and plug top's contacts
+## or hub's port ("contacts"), of the kind's own system; each a
+## Flex.Anchor, with why it is taken now in its [code]taken[/code] ("" when
+## free): the outlet's cable is there already, a plug of another part is on
+## the contacts. Taken places are kept, so a caller says first whether the
+## ends make a cable at all, then whether they are free (lay_flex).
+static func places(world: BrickWorld, library: PartLibrary, kind: String, skip: Dictionary = {}) -> Array:
+	var spec: Dictionary = Flex.KINDS[kind]
+	var system: String = str(spec["electric"])
+	var bricks: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not brick.hidden and not skip.has(brick.id):
+			bricks.append(brick)
+	var wired: Wiring = Wiring.read_with(bricks, library)
+	var taken: Dictionary = {}   ## point key -> why
+	for join: Array in wired.joins:
+		if str(join[4]) != "seat":
+			continue
+		var plug: int = (wired.points[str(join[0])] as Point).brick
+		var place: Point = wired.points[str(join[1])]
+		taken[place.key] = ("port %d of #%d has a plug (#%d) in it" % [place.index + 1, place.brick, plug]
+			if place.kind == "pu" else "a plug (#%d) is on #%d's contacts already: give to= that plug, "
+			% [plug, place.brick] + "whose top takes another")
+	for cable: Dictionary in wired.cables:
+		var plug: int = -1
+		for end: String in cable["ends"]:
+			if end.begins_with("p:"):
+				plug = (wired.points[end] as Point).brick
+		for end: String in cable["ends"]:
+			if end.begins_with("t:"):
+				taken[end] = "#%s's own cable is laid already (%s): give item= it to lay it again%s" % [
+					end.trim_prefix("t:"), Assemblies.label(str(cable["path"]))
+					if not str(cable["path"]).is_empty() else "drawn with the part", "" if plug < 0
+					else ", or to= its plug (#%d) to stack another cable's plug on it" % plug]
+	var out: Array = []
+	for key: String in wired.points:
+		var point: Point = wired.points[key]
+		var anchor := Flex.Anchor.new()
+		anchor.brick = point.brick
+		anchor.taken = str(taken.get(key, ""))
+		if point.role == "terminal" and point.x != Vector3.ZERO:
+			if Wiring.system_of(Wiring.base_part(str(wired.parts.get(point.brick, "")))) != system \
+					or not (spec["takes"] as Array).has("outlet"):
+				continue
+			anchor.kind = "outlet"
+			anchor.at = point.at
+			anchor.axis = point.x
+			out.append(anchor)
+		elif point.role == "contacts" and point.kind == system:
+			anchor.kind = "contacts"
+			anchor.at = point.at
+			anchor.axis = point.up
+			anchor.x = point.x
+			out.append(anchor)
+	return out
+
+
+## Why no end of a cable of Flex kind [param kind] goes on a
+## [param part_id] at all, where it has a cable of another system: the kind
+## its cable is. "" for any other part.
+static func system_refusal(part_id: String, kind: String) -> String:
+	var part: String = Wiring.base_part(part_id)
+	var its: String = Wiring.system_of(part)
+	var rows: Array = CONTACTS.get(SAME.get(part, part), [])
+	if its.is_empty() and not rows.is_empty():
+		its = str((rows[0] as Array)[0])
+	if its.is_empty() or its == str(Flex.KINDS[kind]["electric"]):
+		return ""
+	for other: String in Flex.KINDS:
+		if str((Flex.KINDS[other] as Dictionary).get("electric", "")) == its:
+			return "its cable is a %s: lay_flex kind=%s" % [str(Flex.KINDS[other]["label"]), other]
+	return ""
 
 
 ## [base part, whether it is a piece of cable] for a part wiring reads, or
-## [""] for one it does not.
-static func _class_of(part_id: String) -> Array:
+## false for one it does not. With [param finds], a part that is a motor
+## (Simulation.motor_of) or may be the hub of one drawn in its pieces
+## (Simulation.HUBS) is [its base part or "", a piece of cable, its key in
+## Simulation.MOTORS or "", whether it may be such a hub].
+static func _class_of(part_id: String, library: PartLibrary = null, finds: bool = false) -> Variant:
 	var base: String = Wiring.base_part(part_id)
+	var out: Array = []
 	if not Wiring.source_of(base).is_empty() or PLUGS.has(base) or OWN_PLUGS.has(base) \
 			or CONTACTS.has(SAME.get(base, base)):
-		return [base, false]
-	if Wiring.is_cable_piece(part_id):
-		return [base, true]
-	return [""]
+		out = [base, false]
+	elif Wiring.is_cable_piece(part_id):
+		out = [base, true]
+	var motor: String = Simulation.motor_of(library, part_id) if finds else ""
+	var hub: bool = finds and part_id in Simulation.HUBS
+	if motor.is_empty() and not hub:
+		return out if not out.is_empty() else false
+	return [base if not out.is_empty() else "", not out.is_empty() and bool(out[1]), motor, hub]
 
 
 static func _slot(slots: Dictionary, path: String) -> Dictionary:

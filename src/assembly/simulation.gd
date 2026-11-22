@@ -274,32 +274,53 @@ static func motor_of(from: PartLibrary, part_id: String) -> String:
 static func motors_in(bricks: Array, from: PartLibrary, pieces: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	var drawn: Dictionary = {}   ## the sub-model's path -> [motor, its hub's id, its pieces' ids]
+	# Each part number and each sub-model asked once: Orthanc's 10,101 parts
+	# are a few hundred numbers in a few dozen sub-models, and asking each
+	# part held Wiring's read at 57 ms (wfix2).
+	var made_of: Dictionary = {}   ## part id -> its key in MOTORS, or ""
+	var drawn_at: Dictionary = {}  ## a part's path -> [the drawn motor's sub-model, its key], or []
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
-		var made: String = Simulation.motor_of(from, brick.part_id)
-		if not made.is_empty():
+		var made: Variant = made_of.get(brick.part_id)
+		if made == null:
+			made = Simulation.motor_of(from, brick.part_id)
+			made_of[brick.part_id] = made
+		if not (made as String).is_empty():
 			out[brick.id] = made
 			continue
-		var steps: PackedStringArray = Assemblies.path_of(brick).split("/", false)
-		for n: int in steps.size():
-			var named: String = steps[n].get_slice("#", 0).trim_suffix(".dat")
-			named = named.substr(named.rfind(" - ") + 3) if named.contains(" - ") else named
-			if not MOTORS.has(named) or ((MOTORS[named] as Array)[4] as Array).is_empty():
-				continue
-			var at: String = "/".join(steps.slice(0, n + 1))
-			if not drawn.has(at):
-				drawn[at] = [named, -1, []]
-			if brick.part_id in HUBS and int(drawn[at][1]) < 0:
-				drawn[at][1] = brick.id
-			else:
-				(drawn[at][2] as Array).append(brick.id)
-			break
+		var path: String = Assemblies.path_of(brick)
+		var found: Variant = drawn_at.get(path)
+		if found == null:
+			found = Simulation.drawn_motor_at(path)
+			drawn_at[path] = found
+		if (found as Array).is_empty():
+			continue
+		var at: String = (found as Array)[0]
+		if not drawn.has(at):
+			drawn[at] = [(found as Array)[1], -1, []]
+		if brick.part_id in HUBS and int(drawn[at][1]) < 0:
+			drawn[at][1] = brick.id
+		else:
+			(drawn[at][2] as Array).append(brick.id)
 	for at: String in drawn:
 		var it: Array = drawn[at]
 		if int(it[1]) >= 0:
 			out[int(it[1])] = it[0]
 			pieces[int(it[1])] = it[2]
 	return out
+
+
+## The outermost sub-model on [param path] named for a motor drawn in its
+## pieces, and that motor's key in [constant MOTORS]: [its path, the key],
+## or [] for none.
+static func drawn_motor_at(path: String) -> Array:
+	var steps: PackedStringArray = path.split("/", false)
+	for n: int in steps.size():
+		var named: String = steps[n].get_slice("#", 0).trim_suffix(".dat")
+		named = named.substr(named.rfind(" - ") + 3) if named.contains(" - ") else named
+		if MOTORS.has(named) and not ((MOTORS[named] as Array)[4] as Array).is_empty():
+			return ["/".join(steps.slice(0, n + 1)), named]
+	return []
 
 
 ## A motor's [param mesh] split into its case and its output, which turns in

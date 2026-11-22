@@ -2939,9 +2939,13 @@ func _lay_flex(input: Dictionary) -> String:
 	if not Flex.KINDS.has(kind):
 		return "kind is one of %s." % ", ".join(FlexTool.KIND_ORDER)
 	var item: String = str(input.get("item", ""))
+	# A part laid again is not in its own way: its pieces, and a cable's plug,
+	# take no place its ends go (as the Make tool reshapes one).
+	var own: Dictionary = {}
 	if not item.is_empty():
 		var found: String = ""
-		for path: String in Flex.items_in(world).keys():
+		var items: Dictionary = Flex.items_in(world)
+		for path: String in items.keys():
 			if path == item or Assemblies.label(path) == item:
 				found = path
 		if found.is_empty():
@@ -2952,6 +2956,8 @@ func _lay_flex(input: Dictionary) -> String:
 				", ".join(PackedStringArray(named.slice(0, 10))) if not named.is_empty() else "none",
 				"" if named.size() <= 10 else ", and %d more" % (named.size() - 10)]
 		item = found
+		for brick: BrickWorld.Brick in (items[found] as Dictionary)["bricks"]:
+			own[brick.id] = true
 	var colour: int = int(input.get("color", 0))
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
 	var anchors: Array = []
@@ -2973,7 +2979,11 @@ func _lay_flex(input: Dictionary) -> String:
 		if sprockets.size() < 2:
 			return "Give sprockets= two or more gears' part numbers, in one plane."
 	else:
-		var all: Array = Flex.anchors_in(world, library, kind, {})
+		# A cable's places, taken ones too: what its ends are decides first
+		# whether they make a cable at all, and only then is a taken one said.
+		var electric: bool = Flex.KINDS[kind].has("electric")
+		var all: Array = Wiring.places(world, library, kind, own) if electric \
+			else Flex.anchors_in(world, library, kind, own)
 		var ends: Array = [input.get("from", {}), input.get("to", {})]
 		var on: Array = []
 		for n: int in 2:
@@ -2984,15 +2994,40 @@ func _lay_flex(input: Dictionary) -> String:
 				return "No part numbered %d." % int((ends[n] as Dictionary)["brick"])
 			var mine: Array = all.filter(func(a: Flex.Anchor) -> bool: return a.brick == brick.id)
 			if mine.is_empty():
-				# Why not, where it is a cable's: its cable is laid, a plug is
-				# on it, it is another system's.
-				var why_not: String = Flex.cable_refusal(world, library, kind, brick.id)
-				if not why_not.is_empty():
-					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id, why_not]
+				var other: String = Wiring.system_refusal(brick.part_id, kind) if electric else ""
+				if not other.is_empty():
+					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id, other]
 				return ("#%d (%s) has nothing a %s goes on: it takes %s."
 					% [brick.id, brick.part_id, kind.replace("_", " "),
 						", ".join(PackedStringArray(Flex.KINDS[kind].get("takes", []))).replace("_", " ")])
 			on.append(mine)
+		if electric:
+			# A cable runs from an outlet to a plug's place, or an extension
+			# wire from contacts to contacts, as the Make tool's ends
+			# (Flex.cable_ends_refusal): two outlets make none, free or not.
+			var refused: String = ""
+			var makes: bool = false
+			for a: Flex.Anchor in on[0]:
+				for b: Flex.Anchor in on[1]:
+					var why_not: String = Flex.cable_ends_refusal(kind, a.kind, b.kind)
+					makes = makes or why_not.is_empty()
+					refused = why_not if not why_not.is_empty() else refused
+			if not makes:
+				return "%s: give a motor's outlet and a plug's place%s." % [refused,
+					"" if Flex.lengths_between(null, kind, ["contacts", "contacts"]).is_empty()
+						else ", or two parts' contacts for an extension wire"]
+			# Then a place taken: its cable laid already, a plug on it.
+			for n: int in 2:
+				var free: Array = (on[n] as Array).filter(func(a: Flex.Anchor) -> bool: return a.taken.is_empty())
+				if free.is_empty():
+					var brick: BrickWorld.Brick = _brick(int((ends[n] as Dictionary)["brick"]))
+					var why: PackedStringArray = []
+					for a: Flex.Anchor in on[n]:
+						if not why.has(a.taken):
+							why.append(a.taken)
+					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id,
+						"; ".join(why.slice(0, 3))]
+				on[n] = free
 		# Each end on the connector asked for, else the two nearest each other.
 		for n: int in 2:
 			var asked: Dictionary = ends[n]
@@ -3003,14 +3038,10 @@ func _lay_flex(input: Dictionary) -> String:
 				on[n] = [_nearest(on[n], near)]
 		var best: Array = []
 		var gap: float = INF
-		var electric: bool = Flex.KINDS[kind].has("electric")
 		var refused: String = ""
 		for a: Flex.Anchor in on[0]:
 			for b: Flex.Anchor in on[1]:
 				var apart: float = a.middle().distance_to(b.middle())
-				# A cable runs from an outlet to a plug's place, or an
-				# extension wire from contacts to contacts: as the Make
-				# tool's ends (Flex.cable_ends_refusal).
 				var why_not: String = Flex.cable_ends_refusal(kind, a.kind, b.kind) if electric else ""
 				if not why_not.is_empty():
 					refused = why_not
@@ -3018,10 +3049,9 @@ func _lay_flex(input: Dictionary) -> String:
 				if apart < gap and a != b:
 					gap = apart
 					best = [a, b]
-		if best.is_empty() and electric:
-			return "%s: give a motor's outlet and a plug's place%s." % [refused,
-				"" if Flex.lengths_between(null, kind, ["contacts", "contacts"]).is_empty()
-					else ", or two parts' contacts for an extension wire"]
+		if best.is_empty() and not refused.is_empty():
+			# The connectors asked for (x=, y=, z=) make no cable.
+			return "%s: give a motor's outlet and a plug's place." % refused
 		if best.is_empty():
 			return "Both ends are the same connector; give two."
 		anchors = best

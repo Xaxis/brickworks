@@ -1142,9 +1142,10 @@ way, "a piece apart from it, held by its largest part"), move_part turns 30° an
 and one undo puts back, a loose 24 still refused as floating; it ends "PASS: 0
 failed", and on pre261 926a97e3e fails 4 ("it is floating").
 
-Motors run by their cables (docs/APP_UX11.md row 7, wires, fixed by wfix after the wreview;
-`src/assembly/wiring.gd`, pure, read by `SimulatePanel.read_wiring`, `Flex.electric_anchors` and
-lay_flex): each Power Functions, Powered Up and 9 V plug (58124c01/c02/c03, 23816c01/c02, 5306,
+Motors run by their cables (docs/APP_UX11.md row 7, wires, fixed by wfix after the wreview and
+wfix2; `src/assembly/wiring.gd`, pure, a Later class the first screen never compiles, read by
+`SimulatePanel.read_wiring`, `Wiring.places` (Flex.anchors_in reaches it through Later) and
+lay_flex, in one pass over the parts: under 16 ms on Orthanc): each Power Functions, Powered Up and 9 V plug (58124c01/c02/c03, 23816c01/c02, 5306,
 2726c01, 6625c01; whole wires 60656, 58118, 75652) is read as seated on contacts when its
 origin is its lift (16 LDU; Powered Up 0, in a hub's port) over a battery box's, a receiver
 output's, a pole reverser's, a 9 V motor's or another plug's contacts, within 1.5 LDU and
@@ -1172,10 +1173,13 @@ cable is an item (`Flex.items_among`, `ends_of_item`): Reshape after a reopen or
 item=, Turn the plug; an LDCad extension wire's path (two plugs and its skin) too. Not done: a
 cable laid again as a part it is on is dragged (FlexFollow), the IR remote's channels.
 `lay_flex kind=pf_cable|pu_cable|9v_wire reversed=true` does the same over MCP and says what it
-wired, why an end is refused (its cable laid, a plug on it); `simulate_mechanism` runs the
+wired, why an end is refused: first what the ends are (two outlets make no cable), then a place
+taken (its cable laid, a plug on it); item= lays a cable again, its own pieces and plug in no
+end's way. Reading wiring writes nothing: an untouched file, and one Simulate read and switched,
+saves byte for byte. `simulate_mechanism` runs the
 driver as Play does (power= not given switches its cable's sources on; power=off none; a
 pulled cable refuses). `tools/probe.sh wires_probe` ends "wires_probe: all passed" (`--
---only=hand` the pure readings alone); `godot --headless --path . --script
+--only=hand,laid,42042,time` those parts alone, hand the pure readings); `godot --headless --path . --script
 src/dev/wires_repro.gd -- FILES` ends "wires_repro: all passed" over the OMR power sets;
 `tools/wires_sets.py OUT` writes the listing of KINEFUNCS' motorised sets and `wires_probe --
 --sets=OUT --rows=ROWS` writes each set's clicks and each motor's row: what it is wired to,
