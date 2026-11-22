@@ -39,9 +39,9 @@ import { loadNotify, offFromLink, whenChanged as notifyChanged } from "/admin-no
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "analytics", "people", "moderation", "gallery", "challenges", "beta", "feedback", "social", "announcements",
+const SECTIONS = ["overview", "analytics", "people", "moderation", "talk", "gallery", "challenges", "beta", "feedback", "social", "announcements",
   "plans", "mail", "notifications", "connector", "site", "data", "switches", "claude", "audit"];
-const TABS = { moderation: ["queue", "comments", "barred"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
+const TABS = { moderation: ["queue", "comments", "barred"], talk: ["reports", "threads", "bans"], gallery: ["listed", "pick", "tested"], beta: ["applications", "testers"],
   social: ["inbox", "write", "sent", "accounts"], analytics: ANALYTICS_TABS, notifications: ["settings", "sent"],
   announcements: ["write", "sent", "banner", "settings"] };
 // The sections drawn from the one report (admin-gallery.js loadReport).
@@ -74,6 +74,7 @@ const loaders = {
   analytics: () => loadAnalytics(),
   people: () => loadPeople(),
   moderation: () => loadReport(),
+  talk: () => import("/admin-talk.js").then((part) => part.loadTalk()),
   gallery: () => loadReport(),
   challenges: () => loadReport(),
   beta: () => loadBeta(),
@@ -355,7 +356,7 @@ async function drawSwitches(set) {
 // The audit's words.
 
 const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Let an account back in", dismiss: "Let a report go",
-  untest: "Cleared a Tested mark", uncomment: "Removed a comment", remove_photo: "Took a photo out",
+  untest: "Cleared a Tested mark", uncomment: "Removed a comment", remove_photo: "Took a photo out", talk_act: "Moderated Talk",
   remove_avatar: "Took a profile's picture out", pick: "Made a model the pick", unpick: "Ended a pick",
   challenge: "Set a challenge", end_challenge: "Ended a challenge", plan: "Set a year of themes",
   beta_decide: "Decided an application", beta_waitlist: "Put an application on the waitlist",
@@ -399,6 +400,8 @@ function targetOf(row) {
     case "cron": return to("#site", `the cron ${t}`);
     case "challenge": return `challenge ${t}`;
     case "photo": return `photo ${t}`;
+    case "talk_thread": return to(`/talk/t/${encodeURIComponent(t)}`, `thread ${t}`);
+    case "talk_post": return to("#talk/reports", `Talk post ${t}`);
     case "pick": return `pick ${t}`;
     case "social": return to("#social/accounts", t === "reddit" ? "Reddit" : t || "the networks");
     case "send": return to("#social/sent", `social post ${t}`);

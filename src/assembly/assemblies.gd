@@ -2975,10 +2975,8 @@ static func in_file_order(found: Array) -> Array:
 
 
 ## Every assembly's frame and definition, for LdrModel.write_tree: the first
-## copy of each definition is written as it stands, its frame the file's
-## origin ([member lift] up from the window's: a model that opened lower
-## than the ground stands higher), or, for a minifigure, in the frame
-## [param figures] gives it; and each other copy is placed by
+## copy of each definition is written as it stands (or, for a minifigure,
+## in the frame [param figures] gives it), and each other copy is placed by
 ## how it lies on that one — mirrored, by a reflecting matrix. A copy that
 ## no longer lies exactly on the first is written as a definition of its
 ## own rather than lose what makes it different, and a copy that lies on
@@ -3050,20 +3048,7 @@ func _frames_ctx(contents: Dictionary, all_paths: PackedStringArray, figures: Di
 		held: Array, units: Variant) -> Dictionary:
 	return {"contents": contents, "holding": held_by_path(held), "figures": figures,
 		"ordered": in_file_order(Array(all_paths)), "own": {},
-		"units": world.unit_steps if units == null else units, "origin": file_origin()}
-
-
-## Where the file's origin stands in the window: [member lift] down from the
-## model. Each definition's first copy is written there, so its reference
-## and its parts say the same however high the model stood when it was
-## saved. Written at the window's origin, a model that opened lower than the
-## ground, so stood up on it (ModelStore.lift_for), wrote every sub-model
-## anew at its next save: placed that much lower, its parts that much higher
-## in it, though no part had moved. A cable laid on a battery box set into
-## the ground went "1 16 0 0 0" at the save it was laid in and "1 16 0 70 0"
-## at every save after (wirekeep, 2026-11-22).
-func file_origin() -> Transform3D:
-	return Transform3D(Basis.IDENTITY, lift.call())
+		"units": world.unit_steps if units == null else units}
 
 
 ## Whether [param ctx]'s pass is the last. A copy laid on another before the
@@ -3211,13 +3196,13 @@ static func _trial(ctx: Dictionary) -> Dictionary:
 	return out
 
 
-## [method frames_now]'s: [the model, its steps and its lift as they were
-## worked out for, the frames].
+## [method frames_now]'s: [the model and its steps as they were worked out
+## for, the frames].
 var _frames_kept: Array = []
 
 
 func _frames_key() -> Array:
-	return _model() + [world.unit_steps.hash(), lift.call()]
+	return _model() + [world.unit_steps.hash()]
 
 
 ## One pass of [method file_frames] over [param ctx]'s copies, each but
@@ -3249,7 +3234,7 @@ func _pass_begin(ctx: Dictionary) -> void:
 		taken[def] = true
 		if not masters.has(def):
 			masters[def] = [path]
-			out[path] = {"frame": _figure_frame(ctx["figures"], path, ctx["origin"]), "def": def}
+			out[path] = {"frame": _figure_frame(ctx["figures"], path), "def": def}
 
 
 func _pass_end(ctx: Dictionary) -> void:
@@ -3302,7 +3287,7 @@ func _written_as(path: String, ctx: Dictionary) -> void:
 		own += "+"
 	taken[own] = true
 	(masters[def] as Array).append(path)
-	out[path] = {"frame": _figure_frame(ctx["figures"], path, ctx["origin"]), "def": own}
+	out[path] = {"frame": _figure_frame(ctx["figures"], path), "def": own}
 
 
 ## Whether the copy at [param path] lies on [param master], a copy written
@@ -3575,14 +3560,13 @@ static func held_by_path(held: Array) -> Dictionary:
 
 
 ## The frame a minifigure stands in (ModelStore.figure_frames, by group),
-## for a path that is one: "Guard 2#1" is the figure "Guard 2"; for any
-## other, [param origin] ([method file_origin]).
-static func _figure_frame(figures: Dictionary, path: String, origin: Transform3D) -> Transform3D:
+## for a path that is one: "Guard 2#1" is the figure "Guard 2".
+static func _figure_frame(figures: Dictionary, path: String) -> Transform3D:
 	if figures.has(path):
 		return figures[path]
 	if not path.contains("/") and figures.has(definition(path)):
 		return figures[definition(path)]
-	return origin
+	return Transform3D.IDENTITY
 
 
 ## A part read from a mirrored reference, made one that can be built: its

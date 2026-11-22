@@ -4044,9 +4044,6 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	tree.builder = builder
 	tree.library = library
 	tree.scenery = scenery
-	# Each definition's first copy at the file's origin, wherever the model
-	# was stood as it opened (Assemblies.file_origin).
-	tree.lift = lift
 	var figures: Dictionary = figure_frames(model)
 	# What is not on the baseplate and goes out in its copy too: each copy
 	# compared by what it holds of them as well (Assemblies.file_frames).
@@ -4101,7 +4098,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			# baseplate (a band whose pieces could not be made) is written
 			# still, not its parts loose in the model.
 			var unit: String = world.held_path(waiting)
-			_hold_unit(instances, unit, back * tree.file_origin())
+			_hold_unit(instances, unit, back)
 			held.group = Assemblies.group_of(unit)
 			held.unit = unit
 			placements.append(held)

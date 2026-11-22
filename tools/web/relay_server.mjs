@@ -89,6 +89,11 @@
 // this machine's own, the files themselves answering every beta_* and
 // feedback_* function, and the 'feedback' bucket in memory
 // (tools/web/feedback_stand_in.mjs), for tools/web/feedback_flow.mjs.
+//
+// --hold=talk holds supabase/talk.sql in a Postgres of this machine's own,
+// the file itself answering every talk_* function and the console's audit,
+// a person's Notifications joined with their Talk (tools/web/talk_stand_in.mjs),
+// for tools/web/talk_flow.mjs.
 import http from "node:http";
 import { Readable } from "node:stream";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -109,7 +114,7 @@ const arrivals = process.argv.includes("--arrivals") ? [] : null;
 // at /__held/<table>, on this machine only, and a check may POST a row there.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
-  "notifications", "replies", "feedback", "announce"].includes(name));
+  "notifications", "replies", "feedback", "announce", "talk"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
@@ -144,6 +149,10 @@ if (heldFeedback) await heldFeedback.hold();
 // Notifications with what it holds for them (announce_stand_in.mjs).
 const heldAnnounce = holding.includes("announce") ? await import("./announce_stand_in.mjs") : null;
 if (heldAnnounce) await heldAnnounce.hold();
+// Apart too: talk.sql's functions and tables, a block as the project makes
+// it, and a person's Notifications with their Talk (talk_stand_in.mjs).
+const heldTalk = holding.includes("talk") ? await import("./talk_stand_in.mjs") : null;
+if (heldTalk) await heldTalk.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
 const routes = new Map();
@@ -186,6 +195,14 @@ const MAPPED = [
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // Talk, the builders' forum (api/_talk.js), as deploy.sh routes it.
+  [/^\/(?:(de|fr|es)\/)?talk\/?$/, "people", "talk_route"],
+  [/^\/(?:(de|fr|es)\/)?talk[.]rss$/, "people", "talk_route"],
+  [/^\/(?:(de|fr|es)\/)?talk\/new\/?$/, "people", "talk_route"],
+  [/^\/(?:(de|fr|es)\/)?talk\/b\/(show|help|ideas|challenges|news)\/?$/, "people", "talk_route"],
+  [/^\/(?:(de|fr|es)\/)?talk\/b\/(show|help|ideas|challenges|news)[.]rss$/, "people", "talk_route"],
+  [/^\/(?:(de|fr|es)\/)?talk\/t\/([1-9][0-9]{0,11})(?:\/[a-z0-9-]{0,80})?\/?$/, "people", "talk_route"],
+  [/^\/talk\/p\/([A-Za-z0-9]{12})(?:[.](card))?[.]jpg$/, "people", "talk_route"],
   // The sitemap, with every listed model in it (api/share.js).
   [/^\/sitemap\.xml$/, "share", "sitemap"],
   // Every set in the catalogue (api/_sets.js): its page, its parts, its
@@ -299,7 +316,7 @@ http.createServer(async (incoming, outgoing) => {
     if (arrivals.length > 5000) arrivals.splice(0, 1000);
   }
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
-    || heldNotifications || heldReplies || heldFeedback || heldAnnounce) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+    || heldNotifications || heldReplies || heldFeedback || heldAnnounce || heldTalk) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   // A row a check puts in a held table (tools/web/adminclaude_flow.mjs's
   // hostile reply), as the server would write it: through the table's own
   // checks, never the project.
@@ -317,7 +334,8 @@ http.createServer(async (incoming, outgoing) => {
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
       ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1])
       ?? (heldFeedback ? await heldFeedback.rowsOf(asked[1]) : null)
-      ?? (heldAnnounce ? await heldAnnounce.rowsOf(asked[1]) : null) ?? null;
+      ?? (heldAnnounce ? await heldAnnounce.rowsOf(asked[1]) : null)
+      ?? (heldTalk ? await heldTalk.rowsOf(asked[1]) : null) ?? null;
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
   }
@@ -378,6 +396,16 @@ http.createServer(async (incoming, outgoing) => {
     if (mapped[2] === "embed_lang") Object.assign(query, { op: "embed", lang: captured[1], id: captured[2], v: undefined });
     if (mapped[2] === "set_lang") Object.assign(query, { op: "set", lang: captured[1], id: captured[2], v: undefined });
     if (mapped[2] === "list_page_lang") Object.assign(query, { op: "list_page", lang: captured[1], id: captured[2] });
+    if (mapped[2] === "talk_route") {
+      const path = url.pathname.replace(/^\/(de|fr|es)\//, "/");
+      const photo = /^\/talk\/p\//.test(path);
+      Object.assign(query, { op: photo ? "talk_photo" : /[.]rss$/.test(path) ? "talk_rss" : "talk_page" },
+        !photo && captured[1] ? { lang: captured[1] } : {},
+        photo ? { id: captured[1], ...(captured[2] ? { size: "card" } : {}) } : {},
+        /^\/talk\/new\/?$/.test(path) ? { new: "1" } : {},
+        /^\/talk\/b\//.test(path) ? { board: captured[2] } : {},
+        /^\/talk\/t\//.test(path) ? { thread: captured[2] } : {});
+    }
   }
   // /challenge?id=N, and its copies, are that challenge's page with its own
   // head, as deploy.sh routes them.

@@ -68,6 +68,9 @@ for handler in api/*.js; do
   # passes through in a checkout: the pictures the share function draws of
   # a set's parts (api/_flatlay.js).
   cp web/lbm.js "$fn/_lbm.js"
+  # A file's private lines left out of a shared model (web/private-lines.js), which
+  # api/_private_lines.js passes through.
+  cp web/private-lines.js "$fn/_private_lines.js"
   # The stand-in Admission, beside the function only on a preview that asks
   # for it: no other deployment holds it at all.
   if [ "$stand_in" = 1 ]; then cp tests/fixtures/billing/fake_admission.mjs "$fn/_admission_stand_in.mjs"; fi
