@@ -78,6 +78,30 @@ func _initialize() -> void:
 	_run()
 
 
+## A stage asked for by name, as render_model and render_queue ask
+## (photoreal7, RenderSettings.take and use_stage): its colour on the
+## backdrop unless a backdrop is asked too, none for the seamless backdrop,
+## and refused, changing nothing, with backdrop none or a name it lacks.
+func _stage_asked() -> void:
+	var asked := RenderSettings.new()
+	var said: String = asked.take({"stage": "wood"})
+	_check("stage=wood: the stage, its colour, something under it",
+		said.is_empty() and asked.stage == "wood" and not asked.transparent
+		and asked.backdrop.is_equal_approx(StudioRender.STAGES["wood"][6]))
+	said = asked.take({"stage": "terrazzo", "backdrop": "grey"})
+	var grey := RenderSettings.new()
+	grey.use_backdrop("grey")
+	_check("stage=terrazzo with backdrop=grey keeps the grey",
+		said.is_empty() and asked.stage == "terrazzo" and asked.backdrop.is_equal_approx(grey.backdrop))
+	said = asked.take({"stage": "none"})
+	_check("stage=none: the seamless backdrop", said.is_empty() and asked.stage.is_empty())
+	said = asked.take({"stage": "wood", "backdrop": "none"})
+	_check("stage=wood with backdrop=none refused, no stage (%s)" % said,
+		not said.is_empty() and asked.stage.is_empty())
+	said = RenderSettings.new().take({"stage": "marble"})
+	_check("stage=marble refused, naming the stages (%s)" % said, said.contains("leather"))
+
+
 func _check(words: String, ok: bool) -> void:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", words])
 	if not ok:
@@ -132,6 +156,8 @@ func _run() -> void:
 	_render.keep_mean = OS.get_cmdline_user_args().has("--raw")
 	var bar: ModelBar = _main.get("_bar")
 	var car_only: bool = OS.get_cmdline_user_args().has("--car")
+	if not car_only:
+		_stage_asked()
 	for shot: Dictionary in ([] if car_only else said["shots"]):
 		var name: String = str(shot["name"])
 		if not only.is_empty() and not name in only:

@@ -3174,7 +3174,9 @@ picture the assistant is shown.
   draws a shot unstaged, and its picture must equal photoreal6's of the
   same shot byte for byte; `--keys=R:F:S,..` with `--turns` draws the
   key's sweep that `tools/photoreal/fit_light.py DRAWN --shots FILE` scores
-  against each photograph.
+  against each photograph. Every run but `--car` first prints five ok lines
+  for a stage asked by name (`_stage_asked`: wood's colour, a backdrop asked
+  beside it kept, none, refused with backdrop none and with a name it lacks).
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong
