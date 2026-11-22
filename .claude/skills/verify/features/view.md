@@ -3065,8 +3065,17 @@ picture the assistant is shown.
   model stands metered `PHOTO_EV` over the paper's own light, and a
   camera's response: saturation in linear light (`PHOTO_LINEAR_SATURATION`)
   and `camera_curve`'s wide shoulder. Clear parts absorb by Beer-Lambert.
-  Check: `tools/probe.sh photoreal_probe`, then `python3
-  tools/bench/photoreal.py colour TAG` from the same tree.
+  The plastic is gloss as ABS is (photoreal3, docs/RENDERING.md 5g): one
+  sharp coat at index 1.55 (`ABS_F0`) over the colour, stud tops satin, a
+  slope's grain small round bumps that glint, each stud a hair off true;
+  the tent has two soft boxes behind the model (`TENT_BOX`, `tent_box`) for
+  it to mirror, and a panel 60 degrees across (`TENT_TOP`); red, green, blue
+  and black take albedos fitted to the photographs (`PathTracer.
+  PRODUCT_ALBEDO`); the denoise is guided by the first hit's normal and
+  albedo (`guide`, binding 10 and 2). Check: `tools/probe.sh
+  photoreal_probe`, then `python3 tools/bench/photoreal.py colour TAG` and
+  `gloss TAG` from the same tree: tent faces within ΔE2000 5, the stud rims
+  and logo flanks lighter than the face in the pictures.
   In a browser: `cli:product look in a browser`.
   A model: `tools/probe.sh render_probe -- --model=models/sports_car.ldr
   --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best
@@ -3565,6 +3574,9 @@ picture the assistant is shown.
   pictures are judged on. `pairs TAG` writes each render beside its
   photograph (cropped to the render's aspect, both the same size);
   `compare BEFORE AFTER --out DIR` writes photograph | before | after rows;
+  `gloss TAG --out DIR` writes each close-up's highlight share and peak in
+  its `gloss` boxes (shots.json) and its main faces' L* spread, photograph
+  against render, to `DIR/gloss_TAG.json` and a table (photoreal3);
   `env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge TAG
   --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
   subscription, `judge.call`) the photograph and the render under opaque

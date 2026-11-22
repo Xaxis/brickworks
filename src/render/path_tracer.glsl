@@ -556,8 +556,10 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		s.coat_roughness = mix(0.03, 0.085, smoothstep(-0.6, 0.8, handled)) + 0.02 * own;
 		s.roughness += 0.05 * handled;
 		if (worn(local, own)) {
-			s.coat_roughness = 0.3;
-			s.coat *= 0.6;
+			// A hairline scratch scatters what a polished face mirrors
+			// (photoreal3): on a top that mirrors the dark camera it shows as a
+			// faint light line, as handled bricks' tops do in a photograph.
+			s.coat_roughness = 0.6;
 		}
 		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
@@ -1396,14 +1398,20 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	dx *= depth;
 	dy *= depth;
 	// The injection gate on some studs, as a judge saw on a photograph's
-	// and missed on ours: a dimple where the plastic went in, about half a
-	// millimetre across and a twentieth deep, off the middle by a hair.
+	// and missed on ours: where the plastic went in, a small round nub in a
+	// shallow ring about a millimetre across (photoreal3: the half-millimetre
+	// dimple before it was too faint for any judge to see), off the middle
+	// by a hair. A gloss over it catches the light as a bright dot.
 	if (stud_hash(centre, 6u) < 0.3) {
 		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.6;
 		float r = length(g);
-		if (r > 0.001 && r < 1.6) {
-			// h = -0.12 exp(-(r / 0.6)^2): its slope along g.
-			float slope = 0.12 * 2.0 * r / (0.6 * 0.6) * exp(-(r * r) / (0.6 * 0.6));
+		if (r > 0.001 && r < 2.2) {
+			// h = 0.2 exp(-(r / 0.45)^2) - 0.15 exp(-((r - 1.1) / 0.35)^2):
+			// its slope along g, downhill outwards.
+			float nub = -0.2 * 2.0 * r / (0.45 * 0.45) * exp(-(r * r) / (0.45 * 0.45));
+			float ring = 0.15 * 2.0 * (r - 1.1) / (0.35 * 0.35)
+				* exp(-((r - 1.1) * (r - 1.1)) / (0.35 * 0.35));
+			float slope = nub + ring;
 			dx += slope * g.x / r;
 			dy += slope * g.y / r;
 		}
