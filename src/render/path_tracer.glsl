@@ -512,16 +512,21 @@ float gloss_noise(vec3 p) {
 // the part's own number from 0 to 1. Fine straight scratches a few LDU
 // long, each part's running its own way, in patches, as handling leaves
 // them. (Flecks of dust were tried and taken out: a judge shown them beside
-// a photograph called them the path tracer's fireflies.)
-bool worn(vec3 q, float own) {
+// a photograph called them the path tracer's fireflies.) A played-with
+// part ([param age], scene.wear.x, photoreal5) has more of them, wider and
+// over more of it: the sets' photographs show their scratches at arm's
+// length, where a new part's are too fine to see (23 of 24 set verdicts
+// named ours spotless).
+bool worn(vec3 q, float own, float age) {
 	float angle = own * 6.2832;
 	vec3 along = normalize(vec3(cos(angle), 0.4 * sin(angle * 1.7), sin(angle)));
 	vec3 across = normalize(cross(along, vec3(0.3, 1.0, 0.2)));
 	vec3 third = cross(along, across);
-	float lines = gloss_noise(vec3(dot(q, along) * 0.15, dot(q, across) * 2.2,
-		dot(q, third) * 2.2) + vec3(own * 13.0));
+	float fine = mix(2.2, 1.3, age);
+	float lines = gloss_noise(vec3(dot(q, along) * 0.15, dot(q, across) * fine,
+		dot(q, third) * fine) + vec3(own * 13.0));
 	float patches = gloss_noise(q / 9.0 + vec3(own * 29.0, 5.0, 2.0));
-	return lines > 0.72 && patches > 0.1;
+	return lines > 0.72 - 0.08 * age && patches > 0.1 - 0.45 * age;
 }
 
 vec2 cell_hash(vec2 c) {
@@ -680,11 +685,20 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat *= 1.0 - cover;
 			s.roughness = mix(s.roughness, 0.9, cover);
 		}
-		if (worn(local, own)) {
+		if (worn(local, own, age)) {
 			// A hairline scratch scatters what a polished face mirrors
 			// (photoreal3): on a top that mirrors the dark camera it shows as a
 			// faint light line, as handled bricks' tops do in a photograph.
 			s.coat_roughness = 0.6;
+		}
+		if (age > 0.0) {
+			// A played-with part's edges and corners are scuffed (photoreal5):
+			// knocked against others, their skin rubbed matt in patches and a
+			// shade paler, as the sets' photographs show along their edges.
+			float scuffed = seam_at(local, thing.box_min.xyz, thing.box_max.xyz, 1.4)
+				* smoothstep(0.15, 0.55, gloss_noise(local * 0.7 + vec3(own * 41.0, 2.0, 9.0)));
+			s.coat_roughness = mix(s.coat_roughness, 0.4, scuffed * age);
+			body = mix(body, body * 1.08 + vec3(0.015), scuffed * age);
 		}
 		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
@@ -1209,7 +1223,7 @@ void main() {
 					// running its own way, as a set's windscreen shows them.
 					float own_glass = float(pcg(thing.info.z * 747796405u + 2891336453u) & 0xffffu)
 						/ 65535.0;
-					if (worn(hit.local * 1.6, own_glass)) {
+					if (worn(hit.local * 1.6, own_glass, 0.0)) {
 						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
 					}
 				}
