@@ -49,3 +49,16 @@ def test_the_box_is_put_back() -> None:
     with _at(137):
         pass
     assert os.getloadavg is real
+
+
+def test_every_tests_millisecond_ceiling_stretches_with_the_load() -> None:
+    """A bare "answered in under N ms" in a test fails a gate whenever the box is busy (rel-m319, 11-22)."""
+    import re
+
+    bare = re.compile(r'\[\s*"[A-Za-z_]*[mM]s"\s*\](?:\[\d+\])?\s*<=?\s*[0-9][0-9_]*\b(?!\s*\))')
+    found = []
+    for path in sorted((ROOT / "tests").glob("test_*.py")):
+        for at, line in enumerate(path.read_text().splitlines(), 1):
+            if bare.search(line) and not line.lstrip().startswith("#"):
+                found.append(f"{path.name}:{at}: {line.strip()}")
+    assert not found, "use loadbound.within(ms, short_of=the hang it rules out):\n" + "\n".join(found)
