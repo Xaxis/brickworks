@@ -2996,9 +2996,11 @@ python3 tools/design_ladder.py report                        # ladder_report.md:
 design from rung 3, up while it wins both orders and down while it loses both;
 a split is that rung, a turn is halfway (0.5 above the set, 5.5 below the stack);
 rung 1 is the record's own verdicts against the set, so it costs nothing.
-`--again` judges the same designs a second time into `place2/`. The report
-leaves out of the order a pair whose pictures differ in under half a percent
-of pixels: a rung with nothing to take (no curves) is the same picture twice.
+`--again` judges the same designs a second time into `place2/`, rung 1 asked
+afresh too, so the two judgings share no verdict. The report leaves out of the
+order a pair whose pictures differ in under half a percent of pixels: a rung
+with nothing to take (no curves) is the same picture twice; its table of pairs
+that differ, both orders, Technic sets apart, is the bar's own number.
 Results: `bench/results/designmeasure-2026-11-20/` and docs/DESIGN_SCORES.md,
 "The design ladder".
 

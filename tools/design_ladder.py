@@ -48,9 +48,10 @@ number) with any mention of the ladder added.
 
 Placing a design: it is judged against rung 3, then up or down the ladder
 until a verdict splits or the end is reached, both orders each time; the
-design's own verdicts against the set (its record) are rung 1's. Its place
-is a number from 0.5 (above the set) to 5.5 (below the naive stack): a rung
-it ties is its place, and between two rungs it sits halfway.
+design's own verdicts against the set (its record) are rung 1's, asked afresh
+on a second judging (--again). Its place is a number from 0.5 (above the set)
+to 5.5 (below the naive stack): a rung it ties is its place, and between two
+rungs it sits halfway.
 """
 
 from __future__ import annotations
@@ -586,8 +587,11 @@ def _share(found: list[pairwise.Verdict], key: str, dim: str = "overall") -> flo
     return sum(v.winners[dim] == key for v in found) / len(found) if found else None
 
 
-def place_one(record: dict, arm_folder: Path, number: str, into: Path, model: str) -> dict:
-    """A design's place on its set's ladder, judged up or down from rung 3."""
+def place_one(record: dict, arm_folder: Path, number: str, into: Path, model: str,
+              fresh: bool = False) -> dict:
+    """A design's place on its set's ladder, judged up or down from rung 3. Rung 1's
+    verdicts are the run's own (its record), or judged afresh when fresh: the second
+    judging of a design then shares no verdict with the first."""
     ours = record["keys"]["ours"]
     pictures = [arm_folder / number / f"views_{v}.png" for v in realset.VIEWS]
     if not all(p.exists() for p in pictures):
@@ -596,7 +600,7 @@ def place_one(record: dict, arm_folder: Path, number: str, into: Path, model: st
     asked: dict[int, float] = {}
 
     def vs(rung: int) -> float | None:
-        if rung == 1:
+        if rung == 1 and not fresh:
             said = record.get("verdicts") or []
             if said:
                 asked[1] = sum(v["winners"]["overall"] == ours for v in said) / len(said)
@@ -653,7 +657,7 @@ def place(args: argparse.Namespace) -> int:
         if not record.get("keys") or not (LADDER / number / "r1.mpd").exists():
             return {"number": number, "place": None, "asked": {}, "why": "no design or ladder"}
         return place_one(record, folder, number, out / label / args.arm / number,
-                         args.judge_model)
+                         args.judge_model, fresh=args.again)
 
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:
         found = list(workers.map(one, numbers))
@@ -734,6 +738,28 @@ def agreement(out: Path, numbers: list[str], hi: int, lo: int) -> dict[str, int]
     return got
 
 
+def seen_rows(out: Path, numbers: list[str], name: str) -> list[str]:
+    """The bar's own table: each pair of rungs, both orders, over the sets whose two
+    pictures differ (a step to see), with how many sets showed the same picture twice."""
+    rows = [f"Pairs whose pictures differ, {name} ({len(numbers)}):", "",
+            "| rungs | verdicts | right (95%) | better shown first | better shown second "
+            "| sets with the same picture |", "|---|---|---|---|---|---|"]
+    for hi, lo in [(1, 2), (2, 3), (3, 4), (4, 5), (1, 5)]:
+        got = agreement(out, numbers, hi, lo)
+        seen = [n for n in got if step_seen(n, hi, lo) >= SEEN]
+        row = order_table(out, seen)["table"].get((hi, lo, "overall"))
+        if not row:
+            rows.append(f"| {hi} over {lo} | 0 | | | | {len(got)} |")
+            continue
+        p, low, high = wilson(row["right"], row["n"])
+        n_second = row["n"] - row["n_first"]
+        first = 100 * row["right_first"] / row["n_first"] if row["n_first"] else float("nan")
+        second = 100 * (row["right"] - row["right_first"]) / n_second if n_second else float("nan")
+        rows.append(f"| {hi} over {lo} | {row['n']} | {100 * p:.0f}% ({100 * low:.0f}-"
+                    f"{100 * high:.0f}) | {first:.0f}% | {second:.0f}% | {len(got) - len(seen)} |")
+    return rows
+
+
 def report(args: argparse.Namespace) -> int:
     out = Path(args.out)
     numbers = sorted(p.name for p in (out / "order").iterdir()) if (out / "order").exists() else []
@@ -783,6 +809,11 @@ def report(args: argparse.Namespace) -> int:
                           f"view's pixels): {seen_right} of {seen_n} right, {100 * p:.0f}% "
                           f"({100 * low:.0f}-{100 * high:.0f}). Left out as no step to see: "
                           f"{len(unseen)} pairs" + (": " + "; ".join(unseen) if unseen else "") + "."]
+        technic = [n for n in numbers if n in TECHNIC]
+        for name, group in (("every set", numbers), ("Technic sets", technic),
+                            ("the rest", [n for n in numbers if n not in TECHNIC])):
+            if group:
+                lines += ["", *seen_rows(out, group, name)]
     lines += ["", "## Where it was wrong, in its words (overall)", ""]
     for (hi, lo), rows in sorted(read["wrong"].items()):
         lines.append(f"### Rung {lo} preferred to rung {hi}: {len(rows)}")

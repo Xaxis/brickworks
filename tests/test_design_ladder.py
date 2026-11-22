@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import design_ladder  # noqa: E402
 import style  # noqa: E402
-from bench import calibrate, realset  # noqa: E402
+from bench import calibrate, pairwise, realset  # noqa: E402
 
 SETS = ("21013-1", "40270-1", "7992-1")
 needs_sets = pytest.mark.skipif(
@@ -197,3 +197,31 @@ def test_the_leak_audit_flags_the_ladder_in_an_answer(tmp_path):
     hits = design_ladder.leak_hits(session, "21013", "Big Ben")
     assert any(h.startswith("call open_model: the ladder") for h in hits)
     assert sum(h.startswith("answer of open_model: the ladder") for h in hits) == 1
+
+
+def test_a_second_judging_asks_rung_one_afresh(tmp_path, monkeypatch):
+    # The record says the design lost to the set both times; the judge, asked afresh,
+    # says it won both. A first judging takes the record's word, a second the judge's.
+    folder = tmp_path / "arm"
+    (folder / "1-1").mkdir(parents=True)
+    for view in realset.VIEWS:
+        (folder / "1-1" / f"views_{view}.png").write_bytes(b"png")
+    monkeypatch.setattr(design_ladder, "views", lambda number, rung: [
+        folder / "1-1" / f"views_{v}.png" for v in realset.VIEWS])
+    monkeypatch.setattr(realset, "shown", lambda key, pictures, number: (key,))
+    asked = []
+
+    def judged(brief, number, ours, rung_side, into, model):
+        asked.append(rung_side[0])
+        winner = ours[0]
+        return [pairwise.Verdict(first=ours[0], second=rung_side[0],
+                                 winners={"overall": winner}, reasons={})] * 2
+
+    monkeypatch.setattr(realset, "both_orders", judged)
+    monkeypatch.setattr(design_ladder, "rung_side", lambda number, rung: (f"r{rung}", ()))
+    lost = {"winners": {"overall": "set"}}
+    record = {"keys": {"ours": "ours"}, "brief": "", "verdicts": [lost, lost]}
+    first = design_ladder.place_one(record, folder, "1-1", tmp_path / "a", "opus")
+    assert first["place"] == 1.5 and "r1" not in asked
+    second = design_ladder.place_one(record, folder, "1-1", tmp_path / "b", "opus", fresh=True)
+    assert second["place"] == 0.5 and "r1" in asked
