@@ -81,6 +81,16 @@ const HDRIS: Dictionary = {
 	"daylight": ["Daylight", "res://assets/hdri/kloofendal_48d_partly_cloudy_puresky.hdr"],
 }
 
+## How much grain one traced sample carries, relative to its level, for the
+## product look's denoise (path_tracer_resolve.glsl): a pixel differing from
+## its neighbour by many times this over the root of the samples is an edge.
+const PRODUCT_DENOISE := 3.0
+
+## The most one traced sample of the product look may give, in what its
+## exposure draws as white (path_tracer.glsl): brighter is white whatever,
+## and was a sparkle in a mean of 256.
+const PRODUCT_MOST := 3.0
+
 ## Where the camera looks from: key -> [words, direction from the model].
 ## Front is +z, as ModelShot has it.
 const VIEWS: Dictionary = {
@@ -2479,6 +2489,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 				await pace.next()
 				if _cancelled:
 					return null
+	_tracer.product = settings.look == "product"
+	# The product look's picture has the samples' grain taken out
+	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
+	# Best is drawn as it was.
+	var clean: float = PRODUCT_DENOISE if settings.look == "product" else 0.0
 	if not _tracer.stage(batches, _backdrop if _backdrop.visible else null):
 		return null
 	_tracer.light_with(_lit_by)
@@ -2530,7 +2545,9 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	last_exposure = scale
 	last_level = level
 	# The picture itself.
-	_tracer.scene = _traced_scene(settings, plan, shot, picture, level)
+	var most: float = PRODUCT_MOST * white / maxf(exposure * scale, 0.0001) \
+		if settings.look == "product" else 0.0
+	_tracer.scene = _traced_scene(settings, plan, shot, picture, level, true, most)
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
@@ -2584,7 +2601,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
 			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-				saturation, settings.transparent)
+				saturation, settings.transparent, true, clean)
 			if so_far != null:
 				var half: int = picture.y / 2
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
@@ -2594,7 +2611,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	last_samples = _tracer.samples
 	_doing("reading the picture back")
 	var result: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-		saturation, settings.transparent)
+		saturation, settings.transparent, true, clean)
 	if result != null and not settings.transparent:
 		await get_tree().process_frame
 		_doing("converting")
@@ -2605,7 +2622,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 ## What the tracer lights and sees, as path_tracer.glsl's Scene reads it:
 ## with the model's own lights, unless [param lamps] is false (metering).
 func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Vector2i,
-		level: float, lamps: bool = true) -> PackedFloat32Array:
+		level: float, lamps: bool = true, most: float = 0.0) -> PackedFloat32Array:
 	var tan_half: float = tan(deg_to_rad(shot.fov) * 0.5)
 	var aspect: float = float(picture.x) / float(maxi(picture.y, 1))
 	var across: Vector3 = shot.basis.x * tan_half * aspect
@@ -2655,7 +2672,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			# Shadows where the window's light casts them: the key's alone.
 			lights.append([toward, plan.key_spread * 0.5 if n == 0 else 0.0, colour,
 				1.0 if light.shadow_enabled else 0.0])
-	data.append_array([1.0 if product else 0.0, float(lights.size()), 0.0, 0.0])
+	data.append_array([1.0 if product else 0.0, float(lights.size()), most, 0.0])
 	# The window's sky (main.tscn's), as its ambient light lights the model.
 	var top := Color(0.53, 0.545, 0.565)
 	var horizon := Color(0.735, 0.74, 0.75)

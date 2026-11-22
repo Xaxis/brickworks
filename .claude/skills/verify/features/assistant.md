@@ -2969,10 +2969,14 @@ the sets' 11%.
 
 ### The design ladder: a design placed between its set and a naive stack
 
-`tools/design_ladder.py` makes five rungs of each held-out set from the set's own
-file: 1 the set; 2 its SNOT laid studs up as plates; 3 its curves stepped; 4 its
-colours flattened to the main three; 5 a naive stack of its outline in bricks
-(calibrate's). Each rung is the one above it with one more thing taken away.
+`tools/design_ladder.py` makes six rungs of each held-out set from the set's own
+file: 1 the set; 1.5 half its SNOT laid (a Technic set's skin, its beams, pins,
+gears and links left; any other set's smaller SNOT parts, up to half its SNOT's
+volume); 2 its SNOT laid studs up as plates but its wheels, tyres and axles; 3
+the wheels laid too and its curves stepped; 4 its colours flattened to the main
+three; 5 a naive stack of its outline in bricks (calibrate's). Each rung keeps
+only parts the rung above it kept (ladder2, 2026-11-22: rung 2 had laid wheels
+as slabs, and half the designs sat between it and the set).
 They live in the main checkout's `bench/ladder/` (out of git, a `.gdignore`, an
 answer key no session can reach). Rung 1's pictures are realset's own set
 pictures; the rest are drawn by `bench.render` with an app data folder of their
@@ -2981,9 +2985,10 @@ pre261's start never finished on them, 2026-11-20). The judge is realset's,
 called as it is, each call counted into `calls.jsonl` and refused past `--cap`.
 
 ```sh
-python3 tools/minitest.py $PWD/tests/test_design_ladder.py   # rung builders on three proof sets, the walk, the leak rule
-python3 tools/design_ladder.py build --which proof           # bench/ladder/<set>/r1..r5.mpd + ladder.json (what each rung took)
-python3 tools/design_ladder.py render --which proof --jobs 3 # gpu; rung 2 drawn last
+python3 tools/minitest.py $PWD/tests/test_design_ladder.py   # rung builders on four proof sets, the walk, the leak rule, remade keys
+python3 tools/design_ladder.py build --which proof           # bench/ladder/<set>/r1, r1.5, r2..r5.mpd + ladder.json (what each took, versions)
+python3 tools/design_ladder.py render --which proof --jobs 3 # gpu; rungs 1.5 and 2 drawn last
+python3 tools/design_ladder.py seed                          # designmeasure's verdicts copied in: only remade rungs are asked again
 python3 tools/design_ladder.py sheet                         # every set's five rungs, corner view, one picture
 python3 tools/design_ladder.py reach --port 10830            # the app started as realset starts it, asked for a ladder file by every path
 python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM ...   # leak24's audit with the ladder added
@@ -2992,17 +2997,23 @@ heavy env -u ANTHROPIC_API_KEY python3 tools/design_ladder.py place --arm A --da
 python3 tools/design_ladder.py report                        # ladder_report.md: the order, the agreement of both orders, places, gaps
 ```
 
-`order` asks rungs 1-2, 2-3, 3-4, 4-5 and 1-5, both orders. `place` walks a past
-design from rung 3, up while it wins both orders and down while it loses both;
-a split is that rung, a turn is halfway (0.5 above the set, 5.5 below the stack);
+`build` gives a rung whose parts changed a new version (`versions` in
+ladder.json): its old pictures move to the results' `superseded/`, and its key
+becomes `ladder:N:r2:v2`, so no verdict on the old rung is read back for it or
+counted. `order` asks rungs 1-1.5, 1.5-2, 2-3, 3-4, 4-5 and 1-5, both orders.
+`place` walks a past design from rung 3, up while it wins both orders and down
+while it loses both; a split is that rung, a turn is halfway (1.25 between the
+set and 1.5, 0.5 above the set, 5.5 below the stack);
 rung 1 is the record's own verdicts against the set, so it costs nothing.
 `--again` judges the same designs a second time into `place2/`, rung 1 asked
 afresh too, so the two judgings share no verdict. The report leaves out of the
 order a pair whose pictures differ in under half a percent of pixels: a rung
 with nothing to take (no curves) is the same picture twice; its table of pairs
 that differ, both orders, Technic sets apart, is the bar's own number.
-Results: `bench/results/designmeasure-2026-11-20/` and docs/DESIGN_SCORES.md,
-"The design ladder".
+`report --before DIR` says where the designs that sat between the set and rung 2
+on an earlier ladder went. Results: `bench/results/ladder2-2026-11-22/` (the
+tool's default since ladder2), `bench/results/designmeasure-2026-11-20/` before
+it, and docs/DESIGN_SCORES.md, "The design ladder".
 
 ### Owner-style ideas: two arms head to head
 
