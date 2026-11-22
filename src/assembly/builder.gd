@@ -3047,6 +3047,13 @@ func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> S
 		steps.append_array(AuthorSteps.one_step(world, besides))
 	elif stepped:
 		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
+		# Into the app's own saved steps (BrickWorld.steps_own), a model with
+		# its author's makes them the person's, as a step edit does
+		# (AuthorSteps.ensure). Left the app's own, the save wrote no
+		# AUTHORED_STEPS, and the author's steps it brought were read again
+		# as no one's (ic3 clash and menu).
+		if world.steps_own:
+			steps.append(_apply({"undo": "stepsown", "own": false}))
 	var at: int = 0 if flat else _brought_step(skip)
 	var stepped_in: bool = at >= 0 or stepped
 	var whole: String = ""
