@@ -1472,8 +1472,9 @@ close-ups are 0.28 to 0.31 and its sets 0.13 to 0.14.
 | p5sharp | the sharpening alone | p6camparts | 0.228 | 0.274 0.310 | 0.130 0.134 | 10 of 80 |
 | photoasis | a photograph, judged as a tree (control) | p6photo | 0.818 | 0.891 0.905 | 0.696 0.699 | 36 of 40 |
 | photosoft | the photograph through a 5-pixel median | p6photo | 0.768 | 0.844 0.848 | 0.650 0.655 | 36 of 40 |
-| cynosss | Cycles with no subsurface | p6cycles | (queued) | | | |
-| cyplaingeom | Cycles with plain studs, 16-sided primitives, no gap | p6cycles | (queued) | | | |
+| cy | the ceiling, again | p6sss1 | 0.171 | 0.184 0.184 | 0.153 0.147 | 4 of 80 |
+| cynosss | Cycles with no subsurface (first draw) | p6sss1 | 0.157 | 0.206 0.178 | 0.100 0.109 | 3 of 40 |
+| cyplaingeom | Cycles with plain studs, 16-sided primitives, no gap | | (queued) | | | |
 
 The photograph side's sets include 6512, whose "photograph" is itself a
 render (0.05). Without it, the three photographed sets are 0.92 as they
@@ -1501,9 +1502,12 @@ are and 0.86 smoothed.
    - Its logo tells were fewer (25 against 33) and its seam tells fewer
      (27 against 42).
 4. **Noise, none.** 4096 samples scored 0.217 against 256's 0.227.
-5. **The plastic (subsurface) and geometry** were drawn as Cycles swaps,
-   cynosss and cyplaingeom. They were queued at the unit's end (below),
-   and they only rank what is inside a ceiling that is itself under ours.
+5. **The plastic lit from inside, none.** Cycles without its subsurface
+   scored 0.157 against its own 0.171 in one pool, on its first draw (the
+   second was queued). The close-ups gained 0.01 and the sets lost 0.05,
+   which is about the noise on a set mean. The geometry swap (plain studs,
+   16-sided primitives, no gap) was queued at the unit's end. Both only
+   rank what is inside a ceiling that is itself under ours.
 
 **What lies outside the renderer.** Both renderers stand at about 0.2 on
 the same staging. A photograph keeps 0.85 without its fine surface. So the
@@ -1555,7 +1559,47 @@ Built in, the processing does what it did as a pass afterwards. The
 close-ups rose by 0.07, and their lowest round (0.359) is above
 photoreal5's highest (0.31). The sets fell by 0.03, as they did in every
 pool. So it is kept only where it moved: the close-ups' shots carry it, and
-the sets' have none (`shots.json`). Judged again as kept: below.
+the sets' have none (`shots.json`).
+
+Judged again as kept, two draws from p6snap2 (`table_p6final.md`):
+
+| tree | mean | close-ups, per round | sets, per round | called a photograph |
+|---|---|---|---|---|
+| p5 | 0.229 | 0.264 0.310 | 0.136 0.149 | 8 of 80 |
+| p5kept | 0.265 | 0.354 0.370 | 0.117 0.121 | 15 of 80 |
+
+Some checks on what was kept:
+- **Unprocessed shots are untouched.** p5kept's set pictures are
+  pixel-identical to p5's. So with no processing asked for, the code and
+  the pre261 merge draw exactly what photoreal5 drew.
+- **The judge's noise.** Those identical set pictures still scored 0.142
+  in one tree and 0.119 in the other. So the judge's noise on a set mean
+  is about 0.02. The sets' falls with the processing (0.02 to 0.03) are
+  at that noise: no gain, rather than a loss.
+- **Against photoreal5's bars:**
+
+| bar | photoreal6 (kept) | met |
+|---|---|---|
+| close-ups' lowest round above photoreal5's highest (0.31) | 0.354 | yes |
+| sets' lowest round above photoreal5's highest (0.15) | 0.117 (pictures unchanged) | no |
+| at least 15 of 60 called a photograph | 15 of 80 (11 of 60) | no |
+| logo tell under 5 of 60 | 36 of 80 | no |
+| paired judge at most 16 of 20, or sure at most 0.80 | 19 of 20, 0.836 (p6cam_d1) | no |
+| tent faces within ΔE2000 5 | green 2.5, red 3.0, blue 0.8, slope 2.0 | yes |
+| the car at Best no slower than 2.9 s | 2.70 and 3.02 s, against photoreal5's 3.10 and 3.15 at the same moments | yes, against photoreal5 at the same load |
+| the model unchanged | no processing by default; unprocessed pictures pixel-identical | yes |
+
+**The car.** It asks for no processing, so its time cannot move. Timed in
+turn at load 57 to 77, as the probe's median of three:
+- before (p6snap1, photoreal5's code): 3.10, then 3.15 s;
+- after (p6snap2): 2.70, then 3.02 s.
+
+At that load photoreal5's own code is over 2.9 s too.
+
+**The probes**, from p6snap2, all passed: photoreal (11), product_render
+(18), pathtrace (20), lights (102), render (41), edges (25) and lineart
+(36). motions_render, ci_gate, `tools/check.sh --lists`, `site_lang
+--check` and `featuremap check` are listed with the unit's report.
 
 **Running it.** On 2026-11-22 the box held up to 75 brickworks jobs in
 heavy's queue, at load 50 to 140. This unit's runs went through two slot
