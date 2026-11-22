@@ -1388,6 +1388,68 @@ median: 2.46, 2.53, 2.46, 2.58, 2.49, 2.71 and 2.36 s; the final tree
 5. **Colour**: the red slope reads crimson beside its photograph's orange
    red, though its measured face is ΔE2000 1.8.
 
+## 5j. The ceiling: Cycles on the same scenes, and what carries the gap (photoreal6)
+
+The solo judge calls the photographs a photograph at about 0.90 and our
+renders at 0.21 to 0.24 (5h, 5i). Two units tuned one tell at a time and
+moved the tree's mean by no more than the judge's own noise, about 0.05,
+against a gap of 0.65. Before building again, this unit asks how far a
+production path tracer gets with the same geometry, and which factor
+carries the gap.
+
+**The bench** (`tools/photoreal/cycles/`, the verify skill's `photoreal
+cycles`). It is a tool on this box and never part of the app or its build.
+- **Blender 5.2.4 LTS**, in `~/.local/opt/blender-5.2.4-linux-x64` (the
+  official build, its sha256 checked). It is not bundled and not installed
+  system-wide.
+- **ldr_tools_blender 0.5.3** (MIT), in
+  `~/.local/opt/ldr_tools_blender-0.5.3`. Blender 5.1 or later.
+- **Cycles runs on the CPU.** The RX 6700 XT's HIP needs `/dev/kfd`, which
+  belongs to the `render` group, and this user is not in it.
+- **One scene for both renderers.** `photoreal_probe -- --cycles` reads
+  each shot back from the render it has just drawn: the parts where they
+  stood, seated as the tracer seats them, as flat LDraw; and the camera,
+  lens, tent or place, key, sweep and the exposure the white card metered,
+  as JSON. `--draw=N` draws a tree again with the tracer's seed N.
+- **`render.py`** imports the parts through ldr_tools_blender with its own
+  materials: Cycles' subsurface (Burley), smudged gloss, a bevel, logo
+  studs, 48-sided round primitives and a hair of gap between parts. It
+  lights them by:
+  - the tracer's own tent formula as an environment, and its key as a sun
+    of the same size and strength;
+  - or the same HDRI, turned as the tracer turns it.
+  The sweep is a shadow catcher. Samples 1024 (adaptive), OpenImageDenoise.
+- **`finish.py`** draws the backdrop as the tracer's catcher draws it. Then
+  it gives the picture the tracer's finish: softness, the same exposure,
+  vignette, linear saturation, camera_curve, sRGB and grain. So the two
+  pictures differ only in how the light was drawn.
+
+**The trees**, each drawn twice (two seeds) and judged in one solo pool with
+the photographs (2 rounds of 2 trials a draw):
+
+| tree | what differs from photoreal5's final | the factor it measures |
+|---|---|---|
+| p5 | photoreal5's final (acb6f2a18), our tracer at 256 samples | the baseline |
+| cy | Cycles at 1024 samples with ldr_tools' materials | the ceiling |
+| p5clean | our tracer at 4096 samples | noise |
+| p5camera, cycamera | each tree through a camera's sharpening and the photographs' own JPEG (90 for the close-ups, 75 for the sets) | the camera's pipeline |
+| cynosss | Cycles with no subsurface | the plastic lit from inside |
+| cyplaingeom | Cycles with plain studs, 16-sided primitives and no gap | geometry |
+
+**Why the camera's pipeline.** In photoreal5's final pool the judge named
+JPEG or compression in 29 of its 54 verdicts on photographs, as evidence of
+a photograph. It names the grey 1x3's "noise reduction smearing, sharpening
+halos and JPEG blockiness" for the one render it took for a photograph.
+The close-ups' photographs are Wikimedia copies at JPEG quality 90 and the
+sets' are Rebrickable pictures at 75 (their quantisation tables), all 4:2:0.
+
+**Running it.** On 2026-11-22 the box held 75 brickworks jobs in heavy's
+queue at load 50 to 110, so these runs were queued, not drawn, within the
+unit's eight hours. The tables land in
+`bench/results/photoreal6-2026-11-22/table_p6ceiling.md` and
+`table_p6factors.md`. Each tree's pictures are in `shots/photoreal/<tag>/`
+of the snapshot worktree p6snap1 (10854b3a0).
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

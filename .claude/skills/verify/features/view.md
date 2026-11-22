@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe -->
 
 ## Sub-features
 
@@ -3574,7 +3574,37 @@ picture the assistant is shown.
   photograph's part stands on (`surface`: 0 paper, 1 a matte desk; photoreal5, docs/RENDERING.md 5i), drawn as its backdrop's
   grain; `--without=KEY` draws a shot with one of its camera, wear or
   surface settings at none, to measure what each brings. An edited `.glsl`
-  is drawn only after `godot --headless --path . --import`.
+  is drawn only after `godot --headless --path . --import`. `--draw=N`
+  draws with the tracer's seed N (another draw of the same tree: its noise
+  and lens samples only; photoreal6). `--cycles` also writes each shot's
+  scene as drawn, read back from the render: `<name>.cycles.ldr` (the
+  parts where they stood, seated, in LDraw's space) and
+  `<name>.cycles.json` (camera, lens, tent or place, key, sweep, exposure,
+  the camera's marks), for `photoreal cycles`.
+- `photoreal cycles` (`tools/photoreal/cycles/render.py` and its folder, photoreal6,
+  docs/RENDERING.md 5j): the realism ceiling, a bench tool on this box and
+  never part of the app or its build. Blender 5.2.4 LTS in
+  `~/.local/opt/blender-5.2.4-linux-x64` and ldr_tools_blender 0.5.3 (MIT)
+  in `~/.local/opt/ldr_tools_blender-0.5.3`; Cycles on the CPU (the card's
+  HIP needs `/dev/kfd`, which this user cannot open). `heavy
+  tools/photoreal/cycles/tree.sh SCENES PNG_DIR EXR_DIR DRAW [--samples
+  1024 --sss 0 --studs Normal --resolution Normal --gap 0]` draws every
+  shot whose scene `photoreal probe -- --cycles` wrote into SCENES:
+  `render.py` imports the parts through ldr_tools_blender with its own
+  materials (subsurface, smudged gloss, bevel, logo studs, 48-sided round
+  parts, a gap between parts), lights them by the tracer's own tent formula
+  or its HDRI turned as the tracer turns it plus the tent's key as a sun,
+  the sweep as a shadow catcher, and writes the light as a multilayer EXR;
+  `finish.py` (Blender's own Python: numpy and OpenImageIO) composites the
+  backdrop as the tracer's catcher draws it and gives it the tracer's
+  finish (softness, the white card's exposure, vignette, linear
+  saturation, camera_curve, sRGB, grain) into `PNG_DIR/<name>.png`, ready
+  for `photoreal.py solo`. `render.py -- SCENE OUT --check` builds a scene
+  and draws nothing. `camera_pipeline.py FROM TO` puts a tree's pictures
+  through a camera's sharpening and the photographs' own JPEG (90 for the
+  close-ups, 75 for the sets). `decide.py SOLO_JSON` tables a solo run's
+  trees over their draws (labels `TREE_dN`): per round, close-ups and
+  sets, called a photograph, each shot, the tells.
 - `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
   pictures are judged on. `pairs TAG` writes each render beside its
   photograph (cropped to the render's aspect, both the same size);
