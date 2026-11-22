@@ -1773,7 +1773,10 @@ picture the assistant is shown.
   unless all it rests on comes later; a part taken off leaves its step, an
   emptied step gone. A person's step edit makes them theirs
   (`AuthorSteps.ensure`, undo `stepsown`): saved with `AUTHORED_STEPS`, as a
-  worked-out model's first step edit always has. **Check:** `tools/probe.sh
+  worked-out model's first step edit always has; so does a model put in with
+  its author's steps (`Builder._bring_steps`; ic3 clash, menu), and a
+  session's clear keeps the flag for its undo (`Main._clear_undone`;
+  copyfaults clear_lit). **Check:** `tools/probe.sh
   stepkeep_probe` (headless; `SK_ONLY=castle`, `station`, `robot`, `10179`,
   `edits`, `callouts`, `nosteps` or `time`). `Instructions.plan(...,
   authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
