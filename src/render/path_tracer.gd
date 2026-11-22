@@ -519,15 +519,17 @@ func surface_with(image: Image) -> void:
 	_free(_surface_texture)
 	_surface_texture = RID()
 	_surface_for = image
-	var tile: Image = null
-	if image != null:
-		tile = image.duplicate() as Image
-		if tile.is_compressed():
-			tile.decompress()
+	var tile: Image = image
 	if tile == null:
 		tile = Image.create(2, 2, false, Image.FORMAT_RGBA8)
 		tile.fill(Color(1, 1, 1))
-	tile.convert(Image.FORMAT_RGBA8)
+	elif tile.is_compressed() or tile.get_format() != Image.FORMAT_RGBA8:
+		# StudioRender's tiles come RGBA8 already (read on a worker); any
+		# other is made so here.
+		tile = image.duplicate() as Image
+		if tile.is_compressed():
+			tile.decompress()
+		tile.convert(Image.FORMAT_RGBA8)
 	var format := RDTextureFormat.new()
 	format.width = tile.get_width()
 	format.height = tile.get_height()

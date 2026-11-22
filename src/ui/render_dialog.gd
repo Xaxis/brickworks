@@ -87,8 +87,11 @@ var _picker: ColorPickerButton
 var _light: OptionButton
 var _turn: HSlider
 var _contact: CheckBox
-## What the model stands on (photoreal7, RenderSettings.stage).
+## What the model stands on (photoreal7, RenderSettings.stage), and the
+## background the person had before choosing one: [colour, gradient,
+## transparent], given back with the seamless backdrop.
 var _stage: OptionButton
+var _before_stage: Array = []
 var _view: OptionButton
 var _focal: HSlider
 var _focal_words: Label
@@ -910,14 +913,19 @@ func _pick_background(n: int) -> void:
 
 
 ## What the model stands on (photoreal7): a stage puts its own colour on the
-## backdrop, as a colour of its own the person may change.
+## backdrop, as a colour of its own the person may change; the seamless
+## backdrop again gives back the background the person had before it.
 func _pick_stage(index: int) -> void:
-	settings.stage = str(_stage.get_item_metadata(index))
-	if StudioRender.STAGES.has(settings.stage):
-		settings.backdrop = StudioRender.STAGES[settings.stage][6]
-		settings.backdrop_gradient = false
-		settings.transparent = false
-		_show_choices()
+	var asked: String = str(_stage.get_item_metadata(index))
+	if settings.stage.is_empty() and not asked.is_empty():
+		_before_stage = [settings.backdrop, settings.backdrop_gradient, settings.transparent]
+	settings.use_stage(asked)
+	if asked.is_empty() and _before_stage.size() == 3:
+		settings.backdrop = _before_stage[0]
+		settings.backdrop_gradient = _before_stage[1]
+		settings.transparent = _before_stage[2]
+		_before_stage = []
+	_show_choices()
 	_ask_preview()
 
 

@@ -252,6 +252,32 @@ func take(asked: Dictionary) -> String:
 		f_stop = 4.0
 		focus = 0.4
 		quality = Quality.BEST
+	# photoreal7: what the model stands on, its own colour on the backdrop
+	# unless a backdrop was asked for too.
+	if asked.has("stage"):
+		var wrong: String = use_stage(str(asked["stage"]), not asked.has("backdrop"))
+		if not wrong.is_empty():
+			return wrong
+	return ""
+
+
+## What the model stands on (photoreal7, StudioRender.STAGES), by its key, or
+## none for the seamless backdrop; with [param coloured] the backdrop takes
+## the stage's own colour (and something to stand on), otherwise it keeps the
+## one asked for. What was wrong, or "".
+func use_stage(asked: String, coloured: bool = true) -> String:
+	if asked == "none" or asked.is_empty():
+		stage = ""
+		return ""
+	if not StudioRender.STAGES.has(asked):
+		return "stage is none, %s." % ", ".join(StudioRender.STAGES.keys())
+	if transparent and not coloured:
+		return "a stage stands the model on something, and backdrop none draws nothing under it."
+	stage = asked
+	if coloured:
+		backdrop = StudioRender.STAGES[asked][6]
+		backdrop_gradient = false
+		transparent = false
 	return ""
 
 

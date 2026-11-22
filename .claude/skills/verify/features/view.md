@@ -3161,9 +3161,14 @@ picture the assistant is shown.
   (`balance`, `STAGE_BALANCE`); `tone` (`STAGE_TONE`) bends the encoded
   picture by a camera's S in the resolve (`camera_tone`). With no stage
   every buffer field is zero or one and no random number is drawn, so a
-  render is pixel-identical to before. The web export leaves
-  `assets/surfaces/` out; Compatibility and the web draw the stage's colour
-  alone. Check: `tools/probe.sh photoreal_probe -- --tag=T
+  render is pixel-identical to before. The tile is an Image import read on
+  a worker (`_read_surfaces`), never in a frame. Choosing a stage puts its
+  colour on the backdrop; Seamless backdrop again gives back the background
+  had before (`_before_stage`). Over MCP, render_model and render_queue take
+  `stage` (`RenderSettings.use_stage`: none or a STAGES key; its colour
+  unless `backdrop` is given; refused with backdrop none). The web export
+  leaves `assets/surfaces/` out; Compatibility and the web draw the stage's
+  colour alone. Check: `tools/probe.sh photoreal_probe -- --tag=T
   --shots=FILE` with shots naming `stage` (and `key_rise`, `key_far`,
   `key_share`, `tone`, `balance`): each path traced; `--stage=none`
   draws a shot unstaged, and its picture must equal photoreal6's of the

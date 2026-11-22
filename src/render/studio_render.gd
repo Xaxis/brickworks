@@ -109,7 +109,7 @@ const STAGES: Dictionary = {
 ## stands (degrees), how far from the model's middle and how big (in the
 ## model's radii), and how bright against the room's light (as the tent's
 ## key, TENT_KEY, is 1). Fitted to the photo bench's photographs
-## (photoreal_probe --fit-light, docs/RENDERING.md 5k).
+## (photoreal_probe --keys and tools/photoreal/fit_light.py, docs/RENDERING.md 5k).
 const STAGE_KEY_RISE := 40.0
 const STAGE_KEY_FAR := 4.0
 const STAGE_KEY_SIZE := 1.0
@@ -2609,7 +2609,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_stage_room = _room_of(settings) if _table(settings) else null
 	_tracer.light_with(_stage_room if _stage_room != null else _lit_by)
 	var stage: Array = _stage_of(settings) if _lit_stage(settings) else []
-	_tracer.surface_with(_surface_tile(stage)[0] if not stage.is_empty() else null)
+	await _read_surfaces(stage)
+	_tracer.surface_with(_surface_tile(stage)[0])
 	var environment: Environment = _camera.environment
 	var tonemapper: int = 2 if environment.tonemap_mode == Environment.TONE_MAPPER_FILMIC else 3
 	var white: float = maxf(environment.tonemap_white, 1.0)
@@ -3053,31 +3054,51 @@ func _room_of(settings: RenderSettings) -> StudioPanorama:
 	return _panoramas[key]
 
 
-## A stage's photographed tile and its mean colour in linear light, read
-## once: [Image or null, Color].
+## A stage's photographed tile and its mean colour in linear light, as
+## _read_surfaces read it: [Image or null, Color].
 func _surface_tile(stage: Array) -> Array:
-	var path: String = str(stage[1])
-	if path.is_empty():
-		return [null, Color(1, 1, 1)]
-	if not _surfaces.has(path):
-		var texture: Texture2D = load(path) as Texture2D
-		var image: Image = texture.get_image() if texture != null else null
-		var mean := Color(1, 1, 1)
-		if image != null:
-			if image.is_compressed():
-				image.decompress()
-			var small: Image = image.duplicate() as Image
-			small.convert(Image.FORMAT_RGB8)
-			small.resize(32, 32, Image.INTERPOLATE_BILINEAR)
-			var sum := Vector3.ZERO
-			for y: int in 32:
-				for x: int in 32:
-					var c: Color = small.get_pixel(x, y).srgb_to_linear()
-					sum += Vector3(c.r, c.g, c.b)
-			sum /= 1024.0
-			mean = Color(maxf(sum.x, 0.01), maxf(sum.y, 0.01), maxf(sum.z, 0.01))
-		_surfaces[path] = [image, mean]
-	return _surfaces[path]
+	var path: String = str(stage[1]) if stage.size() > 1 else ""
+	return _surfaces.get(path, [null, Color(1, 1, 1)])
+
+
+## The stage's tile read (photoreal7), once: a 2048-pixel JPEG decoded, made
+## RGBA and its mean taken is more than a frame can spare, so off the main
+## thread. Nothing reads what it fills until it ends.
+func _read_surfaces(stage: Array) -> void:
+	var path: String = str(stage[1]) if stage.size() > 1 else ""
+	if path.is_empty() or _surfaces.has(path):
+		return
+	var read: Dictionary = {}
+	if OS.has_feature("nothreads"):
+		_read_surface(path, read)
+	else:
+		var task: int = WorkerTasks.add(_read_surface.bind(path, read), false, "a surface's picture")
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerTasks.collect(task)
+	_surfaces[path] = [read.get("image"), read.get("mean", Color(1, 1, 1))]
+
+
+## [param path]'s picture (imported as an Image) into [param read]: "image",
+## RGBA8, and "mean", its colour in linear light.
+func _read_surface(path: String, read: Dictionary) -> void:
+	var image: Image = ResourceLoader.load(path, "Image") as Image
+	if image == null:
+		return
+	image = image.duplicate() as Image
+	if image.is_compressed():
+		image.decompress()
+	image.convert(Image.FORMAT_RGBA8)
+	var small: Image = image.duplicate() as Image
+	small.resize(32, 32, Image.INTERPOLATE_BILINEAR)
+	var sum := Vector3.ZERO
+	for y: int in 32:
+		for x: int in 32:
+			var c: Color = small.get_pixel(x, y).srgb_to_linear()
+			sum += Vector3(c.r, c.g, c.b)
+	sum /= 1024.0
+	read["image"] = image
+	read["mean"] = Color(maxf(sum.x, 0.01), maxf(sum.y, 0.01), maxf(sum.z, 0.01))
 
 
 ## The staged key (photoreal7): where it stands, its radius and the light it
