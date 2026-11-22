@@ -7416,6 +7416,43 @@ base code), 102 on the relay, 2026-10-24. `design_flow` judges
 `person`, `person-builds`, `person-lists` (More open), `person-house` and
 `person-new` for controls, the scale and zeros.
 
+### People and lists in search: structured data on /u/ and /c/
+
+seo2 (docs/SOCIAL.md, rank 9). `api/people.js` puts one JSON-LD block in
+the head of every person's page and every public list's, in every language
+and on every tab and page: `ProfilePage` whose `mainEntity` is a `Person`
+(name, `@handle`, url, image, bio, their links as `sameAs`, followers as
+`interactionStatistic` FollowAction, their models as
+`agentInteractionStatistic` WriteAction and whom they follow as FollowAction,
+the way Google reads a profile), and `CollectionPage` with one
+`CreativeWork` in `hasPart` for each card on the page (a set named as its
+page names it, never a Product). The Person's image is their own picture,
+or `GET /api/people?op=avatar&handle=X`, their tile as an SVG (404 for a
+profile that may not be shown); `web/robots.txt` allows
+`/api/people?op=avatar` past its `Disallow: /api/`. Nothing in the body
+changes. Read-only, no account:
+
+```sh
+node tools/web/seo_check.mjs --before=<a checkout of the base>   # stand-in people and lists, bodies byte for byte
+node tools/web/seo_check.mjs --root=<a checkout of the base>     # the base's api/: fails
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 10970 &
+node tools/web/seo_check.mjs --url=http://127.0.0.1:10970
+BW_BYPASS=$VERCEL_BYPASS node tools/web/seo_check.mjs --url=<preview>   # preview_checks: seo
+```
+
+It passes when it ends "PASS: N of N": every block read against
+schema.org's own vocabulary (fetched to `~/.cache/brickworks/` monthly;
+every type, property and range, a Person's numbers as the page shows them,
+a list's parts its cards in order at the addresses they link to, a set in
+one a CreativeWork, every address of the site in it open to a crawler by
+robots.txt's rules), the image answering as a picture, a bio carrying
+`</script>`, `<!--` and a line separator read back whole, a 404 with no
+block. 2026-11-22: 88 of 88 on the stand-in (37 pages, each body byte for
+byte pre261's; 27 of 31 fail on pre261's api/), 39 of 39 on the relay
+(/u/brickworks and its tabs, page 2, /c/yLjjURDRpc and page 2, each in four
+languages); rdflib read the blocks as 22 and 134 schema.org triples with no
+unknown term.
+
 ### Your account as your profile (/profile, /settings)
 
 docs/SOCIAL.md U6. Throwaway accounts on the site's live project, deleted
