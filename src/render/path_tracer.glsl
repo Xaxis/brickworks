@@ -1104,6 +1104,17 @@ void main() {
 				sharp = true;
 				continue;
 			}
+			if (!straight && thing.info.y == KIND_SWEEP && scene.look.x > 0.5 && scene.sky.w > 0.5
+					&& at.y - scene.sweep_origin.y > 2.0) {
+				// In a photographed place the backdrop is a table, not a
+				// studio's paper (photoreal3): what the model mirrors and
+				// what lights it from past the table's edge is the room. The
+				// sweep's rise behind the model hid it, and a black brick's
+				// top mirrored grey paper where a photograph's mirrors the
+				// window, ΔE2000 39 against it.
+				from = at + way * 0.05;
+				continue;
+			}
 			if (straight && thing.info.y != KIND_SWEEP) {
 				covered = 1.0;
 			}

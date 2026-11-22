@@ -162,7 +162,7 @@
    ],
    "focal_mm": 28,
    "backdrop": "#c4bcae",
-   "lighting": "studio",
+   "lighting": "daylight",
    "f_stop": 32,
    "focus": 0.5,
    "faces": [
@@ -183,7 +183,7 @@
      ]
     }
    ],
-   "light_turn": 180.0,
+   "light_turn": 270.0,
    "gloss": [
     {
      "name": "stud and top",
