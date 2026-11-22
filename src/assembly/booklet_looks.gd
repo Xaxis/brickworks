@@ -102,19 +102,27 @@
 ##
 ## A page locked or frozen (pagetools, StudWorx's page lock and
 ## snowflake) is kept on the step its page starts with. "lock": the number
-## of steps the page holds: the booklet starts a page there and puts those
-## steps on it whatever else changes (Booklet.Layout), the page editor
-## moves nothing on it, Apply to later pages passes it by, and its page
-## break cannot be taken off until it is unlocked. "freeze": {"sheet": the
-## page set up as it was when frozen, its FROZEN fields alone}: the page
-## keeps those when the booklet's page setup changes; its paper, the
-## pictures behind it and the cover stay the booklet's, one paper a
-## booklet. In the file, inside the step: "0 !BRICKWORKS PAGE LOCK 2",
-## "... PAGE FREEZE MARGIN 12 COLOUR #FFFFFF" (PAGE_SETUP's words, none for
-## the booklet's own page) and "... PAGE FREEZE_TEXT HEADER words" a line
-## for each of its words. A build before these keeps them as lines it does
-## not read ("PAGE" is a word it reads, these values are not), and writes
-## them back.
+## of steps the page holds, by count: the booklet starts a page there and
+## puts exactly that many steps on it whatever else changes (Booklet
+## .Layout), so a step put in or taken out among them changes which steps
+## those are, and the words that lock a page say so. Locking places each
+## item of the page where it is (Booklet.held_places, as Apply to later
+## pages places them), so a page setup changed after moves nothing on it;
+## and nothing writes to a step a lock holds (held_by, Shell.change_look):
+## the page editor, a session's edit_booklet and a Together peer alike.
+## "freeze": {"sheet": the page set up as it was when frozen, its FROZEN
+## fields alone}: the page keeps those when the booklet's page setup
+## changes; its paper, the pictures behind it, the parts' size, the new
+## parts' outline and the cover stay the booklet's, one paper a booklet. In
+## the file, inside the step and above its PAGE line, where a build before
+## these keeps lines it does not read: "0 !BRICKWORKS PAGE LOCK 2", "...
+## PAGE FREEZE MARGIN 12 COLOUR #FFFFFF" (PAGE_SETUP's words, none for the
+## booklet's own page) and "... PAGE FREEZE_TEXT HEADER words" a line for
+## each of its words. A build since mlfix keeps them as lines it does not
+## read ("PAGE" is a word it reads, these values are not) and writes them
+## back where this one writes them; rel-m267 and desktop 0.17 to 0.19 drop
+## every "0 !BRICKWORKS PAGE" line they do not read, and the page comes back
+## unlocked and not frozen, nothing read wrong.
 ##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
@@ -171,6 +179,44 @@ const FROZEN: Array[String] = ["margin", "colour", "number", "header", "footer",
 	"box_fill", "box_corners", "number_colour"]
 ## The most steps a locked page holds: four is the most a page has.
 const LOCK_MOST := 4
+
+
+## Whether any page of the model is locked: none, and nothing is held.
+static func any_lock(world: BrickWorld) -> bool:
+	for name: String in world.step_looks:
+		var look: Variant = world.step_looks[name]
+		if look is Dictionary and int((look as Dictionary).get("lock", 0)) > 0:
+			return true
+	return false
+
+
+## The number of the step whose locked page holds the step of [param plan]
+## (Instructions.plan, the author's steps, as the booklet has them) whose
+## look is [param name] (BookletLooks.key), or 0 when no lock holds it: the
+## nearest step at or before it whose lock reaches it, with no step between
+## that starts a page of its own (a callout, a lock, a frozen page), as
+## Booklet.Layout puts them on the page. The one check every writer of a
+## page passes (Shell.change_look, Shell.place_pages).
+static func held_by(world: BrickWorld, plan: Array[Instructions.Step], name: String) -> int:
+	var entries: Array[Instructions.Step] = []
+	for step: Instructions.Step in plan:
+		if not step.in_callout():
+			entries.append(step)
+	for index: int in entries.size():
+		var step: Instructions.Step = entries[index]
+		if step.authored_step < 0 or key(definition_of(step.authored_in), step.authored_step) != name:
+			continue
+		for back: int in LOCK_MOST:
+			if index - back < 0:
+				break
+			var start: Instructions.Step = entries[index - back]
+			var look: Dictionary = of(world, start.authored_in, start.authored_step) \
+				if start.authored_step >= 0 else {}
+			if int(look.get("lock", 0)) > back:
+				return start.number
+			if int(look.get("lock", 0)) > 0 or look.get("freeze") is Dictionary or start.attaches():
+				break
+	return 0
 
 
 static func key(definition: String, step: int) -> String:
@@ -2814,8 +2860,9 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 	# model written whole): here, as they were written.
 	for other: Variant in wrote.get(UNREAD + key(definition, step), look.get("unread", [])):
 		out.append(str(other) + eol)
-	if look.has("page"):
-		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
+	# pagetools' lock and freeze where a build before them keeps them, with
+	# the lines it does not read, above PAGE: its whole write and this
+	# build's unedited save of it agree byte for byte (ptreview F5).
 	if int(look.get("lock", 0)) > 0:
 		out.append(META + "PAGE LOCK %d" % int(look["lock"]) + eol)
 	if look.get("freeze") is Dictionary:
@@ -2823,6 +2870,8 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		out.append((META + "PAGE FREEZE " + frozen.line_words()).strip_edges() + eol)
 		for words: String in frozen.text_lines():
 			out.append(META + "PAGE FREEZE_TEXT " + words + eol)
+	if look.has("page"):
+		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
 	if look.has("zoom"):
 		out.append(META + "ZOOM " + _number(float(look["zoom"])) + eol)
 	if look.has("size"):

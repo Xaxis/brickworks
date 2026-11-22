@@ -137,6 +137,9 @@ class Entry extends RefCounted:
 	## (BookletLooks.page_sheet), null when it is the booklet's.
 	var lock: int = 0
 	var own_sheet: BookletSheet = null
+	## On a locked page (Layout): what is placed on it stays where it was
+	## placed, in page mm, whatever room the page gives the step now.
+	var held: bool = false
 	## The step's look's name (BookletLooks.key), "" for a worked-out step.
 	var look: String = ""
 	## Placed by hand (BookletLooks "place"): item -> [x, y, w, h] in page
@@ -377,7 +380,9 @@ class Layout extends RefCounted:
 
 	## The steps the next page may take are those before this.
 	func reach() -> int:
-		return mini(at + most, entries.size())
+		if at >= entries.size():
+			return entries.size()
+		return mini(at + maxi(most, entries[at].lock), entries.size())
 
 	## The next page, after the pages of its step's callout when it has any.
 	func next() -> Array[Page]:
@@ -412,9 +417,12 @@ class Layout extends RefCounted:
 			if index > at and entry.lock <= 0 and (next_one.section != _section
 					or not next_one.page_break.is_empty() or entries[index - 1].page_break == "alone"):
 				break
+			next_one.held = entry.lock > 0
 			run.append(next_one)
-		var page := Booklet._best_page(run, area, false, maxi(most, run.size()) if entry.lock > 0
-			else most, on)
+		# A locked page holds exactly its steps, however they now fit
+		# (ptreview F4): never split by the sizes a page of four needs.
+		var page := Booklet._held_page(run, area, on) if entry.lock > 0 \
+			else Booklet._best_page(run, area, false, most, on)
 		page.banner = banner
 		Booklet._settle(page)
 		page.progress = float(at + page.entries.size()) / float(_total)
@@ -426,6 +434,55 @@ class Layout extends RefCounted:
 			for one: Entry in laid.entries:
 				one.page = laid.number
 		return pages
+
+
+## A locked page: every step of [param run] on it, as many as it held when
+## it was locked, at the best of the arrangements of that many (three in
+## three of the four panels of four), however small that is.
+static func _held_page(run: Array[Entry], area: Rect2, sheet: BookletSheet) -> Page:
+	var count: int = run.size()
+	var best: Array = []
+	var best_scale: float = -1.0
+	for panels: Array in _arrangements(4 if count == 3 else count, area):
+		var scale: float = _page_scale(run, panels.slice(0, count))
+		if scale > best_scale:
+			best_scale = scale
+			best = panels
+	var page := Page.new()
+	page.kind = "steps"
+	page.sheet = sheet
+	for index: int in count:
+		_place(run[index], best[index], best_scale, sheet.size())
+		page.entries.append(run[index])
+	return page
+
+
+## Where each item of [param page]'s steps is now, as BookletLooks "place"
+## keeps it, for a lock to hold them there (Shell.change_look "page_lock"):
+## [[entry, place]], each step's own placed items as they were, and the
+## booklet's laid-out ones where it laid them, the picture as big as it is
+## drawn so it is drawn no bigger, the number under the parts list going
+## with it. As Apply to later pages places a page.
+static func held_places(page: Page) -> Array:
+	var out: Array = []
+	for entry: Entry in page.entries:
+		var place: Dictionary = entry.place.duplicate(true)
+		if not place.has("picture"):
+			var need: Vector2 = entry.subject.size.max(Vector2.ONE) * entry.scale / 0.94
+			place["picture"] = BookletLooks.said_rect(Rect2(entry.free.get_center() - need * 0.5,
+				need))
+		if not entry.lots.is_empty() and not place.has("parts"):
+			# As wide as the box is drawn: the width it wraps at is wider, and
+			# a placed list is drawn at least as wide as it was placed.
+			place["parts"] = [snappedf(entry.parts_rect.position.x, 0.1),
+				snappedf(entry.parts_rect.position.y, 0.1), snappedf(entry.parts_rect.size.x, 0.1)]
+		# The number under the parts list goes with it, as the booklet puts it.
+		if not place.has("number") and entry.lots.is_empty():
+			place["number"] = [snappedf(entry.number_at.x, 0.1), snappedf(entry.number_at.y, 0.1)]
+		if entry.callout != null and entry.callout.inline and not place.has("callout"):
+			place["callout"] = BookletLooks.said_rect(entry.callout.box)
+		out.append([entry, place])
+	return out
 
 
 ## The fullest page the run can make that is still big enough to read.
@@ -584,8 +641,10 @@ static func _place(entry: Entry, panel: Rect2, scale: float, page: Vector2 = PAG
 ## page [param page] mm.
 static func _by_hand(entry: Entry, page: Vector2 = PAGE) -> void:
 	# Placed in a room the step no longer has (a step edit or a page break
-	# moved it): what was placed goes with the step, into its room now.
-	if entry.room.size.x > 0.0 and not BookletLooks.same_room(entry.room, entry.panel):
+	# moved it): what was placed goes with the step, into its room now. On
+	# a locked page it stays where it was put (ptreview F3).
+	if entry.room.size.x > 0.0 and not entry.held \
+			and not BookletLooks.same_room(entry.room, entry.panel):
 		var moved: Dictionary = BookletLooks.rebased({"place": entry.place, "notes": entry.notes,
 			"arrows": entry.drawn_arrows, "panel": BookletLooks.said_rect(entry.room)}, entry.panel)
 		entry.place = moved.get("place", {})
@@ -1434,6 +1493,9 @@ static func _head(document: Document, with_parts: bool = true) -> String:
   .bar { flex-wrap: wrap; font-size: 16px; }
   .bar button, .bar select { min-height: 44px; min-width: 44px; padding: 10px 16px; }
   #save-web:not([hidden]) { flex-wrap: wrap; justify-content: center; }
+}
+@media screen and (max-width: 600px) {
+  .bar { position: static; }
 }
 @media print {
   @page { size: %s; margin: 0; }

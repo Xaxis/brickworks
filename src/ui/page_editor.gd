@@ -32,14 +32,18 @@
 ## undo, and printed as the page shows it (Booklet.note_style,
 ## BookletLooks.arrow_line); the guides are not printed.
 ##
-## StudWorx's page tools (pagetools). With Alt held the selected item shows
-## the room round it, as a designer's inspector does: to the page's edges,
-## to its margins and to the nearest thing on each side, and its own size,
-## all in millimetres of the page ([method inspected]); drawn here alone,
-## never printed. Lock page keeps the page as it is: nothing on it moves,
-## Apply to later pages passes it by, and the booklet keeps its steps on it
-## (Booklet.Layout); Freeze page keeps its page setup as it is now when the
-## booklet's changes (BookletLooks "lock" and "freeze", one undo each).
+## StudWorx's page tools (pagetools). With Alt held, or Measure on (a
+## finger has no Alt), the selected item shows the room round it, as a
+## designer's inspector does: to the page's edges, to its margins and to the
+## nearest thing on each side, and its own size, all in millimetres of the
+## page ([method inspected]); drawn here alone, never printed. Lock page
+## keeps the page as it is: each item placed where it is, nothing on it
+## changed by anyone until it is unlocked (Shell.change_look refuses it),
+## Apply to later pages passes it by, and the booklet keeps as many steps on
+## it (Booklet.Layout); Freeze page keeps its margins, colours, words and
+## numbers as they are now when the booklet's change, and the page is drawn
+## and snapped to by them here ([method shown_sheet]) (BookletLooks "lock"
+## and "freeze", one undo each).
 class_name PageEditor
 extends Control
 
@@ -126,8 +130,13 @@ var _ruler: float = RULER
 var _stem: float = KNOB_STEM
 ## The words were all selected when the finger came down on their field.
 var _words_whole: bool = false
-## Alt held: the selected item's room drawn round it ([method inspected]).
+## Alt held, or Measure on: the selected item's room drawn round it
+## ([method inspected]).
 var _inspecting: bool = false
+## Measure: the inspector kept on without Alt, for a finger (ptreview N1).
+var _measure: Button = null
+## The inspector's labels drawn so far this frame, so none lands on another.
+var _pills: Array[Rect2] = []
 const INSPECT := Color(0.0, 0.55, 0.42)
 const INSPECT_EDGE := Color(0.45, 0.5, 0.56)
 
@@ -189,10 +198,12 @@ func _ready() -> void:
 			["page_apply_later", "Apply to later pages", "This page's layout on every later page "
 				+ "with as many steps: each step's picture, parts list, number and callout where "
 				+ "this page has them"],
-			["page_lock", "Lock page", "Nothing on this page moves, Apply to later pages passes it "
-				+ "by, and its steps stay on it until it is unlocked"],
-			["page_freeze", "Freeze page", "This page keeps its page setup as it is now when the "
-				+ "booklet's page setup changes"],
+			["page_lock", "Lock page", "Nothing on this page moves or changes until it is unlocked, "
+				+ "Apply to later pages passes it by, and it keeps as many steps as it has now: a step "
+				+ "put in or taken out among them changes which"],
+			["page_freeze", "Freeze page", "This page keeps its margins, colours, header, footer and "
+				+ "step numbers as they are now when the booklet's page setup changes; its paper, "
+				+ "picture and parts stay the booklet's"],
 			["page_done", "Done", "Back to the model"]]:
 		var button := Button.new()
 		button.text = spec[1]
@@ -224,6 +235,16 @@ func _ready() -> void:
 	_opacity_box.value_changed.connect(func(value: float) -> void: _set_note("opacity", value / 100.0))
 	row.add_child(_opacity_box)
 	_named["page_opacity"] = _opacity_box
+	# The inspector for a finger, which has no Alt to hold (ptreview N1).
+	_measure = Button.new()
+	_measure.text = "Measure"
+	_measure.toggle_mode = true
+	_measure.tooltip_text = "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+	_measure.focus_mode = Control.FOCUS_NONE
+	_measure.add_theme_font_size_override("font_size", 12)
+	_measure.toggled.connect(func(_on: bool) -> void: _canvas.queue_redraw())
+	row.add_child(_measure)
+	_named["page_measure"] = _measure
 	_said = Label.new()
 	_said.add_theme_font_size_override("font_size", 11)
 	_said.modulate = Color(1, 1, 1, 0.75)
@@ -427,7 +448,7 @@ func _process(_delta: float) -> void:
 	if not visible or _laying:
 		return
 	# The inspector, while Alt is held (pagetools).
-	var held: bool = Input.is_key_pressed(KEY_ALT)
+	var held: bool = Input.is_key_pressed(KEY_ALT) or _measure.button_pressed
 	if held != _inspecting:
 		_inspecting = held
 		_canvas.queue_redraw()
@@ -970,6 +991,7 @@ func _draw_page() -> void:
 ## edge and margin, and to the nearest thing on each side, each with its
 ## length in mm; its own size over it.
 func _draw_inspector(seen: Dictionary, k: float, font: Font) -> void:
+	_pills.clear()
 	var box: Rect2 = seen["box"]
 	var middle: Vector2 = box.get_center()
 	var size: Vector2 = shown_sheet().size()
@@ -1016,6 +1038,13 @@ func _pill(at: Vector2, words: String, colour: Color, font: Font) -> void:
 	var size: int = 11
 	var wide: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	var box := Rect2(at - Vector2(wide * 0.5 + 4.0, 8.0), Vector2(wide + 8.0, 16.0))
+	# Clear of the labels drawn before it: a margin's beside its edge's was
+	# drawn over it (ptreview N7).
+	for _try: int in 8:
+		if not _pills.any(func(other: Rect2) -> bool: return other.grow(1.0).intersects(box)):
+			break
+		box.position.y += box.size.y + 2.0
+	_pills.append(box)
 	_canvas.draw_rect(box, colour)
 	_canvas.draw_string(font, box.position + Vector2(4.0, 12.0), words, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		size, Color.WHITE)
@@ -1130,8 +1159,8 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 				free.size.x, int(clampf(3.4 * k, 9, 18)), Color(0.15, 0.3, 0.45))
 		"parts":
 			# In the colours its page was set up with (BookletSheet, booklook).
-			_canvas.draw_rect(rect, _sheet.box_fill)
-			_canvas.draw_rect(rect, _sheet.box_frame, false, maxf(1.0, 0.35 * k))
+			_canvas.draw_rect(rect, shown_sheet().box_fill)
+			_canvas.draw_rect(rect, shown_sheet().box_frame, false, maxf(1.0, 0.35 * k))
 			# The parts in the rows the booklet puts them in (Booklet._entry).
 			var y: float = (item["rect"] as Rect2).position.y + Booklet.PAD
 			for row: Array in Booklet._rows(entry.lots, entry.parts_width):
@@ -1172,7 +1201,7 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 		"number":
 			_canvas.draw_string(font, rect.position + Vector2(0, entry.number_size * k * 0.82),
 				str(entry.number), HORIZONTAL_ALIGNMENT_LEFT, -1, int(entry.number_size * k),
-				_sheet.number_colour)
+				shown_sheet().number_colour)
 		"arrow":
 			var arrow: Dictionary = item["arrow"]
 			_draw_arrow(_shown_points(item), str(arrow.get("colour", "red")),
@@ -1454,7 +1483,7 @@ func _snap_point(at: Vector2) -> Vector2:
 		if item["kind"] != "arrow":
 			others.append(item["rect"])
 	var snapped: Dictionary = Booklet.snapped_to(Rect2(at, Vector2.ZERO), others, false, _guide_lines,
-		_sheet)
+		shown_sheet())
 	_guides = snapped["lines"]
 	return (snapped["rect"] as Rect2).position
 
@@ -1695,7 +1724,7 @@ func _dragged(event: InputEventMouse) -> void:
 		else:
 			item["rect"] = Rect2(was.position + by, was.size)
 			var box: Rect2 = _box_of(item)
-			var snapped: Dictionary = Booklet.snapped_to(box, others, false, _guide_lines, _sheet)
+			var snapped: Dictionary = Booklet.snapped_to(box, others, false, _guide_lines, shown_sheet())
 			var onto: Rect2 = _on_page(snapped["rect"], false, _sheet.size())
 			item["rect"] = Rect2((item["rect"] as Rect2).position + onto.position - box.position, was.size)
 			_guides = snapped["lines"]
@@ -1704,7 +1733,7 @@ func _dragged(event: InputEventMouse) -> void:
 			was.size + (by if resize else Vector2.ZERO))
 		moved.size = moved.size.max(Vector2(6, 4))
 		var snapped: Dictionary = Booklet.snapped_to(_on_page(moved, resize, _sheet.size()), others, resize,
-			_guide_lines, _sheet)
+			_guide_lines, shown_sheet())
 		# Kept on the page as the booklet keeps it (Booklet._on_page), so what is
 		# dragged is where it prints.
 		item["rect"] = _on_page(snapped["rect"], resize, _sheet.size())
@@ -1767,9 +1796,6 @@ func _drop() -> void:
 ## Item [param at] placed at [param rect] (page mm): one undo, and the page
 ## laid out again from what the booklet now says.
 func place(at: int, rect: Rect2) -> String:
-	if locked():
-		_say_locked()
-		return "page %d is locked: unlock it first" % _pages[_at].number
 	var item: Dictionary = _items[at]
 	var said: String = ""
 	var numbers: Array = [rect.position.x, rect.position.y, rect.size.x, rect.size.y]
@@ -1797,8 +1823,11 @@ func _change(op: String, item: Dictionary, fields: Dictionary) -> String:
 
 
 func _pressed(name: String) -> void:
-	if locked() and name in ["page_add_text", "page_add_image", "page_add_arrow", "page_arrow_colour",
-			"page_arrow_width", "page_smaller", "page_larger", "page_put_back"]:
+	# What only starts an edit (a file to choose, an arrow to draw) is not
+	# begun on a locked page; every edit itself is refused where it is
+	# written, whoever asks (Shell.change_look), so an arrow armed or a
+	# picture chosen before the lock is refused too.
+	if locked() and name in ["page_add_image", "page_add_arrow"]:
 		_say_locked()
 		return
 	match name:
@@ -1880,8 +1909,16 @@ func lock_page() -> String:
 	if first.is_empty():
 		_say_soft("Only a page of steps locks.")
 		return "only a page of steps locks"
+	# Each item placed where it is, so a page setup changed after moves
+	# nothing on it (ptreview F3): as Apply to later pages places them.
+	var placed: Array = []
+	for pair: Array in Booklet.held_places(_pages[_at]):
+		var entry: Booklet.Entry = pair[0]
+		var index: int = int(entry.get_meta("step", -1))
+		if index >= 0 and index < _plan.size():
+			placed.append([_plan[index], pair[1], BookletLooks.said_rect(entry.panel)])
 	var said: String = _shell.change_look("page_lock", first["step"],
-		{"steps": _pages[_at].entries.size()})
+		{"steps": _pages[_at].entries.size(), "placed": placed})
 	_say(said)
 	await _lay_out((first["entry"] as Booklet.Entry).number)
 	return said
@@ -2131,7 +2168,8 @@ func add_image(image: Image) -> String:
 		high = 80.0
 	var said: String = _change("image", first, {
 		"data": Marshalls.raw_to_base64(bytes),
-		"at": [_sheet.size().x - _sheet.margin - wide, Booklet.content(_sheet).end.y - high, wide, high]})
+		"at": [_sheet.size().x - shown_sheet().margin - wide, Booklet.content(shown_sheet()).end.y - high,
+			wide, high]})
 	_say(said)
 	_pictures.clear()
 	await _lay_out((first["entry"] as Booklet.Entry).number)
@@ -2206,8 +2244,18 @@ func page_state() -> Dictionary:
 		# pagetools: the page locked or frozen, and the inspector's reading
 		# of the selected item while Alt is held.
 		"locked": locked(), "frozen": shown_sheet() != _sheet,
-		"inspecting": _inspecting and _selected >= 0,
+		"inspecting": _inspecting and _selected >= 0, "measure": _measure.button_pressed,
+		"labels": _pills.size(), "labels_apart": _pills_apart(),
 		"inspected": _inspected_state()}
+
+
+## Whether no two of the inspector's labels drawn last overlap.
+func _pills_apart() -> bool:
+	for a: int in _pills.size():
+		for b: int in range(a + 1, _pills.size()):
+			if _pills[a].intersects(_pills[b]):
+				return false
+	return true
 
 
 func _inspected_state() -> Dictionary:

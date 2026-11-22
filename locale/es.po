@@ -15913,14 +15913,17 @@ msgstr "Congelar la página"
 msgid "Unfreeze page"
 msgstr "Descongelar la página"
 
-msgid "Nothing on this page moves, Apply to later pages passes it by, and its steps stay on it until it is unlocked"
-msgstr "Nada se mueve en esta página, «Aplicar a las páginas siguientes» la salta y sus pasos se quedan en ella hasta desbloquearla"
+msgid "Nothing on this page moves or changes until it is unlocked, Apply to later pages passes it by, and it keeps as many steps as it has now: a step put in or taken out among them changes which"
+msgstr "Nada se mueve ni cambia en esta página hasta desbloquearla, «Aplicar a las páginas siguientes» la salta y conserva tantos pasos como tiene ahora: un paso añadido o quitado entre ellos cambia cuáles son"
 
-msgid "This page keeps its page setup as it is now when the booklet's page setup changes"
-msgstr "Esta página conserva su configuración actual cuando cambia la configuración de página del folleto"
+msgid "This page keeps its margins, colours, header, footer and step numbers as they are now when the booklet's page setup changes; its paper, picture and parts stay the booklet's"
+msgstr "Esta página conserva sus márgenes, colores, encabezado, pie y números de paso actuales cuando cambia la configuración de página del folleto; su papel, su imagen y sus piezas siguen siendo los del folleto"
 
 msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
 msgstr "Mantén Alt para ver el espacio del elemento elegido hasta los bordes de la página, sus márgenes y sus vecinos"
+
+msgid "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+msgstr "El espacio del elemento elegido hasta los bordes de la página, sus márgenes y sus vecinos, como lo muestra Alt pulsado"
 
 msgid "This page is locked: Unlock page to change what is on it."
 msgstr "Esta página está bloqueada: «Desbloquear la página» para cambiar lo que tiene."

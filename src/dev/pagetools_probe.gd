@@ -332,6 +332,16 @@ func _pages() -> void:
 		shown.margin], bool(editor.page_state().get("frozen", false))
 		and BookletSheet.same_colour(shown.colour, BookletSheet.PAGE_COLOUR)
 		and is_equal_approx(shown.margin, BookletSheet.MARGIN))
+	# ptreview F6: what is dragged on it snaps to its own margins, not the
+	# booklet's: 1 mm in from its own right margin it snaps there, and 1 mm
+	# in from where the booklet's is now (15 mm) it does not.
+	var wide: float = shown.size().x
+	var to_own: Vector2 = editor._snap_point(Vector2(wide - BookletSheet.MARGIN - 1.0, 60.0))
+	var to_booklet: Vector2 = editor._snap_point(Vector2(wide - 15.0 + 1.0, 60.0))
+	_check("...and snaps to its own margins: %s mm -> %s (its own at %s), %s mm -> %s (the booklet's at %s)" % [
+		_n(wide - BookletSheet.MARGIN - 1.0), _n(to_own.x), _n(wide - BookletSheet.MARGIN),
+		_n(wide - 14.0), _n(to_booklet.x), _n(wide - 15.0)],
+		absf(to_own.x - (wide - BookletSheet.MARGIN)) < 0.05 and absf(to_booklet.x - (wide - 15.0)) > 0.05)
 	await _shot("pagetools_frozen_1280x720")
 	var document := Booklet.Document.new()
 	document.sheet = BookletSheet.of(_world)
@@ -499,3 +509,7 @@ func _kept(lead: int) -> void:
 	_builder.undo()
 	await _frames(2)
 	_check("...and undone, the text as it was", _store.to_text("gatehouse", true) == text)
+
+
+static func _n(value: float) -> String:
+	return str(snappedf(value, 0.1))

@@ -15913,14 +15913,17 @@ msgstr "Seite einfrieren"
 msgid "Unfreeze page"
 msgstr "Seite auftauen"
 
-msgid "Nothing on this page moves, Apply to later pages passes it by, and its steps stay on it until it is unlocked"
-msgstr "Nichts auf dieser Seite bewegt sich, „Auf spätere Seiten anwenden“ lässt sie aus, und ihre Schritte bleiben auf ihr, bis sie entsperrt wird"
+msgid "Nothing on this page moves or changes until it is unlocked, Apply to later pages passes it by, and it keeps as many steps as it has now: a step put in or taken out among them changes which"
+msgstr "Nichts auf dieser Seite bewegt oder ändert sich, bis sie entsperrt wird, „Auf spätere Seiten anwenden“ lässt sie aus, und sie behält so viele Schritte, wie sie jetzt hat: Ein dazwischen eingefügter oder entfernter Schritt ändert, welche es sind"
 
-msgid "This page keeps its page setup as it is now when the booklet's page setup changes"
-msgstr "Diese Seite behält ihre Seiteneinrichtung wie jetzt, wenn sich die Seiteneinrichtung des Hefts ändert"
+msgid "This page keeps its margins, colours, header, footer and step numbers as they are now when the booklet's page setup changes; its paper, picture and parts stay the booklet's"
+msgstr "Diese Seite behält ihre Ränder, Farben, Kopf- und Fußzeile und Schrittnummern wie jetzt, wenn sich die Seiteneinrichtung des Hefts ändert; Papier, Bild und Teile bleiben die des Hefts"
 
 msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
 msgstr "Alt gedrückt halten, um den Abstand des gewählten Elements zu den Seitenrändern, den Rändern und seinen Nachbarn zu sehen"
+
+msgid "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+msgstr "Der Abstand des gewählten Elements zu den Seitenrändern, den Rändern und seinen Nachbarn, wie ihn gedrücktes Alt zeigt"
 
 msgid "This page is locked: Unlock page to change what is on it."
 msgstr "Diese Seite ist gesperrt: „Seite entsperren“, um zu ändern, was darauf ist."

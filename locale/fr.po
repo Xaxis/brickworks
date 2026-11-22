@@ -15913,14 +15913,17 @@ msgstr "Figer la page"
 msgid "Unfreeze page"
 msgstr "Libérer la page"
 
-msgid "Nothing on this page moves, Apply to later pages passes it by, and its steps stay on it until it is unlocked"
-msgstr "Rien ne bouge sur cette page, « Appliquer aux pages suivantes » la saute, et ses étapes y restent jusqu’à ce qu’elle soit déverrouillée"
+msgid "Nothing on this page moves or changes until it is unlocked, Apply to later pages passes it by, and it keeps as many steps as it has now: a step put in or taken out among them changes which"
+msgstr "Rien ne bouge ni ne change sur cette page jusqu’à ce qu’elle soit déverrouillée, « Appliquer aux pages suivantes » la saute, et elle garde autant d’étapes qu’elle en a : une étape ajoutée ou retirée parmi elles change lesquelles"
 
-msgid "This page keeps its page setup as it is now when the booklet's page setup changes"
-msgstr "Cette page garde sa mise en page actuelle quand la mise en page du livret change"
+msgid "This page keeps its margins, colours, header, footer and step numbers as they are now when the booklet's page setup changes; its paper, picture and parts stay the booklet's"
+msgstr "Cette page garde ses marges, ses couleurs, son en-tête, son pied de page et ses numéros d’étape actuels quand la mise en page du livret change ; son papier, son image et ses pièces restent ceux du livret"
 
 msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
 msgstr "Maintenez Alt pour voir l’espace de l’élément choisi jusqu’aux bords de la page, à ses marges et à ses voisins"
+
+msgid "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+msgstr "L’espace de l’élément choisi jusqu’aux bords de la page, à ses marges et à ses voisins, comme le montre Alt maintenu"
 
 msgid "This page is locked: Unlock page to change what is on it."
 msgstr "Cette page est verrouillée : « Déverrouiller la page » pour changer ce qu’elle contient."

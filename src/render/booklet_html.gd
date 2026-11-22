@@ -56,7 +56,14 @@ var counts: String = ""
 ## heading}.
 var inventory: Array[Dictionary] = []
 var credits: String = ""
+## How many steps the booklet has, when they are written as they are read
+## ([method write]) and [member steps] holds only those not written yet; -1
+## when [member steps] holds them all.
+var total: int = -1
 
+## The colour of the page being read where it is not the booklet's (a
+## frozen page's), "" where it is.
+var _card: String = ""
 ## Reading a step page: the step being read, what of it has been read, and
 ## the callout whose own pages these are.
 var _step: Dictionary = {}
@@ -76,30 +83,97 @@ const _CALLOUT := 3
 ## ("light" or "dark"). A frame every [param pace] pages, as read_all.
 ## Returns the steps written, -1 when there was nothing to write or it could
 ## not be written.
+##
+## Each step is written as the page it is on is read, and let go (ptreview
+## F7): the whole page is never held, so a booklet of a thousand steps,
+## its pictures 130 MB of base64, never takes more than a page of them at
+## once. The long page's head carries every part's picture first; a page a
+## step needs how many steps there are, counted first in a reading that
+## keeps none of them, and the last step's page waits for the finished model
+## read after it.
 func write(from: Variant, to: String, layout: String, theme: String, pace: int = 0) -> int:
-	var count: int = await read_all(from, func(_page: Page) -> void: pass, pace)
-	if count <= 0 or steps.is_empty():
-		return -1
 	if layout == "steps":
-		var zip := ZIPPacker.new()
-		if zip.open(to) != OK:
-			return -1
-		for index: int in steps.size():
-			zip.start_file(step_file(index))
-			zip.write_file(step_page(index, theme).to_utf8_buffer())
-			zip.close_file()
-		zip.start_file("index.html")
-		zip.write_file(contents(theme).to_utf8_buffer())
-		zip.close_file()
-		zip.close()
-		return steps.size()
+		return await _write_zip(from, to, theme, pace)
 	var file: FileAccess = FileAccess.open(to, FileAccess.WRITE)
 	if file == null:
 		return -1
-	file.store_string(long_page(theme))
+	# [steps written, head written]: a lambda's ints are its own copies.
+	var done: Array = [0, false]
+	var flush := func() -> void:
+		if steps.is_empty():
+			return
+		if not done[1]:
+			file.store_string(_long_start(theme))
+			done[1] = true
+		for step: Dictionary in steps:
+			file.store_string("\n" + _step_html(step, {}, int(done[0])))
+			done[0] = int(done[0]) + 1
+		steps.clear()
+	var count: int = await read_all(from, func(_page: Page) -> void: flush.call(), pace)
+	_end_step()
+	flush.call()
+	if count <= 0 or int(done[0]) == 0:
+		file.close()
+		return -1
+	file.store_string(_long_end())
 	var ok: bool = file.get_error() == OK
 	file.close()
-	return steps.size() if ok else -1
+	return int(done[0]) if ok else -1
+
+
+## A page a step in a zip at [param to], each written as it is read: the
+## steps counted first, the last one's page written at the end with the
+## finished model, then the contents.
+func _write_zip(from: Variant, to: String, theme: String, pace: int) -> int:
+	var counter: BookletHtml = (get_script() as GDScript).new()
+	var counted: Array = [0]
+	var count: int = await counter.read_all(from, func(_page: Page) -> void:
+		counted[0] = int(counted[0]) + counter.steps.size()
+		counter.steps.clear(), pace)
+	counter._end_step()
+	total = int(counted[0]) + counter.steps.size()
+	if count <= 0 or total <= 0:
+		return -1
+	var zip := ZIPPacker.new()
+	if zip.open(to) != OK:
+		return -1
+	# [steps read, the last step held for the finished model], and each
+	# step's heading for the contents.
+	var done: Array = [0, {}]
+	var listed: Array = []
+	var flush := func() -> void:
+		for step: Dictionary in steps:
+			var index: int = int(done[0])
+			done[0] = index + 1
+			total = maxi(total, index + 1)
+			listed.append({"number": step["number"], "name": step["name"], "within": step["within"],
+				"banner": step["banner"]})
+			if index == total - 1:
+				done[1] = {"step": step, "index": index}
+				continue
+			zip.start_file(step_file(index))
+			zip.write_file(_step_page(step, index, theme).to_utf8_buffer())
+			zip.close_file()
+		steps.clear()
+	await read_all(from, func(_page: Page) -> void: flush.call(), pace)
+	_end_step()
+	flush.call()
+	var last: Dictionary = done[1]
+	if not last.is_empty():
+		zip.start_file(step_file(int(last["index"])))
+		zip.write_file(_step_page(last["step"], int(last["index"]), theme).to_utf8_buffer())
+		zip.close_file()
+	zip.start_file("index.html")
+	zip.write_file(contents(theme, listed).to_utf8_buffer())
+	zip.close_file()
+	zip.close()
+	return int(done[0])
+
+
+## How many steps the booklet has: [member total] while they are written
+## as they are read, else those [member steps] holds.
+func _steps_count() -> int:
+	return total if total >= 0 else steps.size()
 
 
 ## The booklet [param text] (Booklet.html's, whole) read at once: for a check.
@@ -156,6 +230,11 @@ func _page(html: String) -> Page:
 				page.kind = kind
 				page.number = str(attributes.get("id", "")).trim_prefix("page-").to_int()
 				_start_page(kind)
+				# A frozen page's own colour (Booklet._frozen_style), for its
+				# steps' cards: a colour as #rrggbb alone, nothing else.
+				var own: String = str(_style(str(attributes.get("style", ""))).get("--page", ""))
+				_card = own if own.length() == 7 and own.begins_with("#") \
+					and own.substr(1).is_valid_hex_number() else ""
 			"svg":
 				svg = true
 			"div":
@@ -280,7 +359,7 @@ func _new_step(number: int, name: String, picture: String) -> void:
 	_end_step()
 	_step = {"number": number, "name": name, "picture": picture, "parts": [], "callout": [],
 		"times": 1, "banner": _banner if _banner != "\u0001" else "", "within": _within,
-		"build": _times if not _within.is_empty() else 1}
+		"build": _times if not _within.is_empty() else 1, "card": _card}
 	_banner = ""
 	_phase = _PICTURE
 
@@ -296,24 +375,42 @@ func _end_step() -> void:
 # -- writing ---------------------------------------------------------------
 
 
-## The steps on one long page in [param theme].
+## The steps on one long page in [param theme], as [method write] writes
+## it a step at a time.
 func long_page(theme: String) -> String:
-	var used: Dictionary = {}
-	var body := PackedStringArray()
-	body.append("<header class=\"top\"><h1>%s</h1>%s</header>" % [_e(model_name()),
-		("<p class=\"counts\">%s</p>" % _e(counts)) if not counts.is_empty() else ""])
-	if not cover.is_empty():
-		body.append("<figure class=\"sheet cover\"><img src=\"%s\" alt=\"%s\"></figure>" % [cover,
-			_e(model_name())])
+	var out := PackedStringArray()
+	out.append(_long_start(theme))
 	for index: int in steps.size():
-		body.append(_step_html(steps[index], used, index))
-	body.append(_ending(used))
-	return _document(model_name(), theme, used, "\n".join(body))
+		out.append("\n" + _step_html(steps[index], {}, index))
+	out.append(_long_end())
+	return "".join(out)
+
+
+## The long page up to its first step: its head, with every part's
+## picture the booklet has, and its title and cover.
+func _long_start(theme: String) -> String:
+	var used: Dictionary = {}
+	for key: String in parts:
+		var picture: String = Booklet._url(str(parts[key]))
+		if not picture.is_empty():
+			used[key] = picture
+	var top: String = "<header class=\"top\"><h1>%s</h1>%s</header>" % [_e(model_name()),
+		("<p class=\"counts\">%s</p>" % _e(counts)) if not counts.is_empty() else ""]
+	if not cover.is_empty():
+		top += "\n<figure class=\"sheet cover\"><img src=\"%s\" alt=\"%s\"></figure>" % [cover,
+			_e(model_name())]
+	return _document_head(model_name(), theme, used) + top
+
+
+## The long page after its last step: the finished model, the parts and
+## the credits, and the end of the file.
+func _long_end() -> String:
+	return "\n" + _ending({}) + _DOCUMENT_TAIL
 
 
 ## The index of the page-a-step zip in [param theme]: the cover, every step
 ## linked, the finished model and every part.
-func contents(theme: String) -> String:
+func contents(theme: String, listed: Array = []) -> String:
 	var used: Dictionary = {}
 	var body := PackedStringArray()
 	body.append("<header class=\"top\"><h1>%s</h1>%s</header>" % [_e(model_name()),
@@ -324,8 +421,9 @@ func contents(theme: String) -> String:
 	body.append("<nav class=\"pager\"><a class=\"go\" href=\"%s\" rel=\"next\">Start building</a></nav>"
 		% step_file(0))
 	var items := PackedStringArray()
-	for index: int in steps.size():
-		var step: Dictionary = steps[index]
+	var each: Array = listed if not listed.is_empty() else steps
+	for index: int in each.size():
+		var step: Dictionary = each[index]
 		if not str(step["banner"]).is_empty():
 			items.append("<li class=\"part-of\">%s</li>" % _e(step["banner"]))
 		items.append("<li><a href=\"%s\">%s</a></li>" % [step_file(index), _e(_step_title(step))])
@@ -337,30 +435,36 @@ func contents(theme: String) -> String:
 ## The page of step [param index] (of [member steps]) in [param theme], with
 ## its way to the steps either side and back to the contents.
 func step_page(index: int, theme: String) -> String:
+	return _step_page(steps[index], index, theme)
+
+
+## The page of [param step], the [param index]th of the booklet's.
+func _step_page(step: Dictionary, index: int, theme: String) -> String:
 	var used: Dictionary = {}
+	var count: int = _steps_count()
 	var before: String = step_file(index - 1) if index > 0 else "index.html"
-	var after: String = step_file(index + 1) if index + 1 < steps.size() else "index.html"
+	var after: String = step_file(index + 1) if index + 1 < count else "index.html"
 	var nav: String = ("<nav class=\"pager\"><a href=\"%s\" rel=\"prev\">Previous</a>"
 		+ "<a href=\"index.html\">Contents</a><span>%d of %d</span>"
-		+ "<a class=\"go\" href=\"%s\" rel=\"next\">%s</a></nav>") % [before, index + 1, steps.size(),
-			after, "Next" if index + 1 < steps.size() else "Finished"]
+		+ "<a class=\"go\" href=\"%s\" rel=\"next\">%s</a></nav>") % [before, index + 1, count,
+			after, "Next" if index + 1 < count else "Finished"]
 	var body := PackedStringArray()
 	body.append("<header class=\"top small\"><a href=\"index.html\">%s</a></header>" % _e(model_name()))
 	body.append(nav)
-	body.append(_step_html(steps[index], used, -1))
-	if index + 1 == steps.size() and not finished.is_empty():
+	body.append(_step_html(step, used, -1))
+	if index + 1 == count and not finished.is_empty():
 		body.append("<h2>Finished</h2>\n<figure class=\"sheet\"><img src=\"%s\" alt=\"The finished model\"></figure>"
 			% finished)
 	body.append(nav)
 	if not credits.is_empty():
 		body.append("<footer>%s</footer>" % _e(credits))
-	return _document("%s · %s" % [_step_title(steps[index]), model_name()], theme, used,
+	return _document("%s · %s" % [_step_title(step), model_name()], theme, used,
 		"\n".join(body), before, after)
 
 
 ## The file step [param index] is on, in the page-a-step zip.
 func step_file(index: int) -> String:
-	return ("step-%03d.html" if steps.size() < 1000 else "step-%04d.html") % (index + 1)
+	return ("step-%03d.html" if _steps_count() < 1000 else "step-%04d.html") % (index + 1)
 
 
 ## "Step 12: Build the cockpit", or a callout's own "The gatehouse, step 2".
@@ -388,7 +492,9 @@ func _step_html(step: Dictionary, used: Dictionary, anchor: int) -> String:
 	if not str(step["name"]).is_empty():
 		heading += "<span class=\"name\">%s</span>" % _e(step["name"])
 	out.append("<h3>%s</h3>" % heading)
-	out.append("<div class=\"sheet\">")
+	# On a card of its page's own colour where its page was frozen with one.
+	var card: String = str(step.get("card", ""))
+	out.append("<div class=\"sheet\"%s>" % ((" style=\"--card:%s\"" % card) if not card.is_empty() else ""))
 	var parts: Array = step["parts"]
 	if not parts.is_empty():
 		var items := PackedStringArray()
@@ -451,6 +557,17 @@ func _ending(used: Dictionary) -> String:
 ## parts' pictures it shows ([param used]), and [param body].
 func _document(named: String, theme: String, used: Dictionary, body: String, before: String = "",
 		after: String = "") -> String:
+	return _document_head(named, theme, used, before, after) + body + _DOCUMENT_TAIL
+
+
+## The end of every file, after its body.
+const _DOCUMENT_TAIL := "\n</main>\n</body>\n</html>\n"
+
+
+## A file up to its body: its head, its look in [param theme] and the rules
+## of the parts' pictures it shows ([param used]).
+func _document_head(named: String, theme: String, used: Dictionary, before: String = "",
+		after: String = "") -> String:
 	var dark: bool = theme == "dark"
 	var rules := PackedStringArray()
 	for key: String in used:
@@ -474,12 +591,8 @@ func _document(named: String, theme: String, used: Dictionary, body: String, bef
 </style>
 <body>
 <main>
-%s
-</main>
-</body>
-</html>
 """ % [theme if theme in THEMES else "light", POLICY, "dark" if dark else "light", _e(named), links,
-		STYLE, colour.to_html(false), "\n".join(rules), body]
+		STYLE, colour.to_html(false), "\n".join(rules)]
 
 
 ## Nothing loads but what is in the file, and nothing runs.

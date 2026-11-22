@@ -2415,16 +2415,25 @@ picture the assistant is shown.
   and a reopen laid out the same.
 - `pagetools probe` (APP_UX11 pagetools, 2026-11-22; StudWorx's page tools in
   the page editor): **the element inspector**, Alt held over the selected
-  item (`PageEditor.inspected`, `_draw_inspector`): its distance to the
+  item, or **Measure** on for a finger (`page_measure`; labels never over
+  one another, `page_state().labels_apart`) (`PageEditor.inspected`,
+  `_draw_inspector`): its distance to the
   page's edges, its margins and its nearest neighbour on each side, and its
   size, in page mm, drawn on the editor alone, never printed;
   `page_state().inspected`. **Lock page** (`page_lock`; `PageEditor.lock_page`,
   `Shell.change_look "page_lock"`, BookletLooks `"lock"`: the steps the page
-  holds, `0 !BRICKWORKS PAGE LOCK 2` on its first step): drags, handles,
-  Put back and adds refused on it; `later_layout` passes it by (said
-  "locked page N passed by"); `Booklet.Layout` keeps its steps on it
-  whatever Steps a page, page breaks or sections say; its page break is
-  refused off until unlocked. **Freeze page** (`page_freeze`; BookletLooks
+  holds by count, `0 !BRICKWORKS PAGE LOCK 2` on its first step, above its
+  `PAGE` line where older builds keep it): locking places each item where it
+  is (`Booklet.held_places`), so Page setup moves nothing on it; **one gate**,
+  `Shell._held_refusal` / `BookletLooks.held_by` in `change_look` and
+  `place_pages`, refuses every edit of a step a lock holds (`HELD_OPS`,
+  `HELD_FIELDS`: place, words, pictures, arrows, the Turn and Opacity boxes,
+  view, zoom, size, page breaks, parts list, turn sign, a lock or freeze
+  inside it) from the editor, the steps bar, MCP and a Together peer alike,
+  "the page step N starts is locked: unlock it first", while a name, Steps a
+  page and the outline go through; `later_layout` passes it by (said
+  "locked page N passed by"); `Booklet.Layout` (`_held_page`) keeps exactly
+  its steps on it whatever Steps a page, page breaks, sections or sizes say. **Freeze page** (`page_freeze`; BookletLooks
   `"freeze"` {"sheet": its `FROZEN` fields}, `page_sheet`; `PAGE FREEZE
   <PAGE_SETUP words>` and `PAGE FREEZE_TEXT HEADER words`): the page keeps
   its margins, colour, numbers, parts box and header/footer when Page
@@ -2441,7 +2450,15 @@ picture the assistant is shown.
   each, refusals, Steps a page 1, Apply to later passing it by, the frozen
   page white-proof in editor, HTML and PDF reading; saved, reopened byte
   for byte, autosave, an unlock after reopen changing that one line; the
-  same lock and freeze over MCP, one undo each.
+  same lock and freeze over MCP, one undo each; a frozen page snapping to
+  its own margins. `ptreview_probe` (headless, gatehouse; ptreview + ptfix):
+  every writer on a locked page refused with nothing written (MCP place=,
+  text=, arrow=, back=, page=; each change_look op the editor and the steps
+  bar use; place_pages), what is not the page's let through, page setup
+  moving nothing on it, a locked page of 4 kept, an older build's line
+  order saved byte for byte. Minitests `ptreview_order_check` (both builds
+  write one order) and `ptreview_layout_check` (a locked page's places
+  through margins and number size, a lock of 4 and of 3 kept).
 - `outline width probe` (pagetools): **Outline width** in Page setup's Steps
   tab and `page_setup outline_width=` (`BookletSheet.outline_width`, 1 to
   72 px at the booklet's 5 px a mm, `OUTLINE_WIDTH 12` on PAGE_SETUP): the
@@ -2759,8 +2776,10 @@ picture the assistant is shown.
   (`BookletHtml`, reading the booklet's own file as `BookletRead` does;
   `Main._save_booklet_html`, `NAME_web.html` / `NAME_web.zip` with
   index.html and step-NNN.html linked Previous / Contents / Next): pictures
-  on the booklet's page colour in both themes, no script, words escaped,
-  only data: pictures. `booklet_html_probe` (headless `--by-hand`, and on
+  on the booklet's page colour in both themes (a frozen page's own colour
+  carried to its steps' cards), no script, words escaped, only data:
+  pictures; written a step at a time as the booklet is read (`write`,
+  `_write_zip` counting the steps first), never the whole page in memory. `booklet_html_probe` (headless `--by-hand`, and on
   the gatehouse's real booklet); `booklet_flow.mjs` downloads it on the web.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
