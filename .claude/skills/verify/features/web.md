@@ -4909,7 +4909,8 @@ plan with Claude as the client.
   builder does), `#beta`, `#why` (The studio: the app's picture, now
   lazy, stability, the booklet, `#sets-models` four real sets live,
   free, your own AI) and `#start`. The header (`web/_shell.html`) is
-  Gallery, Sets, Challenges, Docs, then Open the app and Sign in; Plans
+  Gallery, Challenges, Docs, then Open the app and Sign in (Sets stays the
+  gallery's tab, tests/test_site_shell.py); Plans
   and Desktop app are in the phone menu, the account menu and the
   footer. `tools/web/landing_check.mjs` checks at 390 x 844 and
   1280 x 800, light and dark: the search and Start building whole in the

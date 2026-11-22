@@ -156,13 +156,19 @@ async function firstScreen(label, width, height, theme) {
       const img = card.querySelector(".frame img");
       return Boolean(img && img.complete && img.naturalWidth > 0);
     };
+    // A card in the window: the rest of the row is lazy, asked for as it is scrolled to.
+    const seen = (card) => {
+      const r = card.getBoundingClientRect();
+      return r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
+    };
     const pictures = cards.filter((card) => drawn(card) && whole(card.querySelector(".frame img"))).length;
     return {
       said: document.documentElement.dataset.shelfLive || "",
       served: shelf?.dataset.shelf || "",
       shown: Boolean(shelf && !shelf.hidden && shelf.getBoundingClientRect().height > 0),
       cards: cards.length,
-      drawn: cards.filter(drawn).length,
+      inView: cards.filter(seen).length,
+      drawn: cards.filter((card) => !seen(card) || drawn(card)).length,
       named: cards.filter((card) => card.querySelector("a.open b")?.textContent.trim()).length,
       skeletons: panel?.querySelectorAll(".skeleton-card").length || 0,
       pictures,
@@ -189,7 +195,7 @@ async function firstScreen(label, width, height, theme) {
     problems.push(`${where}: the first screen moved ${moved.toFixed(3)} as it came (${seen.shifts.map((s) => `${s.value.toFixed(3)}@${s.at} ${s.from}`).join("; ")})`);
   }
   if (out) await page.screenshot({ path: `${out}/first_${width}_${theme}.png` });
-  console.log(`  ${where.padEnd(13)} shelf ${seen.shown ? `${seen.cards} cards (${seen.served}, then ${seen.said}), ${seen.pictures} whole in view` : `hidden (${seen.said})`}; `
+  console.log(`  ${where.padEnd(13)} shelf ${seen.shown ? `${seen.cards} cards (${seen.served}, then ${seen.said}), ${seen.inView} in view, ${seen.pictures} whole` : `hidden (${seen.said})`}; `
     + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; moved ${moved.toFixed(3)}`);
   await page.close();
 }
@@ -209,17 +215,31 @@ async function tabs(label, width, height) {
     const on = document.querySelector('#shelf [role="tab"][aria-selected="true"]');
     const panels = [...document.querySelectorAll('#shelf [role="tabpanel"]')].filter((p) => !p.hidden);
     const cards = [...(panels[0]?.querySelectorAll(":scope > .model") || [])];
+    // The cards in the window drawn; the rest of the row is lazy.
+    const seen = (card) => {
+      const r = card.getBoundingClientRect();
+      return r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
+    };
     return { tab: on?.id || "", focused: document.activeElement?.id || "", panels: panels.map((p) => p.id),
       live: panels[0]?.dataset.live || "", cards: cards.length,
-      drawn: cards.filter((c) => c.querySelector(".frame img")?.naturalWidth > 0).length,
+      drawn: cards.filter((c) => !seen(c) || c.querySelector(".frame img")?.naturalWidth > 0).length,
       all: document.getElementById("shelf-all")?.getAttribute("href") || "", want: panels[0]?.dataset.all || "" };
   });
   const settle = () => page.waitForFunction(() => {
     const panel = [...document.querySelectorAll('#shelf [role="tabpanel"]')].find((p) => !p.hidden);
     return panel && panel.dataset.live && panel.dataset.live !== "asking";
   }, null, { timeout: 30000 }).catch(() => null);
+  const drawnInView = () => page.waitForFunction(() => {
+    const panel = [...document.querySelectorAll('#shelf [role="tabpanel"]')].find((p) => !p.hidden);
+    return [...(panel?.querySelectorAll(":scope > .model") || [])].every((card) => {
+      const r = card.getBoundingClientRect();
+      const inView = r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
+      return !inView || card.querySelector(".frame img")?.naturalWidth > 0;
+    });
+  }, null, { timeout: 20000 }).catch(() => null);
   await page.locator("#tab-new").click();
   await settle();
+  await drawnInView();
   const pressed = await state();
   if (pressed.tab !== "tab-new" || pressed.panels.join() !== "shelf-new") problems.push(`${where}: pressing New shows ${pressed.panels.join(", ")} (${pressed.tab} selected)`);
   if (live && (pressed.cards < FEWEST || pressed.drawn !== pressed.cards)) problems.push(`${where}: New shows ${pressed.cards} cards, ${pressed.drawn} drawn`);
@@ -227,6 +247,7 @@ async function tabs(label, width, height) {
   await page.locator("#tab-new").focus();
   await page.keyboard.press("ArrowRight");
   await settle();
+  await drawnInView();
   const arrowed = await state();
   if (arrowed.tab !== "tab-sets" || arrowed.focused !== "tab-sets" || arrowed.panels.join() !== "shelf-sets") {
     problems.push(`${where}: the right arrow from New left ${arrowed.tab} selected, ${arrowed.focused} focused, ${arrowed.panels.join(", ")} shown`);

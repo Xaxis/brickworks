@@ -112,8 +112,8 @@ def copy(name: str, gallery: str) -> str:
     out = replaced(out, r'(<a href="/gallery" data-tab="top") aria-current="page"', lambda found: found.group(1), "Top's mark")
     out = replaced(out, rf'(<a href="[^"]*" data-tab="{one["tab"]}")', lambda found: f'{found.group(1)} aria-current="page"',
                    f"{one['tab']} tab")
-    # The header's own link marked as the shell marks this page (the Sets
-    # copy is the header's Sets since landing, 2026-11-22; the rest the Gallery).
+    # The header's own link marked as the shell marks this page: each tab's
+    # copy is the Gallery (tools/site_shell.py OWN).
     return site_shell.HEADER.sub(lambda _: site_shell.marked(site_shell.shell()[1], name), out, count=1)
 
 

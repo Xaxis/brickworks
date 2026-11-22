@@ -107,16 +107,6 @@ import { collectionsList } from "/collections.js";
       if (which === now) tab.setAttribute("aria-current", "page");
       else tab.removeAttribute("aria-current");
     }
-    // The header's own mark with it: Sets is a link of its own there
-    // (web/_shell.html), every other tab is the Gallery.
-    const path = (which) => new URL(tabs.querySelector(`[data-tab="${which}"]`).href).pathname;
-    const [sets, gallery] = [path("sets"), path("top")];
-    for (const link of document.querySelectorAll(".site-head a[href]")) {
-      const at = new URL(link.href).pathname;
-      if (at !== sets && at !== gallery) continue;
-      if (at === (now === "sets" ? sets : gallery)) link.setAttribute("aria-current", "page");
-      else link.removeAttribute("aria-current");
-    }
   }
 
   /// An address as the history compares it: its path and its question.

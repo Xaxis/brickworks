@@ -45,10 +45,12 @@ Then:
    it stand, the booklet, four real sets live, free, your own AI.
 8. **Build something today**, the way in again.
 
-The header on every page (`web/_shell.html`): Gallery, Sets, Challenges,
-then Docs (Talk joins when it lands); Open the app and Sign in far right.
-Plans and Desktop app are in the phone menu, the account menu and the
-footer.
+The header on every page (`web/_shell.html`): Gallery and Challenges, then
+Docs (Talk joins after Challenges when it lands: the four links the owner
+capped the bar at); Open the app and Sign in far right. Plans and Desktop
+app are in the phone menu, the account menu and the footer. Sets stays the
+gallery's tab and the shelf's, as the owner had it ("one is just a tab in
+another", 2026-11-02).
 
 ## Rules it keeps
 

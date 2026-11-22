@@ -8,7 +8,7 @@ nav: The gallery
 description: Find a model to look at or build, by Top builds, what is new, who you follow, its kind, its size and the parts you own.
 ---
 
-The gallery is where you find a model to look at or build: everything people built in Brickworks and shared, with its steps. It is at [brickworks.diy/gallery](/gallery), **Gallery** first at the top of every page of the site, beside **Sets**, **Challenges** and **Docs**. Anyone can browse it, with no account.
+The gallery is where you find a model to look at or build: everything people built in Brickworks and shared, with its steps. It is at [brickworks.diy/gallery](/gallery), **Gallery** first at the top of every page of the site, beside **Challenges** and **Docs**. Anyone can browse it, with no account.
 
 <!-- covers
 ui:gallery page
