@@ -301,14 +301,14 @@ static func where_words(answer: Dictionary, name_of: Callable) -> String:
 		_listed(others, 6)]
 
 
-## "4, 9 and 12", or "4, 9, 12 and 7 more" past [param most].
+## "4, 9, 12", or "4, 9, 12, …" past [param most]: commas alone, which every
+## language reads as they are. Never "%s and %s" as words of their own: the
+## app translates a line by its patterns, and that one matched every name
+## with an "and" in it ("A sports car, and its driver" came out half German).
 static func _listed(items: PackedStringArray, most: int = 12) -> String:
 	if items.size() > most:
-		var more: int = items.size() - most
-		return "%s and %d more" % [", ".join(items.slice(0, most)), more]
-	if items.size() <= 1:
-		return "".join(items)
-	return "%s and %s" % [", ".join(items.slice(0, items.size() - 1)), items[-1]]
+		return ", ".join(items.slice(0, most)) + ", …"
+	return ", ".join(items)
 
 
 # -- the card ---------------------------------------------------------------------
@@ -523,7 +523,7 @@ func _lay_steps(read: Dictionary, at: int) -> void:
 		_step_buttons.append(button)
 	if hits.size() > STEPS_SHOWN:
 		var more := Label.new()
-		more.text = "and %d more" % (hits.size() - STEPS_SHOWN)
+		more.text = "+%d" % (hits.size() - STEPS_SHOWN)
 		more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_steps_row.add_child(more)
 		_size_child(more)

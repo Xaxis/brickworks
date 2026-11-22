@@ -15926,12 +15926,6 @@ msgstr "%d kommen in Bauschritt %s"
 msgid "%s, the first of %d steps that place it; the others: %s"
 msgstr "%s, der erste von %d Bauschritten, die es setzen; die anderen: %s"
 
-msgid "%s and %s"
-msgstr "%s und %s"
-
-msgid "and %d more"
-msgstr "und %d weitere"
-
 msgid "Close where the part goes"
 msgstr "Schließen, wo das Teil hinkommt"
 

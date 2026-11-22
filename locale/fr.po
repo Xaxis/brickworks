@@ -15926,12 +15926,6 @@ msgstr "%d vont à l’étape %s"
 msgid "%s, the first of %d steps that place it; the others: %s"
 msgstr "%s, la première des %d étapes qui la posent ; les autres : %s"
 
-msgid "%s and %s"
-msgstr "%s et %s"
-
-msgid "and %d more"
-msgstr "et %d de plus"
-
 msgid "Close where the part goes"
 msgstr "Fermer l’emplacement de la pièce"
 
