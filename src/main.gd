@@ -3039,6 +3039,11 @@ func _enter_view() -> void:
 	_build_mode.by_part_changed.connect(func(_on: bool) -> void: _build_go(_build_page))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
+	# "Where does this go?" (partstep): what it reads a photo's part against,
+	# and the page it goes to with the part's place lit.
+	_build_mode.set("world", _world)
+	_build_mode.set("library", _library)
+	_build_mode.place_wanted.connect(_build_place)
 	for view: StepComments in [_share_view.comments, _build_mode.comments]:
 		view.opened.connect(_comments_opened)
 		view.send_wanted.connect(_send_comment.bind(view))
@@ -3589,6 +3594,7 @@ func _make_build_pages(made: Array[Instructions.Step]) -> void:
 	if _build_pages != null:
 		_build_pages.stop()
 	_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	_build_mode.set("pages", _build_pages)
 	_build_pages.turned_over.connect(_page_turned_over)
 	_turn_pages_over(_build_pages)
 	# The timeline's order, when the pages are its steps (they are, unless
@@ -3797,6 +3803,24 @@ func _build_next() -> void:
 		_build_go(_build_page, true, _build_part + 1)
 	else:
 		_build_go(_build_page + 1, true)
+
+
+## "Where does this go?" answered, or a step chosen on its card (partstep):
+## [param page] shown with [param bricks], the part's place, lit. Building a
+## part at a time, at that part itself, which lights it alone; the step whole,
+## only the part's place outlined of the step's new parts.
+func _build_place(page: int, bricks: Dictionary) -> void:
+	if _build_pages == null or not _build_mode.is_open() or _party_pages:
+		return
+	var part: int = 1
+	if _build_mode.by_part:
+		for brick_id: int in bricks:
+			var at: int = _build_pages.part_of(page, brick_id)
+			if at > 0:
+				part = at if part <= 1 else mini(part, at)
+	_build_go(page, false, part)
+	if not _build_mode.by_part and not bricks.is_empty():
+		_build_outline.show_selection(bricks)
 
 
 ## Back: one part taken off, building a part at a time, and from a page's
@@ -11852,6 +11876,7 @@ func _party_build() -> void:
 	if _build_pages != null:
 		_build_pages.stop()
 	_build_pages = BuildSteps.of(_world, _library, pages, _store.scenery)
+	_build_mode.set("pages", _build_pages)
 	_build_pages.turned_over.connect(_page_turned_over)
 	_turn_pages_over(_build_pages)
 	# Its own order: the world lays its parts out again for it.

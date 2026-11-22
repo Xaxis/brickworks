@@ -306,7 +306,23 @@ func faded(page: int, part: int = 0) -> Dictionary:
 	return out
 
 
+## The bricks [param page] adds, each once, in the order its step lists
+## them: none on the cover, nor for a finished sub-assembly it puts on.
+## What "Where does this go?" reads a page by (PartStep).
+func added(page: int) -> PackedInt64Array:
+	return _added[clamped(page)]
+
+
 # -- a part at a time ------------------------------------------------------
+
+
+## The part of [param page] that puts [param brick_id] down, a part at a
+## time (from 1), or 0 where the page does not add it.
+func part_of(page: int, brick_id: int) -> int:
+	page = clamped(page)
+	if page == 0 or int(_rank.get(brick_id, -1)) != page:
+		return 0
+	return int(_place[brick_id]) + 1 + (0 if _put_on[page].is_empty() else 1)
 
 
 ## How many things [param page] puts down a part at a time: each part it

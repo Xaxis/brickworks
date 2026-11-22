@@ -4190,10 +4190,14 @@
       "readOnlyHint": false,
       "title": "Edit the build steps"
     },
-    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step (a step= past the last makes a new last step of them); \"next\" or \"prev\" moves bricks= a step later or earlier, and on from the last step makes a new one; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off. callout_step= with step= names a step inside the callout step= puts on. A sub-model placed more than once has one set of steps: a name given to one of its steps is every copy's. find= lists only the steps that place a part, by its number, name or colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; a part in a sub-model is found in the sub-model's own step that puts it on.",
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step (a step= past the last makes a new last step of them); \"next\" or \"prev\" moves bricks= a step later or earlier, and on from the last step makes a new one; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off. callout_step= with step= names a step inside the callout step= puts on. A sub-model placed more than once has one set of steps: a name given to one of its steps is every copy's. find= lists only the steps that place a part, by its number, name or colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; a part in a sub-model is found in the sub-model's own step that puts it on. picture_data= (base64) or picture_url= instead: a photo of a part the person holds, named by photo search (Brickognize, a third party: only the photo is sent, never the model), answered with its top three guesses, the model's parts first, and the first step from from= that places it, with every other one. Brickognize may keep the photo and train on it, and it is for personal, non-commercial use: tell the person so and give agreed=true once they agree, unless they already have in the parts bin.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "agreed": {
+          "description": "with a picture: true once the person, told the photo goes to Brickognize, a third party, has agreed",
+          "type": "boolean"
+        },
         "bricks": {
           "description": "part numbers from look_at_model, for to, next, prev and new",
           "items": {
@@ -4230,6 +4234,14 @@
             "delete",
             "name"
           ],
+          "type": "string"
+        },
+        "picture_data": {
+          "description": "for list: a photo of a part the person holds, its bytes as base64 (or a data: URI): the steps that place it",
+          "type": "string"
+        },
+        "picture_url": {
+          "description": "for list: an http(s) link to a photo of a part the person holds",
           "type": "string"
         },
         "step": {

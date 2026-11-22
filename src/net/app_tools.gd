@@ -478,7 +478,15 @@ func definitions() -> Array:
 				# stepsearch: the steps that place a part, as the timeline's find.
 				+ " find= lists only the steps that place a part, by its number, name or "
 				+ "colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; "
-				+ "a part in a sub-model is found in the sub-model's own step that puts it on."),
+				+ "a part in a sub-model is found in the sub-model's own step that puts it on."
+				# partstep: a photo of the part in the person's hand, to its step.
+				+ " picture_data= (base64) or picture_url= instead: a photo of a part the person "
+				+ "holds, named by photo search (Brickognize, a third party: only the photo is sent, "
+				+ "never the model), answered with its top three guesses, the model's parts first, "
+				+ "and the first step from from= that places it, with every other one. Brickognize "
+				+ "may keep the photo and train on it, and it is for personal, non-commercial use: "
+				+ "tell the person so and give agreed=true once they agree, unless they already "
+				+ "have in the parts bin."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete", "name"]},
@@ -489,6 +497,9 @@ func definitions() -> Array:
 				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
 				"find": {"type": "string", "description": "for list: only the steps that place this part: a number (3001), a name (brick 2 x 4), a colour (red) or both (red 3001)"},
+				"picture_data": {"type": "string", "description": "for list: a photo of a part the person holds, its bytes as base64 (or a data: URI): the steps that place it"},
+				"picture_url": {"type": "string", "description": "for list: an http(s) link to a photo of a part the person holds"},
+				"agreed": {"type": "boolean", "description": "with a picture: true once the person, told the photo goes to Brickognize, a third party, has agreed"},
 			}},
 		},
 		{
@@ -2045,6 +2056,19 @@ func _edit_steps(input: Dictionary) -> String:
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
+	# partstep: a photo is the list's too, and words or a photo, not both.
+	var photo: bool = input.has("picture_data") or input.has("picture_url")
+	if photo and op != "list":
+		return "picture_data= or picture_url= finds the steps that place the part in a photo; give it with no op= (or op \"list\")."
+	if photo and input.has("find"):
+		return "Give find= a part in words, or picture_data= or picture_url= a photo of it, not both."
+	if photo and not bool(ShellPrefs.value("photo_told")) and not (input.get("agreed") is bool
+			and bool(input["agreed"])):
+		return ("Not sent. The photo goes to Brickognize (brickognize.com), a third party that "
+			+ "identifies LEGO® parts: under its terms it may keep the photo and use it to train its "
+			+ "recognition, and it is for personal, non-commercial use (Pro’s licence for commercial "
+			+ "use does not cover it). Only the photo is sent, never the model. Tell the person "
+			+ "this, and once they agree, call again with agreed=true.")
 	# stepsearch: find= is the list's, and changes nothing.
 	if input.has("find") and op != "list":
 		return "find= lists the steps that place a part; give it with no op= (or op \"list\")."
@@ -2065,6 +2089,8 @@ func _edit_steps(input: Dictionary) -> String:
 		return "There is nothing built to have steps."
 	match op:
 		"list":
+			if photo:
+				return await _photo_steps(steps, input)
 			if input.has("find"):
 				return _found_steps(steps, str(input["find"]).strip_edges())
 			return _list_steps(steps, int(input.get("from", 1)))
@@ -2898,6 +2924,98 @@ func _found_steps(steps: Array[Instructions.Step], said: String) -> String:
 			break
 		lines.append(line)
 	return "\n".join(lines)
+
+
+## The steps that place the part in a photo the person holds (partstep, as
+## Build mode's "Where does this go?"): the photo, and nothing else, asked of
+## Brickognize; its top three guesses, the model's parts first; and the first
+## step from from= that places it, how many there, and every other one.
+func _photo_steps(steps: Array[Instructions.Step], input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var picture: Image
+	if input.has("picture_data"):
+		var read: Dictionary = PictureFile.from_data(str(input["picture_data"]))
+		if read.has("error"):
+			return _sentence(str(read["error"]))
+		picture = read["image"]
+	else:
+		var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
+			PictureFile.MOST_BYTES)
+		if fetched.has("error"):
+			return str(fetched["error"])
+		picture = PictureFile.decode(fetched["bytes"])
+		if picture == null:
+			return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
+	var eye := Brickognize.new()
+	eye.url = photo_url
+	app.add_child(eye)
+	var heard: Array = []
+	eye.answered.connect(func(guesses: Array) -> void: heard.assign(["answered", guesses]))
+	eye.failed.connect(func(why: String) -> void: heard.assign(["failed", why]))
+	var asked: int = Time.get_ticks_msec()
+	eye.identify(picture)
+	while heard.is_empty() and Time.get_ticks_msec() - asked < int(Brickognize.WAIT * 1000.0) + 2000:
+		await app.get_tree().process_frame
+	var seen: Dictionary = eye.colour
+	eye.queue_free()
+	if heard.is_empty():
+		return Brickognize.trouble(HTTPRequest.RESULT_TIMEOUT, 0) + "."
+	if str(heard[0]) == "failed":
+		return _sentence(str(heard[1]))
+	var from: int = maxi(int(input.get("from", 1)), 1)
+	var first: int = steps.size()
+	for n: int in steps.size():
+		if steps[n].number >= from:
+			first = n
+			break
+	var bricks: Array = []
+	for step: Instructions.Step in steps:
+		bricks.append(step.brick_ids)
+	var answer: Dictionary = PartStep.place(heard[1], seen, library, world, bricks,
+		first)
+	var wheres: PackedStringArray = _steps_where(steps)
+	var name_of: Callable = func(index: int) -> String:
+		return "%d%s" % [steps[index].number, wheres[index]]
+	var lines := PackedStringArray(["The photo, as Brickognize sees it, most likely first (this "
+		+ "model's parts first; only the photo was sent):"])
+	var options: Array = answer["options"]
+	for n: int in options.size():
+		var option: Dictionary = options[n]
+		lines.append("  %d. %s %s, %d%% sure: %s" % [n + 1, option["part"] if not str(option["part"]).is_empty()
+			else "BrickLink " + str(option["bricklink"]), option["name"], roundi(float(option["score"]) * 100.0),
+			"in this model as %s" % ", ".join(PackedStringArray(option["parts"])) if bool(option["in_model"])
+			else "not in this model"])
+	var where: String = PartStep.where_words(answer, name_of)
+	if int(answer["picked"]) < 0:
+		lines.append(_sentence(where))
+		return "\n".join(lines)
+	var colour: PartLibrary.BrickColor = library.color(int(answer["colour"])) \
+		if int(answer["colour"]) >= 0 else null
+	lines.append("%s%s: %s" % [options[int(answer["picked"])]["name"],
+		", %s" % colour.name.replace("_", " ") if colour != null else " (any of its colours: the photo's "
+			+ "was not read)", _sentence(where)])
+	var characters: int = 0
+	for hit: Array in answer["hits"]:
+		var numbers := PackedStringArray()
+		for brick_id: int in hit[2]:
+			numbers.append("#%d" % brick_id)
+		if numbers.size() > 12:
+			var more: int = numbers.size() - 12
+			numbers = numbers.slice(0, 12)
+			numbers.append("and %d more" % more)
+		var line: String = "  %s: %d, %s%s" % [name_of.call(int(hit[0])), int(hit[1]), " ".join(numbers),
+			"  (the first from step %d)" % from if int(hit[0]) == int(answer["step"]) else ""]
+		characters += line.length()
+		if characters > 4000:
+			lines.append("  ... and more steps.")
+			break
+		lines.append(line)
+	return "\n".join(lines)
+
+
+## Where a session's photo of a part goes: Brickognize's, or a probe's stub.
+var photo_url: String = Brickognize.URL
 
 
 ## Whether [param step] is one of a sub-model's own, built where it stands

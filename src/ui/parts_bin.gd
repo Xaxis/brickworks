@@ -5375,12 +5375,8 @@ func _ask_photo() -> void:
 	if _telling == null:
 		_telling = ConfirmationDialog.new()
 		_telling.title = "Find a part from a photo"
-		_telling.dialog_text = ("The photo you choose is sent to Brickognize "
-			+ "(brickognize.com), a third party that identifies LEGO® parts. Under its "
-			+ "terms it may keep the photo and use it to train its recognition, and it is "
-			+ "for personal, non-commercial use: Pro’s licence for commercial use does not "
-			+ "cover it.\n\n"
-			+ "Nothing is sent until you choose a photo.")
+		# The words Build mode's "Where does this go?" says too (partstep).
+		_telling.dialog_text = Brickognize.TERMS
 		_telling.dialog_autowrap = true
 		_telling.ok_button_text = "Choose a photo"
 		_telling.confirmed.connect(func() -> void:
