@@ -1967,7 +1967,7 @@ func _looks_low() -> Array:
 	for brick: BrickWorld.Brick in _world.bricks():
 		if not _store.scenery.has(brick.id):
 			out.append("%s c%d %s s%d" % [brick.part_id, brick.color_code,
-				_numbers(brick.transform.translated(Vector3(0, -low, 0))), brick.step])
+				_numbers(brick.transform.translated(Vector3(0, -low, 0))), _step_said(brick)])
 	out.sort()
 	return out
 
@@ -1988,9 +1988,19 @@ func _every_part() -> Array:
 		if _store.scenery.has(brick.id):
 			continue
 		out.append("#%d %s c%d %s s%d [%s|%s] o%s" % [brick.id, brick.part_id, brick.color_code,
-			_numbers(brick.transform), brick.step, brick.group, brick.unit, brick.origin])
+			_numbers(brick.transform), _step_said(brick), brick.group, brick.unit, brick.origin])
 	out.sort()
 	return out
+
+
+## A part's step as a probe compares it: the author's, or -1 where the steps
+## are no one's. The app's own steps read back from its file
+## (BrickWorld.steps_own) are no one's: worked out at the last save, as they
+## are worked out (-1) on a model with none, and the same booklet (stepkeep2).
+## Read as they stand, the app's own file opened and saved with no STEP line
+## had "s-1" on every part, and opened again "s0", "s1" (swapfind three_deep).
+func _step_said(brick: BrickWorld.Brick) -> int:
+	return -1 if _world.steps_own else brick.step
 
 
 ## The world's tables kept by path: each copy's step, which copy of the
