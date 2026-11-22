@@ -308,16 +308,20 @@ static func read(bricks: Array, motors: Dictionary, in_language: bool = false) -
 
 ## The motors among [param bricks] and their cables, as [method read] reads
 ## them, for a caller with the library and no Simulation at hand: the
-## motors found in the same pass, as Simulation.motors_in finds them.
-static func read_with(bricks: Array, library: PartLibrary) -> Wiring:
-	return Wiring._read(bricks, {}, library, false)
+## motors found in the same pass, as Simulation.motors_in finds them. With
+## [param shown_only], a hidden part is not there, nor one in
+## [param leave]: asked of the few parts wiring reads, not first of all.
+static func read_with(bricks: Array, library: PartLibrary, leave: Dictionary = {},
+		shown_only: bool = false) -> Wiring:
+	return Wiring._read(bricks, {}, library, false, leave, shown_only)
 
 
 ## [method read], the motors given in [param motors] or, with
 ## [param library], found as each part is read. One pass over the parts, a
 ## look at each part's number: on Orthanc's 10,101 a second pass to find
 ## the motors first held the read at 57 ms (wfix2).
-static func _read(bricks: Array, motors: Dictionary, library: PartLibrary, in_language: bool) -> Wiring:
+static func _read(bricks: Array, motors: Dictionary, library: PartLibrary, in_language: bool,
+		leave: Dictionary = {}, shown_only: bool = false) -> Wiring:
 	var out := Wiring.new()
 	# Said in the person's language from the first word read, as the joins
 	# and loose plugs are said once, here.
@@ -336,11 +340,13 @@ static func _read(bricks: Array, motors: Dictionary, library: PartLibrary, in_la
 		if seen == null:
 			seen = Wiring._class_of(brick.part_id, library, finds)
 			known[brick.part_id] = seen
+		# Nothing wiring reads, unless Simulate's motors say it is one.
+		if seen is bool and (finds or not motors.has(brick.id)):
+			continue
+		if shown_only and brick.hidden or leave.has(brick.id):
+			continue
 		var motor: String = ""
 		if seen is bool:
-			# Nothing wiring reads, unless Simulate's motors say it is one.
-			if finds or not motors.has(brick.id):
-				continue
 			motor = str(motors[brick.id])
 			seen = [""]
 		elif not finds:
@@ -458,11 +464,7 @@ static func _read(bricks: Array, motors: Dictionary, library: PartLibrary, in_la
 static func places(world: BrickWorld, library: PartLibrary, kind: String, skip: Dictionary = {}) -> Array:
 	var spec: Dictionary = Flex.KINDS[kind]
 	var system: String = str(spec["electric"])
-	var bricks: Array = []
-	for brick: BrickWorld.Brick in world.bricks():
-		if not brick.hidden and not skip.has(brick.id):
-			bricks.append(brick)
-	var wired: Wiring = Wiring.read_with(bricks, library)
+	var wired: Wiring = Wiring.read_with(world.bricks(), library, skip, true)
 	var taken: Dictionary = {}   ## point key -> why
 	for join: Array in wired.joins:
 		if str(join[4]) != "seat":
