@@ -438,6 +438,9 @@ func _process(_delta: float) -> void:
 		return
 	_looked_at = now
 	_refresh(false)
+	# Asleep once it has looked since the last thing that happened (Wake).
+	if not Wake.owed(_looked_at):
+		Wake.rest(self)
 
 
 func _refresh(_now: bool) -> void:

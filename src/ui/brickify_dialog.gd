@@ -623,6 +623,8 @@ func _process(delta: float) -> void:
 	# saying Brickify had started was drawn 1.6 s after the press, behind
 	# them (2026-10-12).
 	if not visible or _turntable == null or _busy or _landed:
+		if not visible:
+			Wake.rest(self)
 		return
 	if not GpuFence.passed(_turned):
 		return

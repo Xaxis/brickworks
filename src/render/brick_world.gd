@@ -408,6 +408,10 @@ var _ghosts: Dictionary = {}  ## int id -> true
 
 func _note(event: Dictionary) -> void:
 	revision += 1
+	# Whatever shows the model looks at it again (Wake): an edit by the
+	# connector or a Together peer comes with no input of this window's.
+	if is_inside_tree():
+		Wake.all("world")
 	if not keeps_history:
 		return
 	if event.has("id"):
@@ -1745,6 +1749,8 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		return []
 	_stop_reveal()
 	revision += 1
+	if is_inside_tree():
+		Wake.all("world")
 	_spans.clear()
 
 	# Turn about the centre of the footprint, snapped to the stud grid so

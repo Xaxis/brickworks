@@ -80,6 +80,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if store == null or world == null or camera == null:
+		Wake.rest(self)
 		return
 	var shown: Dictionary = {}
 	var lift: Vector3 = store.lift()
@@ -108,6 +109,9 @@ func _process(_delta: float) -> void:
 			_marks.erase(id)
 	if _card.visible and store.pins.named(_card_pin) == null:
 		_card.hide()
+	# Asleep at rest (Wake): the marks move with the view (a drawn frame)
+	# and change with a pin (a press, a Together answer).
+	Wake.rest(self)
 
 
 func _mark(id: String) -> Button:

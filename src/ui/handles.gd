@@ -697,6 +697,7 @@ func _process(_delta: float) -> void:
 		if _overlays != null and _overlays.is_shown():
 			_overlays.show_drawn(false)
 			_drawn = []
+		Wake.rest(self)
 		return
 	if not drag.is_empty():
 		_sweep()
@@ -712,6 +713,10 @@ func _process(_delta: float) -> void:
 	if now != _drawn or not _overlays.is_shown():
 		_drawn = now
 		_overlays.show_drawn(true)
+	# Asleep with no drag (Wake): what it draws follows the view, the
+	# pointer and the selection, each a drawn frame or a press.
+	if drag.is_empty():
+		Wake.rest(self)
 
 
 ## The handles as [param view] shows them, drawn on [param canvas] in the

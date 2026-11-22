@@ -126,6 +126,9 @@ var _pointer_found: Variant = null
 var _told_page_at: int = 0
 ## How long the page may go untold while the view turns (_tell_page).
 const TELL_MOVING_MS := 2000
+## ...and while nothing happens (Wake), once it has been told what the last
+## thing that happened left.
+const TELL_RESTING_MS := 2000
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
 var _told_moment: Array = []
 ## ...and how long telling it took the last time, which is a frame's work
@@ -850,6 +853,13 @@ func _tell_page() -> void:
 	# every frame of the turn. Nothing told is drawn.
 	if moment == _told_moment and _camera != null and _camera.is_moving() \
 			and now - _told_page_at < TELL_MOVING_MS:
+		return
+	# At rest, told once after the last thing that happened (an input, an
+	# edit, a frame drawn, an answer, a check's question: Wake), then every
+	# TELL_RESTING_MS: twice a second, a still phone at a quarter speed
+	# spent 5 to 13 ms of a frame on it for nobody (idlesleep).
+	if moment == _told_moment and not Wake.owed(_told_page_at) and Wake.on \
+			and now - _told_page_at < TELL_RESTING_MS:
 		return
 	_told_page_at = now
 	_told_moment = moment
@@ -1826,6 +1836,8 @@ func _ready() -> void:
 	Look.dialogs()
 	Look.buttons()
 	IdleDraw.for_the_app()
+	# Panels asleep at rest, woken by what gives them work (Wake).
+	Wake.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	Tooltips.keep_inside(get_window())
 	# The window's close button closes it with a dialog up too.
@@ -2968,7 +2980,7 @@ func _enter_view() -> void:
 	# What a drag says goes in the viewer's own pill, and what it changes is
 	# this visit's alone: the store writes nothing, and Reset undoes it.
 	if _grab_drag != null:
-		_grab_drag.set_process(false)
+		Wake.off(_grab_drag)
 		_grab_drag.say = _play_says
 		_grab_drag.edited = _played
 		_grab_drag.show_marks = false
@@ -4375,7 +4387,7 @@ func _play_stop() -> void:
 	if _grab_drag != null:
 		if _grab_drag.is_grabbing() or _grab_drag.is_settling():
 			_grab_drag.cancel()
-		_grab_drag.set_process(false)
+		Wake.off(_grab_drag)
 	_grabbing = false
 	_motion_stop()
 	_motion_link = ""

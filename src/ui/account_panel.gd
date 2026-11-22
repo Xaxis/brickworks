@@ -304,6 +304,8 @@ func _notification(what: int) -> void:
 ## the browser had not answered, and went on saying it (keep_flow, 2026-10-14).
 func _process(_delta: float) -> void:
 	if not visible or _kept == null:
+		if not visible:
+			Wake.rest(self)
 		return
 	var now: String = StorageKeep.words()
 	if _kept.text != now:

@@ -93,6 +93,8 @@ func clear() -> void:
 func _process(_delta: float) -> void:
 	if report != null and world != null and world.revision != _revision:
 		clear()
+	# Asleep (Wake): an edit wakes it.
+	Wake.rest(self)
 
 
 func colour() -> Color:

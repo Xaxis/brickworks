@@ -1306,6 +1306,12 @@ func _answer(token: String, work: Dictionary) -> void:
 	var looking: bool = Later.script(&"ViewerTools").handles(tool)
 	var heard: String = "" if looking or tool.is_empty() else heard_before(request)
 	if not looking:
+		# Claude's doing, drawn as the person's own input is, held or not
+		# (GpuFence): a wait for the card that the call itself begins (the
+		# first picture of a session waits for everything queued) held the
+		# drawing from before the frame that would show the call, and the
+		# panel saying it and the brick came 7 to 1449 frames late.
+		GpuFence.answer()
 		if not tool.is_empty():
 			_chat_called(request, tool, arguments)
 		called.emit(tool, arguments, str(_chat_said(request).get("chat", "")))

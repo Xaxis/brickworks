@@ -1597,6 +1597,9 @@ func _process(_delta: float) -> void:
 				"%s has stopped calling for now." % _claude_who if _claude_built
 				else "%s has stopped calling. Ask it to build in your chat." % _claude_who)
 	if not _working:
+		# No card of Claude's and nothing designing, asleep (Wake).
+		if not _claude_card():
+			Wake.rest(self)
 		return
 	if _run != null and is_instance_valid(_run):
 		_run_clock.text = _elapsed()
