@@ -40,6 +40,9 @@ models/design.ldr
 # The design bench's runs: designs, renders, fetched photographs, the judge's
 # replies. Its summary is docs/DESIGN_SCORES.md; photographs are not ours to commit.
 bench/results/
+# The design ladder: rungs made from held-out sets' own files and their renders
+# (tools/design_ladder.py, 159 MB). An answer key, kept in the main checkout only.
+bench/ladder/
 .vercel
 tools/web/node_modules/
 tools/web/package-lock.json
