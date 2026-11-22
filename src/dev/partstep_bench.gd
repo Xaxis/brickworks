@@ -331,17 +331,21 @@ func _ask_all() -> void:
 				"options": options, "top3": right_part, "rank": rank, "picked_right": picked_right,
 				"home": home, "expected": expected, "shown": shown,
 				"step_right": shown == expected, "colour_read": int(card["colour"]),
-				"ms": int(card["photo_ms"]), "read_us": int(card["read_us"]), "where": card["where"],
+				"ms": int(card["photo_ms"]), "read_us": int(card["read_us"]), "index_us": int(card["index_us"]), "where": card["where"],
 				"title": card["title"]}
 			rows.append(row)
-			print("  %s  %-34s top3 %s (rank %d)  step %s (from %d: %d, wanted %d)  %d ms (read %.1f ms)  %s" % [
+			print("  %s  %-34s top3 %s (rank %d)  step %s (from %d: %d, wanted %d)  %d ms (read %.1f ms, index %.1f ms)  %s" % [
 				"ok  " if right_part and shown == expected else "miss", str(one["file"]).left(34),
 				"yes" if right_part else "no ", rank, "right" if shown == expected else "WRONG",
-				home, shown, expected, int(card["photo_ms"]), int(card["read_us"]) / 1000.0, str(options)])
+				home, shown, expected, int(card["photo_ms"]), int(card["read_us"]) / 1000.0, int(card["index_us"]) / 1000.0, str(options)])
 			(mode.get("_card") as PartStep).hide_card()
 			mode.set("_home", -1)
 			# Brickognize's own pace: a photo every two seconds or so.
 			await _wait(1.5)
+		# Its page turns are worked out a slice a frame: stopped before its
+		# world goes, or the next slice reads a freed one.
+		pages.stop()
+		await _frames(2)
 		main.queue_free()
 		await _frames(10)
 	var top3: int = rows.filter(func(row: Dictionary) -> bool: return bool(row["top3"])).size()

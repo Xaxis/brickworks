@@ -68,25 +68,14 @@ const TARGET := 44.0
 ##   "count": how many it places; "built": how many of the hits are before
 ##   [param from].
 static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world: BrickWorld,
-		steps: Array, from: int, pick: int = -1) -> Dictionary:
-	# The model's parts, each by the names a shop or a print may give it.
-	var colours_of: Dictionary = {}
-	for bricks: Variant in steps:
-		for brick_id: int in bricks:
-			var brick: BrickWorld.Brick = world.get_brick(brick_id)
-			if brick == null:
-				continue
-			if not colours_of.has(brick.part_id):
-				colours_of[brick.part_id] = {}
-			var counted: Dictionary = colours_of[brick.part_id]
-			counted[brick.color_code] = int(counted.get(brick.color_code, 0)) + 1
-	var by_key: Dictionary = {}
-	for part_id: String in colours_of:
-		for key: String in _keys(library, part_id):
-			if not by_key.has(key):
-				by_key[key] = {}
-			(by_key[key] as Dictionary)[part_id] = true
-	# The guesses, as parts here and as the model's.
+		steps: Array, from: int, pick: int = -1, index: Dictionary = {}) -> Dictionary:
+	if index.is_empty():
+		index = index_of(library, world, steps)
+	var colours_of: Dictionary = index["colours_of"]
+	var by_key: Dictionary = index["by_key"]
+	# The guesses, each as the model's parts it is. Matched by numbers alone,
+	# never through PartLibrary.by_shop or current: the first call of either
+	# reads the whole catalogue, 0.9 s of one frame on the box.
 	var named: Array = []
 	var seen_numbers: Dictionary = {}
 	for raw: Variant in guesses:
@@ -94,19 +83,22 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 			continue
 		var guess: Dictionary = raw
 		var number: String = str(guess.get("bricklink", "")).strip_edges()
-		var here: String = library.by_shop(number) if not number.is_empty() else ""
-		var own: String = here if not here.is_empty() else "bl:" + number.to_lower()
-		if number.is_empty() or seen_numbers.has(own):
+		var key: String = number.to_lower()
+		if number.is_empty() or seen_numbers.has(key):
 			continue
-		seen_numbers[own] = true
+		seen_numbers[key] = true
+		# A number LDraw has as a part goes by that part's numbers too: 54657
+		# moved to 44302.
 		var parts: Dictionary = {}
-		for key: String in ([] if here.is_empty() else _keys(library, here)) + ["bl:" + number.to_lower()]:
-			parts.merge(by_key.get(key, {}))
-		var info: PartLibrary.PartInfo = library.parts.get(here) if not here.is_empty() else null
+		for one: String in numbers_of(library, key) if library.parts.has(key) else [key, _unlettered(key)]:
+			parts.merge(by_key.get(one, {}))
+		var ids: Array = parts.keys()
+		ids.sort()
+		var info: PartLibrary.PartInfo = library.parts.get(ids[0]) if not ids.is_empty() else null
 		named.append({"bricklink": number,
 			"name": info.name.strip_edges().replace("  ", " ") if info != null else str(guess.get("name", number)),
-			"score": float(guess.get("score", 0.0)), "part": here, "parts": parts.keys(),
-			"in_model": not parts.is_empty()})
+			"score": float(guess.get("score", 0.0)), "part": str(ids[0]) if not ids.is_empty() else "",
+			"parts": ids, "in_model": not ids.is_empty()})
 	var options: Array = named.filter(func(one: Dictionary) -> bool: return bool(one["in_model"]))
 	options.append_array(named.filter(func(one: Dictionary) -> bool: return not bool(one["in_model"])))
 	options = options.slice(0, SHOWN)
@@ -130,16 +122,16 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 			colours[code] = int(colours.get(code, 0)) + int(colours_of[part_id][code])
 	var colour: int = colour_for(library, seen, colours)
 	var hits: Array = []
-	for index: int in steps.size():
+	for at: int in steps.size():
 		var count: int = 0
 		var lit: Dictionary = {}
-		for brick_id: int in steps[index]:
+		for brick_id: int in steps[at]:
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
 			if brick != null and wanted.has(brick.part_id) and (colour < 0 or brick.color_code == colour):
 				count += 1
 				lit[brick_id] = true
 		if count > 0:
-			hits.append([index, count, lit])
+			hits.append([at, count, lit])
 	var step: int = -1
 	var placed: int = 0
 	var built: int = 0
@@ -154,16 +146,62 @@ static func place(guesses: Array, seen: Dictionary, library: PartLibrary, world:
 	return out
 
 
-## The names a part goes by, for a photo's answer to meet the model's: the
-## part made now in its shape, the plain part a print is a version of, and
-## the number BrickLink lists it under.
-static func _keys(library: PartLibrary, part_id: String) -> Array:
-	var keys: Array = [library.current(part_id)]
-	var plain: String = library.current(PartPrints.plain_of(library, part_id))
-	if not keys.has(plain):
-		keys.append(plain)
-	keys.append("bl:" + library.shop_part(part_id, "BrickLink").to_lower())
-	return keys
+## The model's parts, for [method place] to read photos against: each
+## part's colours ({"colours_of": part id -> {LDraw code -> how many}}), and
+## its parts by every number they go by ({"by_key": number -> {part id ->
+## true}}, numbers_of). [param steps] as [method place] has them. Kept by a
+## caller reading several photos against the same steps: on 10179 it is most
+## of a frame.
+static func index_of(library: PartLibrary, world: BrickWorld, steps: Array) -> Dictionary:
+	var colours_of: Dictionary = {}
+	for bricks: Variant in steps:
+		for brick_id: int in bricks:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick == null:
+				continue
+			if not colours_of.has(brick.part_id):
+				colours_of[brick.part_id] = {}
+			var counted: Dictionary = colours_of[brick.part_id]
+			counted[brick.color_code] = int(counted.get(brick.color_code, 0)) + 1
+	var by_key: Dictionary = {}
+	for part_id: String in colours_of:
+		for key: String in numbers_of(library, part_id):
+			if not by_key.has(key):
+				by_key[key] = {}
+			(by_key[key] as Dictionary)[part_id] = true
+	return {"colours_of": colours_of, "by_key": by_key}
+
+
+## The numbers a part of the model goes by, in lower case, for a photo's
+## BrickLink number to meet it: its own, each BrickLink number LDraw records
+## for it (6141 is BrickLink's 4073; 44302a is 54657 too), where it moved to,
+## and the same of the plain part a print is a version of; each also without
+## the letter a mould's version adds (3023b is BrickLink's 3023, and 3660a
+## and 3660b are one part to a builder holding it).
+static func numbers_of(library: PartLibrary, part_id: String) -> Array:
+	var said: Array = []
+	for one: String in [part_id, library.resolve(part_id), PartPrints.plain_of(library, part_id)]:
+		said.append(one)
+		var info: PartLibrary.PartInfo = library.parts.get(one)
+		if info == null:
+			continue
+		for word: String in info.keywords:
+			if word.to_lower().begins_with("bricklink ") and word.get_slice_count(" ") == 2:
+				said.append(word.get_slice(" ", 1))
+	var out: Array = []
+	for one: String in said:
+		for number: String in [one.to_lower(), _unlettered(one.to_lower())]:
+			if not out.has(number):
+				out.append(number)
+	return out
+
+
+## [param number] without a mould's one trailing letter after its digits
+## ("3023b" 3023, "44302a" 44302); as it is otherwise.
+static func _unlettered(number: String) -> String:
+	if number.length() >= 2 and number[-1] >= "a" and number[-1] <= "z" and number[-2].is_valid_int():
+		return number.left(-1)
+	return number
 
 
 ## The colour a part in hand is read in, of the model's [param colours]
