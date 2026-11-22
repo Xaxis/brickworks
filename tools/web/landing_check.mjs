@@ -167,7 +167,7 @@ async function firstScreen(label, width, height, theme) {
       skeletons: panel?.querySelectorAll(".skeleton-card").length || 0,
       pictures,
       search: whole(document.getElementById("find-q")),
-      start: whole(document.querySelector('#home a[href$="/app"]')),
+      start: whole(document.querySelector('#home a[href^="/app"]')),
       shifts: window.__shifts || [],
     };
   });

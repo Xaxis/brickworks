@@ -36,9 +36,9 @@ const plain = (words) => String(words || "").normalize("NFKD").replace(/\p{M}/gu
 
 /// What [q] finds: {models, builders, sets}.
 export async function found(q) {
-  const asked = encodeURIComponent(q);
-  const [listed, library] = await Promise.all([ask(`/api/share?op=list&page=1&sort=top&q=${asked}`),
-    ask(`/api/share?op=library&page=1&q=${asked}`)]);
+  const encoded = encodeURIComponent(q);
+  const [listed, library] = await Promise.all([ask(`/api/share?op=list&page=1&sort=top&q=${encoded}`),
+    ask(`/api/share?op=library&page=1&q=${encoded}`)]);
   const models = (listed?.models || []).filter((m) => m && MODEL.test(String(m.id)) && pictureOf(m));
   const words = plain(q).split(/\s+/).filter((word) => word.length > 1);
   const builders = [];
@@ -90,11 +90,15 @@ export function rowsHtml(q, got) {
   return parts.join("");
 }
 
+/// What was typed, as it is asked: no zero-width characters, every run of
+/// spaces (a no-break one too) one space, at most 100 characters.
+export const asked = (typed) => String(typed || "").replace(/[\u200B-\u200D\u2060\uFEFF]/g, "").replace(/\s+/g, " ").trim().slice(0, 100);
+
 /// The search's suggestions on [form] and its [field].
 export function findAsYouType(form, field) {
   const list = document.getElementById(field.getAttribute("aria-controls"));
   if (!list) return;
-  let asked = 0;
+  let question = 0;
   let timer = 0;
   const options = () => [...list.querySelectorAll('[role="option"]')];
   const close = () => {
@@ -111,14 +115,14 @@ export function findAsYouType(form, field) {
     all[at].scrollIntoView({ block: "nearest" });
   };
   const show = async () => {
-    const q = field.value.trim().replace(/\s+/g, " ").slice(0, 100);
-    const mine = ++asked;
+    const q = asked(field.value);
+    const mine = ++question;
     if (q.length < 2) {
       close();
       return;
     }
     const got = await found(q);
-    if (mine !== asked) return;
+    if (mine !== question) return;
     list.innerHTML = rowsHtml(q, got);
     list.hidden = false;
     field.setAttribute("aria-expanded", "true");
@@ -145,16 +149,16 @@ export function findAsYouType(form, field) {
   });
   // Sent: the gallery's search, in the page's language.
   form.addEventListener("submit", (event) => {
-    const q = field.value.trim();
+    const q = asked(field.value);
     event.preventDefault();
-    location.assign(`${langAt()}/gallery${q ? `?q=${encodeURIComponent(q.slice(0, 100))}` : ""}`);
+    location.assign(`${langAt()}/gallery${q ? `?q=${encodeURIComponent(q)}` : ""}`);
   });
   // A press anywhere else closes it; a press on a row opens its link.
   document.addEventListener("pointerdown", (event) => {
     if (!list.hidden && !form.contains(event.target)) close();
   });
   field.addEventListener("focus", () => {
-    if (field.value.trim().length >= 2 && list.innerHTML) {
+    if (asked(field.value).length >= 2 && list.innerHTML) {
       list.hidden = false;
       field.setAttribute("aria-expanded", "true");
     }
@@ -163,5 +167,5 @@ export function findAsYouType(form, field) {
     if (!form.contains(event.relatedTarget)) close();
   });
   // Typed before this was in: asked at once.
-  if (field.value.trim().length >= 2) show();
+  if (asked(field.value).length >= 2) show();
 }
