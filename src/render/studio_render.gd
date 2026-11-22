@@ -97,10 +97,30 @@ const PRODUCT_MOST := 3.0
 ## whose shadow drew a crescent inside every stud that no product photograph
 ## has. A dark backdrop keeps the rig's pool of light.
 const TENT_TOP := 3.0
+## The tent's key (photoreal2): a soft box this bright at its face, against
+## the panel's 1 and the walls' TENT_FILL (path_tracer.glsl), this many
+## radians from its middle to its edge. A photograph's tent is never even:
+## the red slope's photograph has its lit face five times its shaded end.
+const TENT_KEY := 2.5
+const TENT_KEY_SPREAD := 0.45
 ## How light a backdrop is at least to be a tent's paper rather than a pool
 ## of light, and to be the photograph's white the exposure is metered to.
 const TENT_BACKDROP := 0.2
 const PAPER_WHITE := 0.8
+## The product look on a backdrop, path traced, drawn as a camera draws
+## (photoreal2): a white card where the model stands is exposed to the
+## paper's own light this many stops over (a product photograph's paper is
+## exposed a little past white), the camera saturates the light by
+## PHOTO_LINEAR_SATURATION as its colour matrix does, and its response is
+## path_tracer_resolve.glsl's camera_curve, whose knee and top these are.
+## LDraw's colours, which the plastic keeps exactly as the file says, came
+## out duller than a camera draws the same parts. All four were fitted to
+## the tent close-ups' photographs from the tracer's raw light
+## (tools/bench/photoreal.py colour, docs/RENDERING.md 5f).
+const PHOTO_EV := 0.33
+const PHOTO_LINEAR_SATURATION := 1.6
+const CAMERA_KNEE := 0.6
+const CAMERA_TOP := 2.5
 
 ## Where the camera looks from: key -> [words, direction from the model].
 ## Front is +z, as ModelShot has it.
@@ -292,6 +312,12 @@ func _doing(what: String) -> void:
 	_step = what if _step.is_empty() else _step + ", " + what
 
 
+## Keep the last path-traced picture's light before its exposure and tone
+## curve (PathTracer.mean_image) in [member last_mean], with the exposure it
+## was drawn at in [member last_drawn_at]: the photo bench's colour measure.
+var keep_mean: bool = false
+var last_mean: Image = null
+var last_drawn_at: float = 0.0
 ## What the last render was drawn with: a probe reads it.
 var last_exposure: float = 1.0
 var last_level: float = 1.0
@@ -2530,7 +2556,18 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# raster is metered: the model's own lights add to it (SceneLights). None
 	# of it in the Dark light, as dark as it is.
 	var catcher: bool = _catches(settings)
-	for round: int in (0 if settings.lighting == "dark" else 5):
+	var linear_saturation: float = 1.0
+	if catcher:
+		tonemapper = 4
+		white = 1.0
+		contrast = 1.0
+		saturation = 1.0
+		linear_saturation = PHOTO_LINEAR_SATURATION
+		scale = await _meter_card(settings, plan, shot, small, exposure, tonemapper, white, contrast,
+			saturation)
+		if scale <= 0.0:
+			return null
+	for round: int in (0 if settings.lighting == "dark" or catcher else 5):
 		_tracer.scene = _traced_scene(settings, plan, shot, small, level, false)
 		if not _tracer.begin(small):
 			return null
@@ -2567,10 +2604,16 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# exactly its colour.
 	var caught := Color(-1.0, 0.0, 0.0)
 	if catcher:
+		# Each channel's light through the curve, then the camera's linear
+		# saturation undone round its luminance, which it keeps.
 		var at: float = maxf(exposure * scale, 0.0001)
-		caught = Color(_untoned(settings.backdrop.r, tonemapper, white, contrast) / at,
-			_untoned(settings.backdrop.g, tonemapper, white, contrast) / at,
-			_untoned(settings.backdrop.b, tonemapper, white, contrast) / at)
+		var need := Color(_untoned(settings.backdrop.r, tonemapper, white, contrast),
+			_untoned(settings.backdrop.g, tonemapper, white, contrast),
+			_untoned(settings.backdrop.b, tonemapper, white, contrast))
+		var grey: float = 0.2126 * need.r + 0.7152 * need.g + 0.0722 * need.b
+		caught = Color(maxf(grey + (need.r - grey) / linear_saturation, 0.0) / at,
+			maxf(grey + (need.g - grey) / linear_saturation, 0.0) / at,
+			maxf(grey + (need.b - grey) / linear_saturation, 0.0) / at)
 	_tracer.scene = _traced_scene(settings, plan, shot, picture, level, true, most, caught)
 	if not _tracer.begin(picture):
 		return null
@@ -2625,7 +2668,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
 			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-				saturation, settings.transparent, true, clean)
+				saturation, settings.transparent, true, clean, linear_saturation)
 			if so_far != null:
 				var half: int = picture.y / 2
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
@@ -2633,9 +2676,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 					Vector2i(0, half))
 	_stopping = false
 	last_samples = _tracer.samples
+	last_drawn_at = exposure * scale
+	last_mean = _tracer.mean_image() if keep_mean else null
 	_doing("reading the picture back")
 	var result: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-		saturation, settings.transparent, true, clean)
+		saturation, settings.transparent, true, clean, linear_saturation)
 	if result != null and not settings.transparent:
 		await get_tree().process_frame
 		_doing("converting")
@@ -2701,7 +2746,15 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# The lights: the rig as dressed, the key from anywhere on its area. A
 	# photographed place is its own key.
 	var lights: Array = []
-	if not tent and (place == null or (product and settings.lighting == "studio")):
+	if tent and _lights.size() > 0 and _lights[0].visible:
+		# The tent's key: a big soft box where the rig's key stands, which the
+		# light's turn moves, so each face is lit as a product photograph's
+		# are, one side bright and the other in the tent's fill. Large enough
+		# that no stud draws a crescent in another's shadow.
+		var key_from: Vector3 = _lights[0].get_meta("toward", Vector3.UP)
+		var paper: Color = _paper_tint(settings) * TENT_KEY
+		lights.append([key_from, TENT_KEY_SPREAD, paper, 1.0])
+	elif not tent and (place == null or (product and settings.lighting == "studio")):
 		for n: int in _lights.size():
 			var light: DirectionalLight3D = _lights[n]
 			if not light.visible or light.light_energy <= 0.0:
@@ -2713,7 +2766,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			lights.append([toward, plan.key_spread * 0.5 if n == 0 else 0.0, colour,
 				1.0 if light.shadow_enabled else 0.0])
 	data.append_array([1.0 if product else 0.0, float(lights.size()), most,
-		1.0 if caught.r >= 0.0 else 0.0])
+		1.0 if caught.r >= 0.0 else (-1.0 if card else 0.0)])
 	# The window's sky (main.tscn's), as its ambient light lights the model.
 	var top := Color(0.53, 0.545, 0.565)
 	var horizon := Color(0.735, 0.74, 0.75)
@@ -2813,7 +2866,11 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 	var goal: float = settings.backdrop.get_luminance()
 	if goal < PAPER_WHITE:
 		goal = 1.0
-	var want: float = _untoned(goal, tonemapper, white, contrast)
+	# The card's light is the paper's own lightness in linear light, before
+	# the curve: a white paper's card is 1, PHOTO_EV over, and the camera's
+	# shoulder draws it a little short of white (the backdrop round the model
+	# is drawn at its own colour whatever, the shadow catcher).
+	var want: float = Color(goal, goal, goal).srgb_to_linear().r * white * pow(2.0, PHOTO_EV)
 	var scale: float = 1.0
 	const DIM := 0.2
 	for round: int in 2:
@@ -2846,8 +2903,11 @@ static func _open_floor(image: Image) -> float:
 	for y: int in image.get_height():
 		for x: int in image.get_width():
 			var c: Color = image.get_pixel(x, y)
-			if c.a < 0.1:
-				levels.append(Color(c.r, c.g, c.b).get_luminance())
+			var seen: float = Color(c.r, c.g, c.b).get_luminance()
+			# Not the model, and not the sweep's rise, which the card's
+			# picture leaves black (path_tracer.glsl).
+			if c.a < 0.1 and seen > 0.002:
+				levels.append(seen)
 	if levels.is_empty():
 		return 0.0
 	levels.sort()
@@ -2858,7 +2918,12 @@ static func _open_floor(image: Image) -> float:
 ## the tone curve at [param white], to sRGB, the contrast after.
 static func _toned(light: float, tonemapper: int, white: float, contrast: float) -> float:
 	var c: float = 0.0
-	if tonemapper > 2:
+	if tonemapper > 3:
+		c = light / white
+		if c > CAMERA_KNEE:
+			var t: float = minf((c - CAMERA_KNEE) / (CAMERA_TOP - CAMERA_KNEE), 1.0)
+			c = CAMERA_KNEE + (1.0 - CAMERA_KNEE) * (2.0 * t - t * t)
+	elif tonemapper > 2:
 		c = _aces(light * 1.8) / _aces(white * 1.8)
 	else:
 		c = _filmic(light) / _filmic(white)
@@ -2869,8 +2934,14 @@ static func _toned(light: float, tonemapper: int, white: float, contrast: float)
 
 ## The light (exposed) [method _toned] draws as [param shown].
 static func _untoned(shown: float, tonemapper: int, white: float, contrast: float) -> float:
+	# The curve's top: 1.0 itself is never below it in floating point
+	# (1.055 - 0.055), and the search ran on to its end, which drew a white
+	# backdrop's model a stop too light.
+	var top: float = white * (CAMERA_TOP if tonemapper > 3 else 1.0)
+	if shown >= _toned(top, tonemapper, white, contrast) - 1e-6:
+		return top
 	var low: float = 0.0
-	var high: float = white * 2.0
+	var high: float = top
 	for _step: int in 48:
 		var middle: float = (low + high) * 0.5
 		if _toned(middle, tonemapper, white, contrast) < shown:

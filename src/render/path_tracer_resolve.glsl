@@ -29,7 +29,7 @@ layout(push_constant, std430) uniform Resolve {
 	float samples;
 	float exposure;
 	float white;
-	// 2 Filmic, 3 ACES.
+	// 2 Filmic, 3 ACES, 4 a camera's (camera_curve, white the light drawn white).
 	float tonemapper;
 	float contrast;
 	float saturation;
@@ -39,7 +39,8 @@ layout(push_constant, std430) uniform Resolve {
 	// How much grain a sample carries, relative to its level; 0 for none
 	// taken out (the window look, whose Best is as it was).
 	float denoise;
-	float unused_a;
+	// The camera's saturation in linear light, before its curve (4 alone).
+	float linear_saturation;
 	float unused_b;
 	float unused_c;
 } params;
@@ -83,6 +84,21 @@ float aces_white(float white) {
 	const float E = 0.238081;
 	float w = white * 1.8;
 	return (w * (w + A) - B) / (w * (C * w + D) + E);
+}
+
+// A camera's response (photoreal2), for the product look on a backdrop: the
+// light in proportion up to its knee, as a photograph's JPEG has it, then a
+// shoulder that reaches white at CAMERA_TOP times white, so a lit red face
+// keeps its shading rather than clipping flat (as a phone's picture of one
+// does). StudioRender._toned is the same curve; its CAMERA_KNEE and
+// CAMERA_TOP are these. Filmic drew a 50% grey near white: its shoulder
+// starts in the middle tones.
+const float CAMERA_KNEE = 0.6;
+const float CAMERA_TOP = 2.5;
+vec3 camera_curve(vec3 color) {
+	vec3 t = clamp((color - vec3(CAMERA_KNEE)) / (CAMERA_TOP - CAMERA_KNEE), vec3(0.0), vec3(1.0));
+	vec3 rolled = vec3(CAMERA_KNEE) + (1.0 - CAMERA_KNEE) * (2.0 * t - t * t);
+	return mix(color, rolled, step(vec3(CAMERA_KNEE), color));
 }
 
 vec3 linear_to_srgb(vec3 color) {
@@ -152,7 +168,13 @@ void main() {
 	vec4 sum = params.denoise > 0.0 ? cleaned(pixel, size)
 		: imageLoad(accum, pixel) / max(params.samples, 1.0);
 	vec3 color = max(sum.rgb * params.exposure, vec3(0.0));
-	if (params.tonemapper > 2.5) {
+	if (params.tonemapper > 3.5) {
+		// A camera's colour, saturated in linear light as its colour matrix
+		// does, round the light's own luminance.
+		float level = luma(color);
+		color = max(vec3(level) + (color - vec3(level)) * params.linear_saturation, vec3(0.0));
+		color = camera_curve(color / params.white);
+	} else if (params.tonemapper > 2.5) {
 		color = aces_curve(color) / aces_white(params.white);
 	} else {
 		color = filmic_curve(color) / filmic_curve(vec3(params.white)).x;

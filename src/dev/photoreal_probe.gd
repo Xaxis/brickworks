@@ -18,6 +18,14 @@
 ##   -- --samples=N     samples a pixel (default 256, Best's own)
 ##   -- --yaws=0,90     each shot from these yaws instead of its own, named
 ##                      <name>_y<yaw>, to find which way a model faces
+##   -- --turns=0,90    each shot with its light turned by these degrees instead
+##                      of its own, named <name>_t<turn>, to find where the
+##                      photograph's light stood (photoreal2)
+##   -- --lighting=K,L  each shot lit by each of these instead of its own,
+##                      named <name>[_t<turn>]_<K>
+##   -- --raw           also each picture's light before its exposure and tone
+##                      curve, <name>.exr, and what it was drawn at, <name>.json,
+##                      for tools/bench/photoreal.py colour's fit (photoreal2)
 ##   -- --car           only the car (the render probe's model) at Best, Product
 ##                      look, 1280x720, 256 samples, three times: the median at
 ##                      most CAR_MOST s (twice the 3.3-4.2 s the window look
@@ -91,6 +99,7 @@ func _run() -> void:
 	for light_name: String in ["Sun", "Fill", "Rim"]:
 		_render.rig_lights.append(_main.get_node(light_name) as DirectionalLight3D)
 	root.add_child(_render)
+	_render.keep_mean = OS.get_cmdline_user_args().has("--raw")
 	var bar: ModelBar = _main.get("_bar")
 	var car_only: bool = OS.get_cmdline_user_args().has("--car")
 	for shot: Dictionary in ([] if car_only else said["shots"]):
@@ -105,14 +114,26 @@ func _run() -> void:
 			_check("%s: %s opened" % [name, shot["model"]], false)
 			continue
 		var yaws: PackedStringArray = _arg("yaws", "").split(",", false)
+		var lit: PackedStringArray = _arg("turns", "").split(",", false)
+		var lightings: PackedStringArray = _arg("lighting", "").split(",", false)
+		if lightings.is_empty():
+			lightings.append("")
 		var turns: Array = [null] if yaws.is_empty() else Array(yaws)
 		for turn: Variant in turns:
-			var asked: Dictionary = shot.duplicate()
-			var called: String = name
-			if turn != null:
-				asked["yaw"] = float(turn)
-				called = "%s_y%s" % [name, turn]
-			await _draw(asked, called, samples, out)
+			for light: Variant in ([null] if lit.is_empty() else Array(lit)):
+				for lighting: String in lightings:
+					var asked: Dictionary = shot.duplicate()
+					var called: String = name
+					if turn != null:
+						asked["yaw"] = float(turn)
+						called = "%s_y%s" % [name, turn]
+					if light != null:
+						asked["light_turn"] = float(light)
+						called = "%s_t%s" % [called, light]
+					if not lighting.is_empty():
+						asked["lighting"] = lighting
+						called = "%s_%s" % [called, lighting]
+					await _draw(asked, called, samples, out)
 	if car_only or only.is_empty():
 		await _car(bar, out)
 	print("")
@@ -156,6 +177,11 @@ func _draw(shot: Dictionary, name: String, samples: int, out: String) -> void:
 		_check("%s drawn" % name, false)
 		return
 	picture.save_png(out + name + ".png")
+	if _render.last_mean != null:
+		_render.last_mean.save_exr(out + name + ".exr")
+		var said := FileAccess.open(out + name + ".json", FileAccess.WRITE)
+		said.store_string(JSON.stringify({"drawn_at": _render.last_drawn_at}))
+		said.close()
 	var traced: bool = _render.traced_last()
 	_check("%s: %d parts, %dx%d, %s in %.1f s" % [name, _world.brick_count(), picture.get_width(),
 		picture.get_height(), ("path traced, %d samples" % _render.last_samples) if traced

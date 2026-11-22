@@ -266,6 +266,11 @@ vec3 place_way(vec2 uv) {
 // of shadow inside a stud.
 const float TENT_COS_OUT = 0.7071;
 const float TENT_COS_IN = 0.866;
+// The walls' light, against the panel's 1 + lamp_info.z and the key's
+// (studio_render.gd's TENT_KEY): a photographed tent's walls fill the shade
+// in, never to the panel's level (the red slope's shaded end is a fifth of
+// its lit face in the photograph; walls at the panel's left it a half).
+const float TENT_FILL = 0.4;
 
 bool tent() {
 	return scene.sky.w < 0.5 && scene.lamp_info.z > 0.0;
@@ -273,9 +278,15 @@ bool tent() {
 
 vec3 tent_light(vec3 way) {
 	if (way.y < 0.0) {
-		return scene.sky.rgb * 0.6;
+		return scene.sky.rgb * 0.6 * TENT_FILL;
 	}
-	return scene.sky.rgb * (1.0 + scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y));
+	// The camera's port: the lens and the camera behind it are dark, and a
+	// glossy face turned to the camera mirrors them, not the tent's white
+	// (a top-down shot's tops came out milky, mirroring the panel).
+	vec3 to_eye = normalize(scene.origin.xyz - scene.sweep_origin.xyz);
+	float port = smoothstep(0.978, 0.988, dot(way, to_eye));
+	return scene.sky.rgb * (TENT_FILL + scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y))
+		* (1.0 - 0.97 * port);
 }
 
 // The tent's panel picked half the time (evenly over its cone), the
@@ -466,11 +477,12 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat *= 0.6;
 		}
 		if (textured > 0.5) {
-			// A slope's face is roughened in the mould: no mirror, a satin sheen.
-			s.roughness = 0.55;
-			s.specular = 0.3;
-			s.coat = 0.12;
-			s.coat_roughness = 0.3;
+			// A slope's face is roughened in the mould: no mirror, each bump
+			// of its grain a small glint.
+			s.roughness = 0.42;
+			s.specular = 0.35;
+			s.coat = 0.25;
+			s.coat_roughness = 0.18;
 		}
 	}
 	s.albedo = body;
@@ -606,6 +618,18 @@ bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
 	return hit.t >= 0.0;
 }
 
+// Clear plastic's absorption, per LDU, for the product look (photoreal2): a
+// part's colour is what light keeps after GLASS_DEPTH of it (two walls of a
+// brick, about 3 mm), and light keeps exp(-absorbed * distance) of itself
+// going through, so a thin pane is pale and a thick lens deep, as in a
+// photograph. Tinting at each face squared a pane's colour through its two
+// faces, and 6660's windscreen came out deep blue where it is pale.
+const float GLASS_DEPTH = 8.0;
+
+vec3 absorbed(vec3 colour) {
+	return -log(clamp(colour, vec3(0.02), vec3(1.0))) / GLASS_DEPTH;
+}
+
 // How much light gets through from a point towards a light [far] away:
 // none past anything solid, tinted by the clear plastic on the way.
 vec3 through_masked(vec3 from, vec3 way, float far, uint solid) {
@@ -619,12 +643,22 @@ vec3 through_masked(vec3 from, vec3 way, float far, uint solid) {
 	}
 	vec3 at = from;
 	float left = far;
+	// The product look's clear plastic darkens light by how far it goes
+	// through it (absorbed()): the faces met go in, out, in, out.
+	bool within = false;
 	for (int n = 0; n < 8; n++) {
 		if (!trace(at, way, left, MASK_GLASS, gl_RayFlagsOpaqueEXT)) {
 			return let;
 		}
 		Instance glass = instances[hit.instance];
-		let *= sqrt(max(glass.colour.rgb, vec3(0.0)));
+		if (scene.look.x > 0.5) {
+			if (within) {
+				let *= exp(-absorbed(glass.colour.rgb) * hit.t);
+			}
+			within = !within;
+		} else {
+			let *= sqrt(max(glass.colour.rgb, vec3(0.0)));
+		}
 		at = at + way * hit.t + way * 0.02;
 		left -= hit.t + 0.02;
 		if (left <= 0.0) {
@@ -652,7 +686,8 @@ float luminance(vec3 c) {
 // How much of the light that would reach a point of the sweep the model
 // lets through (photoreal2's shadow catcher): 1 in the open, less in the
 // model's shadow, tinted under clear parts. Each light once, and the sky
-// twice (once by its own pick, once by the cosine), each weighed by the
+// four times (twice by its own pick, twice by the cosine: one of each left
+// a grain in the shadow a judge named), each weighed by the
 // light it brings (the balance heuristic over the two picks), so a soft
 // overhead panel's shadow is as soft as the panel is large.
 vec3 shadow_on(vec3 at, vec3 n) {
@@ -669,10 +704,10 @@ vec3 shadow_on(vec3 at, vec3 n) {
 		all += c;
 		kept += c * (light.colour.w > 0.5 ? through_masked(at, l, 1e7, MASK_SOLID) : vec3(1.0));
 	}
-	for (int k = 0; k < 2; k++) {
+	for (int k = 0; k < 4; k++) {
 		vec3 l;
 		float own = 0.0;
-		if (k == 1) {
+		if (k % 2 == 1) {
 			l = cosine_around(n, rand2());
 		} else if (tent()) {
 			l = in_cone(vec3(0.0, 1.0, 0.0), acos(TENT_COS_OUT), rand2());
@@ -869,6 +904,7 @@ void main() {
 		// Inside clear plastic (the product look bends the path at each of
 		// its surfaces): which way the next surface bends it.
 		bool inside = false;
+		vec3 absorb = vec3(0.0);
 		int bounces = 0;
 		for (int event = 0; event < most + 8; event++) {
 			if (!trace(from, way, 1e7, 0xFFu, gl_RayFlagsOpaqueEXT)) {
@@ -882,6 +918,10 @@ void main() {
 				break;
 			}
 			Instance thing = instances[hit.instance];
+			if (inside) {
+				// Through the clear plastic it went in at.
+				carried *= exp(-absorb * hit.t);
+			}
 			vec3 at = from + way * hit.t;
 			vec3 v = -way;
 			vec3 ng = hit.geometric;
@@ -894,6 +934,14 @@ void main() {
 			}
 			if (dot(n, v) < 0.01) {
 				n = normalize(n + ng * (0.02 - dot(n, v)));
+			}
+			if (thing.info.y == KIND_PLASTIC && thing.box_max.w > 0.5) {
+				// Moulded plastic's rounded edges are its surface, as in a
+				// photograph: paths leave by the rounded normal. Leaving by the
+				// flat face's, the half of each rounding turned past the face
+				// found the part itself in every shadow ray and bounce, and every
+				// edge was drawn with a thin dark line no photograph has.
+				ng = n;
 			}
 			if (thing.info.y == KIND_GLASS) {
 				// Thin glass: what it reflects of the sky added at once, by a
@@ -914,9 +962,14 @@ void main() {
 						&& (glass_finish == FINISH_GLOW || glass_finish == FINISH_FLUORESCENT)) {
 					radiance += carried * thing.colour.rgb * scene.lamp_info.y;
 				}
-				carried *= tint * (1.0 - f);
+				// The product look's clear plastic absorbs as the path goes
+				// through it (absorbed()), not at its faces.
+				carried *= (scene.look.x > 0.5 ? vec3(1.0) : tint) * (1.0 - f);
 				from = at - ng * 0.02;
 				if (scene.look.x > 0.5) {
+					if (!inside) {
+						absorb = absorbed(thing.colour.rgb);
+					}
 					// Polycarbonate (index about 1.585) bends the path going in
 					// and back coming out, so what is behind a clear part is
 					// seen through it displaced and its walls fold the light, as
@@ -939,6 +992,13 @@ void main() {
 			}
 			if (straight && thing.info.y != KIND_SWEEP) {
 				covered = 1.0;
+			}
+			if (straight && thing.info.y == KIND_SWEEP && scene.look.w < -0.5 && ng.y < 0.98) {
+				// The white card (StudioRender._meter_card) is the floor where
+				// the model stands: the sweep's rise behind it, lit less, is
+				// left black, or a low camera metered the wall and drew the
+				// model twice as light as the card.
+				break;
 			}
 			if (straight && thing.info.y == KIND_SWEEP && scene.look.w > 0.5) {
 				// The shadow catcher: the backdrop as the eye sees it, at its
@@ -1172,10 +1232,26 @@ float logo_distance(vec2 p) {
 	return d;
 }
 
-// The logo's height, LDU: letters 0.15 high (about 0.06 mm) with soft,
-// rounded flanks, as the moulding raises them.
-float logo_height(vec2 p) {
-	return 0.15 * smoothstep(0.46, 0.08, logo_distance(p));
+// The logo's height, LDU: bold letters 0.2 high (about 0.08 mm), flat on
+// top with short steep flanks, as the moulding raises them (photoreal2), so
+// each letter reads as one shape outlined where its flanks catch the light,
+// even from straight above under a tent's soft light. The thin strokes with
+// soft flanks photoreal1 drew lit both flanks of every stroke, and each
+// letter read doubled. [param soft] widens the flank: a worn mould's
+// letters are softer.
+float logo_height(vec2 p, float soft) {
+	return 0.2 * smoothstep(0.52 + soft, 0.4, logo_distance(p));
+}
+
+// The number of the part being hit, for each stud's own logo.
+uint part_number = 0u;
+
+float stud_hash(vec2 centre, uint salt) {
+	uint h = uint(int(floor(centre.x * 0.5 + 4096.0))) * 73856093u
+		^ uint(int(floor(centre.y * 0.5 + 4096.0))) * 19349663u ^ (part_number + salt) * 83492791u;
+	h = h * 747796405u + 2891336453u;
+	h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+	return float(((h >> 22u) ^ h) & 0xffffu) / 65535.0;
 }
 
 vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
@@ -1187,12 +1263,33 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	if (length(p) > 5.4) {
 		return n;
 	}
+	// Each stud's logo its own, as a real part's are (each cavity of a mould
+	// worn its own way): a hair off the middle and off square, a little
+	// deeper or shallower, softer or crisper.
+	float turn = (stud_hash(centre, 1u) - 0.5) * 0.06;
+	p = mat2(cos(turn), sin(turn), -sin(turn), cos(turn)) * p
+		+ (vec2(stud_hash(centre, 2u), stud_hash(centre, 3u)) - 0.5) * 0.3;
+	float depth = 0.75 + 0.5 * stud_hash(centre, 4u);
+	float soft = 0.12 * stud_hash(centre, 5u);
 	// About 9 LDU across, as the real one's 3.6 mm.
-	const float grow = 1.0;
-	p /= grow;
 	const float e = 0.05;
-	float dx = (logo_height(p + vec2(e, 0.0)) - logo_height(p - vec2(e, 0.0))) / (2.0 * e * grow);
-	float dy = (logo_height(p + vec2(0.0, e)) - logo_height(p - vec2(0.0, e))) / (2.0 * e * grow);
+	float dx = (logo_height(p + vec2(e, 0.0), soft) - logo_height(p - vec2(e, 0.0), soft)) / (2.0 * e);
+	float dy = (logo_height(p + vec2(0.0, e), soft) - logo_height(p - vec2(0.0, e), soft)) / (2.0 * e);
+	dx *= depth;
+	dy *= depth;
+	// The injection gate on some studs, as a judge saw on a photograph's
+	// and missed on ours: a small ring where the plastic went in, about half
+	// a millimetre across, off the middle by a hair.
+	if (stud_hash(centre, 6u) < 0.3) {
+		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.8;
+		float r = length(g);
+		if (r > 0.001 && r < 1.0) {
+			// A ring 0.06 high at 0.6 LDU: its height's slope along g.
+			float slope = -0.06 * 2.0 * (r - 0.6) / (0.12 * 0.12) * exp(-pow((r - 0.6) / 0.12, 2.0));
+			dx += slope * g.x / r;
+			dy += slope * g.y / r;
+		}
+	}
 	// p.y runs towards -z.
 	return normalize(vec3(-dx, 1.0, dy));
 }
@@ -1231,6 +1328,7 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 
 void main() {
 	uint which = gl_InstanceCustomIndexEXT;
+	part_number = which;
 	uvec4 mesh = meshes[instances[which].info.x];
 	uint first = mesh.y + uint(gl_PrimitiveID) * 3u;
 	uint a = mesh.x + indices[first];
@@ -1256,13 +1354,16 @@ void main() {
 		vec3 face = normalize(g);
 		face = dot(face, n) < 0.0 ? -face : face;
 		if (instances[which].info.y == 0u && n.y > 0.2 && n.y < 0.96 && dot(face, n) > 0.999) {
-			vec3 s = local / 0.22;
+			// Deeper than photoreal1's (0.16), which a judge could not see: a
+			// real slope's grain is a field of bumps a tenth of a millimetre
+			// across, each catching the light. Twice as coarse read as a sponge.
+			vec3 s = local / 0.26;
 			vec3 grain = vec3(wave_noise(s), wave_noise(s + vec3(3.1, 7.7, 1.9)),
 				wave_noise(s + vec3(8.3, 2.2, 5.6)));
-			vec3 t2 = local / 0.09;
+			vec3 t2 = local / 0.1;
 			grain += 0.5 * vec3(wave_noise(t2), wave_noise(t2 + vec3(4.4, 1.7, 9.2)),
 				wave_noise(t2 + vec3(6.1, 3.8, 0.7)));
-			n = normalize(n + (grain - n * dot(grain, n)) * 0.16);
+			n = normalize(n + (grain - n * dot(grain, n)) * 0.26);
 			hit.unused = 1.0;
 		}
 	}

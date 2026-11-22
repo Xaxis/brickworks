@@ -459,7 +459,8 @@ func begin(size: Vector2i) -> bool:
 	sums.width = size.x
 	sums.height = size.y
 	sums.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
-	sums.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
+	sums.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	_accum = _rd.texture_create(sums, RDTextureView.new())
 	var out := RDTextureFormat.new()
 	out.width = size.x
@@ -566,16 +567,17 @@ func sample_ms() -> float:
 
 
 ## The picture so far, exposed by [param exposure] and tone-mapped
-## ([param tonemapper]: 2 Filmic, 3 ACES, at [param white]), with the
-## product look's [param contrast] and [param saturation] after.
+## ([param tonemapper]: 2 Filmic, 3 ACES, 4 a camera's, at [param white]), with the
+## product look's [param contrast] and [param saturation] after; the camera's
+## response saturates by [param linear_saturation] in linear light first.
 func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1.0,
 		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
-		denoise: float = 0.0) -> Image:
+		denoise: float = 0.0, linear_saturation: float = 1.0) -> Image:
 	if not _resolve_set.is_valid() or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
-		denoise, 0.0, 0.0, 0.0])
+		denoise, linear_saturation, 0.0, 0.0])
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
@@ -587,6 +589,23 @@ func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1
 	if data.size() != _size.x * _size.y * 4:
 		return null
 	return Image.create_from_data(_size.x, _size.y, false, Image.FORMAT_RGBA8, data)
+
+
+## The running sum's mean, the light each pixel saw before any exposure or
+## tone curve (RGBAF, alpha the coverage), for the photo bench's colour
+## measure (photoreal_probe --raw). Null when there is none.
+func mean_image() -> Image:
+	if not _accum.is_valid() or samples <= 0:
+		return null
+	var data: PackedByteArray = _rd.texture_get_data(_accum, 0)
+	if data.size() != _size.x * _size.y * 16:
+		return null
+	var floats: PackedFloat32Array = data.to_float32_array()
+	var share: float = 1.0 / float(samples)
+	for n: int in floats.size():
+		floats[n] *= share
+	return Image.create_from_data(_size.x, _size.y, false, Image.FORMAT_RGBAF,
+		floats.to_byte_array())
 
 
 # -- freeing -------------------------------------------------------------------
