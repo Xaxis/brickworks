@@ -73,8 +73,10 @@ def test_todays_gallery_leads_with_the_pick():
     assert re.search(r'id="tab-trending"[^>]* hidden>', page) and re.search(r'id="tab-top" aria-selected="true"', page)
     assert "skeleton-card" not in page and 'data-shelf="served"' in page
     assert re.search(r'id="shelf-new"[^>]* hidden\s', page) and not re.search(r'id="shelf-top"[^>]* hidden\s', page)
-    # Every card has its picture, and the first four are asked for at once.
-    assert len(re.findall(r'loading="eager"', page)) == 4
+    # Every card has its picture, and only the first is asked for at once:
+    # four drawn into the first frame put a laptop's first paint back.
+    assert len(re.findall(r'loading="eager"', page)) == 1
+    assert 'loading="eager" fetchpriority="high"' in re.search(r"<!--shelf:top-->(.*?)</article>", page, re.S).group(1)
 
 
 def test_a_busy_week_puts_trending_first_in_german():

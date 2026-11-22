@@ -37,8 +37,14 @@ const TABS = ["trending", "top", "new", "sets"];
 export const CARDS = 10;
 /// The fewest cards with pictures that make a tab worth showing.
 export const FEWEST = 4;
-/// The first cards of the tab shown whose pictures are asked for at once.
-const EAGER = 4;
+/// The first cards of the tab shown whose pictures are asked for at once:
+/// the first only. With four (the first card of each place a laptop shows),
+/// a laptop's first paint came 726 ms later than with one (median of ten
+/// rounds at the same moments, later in 8; bench/results/landing-2026-11-22
+/// timing3): four pictures decoded in time are drawn into the first frame.
+/// The rest of the row, lazy, are asked for as it is laid out, a moment
+/// after the first paint, into frames already their size.
+export const EAGER = 1;
 const MODEL = /^[A-Za-z0-9]{10}$/;
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
 

@@ -68,8 +68,10 @@ another", 2026-11-02).
   picture has decoded, in a row of the same height (each card's words a
   fixed height). What comes under the first screen comes only while its
   place is out of sight.
-- **Nothing slower.** The first four cards' pictures load at once (the
-  first `fetchpriority=high`), the rest lazily; the app's screenshot, the
+- **Nothing slower.** The first card's picture loads at once
+  (`fetchpriority=high`), the rest lazily, as the row is laid out (four at
+  once were drawn into the first frame and put a laptop's first paint back
+  726 ms, bench/results/landing-2026-11-22 timing3); the app's screenshot, the
   old largest paint, is lazy below the fold; the search's script loads
   only once the field is used; the old five renders (195 KB) are gone.
 - AI second: no title or first screen says AI; the assistant is one tile.
