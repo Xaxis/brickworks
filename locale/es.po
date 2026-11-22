@@ -15911,14 +15911,14 @@ msgstr "Cable Power Functions"
 msgid "Powered Up cable"
 msgstr "Cable Powered Up"
 
-msgid "Power Functions motor's cable or extension wire, 20 cm"
-msgstr "Cable de un motor Power Functions o cable alargador, 20 cm"
+msgid "Power Functions motor's own cable, 20 cm"
+msgstr "cable propio de un motor Power Functions, 20 cm"
 
-msgid "Power Functions extension wire, 50 cm"
-msgstr "Cable alargador Power Functions, 50 cm"
+msgid "Power Functions extension wire 8871, 50 cm"
+msgstr "cable de extensión Power Functions 8871, 50 cm"
 
-msgid "Powered Up motor's cable, 25 cm"
-msgstr "Cable de un motor Powered Up, 25 cm"
+msgid "Powered Up motor's own cable, 25 cm"
+msgstr "cable propio de un motor Powered Up, 25 cm"
 
 msgid "Turn the plug"
 msgstr "Girar el conector"
@@ -15937,3 +15937,232 @@ msgstr "%s no gira: %s."
 
 msgid "%s speed"
 msgstr "velocidad %s"
+
+# Simulate's power words, said in the person's language (wfix: N1, 9 V, cables by their ends)
+msgid "its contacts"
+msgstr "sus contactos"
+
+msgid "the plug's own top"
+msgstr "la parte superior del conector"
+
+msgid "the extension wire"
+msgstr "el cable de extensión"
+
+msgid "its own cable"
+msgstr "su propio cable"
+
+msgid "the cable"
+msgstr "el cable"
+
+msgid "turned half round in %s's port %d, which a Powered Up plug goes into one way only"
+msgstr "girado del revés en %s, puerto %d, donde un conector Powered Up entra en un solo sentido"
+
+msgid "a quarter turn round on %s, so it makes no contact"
+msgstr "girado un cuarto de vuelta sobre %s, así que no hace contacto"
+
+msgid "on %s"
+msgstr "en %s"
+
+msgid ", turned half round"
+msgstr ", girado del revés"
+
+msgid "on nothing"
+msgstr "sobre nada"
+
+msgid "on nothing, %d LDU from %s"
+msgstr "sobre nada, a %d LDU de %s"
+
+msgid "the %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "a plug (#%d)"
+msgstr "un conector (#%d)"
+
+msgid "%s's port %d"
+msgstr "%s, puerto %d"
+
+msgid "%s's contacts"
+msgstr "contactos de %s"
+
+msgid "its plug (#%d) is %s"
+msgstr "su conector (#%d) está %s"
+
+msgid "its own cable's plug is in nothing, so it turns by hand; put the plug on a box or lay a cable from it to run it by the box"
+msgstr "el conector de su propio cable no está en nada, así que gira a mano; pon el conector en una caja o tiende un cable desde él para que la caja lo mueva"
+
+msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Hose, tube or chain…, a cable) to run it by the box"
+msgstr "no hay ningún cable suyo dibujado en el modelo, así que gira a mano; tiende uno desde él hasta una caja (Crear › Manguera, tubo o cadena…, un cable) para que la caja lo mueva"
+
+msgid "its cable reaches no battery box, receiver or hub"
+msgstr "su cable no llega a ninguna caja de pilas, receptor ni hub"
+
+msgid "nothing gives it power"
+msgstr "nada le da corriente"
+
+msgid "%s is off: click it to switch it on"
+msgstr "%s está apagado: haz clic en él para encenderlo"
+
+msgid "%s's own plug is %s"
+msgstr "el conector propio de %s está %s"
+
+msgid "%s's own cable reaches nothing that gives power"
+msgstr "el cable propio de %s no llega a nada que dé corriente"
+
+msgid "%s %s is off: click it to work its lever"
+msgstr "%s, %s, está apagado: haz clic en él para mover su palanca"
+
+msgid "%s's port %d is at 0%%"
+msgstr "%s, puerto %d, está al 0 %%"
+
+msgid "on %s %s"
+msgstr "en %s, %s"
+
+msgid "in %s's port %d"
+msgstr "en %s, puerto %d"
+
+msgid "%s output"
+msgstr "salida %s"
+
+msgid "%s switched %s"
+msgstr "%s puesto en %s"
+
+msgid "%s's port %d at 100%%"
+msgstr "%s, puerto %d al 100 %%"
+
+msgid ", its dial at %d%%"
+msgstr ", su regulador al %d %%"
+
+msgid " at %d%%"
+msgstr " al %d %%"
+
+msgid "%s: turns by hand, as nothing here gives a motor power."
+msgstr "%s: gira a mano, ya que aquí nada da corriente a un motor."
+
+msgid "%s: stopped, %s."
+msgstr "%s: parado, %s."
+
+msgid "%s: wired %s; stopped, as %s."
+msgstr "%s: cableado %s; parado, porque %s."
+
+msgid "%s: wired %s; runs %s at %d%%."
+msgstr "%s: cableado %s; gira %s al %d %%."
+
+msgid "%s runs %s at %s rpm: %s."
+msgstr "%s gira %s a %s rpm: %s."
+
+msgid "The %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "%s #%d, %s output: %s"
+msgstr "%s #%d, salida %s: %s"
+
+msgid "port %d"
+msgstr "puerto %d"
+
+msgid "Power Functions battery box"
+msgstr "caja de pilas Power Functions"
+
+msgid "Power Functions AAA battery box"
+msgstr "caja de pilas AAA Power Functions"
+
+msgid "9 V battery box"
+msgstr "caja de pilas de 9 V"
+
+msgid "Power Functions IR receiver"
+msgstr "receptor IR Power Functions"
+
+msgid "Power Functions pole reverser"
+msgstr "inversor de polaridad Power Functions"
+
+msgid "Control+ hub"
+msgstr "hub Control+"
+
+msgid "Powered Up hub"
+msgstr "hub Powered Up"
+
+msgid "Boost Move hub"
+msgstr "hub Boost Move"
+
+msgid "SPIKE Prime hub"
+msgstr "hub SPIKE Prime"
+
+msgid "SPIKE Essential hub"
+msgstr "hub SPIKE Essential"
+
+msgid "9 V wire"
+msgstr "cable de 9 V"
+
+msgid "Power Functions extension wire 8886, 20 cm"
+msgstr "cable de extensión Power Functions 8886, 20 cm"
+
+msgid "A Powered Up cable runs from a motor's outlet: Powered Up has no extension wire from contacts to contacts"
+msgstr "Un cable Powered Up sale de la salida de un motor: Powered Up no tiene cable de extensión de contactos a contactos"
+
+msgid "A cable runs from a motor's outlet to a plug's place (a battery box's, a receiver's or a plug's contacts, a hub's port): two outlets make none"
+msgstr "Un cable va de la salida de un motor al sitio de un conector (los contactos de una caja de pilas, de un receptor o de un conector, el puerto de un hub): dos salidas no forman ninguno"
+
+msgid "9 V wire, 11 studs"
+msgstr "cable de 9 V, 11 espigas"
+
+msgid "9 V wire, 15 studs"
+msgstr "cable de 9 V, 15 espigas"
+
+msgid "9 V wire, 17 studs"
+msgstr "cable de 9 V, 17 espigas"
+
+msgid "9 V wire, 20 studs"
+msgstr "cable de 9 V, 20 espigas"
+
+msgid "9 V wire, 21 studs"
+msgstr "cable de 9 V, 21 espigas"
+
+msgid "9 V wire, 26 studs"
+msgstr "cable de 9 V, 26 espigas"
+
+msgid "9 V wire, 33 studs"
+msgstr "cable de 9 V, 33 espigas"
+
+msgid "9 V wire, 36 studs"
+msgstr "cable de 9 V, 36 espigas"
+
+msgid "9 V wire, 46 studs"
+msgstr "cable de 9 V, 46 espigas"
+
+msgid "9 V wire, 69 studs"
+msgstr "cable de 9 V, 69 espigas"
+
+msgid "9 V wire, 162 studs"
+msgstr "cable de 9 V, 162 espigas"
+
+msgid "9 V wire, 378 studs"
+msgstr "cable de 9 V, 378 espigas"
+
+# A switch's, a lever's and an output's one word (Wiring._w): kept apart by
+# the context power from the camera's back view and the like.
+msgctxt "power"
+msgid "on"
+msgstr "encendido"
+
+msgctxt "power"
+msgid "off"
+msgstr "apagado"
+
+msgctxt "power"
+msgid "forward"
+msgstr "hacia delante"
+
+msgctxt "power"
+msgid "back"
+msgstr "hacia atrás"
+
+msgctxt "power"
+msgid "lever"
+msgstr "palanca"
+
+msgctxt "power"
+msgid "red"
+msgstr "rojo"
+
+msgctxt "power"
+msgid "blue"
+msgstr "azul"

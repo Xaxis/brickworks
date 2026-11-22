@@ -98,7 +98,7 @@ var _told_page: String = ""
 var _told_page_at: int = 0
 
 const KIND_ORDER: Array[String] = ["pneumatic_tube", "ribbed_hose", "flex_hose", "flex_axle",
-	"string", "chain", "tread", "band", "spring", "pf_cable", "pu_cable"]
+	"string", "chain", "tread", "band", "spring", "pf_cable", "pu_cable", "9v_wire"]
 const HANDLE_PIXELS := 14.0
 
 
@@ -465,6 +465,13 @@ func click(at: Vector2) -> void:
 			if _hover == null:
 				say.call("that is not a %s" % _connector_words())
 				return
+			if stage == "end" and not _ends.is_empty():
+				# A cable runs from an outlet to a plug's place, or an
+				# extension wire from contacts to contacts: as lay_flex.
+				var why_not: String = Flex.cable_ends_refusal(kind, str(_ends[0]["kind"]), _hover.kind)
+				if not why_not.is_empty():
+					say.call(tr(why_not))
+					return
 			_ends.append(_end_record(_hover, at))
 			_hover = null
 			if stage == "start":
@@ -719,7 +726,7 @@ func _compute() -> Flex.Laid:
 		if _ends[n].has("side"):
 			side = int(_ends[n]["side"])
 		ports.append(Flex.port_for(kind, anchor, side, n))
-	var lengths: Array = Flex.lengths_of(library, kind)
+	var lengths: Array = _lengths_now()
 	if lengths.is_empty():
 		return null
 	if length_choice >= 0 and length_choice < lengths.size():
@@ -971,6 +978,15 @@ func _recover(pieces: Array) -> void:
 				"reach": 0.0, "free": "yes", "lead": port.lead}
 		_ends.append(matched)
 	_real_id = Flex.real_part(library, kind, pieces)
+	if (Flex.KINDS[kind] as Dictionary).has("lengths"):
+		# A cable's length is the one it comes in nearest the run read.
+		var run: float = Flex.item_length(kind, pieces)
+		var nearest: float = INF
+		for one: Dictionary in _lengths_now():
+			if absf(float(one["length"]) - run) < nearest:
+				nearest = absf(float(one["length"]) - run)
+				_real_id = str(one["id"])
+		_length_kept = not _real_id.is_empty()
 	# The bend: where it lies now, if laying it afresh would not put it
 	# there. One point halfway along it, else two at the thirds, else
 	# three: the fewest that lay it where it lies.
@@ -1268,7 +1284,7 @@ func _holds(brick_id: int, at: Transform3D, tip: Vector3, shock: bool) -> bool:
 func _show_result(laid: Flex.Laid = null) -> void:
 	# The length the part is, once it is laid, in the picker.
 	if _length_kept and not _is_chain() and not _is_made() and _length_picker != null:
-		var lengths: Array = Flex.lengths_of(library, kind)
+		var lengths: Array = _lengths_now()
 		for n: int in lengths.size():
 			if str(lengths[n]["id"]) == _real_id and _length_picker.selected != n + 1:
 				_length_picker.select(n + 1)
@@ -1307,7 +1323,7 @@ func _show_buttons() -> void:
 	var shaping: bool = stage == "shaping" and not _is_chain() and not _is_made()
 	_add_bend.visible = shaping
 	_clear_bends.visible = shaping and not _controls.is_empty()
-	_turn_plug.visible = shaping and kind == "pf_cable" and _ends.any(func(end: Dictionary) -> bool:
+	_turn_plug.visible = shaping and (kind == "pf_cable" or kind == "9v_wire") and _ends.any(func(end: Dictionary) -> bool:
 		return str(end.get("kind", "")) == "contacts")
 	_again.visible = (stage != "start" and stage != "sprockets" and stage != "pulleys") \
 		or not _sprockets.is_empty() or not _rounds.is_empty()
@@ -1594,12 +1610,19 @@ func _fill_lengths() -> void:
 		_length_picker.select(maxi(springs.find(_spring), 0))
 		return
 	_length_picker.add_item("The shortest that fits")
-	for one: Dictionary in Flex.lengths_of(library, kind):
+	for one: Dictionary in _lengths_now():
 		# A cable's lengths each have their own name: the motor's, a wire's.
-		var named: String = str(one["name"]) if (Flex.KINDS[kind] as Dictionary).has("lengths") \
+		var named: String = tr(str(one["name"])) if (Flex.KINDS[kind] as Dictionary).has("lengths") \
 			else Flex.item_name(kind, library, str(one["id"]))
 		_length_picker.add_item("%s — %.0f LDU" % [named, float(one["length"])])
 	_length_picker.select(clampi(length_choice + 1, 0, _length_picker.item_count - 1))
+
+
+## The lengths it comes in between the ends picked: a cable's by what its
+## ends are (Flex.lengths_between), every other kind's all.
+func _lengths_now() -> Array:
+	return Flex.lengths_between(library, kind, _ends.map(func(end: Dictionary) -> String:
+		return str(end.get("kind", ""))))
 
 
 ## Where each control is, for a browser test to press it.

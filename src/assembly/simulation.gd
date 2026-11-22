@@ -86,6 +86,10 @@ const MOTORS := {
 	"87577": ["Power Functions E-motor", 3.4, 780.0, 9.0, []],
 	"47154c01": ["9 V geared motor", 6.0, 460.0, 9.0, []],
 	"71427": ["9 V mini-motor", 6.0, 360.0, 9.0, []],
+	# The first 9 V Technic motor, ungeared (2838c01, moved to 74569p01):
+	# Hurbain's at 9 V, 4100 rpm with no load, 0.72 N·cm stalled.
+	"74569p01": ["9 V Technic motor", 0.72, 4100.0, 9.0, []],
+	"2838c01": ["9 V Technic motor", 0.72, 4100.0, 9.0, []],
 	# spike motors
 	"54675c01": ["SPIKE Prime large angular motor", 25.0, 175.0, 7.2, [Vector3(0, 50, 0), 29.0]],
 	"54675": ["SPIKE Prime large angular motor", 25.0, 175.0, 7.2, [Vector3(0, 50, 0), 29.0]],

@@ -11,7 +11,11 @@
 ##      plug turned half round, back; a quarter round, no contact; lifted off,
 ##      not wired. A receiver with its own cable on the box and the motor on
 ##      its red output (its lever, the box's switch); a pole reverser; a
-##      Control+ hub's port; an extension wire between.
+##      Control+ hub's port; an extension wire between. A motor with no cable
+##      drawn turns by hand, and a plug beside any other part is no cable
+##      (S1). The same model mirrored reads the same (N3). 9 V: a 4760c01
+##      box, a 5306 wire to a 71427 motor's contacts, forward and turned half
+##      round; a 58124c02 on 9 V contacts takes a Power Functions plug.
 ##   2. In the app: a box and an M motor placed, and a Power Functions cable
 ##      laid from the motor's outlet to the box by lay_flex (MCP, as a
 ##      session lays one): its plug on the box, the cable 500 LDU (its real
@@ -19,17 +23,24 @@
 ##      again and saved: the file byte for byte, the cable's sub-model the
 ##      same and still the motor's cable; simulate_mechanism power=on says the
 ##      motor runs; undo takes the cable away and the motor is not wired.
+##      After the reopen the cable is an item (F4): found by name, laid again
+##      by lay_flex item=, Reshape reads its two ends and offers Turn the plug;
+##      outlet to outlet refused, a taken box said (S3, S5); reversed= on a
+##      hose refused (N7).
 ##   3. 42042's L motor through Simulate as a person drives it: the box
-##      clicked on (its switch, worked on the part), the motor plays at 390
-##      rpm and turns its train; the plug pulled off the box, it stops and
-##      says why; undone, it runs again. And 42042's file saved untouched:
-##      each LDCad cable path in it byte for byte.
+##      clicked on through the real click (EditVerbs.click on the part under
+##      the pointer), the motor plays at 390 rpm and turns its train; Play
+##      with the box off switches it on and runs; a selection made otherwise
+##      flips no switch (N6); the plug pulled off the box, it stops and says
+##      why; undone, it runs again. And 42042's file saved untouched: each
+##      LDCad cable path in it byte for byte.
 ##   4. The wiring read, and where a cable's ends may go, each under 16 ms
 ##      (the best of five) on Orthanc and on 42042.
 ##
 ## With --sets, each set of LISTING (tools/wires_sets.py) opened as File,
 ## Open opens it: each motor's cable read as its booklet wires it, the boxes
-## (and receivers' levers, hubs' ports) switched on, each function whose
+## (and receivers' levers, hubs' ports) switched on by a click on the part in
+## Simulate (the rest of a receiver's levers by the row's buttons), each function whose
 ## control turns with a running motor's output measured as KINEFUNCS
 ## measures it (kinefuncs_probe: the driver turned 1.5 radians the way the
 ## motor runs, every part in moves moving, none in stays), and the motor's
@@ -141,8 +152,13 @@ func _start() -> void:
 # -- 1. by hand ---------------------------------------------------------------------------
 
 
-static func _motor_of(part: String) -> String:
-	return Simulation.motor_of(null, part)
+## The motors among [param bricks], as Simulate reads them.
+static func _motors(bricks: Array) -> Dictionary:
+	return Simulation.motors_in(bricks, null)
+
+
+static func _read(bricks: Array) -> Wiring:
+	return Wiring.read(bricks, _motors(bricks))
 
 
 ## A brick placed by hand, in [param unit] ("" for none).
@@ -162,8 +178,10 @@ static func _plug_on(part: String, at: Transform3D, index: int, turn: float = 0.
 	var holder := BrickWorld.Brick.new(0, part, 0, at)
 	var frame: Array = Wiring._frame(holder, row)
 	var up: Vector3 = frame[2]
-	var x: Vector3 = (frame[1] as Vector3).rotated(up, deg_to_rad(turn))
-	var raise: float = (Wiring.PLUG_UP if str(row[0]) == "pf" else 0.0) + lift
+	# 9 V contacts are read on their diagonal: a plug stands square on the
+	# studs, an eighth of a turn from it, facing forward either way.
+	var x: Vector3 = (frame[1] as Vector3).rotated(up, deg_to_rad(turn + (45.0 if str(row[0]) == "9v" else 0.0)))
+	var raise: float = (Wiring.PLUG_UP if str(row[0]) != "pu" else 0.0) + lift
 	return Transform3D(Basis(x, up, x.cross(up)), (frame[0] as Vector3) + up * raise)
 
 
@@ -187,8 +205,8 @@ func _by_hand() -> void:
 	for case: Array in cases:
 		var bricks: Array = [_brick(1, "58119", box_at), _brick(2, "99499", motor_at, "cable#1"),
 			_brick(3, "58124c01", _plug_on("58119", box_at, 0, float(case[0]), float(case[1])), "cable#1"),
-			_brick(4, "3005", Transform3D(Basis.IDENTITY, Vector3(0, 100, 0)), "cable#1")]
-		var wired: Wiring = Wiring.read(bricks, _motor_of)
+			_brick(4, "u9190", Transform3D(Basis.IDENTITY, Vector3(100, 20, 0)), "cable#1")]
+		var wired: Wiring = _read(bricks)
 		var off: Dictionary = wired.power_of(2)
 		match str(case[2]):
 			"forward", "back":
@@ -217,15 +235,40 @@ func _by_hand() -> void:
 					not bool(lifted["wired"]) and str(lifted["why"]).contains("on nothing")
 					and float(lifted["run"]) == 0.0)
 	# A motor with no cable in the model.
-	var bare: Wiring = Wiring.read([_brick(1, "58119", box_at), _brick(2, "58120", motor_at)], _motor_of)
+	var bare: Wiring = _read([_brick(1, "58119", box_at), _brick(2, "58120", motor_at)])
 	bare.set_to(1, "forward")
-	_check("a motor with no cable: not wired, said (%s)" % str(bare.power_of(2)["why"]),
-		not bool(bare.power_of(2)["wired"]) and str(bare.power_of(2)["why"]).contains("no cable"))
+	_check("a motor with no cable: turns by hand, said (%s)" % str(bare.power_of(2)["why"]),
+		not bool(bare.power_of(2)["wired"]) and bool(bare.power_of(2)["by_hand"])
+		and str(bare.power_of(2)["why"]).contains("no cable"))
+	# S1: a plug and a motor in one sub-model with a brick between are no
+	# cable: only cable pieces make one.
+	var fake: Wiring = _read([_brick(1, "58119", box_at), _brick(2, "58120", motor_at, "frame#1"),
+		_brick(3, "58124c01", _plug_on("58119", box_at, 0), "frame#1"),
+		_brick(4, "3005", Transform3D(Basis.IDENTITY, Vector3(100, 20, 0)), "frame#1")])
+	fake.set_to(1, "forward")
+	_check("a plug, a motor and a brick in one sub-model: no cable, the motor by hand (%s)"
+		% str(fake.power_of(2)["why"]), bool(fake.power_of(2)["by_hand"])
+		and float(fake.power_of(2)["run"]) == 0.0)
+	# N3: the whole model mirrored reads the same.
+	var mirror := Transform3D(Basis.from_scale(Vector3(-1, 1, 1)), Vector3.ZERO)
+	for turn: float in [0.0, 180.0]:
+		var straight: Array = [_brick(1, "58119", box_at), _brick(2, "99499", motor_at, "cable#1"),
+			_brick(3, "58124c01", _plug_on("58119", box_at, 0, turn), "cable#1"),
+			_brick(4, "u9190", Transform3D(Basis.IDENTITY, Vector3(100, 20, 0)), "cable#1")]
+		var mirrored: Array = straight.map(func(b: BrickWorld.Brick) -> BrickWorld.Brick:
+			return _brick(b.id, b.part_id, mirror * b.transform, b.unit))
+		var a: Wiring = _read(straight)
+		var b: Wiring = _read(mirrored)
+		a.set_to(1, "forward")
+		b.set_to(1, "forward")
+		_check("mirrored, the plug %s: runs the same (%s, %s)" % ["facing" if turn == 0.0 else "turned half round",
+			a.power_of(2)["run"], b.power_of(2)["run"]], float(a.power_of(2)["run"]) != 0.0
+			and is_equal_approx(float(a.power_of(2)["run"]), float(b.power_of(2)["run"])))
 	# The receiver: its own cable's plug on the box, the motor on its red output.
 	var receiver_at: Transform3D = _part_for_own_plug("58123c01", _plug_on("58119", box_at, 0))
 	var bricks: Array = [_brick(1, "58119", box_at), _brick(5, "58123c01", receiver_at),
 		_brick(2, "58120c01", _part_for_own_plug("58120c01", _plug_on("58123c01", receiver_at, 0)))]
-	var through: Wiring = Wiring.read(bricks, _motor_of)
+	var through: Wiring = _read(bricks)
 	through.set_to(1, "forward")
 	_check("on the receiver's red output, its lever off: still (%s)" % str(through.power_of(2)["why"]),
 		bool(through.power_of(2)["wired"]) and float(through.power_of(2)["run"]) == 0.0
@@ -247,8 +290,8 @@ func _by_hand() -> void:
 		float(through.power_of(2)["run"]) == 0.0 and str(through.power_of(2)["why"]).contains("off"))
 	# The pole reverser between: its lever passes the box's way on, or turns it.
 	var reverser_at: Transform3D = _part_for_own_plug("61929c01", _plug_on("58119", box_at, 0))
-	var flipped: Wiring = Wiring.read([_brick(1, "58119", box_at), _brick(6, "61929c01", reverser_at),
-		_brick(2, "58121c01", _part_for_own_plug("58121c01", _plug_on("61929c01", reverser_at, 0)))], _motor_of)
+	var flipped: Wiring = _read([_brick(1, "58119", box_at), _brick(6, "61929c01", reverser_at),
+		_brick(2, "58121c01", _part_for_own_plug("58121c01", _plug_on("61929c01", reverser_at, 0)))])
 	flipped.set_to(1, "forward")
 	_check("through a pole reverser, its lever off: still", float(flipped.power_of(2)["run"]) == 0.0)
 	flipped.set_to(6, "forward")
@@ -260,8 +303,8 @@ func _by_hand() -> void:
 	# A Control+ hub: the L motor's own plug in its third port.
 	var hub_at := Transform3D(Basis.IDENTITY, Vector3(0, 0, 400))
 	var plug_in: Transform3D = _plug_on("22127", hub_at, 2)
-	var hub: Wiring = Wiring.read([_brick(7, "22127", hub_at),
-		_brick(2, "22169c01", _part_for_own_plug("22169c01", plug_in))], _motor_of)
+	var hub: Wiring = _read([_brick(7, "22127", hub_at),
+		_brick(2, "22169c01", _part_for_own_plug("22169c01", plug_in))])
 	_check("in a Control+ hub's port 3, the hub off: still (%s)" % str(hub.power_of(2)["why"]),
 		bool(hub.power_of(2)["wired"]) and float(hub.power_of(2)["run"]) == 0.0)
 	hub.set_to(7, "-0.5", 2)
@@ -276,11 +319,48 @@ func _by_hand() -> void:
 	var far_up: Vector3 = far[2]
 	var on_far := Transform3D(Basis(far[1], far_up, (far[1] as Vector3).cross(far_up)),
 		(far[0] as Vector3) + far_up * Wiring.PLUG_UP)
-	var extended: Wiring = Wiring.read([_brick(1, "58119", box_at), wire_brick,
-		_brick(2, "58120c01", _part_for_own_plug("58120c01", on_far))], _motor_of)
+	var extended: Wiring = _read([_brick(1, "58119", box_at), wire_brick,
+		_brick(2, "58120c01", _part_for_own_plug("58120c01", on_far))])
 	extended.set_to(1, "forward")
 	_check("through an extension wire: it runs (%s)" % str(extended.power_of(2)["words"]),
 		is_equal_approx(absf(float(extended.power_of(2)["run"])), 1.0))
+	_nine_volt()
+
+
+## 9 V (F5): a 4760c01 box, a 9 V wire (two 5306 plugs and its 993 run, a
+## sub-model) from the box's contacts to a 71427 motor's own, forward and
+## turned half round; the box's switch worked; and a 58124c02 on the box's
+## contacts with a Power Functions motor's plug on its top.
+func _nine_volt() -> void:
+	var box_at := Transform3D(Basis.IDENTITY, Vector3(0, 0, -600))
+	var motor_at := Transform3D(Basis.IDENTITY, Vector3(300, 0, -600))
+	for turn: float in [0.0, 180.0]:
+		var bricks: Array = [_brick(11, "4760c01", box_at), _brick(12, "71427", motor_at),
+			_brick(13, "5306", _plug_on("4760c01", box_at, 0, 0.0), "wire#9"),
+			_brick(14, "5306", _plug_on("71427", motor_at, 0, turn), "wire#9"),
+			_brick(15, "993", Transform3D(Basis.IDENTITY, Vector3(150, 30, -600)), "wire#9")]
+		var wired: Wiring = _read(bricks)
+		var off: Dictionary = wired.power_of(12)
+		_check("9 V: a wire from the box to the motor's contacts, the box off: wired and still (%s)"
+			% str(off["why"]), bool(off["wired"]) and float(off["run"]) == 0.0)
+		wired.work(11)
+		var sign: float = 1.0 if turn == 0.0 else -1.0
+		_check("9 V: the box's switch worked once, the plug %s: it runs %s (%s)" % [
+			"facing" if turn == 0.0 else "turned half round", "forward" if sign > 0.0 else "back",
+			str(wired.power_of(12)["words"])], is_equal_approx(float(wired.power_of(12)["run"]), sign))
+	# A 9 V motor with nothing on its contacts turns by hand.
+	var alone: Wiring = _read([_brick(11, "4760c01", box_at), _brick(12, "71427", motor_at)])
+	_check("9 V: a motor with nothing on its contacts turns by hand (%s)" % str(alone.power_of(12)["why"]),
+		bool(alone.power_of(12)["by_hand"]))
+	# 58124c02: its 9 V bottom on the box, a Power Functions motor's own plug on its top.
+	var adapter: Transform3D = _plug_on("4760c01", box_at, 0)
+	var top: Transform3D = adapter.translated_local(Vector3(0, Wiring.PLUG_UP, 0))
+	var mixed: Wiring = _read([_brick(11, "4760c01", box_at), _brick(16, "58124c02", adapter),
+		_brick(17, "58120c01", _part_for_own_plug("58120c01", top))])
+	mixed.set_to(11, "forward")
+	_check("9 V: a 58124c02 on the box's contacts, a Power Functions motor's plug on its top: it runs (%s)"
+		% str(mixed.power_of(17)["words"] if mixed.motors.has(17) else "no motor"),
+		mixed.motors.has(17) and absf(float(mixed.power_of(17)["run"])) > 0.5)
 
 
 # -- 2. a cable laid ----------------------------------------------------------------------
@@ -305,10 +385,10 @@ func _laid() -> void:
 		if brick.part_id == "58124c01":
 			plug = brick.id
 			item = Assemblies.path_of(brick)
-		elif brick.part_id == "343":
+		elif brick.part_id == "u9190":
 			pieces += 1
 	var length: float = Flex.item_length("pf_cable", _world.bricks().filter(func(b: BrickWorld.Brick) -> bool:
-		return b.part_id == "343").map(func(b: BrickWorld.Brick) -> Dictionary:
+		return b.part_id == "u9190").map(func(b: BrickWorld.Brick) -> Dictionary:
 			return {"part": b.part_id, "at": b.transform}))
 	_check("its plug and %d pieces of cable in one sub-assembly (%s), %.0f LDU long, the real 20 cm's 500" % [
 		pieces, item, length], plug >= 0 and pieces > 1 and not item.is_empty() and absf(length - 500.0) < 15.0)
@@ -317,13 +397,24 @@ func _laid() -> void:
 	var power: Dictionary = wired.power_of(motor)
 	_check("read as the motor's cable, its plug on the box: runs with the box on (%s)" % str(power["words"]),
 		bool(power["wired"]) and is_equal_approx(float(power["run"]), 1.0))
-	_check("lay_flex says what the cable wires", said.contains("wired to") or said.contains("wired on"))
+	_check("lay_flex says what the cable wires", said.contains(": wired "))
+	# S3: outlet to outlet is no cable, in lay_flex as in the hand tool.
+	var third: int = _place("58120", Transform3D(Basis.IDENTITY, Vector3(240, 0, 160)), 71)
+	var outlets: String = await _say("lay_flex", {"kind": "pf_cable", "from": {"brick": third},
+		"to": {"brick": motor}})
+	_check("outlet to outlet refused, said (%s)" % outlets, not outlets.begins_with("Laid")
+		and outlets.contains("two outlets"))
+	# N7: reversed= on a hose is refused, not ignored.
+	var hose: String = await _say("lay_flex", {"kind": "ribbed_hose", "from": {"brick": third},
+		"to": {"brick": motor}, "reversed": true})
+	_check("reversed= on a hose refused (%s)" % hose, hose.contains("reversed="))
+	_builder.swap_bricks(PackedInt64Array([third]), [])
 	# A second motor's cable on the first's plug, its plug turned half round.
 	var other: int = _place("58120", Transform3D(Basis.IDENTITY, Vector3(-120, 0, 160)), 71)
 	var stacked: String = await _say("lay_flex", {"kind": "pf_cable", "from": {"brick": other},
 		"to": {"brick": box}})
-	_check("the box's contacts taken, a second cable is not put on it (%s)" % stacked,
-		not stacked.begins_with("Laid"))
+	_check("the box's contacts taken, a second cable is not put on it, and said why (%s)" % stacked,
+		not stacked.begins_with("Laid") and stacked.contains("give to= that plug"))
 	stacked = await _say("lay_flex", {"kind": "pf_cable", "from": {"brick": other},
 		"to": {"brick": plug}, "reversed": true})
 	print("    lay_flex reversed: %s" % stacked)
@@ -349,9 +440,10 @@ func _laid() -> void:
 	runs_again.sort()
 	_check("opened again, still the motors' cables: %s" % "; ".join(again.motor_lines()),
 		box_again >= 0 and runs_again == [-1.0, 1.0])
+	await _item_after_reopen()
 	var told: String = await _say("simulate_mechanism", {"power": "on"})
 	_check("simulate_mechanism power=on says the motor's cable and that it runs",
-		told.contains("Power (a motor runs only when its cable reaches a box that is on")
+		told.contains("Power (a motor whose cable is drawn runs only when it reaches")
 		and told.contains("runs forward at 100%") and told.contains("runs back at 100%"))
 	if not told.contains("runs forward"):
 		print(told.left(1500))
@@ -360,7 +452,7 @@ func _laid() -> void:
 	_builder.forget_history()
 	var cable_ids: Array = []
 	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id == "343" or brick.part_id == "58124c01":
+		if brick.part_id == "u9190" or brick.part_id == "58124c01":
 			cable_ids.append(brick.id)
 	var steps: Array = _builder.swap_bricks(PackedInt64Array(cable_ids), [])
 	_builder.record(steps, "took the cable out")
@@ -369,7 +461,7 @@ func _laid() -> void:
 	var unwired: bool = true
 	for key: int in gone.motors:
 		unwired = unwired and not bool(gone.power_of(key)["wired"])
-	_check("the cable taken out: the motor is not wired", unwired and not gone.motors.is_empty())
+	_check("the cable taken out: the motor is not wired, it turns by hand", unwired and not gone.motors.is_empty())
 	_builder.undo()
 	var back: Wiring = _wiring()
 	var runs: bool = false
@@ -381,9 +473,58 @@ func _laid() -> void:
 
 
 func _wiring() -> Wiring:
-	var lib: PartLibrary = _library
-	return Wiring.read(_world.bricks(), func(part: String) -> String:
-		return Simulation.motor_of(lib, part))
+	return Wiring.read_with(_world.bricks(), _library)
+
+
+## F4: a laid cable after a reopen is an item as a hose is: found among the
+## items, Reshape reads its two ends and its length and offers Turn the
+## plug, lay_flex item= lays it again (one undo, and redo), and the motor is
+## still its motor's.
+func _item_after_reopen() -> void:
+	var items: Dictionary = Flex.items_in(_world)
+	var cables: Array = items.keys().filter(func(path: String) -> bool:
+		return str((items[path] as Dictionary)["kind"]) == "pf_cable")
+	_check("opened again: both cables are items (%s)" % ", ".join(PackedStringArray(cables.map(
+		func(path: String) -> String: return Assemblies.label(path)))), cables.size() == 2)
+	if cables.is_empty():
+		return
+	var flex: FlexTool = _main.get("_flex")
+	var path: String = cables[0]
+	var reshaped: bool = flex.reshape(path)
+	var ends: Array = flex._ends.map(func(end: Dictionary) -> String: return str(end.get("kind", "")))
+	_check("Reshape reads its ends (%s), its length %s, and offers Turn the plug" % [", ".join(
+		PackedStringArray(ends)), flex._real_id], reshaped and ends.has("outlet") and ends.has("contacts")
+		and flex._turn_plug.visible and flex._real_id == "pf20")
+	flex.leave()
+	await _frames(3)
+	var named: String = Assemblies.label(path)
+	var plug_end: int = -1
+	var motor_end: int = -1
+	var wired: Wiring = _wiring()
+	for cable: Dictionary in wired.cables:
+		if str(cable["path"]) == path:
+			for key: String in cable["ends"]:
+				if key.begins_with("p:"):
+					var on: int = -1
+					for join: Array in wired.joins:
+						if str(join[0]) == key and str(join[4]) == "seat":
+							on = (wired.points[str(join[1])] as Wiring.Point).brick
+					plug_end = on
+				elif key.begins_with("t:"):
+					motor_end = int(key.get_slice(":", 1))
+	var depth: int = _builder.history_depth()
+	var again: String = await _say("lay_flex", {"kind": "pf_cable", "item": named,
+		"from": {"brick": motor_end}, "to": {"brick": plug_end}, "reversed": true})
+	_check("lay_flex item=%s lays it again, turned half round, one undo (%s)" % [named, again.left(160)],
+		again.begins_with("Laid") and _builder.history_depth() == depth + 1)
+	_builder.undo()
+	await _frames(3)
+	_check("undone: the cable as it was", Flex.items_in(_world).size() == 2)
+	_builder.redo()
+	await _frames(3)
+	_check("redone: laid again", Flex.items_in(_world).size() == 2)
+	_builder.undo()
+	await _frames(3)
 
 
 func _place(part_id: String, at: Transform3D, colour: int) -> int:
@@ -412,7 +553,7 @@ func _simulate_42042() -> void:
 			kept += 1
 	_check("saved untouched: %d of its %d LDCad cable and hose paths byte for byte" % [kept, paths.size()],
 		not paths.is_empty() and kept == paths.size())
-	_panel.open()
+	await _main.call("open_simulate")
 	await _settled()
 	var wiring: Wiring = _panel.wiring
 	var box: int = -1
@@ -425,16 +566,18 @@ func _simulate_42042() -> void:
 	_check("Simulate reads the L motor's cable to the box: %s" % (
 		"\n      ".join(wiring.motor_lines()) if wiring != null else "nothing read"),
 		box >= 0 and motor >= 0 and bool(wiring.power_of(motor)["wired"]))
-	_panel.play()
+	# N6: the box selected some other way (the tree, a session): no switch.
+	_builder.select_brick(box, false)
 	await _frames(5)
-	_check("the box off: Play does not run the motor, and says why (%s)" % _panel._status.text,
-		not _panel.playing and _panel._status.text.contains("is off"))
-	# The box clicked, as a person clicks it: its switch worked on the part.
-	_builder.selection.clear()
-	_builder.selection[box] = true
-	_builder.selection_changed.emit(1)
+	_check("the box selected otherwise: its switch not worked (%s)" % _panel._switch_words(box, 0),
+		_panel.wiring.switch_index(box) == 0)
+	_builder.clear_selection()
+	# The box clicked, as a person clicks it: the part under the pointer.
+	var clicked: String = _click_on(box)
 	await _settled()
 	await _frames(30)
+	_check("the box clicked through the real click (%s): selected nothing" % clicked,
+		clicked.begins_with("clicked") and _builder.selection.is_empty())
 	var rate: float = _panel._power_rate
 	_check("the box clicked on: the motor drives and plays at 390 rpm (%s)" % _panel._status.text,
 		_panel.playing and absf(absf(rate) * 60.0 - 390.0) < 1.0
@@ -463,7 +606,60 @@ func _simulate_42042() -> void:
 	await _frames(20)
 	_check("undone: the plug back on the box, the box still on, it runs again (%s)" % _panel._status.text,
 		_panel.playing and _panel._power_rate != 0.0)
+	# The box worked round to off, and Play: it switches the box on and runs,
+	# as a person pressing Play wants (F2).
+	while _panel.wiring.switch_index(box) != 0:
+		_panel.work_switch(box, 0)
+	await _settled()
+	if _panel.playing:
+		_panel.play()
+	_panel.play()
+	await _frames(10)
+	_check("the box off, Play: switches it on and runs (%s)" % _panel._status.text,
+		_panel.playing and _panel._power_rate != 0.0 and _panel.wiring.switch_index(box) != 0)
 	_panel.close()
+
+
+## Click [param brick] as a person does: the camera turned to it from a
+## side it shows, and EditVerbs.click at a point of the screen where the
+## part under the pointer is it. "clicked ..." or why not.
+func _click_on(brick_id: int) -> String:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var camera: CadCamera = verbs.camera
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+	if brick == null or camera == null:
+		return "no part or no camera"
+	var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+	var box: AABB = brick.transform * mesh.bounds if mesh != null \
+		else AABB(brick.transform.origin - Vector3.ONE * 10.0, Vector3.ONE * 20.0)
+	var centre: Vector3 = box.get_center()
+	var kept: Transform3D = camera.global_transform
+	var size: Vector2 = camera.get_viewport().get_visible_rect().size
+	var ways: Array = [Vector3.UP, Vector3(1, 1, 1), Vector3(-1, 1, 1), Vector3(1, 1, -1), Vector3(-1, 1, -1),
+		Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK, Vector3(1, -1, 1), Vector3(-1, -1, -1),
+		Vector3.DOWN]
+	for way: Vector3 in ways:
+		var eye: Vector3 = centre + way.normalized() * 3000.0
+		camera.look_at_from_position(eye, centre, Vector3.FORWARD if absf(way.normalized().y) > 0.99 else Vector3.UP)
+		var corners: Array = []
+		for n: int in 8:
+			corners.append(camera.unproject_position(box.get_endpoint(n)))
+		var low: Vector2 = corners[0]
+		var high: Vector2 = corners[0]
+		for corner: Vector2 in corners:
+			low = low.min(corner)
+			high = high.max(corner)
+		for i: int in 7:
+			for j: int in 7:
+				var at := Vector2(lerpf(low.x, high.x, (i + 0.5) / 7.0), lerpf(low.y, high.y, (j + 0.5) / 7.0))
+				if at.x < 0.0 or at.y < 0.0 or at.x > size.x or at.y > size.y:
+					continue
+				if verbs.brick_at(at) == brick_id:
+					var took: bool = verbs.click(at, false)
+					camera.global_transform = kept
+					return "clicked from %s at %s, %s" % [way, at.round(), "taken" if took else "not taken"]
+	camera.global_transform = kept
+	return "hidden from every side"
 
 
 func _timed() -> void:
@@ -528,17 +724,33 @@ func _sets(listing: String, rows_path: String) -> void:
 		_index()
 		var sim: Simulation = _read_sim()
 		var wired: Wiring = _wiring()
-		for key: int in wired.sources:
-			match str(Wiring.SOURCES[wired.sources[key]]["kind"]):
-				"box", "reverser":
-					wired.set_to(key, "on")
-				"receiver":
-					wired.set_to(key, "on", 0)
-					wired.set_to(key, "on", 1)
-				"hub":
-					wired.set_to(key, "on")
-					for port: int in 6:
-						wired.set_to(key, "1.0", port)
+		# Each source switched on in Simulate by a click on the part, as a
+		# person does (F3); a receiver's other lever by the row's button.
+		await _main.call("open_simulate")
+		await _settled()
+		var clicks: Array = []
+		if _panel.wiring != null:
+			for key: int in _panel.wiring.sources:
+				var kind: String = str(Wiring.SOURCES[_panel.wiring.sources[key]]["kind"])
+				var how: String = _click_on(key)
+				await _frames(3)
+				clicks.append({"source": key, "part": _panel.wiring.parts.get(key, ""),
+					"in": Assemblies.path_of(_world.get_brick(key)), "click": how,
+					"said": _panel._switch_words(key, 0)})
+				print("  %s #%d (%s): %s; %s" % [kind, key, _panel.wiring.parts.get(key, ""), how,
+					_panel._switch_words(key, 0)])
+				if kind == "receiver":
+					for output: int in 2:
+						if _panel.wiring.lever_index(key, output) == 0:
+							_panel.work_switch(key, output)
+				elif _panel.wiring.switch_index(key) == 0 and kind != "hub":
+					_panel.work_switch(key, 0)
+				elif kind == "hub" and not bool(_panel.wiring.settings.get(key, false)):
+					_panel.work_switch(key, 0)
+			wired.settings = _panel.wiring.settings.duplicate()
+		_row({"set": model["set"], "clicks": clicks})
+		_panel.close()
+		await _frames(3)
 		for motor: int in wired.motors:
 			await _motor_row(model, sim, wired, motor, began)
 	_rows.close()
