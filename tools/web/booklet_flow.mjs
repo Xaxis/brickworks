@@ -23,7 +23,8 @@
 // tab has it (OUT/booklet.html): poppler (and pypdf, where BOOKLET_PYPDF
 // names it) finds its pages, its step pictures the booklet's own JPEGs,
 // its words, and the zip a PNG a page; the pages photographed here are
-// held against the PDF's.
+// held against the PDF's. Then Save as web page, one long page in dark
+// (OUT/saved_web.html): every step's picture the booklet has, no script.
 //
 // --model=FILE opens that model first (Open… > From a file, as
 // steps_flow.mjs does) and makes its booklet instead of the car's; a
@@ -31,7 +32,7 @@
 // --pages=all photographs those pages, as a reader turns them; the first
 // three and the last by default.
 import { controlsWith, launch, openFromFile } from "./browser.mjs";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -249,6 +250,39 @@ try {
           { encoding: "utf8" });
         for (const line of (run.stdout + run.stderr).trim().split("\n")) console.log(`      ${line}`);
         check("the PDF and the pages are the booklet (tools/booklet_pdf_check.py)", run.status === 0);
+      }
+
+      // Save as web page (BookletHtml), one long page in dark, as a person
+      // chooses it beside the button: one file, every step of the booklet in
+      // it with its picture, nothing in it that runs.
+      const stepPictures = await tab.evaluate(() =>
+        document.querySelectorAll("section.page img[alt^='Step ']").length);
+      const web = await tab.evaluate(() => {
+        const button = document.getElementById("save-html");
+        return Boolean(button && !document.getElementById("save-web").hidden && button.offsetWidth > 0);
+      }).catch(() => false);
+      check("the booklet shows Save as web page", web);
+      if (web) {
+        await tab.selectOption("#web-layout", "long");
+        await tab.selectOption("#web-theme", "dark");
+        const started = Date.now();
+        const downloaded = page.waitForEvent("download", { timeout: 300000 });
+        await tab.click("#save-html");
+        try {
+          const download = await downloaded;
+          const file = path.join(out, "saved_web.html");
+          await download.saveAs(file);
+          const text = readFileSync(file, "utf8");
+          const said = await tab.evaluate(() => document.getElementById("saved").textContent);
+          check(`...which downloads ${download.suggestedFilename()} in `
+            + `${((Date.now() - started) / 1000).toFixed(1)} s, and says so (${said})`,
+            said.startsWith("downloaded ") && /_web\.html$/.test(download.suggestedFilename()));
+          const pictures = (text.match(/<img class="picture"/g) || []).length;
+          check(`...dark, every step's picture the booklet has (${pictures} of ${stepPictures}), no script`,
+            text.includes('class="dark"') && pictures === stepPictures && !/<script/i.test(text));
+        } catch (error) {
+          check(`...which downloads it (${String(error).split("\n")[0].slice(0, 120)})`, false);
+        }
       }
     }
   }
