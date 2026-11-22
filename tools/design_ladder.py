@@ -335,14 +335,14 @@ def _transparent(code: int, palette: dict[int, dict]) -> bool:
 
 def colours_flattened(rung: Rung, parts: style.Parts, palette: dict[int, dict]) -> Rung:
     """Rung 4: every solid colour the nearest of the three the model has most of."""
-    weight: Counter = Counter()
+    weight: defaultdict[int, float] = defaultdict(float)
     for b in style._boxes([(p, i) for p, i in rung.kept if i is not None and i.box], parts):
         if b.colour != 16 and not _transparent(b.colour, palette):
             weight[b.colour] += 8 * b.half[0] * b.half[1] * b.half[2]
     for colour in rung.cells.values():
         if not _transparent(colour, palette):
             weight[colour] += STUD * PLATE * STUD
-    main = [c for c, _n in weight.most_common(COLOURS_KEPT)]
+    main = sorted(weight, key=lambda c: weight[c], reverse=True)[:COLOURS_KEPT]
 
     def rgb(code: int) -> tuple[int, ...]:
         return tuple(palette.get(code, {}).get("rgb", (128, 128, 128)))
@@ -673,7 +673,7 @@ def place(args: argparse.Namespace) -> int:
 
 def wilson(wins: float, n: int) -> tuple[float, float, float]:
     if not n:
-        return (float("nan"),) * 3
+        return float("nan"), float("nan"), float("nan")
     p, z = wins / n, 1.96
     centre = (p + z * z / (2 * n)) / (1 + z * z / n)
     half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
@@ -890,7 +890,7 @@ def sheet(args: argparse.Namespace) -> int:
     size = args.size
     view = args.view
     rows = [n for n in numbers if all((LADDER / n / f"r{k}_{view}.png").exists() for k in RUNGS)]
-    canvas = Image.new("RGB", (size * 5, (size + 18) * len(rows)), "white")
+    canvas = Image.new("RGB", (size * 5, (size + 18) * len(rows)), 0xFFFFFF)
     draw = ImageDraw.Draw(canvas)
     for r, number in enumerate(rows):
         for k in RUNGS:
@@ -1069,7 +1069,7 @@ def reach(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("build", "render", "order", "place", "report", "sheet", "leaks", "reach"):
         p = sub.add_parser(name)

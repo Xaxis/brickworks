@@ -45,7 +45,7 @@ def made():
 def _measured(text: str, parts: style.Parts) -> tuple[dict, list]:
     model = style.read(text)
     placed = [(p, i) for p in model.placed for i in [parts.get(p.part, model.embedded)]
-              if style.building(i)]
+              if i is not None and style.building(i)]
     boxes = style._boxes(placed, parts)
     return style.measure(model, parts), boxes
 
