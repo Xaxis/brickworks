@@ -154,7 +154,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   newest step by identity, and `ModelStore._said_now`: what the file says
   past its parts and steps, copied and compared by value, as a view turned,
   the cut, hidden colours or link cleared are no step and move no revision;
-  mlattack's dups and features cases). A save at the same moment, under the
+  mlattack's dups and features cases; and the model's parts with those on
+  their way, `ModelStore._parts_with_awaited`, which a landing leaves as it
+  was: one more or fewer on its way wrote the kept text without it, and
+  Versions then asked a question nobody answered, so `empty_open_probe`
+  hung in rel-m318's train, eohang). A save at the same moment, under the
   same name, to its own file in the same folder writes that text; anything
   else is the save as it was. `outside` moves wherever the model is marked changed
   (`ModelStore.touch`), a Together peer's `_put`, a session's call that may
