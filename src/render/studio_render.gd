@@ -103,11 +103,11 @@ const TENT_TOP := 6.0
 ## the red slope's photograph has its lit face five times its shaded end.
 const TENT_KEY := 2.5
 const TENT_KEY_SPREAD := 0.45
-## The tent's two strip lights (photoreal3, path_tracer.glsl's tent_strip):
-## tall narrow soft boxes behind the model to each side, this bright against
-## the walls' TENT_FILL. They are what a glossy part mirrors: its stud rims,
-## edges and logo flanks show them as a photograph's do.
-const TENT_STRIP := 16.0
+## The tent's two soft boxes (photoreal3, path_tracer.glsl's tent_box): wide
+## boxes behind the model to each side, this bright against the walls'
+## TENT_FILL. They are what a glossy part mirrors: its stud rims, edges and
+## logo flanks show them as a photograph's do.
+const TENT_BOX := 8.0
 ## How light a backdrop is at least to be a tent's paper rather than a pool
 ## of light, and to be the photograph's white the exposure is metered to.
 const TENT_BACKDROP := 0.2
@@ -2824,7 +2824,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 				float(light.get("size", 4.0)), SceneLights.EDGE, float(node.get_meta("reach", 1e6)),
 				0.0])
 	data.append_array([float(rows.size()), _glow, TENT_TOP if tent else 0.0,
-		TENT_STRIP if tent else 0.0])
+		TENT_BOX if tent else 0.0])
 	for n: int in SceneLights.MOST:
 		if n < rows.size():
 			data.append_array(rows[n])

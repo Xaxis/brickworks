@@ -108,8 +108,8 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	Light lights[4];
 	// How many lamps, how much light the glowing plastics give off (0 but in
 	// the Dark light), and for a light tent (photoreal2) how many times
-	// brighter its top is than its walls (0 for none), and its strip lights'
-	// light (photoreal3, StudioRender.TENT_STRIP).
+	// brighter its top is than its walls (0 for none), and its soft boxes'
+	// light (photoreal3, StudioRender.TENT_BOX).
 	vec4 lamp_info;
 	Lamp lamps[8];
 } scene;
@@ -277,52 +277,50 @@ bool tent() {
 	return scene.sky.w < 0.5 && scene.lamp_info.z > 0.0;
 }
 
-// The tent's strip lights (photoreal3): four tall narrow soft boxes round the
-// model, two behind it and two beside it, as a product photographer stands
-// them, each TENT_STRIP_WIDE radians across and rising from TENT_STRIP_LOW to
-// TENT_STRIP_HIGH (the sines of their elevations), lamp_info.w as bright. A
-// gloss is the lights it mirrors: ABS reflects about 5% of what it faces, so
-// a tent of paper-white walls left every highlight a few L* over the face,
-// where a photograph's stud rims, edges and logo flanks show the lights as
-// bright crescents and bands. Small and bright, they light the faces little.
-const float TENT_STRIP_BEHIND = 0.55;
-const float TENT_STRIP_BESIDE = 1.75;
-const float TENT_STRIP_WIDE = 0.3;
-const float TENT_STRIP_LOW = 0.05;
-const float TENT_STRIP_HIGH = 0.64;
+// The tent's soft boxes (photoreal3): two wide boxes behind the model to its
+// left and right, as a product photographer stands them, each TENT_BOX_WIDE
+// radians across with soft edges, rising from TENT_BOX_LOW to TENT_BOX_HIGH
+// (the sines of their elevations), lamp_info.w as bright. A gloss is the
+// lights it mirrors: ABS reflects about 5% of what it faces, so a tent of
+// paper-white walls left every highlight a few L* over the face, where a
+// photograph's stud rims, edges and logo flanks show the lights as soft
+// bright arcs and bands. Four narrow strips drew a white tick on each side
+// of every stud, the same on each, which a judge called CG reflections.
+const float TENT_BOX_AT = 0.85;
+const float TENT_BOX_WIDE = 1.2;
+const float TENT_BOX_LOW = 0.03;
+const float TENT_BOX_HIGH = 0.62;
 
-float tent_strip_at(int k) {
-	float at = k < 2 ? TENT_STRIP_BEHIND : TENT_STRIP_BESIDE;
-	return (k % 2 == 0) ? at : -at;
-}
-
-// Into the picture along the floor, and to its right: the strips' frame.
+// Into the picture along the floor, and to its right: the boxes' frame.
 void tent_frame(out vec3 into, out vec3 right) {
 	vec3 ahead = vec3(-scene.back.x, 0.0, -scene.back.z) + vec3(scene.up.x, 0.0, scene.up.z);
 	into = dot(ahead, ahead) > 1e-8 ? normalize(ahead) : vec3(0.0, 0.0, -1.0);
 	right = vec3(-into.z, 0.0, into.x);
 }
 
-// Which strip a direction is in (0 to 3), or -1.
-int tent_strip(vec3 way) {
-	if (scene.lamp_info.w <= 0.0 || way.y < TENT_STRIP_LOW || way.y > TENT_STRIP_HIGH) {
-		return -1;
+// How much of a box's light a direction sees (0 to 1, soft at the edges), and
+// whether it is within a box's span at all.
+float tent_box(vec3 way, out bool within) {
+	within = false;
+	if (scene.lamp_info.w <= 0.0 || way.y < TENT_BOX_LOW || way.y > TENT_BOX_HIGH) {
+		return 0.0;
 	}
 	vec3 into;
 	vec3 right;
 	tent_frame(into, right);
-	float around = atan(dot(way, right), dot(way, into));
-	for (int k = 0; k < 4; k++) {
-		if (abs(around - tent_strip_at(k)) < TENT_STRIP_WIDE * 0.5) {
-			return k;
-		}
+	float off = abs(abs(atan(dot(way, right), dot(way, into))) - TENT_BOX_AT);
+	if (off >= TENT_BOX_WIDE * 0.5) {
+		return 0.0;
 	}
-	return -1;
+	within = true;
+	return (1.0 - smoothstep(TENT_BOX_WIDE * 0.25, TENT_BOX_WIDE * 0.5, off))
+		* smoothstep(TENT_BOX_LOW, TENT_BOX_LOW + 0.1, way.y)
+		* (1.0 - smoothstep(TENT_BOX_HIGH - 0.15, TENT_BOX_HIGH, way.y));
 }
 
-// Each strip's chance per steradian, picked evenly over its span.
-float tent_strip_pdf() {
-	return 1.0 / (TENT_STRIP_WIDE * (TENT_STRIP_HIGH - TENT_STRIP_LOW));
+// Each box's chance per steradian, picked evenly over its span.
+float tent_box_pdf() {
+	return 1.0 / (TENT_BOX_WIDE * (TENT_BOX_HIGH - TENT_BOX_LOW));
 }
 
 vec3 tent_light(vec3 way) {
@@ -334,19 +332,22 @@ vec3 tent_light(vec3 way) {
 	// (a top-down shot's tops came out milky, mirroring the panel).
 	vec3 to_eye = normalize(scene.origin.xyz - scene.sweep_origin.xyz);
 	float port = smoothstep(0.978, 0.988, dot(way, to_eye));
-	float strip = tent_strip(way) >= 0 ? scene.lamp_info.w : 0.0;
-	return scene.sky.rgb * (TENT_FILL + strip
+	bool within;
+	float box = tent_box(way, within) * scene.lamp_info.w;
+	return scene.sky.rgb * (TENT_FILL + box
 		+ scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y)) * (1.0 - 0.97 * port);
 }
 
-// The tent's own pick: its panel (evenly over its cone), or with strips a
-// strip half the time (evenly over its span of turn and of sine).
+// The tent's own pick: its panel (evenly over its cone), or with boxes a box
+// half the time (evenly over its span of turn and of sine).
 float tent_own_pdf(vec3 way) {
 	float cone = way.y >= TENT_COS_OUT ? 1.0 / (2.0 * PI * (1.0 - TENT_COS_OUT)) : 0.0;
 	if (scene.lamp_info.w <= 0.0) {
 		return cone;
 	}
-	return 0.5 * cone + (tent_strip(way) >= 0 ? 0.125 * tent_strip_pdf() : 0.0);
+	bool within;
+	tent_box(way, within);
+	return 0.5 * cone + (within ? 0.25 * tent_box_pdf() : 0.0);
 }
 
 vec3 tent_own_pick() {
@@ -357,8 +358,8 @@ vec3 tent_own_pick() {
 	vec3 right;
 	tent_frame(into, right);
 	vec2 u = rand2();
-	float around = tent_strip_at(min(int(u.x * 4.0), 3)) + (fract(u.x * 4.0) - 0.5) * TENT_STRIP_WIDE;
-	float up = mix(TENT_STRIP_LOW, TENT_STRIP_HIGH, u.y);
+	float around = (u.x < 0.5 ? TENT_BOX_AT : -TENT_BOX_AT) + (fract(u.x * 2.0) - 0.5) * TENT_BOX_WIDE;
+	float up = mix(TENT_BOX_LOW, TENT_BOX_HIGH, u.y);
 	float flat_part = sqrt(max(1.0 - up * up, 0.0));
 	return normalize((into * cos(around) + right * sin(around)) * flat_part + vec3(0.0, up, 0.0));
 }
@@ -553,10 +554,26 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat_roughness = 0.3;
 			s.coat *= 0.6;
 		}
+		// Edges take the knocks (photoreal3): along a part's edges, in
+		// patches, the skin is scuffed dull and the plastic a shade whiter
+		// where it was stressed, never a point a judge takes for a firefly.
+		vec3 high = vec3(thing.box_max.x, min(thing.box_max.y, thing.box_min.w), thing.box_max.z);
+		float edge = seam_at(local, thing.box_min.xyz, high, 1.6);
+		if (edge > 0.5 && gloss_noise(local / 3.0 + vec3(own * 41.0, 3.0, own * 17.0)) > 0.3) {
+			s.coat_roughness = max(s.coat_roughness, 0.22);
+			body = mix(body, vec3(dot(body, vec3(0.2126, 0.7152, 0.0722)) * 1.4 + 0.02), 0.08);
+		}
 		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
 			// mirror, each bump of its grain a small glint.
 			s.coat_roughness = 0.2;
+		}
+		// A stud's top is satin, not polished (photoreal3): the logo's plate of
+		// the mould is left rough, so it shows the tent's light blurred where a
+		// polished top mirrors the dark camera. In three_2x2_top's photograph
+		// every stud's top is lighter than the face round it.
+		if (local.y > thing.box_min.w + 0.5 && abs(local.y - thing.box_max.y) < 0.3) {
+			s.coat_roughness = 0.45;
 		}
 	}
 	s.albedo = body;
@@ -1262,6 +1279,17 @@ vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 	return normalize(sign(p) * q);
 }
 
+// The number of the part being hit, for each stud's own logo.
+uint part_number = 0u;
+
+float stud_hash(vec2 centre, uint salt) {
+	uint h = uint(int(floor(centre.x * 0.5 + 4096.0))) * 73856093u
+		^ uint(int(floor(centre.y * 0.5 + 4096.0))) * 19349663u ^ (part_number + salt) * 83492791u;
+	h = h * 747796405u + 2891336453u;
+	h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+	return float(((h >> 22u) ^ h) & 0xffffu) / 65535.0;
+}
+
 vec3 stud_rim(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	float top = box_max.y;
 	if (box_max.x <= box_min.x || at.y < body_top + 0.5 || at.y > top + 0.3) {
@@ -1285,7 +1313,10 @@ vec3 stud_rim(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	if (min(q.x, q.y) <= 0.0) {
 		return n;
 	}
-	return normalize(vec3(out_from.x * q.x, q.y, out_from.y * q.x));
+	// Each stud stands a hair off true (photoreal3), so no two mirror a light
+	// alike: identical highlights on every stud gave a render away.
+	vec2 lean = (vec2(stud_hash(centre, 9u), stud_hash(centre, 10u)) - 0.5) * 0.12;
+	return normalize(vec3(out_from.x * q.x + lean.x * q.y, q.y, out_from.y * q.x + lean.y * q.y));
 }
 
 float segment(vec2 p, vec2 a, vec2 b) {
@@ -1330,18 +1361,7 @@ float logo_distance(vec2 p) {
 // letters together ("LE¢O", a judge read). [param soft] widens the flank: a
 // worn mould's letters are softer.
 float logo_height(vec2 p, float soft) {
-	return 0.2 * smoothstep(0.36 + soft, 0.24, logo_distance(p));
-}
-
-// The number of the part being hit, for each stud's own logo.
-uint part_number = 0u;
-
-float stud_hash(vec2 centre, uint salt) {
-	uint h = uint(int(floor(centre.x * 0.5 + 4096.0))) * 73856093u
-		^ uint(int(floor(centre.y * 0.5 + 4096.0))) * 19349663u ^ (part_number + salt) * 83492791u;
-	h = h * 747796405u + 2891336453u;
-	h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
-	return float(((h >> 22u) ^ h) & 0xffffu) / 65535.0;
+	return 0.2 * smoothstep(0.42 + soft, 0.22, logo_distance(p));
 }
 
 vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
@@ -1402,6 +1422,11 @@ float wave_noise(vec3 p) {
 			mix(wave_hash(i + vec3(0, 1, 1)), wave_hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
+// A moulded face sinks a hair towards its middle as the plastic cools
+// (photoreal3): its normal leans to the middle by SINK a turn per LDU from
+// it, so a light mirrored across a long face bends, as a real part's does.
+const float SINK = 0.0005;
+
 vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	vec3 high = vec3(box_max.x, min(box_max.y, box_min.w), box_max.z);
 	vec3 bent = bevelled(at, n, box_min.xyz, high);
@@ -1410,6 +1435,10 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	}
 	if (bent == n) {
 		bent = stud_logo(at, n, box_min.xyz, box_max.xyz, box_min.w);
+	}
+	if (bent == n && max(abs(n.x), max(abs(n.y), abs(n.z))) > 0.97) {
+		vec3 off = at - (box_min.xyz + high) * 0.5;
+		bent = normalize(n - (off - n * dot(off, n)) * SINK);
 	}
 	vec3 s = at / 14.0;
 	vec3 wave = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)));
