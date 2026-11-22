@@ -198,43 +198,55 @@ func _thumbnail(host: Node, library: PartLibrary, lot: Inventory.Lot) -> Image:
 	return image
 
 
-## A render dressed as a phone's photo of a part over a table: the
-## renderer's plain backdrop a table's colour with its grain, warm light
-## falling from one side, a little soft and grainy, the part off the middle
-## and smaller in a 4:3 frame.
+## A render dressed as a phone's photo of a part on a table: the part, cut
+## from the renderer's plain backdrop, off the middle of a 4:3 frame of a
+## table's colour and grain, its shadow beside it, warm light falling from
+## one side, a little soft and grainy.
 func _as_a_phone(picture: Image, n: int) -> Image:
-	var image: Image = picture.duplicate()
-	image.convert(Image.FORMAT_RGB8)
+	var part: Image = picture.duplicate()
+	part.convert(Image.FORMAT_RGB8)
+	part.resize(640, 640, Image.INTERPOLATE_LANCZOS)
 	var backdrop := Color(0.93, 0.94, 0.96)
 	var table: Color = TABLES[n % TABLES.size()]
-	var w: int = image.get_width()
-	var h: int = image.get_height()
+	var warm := Color(1.0, 0.94, 0.84)
+	var w: int = 1024
+	var h: int = 768
+	# The part off the middle, a little to one side each time.
+	var dx: int = 120 + 140 * (n % 3)
+	var dy: int = 70
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1000 + n
-	var warm := Color(1.0, 0.94, 0.84)
+	var photo := Image.create(w, h, false, Image.FORMAT_RGB8)
 	for y: int in h:
 		for x: int in w:
-			var c: Color = image.get_pixel(x, y)
-			if absf(c.r - backdrop.r) + absf(c.g - backdrop.g) + absf(c.b - backdrop.b) < 0.06:
+			var c := Color()
+			var on_part: bool = false
+			var rx: int = x - dx
+			var ry: int = y - dy
+			if rx >= 0 and ry >= 0 and rx < 640 and ry < 640:
+				var p: Color = part.get_pixel(rx, ry)
+				on_part = absf(p.r - backdrop.r) + absf(p.g - backdrop.g) + absf(p.b - backdrop.b) >= 0.06
+				c = p
+			if not on_part:
 				var grain: float = 0.04 * sin(float(y) * 0.09 + sin(float(x) * 0.013) * 3.0)
 				c = Color(table.r + grain, table.g + grain * 0.8, table.b + grain * 0.6)
-			# Light from the left, warm, falling off to the right.
+				# Its shadow on the table, the light from the upper left.
+				var sx: int = rx - 18
+				var sy: int = ry - 24
+				if sx >= 0 and sy >= 0 and sx < 640 and sy < 640:
+					var s: Color = part.get_pixel(sx, sy)
+					if absf(s.r - backdrop.r) + absf(s.g - backdrop.g) + absf(s.b - backdrop.b) >= 0.06:
+						c = c * 0.72
+			# Light from the left, warm, falling off to the right and down.
 			var lit: float = lerpf(1.12, 0.78, float(x) / w) * lerpf(1.04, 0.92, float(y) / h)
 			c = Color(c.r * warm.r * lit, c.g * warm.g * lit, c.b * warm.b * lit)
 			var noise: float = rng.randf_range(-0.025, 0.025)
-			image.set_pixel(x, y, Color(clampf(c.r + noise, 0, 1), clampf(c.g + noise, 0, 1),
+			photo.set_pixel(x, y, Color(clampf(c.r + noise, 0, 1), clampf(c.g + noise, 0, 1),
 				clampf(c.b + noise, 0, 1)))
 	# Soft: a phone's small lens and a hand that moves.
-	image.resize(w / 2, h / 2, Image.INTERPOLATE_BILINEAR)
-	image.resize(w, h, Image.INTERPOLATE_BILINEAR)
-	# A 4:3 frame round it, the part off the middle and smaller.
-	var frame := Image.create(roundi(w * 1.6), roundi(h * 1.2), false, Image.FORMAT_RGB8)
-	var edge: Color = Color(table.r * warm.r * 0.9, table.g * warm.g * 0.9, table.b * warm.b * 0.9)
-	frame.fill(edge)
-	var dx: int = roundi(frame.get_width() * (0.12 + 0.18 * float(n % 3) / 2.0))
-	var dy: int = roundi(frame.get_height() * 0.06)
-	frame.blit_rect(image, Rect2i(0, 0, w, h), Vector2i(dx, dy))
-	return frame
+	photo.resize(w / 2, h / 2, Image.INTERPOLATE_BILINEAR)
+	photo.resize(w, h, Image.INTERPOLATE_BILINEAR)
+	return photo
 
 
 # -- the measure ------------------------------------------------------------------
@@ -319,12 +331,13 @@ func _ask_all() -> void:
 				"options": options, "top3": right_part, "rank": rank, "picked_right": picked_right,
 				"home": home, "expected": expected, "shown": shown,
 				"step_right": shown == expected, "colour_read": int(card["colour"]),
-				"ms": int(card["photo_ms"]), "where": card["where"], "title": card["title"]}
+				"ms": int(card["photo_ms"]), "read_us": int(card["read_us"]), "where": card["where"],
+				"title": card["title"]}
 			rows.append(row)
-			print("  %s  %-34s top3 %s (rank %d)  step %s (from %d: %d, wanted %d)  %d ms  %s" % [
+			print("  %s  %-34s top3 %s (rank %d)  step %s (from %d: %d, wanted %d)  %d ms (read %.1f ms)  %s" % [
 				"ok  " if right_part and shown == expected else "miss", str(one["file"]).left(34),
 				"yes" if right_part else "no ", rank, "right" if shown == expected else "WRONG",
-				home, shown, expected, int(card["photo_ms"]), str(options)])
+				home, shown, expected, int(card["photo_ms"]), int(card["read_us"]) / 1000.0, str(options)])
 			(mode.get("_card") as PartStep).hide_card()
 			mode.set("_home", -1)
 			# Brickognize's own pace: a photo every two seconds or so.

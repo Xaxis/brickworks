@@ -144,6 +144,9 @@ var _home: int = -1
 ## ms (-1 while none is): the bar is 3 s on broadband.
 var _asked_at: int = 0
 var photo_ms: int = -1
+## How long the answer took to read against the pages, in the frame it came
+## in (microseconds): within a frame's 16 ms on the largest model.
+var read_us: int = -1
 ## Where photos go: Brickognize's, or a probe's stub.
 var photo_url: String = Brickognize.URL
 
@@ -760,8 +763,10 @@ func _read_answer(guesses: Array, seen: Dictionary, pick: int) -> void:
 		return StepsBar.found_words(pages.steps[index], 1) if index < pages.steps.size() \
 			else str(index + 1)
 	# Built: every step before the page the builder asked from.
+	var reading: int = Time.get_ticks_usec()
 	var read: Dictionary = PartStep.place(guesses, seen, library, world, steps,
 		maxi(_home - 1, 0), pick)
+	read_us = Time.get_ticks_usec() - reading
 	var step: int = int(read["step"])
 	_card.home = _home
 	_card.show_answer(read, step)
@@ -926,7 +931,7 @@ func page_state() -> Dictionary:
 		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt),
 		"comment_step": comments.step, "party": _party_page_state(),
 		"partstep": _card.card_state().merged({"photo_ms": photo_ms, "home": _home,
-			"button": _where.text, "telling": _terms != null and _terms.visible})}.merged(
+			"button": _where.text, "read_us": read_us, "telling": _terms != null and _terms.visible})}.merged(
 			comments.page_state())
 
 
