@@ -3382,6 +3382,39 @@ async function unpublish(request, response) {
 // every file.
 
 const SWEEP_AGE_MS = 60 * 60 * 1000;
+// A deleted link's note is kept this long, covering any file of it the
+// sweep had not yet come to (each is over an hour old first).
+const GONE_KEPT_MS = 7 * 24 * 3600 * 1000;
+
+/// Which of [ids] were deleted (supabase/models_gone.sql): a Set. Before
+/// that file, or the read failing, none: the quarter then holds for all.
+async function linksGone(ids) {
+  const out = new Set();
+  try {
+    for (let at = 0; at < ids.length; at += 100) {
+      const rows = await db(`shared_models_gone?id=in.(${ids.slice(at, at + 100).join(",")})&select=id`);
+      for (const row of rows) out.add(row.id);
+    }
+  } catch (trouble) {
+    if (!/: 40[04]$/.test(String(trouble?.message || ""))) {
+      console.error(`sweep: deleted links not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
+    return new Set();
+  }
+  return out;
+}
+
+/// The notes older than GONE_KEPT_MS forgotten. Never throws: a note left
+/// is pruned tomorrow.
+async function linksForgotten(now) {
+  try {
+    await db(`shared_models_gone?gone_at=lt.${new Date(now - GONE_KEPT_MS).toISOString()}`, { method: "DELETE" });
+  } catch (trouble) {
+    if (!/: 40[04]$/.test(String(trouble?.message || ""))) {
+      console.error(`sweep: deleted links' notes kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
+  }
+}
 
 async function sweep(request, response) {
   response.setHeader("Cache-Control", "no-store");
@@ -3418,11 +3451,19 @@ async function sweepRun(request, response, started) {
     for (const row of rows) kept.add(row.id);
   }
   const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0]));
-  // Most of what it looked at, unasked: the rows' read is wrong, not the
-  // files (api/_cron.js sweepHeld). None of them, said.
-  const held = scoped ? "" : sweepHeld(files.length, gone.length);
+  // Links whose rows were deleted say so (supabase/models_gone.sql), however
+  // they went: a deleted account's models, every check's throwaway's. Their
+  // files are known to be nobody's and go whatever their number.
+  const known = scoped ? new Set() : await linksGone([...new Set(gone.map((name) => name.split(".")[0]))]);
+  const knownGone = gone.filter((name) => known.has(name.split(".")[0]));
+  const unknownGone = gone.filter((name) => !known.has(name.split(".")[0]));
+  // Most of the rest, unasked: the rows' read is wrong, not the files
+  // (api/_cron.js sweepHeld). None of those, said; the known ones still go.
+  const held = scoped ? "" : sweepHeld(files.length - knownGone.length, unknownGone.length);
   if (held) console.error(`sweep: models' files ${held}`);
-  else for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
+  const removing = held ? knownGone : gone;
+  for (let at = 0; at < removing.length; at += 100) await deleteFiles(removing.slice(at, at + 100));
+  if (!scoped) await linksForgotten(now);
   // Who looked at what, kept only as long as it takes to count a visitor
   // once a day: today's and yesterday's.
   const yesterday = new Date(now - 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -3451,11 +3492,11 @@ async function sweepRun(request, response, started) {
       photoFiles = { trouble: said };
     }
   }
-  const answer = { looked_at: files.length, kept: files.length - (held ? 0 : gone.length),
-    removed: held ? [] : gone, ...(held ? { held } : {}), originals, photos: photoFiles };
+  const answer = { looked_at: files.length, kept: files.length - removing.length,
+    removed: removing, ...(held ? { held } : {}), originals, photos: photoFiles };
   if (started) {
     await cronNoted(request, "share_sweep", started, held || photoFiles?.trouble ? "failed" : "done", {
-      looked_at: files.length, removed: held ? 0 : gone.length, originals, ...(held ? { held: held.slice(0, 300) } : {}),
+      looked_at: files.length, removed: removing.length, originals, ...(held ? { held: held.slice(0, 300) } : {}),
       ...(photoFiles?.trouble ? { photos: photoFiles.trouble } : {}) });
   }
   return response.status(200).json(answer);
