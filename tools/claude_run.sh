@@ -41,7 +41,9 @@ fi
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 
 echo "run $name on port $port -> $out/$name.ldr"
-timeout 5400 ~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw \
+# The limit is on the run, inside gpu: round gpu it counted the wait for the
+# lease too (BOX_GPU_WAIT bounds that).
+~/.claude/claude-core/bin/gpu timeout 5400 env MESA_VK_WSI_DEBUG=sw \
   xvfb-run -a --server-args="-screen 0 1600x900x24" \
   godot --path . -- --mcp="$port" --ask-claude-code="$brief" \
   --out="$out/$name.ldr" > "$out/$name.log" 2>&1

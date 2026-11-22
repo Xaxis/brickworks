@@ -46,6 +46,10 @@ set -u
 name=${1:?usage: probe.sh NAME [ARGS…]}; shift
 name=${name%.gd}; name=${name##*/}
 cd "$(dirname "$0")/.." || exit 1
+# A timeout round this script counts heavy's queue: refused here, at once.
+# shellcheck source=release/queue_wrap.sh
+. tools/release/queue_wrap.sh
+[ -n "${PROBE_DRY:-}" ] || queue_wrap_check || exit 2
 file="src/dev/$name.gd"
 # The suite's lists name most probes without "_probe" (tested_seeds), and
 # probe.sh was handed those names twice in one night (2026-10-27).

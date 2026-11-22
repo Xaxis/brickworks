@@ -220,7 +220,7 @@ const MENUS: Array = [
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", ">show_hide",
-		"lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
+		"lock", "unlock", "-", "paint", "replace", "find_replace", "finish_surfaces", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
 		"ortho", "grid", ">floor",
@@ -1335,6 +1335,12 @@ func _define() -> void:
 	_add("find_replace", "Find and replace…", CTRL | SHIFT | KEY_H,
 		func() -> void: app.call("_find_replace"), something,
 		"Find a part or a colour anywhere in the model, inside every sub-model too, and replace it")
+	# finishpass (APP_UX10 #9): the surface pass for a person (FinishBar):
+	# what a set designer would finish shown first, kinds left out by a
+	# tick, laid in one undo.
+	_add("finish_surfaces", "Finish the surfaces…", 0,
+		func() -> void: app.call("_finish_surfaces"), something,
+		"Tiles, slopes and rounded edges where a set would finish the model, shown before anything is laid")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
 		var studio: Node = await app.call("_studio_ready")

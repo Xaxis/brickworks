@@ -8017,7 +8017,8 @@ const SHEET_MOST := 0.6
 ## beside Stress with every shelf in sight (binstay, APP_UX9 #2).
 func _tool_column_shown() -> void:
 	var open: bool = _shown(_simulate_made) or _flex.panel.visible or _shown(_pose_made) \
-		or _shown(_hidden_colours_made) or _shell.stress.panel.visible
+		or _shown(_hidden_colours_made) or _shell.stress.panel.visible \
+		or _shown(_finish_made) and _finish_made.get_parent() == _tool_panels
 	if open == _tool_column.visible:
 		return
 	var room: Rect2 = _model_rect()
@@ -8347,6 +8348,57 @@ func _seat_find_replace() -> void:
 		room.position.y + 12.0)
 	bar.size = Vector2(wide, 0.0)
 # end swapfind
+
+
+# -- finishpass (APP_UX10 #9): Edit › Finish the surfaces… ------------------------
+
+## The finishing pass's bar (src/ui/finish_bar.gd), made the first time it
+## opens.
+var _finish_made: PanelContainer = null
+
+
+## Edit › Finish the surfaces…: the bar over the top of the model's room, as
+## Find and replace's is, showing what the surface pass would lay before
+## anything changes. In the layout for a finger it is one of the tools'
+## panels (Motions', Simulate's): on a phone held upright a sheet under the
+## model, the model and its ghost above it, as phonepanels laid them out.
+## Placed as a dialog is, it took the whole of a 390 x 844 phone and the
+## ghost it shows could not be seen (fpreview M4).
+func _finish_surfaces() -> void:
+	if _finish_made == null:
+		var bar: PanelContainer = Later.make(&"FinishBar")
+		bar.set("app", self)
+		bar.set("say", func(line: String) -> void: _bar.say(line))
+		_finish_made = bar
+		if _touch != null:
+			bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			_seat_tool_panel(bar)
+			bar.add_to_group(FocusGuard.OVER)
+		else:
+			_add_to_hud(bar)
+			bar.add_to_group(FocusGuard.OVER)
+			_over_model.item_rect_changed.connect(_seat_finish)
+			_over_model.get_parent().item_rect_changed.connect(_seat_finish)
+	if _find_replace_made != null and _find_replace_made.visible:
+		_find_replace_made.call("close")
+	if _touch == null:
+		_seat_finish()
+	await _finish_made.call("open")
+
+
+## The bar at the top right of the model's room: its ghosts are drawn on the
+## model, which the middle of the room holds.
+func _seat_finish() -> void:
+	var bar: Control = _finish_made
+	if bar == null or _touch != null:
+		return
+	var room: Rect2 = _over_model.get_global_rect()
+	var wide: float = clampf(room.size.x - 24.0, 340.0, 420.0)
+	bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	bar.position = Vector2(maxf(room.end.x - wide - 12.0, room.position.x), room.position.y + 12.0)
+	bar.size = Vector2(wide, 0.0)
+# end finishpass
 
 
 ## The parts list told what the bin is built from holds, so a part past it

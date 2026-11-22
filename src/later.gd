@@ -163,6 +163,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# replace_parts asks.
 	&"FindReplace": "res://src/assembly/find_replace.gd",
 	&"FindReplaceBar": "res://src/ui/find_replace_bar.gd",
+	# finishpass (APP_UX10 #9): Edit › Finish the surfaces…, its bar, made
+	# the first time it opens.
+	&"FinishBar": "res://src/ui/finish_bar.gd",
 	# rareswap (APP_UX9 #12): the parts list's rare lots and their swaps, made
 	# the first time the list or a session's replace_parts rare= asks.
 	&"RareSwap": "res://src/collection/rare_swap.gd",

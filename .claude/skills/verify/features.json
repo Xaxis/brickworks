@@ -221,7 +221,8 @@
         "tests/test_oauth_clients.py",
         "tests/fixtures/insights/db_check.mjs",
         "tests/fixtures/oauth/world.mjs",
-        "tests/test_insights.py"
+        "tests/test_insights.py",
+        "tests/test_photostep.py"
       ]
     },
     {
@@ -1509,6 +1510,14 @@
       "tests": []
     },
     {
+      "id": "cli:finishpass probe",
+      "kind": "cli",
+      "entry": "src/dev/finishpass_probe.gd",
+      "reach": "tools/probe.sh finishpass_probe   (headless, 10 hand-built models, a selection, Orthanc and 10179 timed; -- --phone for 390x844 by hand; FP_SHOTS=DIR windowed for pictures; FP_IDENTITY=1 reads the two speedups against the old reading)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:first build probe",
       "kind": "cli",
       "entry": "src/dev/first_build_probe.gd",
@@ -1578,6 +1587,22 @@
       "entry": "tools/web/follows_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=<preview> --out=DIR   (.env sourced; or a local relay_server.mjs --static=build/web with nothing held, or with --hold=follows,model_comments,build_photos,report_photos --trust-stand-in; --site leaves the app out)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:fpfix probe",
+      "kind": "cli",
+      "entry": "src/dev/fpfix_probe.gd",
+      "reach": "tools/probe.sh fpfix_probe   (headless: reopen (closed mid-read on Orthanc and opened again, no frame over 100 ms), openwhile (another model opened mid-read shows that model's own findings), ghost (taken down at an open, an Undo, another's edit), subs (19 models with sub-models: a swap's parts in the sub-model and step of what they replace, no line but parts lost, counts per sub-model and step), laytime (Lay on Orthanc and 10179 paced by the part); -- --phone: the bar a sheet under the model at 390x844, the ghost in sight above it; FPF_CASES=a,b to choose)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:fpjudge probe",
+      "kind": "cli",
+      "entry": "src/dev/fpjudge_probe.gd",
+      "reach": "tools/probe.sh fpjudge_probe   (headless: files (fpreview's 14 files, every kind ticked: Lay, Undo, Redo, Save, opened from the saved file as File, Open does, Save again unedited byte for byte; the model reopened holds every part in colour, place and sub-model copy; someone's steps planned the same again), controls (castle and station, a part taken off by hand, the same), defaults (the bar's own ticks: no line but parts, steps and IN lines lost by Lay, each part it leaves in its copy), ghost (another model opened: none of the old model's ghost drawn, what is drawn the new model's own reading); byturns by hand (Lay on Orthanc against ten parts put down by hand at the same moment); FPJ_CASES=a,b, FPJ_FILES=castle,station, FPJ_OUT=DIR keeps the texts)",
+      "area": "building",
       "tests": []
     },
     {
@@ -2489,6 +2514,22 @@
       "entry": "src/dev/photoreal_probe.gd",
       "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:photostep bench",
+      "kind": "cli",
+      "entry": "src/dev/photostep_bench.gd",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a -s '-screen 0 1400x1000x24' godot --path . --resolution 1280x960 --script src/dev/photostep_bench.gd -- --pictures=DIR [--sets=7638-1,42004-1,31009-1,10179-1] [--samples=N]   (windowed, on the GPU: each library set paged as Build mode pages it, three main-line steps N a set chosen by rule; for each, five builds drawn at Best, Product look, from one hand-held camera never the booklet's: N right, a new part missing, one moved a stud, one the wrong colour, and N-1; each with a Good mask, and steps N-1, N and N+1 at Good from four corners and the top; the truth in DIR/cases.json; a set drawn already is skipped)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:photostep reading",
+      "kind": "cli",
+      "entry": "tools/bench/photostep.py",
+      "reach": "python3 tools/minitest.py tests/test_photostep.py; uv run --no-project --with numpy --with pillow python tools/bench/photostep.py dress DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photostep.py read DIR [--jobs 3] [--only KEY]; python3 tools/bench/photostep.py score DIR   (the photos laid on a desk or carpet and made a phone's picture; each case read by Claude Code on the subscription, its only tools this bench's MCP server (check_step_photo: the photo, steps N-1, N and N+1 with their new parts ringed, and their parts; step_picture: a step from another side), the builder saying step N; DIR/score.md: step exact and within one, faults found and named by kind, part and place, false alarms, seconds an answer, every case)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -6052,6 +6093,14 @@
       "entry": "src/ui/phone_shell.gd",
       "reach": "on a phone or a tablet laid out for a finger: two fingers tapped on the view undo and three redo, as the bar's Undo and Redo, saying what they took back; a double tap on a part in Select turns it 90 degrees as Turn does, one step  (CadCamera._gesture_ended, PhoneShell._fingers_tapped, _double_tapped; tools/probe.sh phonefingers_probe; tools/web/phonewalk_flow.mjs --only=fingers_still,undo_tap,redo_tap,double_turn)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:finish the surfaces",
+      "kind": "ui",
+      "entry": "src/ui/finish_bar.gd",
+      "reach": "godot --path .  (Edit, Finish the surfaces\u2026: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a reading closed, read again or overtaken by an edit or another model stops and is waited for, never run whole; the ghost taken down at any change of the world and read again; a swap's parts kept in the sub-model and step of what they replace; Lay paced by the part; on a phone a sheet under the model, the ghost above it; tools/probe.sh finishpass_probe, fpfix_probe)",
+      "area": "building",
       "tests": []
     },
     {

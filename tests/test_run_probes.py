@@ -57,5 +57,5 @@ def test_a_double_dash_before_the_arguments_is_probe_sh_s_own(tmp_path):
 
 def test_run_probes_and_the_train_ask_for_the_suites_arguments():
     """Both ways a release runs a probe set PROBE_LISTED."""
-    assert "PROBE_LISTED=1 timeout 2400 tools/probe.sh" in (ROOT / "tools/release/run_probes.sh").read_text()
+    assert "PROBE_LISTED=1 PROBE_TIMEOUT=2400 tools/probe.sh" in (ROOT / "tools/release/run_probes.sh").read_text()
     assert "PROBE_LISTED=1 bash tools/probe.sh" in (ROOT / "tools/release/train.sh").read_text()
