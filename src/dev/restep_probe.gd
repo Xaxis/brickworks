@@ -11,7 +11,9 @@
 ## byte, every comment and meta. Only where a part line stands among its
 ## own section's 0 STEP lines changes, and the STEP lines with it. Each part
 ## (or a sub-model's placing line, the copy it puts on) the steps test puts
-## down in the air goes one step later in its own section, until none is:
+## down in the air goes later in its own section: to the first later step
+## that puts down a part it is joined to (Tested's studs and joints), or
+## one step later where none is, until none is in the air:
 ## the model's placements as units, each sub-model's parts in its own file,
 ## as an LDraw booklet builds them. One that is in the air even after the
 ## last of its section's parts is left where it was: only building it in
@@ -97,7 +99,8 @@ func _restep(path: String, into: String) -> void:
 	while passes < 200:
 		var moving: Dictionary = {}
 		for float_at: Array in now["floats"]:
-			var line: int = _line_of(now, int(float_at[0]), int(float_at[1]))
+			var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
+			var line: int = int(found[0])
 			if line < 0 or not file.block.has(line):
 				_check("%s: step %d's part in the air read back to its line" % [path, float_at[0]], false)
 				continue
@@ -106,13 +109,15 @@ func _restep(path: String, into: String) -> void:
 			if file.past_last(line):
 				left[line] = "in the air after every part of its section"
 				continue
-			moving[line] = true
+			moving[line] = maxi(int(moving.get(line, 0)), int(found[1]))
 		if moving.is_empty():
 			break
 		for line: int in moving:
-			file.later(line)
+			file.later(line, int(moving[line]))
 		passes += 1
 		now = await _measure(file.text())
+		print("  pass %d: %d lines moved, now %d in the air, %d hidden" % [passes, moving.size(),
+			now["floats"].size(), now["hidden"].size()])
 	# What only a flattening could hold, back where the file had it.
 	for line: int in left:
 		file.back(line)
@@ -244,22 +249,45 @@ func _measure(text: String) -> Dictionary:
 	test.finish()
 	world.queue_free()
 	return {"floats": test.floating, "hidden": test.hidden, "origin": origin, "took": took,
-		"plan": plan}
+		"plan": plan, "near": holding["near"]}
 
 
 ## The line in the file of what step [param number] put down in the air
-## whose first part is [param id]: in the section the step is of, the line
-## of that section placing it (the part's own, or the copy's).
-func _line_of(measured: Dictionary, number: int, id: int) -> int:
+## whose first part is [param id], and the step of its section it goes to:
+## [line, step]. Its line is that section's placing it (the part's own, or
+## the copy's); its step the first later one that puts down a part it is
+## joined to (Tested's near), or the next where none is. [-1, -1] for none.
+func _line_of(measured: Dictionary, number: int, id: int, file: Restepped) -> Array:
 	for entry: Array in measured["took"].get(number, []):
 		var thing: PackedInt64Array = entry[1]
 		if not thing.has(id):
 			continue
 		var section: String = entry[0]
 		var depth: int = 0 if section.is_empty() else section.split("/").size()
-		var lines: PackedStringArray = str(measured["origin"].get(id, "")).split("/")
-		return int(lines[depth]) if depth < lines.size() else -1
-	return -1
+		var line: int = _at_depth(measured, id, depth)
+		if line < 0 or not file.block.has(line):
+			return [-1, -1]
+		var now: int = int(file.block[line])
+		var to: int = -1
+		for part: int in thing:
+			for other: Variant in (measured["near"] as Dictionary).get(part, {}):
+				if thing.has(int(other)):
+					continue
+				var held_by: int = _at_depth(measured, int(other), depth)
+				if held_by < 0 or not file.block.has(held_by) \
+						or file.section_of[held_by] != file.section_of[line]:
+					continue
+				var step: int = int(file.block[held_by])
+				if step > now and (to < 0 or step < to):
+					to = step
+		return [line, to if to > now else now + 1]
+	return [-1, -1]
+
+
+## The line of [param id]'s placing at [param depth] (0 the model's own).
+static func _at_depth(measured: Dictionary, id: int, depth: int) -> int:
+	var lines: PackedStringArray = str(measured["origin"].get(id, "")).split("/")
+	return int(lines[depth]) if depth < lines.size() and not lines[depth].is_empty() else -1
 
 
 static func _origins(step: Instructions.Step, origin_of: Callable) -> Array:
@@ -346,8 +374,8 @@ class Restepped extends RefCounted:
 				return false
 		return true
 
-	func later(line: int) -> void:
-		block[line] = int(block[line]) + 1
+	func later(line: int, to: int) -> void:
+		block[line] = maxi(int(block[line]) + 1, to)
 		blocks[section_of[line]] = maxi(blocks[section_of[line]], int(block[line]) + 1)
 
 	func back(line: int) -> void:
