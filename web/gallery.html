@@ -95,16 +95,8 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 .gallery-title { min-width: 0; }
 .gallery-head h1 { margin: 0; }
 .gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
-.search { position: relative; flex: 1 1 320px; max-width: 440px; }
-.search input { width: 100%; padding-left: 40px; padding-right: 40px; }
-.search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
-/* "/" puts the cursor in the search: said on the field until it is used. */
-.search .hint {
-	position: absolute; right: 10px; top: 11px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
-	border: 1px solid var(--line); border-radius: var(--r-1); background: var(--panel); color: var(--ink-faint);
-	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
-}
-.search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+/* The search (site.css .search) beside them; "/" puts the cursor in it. */
+.search { flex: 1 1 320px; max-width: 440px; }
 /* Share yours at the head's end, beside the search (web/share-model.html).
    On a phone it stays a word, beside the title, and the search has a row
    of its own, so its words are read whole (byfix: three controls in one

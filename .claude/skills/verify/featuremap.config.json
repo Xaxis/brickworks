@@ -1471,7 +1471,7 @@
       "kind": "ui",
       "label": "landing page",
       "entry": "web/index.html",
-      "reach": "https://brickworks.diy/   (locally: node tools/web/landing_check.mjs --file=web/index.html)",
+      "reach": "https://brickworks.diy/   (the community first: one line, the search, Start building, the month's challenge, and a row of real models in tabs, all in the first screen at 390 x 844 and 1280 x 800; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
       "area": "web"
     },
     {
@@ -6194,9 +6194,30 @@
     },
     {
       "kind": "ui",
+      "label": "the home page's shelf",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#shelf in the first screen: Top (Trending once a week has 4), New and Real sets in 3D as tabs of one row of cards, in the page as served, then asked again card for card with nothing moving; See all to each tab's list; #talk under it, shown only with 3 threads of GET /api/talk?op=latest; node tools/web/landing_check.mjs --url=...)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's search",
+      "entry": "web/home-find.js",
+      "reach": "https://brickworks.diy/   (#find-q: type 2 letters for models, builders and sets from GET /api/share?op=list&q= and op=library&q=, then the gallery's and the sets' own search; arrows, Enter, Escape; \"/\" puts the cursor in it; node tools/web/landing_check.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "home shelf at deploy",
+      "entry": "tools/web/home_shelf.mjs",
+      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: each tab's cards and the challenge written into OUT/index.html and each language's copy, the pictures copied to OUT/img/home/; web/_home.json when the gallery cannot be read)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "this month's challenge on the home page",
       "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#now under the app's picture: #challenge with its days left, or its round, and #pick, This week's pick, both from GET /api/share?op=shelves, asked at once)",
+      "reach": "https://brickworks.diy/   (#challenge beside the search, under it on a phone: its name, brief and days written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves, asked at once; This week's pick is the shelf's first card, marked Week's pick)",
       "area": "web"
     },
     {

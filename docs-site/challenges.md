@@ -48,7 +48,7 @@ lib:judges and a fan vote and honours
 
 ## The winners' week {#pick}
 
-The week after a challenge ends, its winner is **This week's pick** on the [home page](/), beside the open challenge and its days left (*10 days left*). The home page shows both in its first two screens, and each opens its page. A winner's profile names what it won.
+The week after a challenge ends, its winner is **This week's pick**: the first model on the [home page](/), marked **Week’s pick**, beside the open challenge and its days left (*10 days left*). Both are on the home page's first screen, and each opens its page. A winner's profile names what it won.
 
 <!-- covers
 ui:this month's challenge on the home page

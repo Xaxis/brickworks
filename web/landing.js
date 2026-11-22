@@ -1,36 +1,44 @@
-// What the landing page (index.html) fills from the site's own answers as
-// each part nears the screen, a screen and a half ahead, so it is in by
-// the time it is read, and a visitor who never scrolls fetches none of it:
+// What the landing page (index.html) fills from the site's own answers.
 //
+// At once, in the first screen (landing, 2026-11-22):
+// - #shelf, real models with their pictures: Top (Trending once a week
+//   has enough), New and the real sets in 3D, each a tab of one row of
+//   cards. Each tab's cards are in the page as served (tools/web/
+//   home_shelf.mjs, at the deploy): the one shown is asked again once
+//   the page is in, and each other the first time it is opened, and what
+//   changed goes in a card for a card, its picture decoded first, so
+//   nothing moves. A page with no cards in it (a checkout's own, or a
+//   deploy that could read nothing) fills the tab from the answer, its
+//   skeletons holding the row's place, or takes the shelf away when
+//   fewer than FEWEST could come;
+// - #challenge, this month's challenge with its days left (and where it
+//   runs in rounds, which round and how long it has), or the next one
+//   told, from /api/share?op=shelves, which says this week's pick too:
+//   the first card of the first tab, marked;
+// - #find, the search: its suggestions' script (web/home-find.js) asked for
+//   once the field is used, and "/" puts the cursor in it.
+//
+// Under the first screen, as each nears it, a screen and a half ahead, so
+// a visitor who never scrolls fetches none of it:
+// - #talk-latest, the latest in Talk (unit talk, /api/people?op=talk_latest),
+//   shown only once it answers with LEAST threads, and only while its place
+//   is under the window;
 // - #beta, while the beta is open: why to join, and the way in that fits
 //   whoever reads it (web/betabar.js says what the server does);
-// - #made, its first model in 3D in its picture's place (web/start3d.js,
-//   its looks in web/view3d.css), both asked for as the section nears;
 // - #sets, four of the LDraw library's biggest sets with a 3D model, as
-//   /library orders them by Most parts, each a link to its page;
-// - #now, at once, under the app's picture: #challenge, this month's
-//   challenge with its days left (and where it runs in rounds, which round
-//   and how long it has), or the next one told; and #pick, This week's pick
-//   from the gallery (challengehonours: both within the first two screens);
-// - #top, the gallery's Top builds as the gallery orders them, then its
-//   collections, each drawn as web/card.js draws every card.
+//   /library orders them by Most parts, each a link to its page.
 //
-// None may show a dead picture. So a card or a set goes in only once its
-// picture has arrived and decoded, and the row only once three have (the
-// sets: four); until then the row holds skeletons at a card's size
-// (site.css .skeleton) and the sets their ground, so the page under them
-// stays where it is. An answer that does not come takes #top away and
-// leaves the sets' tile and the challenge's with their own words. Each says
-// how it ended on <html> (data-strip, data-sets, data-challenge), which
-// tools/web/landing_check.mjs waits on.
+// Each says how it ended on <html> (data-shelf-live, data-challenge,
+// data-talk, data-sets), which tools/web/landing_check.mjs waits on.
 import { signedIn } from "/account.js";
-import { collectionCard, counted, escapeHtml, langAt, modelCard, number, pictureOf, say } from "/card.js";
+import { counted, escapeHtml, langAt, modelCard, number, pictureOf, quietPage, say } from "/card.js";
 import { toast } from "/kit.js";
 
-const GALLERY = /^[A-Za-z0-9]{10}$/;
+const MODEL = /^[A-Za-z0-9]{10}$/;
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
-const LIST = /^[A-Za-z0-9]{10}$/;
-const MOST = 8;
+// As tools/web/home_shelf.mjs: the cards a tab shows, and the fewest worth a tab.
+const CARDS = 10;
+const FEWEST = 4;
 const LEAST = 3;
 const SETS = 4;
 const html = document.documentElement;
@@ -59,53 +67,137 @@ async function drawn(img) {
   return img.naturalWidth > 0;
 }
 
-/// [card] once its picture is in, or null.
-const ready = async (card) => ((await drawn(card.querySelector("img"))) ? card : null);
+// This week's pick and the challenge, asked once for both.
+const shelves = ask("/api/share?op=shelves");
 
-/// The gallery's Top, less the models #made already shows, then its
-/// collections: shown once three cards have their pictures, else taken away.
-async function top() {
-  const where = document.getElementById("top");
-  const row = document.getElementById("top-models");
-  if (!where || !row) return;
-  const shown = new Set([...document.querySelectorAll("#made a[href]")]
-    .map((a) => (/\/m\/([A-Za-z0-9]{10})$/.exec(a.getAttribute("href")) || [])[1]).filter(Boolean));
-  const [listed, lists] = await Promise.all([ask("/api/share?op=list&page=1&sort=top"), ask("/api/people?op=collections")]);
-  const models = (listed?.models || []).filter((m) => m && GALLERY.test(String(m.id)) && !shown.has(String(m.id)) && pictureOf(m))
-    .slice(0, MOST);
-  const collections = (lists?.collections || []).filter((c) => c && LIST.test(String(c.id)) && Array.isArray(c.covers) && c.covers.length)
-    .slice(0, 2);
-  const cards = [...models.map((m) => modelCard(m)), ...collections.map((c) => collectionCard(c))];
-  const done = (await Promise.all(cards.map((card) => ready(card).catch(() => null)))).filter(Boolean);
-  html.dataset.strip = done.length >= LEAST ? String(done.length) : "none";
-  if (done.length < LEAST) {
-    where.hidden = true;
+// ---------------------------------------------------------------------------
+// The shelf.
+
+const shelf = document.getElementById("shelf");
+const tabs = shelf ? [...shelf.querySelectorAll('[role="tab"]')] : [];
+const panelOf = (tab) => document.getElementById(tab.getAttribute("aria-controls"));
+const served = shelf?.dataset.shelf === "served";
+
+/// The cards of a list's [answer] a tab may show: real ones with pictures.
+const showable = (answer) => (answer?.models || [])
+  .filter((m) => m && (MODEL.test(String(m.id)) || SET.test(String(m.id))) && pictureOf(m));
+
+/// What a card shows, to tell whether a card in its place shows the same:
+/// its model, its picture (as the server names it, data-from where the
+/// deploy copied it) and whether it is marked the week's pick.
+function shownAs(card) {
+  const img = card.querySelector("img");
+  return `${card.dataset.id}|${img?.dataset.from || img?.getAttribute("src") || ""}|${card.dataset.pick ? "pick" : ""}`;
+}
+
+/// [panel]'s cards as the server has them now: its list, and on the first
+/// tab this week's pick first. Each card that shows what one there does is
+/// kept as it is; the rest are made and put in only once every new one's
+/// picture has decoded. Fewer than FEWEST leaves what is there; a panel
+/// that had only skeletons, and gets none, takes the shelf away.
+async function fill(panel) {
+  if (panel.dataset.live) return;
+  panel.dataset.live = "asking";
+  const [answer, front] = await Promise.all([ask(panel.dataset.ask), shelves]);
+  const first = panel === panelOf(tabs.find((tab) => !tab.hidden) || tabs[0]);
+  const pick = first && !panel.id.endsWith("-sets") && MODEL.test(String(front?.pick?.model?.id || "")) && pictureOf(front.pick.model)
+    ? front.pick.model : null;
+  const models = [...(pick ? [pick] : []), ...showable(answer).filter((m) => m.id !== pick?.id)].slice(0, CARDS);
+  const had = [...panel.querySelectorAll(":scope > .model")];
+  const byShown = new Map(had.map((card) => [shownAs(card), card]));
+  const want = models.map((m, i) => `${m.id}|${pictureOf(m)}|${i === 0 && pick ? "pick" : ""}`);
+  if (models.length < FEWEST || want.join() === had.map(shownAs).join()) {
+    panel.dataset.live = models.length < FEWEST ? "short" : "same";
+    if (!had.length && shelf) shelf.hidden = true;
     return;
   }
-  row.replaceChildren(...done);
+  const cards = await Promise.all(models.map(async (m, i) => {
+    const kept = byShown.get(want[i]);
+    if (kept) return kept;
+    const card = modelCard(m, { pick: i === 0 && Boolean(pick) });
+    return (await drawn(card.querySelector("img"))) ? card : null;
+  }));
+  const done = cards.filter(Boolean);
+  if (done.length < FEWEST) {
+    panel.dataset.live = "short";
+    if (!had.length && shelf) shelf.hidden = true;
+    return;
+  }
+  panel.replaceChildren(...done);
+  panel.dataset.live = "changed";
+  quietPage();
 }
 
-/// Four real sets, each its picture and a link to its page; the tile's
-/// glyph and words stay when they do not all come.
-async function sets() {
-  const row = document.getElementById("sets-models");
-  if (!row) return;
-  const listed = await ask("/api/share?op=library&page=1&sort=largest&model=3d");
-  const models = (listed?.models || []).filter((m) => m && SET.test(String(m.id)) && m.library?.model3d && pictureOf(m));
-  const links = models.slice(0, SETS).map((m) => {
-    const link = document.createElement("a");
-    const page = /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(String(m.library.page || ""))
-      ? `${langAt()}${m.library.page}` : `/library/${m.id}`;
-    link.href = page;
-    link.dataset.model3d = "yes";
-    link.innerHTML = `<img src="${escapeHtml(pictureOf(m))}" alt="${escapeHtml(m.name)}" width="400" height="300" decoding="async">`;
-    return link;
-  });
-  const done = (await Promise.all(links.map(async (link) => ((await drawn(link.querySelector("img"))) ? link : null))))
-    .filter(Boolean);
-  html.dataset.sets = done.length === SETS ? String(SETS) : "none";
-  if (done.length === SETS) row.replaceChildren(...done);
+/// [tab] shown: its panel, See all to its list, and its cards asked again.
+function choose(tab, { focus = false } = {}) {
+  for (const one of tabs) {
+    const on = one === tab;
+    one.setAttribute("aria-selected", String(on));
+    one.tabIndex = on ? 0 : -1;
+    panelOf(one).hidden = !on;
+  }
+  const panel = panelOf(tab);
+  const all = document.getElementById("shelf-all");
+  if (all && panel.dataset.all) all.href = `${langAt()}${panel.dataset.all}`;
+  if (focus) tab.focus();
+  // A tab opened with only its markers in it (a checkout's own page): its
+  // skeletons hold the row until its cards come.
+  if (!panel.querySelector(".model, .skeleton-card")) {
+    panel.innerHTML = Array.from({ length: 6 }, () => '<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div>'
+      + '<div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>').join("");
+  }
+  return fill(panel);
 }
+
+if (shelf) {
+  const list = shelf.querySelector('[role="tablist"]');
+  list.addEventListener("click", (event) => {
+    const tab = event.target instanceof Element ? event.target.closest('[role="tab"]') : null;
+    if (tab) choose(tab);
+  });
+  // The arrows, Home and End move along the tabs shown, and show each.
+  list.addEventListener("keydown", (event) => {
+    const shown = tabs.filter((tab) => !tab.hidden);
+    const at = shown.indexOf(document.activeElement);
+    if (at < 0) return;
+    const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: shown.length - 1 }[event.key];
+    if (to === undefined) return;
+    event.preventDefault();
+    choose(shown[(to + shown.length) % shown.length], { focus: true });
+  });
+  const first = tabs.find((tab) => tab.getAttribute("aria-selected") === "true") || tabs.find((tab) => !tab.hidden);
+  // The page's own cards first: asked again once the page is in and idle.
+  const again = () => fill(panelOf(first)).then(() => { html.dataset.shelfLive = panelOf(first).dataset.live || "none"; });
+  if (served) (window.requestIdleCallback || ((work) => setTimeout(work, 200)))(again, { timeout: 3000 });
+  else again();
+  // Own and your lists on a set's card (web/keep.js), as a page of them asks.
+  if (shelf.querySelector("[data-keep]")) import("/keep.js").catch(() => null);
+}
+
+// ---------------------------------------------------------------------------
+// The search: "/" puts the cursor in it, as in the gallery; its suggestions
+// once it is used.
+
+const find = document.getElementById("find");
+const findField = document.getElementById("find-q");
+if (find && findField) {
+  let started = null;
+  const start = () => {
+    started ||= import("/home-find.js").then(({ findAsYouType }) => findAsYouType(find, findField)).catch(() => null);
+  };
+  findField.addEventListener("focus", start, { once: true });
+  findField.addEventListener("pointerdown", start, { once: true });
+  addEventListener("keydown", (event) => {
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+    const at = event.target instanceof Element ? event.target : null;
+    if (at && at.closest("input, textarea, select, [contenteditable], dialog[open]")) return;
+    event.preventDefault();
+    findField.focus();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The challenge.
 
 /// "1–30 November" in the page's language.
 function days(from, to) {
@@ -141,72 +233,97 @@ function standing(c) {
   return [say("This month"), leftSaid(c.ends_on), say("Enter the challenge")];
 }
 
-/// This month's challenge and This week's pick (GET /api/share?op=shelves,
-/// the gallery front's own answer): the challenge's name, brief, days and
-/// days left, and the way in; between challenges the next one told; and
-/// the week's pick as a picture beside its name. Their names and briefs are
-/// their makers' words, as written. A test challenge is never shown here.
-async function now() {
+/// This month's challenge (GET /api/share?op=shelves, the gallery front's
+/// own answer): its name, brief and days (in the page as served, said
+/// again here in case it changed since), its days left, and the way in;
+/// between challenges the next one told. Its name and brief are its
+/// makers' words, as written. A test challenge is never shown here.
+async function challenge() {
   const tile = document.getElementById("challenge");
   if (!tile) return;
-  const answer = await ask("/api/share?op=shelves");
+  const answer = await shelves;
   const c = answer?.challenge && !answer.challenge.test && ["open", "upcoming"].includes(answer.challenge.state) ? answer.challenge : null;
   html.dataset.challenge = c ? (c.state === "open" ? "open" : "next") : "none";
-  if (c) {
-    const open = c.state === "open";
-    const [badge, left, go] = open ? standing(c) : [say("Coming next"), say("Opens {day}", { day: days(c.starts_on, c.starts_on) }), ""];
-    document.getElementById("challenge-when").textContent = badge;
-    const leftBadge = document.getElementById("challenge-left");
-    leftBadge.textContent = left;
-    leftBadge.hidden = false;
-    const name = document.getElementById("challenge-h");
-    name.textContent = String(c.title || "");
-    name.lang = "en";
-    const brief = document.getElementById("challenge-brief");
-    if (c.brief) {
-      brief.textContent = String(c.brief);
-      brief.lang = "en";
-    }
-    // Its days in place of the line held for them, so nothing under it moves.
-    const span = days(c.starts_on, c.ends_on);
-    if (span) document.getElementById("challenge-days").textContent = span;
-    const link = document.getElementById("challenge-go");
-    if (go) link.textContent = go;
-    if (c.id) link.href = `${langAt()}/challenge`;
+  if (!c) return;
+  const open = c.state === "open";
+  const [badge, left, go] = open ? standing(c) : [say("Coming next"), say("Opens {day}", { day: days(c.starts_on, c.starts_on) }), ""];
+  document.getElementById("challenge-when").textContent = badge;
+  const leftBadge = document.getElementById("challenge-left");
+  leftBadge.textContent = left;
+  leftBadge.hidden = false;
+  const name = document.getElementById("challenge-h");
+  name.textContent = String(c.title || "");
+  name.lang = "en";
+  const brief = document.getElementById("challenge-brief");
+  if (c.brief) {
+    brief.textContent = String(c.brief);
+    brief.lang = "en";
   }
-  pick(answer?.pick?.model || null);
+  // Its days in place of the line held for them, so nothing under it moves.
+  const span = days(c.starts_on, c.ends_on);
+  if (span) document.getElementById("challenge-days").textContent = span;
+  const link = document.getElementById("challenge-go");
+  if (go) link.textContent = go;
+  if (c.id) link.href = `${langAt()}/challenge`;
+}
+challenge();
+
+// ---------------------------------------------------------------------------
+// Under the first screen.
+
+/// [show] once [place] is under the window, now or once it is again after
+/// a scroll, so what it puts in moves nothing in view (docs/DESIGN_SYSTEM.md,
+/// Out of sight).
+function whenUnder(place, show) {
+  const under = () => !place || place.getBoundingClientRect().top >= innerHeight;
+  const now = () => {
+    if (!under()) return false;
+    removeEventListener("scroll", now);
+    show();
+    return true;
+  };
+  if (!now()) addEventListener("scroll", now, { passive: true });
 }
 
-/// This week's pick: its picture, once it has arrived (never a dead one),
-/// beside its name and its designer; none, the tile keeps its own words
-/// and goes to the gallery.
-async function pick(m) {
-  html.dataset.pick = m && GALLERY.test(String(m.id)) ? "shown" : "none";
-  if (!m || !GALLERY.test(String(m.id))) return;
-  const link = document.getElementById("pick-go");
-  link.href = `/m/${m.id}`;
-  const name = document.getElementById("pick-name");
-  name.textContent = String(m.name || "");
-  name.translate = false;
-  const by = m.by?.name || m.author || "";
-  document.getElementById("pick-by").textContent = by ? say("by {who}", { who: by }) : "";
-  link.setAttribute("aria-label", say("This week’s pick: {name}", { name: String(m.name || "") }));
-  const src = pictureOf(m);
-  if (!src) return;
-  const img = document.getElementById("pick-img");
-  img.src = src;
-  img.alt = "";
-  if (await drawn(img)) img.hidden = false;
+/// The latest in Talk (unit talk: GET /api/people?op=talk_latest&html=1,
+/// {count, html}, its rows drawn on the server as Talk's own, every word
+/// typed in them escaped there): shown once LEAST threads come, never an
+/// empty box; a site without Talk, or with too little, leaves it hidden.
+async function talk() {
+  const band = document.getElementById("talk-latest");
+  const list = band?.querySelector("[data-talk-strip]");
+  if (!band || !list) return;
+  const code = langAt().slice(1);
+  const answer = await ask(`/api/people?op=talk_latest&n=${Number(band.dataset.n) || 4}&html=1${code ? `&lang=${code}` : ""}`);
+  const count = typeof answer?.html === "string" ? Number(answer.count) || 0 : 0;
+  html.dataset.talk = count >= LEAST ? String(count) : "none";
+  if (count < LEAST) return;
+  list.innerHTML = answer.html;
+  // Its link only now: a page with no Talk links nowhere it would 404.
+  document.getElementById("talk-all")?.setAttribute("href", `${langAt()}/talk`);
+  whenUnder(band.nextElementSibling, () => { band.hidden = false; });
 }
 
-/// The first model in 3D in its picture's place, its code and looks asked
-/// for only now.
-function view3d() {
-  const picture = document.querySelector("#made .picture[data-scene]");
-  if (!picture) return;
-  const looks = Object.assign(document.createElement("link"), { rel: "stylesheet", href: "/view3d.css" });
-  document.head.append(looks);
-  import("/start3d.js").then(({ start3d }) => start3d(picture)).catch(() => { /* the picture stays the app's link */ });
+/// Four real sets, each its picture and a link to its page; the tile's
+/// glyph and words stay when they do not all come.
+async function sets() {
+  const row = document.getElementById("sets-models");
+  if (!row) return;
+  const listed = await ask("/api/share?op=library&page=1&sort=largest&model=3d");
+  const models = (listed?.models || []).filter((m) => m && SET.test(String(m.id)) && m.library?.model3d && pictureOf(m));
+  const links = models.slice(0, SETS).map((m) => {
+    const link = document.createElement("a");
+    const page = /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(String(m.library.page || ""))
+      ? `${langAt()}${m.library.page}` : `/library/${m.id}`;
+    link.href = page;
+    link.dataset.model3d = "yes";
+    link.innerHTML = `<img src="${escapeHtml(pictureOf(m))}" alt="${escapeHtml(m.name)}" width="400" height="300" decoding="async">`;
+    return link;
+  });
+  const done = (await Promise.all(links.map(async (link) => ((await drawn(link.querySelector("img"))) ? link : null))))
+    .filter(Boolean);
+  html.dataset.sets = done.length === SETS ? String(SETS) : "none";
+  if (done.length === SETS) row.replaceChildren(...done);
 }
 
 /// The beta's section (#beta) as [heard] has it: the way in for whoever
@@ -229,8 +346,8 @@ const bar = () => import("/betabar.js");
 /// The beta's section, while it is open (web/betabar.js). Held since the
 /// first frame where this browser had heard so (<html data-beta>,
 /// web/theme.js); else put in only while its place is under the window, or
-/// once it is again, so nothing in view moves (docs/DESIGN_SYSTEM.md, Out of
-/// sight). Off, it is not drawn; not heard, a held one stays as it was.
+/// once it is again, so nothing in view moves. Off, it is not drawn; not
+/// heard, a held one stays as it was.
 async function beta() {
   const band = document.getElementById("beta");
   if (!band) return;
@@ -250,15 +367,7 @@ async function beta() {
   }
   drawBeta(heard);
   if (held) return;
-  const next = document.getElementById("made");
-  const under = () => !next || next.getBoundingClientRect().top >= innerHeight;
-  const show = () => {
-    if (!under()) return false;
-    html.dataset.beta = "open";
-    removeEventListener("scroll", show);
-    return true;
-  };
-  if (!show()) addEventListener("scroll", show, { passive: true });
+  whenUnder(band.nextElementSibling, () => { html.dataset.beta = "open"; });
 }
 
 document.getElementById("beta")?.addEventListener("click", async (event) => {
@@ -300,10 +409,6 @@ function near(id, work, margin = "150% 0px") {
   watch.observe(where);
 }
 
-// The 3D view's code once its picture is in the window: an opening
-// screen that reaches the section does not ask for it.
-near("made-lead", view3d, "0px");
+// The talk's place is hidden until it has talk, so the section under it says when it nears.
+near("community", talk);
 near("why", sets);
-// This month's challenge and This week's pick: at once, in the first two screens.
-now();
-near("community", top);

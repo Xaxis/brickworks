@@ -8,7 +8,7 @@ nav: The gallery
 description: Find a model to look at or build, by Top builds, what is new, who you follow, its kind, its size and the parts you own.
 ---
 
-The gallery is where you find a model to look at or build: everything people built in Brickworks and shared, with its steps. It is at [brickworks.diy/gallery](/gallery), **Gallery** at the top of every page of the site. Anyone can browse it, with no account.
+The gallery is where you find a model to look at or build: everything people built in Brickworks and shared, with its steps. It is at [brickworks.diy/gallery](/gallery), **Gallery** first at the top of every page of the site, beside **Sets**, **Challenges** and **Docs**. Anyone can browse it, with no account.
 
 <!-- covers
 ui:gallery page
@@ -17,6 +17,21 @@ lib:directory
 -->
 
 ![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Collections and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
+
+## On the home page {#home}
+
+The [home page](/) opens on the gallery. Under one line of what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Beside it (under it on a phone) is this month's [challenge](/docs/challenges) with its days left. Then a row of models with their pictures, in tabs:
+
+- **Top**, the gallery's Top, its first card [This week's pick](/docs/challenges#pick), marked **Week’s pick**. Once a week has enough new models, **Trending** comes first: Top over this week.
+- **New**, the newest first.
+- **Real sets in 3D**, the biggest sets with a 3D model, as **Sets** orders them by Most parts.
+
+Swipe or scroll the row; the arrow keys move along the tabs. **See all** opens the tab's whole list in the gallery. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
+
+<!-- covers
+ui:the home page's shelf
+ui:the home page's search
+-->
 
 ## Find a model {#find}
 

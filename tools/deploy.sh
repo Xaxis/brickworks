@@ -344,6 +344,14 @@ python3 tools/site.py .vercel/output/static | sed 's/^/deploy: /' || {
   echo "deploy FAILED: could not put the website together (tools/site.py)"; exit 1; }
 [ -f .vercel/output/static/index.html ] && [ -f .vercel/output/static/404.html ] || {
   echo "deploy FAILED: the website has no index.html or 404.html"; exit 1; }
+# The home page's first screen in the page as it is served (landing,
+# 2026-11-22): the shelf's real models, their pictures copied beside the
+# page, and the month's challenge, from the live gallery, else from
+# web/_home.json. It never fails the deploy for an answer it could not
+# read: the page then asks for them itself (web/landing.js).
+HOME_FROM="${HOME_FROM:-https://brickworks.diy}"
+timeout 300 node tools/web/home_shelf.mjs .vercel/output/static --from="$HOME_FROM" </dev/null | sed 's/^/deploy: /' || {
+  echo "deploy FAILED: could not write the home page's first screen (tools/web/home_shelf.mjs)"; exit 1; }
 
 # The site's pages at addresses without .html: /download, not
 # /download.html. The owner, 2026-10-12: "do you realize how oldschool

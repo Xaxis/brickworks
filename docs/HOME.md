@@ -1,86 +1,97 @@
 # The home page
 
-What brickworks.diy's front page is for, what it shows and why (landing,
-2026-11-03). The owner: "cleaner and more modern and elegant exemplifying our
-amazing product but also the social features and benefits of using
-brickworks.diy in a highly intuitive way". The page is `web/index.html` and
-`web/landing.js`, on the design system (docs/DESIGN_SYSTEM.md).
+What brickworks.diy's front page is for, what it shows and why. The page is
+`web/index.html`, `web/landing.js` and `web/home-find.js`, on the design
+system (docs/DESIGN_SYSTEM.md); its first screen's models are written in at
+the deploy by `tools/web/home_shelf.mjs`.
 
-## What the best do
+## Now: the community first (landing, 2026-11-22)
 
-Looked at 2026-11-03, at 1440 and 390 px (shots in the unit's scratch):
+The owner: "We want the 'forum/gallery' features to be better highlighted
+and available immediately upon landing. Critically analyze and brilliantly
+implement." The critique, with pictures of ours and the others' first
+screens, is bench/results/landing-2026-11-22/CRITIQUE.md.
 
-- **Figma**: four words of headline and one button, beside a stack of work
-  made in Figma; every section after is one bold line and one grey line
-  over the product moving (videos with a play button). Almost no
-  paragraphs.
-- **Onshape**: the headline beside one render of a customer's machine, one
-  way in (Sign up free), a wall of customers' logos as proof, six icon
-  tiles of why people switch, and a way in for each kind of designer.
-- **Mecabricks**: the first screen is a render of a community model under
-  "Build & Render your 3D LEGO® models online" and Start now; then straight
-  into the community's models, each with its maker's avatar and its views,
-  stars and comments, and a second row of renders. Community first, but
-  dated, and an ad beside it.
-- **BrickLink Studio**: a render of a model and one Download button; then
-  each feature a short video beside two lines (building, the instruction
-  maker, the renderer), then the community (share your designs, the
-  designer program, the forum) and a start for beginners.
-- **Printables and Thingiverse** answered a headless browser with a
-  Cloudflare check and an error page; from docs/SOCIAL.md: both open on the
-  community's models, makers' faces and contests, with one way to join.
+What was wrong: the first screen sold the studio (a 72 px headline over
+three lines, a lede, two buttons, the top of the app's screenshot) and
+showed nothing of the community: no model, no builder, no search, no
+challenge. The first model sat 2,380 px down a phone (docs/SOCIAL.md R8,
+row 10). The header gave Plans the weight of the Gallery and had no Sets or
+Challenges. MakerWorld, Printables, Thingiverse, Rebrickable and Mecabricks
+all open on the community's models, with a search first and tabs over them.
 
-What they share: one line and one way in, then the product's own work as
-pictures, not paragraphs; proof that people are there (makers' faces, their
-numbers, a contest); and a way in again at the foot.
+The first screen now, at 390 x 844 and at 1280 x 800:
 
-## What was wrong with ours
+1. **One line and a search.** "Build, share and find LEGO® models", one
+   sentence of what Brickworks is, a search over models, builders and real
+   sets (suggestions as it is typed, `web/home-find.js`), and **Start
+   building**. "/" puts the cursor in the search, as in the gallery.
+2. **This month's challenge** beside it (under the shelf on a phone), with
+   its days left or its round.
+3. **The shelf**: tabs Top, New and Real sets in 3D (Trending first once a
+   week's Top has four models with pictures), each one row of ten cards
+   that scrolls sideways, the gallery's own cards. This week's pick is the
+   first card of the first tab, marked Week's pick. See all opens the tab's
+   whole list.
 
-Nine sections, 6,200 px at 1440. One of them showed the community (two strips
-of cards) and none of the social site: no challenge, no collection, no
-profile, nothing of Build together but one line among six features. Words
-before pictures: "How it works" was three panels of text, the features six
-more, the assistant four ticks, the web and the desktop two panels, the plans
-two more. Two ways in on the first screen pointed at the app (Open the app,
-Download for desktop) and none at the gallery.
+Then:
 
-## The new order
+4. **What builders are talking about** (`#talk`), the forum's latest
+   threads (unit talk, `/api/talk?op=latest`), hidden until it answers with
+   three, never an empty box.
+5. **Build together**, and four things a builder does here.
+6. **The beta**, while it is open.
+7. **The studio**: the app's picture (no longer the first screen's), will
+   it stand, the booklet, four real sets live, free, your own AI.
+8. **Build something today**, the way in again.
 
-1. **The opening.** The one line, a shorter lede, **Start building** and
-   **Explore the gallery**, a line that it is free on the web and the
-   desktop, then the app itself. Kept: the line, the badge to /compare and
-   the app's picture, the first screen's one picture (its LCP).
-2. **Made in Brickworks.** Five models of the gallery, path traced in
-   Brickworks (render_probe's `--model`, Best, the product look), one wide
-   and four beside and under it, each a link to its page; the first turns in
-   3D in its picture's place when pressed (start3d, its code asked for only
-   once its picture is in the window). Pictures, not words: the product's
-   work is the proof.
-3. **Everything a build needs.** The five benefits, a short line each:
-   stability (its picture), instructions and parts lists (the booklet), real
-   sets (four of the library's, live), free on the web and the desktop, and
-   your own AI if you want it, named once and last.
-4. **The community.** This month's challenge, live, beside Build together;
-   four things a builder does here, each with its icon (like and save,
-   comment on a step, follow, post the one you built); then the gallery's
-   Top and its collections, live, each card with its maker's avatar and a
-   link to their profile.
-5. **Build something today.** The two ways in again, and the plans in a
-   line.
-
-Gone: How it works (the steps), the six features, the assistant's section,
-the web and desktop's panels and the plans' two cards. Each is a page of its
-own already (/docs, /compare, /docs/ai, /download, /plans), and each was
-words. Makers get a row of their own once the gallery has three; today it
-has one, the house.
+The header on every page (`web/_shell.html`): Gallery, Sets, Challenges,
+then Docs (Talk joins when it lands); Open the app and Sign in far right.
+Plans and Desktop app are in the phone menu, the account menu and the
+footer.
 
 ## Rules it keeps
 
-- Nothing empty: a live part shows only once its pictures have decoded, and
-  holds its place with skeletons or its own words until then.
-- Nothing slower: the first screen is the same picture and words. Everything
-  under it is lazy and asked a screen and a half ahead; the 3D view costs
-  nothing until it is in the window.
+- **Honest for a young site.** One row of cards, never a grid that counts
+  how few; a tab shows only with four models with pictures; the sets tab
+  shows depth that is real today; the talk shows only with talk.
+- **In the HTML as served.** `tools/deploy.sh` runs `tools/web/home_shelf.mjs`
+  after `tools/site.py`: each tab's cards and the challenge are written
+  into the page and each language's copy from brickworks.diy's own answers
+  (or `web/_home.json`, the last kept with `--save`), the cards' pictures
+  copied beside the page (`/img/home/`, the CDN, a day's cache, never the
+  bucket). A visitor sees models before any script runs.
+- **Nothing moves.** `web/landing.js` asks each tab again once the page is
+  idle (the others when first opened) and swaps a card only for one whose
+  picture has decoded, in a row of the same height (each card's words a
+  fixed height). What comes under the first screen comes only while its
+  place is out of sight.
+- **Nothing slower.** The first four cards' pictures load at once (the
+  first `fetchpriority=high`), the rest lazily; the app's screenshot, the
+  old largest paint, is lazy below the fold; the search's script loads
+  only once the field is used; the old five renders (195 KB) are gone.
 - AI second: no title or first screen says AI; the assistant is one tile.
 - LEGO® an adjective, the disclaimer in the footer (tests/test_trademarks.py).
 - de, fr, es: every new word has its entry (`tools/site_lang.py --check`).
+
+`tools/web/landing_check.mjs` (every deploy) proves it: the search and
+Start building whole in the first screen at both sizes, light and dark, the
+shelf's cards with their pictures, at least one whole in view, no layout
+shift as the live answer comes, the tabs, the search, the challenge, the
+talk and the sets.
+
+## Before: the studio first (landing, 2026-11-03)
+
+The owner then: "cleaner and more modern and elegant exemplifying our
+amazing product but also the social features and benefits of using
+brickworks.diy in a highly intuitive way". From Figma, Onshape, Mecabricks
+and BrickLink Studio: one line and one way in, then the product's own work
+as pictures. Its order: the opening ("A CAD for LEGO® models, in your
+browser", Start building and Explore the gallery, the app's picture as the
+first screen's one picture); Made in Brickworks (five gallery models path
+traced in Brickworks, the first turning in 3D when pressed); Everything a
+build needs; the community (the challenge, Build together, the gallery's
+Top and its collections); Build something today. challengehonours
+(2026-11-20) put the challenge and This week's pick under the app's
+picture. It cut the page from nine sections to five, but the community
+still began two screens down.

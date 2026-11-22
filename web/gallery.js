@@ -109,9 +109,12 @@ import { collectionsList } from "/collections.js";
     }
     // The header's own mark with it: Sets is a link of its own there
     // (web/_shell.html), every other tab is the Gallery.
-    const own = now === "sets" ? "/library" : "/gallery";
-    for (const link of document.querySelectorAll('.site-head a[href$="/gallery"], .site-head a[href$="/library"]')) {
-      if (new URL(link.href).pathname.endsWith(own)) link.setAttribute("aria-current", "page");
+    const path = (which) => new URL(tabs.querySelector(`[data-tab="${which}"]`).href).pathname;
+    const [sets, gallery] = [path("sets"), path("top")];
+    for (const link of document.querySelectorAll(".site-head a[href]")) {
+      const at = new URL(link.href).pathname;
+      if (at !== sets && at !== gallery) continue;
+      if (at === (now === "sets" ? sets : gallery)) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
     }
   }
