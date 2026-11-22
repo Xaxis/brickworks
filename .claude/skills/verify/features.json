@@ -4511,6 +4511,14 @@
       "tests": []
     },
     {
+      "id": "lib:motors run by their cables",
+      "kind": "lib",
+      "entry": "src/assembly/wiring.gd",
+      "reach": "tools/probe.sh wires_probe   (headless: PF cables, plugs, a receiver, a pole reverser, a Control+ hub and an extension wire read by hand; a Power Functions cable laid by lay_flex from an M motor to a box, 500 LDU, one undo, saved and reopened byte for byte; 42042's L motor in Simulate runs at 390 rpm once its box is clicked on and stops with its plug pulled; -- --sets=bench/results/wires-2026-11-22/sets.json --rows=ROWS measures each set's motors as KINEFUNCS reads their functions, tools/wires_sets.py writes the listing)",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:moving a body on its joint",
       "kind": "lib",
       "entry": "src/assembly/grab.gd",

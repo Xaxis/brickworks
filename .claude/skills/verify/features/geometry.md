@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:motors run by their cables, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
 
 ## Sub-features
 
@@ -1141,6 +1141,31 @@ an 8 in a Technic-brick frame built beside the walk's bridge, which
 way, "a piece apart from it, held by its largest part"), move_part turns 30° and 90°
 and one undo puts back, a loose 24 still refused as floating; it ends "PASS: 0
 failed", and on pre261 926a97e3e fails 4 ("it is floating").
+
+Motors run by their cables (docs/APP_UX11.md row 7, wires; `src/assembly/wiring.gd`, pure,
+read by `SimulatePanel.read_wiring` and `Flex.electric_anchors`): each Power Functions and
+Powered Up plug (58124c01/c02/c03, 23816c01/c02) is read as seated on contacts when its origin
+is 16 LDU over a battery box's, a receiver output's, a pole reverser's or another plug's
+contacts (Powered Up: in a hub's port), within 1.5 LDU and square to them; facing the contacts'
++x it runs a motor forward, turned half round back, a quarter round no contact (measured on
+42042, 42043, 42065, 42070, 8258 and 42124). A cable is an LDCad path sub-model ending in a
+plug (`!LDCAD PATH_*`, start cap the motor), a laid run of 343 pieces with its plug, or a part
+with its own cable (99499c01, 58120c01, 22169c01, extension wires 60656 and 58118). Simulate's
+Power row lists each box's switch (off, forward, back; clicking the box works it, as a finger
+does), each receiver output's lever and speed dial, each hub and its ports, and each motor's
+line: wired on what, running or why not (`Wiring.motor_line`). Play with a powered model runs
+the running motor at its rpm (`Simulation.MOTORS`) the way its power gives; a model with no
+battery box, receiver or hub still turns by hand. A plug pulled stops its motor and says "its
+plug is on nothing". Make, Hose, tube or chain lays a Power Functions cable (20 cm, 500 LDU;
+50 cm extension) or a Powered Up cable (25 cm) from a motor's outlet to the contacts, its plug
+the last piece, "Turn the plug" turning it half round; `lay_flex kind=pf_cable reversed=true`
+does the same over MCP and says what it wired; `simulate_mechanism power=on` switches every
+source on. Switch settings are Simulate's, never written to the file. Not read: 9 V contacts,
+the IR remote's channels. `tools/probe.sh wires_probe` ends "wires_probe: all passed" (`--
+--only=hand` the pure readings alone); `tools/wires_sets.py OUT` writes the listing of
+KINEFUNCS' motorised sets and `wires_probe -- --sets=OUT --rows=ROWS` writes each motor's row:
+what it is wired to, its run, each KINEFUNCS function its output drives measured the KINEFUNCS
+way, and that it stops with its plug pulled.
 
 Stability measured: `stabletruth_probe` ends on "every check passed". StableLego's
 eight structures (tests/fixtures/stability/stablelego, each on a 48 x 48 baseplate,

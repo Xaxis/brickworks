@@ -15894,3 +15894,46 @@ msgstr "Une clé est déjà à %s s : celle-ci reste où elle était."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clé à %s s posée à nouveau, à moins d’une image du temps : où se tient la caméra, ce qu’elle regarde et son objectif."
+
+# Simulate's power row and the flex tool's cables (APP_UX11 wires)
+msgid "Power: click a battery box, receiver or hub to work its switch"
+msgstr "Alimentation : cliquez sur un boîtier à piles, un récepteur ou un hub pour actionner son interrupteur"
+
+msgid "Work its switch, as a finger moves it on the part"
+msgstr "Actionner son interrupteur, comme un doigt le bouge sur la pièce"
+
+msgid "Work its remote's lever for this output"
+msgstr "Actionner le levier de sa télécommande pour cette sortie"
+
+msgid "Power Functions cable"
+msgstr "Câble Power Functions"
+
+msgid "Powered Up cable"
+msgstr "Câble Powered Up"
+
+msgid "Power Functions motor's cable or extension wire, 20 cm"
+msgstr "Câble d'un moteur Power Functions ou rallonge, 20 cm"
+
+msgid "Power Functions extension wire, 50 cm"
+msgstr "Rallonge Power Functions, 50 cm"
+
+msgid "Powered Up motor's cable, 25 cm"
+msgstr "Câble d'un moteur Powered Up, 25 cm"
+
+msgid "Turn the plug"
+msgstr "Tourner la prise"
+
+msgid "Turn the plug half round on its contacts, so its motor runs the other way"
+msgstr "Tourner la prise d'un demi-tour sur ses contacts, pour que son moteur tourne dans l'autre sens"
+
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
+msgstr "Rien ici n'alimente un moteur, donc Lire le tourne à la main : ajoutez un boîtier à piles ou un hub et posez son câble (Créer, Tuyau, tube ou chaîne…, Câble Power Functions)."
+
+msgid "Stopped at %s going back."
+msgstr "Arrêté à %s en revenant."
+
+msgid "%s does not run: %s."
+msgstr "%s ne tourne pas : %s."
+
+msgid "%s speed"
+msgstr "vitesse %s"

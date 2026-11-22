@@ -15894,3 +15894,46 @@ msgstr "Ya hay una clave en %s s: esta se queda donde estaba."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clave de %s s fijada de nuevo, a menos de un fotograma del tiempo: dónde está la cámara, a qué mira y su objetivo."
+
+# Simulate's power row and the flex tool's cables (APP_UX11 wires)
+msgid "Power: click a battery box, receiver or hub to work its switch"
+msgstr "Energía: haz clic en una caja de pilas, un receptor o un hub para accionar su interruptor"
+
+msgid "Work its switch, as a finger moves it on the part"
+msgstr "Accionar su interruptor, como lo mueve un dedo en la pieza"
+
+msgid "Work its remote's lever for this output"
+msgstr "Accionar la palanca de su mando para esta salida"
+
+msgid "Power Functions cable"
+msgstr "Cable Power Functions"
+
+msgid "Powered Up cable"
+msgstr "Cable Powered Up"
+
+msgid "Power Functions motor's cable or extension wire, 20 cm"
+msgstr "Cable de un motor Power Functions o cable alargador, 20 cm"
+
+msgid "Power Functions extension wire, 50 cm"
+msgstr "Cable alargador Power Functions, 50 cm"
+
+msgid "Powered Up motor's cable, 25 cm"
+msgstr "Cable de un motor Powered Up, 25 cm"
+
+msgid "Turn the plug"
+msgstr "Girar el conector"
+
+msgid "Turn the plug half round on its contacts, so its motor runs the other way"
+msgstr "Girar el conector media vuelta sobre sus contactos, para que su motor gire al revés"
+
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
+msgstr "Aquí nada da energía a un motor, así que Reproducir lo gira a mano: añade una caja de pilas o un hub y tiende su cable (Crear, Manguera, tubo o cadena…, Cable Power Functions)."
+
+msgid "Stopped at %s going back."
+msgstr "Detenido en %s al volver."
+
+msgid "%s does not run: %s."
+msgstr "%s no gira: %s."
+
+msgid "%s speed"
+msgstr "velocidad %s"

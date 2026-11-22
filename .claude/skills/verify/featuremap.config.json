@@ -1301,6 +1301,13 @@
     },
     {
       "kind": "lib",
+      "label": "motors run by their cables",
+      "entry": "src/assembly/wiring.gd",
+      "reach": "tools/probe.sh wires_probe   (headless: PF cables, plugs, a receiver, a pole reverser, a Control+ hub and an extension wire read by hand; a Power Functions cable laid by lay_flex from an M motor to a box, 500 LDU, one undo, saved and reopened byte for byte; 42042's L motor in Simulate runs at 390 rpm once its box is clicked on and stops with its plug pulled; -- --sets=bench/results/wires-2026-11-22/sets.json --rows=ROWS measures each set's motors as KINEFUNCS reads their functions, tools/wires_sets.py writes the listing)",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
       "label": "axles and gears on a line",
       "entry": "src/assembly/joints.gd",
       "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",

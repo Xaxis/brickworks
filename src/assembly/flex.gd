@@ -87,6 +87,32 @@ const KINDS: Dictionary = {
 		"label": "Technic tread", "family": "links", "link": "3873",
 		"real": "Technic Chain Tread 2.5 Wide",
 	},
+	# A motor's cable laid by its two ends (APP_UX11 wires): from the
+	# motor's, the receiver's or the pole reverser's outlet ("outlet") to its
+	# plug, put on a battery box's, a receiver's or another plug's contacts or
+	# into a hub's port ("contacts"), in the real cable's fixed lengths, its
+	# path settling as a hose's does. Drawn in LDraw's Flex-System cable
+	# segment (343), flattened to a ribbon for Power Functions' four wires,
+	# the plug its last piece; read back by Wiring as the motor's cable.
+	# Lengths: an extension wire's from LDraw's names (8886, 20 cm; 8871,
+	# 50 cm), a Powered Up motor's from its cable's (u9218c01, 25 cm), a
+	# Power Functions motor's 20 cm, LEGO's 26 cm for the M motor and its
+	# cable whole (set 8293); 2.5 LDU a centimetre.
+	"pf_cable": {
+		"label": "Power Functions cable", "family": "scaled", "middle": "343", "native": 1.0,
+		"along": "y", "flat": 2.5, "radius": 2.0, "bend": 4.0, "plug": "58124c01",
+		"plug_color": 72, "electric": "pf", "caps": ["58124c01"],
+		"lengths": [["pf20", "Power Functions motor's cable or extension wire, 20 cm", 500.0],
+			["pf50", "Power Functions extension wire, 50 cm", 1250.0]],
+		"takes": ["outlet", "contacts"],
+	},
+	"pu_cable": {
+		"label": "Powered Up cable", "family": "scaled", "middle": "343", "native": 1.0,
+		"along": "y", "flat": 1.2, "radius": 2.0, "bend": 4.0, "plug": "23816c01",
+		"plug_color": 71, "electric": "pu", "caps": ["23816c01"],
+		"lengths": [["pu25", "Powered Up motor's cable, 25 cm", 625.0]],
+		"takes": ["outlet", "contacts"],
+	},
 	# A rubber band round pulleys, wheels, bushes and axles, and a spring or
 	# a shock absorber between two ends: Bands lays them, of pieces it makes
 	# (Bands.is_piece_id); a shock's cylinder and rod are its caps.
@@ -126,6 +152,9 @@ class Anchor extends RefCounted:
 	var axis: Vector3
 	## A hole's half depth; how far a pin or an axle stands out.
 	var reach: float = 0.0
+	## A plug's contacts' +x: the way a plug on them faces to run a motor
+	## forward (Wiring).
+	var x: Vector3 = Vector3.ZERO
 
 	func is_hole() -> bool:
 		return kind == "pin_hole" or kind == "axle_hole" or kind == "clip"
@@ -213,6 +242,8 @@ static func anchors_of(part: Lbm.PartMesh, where: Transform3D, brick_id: int,
 static func anchors_in(world: BrickWorld, library: PartLibrary, kind: String,
 		skip: Dictionary = {}) -> Array:
 	var spec: Dictionary = KINDS.get(kind, {})
+	if spec.has("electric"):
+		return electric_anchors(world, library, kind, skip)
 	var takes: Array = spec.get("takes", [])
 	var out: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
@@ -225,6 +256,62 @@ static func anchors_in(world: BrickWorld, library: PartLibrary, kind: String,
 			if takes.has(anchor.kind):
 				out.append(anchor)
 	return out
+
+
+## Where a cable kind's ends go (Wiring): each motor's, receiver's and
+## pole reverser's outlet, and each battery box's, receiver's output's, pole
+## reverser's and free plug's contacts or hub's port of the kind's own
+## system, none taken already by a plug.
+static func electric_anchors(world: BrickWorld, library: PartLibrary, kind: String,
+		skip: Dictionary = {}) -> Array:
+	var system: String = str(KINDS[kind]["electric"])
+	var bricks: Array = world.bricks().filter(func(b: BrickWorld.Brick) -> bool:
+		return not skip.has(b.id) and not b.hidden)
+	var wired: Wiring = Wiring.read(bricks, func(part: String) -> String:
+		return Simulation.motor_of(library, part))
+	# Taken: contacts a plug of another part sits on, and an outlet whose
+	# cable is there already. A plug's own top is free until a plug is on it.
+	var taken: Dictionary = {}
+	for join: Array in wired.joins:
+		var a: Wiring.Point = wired.points.get(str(join[0]))
+		var b: Wiring.Point = wired.points.get(str(join[1]))
+		if a != null and b != null and a.brick != b.brick and a.role == "plug" and b.role == "contacts":
+			taken[b.key] = true
+	for cable: Dictionary in wired.cables:
+		for key: String in cable["ends"]:
+			taken[key] = true
+	var out: Array = []
+	for key: String in wired.points:
+		var point: Wiring.Point = wired.points[key]
+		var anchor := Anchor.new()
+		anchor.brick = point.brick
+		if point.role == "terminal" and point.x != Vector3.ZERO and not taken.has(key):
+			var part: String = Wiring.base_part(str(wired.parts.get(point.brick, "")))
+			if (system == "pu") != Wiring.is_powered_up(part):
+				continue
+			anchor.kind = "outlet"
+			anchor.at = point.at
+			anchor.axis = point.x
+			anchor.reach = 0.0
+			out.append(anchor)
+		elif point.role == "contacts" and point.kind == system and not taken.has(key):
+			anchor.kind = "contacts"
+			anchor.at = point.at
+			anchor.axis = point.up
+			anchor.x = point.x
+			out.append(anchor)
+	return out
+
+
+## Where a plug put on [param anchor]'s contacts stands, facing forward
+## ([param side] 1) or turned half round (-1): its origin and its axes, in
+## the app's, as a plug part's own (Wiring).
+static func plug_on(kind: String, anchor: Anchor, side: int) -> Transform3D:
+	var up: Vector3 = anchor.axis.normalized()
+	var x: Vector3 = (anchor.x - up * anchor.x.dot(up)).normalized() * float(1 if side >= 0 else -1)
+	var basis := Basis(x, up, x.cross(up))
+	var lift: float = Wiring.PLUG_UP if str(KINDS[kind]["electric"]) == "pf" else 0.0
+	return Transform3D(basis, anchor.at + up * lift)
 
 
 ## The anchor the pointer's line is aimed at: nearest the line within
@@ -255,6 +342,20 @@ static func port_for(kind: String, anchor: Anchor, side: int, end_index: int = 0
 	var port := Port.new()
 	port.anchor = anchor
 	port.side = 1 if side >= 0 else -1
+	if anchor.kind == "contacts" and spec.has("plug"):
+		# The cable leaves its plug's stub, the plug on the contacts.
+		var plug: Transform3D = plug_on(kind, anchor, port.side)
+		var stub: Array = Wiring.OUTLETS[str(spec["plug"])]
+		port.tip = plug * ((stub[0] as Vector3) * LdrModel.FLIP)
+		port.out = (plug.basis * ((stub[1] as Vector3) * LdrModel.FLIP)).normalized()
+		port.lead = 3.0
+		port.set_meta("plug", plug)
+		return port
+	if anchor.kind == "outlet":
+		port.tip = anchor.at
+		port.out = anchor.axis
+		port.lead = 3.0
+		return port
 	if anchor.is_hole():
 		port.out = anchor.axis * float(port.side)
 		match str(spec.get("insert", "half")):
@@ -318,7 +419,11 @@ static func lengths_of(library: PartLibrary, kind: String) -> Array:
 	var spec: Dictionary = KINDS.get(kind, {})
 	var real: String = str(spec.get("real", ""))
 	var out: Array = []
-	if not real.is_empty() and str(spec.get("family", "")) != "links":
+	if spec.has("lengths"):
+		# A cable comes in the lengths its makers cut it to.
+		for one: Array in spec["lengths"]:
+			out.append({"id": str(one[0]), "name": str(one[1]), "length": float(one[2])})
+	elif not real.is_empty() and str(spec.get("family", "")) != "links":
 		for id: String in library.parts:
 			var info: PartLibrary.PartInfo = library.parts[id]
 			if not info.name.begins_with(real) or info.is_redirect() \
@@ -898,6 +1003,12 @@ static func lay_swept(kind: String, a: Port, b: Port, real: float,
 			_pitched(kind, spec, path, ends, laid)
 		"scaled":
 			_scaled(spec, path, laid, Vector2((ends[0] as Port).lead, (ends[1] as Port).lead))
+	if spec.has("plug"):
+		# A cable's plug, the last piece, on the contacts its end was put on.
+		for port: Port in ends:
+			if port.has_meta("plug"):
+				laid.pieces.append({"part": str(spec["plug"]), "at": port.get_meta("plug"),
+					"color": int(spec.get("plug_color", 72))})
 	return laid
 
 
@@ -1026,6 +1137,9 @@ static func _scaled(spec: Dictionary, whole: Path, laid: Laid, leads: Vector2) -
 			# A piece of tube runs from its origin along its own -y.
 			var basis: Basis = basis_along(heading, normal, "-y")
 			basis.y *= span / native
+			if spec.has("flat"):
+				# A ribbon of wires side by side: wider one way across.
+				basis.x *= float(spec["flat"])
 			at = Transform3D(basis, a)
 		laid.pieces.append({"part": spec["middle"], "at": at})
 	laid.length = length
@@ -1331,6 +1445,9 @@ static func lay_chain(kind: String, sprockets: Array) -> Laid:
 ## Which kind a set of parts is, when every one of them is a segment of
 ## one (or one of its caps, a shock's cylinder and rod): "" otherwise.
 static func kind_of(part_ids: Array) -> String:
+	var cable: String = _cable_of(part_ids)
+	if not cable.is_empty():
+		return cable
 	var kind: String = ""
 	for part: Variant in part_ids:
 		var its: String = kind_of_piece(str(part))
@@ -1343,6 +1460,21 @@ static func kind_of(part_ids: Array) -> String:
 		if kind_of_piece(str(part)) != kind and not caps.has(str(part)):
 			return ""
 	return kind
+
+
+## A motor's cable laid here: its plug and its segments and nothing else,
+## told by the plug, since its segment (343) is LDraw's Flex-System cable's
+## too and 8002's Flex-System cables are no Power Functions cable.
+static func _cable_of(part_ids: Array) -> String:
+	for kind: String in ["pf_cable", "pu_cable"]:
+		var spec: Dictionary = KINDS[kind]
+		var caps: Array = spec["caps"]
+		if not part_ids.any(func(p: Variant) -> bool: return caps.has(str(p))):
+			continue
+		var only: bool = part_ids.all(func(p: Variant) -> bool:
+			return caps.has(str(p)) or str(p) == str(spec["middle"]))
+		return kind if only and part_ids.size() > 1 else ""
+	return ""
 
 
 ## part -> the kind it is a piece of. No part is a piece of two kinds.
@@ -1366,6 +1498,10 @@ static func _pieces_of_kinds() -> Dictionary:
 	var out: Dictionary = {}
 	for kind: String in KINDS:
 		var spec: Dictionary = KINDS[kind]
+		if spec.has("electric"):
+			# A cable is told by its plug (_cable_of): its segment, 343, is
+			# the Flex-System cable's piece as well.
+			continue
 		for key: String in ["segment", "end", "middle", "link"]:
 			if spec.has(key):
 				out[str(spec[key])] = kind
@@ -1773,6 +1909,8 @@ static func sprockets_of_item(world: BrickWorld, library: PartLibrary, pieces: A
 ## The name an item goes by in the model tree: the real part's, without
 ## "Technic", or the kind's.
 static func item_name(kind: String, library: PartLibrary, real_id: String) -> String:
+	if KINDS.get(kind, {}).has("lengths"):
+		return str(KINDS[kind]["label"])
 	var info: PartLibrary.PartInfo = library.parts.get(real_id) if not real_id.is_empty() \
 		else null
 	var said: String = str(KINDS[kind]["label"]) if info == null else info.name

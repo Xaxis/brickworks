@@ -90,13 +90,15 @@ var _told: Label
 var _status: Label
 var _add_bend: Button
 var _clear_bends: Button
+## A Power Functions cable's plug turned half round on its contacts.
+var _turn_plug: Button
 var _again: Button
 var _done: Button
 var _told_page: String = ""
 var _told_page_at: int = 0
 
 const KIND_ORDER: Array[String] = ["pneumatic_tube", "ribbed_hose", "flex_hose", "flex_axle",
-	"string", "chain", "tread", "band", "spring"]
+	"string", "chain", "tread", "band", "spring", "pf_cable", "pu_cable"]
 const HANDLE_PIXELS := 14.0
 
 
@@ -222,7 +224,7 @@ func reshape(path: String) -> bool:
 ## result, or null when the ends make nothing; [method laid_item] is its
 ## path. One undo step, as a laying by hand is.
 func lay(of_kind: String, anchors: Array, sprockets: Array, colour: int,
-		item: String = "", part: String = "") -> Flex.Laid:
+		item: String = "", part: String = "", facing: int = 1) -> Flex.Laid:
 	if _laying or not Flex.KINDS.has(of_kind):
 		return null
 	var was_active: bool = active
@@ -248,6 +250,9 @@ func lay(of_kind: String, anchors: Array, sprockets: Array, colour: int,
 		# Out of the face toward the other end, not the one the person's
 		# camera happens to look at.
 		record.erase("eye")
+		if anchor.kind == "contacts":
+			# A cable's plug: facing forward, or turned half round.
+			record["side"] = facing
 		_ends.append(record)
 	if of_kind == "band":
 		# Round the round things named, in the order named.
@@ -534,7 +539,7 @@ func _end_record(anchor: Flex.Anchor, _at: Vector2) -> Dictionary:
 		toward_eye = 1 if anchor.axis.dot(camera.global_position - anchor.at) >= 0.0 else -1
 	return {"brick": anchor.brick, "kind": anchor.kind, "at": back * anchor.at,
 		"axis": (back.basis * anchor.axis).normalized(), "reach": anchor.reach,
-		"eye": toward_eye}
+		"eye": toward_eye, "x": back.basis * anchor.x}
 
 
 ## An end picked, where its brick is now.
@@ -547,6 +552,7 @@ func _anchor_of(record: Dictionary) -> Flex.Anchor:
 	var at: Transform3D = brick.transform if brick != null else Transform3D.IDENTITY
 	anchor.at = at * (record["at"] as Vector3)
 	anchor.axis = (at.basis * (record["axis"] as Vector3)).normalized()
+	anchor.x = at.basis * (record.get("x", Vector3.ZERO) as Vector3)
 	return anchor
 
 
@@ -665,6 +671,18 @@ func clear_bends() -> void:
 		return
 	_controls = PackedVector3Array()
 	_put()
+
+
+## The cable's plug turned half round on what it is on, as a hand turns
+## a real one: its motor runs the other way (Wiring).
+func turn_plug() -> void:
+	var turned: bool = false
+	for end: Dictionary in _ends:
+		if str(end.get("kind", "")) == "contacts":
+			end["side"] = -int(end.get("side", 1))
+			turned = true
+	if turned:
+		_put()
 
 
 
@@ -1289,6 +1307,8 @@ func _show_buttons() -> void:
 	var shaping: bool = stage == "shaping" and not _is_chain() and not _is_made()
 	_add_bend.visible = shaping
 	_clear_bends.visible = shaping and not _controls.is_empty()
+	_turn_plug.visible = shaping and kind == "pf_cable" and _ends.any(func(end: Dictionary) -> bool:
+		return str(end.get("kind", "")) == "contacts")
 	_again.visible = (stage != "start" and stage != "sprockets" and stage != "pulleys") \
 		or not _sprockets.is_empty() or not _rounds.is_empty()
 
@@ -1464,6 +1484,8 @@ func _build_panel() -> void:
 	column.add_child(row)
 	_add_bend = _button(row, "Add a bend", add_bend, "A point on the path to drag it by")
 	_clear_bends = _button(row, "Straighten", clear_bends, "Take the bend points out")
+	_turn_plug = _button(row, "Turn the plug", turn_plug,
+		"Turn the plug half round on its contacts, so its motor runs the other way")
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 6)
 	column.add_child(row2)
@@ -1573,8 +1595,10 @@ func _fill_lengths() -> void:
 		return
 	_length_picker.add_item("The shortest that fits")
 	for one: Dictionary in Flex.lengths_of(library, kind):
-		_length_picker.add_item("%s — %.0f LDU" % [Flex.item_name(kind, library, str(one["id"])),
-			float(one["length"])])
+		# A cable's lengths each have their own name: the motor's, a wire's.
+		var named: String = str(one["name"]) if (Flex.KINDS[kind] as Dictionary).has("lengths") \
+			else Flex.item_name(kind, library, str(one["id"]))
+		_length_picker.add_item("%s — %.0f LDU" % [named, float(one["length"])])
 	_length_picker.select(clampi(length_choice + 1, 0, _length_picker.item_count - 1))
 
 
