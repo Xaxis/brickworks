@@ -161,6 +161,8 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})[.]cutout[.]png$/, "share", "cutout"],
   [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
+  // Its clip, the model turning (supabase/model_clips.sql): its ?v= kept.
+  [/^\/m\/([A-Za-z0-9]{10})()[.](mp4|webm)$/, "share", "clip"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
   // What oEmbed asks of a model's link (?url=), as /oembed.
   [/^\/oembed\/?$/, "share", "oembed"],

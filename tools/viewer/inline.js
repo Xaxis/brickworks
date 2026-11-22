@@ -54,6 +54,52 @@ const now = () => Math.round(performance.now());
 // What a check reads of it (tools/web/model_page_flow.mjs). Reading only.
 const state = window.brickworks3d = window.brickworks3d || { state: "closed", timings: {}, errors: [] };
 
+/// The model turning once round, for its link's clip (unit turntable,
+/// web/turntable-clip.js): a View of its own in [stage], an element out of
+/// sight the clip's size, drawn from the scene at [given].scene as this 3D
+/// view draws it, framed from where its picture was taken ([given].look,
+/// LOOKS) to stay whole all the way round. {frame(share): its canvas with
+/// the camera turned [share] of a whole turn round the model, as the page's
+/// own turn on arrival goes; stop()}. null where it cannot be drawn here
+/// whole: no WebGL 2, past what this device turns smoothly, nothing in it,
+/// or a part's geometry that did not come (a clip of boxes is no clip).
+export async function turntable(stage, given) {
+  if (!webglWorks()) return null;
+  const answer = await fetch(given.scene, { credentials: "omit" }).catch(() => null);
+  if (!answer || !answer.ok) return null;
+  const scene = sceneShape(await answer.json().catch(() => null));
+  if (!scene || scene.count < 1) return null;
+  if (scene.triangles > (coarse() ? BUDGET.coarse : BUDGET.fine)) return null;
+  const data = await unpack(scene).catch(() => null);
+  if (!data) return null;
+  const errors = [];
+  // Turning, so framed for all its turns (View.fitting), but by this alone:
+  // OrbitControls never turns it, nothing here waits for a frame of the
+  // page's, and a hidden tab records as well as one in front.
+  const view = new View(stage, data, { still: false, spin: true, ...(LOOKS[given.look] || LOOKS.app), errors,
+    touchAction: () => "none", shapeOf: shapes(scene.root, { errors }) });
+  view.start();
+  view.controls.autoRotate = false;
+  view.controls.enabled = false;
+  await view.load(() => {});
+  if (errors.length || !view.renderer) {
+    view.stop(false);
+    return null;
+  }
+  const { eye, target } = view.home;
+  const offset = eye.clone().sub(target);
+  const up = view.camera.up.clone();
+  return {
+    frame(share) {
+      view.camera.position.copy(target).add(offset.clone().applyAxisAngle(up, -share * 2 * Math.PI));
+      view.camera.lookAt(target);
+      view.draw();
+      return view.renderer.domElement;
+    },
+    stop() { view.stop(false); },
+  };
+}
+
 /// The 3D view in [shell] (web/model-page.js's .view3d, over the picture):
 /// {close, open} for the page. [given]: scene (its address), name, app (the
 /// app's address for it, Open in the app), look (where its picture was

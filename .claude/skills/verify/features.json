@@ -3458,6 +3458,14 @@
       "tests": []
     },
     {
+      "id": "cli:turntable browser flow",
+      "kind": "cli",
+      "entry": "tools/web/turntable_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/turntable_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh turntable: a throwaway designer's visit records the clip, 4 s or less, 1.5 MB or less, a seamless loop; Discordbot, Slackbot and Twitterbot read og:video and a player card; the embed plays it at 390, 768 and 1280 light and dark; the clip's refusals; unpublished, its file gone from storage. Needs supabase/model_clips.sql)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:twist probe",
       "kind": "cli",
       "entry": "src/dev/twist_probe.gd",
@@ -7470,6 +7478,14 @@
       "kind": "ui",
       "entry": "web/room.js",
       "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the model turning in its link's preview",
+      "kind": "ui",
+      "entry": "web/turntable-clip.js",
+      "reach": "the designer's own visit to https://brickworks.diy/m/<id> records its clip once per version (web/model-page.js clipOwn, <html data-clip>; tools/viewer/inline.js turntable; WebCodecs, an MP4 of H.264 or a WebM of VP9/VP8); POST /api/share?op=clip reads it (api/_clip.js readClip) and keeps it in shared-clips (supabase/model_clips.sql); /m/<id>.mp4 or .webm serves it; /m/<id>'s head names it in og:video and a twitter:card player; /m/<id>/embed?autoplay=1 plays it muted with Pause and Play (web/embed.js)",
       "area": "web",
       "tests": []
     },

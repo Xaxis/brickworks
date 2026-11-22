@@ -106,6 +106,73 @@ if (tabs) startTabs(tabs);
 // screen, so a visit that never gets there asks for nothing.
 const partsPart = document.getElementById("parts");
 if (partsPart && partsPart.dataset.parts) startParts(partsPart);
+// Its clip (unit turntable): the model turning once round, which its link's
+// preview plays in Discord, Slack and X (api/share.js, og:video). Recorded
+// here by its designer's own visit to its newest version's page, once for
+// each version, from the 3D view's own drawing of it out of sight
+// (tools/viewer/inline.js turntable, web/turntable-clip.js), then sent to
+// be kept: a model shared from the studio, the desktop app or the site gets
+// one alike. Signed in on the page, the same. <html data-clip> says how it
+// went (tools/web/turntable_flow.mjs reads it).
+let clipAsked = false;
+const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && frame?.dataset.scene === `/m/${id}/scene.json`;
+if (newestScene && signedIn()) clipOwn();
+else if (newestScene) addEventListener("brickworks:signed-in-done", () => clipOwn(), { once: true });
+
+/// The designer's own visit: its clip recorded and sent where it has none
+/// of the newest version, or only a WebM where this browser records MP4
+/// (X, iMessage and Safari play MP4 alone), once the page has settled. Said
+/// on <html data-clip>: kept (nothing to do), not-open (no clips on this
+/// deployment yet), cannot (no WebCodecs encoder here), save-data,
+/// recording, cannot-draw (no WebGL 2, past this device's budget, or a part
+/// that did not come), failed, made, or refused-<status>. Anybody else's
+/// visit asks nothing more than whether it is theirs.
+async function clipOwn() {
+  if (clipAsked) return;
+  clipAsked = true;
+  const said = (how) => { document.documentElement.dataset.clip = how; };
+  const answer = await call(`/api/share?op=clip_need&id=${id}`).catch(() => null);
+  if (!answer || answer.status !== 200 || !answer.body.mine) return;
+  if (!answer.body.ready) return said("not-open");
+  const { CLIP, clipKind, recordClip } = await import("/turntable-clip.js");
+  const kind = await clipKind();
+  const has = answer.body.clip;
+  if (has && has.version === answer.body.version && !(has.kind === "webm" && kind === "mp4")) return said("kept");
+  if (!kind) return said("cannot");
+  // The parts' geometry is data a person on a metered connection asked to save.
+  if (navigator.connection && navigator.connection.saveData) return said("save-data");
+  await new Promise((settled) => {
+    const idle = () => (window.requestIdleCallback ? requestIdleCallback(() => settled(), { timeout: 4000 }) : setTimeout(settled, 1500));
+    if (document.readyState === "complete") idle();
+    else addEventListener("load", idle, { once: true });
+  });
+  said("recording");
+  // Out of sight, the clip's size: what the View draws at and frames for.
+  const stage = document.createElement("div");
+  stage.setAttribute("aria-hidden", "true");
+  stage.inert = true;
+  Object.assign(stage.style, { position: "fixed", left: "-10000px", top: "0", width: `${CLIP.width}px`,
+    height: `${CLIP.height}px`, overflow: "hidden", pointerEvents: "none" });
+  document.body.append(stage);
+  let spin = null;
+  try {
+    const { turntable } = await import("/viewer3d.js");
+    spin = await turntable(stage, { scene: frame.dataset.scene, look: "app" });
+    if (!spin) return said("cannot-draw");
+    const made = await recordClip((share) => spin.frame(share), { kind });
+    if (!made) return said("failed");
+    let text = "";
+    for (let at = 0; at < made.bytes.length; at += 0x8000) text += String.fromCharCode(...made.bytes.subarray(at, at + 0x8000));
+    const sent = await call(`/api/share?op=clip&id=${id}`, { method: "POST",
+      body: { version: answer.body.version, clip: btoa(text) } });
+    said(sent.status === 200 ? "made" : `refused-${sent.status}`);
+  } catch {
+    said("failed");
+  } finally {
+    if (spin) spin.stop();
+    stage.remove();
+  }
+}
 
 /// How this browser places a model in a room, as <model-viewer> judges it
 /// (its IS_AR_QUICKLOOK_CANDIDATE and IS_WEBXR_AR_CANDIDATE): "quick-look"

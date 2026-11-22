@@ -4206,6 +4206,20 @@
     },
     {
       "kind": "ui",
+      "label": "the model turning in its link's preview",
+      "entry": "web/turntable-clip.js",
+      "reach": "the designer's own visit to https://brickworks.diy/m/<id> records its clip once per version (web/model-page.js clipOwn, <html data-clip>; tools/viewer/inline.js turntable; WebCodecs, an MP4 of H.264 or a WebM of VP9/VP8); POST /api/share?op=clip reads it (api/_clip.js readClip) and keeps it in shared-clips (supabase/model_clips.sql); /m/<id>.mp4 or .webm serves it; /m/<id>'s head names it in og:video and a twitter:card player; /m/<id>/embed?autoplay=1 plays it muted with Pause and Play (web/embed.js)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "turntable browser flow",
+      "entry": "tools/web/turntable_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/turntable_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh turntable: a throwaway designer's visit records the clip, 4 s or less, 1.5 MB or less, a seamless loop; Discordbot, Slackbot and Twitterbot read og:video and a player card; the embed plays it at 390, 768 and 1280 light and dark; the clip's refusals; unpublished, its file gone from storage. Needs supabase/model_clips.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "what's this",
       "entry": "src/ui/whats_this.gd",
       "reach": "tools/probe.sh whatsthis_probe   (Help, What's This?, or Shift+F1: the next click on any control answers in a bubble beside it and does nothing else; Esc, a right click or Shift+F1 again leave; a part in hand: the status bar's x, z and height are where it lands)",
