@@ -595,10 +595,6 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			body *= mix(vec3(1.0), vec3(1.0, 0.9, 0.62), yellowed);
 			float grey_of = dot(body, vec3(0.2126, 0.7152, 0.0722));
 			body = mix(body, vec3(grey_of), 0.08 * age * own_age);
-			// A few parts faded in the sun much more than the rest: greyer and
-			// lighter, a black gone blue-grey, as a set's odd part is.
-			float faded = age * own_age * own_age * own_age;
-			body = mix(body, vec3(grey_of) * 1.15 + vec3(0.01, 0.015, 0.03), 0.35 * faded);
 			s.coat_roughness += 0.02 * age;
 		}
 		float dust = scene.wear.y * smoothstep(0.55, 0.9, ng.y);
