@@ -1531,14 +1531,31 @@ vignette (RenderSettings `sharpen`, `jpeg`):
   Gaussian 1.2 pixels wide over the samples' own mean, with a two-level
   threshold.
 - `jpeg` sends the finished picture through Godot's JPEG at that quality
-  and back (StudioRender._through_jpeg).
+  and back (StudioRender._through_jpeg), on a worker.
 
 Both are on Best only. Compatibility gets neither, because its picture
 never passes the tracer's resolve. The Product look's own values are none
 (PRODUCT_SHARPEN, PRODUCT_JPEG 0), so a render outside the bench is
-unchanged and the car's time is untouched. The photo bench's shots ask
-for their photograph's own: sharpen 0.6, and JPEG 90 for the close-ups and
-75 for the sets (6512 none). Its numbers against the bar are below.
+unchanged and the car's time is untouched. Whether the Product look should
+process its pictures by default is the owner's call: it would put a JPEG's
+blocks into every Best picture.
+
+The first draw put each shot through its photograph's own processing:
+sharpen 0.6, then JPEG 90 for the close-ups and 75 for the sets (6512 none).
+Drawn twice from p6snap2 and judged beside p5 and the same processing
+applied afterwards (`table_p6step3.md`):
+
+| tree | mean | close-ups, per round | sets, per round | called a photograph |
+|---|---|---|---|---|
+| p5 | 0.227 | 0.284 0.293 | 0.131 0.138 | 9 of 80 |
+| p5built (the processing, drawn by our renderer) | 0.260 | 0.367 0.359 | 0.107 0.104 | 16 of 80 |
+| p5camera (the same, applied afterwards) | 0.253 | 0.334 0.347 | 0.125 0.116 | 12 of 80 |
+
+Built in, the processing does what it did as a pass afterwards. The
+close-ups rose by 0.07, and their lowest round (0.359) is above
+photoreal5's highest (0.31). The sets fell by 0.03, as they did in every
+pool. So it is kept only where it moved: the close-ups' shots carry it, and
+the sets' have none (`shots.json`). Judged again as kept: below.
 
 **Running it.** On 2026-11-22 the box held up to 75 brickworks jobs in
 heavy's queue, at load 50 to 140. This unit's runs went through two slot
@@ -1547,7 +1564,7 @@ are in `shots/photoreal/<tag>/` of the snapshot worktrees:
 - p6snap1 (10854b3a0) holds p6_d1/d2 (p5), c_d1/d2 (cy), cns/cg (the Cycles
   swaps), p6c (p5clean), p6j/p6s/p6q (camera, sharpening, JPEG), cj
   (cycamera) and photoasis/photosoft.
-- p6snap2 (2b5b7b5d9) holds step 3's p6cam_d1/d2.
+- p6snap2 (599e7ad87) holds step 3's p6cam_d1/d2.
 
 ## 6. Web and desktop
 

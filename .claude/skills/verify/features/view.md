@@ -3584,8 +3584,8 @@ picture the assistant is shown.
   photograph's camera processing (photoreal6, docs/RENDERING.md 5j):
   `sharpen`, an unsharp mask after the curve in the resolve (the share of
   an edge's step added back), and `jpeg`, the finished picture through a
-  JPEG at that quality and back (StudioRender._through_jpeg); the shots
-  carry 0.6 and their photograph's quality (90 close-ups, 75 sets). The
+  JPEG at that quality and back (StudioRender._through_jpeg); the close-ups
+  carry 0.6 and JPEG 90, the sets none (the judge marked them down). The
   Product look's own are none (PRODUCT_SHARPEN, PRODUCT_JPEG 0), so a
   render outside the bench is unchanged; check a shot's picture differs
   from `--without=sharpen,jpeg`'s at its edges and in 8x8 blocks.

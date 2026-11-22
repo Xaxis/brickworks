@@ -1,5 +1,5 @@
 {
- "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. backdrop: the photograph's own backdrop, measured (photoreal2); lighting: studio is a light tent on a light backdrop (Best), window a room's daylight where the photograph was taken in a room; faces: flat lit faces of the part, fractions [left, top, right, bottom] of the photograph and of the render, for tools/bench/photoreal.py colour. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md. gloss: boxes on a part's top faces and studs, wholly on the part in both pictures, for tools/bench/photoreal.py gloss (photoreal3). f_stop: the photograph's depth of field, matched (photoreal3): the close-ups sharp from front to back in their photographs are drawn at the f-number that keeps them so at their framing (a small sensor's depth at the same picture). photo_is_render: the set's picture is itself a computer render, not a photograph (6512's: flawless logos, no grain, an ambient-occlusion shadow; the solo judge gave it 0.05, photoreal4); the solo judge counts it apart from the photographs. mask: tools/bench/photoreal.py masks' thresholds for the photograph's outline. fit_overlap: how well the outline of the model, drawn from the camera here, overlaps the photograph's (photoreal_probe.gd --fit, photoreal4). grain, vignette, aberration: the photograph's camera (photoreal4): its sensor noise in 8-bit levels (tools/bench/photoreal.py camera measures it), the light its lens loses at a corner, its colour fringes in pixels at a corner. age, dust: the photographed parts' wear, 0 to 1 (whites yellowed as the photograph's are, dust on tops); paper: the backdrop's grain and uneven light, 0 for a cut-out. sharpen, jpeg: the photograph's camera's processing (photoreal6): its sharpening (the share of an edge's step added back) and the JPEG it was saved at, the photograph's own quantisation (90 the close-ups' Wikimedia copies, 75 the sets' Rebrickable pictures). 6512's picture is a render: none of them.",
+ "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. backdrop: the photograph's own backdrop, measured (photoreal2); lighting: studio is a light tent on a light backdrop (Best), window a room's daylight where the photograph was taken in a room; faces: flat lit faces of the part, fractions [left, top, right, bottom] of the photograph and of the render, for tools/bench/photoreal.py colour. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md. gloss: boxes on a part's top faces and studs, wholly on the part in both pictures, for tools/bench/photoreal.py gloss (photoreal3). f_stop: the photograph's depth of field, matched (photoreal3): the close-ups sharp from front to back in their photographs are drawn at the f-number that keeps them so at their framing (a small sensor's depth at the same picture). photo_is_render: the set's picture is itself a computer render, not a photograph (6512's: flawless logos, no grain, an ambient-occlusion shadow; the solo judge gave it 0.05, photoreal4); the solo judge counts it apart from the photographs. mask: tools/bench/photoreal.py masks' thresholds for the photograph's outline. fit_overlap: how well the outline of the model, drawn from the camera here, overlaps the photograph's (photoreal_probe.gd --fit, photoreal4). grain, vignette, aberration: the photograph's camera (photoreal4): its sensor noise in 8-bit levels (tools/bench/photoreal.py camera measures it), the light its lens loses at a corner, its colour fringes in pixels at a corner. age, dust: the photographed parts' wear, 0 to 1 (whites yellowed as the photograph's are, dust on tops); paper: the backdrop's grain and uneven light, 0 for a cut-out. sharpen, jpeg: the photograph's camera's processing (photoreal6): its sharpening (the share of an edge's step added back) and the JPEG it was saved at, the photograph's own quantisation (90, the close-ups' Wikimedia copies). Kept only where the judge moved: the close-ups rose 0.29 to 0.36, the sets (Rebrickable's pictures, JPEG 75) fell 0.135 to 0.105, so they have none (docs/RENDERING.md 5j). 6512's picture is a render: none of them.",
  "shots": [
   {
    "name": "black_2x4",
@@ -514,9 +514,7 @@
    "dust": 0.4,
    "paper": 0.0,
    "softness": 0.6,
-   "seating": 2.5,
-   "sharpen": 0.6,
-   "jpeg": 75
+   "seating": 2.5
   },
   {
    "name": "set_6657",
@@ -549,9 +547,7 @@
    "dust": 0.4,
    "paper": 1.0,
    "softness": 0.6,
-   "seating": 2.5,
-   "sharpen": 0.6,
-   "jpeg": 75
+   "seating": 2.5
   },
   {
    "name": "set_6660",
@@ -583,9 +579,7 @@
    "dust": 0.4,
    "paper": 0.0,
    "softness": 0.6,
-   "seating": 2.5,
-   "sharpen": 0.6,
-   "jpeg": 75
+   "seating": 2.5
   }
  ]
 }
