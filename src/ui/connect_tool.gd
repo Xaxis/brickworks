@@ -389,6 +389,8 @@ func _process(_delta: float) -> void:
 	# Drawn again as the view turns: a point round the back comes into sight.
 	if stage == "point" and _overlays != null and _overlays.is_shown():
 		_overlays.show_drawn(true)
+	else:
+		Wake.rest(self)
 
 
 ## The points as [param view] shows them, drawn on [param canvas] in the

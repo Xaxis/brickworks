@@ -126,6 +126,9 @@ var _pointer_found: Variant = null
 var _told_page_at: int = 0
 ## How long the page may go untold while the view turns (_tell_page).
 const TELL_MOVING_MS := 2000
+## ...and while nothing happens (Wake), once it has been told what the last
+## thing that happened left.
+const TELL_RESTING_MS := 2000
 ## ...and what a key or a click changes, as it was then ([method _page_moment]).
 var _told_moment: Array = []
 ## ...and how long telling it took the last time, which is a frame's work
@@ -850,6 +853,13 @@ func _tell_page() -> void:
 	# every frame of the turn. Nothing told is drawn.
 	if moment == _told_moment and _camera != null and _camera.is_moving() \
 			and now - _told_page_at < TELL_MOVING_MS:
+		return
+	# At rest, told once after the last thing that happened (an input, an
+	# edit, a frame drawn, an answer, a check's question: Wake), then every
+	# TELL_RESTING_MS: twice a second, a still phone at a quarter speed
+	# spent 5 to 13 ms of a frame on it for nobody (idlesleep).
+	if moment == _told_moment and not Wake.owed(_told_page_at) and Wake.on \
+			and now - _told_page_at < TELL_RESTING_MS:
 		return
 	_told_page_at = now
 	_told_moment = moment
@@ -1826,6 +1836,8 @@ func _ready() -> void:
 	Look.dialogs()
 	Look.buttons()
 	IdleDraw.for_the_app()
+	# Panels asleep at rest, woken by what gives them work (Wake).
+	Wake.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	Tooltips.keep_inside(get_window())
 	# The window's close button closes it with a dialog up too.
@@ -2968,7 +2980,7 @@ func _enter_view() -> void:
 	# What a drag says goes in the viewer's own pill, and what it changes is
 	# this visit's alone: the store writes nothing, and Reset undoes it.
 	if _grab_drag != null:
-		_grab_drag.set_process(false)
+		Wake.off(_grab_drag)
 		_grab_drag.say = _play_says
 		_grab_drag.edited = _played
 		_grab_drag.show_marks = false
@@ -3039,6 +3051,11 @@ func _enter_view() -> void:
 	_build_mode.by_part_changed.connect(func(_on: bool) -> void: _build_go(_build_page))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
+	# "Where does this go?" (partstep): what it reads a photo's part against,
+	# and the page it goes to with the part's place lit.
+	_build_mode.set("world", _world)
+	_build_mode.set("library", _library)
+	_build_mode.place_wanted.connect(_build_place)
 	for view: StepComments in [_share_view.comments, _build_mode.comments]:
 		view.opened.connect(_comments_opened)
 		view.send_wanted.connect(_send_comment.bind(view))
@@ -3589,6 +3606,7 @@ func _make_build_pages(made: Array[Instructions.Step]) -> void:
 	if _build_pages != null:
 		_build_pages.stop()
 	_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	_build_mode.set("pages", _build_pages)
 	_build_pages.turned_over.connect(_page_turned_over)
 	_turn_pages_over(_build_pages)
 	# The timeline's order, when the pages are its steps (they are, unless
@@ -3797,6 +3815,24 @@ func _build_next() -> void:
 		_build_go(_build_page, true, _build_part + 1)
 	else:
 		_build_go(_build_page + 1, true)
+
+
+## "Where does this go?" answered, or a step chosen on its card (partstep):
+## [param page] shown with [param bricks], the part's place, lit. Building a
+## part at a time, at that part itself, which lights it alone; the step whole,
+## only the part's place outlined of the step's new parts.
+func _build_place(page: int, bricks: Dictionary) -> void:
+	if _build_pages == null or not _build_mode.is_open() or _party_pages:
+		return
+	var part: int = 1
+	if _build_mode.by_part:
+		for brick_id: int in bricks:
+			var at: int = _build_pages.part_of(page, brick_id)
+			if at > 0:
+				part = at if part <= 1 else mini(part, at)
+	_build_go(page, false, part)
+	if not _build_mode.by_part and not bricks.is_empty():
+		_build_outline.show_selection(bricks)
 
 
 ## Back: one part taken off, building a part at a time, and from a page's
@@ -4351,7 +4387,7 @@ func _play_stop() -> void:
 	if _grab_drag != null:
 		if _grab_drag.is_grabbing() or _grab_drag.is_settling():
 			_grab_drag.cancel()
-		_grab_drag.set_process(false)
+		Wake.off(_grab_drag)
 	_grabbing = false
 	_motion_stop()
 	_motion_link = ""
@@ -7071,6 +7107,10 @@ func _make_simulate() -> void:
 	simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_seat_tool_panel(simulate)
 	_builder.selection_changed.connect(Callable(simulate, &"_on_selection"))
+	# A click on a battery box, a receiver or a hub works its switch, the
+	# part under the pointer, wherever it is in the model (F3).
+	if _verbs != null:
+		_verbs.part_click = Callable(simulate, &"take_click")
 
 
 ## Share this model: File › Share… and the toolbar's Share.
@@ -7295,7 +7335,8 @@ func _warm_booklet() -> void:
 
 ## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
 ## "pdf" or "png"): the booklet read again from itself, a page at a time,
-## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng). On the
+## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng); Save as
+## web page ("html-..."), [method _save_booklet_html]. On the
 ## desktop where the person chooses, asked as every export asks (SaveTo);
 ## on the web, a download. [param reply] is said back in the booklet.
 func _save_booklet(kind: String, reply: Callable) -> void:
@@ -7307,6 +7348,8 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		return "the booklet is not there to save: make the instructions again"
 	if _booklet_writing:
 		return "already saving the booklet…"
+	if kind.begins_with("html"):
+		return await _save_booklet_html(kind, to)
 	var pdf: bool = kind != "png"
 	var name: String = _booklet_out.base_name() + (".pdf" if pdf else "_pages.zip")
 	var web: bool = OS.has_feature("web")
@@ -7374,6 +7417,52 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		written, _pdf_missed]
 	_bar.say(line)
 	return line
+
+
+## Save as web page, pressed in the booklet ([param kind] "html-" its layout,
+## long or steps, and its look, light or dark): the booklet read again from
+## itself into one long page, NAME_web.html, or a page a step in
+## NAME_web.zip (BookletHtml). "_web" so the page is never saved over the
+## booklet it was read from, whose name it would otherwise have.
+func _save_booklet_html(kind: String, to: String) -> String:
+	var words: PackedStringArray = kind.split("-")
+	var layout: String = words[1] if words.size() > 1 and words[1] in ["long", "steps"] else "long"
+	var theme: String = words[2] if words.size() > 2 and words[2] in ["light", "dark"] else "light"
+	var long: bool = layout == "long"
+	var name: String = _booklet_out.base_name() + ("_web.html" if long else "_web.zip")
+	var web: bool = OS.has_feature("web")
+	if to.is_empty() and not web:
+		DisplayServer.window_move_to_foreground()
+		to = await SaveTo.ask(name, "", "Save the instructions as a web page" if long
+			else "Save the instructions as a web page a step")
+		if to.is_empty():
+			return "not saved"
+	_booklet_writing = true
+	var job: Working.Job = Working.begin("Writing the web page…")
+	var written: String = to if not web else "user://" + name
+	var part: String = written + ".part"
+	var writer: RefCounted = Later.make(&"BookletHtml")
+	var steps: int = await writer.write(_booklet_out.source(), part, layout, theme, 0 if web else 8)
+	var ok: bool = steps > 0
+	if web:
+		if ok:
+			JavaScriptBridge.download_buffer(FileAccess.get_file_as_bytes(part), name,
+				"text/html" if long else "application/zip")
+		DirAccess.remove_absolute(part)
+	else:
+		ok = _into_place(part, written, ok)
+	job.end()
+	_booklet_writing = false
+	var said: String
+	if not ok:
+		said = "could not save the booklet as a web page" if web else "could not write %s" % written
+	elif web:
+		said = "downloaded %s, %d steps" % [name, steps]
+	else:
+		SaveTo.wrote(written)
+		said = "wrote %s, %d steps: %s" % [written.get_file(), steps, written]
+	_bar.say(said)
+	return said
 
 
 var _booklet_writing: bool = false
@@ -8013,7 +8102,8 @@ const SHEET_MOST := 0.6
 ## beside Stress with every shelf in sight (binstay, APP_UX9 #2).
 func _tool_column_shown() -> void:
 	var open: bool = _shown(_simulate_made) or _flex.panel.visible or _shown(_pose_made) \
-		or _shown(_hidden_colours_made) or _shell.stress.panel.visible
+		or _shown(_hidden_colours_made) or _shell.stress.panel.visible \
+		or _shown(_finish_made) and _finish_made.get_parent() == _tool_panels
 	if open == _tool_column.visible:
 		return
 	var room: Rect2 = _model_rect()
@@ -8343,6 +8433,57 @@ func _seat_find_replace() -> void:
 		room.position.y + 12.0)
 	bar.size = Vector2(wide, 0.0)
 # end swapfind
+
+
+# -- finishpass (APP_UX10 #9): Edit › Finish the surfaces… ------------------------
+
+## The finishing pass's bar (src/ui/finish_bar.gd), made the first time it
+## opens.
+var _finish_made: PanelContainer = null
+
+
+## Edit › Finish the surfaces…: the bar over the top of the model's room, as
+## Find and replace's is, showing what the surface pass would lay before
+## anything changes. In the layout for a finger it is one of the tools'
+## panels (Motions', Simulate's): on a phone held upright a sheet under the
+## model, the model and its ghost above it, as phonepanels laid them out.
+## Placed as a dialog is, it took the whole of a 390 x 844 phone and the
+## ghost it shows could not be seen (fpreview M4).
+func _finish_surfaces() -> void:
+	if _finish_made == null:
+		var bar: PanelContainer = Later.make(&"FinishBar")
+		bar.set("app", self)
+		bar.set("say", func(line: String) -> void: _bar.say(line))
+		_finish_made = bar
+		if _touch != null:
+			bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			_seat_tool_panel(bar)
+			bar.add_to_group(FocusGuard.OVER)
+		else:
+			_add_to_hud(bar)
+			bar.add_to_group(FocusGuard.OVER)
+			_over_model.item_rect_changed.connect(_seat_finish)
+			_over_model.get_parent().item_rect_changed.connect(_seat_finish)
+	if _find_replace_made != null and _find_replace_made.visible:
+		_find_replace_made.call("close")
+	if _touch == null:
+		_seat_finish()
+	await _finish_made.call("open")
+
+
+## The bar at the top right of the model's room: its ghosts are drawn on the
+## model, which the middle of the room holds.
+func _seat_finish() -> void:
+	var bar: Control = _finish_made
+	if bar == null or _touch != null:
+		return
+	var room: Rect2 = _over_model.get_global_rect()
+	var wide: float = clampf(room.size.x - 24.0, 340.0, 420.0)
+	bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	bar.position = Vector2(maxf(room.end.x - wide - 12.0, room.position.x), room.position.y + 12.0)
+	bar.size = Vector2(wide, 0.0)
+# end finishpass
 
 
 ## The parts list told what the bin is built from holds, so a part past it
@@ -11800,6 +11941,7 @@ func _party_build() -> void:
 	if _build_pages != null:
 		_build_pages.stop()
 	_build_pages = BuildSteps.of(_world, _library, pages, _store.scenery)
+	_build_mode.set("pages", _build_pages)
 	_build_pages.turned_over.connect(_page_turned_over)
 	_turn_pages_over(_build_pages)
 	# Its own order: the world lays its parts out again for it.

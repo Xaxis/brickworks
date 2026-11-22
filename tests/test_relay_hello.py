@@ -20,8 +20,11 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from loadbound import within  # noqa: E402
 OWN = [tool["name"] for tool in json.loads((ROOT / "tools" / "mcp_tools.json").read_text())]
 RELAY = ["tabs", "select_tab"]
 
@@ -208,7 +211,7 @@ def test_a_slow_guidance_lookup_is_not_waited_for() -> None:
     # lookup would take its ten seconds; the bar sits halfway, so a loaded
     # box's slower handshake (1017 ms at load 53, rel-m306's gate) is not
     # read as waiting.
-    assert stuck["ms"] < 5000, stuck["ms"]
+    assert stuck["ms"] < within(5000, short_of=10_000), stuck["ms"]
     assert stuck["said"]["result"]["instructions"] == ""
 
     out = run(LOOKUP + """
@@ -225,7 +228,7 @@ def test_a_slow_guidance_lookup_is_not_waited_for() -> None:
     """)
     if out is None:
         return
-    assert out["ms"] < 2500, out["ms"]
+    assert out["ms"] < within(2500, short_of=4000), out["ms"]
     assert out["first"] == ""
     assert out["second"] == "this build's guidance"
     assert out["lookups"] == 1, out["lookups"]

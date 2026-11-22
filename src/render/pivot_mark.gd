@@ -51,6 +51,8 @@ var _drawn_reach: float = 0.0
 
 
 func _process(_delta: float) -> void:
+	# Asleep at rest (Wake): the pivot moves with the view, a drawn frame.
+	Wake.rest(self)
 	if camera == null:
 		return
 	if not camera.pivot_shown:

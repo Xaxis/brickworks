@@ -709,6 +709,9 @@ func _process(_delta: float) -> void:
 		# And as its words and buttons settle at a new width.
 		if [room, _foot(Rect2(at, size)), get_combined_minimum_size()] != _placed_by:
 			_place()
+	# Asleep at rest (Wake): the room changes with a drawn frame, the views
+	# with a press or an edit.
+	Wake.rest(self)
 
 
 func controls_by_name() -> Dictionary:

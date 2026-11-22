@@ -807,6 +807,17 @@ is on the page, `hidden`, for the script to show.
   the window's width less its gutters, centred; under 900 px, with the
   beta bar shown, it sits over the bar. While shown, `<html data-notice>`
   pads the footer. It rises in as the beta bar does.
+- **Install offer**: `aside.site-notice.install-offer` (`web/push.js`,
+  homescreen): the site notice's card, in its place, from a person's
+  second visit, never the first: its words as a paragraph (`.words`) over
+  an `.actions` row at the card's end, `.cta.ghost.small` No thanks then
+  `.cta.small` Install (the browser's own dialog); on an iPhone or iPad
+  the words say Share, then Add to Home Screen, and the one button is OK.
+  Escape puts it away for the page. No thanks is kept in the browser
+  (`brickworks.install`) and said in the toast with a Settings link and
+  Undo. Never while the owner's notice is shown, nor on /settings (which
+  has Install Brickworks under Notifications) or the offline page. While
+  shown, `<html data-offer>` pads the footer.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the
@@ -894,7 +905,16 @@ is on the page, `hidden`, for the script to show.
   `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share
   and More in its head; the tabs Models · Builds as everybody sees them,
   then Saved · Sets · Insights, which only you see, each a `?tab=` of its
-  own. Edit profile is a `dialog` of the site's fields; signed in with no
+  own. Insights (`web/designs.js`, insights2) sets each number against the
+  30 days before: the `.earned` tiles, the change as words in `--green`
+  (up), `--bad` (down), `--accent-ink` (none before) or `--ink-faint` (no
+  change, and "Counted since" where a window was counted under 30 days), two
+  dropdowns in a `form` (which kind, and the order), the kind's weeks as
+  the console's chart (`--viz-1` columns on a `--viz-grid`, a `.tip`, one
+  Tab stop, its numbers in a `.table` under As a table), and each model's
+  weeks as a line in `--ink-faint` (3:1 and more; `--viz-muted` is 2.6:1 on
+  white) ending in a `--viz-1` dot (`role="img"`,
+  its numbers in its name). Edit profile is a `dialog` of the site's fields; signed in with no
   profile, the same form is in the page with its two fields, name and
   handle. `/settings` is one `.settings` panel: Profile, Appearance, Email,
   Privacy, Claude, Sign out, Delete account.

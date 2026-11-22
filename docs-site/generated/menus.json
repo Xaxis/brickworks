@@ -492,6 +492,12 @@
 					"tip": "Find a part or a colour anywhere in the model, inside every sub-model too, and replace it"
 				},
 				{
+					"name": "finish_surfaces",
+					"words": "Finish the surfaces…",
+					"key": "",
+					"tip": "Tiles, slopes and rounded edges where a set would finish the model, shown before anything is laid"
+				},
+				{
 					"name": "mirror",
 					"words": "Mirror",
 					"key": "Shift+M",
@@ -1884,6 +1890,7 @@
 		"paint": "C",
 		"replace": "alt-R",
 		"find_replace": "Ctrl-shift-H",
+		"finish_surfaces": "",
 		"printed_versions": "",
 		"mirror": "shift-M",
 		"split_parts": "alt-S",

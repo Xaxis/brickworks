@@ -31,12 +31,33 @@ Its link is `brickworks.diy/m/<id>`. Once it is published the panel shows the li
 
 ![The Share panel once published: Publish now reading Update the link, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.](/docs/img/sharing-published.webp "The panel once the model is published.")
 
+Anyone with the link can download the model's file itself. An email address in its **Author** line, and the folders on your computer that a program wrote into it (a background picture's, a parts folder's), are left out of the shared copy, however it is shared.
+
 Its build steps, its booklet's layout, its motions and what moves in it go with it, so whoever opens the link can step through it, read its booklet and play it. A model with motions of its own has **Opens** in the link box: **Still**, or **Playing** one of its motions, and the link then [opens with that motion playing](/docs/model-pages#play).
+
+The first time you open your model's page after publishing, signed in, your browser records the model turning once round while the page is open: four seconds, a seamless loop, drawn as the page's 3D view draws it, without slowing the page. Its link then turns where it is pasted: Discord, Slack and other sites that play a link's video play the clip where they showed the picture (X keeps its large picture), and the embed plays it too when its address ends in `?autoplay=1`, with **Pause** and **Play** in its corner. Update the link and your next visit records the new version; until then the link shows the picture. The clip is deleted when you unpublish the model or delete your account.
 
 <!-- covers
 lib:steps carried with a shared model
 lib:what moves in a model
 lib:build pages
+ui:the model turning in its link's preview
+-->
+
+## Share a model's file from the site {#from-a-file}
+
+A model made in BrickLink Studio, LDCad, MLCad or another LDraw program can be shared without opening it in the app: **Share yours** in [the gallery](/docs/gallery) opens [brickworks.diy/share-model](/share-model).
+
+1. **Choose a file**, or drop it on the page: an LDraw file (`.ldr`, `.mpd` or `.dat`) or a BrickLink Studio file (`.io`). It is read in your browser, and nothing is sent until you share it. A file that is no model is refused, saying why.
+2. Its **Name** is read from the file; change it if you like. **What it is**, the **Licence** and **List it in the gallery** are as in the app.
+3. Press **Share it**. Signed out, you are asked to sign in first.
+
+The model is sent, its picture is drawn on the page from the model as Brickworks reads it and put on its page, and you arrive on its own page: its parts list counted from the file, the steps the file lays out, and its picture. It counts as one publish, as sharing from the app does; after a lot of sharing in an hour, the page says so before anything is shared, and keeps your file and words while it is open. The form says what was left out of the file (an email address in its Author line, folders on your computer), and anyone with the link can download the rest. The same is left out however a model is shared: from here, from the app, or by your Claude. A Studio file's parts made in Part Designer go with it; Studio's own prints and stickers show as their plain parts. A LEGO® Digital Designer file (`.lxf`) opens in the app instead (**File › Open…**, then **File › Share…**), which turns its parts into LDraw's.
+
+<!-- covers
+ui:share a model file from the site
+lib:a BrickLink Studio file read in the browser
+lib:a file's private lines left out of a shared model
 -->
 
 ## The Tested mark {#tested}

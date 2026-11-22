@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:mcpreach2 probe, cli:mcpreach3 probe, cli:m3review probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:mcpreach2 probe, cli:mcpreach3 probe, cli:mcpreach4 probe, cli:m3review probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -732,6 +732,26 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   tab called by target= too: the tab says when it first answered that chat
   (`_meta` brickworks/heard, `ClaudeConnector.heard_before`).
 
+- `mcpreach4 probe` (APP_UX11's mcpreach4; `src/ai/assistant.gd` `_every_way`,
+  `_joined_as_real_sets`, `_hinge_mount_said`, `_numbers_said`, the what-if's words in
+  `_run_tool`'s check_design; `src/net/app_tools.gd` `_hinge_reading`, `_hinge_sense`,
+  `_hinge_locked`, `_hinges_held`, `_program_at`): the five stalls of mcpreach3's walk of
+  19 November, each in its tool's own answer. attachment_points part= on a part with no
+  studs (r1's and y6's SPIKE motor, a Technic beam) ends with every face it can stand on
+  from the same corner, a line a face: its size, a motor's output (which way, which side,
+  where), its joints counted by the way they run; then how real sets join it (a motor's
+  case: AppTools.MOTOR_MOUNT_WORDS). A hinge half's answer says how real sets build on a
+  hinge so it turns. move_part on a hinge's half says which half moves, which stays, and
+  which way degrees= above and below 0 swings it (each read on a Grab of its own, nothing
+  moved); both halves gripped by one part, the refusal names that part and what to move,
+  and move_part with no part= lists such hinges as held still. submit_design's design
+  answer names its parts' numbers against the check's brick N ("bricks 0-8 are
+  #4-#12"; f3 moved "brick 14" and was told no brick has that number). simulate_mechanism
+  at= reads the model's program to that moment and pictures it, each motor's angle and the
+  line running, nothing set and no step to undo; with program=, set, run and pictured at
+  at= in one call. check_design edit= says what the copy showed first, then that the model
+  itself is as it was, with no part numbers for what it would put down.
+
 - `m3review probe` (m3review's attacks on mcpreach3, made checks by m3fix;
   `CommandSocket.bench_run`, `_unsettled_said`; `AppTools._built_asked`,
   `_built_after_add`, `_pose`'s named joint; `CollectionDialog.add_sets`
@@ -849,6 +869,7 @@ tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   # a sessi
 tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   # palettes read-only; edit_palette makes 12 parts + Gatepost in 1 call, the bin's own byte for byte; Gatepost placed whole in another model in 1 call to 0.01 LDU, one undo; take_out/rename/delete, agreed=true; pictures in shots/mcppalettes/
 tools/probe.sh mcpreach2_probe                                      # where_to_attach of the whole model a picture in 1 call, a turntable says the camera circles a still model, a SPIKE motor's output holes named and driven, submit_design pool=31058-1 over by part
 tools/probe.sh mcpreach3_probe; tools/relay_probe.sh mcpreach3      # r5 only with the relay: a save never refused, open save_first= in 2 calls, a set added and kept built in 1, a click hinge posed with no assembly, a motor's mount said before Simulate, edit_steps says why
+tools/probe.sh mcpreach4_probe                                      # every face of a part with no studs in 1 call, a click hinge's brick moves its other half and says which way, submit_design's numbers, simulate_mechanism at= with nothing written, a what-if says what the copy showed first
 python3 -I tools/collection_standin.py 10910 & BRICKWORKS_API=http://127.0.0.1:10910 tools/probe.sh m3review_probe -- --held-out=31058-1 --assistant=on   # and with --assistant=on alone: a held-out save refused, a person's written with nothing laid, a named joint posed with no reading, every edit_collection argument checked before the add, a lost reply said may have been made
 tools/probe.sh mcpreach_probe && PROBE_SIZE=1280x720 tools/probe.sh mcpreach_probe   # Together/Share/Import/Comments named with where, export_model pdf read back as typed in 3 calls, free names keep the first file byte for byte, 3MF/STL closed solids as lib3mf reads them
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand

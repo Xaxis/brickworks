@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe -->
 
 ## Sub-features
 
@@ -2413,6 +2413,59 @@ picture the assistant is shown.
   first, the cap, nothing on anything or off the page, the callouts where
   the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
   and a reopen laid out the same.
+- `pagetools probe` (APP_UX11 pagetools, 2026-11-22; StudWorx's page tools in
+  the page editor): **the element inspector**, Alt held over the selected
+  item, or **Measure** on for a finger (`page_measure`; labels never over
+  one another, `page_state().labels_apart`) (`PageEditor.inspected`,
+  `_draw_inspector`): its distance to the
+  page's edges, its margins and its nearest neighbour on each side, and its
+  size, in page mm, drawn on the editor alone, never printed;
+  `page_state().inspected`. **Lock page** (`page_lock`; `PageEditor.lock_page`,
+  `Shell.change_look "page_lock"`, BookletLooks `"lock"`: the steps the page
+  holds by count, `0 !BRICKWORKS PAGE LOCK 2` on its first step, above its
+  `PAGE` line where older builds keep it): locking places each item where it
+  is (`Booklet.held_places`), so Page setup moves nothing on it; **one gate**,
+  `Shell._held_refusal` / `BookletLooks.held_by` in `change_look` and
+  `place_pages`, refuses every edit of a step a lock holds (`HELD_OPS`,
+  `HELD_FIELDS`: place, words, pictures, arrows, the Turn and Opacity boxes,
+  view, zoom, size, page breaks, parts list, turn sign, a lock or freeze
+  inside it) from the editor, the steps bar, MCP and a Together peer alike,
+  "the page step N starts is locked: unlock it first", while a name, Steps a
+  page and the outline go through; `later_layout` passes it by (said
+  "locked page N passed by"); `Booklet.Layout` (`_held_page`) keeps exactly
+  its steps on it whatever Steps a page, page breaks, sections or sizes say. **Freeze page** (`page_freeze`; BookletLooks
+  `"freeze"` {"sheet": its `FROZEN` fields}, `page_sheet`; `PAGE FREEZE
+  <PAGE_SETUP words>` and `PAGE FREEZE_TEXT HEADER words`): the page keeps
+  its margins, colour, numbers, parts box and header/footer when Page
+  setup changes, in the editor (`shown_sheet`), the booklet's section
+  (`Booklet._frozen_style` --page/--box/--box-line, `frozen_sheet`) and the
+  PDF's reading (`BookletRead._page`); paper, pictures and the outline stay
+  the booklet's. Over MCP `edit_booklet lock=` / `freeze=` on the page's
+  first step (`AppTools._hold_page`; another step is told the first's
+  number), `booklet_layout` saying "(locked)" / "(frozen)", `follow=`
+  saying the locked pages it passed by; Page setup says how many frozen
+  pages kept their own. `pagetools_probe` (windowed, gatehouse): the words read
+  and a paper word kept unread, a peer's typed in range; the inspector's
+  numbers against the items' own boxes, shot; lock and freeze one undo
+  each, refusals, Steps a page 1, Apply to later passing it by, the frozen
+  page white-proof in editor, HTML and PDF reading; saved, reopened byte
+  for byte, autosave, an unlock after reopen changing that one line; the
+  same lock and freeze over MCP, one undo each; a frozen page snapping to
+  its own margins. `ptreview_probe` (headless, gatehouse; ptreview + ptfix):
+  every writer on a locked page refused with nothing written (MCP place=,
+  text=, arrow=, back=, page=; each change_look op the editor and the steps
+  bar use; place_pages), what is not the page's let through, page setup
+  moving nothing on it, a locked page of 4 kept, an older build's line
+  order saved byte for byte. Minitests `ptreview_order_check` (both builds
+  write one order) and `ptreview_layout_check` (a locked page's places
+  through margins and number size, a lock of 4 and of 3 kept).
+- `outline width probe` (pagetools): **Outline width** in Page setup's Steps
+  tab and `page_setup outline_width=` (`BookletSheet.outline_width`, 1 to
+  72 px at the booklet's 5 px a mm, `OUTLINE_WIDTH 12` on PAGE_SETUP): the
+  band drawn exactly by `booklet_band.gdshader` and booklet_ink's column
+  pass when not the booklet's own 3, scaled by `px_per_mm` so screen, web
+  and PDF match; `outline_width_probe` (windowed) measures it round a lone
+  plate on 360 rays at 1, 3, 12 and 72, one undo, kept byte for byte.
 - `booklet safe probe` and `a file's booklet runs nothing in a browser`
   (booksafe, 2026-11-06): a booklet is HTML, on the web written into a tab
   of the site's own, and its words and pictures come from a model file that
@@ -2718,6 +2771,16 @@ picture the assistant is shown.
   opened; the first step edit of a stepless file numbering its held part
   with the 3020 before it (`AuthorSteps._held_as_filed`), undone to the
   stepless file.
+- `the booklet as a web page` (pagetools): **Save as web page** in the
+  booklet's bar, One long page or A page per step, Light or Dark
+  (`BookletHtml`, reading the booklet's own file as `BookletRead` does;
+  `Main._save_booklet_html`, `NAME_web.html` / `NAME_web.zip` with
+  index.html and step-NNN.html linked Previous / Contents / Next): pictures
+  on the booklet's page colour in both themes (a frozen page's own colour
+  carried to its steps' cards), no script, words escaped, only data:
+  pictures; written a step at a time as the booklet is read (`write`,
+  `_write_zip` counting the steps first), never the whole page in memory. `booklet_html_probe` (headless `--by-hand`, and on
+  the gatehouse's real booklet); `booklet_flow.mjs` downloads it on the web.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,
@@ -3532,6 +3595,36 @@ picture the assistant is shown.
   95th percentile at most 60), each its own view, the green brick only in
   the second and third. `-- --only=car,queue,light` runs parts. Pictures in
   `shots/pathtrace/`, the window's as `queue_window_<W>x<H>.png`.
+- `photoreal probe` (`src/dev/photoreal_probe.gd`, `tools/probe.sh
+  photoreal`, windowed on the GPU; photoreal1, docs/RENDERING.md 5e): each
+  shot in `tools/photoreal/shots.json` (six real bricks: a black 2x4, a red
+  2x4 slope, a grey 1x3, a clear round 1x1, three 2x2s from above, a green
+  plate's corner in macro; four real sets from 1985 to 1992, outside the
+  realset holdout's years) opened alone and drawn at Best, Product, with
+  the photograph's backdrop, focal length, angle, size, depth of field and
+  roll, 256 samples, seed 1; each must be path traced (a card without
+  Vulkan ray tracing fails it), at its size, and drawn. Pictures in
+  `shots/photoreal/<tag>/`. Run bare, it then times the car at Best,
+  Product, 1280 x 720, three runs (own time), the median at most 8.4 s
+  (twice the 4.2 s of pathtrace's last measure); `-- --car` times only the
+  car. `-- --tag=NAME --only=a,b --samples=N --yaws=0,90`. An edited `.glsl` is drawn only after
+  `godot --headless --path . --import`.
+- `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
+  pictures are judged on. `pairs TAG` writes each render beside its
+  photograph (cropped to the render's aspect, both the same size);
+  `compare BEFORE AFTER --out DIR` writes photograph | before | after rows;
+  `env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge TAG
+  --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
+  subscription, `judge.call`) the photograph and the render under opaque
+  names, both as JPEG at 92, in both orders, and asks which is the
+  photograph of real bricks and what gives the render away; its copies go
+  in `DIR/blind/` (a `.gdignore` in it: a checkout's `bench/` is not left
+  out of the web export), and it writes
+  `judge_TAG.json` (each verdict, its confidence, reason and tells; the
+  pick rate and mean confidence for close-ups, sets and all). A render as
+  real as the photograph is picked half the time; the bar is a lower pick
+  rate after than before, judged the same day against a before drawn from
+  a locked tree.
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
   class `PosePanel`, in the column beside the model (`Main._tool_column`) so
   what moves is seen and no part to be dragged is under it; the
@@ -4108,6 +4201,19 @@ PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5
 # pre261 ee8773128). Pictures in OUT_DIR, named by the window's size.
 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
+# A motion's name as the person typed it (src/dev/smalls12_probe.gd, smalls12
+# camreview F2): written and read back with its inner runs of spaces kept, its
+# quotes made single, in any script, and a sequence naming it plays it; a name
+# that is only spaces round its words is trimmed at both ends, as it always
+# was. The line's other words still split on any run of spaces or tabs: every
+# motion line in the repo's models reads as the old reading read it.
+# And an unedited save's kept file (ModelStore._kept_bytes, kbk3review L1):
+# the file's bytes as read, its size the file's, never text (4 bytes a
+# character); a Latin-1 file, a BOM and CRLF one and one with no last line
+# end each saved back byte for byte by the fast path twice; neither a save
+# nor an autosave holds a second copy; an edit saved is kept as its new
+# file, and Undo saves the file as it was.
+tools/probe.sh smalls12_probe
 # The camera keyed in a motion (src/dev/camerakeys_probe.gd, docs/MOTIONS.md
 # camerakeys): 1484-1, a new motion keyed by Key the camera at 0, 2 and 4 s
 # from three views, three steps, each key the view's numbers; Play puts the

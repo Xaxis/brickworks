@@ -1240,7 +1240,7 @@
       "kind": "api",
       "label": "GET/POST /api/share",
       "entry": "api/share.js",
-      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
+      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down, ?op=pictures puts its pictures on the version its owner just published without any, no publish counted; bench/results/byfix-2026-11-21/byfix_api.mjs)",
       "area": "web"
     },
     {
@@ -2710,7 +2710,7 @@
       "kind": "ui",
       "label": "your models as a designer",
       "entry": "web/designs.js",
-      "reach": "signed in, your own /u/<handle> (How your models are doing) and /profile (Your models, as a designer); GET /api/people?op=designs with your sign-in",
+      "reach": "signed in, your own /u/<handle> (How your models are doing) and /profile?tab=insights (Your models, as a designer: with designer_period_2.sql applied, each kind against the 30 days before where both were counted in full, else Counted since, the chart by week from the first counted, the two dropdowns); GET /api/people?op=designs with your sign-in",
       "area": "web"
     },
     {
@@ -2844,6 +2844,13 @@
       "label": "playing motions",
       "entry": "src/assembly/motion_player.gd",
       "reach": "tools/probe.sh motions_probe   (over MCP: list_motions, define_motion, play_motion, render_motion; each track's joint turned through Grab, stops said, suggestions from what moves)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls12 probe",
+      "entry": "src/dev/smalls12_probe.gd",
+      "reach": "tools/probe.sh smalls12_probe   (headless, about a minute: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before; an unedited save keeps the file's bytes, Latin-1, BOM and CRLF, no last line end, each back byte for byte twice, no second copy held after a save or an autosave)",
       "area": "view"
     },
     {
@@ -3053,7 +3060,7 @@
       "kind": "ui",
       "label": "your settings page",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Notifications (On this device: the push toggle, the browser's prompt only once turned on, and Install Brickworks while the browser offers it; By email), Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web"
     },
     {
@@ -6105,7 +6112,7 @@
       "kind": "cli",
       "label": "seatswap probe",
       "entry": "src/dev/seatswap_probe.gd",
-      "reach": "tools/probe.sh seatswap_probe   (headless, about 5 minutes; a pin in a beam, hips under legs and 7 real sets' seated parts swapped by replace_parts, each one undo and byte for byte back; a 1 x 6 for a 1 x 4 against a wall refused; the hand's Replace on the pin)",
+      "reach": "tools/probe.sh seatswap_probe   (headless, about 5 minutes; a pin in a beam, hips under legs and 7 real sets' seated parts swapped by replace_parts, each one undo and byte for byte back; an axle with a stop and a turntable top of another box laid where the old part stood, joined as it was; a 1 x 6 for a 1 x 4 against a wall refused; the hand's Replace on the pin)",
       "area": "building"
     },
     {
@@ -6121,6 +6128,237 @@
       "entry": "src/dev/camerakeys_probe.gd",
       "reach": "tools/probe.sh camerakeys_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1 keyed three times in the Motions panel, played in the window through each key within 1 LDU and 1 degree, the model still, a hand's turn held back and the view given back; filmed by render_motion and File, Render's Animation through the keys; Turntable two keys, first and last frames alike; saved and reopened byte for byte; three keys Ctrl+clicked and deleted in one undo; render_motion camera= turntable in one call; Orthanc's frame cost against turning by hand; pictures in shots/camerakeys/)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "place designs on a ladder of each real set",
+      "entry": "tools/design_ladder.py",
+      "reach": "python3 tools/minitest.py tests/test_design_ladder.py; python3 tools/design_ladder.py build --subjects 21013-1; python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM   (for real: build | render (gpu) | seed | heavy ... order | heavy ... place --arm A --date D [--again] | report [--before DIR] | sheet; six rungs, 1.5 half the SNOT out; reach --port P starts the app as realset does and asks every file-opening tool for a ladder file; the ladder lives in the main checkout's bench/ladder/, never in a session's reach; the recipe is The design ladder in features/assistant.md)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "photoreal probe",
+      "entry": "src/dev/photoreal_probe.gd",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "photoreal judge",
+      "entry": "tools/bench/photoreal.py",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "photostep bench",
+      "entry": "src/dev/photostep_bench.gd",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a -s '-screen 0 1400x1000x24' godot --path . --resolution 1280x960 --script src/dev/photostep_bench.gd -- --pictures=DIR [--sets=7638-1,42004-1,31009-1,10179-1] [--samples=N]   (windowed, on the GPU: each library set paged as Build mode pages it, three main-line steps N a set chosen by rule; for each, five builds drawn at Best, Product look, from one hand-held camera never the booklet's: N right, a new part missing, one moved a stud, one the wrong colour, and N-1; each with a Good mask, and steps N-1, N and N+1 at Good from four corners and the top; the truth in DIR/cases.json; a set drawn already is skipped)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "photostep reading",
+      "entry": "tools/bench/photostep.py",
+      "reach": "python3 tools/minitest.py tests/test_photostep.py; uv run --no-project --with numpy --with pillow python tools/bench/photostep.py dress DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photostep.py read DIR [--jobs 3] [--only KEY]; python3 tools/bench/photostep.py score DIR   (the photos laid on a desk or carpet and made a phone's picture; each case read by Claude Code on the subscription, its only tools this bench's MCP server (check_step_photo: the photo, steps N-1, N and N+1 with their new parts ringed, and their parts; step_picture: a step from another side), the builder saying step N; DIR/score.md: step exact and within one, faults found and named by kind, part and place, false alarms, seconds an answer, every case)",
+      "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "finish the surfaces",
+      "entry": "src/ui/finish_bar.gd",
+      "reach": "godot --path .  (Edit, Finish the surfaces…: the surface pass a session reaches by review_model {\"surface\": true}, read for a person over frames (Fiber) and shown first: a count per kind (tiles, slopes, rounded edges, smooth sides, the ground) and each kind's parts as a ghost on the model, a tick to leave each out; Lay puts the ticked kinds down as one undo step, Undo puts the file back byte for byte; a part held by what stands on it is never taken off, nothing laid overlaps or floats, a selection limits it; a reading closed, read again or overtaken by an edit or another model stops and is waited for, never run whole; the ghost taken down at any change of the world and read again; a swap's parts kept in the sub-model and step of what they replace; Lay paced by the part; on a phone a sheet under the model, the ghost above it; tools/probe.sh finishpass_probe, fpfix_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "finishpass probe",
+      "entry": "src/dev/finishpass_probe.gd",
+      "reach": "tools/probe.sh finishpass_probe   (headless, 10 hand-built models, a selection, Orthanc and 10179 timed; -- --phone for 390x844 by hand; FP_SHOTS=DIR windowed for pictures; FP_IDENTITY=1 reads the two speedups against the old reading)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fpfix probe",
+      "entry": "src/dev/fpfix_probe.gd",
+      "reach": "tools/probe.sh fpfix_probe   (headless: reopen (closed mid-read on Orthanc and opened again, no frame over 100 ms), openwhile (another model opened mid-read shows that model's own findings), ghost (taken down at an open, an Undo, another's edit), subs (19 models with sub-models: a swap's parts in the sub-model and step of what they replace, no line but parts lost, counts per sub-model and step), laytime (Lay on Orthanc and 10179 paced by the part); -- --phone: the bar a sheet under the model at 390x844, the ghost in sight above it; FPF_CASES=a,b to choose)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fpjudge probe",
+      "entry": "src/dev/fpjudge_probe.gd",
+      "reach": "tools/probe.sh fpjudge_probe   (headless: files (fpreview's 14 files, every kind ticked: Lay, Undo, Redo, Save, opened from the saved file as File, Open does, Save again unedited byte for byte; the model reopened holds every part in colour, place and sub-model copy; someone's steps planned the same again), controls (castle and station, a part taken off by hand, the same), defaults (the bar's own ticks: no line but parts, steps and IN lines lost by Lay, each part it leaves in its copy), ghost (another model opened: none of the old model's ghost drawn, what is drawn the new model's own reading); byturns by hand (Lay on Orthanc against ten parts put down by hand at the same moment); FPJ_CASES=a,b, FPJ_FILES=castle,station, FPJ_OUT=DIR keeps the texts)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "where does this part go",
+      "entry": "src/ui/part_step.gd",
+      "reach": "https://brickworks.diy/m/<id>, Build it, then \"Where does this go?\" beside the step's words (a camera alone on a phone): told first where the photo goes (Brickognize.TERMS, the bin's words, agreed once for both), a photo of a part in hand (the camera on a phone, a file on the desktop) named by Brickognize, the guesses the model has first, and the player at the first step not yet built that places it in the model's colour nearest the photo's, the part outlined (a part at a time: that part itself); a card under the top bar names it, says how many steps place it and which, each a button, \"Not it?\" with the other guesses, Back to step N; edit_steps {\"picture_data\": base64, \"agreed\": true, \"from\": N} over MCP answers the same in 1 call (refused, nothing sent, until agreed=true or the bin's agreement); tools/probe.sh partstep_probe",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partstep probe",
+      "entry": "src/dev/partstep_probe.gd",
+      "reach": "tools/probe.sh partstep_probe; PROBE_SIZE=1024x768 tools/probe.sh partstep_probe   (the car as a link, Brickognize stubbed on port 10830: told first and nothing sent until agreed, a photo sent once as a JPEG alone, the car's guesses first, the first step that places it with its part outlined, the card's steps and Back, mid-build the next step and the earlier built, every step built at the last, Not it?, a part at a time, none the car has, offline, 44-point targets, the step framed below the card; edit_steps picture_data= refused until agreed=true, then in 1 call; pictures in shots/partstep/)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partstep bench",
+      "entry": "src/dev/partstep_bench.gd",
+      "reach": "gpu xvfb-run -a -s '-screen 0 1400x900x24' godot --path . --resolution 390x844 --script src/dev/partstep_bench.gd -- --render --dir=DIR, then -- --measure --dir=DIR [--just=car|10179]   (30 photos: 10 renders dressed as a phone's photo and 5 of Brickognize's own pictures per model, the car and 10179; each through Build mode's own path to the real Brickognize, mid-build: the right part in the top 3, the right step, ms from the photo to the step; DIR/bench.json)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a designer's numbers against last month",
+      "entry": "supabase/designer_period_2.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designer_period_2.sql --dry --try=tools/designer_period_try.sql --table=model_opens   (replaces designer_period.sql's one function, after it, designers.sql and replies.sql; the promises around it in tests/test_designer_period.py; then the designer period flow)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "designer period browser flow",
+      "entry": "tools/web/designer_period_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designer_period_flow.mjs --url=<preview> --out=DIR   (preview check [designer_period]; ends \"(before the file)\" until designer_period_2.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "judges and a fan vote and honours",
+      "entry": "supabase/challenge_rounds.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this month's challenge on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#now under the app's picture: #challenge with its days left, or its round, and #pick, This week's pick, both from GET /api/share?op=shelves, asked at once)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge home check",
+      "entry": "tools/web/challengehome_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the model turning in its link's preview",
+      "entry": "web/turntable-clip.js",
+      "reach": "the designer's own visit to https://brickworks.diy/m/<id> records its clip once per version, in a worker off the page's thread (web/model-page.js clipOwn, <html data-clip> and data-clip-of; tools/viewer/clip_worker.js built as web/turntable-worker.js from that version's own scene; WebCodecs, an MP4 of H.264 or a WebM of VP9/VP8); POST /api/share?op=clip {version, at, clip} reads it (api/_clip.js readClip: its length from its frames' own times) and keeps it in shared-clips (supabase/model_clips.sql); /m/<id>.mp4 or .webm?v=N&c=K serves it whole, the CDN answering ranges; /m/<id>'s head names it in og:video and the player's tags beside X's summary_large_image card; /m/<id>/embed?autoplay=1 plays it muted with Pause and Play (web/embed.js)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "turntable browser flow",
+      "entry": "tools/web/turntable_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/turntable_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh turntable: a throwaway designer's visit records the clip in a worker from version 1's own scene, 4 s or less, 1.5 MB or less, a seamless loop; two cold bytes=0- asks, the second the CDN's 206 (x-vercel-cache HIT); Discordbot, Slackbot and Twitterbot read og:video and the player's tags beside summary_large_image; the embed plays it at 390, 768 and 1280 light and dark; republished within the CDN's minute, version 2 recorded from its own scene; the clip's refusals; unpublished, its file gone from storage and its address 404. Needs supabase/model_clips.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "share a model file from the site",
+      "entry": "web/share-model.js",
+      "reach": "<deployment>/share-model, or the gallery's Share yours (a word beside the title on a phone too), its empty state and Put yours here   (web/share-model.html: an LDraw .ldr/.mpd/.dat or a BrickLink Studio .io chosen or dropped, read in the browser and refused in words when it is no model; an LDD .lxf sent to the app; its name, words, licence and List it in the gallery; signed in and 13 or over, published once by POST /api/share listed as chosen, its pictures drawn here from /m/<id>/scene.json by web/viewer3d.js and put on its version 1 by POST /api/share?op=pictures, its link never taken down; a lost answer's Share it again uses the link it made (op=mine); to /m/<id>; tools/web/share_model_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a BrickLink Studio file read in the browser",
+      "entry": "web/studio-io.js",
+      "reach": "node tools/web/share_model_flow.mjs (Studio's 2021 and 2025 files, its AES-256 and ZipCrypto locks, Part Designer parts carried as their own sections, Studio's own prints left plain); hostile files: bench/results/byfix-2026-11-21/bomb_frames.mjs (zip bombs refused by their stated size, a lying size cut off, a damaged directory, 3,000 carried parts, no task over 200 ms)   (readStudioIo(bytes) -> {text, carried, prints, error, size}; the error one of TROUBLE; never throws)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a file's private lines left out of a shared model",
+      "entry": "web/private-lines.js",
+      "reach": "node --env-file=.env bench/results/byfix-2026-11-21/byfix_api.mjs --worktree=. --url=<deployment> --only=meta   (withoutPrivateLines(text) -> {text, emails, paths}: an Author line with an email address and a meta line naming a place on a computer left out, a Name: keeping its file's name; api/share.js publish holds every publish to it, the app's and the connector's too, and web/share-model.js says what it left out)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share model browser flow",
+      "entry": "tools/web/share_model_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/share_model_flow.mjs --url=<deployment> --out=DIR   (the refusals, LDD's way to the app, four Studio files read, a file's address and folders left out and said, a 353-part .mpd at 1280 and its Studio .io at 390 to their pages timed with one publish and its pictures each, a lost publish's and a lost picture's answer gone on from without a second link, the server's count, steps and pictures, signed out and under 13 refused, 390/768/1280 light and dark; throwaway accounts; preview check [share_model])",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "installing the site",
+      "entry": "web/site.webmanifest",
+      "reach": "<deployment>/ any page (web/_shell.html's manifest, apple-touch-icon and title lines; the server's pages through api/_directory.js siteChrome): Chromium finds it installable (tools/web/homescreen_flow.mjs install, at 390 and 1280); offered from a second visit at the window's foot (web/push.js: Install or No thanks, kept, a toast with Settings and Undo; on an iPhone or iPad, Share then Add to Home Screen, OK); never on /settings, /offline, installed, or under the owner's notice; Settings › Notifications' Install Brickworks while the browser offers it",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the site's service worker",
+      "entry": "web/sw.js",
+      "reach": "<deployment>/sw.js, registered by web/push.js once a page has loaded and the browser is idle: pages network-first (navigation preload), the offline page only when the network cannot be reached; /app, /b/, /e/, /api/, /oauth/, /admin never its own (the static routing API where the browser has it); keeps only the offline pages and what they are drawn with; shows a push and opens its page (tools/web/homescreen_flow.mjs fresh, offline, requests)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this device's notifications",
+      "entry": "web/push.js",
+      "reach": "https://brickworks.diy/settings#email-part signed in   (Notifications › On this device: Notify me on this device, GET/POST /api/people?op=push; blocked, unsupported (an iPhone before Add to Home Screen) and not-open states said; signed out or Sign out, the device stops; tools/web/homescreen_flow.mjs push)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "offline page",
+      "entry": "web/offline.html",
+      "reach": "<deployment>/offline, and in place of any page of the site the worker cannot reach the network for (web/sw.js), in the address's language (/de/offline, /fr/offline, /es/offline); back to the page asked for once online",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "push sent to devices",
+      "entry": "api/_push.js",
+      "reach": "GET /api/people?op=push[&endpoint=]: {ready, key, on, devices}; POST ?op=push {on, endpoint, p256dh, auth, lang} signed in (a browser's push service only, tied to the sign-in), {on: false, all: true} every device off, {on: false, endpoint, auth} with no sign-in a device forgotten (any Sign out); POST ?op=push_send, the knock, 204: what is due sent as Web Push (RFC 8291 aes128gcm, VAPID RFC 8292, VAPID_PRIVATE_KEY), only at brickworks.diy (elsewhere a check's own @resend.dev account signed in as it), one push a model with how many more, a 404/410 device deleted at once, a block list not read or a 5xx/429 put back (push_again); tests/test_push.py",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "push subscriptions",
+      "entry": "supabase/push.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push_2.sql --dry --try=<trial.sql>   (after push.sql: push_subscriptions tied to auth.sessions and deleted with it, push_marks never waiting on a take, push_sent a key a device, push_again at most 3 tries more, a model a device in 3 minutes, push_take leaving @resend.dev accounts to push_take_tester; triggers on comments, mentions, photos, remixes and a challenge's end mark the owner due and knock /api/people?op=push_send by pg_net, and pg_cron's push_sweep each minute)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homescreen browser flow",
+      "entry": "tools/web/homescreen_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "motors run by their cables",
+      "entry": "src/assembly/wiring.gd",
+      "reach": "tools/probe.sh wires_probe   (headless: PF cables, plugs, a receiver, a pole reverser, a Control+ hub and an extension wire read by hand, a motor with no cable by hand, a plug beside other parts no cable, the model mirrored the same, 9 V boxes, wires and 58124c02; a Power Functions cable laid by lay_flex from an M motor to a box, 500 LDU, one undo, saved and reopened byte for byte, then an item: Reshape reads its ends, lay_flex item= lays it again, outlet to outlet refused; 42042's L motor in Simulate runs at 390 rpm once its box is clicked through EditVerbs.click, Play switches an off box on, a selection made otherwise flips nothing, and it stops with its plug pulled; -- --sets=bench/results/wires-2026-11-22/sets.json --rows=ROWS clicks each set's sources and measures its motors as KINEFUNCS reads their functions, tools/wires_sets.py writes the listing; src/dev/wires_repro.gd -- FILES reads every OMR power set and the review's synthetic cases)",
+      "area": "geometry"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "mcpreach4 probe",
+      "entry": "src/dev/mcpreach4_probe.gd",
+      "reach": "tools/probe.sh mcpreach4_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach4_probe.gd. mcpreach4, the latest MCP walk's five stalls in their tools' own answers: attachment_points on a part with no studs (the SPIKE motor, a Technic beam) gives every face it can stand on in one call, the motor's output on each where a call with that face= puts it, and how real sets mount it, a click hinge's brick how to build on a hinge; move_part on a click hinge's brick on the plate moves the hinge's other half and says which half and which way degrees= raises it, not refused, and both halves on one plate are named held still with the plate, in the list and the refusal; submit_design names its parts' numbers against the check's brick N and edit_model takes the last; simulate_mechanism at= pictures the program at a moment with nothing written (program, history, parts), program= with at= in 1 call; check_design edit= says what the copy showed first, the model as it was after, no stale numbers)",
+      "area": "mcp"
     }
   ]
 }

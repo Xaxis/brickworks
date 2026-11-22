@@ -239,3 +239,43 @@ return { said, removed: w.storageDeletes, deleted: w.deleted };
     assert got["said"]["status"] == 200 and got["said"]["json"]["photos"] == 2
     assert got["removed"] == [["PhotoAaa01.jpg", "PhotoAaa01.card.jpg", "PhotoBbb02.jpg", "PhotoBbb02.card.jpg"]]
     assert got["deleted"] == ["7d6c1a2e-0000-4000-8000-00000000ada0"]
+
+
+def test_its_shared_models_files_go_every_version_and_picture() -> None:
+    # Its shared models' rows go with the account, and storage keeps no link
+    # to an account: kept, their files stayed public at their links, and the
+    # daily sweep held on them (121 files of 25 models, 11-22). Every file of
+    # its own models goes, in both buckets, and nobody else's.
+    got = run("""
+w.sharedModels = [{ id: "ModelAaa01", owner: ADA.sub }, { id: "ModelBbb02", owner: ADA.sub },
+  { id: "ModelCcc03", owner: "someone-else" }];
+w.modelFiles = { "shared-models": ["ModelAaa01.mpd", "ModelAaa01.v1.mpd", "ModelAaa01.v2.mpd", "ModelAaa01.png",
+  "ModelAaa01.cutout.png", "ModelAaa01.v1.png", "ModelBbb02.mpd", "ModelCcc03.mpd", "XModelAaa01.mpd"],
+  "shared-thumbs": ["ModelAaa01.webp", "ModelBbb02.webp", "ModelCcc03.webp"],
+  "shared-clips": ["ModelAaa01.mp4", "ModelBbb02.webm", "ModelCcc03.webm"] };
+const said = await del(ADA);
+return { said, left: w.modelFiles, deleted: w.deleted };
+""", billing="")
+    if got is None:
+        return
+    assert got["said"] == DELETED
+    assert got["left"] == {"shared-models": ["ModelCcc03.mpd", "XModelAaa01.mpd"], "shared-thumbs": ["ModelCcc03.webp"],
+                           "shared-clips": ["ModelCcc03.webm"]}
+    assert got["deleted"] == ["7d6c1a2e-0000-4000-8000-00000000ada0"]
+
+
+def test_models_files_not_reached_deletes_nothing() -> None:
+    # Storage not answering: the account is kept, said plainly, so asking
+    # again finishes it, rather than its files left with nothing to find them.
+    got = run("""
+w.sharedModels = [{ id: "ModelAaa01", owner: ADA.sub }];
+w.modelFiles = { "shared-models": ["ModelAaa01.mpd"], "shared-thumbs": [] };
+w.modelFilesDown = true;
+const said = await del(ADA);
+return { said, left: w.modelFiles, deleted: w.deleted };
+""", billing="")
+    if got is None:
+        return
+    assert got["said"]["status"] == 502
+    assert got["left"]["shared-models"] == ["ModelAaa01.mpd"]
+    assert got["deleted"] == []

@@ -220,7 +220,7 @@ const MENUS: Array = [
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", ">show_hide",
-		"lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
+		"lock", "unlock", "-", "paint", "replace", "find_replace", "finish_surfaces", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
 		"ortho", "grid", ">floor",
@@ -1335,6 +1335,12 @@ func _define() -> void:
 	_add("find_replace", "Find and replace…", CTRL | SHIFT | KEY_H,
 		func() -> void: app.call("_find_replace"), something,
 		"Find a part or a colour anywhere in the model, inside every sub-model too, and replace it")
+	# finishpass (APP_UX10 #9): the surface pass for a person (FinishBar):
+	# what a set designer would finish shown first, kinds left out by a
+	# tick, laid in one undo.
+	_add("finish_surfaces", "Finish the surfaces…", 0,
+		func() -> void: app.call("_finish_surfaces"), something,
+		"Tiles, slopes and rounded edges where a set would finish the model, shown before anything is laid")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
 		var studio: Node = await app.call("_studio_ready")
@@ -3298,6 +3304,18 @@ func edit_look(op: String) -> void:
 ## The edits of what is on a step's page (the page laid out by hand), which
 ## keep it with the step's room on the page (change_look's room=).
 const PAGE_OPS: Array[String] = ["place", "text", "image", "note", "arrow", "arrow_edit"]
+## What a locked page refuses (pagetools, ptreview F1): the edits of what is
+## on a step's page, those that lay it out again (its view, zoom, size,
+## page break, parts list, turn sign, callout), and a lock or a freeze
+## inside it; of "set", the fields that do (HELD_FIELDS). The booklet's own
+## settings (steps a page, the outline, guides, colour guides for all) and
+## a step's name are not the page's, and go through.
+const HELD_OPS: Array[String] = ["place", "text", "image", "note", "arrow", "arrow_edit",
+	"turn_left", "turn_right", "tilt_up", "tilt_down", "this_view", "usual_view", "zoom_in",
+	"zoom_out", "bigger", "smaller", "new_page", "alone", "parts", "sign", "callout", "page_lock",
+	"page_freeze"]
+const HELD_FIELDS: Array[String] = ["turn", "how", "zoom", "size", "page", "parts", "sign",
+	"callout", "pull", "colours", "actual_size", "place", "notes", "arrows", "panel", "lock", "freeze"]
 
 
 ## How the booklet prints step [param at]: [param op] one of the Booklet
@@ -3336,6 +3354,13 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		return "this step has no parts of its own to set"
 	var name: String = BookletLooks.key(BookletLooks.definition_of(section), step)
 	var own: Dictionary = BookletLooks.of(world, section, step)
+	# A page a lock holds is changed by nothing until it is unlocked: the
+	# page editor, a session, a Together peer, every writer through here,
+	# before anything is written (ptreview F1, F2).
+	var held: String = _held_refusal(op, name, number, fields)
+	if not held.is_empty():
+		_take_back(undo)
+		return held
 	# The page by hand: what is on the step's page is kept with the room the
 	# step has on it now (room=, from the page as laid out), so it goes with
 	# the step when its page changes. What was placed in another room is
@@ -3410,6 +3435,26 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 			change = {"page": null if off else page}
 			words = ("step %d " % number) + ("back with the steps before it" if off
 				else ("starts a new page" if page == "new" else "on a page alone"))
+		# pagetools: the page this step starts locked (steps= how many it
+		# holds; placed= where each item of it is, Booklet.held_places, as
+		# place_pages takes them, kept so a page setup changed after moves
+		# nothing on it), or frozen with the page set up as it is now; again
+		# undoes it. Unlocked, what was placed stays placed.
+		"page_lock":
+			var locked: bool = int(own.get("lock", 0)) > 0
+			var holds: int = clampi(int(fields.get("steps", 1)), 1, BookletLooks.LOCK_MOST)
+			change = {"lock": null if locked else holds}
+			if not locked and fields.get("placed") is Array:
+				undo.append_array(_placed_undo(fields["placed"]))
+			words = ("the page step %d starts unlocked" % number) if locked \
+				else ("the page step %d starts locked: nothing on it moves, and it holds %d step%s by "
+					+ "count (a step put in or taken out among them changes which)") % [number, holds,
+					"" if holds == 1 else "s"]
+		"page_freeze":
+			var frozen: bool = own.get("freeze") is Dictionary
+			change = {"freeze": null if frozen else {"sheet": BookletLooks.frozen_of(BookletSheet.of(world))}}
+			words = "the page step %d starts %s" % [number, "no longer frozen: it takes the booklet's page setup"
+				if frozen else "frozen: it keeps its margins, colours, header, footer and step numbers as they are now"]
 		"parts":
 			var shown: bool = bool(own.get("parts", true))
 			change = {"parts": not shown}
@@ -3821,6 +3866,13 @@ func page_setup(fields: Dictionary) -> String:
 			str(pictures.get(sheet.cover_picture, "")))
 		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
 			% [keeping, " in place of the one kept by that name" if replaced else ""])
+	# Frozen pages keep their own (pagetools): said, so a session knows why
+	# a page did not change with the rest (ptreview N6).
+	var frozen: int = world.step_looks.values().filter(func(look: Variant) -> bool:
+		return look is Dictionary and (look as Dictionary).get("freeze") is Dictionary).size()
+	if frozen > 0:
+		also.append("%d frozen page%s keep%s %s own" % [frozen, "" if frozen == 1 else "s",
+			"s" if frozen == 1 else "", "its" if frozen == 1 else "their"])
 	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""
 	if undo.is_empty():
 		return "the page is as it was: %s%s" % [BookletSheet.of(world).words(), tail]
@@ -3842,11 +3894,42 @@ func page_setup(fields: Dictionary) -> String:
 func place_pages(placed: Array, words: String) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
-	var undo: Array = []
-	var first: int = -1
+	# A step a lock holds is passed by, as change_look refuses it (ptfix).
+	var free: Array = []
+	var passed: Array = []
+	var plan: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery, {}, true) \
+		if BookletLooks.any_lock(world) else []
 	for one: Array in placed:
-		var at: Instructions.Step = one[0]
-		var where: Array = _step_at(at)
+		var where: Array = _step_at(one[0])
+		var start: int = BookletLooks.held_by(world, plan, BookletLooks.key(BookletLooks.definition_of(
+			str(where[0])), int(where[1]))) if not plan.is_empty() and int(where[1]) >= 0 else 0
+		if start > 0:
+			if not start in passed:
+				passed.append(start)
+			continue
+		free.append(one)
+	var undo: Array = _placed_undo(free)
+	var first: int = (free[0][0] as Instructions.Step).number if not free.is_empty() else -1
+	undo = AuthorSteps.squash(undo)
+	var tail: String = ("; the locked page%s of step%s %s passed by" % ["" if passed.size() == 1
+		else "s", "" if passed.size() == 1 else "s", ", ".join(PackedStringArray(passed.map(
+			func(start: int) -> String: return str(start))))]) if not passed.is_empty() else ""
+	if undo.is_empty():
+		return "the pages were laid out so already" + tail
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	(app.get("_steps") as StepsBar).refresh(first)
+	return words + tail
+
+
+## [param placed] ([[step, place, room]], as [method place_pages] takes
+## it) as the looks' changes, each step's own words, pictures and arrows
+## moved into its room first: their undo.
+func _placed_undo(placed: Array) -> Array:
+	var undo: Array = []
+	for one: Array in placed:
+		var where: Array = _step_at(one[0])
 		if int(where[1]) < 0:
 			continue
 		var section: String = str(where[0])
@@ -3859,16 +3942,24 @@ func place_pages(placed: Array, words: String) -> String:
 		change["panel"] = BookletLooks.said_rect(room) if any else null
 		undo.append_array(BookletLooks.change(world,
 			BookletLooks.key(BookletLooks.definition_of(section), step), change))
-		if first < 0:
-			first = at.number
-	undo = AuthorSteps.squash(undo)
-	if undo.is_empty():
-		return "the pages were laid out so already"
-	builder.record(undo, words)
-	store.adopt()
-	store.touch()
-	(app.get("_steps") as StepsBar).refresh(first)
-	return words
+	return undo
+
+
+## Why [param op] (change_look's) may not change the step whose look is
+## [param name] (step [param number]), "" when it may: a lock holds its
+## page (BookletLooks.held_by) and the edit is one HELD_OPS names, or a
+## "set" of any HELD_FIELDS. Unlocking and freezing are the first step's
+## own. Planned only when a page of the model is locked.
+func _held_refusal(op: String, name: String, number: int, fields: Dictionary) -> String:
+	var changes: bool = op in HELD_OPS or op == "set" and fields.keys().any(
+		func(field: Variant) -> bool: return str(field) in HELD_FIELDS)
+	if not changes or not BookletLooks.any_lock(world):
+		return ""
+	var start: int = BookletLooks.held_by(world, Instructions.plan(world, library, store.scenery, {},
+		true), name)
+	if start <= 0 or op in ["page_lock", "page_freeze"] and start == number:
+		return ""
+	return "the page step %d starts is locked: unlock it first" % start
 
 
 ## An arrow as a look keeps it: its points to a tenth of a mm (a bend kept

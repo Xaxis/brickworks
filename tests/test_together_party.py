@@ -16,8 +16,11 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from loadbound import within  # noqa: E402
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 
@@ -79,4 +82,4 @@ def test_a_poll_gives_every_word_in_order_and_waits_for_the_next():
     out = _run()
     assert out["poll"]["kinds"] == ["join", "join", "deal", "at", "left", "join"]
     wait = out["poll_wait"]
-    assert wait["status"] == 200 and wait["ops"] == 1 and 350 <= wait["ms"] < 2000
+    assert wait["status"] == 200 and wait["ops"] == 1 and 350 <= wait["ms"] < within(2000)

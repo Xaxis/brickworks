@@ -245,12 +245,14 @@ class Yard:
                    GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="william.neeley@gmail.com",
                    HOME=str(where / "home"), PATH="%s:%s" % (where / "bin", os.environ["PATH"]),
                    TRAIN_LIVE="https://brickworks.diy/app", STUB_LIVE=str(self.live),
-                   TRAIN_POLL="0.1", SHIP_POLL="0.1", SHIP_CDN_WAIT="0", LIVE_DB_POLL="0.1")
+                   TRAIN_POLL="0.1", SHIP_POLL="0.1", SHIP_CDN_WAIT="0", LIVE_DB_POLL="0.1",
+                   # The yard has no heavy queue for an outer timeout to count.
+                   ALLOW_QUEUE_TIMEOUT="1")
         self.env = env
         self.git(where, "init", "-q", "--bare", "--initial-branch=main", str(where / "origin.git"))
         self.git(where, "init", "-q", "--initial-branch=main", str(self.r))
         for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh", "flows_for.py",
-                     "live_ab.sh", "timing_judge.py", "live_export.sh"):
+                     "live_ab.sh", "timing_judge.py", "live_export.sh", "live_db.sh", "live_db_lib.sh", "queue_wrap.sh"):
             self.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
         for name, text in STUBS.items():
             self.put(name, text)

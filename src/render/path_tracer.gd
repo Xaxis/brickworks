@@ -83,6 +83,11 @@ var _timed_frame: int = -1
 
 ## What a picture is lit by and seen through, set before [method stage].
 var scene := PackedFloat32Array()
+## The product look, set before [method stage]: its plastic is traced as
+## moulded (path_tracer.glsl's moulded(): edges and stud rims rounded, the
+## logo raised on every stud, faces never quite flat), the window's as the
+## window draws it.
+var product: bool = false
 ## Samples in the running sum so far.
 var samples: int = 0
 ## Instances in the last picture staged, and distinct shapes.
@@ -272,6 +277,12 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		if material != null:
 			box_min = material.get_shader_parameter("part_box_min")
 			box_max = material.get_shader_parameter("part_box_max")
+		# Where the part's studs begin (BrickWorld._body_top), and whether it
+		# is moulded: the w of its box's two corners.
+		var body_top: float = box_max.y
+		if material != null and material.get_shader_parameter("part_body_top") != null:
+			body_top = minf(float(material.get_shader_parameter("part_body_top")), box_max.y)
+		var moulded: float = 1.0 if product else 0.0
 		var whole: Transform3D = batch.global_transform
 		var buffer: PackedFloat32Array = multimesh.buffer
 		var stride: int = 12 + (4 if multimesh.use_colors else 0) \
@@ -298,8 +309,8 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 			var fleck: Color = Color(custom.r, custom.g, custom.b).srgb_to_linear()
 			records.append_array([lin.r, lin.g, lin.b, colour.a,
 				fleck.r, fleck.g, fleck.b, custom.a,
-				box_min.x, box_min.y, box_min.z, 0.0,
-				box_max.x, box_max.y, box_max.z, 0.0])
+				box_min.x, box_min.y, box_min.z, body_top,
+				box_max.x, box_max.y, box_max.z, moulded])
 			kinds.append_array([mesh_number, kind, 0, 0])
 			var instance := RDAccelerationStructureInstance.new()
 			instance.blas = shape[0]
@@ -558,11 +569,13 @@ func sample_ms() -> float:
 ## ([param tonemapper]: 2 Filmic, 3 ACES, at [param white]), with the
 ## product look's [param contrast] and [param saturation] after.
 func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1.0,
-		saturation: float = 1.0, transparent: bool = false, dither: bool = true) -> Image:
+		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
+		denoise: float = 0.0) -> Image:
 	if not _resolve_set.is_valid() or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
-		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0])
+		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
+		denoise, 0.0, 0.0, 0.0])
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)

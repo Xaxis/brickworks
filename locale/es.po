@@ -15815,6 +15815,121 @@ msgstr "doble toque"
 msgid "on a part, turn it as Turn does"
 msgstr "sobre una pieza, girarla como lo hace Giro"
 
+# Edit › Finish the surfaces…: what a set designer would finish shown first, each kind left out by a tick, laid in one undo step (APP_UX10 #9, finishpass)
+
+msgid "Finish the surfaces…"
+msgstr "Terminar las superficies…"
+
+msgid "Tiles, slopes and rounded edges where a set would finish the model, shown before anything is laid"
+msgstr "Baldosas, pendientes y bordes redondeados donde un set terminaría el modelo, mostrados antes de colocar nada"
+
+msgid "1 part in 1 place"
+msgstr "1 pieza en 1 sitio"
+
+msgid "A plain side skinned smooth, or a long wall given texture: its own bricks are swapped for others, so it starts unticked"
+msgstr "Un lado liso revestido, o una pared larga con textura: sus propias piezas se cambian por otras, así que empieza sin marcar"
+
+msgid "Curved slopes along a body's hard top edge"
+msgstr "Pendientes curvas a lo largo del borde superior duro de una carrocería"
+
+msgid "%d more found past what is laid at once: Finish again lays them."
+msgstr "%d más encontrados además de lo que se coloca de una vez: terminar de nuevo los coloca."
+
+msgid "%d parts in 1 place"
+msgstr "%d piezas en 1 sitio"
+
+msgid "%d parts in %d places"
+msgstr "%d piezas en %d sitios"
+
+msgid "finished the surfaces: %d parts"
+msgstr "superficies terminadas: %d piezas"
+
+msgid "finished the surfaces: %d parts in %d places — {undo|takes it back}"
+msgstr "superficies terminadas: %d piezas en %d sitios — {undo|lo deshace}"
+
+msgid "Finish the surfaces"
+msgstr "Terminar las superficies"
+
+msgid "Lay"
+msgstr "Colocar"
+
+msgid "Lay %d parts"
+msgstr "Colocar %d piezas"
+
+msgid "Laying the finish…"
+msgstr "Colocando el acabado…"
+
+msgid "Left as studs: %s."
+msgstr "Dejados como espigas: %s."
+
+msgid "none of it fits as the model stands"
+msgstr "nada cabe tal como está el modelo"
+
+msgid "nothing laid: %s"
+msgstr "nada colocado: %s"
+
+msgid "nothing ticked to lay"
+msgstr "nada marcado para colocar"
+
+msgid "Nothing to finish here: no open stud field, no stud staircase, no hard top edge and no plain flank."
+msgstr "Nada que terminar aquí: ningún campo de espigas abierto, ninguna escalera de espigas, ningún borde superior duro y ningún flanco liso."
+
+msgid "Nothing to finish on the selected parts."
+msgstr "Nada que terminar en las piezas seleccionadas."
+
+msgid "Only what is on the selected parts."
+msgstr "Solo lo que está sobre las piezas seleccionadas."
+
+msgid "Put down every ticked kind, as one undo step"
+msgstr "Colocar cada tipo marcado, como un solo paso de deshacer"
+
+msgid "Reading the model's studs, steps and edges…"
+msgstr "Leyendo las espigas, escalones y bordes del modelo…"
+
+msgid "Rounded edges"
+msgstr "Bordes redondeados"
+
+msgid "%s: a part it lays again is gone or locked"
+msgstr "%s: una pieza que vuelve a colocar ya no está o está bloqueada"
+
+msgid "Slopes"
+msgstr "Pendientes"
+
+msgid "Slopes on studs that step up, as a roof or a bonnet steps"
+msgstr "Pendientes sobre espigas escalonadas, como un tejado o un capó"
+
+msgid "Smooth sides"
+msgstr "Lados lisos"
+
+msgid "%s: no room for it as the model now stands"
+msgstr "%s: no hay sitio tal como está ahora el modelo"
+
+msgid "%s: what stands on it would be left loose"
+msgstr "%s: lo que está encima quedaría suelto"
+
+msgid "The ground"
+msgstr "El suelo"
+
+msgid "the model changed since the finish was shown: it is shown again"
+msgstr "el modelo cambió desde que se mostró el acabado: se muestra de nuevo"
+
+msgid "The open ground, kept for figures to stand on unless ticked"
+msgstr "El suelo abierto, reservado para que se apoyen las figuras salvo que esté marcado"
+
+msgid "Tiles"
+msgstr "Baldosas"
+
+msgid "Tiles on open studs where a top should be smooth, in the part's own colour"
+msgstr "Baldosas sobre espigas abiertas donde una parte superior debería ser lisa, del color de la pieza"
+
+msgid "What a set designer would finish, drawn on the model. Untick a kind to leave it out."
+msgstr "Lo que terminaría un diseñador de sets, dibujado sobre el modelo. Desmarca un tipo para omitirlo."
+msgid "put down what you are carrying first: nothing was laid"
+msgstr "suelta primero lo que llevas: no se colocó nada"
+
+msgid "the model was changed while it was laid: the rest is left"
+msgstr "el modelo cambió mientras se colocaba: el resto se deja"
+
 msgid "Reading how the model's copies are placed…"
 msgstr "Leyendo cómo están colocadas las copias del modelo…"
 
@@ -15894,3 +16009,385 @@ msgstr "Ya hay una clave en %s s: esta se queda donde estaba."
 
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clave de %s s fijada de nuevo, a menos de un fotograma del tiempo: dónde está la cámara, a qué mira y su objetivo."
+
+# Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
+msgstr "La foto que eliges se envía a Brickognize (brickognize.com), un servicio de terceros que identifica piezas LEGO®. Según sus condiciones, puede guardar la foto y usarla para entrenar su reconocimiento, y es solo para uso personal y no comercial: la licencia comercial de Pro no lo cubre.\n\nSolo se envía la foto, nunca tu modelo, y no se envía nada hasta que eliges una foto."
+
+msgid "Where does this go?"
+msgstr "¿Dónde va esta pieza?"
+
+msgid "Where does this go? A photo of a part in your hand finds the step that places it"
+msgstr "¿Dónde va esta pieza? Una foto de la pieza que tienes en la mano encuentra el paso que la coloca"
+
+msgid "Asking Brickognize what part this is…"
+msgstr "Preguntando a Brickognize qué pieza es…"
+
+msgid "This model has none of the parts Brickognize sees in that photo"
+msgstr "Este modelo no tiene ninguna de las piezas que Brickognize ve en esa foto"
+
+msgid "Every step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "Todos los pasos que la colocan están construidos: %s. Puede ser una pieza de repuesto: un set trae algunas pequeñas"
+
+msgid "The step that places it is built: %s. It may be a spare: a set comes with a few small ones"
+msgstr "El paso que la coloca está construido: %s. Puede ser una pieza de repuesto: un set trae algunas pequeñas"
+
+msgid "It goes in at step %s"
+msgstr "Va en el paso %s"
+
+msgid "%d go in at step %s"
+msgstr "%d van en el paso %s"
+
+msgid "%s, the first of %d steps that place it; the others: %s"
+msgstr "%s, el primero de %d pasos que la colocan; los demás: %s"
+
+msgid "Close where the part goes"
+msgstr "Cerrar dónde va la pieza"
+
+msgid "Not in this model: %s"
+msgstr "No está en este modelo: %s"
+
+msgid "No part seen"
+msgstr "No se ve ninguna pieza"
+
+msgid "Steps:"
+msgstr "Pasos:"
+
+msgid "Go to step %s"
+msgstr "Ir al paso %s"
+
+msgid "Not it?"
+msgstr "¿No es esta?"
+
+msgid "Brickognize is %d%% sure of it"
+msgstr "Brickognize está seguro al %d %%"
+
+msgid "Back to the step you were on"
+msgstr "Volver al paso en el que estabas"
+
+msgid "Back to step %d"
+msgstr "Volver al paso %d"
+
+msgid "Back to the start"
+msgstr "Volver al principio"
+
+msgid "The steps are still being worked out: try again in a moment"
+msgstr "Los pasos aún se están calculando: inténtalo de nuevo en un momento"
+# Simulate's power row and the flex tool's cables (APP_UX11 wires)
+msgid "Power: click a battery box, receiver or hub to work its switch"
+msgstr "Energía: haz clic en una caja de pilas, un receptor o un hub para accionar su interruptor"
+
+msgid "Work its switch, as a finger moves it on the part"
+msgstr "Accionar su interruptor, como lo mueve un dedo en la pieza"
+
+msgid "Work its remote's lever for this output"
+msgstr "Accionar la palanca de su mando para esta salida"
+
+msgid "Power Functions cable"
+msgstr "Cable Power Functions"
+
+msgid "Powered Up cable"
+msgstr "Cable Powered Up"
+
+msgid "Power Functions motor's own cable, 20 cm"
+msgstr "cable propio de un motor Power Functions, 20 cm"
+
+msgid "Power Functions extension wire 8871, 50 cm"
+msgstr "cable de extensión Power Functions 8871, 50 cm"
+
+msgid "Powered Up motor's own cable, 25 cm"
+msgstr "cable propio de un motor Powered Up, 25 cm"
+
+msgid "Turn the plug"
+msgstr "Girar el conector"
+
+msgid "Turn the plug half round on its contacts, so its motor runs the other way"
+msgstr "Girar el conector media vuelta sobre sus contactos, para que su motor gire al revés"
+
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
+msgstr "Aquí nada da energía a un motor, así que Reproducir lo gira a mano: añade una caja de pilas o un hub y tiende su cable (Crear, Manguera, tubo o cadena…, Cable Power Functions)."
+
+msgid "Stopped at %s going back."
+msgstr "Detenido en %s al volver."
+
+msgid "%s does not run: %s."
+msgstr "%s no gira: %s."
+
+msgid "%s speed"
+msgstr "velocidad %s"
+
+# Simulate's power words, said in the person's language (wfix: N1, 9 V, cables by their ends)
+msgid "its contacts"
+msgstr "sus contactos"
+
+msgid "the plug's own top"
+msgstr "la parte superior del conector"
+
+msgid "the extension wire"
+msgstr "el cable de extensión"
+
+msgid "its own cable"
+msgstr "su propio cable"
+
+msgid "the cable"
+msgstr "el cable"
+
+msgid "turned half round in %s's port %d, which a Powered Up plug goes into one way only"
+msgstr "girado del revés en %s, puerto %d, donde un conector Powered Up entra en un solo sentido"
+
+msgid "a quarter turn round on %s, so it makes no contact"
+msgstr "girado un cuarto de vuelta sobre %s, así que no hace contacto"
+
+msgid "on %s"
+msgstr "en %s"
+
+msgid ", turned half round"
+msgstr ", girado del revés"
+
+msgid "on nothing"
+msgstr "sobre nada"
+
+msgid "on nothing, %d LDU from %s"
+msgstr "sobre nada, a %d LDU de %s"
+
+msgid "the %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "a plug (#%d)"
+msgstr "un conector (#%d)"
+
+msgid "%s's port %d"
+msgstr "%s, puerto %d"
+
+msgid "%s's contacts"
+msgstr "contactos de %s"
+
+msgid "its plug (#%d) is %s"
+msgstr "su conector (#%d) está %s"
+
+msgid "its own cable's plug is in nothing, so it turns by hand; put the plug on a box or lay a cable from it to run it by the box"
+msgstr "el conector de su propio cable no está en nada, así que gira a mano; pon el conector en una caja o tiende un cable desde él para que la caja lo mueva"
+
+msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Hose, tube or chain…, a cable) to run it by the box"
+msgstr "no hay ningún cable suyo dibujado en el modelo, así que gira a mano; tiende uno desde él hasta una caja (Crear › Manguera, tubo o cadena…, un cable) para que la caja lo mueva"
+
+msgid "its cable reaches no battery box, receiver or hub"
+msgstr "su cable no llega a ninguna caja de pilas, receptor ni hub"
+
+msgid "nothing gives it power"
+msgstr "nada le da corriente"
+
+msgid "%s is off: click it to switch it on"
+msgstr "%s está apagado: haz clic en él para encenderlo"
+
+msgid "%s's own plug is %s"
+msgstr "el conector propio de %s está %s"
+
+msgid "%s's own cable reaches nothing that gives power"
+msgstr "el cable propio de %s no llega a nada que dé corriente"
+
+msgid "%s %s is off: click it to work its lever"
+msgstr "%s, %s, está apagado: haz clic en él para mover su palanca"
+
+msgid "%s's port %d is at 0%%"
+msgstr "%s, puerto %d, está al 0 %%"
+
+msgid "on %s %s"
+msgstr "en %s, %s"
+
+msgid "in %s's port %d"
+msgstr "en %s, puerto %d"
+
+msgid "%s output"
+msgstr "salida %s"
+
+msgid "%s switched %s"
+msgstr "%s puesto en %s"
+
+msgid "%s's port %d at 100%%"
+msgstr "%s, puerto %d al 100 %%"
+
+msgid ", its dial at %d%%"
+msgstr ", su regulador al %d %%"
+
+msgid " at %d%%"
+msgstr " al %d %%"
+
+msgid "%s: turns by hand, as nothing here gives a motor power."
+msgstr "%s: gira a mano, ya que aquí nada da corriente a un motor."
+
+msgid "%s: stopped, %s."
+msgstr "%s: parado, %s."
+
+msgid "%s: wired %s; stopped, as %s."
+msgstr "%s: cableado %s; parado, porque %s."
+
+msgid "%s: wired %s; runs %s at %d%%."
+msgstr "%s: cableado %s; gira %s al %d %%."
+
+msgid "%s runs %s at %s rpm: %s."
+msgstr "%s gira %s a %s rpm: %s."
+
+msgid "The %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "%s #%d, %s output: %s"
+msgstr "%s #%d, salida %s: %s"
+
+msgid "port %d"
+msgstr "puerto %d"
+
+msgid "Power Functions battery box"
+msgstr "caja de pilas Power Functions"
+
+msgid "Power Functions AAA battery box"
+msgstr "caja de pilas AAA Power Functions"
+
+msgid "9 V battery box"
+msgstr "caja de pilas de 9 V"
+
+msgid "Power Functions IR receiver"
+msgstr "receptor IR Power Functions"
+
+msgid "Power Functions pole reverser"
+msgstr "inversor de polaridad Power Functions"
+
+msgid "Control+ hub"
+msgstr "hub Control+"
+
+msgid "Powered Up hub"
+msgstr "hub Powered Up"
+
+msgid "Boost Move hub"
+msgstr "hub Boost Move"
+
+msgid "SPIKE Prime hub"
+msgstr "hub SPIKE Prime"
+
+msgid "SPIKE Essential hub"
+msgstr "hub SPIKE Essential"
+
+msgid "9 V wire"
+msgstr "cable de 9 V"
+
+msgid "Power Functions extension wire 8886, 20 cm"
+msgstr "cable de extensión Power Functions 8886, 20 cm"
+
+msgid "A Powered Up cable runs from a motor's outlet: Powered Up has no extension wire from contacts to contacts"
+msgstr "Un cable Powered Up sale de la salida de un motor: Powered Up no tiene cable de extensión de contactos a contactos"
+
+msgid "A cable runs from a motor's outlet to a plug's place (a battery box's, a receiver's or a plug's contacts, a hub's port): two outlets make none"
+msgstr "Un cable va de la salida de un motor al sitio de un conector (los contactos de una caja de pilas, de un receptor o de un conector, el puerto de un hub): dos salidas no forman ninguno"
+
+msgid "9 V wire, 11 studs"
+msgstr "cable de 9 V, 11 espigas"
+
+msgid "9 V wire, 15 studs"
+msgstr "cable de 9 V, 15 espigas"
+
+msgid "9 V wire, 17 studs"
+msgstr "cable de 9 V, 17 espigas"
+
+msgid "9 V wire, 20 studs"
+msgstr "cable de 9 V, 20 espigas"
+
+msgid "9 V wire, 21 studs"
+msgstr "cable de 9 V, 21 espigas"
+
+msgid "9 V wire, 26 studs"
+msgstr "cable de 9 V, 26 espigas"
+
+msgid "9 V wire, 33 studs"
+msgstr "cable de 9 V, 33 espigas"
+
+msgid "9 V wire, 36 studs"
+msgstr "cable de 9 V, 36 espigas"
+
+msgid "9 V wire, 46 studs"
+msgstr "cable de 9 V, 46 espigas"
+
+msgid "9 V wire, 69 studs"
+msgstr "cable de 9 V, 69 espigas"
+
+msgid "9 V wire, 162 studs"
+msgstr "cable de 9 V, 162 espigas"
+
+msgid "9 V wire, 378 studs"
+msgstr "cable de 9 V, 378 espigas"
+
+# A switch's, a lever's and an output's one word (Wiring._w): kept apart by
+# the context power from the camera's back view and the like.
+msgctxt "power"
+msgid "on"
+msgstr "encendido"
+
+msgctxt "power"
+msgid "off"
+msgstr "apagado"
+
+msgctxt "power"
+msgid "forward"
+msgstr "hacia delante"
+
+msgctxt "power"
+msgid "back"
+msgstr "hacia atrás"
+
+msgctxt "power"
+msgid "lever"
+msgstr "palanca"
+
+msgctxt "power"
+msgid "red"
+msgstr "rojo"
+
+msgctxt "power"
+msgid "blue"
+msgstr "azul"
+msgid "Outline width"
+msgstr "Ancho del contorno"
+
+msgid "How wide the band round the parts each step adds is, printed as shown: 5 px a millimetre"
+msgstr "El ancho de la banda alrededor de las piezas que añade cada paso, impresa tal como se ve: 5 px por milímetro"
+
+msgid "Lock page"
+msgstr "Bloquear la página"
+
+msgid "Unlock page"
+msgstr "Desbloquear la página"
+
+msgid "Freeze page"
+msgstr "Congelar la página"
+
+msgid "Unfreeze page"
+msgstr "Descongelar la página"
+
+msgid "Nothing on this page moves or changes until it is unlocked, Apply to later pages passes it by, and it keeps as many steps as it has now: a step put in or taken out among them changes which"
+msgstr "Nada se mueve ni cambia en esta página hasta desbloquearla, «Aplicar a las páginas siguientes» la salta y conserva tantos pasos como tiene ahora: un paso añadido o quitado entre ellos cambia cuáles son"
+
+msgid "This page keeps its margins, colours, header, footer and step numbers as they are now when the booklet's page setup changes; its paper, picture and parts stay the booklet's"
+msgstr "Esta página conserva sus márgenes, colores, encabezado, pie y números de paso actuales cuando cambia la configuración de página del folleto; su papel, su imagen y sus piezas siguen siendo los del folleto"
+
+msgid "Hold Alt to see the selected item's room to the page's edges, its margins and its neighbours"
+msgstr "Mantén Alt para ver el espacio del elemento elegido hasta los bordes de la página, sus márgenes y sus vecinos"
+
+msgid "The selected item's room to the page's edges, its margins and its neighbours, as holding Alt shows it"
+msgstr "El espacio del elemento elegido hasta los bordes de la página, sus márgenes y sus vecinos, como lo muestra Alt pulsado"
+
+msgid "This page is locked: Unlock page to change what is on it."
+msgstr "Esta página está bloqueada: «Desbloquear la página» para cambiar lo que tiene."
+
+msgid "Only a page of steps locks."
+msgstr "Solo se bloquea una página de pasos."
+
+msgid "Only a page of steps freezes."
+msgstr "Solo se congela una página de pasos."
+
+msgid "Frozen pages keep their own page setup: %d."
+msgstr "Las páginas congeladas conservan su propia configuración: %d."
+
+msgid "locked"
+msgstr "bloqueada"
+
+msgid "frozen"
+msgstr "congelada"

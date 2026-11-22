@@ -50,8 +50,6 @@
 <link rel="alternate" hreflang="x-default" href="https://brickworks.diy/gallery">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/favicon-180.png">
-<link rel="manifest" href="/site.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="The Brickworks gallery">
@@ -68,6 +66,9 @@
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="apple-mobile-web-app-title" content="Brickworks">
 <link rel="stylesheet" href="/site.css">
 <style>
 .listing { padding: 0 0 72px; }
@@ -104,11 +105,18 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
 }
 .search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+/* Share yours at the head's end, beside the search (web/share-model.html).
+   On a phone it stays a word, beside the title, and the search has a row
+   of its own, so its words are read whole (byfix: three controls in one
+   row left an icon alone and the search's words cut off). */
+.gallery-head .search { margin-left: auto; }
 @media (width < 600px) {
 	.browse-band { padding-top: var(--s-4); }
-	.gallery-head { flex-wrap: nowrap; align-items: center; }
+	.gallery-head { align-items: center; column-gap: var(--s-3); }
 	.gallery-head .lede, .search .hint { display: none; }
-	.search { flex: 1 1 auto; max-width: none; }
+	.gallery-title { flex: 1 1 auto; }
+	.share-yours { flex: none; }
+	.gallery-head .search { order: 1; flex: 1 1 100%; max-width: none; margin-left: 0; }
 	.search input { padding-right: 12px; }
 }
 
@@ -257,6 +265,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 							placeholder="Search models, builders, tags" aria-keyshortcuts="/">
 						<kbd class="hint" aria-hidden="true">/</kbd>
 					</label>
+					<a class="cta share-yours" href="/share-model" aria-label="Share yours"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"></use></svg><span class="word">Share yours</span></a>
 				</div>
 			</form>
 			<div class="gallery-bar">
@@ -408,7 +417,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 		<div class="state" id="empty" data-list="models" hidden>
 			Nothing is listed yet. Share a model from the app and tick
 			<b>List it in the gallery</b>, and it will be the first here.
-			<div class="actions"><a class="cta small" href="/app">Open the app</a></div>
+			<div class="actions"><a class="cta small" href="/app">Open the app</a> <a class="cta ghost small" href="/share-model">Share a model file</a></div>
 		</div>
 		<div class="state" id="builds-empty" data-list="builds" hidden>
 			No builds yet. A build is a photo of a model from the gallery that somebody
@@ -461,7 +470,8 @@ html[data-tab="builds"] .toolbar { position: static; }
 				again to update it, or untick the box to take it out of the gallery
 				and keep the link.
 			</p>
-			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
+			<p class="lede">Made it in BrickLink Studio, LDCad or another LDraw program? Share its file here, with its parts list, its steps and a picture.</p>
+			<div class="actions center"><a class="cta" href="/share-model">Share a model file</a> <a class="cta ghost" href="/app">Open the app</a></div>
 		</div>
 	</section>
 	<section class="wrap wide yours" aria-labelledby="sources-h" data-list="sets">

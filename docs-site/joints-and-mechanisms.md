@@ -65,6 +65,8 @@ lib:axles and gears on a line
 
 It is laid at the real part's length and saved as parts any LDraw program reads. **Make › Reshape the hose or chain** opens a laid one again. For track, see [Lay train track](/docs/placing-parts#tracks).
 
+A motor's cable is laid the same way: **Power Functions cable**, **Powered Up cable** or **9 V wire**, from the motor's outlet to the battery box, receiver, hub or plug it goes on, in the motor's own cable's length; or from contacts to contacts, an extension wire. **Turn the plug** turns its plug half round, so the motor runs the other way. Reshape opens a laid cable again, also after the model is saved and opened.
+
 <!-- covers
 ui:hoses and chains by hand
 lib:flexible parts along a path
@@ -103,12 +105,15 @@ ui:a pose that holds its own weight
 
 The panel says how fast each part turns, what locks the train, and whether the model stays standing as it turns. It finds where the motion stops: the first two parts that meet, tinted red, a linkage's range, or where a motor stalls under its load. Play stops there, and **Go to the stop** shows it. Nothing in the model changes. An assistant can find gears for a ratio you need (`search_gear_ratio`).
 
+Motors run by their cables. Where the model has a battery box, an IR receiver or a hub, the **Power** row lists each one's switch and each motor with what its cable reaches; click a box, a receiver's lever or a hub in the view to work its switch, as a finger works it. **Play** on a motor switches on what its cable reaches if it is off, and runs the motor at its rated speed the way its plug faces. Pull a plug off and the motor stops, and the row says where the plug is. A motor with no cable drawn turns by hand, as it does in a model with nothing that gives power. Power Functions, Powered Up and 9 V are read.
+
 A part on a hinge, a click joint or a single stud turns too, as dragging it in the view turns it. A piece that stands apart from the rest, such as a gear train built beside a bridge, turns on its own frame, held by its largest part. Knob wheels turn each other, a pinion on a slanted steering column drives its rack, and a sub-assembly named Chassis or Frame holds still only what no joint turns.
 
 <!-- covers
 ui:simulate mechanism
 lib:mechanisms
 lib:gear ratio search
+lib:motors run by their cables
 -->
 
 ## Motions {#motions}

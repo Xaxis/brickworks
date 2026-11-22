@@ -34,13 +34,14 @@ static var _cores: int = _physical_cores()
 
 ## How long the main thread has waited for a CPU it was ready to run on,
 ## in ms, since it began. From any thread: /proc/self is the main
-## thread's.
+## thread's. And a fiber's thread's, in the turns it ran while the main
+## thread slept waiting on it (Fiber.count_waits, which a Frames sets).
 static func waited_ms() -> float:
 	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
 	if stat == null:
 		return 0.0
 	var fields: PackedStringArray = stat.get_line().split(" ", false)
-	return fields[1].to_float() / 1e6 if fields.size() > 1 else 0.0
+	return (fields[1].to_float() / 1e6 if fields.size() > 1 else 0.0) + Fiber.waited_us / 1000.0
 
 
 ## How long the main thread has run on a CPU, in ms, since it began (field 1
@@ -193,6 +194,7 @@ class Frames extends Node:
 	func _ready() -> void:
 		# After every other node's _process.
 		process_priority = 1000000
+		Fiber.count_waits = true
 		busy = ProbeTime.box_load()
 		if from_now:
 			_began_us = Time.get_ticks_usec()

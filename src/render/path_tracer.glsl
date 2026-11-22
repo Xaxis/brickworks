@@ -113,7 +113,8 @@ struct Instance {
 	vec4 colour;
 	// Fleck colour (linear) and finish + fleck fraction, as BrickWorld packs it.
 	vec4 custom;
-	// The part's box, for the seam where it meets the next.
+	// The part's box, for the seam where it meets the next; box_min.w where
+	// its studs begin, box_max.w 1 for the product look's moulded plastic.
 	vec4 box_min;
 	vec4 box_max;
 	// Mesh, kind (0 plastic, 1 clear plastic, 2 the sweep), unused, unused.
@@ -340,7 +341,43 @@ float seam_at(vec3 at, vec3 low, vec3 high, float width) {
 	return 1.0 - smoothstep(width * 0.5, width, second);
 }
 
-Surface surface_of(Instance thing, vec3 at, vec3 local) {
+float gloss_hash(vec3 p) {
+	p = fract(p * 0.3183099 + 0.1);
+	p *= 17.0;
+	return fract(p.x * p.y * p.z * (p.x + p.y + p.z)) * 2.0 - 1.0;
+}
+
+// Smooth noise from -1 to 1 (closest_hit's wave_noise).
+float gloss_noise(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(gloss_hash(i), gloss_hash(i + vec3(1, 0, 0)), f.x),
+			mix(gloss_hash(i + vec3(0, 1, 0)), gloss_hash(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(gloss_hash(i + vec3(0, 0, 1)), gloss_hash(i + vec3(1, 0, 1)), f.x),
+			mix(gloss_hash(i + vec3(0, 1, 1)), gloss_hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+
+// A real part's wear, for the product look's moulded plastic: whether a
+// point of the part (its own space) is on a scuff across the coat, given
+// the part's own number from 0 to 1. Fine straight scratches a few LDU
+// long, each part's running its own way, in patches, as handling leaves
+// them. (Flecks of dust were tried and taken out: a judge shown them beside
+// a photograph called them the path tracer's fireflies.)
+bool worn(vec3 q, float own) {
+	float angle = own * 6.2832;
+	vec3 along = normalize(vec3(cos(angle), 0.4 * sin(angle * 1.7), sin(angle)));
+	vec3 across = normalize(cross(along, vec3(0.3, 1.0, 0.2)));
+	vec3 third = cross(along, across);
+	float lines = gloss_noise(vec3(dot(q, along) * 0.15, dot(q, across) * 2.2,
+		dot(q, third) * 2.2) + vec3(own * 13.0));
+	float patches = gloss_noise(q / 9.0 + vec3(own * 29.0, 5.0, 2.0));
+	return lines > 0.72 && patches > 0.1;
+}
+
+// textured: the hit is on a straight slope's face (closest_hit's grain);
+// which: the part's own number, so no two parts are worn alike.
+Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint which) {
 	Surface s;
 	vec3 body = thing.colour.rgb;
 	int finish = int(floor(thing.custom.w + 0.001));
@@ -362,11 +399,39 @@ Surface surface_of(Instance thing, vec3 at, vec3 local) {
 		s.coat = 0.0;
 		return s;
 	}
-	// The seam, in the part's own space.
-	float seam = seam_at(local, thing.box_min.xyz, thing.box_max.xyz, 0.6);
-	float luminance_in = dot(body, vec3(0.2126, 0.7152, 0.0722));
-	vec3 seam_colour = luminance_in < 0.025 ? body + vec3(0.03) : body * 0.55;
-	body = mix(body, seam_colour, seam);
+	// The seam, in the part's own space, as the window paints it. Moulded
+	// plastic (the product look) has none painted: its rounded edges are
+	// the line where two parts meet, and a part alone has no dark outline
+	// in a photograph.
+	bool moulded = thing.box_max.w > 0.5;
+	if (!moulded) {
+		float seam = seam_at(local, thing.box_min.xyz, thing.box_max.xyz, 0.6);
+		float luminance_in = dot(body, vec3(0.2126, 0.7152, 0.0722));
+		vec3 seam_colour = luminance_in < 0.025 ? body + vec3(0.03) : body * 0.55;
+		body = mix(body, seam_colour, seam);
+	} else {
+		// Polished in the mould: the studs are mirrored sharply in a top. A
+		// part that has been handled is not polished evenly: its gloss
+		// varies slowly across a face, as a photograph's reflections do.
+		// Each part is its own: moulded in its own batch, a shade lighter
+		// or darker than the next of its colour, and worn its own way.
+		float own = float(pcg(which * 747796405u + 2891336453u) & 0xffffu) / 65535.0;
+		body *= 1.0 + 0.07 * (own - 0.5);
+		float handled = gloss_noise(local / 16.0 + vec3(own * 97.0, own * 31.0, 0.0));
+		s.coat_roughness = mix(0.03, 0.085, smoothstep(-0.6, 0.8, handled)) + 0.02 * own;
+		s.roughness += 0.05 * handled;
+		if (worn(local, own)) {
+			s.coat_roughness = 0.3;
+			s.coat *= 0.6;
+		}
+		if (textured > 0.5) {
+			// A slope's face is roughened in the mould: no mirror, a satin sheen.
+			s.roughness = 0.55;
+			s.specular = 0.3;
+			s.coat = 0.12;
+			s.coat_roughness = 0.3;
+		}
+	}
 	s.albedo = body;
 	if (finish == FINISH_CHROME) {
 		s.albedo = max(body, vec3(0.12));
@@ -701,6 +766,9 @@ void main() {
 		vec3 last_n = vec3(0.0, 1.0, 0.0);
 		bool sharp = true;
 		bool straight = true;
+		// Inside clear plastic (the product look bends the path at each of
+		// its surfaces): which way the next surface bends it.
+		bool inside = false;
 		int bounces = 0;
 		for (int event = 0; event < most + 8; event++) {
 			if (!trace(from, way, 1e7, 0xFFu, gl_RayFlagsOpaqueEXT)) {
@@ -734,7 +802,8 @@ void main() {
 				// over everything seen through a windscreen.
 				float f = schlick(vec3(0.045), abs(dot(ng, v))).x;
 				vec3 mirrored = reflect(way, n);
-				if (!trace(at + ng * 0.02, mirrored, 1e7, MASK_SOLID | MASK_SWEEP, gl_RayFlagsOpaqueEXT)) {
+				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, MASK_SOLID | MASK_SWEEP,
+						gl_RayFlagsOpaqueEXT)) {
 					radiance += carried * f * sky_light(mirrored);
 				}
 				vec3 tint = sqrt(max(thing.colour.rgb, vec3(0.0)));
@@ -747,6 +816,21 @@ void main() {
 				}
 				carried *= tint * (1.0 - f);
 				from = at - ng * 0.02;
+				if (scene.look.x > 0.5) {
+					// Polycarbonate (index about 1.585) bends the path going in
+					// and back coming out, so what is behind a clear part is
+					// seen through it displaced and its walls fold the light, as
+					// a photograph of one shows; past the critical angle it is
+					// reflected inside.
+					vec3 bent = refract(way, n, inside ? 1.585 : 1.0 / 1.585);
+					if (dot(bent, bent) < 1e-6) {
+						way = reflect(way, n);
+						from = at + ng * 0.02;
+					} else {
+						way = normalize(bent);
+						inside = !inside;
+					}
+				}
 				if (straight) {
 					covered = max(covered, 1.0 - min(tint.r, min(tint.g, tint.b)) * (1.0 - covered));
 				}
@@ -756,7 +840,7 @@ void main() {
 			if (straight && thing.info.y != KIND_SWEEP) {
 				covered = 1.0;
 			}
-			Surface s = surface_of(thing, at, hit.local);
+			Surface s = surface_of(thing, at, hit.local, hit.unused, hit.instance);
 			// The sweep is brought to its colour for the eye alone, as the
 			// window brings it (StudioRender meters its level), and by
 			// scaling what it shows, so its shadows keep their depth. As
@@ -800,10 +884,14 @@ void main() {
 			}
 			way = l;
 		}
-		// A firefly's worth is all one sample may give.
+		// A firefly's worth is all one sample may give: for the product look
+		// three times what its exposure draws as white (scene.look.z), so no
+		// stray path off a glossy stud is a sparkle a photograph never has;
+		// a highlight that bright is white either way.
 		float level = max(radiance.r, max(radiance.g, radiance.b));
-		if (level > 40.0) {
-			radiance *= 40.0 / level;
+		float most = scene.look.z > 0.0 ? scene.look.z : 40.0;
+		if (level > most) {
+			radiance *= most / level;
 		}
 		total += vec4(radiance, covered);
 	}
@@ -882,6 +970,155 @@ vec3 normal_at(uint v) {
 	return vec3(normals[v * 3u], normals[v * 3u + 1u], normals[v * 3u + 2u]);
 }
 
+// -- the product look's moulding (photoreal1) ----------------------------------
+// A moulded part, in its own space, as a photograph of one shows it: every edge
+// of its body rounded (plastic_body's bevelled(), here seen whole by the
+// samples, so drawn exactly rather than at its average turn), every stud's top
+// edge rounded (stud_rim()), and the logo raised on every stud's top. The box
+// is the part's (studs and all), body_top where its studs begin.
+
+const float ROUND = 0.6;
+
+vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
+	vec3 size = high - low;
+	if (size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
+		return n;
+	}
+	vec3 across = abs(n);
+	float most = max(across.x, max(across.y, across.z));
+	if (most < 0.97) {
+		return n;
+	}
+	vec3 axis = step(vec3(most - 0.0001), across);
+	vec3 half_size = size * 0.5;
+	vec3 p = at - (low + high) * 0.5;
+	vec3 out_of = abs(p) - half_size;
+	float slack = max(ROUND * 0.3, 0.06);
+	if (abs(dot(out_of, axis)) > slack || dot(sign(p) * sign(n), axis) < 0.5
+			|| any(greaterThan(out_of, vec3(slack)))) {
+		return n;
+	}
+	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(ROUND)), vec3(0.0));
+	q = mix(q, vec3(ROUND), axis);
+	return normalize(sign(p) * q);
+}
+
+vec3 stud_rim(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
+	float top = box_max.y;
+	if (box_max.x <= box_min.x || at.y < body_top + 0.5 || at.y > top + 0.3) {
+		return n;
+	}
+	vec2 centre = box_min.xz + 10.0 + 20.0 * floor((at.xz - box_min.xz) / 20.0);
+	vec2 d = at.xz - centre;
+	float r = length(d);
+	if (r > 6.3 || r < 0.001) {
+		return n;
+	}
+	vec2 out_from = d / r;
+	vec2 q;
+	if (n.y > 0.97) {
+		q = vec2(max(r - (6.0 - ROUND), 0.0), ROUND);
+	} else if (abs(n.y) < 0.2 && dot(n.xz, out_from) > 0.9 && r > 5.7) {
+		q = vec2(ROUND, max(at.y - (top - ROUND), 0.0));
+	} else {
+		return n;
+	}
+	if (min(q.x, q.y) <= 0.0) {
+		return n;
+	}
+	return normalize(vec3(out_from.x * q.x, q.y, out_from.y * q.x));
+}
+
+float segment(vec2 p, vec2 a, vec2 b) {
+	vec2 pa = p - a;
+	vec2 ba = b - a;
+	return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
+}
+
+// How far a point of a stud's top (LDU from its middle; x along the part's
+// x, y towards its -z) is from the strokes of the logo's four letters: a
+// slanted L, E, G and O about 9 LDU across, as the real one is about 3.6 mm.
+float logo_distance(vec2 p) {
+	p.x -= p.y * 0.22;
+	float d = segment(p, vec2(-4.2, 1.45), vec2(-4.2, -1.45));
+	d = min(d, segment(p, vec2(-4.2, -1.45), vec2(-2.75, -1.45)));
+	d = min(d, segment(p, vec2(-2.05, 1.45), vec2(-2.05, -1.45)));
+	d = min(d, segment(p, vec2(-2.05, 1.45), vec2(-0.65, 1.45)));
+	d = min(d, segment(p, vec2(-2.05, 0.0), vec2(-0.85, 0.0)));
+	d = min(d, segment(p, vec2(-2.05, -1.45), vec2(-0.65, -1.45)));
+	// G: an oval open at its upper right, and its bar.
+	vec2 g = (p - vec2(0.95, 0.0)) / vec2(0.9, 1.45);
+	float angle = atan(g.y, g.x);
+	float ring = abs(length(g) - 1.0) * 0.9;
+	if (angle > -0.05 && angle < 1.0) {
+		ring = min(length(p - vec2(0.95 + 0.9 * cos(1.0), 1.45 * sin(1.0))),
+			length(p - vec2(0.95 + 0.9, 0.0)));
+	}
+	d = min(d, ring);
+	d = min(d, segment(p, vec2(1.0, -0.05), vec2(1.85, -0.05)));
+	// O.
+	vec2 o = (p - vec2(3.35, 0.0)) / vec2(0.9, 1.45);
+	d = min(d, abs(length(o) - 1.0) * 0.9);
+	return d;
+}
+
+// The logo's height, LDU: letters 0.15 high (about 0.06 mm) with soft,
+// rounded flanks, as the moulding raises them.
+float logo_height(vec2 p) {
+	return 0.15 * smoothstep(0.46, 0.08, logo_distance(p));
+}
+
+vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
+	if (n.y < 0.97 || at.y < body_top + 0.5 || abs(at.y - box_max.y) > 0.3) {
+		return n;
+	}
+	vec2 centre = box_min.xz + 10.0 + 20.0 * floor((at.xz - box_min.xz) / 20.0);
+	vec2 p = vec2(at.x - centre.x, centre.y - at.z);
+	if (length(p) > 5.4) {
+		return n;
+	}
+	// About 9 LDU across, as the real one's 3.6 mm.
+	const float grow = 1.0;
+	p /= grow;
+	const float e = 0.05;
+	float dx = (logo_height(p + vec2(e, 0.0)) - logo_height(p - vec2(e, 0.0))) / (2.0 * e * grow);
+	float dy = (logo_height(p + vec2(0.0, e)) - logo_height(p - vec2(0.0, e))) / (2.0 * e * grow);
+	// p.y runs towards -z.
+	return normalize(vec3(-dx, 1.0, dy));
+}
+
+// A moulded face is never quite flat: a slow waviness, a few thousandths of
+// a turn, that bends the softboxes' reflections as a real part's do.
+float wave_hash(vec3 p) {
+	p = fract(p * 0.3183099 + 0.1);
+	p *= 17.0;
+	return fract(p.x * p.y * p.z * (p.x + p.y + p.z)) * 2.0 - 1.0;
+}
+
+float wave_noise(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(wave_hash(i), wave_hash(i + vec3(1, 0, 0)), f.x),
+			mix(wave_hash(i + vec3(0, 1, 0)), wave_hash(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(wave_hash(i + vec3(0, 0, 1)), wave_hash(i + vec3(1, 0, 1)), f.x),
+			mix(wave_hash(i + vec3(0, 1, 1)), wave_hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+
+vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
+	vec3 high = vec3(box_max.x, min(box_max.y, box_min.w), box_max.z);
+	vec3 bent = bevelled(at, n, box_min.xyz, high);
+	if (bent == n) {
+		bent = stud_rim(at, n, box_min.xyz, box_max.xyz, box_min.w);
+	}
+	if (bent == n) {
+		bent = stud_logo(at, n, box_min.xyz, box_max.xyz, box_min.w);
+	}
+	vec3 s = at / 14.0;
+	vec3 wave = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)));
+	return normalize(bent + (wave - n * dot(wave, n)) * 0.006);
+}
+
 void main() {
 	uint which = gl_InstanceCustomIndexEXT;
 	uvec4 mesh = meshes[instances[which].info.x];
@@ -896,10 +1133,33 @@ void main() {
 	vec3 n = normal_at(a) * w.x + normal_at(b) * w.y + normal_at(c) * w.z;
 	vec3 g = cross(pb - pa, pc - pa);
 	mat3 to_world = mat3(gl_WorldToObjectEXT);
+	vec3 local = gl_ObjectRayOriginEXT + gl_ObjectRayDirectionEXT * gl_HitTEXT;
+	// The product look's plastic is moulded (box_max.w, PathTracer.product):
+	// its edges rounded, its studs' logos raised, its faces never quite flat.
+	hit.unused = 0.0;
+	if (instances[which].box_max.w > 0.5 && dot(n, n) > 1e-12) {
+		n = moulded(local, normalize(n), instances[which].box_min, instances[which].box_max);
+		// A straight slope's face (flat, tilted between level and upright, on
+		// opaque plastic) is roughened in the mould, a grain about 0.1 mm
+		// across (0.22 LDU, and half again finer). Curved slopes are smooth, and their normals are not their
+		// faces'.
+		vec3 face = normalize(g);
+		face = dot(face, n) < 0.0 ? -face : face;
+		if (instances[which].info.y == 0u && n.y > 0.2 && n.y < 0.96 && dot(face, n) > 0.999) {
+			vec3 s = local / 0.22;
+			vec3 grain = vec3(wave_noise(s), wave_noise(s + vec3(3.1, 7.7, 1.9)),
+				wave_noise(s + vec3(8.3, 2.2, 5.6)));
+			vec3 t2 = local / 0.09;
+			grain += 0.5 * vec3(wave_noise(t2), wave_noise(t2 + vec3(4.4, 1.7, 9.2)),
+				wave_noise(t2 + vec3(6.1, 3.8, 0.7)));
+			n = normalize(n + (grain - n * dot(grain, n)) * 0.16);
+			hit.unused = 1.0;
+		}
+	}
 	// Normals go by the inverse transpose: v * M is transpose(M) * v.
 	hit.geometric = normalize(g * to_world);
 	hit.normal = dot(n, n) > 1e-12 ? normalize(n * to_world) : hit.geometric;
 	hit.t = gl_HitTEXT;
 	hit.instance = which;
-	hit.local = gl_ObjectRayOriginEXT + gl_ObjectRayDirectionEXT * gl_HitTEXT;
+	hit.local = local;
 }
