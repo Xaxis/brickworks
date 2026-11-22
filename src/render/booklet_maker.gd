@@ -220,6 +220,11 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		# In the colour its designer chose (booklook).
 		if not BookletSheet.same_colour(_sheet.outline_colour, BookletSheet.OUTLINE_COLOUR):
 			_studio.new_colour = _sheet.outline_colour
+		# As wide as its designer set it (pagetools): their pixels are the
+		# booklet's own, 5 a millimetre, drawn at this booklet's pixels a
+		# millimetre, so the band printed is the millimetres they saw.
+		if _sheet.outline_width != BookletSheet.OUTLINE_WIDTH:
+			_studio.new_width = float(_sheet.outline_width) * px_per_mm / BookletSheet.PX_PER_MM
 		add_child(_studio)
 		await get_tree().process_frame
 

@@ -616,7 +616,8 @@ func definitions() -> Array:
 				+ "cover_picture_data= a picture of their own (cover_picture= \"model\" the "
 				+ "model drawn again). header= and footer= words on every page (\"\" none). "
 				+ "box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= "
-				+ "the step numbers, outline_colour= the band round the new parts; a colour "
+				+ "the step numbers, outline_colour= the band round the new parts and "
+				+ "outline_width= its width (px at 5 a mm, 1 to 72, 3 usual); a colour "
 				+ "\"usual\" is the booklet's own. A style keeps all of these but title= and "
 				+ "subtitle=, which stay each model's own: style= never changes them."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -647,6 +648,7 @@ func definitions() -> Array:
 				"box_corners": {"type": "number", "description": "mm, 0 to 8 (2.2 usual)"},
 				"number_colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
 				"outline_colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"outline_width": {"type": "integer", "description": "px at 5 a mm, 1 to 72 (3 usual)"},
 			}},
 		},
 		{
@@ -2243,7 +2245,7 @@ func _page_setup(input: Dictionary) -> String:
 		fields["picture"] = ""
 	# booklook: the cover, the words on every page, the booklet's colours.
 	for field: String in BookletSheet.TEXTS + ["box_frame", "box_fill", "box_corners",
-			"number_colour", "outline_colour"]:
+			"number_colour", "outline_colour", "outline_width"]:
 		if input.has(field):
 			fields[field] = input[field]
 	if input.has("cover_picture_url") or input.has("cover_picture_data"):

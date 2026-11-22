@@ -23,8 +23,9 @@
 ## part only when it is not the booklet's own, the picture as LDraw's
 ## embedded file beside the pictures its pages show (BookletLooks "|data");
 ## then "BOX_FRAME #C0392B BOX_FILL #FFF4D6 BOX_CORNERS 4 NUMBER_COLOUR
-## #1E7B34 OUTLINE_COLOUR #7B2CBF COVER_PICTURE brickworks-page-cover.jpg"
-## on it, and each of the person's words on a line of its own, as typed:
+## #1E7B34 OUTLINE_COLOUR #7B2CBF OUTLINE_WIDTH 12 COVER_PICTURE
+## brickworks-page-cover.jpg" on it, and each of the person's words on a
+## line of its own, as typed:
 ## "0 !BRICKWORKS PAGE_TEXT TITLE The Gatehouse", SUBTITLE, COVER_LINE,
 ## HEADER and FOOTER. A build before these reads none of them and is not
 ## misled by any: its PAGE_SETUP's words are none of theirs, and PAGE_TEXT
@@ -113,6 +114,13 @@ const BOX_CORNERS := 2.2
 const CORNERS_RANGE := Vector2(0.0, 8.0)
 const NUMBER_COLOUR := Color8(21, 25, 30)
 const OUTLINE_COLOUR := Color8(255, 133, 15)
+## How wide that band is, in pixels of the booklet's own 5 a millimetre
+## (PX_PER_MM, 127 dots an inch), as StudWorx's Highlight Width gives 1 to
+## 72: 3 is the booklet's own, two thirds of a millimetre. Pixels of the
+## page and not of a picture, so the band is the same millimetres on the
+## screen, on the web's smaller pictures and in the PDF (BookletStudio).
+const OUTLINE_WIDTH := 3
+const OUTLINE_WIDTH_RANGE := Vector2i(1, 72)
 ## The colours a person may give, each with the booklet's own.
 const COLOURS: Dictionary = {"box_frame": BOX_FRAME, "box_fill": BOX_FILL,
 	"number_colour": NUMBER_COLOUR, "outline_colour": OUTLINE_COLOUR}
@@ -155,6 +163,7 @@ var box_fill: Color = BOX_FILL
 var box_corners: float = BOX_CORNERS
 var number_colour: Color = NUMBER_COLOUR
 var outline_colour: Color = OUTLINE_COLOUR
+var outline_width: int = OUTLINE_WIDTH
 ## What a later build wrote that this one does not read, kept to be written
 ## back as it was: its PAGE_SETUP's words ("SPINE_COLOUR #445566", a word and
 ## the one after it), and its PAGE_TEXT lines of other kinds ("BACK_COVER
@@ -212,6 +221,8 @@ func said() -> Dictionary:
 			out[field] = "#" + (get(field) as Color).to_html(false)
 	if not is_equal_approx(box_corners, BOX_CORNERS):
 		out["box_corners"] = box_corners
+	if outline_width != OUTLINE_WIDTH:
+		out["outline_width"] = outline_width
 	if not unread.is_empty():
 		out["unread"] = Array(unread)
 	if not unread_text.is_empty():
@@ -358,6 +369,13 @@ func change(fields: Dictionary) -> String:
 				else:
 					wrong.append("box_corners= is how round the parts box's corners are, in mm, %d to %d"
 						% [CORNERS_RANGE.x, CORNERS_RANGE.y])
+			"outline_width":
+				if _number(value):
+					outline_width = clampi(roundi(float(value)), OUTLINE_WIDTH_RANGE.x,
+						OUTLINE_WIDTH_RANGE.y)
+				else:
+					wrong.append("outline_width= is how wide the band round the new parts is, in px, %d to %d"
+						% [OUTLINE_WIDTH_RANGE.x, OUTLINE_WIDTH_RANGE.y])
 			"unread", "unread_text":
 				var kept := PackedStringArray()
 				# Not this build's words to cut: one line each, as long as they were.
@@ -518,6 +536,8 @@ func line_words() -> String:
 			words.append("%s #%s" % [field.to_upper(), (get(field) as Color).to_html(false).to_upper()])
 	if not is_equal_approx(box_corners, BOX_CORNERS):
 		words.append("BOX_CORNERS %s" % BookletLooks._number(box_corners))
+	if outline_width != OUTLINE_WIDTH:
+		words.append("OUTLINE_WIDTH %d" % outline_width)
 	if not cover_picture.is_empty():
 		words.append("COVER_PICTURE %s" % cover_picture)
 	words.append_array(unread)
@@ -565,7 +585,7 @@ static func read_line(kind: String, words: PackedStringArray, rest: String,
 func _read_words(words: PackedStringArray) -> void:
 	var at: int = 0
 	var named: Array = ["MARGIN", "COLOUR", "NUMBER", "PARTS", "PICTURE", "BOX_CORNERS",
-		"COVER_PICTURE"] + COLOURS.keys().map(func(field: String) -> String: return field.to_upper())
+		"COVER_PICTURE", "OUTLINE_WIDTH"] + COLOURS.keys().map(func(field: String) -> String: return field.to_upper())
 	var read := func(word: String) -> bool:
 		return not paper_of(word).is_empty() or word.to_upper() in ["PORTRAIT", "LANDSCAPE"] \
 			or word.to_upper() in named
@@ -642,6 +662,8 @@ func words() -> String:
 		out.append("step numbers in #%s" % number_colour.to_html(false))
 	if not same_colour(outline_colour, OUTLINE_COLOUR):
 		out.append("new parts outlined in #%s" % outline_colour.to_html(false))
+	if outline_width != OUTLINE_WIDTH:
+		out.append("new parts outlined %d px wide" % outline_width)
 	if not (unread.is_empty() and unread_text.is_empty()):
 		var kinds := PackedStringArray()
 		for line: String in Array(unread) + Array(unread_text):
