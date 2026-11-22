@@ -3072,7 +3072,9 @@ picture the assistant is shown.
   it to mirror, and a panel 60 degrees across (`TENT_TOP`); red, green, blue
   and black take albedos fitted to the photographs (`PathTracer.
   PRODUCT_ALBEDO`); the denoise is guided by the first hit's normal and
-  albedo (`guide`, binding 10 and 2). Check: `tools/probe.sh
+  albedo (`guide`, binding 10 and 2); a stud's logo reads across the part
+  (along its z); in a photographed place what the model mirrors past the
+  backdrop's floor is the place, not the sweep's rise. Check: `tools/probe.sh
   photoreal_probe`, then `python3 tools/bench/photoreal.py colour TAG` and
   `gloss TAG` from the same tree: tent faces within ΔE2000 5, the stud rims
   and logo flanks lighter than the face in the pictures.

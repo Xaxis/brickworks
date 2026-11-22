@@ -997,6 +997,169 @@ photoreal2. The colour tables are `colour_before.json` and
 5. **A clear part's photograph needs its surround.** The cut-out's dark
    teal cannot be reached in front of white paper.
 
+## 5g. Gloss that mirrors the lights, colour fitted per colour (photoreal3)
+
+The owner's ask, 2026-11-22: real gloss that reflects the light first, then
+form, focus and wear; measure against the photographs and be honest in the
+numbers.
+
+**Measured first.** `tools/bench/photoreal.py gloss TAG` writes each
+close-up's highlight share and peak (pixels over the face's median L* by
+10 or more) in boxes on its tops and studs, and its main faces' L* spread,
+photograph beside render. On photoreal2's tree the photographs' tops had
+highlights the renders did not: the green 2x2 8.0% of its top at +27 L*
+against 0.0% at +8; the blue 8.4% at +30 against 0.1% at +10. Two causes:
+- **The camera's saturation clipped them.** `PHOTO_LINEAR_SATURATION` 1.6
+  pushed a lit red's green and blue below zero and clamped them, so a
+  highlight on a red top came out the same red as the face. It is 1.3 now,
+  and the colour it gave is in the albedo instead (below).
+- **The plastic's gloss was a blur.** Half the coat was a broad lobe of its
+  own that smeared every light it mirrored into the face's colour, and the
+  tent had nothing for a top to mirror but its walls.
+
+**Gloss** (`src/render/path_tracer.glsl`).
+- ABS is one clear skin over its colour: a sharp coat at index 1.55
+  (`ABS_F0` 0.0465 face on, Schlick to all of it at a glance), roughness
+  0.07. A stud's top is satin (0.3); a hairline scratch roughens the coat
+  (0.6), so on a top that mirrors the dark camera it shows as a faint light
+  line.
+- The tent has two soft boxes behind the model (`TENT_BOX` 8, `tent_box`),
+  each 1.2 rad wide from 2 to 38 degrees up, sampled by the lights as the
+  panel is. The panel overhead is 60 degrees across (`TENT_TOP` 6).
+- A stud leans a hair (up to 0.06 rad, its own), its logo has flanks that
+  catch the light, and a moulded face sinks 0.05% towards its middle, so
+  each reflection bends a little, as a real part's do.
+
+**Form.** Red, green, blue and black take albedos fitted to the
+photographs (`PathTracer.PRODUCT_ALBEDO`): each face's light in the
+photograph, uncurved through `camera_curve` and with the camera's
+saturation undone, over the render's, times the albedo it was drawn
+with. Not a global saturation: each colour is moved only as far as
+its own photograph says. A slope's grain is now small round bumps, flat
+between, each a glint; the noise of bumps everywhere before veiled the
+face pink and read as "procedural noise".
+
+**Focus.** The close-ups that are sharp from front to back in their
+photographs are drawn at the f-number that keeps them so at their framing
+(`f_stop` in `shots.json`: 64 for the black 2x4 and the slope, 32 for the
+grey and the clear round). The denoise is guided by what each pixel first
+meets, its normal and its albedo's lightness summed beside the light
+(`guide`, binding 10 and resolve binding 2): a neighbour turned another way
+or of another albedo is kept apart, so flat faces are cleaned harder
+(`PRODUCT_DENOISE` 3 to 5) and a bump, a logo's flank or a clear edge
+keeps its edge.
+
+**Wear.** The stud's injection gate is a nub in a ring a millimetre
+across on about one stud in three, which the gloss catches as a dot; the
+half-millimetre dimple before was too faint for the judge to see. Edge
+scuffs were tried and taken out: the judge read them as "dashed
+artifacts" along every edge.
+
+**The logo reads across the part.** The black 2x4's photograph shows its
+logos running over the brick's width; ours ran down its length, and from
+its camera read upside down: "mirrored, garbled lettering" in every round.
+It runs along the part's z now. The three 2x2s and the green plate are
+turned a quarter in their bench files, so theirs still read as their
+photographs' do; the judge has not called a logo mirrored since.
+
+**Rooms.** In a photographed place the backdrop is a table, not paper:
+what the model mirrors, or is lit by, past the table's edge is the place's
+panorama, where the sweep's rise hid it before. The eye still sees the
+backdrop as before; the tent and the studio are untouched. The grey 1x3's
+photograph is a room's daylight from its left, not a tent: a sweep of
+turns and lights puts it at daylight turned 270. A window panel that the
+black 2x4's top would mirror was tried first and made no difference; it
+was the sweep's rise that hid it, and with the room now seen it has not
+been tried again.
+
+**The judge** (the same model, prompt, 20 trials in both orders). The bar
+was found at most 16 of 20 or a mean confidence at most 0.80, against a
+same-day before.
+
+| round | what it had | found | sure |
+|---|---|---|---|
+| before 1, 2, 3 | photoreal2's tree | 20, 18, 20 | 0.881, 0.861, 0.874 |
+| a1 | the coat, the albedos, the saturation, focus | 19 | 0.869 |
+| a2 | soft boxes, satin studs, stud lean, sink, scuffs | 19 | 0.868 |
+| a3 | the guided denoise, the slope's bumps, no scuffs | 19 | 0.868 |
+| a4 | the gate, scratches that scatter | 18 | 0.844 |
+| a5 | the room past the table, the grey's daylight | 20 | 0.871 |
+| a6 | the logo across | 18 | 0.852 |
+| a7 | the green plate turned (final) | 18 | 0.859 |
+
+- **The bar is not met.** 18 of 20 at 0.859 is inside the before's own
+  spread (18 to 20, 0.861 to 0.881; three rounds 0.020 apart, not within
+  the 0.01 asked). Every round since a1 sits from 0.844 to 0.871: nothing
+  here moved the judge beyond its noise.
+- Every close-up was found in both orders in every round. Every miss in
+  every round, before and after, is set 6512 (sure 55 to 62), taken for
+  the photograph in one order or both.
+- **What it names now:** clean plastic with no dust, wear or yellowing,
+  first in nearly every verdict; featureless backdrops; uniform colour; the
+  slope's texture as noise; sets sharp from front to back. The logo and
+  the gate tells it named are gone; its other tells are not about gloss.
+
+**Gloss and colour, before (photoreal2's tree) and after (a7).** ΔE2000 of
+each main face against its photograph:
+
+| shot | face | before | after |
+|---|---|---|---|
+| three 2x2s | green top | 4.2 | 2.6 |
+| three 2x2s | red top | 3.1 | 2.6 |
+| three 2x2s | blue top | 3.5 | 0.3 |
+| red slope | slope | 1.9 | 1.6 |
+| grey 1x3 | long side | 18.3 | 13.1 |
+| green plate | top | 23.6 | 19.4 |
+| black 2x4 | top | 38.3 | 39.1 |
+| clear round | body | 48.2 | 48.0 |
+
+Highlights (share of the box, peak over the face's median L*), photograph,
+before, after:
+
+| shot | box | photograph | before | after |
+|---|---|---|---|---|
+| three 2x2s | green | 8.0%, +27 | 0.0%, +8 | 0.4%, +15 |
+| three 2x2s | blue | 8.4%, +30 | 0.1%, +10 | 0.4%, +15 |
+| three 2x2s | red | 0.3%, +14 | 0.0%, +4 | 0.0%, +10 |
+| red slope | slope | 0.4%, +14 | 0.3%, +4 | 0.3%, +7 |
+| black 2x4 | studs and top | 1.2%, +23 | 0.5%, +16 | 0.9%, +24 |
+| grey 1x3 | stud and top | 38.5%, +46 | 4.1%, +33 | 4.8%, +32 |
+| green plate | studs | 32.7%, +28 | 1.2%, +17 | 7.3%, +21 |
+
+- The tent's faces are all within 5 (they were 4.2 at worst; 2.6 now).
+- The highlights' peaks came most of the way to the photographs' (+8 to
+  +15 against +27 on the green top); their share did not. A real top's
+  highlight is a broad sheen of a window or a softbox over much of it; ours
+  are the edges of the soft boxes on the studs and rims.
+- The L* spread of a face (a real top's shading across it) is still a
+  third to a tenth of the photographs': 1.8 against 7.8 on the green top.
+- The black 2x4 (its top a window's reflection at L* 62 against our 18)
+  and the clear round (a cut-out on dark teal) are where they were.
+
+**Time.** The car at Best, Product, 1280x720, 256 samples: 2.21, 2.33 and
+2.37 s (the bar is 8.4 s; photoreal2's 1.99 to 2.33 s). The window's own
+frame is not touched: everything here is in the path tracer's product
+look.
+
+**Pictures.** `bench/results/photoreal3-2026-11-22/side_by_side/` has one
+row per shot: the photograph, photoreal2's tree, and this. Every verdict is
+in `judge_<round>.json`; the colour and gloss tables are
+`colour_p2before1.json`, `colour_a7.json`, `gloss_p2before1.json` and
+`gloss_a7.json`.
+
+**What is left, in order:**
+1. **Wear, dust and age.** The judge's first tell in every verdict of every
+   round. Fine dust on a top, a part's tone varying across it, white
+   plastic yellowed, as a used brick's are, without reading as point noise.
+2. **The backdrops' texture** (leather, stone, desk): R5's lifestyle
+   scenes. Every close-up's second tell.
+3. **A top's broad sheen and its shading across it.** A softbox seen in a
+   top as a large soft gradient, not only on the rims: the L* spread is a
+   third of the photographs'.
+4. **The room photographs' light.** With the room now seen past the table,
+   a window panel per shot could let the black 2x4's top mirror its window.
+5. **A clear part's photograph needs its surround**, as 5f said.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
