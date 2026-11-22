@@ -60,6 +60,8 @@ lib:product look
 
 ### What it stands on {#stage}
 
+![The Render dialog with On a wooden table chosen under Background: the draft shows the car on the table's colour; at Best in the Product look the wood's own grain is drawn and a light stands near the model.](/docs/img/render-stage.webp "Background › On a wooden table: at Best, in the Product look, the model stands on real wood.")
+
 Under **Background**, the model can stand on something real rather than a studio's seamless paper: **Photographed on white**, **On paper**, **On a desk**, **On a wooden table**, **On a leather desk pad** or **On terrazzo**. Choosing one puts its colour on the backdrop, and you can change that colour after.
 
 At Best, in the Product look, a staged picture is lit as a photograph is: by a soft light standing near the model rather than far away, so the side nearer it is lighter and the surface darkens away from it. The wood, the leather and the terrazzo show their own grain, the model's shadow falls on it, and past a table's far edge is the room, out of focus.
