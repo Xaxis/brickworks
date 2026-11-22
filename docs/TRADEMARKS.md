@@ -392,14 +392,16 @@ put, for whoever reviews them before anything paid.
 8. **The ® on every use.** [FP] asks for it "each time", which we do in
    everything a person reads. Whether the designer's replies in a person's
    own Claude must carry it too is beyond what we control; it is told to.
-9. **The LEGO word on the studs of a render** (photoreal1, 2026-11-21; not
-   decided). Best in the Product look now draws the letters LEGO raised on
-   every stud, as the real parts carry them and as Studio's Eyesight,
-   Mecabricks and the LDraw library's logo studs do (APP_UX3 gap 6 asked for
-   it). A blind judge named blank studs as a tell of a render beside a
-   photograph. Rule 3 above keeps the LEGO logo off the site. A render of
-   a part shows the logo the way a photograph of the part does, never as
-   our mark, and the window's own look draws none. But renders made at
-   Best, Product can reach the gallery and model pages. Is the stud's word
-   allowed in a render a person publishes? If not, the tracer can draw the
-   stud's moulding without the letters.
+9. **The LEGO word on the studs of a render** (photoreal1, 2026-11-21;
+   decided by the lead the same day, under the owner's 2026-10-13 rule that
+   nothing waits on him). Allowed, in a render only. Best in the Product look
+   draws the letters raised on every stud because the real parts carry them:
+   a render shows a part the way a photograph of the part does, as Studio's
+   Eyesight (the LEGO Group's own BrickLink), Mecabricks, LeoCAD's POV-Ray
+   path and the LDraw library's logo studs have for decades. It is never our
+   mark: rule 1 keeps the brick and its knobs out of our branding, the
+   window's own look draws no letters, and nothing we make for ourselves
+   (icons, cards, the site's chrome) shows them. A person's published render
+   may, as a photograph of their model would. Anything that brings money in
+   reopens it with the rest; RenderSettings can draw the moulding without the
+   letters in one change if it must.
