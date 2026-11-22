@@ -11,9 +11,9 @@
 ## keeps its step unless it would be in the air there; one taken off leaves its
 ## step, an emptied one gone (AuthorSteps.follow_saved). A step edit by the
 ## person makes the steps theirs (AUTHORED_STEPS, as before). For each model:
-##   shipped   castle, station and robot as an older build saved them: their
-##             steps the file's, every part in the step the file has it in, the
-##             whole write adding no line
+##   as filed  castle and station as shipped, the robot as an older build saved
+##             it: their steps the file's, every part in the step the file has it
+##             in, the whole write adding no line
 ##   reopened  saved, opened from the file as File › Open does: the plan the one
 ##             shown before the save, step for step; the whole write the file,
 ##             byte for byte; saved again unedited, byte for byte
@@ -38,10 +38,17 @@
 ## built here, or an older build's autosave), worked out afresh, saved and
 ## opened again: the steps worked out, the booklet's banners near those
 ## worked out, and saved again byte for byte. time: what an open of the castle and of Orthanc takes,
-## said.
+## said. shipped: every model the app ships (res://models/, the examples;
+## tools/web/gallery_seeds/, the gallery's own) whose saved steps open as they
+## are (LdrModel.steps_are_saved): its steps test, as a share runs it, puts no
+## part in the air. Those are ours, not an owner's: an older build's planner
+## wrote the castle's, and held, they put parts down in the air.
+## SK_SHIP_OUT=DIR works out again each that puts one there (Plan steps) and
+## writes it as Save does into DIR; reopened, the steps the ones worked out,
+## none in the air, saved again byte for byte.
 ##
 ##   godot --headless --path . --script src/dev/stepkeep_probe.gd
-##   SK_ONLY=castle,station,robot,10179,edits,callouts,nosteps,time  only those
+##   SK_ONLY=castle,station,robot,10179,edits,callouts,nosteps,time,shipped  only those
 ##   SK_OUT=DIR  the texts written there
 extends SceneTree
 
@@ -55,6 +62,8 @@ const STATION := "res://models/station.ldr"
 const CASTLE := "res://models/castle.ldr"
 const ROBOT := "res://src/dev/fixtures/house/robot.ldr"
 const ORTHANC := "res://models/orthanc.ldr"
+## Where the models the app ships are: its examples, and the gallery's own.
+const SHIPPED: Array = ["res://models/", "res://tools/web/gallery_seeds/"]
 const AUTHORED := "0 !BRICKWORKS AUTHORED_STEPS"
 ## Parts a copy of which stands square on top of one: bricks and plates.
 const STACKS: Array = ["3001", "3002", "3003", "3004", "3005", "3008", "3009", "3010", "3622",
@@ -114,6 +123,8 @@ func _run() -> void:
 		await _no_steps()
 	if _asked("time"):
 		await _time()
+	if _asked("shipped"):
+		await _shipped()
 	print("")
 	if _failures == 0:
 		print("every model comes back in the steps it was saved in, and an edit changes only the steps it touches")
@@ -138,7 +149,7 @@ func _case(label: String, path: String) -> void:
 	var own: bool = not parsed.steps_are_authored()
 	await _open(path)
 	if own:
-		_check("%s: as shipped, an older build's save (%d STEP lines): its steps kept and no one's (%s, %s)"
+		_check("%s: as filed (%d STEP lines): its steps kept and no one's (%s, %s)"
 			% [label, text.count("\n0 STEP"), _own_steps(), AuthorSteps.any(_world, _store.scenery)],
 			_own_steps() and AuthorSteps.any(_world, _store.scenery))
 		var written: String = _store.to_text(_store.title, true)
@@ -695,6 +706,109 @@ func _time() -> void:
 	var plan_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
 	print("  orthanc as its own (steps own %s): opened in %.0f ms; a part put on (%s) and followed in %.1f ms; Plan steps (\"%s\") in %.1f ms"
 		% [own, open_ms, put != 0, edit_ms, answer.left(60), plan_ms])
+
+
+# -- the models the app ships -------------------------------------------------------
+
+
+func _shipped() -> void:
+	print("\n== shipped")
+	var out: String = OS.get_environment("SK_SHIP_OUT")
+	if not out.is_empty():
+		DirAccess.make_dir_recursive_absolute(out)
+	var seen: int = 0
+	for folder: String in SHIPPED:
+		for file_name: String in DirAccess.get_files_at(folder):
+			if file_name.get_extension().to_lower() not in ["ldr", "mpd"]:
+				continue
+			var path: String = folder + file_name
+			var text: String = FileAccess.get_file_as_string(path)
+			var parsed: LdrModel = LdrModel.parse(text, file_name)
+			if parsed == null or not parsed.steps_are_saved():
+				print("  --    %s: %s" % [path, "its author's steps" if parsed != null
+					and parsed.steps_are_authored() else "no steps to keep"])
+				continue
+			seen += 1
+			var faults: Array = await _air(text)
+			if out.is_empty() or int(faults[0]) == 0:
+				_check("shipped %s: its saved steps put no part in the air (%d in the air, %d hidden)"
+					% [path, faults[0], faults[1]], int(faults[0]) == 0)
+				continue
+			print("  shipped %s: its saved steps put %d parts in the air (%d hidden): worked out again"
+				% [path, faults[0], faults[1]])
+			await _planned_again(path, text, out.path_join(file_name), faults)
+	_check("shipped: %d of the models it ships hold their saved steps" % seen, seen > 0)
+
+
+## [param text]'s parts put down in the air and hidden behind what is built,
+## as a share's steps test finds them (Tested): [in the air, hidden], -1 for
+## each when it was not tested.
+func _air(text: String) -> Array:
+	var tested: Dictionary = (await SharedPages.attach_tested(text, _world.library, _store))["tested"]
+	var tests: Dictionary = tested.get("tests", {})
+	if not tests.has("steps"):
+		return [-1, -1]
+	if bool((tests["steps"] as Dictionary).get("ok", false)):
+		return [0, 0]
+	var said: Array = Tested.said_all.get("steps", [])
+	var air: int = said.filter(func(line: Variant) -> bool: return str(line).ends_with("in the air")).size()
+	return [air, said.size() - air]
+
+
+## The shipped model at [param path] worked out again as Plan steps does and
+## saved as Save writes it, to [param into]: reopened, every part in the step
+## worked out; its steps test, no part in the air; saved again, byte for byte.
+## Its lines besides its parts and steps, as the file had them.
+func _planned_again(path: String, text: String, into: String, before: Array) -> void:
+	await _open(path)
+	var called: String = _store.title
+	var said: String = _shell.change_steps("plan", [], null)
+	await _frames(4)
+	var planned: Array = _plan()
+	var sig: Dictionary = _signatures()
+	_forget(called)
+	if not _check("shipped %s: worked out again (\"%s\") and saved as %s" % [path, said, called],
+			_store.save_as(called)):
+		return
+	var saved_at: String = ModelStore.saved_path(called)
+	var saved: String = FileAccess.get_file_as_string(saved_at)
+	var file: FileAccess = FileAccess.open(into, FileAccess.WRITE)
+	file.store_string(saved)
+	file.close()
+	var gone: Array = _besides_steps(text).filter(func(line: String) -> bool:
+		return not _besides_steps(saved).has(line))
+	var new: Array = _besides_steps(saved).filter(func(line: String) -> bool:
+		return not _besides_steps(text).has(line))
+	_check("shipped %s: its lines besides its parts and steps as the file had them (gone %s; new %s)"
+		% [path, gone.slice(0, 3), new.slice(0, 3)], gone.is_empty() and new.is_empty())
+	_check("shipped %s: the same parts, %d (were %d)" % [path, ModelStore.count_in(saved),
+		ModelStore.count_in(text)], ModelStore.count_in(saved) == ModelStore.count_in(text))
+	await _reopen(saved_at)
+	var reopened: Array = _plan()
+	var moved: int = _moved_between(planned, sig, reopened, _signatures())
+	_check("shipped %s: opened again, the steps worked out (%d steps, were %d; parts in another step %d), its own (%s)"
+		% [path, reopened.size(), planned.size(), moved, _own_steps()],
+		moved == 0 and reopened.size() == planned.size() and _own_steps())
+	var after: Array = await _air(saved)
+	_check("shipped %s: its steps test puts no part in the air (%d, were %d; hidden %d, were %d)"
+		% [path, after[0], before[0], after[1], before[1]], int(after[0]) == 0)
+	_store.save_as(called)
+	var again: String = FileAccess.get_file_as_string(saved_at)
+	_check("shipped %s: saved again unedited, byte for byte (%d bytes)" % [path, saved.length()],
+		again == saved)
+	_forget(called)
+
+
+## [param text]'s lines that are neither a part, a reference to a sub-model nor
+## a step: its header, sub-models' names and the app's own lines.
+static func _besides_steps(text: String) -> Array:
+	var out: Array = []
+	for raw: String in text.replace("\r\n", "\n").split("\n"):
+		var line: String = raw.strip_edges()
+		if line.is_empty() or line.begins_with("1 ") or line == "0 STEP" or line.begins_with("0 ROTSTEP"):
+			continue
+		out.append(line)
+	return out
 
 
 # -- reading the plan --------------------------------------------------------------
