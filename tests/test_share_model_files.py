@@ -18,11 +18,14 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from loadbound import within  # noqa: E402
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
 
@@ -126,9 +129,9 @@ def test_hostile_studio_files_are_refused_in_moments():
     out = said["out"]
     # Refused by its stated size, before anything is inflated.
     assert out["bomb"]["error"] == said["TOO_BIG"] and out["bomb"]["size"] == 64 * 1048576
-    assert out["bomb"]["ms"] < 500
+    assert out["bomb"]["ms"] < within(500)
     # Its size a lie: cut off where it said it ends, as damaged.
-    assert out["lying"]["error"] == said["DAMAGED"] and out["lying"]["ms"] < 500
+    assert out["lying"]["error"] == said["DAMAGED"] and out["lying"]["ms"] < within(500)
     # A directory that runs past the file: damaged, never a throw.
     assert out["past_end"]["error"] == said["DAMAGED"] and out["past_end"]["threw"] is None
     assert out["big_part"]["error"] == said["TOO_BIG"]
@@ -136,7 +139,7 @@ def test_hostile_studio_files_are_refused_in_moments():
         assert out[name]["threw"] is None and out[name]["error"], name
     # 3,000 carried parts in one pass: all of them, in well under a second.
     assert out["custom_3000"]["error"] == "" and out["custom_3000"]["carried"] == 3000
-    assert out["custom_3000"]["ms"] < 1000
+    assert out["custom_3000"]["ms"] < within(1000)
 
 
 PRIVATE = r"""

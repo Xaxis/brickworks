@@ -26,8 +26,11 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from loadbound import within  # noqa: E402
 SQL = (ROOT / "supabase/announce.sql").read_text()
 API = (ROOT / "api/_announce.js").read_text()
 ADMIN = (ROOT / "api/admin.js").read_text()
@@ -436,7 +439,7 @@ def test_fix_news_mails_most_quota_stop_and_pace() -> None:
     assert m["resumed"] == 3
     p = got["fix"]["pace"]
     assert p["round_batches"] == 2 and all(gap >= 1090 for gap in p["round_gaps_ms"])
-    assert len(p["after_code_ms"]) == 1 and p["after_code_ms"][0] >= 1450 and p["empty_take_ms"] < 500
+    assert len(p["after_code_ms"]) == 1 and p["after_code_ms"][0] >= 1450 and p["empty_take_ms"] < within(500)
     assert got["no_secret"]["mail"] is False and got["no_secret"]["missing"] == ["NEWS_UNSUB_SECRET"]
     assert got["fix"]["key_after_edit"] == {"statuses": [429, 200], "keys_differ": True, "subjects": ["Mail one", "Mail one, corrected"]}
 

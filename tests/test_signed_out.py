@@ -16,8 +16,11 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from loadbound import within  # noqa: E402
 
 
 def run(body: str) -> dict | None:
@@ -177,10 +180,7 @@ return {{ read, readMs, write, writeMs }};
     if got is None:
         return
     assert got["read"] is None and got["write"]["status"] == 503, got
-    # Held about 3 s, never the 15 of any other read: the ceiling is well short
-    # of 15 s and allows a loaded box's slow timers (3,556 ms at load 137, rel-m319's
-    # gate, 11-22, passing 20 minutes before on the same code).
-    assert 2500 <= got["readMs"] < 7000 and 2500 <= got["writeMs"] < 7000, got
+    assert 2500 <= got["readMs"] < within(3500, short_of=15_000) and 2500 <= got["writeMs"] < within(3500, short_of=15_000), got
 
 
 def test_a_token_without_a_session_id_is_not_asked_after() -> None:
