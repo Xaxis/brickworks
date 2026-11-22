@@ -20,7 +20,8 @@
 // typed (models, builders and sets, then the gallery's and the sets' own
 // search), its arrows and Escape, and Enter sending it to the gallery.
 // The month's challenge as the gallery's front has it; the talk's place
-// shown only with talk in it; the four real sets.
+// shown only with talk in it, and asked only once the header has Talk; the
+// four real sets.
 //
 // With --file there is no gallery behind the page and no deploy wrote its
 // cards in: the shelf must take itself away, never stand empty. --out=DIR
@@ -325,8 +326,10 @@ async function challengeTile(label, width, height) {
   await page.close();
 }
 
-/// What builders are talking about: shown with three threads or more,
-/// each a link; else hidden, never an empty box.
+/// What builders are talking about (#talk-latest, filled from Talk's
+/// /api/people?op=talk_latest&html=1): asked only on a site whose header
+/// links to Talk, shown with three threads or more; else hidden, never an
+/// empty box, and never asked where it would answer 400.
 async function talk(label, width, height) {
   const { page } = await open(width, height);
   await page.evaluate(() => {
@@ -336,19 +339,24 @@ async function talk(label, width, height) {
   const settled = await page.waitForFunction(() => document.documentElement.dataset.talk, null, { timeout: 30000 })
     .then(() => true, () => false);
   await page.waitForTimeout(300);
-  const answer = await asked(page, "/api/talk?op=latest");
   const seen = await page.evaluate(() => {
-    const band = document.getElementById("talk");
-    return { said: document.documentElement.dataset.talk || "", shown: Boolean(band && !band.hidden),
-      threads: document.querySelectorAll("#talk-latest > li a[href]").length };
+    const band = document.getElementById("talk-latest");
+    const strip = band?.querySelector("[data-talk-strip]");
+    return { said: document.documentElement.dataset.talk || "", shown: Boolean(band && !band.hidden && band.offsetHeight),
+      linked: Boolean(document.querySelector('.site-head a[href$="/talk"]')),
+      threads: strip ? (strip.querySelectorAll(".talk-row").length || strip.querySelectorAll("a[href]").length) : 0,
+      all: document.getElementById("talk-all")?.getAttribute("href") || "" };
   });
+  const answer = seen.linked ? await asked(page, "/api/people?op=talk_latest&n=4&html=1") : null;
+  const has = typeof answer?.html === "string" ? Number(answer.count) || 0 : 0;
   const where = `${label} talk`;
-  const has = (answer?.threads || []).length;
   if (!settled) problems.push(`${where}: never settled (no data-talk after 30 s)`);
+  else if (seen.shown && !seen.linked) problems.push(`${where}: shown on a site with no Talk in its header`);
   else if (seen.shown && seen.threads < 3) problems.push(`${where}: shown with ${seen.threads} threads`);
+  else if (seen.shown && !/\/talk$/.test(seen.all)) problems.push(`${where}: All of Talk links to "${seen.all}"`);
   else if (!seen.shown && seen.said !== "none") problems.push(`${where}: said ${seen.said} but stayed hidden`);
-  else if (has >= 3 && !seen.shown) problems.push(`${where}: hidden with ${has} threads to show`);
-  console.log(`  ${where.padEnd(13)} ${seen.shown ? `${seen.threads} threads` : "hidden"} (Talk answers ${answer ? `${has} threads` : "nothing"})`);
+  else if (seen.linked && has >= 3 && !seen.shown) problems.push(`${where}: hidden with ${has} threads to show`);
+  console.log(`  ${where.padEnd(13)} ${seen.shown ? `${seen.threads} threads` : "hidden"} (${seen.linked ? `Talk answers ${answer ? `${has} threads` : "nothing"}` : "no Talk in the header, not asked"})`);
   await page.close();
 }
 

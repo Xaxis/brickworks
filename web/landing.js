@@ -293,6 +293,13 @@ async function talk() {
   const band = document.getElementById("talk-latest");
   const list = band?.querySelector("[data-talk-strip]");
   if (!band || !list) return;
+  // Asked only on a site that has Talk, which the header links to once it
+  // is in (web/_shell.html): before, the ask would answer 400 and log an
+  // error on every visit (tools/web/site_check.mjs).
+  if (!document.querySelector('.site-head a[href$="/talk"]')) {
+    html.dataset.talk = "none";
+    return;
+  }
   const code = langAt().slice(1);
   const answer = await ask(`/api/people?op=talk_latest&n=${Number(band.dataset.n) || 4}&html=1${code ? `&lang=${code}` : ""}`);
   const count = typeof answer?.html === "string" ? Number(answer.count) || 0 : 0;
