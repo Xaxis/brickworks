@@ -6121,6 +6121,13 @@
       "entry": "src/dev/camerakeys_probe.gd",
       "reach": "tools/probe.sh camerakeys_probe [-- OUT_DIR]   (windowed, on the GPU: 1484-1 keyed three times in the Motions panel, played in the window through each key within 1 LDU and 1 degree, the model still, a hand's turn held back and the view given back; filmed by render_motion and File, Render's Animation through the keys; Turntable two keys, first and last frames alike; saved and reopened byte for byte; three keys Ctrl+clicked and deleted in one undo; render_motion camera= turntable in one call; Orthanc's frame cost against turning by hand; pictures in shots/camerakeys/)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "place designs on a ladder of each real set",
+      "entry": "tools/design_ladder.py",
+      "reach": "python3 tools/minitest.py tests/test_design_ladder.py; python3 tools/design_ladder.py build --subjects 21013-1; python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM   (for real: build | render (gpu) | heavy ... order | heavy ... place --arm A --date D [--again] | report | sheet; reach --port P starts the app as realset does and asks every file-opening tool for a ladder file; the ladder lives in the main checkout's bench/ladder/, never in a session's reach; the recipe is The design ladder in features/assistant.md)",
+      "area": "assistant"
     }
   ]
 }

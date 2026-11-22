@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, cli:place designs on a ladder of each real set, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
 
 ## Sub-features
 
@@ -2966,6 +2966,43 @@ two workers with the GPU shared, nine minutes a subject). `reach` finds every
 design's transcript: 44 of 44 on main's and on main2's proof arms (2026-10-26),
 main's Flatiron 66% turned beside its set's 39%, ours 0% at the median against
 the sets' 11%.
+
+### The design ladder: a design placed between its set and a naive stack
+
+`tools/design_ladder.py` makes five rungs of each held-out set from the set's own
+file: 1 the set; 2 its SNOT laid studs up as plates; 3 its curves stepped; 4 its
+colours flattened to the main three; 5 a naive stack of its outline in bricks
+(calibrate's). Each rung is the one above it with one more thing taken away.
+They live in the main checkout's `bench/ladder/` (out of git, a `.gdignore`, an
+answer key no session can reach). Rung 1's pictures are realset's own set
+pictures; the rest are drawn by `bench.render` with an app data folder of their
+own (`render-data/`: the shared default holds hundreds of custom parts, and
+pre261's start never finished on them, 2026-11-20). The judge is realset's,
+called as it is, each call counted into `calls.jsonl` and refused past `--cap`.
+
+```sh
+python3 tools/minitest.py $PWD/tests/test_design_ladder.py   # rung builders on three proof sets, the walk, the leak rule
+python3 tools/design_ladder.py build --which proof           # bench/ladder/<set>/r1..r5.mpd + ladder.json (what each rung took)
+python3 tools/design_ladder.py render --which proof --jobs 3 # gpu; rung 2 drawn last
+python3 tools/design_ladder.py sheet                         # every set's five rungs, corner view, one picture
+python3 tools/design_ladder.py reach --port 10830            # the app started as realset starts it, asked for a ladder file by every path
+python3 tools/design_ladder.py leaks bench/results/realset-DATE-ARM ...   # leak24's audit with the ladder added
+heavy env -u ANTHROPIC_API_KEY python3 tools/design_ladder.py order --which proof --jobs 6
+heavy env -u ANTHROPIC_API_KEY python3 tools/design_ladder.py place --arm A --date D --jobs 6 [--again]
+python3 tools/design_ladder.py report                        # ladder_report.md: the order, the agreement of both orders, places, gaps
+```
+
+`order` asks rungs 1-2, 2-3, 3-4, 4-5 and 1-5, both orders. `place` walks a past
+design from rung 3, up while it wins both orders and down while it loses both;
+a split is that rung, a turn is halfway (0.5 above the set, 5.5 below the stack);
+rung 1 is the record's own verdicts against the set, so it costs nothing.
+`--again` judges the same designs a second time into `place2/`, rung 1 asked
+afresh too, so the two judgings share no verdict. The report leaves out of the
+order a pair whose pictures differ in under half a percent of pixels: a rung
+with nothing to take (no curves) is the same picture twice; its table of pairs
+that differ, both orders, Technic sets apart, is the bar's own number.
+Results: `bench/results/designmeasure-2026-11-20/` and docs/DESIGN_SCORES.md,
+"The design ladder".
 
 ### Owner-style ideas: two arms head to head
 

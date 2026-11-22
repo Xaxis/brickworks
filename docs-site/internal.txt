@@ -35,6 +35,7 @@ entry:tools/track_ends.py  # a check of the track ends table the app ships
 entry:tools/apply_sql.mjs  # the owner's: changes to the live database
 entry:tools/connection_audit.py  # a measure of joints in real sets, for the project
 entry:tools/hidden_colours_audit.py  # a measure of hidden colours in real sets, for the project
+entry:tools/design_ladder.py  # a measure of the design loop: past designs placed on a ladder made from held-out real sets
 entry:tools/style.py  # a measure of how models are built, for the design work
 entry:tools/minifig.py  # a measure of minifigure offsets, for the pipeline
 entry:tools/steps_score.py  # a measure of build steps against real sets' authors
