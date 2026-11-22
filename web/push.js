@@ -261,21 +261,27 @@ export async function turnOff() {
   return endpoint;
 }
 
-/// The device the account was told of ([endpoint], or null for none).
-export function told(endpoint) {
-  write(DEVICE, endpoint || null);
+/// The device the account signed in here was told of ([endpoint], or null
+/// for none), kept with whose it is.
+export async function told(endpoint) {
+  const account = endpoint ? await import("/account.js").catch(() => null) : null;
+  write(DEVICE, endpoint ? { endpoint, who: account?.email?.() || "" } : null);
 }
 
-/// On each page: signed out, a device turned on stops; renewed by the
-/// browser, the account is told its new address.
+/// On each page: signed out, or signed in as somebody else, a device turned
+/// on stops (its subscription ended, so the next push to it is refused and
+/// the server deletes it), so one person's notifications never show to the
+/// next on a shared computer; renewed by the browser, the account is told
+/// its new address.
 async function keep() {
-  const endpoint = read(DEVICE);
+  const kept = read(DEVICE);
+  const endpoint = typeof kept === "string" ? kept : kept?.endpoint;
   if (!endpoint || !pushable() || Notification.permission !== "granted") return;
   const registration = await navigator.serviceWorker.getRegistration("/").catch(() => null);
   const subscription = registration ? await registration.pushManager.getSubscription().catch(() => null) : null;
   const account = await import("/account.js").catch(() => null);
   if (!account) return;
-  if (!account.signedIn()) {
+  if (!account.signedIn() || (kept?.who && kept.who !== account.email())) {
     await subscription?.unsubscribe().catch(() => null);
     write(DEVICE, null);
     return;
@@ -284,7 +290,7 @@ async function keep() {
   const said = subscription.toJSON();
   const answer = await account.call("/api/people?op=push", { method: "POST", body: { on: true, endpoint: said.endpoint,
     p256dh: said.keys?.p256dh, auth: said.keys?.auth, lang: window.brickworksLang?.code || "en" } }).catch(() => null);
-  if (answer?.status === 200) write(DEVICE, said.endpoint);
+  if (answer?.status === 200) write(DEVICE, { endpoint: said.endpoint, who: account.email() });
 }
 
 // ---------------------------------------------------------------------------

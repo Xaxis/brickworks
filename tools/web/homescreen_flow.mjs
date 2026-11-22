@@ -166,6 +166,8 @@ async function fresh() {
     if (deploy === "A") return text;
     if (file === "gallery.html") return text.replace("</head>", `<meta name="deploy" content="${deploy}">\n</head>`);
     if (file === "site.css") return `${text}\n:root { --deploy: "${deploy}"; }\n`;
+    // A file the worker never touches: the browser's own caching, as ever.
+    if (file === "gallery.js") return `window.brickworksDeploy = "${deploy}";\n${text}`;
     if (file === "sw.js" && deploy === "C") return text.replace(/const VERSION = "([^"]+)";/, 'const VERSION = "$1-c";');
     return text;
   };
@@ -205,7 +207,8 @@ async function fresh() {
   const page = await made.newPage();
   listen(page, "fresh");
   const deployed = () => page.evaluate(() => ({ page: document.querySelector('meta[name="deploy"]')?.content || "A",
-    css: getComputedStyle(document.documentElement).getPropertyValue("--deploy").trim().replace(/"/g, "") || "A" }));
+    css: getComputedStyle(document.documentElement).getPropertyValue("--deploy").trim().replace(/"/g, "") || "A",
+    script: window.brickworksDeploy || "A" }));
   try {
     await page.goto(`${L}/gallery`, { waitUntil: "load" });
     await controlled(page);
@@ -216,8 +219,8 @@ async function fresh() {
     deploy = "B";
     const response = await page.goto(`${L}/gallery`, { waitUntil: "load" });
     let now = await deployed();
-    check(`deploy B, its first load: page ${now.page}, stylesheet ${now.css} (through the worker: ${response.fromServiceWorker()})`,
-      now.page === "B" && now.css === "B");
+    check(`deploy B, its first load: page ${now.page}, stylesheet ${now.css}, a script it never touches ${now.script} `
+      + `(the page through the worker: ${response.fromServiceWorker()})`, now.page === "B" && now.css === "B" && now.script === "B");
     await page.goto(`${L}/library`, { waitUntil: "load" });
     now = await deployed();
     check(`deploy B, another page: stylesheet ${now.css}`, now.css === "B");
@@ -618,6 +621,17 @@ async function push() {
     check(`her account deleted (${deleted.status}): her devices ${JSON.stringify(before)} before, ${JSON.stringify(left)} after`,
       deleted.status === 200 && before?.devices === 1 && left?.on === false && left?.devices === 0);
     if (deleted.status === 200) made.length = 0;
+
+    // The same browser, Bob signed in on it: her device stops there, so
+    // nothing of hers shows to him.
+    await page.evaluate(([name, value]) => {
+      sessionStorage.clear();
+      localStorage.setItem(name, value);
+    }, [STORAGE_KEY, JSON.stringify(bob.kept)]);
+    await page.goto(`${site}/gallery`, { waitUntil: "load" });
+    const stopped = await until(page, async () => !(await (await navigator.serviceWorker.ready).pushManager.getSubscription())
+      && !localStorage.getItem("brickworks.push"), "her device stopped", 20).catch(() => false);
+    check(`the same browser with Bob signed in: her device's subscription ended (${Boolean(stopped)})`, Boolean(stopped));
   } catch (trouble) {
     check(`push: ${trouble.message}`, false);
   } finally {
