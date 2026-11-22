@@ -89,7 +89,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/test_push.py"
       ]
     },
     {
@@ -197,7 +198,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/test_push.py"
       ]
     },
     {
@@ -314,7 +316,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/test_push.py"
       ]
     },
     {
@@ -1699,6 +1702,14 @@
       "entry": "src/dev/heldsteps_probe.gd",
       "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:homescreen browser flow",
+      "kind": "cli",
+      "entry": "tools/web/homescreen_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
+      "area": "web",
       "tests": []
     },
     {
@@ -4000,7 +4011,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/test_push.py"
       ]
     },
     {
@@ -4768,6 +4780,26 @@
       "tests": []
     },
     {
+      "id": "lib:push sent to devices",
+      "kind": "lib",
+      "entry": "api/_push.js",
+      "reach": "GET /api/people?op=push[&endpoint=]: {ready, key, on, devices}; POST ?op=push {on, endpoint, p256dh, auth, lang} signed in (a browser's push service only, tied to the sign-in), {on: false, all: true} every device off, {on: false, endpoint, auth} with no sign-in a device forgotten (any Sign out); POST ?op=push_send, the knock, 204: what is due sent as Web Push (RFC 8291 aes128gcm, VAPID RFC 8292, VAPID_PRIVATE_KEY), only at brickworks.diy (elsewhere a check's own @resend.dev account signed in as it), one push a model with how many more, a 404/410 device deleted at once, a block list not read or a 5xx/429 put back (push_again); tests/test_push.py",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:push subscriptions",
+      "kind": "lib",
+      "entry": "supabase/push.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push_2.sql --dry --try=<trial.sql>   (after push.sql: push_subscriptions tied to auth.sessions and deleted with it, push_marks never waiting on a take, push_sent a key a device, push_again at most 3 tries more, a model a device in 3 minutes, push_take leaving @resend.dev accounts to push_take_tester; triggers on comments, mentions, photos, remixes and a challenge's end mark the owner due and knock /api/people?op=push_send by pg_net, and pg_cron's push_sweep each minute)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/push_world.mjs",
+        "tests/test_release.py",
+        "tests/test_release_train.py"
+      ]
+    },
+    {
       "id": "lib:quitting cleanly",
       "kind": "lib",
       "entry": "src/render/worker_tasks.gd",
@@ -4929,7 +4961,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/test_push.py"
       ]
     },
     {
@@ -5178,6 +5211,14 @@
       "entry": "src/net/updates.gd",
       "reach": "tools/probe.sh updater_probe; python3 tools/release.py latest --check dist/<version>/latest.json",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "lib:the site's service worker",
+      "kind": "lib",
+      "entry": "web/sw.js",
+      "reach": "<deployment>/sw.js, registered by web/push.js once a page has loaded and the browser is idle: pages network-first (navigation preload), the offline page only when the network cannot be reached; /app, /b/, /e/, /api/, /oauth/, /admin never its own (the static routing API where the browser has it); keeps only the offline pages and what they are drawn with; shows a push and opens its page (tools/web/homescreen_flow.mjs fresh, offline, requests)",
+      "area": "web",
       "tests": []
     },
     {
@@ -6276,6 +6317,31 @@
       "tests": []
     },
     {
+      "id": "ui:installing the site",
+      "kind": "ui",
+      "entry": "web/site.webmanifest",
+      "reach": "<deployment>/ any page (web/_shell.html's manifest, apple-touch-icon and title lines; the server's pages through api/_directory.js siteChrome): Chromium finds it installable (tools/web/homescreen_flow.mjs install, at 390 and 1280); offered from a second visit at the window's foot (web/push.js: Install or No thanks, kept, a toast with Settings and Undo; on an iPhone or iPad, Share then Add to Home Screen, OK); never on /settings, /offline, installed, or under the owner's notice; Settings \u203a Notifications' Install Brickworks while the browser offers it",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/fixtures/insights/api_check.mjs",
+        "tests/fixtures/insights/attacks_check.mjs",
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/test_announce.py",
+        "tests/test_beta_join.py",
+        "tests/test_coming_soon.py",
+        "tests/test_console2.py",
+        "tests/test_docs_shots.py",
+        "tests/test_feedback.py",
+        "tests/test_insights.py",
+        "tests/test_release_train.py"
+      ]
+    },
+    {
       "id": "ui:interface languages",
       "kind": "ui",
       "entry": "src/ui/language.gd",
@@ -6600,6 +6666,14 @@
       "tests": [
         "tests/fixtures/owner_notify/api_check.mjs"
       ]
+    },
+    {
+      "id": "ui:offline page",
+      "kind": "ui",
+      "entry": "web/offline.html",
+      "reach": "<deployment>/offline, and in place of any page of the site the worker cannot reach the network for (web/sw.js), in the address's language (/de/offline, /fr/offline, /es/offline); back to the page asked for once online",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:on by the joint it was picked up by",
@@ -7128,7 +7202,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_insights.py",
         "tests/test_model_page.py",
-        "tests/test_oauth_clients.py"
+        "tests/test_oauth_clients.py",
+        "tests/test_push.py"
       ]
     },
     {
@@ -7730,6 +7805,18 @@
       ]
     },
     {
+      "id": "ui:this device's notifications",
+      "kind": "ui",
+      "entry": "web/push.js",
+      "reach": "https://brickworks.diy/settings#email-part signed in   (Notifications \u203a On this device: Notify me on this device, GET/POST /api/people?op=push; blocked, unsupported (an iPhone before Add to Home Screen) and not-open states said; signed out or Sign out, the device stops; tools/web/homescreen_flow.mjs push)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/push_world.mjs",
+        "tests/test_release.py",
+        "tests/test_release_train.py"
+      ]
+    },
+    {
       "id": "ui:this month's challenge on the home page",
       "kind": "ui",
       "entry": "web/landing.js",
@@ -8057,7 +8144,7 @@
       "id": "ui:your settings page",
       "kind": "ui",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Notifications (On this device: the push toggle, the browser's prompt only once turned on, and Install Brickworks while the browser offers it; By email), Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web",
       "tests": [
         "tests/test_adminclaude.py",

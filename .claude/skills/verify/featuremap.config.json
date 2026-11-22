@@ -3060,7 +3060,7 @@
       "kind": "ui",
       "label": "your settings page",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Notifications (On this device: the push toggle, the browser's prompt only once turned on, and Install Brickworks while the browser offers it; By email), Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web"
     },
     {
@@ -6288,6 +6288,55 @@
       "label": "share model browser flow",
       "entry": "tools/web/share_model_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/share_model_flow.mjs --url=<deployment> --out=DIR   (the refusals, LDD's way to the app, four Studio files read, a file's address and folders left out and said, a 353-part .mpd at 1280 and its Studio .io at 390 to their pages timed with one publish and its pictures each, a lost publish's and a lost picture's answer gone on from without a second link, the server's count, steps and pictures, signed out and under 13 refused, 390/768/1280 light and dark; throwaway accounts; preview check [share_model])",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "installing the site",
+      "entry": "web/site.webmanifest",
+      "reach": "<deployment>/ any page (web/_shell.html's manifest, apple-touch-icon and title lines; the server's pages through api/_directory.js siteChrome): Chromium finds it installable (tools/web/homescreen_flow.mjs install, at 390 and 1280); offered from a second visit at the window's foot (web/push.js: Install or No thanks, kept, a toast with Settings and Undo; on an iPhone or iPad, Share then Add to Home Screen, OK); never on /settings, /offline, installed, or under the owner's notice; Settings › Notifications' Install Brickworks while the browser offers it",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the site's service worker",
+      "entry": "web/sw.js",
+      "reach": "<deployment>/sw.js, registered by web/push.js once a page has loaded and the browser is idle: pages network-first (navigation preload), the offline page only when the network cannot be reached; /app, /b/, /e/, /api/, /oauth/, /admin never its own (the static routing API where the browser has it); keeps only the offline pages and what they are drawn with; shows a push and opens its page (tools/web/homescreen_flow.mjs fresh, offline, requests)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this device's notifications",
+      "entry": "web/push.js",
+      "reach": "https://brickworks.diy/settings#email-part signed in   (Notifications › On this device: Notify me on this device, GET/POST /api/people?op=push; blocked, unsupported (an iPhone before Add to Home Screen) and not-open states said; signed out or Sign out, the device stops; tools/web/homescreen_flow.mjs push)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "offline page",
+      "entry": "web/offline.html",
+      "reach": "<deployment>/offline, and in place of any page of the site the worker cannot reach the network for (web/sw.js), in the address's language (/de/offline, /fr/offline, /es/offline); back to the page asked for once online",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "push sent to devices",
+      "entry": "api/_push.js",
+      "reach": "GET /api/people?op=push[&endpoint=]: {ready, key, on, devices}; POST ?op=push {on, endpoint, p256dh, auth, lang} signed in (a browser's push service only, tied to the sign-in), {on: false, all: true} every device off, {on: false, endpoint, auth} with no sign-in a device forgotten (any Sign out); POST ?op=push_send, the knock, 204: what is due sent as Web Push (RFC 8291 aes128gcm, VAPID RFC 8292, VAPID_PRIVATE_KEY), only at brickworks.diy (elsewhere a check's own @resend.dev account signed in as it), one push a model with how many more, a 404/410 device deleted at once, a block list not read or a 5xx/429 put back (push_again); tests/test_push.py",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "push subscriptions",
+      "entry": "supabase/push.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push_2.sql --dry --try=<trial.sql>   (after push.sql: push_subscriptions tied to auth.sessions and deleted with it, push_marks never waiting on a take, push_sent a key a device, push_again at most 3 tries more, a model a device in 3 minutes, push_take leaving @resend.dev accounts to push_take_tester; triggers on comments, mentions, photos, remixes and a challenge's end mark the owner due and knock /api/people?op=push_send by pg_net, and pg_cron's push_sweep each minute)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homescreen browser flow",
+      "entry": "tools/web/homescreen_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
       "area": "web"
     }
   ]

@@ -107,12 +107,15 @@ PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
          "feedback.html": "feedback", "share-model.html": "share-model", "beta.html": "beta", "terms.html": "terms",
          "privacy.html": "privacy", "counting.html": "counting", "guidelines.html": "guidelines", "takedown.html": "takedown",
-         "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize"}
+         "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize",
+         "offline.html": "offline"}
 # The page not found has no address of its own: it answers every address
 # there is nothing at, its copy any such address in the language (/de/<it>,
 # web/theme.js); and the connector's consent page is only ever opened by an
 # app asking. Neither is a page a search engine lists (no canonical).
-UNLISTED = {"404.html", "authorize.html"}
+# The offline page is shown only by the site's service worker, in place of
+# a page it could not reach (web/sw.js), and never listed either.
+UNLISTED = {"404.html", "authorize.html", "offline.html"}
 # The site's rules, each copy opening with one line in its language: the
 # English text binds, and a link to it (?lang=en keeps it English,
 # web/theme.js). Every heading, list, link and date is the English's.
@@ -164,7 +167,7 @@ COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})
 TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
         "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
         "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js", "api/_beta.js",
-        "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js")
+        "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js", "api/_push.js")
 # And what a profile can be refused with, in First steps, the profile's own
 # page and settings, in the functions that refuse it: every sentence, ended
 # with a full stop or not.
@@ -205,7 +208,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
             "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
             "web/feed.js": (), "web/notifications.js": (), "web/notice-view.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/betabar.js": (), "web/notice.js": (),
-            "web/keep.js": (), "web/lists.js": (), "web/block.js": (), "web/share-model.js": (),
+            "web/keep.js": (), "web/lists.js": (), "web/block.js": (), "web/share-model.js": (), "web/push.js": (),
             "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
             "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
 # And what the site is put together with says on a page (tools/site.py: the

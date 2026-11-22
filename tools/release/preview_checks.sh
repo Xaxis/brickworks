@@ -151,6 +151,18 @@ declare -A CMD=(
   # Achievements tab, read once opened. Throwaway accounts, deleted after;
   # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # The site on a home screen, offline, and this device's notifications
+  # (homescreen): two deploys on one address served here, the next load the
+  # new one's; installable at 390 and 1280; the offline page with the
+  # network cut, in the address's language; /app, /b/ and /e/ never the
+  # worker's (a request log); the offer from a second visit, No thanks
+  # kept; a first visit waiting on nothing of it; Bob's comment on Ada's
+  # model shown on her device within 60 s (knocked as Ada: a preview takes
+  # only a check's own account), nothing once off, her device gone at the
+  # header's Sign out, Turn off on every device, her sign-in ending and her
+  # account deleted; Settings and the offline page at 390, 768 and
+  # 1280 in both themes. Throwaway accounts, deleted after.
+  [homescreen]="tools/web/homescreen_flow.mjs --url=$P --out=$S/${TAG}_homescreen"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
   # nobody shows Latest on Brickworks (the newest models as the gallery's
   # cards, every picture drawn) and designers to follow by Top builds; a

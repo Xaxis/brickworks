@@ -19,6 +19,20 @@ Open [brickworks.diy/app](/app) in a recent browser on a computer, a tablet or a
 
 The Brickworks mark at the far left of the menu bar opens the app's own menu: **About Brickworks**, **Send feedback…**, **Find a command…** ([[Ctrl+/]]), **Brickworks website**, **Documentation**, **Account…** and **Back to brickworks.diy**; a beta tester's has **Beta hub** too.
 
+## Add it to your home screen {#install}
+
+brickworks.diy can be installed from your browser, so it opens in a window of its own from your home screen, dock or Start menu, and can show your [notifications](/docs/profiles#settings) as the device's own. From your second visit a card at the foot of the page offers **Install**, which is your browser's own dialog; **No thanks** is kept in that browser, and **Settings › Notifications** still has **Install Brickworks** while the browser offers it. Chrome and Edge also have their own install button in the address bar.
+
+On an iPhone or iPad, Safari has no install button a site can show: it installs only by **Share**, then **Add to Home Screen**, and the card says so. Opened from the Home Screen (iOS and iPadOS 16.4 or later), Brickworks can show notifications; in a Safari tab it cannot. It opens in the studio: to turn them on, open its menu, **Back to brickworks.diy**, then **Menu › Settings › Notifications**. Offline, it opens on a page that says so, and goes on by itself once you are back online.
+
+Without a connection, a page of the site you open says **You're offline.**, and opens the page you asked for by itself once you are back. Nothing else is kept: every page, the app and your models come from the network, so you always get the newest Brickworks. The app needs a connection to open.
+
+<!-- covers
+ui:installing the site
+ui:offline page
+lib:the site's service worker
+-->
+
 ## Sign in {#sign-in}
 
 The first time it opens, the app asks everyone to sign in. There is no password: either a six-digit code sent to your email, or **Sign in with orangecheck**, which opens its own window and accepts a Bitcoin wallet, email, Google or GitHub. A new account is asked its month and year of birth once. See [Your account and privacy](/docs/account) for what each keeps.
