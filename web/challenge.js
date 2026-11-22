@@ -501,15 +501,13 @@ function voteLine(c, entry) {
   };
   if (c.state === "ended") {
     if (entry.winner) line.append(badge("accent winner", say("Winner"), "award"));
+    else if (entry.shortlisted) line.append(badge("shortlisted", say("Shortlisted"), "award"));
     // A count is said once there is one: never "0 votes".
     if (Number(entry.votes)) line.append(el("small", "votes", counted(entry.votes, "vote")));
     if (voted === entry.id) line.append(badge("voted", say("Your vote"), "check"));
     return line;
   }
-  if (c.state !== "open") {
-    if (entry.shortlisted) line.append(badge("shortlisted", say("Shortlisted"), "award"));
-    return line;
-  }
+  if (c.state !== "open") return line;
   if (entry.shortlisted && c.shortlisted) line.append(badge("accent shortlisted", say("Shortlisted"), "award"));
   if (!entry.keeps) line.append(el("small", "broken", say("No longer keeps the rules: a newer version broke one")));
   if ((you?.entries || []).includes(entry.id)) {
@@ -676,7 +674,8 @@ function drawEntries(c, focus = "") {
     if (!entries.length) {
       const empty = el("div", "state");
       empty.append(el("p", "", c.state === "upcoming" ? say("Entries open with the challenge, on {day}.", { day: dayOf(c.starts_on) })
-        : c.state === "ended" ? say("Nobody entered in this group.") : say("Nobody has entered in this group yet. Be the first.")));
+        : c.state === "ended" ? say("Nobody entered in this group.")
+          : entering(c) ? say("Nobody has entered in this group yet. Be the first.") : say("Nobody entered in this group.")));
       if (entering(c)) {
         const go = el("button", "cta ghost small", say("Enter a model"));
         go.type = "button";

@@ -25,7 +25,11 @@
 -- discovery.sql and trust.sql:
 --
 --   challenges.entries_until, .votes_from   the rounds' days (both or none)
---   challenges.judge_name, .judge_account   the guest judge named on the page
+--   challenges.judge_name, .judge_account   the guest judge named on the page:
+--                                           the owner's words, or a profile
+--                                           whose own name is read live, so
+--                                           a judge deleted, barred or kept
+--                                           private is named no more
 --   challenges.cover_model                  its picture where it is shared
 --   challenges.shortlisted_at               when the shortlist came out
 --   challenge_shortlist                     the shortlist, deleted with its
@@ -67,10 +71,6 @@ begin
     if not exists (select 1 from pg_constraint where conname = 'challenges_judge_name') then
         alter table public.challenges add constraint challenges_judge_name check (
             judge_name is null or char_length(judge_name) between 1 and 60);
-    end if;
-    if not exists (select 1 from pg_constraint where conname = 'challenges_judge_named') then
-        alter table public.challenges add constraint challenges_judge_named check (
-            judge_account is null or judge_name is not null);
     end if;
 end;
 $$;
@@ -123,9 +123,11 @@ $$;
 --                  or after its first day and votes_from after it and on or
 --                  before its last
 --   voting         the fan vote is open: its days stay as they are
---   shortlisted    rounds taken off with a shortlist out
+--   votes          rounds put on a challenge that has votes already
+--   shortlisted    rounds taken off, or entries opened again, with a
+--                  shortlist out
 --   no_judge       a judge's handle no profile shown in public has
---   judge_name     a judge's name over 60 characters, or a handle with none
+--   judge_name     a judge's name over 60 characters
 --   cover          a cover that is not a model in the gallery
 create or replace function public.challenge_rounds_set(challenge_id bigint, entries_until date default null,
     votes_from date default null, judge_name text default null, judge_handle text default null,
@@ -160,12 +162,17 @@ begin
             or c.votes_from is distinct from challenge_rounds_set.votes_from) then
         return jsonb_build_object('refused', 'voting');
     end if;
-    if challenge_rounds_set.entries_until is null
+    -- Votes cast in one round would count, and stop their voters, in the fan vote.
+    if c.entries_until is null and challenge_rounds_set.entries_until is not null
+       and exists (select 1 from public.challenge_votes v where v.challenge = c.id) then
+        return jsonb_build_object('refused', 'votes');
+    end if;
+    if (challenge_rounds_set.entries_until is null or challenge_rounds_set.entries_until >= public.challenge_today())
        and exists (select 1 from public.challenge_shortlist s where s.challenge = c.id) then
         return jsonb_build_object('refused', 'shortlisted');
     end if;
     if nullif(btrim(coalesce(challenge_rounds_set.judge_handle, '')), '') is not null then
-        select p.account, coalesce(named, p.name) into judge, named
+        select p.account into judge
           from public.people p
          where p.handle = lower(btrim(challenge_rounds_set.judge_handle)) and public.shown_publicly(p.account);
         if judge is null then
@@ -265,8 +272,10 @@ $$;
 
 -- What [challenge_id]'s page says of its rounds, judge and cover: {rounds,
 -- entries_until, votes_from, round, shortlisted_at, shortlist: [{model,
--- way}] once it is out, judge: {name, handle} | null (the handle only while
--- the judge's profile is shown in public), cover: a gallery card | null}.
+-- way}] once it is out, judge: {name, handle, typed} | null (a judge named
+-- by their profile only while it is shown in public, by its own name unless
+-- the owner typed one; typed: the name is the owner's), cover: a gallery
+-- card | null}.
 -- Null for none by that number. Asked only of a challenge its page may show
 -- (challenge_page_at said so first).
 create or replace function public.challenge_rounds_of(challenge_id bigint)
@@ -287,9 +296,14 @@ as $$
                join public.shared_models m on m.id = s.model
               where s.challenge = c.id and public.gallery_shows(m, c.test) and public.shown_publicly(e.owner)),
             '[]'::jsonb) end,
-        'judge', case when c.judge_name is null then null else jsonb_build_object('name', c.judge_name,
-            'handle', (select p.handle from public.people p
-                        where p.account = c.judge_account and public.shown_publicly(p.account))) end,
+        'judge', case when c.judge_account is not null then
+                          (select jsonb_build_object('name', coalesce(c.judge_name, nullif(btrim(p.name), ''), p.handle),
+                                                     'handle', p.handle, 'typed', c.judge_name is not null)
+                             from public.people p
+                            where p.account = c.judge_account and public.shown_publicly(p.account))
+                      when c.judge_name is not null then
+                          jsonb_build_object('name', c.judge_name, 'handle', null, 'typed', true)
+                      end,
         'cover', (select public.directory_card(m) from public.shared_models m
                    where m.id = c.cover_model and public.gallery_shows(m, c.test)))
       from public.challenges c
@@ -311,7 +325,8 @@ declare
     m public.shared_models;
     c public.challenges;
 begin
-    select * into m from public.shared_models s where s.id = challenge_enter_round.model_id;
+    select * into m from public.shared_models s
+     where s.id = challenge_enter_round.model_id and s.owner = challenge_enter_round.account and s.published;
     if found then
         c := public.challenge_open(m.test);
         if c.id is not null and c.entries_until is not null and public.challenge_today() > c.entries_until then
@@ -358,9 +373,9 @@ $$;
 -- challenge_settle's count, word for word, with one rule more: in a
 -- challenge in rounds only a shortlisted entry is counted. Then its
 -- winners are This week's pick the week after it ended, the most voted
--- first (a tie to by hand), a week each from the moment it ended; a week
--- already gone by when it is counted is skipped. True when it was settled
--- now.
+-- first (a tie to by hand), a week each from the moment it ended. Counted
+-- after its first week went by, the weeks start now; after a fortnight, a
+-- week already gone by is skipped. True when it was settled now.
 create or replace function public.challenge_settle_rounds(challenge_id bigint)
 returns boolean
 language plpgsql
@@ -395,6 +410,9 @@ begin
      order by t.way, t.votes desc, t.at, t.model;
     update public.challenges x set settled_at = now() where x.id = c.id;
     ended := least(coalesce(c.ended_at, 'infinity'::timestamptz), ((c.ends_on + 1)::timestamp at time zone 'utc'));
+    if ended + interval '7 days' <= now() + interval '1 hour' and ended > now() - interval '14 days' then
+        ended := now();
+    end if;
     for w in select * from public.challenge_winners x where x.challenge = c.id order by x.votes desc, x.way desc loop
         week_from := ended + make_interval(days => 7 * week);
         if week_from + interval '7 days' > now() + interval '1 hour' then

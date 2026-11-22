@@ -44,7 +44,7 @@ def test_the_file_only_adds() -> None:
     assert re.findall(r"create table if not exists public\.([a-z_]+)", plain) == ["challenge_shortlist"]
     # Its constraints only where none of that name is yet, and each holds
     # for a challenge with no rounds (every row there is).
-    assert plain.count("add constraint") == 3 and plain.count("if not exists (select 1 from pg_constraint") == 3
+    assert plain.count("add constraint") == 2 and plain.count("if not exists (select 1 from pg_constraint") == 2
     # Rows are written only by its functions, as the owner asks: a delete
     # only of the shortlist it replaces.
     assert set(re.findall(r"delete from public\.([a-z_]+)", plain)) == {"challenge_shortlist"}

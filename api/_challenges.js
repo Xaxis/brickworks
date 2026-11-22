@@ -468,7 +468,7 @@ export async function challenge(request, response, { origin }) {
   }
   const [wins, rounds] = await Promise.all([
     orUnknown("challenges", winsOf((page.entries || []).map((one) => one.model), tests)).then((said) => said || new Map()),
-    roundsAsked(n(page.id))]);
+    orUnknown("challenges", roundsAsked(n(page.id)))]);
   const shown = challengeOf(origin, page, wins, rounds);
   let you = null;
   if (who) {

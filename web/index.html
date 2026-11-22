@@ -120,7 +120,7 @@
 .now-row { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
 @media (width >= 900px) { .now-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .now-row .badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
-#challenge-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+#challenge-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2lh; }
 .tile.pick > a.open { flex-direction: row; align-items: stretch; }
 .tile.pick .pic { flex: 0 0 42%; aspect-ratio: 4 / 3; border-bottom: 0; border-right: 1px solid var(--line); }
 .tile.pick .pic img[hidden] { display: none; }

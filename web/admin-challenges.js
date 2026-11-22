@@ -179,7 +179,8 @@ function dayPicker(name, legend, value) {
   set.append(make("legend", "", legend), make("div", "dropdowns",
     choose("day", "Day", Array.from({ length: 31 }, (_, i) => [i + 1, String(i + 1)]), at ? at.getUTCDate() : null),
     choose("month", "Month", MONTH_SHORT.map((m, i) => [i + 1, m]), at ? at.getUTCMonth() + 1 : null),
-    choose("year", "Year", [[year, String(year)], [year + 1, String(year + 1)]], at ? at.getUTCFullYear() : null)));
+    choose("year", "Year", [...new Set([at ? at.getUTCFullYear() : year, year, year + 1])].sort().map((y) => [y, String(y)]),
+      at ? at.getUTCFullYear() : null)));
   return set;
 }
 
@@ -207,17 +208,17 @@ function roundsPart(c, rounds, redraw) {
   days.hidden = !rounds.rounds;
   on.addEventListener("change", () => { days.hidden = !on.checked; });
   const judge = make("input");
-  Object.assign(judge, { name: "judge_name", maxLength: 60, value: rounds.judge?.name || "", placeholder: "Brickworks" });
+  Object.assign(judge, { name: "judge_name", value: rounds.judge?.typed ? rounds.judge.name : "", placeholder: rounds.judge?.handle ? rounds.judge.name : "Brickworks" });
   const handle = make("input");
-  Object.assign(handle, { name: "judge_handle", maxLength: 25, value: rounds.judge?.handle || "", placeholder: "their-handle" });
+  Object.assign(handle, { name: "judge_handle", value: rounds.judge?.handle || "", placeholder: "their-handle" });
   const cover = make("input");
-  Object.assign(cover, { name: "cover", maxLength: 200, value: rounds.cover?.id || "", placeholder: "A model's link, /m/…" });
+  Object.assign(cover, { name: "cover", value: rounds.cover?.id || "", placeholder: "A model's link, /m/…" });
   const note = make("p", "note");
   note.setAttribute("role", "status");
   const save = make("button", "cta", "Save how it runs");
   save.type = "submit";
   form.append(toggle, days,
-    make("label", "", "The guest judge named on its page (empty: Brickworks chooses)", judge),
+    make("label", "", "The guest judge named on its page (empty: their profile's name, or Brickworks chooses)", judge),
     make("label", "", "Their profile's handle, for a link (optional)", handle),
     make("label", "", "Its cover where it is shared: a model in the gallery (optional)", cover),
     make("div", "acts-row", save), note);
@@ -277,7 +278,7 @@ function shortlistPart(c, rounds, groups, redraw) {
       const label = make("label", "choice");
       const box = make("input");
       Object.assign(box, { type: "checkbox", name: "model", value: entry.model, checked: entry.shortlisted === true,
-        disabled: !entry.keeps || !entry.shown });
+        disabled: (!entry.keeps || !entry.shown) && entry.shortlisted !== true });
       label.append(box, ` ${entry.name || entry.model}`, make("small", "", ` ${!entry.keeps ? "breaks its rules"
         : !entry.shown ? "not in the gallery" : entry.email || ""}`));
       set.append(label);

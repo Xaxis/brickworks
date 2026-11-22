@@ -36,8 +36,10 @@
 <link rel="stylesheet" href="/directory.css">
 <style>
 /* The head unseen until challenge.js has drawn it (<html data-challenge>),
-   then drawn whole in one frame: what it says moves nothing in view. */
-:root:not([data-challenge]) .challenge-top { visibility: hidden; }
+   then drawn whole in one frame: what it says moves nothing in view. Shown
+   anyway after 5 s, by the style alone, should the script never run. */
+:root:not([data-challenge]) .challenge-top { visibility: hidden; animation: challenge-shown 0s 5s forwards; }
+@keyframes challenge-shown { to { visibility: visible; } }
 /* The rounds, where it runs in rounds: each a line with its days, the one
    it is in marked. */
 .rounds { display: grid; gap: var(--s-2); margin: var(--s-4) 0 0; padding: var(--s-4) 0 0; border-top: 1px solid var(--line); list-style: none; }

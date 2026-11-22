@@ -9,7 +9,8 @@
 // 1. The home page at 390 (a phone) and 1280, light and dark: while a
 //    challenge is open, #challenge names it with its days left, and
 //    #pick shows This week's pick, both whole within the first two screens
-//    (their foot at most twice the window's height down); nothing sideways.
+//    (their foot at most twice the window's height down), moving no more
+//    than 0.1 as they come; nothing sideways.
 // 2. /challenge at 390, 768 and 1280, light and dark: it moves no more
 //    than 0.1 as it loads (the layout shifts no press made, summed as
 //    Chrome's CLS sums them, read 3 s after it is drawn).
@@ -133,6 +134,10 @@ try {
           challenge: box("challenge"), pickBox: box("pick"), screen: innerHeight };
       });
       const twoScreens = 2 * seen.screen;
+      await p.waitForTimeout(1000);
+      const moved = await cls(p);
+      check(`home at ${width}${dark ? " dark" : ""} moves ${moved.cls} as the challenge and the pick come${moved.shifts.length ? ` (${moved.shifts.join("; ")})` : ""}`,
+        moved.cls <= 0.1);
       check(`home at ${width}${dark ? " dark" : ""}: "${seen.name}" (${seen.said}, "${seen.left}") ends at ${seen.challenge?.bottom} px; `
         + `the pick "${seen.pickName}" (${seen.pick}${seen.pictured ? ", its picture" : ""}) ends at ${seen.pickBox?.bottom} px; two screens ${twoScreens}`,
         Boolean(seen.challenge && seen.pickBox) && seen.challenge.bottom <= twoScreens && seen.pickBox.bottom <= twoScreens
@@ -177,7 +182,9 @@ try {
     && fetched?.status === 200 && /^image\//.test(fetched.headers.get("content-type") || ""));
 
   // --- The owner's panel -----------------------------------------------------
-  if (args.admin && shown?.id) {
+  if (args.admin && shown?.id && shown.state === "ended") {
+    console.log(`  --    the owner's panel: "${shown.title}" has ended, and How it runs is set only before`);
+  } else if (args.admin && shown?.id) {
     const master = await mintSession(process.env.MASTER_EMAIL);
     for (const [width, height, phone] of [[390, 844, true], [768, 1024, false], [1280, 900, false]]) {
       for (const dark of [false, true]) {

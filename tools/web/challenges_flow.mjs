@@ -79,9 +79,10 @@
 // Judges and a fan vote (challengehonours, supabase/challenge_rounds.sql): in
 // 7 the owner sets a second challenge in rounds on its own panel, Bob its
 // guest judge and the house its cover; /challenge.png is the cover while it
-// runs; entries close, the owner publishes a shortlist of the house and the
-// shed, the tower left out; in the fan vote only the shortlist has Vote; it
-// ends, the house wins, is This week's pick and Ada carries the win. Before
+// runs; entries close, the owner publishes a shortlist of the tower and the
+// shed, the house left out; in the fan vote only the shortlist has Vote; it
+// ends, the tower wins, is This week's pick (part 6's winner, the house,
+// was before) and Ada carries the win. Before
 // the file is applied the panel and the API say it is not open yet.
 //
 // Pictures in --out.
@@ -881,9 +882,10 @@ try {
   // supabase/challenge_rounds.sql: the owner sets a second challenge in
   // rounds on its panel, Bob named its guest judge and Ada's house its
   // cover; entries come in, the hub's picture is the cover; entries close
-  // and the owner publishes a shortlist (the house and the shed, not the
-  // tower); the fan vote opens, only the shortlist has Vote; it ends, the
-  // house wins and is This week's pick, and Ada carries the win. Before the
+  // and the owner publishes a shortlist (the tower and the shed, not the
+  // house); the fan vote opens, only the shortlist has Vote; it ends, the
+  // tower wins and is This week's pick in place of part 6's house, and Ada
+  // carries the win. Before the
   // file is applied, the panel says it is not open and the API refuses in
   // words, and nothing else is asked.
   {
@@ -984,7 +986,7 @@ try {
       const closed = await saveRounds(dayFrom(-1), dayFrom(1), "entries closed");
       const late = await api("/api/people?op=enter", { method: "POST", token: who.ada.access_token, body: { model: ids.plain, way: "hand" } });
       check(`entries closed ("${closed}"): a late entry ${late.status} "${late.body.error}"`, late.status === 409 && late.body.refused === "closed");
-      await admin.check(`.shortlist-form input[value="${ids.house}"]`);
+      await admin.check(`.shortlist-form input[value="${ids.tower}"]`);
       await admin.check(`.shortlist-form input[value="${ids.shed}"]`);
       await admin.click('.shortlist-form button[type="submit"]');
       const published = await until(admin, () => document.querySelector("#sheet .note.good")?.textContent === "Published."
@@ -995,7 +997,7 @@ try {
         const { page, made, seen } = await roundPage("judging", 1280, 900, false, true);
         check(`judged, the vote tomorrow, at 1280: ${JSON.stringify(seen)}`, seen.status === "Judging" && seen.clock === "Fan vote opens in"
           && seen.judge === "Shortlist chosen by guest judge Bob Challenges" && seen.rounds === "entries,judging*,vote" && !seen.enter
-          && seen.listed.sort().join() === [ids.house, ids.shed].sort().join() && !seen.votes.length
+          && seen.listed.sort().join() === [ids.tower, ids.shed].sort().join() && !seen.votes.length
           && /^The judges have chosen their shortlist/.test(seen.said));
         await shot(page, "14_rounds_judged-1280.png");
         await made.close();
@@ -1003,33 +1005,34 @@ try {
       // The fan vote opens today: only the shortlist has Vote.
       await panel();
       await saveRounds(dayFrom(-1), dayFrom(0), "the fan vote open");
-      const tower = await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.tower } });
-      check(`a vote for the tower, not shortlisted: ${tower.status} "${tower.body.error}"`, tower.status === 422 && tower.body.refused === "not_shortlisted");
+      const house = await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.house } });
+      check(`a vote for the house, not shortlisted: ${house.status} "${house.body.error}"`, house.status === 422 && house.body.refused === "not_shortlisted");
+      const pickBefore = (await api("/api/share?op=shelves&tests=1")).body?.pick?.model?.id || null;
       {
         const { page, made, seen } = await roundPage("Ed in the fan vote", 390, 844, true, true, who.ed);
         check(`the fan vote at 390, Ed signed in: ${JSON.stringify(seen)}`, seen.status === "Fan vote" && seen.clock === "Fan vote ends in"
-          && seen.rounds === "entries,judging,vote*" && seen.votes.includes(ids.house) && !seen.votes.includes(ids.tower));
-        await page.click(`#groups .model[data-entry="${ids.house}"] button.vote`);
+          && seen.rounds === "entries,judging,vote*" && seen.votes.includes(ids.tower) && !seen.votes.includes(ids.house));
+        await page.click(`#groups .model[data-entry="${ids.tower}"] button.vote`);
         await page.click("dialog.vote-confirm button.cta:not(.ghost)");
-        await until(page, (id) => document.querySelector(`#groups .model[data-entry="${id}"].voted`), "Ed's vote for the house", 30, ids.house);
+        await until(page, (id) => document.querySelector(`#groups .model[data-entry="${id}"].voted`), "Ed's vote for the tower", 30, ids.tower);
         await shot(page, "15_rounds_vote-390.png");
         await made.close();
       }
       const more = [await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.shed } }),
-        await api("/api/people?op=vote", { method: "POST", token: who.bob.access_token, body: { challenge: ids.rounds, model: ids.house } })];
-      check(`Ed for the shed, Bob for the house: ${more.map((one) => one.status).join(", ")}`, more.every((one) => one.status === 200));
+        await api("/api/people?op=vote", { method: "POST", token: who.bob.access_token, body: { challenge: ids.rounds, model: ids.tower } })];
+      check(`Ed for the shed, Bob for the tower: ${more.map((one) => one.status).join(", ")}`, more.every((one) => one.status === 200));
       const blind = (await api(`/api/people?op=challenge&id=${ids.rounds}&tests=1`)).body?.challenge;
       check("...and no votes shown while it runs", (blind?.groups || []).flatMap((g) => g.entries).every((e) => e.votes === null));
-      // It ends: the house wins by hand, the shed with the assistant; the
-      // house is This week's pick, and Ada carries the win on her page.
+      // It ends: the tower wins by hand, the shed with the assistant; the
+      // tower is This week's pick, and Ada carries the win on her page.
       await api(`/api/admin?op=end_challenge&challenge=${ids.rounds}&tests=1`, { method: "POST", token: master.access_token });
       const over = (await api(`/api/people?op=challenge&id=${ids.rounds}&tests=1`)).body?.challenge;
       check(`it ends: winners ${JSON.stringify(over?.winners?.map((w) => [w.way, w.model, w.votes]))}`, over?.winners?.length === 2
-        && over.winners.some((w) => w.way === "hand" && w.model === ids.house && w.votes === 2)
+        && over.winners.some((w) => w.way === "hand" && w.model === ids.tower && w.votes === 2)
         && over.winners.some((w) => w.way === "assistant" && w.model === ids.shed && w.votes === 1));
       const shelves = await api("/api/share?op=shelves&tests=1");
-      check(`This week's pick: ${shelves.body?.pick?.model?.id} (chosen ${shelves.body?.pick?.chosen})`,
-        shelves.body?.pick?.model?.id === ids.house && shelves.body.pick.chosen === true);
+      check(`This week's pick: ${shelves.body?.pick?.model?.id} (chosen ${shelves.body?.pick?.chosen}), ${pickBefore} before it ended`,
+        pickBefore !== ids.tower && shelves.body?.pick?.model?.id === ids.tower && shelves.body.pick.chosen === true);
       const profile = await context({ width: 390, height: 844, phone: true });
       const page = await profile.newPage();
       listen(page, "Ada's honours");

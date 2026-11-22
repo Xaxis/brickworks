@@ -2615,16 +2615,20 @@ plan with Claude as the client.
   (`challenge_shortlist`, up to five in each group, each an entry shown that
   keeps the rules, deleted with its entry and so with the account), and the
   fan vote opens on `votes_from` once it is out (`shortlisted_at`).
-  `judge_name` and `judge_account` (on delete set null) name the guest judge
-  on the page, the handle linked while their profile is shown; `cover_model`
+  `judge_name` (the owner's words) or `judge_account` (on delete set null: a
+  profile, its own name read live) name the guest judge on the page, named
+  and linked only while that profile is shown; `cover_model`
   (a model in the gallery) is its picture where it is shared. Functions, the
   service role's alone: `challenge_round(c)` (entries, judging, vote; null in
   one round), `challenge_rounds_set` (refused `no_challenge`, `ended`,
-  `days`, `voting` for days moved in the fan vote, `shortlisted`,
+  `days`, `voting` for days moved in the fan vote, `votes` for rounds put on
+  a challenge already voted in, `shortlisted` (entries opened again or
+  rounds taken off with a shortlist out),
   `no_judge`, `judge_name`, `cover`), `challenge_shortlist_set` (refused
   `not_rounds`, `entries_open`, `voting`, `ended`, `too_many` with `way`,
   `not_entry`/`breaks` with `model`), `challenge_rounds_of(id)`,
-  `challenge_enter_round` (refused `closed` once entries close, else
+  `challenge_enter_round` (refused `closed` once entries close, said only
+  of the caller's own published model, else
   `challenge_enter`), `challenge_vote_round` (refused `not_yet` before the
   fan vote, `not_shortlisted`, else `challenge_vote`: the blind vote and the
   rules unchanged), `challenge_settle_rounds` (`challenge_settle`'s count,

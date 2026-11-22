@@ -34,7 +34,7 @@ const HANDLE = /^@?[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/i;
 const body = (request) => (request.body && typeof request.body === "object" ? request.body : {});
 /// One line of words, its controls taken out and its spaces made one (a
 /// zero-width one too); null when nothing is left.
-const line = (given) => String(given ?? "").normalize("NFKC").replace(/[\u0000-\u001f\u007f\u200b-\u200f\u2028-\u202f\u2060\ufeff]+/g, " ")
+const line = (given) => String(given ?? "").normalize("NFKC").replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]+/g, " ")
   .replace(/\s+/g, " ").trim() || null;
 
 /// Why the rounds were refused, in words (challenge_rounds_set).
@@ -43,7 +43,8 @@ const ROUNDS_SAID = {
   ended: [409, "It has ended: its rounds, judge and cover stay as they were."],
   days: [422, "Give both days or neither: the last day of entries on or after its first day, and the fan vote's first day after it and on or before its last."],
   voting: [409, "The fan vote is open: its days stay as they are. The judge and the cover may still change."],
-  shortlisted: [409, "A shortlist is out: clear it before it runs in one round."],
+  votes: [409, "Votes are already in: rounds are set before anybody votes, so every vote is for the shortlist."],
+  shortlisted: [409, "A shortlist is out: clear it before entries open again or it runs in one round."],
   no_judge: [422, "No profile shown in public has that handle. Leave it empty to name the judge without a link."],
   judge_name: [422, "Name the judge in at most 60 characters."],
   cover: [422, "The cover must be a model in the gallery: give its link's ten characters."],
@@ -75,7 +76,8 @@ export async function challengeRounds(request, response) {
     }
   }
   const judgeName = line(given.judge_name);
-  if (judgeName && judgeName.length > 60) return response.status(422).json({ error: ROUNDS_SAID.judge_name[1], refused: "judge_name" });
+  // Over the limit is refused in words, never cut (the field has no maxLength).
+  if (judgeName && [...judgeName].length > 60) return response.status(422).json({ error: ROUNDS_SAID.judge_name[1], refused: "judge_name" });
   const handle = line(given.judge_handle);
   if (handle && !HANDLE.test(handle)) return response.status(422).json({ error: ROUNDS_SAID.no_judge[1], refused: "no_judge" });
   const cover = line(given.cover);
