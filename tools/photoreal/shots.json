@@ -57,11 +57,11 @@
     768
    ],
    "yaw": -25,
-   "pitch": 40,
+   "pitch": 45,
    "zoom": 0.55,
    "shift": [
-    -0.15,
-    0.15
+    -0.17,
+    0.2
    ],
    "focal_mm": 28,
    "backdrop": "#c4bcae",
@@ -145,10 +145,10 @@
    ],
    "yaw": 135,
    "pitch": 26,
-   "zoom": 1.45,
+   "zoom": 1.73,
    "shift": [
-    0.0,
-    0.0
+    -0.16,
+    -0.16
    ],
    "focal_mm": 70,
    "backdrop": "#ffffff",
@@ -195,8 +195,8 @@
     0.0
    ],
    "focal_mm": 70,
-   "backdrop": "#dcd5c8",
-   "gradient": true,
+   "backdrop": "#d4cdc0",
+   "gradient": false,
    "lighting": "studio",
    "f_stop": 22,
    "focus": 0.45
@@ -214,7 +214,7 @@
    "pitch": 22,
    "zoom": 1.45,
    "shift": [
-    0.12,
+    -0.03,
     0.0
    ],
    "focal_mm": 70,
