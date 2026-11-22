@@ -119,6 +119,9 @@ const id = (lead, n) => `${lead}${r6}${String(n).padStart(2, "0")}`;
 const utcDay = (time) => new Date(time).toISOString().slice(0, 10);
 const midnight = (day) => Date.parse(`${day}T00:00:00Z`);
 const plusDays = (day, n) => utcDay(midnight(day) + n * DAY);
+/// A day as the English page writes it: "22 Nov".
+const shortDay = (day) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+  .format(Date.parse(`${day}T12:00:00Z`));
 
 // --- The days: one rule, everywhere ------------------------------------------
 // Today is the UTC day; the last 30 days today and the 29 before; the 30
@@ -131,8 +134,9 @@ function windowsOf(today) {
 const within = (events, [from, til]) => events.reduce((sum, e) => sum + (e.day >= from && e.day <= til ? e.n : 0), 0);
 
 const browser = await launch({ signedOut: true });
-async function context({ as = null, width = 1280, height = 900, phone = false, dark = false } = {}) {
+async function context({ as = null, width = 1280, height = 900, phone = false, dark = false, zone = undefined } = {}) {
   const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, colorScheme: dark ? "dark" : "light",
+    ...(zone ? { timezoneId: zone } : {}),
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   if (as) {
     await made.addInitScript(([name, value]) => {
@@ -364,7 +368,10 @@ try {
   const shotsAt = [[1280, 900, false], [768, 1024, false], [390, 844, true]];
   for (const [width, height, phone] of shotsAt) {
     for (const dark of [false, true]) {
-      const hers = await context({ as: ada, width, height, phone, dark });
+      // A browser far ahead of UTC and one far behind it: the days are the
+      // server's UTC days whatever its clock says.
+      const zone = phone ? (dark ? "Pacific/Pago_Pago" : "Pacific/Kiritimati") : undefined;
+      const hers = await context({ as: ada, width, height, phone, dark, zone });
       const page = await hers.newPage();
       listen(page, `Ada at ${width} px${dark ? " dark" : ""}`);
       await page.goto(`${site}/profile?tab=insights`, { waitUntil: "load" });
@@ -383,6 +390,9 @@ try {
           seen.state === "ready" && seen.period === "ready" && tilesRight);
         check(`${name}: the chart, ${seen.chart?.bars} weeks of views, its table the same; "${seen.days}"; ${seen.means} meanings`,
           chartRight && /UTC/.test(seen.chart?.caption || "") && seen.means === 7);
+        const lastWeek = `${shortDay(plusDays(today, -6))} to ${shortDay(today)} (today so far)`;
+        check(`${name}${zone ? ` in ${zone}` : ""}: the newest week is "${seen.chart?.table.at(-1)?.[0]}", the UTC days ("${lastWeek}")`,
+          seen.chart?.table.at(-1)?.[0] === lastWeek);
         check(`${name}: ${seen.rows.length} rows, the most viewed first, each with its six and its weeks; two dropdowns `
           + `(${seen.selects.map((s) => `${s.label} ${Math.round(s.height)} px`).join(", ")}); nothing sideways`,
         seen.rows.length === MODELS && seen.rows.every((r, at) => Object.keys(r.kinds).length === 6 && r.weeks.split(",").length === 8
