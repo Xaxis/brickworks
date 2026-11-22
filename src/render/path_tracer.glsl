@@ -140,6 +140,10 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// white card where the model stands comes out as the camera was set to
 	// draw it. 1 for none.
 	vec4 balance;
+	// How deep a staged surface's relief is (photoreal7, x, LDU): surface_map's
+	// alpha its height, so leather's pebbles and wood's pores catch the key as
+	// the real surface's do. 0 for none.
+	vec4 relief;
 } scene;
 
 struct Instance {
@@ -174,7 +178,7 @@ layout(set = 0, binding = 9, std430) readonly buffer PlaceTable {
 layout(set = 0, binding = 10, rgba32f) uniform image2D guide;
 
 // The surface a staged model stands on (photoreal7): a photographed tile of
-// it, sRGB.
+// it, sRGB, its height in alpha.
 layout(set = 0, binding = 11) uniform sampler2D surface_map;
 
 layout(push_constant, std430) uniform Pass {
@@ -955,6 +959,19 @@ float luminance(vec3 c) {
 	return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
+// A staged surface's relief (photoreal7): the floor's normal tilted by the
+// slope of surface_map's height (alpha, scene.relief.x LDU deep) across one
+// of its texels.
+vec3 stage_relief(vec3 at) {
+	vec2 uv = (at - scene.sweep_origin.xyz).xz / max(scene.stage.z, 1.0);
+	vec2 texel = 1.0 / vec2(textureSize(surface_map, 0));
+	float h = textureLod(surface_map, uv, 0.0).a;
+	float hx = textureLod(surface_map, uv + vec2(texel.x, 0.0), 0.0).a;
+	float hz = textureLod(surface_map, uv + vec2(0.0, texel.y), 0.0).a;
+	vec2 slope = vec2(hx - h, hz - h) * scene.relief.x / max(scene.stage.z * texel.x, 1e-4);
+	return normalize(vec3(-slope.x, 1.0, -slope.y));
+}
+
 // A staged key (photoreal7): a soft light near the model, a ball of
 // scene.near.w across seen from here, its light falling off with the square
 // of the distance from scene.near_colour.w (where it is near_colour.rgb) and
@@ -1268,6 +1285,11 @@ void main() {
 			}
 			if (dot(n, ng) < 0.0) {
 				n = -n;
+			}
+			if (thing.info.y == KIND_SWEEP && scene.relief.x > 0.0 && scene.look.w > -0.5
+					&& n.y > 0.999) {
+				// A staged surface's relief on the flat of the floor (photoreal7).
+				n = stage_relief(at);
 			}
 			if (dot(n, v) < 0.01) {
 				n = normalize(n + ng * (0.02 - dot(n, v)));

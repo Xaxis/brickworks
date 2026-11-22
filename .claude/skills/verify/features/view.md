@@ -3154,8 +3154,11 @@ picture the assistant is shown.
   path_tracer.glsl `near`, `near_light`, falling off with the square of
   the distance and across the box's face), the surface lit rather than a
   shadow catcher (white keeps the catcher), its grain a Poly Haven tile
-  (`assets/surfaces/`, binding 11 `surface_map`, at its real size in LDU),
-  and past a table's edge the room (the lighting's HDRI or the window's).
+  (`assets/surfaces/*.webp`, binding 11 `surface_map`, at its real size in
+  LDU, its displacement in alpha tilting the floor's normal by
+  `stage_relief`, STAGES' depth), a table's floor running on behind the
+  model (traced only), and past its far edge the room (the lighting's HDRI
+  or the window's).
   The white card where the model stands is metered for exposure as before
   and its colour read (`_floor_colour`) for a white balance
   (`balance`, `STAGE_BALANCE`); `tone` (`STAGE_TONE`) bends the encoded

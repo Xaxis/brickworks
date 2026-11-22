@@ -89,20 +89,21 @@ const HDRIS: Dictionary = {
 ## photographed tile of the surface ("" for a grain of the tracer's own), the
 ## tile's size (LDU: 1 mm is 2.5), how rough it is, its grain (0 a paper's
 ## fibres, 1 a desk's specks, 2 the tile), whether it is a table (flat, and
-## the room beyond it seen past its edge), its own colour (sRGB)]. Tiles are
-## Poly Haven's, CC0 (docs/ATTRIBUTION.md). "white" is a product shot's white
+## the room beyond it seen past its edge), its own colour (sRGB), how deep
+## its relief is (LDU, the tile's alpha its height)]. Tiles are Poly Haven's
+## diffuse with its displacement in alpha, CC0 (docs/ATTRIBUTION.md). "white" is a product shot's white
 ## seamless, kept at its colour round the model as before: only its light
 ## is the near key's.
 const STAGES: Dictionary = {
-	"white": ["Photographed on white", "", 0.0, 0.9, 0, false, Color(1, 1, 1)],
-	"paper": ["On paper", "", 0.0, 0.9, 0, false, Color(0.93, 0.925, 0.91)],
-	"desk": ["On a desk", "", 0.0, 0.8, 1, true, Color(0.77, 0.74, 0.68)],
-	"wood": ["On a wooden table", "res://assets/surfaces/oak_veneer_01.jpg", 4575.0, 0.45, 2, true,
-		Color(0.62, 0.45, 0.3)],
-	"leather": ["On a leather desk pad", "res://assets/surfaces/leather_white.jpg", 750.0, 0.55, 2,
-		true, Color(0.36, 0.34, 0.32)],
-	"terrazzo": ["On terrazzo", "res://assets/surfaces/terrazzo_tiles.jpg", 5000.0, 0.3, 2, true,
-		Color(0.45, 0.38, 0.32)],
+	"white": ["Photographed on white", "", 0.0, 0.9, 0, false, Color(1, 1, 1), 0.0],
+	"paper": ["On paper", "", 0.0, 0.9, 0, false, Color(0.93, 0.925, 0.91), 0.0],
+	"desk": ["On a desk", "", 0.0, 0.8, 1, true, Color(0.77, 0.74, 0.68), 0.0],
+	"wood": ["On a wooden table", "res://assets/surfaces/oak_veneer_01.webp", 4575.0, 0.45, 2, true,
+		Color(0.62, 0.45, 0.3), 0.2],
+	"leather": ["On a leather desk pad", "res://assets/surfaces/leather_white.webp", 750.0, 0.55, 2,
+		true, Color(0.36, 0.34, 0.32), 0.6],
+	"terrazzo": ["On terrazzo", "res://assets/surfaces/terrazzo_tiles.webp", 5000.0, 0.3, 2, true,
+		Color(0.45, 0.38, 0.32), 1.0],
 }
 ## The staged key (photoreal7), where a render asks for none of its own
 ## (RenderSettings key_rise, key_far, key_size, key_share): how high it
@@ -1922,8 +1923,13 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	_backdrop.visible = not settings.transparent and not below
 	if _backdrop.visible:
 		var footprint: float = Vector2(_bounds.size.x, _bounds.size.z).length() * 0.5
-		var shape := Vector3(footprint * 1.25 + 40.0, maxf(radius * 2.0, 160.0),
-			radius * 60.0 + reach * 3.0)
+		# A staged table (photoreal7) runs on behind the model as far as the
+		# floor does in front, so no camera sees its far edge but at the
+		# horizon (traced only: a draft keeps the studio's sweep); a studio's
+		# paper turns up close behind.
+		var far: float = radius * 60.0 + reach * 3.0
+		var behind: float = far if _table(settings) and plan.traced else footprint * 1.25 + 40.0
+		var shape := Vector3(behind, maxf(radius * 2.0, 160.0), far)
 		if shape != _sweep_shape or _backdrop.mesh == null:
 			_sweep_shape = shape
 			_backdrop.mesh = _sweep(shape.x, shape.y, shape.z)
@@ -2995,6 +3001,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	else:
 		data.append_array([0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.9])
 	data.append_array([_balance.r, _balance.g, _balance.b, 0.0])
+	data.append_array([float(_stage_of(settings)[7]) if lit_stage else 0.0, 0.0, 0.0, 0.0])
 	return data
 
 

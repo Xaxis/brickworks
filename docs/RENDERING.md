@@ -1644,9 +1644,12 @@ shot. Each stage has:
   (`stage.x`), except **Photographed on white**, which keeps the catcher.
   Paper gets its fibres, a desk its specks. A wooden table, a leather desk
   pad and terrazzo get a photographed tile at its real size: Poly Haven's
-  CC0 diffuse maps in `assets/surfaces/`, binding 11. Each has its own
-  roughness, so wood and terrazzo carry a sheen. Past a table's far edge
-  is the room: the lighting's HDRI, or the window's.
+  CC0 diffuse maps in `assets/surfaces/`, binding 11, with each one's
+  displacement map in alpha. That height tilts the floor's normal
+  (`stage_relief`), so leather's pebbles catch the key. Each has its own
+  roughness, so wood and terrazzo carry a sheen. A table runs on behind
+  the model as far as in front, so its far edge is seen only at the
+  horizon, and past it is the room: the lighting's HDRI, or the window's.
 - **The camera.** The white card where the model stands is still metered
   for exposure (`_meter_card`, at the 60th percentile on a textured
   stage). Its colour is read too (`_floor_colour`), for a white balance

@@ -331,18 +331,19 @@ required, and it is given anyway.
 
 The three photographed surfaces a staged render stands the model on
 (`assets/surfaces/`, `StudioRender.STAGES`, Render's "Stands on" choice) are
-Poly Haven's diffuse maps, downloaded at 2K on 2026-11-22 and saved again as
-JPEG at quality 85. They ship in the desktop app only (the web export leaves
+Poly Haven's diffuse maps with each one's displacement map in the alpha
+channel (the tracer's relief), downloaded at 2K on 2026-11-22 and saved
+together as one WebP (quality 85). They ship in the desktop app only (the web export leaves
 `assets/surfaces/` out: a browser does not path trace). Poly Haven publishes
 every asset under **CC0 1.0** (public domain dedication,
 https://creativecommons.org/publicdomain/zero/1.0/): no attribution is
 required, and it is given anyway.
 
-- `oak_veneer_01.jpg`, "Oak Veneer 01", by Jenelle van Heerden —
+- `oak_veneer_01.webp`, "Oak Veneer 01", by Jenelle van Heerden —
   https://polyhaven.com/a/oak_veneer_01 ("On a wooden table").
-- `leather_white.jpg`, "Leather White", by Rob Tuytel —
+- `leather_white.webp`, "Leather White", by Rob Tuytel —
   https://polyhaven.com/a/leather_white ("On a leather desk pad").
-- `terrazzo_tiles.jpg`, "Terrazzo Tiles", by Amal Kumar —
+- `terrazzo_tiles.webp`, "Terrazzo Tiles", by Amal Kumar —
   https://polyhaven.com/a/terrazzo_tiles ("On terrazzo").
 
 ## Photographs of real bricks, for judging renders
