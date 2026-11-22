@@ -5349,15 +5349,20 @@ var _opened_moves: int = 0
 ## less what the open's own follow-ups moved; the revision of every change
 ## made past the history (BrickWorld.outside: whatever marks the model
 ## changed, a Together peer's, a session's, a floor's, a restore); and the
-## history's newest step, by identity, and depth; and what the file says
-## past its parts and steps, by value ([method _said_now]). Any change at
-## all moves one of them, so a save at the same moment writes what was kept.
+## history's newest step, by identity, and depth; what the file says past
+## its parts and steps, by value ([method _said_now]); and the model's
+## parts with those on their way, which a part landing leaves as it was and
+## one more or fewer on its way does not: a save writes those too
+## (_text_into), and the kept text of a model since short of one wrote the
+## file without it, so the file was not the model and Versions asked
+## whether to save it (eohang). Any change at all moves one of them, so a
+## save at the same moment writes what was kept.
 func _moment() -> Array:
 	if world == null or builder == null:
 		return []
 	var depth: int = builder.history_depth()
 	return [world.generation(), world.revision - _opened_moves, world.outside, depth,
-		builder.last_step() if depth > 0 else null, _said_now()]
+		builder.last_step() if depth > 0 else null, _said_now(), _parts_with_awaited()]
 
 
 ## The model's lines past its parts and steps, as a save writes them from:
@@ -5397,7 +5402,7 @@ func _kept_now(path: String, name: String) -> bool:
 	var now: Array = _moment()
 	if now.size() != _kept_at.size() or now[0] != _kept_at[0] or now[1] != _kept_at[1] \
 			or now[2] != _kept_at[2] or now[3] != _kept_at[3] or not is_same(now[4], _kept_at[4]) \
-			or now[5] != _kept_at[5]:
+			or now[5] != _kept_at[5] or now[6] != _kept_at[6]:
 		return false
 	return NewerBuild.may_write(path) and _kept_parts
 

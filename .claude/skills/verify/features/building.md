@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:seatswap probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:smalls9 probe, cli:rsreview probe, cli:rsreview phone probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe -->
 
 ## Sub-features
 
@@ -1651,6 +1651,56 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   of its own (it was 0.6 to 1.1 s), every try the same save byte for byte and
   the same words, each undo the file before it; `--into=DIR` writes the save
   to diff against another checkout's.
+- `finish the surfaces` (`src/ui/finish_bar.gd`, over `src/ai/surface_pass.gd`; APP_UX10 #9
+  finishpass): Edit, Finish the surfaces… opens a bar over the view showing first
+  what the surface pass would lay (`SurfacePass.find`, the reading a session's
+  `review_model {"surface": true}` hands): a count per kind (tiles, slopes,
+  rounded edges, smooth sides; the ground, offered, unticked) and each kind's
+  parts drawn as a ghost on the model (`Strengthen.ghost_mesh`). The reading
+  runs on a fiber (`src/render/fiber.gd`: a thread taking turns with the main
+  thread, never beside it, `Fiber.pause` in the pass's loops), so Orthanc and
+  10179 go on drawing, the status bar saying "Reading the model's studs…".
+  One reading at a time: closed, read again, or overtaken by another model
+  opened or any edit (an Undo, a Together peer's), the reading is stopped
+  (`Fiber.stop`: `Fiber.pause` says so and `SurfacePass.find`'s stages and
+  `OpenPoints.points_of`'s loops return) and the next waits for it by frames,
+  never run whole on the main thread (fpfix H1); each reading has an
+  assistant of its own (M1); the ghost comes down the frame the world
+  changes and the model is read again (M2). Untick a kind to leave it out;
+  Lay puts the ticked ones down as one undo step, tried part by part and
+  laid part by part (`FinishBar._swap_paced`: a place's parts taken off in
+  one `Builder.swap_bricks`, then each part it lays in one of its own), the
+  frame after each slice of parts left to the world's own work on the change
+  and the status bar counting the parts (M5). The scripts that read and draw
+  the ghost are compiled on a worker first (`Later.script_in_background`). Each kind's ghost goes up a piece at a time, a piece at
+  most 12 parts and 6,000 corners. Frames are timed less the wait for a CPU
+  of the main thread and of a fiber's (`Fiber.count_waits`, which a
+  `ProbeTime.Frames` sets): the main thread sleeps through a fiber's turn. Every part a swap lays takes the sub-model
+  and step of the part it stands in the place of (the one whose box holds it,
+  else the nearest), so no sub-model loses a part to the main model (M3); a
+  tile on open studs goes where a part put down by hand goes. Undo puts the
+  file back byte for byte. A place is left as it is, said, when a part it
+  lays has no room, or what stood on a part it takes off would be left loose.
+  With a selection only what is on it is finished. On a touch screen the bar
+  is one of the tools' panels (`Main._seat_tool_panel`): on a phone held
+  upright a sheet under the model, the model and its ghost above it, Lay
+  and each tick 44 points (M4). Without threads (the iPhone engine, off) the
+  reading still runs whole, in one frame: `SurfacePass.find` answers the AI's
+  path at once, and a coroutine with an answer must be awaited, so pacing it
+  there needs the reading made a resumable stage list (fpfix, not done). `tools/probe.sh finishpass_probe` (10
+  models; `-- --phone` by hand) and `fpfix_probe` (the review's attacks, a
+  case each; `-- --phone` for the sheet). `fpjudge_probe` asks Lay's file of
+  the model as it is kept: saved, opened from its file as File, Open does,
+  saved again unedited byte for byte, every part in colour, place and
+  sub-model copy. Never judge a reopen by `ModelStore.saved_text()` alone: it
+  is the save's whole write, and a model whose steps are no one's (the app's
+  own, "Author: Brickworks", no AUTHORED_STEPS line) has its steps, and the
+  IN lines opening each run of a copy's parts, planned afresh from the parts
+  as they stand, so the same parts read back plan to other steps (the
+  castle's 398 of 400, a part taken off by hand and no Lay at all); an
+  unedited Save writes the kept text. fpreview's `files` and fpreview2's
+  checks failed so (fpjudge). `FPJ_CASES=byturns` by hand sets Lay's longest
+  frames on Orthanc against ten parts put down by hand at the same moment.
 - `find and replace everywhere` (`src/ui/find_replace_bar.gd`, `src/assembly/find_replace.gd`;
   APP_UX8 #9 swapfind): Edit, Find and replace… (`Ctrl-Shift-H`, answered by
   `Shell.handle_key`, which `EditVerbs` leaves it to; under LDCad's keys, whose

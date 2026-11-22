@@ -37,6 +37,11 @@ if [ -z "${RELEASE_HERE:-}" ] && [ -x "$mine" ] && [ "$(realpath "$0")" != "$(re
   exec "$mine" "$W" "$@"
 fi
 HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
+# Its checks queue in heavy: a timeout round this script counts that queue
+# (three unit previews died unstarted at exit 124 on 11-22). Refused at once.
+# shellcheck source=queue_wrap.sh
+. "$HERE/queue_wrap.sh"
+queue_wrap_check || exit 2
 S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p "$S"
 # The release's priority is the release's alone.
 unset BOX_HEAVY_PRIORITY
