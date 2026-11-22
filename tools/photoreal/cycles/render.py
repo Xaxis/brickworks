@@ -17,7 +17,7 @@ build: docs/RENDERING.md 5j says where they are. Run:
     blender -b --factory-startup -t 8 --python tools/photoreal/cycles/render.py -- \
         SCENE.cycles.json OUT_DIR [--samples 1024] [--draw 1] [--size 1.0]
         [--sss 0] [--studs Logo4|Normal] [--resolution High|Normal] [--gap 1|0]
-        [--materials ldr_tools|ours] [--denoise 1|0] [--light scene|...]
+        [--colours tracer|ldr_tools] [--denoise 1|0] [--adaptive 0.005] [--check]
 
 It writes OUT_DIR/<name>.exr: the picture's light before any exposure
 (Combined, its alpha, the shadow catcher's pass and the paper's own pattern),
@@ -57,7 +57,9 @@ def args() -> argparse.Namespace:
     p.add_argument("--studs", default="Logo4")
     p.add_argument("--resolution", default="High")
     p.add_argument("--gap", type=int, default=1)
-    p.add_argument("--materials", default="ldr_tools")
+    p.add_argument("--colours", default="tracer", choices=["tracer", "ldr_tools"],
+                   help="each colour's albedo: our tracer's (the same plastic, so only the renderer "
+                   "differs) or ldr_tools' own table")
     p.add_argument("--denoise", type=int, default=1)
     p.add_argument("--adaptive", type=float, default=0.005, help="adaptive threshold, 0 off")
     p.add_argument("--name", default="", help="the picture's name, default the scene's")
@@ -458,13 +460,84 @@ def parts(scene_path: str, opts: argparse.Namespace) -> int:
     ldr = scene_path.replace(".cycles.json", ".cycles.ldr")
     import_ldraw(Reports(), ldr, LDRAW, [], "LinkedDuplicates", settings)
     placed = sum(1 for o in bpy.data.objects if o.type == "MESH" and o.name != "sweep")
+    table = ldconfig() if opts.colours == "tracer" else {}
     for mat in bpy.data.materials:
         if not mat.use_nodes or mat.name == "paper":
             continue
+        code = mat.name.split(" ")[0]
         for node in mat.node_tree.nodes:
-            if node.bl_idname == "ShaderNodeBsdfPrincipled":
-                node.inputs["Subsurface Weight"].default_value *= opts.sss
+            if node.bl_idname != "ShaderNodeBsdfPrincipled":
+                continue
+            node.inputs["Subsurface Weight"].default_value *= opts.sss
+            base = node.inputs["Base Color"]
+            # A print or a speckle feeds the colour from a texture: left as ldr_tools draws it.
+            if code.isdigit() and int(code) in table and not base.is_linked:
+                lin = tracer_albedo(table[int(code)])
+                base.default_value = (*lin, 1.0)
+                node.inputs["Subsurface Radius"].default_value = lin
     return placed
+
+
+# -- our tracer's albedo for an LDraw colour ------------------------------------------------
+# path_tracer.gd: a plastic's albedo is PRODUCT_ALBEDO's fit to the photographs where it has
+# one, else the colour it is drawn in (PartLibrary.shown_for of LDConfig's VALUE) made linear.
+
+FITTED = {
+    (180, 0, 0): (0.60, 0.003, 0.003),
+    (0, 133, 43): (0.004, 0.235, 0.031),
+    (30, 90, 168): (0.019, 0.146, 0.564),
+    (27, 42, 52): (0.009, 0.010, 0.012),
+}
+
+
+def ldconfig() -> dict[int, tuple[int, int, int]]:
+    found = {}
+    for line in open(os.path.join(LDRAW, "LDConfig.ldr"), encoding="utf-8", errors="replace"):
+        w = line.split()
+        if len(w) > 6 and w[0] == "0" and w[1] == "!COLOUR" and "CODE" in w and "VALUE" in w:
+            hexed = w[w.index("VALUE") + 1].lstrip("#")
+            found[int(w[w.index("CODE") + 1])] = tuple(int(hexed[i:i + 2], 16) for i in (0, 2, 4))
+    return found
+
+
+def _to_linear(c: float) -> float:
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _to_srgb(c: float) -> float:
+    return c * 12.92 if c < 0.0031308 else 1.055 * max(c, 0.0) ** (1.0 / 2.4) - 0.055
+
+
+def _cbrt(x: float) -> float:
+    return math.copysign(abs(x) ** (1.0 / 3.0), x)
+
+
+def shown_for(rgb: tuple[float, float, float]) -> tuple[float, float, float]:
+    """PartLibrary.shown_for: a dark colour with almost no hue drawn with a quarter of it."""
+    r, g, b = (_to_linear(c) for c in rgb)
+    l_ = _cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+    m_ = _cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+    s_ = _cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+    big_l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
+    a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
+    bb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+    if big_l >= 0.35 or math.hypot(a, bb) >= 0.04:
+        return rgb
+    a, bb = a * 0.25, bb * 0.25
+    l_ = big_l + 0.3963377774 * a + 0.2158037573 * bb
+    m_ = big_l - 0.1055613458 * a - 0.0638541728 * bb
+    s_ = big_l - 0.0894841775 * a - 1.2914855480 * bb
+    l3, m3, s3 = l_ ** 3, m_ ** 3, s_ ** 3
+    lin = (4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3,
+           -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3,
+           -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3)
+    return tuple(min(max(_to_srgb(c), 0.0), 1.0) for c in lin)
+
+
+def tracer_albedo(rgb8: tuple[int, int, int]) -> tuple[float, float, float]:
+    if rgb8 in FITTED:
+        return FITTED[rgb8]
+    return tuple(_to_linear(c) for c in shown_for(tuple(c / 255.0 for c in rgb8)))
 
 
 def main() -> int:
@@ -539,7 +612,7 @@ def main() -> int:
     done = time.time()
     said = {"name": name, "scene": opts.scene, "samples": opts.samples, "draw": opts.draw,
             "size": list(size), "sss": opts.sss, "studs": opts.studs, "resolution": opts.resolution,
-            "gap": opts.gap, "materials": opts.materials, "denoise": opts.denoise,
+            "gap": opts.gap, "colours": opts.colours, "denoise": opts.denoise,
             "adaptive": opts.adaptive, "parts": placed, "lines": lines,
             "threads": s.render.threads, "build_s": round(built - started, 1),
             "render_s": round(done - built, 1), "blender": bpy.app.version_string}
