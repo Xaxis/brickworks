@@ -78,6 +78,8 @@ import { Unacceptable, count } from "./_directory.js";
 import { mentionsIn } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
+import { afterAnswer } from "./_after.js";
+import { sendDue } from "./_push.js";
 import { blockedHandles, blockedModels, commentsShown, hiddenComments, refuseFor, rowsWithout, standing, unnameable }
   from "./_blocks.js";
 
@@ -290,7 +292,9 @@ export async function listComments(request, response) {
 
 /// A new comment. Its model's owner, if they asked to be emailed and no
 /// email has gone to them today, is told now (sendCommentDigests); a
-/// test's is a dry run, said back as told.
+/// test's is a dry run, said back as told. And whoever hears of it on a device
+/// (supabase/push.sql marked them due) is pushed it once it is answered
+/// (api/_push.js sendDue), on this deployment.
 export async function addComment(request, response, { origin }) {
   response.setHeader("Cache-Control", "no-store");
   const who = await account(request);
@@ -325,6 +329,7 @@ export async function addComment(request, response, { origin }) {
     // Kept, and told in the next: no reason to say the comment did not go.
     console.error(`comments: digest: ${String(problem?.message || problem).slice(0, 160)}`);
   }
+  afterAnswer(() => sendDue({ most: 5 }), "comments: push");
   return response.status(201).json({ comment, ...(told.state === "dry" ? { told } : {}) });
 }
 
@@ -358,6 +363,7 @@ export async function addReply(request, response, { origin }) {
   } catch (problem) {
     console.error(`comments: digest: ${String(problem?.message || problem).slice(0, 160)}`);
   }
+  afterAnswer(() => sendDue({ most: 5 }), "comments: push");
   return response.status(201).json({ comment, ...(told.state === "dry" ? { told } : {}) });
 }
 

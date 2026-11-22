@@ -22,7 +22,6 @@
 <link rel="alternate" hreflang="x-default" href="https://brickworks.diy/privacy">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/favicon-180.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Privacy · Brickworks">
@@ -36,6 +35,9 @@
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="apple-mobile-web-app-title" content="Brickworks">
 <link rel="stylesheet" href="/site.css">
 <style>
 /* Laid out here; the head, the list of what is on the page, the tabs and
@@ -143,6 +145,7 @@
 
 			<h2 id="your-notifications">Your notifications</h2>
 			<p>What happens to your models (comments, photos of builds, remixes, likes, a challenge’s end) is shown to you alone, on Notifications. To say what is new, Brickworks keeps when you last opened it and which of your models’ notifications you have opened since, with your account and nothing else. Likes are told as a number: who liked your model is never shown, and nobody is told who follows them.</p>
+			<p>If you turn on notifications on a device (Settings › Notifications), its browser gives Brickworks an address at its push service (Google’s for Chrome, Mozilla’s for Firefox, Apple’s on an iPhone) and a key to write to it with. Both are kept with your account and the language you chose, and each push is sent there encrypted, so the push service can read none of it. Turning it off, signing out on that device, or the browser saying it is gone deletes them; deleting your account deletes them all.</p>
 
 			<h2 id="your-theme">Your theme</h2>
 			<p>System, Light or Dark, chosen at the foot of any page. Kept in your browser so the next page opens in it, and, once you are signed in, on your account so your other browsers follow it. A setting, not tracking: nothing else is kept with it, and nobody else sees it.</p>
@@ -163,7 +166,7 @@
 			<p>Only the site’s owner reads a report, with any note they keep on it. An answer is emailed to you through Resend and kept with the report. Signed in, you see your reports, where each stands and our answers on <a href="/settings#feedback">your settings page</a>. Your reports and what came with them are deleted with your account; a report sent signed out, or one we have closed, is erased a year after it last changed.</p>
 
 			<h2 id="deleting-your-account">Deleting your account</h2>
-			<p>On <a href="/profile">your account</a>, under Settings: <b>Delete this account</b>, with your address typed to confirm (an orangecheck account signs in with orangecheck again instead). The account goes, and with it everything of yours on the server: the models you shared and their versions, comments, favourites, collections, follows, the photos of your builds and of your models, your profile’s links, banner, pins and picture, the sets you own, your Claude connections, your theme, what you read of your notifications, your orangecheck id, your beta application and your feedback. It cannot be undone.</p>
+			<p>On <a href="/profile">your account</a>, under Settings: <b>Delete this account</b>, with your address typed to confirm (an orangecheck account signs in with orangecheck again instead). The account goes, and with it everything of yours on the server: the models you shared and their versions, comments, favourites, collections, follows, the photos of your builds and of your models, your profile’s links, banner, pins and picture, the sets you own, your Claude connections, your theme, what you read of your notifications, the devices you turned notifications on for, your orangecheck id, your beta application and your feedback. It cannot be undone.</p>
 
 			<h2 id="your-visit">Your visit</h2>
 			<p>We count visits with our own privacy-friendly analytics. It sets no cookies and stores nothing on your device; your IP address is used only to make a daily anonymous count and is never stored. To opt out on this site, open any page with <a href="/?ov_ignore=1">?ov_ignore=1</a>. Shared models, people’s pages and signing in are never counted.</p>

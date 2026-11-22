@@ -1,5 +1,5 @@
 ---
-ai: A person's profile and public page (/u/<handle>), following designers, the feed of what they make, notifications, the account menu and the site's settings (profile, appearance, the daily email, orangecheck, privacy, assistants, reports).
+ai: A person's profile and public page (/u/<handle>), following designers, the feed of what they make, notifications, the account menu and the site's settings (profile, appearance, notifications on this device and the daily email, orangecheck, privacy, assistants, reports).
 rules:
   - Following is for people 13 and over.
 title: Profiles, following and your feed
@@ -122,7 +122,8 @@ ui:the account menu
 
 - **Profile**: **Edit profile**.
 - **Appearance**: **System**, **Light** or **Dark**, kept in this browser and with your account.
-- **Email**: the daily email, every box off until you tick it. **Email me when somebody comments on a model I shared**, and in the same email what came into your feed: new models and versions from people you follow, photos of builds, remixes of yours. At most one email a day.
+- **Notifications**: **On this device**, **Notify me on this device** shows what your [notifications](#notifications) tell you, a comment or a reply, a mention, a photo of a build of your model, a remix or a challenge's result, as this device's own notification within the minute. Your browser asks whether to allow it only once you tick it, and each device you use is chosen on its own; signing out stops it there. On an iPhone or iPad, [add Brickworks to your Home Screen](/docs/web-and-desktop#install) first and turn it on there. **Install Brickworks** is here too while your browser offers it.
+  **By email**: the daily email, every box off until you tick it. **Email me when somebody comments on a model I shared**, and in the same email what came into your feed: new models and versions from people you follow, photos of builds, remixes of yours. At most one email a day.
   **Email me Brickworks news** is off until you tick it: new features and planned upkeep, a few times a month at most. Every one of those emails has an **Unsubscribe** link, and your mail app's own unsubscribe button works too.
 - **orangecheck**: **Link orangecheck** to sign in with it as well as your email ([signing in](/docs/account#sign-in)); **Unlink** to stop. Each first sends a code to your email to confirm it is you, unless you signed in with one in the last five minutes, and your email is told.
 - **Privacy**: your age answer, **Show on my profile whom I follow**, and **Show on my profile the models I liked** (the Likes tab).
@@ -138,4 +139,7 @@ While the [beta](/docs/beta) is open, **Beta** comes after Profile.
 ui:your settings page
 ui:likes on a profile
 ui:theme choice
+ui:this device's notifications
+lib:push sent to devices
+lib:push subscriptions
 -->

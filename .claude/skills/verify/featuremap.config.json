@@ -3053,7 +3053,7 @@
       "kind": "ui",
       "label": "your settings page",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Notifications (On this device: the push toggle, the browser's prompt only once turned on, and Install Brickworks while the browser offers it; By email), Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web"
     },
     {
@@ -3110,6 +3110,55 @@
       "label": "notifications browser flow",
       "entry": "tools/web/notifications_flow.mjs",
       "reach": "node --env-file=.env tools/web/notifications_flow.mjs --url=http://127.0.0.1:8820 --out=DIR   (a local relay_server.mjs 8820, nothing held, or --hold=notifications for the file as applied; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "installing the site",
+      "entry": "web/site.webmanifest",
+      "reach": "<deployment>/ any page (web/_shell.html's manifest, apple-touch-icon and title lines; the server's pages through api/_directory.js siteChrome): Chromium finds it installable (tools/web/homescreen_flow.mjs install, at 390 and 1280); offered from a second visit at the window's foot (web/push.js: Install or No thanks, kept, a toast with Settings and Undo; on an iPhone or iPad, Share then Add to Home Screen, OK); never on /settings, /offline, installed, or under the owner's notice; Settings › Notifications' Install Brickworks while the browser offers it",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the site's service worker",
+      "entry": "web/sw.js",
+      "reach": "<deployment>/sw.js, registered by web/push.js once a page has loaded and the browser is idle: pages network-first (navigation preload), the offline page only when the network cannot be reached; /app, /b/, /e/, /api/, /oauth/, /admin never its own (the static routing API where the browser has it); keeps only the offline pages and what they are drawn with; shows a push and opens its page (tools/web/homescreen_flow.mjs fresh, offline, requests)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this device's notifications",
+      "entry": "web/push.js",
+      "reach": "https://brickworks.diy/settings#email-part signed in   (Notifications › On this device: Notify me on this device, GET/POST /api/people?op=push; blocked, unsupported (an iPhone before Add to Home Screen) and not-open states said; signed out or Sign out, the device stops; tools/web/homescreen_flow.mjs push)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "offline page",
+      "entry": "web/offline.html",
+      "reach": "<deployment>/offline, and in place of any page of the site the worker cannot reach the network for (web/sw.js), in the address's language (/de/offline, /fr/offline, /es/offline); back to the page asked for once online",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "push sent to devices",
+      "entry": "api/_push.js",
+      "reach": "GET /api/people?op=push[&endpoint=]: {ready, key, on, devices}; POST ?op=push {on, endpoint, p256dh, auth, lang} signed in (a browser's push service only); POST ?op=push_send, the knock: what is due sent as Web Push (RFC 8291 aes128gcm, VAPID RFC 8292, VAPID_PRIVATE_KEY), a 404/410 device deleted at once; after each comment and reply too (api/_comments.js); tests/test_push.py",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "push subscriptions",
+      "entry": "supabase/push.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push.sql --dry   (push_subscriptions, push_due and push_sent, deleted with the account; triggers on comments, mentions, photos, remixes and a challenge's end mark the owner due and knock /api/people?op=push_send by pg_net, and pg_cron each minute while any is due)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homescreen browser flow",
+      "entry": "tools/web/homescreen_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env)",
       "area": "web"
     },
     {

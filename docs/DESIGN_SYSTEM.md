@@ -807,6 +807,17 @@ is on the page, `hidden`, for the script to show.
   the window's width less its gutters, centred; under 900 px, with the
   beta bar shown, it sits over the bar. While shown, `<html data-notice>`
   pads the footer. It rises in as the beta bar does.
+- **Install offer**: `aside.site-notice.install-offer` (`web/push.js`,
+  homescreen): the site notice's card, in its place, from a person's
+  second visit, never the first: its words as a paragraph (`.words`) over
+  an `.actions` row at the card's end, `.cta.ghost.small` No thanks then
+  `.cta.small` Install (the browser's own dialog); on an iPhone or iPad
+  the words say Share, then Add to Home Screen, and the one button is OK.
+  Escape puts it away for the page. No thanks is kept in the browser
+  (`brickworks.install`) and said in the toast with a Settings link and
+  Undo. Never while the owner's notice is shown, nor on /settings (which
+  has Install Brickworks under Notifications) or the offline page. While
+  shown, `<html data-offer>` pads the footer.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the

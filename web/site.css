@@ -1468,6 +1468,13 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 @media (width < 600px) { .site-notice { right: 0; left: 0; margin-inline: auto; } }
 @media (prefers-reduced-motion: reduce) { .site-notice { transition: none; } }
 :root[data-notice] .site-foot { padding-bottom: calc(var(--s-6) + 96px); }
+/* The offer to install the site (web/push.js, homescreen): the site
+   notice's card, from a second visit, its words over its two buttons,
+   No thanks then Install, at the card's end. */
+.install-offer { flex-direction: column; align-items: stretch; padding-right: var(--s-4); }
+.install-offer .words { margin: 0; }
+.install-offer .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); margin: var(--s-3) 0 0; }
+:root[data-offer] .site-foot { padding-bottom: calc(var(--s-6) + 128px); }
 
 /* The "more" menu: an icon button that opens a short list of what else
    can be done (Report it, Takedown requests), the header Menu's panel.

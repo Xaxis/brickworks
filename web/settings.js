@@ -1,6 +1,7 @@
 // Your settings, /settings (settings.html): the beta while it is open (join
 // its testers in one press, or leave in one: api/_beta.js; and whether its
-// bar is shown on every page, signed out too: web/betabar.js), the theme, what Brickworks
+// bar is shown on every page, signed out too: web/betabar.js), the theme, this
+// device's notifications (web/push.js, api/_push.js) and what Brickworks
 // emails you, orangecheck linked or not (api/orangecheck.js), your age
 // answer, whom your profile shows you follow and whether it shows the
 // models you liked (supabase/avatars.sql), the AI apps that may work
@@ -21,6 +22,7 @@ import { codeBoxes } from "/code-boxes.js";
 import { showFeedCount } from "/follow.js";
 import { avatarHtml } from "/kit.js";
 import { blockPerson } from "/block.js";
+import * as device from "/push.js";
 
 const $ = (id) => document.getElementById(id);
 // The codes emailed from here, a box per digit (web/code-boxes.js, signinux
@@ -443,6 +445,8 @@ async function load() {
   $("mail-comments").checked = Boolean(mail && mail.comments);
   $("mail-kinds").hidden = !(mail && mail.kinds === true);
   for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
+  // This device's notifications, drawn on their own (web/push.js).
+  drawPush().catch(() => null);
   // Brickworks' news by email (api/_announce.js), off until chosen.
   const news = answer.body.news;
   $("news-choice").hidden = !(news && news.ready);
@@ -487,6 +491,113 @@ async function load() {
   if (plan && location.hash === "#plan") $("plan")?.scrollIntoView({ block: "start" });
   document.documentElement.dataset.settings = "ready";
 }
+
+// ---------------------------------------------------------------------------
+// This device's notifications (homescreen, 2026-11-22): on or off for this
+// browser alone, as the account knows it (GET /api/people?op=push with the
+// device's endpoint); the browser's own prompt only once it is turned on.
+// And Install Brickworks, while the browser offers it, for whoever said No
+// thanks to the offer at a page's foot (web/push.js).
+
+let pushKey = null;
+const pushSaid = (words) => {
+  $("push-said").textContent = words;
+};
+const BLOCKED = () => say("Notifications are blocked for this site in your browser’s settings. Allow them there, then turn this on.");
+
+async function drawPush() {
+  const box = $("push-on");
+  box.disabled = true;
+  drawInstall();
+  const here = await device.device().catch(() => ({ pushable: false }));
+  if (!here.pushable) {
+    box.checked = false;
+    pushSaid(device.apple() && !device.standalone()
+      ? say("On an iPhone or iPad, add Brickworks to your Home Screen first (Share, then Add to Home Screen), open it from there, and turn this on there.")
+      : say("This browser can’t show notifications from a site."));
+    return;
+  }
+  const endpoint = here.subscription?.endpoint;
+  const answer = await call(`/api/people?op=push${endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : ""}`).catch(() => null);
+  if (!answer || answer.status !== 200 || !answer.body.ready || !answer.body.key) {
+    box.checked = false;
+    pushSaid(say("Notifications on this device are not open on Brickworks yet."));
+    return;
+  }
+  pushKey = answer.body.key;
+  const on = Boolean(answer.body.on && endpoint && here.permission === "granted");
+  box.checked = on;
+  if (on) device.told(endpoint);
+  if (here.permission === "denied") {
+    pushSaid(BLOCKED());
+    return;
+  }
+  box.disabled = false;
+  pushSaid("");
+}
+
+$("push-on").addEventListener("change", async () => {
+  const box = $("push-on");
+  box.disabled = true;
+  if (box.checked) {
+    pushSaid(say("Asking your browser…"));
+    const on = await device.turnOn(pushKey).catch(() => ({ state: "failed" }));
+    if (on.state !== "granted") {
+      box.checked = false;
+      box.disabled = on.state === "denied";
+      pushSaid(on.state === "denied" ? BLOCKED()
+        : on.state === "default" ? say("Not turned on: your browser asked, and it wasn’t allowed.")
+          : say("This browser’s push service didn’t answer. Try again in a minute."));
+      return;
+    }
+    const sub = on.subscription;
+    const answer = await call("/api/people?op=push", { method: "POST", body: { on: true, endpoint: sub.endpoint,
+      p256dh: sub.keys?.p256dh, auth: sub.keys?.auth, lang: globalThis.brickworksLang?.code || "en" } }).catch(() => null);
+    box.disabled = false;
+    if (!answer || answer.status !== 200) {
+      box.checked = false;
+      await device.turnOff().catch(() => null);
+      pushSaid(told(answer?.body?.error, say("That did not work just now.")));
+      return;
+    }
+    device.told(sub.endpoint);
+    pushSaid(say("On for this device: what happens to your models shows here within the minute."));
+    return;
+  }
+  const here = await device.device().catch(() => ({ subscription: null }));
+  const endpoint = here.subscription?.endpoint;
+  if (endpoint) {
+    const answer = await call("/api/people?op=push", { method: "POST", body: { on: false, endpoint } }).catch(() => null);
+    if (!answer || answer.status !== 200) {
+      box.checked = true;
+      box.disabled = false;
+      pushSaid(told(answer?.body?.error, say("That did not work just now.")));
+      return;
+    }
+  }
+  await device.turnOff().catch(() => null);
+  box.disabled = false;
+  pushSaid(say("Off for this device."));
+});
+
+/// This device off for the account, before it signs out here.
+async function pushGone() {
+  const here = await device.device().catch(() => ({ subscription: null }));
+  const endpoint = here.subscription?.endpoint;
+  if (endpoint) await call("/api/people?op=push", { method: "POST", body: { on: false, endpoint } }).catch(() => null);
+  await device.turnOff().catch(() => null);
+}
+
+function drawInstall() {
+  $("install-part").hidden = device.installable() !== "prompt";
+}
+addEventListener("beforeinstallprompt", () => setTimeout(drawInstall));
+addEventListener("appinstalled", () => setTimeout(drawInstall));
+$("install").addEventListener("click", async () => {
+  const outcome = await device.install().catch(() => null);
+  drawInstall();
+  if (outcome === "accepted") pushSaid(say("Installed: Brickworks opens from your home screen or dock now."));
+});
 
 $("mail-comments").addEventListener("change", async () => {
   const box = $("mail-comments");
@@ -578,7 +689,9 @@ $("sign-in").addEventListener("click", () => askToSignIn());
 addEventListener("brickworks:signed-in-done", () => {
   if (document.documentElement.dataset.settings === "signed-out") load();
 });
-$("sign-out").addEventListener("click", () => {
+$("sign-out").addEventListener("click", async () => {
+  // This device stops: the account is told while it still can be.
+  await pushGone();
   signOut();
   showFeedCount().catch(() => null);
   load();
@@ -622,6 +735,8 @@ async function deleteAccount(body) {
     $("delete-said").textContent = told(answer.body.error, say("That did not work just now."));
     return;
   }
+  // Its devices went with it (supabase/push.sql); this one's subscription too.
+  await device.turnOff().catch(() => null);
   signOut();
   showFeedCount().catch(() => null);
   await load();

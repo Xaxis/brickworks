@@ -123,6 +123,12 @@
 //   POST ?op=notifications_read   (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
 //                                 or {all: true}: read
 //   POST ?op=news                 (session) {news}: Brickworks' news by email or not, off until chosen
+//   GET  ?op=push[&endpoint=]     whether this deployment pushes, its key, and (session) whether
+//                                 this device is on for the caller (api/_push.js)
+//   POST ?op=push                 (session) {on, endpoint, p256dh, auth, lang}: this device's
+//                                 notifications as pushes, on or off (supabase/push.sql)
+//   POST ?op=push_send            the knock (push.sql's triggers and cron job): what is due is
+//                                 pushed. Needs no secret: it can push nothing else
 //   POST ?op=news_unsubscribe&a&t a news mail's one-click unsubscribe, no sign-in (RFC 8058); GET of
 //                                 it goes to Settings, which asks (api/_announce.js)
 //   GET  ?op=designs              (session) the caller's own models' last 30
@@ -251,6 +257,7 @@ import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, 
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import { pushChoose, pushSend, pushState } from "./_push.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -1909,6 +1916,8 @@ async function handler(request, response) {
       if (op === "list_csv") return await listCsv(request, response, { origin: originOf(request) });
       // A news mail's unsubscribe opened in a browser: to Settings, which asks.
       if (op === "news_unsubscribe") return await newsUnsubscribe(request, response);
+      // This device's pushes (api/_push.js).
+      if (op === "push") return await pushState(request, response);
     } else if (request.method === "POST") {
       if (op === "photo_start") return await photoStart(request, response);
       if (op === "photo") return await photoKeep(request, response);
@@ -1932,6 +1941,8 @@ async function handler(request, response) {
       if (op === "mail") return await chooseMail(request, response);
       if (op === "news") return await chooseNews(request, response);
       if (op === "news_unsubscribe") return await newsUnsubscribe(request, response);
+      if (op === "push") return await pushChoose(request, response);
+      if (op === "push_send") return await pushSend(request, response);
       if (op === "follow") return await follow(request, response);
       if (op === "list_follow") return await listFollow(request, response);
       if (op === "follow_choice") return await followChoice(request, response);
