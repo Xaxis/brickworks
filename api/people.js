@@ -126,9 +126,12 @@
 //   GET  ?op=push[&endpoint=]     whether this deployment pushes, its key, and (session) whether
 //                                 this device is on for the caller (api/_push.js)
 //   POST ?op=push                 (session) {on, endpoint, p256dh, auth, lang}: this device's
-//                                 notifications as pushes, on or off (supabase/push.sql)
+//                                 notifications as pushes, on or off (supabase/push.sql); (session)
+//                                 {on: false, all: true}: every device off; no session,
+//                                 {on: false, endpoint, auth}: a device forgotten by its secret
 //   POST ?op=push_send            the knock (push.sql's triggers and cron job): what is due is
-//                                 pushed. Needs no secret: it can push nothing else
+//                                 pushed, 204. Needs no secret: it can push nothing else. Only
+//                                 at brickworks.diy; elsewhere a check's own account, signed in
 //   POST ?op=news_unsubscribe&a&t a news mail's one-click unsubscribe, no sign-in (RFC 8058); GET of
 //                                 it goes to Settings, which asks (api/_announce.js)
 //   GET  ?op=designs              (session) the caller's own models' last 30

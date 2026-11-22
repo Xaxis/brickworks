@@ -505,21 +505,33 @@ const pushSaid = (words) => {
 };
 const BLOCKED = () => say("Notifications are blocked for this site in your browser’s settings. Allow them there, then turn this on.");
 
+/// Turn off on every device (N): shown while the account has any, from any
+/// browser, this one able to show notifications or not.
+function drawEvery(devices) {
+  const n = Number(devices) || 0;
+  $("push-every-part").hidden = n < 1;
+  $("push-every").textContent = say("Turn off on every device ({n})", { n });
+}
+
 async function drawPush() {
   const box = $("push-on");
   box.disabled = true;
   drawInstall();
   const here = await device.device().catch(() => ({ pushable: false }));
+  const endpoint = here.subscription?.endpoint;
+  const answer = await call(`/api/people?op=push${endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : ""}`).catch(() => null);
+  const open = Boolean(answer && answer.status === 200 && answer.body.ready && answer.body.key);
+  drawEvery(open ? answer.body.devices : 0);
   if (!here.pushable) {
     box.checked = false;
+    // Apple lets a site notify only from the Home Screen, from iOS 16.4,
+    // and the Home Screen app opens in the studio (/app).
     pushSaid(device.apple() && !device.standalone()
-      ? say("On an iPhone or iPad, add Brickworks to your Home Screen first (Share, then Add to Home Screen), open it from there, and turn this on there.")
+      ? say("On an iPhone or iPad (iOS 16.4 or later), add Brickworks to your Home Screen first: Share, then Add to Home Screen. Open it from there: it opens in the studio, so tap its menu, Back to brickworks.diy, then Menu › Settings, and turn this on there.")
       : say("This browser can’t show notifications from a site."));
     return;
   }
-  const endpoint = here.subscription?.endpoint;
-  const answer = await call(`/api/people?op=push${endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : ""}`).catch(() => null);
-  if (!answer || answer.status !== 200 || !answer.body.ready || !answer.body.key) {
+  if (!open) {
     box.checked = false;
     pushSaid(say("Notifications on this device are not open on Brickworks yet."));
     return;
@@ -527,7 +539,7 @@ async function drawPush() {
   pushKey = answer.body.key;
   const on = Boolean(answer.body.on && endpoint && here.permission === "granted");
   box.checked = on;
-  if (on) device.told(endpoint);
+  if (on) device.told(here.subscription);
   if (here.permission === "denied") {
     pushSaid(BLOCKED());
     return;
@@ -560,7 +572,8 @@ $("push-on").addEventListener("change", async () => {
       pushSaid(told(answer?.body?.error, say("That did not work just now.")));
       return;
     }
-    device.told(sub.endpoint);
+    device.told(sub);
+    drawEvery(answer.body.devices);
     pushSaid(say("On for this device: what happens to your models shows here within the minute."));
     return;
   }
@@ -574,19 +587,30 @@ $("push-on").addEventListener("change", async () => {
       pushSaid(told(answer?.body?.error, say("That did not work just now.")));
       return;
     }
+    drawEvery(answer.body.devices);
   }
   await device.turnOff().catch(() => null);
   box.disabled = false;
   pushSaid(say("Off for this device."));
 });
 
-/// This device off for the account, before it signs out here.
-async function pushGone() {
-  const here = await device.device().catch(() => ({ subscription: null }));
-  const endpoint = here.subscription?.endpoint;
-  if (endpoint) await call("/api/people?op=push", { method: "POST", body: { on: false, endpoint } }).catch(() => null);
+// Every device of the account off at once: a phone left somewhere, a
+// computer that was not yours.
+$("push-every").addEventListener("click", async () => {
+  const every = $("push-every");
+  every.disabled = true;
+  const answer = await call("/api/people?op=push", { method: "POST", body: { on: false, all: true } }).catch(() => null);
+  every.disabled = false;
+  if (!answer || answer.status !== 200) {
+    pushSaid(told(answer?.body?.error, say("That did not work just now.")));
+    return;
+  }
   await device.turnOff().catch(() => null);
-}
+  $("push-on").checked = false;
+  drawEvery(0);
+  pushSaid(say("Off on every device."));
+  $("push-on").focus();
+});
 
 function drawInstall() {
   $("install-part").hidden = device.installable() !== "prompt";
@@ -689,9 +713,8 @@ $("sign-in").addEventListener("click", () => askToSignIn());
 addEventListener("brickworks:signed-in-done", () => {
   if (document.documentElement.dataset.settings === "signed-out") load();
 });
-$("sign-out").addEventListener("click", async () => {
-  // This device stops: the account is told while it still can be.
-  await pushGone();
+$("sign-out").addEventListener("click", () => {
+  // This device's notifications stop with it (web/account.js signOut).
   signOut();
   showFeedCount().catch(() => null);
   load();

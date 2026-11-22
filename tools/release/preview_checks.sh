@@ -157,8 +157,10 @@ declare -A CMD=(
   # network cut, in the address's language; /app, /b/ and /e/ never the
   # worker's (a request log); the offer from a second visit, No thanks
   # kept; a first visit waiting on nothing of it; Bob's comment on Ada's
-  # model shown on her device within 60 s, nothing once off, her devices
-  # gone with her account; Settings and the offline page at 390, 768 and
+  # model shown on her device within 60 s (knocked as Ada: a preview takes
+  # only a check's own account), nothing once off, her device gone at the
+  # header's Sign out, Turn off on every device, her sign-in ending and her
+  # account deleted; Settings and the offline page at 390, 768 and
   # 1280 in both themes. Throwaway accounts, deleted after.
   [homescreen]="tools/web/homescreen_flow.mjs --url=$P --out=$S/${TAG}_homescreen"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following

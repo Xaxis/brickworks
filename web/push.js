@@ -17,9 +17,11 @@
 //   owner's notice is shown (the next page then).
 // - Settings › Notifications turns this device's notifications on and off
 //   (web/settings.js, with turnOn and turnOff here). Signed out, a device
-//   turned on stops (its subscription ended here, so the server deletes it
-//   at its next push); renewed by the browser, the account is told its new
-//   address.
+//   turned on stops: any Sign out tells the server to forget it (web/
+//   account.js, by its endpoint and secret, kept here) and ends its
+//   subscription, which the next page ends too if it could not; signed in
+//   as another account (told apart by its id), the same. Renewed by the
+//   browser, the account is told its new address.
 // - The offline page (web/offline.html, which the worker shows when the
 //   network is gone) goes back to the page asked for when it returns.
 //
@@ -151,8 +153,11 @@ function made(tag, props = {}, ...children) {
 /// The offer drawn: the site notice's card, its words over its buttons.
 function draw(how) {
   if (card || root.hasAttribute("data-notice") || installable() !== how) return;
+  // Apple lets a site notify only from the Home Screen (iOS 16.4 and
+  // later), and the Home Screen app opens in the studio (/app): where
+  // Settings is from there, said in so many words.
   const words = how === "apple"
-    ? say("Add Brickworks to your Home Screen: tap Share, then Add to Home Screen. Opened from there, it can tell you when somebody comments on your models.")
+    ? say("Add Brickworks to your Home Screen: tap Share, then Add to Home Screen. Opened from there (iOS 16.4 or later), it can tell you when somebody comments on your models: it opens in the studio, so tap its menu, Back to brickworks.diy, then Menu › Settings › Notifications.")
     : say("Install Brickworks on this device: it opens in its own window, and can tell you when somebody comments on your models.");
   const yes = made("button", { type: "button", className: "cta small", textContent: how === "apple" ? say("OK") : say("Install") });
   const no = made("button", { type: "button", className: "cta ghost small", textContent: say("No thanks") });
@@ -261,11 +266,14 @@ export async function turnOff() {
   return endpoint;
 }
 
-/// The device the account signed in here was told of ([endpoint], or null
-/// for none), kept with whose it is.
-export async function told(endpoint) {
-  const account = endpoint ? await import("/account.js").catch(() => null) : null;
-  write(DEVICE, endpoint ? { endpoint, who: account?.email?.() || "" } : null);
+/// The device the account signed in here was told of ([subscription], its
+/// JSON, or null for none), kept with whose it is (the account's id, which
+/// a change of address leaves alone) and its secret, which is what a Sign
+/// out says to have it forgotten (web/account.js).
+export async function told(subscription) {
+  const account = subscription?.endpoint ? await import("/account.js").catch(() => null) : null;
+  write(DEVICE, subscription?.endpoint ? { endpoint: subscription.endpoint, auth: subscription.keys?.auth || "",
+    who: account?.accountId?.() || "" } : null);
 }
 
 /// On each page: signed out, or signed in as somebody else, a device turned
@@ -281,7 +289,7 @@ async function keep() {
   const subscription = registration ? await registration.pushManager.getSubscription().catch(() => null) : null;
   const account = await import("/account.js").catch(() => null);
   if (!account) return;
-  if (!account.signedIn() || (kept?.who && kept.who !== account.email())) {
+  if (!account.signedIn() || (kept?.who && kept.who !== account.accountId())) {
     await subscription?.unsubscribe().catch(() => null);
     write(DEVICE, null);
     return;
@@ -290,7 +298,7 @@ async function keep() {
   const said = subscription.toJSON();
   const answer = await account.call("/api/people?op=push", { method: "POST", body: { on: true, endpoint: said.endpoint,
     p256dh: said.keys?.p256dh, auth: said.keys?.auth, lang: window.brickworksLang?.code || "en" } }).catch(() => null);
-  if (answer?.status === 200) write(DEVICE, { endpoint: said.endpoint, who: account.email() });
+  if (answer?.status === 200) write(DEVICE, { endpoint: said.endpoint, auth: said.keys?.auth || "", who: account.accountId() });
 }
 
 // ---------------------------------------------------------------------------
@@ -311,3 +319,24 @@ else addEventListener("load", idle, { once: true });
 
 // The offline page: the page asked for, once the network is back.
 if (root.hasAttribute("data-offline")) addEventListener("online", () => location.reload());
+
+// A push opened while this page shows what it is about (web/sw.js): the page
+// again at its address, so the new comment is on it; only moved there while
+// words are being typed on it.
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  let target = null;
+  try {
+    target = typeof event.data?.open === "string" ? new URL(event.data.open, location.href) : null;
+  } catch {
+    target = null;
+  }
+  if (!target || target.origin !== location.origin || target.pathname !== location.pathname) return;
+  const typing = [...document.querySelectorAll("textarea, input:not([type]), input[type=text]")]
+    .some((one) => one.value.trim() && one.value !== one.defaultValue);
+  if (typing) {
+    location.hash = target.hash;
+    return;
+  }
+  history.replaceState(history.state, "", target.href);
+  location.reload();
+});

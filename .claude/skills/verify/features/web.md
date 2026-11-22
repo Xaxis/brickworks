@@ -6050,26 +6050,45 @@ The site on a home screen, offline, and this device's notifications
   `brickworks.visits`), No thanks kept in `brickworks.install`.
 - `the site's service worker` (`web/sw.js`, cache `brickworks-offline-<VERSION>`):
   registered by push.js after the page's load and an idle moment (theme.js
-  imports push.js on `load`); pages network-first with navigation preload,
-  the offline page only on a network error; `/app`, `/b/`, `/e/`, `/api/`,
-  `/oauth/`, `/admin`, `/.well-known/` never its own.
+  imports push.js on `load`); pages and `/app` network-first with navigation
+  preload, the offline page only on a network error (`/app` never kept);
+  `/app/*`, `/b/`, `/e/`, `/api/`, `/oauth/`, `/admin`, `/.well-known/` never
+  its own, and (static routing, `not` from Chrome 128) no request but a
+  page's and the offline page's five files dispatched to it at all. Keeps the
+  offline page (English and the browser's language, another once a page in
+  it opens) and what draws it, each asked again at most once an hour as a
+  page opens (hsfix N7: by their own content, not VERSION). A tapped push on
+  an open page of its own address reloads it there (push.js's `message`),
+  unless words are being typed on it.
 - `offline page` (`web/offline.html`, `html[data-offline]`, in each
   language): reloads itself on `online`.
-- `this device's notifications` (`web/push.js` turnOn/turnOff/device, and
-  web/settings.js `#push-on`, `#push-said`, `#install-part`).
-- `push sent to devices` (`api/_push.js`, through api/people.js
-  `?op=push` and `?op=push_send`; `afterAnswer(sendDue)` after a comment or
-  a reply in api/_comments.js) and `push subscriptions`
-  (`supabase/push.sql`). The private key is `VAPID_PRIVATE_KEY` in the
-  deployment's env (the public key is derived from it); without it, or
-  before the file, `?op=push` says `ready: false` and Settings says it is
-  not open yet.
+- `this device's notifications` (`web/push.js` turnOn/turnOff/device/told,
+  kept in `brickworks.push` as {endpoint, auth, who: the account's id}, and
+  web/settings.js `#push-on`, `#push-said`, `#push-every` "Turn off on every
+  device (N)", `#install-part`). Any Sign out (web/account.js `signOut`, the
+  header's, Settings', a 401's) forgets the device: a keepalive POST
+  `?op=push {on: false, endpoint, auth}` with no sign-in, and the browser's
+  subscription ended.
+- `push sent to devices` (`api/_push.js`, through api/people.js `?op=push`
+  and `?op=push_send`, which answers 204) and `push subscriptions`
+  (`supabase/push.sql`, then `supabase/push_2.sql`: a device tied to its
+  sign-in, `session`, deleted with it; marks in `push_marks`; a key a
+  device in `push_sent`; `push_again`, at most 3 tries more; one push a
+  model a device in 3 minutes; the cron job `push_sweep`). Only a request to
+  brickworks.diy takes what is due (`live()`); anywhere else the knock takes
+  only a check's own account (`@resend.dev`) it is signed in as
+  (`push_take_tester`), and brickworks.diy's take leaves those alone. The
+  private key is `VAPID_PRIVATE_KEY` in the deployment's env (the public key
+  is derived from it); without it, or before the file, `?op=push` says
+  `ready: false` and Settings says it is not open yet.
 - `homescreen browser flow` (`tools/web/homescreen_flow.mjs`, preview check
   `[homescreen]`): below.
 
 ```sh
-python3 tools/minitest.py "$PWD/tests/test_push.py"     # the RFC 8291 example, VAPID, refusals, on/off, sending, 410
-PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push.sql --dry --try=<trial.sql>
+python3 tools/minitest.py "$PWD/tests/test_push.py"     # the RFC 8291 example, VAPID, refusals, on/off, sending, 410,
+                                                        # block list fails closed, 5xx/429 put back, one push a model,
+                                                        # brickworks.diy alone, forget by secret, every device off
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push_2.sql --dry --try=<trial.sql>
 BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homescreen_flow.mjs --url=<preview> --out=shots/homescreen
 xvfb-run -a node --env-file=.env tools/web/homescreen_flow.mjs --url=<preview> --parts=push --headed --out=shots/homescreen-push
 ```
@@ -6087,9 +6106,13 @@ the card on a second, No thanks kept and told, the iPhone's Share card in
 WebKit; time, push.js and sw.js asked for only after the load event, and
 the load beside workers blocked at the same moment (`time.json`); push,
 Ada's device turned on in Settings (nothing asked before), Bob's comment
-shown on it within 60 s (`push_measure.json`), off and nothing in 60 s,
-on again and her account deleted with her devices (`push_subscribed`
-after); look, Settings and the offline page at 390, 768 and 1280 in both
+shown on it within 60 s (`push_measure.json`; each comment followed by a
+knock signed in as Ada, the throwaway, which is how a preview proves push
+without the live queue), off and nothing in 60 s, then each way it stops:
+the header's Sign out, Turn off on every device (1), her sign-in ended at
+Supabase, her account deleted (`push_subscribed` after each), and Bob on
+the same browser; fresh also proves deploy E's offline page kept new with
+the worker unchanged, and offline `/app` the offline page; look, Settings and the offline page at 390, 768 and 1280 in both
 themes. A push needs a profile of its own (`launchPersistentContext`):
 Chromium keeps push off in a private context.
 

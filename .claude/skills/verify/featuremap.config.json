@@ -3144,21 +3144,21 @@
       "kind": "lib",
       "label": "push sent to devices",
       "entry": "api/_push.js",
-      "reach": "GET /api/people?op=push[&endpoint=]: {ready, key, on, devices}; POST ?op=push {on, endpoint, p256dh, auth, lang} signed in (a browser's push service only); POST ?op=push_send, the knock: what is due sent as Web Push (RFC 8291 aes128gcm, VAPID RFC 8292, VAPID_PRIVATE_KEY), a 404/410 device deleted at once; after each comment and reply too (api/_comments.js); tests/test_push.py",
+      "reach": "GET /api/people?op=push[&endpoint=]: {ready, key, on, devices}; POST ?op=push {on, endpoint, p256dh, auth, lang} signed in (a browser's push service only, tied to the sign-in), {on: false, all: true} every device off, {on: false, endpoint, auth} with no sign-in a device forgotten (any Sign out); POST ?op=push_send, the knock, 204: what is due sent as Web Push (RFC 8291 aes128gcm, VAPID RFC 8292, VAPID_PRIVATE_KEY), only at brickworks.diy (elsewhere a check's own @resend.dev account signed in as it), one push a model with how many more, a 404/410 device deleted at once, a block list not read or a 5xx/429 put back (push_again); tests/test_push.py",
       "area": "web"
     },
     {
       "kind": "lib",
       "label": "push subscriptions",
       "entry": "supabase/push.sql",
-      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push.sql --dry   (push_subscriptions, push_due and push_sent, deleted with the account; triggers on comments, mentions, photos, remixes and a challenge's end mark the owner due and knock /api/people?op=push_send by pg_net, and pg_cron each minute while any is due)",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/push_2.sql --dry --try=<trial.sql>   (after push.sql: push_subscriptions tied to auth.sessions and deleted with it, push_marks never waiting on a take, push_sent a key a device, push_again at most 3 tries more, a model a device in 3 minutes, push_take leaving @resend.dev accounts to push_take_tester; triggers on comments, mentions, photos, remixes and a challenge's end mark the owner due and knock /api/people?op=push_send by pg_net, and pg_cron's push_sweep each minute)",
       "area": "web"
     },
     {
       "kind": "cli",
       "label": "homescreen browser flow",
       "entry": "tools/web/homescreen_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
       "area": "web"
     },
     {

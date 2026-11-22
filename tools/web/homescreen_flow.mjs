@@ -7,15 +7,19 @@
 //             page and stylesheet, never a kept one; a worker changed
 //             takes over and drops the old one's copies; an error the
 //             server sends is shown as sent, and only a server that cannot
-//             be reached gets the offline page.
+//             be reached gets the offline page; a deploy that changes the
+//             offline page alone (the worker's file the same) has it kept
+//             new once a page is opened, by its own content (hsfix N7).
 //   install   Chromium finds the site installable (no installability
 //             errors, the manifest read without one) at 390 and 1280.
 //   offline   with the network cut, a page not seen before is the offline
-//             page in its address's language, and it opens the page asked
-//             for by itself once the network is back.
-//   requests  /app, its build (/b/) and the engine (/e/) never answered by
-//             the worker (each response's fromServiceWorker, logged to
-//             requests.txt), and nothing of them in its cache.
+//             page in its address's language, and so is the app (/app,
+//             where the installed app opens: hsfix S4); it opens the page
+//             asked for by itself once the network is back.
+//   requests  the app's build (/b/) and the engine (/e/) never answered by
+//             the worker, /app only passed through from the network (each
+//             response's fromServiceWorker, logged to requests.txt), and
+//             nothing of them in its cache.
 //   offer     the offer to install: none on a first visit; on a second the
 //             card, No thanks kept (and Undo), a toast pointing at
 //             Settings; on an iPhone (WebKit), how to add it.
@@ -26,8 +30,15 @@
 //   push      Ada turns this device on in Settings (the browser's prompt
 //             only then), Bob comments on her model, and the push is shown
 //             on her device within 60 s, measured; turned off, his next
-//             comment shows nothing in 60 s; on again, her account deleted,
-//             and her devices are gone (push_subscribed, after).
+//             comment shows nothing in 60 s. Each comment is followed by a
+//             knock signed in as Ada (a throwaway): off brickworks.diy only a
+//             check's own account is taken, and brickworks.diy's own knock
+//             leaves those alone (api/_push.js, hsfix S1), so this deploy's
+//             code is what sends. Then each way it stops: the header's Sign
+//             out (the device forgotten, hsfix F2), Turn off on every device
+//             (S2), her sign-in ended at Supabase (the device goes with it),
+//             her account deleted (push_subscribed, after each), and Bob
+//             signed in on the same browser.
 //   look      Settings › Notifications, the offline page and the offer at
 //             390, 768 and 1280, light and dark, nothing sideways.
 //
@@ -168,7 +179,8 @@ async function fresh() {
     if (file === "site.css") return `${text}\n:root { --deploy: "${deploy}"; }\n`;
     // A file the worker never touches: the browser's own caching, as ever.
     if (file === "gallery.js") return `window.brickworksDeploy = "${deploy}";\n${text}`;
-    if (file === "sw.js" && deploy === "C") return text.replace(/const VERSION = "([^"]+)";/, 'const VERSION = "$1-c";');
+    if (file === "sw.js" && deploy >= "C") return text.replace(/const VERSION = "([^"]+)";/, 'const VERSION = "$1-c";');
+    if (file === "offline.html" && deploy === "E") return text.replace("</head>", `<meta name="deploy" content="E">\n</head>`);
     return text;
   };
   const sockets = new Set();
@@ -214,7 +226,7 @@ async function fresh() {
     await controlled(page);
     let first = await kept(page);
     check(`deploy A: the worker in control, keeping only the offline pages and what they are drawn with: ${first.caches.join(",")}: ${first.kept.join(" ")}`,
-      first.caches.length === 1 && first.kept.includes("/offline") && first.kept.includes("/de/offline")
+      first.caches.length === 1 && first.kept.includes("/offline") && first.kept.includes("/site.css")
       && first.kept.every((one) => /^\/(?:(?:de|fr|es)\/)?offline$|^\/(?:site\.css|theme\.js|push\.js|favicon-32\.png|icon\.svg)$/.test(one)));
     deploy = "B";
     const response = await page.goto(`${L}/gallery`, { waitUntil: "load" });
@@ -244,6 +256,30 @@ async function fresh() {
     const gone = await offlineShown(page);
     check(`the server unreachable: the offline page at ${gone.at}, "${gone.h1}"`, gone.offline && gone.at === "/compare" && gone.h1 === "You’re offline.");
     await shot(page, "fresh_offline-1280-dark.png");
+    // Deploy E changes the offline page and the stylesheet, not the worker:
+    // once a page is opened (by a worker started afresh, as the browser
+    // starts one after it idles), the kept copies are E's.
+    down = false;
+    deploy = "E";
+    const cdp = await made.newCDPSession(page);
+    await cdp.send("ServiceWorker.enable").catch(() => null);
+    await cdp.send("ServiceWorker.stopAllWorkers").catch((trouble) => note(`workers not stopped: ${String(trouble).split("\n")[0]}`));
+    await page.goto(`${L}/gallery`, { waitUntil: "load" });
+    const keptE = await until(page, async () => {
+      const kept = await caches.open((await caches.keys())[0]);
+      const offline = await (await kept.match("/offline"))?.text();
+      const css = await (await kept.match("/site.css"))?.text();
+      return offline?.includes('content="E"') && css?.includes('--deploy: "E"') ? "E" : null;
+    }, "the kept offline page and stylesheet E's", 45).catch(() => null);
+    down = true;
+    for (const socket of sockets) socket.destroy();
+    await page.goto(`${L}/compare`, { waitUntil: "load" }).catch(() => null);
+    const shownE = await page.evaluate(() => ({ offline: document.documentElement.hasAttribute("data-offline"),
+      page: document.querySelector('meta[name="deploy"]')?.content || "", css: getComputedStyle(document.documentElement)
+        .getPropertyValue("--deploy").trim().replace(/"/g, "") }));
+    check(`deploy E (the offline page changed, the worker not): kept ${keptE || "not E's"}; with the server unreachable the `
+      + `offline page is E's (${shownE.page || "?"}), drawn with E's stylesheet (${shownE.css || "?"})`,
+      keptE === "E" && shownE.offline && shownE.page === "E" && shownE.css === "E");
   } catch (trouble) {
     check(`fresh: ${trouble.message}`, false);
   } finally {
@@ -312,6 +348,11 @@ async function offline() {
     await page.goto(`${site}/de/library`, { waitUntil: "load" }).catch(() => null);
     const de = await offlineShown(page);
     check(`/de/library, offline: the offline page in ${de.lang}: "${de.h1}"`, de.offline && de.lang === "de" && de.h1 === "Du bist offline.");
+    // Where the installed app opens: the site's offline page, not the browser's.
+    await page.goto(`${site}/app`, { waitUntil: "load" }).catch(() => null);
+    const app = await offlineShown(page);
+    check(`/app, offline (the installed app's start): the offline page: "${app.h1}" at ${app.at}`, app.offline && app.at === "/app" && app.h1 === "You’re offline.");
+    await shot(page, "offline_app-1280-dark.png");
     await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
     await made.unroute("**/*");
     await made.setOffline(false);
@@ -328,7 +369,7 @@ async function offline() {
 // requests: what the worker answers, logged.
 
 async function requests() {
-  console.log("requests: /app, /b/ and /e/ never the worker's");
+  console.log("requests: /b/ and /e/ never the worker's, /app only the network's");
   const made = await context({ width: 1280, height: 900 });
   const log = [];
   made.on("response", (response) => {
@@ -352,11 +393,15 @@ async function requests() {
     const appCount = await app.evaluate(() => Boolean(navigator.serviceWorker?.controller)).catch(() => null);
     await app.close();
     const theirs = log.filter((one) => /^\/(?:app$|b\/|e\/)/.test(one.path));
-    const byWorker = theirs.filter((one) => one.worker);
+    // /app itself is passed through (the network's answer, never kept), so
+    // the offline page can stand in for it; its files are not even seen.
+    const byWorker = theirs.filter((one) => one.worker && one.path !== "/app");
+    const others = log.filter((one) => one.worker && !/^\/(?:app|gallery|download|site\.css|theme\.js|push\.js|favicon-32\.png|icon\.svg)$/.test(one.path));
     check(`/app and its files: ${theirs.length} responses (/app ${theirs.filter((one) => one.path === "/app").length}, `
       + `/b/ ${theirs.filter((one) => one.path.startsWith("/b/")).length}, /e/ ${theirs.filter((one) => one.path.startsWith("/e/")).length}), `
-      + `none from the worker: ${byWorker.length} (the app's window controlled: ${appCount})`,
+      + `none of its files from the worker: ${byWorker.length} (the app's window controlled: ${appCount})`,
       theirs.some((one) => one.path === "/app") && theirs.some((one) => one.path.startsWith("/e/")) && byWorker.length === 0);
+    note(`what else went through the worker (the browser's routing lets only pages and the offline page's five by): ${others.length ? others.map((one) => one.path).slice(0, 8).join(" ") : "nothing"}`);
     const cache = await kept(page);
     check(`nothing of /app, /b/, /e/ or /api/ in the worker's cache: ${cache.kept.join(" ")}`,
       !cache.kept.some((one) => /^\/(?:app|b\/|e\/|api\/)/.test(one)));
@@ -595,10 +640,18 @@ async function push() {
     }) });
     await clearShown(page);
 
+    // Each comment is followed by a knock signed in as Ada, as the
+    // database's knock would reach brickworks.diy: anywhere else only a
+    // check's own account is taken (api/_push.js live), and brickworks.diy's
+    // take leaves a check's account alone, so this deploy's code sends.
+    const knock = () => api("/api/people?op=push_send", { method: "POST", token: ada.access_token });
     const t0 = Date.now();
     const comment = await api("/api/people?op=comment", { method: "POST", token: bob.access_token,
       body: { model: tower.body.id, version: 1, body: `Lovely stairs ${rand}` } });
     check(`Bob's comment: ${comment.status}`, comment.status === 201);
+    const knocked = await knock();
+    check(`the knock, signed in as Ada: ${knocked.status}, saying nothing (${JSON.stringify(knocked.body)})`,
+      knocked.status === 204 && Object.keys(knocked.body || {}).length === 0);
     let arrived = null;
     while (Date.now() - t0 < 60000 && !arrived) {
       arrived = (await shownOn(page).catch(() => [])).find((one) => one.tag === `model-${tower.body.id}`) || null;
@@ -621,17 +674,77 @@ async function push() {
     const t1 = Date.now();
     const second = await api("/api/people?op=comment", { method: "POST", token: bob.access_token,
       body: { model: tower.body.id, version: 1, body: `Still lovely ${rand}` } });
+    await knock();
     await page.waitForTimeout(Math.max(0, 60000 - (Date.now() - t1)));
     const after = await shownOn(page).catch(() => []);
     check(`his next comment (${second.status}) with push off: nothing shown in 60 s (${after.length})`, second.status === 201 && after.length === 0);
 
-    // On again, then the account deleted: its devices with it.
-    await page.click("#push-on");
-    await until(page, () => /On for this device/.test(document.getElementById("push-said")?.textContent || ""), "on again", 60);
-    const again = await page.evaluate(async () => (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.endpoint || "");
-    const before = await subscribed(ada.kept.user_id, again);
+    // On again (Settings, this device), as many times as it is stopped below.
+    const devicesOf = async (want, seconds = 15) => {
+      const end = Date.now() + seconds * 1000;
+      let said = null;
+      do {
+        said = await subscribed(ada.kept.user_id, "-");
+        if (said?.devices === want) return said;
+        await page.waitForTimeout(500);
+      } while (Date.now() < end);
+      return said;
+    };
+    const onAgain = async (what) => {
+      await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+      await until(page, () => document.getElementById("push-on")?.disabled === false, `the box enabled (${what})`, 30);
+      if (!(await page.evaluate(() => document.getElementById("push-on").checked))) await page.click("#push-on");
+      await until(page, () => /On for this device/.test(document.getElementById("push-said")?.textContent || "")
+        || (document.getElementById("push-on").checked && !document.getElementById("push-on").disabled), `on again (${what})`, 60);
+      return devicesOf(1);
+    };
+    const signedInAs = (kept) => page.evaluate(([name, value]) => {
+      sessionStorage.clear();
+      localStorage.setItem(name, value);
+    }, [STORAGE_KEY, JSON.stringify(kept)]);
+
+    // The header's Sign out (the menu's, any page's): the device forgotten
+    // at once, and the browser's subscription ended (hsfix F2).
+    let now = await onAgain("before the header's Sign out");
+    const keptNow = await page.evaluate((name) => JSON.parse(localStorage.getItem(name) || "null"), STORAGE_KEY);
+    await page.goto(`${site}/gallery`, { waitUntil: "load" });
+    await page.click(".site-head .account-menu summary");
+    await Promise.all([page.waitForEvent("load", { timeout: 30000 }), page.click(".site-head .account-menu .sign-out")]);
+    const forgotten = await devicesOf(0);
+    const ended = await until(page, async () => !(await (await navigator.serviceWorker.ready).pushManager.getSubscription()),
+      "the browser's subscription ended", 20).catch(() => false);
+    check(`the header's Sign out: her devices ${now?.devices} before, ${forgotten?.devices} after; this browser's subscription ended (${Boolean(ended)})`,
+      now?.devices === 1 && forgotten?.devices === 0 && Boolean(ended));
+
+    // Turn off on every device (S2), signed in again here.
+    await signedInAs(keptNow);
+    now = await onAgain("before Turn off on every device");
+    await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+    const every = await until(page, () => !document.getElementById("push-every-part")?.hidden
+      && document.getElementById("push-every").textContent, "Turn off on every device shown", 30).catch(() => "");
+    await page.click("#push-every");
+    const everyOff = await until(page, () => /Off on every device/.test(document.getElementById("push-said")?.textContent || "")
+      && document.getElementById("push-said").textContent, "off on every device", 30).catch(() => "");
+    const noneLeft = await devicesOf(0);
+    check(`"${every}" pressed: "${everyOff}", her devices ${now?.devices} before, ${noneLeft?.devices} after, the box `
+      + `${(await page.evaluate(() => document.getElementById("push-on").checked)) ? "on" : "off"}`,
+      every === "Turn off on every device (1)" && Boolean(everyOff) && now?.devices === 1 && noneLeft?.devices === 0);
+
+    // Her sign-in ended at Supabase (as Sign out everywhere ends it): the
+    // device it was turned on with goes with it (push_2.sql).
+    now = await onAgain("before her sign-in ends");
+    const logout = await fetch(`${process.env.SUPABASE_URL}/auth/v1/logout?scope=local`, { method: "POST",
+      headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY || "", authorization: `Bearer ${ada.access_token}` } }).catch(() => null);
+    const withSession = await devicesOf(0);
+    check(`her sign-in ended (logout ${logout?.status}): her devices ${now?.devices} before, ${withSession?.devices} after`,
+      logout?.ok && now?.devices === 1 && withSession?.devices === 0);
+
+    // Signed in afresh, on again, then the account deleted: its devices with it.
+    ada = { ...(await mintSession(adaEmail)) };
+    await signedInAs(ada.kept);
+    const before = await onAgain("before her account is deleted");
     const deleted = await api("/api/account?op=delete", { method: "POST", token: ada.access_token, body: { confirm: adaEmail } });
-    const left = await subscribed(ada.kept.user_id, again);
+    const left = await devicesOf(0, 5);
     check(`her account deleted (${deleted.status}): her devices ${JSON.stringify(before)} before, ${JSON.stringify(left)} after`,
       deleted.status === 200 && before?.devices === 1 && left?.on === false && left?.devices === 0);
     if (deleted.status === 200) made.length = 0;
