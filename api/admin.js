@@ -44,6 +44,12 @@
 //                                        its owner's, with everything in it;
 //                                        the reports about it settled
 //   POST /api/admin?op=uncomment&comment=N  remove comment N, for good
+//   GET  /api/admin?op=talk[&q=words]   Talk's open reports, threads and bans
+//                                        (api/_console_talk.js)
+//   POST /api/admin?op=talk_act          {act, thread?, post?, account?, board?,
+//                                        until?, reason?}: pin, lock, move, hide,
+//                                        show or remove a thread or a post, ban
+//                                        or unban from Talk, dismiss reports
 //   POST /api/admin?op=remove_photo&photo=P  take photo P of a build out: its
 //                                        file deleted from storage, that one
 //                                        file only, its reports settled
@@ -246,6 +252,7 @@ import { phoneEngineSet, phoneSet } from "./_phone.js";
 import { dataRead, runCron, withRunNow } from "./_console_data.js";
 import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
 import { challengeView } from "./_console_challenges.js";
+import { TalkRefusal, talkAct, talkRead } from "./_console_talk.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
@@ -343,7 +350,9 @@ async function handler(request, response) {
     // Announcements (announce, api/_announce.js): only announce_send sends, and only the words it was pressed on.
     announce_keep: announceKeep, announce_send: announceSend, announce_unschedule: announceUnschedule, announce_edit: announceEdit,
     announce_withdraw: announceWithdraw, announce_drop: announceDrop, announce_limit: announceLimit,
-    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress, ...CLAUDE_ACTS };
+    announce_mail_most: announceMailMost, announce_mail_address: announceMailAddress,
+    // Talk, the builders' forum (api/_console_talk.js, supabase/talk.sql).
+    talk_act: talkAct, ...CLAUDE_ACTS };
   // Claude's answer streams as it comes, so it writes its own audit row (api/_claude.js).
   if (op === "claude_chat") return claudeChat(request, response, claims);
   // An op is one of these tables' own names, never one Object's prototype
@@ -352,7 +361,8 @@ async function handler(request, response) {
   const act = Object.hasOwn(acts, op) ? acts[op] : null;
   if (request.method === "POST" && act) {
     return audited(op, act, request, response, claims, (error) => (error instanceof AuthError
-      || error instanceof BuildRefusal || error instanceof AvatarRefusal || error instanceof SocialRefusal ? error.status : 502));
+      || error instanceof BuildRefusal || error instanceof AvatarRefusal || error instanceof SocialRefusal
+      || error instanceof TalkRefusal ? error.status : 502));
   }
   const tests = String(request.query?.tests || "") === "1";
   const reads = {
@@ -374,6 +384,7 @@ async function handler(request, response) {
     announce: () => announceRead(request),
     announce_preview: () => announcePreview(request),
     find: () => findRead(String(request.query?.q || ""), tests),
+    talk: () => talkRead(request, tests),
     challenge_view: () => {
       const id = Number(request.query?.challenge);
       if (!Number.isInteger(id) || id < 1) throw new AuthError("name a challenge: ?challenge=<number>", 400);

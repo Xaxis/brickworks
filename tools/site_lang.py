@@ -120,7 +120,7 @@ BINDING = {"terms.html", "privacy.html", "guidelines.html", "takedown.html"}
 BOUND = 'This is a translation. The <a href="{english}">English text</a> is the one that binds.'
 # The pages the server makes in each language too, at /<code>/<where>: a
 # copy's link to one opens it in the copy's language.
-SERVED = ("c/", "u/", "m/", "library/")
+SERVED = ("c/", "u/", "m/", "library/", "talk", "talk/")
 
 BLOCK = {"html", "head", "body", "header", "nav", "main", "section", "article", "aside", "footer",
          "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "figure", "figcaption",

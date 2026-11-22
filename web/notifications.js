@@ -42,7 +42,8 @@ async function read(group, clicked = false) {
     headers: { authorization: `Bearer ${access}`, "content-type": "application/json" },
     body: JSON.stringify("achievements" in group.dataset ? { achievements: true }
       : telling ? { announcement: Number(group.dataset.announcement), ...(counted ? { clicked: true } : {}) }
-      : group.dataset.challenge ? { challenge: Number(group.dataset.challenge) } : { model: group.dataset.model }) })
+      : group.dataset.challenge ? { challenge: Number(group.dataset.challenge) }
+      : group.dataset.talk ? { talk: Number(group.dataset.talk) } : { model: group.dataset.model }) })
     .catch(() => null);
   allRead();
 }
