@@ -15,8 +15,8 @@
    "use": [
     "test-account"
    ],
-   "wait": ".card",
-   "alt": "This month's challenge page: its title, its days and brief with Share, The rules Brickworks checks, How to enter, and the entries under Built by hand and Built with the assistant, each card with Vote for it.",
+   "wait": ".model[data-entry]",
+   "alt": "This month's challenge page: its title and brief, The rules Brickworks checks, Enter a model and Share, and beside them the time left with its days; under them the entries in two tabs, Built by hand and Built with the assistant, each card with Vote, then How it works.",
    "caption": "brickworks.diy/challenge.",
    "features": [
     "ui:this month's challenge page"

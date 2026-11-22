@@ -1,6 +1,56 @@
 {
  "shots": [
   {
+   "id": "home-first-screen",
+   "source": "site",
+   "route": "/",
+   "viewport": [
+    1280,
+    800
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "#shelf .model img",
+   "crop": "viewport",
+   "alt": "The home page on a computer: Gallery, Challenges and Docs across the top; Build, share and find LEGO® models over a search for models, builders and sets and Start building; the month's challenge beside them; then the tabs Top, New and Real sets in 3D over a row of model cards, the first marked Week's pick.",
+   "caption": "The home page: the search, the challenge and the gallery's models first.",
+   "features": [
+    "ui:landing page",
+    "ui:the home page's shelf",
+    "ui:the home page's search"
+   ]
+  },
+  {
+   "id": "home-phone",
+   "source": "site",
+   "route": "/",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "phone": true,
+   "wait": "#shelf .model img",
+   "crop": "viewport",
+   "alt": "The home page on a phone: Build, share and find LEGO® models, the search, Start building, and the tabs Top, New and Real sets in 3D over the first model cards, which scroll sideways.",
+   "caption": "On a phone, the same first screen.",
+   "features": [
+    "ui:landing page",
+    "ui:the home page's shelf"
+   ]
+  },
+  {
    "id": "gallery-top",
    "source": "site",
    "route": "/gallery",

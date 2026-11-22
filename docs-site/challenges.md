@@ -11,7 +11,7 @@ Each month Brickworks sets a building challenge: a theme, a brief and rules it c
 
 The page has the brief and its days, **The rules**, **How to enter**, and the entries in two groups, **Built by hand** and **Built with the assistant**, judged apart.
 
-![This month's challenge page: its title, its days and brief with Share, The rules Brickworks checks, How to enter, and the entries under Built by hand and Built with the assistant, each card with Vote for it.](/docs/img/challenge-page.webp "brickworks.diy/challenge.")
+![This month's challenge page: its title and brief, The rules Brickworks checks, Enter a model and Share, and beside them the time left with its days; under them the entries in two tabs, Built by hand and Built with the assistant, each card with Vote, then How it works.](/docs/img/challenge-page.webp "brickworks.diy/challenge.")
 
 <!-- covers
 ui:this month's challenge page
