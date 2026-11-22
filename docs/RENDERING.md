@@ -1474,7 +1474,8 @@ close-ups are 0.28 to 0.31 and its sets 0.13 to 0.14.
 | photosoft | the photograph through a 5-pixel median | p6photo | 0.768 | 0.844 0.848 | 0.650 0.655 | 36 of 40 |
 | cy | the ceiling, again | p6sss1 | 0.171 | 0.184 0.184 | 0.153 0.147 | 4 of 80 |
 | cynosss | Cycles with no subsurface (first draw) | p6sss1 | 0.157 | 0.206 0.178 | 0.100 0.109 | 3 of 40 |
-| cyplaingeom | Cycles with plain studs, 16-sided primitives, no gap | | (queued) | | | |
+| cy | the ceiling, again | p6geom | 0.172 | 0.180 0.183 | 0.154 0.160 | 5 of 80 |
+| cyplaingeom | Cycles with plain studs, 16-sided primitives, no gap | p6geom | 0.119 | 0.120 0.108 | 0.125 0.127 | 0 of 80 |
 
 The photograph side's sets include 6512, whose "photograph" is itself a
 render (0.05). Without it, the three photographed sets are 0.92 as they
@@ -1502,12 +1503,18 @@ are and 0.86 smoothed.
    - Its logo tells were fewer (25 against 33) and its seam tells fewer
      (27 against 42).
 4. **Noise, none.** 4096 samples scored 0.217 against 256's 0.227.
-5. **The plastic lit from inside, none.** Cycles without its subsurface
+5. **Geometry, +0.05 inside Cycles.** Without its logo studs, 48-sided
+   primitives and gap, Cycles fell from 0.172 to 0.119: close-ups by 0.07
+   and sets by 0.03. Its logo tells rose from 22 to 58 of 80. Our tracer's
+   bump-drawn logos are named in 33 to 40 of 80. So real logo geometry is
+   the second lever, after the light.
+6. **The plastic lit from inside, none.** Cycles without its subsurface
    scored 0.157 against its own 0.171 in one pool, on its first draw (the
    second was queued). The close-ups gained 0.01 and the sets lost 0.05,
-   which is about the noise on a set mean. The geometry swap (plain studs,
-   16-sided primitives, no gap) was queued at the unit's end. Both only
-   rank what is inside a ceiling that is itself under ours.
+   which is about the noise on a set mean.
+
+Both Cycles swaps only rank what is inside a ceiling that is itself under
+ours.
 
 **What lies outside the renderer.** Both renderers stand at about 0.2 on
 the same staging. A photograph keeps 0.85 without its fine surface. So the
@@ -1602,8 +1609,8 @@ and motions_render (33). `tools/check.sh --lists`, `site_lang --check`
 and `featuremap check` passed. ci_gate's suite failed only on the docs
 site's list, which now names the Cycles bench as internal. pre261 moved by
 95 commits after p6snap2, so it was merged again (7bcbdbd60, none of them
-touching the tracer or the bench). The eight probes and ci_gate were
-queued again on that merge (p6snap3), with the unit's report.
+touching the tracer or the bench). ci_gate passed on that merge. The eight
+probes were queued again on it (p6snap3), with the unit's report.
 
 **Running it.** On 2026-11-22 the box held up to 75 brickworks jobs in
 heavy's queue, at load 50 to 140. This unit's runs went through two slot
