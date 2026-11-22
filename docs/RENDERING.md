@@ -1348,21 +1348,44 @@ The photographs: 0.901 to 0.914, 54 of 54.
 - **Wear** rose 0.014, the sets 0.01. It rides on a shot's age, which is 0
   in the app, so the app's plastic is unchanged.
 - **One shot's number is still a lottery.** The red slope, which neither
-  s4 nor s7 touched, went 0.21 to 0.24 at s4 and 0.24 to 0.48 at s7. Only changes of 0.05 or
-  more in the tree's mean are clear; s1, s2, s5 and s6 are inside that.
+  s4 nor s7 touched, went 0.21 to 0.24 at s4 and 0.24 to 0.48 at s7.
+  Only changes of 0.05 or more in the tree's mean are clear; s1, s2, s5
+  and s6 are inside that.
+
+**The final tree** (logos, seams, wear and the desk; `solo_p5fin.json`,
+judged the same day beside f3 and s7):
+
+| | solo, per round | close-ups | sets | called a photograph | paired: found, sure |
+|---|---|---|---|---|---|
+| photoreal4 (f3) | 0.236 0.232 0.224 | 0.30-0.32 | 0.11-0.13 | 10 of 60 | 18 of 20, 0.824 (5h) |
+| photoreal5 | 0.242 0.228 0.212 | 0.27-0.31 | 0.13-0.15 | 8 of 60 | 18 of 20, 0.831 |
+
+- **The bars are not met.** The trees are not separated: the close-ups'
+  lowest round (0.269) is under photoreal4's highest (0.310), the sets'
+  (0.128) a hair under it (0.129). The paired judge's two misses are
+  still only set 6512.
+- Without the contact change the red slope fell to 0.18 (0.58 in s7), and
+  verdicts naming no contact shadow or a floating part rose from 22 to
+  29. Contact is the first tell to try again, judged on more than one
+  draw of each tree.
+- The tent's faces are where they were: 2.5, 2.9, 0.8, the slope 1.8.
 
 **The car at Best** (Product, 1280x720, 256 samples), each snapshot's
-median: 2.46, 2.53, 2.46, 2.58, 2.49, 2.71 and 2.36 s.
+median: 2.46, 2.53, 2.46, 2.58, 2.49, 2.71 and 2.36 s; the final tree
+2.58 s.
 
 **What is left, in order:**
-1. **The black 2x4**: its plastic is a dull blue-grey where the
+1. **Contact**: "almost no contact shadow" is the commonest tell on the
+   close-ups; the hairline under a part on white reads to some verdicts
+   as a cut-out's outline.
+2. **The black 2x4**: its plastic is a dull blue-grey where the
    photograph's mirrors the room (ΔE2000 39 on its top), and its logo
    reads as mirrored.
-2. **Sets show no logo on their studs** at a set's distance; the
+3. **Sets show no logo on their studs** at a set's distance; the
    photographs' do.
-3. **Speckle**: the grain of 256 samples on dark faces, read as a path
+4. **Speckle**: the grain of 256 samples on dark faces, read as a path
    tracer's.
-4. **Colour**: the red slope reads crimson beside its photograph's orange
+5. **Colour**: the red slope reads crimson beside its photograph's orange
    red, though its measured face is ΔE2000 1.8.
 
 ## 6. Web and desktop
