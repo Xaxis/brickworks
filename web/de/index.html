@@ -109,7 +109,14 @@
 .shelf { margin-top: var(--s-6); }
 @media (width < 900px) { .shelf { margin-top: 0; } }
 .shelf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-3); border-bottom: 1px solid var(--line); }
-.shelf-head .tabs { margin: 0; border-bottom: 0; min-width: 0; }
+/* The tabs scroll in themselves where a language's words outrun a phone
+   (Echte Sets in 3D), their underline kept on the line under them. */
+.shelf-head .tabs { margin: 0 0 -1px; padding-bottom: 1px; border-bottom: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.shelf-head .tabs::-webkit-scrollbar { display: none; }
+@media (width < 600px) {
+	.shelf-head { gap: var(--s-2); }
+	.shelf-head .tabs button { padding: 0 var(--s-2); }
+}
 .shelf-head > a { flex: none; padding: 10px 0; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
 .shelf-head > a:hover { color: var(--ink); text-decoration: underline; }
 .shelf .models.scroller { padding-bottom: 6px; }
