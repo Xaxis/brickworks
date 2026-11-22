@@ -38,6 +38,14 @@
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
 ##                      aberration, softness, age, dust, paper, seating) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
+##   -- --draw=N        the tracer's seed (default 1): another draw of the same
+##                      tree, its noise and lens samples only (photoreal6)
+##   -- --cycles        also each shot's scene as drawn, for Cycles through
+##                      Blender (tools/photoreal/cycles/, photoreal6):
+##                      <name>.cycles.ldr, the parts where they stood, seated,
+##                      in LDraw's space, and <name>.cycles.json, the camera,
+##                      lens, tent or place, key, sweep, exposure and the
+##                      camera's marks, in the app's space (LDU, +y up)
 ##   -- --car           only the car (the render probe's model) at Best, Product
 ##                      look, 1280x720, 256 samples, three times: the median at
 ##                      most CAR_MOST s (twice the 3.3-4.2 s the window look
@@ -199,11 +207,99 @@ func _draw(shot: Dictionary, name: String, samples: int, out: String) -> void:
 		var said := FileAccess.open(out + name + ".json", FileAccess.WRITE)
 		said.store_string(JSON.stringify({"drawn_at": _render.last_drawn_at}))
 		said.close()
+	if OS.get_cmdline_user_args().has("--cycles"):
+		_check("%s: its scene written for Cycles" % name, _cycles_scene(settings, name, out))
 	var traced: bool = _render.traced_last()
 	_check("%s: %d parts, %dx%d, %s in %.1f s" % [name, _world.brick_count(), picture.get_width(),
 		picture.get_height(), ("path traced, %d samples" % _render.last_samples) if traced
 		else "frames averaged", seconds],
 		picture.get_size() == settings.size and (traced or not PathTracer.available()))
+
+
+## The shot just drawn, for Cycles through Blender (photoreal6), read back
+## from the render itself so both renderers are given one scene: the parts
+## where they stood, seated as the tracer seated them, as a flat LDraw file
+## (LDraw's space: the app's with y and z turned over); and the camera, its
+## lens, the tent or the photographed place, the tent's key, the sweep, the
+## exposure the white card metered and the camera's marks as JSON, in the
+## app's space (LDU, +y up). tools/photoreal/cycles/render.py reads both.
+func _cycles_scene(settings: RenderSettings, name: String, out: String) -> bool:
+	var shot: StudioRender.Shot = _render.last_shot
+	var tracer: Object = _render.get("_tracer")
+	var backdrop: MeshInstance3D = _render.get("_backdrop")
+	if shot == null or tracer == null or backdrop == null or backdrop.mesh == null:
+		return false
+	var lines: PackedStringArray = ["0 %s, the parts as photoreal_probe drew them (photoreal6)" % name,
+		"0 Name: %s.cycles.ldr" % name]
+	var flip := Basis.from_scale(LdrModel.FLIP)
+	for found: Variant in _world.bricks():
+		var brick: BrickWorld.Brick = found
+		if brick.hidden:
+			continue
+		var place: Transform3D = tracer.call("_seated", brick.transform, PathTracer._part_key(brick.transform))
+		var m: Basis = flip * place.basis * flip
+		var p: Vector3 = place.origin * LdrModel.FLIP
+		var colour: String = ("0x%X" % brick.color_code) if brick.color_code >= 0x2000000 \
+			else str(brick.color_code)
+		var numbers: PackedStringArray = []
+		for value: float in [p.x, p.y, p.z, m.x.x, m.y.x, m.z.x, m.x.y, m.y.y, m.z.y, m.x.z, m.y.z, m.z.z]:
+			numbers.append("%.6f" % value)
+		var part: String = brick.part_id if brick.part_id.get_extension() in ["dat", "ldr"] \
+			else brick.part_id + ".dat"
+		lines.append("1 %s %s %s" % [colour, " ".join(numbers), part])
+	var file := FileAccess.open(out + name + ".cycles.ldr", FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string("\n".join(lines) + "\n")
+	file.close()
+	var tent: bool = _render.call("_tented", settings)
+	var lights: Array = _render.get("_lights")
+	var key: Variant = null
+	if tent and not lights.is_empty() and (lights[0] as DirectionalLight3D).visible:
+		key = {"toward": _xyz((lights[0] as Node).get_meta("toward", Vector3.UP)),
+			"spread": StudioRender.TENT_KEY_SPREAD, "energy": StudioRender.TENT_KEY}
+	var lit_by: StudioPanorama = _render.get("_lit_by")
+	var place_said: Variant = null
+	if not tent and lit_by != null:
+		place_said = {"path": ProjectSettings.globalize_path(lit_by.texture.resource_path),
+			"average": lit_by.average, "energy": StudioRender.HDRI_LEVEL / maxf(lit_by.average, 0.0001),
+			"turn": float(_render.get("_turn"))}
+	var arrays: Array = backdrop.mesh.surface_get_arrays(0)
+	var corners: Array = []
+	for at: Vector3 in arrays[Mesh.ARRAY_VERTEX]:
+		corners.append(_xyz(at))
+	var order: Variant = arrays[Mesh.ARRAY_INDEX]
+	var tint: Color = StudioRender._paper_tint(settings)
+	var bounds: AABB = _world.model_bounds()
+	var said: Dictionary = {
+		"name": name, "size": [settings.size.x, settings.size.y], "draw": settings.seed,
+		"samples": settings.samples,
+		"camera": {"origin": _xyz(shot.origin), "x": _xyz(shot.basis.x), "y": _xyz(shot.basis.y),
+			"z": _xyz(shot.basis.z), "fov": shot.fov, "focus_distance": shot.focus_distance,
+			"aperture": shot.aperture, "near": shot.near, "far": shot.far},
+		"bounds": [_xyz(bounds.position), _xyz(bounds.end)],
+		"tent": tent, "tint": [tint.r, tint.g, tint.b], "tent_top": StudioRender.TENT_TOP,
+		"tent_box": StudioRender.TENT_BOX, "key": key, "place": place_said,
+		"backdrop": "#" + settings.backdrop.to_html(false), "exposure": _render.last_drawn_at,
+		"linear_saturation": StudioRender.PHOTO_LINEAR_SATURATION,
+		"sweep": {"visible": backdrop.visible, "origin": _xyz(backdrop.global_transform.origin),
+			"x": _xyz(backdrop.global_transform.basis.x), "y": _xyz(backdrop.global_transform.basis.y),
+			"z": _xyz(backdrop.global_transform.basis.z), "vertices": corners,
+			"indices": Array(order) if order != null else []},
+		"grain": settings.grain, "vignette": settings.vignette, "aberration": settings.aberration,
+		"softness": settings.softness, "paper": settings.paper, "surface": settings.surface,
+		"seating": settings.seating, "age": settings.age, "dust": settings.dust,
+	}
+	file = FileAccess.open(out + name + ".cycles.json", FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(JSON.stringify(said, " "))
+	file.close()
+	return true
+
+
+static func _xyz(at: Vector3) -> Array:
+	return [at.x, at.y, at.z]
 
 
 ## The camera a set's photograph was taken from, found by its outline (photoreal4):
@@ -312,7 +408,7 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	var size: Array = shot["size"]
 	settings.size = Vector2i(int(size[0]), int(size[1]))
 	settings.samples = samples
-	settings.seed = 1
+	settings.seed = maxi(int(_arg("draw", "1")), 1)
 	settings.backdrop = Color.html(str(shot.get("backdrop", "#ffffff")))
 	settings.backdrop_gradient = bool(shot.get("gradient", false))
 	settings.lighting = str(shot.get("lighting", "studio"))
