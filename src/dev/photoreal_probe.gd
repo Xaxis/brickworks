@@ -36,8 +36,8 @@
 ##                      two outlines over each other); draws nothing else.
 ##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
-##                      aberration, softness, age, dust, paper, seating) at 0, to measure what
-##                      each brings (photoreal4)
+##                      aberration, softness, age, dust, paper, seating) at 0, and its
+##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
 ##   -- --car           only the car (the render probe's model) at Best, Product
 ##                      look, 1280x720, 256 samples, three times: the median at
 ##                      most CAR_MOST s (twice the 3.3-4.2 s the window look
@@ -329,6 +329,9 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 			settings.set(key, 0.0)
 		elif shot.has(key):
 			settings.set(key, float(shot[key]))
+	# What the photograph's parts stand on (photoreal5): 0 paper, 1 leather,
+	# 2 stone.
+	settings.surface = 0 if "surface" in without else int(shot.get("surface", 0))
 	var bounds: AABB = _world.model_bounds()
 	var yaw: float = deg_to_rad(float(shot.get("yaw", -35.0)))
 	var pitch: float = deg_to_rad(float(shot.get("pitch", 30.0)))

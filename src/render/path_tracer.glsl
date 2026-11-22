@@ -524,19 +524,77 @@ bool worn(vec3 q, float own) {
 	return lines > 0.72 && patches > 0.1;
 }
 
+vec2 cell_hash(vec2 c) {
+	return fract(sin(vec2(dot(c, vec2(127.1, 311.7)), dot(c, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+// Cells round scattered points (Worley's): the distance to the nearest
+// point and to the next, and the nearest cell's own number from 0 to 1.
+vec3 cells(vec2 p) {
+	vec2 c = floor(p);
+	vec2 f = fract(p);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	float own = 0.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 g = vec2(float(x), float(y));
+			vec2 o = cell_hash(c + g);
+			vec2 r = g + o - f;
+			float d = dot(r, r);
+			if (d < d1) {
+				d2 = d1;
+				d1 = d;
+				own = o.y;
+			} else if (d < d2) {
+				d2 = d;
+			}
+		}
+	}
+	return vec3(sqrt(d1), sqrt(d2), own);
+}
+
+const float SURFACE_LEATHER = 1.0;
+const float SURFACE_STONE = 2.0;
+
 // A backdrop's own grain and uneven light (photoreal4), as a factor round 1 at
-// a point of it (LDU): a paper's or a card's fibres, fine and faint, over
-// broad patches a little lighter and darker, as a sheet or a table is lit
-// unevenly. Amount 0 is none: a cut-out's seamless is its colour exactly.
-float paper(vec3 at, float amount) {
+// a point of it (LDU): broad patches a little lighter and darker, as a sheet
+// or a table is lit unevenly, and over them the surface the photograph's
+// parts stand on (scene.wear.w, photoreal5): a paper's or a card's fibres,
+// fine and faint; a leather's pebbled cells, each a little domed, with dark
+// creases between, about 3 mm across, as black_2x4's; or a stone counter's
+// grains, most its colour and some darker, browner or lighter, about a
+// millimetre across, as green_plate_macro's. Amount 0 is none: a cut-out's
+// seamless is its colour exactly.
+vec3 paper(vec3 at, float amount) {
 	if (amount <= 0.0) {
-		return 1.0;
+		return vec3(1.0);
 	}
 	float broad = gloss_noise(at / 140.0 + vec3(3.1, 0.0, 7.7)) * 0.6
 		+ gloss_noise(at / 47.0 + vec3(11.0, 2.0, 5.0)) * 0.4;
+	// The floor's own plane, its rise behind folded onto it.
+	vec2 flat_at = at.xz + vec2(0.6, 0.8) * at.y;
+	if (abs(scene.wear.w - SURFACE_LEATHER) < 0.5) {
+		vec3 big = cells(flat_at / 7.0);
+		vec3 small = cells(flat_at / 2.6 + vec2(17.0, 3.0));
+		float crease = 1.0 - smoothstep(0.02, 0.16, big.y - big.x);
+		float fine = 1.0 - smoothstep(0.02, 0.12, small.y - small.x);
+		float dome = smoothstep(0.0, 0.45, big.y - big.x);
+		float tone = big.z - 0.5;
+		return vec3(1.0 + amount * (0.06 * broad + 0.12 * dome * dome + 0.06 * tone - 0.45 * crease
+			- 0.12 * fine));
+	}
+	if (abs(scene.wear.w - SURFACE_STONE) < 0.5) {
+		vec3 grain = cells(flat_at / 1.1);
+		vec3 coarse = cells(flat_at / 3.4 + vec2(5.0, 11.0));
+		float pick = fract(grain.z * 7.31 + coarse.z * 0.37);
+		vec3 tint = pick < 0.14 ? vec3(0.4, 0.37, 0.35) : (pick < 0.3 ? vec3(0.85, 0.72, 0.58)
+			: (pick > 0.88 ? vec3(1.25, 1.23, 1.2) : vec3(1.0 + 0.16 * (coarse.z - 0.5))));
+		return mix(vec3(1.0), tint * (1.0 + 0.08 * broad), amount);
+	}
 	float fibre = gloss_noise(vec3(at.x * 0.9, at.y * 0.9, at.z * 0.25) + vec3(1.7, 4.2, 0.3)) * 0.5
 		+ gloss_noise(at * 2.3 + vec3(9.1, 3.3, 1.2)) * 0.5;
-	return 1.0 + amount * (0.06 * broad + 0.025 * fibre);
+	return vec3(1.0 + amount * (0.06 * broad + 0.025 * fibre));
 }
 
 // textured: the hit is on a straight slope's face (closest_hit's grain);

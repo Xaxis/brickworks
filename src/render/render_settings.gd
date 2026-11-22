@@ -116,6 +116,10 @@ var softness: float = -1.0
 var age: float = -1.0
 var dust: float = -1.0
 var paper: float = -1.0
+## What that grain is (photoreal5), for the photo bench to match the surface
+## each photograph's parts stand on: 0 a paper's or a card's fibres, 1 a
+## leather's pebbled cells, 2 a stone counter's grains.
+var surface: int = 0
 ## How far each part sits from exactly in place, as a built set's never sit
 ## quite square (0 exactly, 1 up to PathTracer.SEAT_SHIFT off and SEAT_TURN
 ## degrees turned); below 0, PRODUCT_SEATING.

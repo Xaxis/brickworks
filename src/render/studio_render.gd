@@ -2853,11 +2853,13 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			var none := PackedFloat32Array()
 			none.resize(16)
 			data.append_array(none)
-	# The product look's wear (photoreal4): age, dust, the backdrop's grain.
+	# The product look's wear (photoreal4): age, dust, the backdrop's grain,
+	# and what the backdrop is (photoreal5).
 	var worn: bool = settings.look == "product"
 	data.append_array([_own(settings.age, PRODUCT_AGE) if worn else 0.0,
 		_own(settings.dust, PRODUCT_DUST) if worn else 0.0,
-		_own(settings.paper, PRODUCT_PAPER) if worn and _backdrop.visible else 0.0, 0.0])
+		_own(settings.paper, PRODUCT_PAPER) if worn and _backdrop.visible else 0.0,
+		float(settings.surface) if worn else 0.0])
 	return data
 
 
