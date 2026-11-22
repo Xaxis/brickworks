@@ -129,7 +129,8 @@ struct Instance {
 	// its studs begin, box_max.w 1 for the product look's moulded plastic.
 	vec4 box_min;
 	vec4 box_max;
-	// Mesh, kind (0 plastic, 1 clear plastic, 2 the sweep), unused, unused.
+	// Mesh, kind (0 plastic, 1 clear plastic, 2 the sweep), the part's own
+	// number (the same for each surface it is drawn in), unused.
 	uvec4 info;
 };
 
@@ -527,7 +528,8 @@ float paper(vec3 at, float amount) {
 }
 
 // textured: the hit is on a straight slope's face (closest_hit's grain);
-// which: the part's own number, so no two parts are worn alike; ng: the
+// which: the part's own number (info.z: its body, print and window alike),
+// so no two parts are worn alike and one part is worn as one; ng: the
 // face's own normal in the world, for the dust that settles on tops.
 Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint which, vec3 ng) {
 	Surface s;
@@ -1112,7 +1114,7 @@ void main() {
 			if (!met) {
 				met = true;
 				first = vec4(n, thing.info.y == KIND_GLASS ? 2.0 : (thing.info.y == KIND_SWEEP ? 3.0
-					: luminance(surface_of(thing, at, hit.local, hit.unused, hit.instance, hit.geometric).albedo)));
+					: luminance(surface_of(thing, at, hit.local, hit.unused, thing.info.z, hit.geometric).albedo)));
 			}
 			if (thing.info.y == KIND_GLASS) {
 				// Thin glass: what it reflects of the sky added at once, by a
@@ -1129,7 +1131,7 @@ void main() {
 					// A handled clear part (photoreal4): fine scratches in its skin
 					// scatter some of the light that falls on it, each part's
 					// running its own way, as a set's windscreen shows them.
-					float own_glass = float(pcg(hit.instance * 747796405u + 2891336453u) & 0xffffu)
+					float own_glass = float(pcg(thing.info.z * 747796405u + 2891336453u) & 0xffffu)
 						/ 65535.0;
 					if (worn(hit.local * 1.6, own_glass)) {
 						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
@@ -1203,7 +1205,7 @@ void main() {
 					* shadow_on(at + ng * 0.02, n);
 				break;
 			}
-			Surface s = surface_of(thing, at, hit.local, hit.unused, hit.instance, hit.geometric);
+			Surface s = surface_of(thing, at, hit.local, hit.unused, thing.info.z, hit.geometric);
 			// The sweep is brought to its colour for the eye alone, as the
 			// window brings it (StudioRender meters its level), and by
 			// scaling what it shows, so its shadows keep their depth. As

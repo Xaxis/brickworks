@@ -112,7 +112,9 @@ var product: bool = false
 ## How far each of the product look's parts sits from exactly in place
 ## (photoreal4), set before [method stage]: at 1, up to SEAT_SHIFT off and
 ## SEAT_LIFT up, and SEAT_TURN degrees turned, each its own way, as a built
-## set's parts never sit quite square. 0 for exactly.
+## set's parts never sit quite square. 0 for exactly. Each part's own way is
+## from its place ([method _part_key]), so the surfaces a part is drawn in
+## (its body, a print, a window) move together.
 var seating: float = 0.0
 const SEAT_SHIFT := 0.15
 const SEAT_LIFT := 0.2
@@ -277,11 +279,20 @@ func shape_of(mesh: Mesh) -> Array:
 ## model's MultiMeshInstance3Ds), and [param sweep] when there is one.
 ## A part's place a hair off exact (seating), its own way by its [param number]:
 ## turned about its own origin, shifted across and lifted up.
-func _seated(place: Transform3D, number: int) -> Transform3D:
+## A placed part's own number, the same for every batch it is drawn in: a
+## part with a print or a window is several batches, one per surface, each
+## with its own instance, and all at the one place.
+static func _part_key(place: Transform3D) -> int:
+	var grid := Vector3.ONE * 0.0001
+	return hash([place.origin.snapped(Vector3.ONE * 0.01), place.basis.x.snapped(grid),
+		place.basis.y.snapped(grid), place.basis.z.snapped(grid)]) & 0x7fffffff
+
+
+func _seated(place: Transform3D, key: int) -> Transform3D:
 	if seating <= 0.0 or not product:
 		return place
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 2654435761 * (number + 1) + 97
+	rng.seed = 2654435761 * (key + 1) + 97
 	var turn := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-1.0, 1.0),
 		rng.randf_range(-0.5, 0.5)) * deg_to_rad(SEAT_TURN) * seating
 	var shift := Vector3(rng.randf_range(-1.0, 1.0) * SEAT_SHIFT, rng.randf() * SEAT_LIFT,
@@ -359,10 +370,11 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 				fleck.r, fleck.g, fleck.b, custom.a,
 				box_min.x, box_min.y, box_min.z, body_top,
 				box_max.x, box_max.y, box_max.z, moulded])
-			kinds.append_array([mesh_number, kind, 0, 0])
+			var key: int = _part_key(whole * at)
+			kinds.append_array([mesh_number, kind, key, 0])
 			var instance := RDAccelerationStructureInstance.new()
 			instance.blas = shape[0]
-			instance.transform = _seated(whole * at, placed.size())
+			instance.transform = _seated(whole * at, key)
 			instance.id = placed.size()
 			instance.mask = MASK_GLASS if kind == KIND_GLASS else MASK_SOLID
 			instance.hit_sbt_range = _range
