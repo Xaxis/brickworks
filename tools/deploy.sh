@@ -644,6 +644,7 @@ $docs_moved
       "continue": true },
     { "src": "/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page" },
+    { "src": "/challenge[.]png", "dest": "/api/people?op=challenge&picture=1" },
     { "src": "/($langs)/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page&lang=\$1" },
     { "src": "/(app|b/.*|e/.*)",
