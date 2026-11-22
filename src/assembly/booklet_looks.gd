@@ -100,6 +100,30 @@
 ## themselves as sub-models, and so does Studio; the line names which
 ## sub-model's build or which stage each chapter of the booklet starts at.
 ##
+## A page locked or frozen (pagetools, StudWorx's page lock and
+## snowflake) is kept on the step its page starts with. "lock": the number
+## of steps the page holds, by count: the booklet starts a page there and
+## puts exactly that many steps on it whatever else changes (Booklet
+## .Layout), so a step put in or taken out among them changes which steps
+## those are, and the words that lock a page say so. Locking places each
+## item of the page where it is (Booklet.held_places, as Apply to later
+## pages places them), so a page setup changed after moves nothing on it;
+## and nothing writes to a step a lock holds (held_by, Shell.change_look):
+## the page editor, a session's edit_booklet and a Together peer alike.
+## "freeze": {"sheet": the page set up as it was when frozen, its FROZEN
+## fields alone}: the page keeps those when the booklet's page setup
+## changes; its paper, the pictures behind it, the parts' size, the new
+## parts' outline and the cover stay the booklet's, one paper a booklet. In
+## the file, inside the step and above its PAGE line, where a build before
+## these keeps lines it does not read: "0 !BRICKWORKS PAGE LOCK 2", "...
+## PAGE FREEZE MARGIN 12 COLOUR #FFFFFF" (PAGE_SETUP's words, none for the
+## booklet's own page) and "... PAGE FREEZE_TEXT HEADER words" a line for
+## each of its words. A build since mlfix keeps them as lines it does not
+## read ("PAGE" is a word it reads, these values are not) and writes them
+## back where this one writes them; rel-m267 and desktop 0.17 to 0.19 drop
+## every "0 !BRICKWORKS PAGE" line they do not read, and the page comes back
+## unlocked and not frozen, nothing read wrong.
+##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
 ## had (follow), and each section's start with the step that begins it.
@@ -147,10 +171,86 @@ const ZOOMS: Array[float] = [0.5, 0.67, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0]
 const SIZES: Array[float] = [0.6, 0.8, 1.0, 1.25, 1.5, 2.0]
 ## How far up or down a tilt may go, from level, in degrees.
 const PITCH_MOST := 80.0
+## What a frozen page keeps of the booklet's page setup (BookletSheet): all
+## but the paper, the pictures, the cover's words and what a later build
+## wrote, which are the booklet's. The new parts' outline is drawn by the
+## booklet as a whole and stays the booklet's too.
+const FROZEN: Array[String] = ["margin", "colour", "number", "header", "footer", "box_frame",
+	"box_fill", "box_corners", "number_colour"]
+## The most steps a locked page holds: four is the most a page has.
+const LOCK_MOST := 4
+
+
+## Whether any page of the model is locked: none, and nothing is held.
+static func any_lock(world: BrickWorld) -> bool:
+	for name: String in world.step_looks:
+		var look: Variant = world.step_looks[name]
+		if look is Dictionary and int((look as Dictionary).get("lock", 0)) > 0:
+			return true
+	return false
+
+
+## The number of the step whose locked page holds the step of [param plan]
+## (Instructions.plan, the author's steps, as the booklet has them) whose
+## look is [param name] (BookletLooks.key), or 0 when no lock holds it: the
+## nearest step at or before it whose lock reaches it, with no step between
+## that starts a page of its own (a callout, a lock, a frozen page), as
+## Booklet.Layout puts them on the page. The one check every writer of a
+## page passes (Shell.change_look, Shell.place_pages).
+static func held_by(world: BrickWorld, plan: Array[Instructions.Step], name: String) -> int:
+	var entries: Array[Instructions.Step] = []
+	for step: Instructions.Step in plan:
+		if not step.in_callout():
+			entries.append(step)
+	for index: int in entries.size():
+		var step: Instructions.Step = entries[index]
+		if step.authored_step < 0 or key(definition_of(step.authored_in), step.authored_step) != name:
+			continue
+		for back: int in LOCK_MOST:
+			if index - back < 0:
+				break
+			var start: Instructions.Step = entries[index - back]
+			var look: Dictionary = of(world, start.authored_in, start.authored_step) \
+				if start.authored_step >= 0 else {}
+			if int(look.get("lock", 0)) > back:
+				return start.number
+			if int(look.get("lock", 0)) > 0 or look.get("freeze") is Dictionary or start.attaches():
+				break
+	return 0
 
 
 static func key(definition: String, step: int) -> String:
 	return "%s|%d" % [definition, step]
+
+
+## What a frozen page keeps of [param sheet]: its [constant FROZEN] fields
+## that are not the booklet's own.
+static func frozen_of(sheet: BookletSheet) -> Dictionary:
+	var said: Dictionary = sheet.said()
+	var out: Dictionary = {}
+	for field: String in FROZEN:
+		if said.has(field):
+			out[field] = said[field]
+	return out
+
+
+## The page a step's [param freeze] ("freeze" of its look) is laid out on:
+## [param booklet]'s, with what the page kept when it was frozen in place
+## of the booklet's own of those fields. [param booklet] itself when the
+## page is not frozen.
+static func page_sheet(booklet: BookletSheet, freeze: Variant) -> BookletSheet:
+	if not freeze is Dictionary:
+		return booklet
+	var said: Dictionary = booklet.said()
+	for field: String in FROZEN:
+		said.erase(field)
+	said.merge(frozen_of(BookletSheet.from((freeze as Dictionary).get("sheet", {}))), true)
+	var out: BookletSheet = BookletSheet.from(said)
+	out.picture_uri = booklet.picture_uri
+	out.missing = booklet.missing
+	out.cover_uri = booklet.cover_uri
+	out.cover_missing = booklet.cover_missing
+	return out
 
 
 ## The most letters a step's name keeps, each as a reader sees it (a letter
@@ -687,6 +787,10 @@ static func _usual(field: String, value: Variant) -> bool:
 			return name_of(value).is_empty()
 		"per_page":
 			return int(value) <= 0
+		"lock":
+			return int(value) <= 0
+		"freeze":
+			return not (value is Dictionary)
 	return false
 
 
@@ -1633,6 +1737,24 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				if value in ["NEW", "ALONE"]:
 					_put_in(out, key(definition, step), "page", value.to_lower())
 					took = true
+				# pagetools: the page this step starts locked, or frozen with
+				# the page set up as it was.
+				elif value == "LOCK" and words.size() == 5 and words[4].is_valid_int() \
+						and words[4].to_int() >= 1:
+					_put_in(out, key(definition, step), "lock", mini(words[4].to_int(), LOCK_MOST))
+					took = true
+				elif value in ["FREEZE", "FREEZE_TEXT"]:
+					var frozen: Dictionary = (out.get(key(definition, step), {}) as Dictionary).get(
+						"freeze", {"sheet": {}})
+					var sheet: Dictionary = BookletSheet.read_line(
+						"PAGE_SETUP" if value == "FREEZE" else "PAGE_TEXT", words.slice(4),
+						_rest_after(line, 5), frozen["sheet"])
+					var kept: Dictionary = frozen_of(BookletSheet.from(sheet))
+					# A word of the page setup this build does not keep on a
+					# frozen page is not taken: the line is kept as written.
+					if kept == sheet:
+						_put_in(out, key(definition, step), "freeze", {"sheet": kept})
+						took = true
 			"ZOOM":
 				if value.is_valid_float() and value.to_float() > 0.0:
 					_put_in(out, key(definition, step), "zoom", clampf(value.to_float(), 0.25, 4.0))
@@ -2101,6 +2223,13 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 			return _typed_number(value, 0.4, 3.0)
 		"page":
 			return value if value is String and value in ["new", "alone"] else null
+		"lock":
+			return clampi(int(value), 1, LOCK_MOST) if (value is int or value is float) \
+				and float(value) >= 1.0 else null
+		"freeze":
+			if not value is Dictionary or not (value as Dictionary).get("sheet", {}) is Dictionary:
+				return null
+			return {"sheet": frozen_of(BookletSheet.from((value as Dictionary).get("sheet", {})))}
 		"parts", "sign", "colours", "preview", "callout", "highlight", "colours_all":
 			return value if value is bool else null
 		"per_page":
@@ -2731,6 +2860,16 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 	# model written whole): here, as they were written.
 	for other: Variant in wrote.get(UNREAD + key(definition, step), look.get("unread", [])):
 		out.append(str(other) + eol)
+	# pagetools' lock and freeze where a build before them keeps them, with
+	# the lines it does not read, above PAGE: its whole write and this
+	# build's unedited save of it agree byte for byte (ptreview F5).
+	if int(look.get("lock", 0)) > 0:
+		out.append(META + "PAGE LOCK %d" % int(look["lock"]) + eol)
+	if look.get("freeze") is Dictionary:
+		var frozen: BookletSheet = BookletSheet.from((look["freeze"] as Dictionary).get("sheet", {}))
+		out.append((META + "PAGE FREEZE " + frozen.line_words()).strip_edges() + eol)
+		for words: String in frozen.text_lines():
+			out.append(META + "PAGE FREEZE_TEXT " + words + eol)
 	if look.has("page"):
 		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
 	if look.has("zoom"):
@@ -3083,8 +3222,16 @@ static func layout_said(world: BrickWorld, pages: Array, from: int = 2) -> Strin
 					(" (%s)" % ", ".join(posed)) if not posed.is_empty() else ""])
 			each.append("%d%s" % [entry.number, (" (" + "; ".join(how) + ")") if not how.is_empty()
 				else ""])
-		var line: String = "  page %d%s: step%s %s" % [page.number,
+		# Locked or frozen (pagetools): said, so a session knows why its
+		# follow= passed a page by or its page_setup left one as it was.
+		var held := PackedStringArray()
+		if not page.entries.is_empty() and int(page.entries[0].get("lock")) > 0:
+			held.append("locked")
+		if not page.entries.is_empty() and page.entries[0].get("own_sheet") != null:
+			held.append("frozen")
+		var line: String = "  page %d%s%s: step%s %s" % [page.number,
 			(" (the %s, built on its own)" % page.name) if page.kind == "callout" else "",
+			(" (%s)" % " and ".join(held)) if not held.is_empty() else "",
 			"" if page.entries.size() == 1 else "s", ", ".join(each)]
 		if not page.overlaps.is_empty():
 			line += "; overlapping: " + Later.script(&"Booklet").overlaps_said(page)
@@ -3125,6 +3272,10 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 			parts.append("new page")
 		"alone":
 			parts.append("a page alone")
+	if int(own.get("lock", 0)) > 0:
+		parts.append("its page locked")
+	if own.get("freeze") is Dictionary:
+		parts.append("its page frozen")
 	if own.has("parts") and not bool(own["parts"]):
 		parts.append("no parts list")
 	var place: Dictionary = own.get("place", {})

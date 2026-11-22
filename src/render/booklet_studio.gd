@@ -45,6 +45,12 @@ var mark_new: bool = false
 ## That band's colour, as its designer chose it (BookletSheet
 ## outline_colour); null for the booklet's own orange, the ink's.
 var new_colour: Variant = null
+## That band's width as its designer set it (BookletSheet outline_width), in
+## pixels of a picture before it is supersampled; 0 for the booklet's own,
+## which is drawn as it always was. BookletMaker gives the designer's pixels
+## at 5 a millimetre in its own pixels a millimetre, so the band is the same
+## millimetres at every size a picture is drawn at.
+var new_width: float = 0.0
 ## How strongly to draw the creases inside a part: see booklet_ink.
 var crease: float = 1.0
 
@@ -209,6 +215,28 @@ func _picture_lane() -> PictureLane:
 	lane.codes.add_child(lane.codes_token)
 	lane.code_material = _code_material.duplicate()
 
+	# The band round the new parts, as wide as its designer set it
+	# (pagetools): the ink's rings look 36 ways at three distances, and at
+	# 72 px (144 drawn at twice the size) a thin part between two rays had
+	# no band on that side. Exact instead, in two passes: this one finds each
+	# pixel's nearest new part along its row, the ink the nearest down its
+	# column of those, which is the true distance (booklet_band). Made after
+	# the codes and before the ink, so it is drawn between them.
+	lane.band = SubViewport.new()
+	lane.band.transparent_bg = false
+	lane.band.disable_3d = true
+	lane.band.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	# Small until a wide band is drawn: four lanes of a page-sized texture
+	# held for nothing, on a phone's memory, otherwise.
+	lane.band.size = Vector2i(8, 8)
+	add_child(lane.band)
+	lane.band_rect = ColorRect.new()
+	lane.band_material = ShaderMaterial.new()
+	lane.band_material.shader = preload("res://src/render/booklet_band.gdshader")
+	lane.band_material.set_shader_parameter("code_tex", lane.codes.get_texture())
+	lane.band_rect.material = lane.band_material
+	lane.band.add_child(lane.band_rect)
+
 	lane.ink = SubViewport.new()
 	lane.ink.transparent_bg = true
 	lane.ink.disable_3d = true
@@ -219,6 +247,7 @@ func _picture_lane() -> PictureLane:
 	lane.ink_material.shader = preload("res://src/render/booklet_ink.gdshader")
 	lane.ink_material.set_shader_parameter("colour_tex", lane.colour.get_texture())
 	lane.ink_material.set_shader_parameter("code_tex", lane.codes.get_texture())
+	lane.ink_material.set_shader_parameter("band_tex", lane.band.get_texture())
 	lane.ink_rect.material = lane.ink_material
 	lane.ink.add_child(lane.ink_rect)
 	return lane
@@ -410,8 +439,20 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	if new_colour != null:
 		var band: Color = new_colour
 		ink.set_shader_parameter("new_colour", Vector3(band.r, band.g, band.b))
-	# A band of about two thirds of a millimetre round the new parts.
-	ink.set_shader_parameter("halo", maxf(3.0, 3.0 * times))
+	# A band of about two thirds of a millimetre round the new parts, or as
+	# wide as its designer set it, found exactly (the band pass).
+	var halo: float = maxf(3.0, 3.0 * times)
+	var wide: bool = new_width > 0.0 and mark_new and new_from <= upto
+	if wide:
+		halo = maxf(1.0, new_width * times)
+		var most: int = mini(ceili(maxf(2.0, 1.5 * times) * 0.5 + halo), BAND_MOST)
+		lane.band.size = big
+		lane.band_rect.size = Vector2(big)
+		lane.band_material.set_shader_parameter("pixel", Vector2(1.0 / big.x, 1.0 / big.y))
+		lane.band_material.set_shader_parameter("most", most)
+		lane.band.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	ink.set_shader_parameter("halo", halo)
+	ink.set_shader_parameter("wide", wide)
 	ink.set_shader_parameter("fade", fade * times)
 	ink.set_shader_parameter("crease", crease)
 
@@ -424,6 +465,7 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	lane.colour.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	lane.codes.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	lane.ink.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.band.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	lane.busy = false
 	if drawn == null:
 		return shot
@@ -435,14 +477,22 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 
 ## How many pictures [method shoot] draws at once.
 const PICTURE_LANES := 4
+## The farthest the band pass looks along a row, in drawn pixels: its
+## answer is kept in a byte, 255 for none. 72 px at 5 a millimetre drawn
+## at twice the size is 144, and the ink line's half beside it.
+const BAND_MOST := 250
 
 
 ## Three viewports of [method shoot]'s own, as the booklet had one of each:
 ## the colour, the codes and the ink drawn from the two, with a copy of
-## each stage it has drawn on.
+## each stage it has drawn on; and a fourth for a band wider than the
+## booklet's own, drawn only for one (pagetools).
 class PictureLane extends RefCounted:
 	var colour: SubViewport
 	var codes: SubViewport
+	var band: SubViewport
+	var band_rect: ColorRect
+	var band_material: ShaderMaterial
 	var ink: SubViewport
 	var colour_camera: Camera3D
 	var codes_camera: Camera3D
