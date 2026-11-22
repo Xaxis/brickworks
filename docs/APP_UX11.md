@@ -462,9 +462,15 @@ friends, build one set at one table.
   - Missing and wrong colour named 6 of 11 each: right on large parts and
     clear colours, Black for Dark Bluish Grey too; Dark Blue for Blue under
     warm light flagged on a right build.
+  - **Framed 1.4 times closer** (55 more cases, the same pages, the build
+    filling most of the photo): the step 95%, found 73%, named 52%, false
+    alarms 5% (1 of 11). Still NO-GO. Closer stops the guessing on right
+    builds, but a stud off is still named 4 times in 11, and "looks right"
+    5 times, at up to 2.7% of the picture.
   - The bench is kept: `src/dev/photostep_bench.gd`, `tools/bench/photostep.py`
-    (bench/results/photostep-2026-11-22/, score.md). A tool would need the
-    photo framed on the step's parts, and "can't tell" below a size, first.
+    (bench/results/photostep-2026-11-22/, README.md). A tool would need the
+    photo framed on the step's parts, a way to count studs (the session
+    compares parts, never studs), and "can't tell" below a size, first.
 
 **4. A pile scanned into what I own.** Not past parity: Stackable and
 Tumbly do it, and Brick Finder finds parts in a pile. It is here because
