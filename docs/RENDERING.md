@@ -1621,6 +1621,44 @@ are in `shots/photoreal/<tag>/` of the snapshot worktrees:
   (cycamera) and photoasis/photosoft.
 - p6snap2 (599e7ad87) holds step 3's p6cam_d1/d2.
 
+## 5k. Staged as photographs are: the light, the surface, the camera (photoreal7)
+
+photoreal6 found the gap was the staging, not the renderer: Cycles on the
+same scenes scored no better. Its judge's reasons were the backdrop
+("featureless", "a CG void") and the light ("no falloff", "evenly lit").
+Both come from how a picture was staged. The tent's lights sit at
+infinity, and the sweep is a shadow catcher drawn flat at its own colour.
+
+A product photograph's light stands near the model. So photoreal7 builds a
+**stage**, a choice the app offers (`RenderSettings.stage`, Render's
+Background, `StudioRender.STAGES`). It is not a backdrop tuned to one
+shot. Each stage has:
+- **A near key.** A soft box near the model, a ball in the tracer
+  (`scene.near`), sampled once per bounce with its shadow. Its light falls
+  off with the square of the distance and across its face (a cosine
+  power, `near_aim.w`). The side nearer it is lighter, and the floor
+  darkens away from it. It is turned as the rig's key is, raised
+  `STAGE_KEY_RISE` degrees, `STAGE_KEY_FAR` model radii away, and gives
+  the middle `STAGE_KEY_SHARE` of the tent's key.
+- **A surface lit as any surface is.** It is not a shadow catcher
+  (`stage.x`), except **Photographed on white**, which keeps the catcher.
+  Paper gets its fibres, a desk its specks. A wooden table, a leather desk
+  pad and terrazzo get a photographed tile at its real size: Poly Haven's
+  CC0 diffuse maps in `assets/surfaces/`, binding 11. Each has its own
+  roughness, so wood and terrazzo carry a sheen. Past a table's far edge
+  is the room: the lighting's HDRI, or the window's.
+- **The camera.** The white card where the model stands is still metered
+  for exposure (`_meter_card`, at the 60th percentile on a textured
+  stage). Its colour is read too (`_floor_colour`), for a white balance
+  (`balance`, the share of the card's cast taken out). A camera's tone
+  curve (`tone`) bends the encoded picture by an S through 0, a half and
+  1, in the resolve (`camera_tone`).
+
+With no stage, every new buffer field is zero or one and no random number
+is drawn, so a render is pixel-identical to photoreal6's. Only Best on the
+desktop draws a stage. Compatibility and the web draw its colour alone,
+and the web export leaves `assets/surfaces/` out.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

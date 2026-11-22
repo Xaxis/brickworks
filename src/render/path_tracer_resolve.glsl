@@ -60,7 +60,10 @@ layout(push_constant, std430) uniform Resolve {
 	// Its processing's sharpening (photoreal6): the share of an edge's step
 	// added back after the curve, as an unsharp mask; 0 for none.
 	float sharpen;
-	float unused_c;
+	// A camera's own tone curve (photoreal7, a staged photograph): how far
+	// its S bends the encoded picture, deeper shadows and brighter lights
+	// round the middle (0 for none, the curve as before).
+	float tone;
 } params;
 
 vec3 filmic_curve(vec3 x) {
@@ -117,6 +120,13 @@ vec3 camera_curve(vec3 color) {
 	vec3 t = clamp((color - vec3(CAMERA_KNEE)) / (CAMERA_TOP - CAMERA_KNEE), vec3(0.0), vec3(1.0));
 	vec3 rolled = vec3(CAMERA_KNEE) + (1.0 - CAMERA_KNEE) * (2.0 * t - t * t);
 	return mix(color, rolled, step(vec3(CAMERA_KNEE), color));
+}
+
+// A camera's tone curve over its encoded picture (photoreal7): an S through
+// 0, a half and 1, steeper by half of params.tone at the middle, flatter at
+// the ends, as a camera's JPEG is drawn rather than the light's own sRGB.
+vec3 camera_tone(vec3 c) {
+	return c + 2.0 * params.tone * c * (vec3(1.0) - c) * (c - vec3(0.5));
 }
 
 vec3 linear_to_srgb(vec3 color) {
@@ -211,7 +221,8 @@ vec3 finished(vec3 light, float fall) {
 	vec3 color = max(light * params.exposure, vec3(0.0)) * fall;
 	float level = luma(color);
 	color = max(vec3(level) + (color - vec3(level)) * params.linear_saturation, vec3(0.0));
-	return linear_to_srgb(clamp(camera_curve(color / params.white), vec3(0.0), vec3(1.0)));
+	vec3 encoded = linear_to_srgb(clamp(camera_curve(color / params.white), vec3(0.0), vec3(1.0)));
+	return params.tone > 0.0 ? camera_tone(encoded) : encoded;
 }
 
 void main() {
@@ -261,6 +272,9 @@ void main() {
 		color = filmic_curve(color) / filmic_curve(vec3(params.white)).x;
 	}
 	color = linear_to_srgb(clamp(color, vec3(0.0), vec3(1.0)));
+	if (params.tone > 0.0 && params.tonemapper > 3.5) {
+		color = camera_tone(color);
+	}
 	if (params.sharpen > 0.0 && params.tonemapper > 3.5) {
 		// A camera's sharpening (photoreal6): an unsharp mask on the finished
 		// picture, a Gaussian 1.2 pixels wide, so an edge gets the light and

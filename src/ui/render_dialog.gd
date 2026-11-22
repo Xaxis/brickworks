@@ -87,6 +87,8 @@ var _picker: ColorPickerButton
 var _light: OptionButton
 var _turn: HSlider
 var _contact: CheckBox
+## What the model stands on (photoreal7, RenderSettings.stage).
+var _stage: OptionButton
 var _view: OptionButton
 var _focal: HSlider
 var _focal_words: Label
@@ -571,6 +573,18 @@ func _build() -> void:
 		settings.contact_shadow = on
 		_ask_preview())
 	right.add_child(_contact)
+	# photoreal7: what the model stands on, staged as a photograph is, at Best
+	# in the Product look; the backdrop's colour becomes the surface's own.
+	_stage = OptionButton.new()
+	_stage.add_theme_font_size_override("font_size", 12)
+	_stage.tooltip_text = tr("Best, Product look: what the model stands on, lit by a light standing near it as in a photograph")
+	_stage.add_item(tr("Seamless backdrop"))
+	_stage.set_item_metadata(0, "")
+	for key: String in StudioRender.STAGES:
+		_stage.add_item(tr(str(StudioRender.STAGES[key][0])))
+		_stage.set_item_metadata(_stage.item_count - 1, key)
+	_stage.item_selected.connect(_pick_stage)
+	right.add_child(_stage)
 
 	_heading(right, "Light")
 	_light = OptionButton.new()
@@ -892,6 +906,18 @@ func _pick_background(n: int) -> void:
 	for child: Node in _preview.get_parent().get_children():
 		if child.has_meta("checks"):
 			(child as CanvasItem).modulate = Color(1, 1, 1, 1.0 if settings.transparent else 0.0)
+	_ask_preview()
+
+
+## What the model stands on (photoreal7): a stage puts its own colour on the
+## backdrop, as a colour of its own the person may change.
+func _pick_stage(index: int) -> void:
+	settings.stage = str(_stage.get_item_metadata(index))
+	if StudioRender.STAGES.has(settings.stage):
+		settings.backdrop = StudioRender.STAGES[settings.stage][6]
+		settings.backdrop_gradient = false
+		settings.transparent = false
+		_show_choices()
 	_ask_preview()
 
 
@@ -1240,6 +1266,9 @@ func _show_choices() -> void:
 		if child.has_meta("checks"):
 			(child as CanvasItem).modulate = Color(1, 1, 1, 1.0 if settings.transparent else 0.0)
 	_contact.set_pressed_no_signal(settings.contact_shadow)
+	for n: int in _stage.item_count:
+		if str(_stage.get_item_metadata(n)) == settings.stage:
+			_stage.select(n)
 	for n: int in _light.item_count:
 		if str(_light.get_item_metadata(n)) == settings.lighting:
 			_light.select(n)
@@ -1623,6 +1652,7 @@ func controls_by_name() -> Dictionary:
 	named_controls["render_again"] = _again_button
 	named_controls["render_close"] = _close_button
 	named_controls["render_light"] = _light
+	named_controls["render_stage"] = _stage
 	named_controls["render_view"] = _view
 	named_controls["render_preset"] = _preset
 	named_controls["render_preset_save"] = _preset_save

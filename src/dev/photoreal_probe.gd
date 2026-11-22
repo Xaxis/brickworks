@@ -36,7 +36,8 @@
 ##                      two outlines over each other); draws nothing else.
 ##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
-##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating) at 0, and its
+##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, and a
+##                      staged picture's tone and balance) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
 ##   -- --draw=N        the tracer's seed (default 1): another draw of the same
 ##                      tree, its noise and lens samples only (photoreal6)
@@ -46,6 +47,14 @@
 ##                      in LDraw's space, and <name>.cycles.json, the camera,
 ##                      lens, tent or place, key, sweep, exposure and the
 ##                      camera's marks, in the app's space (LDU, +y up)
+##   -- --stage=K       every shot staged on K (StudioRender.STAGES; "none" for
+##                      the seamless) instead of its own (photoreal7)
+##   -- --keys=R:F:S,.. each shot with its staged key at each of these: R
+##                      degrees up, F model radii away, S as bright, named
+##                      <name>[_t<turn>]_k<R>x<F>x<S>, to fit the light to the
+##                      photograph (tools/photoreal/fit_light.py, photoreal7)
+##   -- --width=N       each picture N pixels wide, its shape kept (a fit's
+##                      quick draws)
 ##   -- --car           only the car (the render probe's model) at Best, Product
 ##                      look, 1280x720, 256 samples, three times: the median at
 ##                      most CAR_MOST s (twice the 3.3-4.2 s the window look
@@ -143,22 +152,32 @@ func _run() -> void:
 		var lightings: PackedStringArray = _arg("lighting", "").split(",", false)
 		if lightings.is_empty():
 			lightings.append("")
+		var keys: PackedStringArray = _arg("keys", "").split(",", false)
+		if keys.is_empty():
+			keys.append("")
 		var turns: Array = [null] if yaws.is_empty() else Array(yaws)
 		for turn: Variant in turns:
 			for light: Variant in ([null] if lit.is_empty() else Array(lit)):
 				for lighting: String in lightings:
-					var asked: Dictionary = shot.duplicate()
-					var called: String = name
-					if turn != null:
-						asked["yaw"] = float(turn)
-						called = "%s_y%s" % [name, turn]
-					if light != null:
-						asked["light_turn"] = float(light)
-						called = "%s_t%s" % [called, light]
-					if not lighting.is_empty():
-						asked["lighting"] = lighting
-						called = "%s_%s" % [called, lighting]
-					await _draw(asked, called, samples, out)
+					for key: String in keys:
+						var asked: Dictionary = shot.duplicate()
+						var called: String = name
+						if turn != null:
+							asked["yaw"] = float(turn)
+							called = "%s_y%s" % [name, turn]
+						if light != null:
+							asked["light_turn"] = float(light)
+							called = "%s_t%s" % [called, light]
+						if not lighting.is_empty():
+							asked["lighting"] = lighting
+							called = "%s_%s" % [called, lighting]
+						if not key.is_empty():
+							var parts: PackedStringArray = key.split(":")
+							asked["key_rise"] = float(parts[0])
+							asked["key_far"] = float(parts[1]) if parts.size() > 1 else -1.0
+							asked["key_share"] = float(parts[2]) if parts.size() > 2 else -1.0
+							called = "%s_k%s" % [called, key.replace(":", "x")]
+						await _draw(asked, called, samples, out)
 	if (car_only or only.is_empty()) and not OS.get_cmdline_user_args().has("--fit"):
 		await _car(bar, out)
 	print("")
@@ -408,6 +427,9 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	settings.look = "product"
 	var size: Array = shot["size"]
 	settings.size = Vector2i(int(size[0]), int(size[1]))
+	var width: int = int(_arg("width", "0"))
+	if width > 0 and samples > 1:
+		settings.size = Vector2i(width, maxi(roundi(float(width) * float(size[1]) / float(size[0])), 8))
 	settings.samples = samples
 	settings.seed = maxi(int(_arg("draw", "1")), 1)
 	settings.backdrop = Color.html(str(shot.get("backdrop", "#ffffff")))
@@ -421,13 +443,19 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	# where the shot says; otherwise the product look's own.
 	var without: PackedStringArray = _arg("without", "").split(",", false)
 	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
-			"dust", "paper", "seating"]:
+			"dust", "paper", "seating", "tone", "balance"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):
 			settings.set(key, float(shot[key]))
 	# What the photograph's parts stand on (photoreal5): 0 paper, 1 a desk.
 	settings.surface = 0 if "surface" in without else int(shot.get("surface", 0))
+	# Its staging (photoreal7): what it stands on and the key near it.
+	var stage: String = _arg("stage", str(shot.get("stage", "")))
+	settings.stage = "" if stage == "none" else stage
+	for key: String in ["key_rise", "key_far", "key_size", "key_share"]:
+		if shot.has(key):
+			settings.set(key, float(shot[key]))
 	var bounds: AABB = _world.model_bounds()
 	var yaw: float = deg_to_rad(float(shot.get("yaw", -35.0)))
 	var pitch: float = deg_to_rad(float(shot.get("pitch", 30.0)))

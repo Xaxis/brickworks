@@ -5011,6 +5011,14 @@
       "tests": []
     },
     {
+      "id": "lib:staged product photographs",
+      "kind": "lib",
+      "entry": "src/render/studio_render.gd",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --stage=wood  (photoreal7, docs/RENDERING.md 5k: Render's Background choice StudioRender.STAGES at Best, Product; a near key (scene.near, falling off with distance), the surface lit with its grain or Poly Haven tile (binding 11, assets/surfaces/), the room past a table; the white card's colour as the white balance and a camera tone curve where asked; no stage draws pixel-identical to before)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:steps carried with a shared model",
       "kind": "lib",
       "entry": "src/net/shared_pages.gd",

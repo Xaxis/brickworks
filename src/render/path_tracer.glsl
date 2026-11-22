@@ -118,6 +118,28 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// backdrop shows a paper's or a table's grain and uneven light (0 a
 	// cut-out's seamless). All 0 in the window's look.
 	vec4 wear;
+	// A photograph's staging (photoreal7, StudioRender.STAGES): its key, a
+	// soft light standing near the model, so its light falls off with
+	// distance across the model and what it stands on: where it is (LDU) and
+	// its radius; its light (the units of lights[]) at near_colour.w from it,
+	// 0 for none.
+	vec4 near;
+	vec4 near_colour;
+	// Where the box faces (the model's middle), and how its light falls away
+	// off its axis (the power of the cosine).
+	vec4 near_aim;
+	// What the model stands on: 1 where it is lit as any surface is (no
+	// shadow catcher), its grain (0 a paper's fibres, 1 a desk's specks, 2
+	// surface_map's picture), the picture's tile (LDU), and 1 for a table:
+	// flat, the room beyond it.
+	vec4 stage;
+	// The picture's mean colour put back to 1 (rgb), so the backdrop's colour
+	// is the surface's, and how rough the surface is (w).
+	vec4 surface_norm;
+	// The camera's white balance (photoreal7): each channel's gain, so a
+	// white card where the model stands comes out as the camera was set to
+	// draw it. 1 for none.
+	vec4 balance;
 } scene;
 
 struct Instance {
@@ -150,6 +172,10 @@ layout(set = 0, binding = 9, std430) readonly buffer PlaceTable {
 // the surface's normal, and its albedo's lightness (2 clear plastic, 3 the
 // sweep, 4 nothing), which guide the product look's denoise.
 layout(set = 0, binding = 10, rgba32f) uniform image2D guide;
+
+// The surface a staged model stands on (photoreal7): a photographed tile of
+// it, sRGB.
+layout(set = 0, binding = 11) uniform sampler2D surface_map;
 
 layout(push_constant, std430) uniform Pass {
 	uint first;
@@ -621,6 +647,19 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		s.roughness = 0.9;
 		s.specular = 0.08;
 		s.coat = 0.0;
+		if (scene.stage.x > 0.5 && scene.look.w > -0.5) {
+			// A staged surface (photoreal7), lit as any surface is: its grain a
+			// photographed tile of it where it has one, at its own size, its
+			// colour the backdrop's. Not on the white card the exposure is
+			// metered from.
+			if (scene.stage.y > 1.5) {
+				vec2 uv = flat_at.xz / max(scene.stage.z, 1.0);
+				vec3 grain = srgb_to_linear(textureLod(surface_map, uv, 0.0).rgb);
+				s.albedo = scene.sweep_colour.rgb * grain * scene.surface_norm.rgb;
+			}
+			s.roughness = scene.surface_norm.w;
+			s.specular = mix(0.5, 0.08, smoothstep(0.3, 0.9, s.roughness));
+		}
 		return s;
 	}
 	// The seam, in the part's own space, as the window paints it. Moulded
@@ -916,6 +955,31 @@ float luminance(vec3 c) {
 	return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
+// A staged key (photoreal7): a soft light near the model, a ball of
+// scene.near.w across seen from here, its light falling off with the square
+// of the distance from scene.near_colour.w (where it is near_colour.rgb) and
+// across the box's face away from its middle, as a softbox's does. A
+// photograph's light is never even across a model and what it stands on: the
+// side nearer the light is lighter, and the floor darkens away from it.
+// Light from it: towards it from at, and how much of it falls here.
+vec3 near_way(vec3 at, out float far, out float half_angle) {
+	vec3 to = scene.near.xyz - at;
+	float d = max(length(to), 1e-3);
+	far = max(d - scene.near.w, 0.0);
+	half_angle = asin(clamp(scene.near.w / d, 0.0, 0.95));
+	return to / d;
+}
+
+vec3 near_light(vec3 at) {
+	vec3 to = at - scene.near.xyz;
+	float d2 = max(dot(to, to), 1e-4);
+	float reference = scene.near_colour.w;
+	// The box faces the model's middle: off its axis it gives less.
+	vec3 axis = normalize(scene.near_aim.xyz - scene.near.xyz);
+	float beam = pow(max(dot(normalize(to), axis), 0.0), scene.near_aim.w);
+	return scene.near_colour.rgb * reference * reference / d2 * beam;
+}
+
 // How much of the light that would reach a point of the sweep the model
 // lets through (photoreal2's shadow catcher): 1 in the open, less in the
 // model's shadow, tinted under clear parts. Each light once, and the sky
@@ -936,6 +1000,17 @@ vec3 shadow_on(vec3 at, vec3 n) {
 		}
 		all += c;
 		kept += c * (light.colour.w > 0.5 ? through_masked(at, l, 1e7, MASK_SOLID) : vec3(1.0));
+	}
+	if (scene.near_colour.w > 0.0) {
+		float far;
+		float half_angle;
+		vec3 toward = near_way(at, far, half_angle);
+		vec3 l = in_cone(toward, half_angle, rand2());
+		float c = max(dot(n, l), 0.0) * luminance(near_light(at));
+		if (c > 0.0) {
+			all += c;
+			kept += c * through_masked(at, l, far, MASK_SOLID);
+		}
 	}
 	for (int k = 0; k < 4; k++) {
 		vec3 l;
@@ -1043,6 +1118,23 @@ vec3 from_lamps(Surface s, vec3 at, vec3 n, vec3 v) {
 	return sum;
 }
 
+// The staged key's light on a point of a surface, its shadow sampled once.
+vec3 from_near(Surface s, vec3 at, vec3 n, vec3 v) {
+	if (scene.near_colour.w <= 0.0) {
+		return vec3(0.0);
+	}
+	float far;
+	float half_angle;
+	vec3 toward = near_way(at, far, half_angle);
+	vec3 l = in_cone(toward, half_angle, rand2());
+	float pdf;
+	vec3 f = reflect_light(s, n, v, l, pdf);
+	if (max(f.r, max(f.g, f.b)) <= 0.0) {
+		return vec3(0.0);
+	}
+	return f * near_light(at) * PI * through_far(at, l, far);
+}
+
 float balance(float a, float b) {
 	float a2 = a * a;
 	return a2 / max(a2 + b * b, 1e-12);
@@ -1073,6 +1165,7 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 		vec3 let = light.colour.w > 0.5 ? through(at, l) : vec3(1.0);
 		sum += f * light.colour.rgb * PI * let;
 	}
+	sum += from_near(s, at, n, v);
 	// The sky, or the place: picked by its light where there is a table,
 	// over the hemisphere otherwise, and weighed against the bounce.
 	float pdf_light;
@@ -1145,7 +1238,14 @@ void main() {
 		for (int event = 0; event < most + 8; event++) {
 			if (!trace(from, way, 1e7, 0xFFu, gl_RayFlagsOpaqueEXT)) {
 				met = true;
-				if (straight) {
+				if (straight && scene.stage.x > 0.5 && scene.look.w < -0.5) {
+					// Nothing past a staged surface's white card: the card alone
+					// is metered (photoreal7).
+				} else if (straight && scene.stage.w > 0.5) {
+					// Past a staged table's far edge, the room it stands in
+					// (photoreal7).
+					radiance += carried * sky_light(way);
+				} else if (straight) {
 					// What is behind everything, as the eye sees it.
 					radiance += carried * scene.background.rgb;
 				} else {
@@ -1253,8 +1353,8 @@ void main() {
 				sharp = true;
 				continue;
 			}
-			if (!straight && thing.info.y == KIND_SWEEP && scene.look.x > 0.5 && scene.sky.w > 0.5
-					&& at.y - scene.sweep_origin.y > 2.0) {
+			if ((!straight || scene.stage.w > 0.5) && thing.info.y == KIND_SWEEP && scene.look.x > 0.5
+					&& (scene.sky.w > 0.5 || scene.stage.w > 0.5) && at.y - scene.sweep_origin.y > 2.0) {
 				// In a photographed place the backdrop is a table, not a
 				// studio's paper (photoreal3): what the model mirrors and
 				// what lights it from past the table's edge is the room. The
@@ -1333,6 +1433,7 @@ void main() {
 		// three times what its exposure draws as white (scene.look.z), so no
 		// stray path off a glossy stud is a sparkle a photograph never has;
 		// a highlight that bright is white either way.
+		radiance *= scene.balance.rgb;
 		float level = max(radiance.r, max(radiance.g, radiance.b));
 		float most = scene.look.z > 0.0 ? scene.look.z : 40.0;
 		if (level > most) {

@@ -128,6 +128,25 @@ var paper: float = -1.0
 ## each photograph's parts stand on: 0 a paper's or a card's fibres, 1 a
 ## matte desk's specks and smudges.
 var surface: int = 0
+## A photograph's staging (photoreal7), Best path traced in the product look:
+## one of StudioRender.STAGES (what the model stands on, lit as any surface
+## is, under a key that stands near the model so its light falls off across
+## the model and the surface), or "" for the seamless as before.
+var stage: String = ""
+## That staging's key: how high it stands (degrees), how far from the
+## model's middle and how big (the model's radii), how bright against the
+## room's light. Below 0, StudioRender's STAGE_KEY_RISE, _FAR, _SIZE and
+## _SHARE; the photo bench fits each to its photograph.
+var key_rise: float = -1.0
+var key_far: float = -1.0
+var key_size: float = -1.0
+var key_share: float = -1.0
+## That staged photograph's camera (photoreal7): how far its tone curve bends
+## the picture (0 the light's own sRGB, 1 a camera JPEG's S), and how much of
+## a white card's cast where the model stands its white balance takes out
+## (0 none, 1 all). Below 0, StudioRender's STAGE_TONE and STAGE_BALANCE.
+var tone: float = -1.0
+var balance: float = -1.0
 ## How far each part sits from exactly in place, as a built set's never sit
 ## quite square (0 exactly, 1 up to PathTracer.SEAT_SHIFT off and SEAT_TURN
 ## degrees turned); below 0, PRODUCT_SEATING.
@@ -254,7 +273,7 @@ const PRESETS_FILE := "user://render_presets.cfg"
 ## where the window looked from nor a probe's switches.
 const PRESET_KEEPS: Array[String] = ["quality", "look", "size", "transparent", "backdrop",
 	"backdrop_gradient", "lighting", "light_turn", "contact_shadow", "view", "saved_view",
-	"focal_mm", "f_stop", "focus", "samples", "frames", "fps"]
+	"focal_mm", "f_stop", "focus", "samples", "frames", "fps", "stage"]
 
 
 ## These choices as a preset keeps them: words, numbers and the backdrop's
@@ -308,6 +327,10 @@ func use_preset(said: Dictionary) -> String:
 			"lighting":
 				if str(value) in LIGHTINGS_BESIDE or StudioRender.HDRIS.has(str(value)):
 					lighting = str(value)
+					continue
+			"stage":
+				if value is String and (str(value).is_empty() or StudioRender.STAGES.has(str(value))):
+					stage = str(value)
 					continue
 			"light_turn":
 				if number and absf(float(value)) <= 180.0:

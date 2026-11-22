@@ -90,6 +90,11 @@ var _indices: RID
 var _place_texture: RID
 var _place_table: RID
 var _place_for: StudioPanorama = null
+## What a staged model stands on (photoreal7): a photographed tile of it,
+## and the sampler that repeats it both ways.
+var _surface_texture: RID
+var _surface_for: Image = null
+var _tile_sampler: RID
 var _accum: RID
 ## What the eye's first hit is, summed over the samples (photoreal3): its
 ## normal and its albedo's lightness, for the product look's denoise.
@@ -207,6 +212,12 @@ func _make() -> bool:
 	sampler.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	sampler.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
 	_sampler = _rd.sampler_create(sampler)
+	var tile := RDSamplerState.new()
+	tile.mag_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	tile.min_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	tile.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
+	tile.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
+	_tile_sampler = _rd.sampler_create(tile)
 	_holders += 1
 	return true
 
@@ -500,6 +511,32 @@ func light_with(place: StudioPanorama) -> void:
 	_place_table = _storage(table.to_byte_array())
 
 
+## What a staged model stands on (photoreal7): [param image], a tile of a
+## photographed surface, or null for none (a 2 x 2 white, unread).
+func surface_with(image: Image) -> void:
+	if image == _surface_for and _surface_texture.is_valid():
+		return
+	_free(_surface_texture)
+	_surface_texture = RID()
+	_surface_for = image
+	var tile: Image = null
+	if image != null:
+		tile = image.duplicate() as Image
+		if tile.is_compressed():
+			tile.decompress()
+	if tile == null:
+		tile = Image.create(2, 2, false, Image.FORMAT_RGBA8)
+		tile.fill(Color(1, 1, 1))
+	tile.convert(Image.FORMAT_RGBA8)
+	var format := RDTextureFormat.new()
+	format.width = tile.get_width()
+	format.height = tile.get_height()
+	format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+	_surface_texture = _rd.texture_create(format, RDTextureView.new(), [tile.get_data()])
+
+
 ## The running sum and the picture, at [param size]: started again.
 func begin(size: Vector2i) -> bool:
 	if not _make() or not _tlas.is_valid():
@@ -543,6 +580,8 @@ func _bind() -> void:
 	_free(_scene_buffer)
 	if not _place_texture.is_valid():
 		light_with(null)
+	if not _surface_texture.is_valid():
+		surface_with(null)
 	var bytes: PackedByteArray = scene.to_byte_array()
 	_scene_buffer = _storage(bytes)
 	var uniforms: Array[RDUniform] = []
@@ -558,6 +597,8 @@ func _bind() -> void:
 		[_sampler, _place_texture]))
 	uniforms.append(_uniform(9, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, [_place_table]))
 	uniforms.append(_uniform(10, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide]))
+	uniforms.append(_uniform(11, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
+		[_tile_sampler, _surface_texture]))
 	_trace_set = _rd.uniform_set_create(uniforms, _shader, 0)
 	var resolving: Array[RDUniform] = [
 		_uniform(0, RenderingDevice.UNIFORM_TYPE_IMAGE, [_accum]),
@@ -643,12 +684,12 @@ func sample_ms() -> float:
 func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1.0,
 		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
 		denoise: float = 0.0, linear_saturation: float = 1.0,
-		camera: Vector4 = Vector4.ZERO, sharpen: float = 0.0) -> Image:
+		camera: Vector4 = Vector4.ZERO, sharpen: float = 0.0, tone: float = 0.0) -> Image:
 	if not _resolve_set.is_valid() or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
-		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, sharpen, 0.0])
+		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, sharpen, tone])
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
@@ -726,7 +767,7 @@ func release() -> void:
 	_free(_resolve_set)
 	_free(_scene_buffer)
 	_free_picture_set()
-	for rid: RID in [_accum, _guide, _picture, _place_texture, _place_table]:
+	for rid: RID in [_accum, _guide, _picture, _place_texture, _place_table, _surface_texture]:
 		_free(rid)
 	if _pipeline.is_valid():
 		_holders -= 1
@@ -737,7 +778,8 @@ func release() -> void:
 				for rid: RID in [shape[0], shape[1]]:
 					_free(rid)
 		_shapes.clear()
-	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler]:
+	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler,
+			_tile_sampler]:
 		_free(rid)
 	_pipeline = RID()
 	_rd = null

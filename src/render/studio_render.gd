@@ -81,6 +81,51 @@ const HDRIS: Dictionary = {
 	"daylight": ["Daylight", "res://assets/hdri/kloofendal_48d_partly_cloudy_puresky.hdr"],
 }
 
+## A photograph's staging (photoreal7, RenderSettings.stage), Best path traced
+## in the product look: what the model stands on, lit as any surface is
+## rather than drawn at its colour round the model's shadow, and a key that
+## stands near the model, so its light falls off across the model and the
+## surface as a real light's does (docs/RENDERING.md 5k). Key -> [words, a
+## photographed tile of the surface ("" for a grain of the tracer's own), the
+## tile's size (LDU: 1 mm is 2.5), how rough it is, its grain (0 a paper's
+## fibres, 1 a desk's specks, 2 the tile), whether it is a table (flat, and
+## the room beyond it seen past its edge), its own colour (sRGB)]. Tiles are
+## Poly Haven's, CC0 (docs/ATTRIBUTION.md). "white" is a product shot's white
+## seamless, kept at its colour round the model as before: only its light
+## is the near key's.
+const STAGES: Dictionary = {
+	"white": ["Photographed on white", "", 0.0, 0.9, 0, false, Color(1, 1, 1)],
+	"paper": ["On paper", "", 0.0, 0.9, 0, false, Color(0.93, 0.925, 0.91)],
+	"desk": ["On a desk", "", 0.0, 0.8, 1, true, Color(0.77, 0.74, 0.68)],
+	"wood": ["On a wooden table", "res://assets/surfaces/oak_veneer_01.jpg", 4575.0, 0.45, 2, true,
+		Color(0.62, 0.45, 0.3)],
+	"leather": ["On a leather desk pad", "res://assets/surfaces/leather_white.jpg", 750.0, 0.55, 2,
+		true, Color(0.36, 0.34, 0.32)],
+	"terrazzo": ["On terrazzo", "res://assets/surfaces/terrazzo_tiles.jpg", 5000.0, 0.3, 2, true,
+		Color(0.45, 0.38, 0.32)],
+}
+## The staged key (photoreal7), where a render asks for none of its own
+## (RenderSettings key_rise, key_far, key_size, key_share): how high it
+## stands (degrees), how far from the model's middle and how big (in the
+## model's radii), and how bright against the room's light (as the tent's
+## key, TENT_KEY, is 1). Fitted to the photo bench's photographs
+## (photoreal_probe --fit-light, docs/RENDERING.md 5k).
+const STAGE_KEY_RISE := 40.0
+const STAGE_KEY_FAR := 4.0
+const STAGE_KEY_SIZE := 1.0
+const STAGE_KEY_SHARE := 1.0
+## How a staged key's light falls off its axis: the power of the cosine
+## (a softbox's face sends most of its light straight ahead).
+const STAGE_KEY_BEAM := 2.0
+## A staged photograph's camera (photoreal7, RenderSettings tone and
+## balance): its tone curve's S, and how much of the white card's cast its
+## white balance takes out. Each kept only where the judge moved.
+const STAGE_TONE := 0.0
+const STAGE_BALANCE := 0.0
+## The room a staged table stands in, when the studio's light is asked for:
+## a room's light through its windows, not a tent.
+const STAGE_ROOM := "window"
+
 ## How much grain one traced sample carries, relative to its level, for the
 ## product look's denoise (path_tracer_resolve.glsl): a pixel differing from
 ## its neighbour by many times this over the root of the samples is an edge.
@@ -2559,7 +2604,12 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var clean: float = PRODUCT_DENOISE if settings.look == "product" else 0.0
 	if not _tracer.stage(batches, _backdrop if _backdrop.visible else null):
 		return null
-	_tracer.light_with(_lit_by)
+	# A staged table stands in a room (photoreal7): it lights the model and is
+	# seen past the table's edge.
+	_stage_room = _room_of(settings) if _table(settings) else null
+	_tracer.light_with(_stage_room if _stage_room != null else _lit_by)
+	var stage: Array = _stage_of(settings) if _lit_stage(settings) else []
+	_tracer.surface_with(_surface_tile(stage)[0] if not stage.is_empty() else null)
 	var environment: Environment = _camera.environment
 	var tonemapper: int = 2 if environment.tonemap_mode == Environment.TONE_MAPPER_FILMIC else 3
 	var white: float = maxf(environment.tonemap_white, 1.0)
@@ -2582,8 +2632,14 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# raster is metered: the model's own lights add to it (SceneLights). None
 	# of it in the Dark light, as dark as it is.
 	var catcher: bool = _catches(settings)
+	# A staged surface (photoreal7) is metered and drawn as the catcher's
+	# picture is, its surface lit rather than caught.
+	var photo: bool = _photographic(settings)
+	var staged: bool = photo and not _stage_of(settings).is_empty()
+	_balance = Color(1, 1, 1)
+	_card_colour = Color(1, 1, 1)
 	var linear_saturation: float = 1.0
-	if catcher:
+	if photo:
 		tonemapper = 4
 		white = 1.0
 		contrast = 1.0
@@ -2593,7 +2649,16 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 			saturation)
 		if scale <= 0.0:
 			return null
-	for round: int in (0 if settings.lighting == "dark" or catcher else 5):
+		if staged:
+			# The camera's white balance (photoreal7): the white card where the
+			# model stands drawn white, as much as the balance asks.
+			var amount: float = clampf(_own(settings.balance, STAGE_BALANCE), 0.0, 1.0)
+			var gain := Color(lerpf(1.0, 1.0 / _card_colour.r, amount),
+				lerpf(1.0, 1.0 / _card_colour.g, amount), lerpf(1.0, 1.0 / _card_colour.b, amount))
+			var kept: float = 0.2126 * _card_colour.r * gain.r + 0.7152 * _card_colour.g * gain.g \
+				+ 0.0722 * _card_colour.b * gain.b
+			_balance = gain / maxf(kept, 0.0001)
+	for round: int in (0 if settings.lighting == "dark" or photo else 5):
 		_tracer.scene = _traced_scene(settings, plan, shot, small, level, false)
 		if not _tracer.begin(small):
 			return null
@@ -2613,7 +2678,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 				if got <= 0.001 or absf(got / _wanted_lightness - 1.0) < 0.02:
 					break
 				scale *= clampf(pow(_wanted_lightness / got, 1.4), 0.4, 2.5)
-		if not _backdrop.visible or catcher:
+		if not _backdrop.visible or photo:
 			break
 		var floor_image: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
 			saturation, true, false)
@@ -2637,22 +2702,24 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 			_untoned(settings.backdrop.g, tonemapper, white, contrast),
 			_untoned(settings.backdrop.b, tonemapper, white, contrast))
 		var grey: float = 0.2126 * need.r + 0.7152 * need.g + 0.0722 * need.b
-		caught = Color(maxf(grey + (need.r - grey) / linear_saturation, 0.0) / at,
-			maxf(grey + (need.g - grey) / linear_saturation, 0.0) / at,
-			maxf(grey + (need.b - grey) / linear_saturation, 0.0) / at)
+		caught = Color(maxf(grey + (need.r - grey) / linear_saturation, 0.0) / at / _balance.r,
+			maxf(grey + (need.g - grey) / linear_saturation, 0.0) / at / _balance.g,
+			maxf(grey + (need.b - grey) / linear_saturation, 0.0) / at / _balance.b)
 	_tracer.scene = _traced_scene(settings, plan, shot, picture, level, true, most, caught)
 	# The camera's own marks, for the product look on a backdrop (photoreal4):
 	# its sensor's noise, its lens's fall-off and fringes (the fringes in
 	# pixels at a corner of a 1024-pixel picture, as many more as it is wider).
 	var lens := Vector4.ZERO
-	if catcher:
+	if photo:
 		lens = Vector4(_own(settings.grain, PRODUCT_GRAIN), _own(settings.vignette, PRODUCT_VIGNETTE),
 			_own(settings.aberration, PRODUCT_ABERRATION) * float(picture.x) / 1024.0,
 			_own(settings.softness, PRODUCT_SOFTNESS))
 	# Its processing (photoreal6): the sharpening in the resolve, the JPEG on
 	# the finished picture.
-	var sharpen: float = _own(settings.sharpen, PRODUCT_SHARPEN) if catcher else 0.0
-	var jpeg: float = _own(settings.jpeg, PRODUCT_JPEG) if catcher else 0.0
+	var sharpen: float = _own(settings.sharpen, PRODUCT_SHARPEN) if photo else 0.0
+	var jpeg: float = _own(settings.jpeg, PRODUCT_JPEG) if photo else 0.0
+	# A staged photograph's camera draws its own tone curve (photoreal7).
+	var tone: float = _own(settings.tone, STAGE_TONE) if staged else 0.0
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
@@ -2706,7 +2773,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
 			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-				saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen)
+				saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen, tone)
 			if so_far != null:
 				var half: int = picture.y / 2
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
@@ -2718,7 +2785,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	last_mean = _tracer.mean_image() if keep_mean else null
 	_doing("reading the picture back")
 	var result: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-		saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen)
+		saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen, tone)
 	if result != null and not settings.transparent:
 		await get_tree().process_frame
 		_doing("converting")
@@ -2777,10 +2844,18 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	var tent: bool = _tented(settings)
 	if tent:
 		place = null
+	# A staging (photoreal7): its key stands near the model, and a table's
+	# room is a photographed place, all of it (none of the studio's flags).
+	var staged: bool = not _stage_of(settings).is_empty() and _photographic(settings)
+	var lit_stage: bool = _lit_stage(settings)
+	var room_kept: float = _room
+	if _stage_room != null:
+		place = _stage_room
+		room_kept = 1.0
 	var energy: float = 0.0
 	if place != null:
 		energy = HDRI_LEVEL / maxf(place.average, 0.0001)
-		if product and settings.lighting == "studio":
+		if product and settings.lighting == "studio" and _stage_room == null:
 			energy *= _ambient
 	# A tent's walls are the colour of its paper's light: a warm backdrop in
 	# a photograph is a warm light on the model too.
@@ -2788,7 +2863,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	if tent:
 		sky = _paper_tint(settings)
 	data.append_array([sky.r, sky.g, sky.b, 1.0 if place != null else 0.0])
-	data.append_array([energy, _turn, _room, float(PathTracer.PLACE_CELLS.x)])
+	data.append_array([energy, _turn, room_kept, float(PathTracer.PLACE_CELLS.x)])
 	var behind: Color = settings.backdrop.srgb_to_linear()
 	var beyond: Color = behind * (DARK_BACKDROP if settings.lighting == "dark" else 1.0)
 	if caught.r >= 0.0:
@@ -2797,7 +2872,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	if card:
 		behind = Color(1, 1, 1)
 	var dark: bool = settings.backdrop.get_luminance() < 0.2
-	var fall: float = 0.0 if not settings.backdrop_gradient \
+	var fall: float = 0.0 if not settings.backdrop_gradient or lit_stage \
 		else (FALL_DARK if dark else FALL_GRADIENT)
 	var radius: float = _bounds.size.length() * 0.5
 	data.append_array([level, fall, radius * 0.7, radius * 3.2])
@@ -2806,8 +2881,9 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([origin.x, origin.y, origin.z, float(PathTracer.PLACE_CELLS.y)])
 	# The lights: the rig as dressed, the key from anywhere on its area. A
 	# photographed place is its own key.
+	# A staging's key is its own (below).
 	var lights: Array = []
-	if tent and _lights.size() > 0 and _lights[0].visible:
+	if tent and not staged and _lights.size() > 0 and _lights[0].visible:
 		# The tent's key: a big soft box where the rig's key stands, which the
 		# light's turn moves, so each face is lit as a product photograph's
 		# are, one side bright and the other in the tent's fill. Large enough
@@ -2815,7 +2891,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 		var key_from: Vector3 = _lights[0].get_meta("toward", Vector3.UP)
 		var paper: Color = _paper_tint(settings) * TENT_KEY
 		lights.append([key_from, TENT_KEY_SPREAD, paper, 1.0])
-	elif not tent and (place == null or (product and settings.lighting == "studio")):
+	elif not tent and not staged and (place == null or (product and settings.lighting == "studio")):
 		for n: int in _lights.size():
 			var light: DirectionalLight3D = _lights[n]
 			if not light.visible or light.light_energy <= 0.0:
@@ -2891,10 +2967,33 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# The product look's wear (photoreal4): age, dust, the backdrop's grain,
 	# and what the backdrop is (photoreal5).
 	var worn: bool = settings.look == "product"
+	var stage: Array = _stage_of(settings)
+	var grain: float = _own(settings.paper, PRODUCT_PAPER) if worn and _backdrop.visible else 0.0
+	var grain_kind: float = float(settings.surface) if worn else 0.0
+	if lit_stage and int(stage[4]) < 2:
+		# A staged paper's fibres or desk's specks, always there.
+		grain = maxf(grain, 1.0)
+		grain_kind = float(stage[4])
 	data.append_array([_own(settings.age, PRODUCT_AGE) if worn else 0.0,
-		_own(settings.dust, PRODUCT_DUST) if worn else 0.0,
-		_own(settings.paper, PRODUCT_PAPER) if worn and _backdrop.visible else 0.0,
-		float(settings.surface) if worn else 0.0])
+		_own(settings.dust, PRODUCT_DUST) if worn else 0.0, grain, grain_kind])
+	# The staging (photoreal7): its near key, and what the model stands on.
+	if staged:
+		var key: Array = _stage_key(settings)
+		var at: Vector3 = key[0]
+		var light: Color = key[2]
+		var centre: Vector3 = _bounds.get_center()
+		data.append_array([at.x, at.y, at.z, float(key[1])])
+		data.append_array([light.r, light.g, light.b, float(key[3])])
+		data.append_array([centre.x, centre.y, centre.z, STAGE_KEY_BEAM])
+	else:
+		data.append_array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+	if lit_stage:
+		var mean: Color = _surface_tile(stage)[1]
+		data.append_array([1.0, float(stage[4]), float(stage[2]), 1.0 if bool(stage[5]) else 0.0])
+		data.append_array([1.0 / mean.r, 1.0 / mean.g, 1.0 / mean.b, float(stage[3])])
+	else:
+		data.append_array([0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.9])
+	data.append_array([_balance.r, _balance.g, _balance.b, 0.0])
 	return data
 
 
@@ -2908,14 +3007,98 @@ static func _own(asked: float, fallback: float) -> float:
 ## its own colour wherever the model casts no shadow, with no line where the
 ## floor meets the wall.
 func _catches(settings: RenderSettings) -> bool:
+	return _photographic(settings) and not _lit_stage(settings)
+
+
+## Whether the traced picture is drawn as a camera draws (photoreal2): the
+## product look on a backdrop, metered from a white card where the model
+## stands, through the camera's curve, with its marks. Its backdrop is a
+## shadow catcher unless a stage lights it ([method _lit_stage]).
+func _photographic(settings: RenderSettings) -> bool:
 	return settings.look == "product" and _backdrop.visible and not settings.transparent \
 		and settings.lighting != "dark"
+
+
+## The staging asked for (STAGES), or [] for the seamless as before.
+static func _stage_of(settings: RenderSettings) -> Array:
+	return STAGES.get(settings.stage, []) if settings.look == "product" else []
+
+
+## Whether a stage's surface is lit as any surface is (all but "white").
+func _lit_stage(settings: RenderSettings) -> bool:
+	return not _stage_of(settings).is_empty() and settings.stage != "white" \
+		and _backdrop.visible and not settings.transparent and settings.lighting != "dark"
+
+
+## Whether the stage is a table: flat, the room beyond it.
+func _table(settings: RenderSettings) -> bool:
+	return _lit_stage(settings) and bool(_stage_of(settings)[5])
 
 
 ## Whether the traced product look is lit by a light tent (TENT_TOP).
 func _tented(settings: RenderSettings) -> bool:
 	return settings.look == "product" and settings.lighting == "studio" and _backdrop.visible \
-		and settings.backdrop.get_luminance() >= TENT_BACKDROP
+		and settings.backdrop.get_luminance() >= TENT_BACKDROP and not _table(settings)
+
+
+## The photographed place a staged table's room is (photoreal7): the light
+## asked for when it is one, otherwise STAGE_ROOM.
+func _room_of(settings: RenderSettings) -> StudioPanorama:
+	var key: String = settings.lighting if HDRIS.has(settings.lighting) else STAGE_ROOM
+	if not _panoramas.has(key):
+		var made: StudioPanorama = StudioPanorama.read(WebPacks.hdri(str(HDRIS[key][1])))
+		if made == null:
+			return null
+		_panoramas[key] = made
+	return _panoramas[key]
+
+
+## A stage's photographed tile and its mean colour in linear light, read
+## once: [Image or null, Color].
+func _surface_tile(stage: Array) -> Array:
+	var path: String = str(stage[1])
+	if path.is_empty():
+		return [null, Color(1, 1, 1)]
+	if not _surfaces.has(path):
+		var texture: Texture2D = load(path) as Texture2D
+		var image: Image = texture.get_image() if texture != null else null
+		var mean := Color(1, 1, 1)
+		if image != null:
+			if image.is_compressed():
+				image.decompress()
+			var small: Image = image.duplicate() as Image
+			small.convert(Image.FORMAT_RGB8)
+			small.resize(32, 32, Image.INTERPOLATE_BILINEAR)
+			var sum := Vector3.ZERO
+			for y: int in 32:
+				for x: int in 32:
+					var c: Color = small.get_pixel(x, y).srgb_to_linear()
+					sum += Vector3(c.r, c.g, c.b)
+			sum /= 1024.0
+			mean = Color(maxf(sum.x, 0.01), maxf(sum.y, 0.01), maxf(sum.z, 0.01))
+		_surfaces[path] = [image, mean]
+	return _surfaces[path]
+
+
+## The staged key (photoreal7): where it stands, its radius and the light it
+## gives the model's middle, from the rig's key turned as the light is, at
+## the stage's height and distance. [position, radius, light (linear), the
+## distance that light is at].
+func _stage_key(settings: RenderSettings) -> Array:
+	var radius: float = maxf(_bounds.size.length() * 0.5, 10.0)
+	var centre: Vector3 = _bounds.get_center()
+	var toward: Vector3 = _lights[0].get_meta("toward", Vector3.UP) if not _lights.is_empty() \
+		else Vector3.UP
+	var flat := Vector3(toward.x, 0.0, toward.z)
+	if flat.length() < 0.01:
+		flat = Vector3(0.0, 0.0, 1.0)
+	var rise: float = deg_to_rad(_own(settings.key_rise, STAGE_KEY_RISE))
+	var way: Vector3 = (flat.normalized() * cos(rise) + Vector3.UP * sin(rise)).normalized()
+	var far: float = _own(settings.key_far, STAGE_KEY_FAR) * radius
+	var size: float = _own(settings.key_size, STAGE_KEY_SIZE) * radius
+	var tint: Color = _paper_tint(settings) if _tented(settings) else Color(1, 1, 1)
+	var light: Color = tint * TENT_KEY * _own(settings.key_share, STAGE_KEY_SHARE)
+	return [centre + way * far, minf(size, far * 0.9), light, far]
 
 
 ## The colour of a tent's light: its paper's, at its brightest channel 1.
@@ -2960,7 +3143,11 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 				return 0.0
 		var seen: Image = _tracer.picture(exposure * scale * DIM, tonemapper, white, contrast,
 			saturation, true, false)
-		var card: float = _open_floor(seen)
+		# A staged key falls off across the card (photoreal7): it is read
+		# round the model, not where the light is nearest.
+		var card: float = _open_floor(seen, 0.9 if _stage_of(settings).is_empty() else 0.6)
+		if not _stage_of(settings).is_empty():
+			_card_colour = _floor_colour(seen, card)
 		if card <= 0.0005:
 			break
 		var light: float = _untoned(card, tonemapper, white, contrast) / (exposure * scale * DIM)
@@ -2969,8 +3156,9 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 
 
 ## The open floor's lightness in a metering picture: the lightest tenth of
-## what is not the model, where nothing shadows the card.
-static func _open_floor(image: Image) -> float:
+## what is not the model, where nothing shadows the card ([param share] of
+## the way up its levels).
+static func _open_floor(image: Image, share: float = 0.9) -> float:
 	if image == null:
 		return 0.0
 	var levels := PackedFloat32Array()
@@ -2985,7 +3173,28 @@ static func _open_floor(image: Image) -> float:
 	if levels.is_empty():
 		return 0.0
 	levels.sort()
-	return levels[int(float(levels.size() - 1) * 0.9)]
+	return levels[int(float(levels.size() - 1) * share)]
+
+
+## The white card's colour in a metering picture (photoreal7): its pixels
+## near [param level] (what _open_floor read), in linear light, their
+## luminance brought to 1. The picture is dimmed below the camera curve's
+## knee, so its sRGB undone is the light.
+static func _floor_colour(image: Image, level: float) -> Color:
+	var sum := Vector3.ZERO
+	if image == null or level <= 0.0:
+		return Color(1, 1, 1)
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var c: Color = image.get_pixel(x, y)
+			var seen: float = Color(c.r, c.g, c.b).get_luminance()
+			if c.a < 0.1 and absf(seen - level) < level * 0.15:
+				var lin: Color = Color(c.r, c.g, c.b).srgb_to_linear()
+				sum += Vector3(lin.r, lin.g, lin.b)
+	var lum: float = 0.2126 * sum.x + 0.7152 * sum.y + 0.0722 * sum.z
+	if lum <= 0.0:
+		return Color(1, 1, 1)
+	return Color(maxf(sum.x / lum, 0.05), maxf(sum.y / lum, 0.05), maxf(sum.z / lum, 0.05))
 
 
 ## A grey's light (exposed) as path_tracer_resolve.glsl draws it, 0 to 1:
@@ -3093,6 +3302,14 @@ var _traced_last: bool = false
 ## What the last _dress lit the set by: the place (or the product look's
 ## softbox), how much of its room is kept, its turn and the ambient light.
 var _lit_by: StudioPanorama = null
+## A staged table's room (photoreal7, _room_of), what the tracer is lit by
+## in place of _lit_by; and the stages' tiles read (_surface_tile).
+var _stage_room: StudioPanorama = null
+var _surfaces: Dictionary = {}
+## A staged picture's white balance (photoreal7): each channel's gain, and
+## the white card's colour the metering last read (linear, its luminance 1).
+var _balance := Color(1, 1, 1)
+var _card_colour := Color(1, 1, 1)
 var _room: float = 1.0
 var _turn: float = 0.0
 var _ambient: float = 0.4
