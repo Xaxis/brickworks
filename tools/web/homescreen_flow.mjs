@@ -386,6 +386,18 @@ const card = (page) => page.evaluate(() => {
     shown: Boolean(one.offsetParent) } : null;
 });
 const visits = (n) => ({ n, last: Date.now() - 2 * 3600e3 });
+/// The owner's notice, if one is up, hidden in this browser as its × hides
+/// it: the offer never shows over it (web/push.js), so the next page.
+const hideNotice = async (page) => {
+  await page.waitForTimeout(1500);
+  const id = await page.evaluate(() => {
+    const shown = document.querySelector("aside.site-notice:not(.install-offer)");
+    const raw = shown?.dataset.id;
+    if (raw) localStorage.setItem("brickworks.notice.hidden", JSON.stringify(/^\d+$/.test(raw) ? Number(raw) : raw));
+    return raw || null;
+  });
+  if (id) note(`the owner's notice ${id} was up: hidden in this browser, as its × does`);
+};
 
 async function offer({ width = 1280, height = 900, phone = false, theme = "dark", pictures = true } = {}) {
   const made = await context({ width, height, phone, theme });
@@ -393,6 +405,7 @@ async function offer({ width = 1280, height = 900, phone = false, theme = "dark"
   listen(page, `offer ${width}`);
   try {
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
+    await hideNotice(page);
     const whose = await offerNow(page);
     await page.waitForTimeout(2500);
     check(`${width} ${theme}: a first visit, no offer (${whose} offer held)`, (await card(page)) === null);
@@ -437,6 +450,7 @@ async function offerApple() {
     const page = await made.newPage();
     listen(page, "offer iphone");
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
+    await hideNotice(page);
     await page.evaluate((v) => localStorage.setItem("brickworks.visits", JSON.stringify(v)), visits(1));
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
     await until(page, () => document.querySelector(".install-offer")?.offsetParent, "the iPhone's offer", 15);
