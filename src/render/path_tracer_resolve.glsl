@@ -24,6 +24,9 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, rgba32f) uniform readonly image2D accum;
 layout(set = 0, binding = 1, rgba8) uniform writeonly image2D picture;
+// The eye's first hit in each pixel, summed (path_tracer.glsl's guide): its
+// normal, and its albedo's lightness or what it is.
+layout(set = 0, binding = 2, rgba32f) uniform readonly image2D guide;
 
 layout(push_constant, std430) uniform Resolve {
 	float samples;
@@ -121,8 +124,14 @@ vec4 mean_at(ivec2 p, ivec2 size) {
 	return imageLoad(accum, clamp(p, ivec2(0), size - ivec2(1))) / max(params.samples, 1.0);
 }
 
+vec4 guide_at(ivec2 p, ivec2 size) {
+	vec4 g = imageLoad(guide, clamp(p, ivec2(0), size - ivec2(1))) / max(params.samples, 1.0);
+	return vec4(normalize(g.xyz + vec3(1e-6)), g.w);
+}
+
 vec4 cleaned(ivec2 pixel, ivec2 size) {
 	vec4 centre = mean_at(pixel, size);
+	vec4 own = guide_at(pixel, size);
 	float brightest = 0.0;
 	vec4 round_it = vec4(0.0);
 	for (int y = -1; y <= 1; y++) {
@@ -152,6 +161,13 @@ vec4 cleaned(ivec2 pixel, ivec2 size) {
 			vec3 unlike = (m.rgb - centre.rgb) / spread;
 			float w = exp(-0.5 * dot(unlike, unlike) - float(x * x + y * y) / 8.0);
 			w *= step(abs(m.a - centre.a), 0.25);
+			// Guided (photoreal3): a neighbour on a surface turned another way
+			// (a grain's bump, a logo's flank, a clear part's edge) or of another
+			// albedo is not grain of the same light, and is kept apart.
+			vec4 g = guide_at(pixel + ivec2(x, y), size);
+			float turned = max(1.0 - dot(own.xyz, g.xyz), 0.0);
+			float other = (g.w - own.w) / 0.03;
+			w *= exp(-turned / 0.01 - 0.5 * other * other);
 			total += m * w;
 			weights += w;
 		}

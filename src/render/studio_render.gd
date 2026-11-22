@@ -84,7 +84,7 @@ const HDRIS: Dictionary = {
 ## How much grain one traced sample carries, relative to its level, for the
 ## product look's denoise (path_tracer_resolve.glsl): a pixel differing from
 ## its neighbour by many times this over the root of the samples is an edge.
-const PRODUCT_DENOISE := 3.0
+const PRODUCT_DENOISE := 5.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,

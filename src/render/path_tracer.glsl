@@ -139,6 +139,11 @@ layout(set = 0, binding = 9, std430) readonly buffer PlaceTable {
 	float table[];
 };
 
+// What the eye first meets in each pixel, summed as accum is (photoreal3):
+// the surface's normal, and its albedo's lightness (2 clear plastic, 3 the
+// sweep, 4 nothing), which guide the product look's denoise.
+layout(set = 0, binding = 10, rgba32f) uniform image2D guide;
+
 layout(push_constant, std430) uniform Pass {
 	uint first;
 	uint count;
@@ -554,26 +559,18 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat_roughness = 0.3;
 			s.coat *= 0.6;
 		}
-		// Edges take the knocks (photoreal3): along a part's edges, in
-		// patches, the skin is scuffed dull and the plastic a shade whiter
-		// where it was stressed, never a point a judge takes for a firefly.
-		vec3 high = vec3(thing.box_max.x, min(thing.box_max.y, thing.box_min.w), thing.box_max.z);
-		float edge = seam_at(local, thing.box_min.xyz, high, 1.6);
-		if (edge > 0.5 && gloss_noise(local / 3.0 + vec3(own * 41.0, 3.0, own * 17.0)) > 0.3) {
-			s.coat_roughness = max(s.coat_roughness, 0.22);
-			body = mix(body, vec3(dot(body, vec3(0.2126, 0.7152, 0.0722)) * 1.4 + 0.02), 0.08);
-		}
 		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
 			// mirror, each bump of its grain a small glint.
-			s.coat_roughness = 0.2;
+			s.coat = 1.0;
+			s.coat_roughness = 0.1;
 		}
 		// A stud's top is satin, not polished (photoreal3): the logo's plate of
 		// the mould is left rough, so it shows the tent's light blurred where a
 		// polished top mirrors the dark camera. In three_2x2_top's photograph
 		// every stud's top is lighter than the face round it.
 		if (local.y > thing.box_min.w + 0.5 && abs(local.y - thing.box_max.y) < 0.3) {
-			s.coat_roughness = 0.45;
+			s.coat_roughness = 0.3;
 		}
 	}
 	s.albedo = body;
@@ -965,6 +962,7 @@ void main() {
 		return;
 	}
 	vec4 total = pass.reset != 0u ? vec4(0.0) : imageLoad(accum, pixel);
+	vec4 guided = pass.reset != 0u ? vec4(0.0) : imageLoad(guide, pixel);
 	int most = int(scene.size.z);
 	for (uint k = 0u; k < pass.count; k++) {
 		uint sample_index = pass.first + k;
@@ -1001,8 +999,11 @@ void main() {
 		bool inside = false;
 		vec3 absorb = vec3(0.0);
 		int bounces = 0;
+		vec4 first = vec4(0.0, 0.0, 0.0, 4.0);
+		bool met = false;
 		for (int event = 0; event < most + 8; event++) {
 			if (!trace(from, way, 1e7, 0xFFu, gl_RayFlagsOpaqueEXT)) {
+				met = true;
 				if (straight) {
 					// What is behind everything, as the eye sees it.
 					radiance += carried * scene.background.rgb;
@@ -1048,6 +1049,11 @@ void main() {
 				// half of each rounding turned past the face found the part
 				// itself in every shadow ray and bounce.
 				ng = n;
+			}
+			if (!met) {
+				met = true;
+				first = vec4(n, thing.info.y == KIND_GLASS ? 2.0 : (thing.info.y == KIND_SWEEP ? 3.0
+					: luminance(surface_of(thing, at, hit.local, hit.unused, hit.instance).albedo)));
 			}
 			if (thing.info.y == KIND_GLASS) {
 				// Thin glass: what it reflects of the sky added at once, by a
@@ -1170,8 +1176,10 @@ void main() {
 			radiance *= most / level;
 		}
 		total += vec4(radiance, covered);
+		guided += first;
 	}
 	imageStore(accum, pixel, total);
+	imageStore(guide, pixel, guided);
 }
 
 #[miss]
@@ -1422,6 +1430,34 @@ float wave_noise(vec3 p) {
 			mix(wave_hash(i + vec3(0, 1, 1)), wave_hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
+const float GRAIN_CELL = 0.45;
+
+float grain_hash(vec2 c, float salt) {
+	return fract(sin(dot(c, vec2(127.1, 311.7)) + salt * 74.7) * 43758.5453);
+}
+
+vec3 grain_bumps(vec3 at, vec3 face, vec3 n) {
+	vec3 t = normalize(cross(abs(face.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), face));
+	vec3 b = cross(face, t);
+	vec2 uv = vec2(dot(at, t), dot(at, b)) / GRAIN_CELL;
+	vec2 cell = floor(uv);
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 c = cell + vec2(float(x), float(y));
+			vec2 centre = c + 0.2 + 0.6 * vec2(grain_hash(c, 1.0), grain_hash(c, 2.0));
+			float r = 0.3 + 0.15 * grain_hash(c, 3.0);
+			vec2 d = (uv - centre) / r;
+			float d2 = dot(d, d);
+			if (d2 < 1.0) {
+				// A cap: its edge turned about 42 degrees.
+				vec2 lean = d * 0.9;
+				return normalize(n + t * lean.x + b * lean.y);
+			}
+		}
+	}
+	return n;
+}
+
 // A moulded face sinks a hair towards its middle as the plastic cools
 // (photoreal3): its normal leans to the middle by SINK a turn per LDU from
 // it, so a light mirrored across a long face bends, as a real part's does.
@@ -1473,18 +1509,14 @@ void main() {
 		vec3 face = normalize(g);
 		face = dot(face, n) < 0.0 ? -face : face;
 		if (instances[which].info.y == 0u && n.y > 0.2 && n.y < 0.96 && dot(face, n) > 0.999) {
-			// A fine, even field of bumps, each a few hundredths of a
-			// millimetre, as a real slope's is: finer than photoreal1's (0.22
-			// and 0.09 LDU), as shallow. Coarser and deeper (0.26 to 0.42 LDU
-			// at 0.26 to 0.38) a judge read it as blotchy noise: the denoise
-			// takes a deep grain's glints for grain of the sampling.
-			vec3 s = local / 0.12;
-			vec3 grain = vec3(wave_noise(s), wave_noise(s + vec3(3.1, 7.7, 1.9)),
-				wave_noise(s + vec3(8.3, 2.2, 5.6)));
-			vec3 t2 = local / 0.05;
-			grain += 0.5 * vec3(wave_noise(t2), wave_noise(t2 + vec3(4.4, 1.7, 9.2)),
-				wave_noise(t2 + vec3(6.1, 3.8, 0.7)));
-			n = normalize(n + (grain - n * dot(grain, n)) * 0.16);
+			// A field of small round bumps, as a real slope's moulded texture
+			// is (photoreal3): one in each cell GRAIN_CELL across, set off its
+			// middle and sized by the cell's own hash, flat between. Each bump
+			// turns every way, so some point of it mirrors the light: a glint,
+			// and the colour saturated round it, as red_slope_2x4's photograph
+			// shows. The noise of bumps everywhere photoreal1 and 2 drew read as
+			// "procedural noise" and veiled the face pink in every round.
+			n = grain_bumps(local, face, n);
 			hit.unused = 1.0;
 		}
 	}

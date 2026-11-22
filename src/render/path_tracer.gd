@@ -91,6 +91,9 @@ var _place_texture: RID
 var _place_table: RID
 var _place_for: StudioPanorama = null
 var _accum: RID
+## What the eye's first hit is, summed over the samples (photoreal3): its
+## normal and its albedo's lightness, for the product look's denoise.
+var _guide: RID
 var _picture: RID
 var _trace_set: RID
 var _resolve_set: RID
@@ -474,6 +477,7 @@ func begin(size: Vector2i) -> bool:
 	_free(_trace_set)
 	_free(_resolve_set)
 	_free(_accum)
+	_free(_guide)
 	_free(_picture)
 	_trace_set = RID()
 	_resolve_set = RID()
@@ -485,6 +489,7 @@ func begin(size: Vector2i) -> bool:
 	sums.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
 		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	_accum = _rd.texture_create(sums, RDTextureView.new())
+	_guide = _rd.texture_create(sums, RDTextureView.new())
 	var out := RDTextureFormat.new()
 	out.width = size.x
 	out.height = size.y
@@ -492,7 +497,7 @@ func begin(size: Vector2i) -> bool:
 	out.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
 		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	_picture = _rd.texture_create(out, RDTextureView.new())
-	if not _accum.is_valid() or not _picture.is_valid():
+	if not _accum.is_valid() or not _guide.is_valid() or not _picture.is_valid():
 		return false
 	_bind()
 	return true
@@ -518,10 +523,12 @@ func _bind() -> void:
 	uniforms.append(_uniform(8, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
 		[_sampler, _place_texture]))
 	uniforms.append(_uniform(9, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, [_place_table]))
+	uniforms.append(_uniform(10, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide]))
 	_trace_set = _rd.uniform_set_create(uniforms, _shader, 0)
 	var resolving: Array[RDUniform] = [
 		_uniform(0, RenderingDevice.UNIFORM_TYPE_IMAGE, [_accum]),
-		_uniform(1, RenderingDevice.UNIFORM_TYPE_IMAGE, [_picture])]
+		_uniform(1, RenderingDevice.UNIFORM_TYPE_IMAGE, [_picture]),
+		_uniform(2, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide])]
 	_resolve_set = _rd.uniform_set_create(resolving, _resolve_shader, 0)
 
 
@@ -678,7 +685,7 @@ func release() -> void:
 	_free(_resolve_set)
 	_free(_scene_buffer)
 	_free_picture_set()
-	for rid: RID in [_accum, _picture, _place_texture, _place_table]:
+	for rid: RID in [_accum, _guide, _picture, _place_texture, _place_table]:
 		_free(rid)
 	if _pipeline.is_valid():
 		_holders -= 1
