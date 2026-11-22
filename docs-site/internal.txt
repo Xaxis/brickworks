@@ -53,6 +53,7 @@ api:GET /api/otp/canary  # a daily check that sign-in mail is delivered, run by 
 ui:admin page  # the owner's own page
 ui:choosing this week's pick  # the owner's, on the admin page (the pick itself is in gallery.md)
 ui:setting the monthly challenge  # the owner's, on the admin page (the challenge is in challenges.md)
+ui:talk in the owner's console  # the owner's, on the admin page (Talk itself is in talk.md)
 ui:component kit  # the site's controls as the project builds pages with them
 ui:design system  # the site's styles as the project builds pages with them
 lib:keep a run to a list of parts  # a flag the design bench starts the app with

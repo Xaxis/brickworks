@@ -52,7 +52,7 @@ export const photoName = (id) => `${id}.jpg`;
 export const cardName = (id) => `${id}.card.jpg`;
 const ID = /^[A-Za-z0-9]{10}$/;
 const DEVICE = /^[0-9a-f]{32}$/;
-const TICKET = /^[0-9a-f]{32}\.(jpg|png|webp)$/;
+export const TICKET = /^[0-9a-f]{32}\.(jpg|png|webp)$/;
 const EXTENSION = { jpeg: "jpg", png: "png", webp: "webp" };
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 const APP = /^Brickworks\/[0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]* \(desktop\b/;
@@ -157,7 +157,7 @@ export async function deleteFiles(bucket, names) {
 /// A URL the browser may send one file to, once: [name] in the uploads
 /// bucket. Supabase answers a path under /storage/v1; a stand-in may answer
 /// an address of its own.
-async function signUpload(name) {
+export async function signUpload(name) {
   const answer = await reach("storage sign", 15, `${project()}/storage/v1/object/upload/sign/${UPLOADS}/${name}`, {
     method: "POST", headers: storageHeaders({ "content-type": "application/json" }), body: "{}" });
   if (answer.status === 400 || answer.status === 404) {

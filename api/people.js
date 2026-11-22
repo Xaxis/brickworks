@@ -153,6 +153,14 @@
 //                                 rules say of X
 //   POST ?op=enter, withdraw, vote  (session) a model entered or taken back,
 //                                 a vote cast (api/_challenges.js)
+//   GET  ?op=talk_page, talk, talk_thread, talk_latest, talk_rss, talk_model,
+//        talk_photo               Talk, the builders' forum: /talk, a board,
+//                                 a thread, its feeds and photos (api/_talk.js)
+//   POST ?op=talk_start, talk_reply, talk_change, talk_follow, talk_read,
+//        talk_photo_start         (session) a thread started, a post written,
+//                                 edited or removed, a thread followed or
+//                                 read, a photo sent (api/_talk.js); a post
+//                                 is reported with ?op=report {post}
 //
 // Challenges (2026-10-19, supabase/challenges.sql): one at a time, set by the
 // site's owner on /admin, with rules the database checks on the stored
@@ -263,6 +271,10 @@ import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, l
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import {
+  reportPost, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead, talkReply,
+  talkRss, talkStart, talkThread,
+} from "./_talk.js";
 import { pushChoose, pushSend, pushState } from "./_push.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -938,6 +950,8 @@ async function report(request, response) {
   const body = request.body && typeof request.body === "object" ? request.body : {};
   let account = null;
   if (bearer(request)) account = await signedIn(request);
+  // A post in Talk: reported to Talk's own list (api/_talk.js, /admin › Talk).
+  if (body.post !== undefined && body.post !== "") return reportPost(request, response, { account, reasons: REASONS });
   const named = ["model", "handle", "collection", "comment", "photo"].filter((key) => body[key] !== undefined && body[key] !== "");
   if (named.length !== 1) throw new Refusal("name one thing: a model, a profile's handle, a collection, a comment or a photo");
   const target = {};
@@ -2007,6 +2021,14 @@ async function handler(request, response) {
       if (op === "list_csv") return await listCsv(request, response, { origin: originOf(request) });
       // A news mail's unsubscribe opened in a browser: to Settings, which asks.
       if (op === "news_unsubscribe") return await newsUnsubscribe(request, response);
+      // Talk, the builders' forum (api/_talk.js, supabase/talk.sql).
+      if (op === "talk_page") return await talkPage(request, response, { origin: originOf(request) });
+      if (op === "talk") return await talkList(request, response);
+      if (op === "talk_thread") return await talkThread(request, response, { origin: originOf(request) });
+      if (op === "talk_latest") return await talkLatest(request, response);
+      if (op === "talk_rss") return await talkRss(request, response, { origin: originOf(request) });
+      if (op === "talk_model") return await talkModel(request, response);
+      if (op === "talk_photo") return await talkPhoto(request, response);
       // This device's pushes (api/_push.js).
       if (op === "push") return await pushState(request, response);
     } else if (request.method === "POST") {
@@ -2045,6 +2067,12 @@ async function handler(request, response) {
       if (op === "keep") return await keep(request, response);
       if (op === "list_order") return await listOrder(request, response);
       if (op === "owned_choice") return await ownedChoice(request, response);
+      if (op === "talk_start") return await talkStart(request, response, { origin: originOf(request) });
+      if (op === "talk_reply") return await talkReply(request, response, { origin: originOf(request) });
+      if (op === "talk_change") return await talkChange(request, response, { origin: originOf(request) });
+      if (op === "talk_follow") return await talkFollow(request, response);
+      if (op === "talk_read") return await talkRead(request, response);
+      if (op === "talk_photo_start") return await talkPhotoStart(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });
     }

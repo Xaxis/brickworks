@@ -675,6 +675,7 @@ function startComments(section) {
     section.hidden = state.ready === false;
     draw();
     commentsSaid(state, setOpen);
+    talkAbout(state.you?.owner === true);
   }
   commentsLoaded = { reload: load };
 
@@ -685,6 +686,34 @@ function startComments(section) {
     made.textContent = words;
     made.addEventListener("click", run);
     return made;
+  }
+
+  /// Its Show and tell thread in Talk (api/_talk.js talkModel), under the
+  /// comments' words: the way to it, or for its builder the way to start
+  /// one; nothing for anybody else while it has none. Asked once.
+  let talkAsked = false;
+  async function talkAbout(owner) {
+    const place = document.getElementById("talk-about");
+    if (!place || talkAsked) return;
+    talkAsked = true;
+    const reply = await fetch(`/api/people?op=talk_model&id=${model}${TESTS ? "&tests=1" : ""}`).catch(() => null);
+    const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
+    if (!body) return;
+    const link = document.createElement("a");
+    if (body.thread?.path) {
+      link.href = `${langAt()}${body.thread.path}${TESTS ? "?tests=1" : ""}`;
+      link.textContent = body.thread.title;
+      const replies = Number(body.thread.replies) || 0;
+      place.append(say("Talked about in Show and tell:"), " ", link, " ",
+        `(${counted(replies, "reply", "replies")})`);
+    } else if (owner) {
+      link.href = `${langAt()}/talk/new?model=${model}${TESTS ? "&tests=1" : ""}`;
+      link.textContent = say("Start a Show and tell thread about it");
+      place.append(link, " ", say("in Talk, the builders’ forum."));
+    } else {
+      return;
+    }
+    place.hidden = false;
   }
 
   /// The viewer at [at], a step of version [of]: Build it, opened there.

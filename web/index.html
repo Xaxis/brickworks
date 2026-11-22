@@ -170,6 +170,7 @@
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/landing.js" type="module"></script>
+<script src="/talk-strip.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -178,6 +179,7 @@
 		<a class="mark" href="/" aria-current="page"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
+			<a href="/talk">Talk</a>
 			<a href="/docs">Docs</a>
 			<a href="/plans">Plans</a>
 			<a class="cta" href="/app">Open the app</a>
@@ -188,6 +190,7 @@
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
+					<a href="/talk">Talk</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Plans</a>
 					<a href="/download">Desktop app</a>
@@ -437,6 +440,25 @@
 		</div>
 	</section>
 
+	<!-- The latest in Talk, the builders' forum (web/talk-strip.js, from
+	     /api/people?op=talk_latest&html=1 as it nears the screen): the
+	     newest threads of every board, drawn as Talk draws them. Until they
+	     come, and if they never do, the words and the way in stand. -->
+	<section class="section defer talk-strip" id="talk-latest" data-n="4" aria-labelledby="talk-latest-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">Talk</p>
+					<h2 class="title" id="talk-latest-h">Ask, show, swap ideas</h2>
+				</div>
+				<a href="/talk">See all of Talk</a>
+			</div>
+			<p class="lede">The builders’ forum: show what you made, ask for help with a step, and join the month’s challenge.</p>
+			<div data-talk-strip aria-busy="true"></div>
+			<p class="go-on"><a class="cta ghost" href="/talk/new">Start a thread</a></p>
+		</div>
+	</section>
+
 	<section class="section defer" id="start" aria-labelledby="start-h">
 		<div class="wrap">
 			<div class="closing">
@@ -488,6 +510,7 @@
 					<p class="foot-h" id="foot-community">Community</p>
 					<ul aria-labelledby="foot-community">
 						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenge</a></li>
 						<li><a href="/collections">Collections</a></li>

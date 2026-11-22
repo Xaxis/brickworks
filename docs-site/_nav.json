@@ -4,6 +4,6 @@
   {"title": "Instructions and exports", "pages": ["instructions", "booklet-layout", "exports", "render"]},
   {"title": "Connect your AI", "pages": ["connect", "@assistants"]},
   {"title": "Designing with AI", "pages": ["ai", "connector", "claude-code", "design-session", "fresh-eyes", "how-ai-works"]},
-  {"title": "The website", "pages": ["gallery", "sharing", "model-pages", "profiles", "collections", "challenges", "build-together", "ldraw-library", "account"]},
+  {"title": "The website", "pages": ["gallery", "sharing", "model-pages", "profiles", "collections", "challenges", "talk", "build-together", "ldraw-library", "account"]},
   {"title": "Reference", "pages": ["shortcuts", "mcp-tools", "accessibility", "plans", "beta", "feedback", "troubleshooting", "changelog"]}
 ]

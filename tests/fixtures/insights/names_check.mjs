@@ -43,6 +43,9 @@ out.pages = Object.fromEntries([
   ["set", ["/library/set/10294-1"]], ["app", ["/app"]], ["build", ["/b/0123abcd"]], ["unknown", ["/no/such/page"]],
   ["canonical", ["/gallery", "https://brickworks.diy/gallery"]], ["canonical_fr", ["/fr/gallery", "https://brickworks.diy/fr/gallery/"]],
   ["canonical_odd", ["/x", "https://brickworks.diy/AB%20cd"]], ["said_es", ["/about", "https://brickworks.diy/about", "es-ES"]],
+  ["talk", ["/talk", "https://brickworks.diy/talk"]], ["talk_board_de", ["/de/talk/b/help", "https://brickworks.diy/de/talk/b/help"]],
+  ["talk_thread", ["/talk/t/12/my-tower", "https://brickworks.diy/talk/t/12/my-tower"]], ["talk_bare", ["/talk/t/12"]],
+  ["talk_new", ["/fr/talk/new"]],
 ].map(([key, [path, canonical, said]]) => [key, tally.pageOf(path, canonical, said)]));
 out.sources = Object.fromEntries([
   ["desk", ["https://brickworks.diy/?utm_source=reddit&utm_medium=social&utm_campaign=bw-abcdefghij", "https://www.reddit.com/r/lego/comments/xyz"]],

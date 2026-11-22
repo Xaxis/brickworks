@@ -1908,3 +1908,31 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	.page-toc a:hover { border-left-color: var(--line-strong); }
 	.page-toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent-edge); }
 }
+
+/* A thread of Talk as a row (api/_talk.js threadRowHtml): Talk's lists and
+   the homepage's latest from it (#talk-latest, web/talk-strip.js), so it
+   is here and not in talk.css, which only Talk's pages load. */
+.talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.talk-row {
+	display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start;
+	border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px 14px; background: var(--panel);
+}
+.talk-row:has(.talk-row-picture) { grid-template-columns: 96px minmax(0, 1fr); }
+.talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
+.talk-row-picture { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.talk-row-title { margin: 0; font-size: var(--t-body); line-height: 1.35; overflow-wrap: anywhere; }
+.talk-row-title a { color: var(--ink); text-decoration: none; }
+.talk-row-title a:hover { text-decoration: underline; }
+.talk-row .pills { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.talk-row-said { margin: 6px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.talk-row-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
+.talk-row-meta a { color: var(--ink); }
+.talk-empty, .talk-searched { color: var(--ink-soft); }
+@media (width < 600px) {
+	.talk-row:has(.talk-row-picture) { grid-template-columns: 72px minmax(0, 1fr); }
+	.talk-row-picture { width: 72px; height: 54px; }
+}
+/* The homepage's latest: two columns from 900 px, a skeleton row's height
+   held until the rows come. */
+@media (width >= 900px) { .talk-strip-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.talk-strip [data-talk-strip][aria-busy="true"] { min-height: 180px; }
