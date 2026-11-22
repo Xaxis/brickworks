@@ -441,6 +441,8 @@ const photoFiles = photos.flatMap((id) => [listed(`${id}.jpg`), listed(`${id}.ca
 // What the rows' reads answer: every row but these, or (null) nothing at all,
 // 200 and empty, as a wrong key under RLS answers.
 let missing = null;
+// The links whose rows were deleted (supabase/models_gone.sql).
+let goneLinks = [];
 const deleted = { "shared-models": [], "build-photos": [] };
 const logged = [];
 console.error = (...words) => logged.push(words.join(" "));
@@ -456,6 +458,9 @@ globalThis.fetch = async (url, init = {}) => {
   if (method === "DELETE" && bucket in deleted) {
     deleted[bucket].push(...JSON.parse(init.body).prefixes);
     return new Response("[]", { status: 200 });
+  }
+  if (where.pathname === "/rest/v1/shared_models_gone" && method === "GET") {
+    return new Response(JSON.stringify(asked(where).filter((id) => goneLinks.includes(id)).map((id) => ({ id }))), { status: 200 });
   }
   if (where.pathname === "/rest/v1/shared_models") return new Response(JSON.stringify(rowsOf(where).map((id) => ({ id }))), { status: 200 });
   if (where.pathname === "/rest/v1/build_photos") {
@@ -513,6 +518,41 @@ console.log(JSON.stringify(out));
     assert "held" not in scoped["body"] and "held" not in scoped["body"]["photos"]
 
 
+def test_a_deleted_links_files_go_however_many() -> None:
+    # Every check deletes its throwaway account, and its models' rows with
+    # it; their files stayed, and one night of checks left more than the
+    # quarter the sweep may take unasked: it held, and failed, two days
+    # running (11-22). A deleted row now says so (supabase/models_gone.sql),
+    # and those links' files go whatever their number. The quarter still
+    # holds for files nothing accounts for, rows read back empty included.
+    got = node(SWEEP_HARNESS + r"""
+const out = {};
+// Half the models deleted with their accounts: their rows gone, each noted.
+missing = ["Model00001", "Model00002", "Model00003", "Model00004", "Model00005", "Model00006"];
+goneLinks = missing.slice();
+out.night = await sweep({});
+// The same, with nothing noted (before models_gone.sql): held, as before.
+goneLinks = [];
+out.unnoted = await sweep({});
+// Rows read back empty: only the two noted links' files go.
+missing = null;
+goneLinks = ["Model00001", "Model00002"];
+out.empty = await sweep({});
+console.log(JSON.stringify(out));
+""")
+    night = got["night"]
+    assert night["status"] == 200 and "held" not in night["body"], night["body"]
+    assert sorted(night["taken"]["models"]) == sorted(f"Model0000{n}.{ext}" for n in range(1, 7) for ext in ("mpd", "png"))
+    assert night["body"]["kept"] == 12
+
+    unnoted = got["unnoted"]
+    assert unnoted["taken"]["models"] == [] and "would remove 12 of the 24" in unnoted["body"]["held"]
+
+    empty = got["empty"]
+    assert "would remove 20 of the 20" in empty["body"]["held"], empty["body"]
+    assert sorted(empty["taken"]["models"]) == ["Model00001.mpd", "Model00001.png", "Model00002.mpd", "Model00002.png"]
+
+
 def test_how_much_a_sweep_may_take_unasked() -> None:
     got = node(r"""
 import { SWEEP_FLOOR, SWEEP_SHARE, sweepHeld } from "./api/_cron.js";
@@ -528,7 +568,7 @@ console.log(JSON.stringify({ floor: SWEEP_FLOOR, share: SWEEP_SHARE,
     share = (ROOT / "api/share.js").read_text()
     # Both sweeps, unscoped only.
     assert 'only.length ? "" : sweepHeld(files.length, gone.length)' in builds
-    assert 'scoped ? "" : sweepHeld(files.length, gone.length)' in share
+    assert 'scoped ? "" : sweepHeld(files.length - knownGone.length, unknownGone.length)' in share
 
 def test_the_copy_is_served_kept_and_deleted_with_its_photo() -> None:
     builds = (ROOT / "api/_builds.js").read_text()

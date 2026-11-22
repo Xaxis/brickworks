@@ -677,6 +677,11 @@ func _process(_delta: float) -> void:
 		if Tooltips.is_tooltip(sub) and sub.visible:
 			sub.hide()
 			sub.queue_free()
+	# At rest, asleep (Wake): the screen looked at again since the last
+	# thing happened (a resize, the browser's own resize after it, wakes
+	# it), and nothing said still on the line, whose end changes it.
+	if (holds_scale or not Wake.owed(_look_again_at - 500)) and Time.get_ticks_msec() >= _said_until:
+		Wake.rest(self)
 
 
 ## What is lit and what can be pressed, from the verbs' state.
@@ -743,6 +748,7 @@ func say(words: String) -> void:
 		return
 	_said = said
 	_said_until = Time.get_ticks_msec() + 4000
+	set_process(true)
 
 
 func hint() -> String:

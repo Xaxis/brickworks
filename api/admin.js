@@ -75,6 +75,12 @@
 //                                        makes it a test one, which only a
 //                                        page asked with tests=1 shows
 //   POST /api/admin?op=end_challenge&challenge=N  challenge N ended now
+//   POST /api/admin?op=challenge_rounds&challenge=N  {entries_until,
+//                                        votes_from, judge_name, judge_handle,
+//                                        cover}: its rounds, guest judge and
+//                                        cover (supabase/challenge_rounds.sql)
+//   POST /api/admin?op=shortlist&challenge=N  {models}: the judges'
+//                                        shortlist, up to five in each group
 //   GET  /api/admin?op=beta[&status=S][&tests=1]  the beta's applications,
 //                                        with what was read of each, and its
 //                                        spots (api/_beta.js, supabase/beta.sql)
@@ -251,7 +257,7 @@ import { noticeClear, noticeSet, switchesRead } from "./_console_switches.js";
 import { phoneEngineSet, phoneSet } from "./_phone.js";
 import { dataRead, runCron, withRunNow } from "./_console_data.js";
 import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
-import { challengeView } from "./_console_challenges.js";
+import { challengeRounds, challengeShortlist, challengeView } from "./_console_challenges.js";
 import { TalkRefusal, talkAct, talkRead } from "./_console_talk.js";
 import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDrop, socialMark, socialNotes, socialPosted,
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
@@ -326,6 +332,8 @@ async function handler(request, response) {
   const op = String(request.query?.op || "");
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
+    // A challenge's rounds, guest judge, cover and shortlist (challengehonours, api/_console_challenges.js).
+    challenge_rounds: challengeRounds, shortlist: challengeShortlist,
     beta_decide: betaDecide, beta_grant: betaGrant, beta_waitlist: betaWaitlist, beta_switch: betaSwitchRoute,
     feedback_triage: feedbackTriage, feedback_reply: feedbackReply,
     // A reported list's name and words taken down (lists1, docs/ADMIN.md).

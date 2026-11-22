@@ -126,6 +126,7 @@ static func hold() -> void:
 	_listen(Engine.get_main_loop() as SceneTree)
 	if _holding == 0:
 		_held_from = Time.get_ticks_msec()
+		Wake.trace("TRACE hold")
 	_holding += 1
 	RenderingServer.render_loop_enabled = _answering()
 
@@ -137,6 +138,7 @@ static func let_go() -> void:
 	if _holding == 0:
 		RenderingServer.render_loop_enabled = true
 		_let_go_at = Time.get_ticks_msec()
+		Wake.trace("TRACE let go")
 		_tell_page(_let_go_at - _held_from)
 
 
@@ -172,6 +174,7 @@ static func _listen(tree: SceneTree) -> void:
 ## 817 ms after it had it, live, and 2.8 s in rel-m303's check, after 48
 ## frames that drew nothing (Together, pointfix, 2026-11-15).
 static func answer() -> void:
+	Wake.trace("TRACE answer %d" % _holding)
 	_asked_at = Time.get_ticks_msec()
 	_drawn_when_asked = Engine.get_frames_drawn()
 	if _holding > 0:

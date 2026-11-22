@@ -2443,6 +2443,10 @@ func _process(delta: float) -> void:
 	if not _recording and not _working:
 		_weigh_hold()
 	_tell_page()
+	# Put away and idle, asleep once the page has been told (Wake).
+	if not is_visible_in_tree() and not _recording and not _playing and not _working \
+			and (not OS.has_feature("web") or not Wake.owed(_told_page_at)):
+		Wake.rest(self)
 
 
 # -- whether the pose holds ------------------------------------------------------------

@@ -407,6 +407,8 @@ func close() -> void:
 
 func _process(_delta: float) -> void:
 	if not visible or _laying:
+		if not visible:
+			Wake.rest(self)
 		return
 	var builder: Builder = app.get("_builder")
 	var now: Array = [builder._history.size(), builder._redo.size()]

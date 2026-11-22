@@ -27,6 +27,14 @@ export const CLAY = new Color(0xc9ced6);
 // (ModelShot "corner").
 const CORNER = [0.72, 0.52, 0.72];
 const FETCHING = 12;
+// Where a model's picture was taken from, so its 3D view turns from there
+// and takes the picture's place without a jump (inline.js), and its clip
+// starts there (clip_worker.js). A gallery model's picture is the app's
+// view as it was shared, mostly where the app opens a model (CadCamera:
+// turned 35 degrees to the left and 26 up, a 45 degree lens); a library
+// set's is ModelShot's corner, square on, which a long lens stands in for
+// (the card's 35 degrees bent a big model away from it).
+export const LOOKS = { app: { from: [-0.5155, 0.4384, 0.7362], fov: 28 }, corner: { from: [0.72, 0.52, 0.72], fov: 20 } };
 
 // Whether this browser can draw in 3D at all: with WebGL 2, the one
 // three.js draws with since r163 (pinned 0.186.1, build.mjs). A browser with
@@ -176,32 +184,12 @@ export class View {
     if (this.renderer) return;
     const canvas = document.createElement("canvas");
     canvas.setAttribute("aria-hidden", "true");
-    const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.outputColorSpace = SRGBColorSpace;
-    renderer.toneMapping = NeutralToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.setClearColor(0x000000, 0);
-    this.renderer = renderer;
+    const renderer = this.prepare(canvas, Math.min(window.devicePixelRatio || 1, 2));
     // Only the browser's taking it: stop() lets go of its own, and that
     // came here too, and said the view had failed.
     canvas.addEventListener("webglcontextlost", (event) => { event.preventDefault(); if (this.renderer === renderer) this.lost(); });
     this.stage.append(canvas);
-    const pmrem = new PMREMGenerator(renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.55;
-    pmrem.dispose();
-    if (!this.lights) {
-      this.lights = true;
-      this.scene.add(new HemisphereLight(0xffffff, 0x8d8a85, 0.9));
-      const key = new DirectionalLight(0xffffff, 1.5);
-      key.position.set(0.5, 1, 0.8);
-      this.scene.add(key);
-      const fill = new DirectionalLight(0xffffff, 0.35);
-      fill.position.set(-0.8, 0.3, -0.5);
-      this.scene.add(fill);
-      this.scene.add(this.shadow());
-    }
+    this.light();
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = !this.o.still;
     this.controls.dampingFactor = 0.12;
@@ -225,6 +213,39 @@ export class View {
       setTimeout(() => { if (this.controls) this.controls.autoRotate = false; }, 7000);
     }
     this.render();
+  }
+
+  // The renderer on [canvas] at [ratio], as every drawing of the model has
+  // it: the page's and the card's views, and its clip's (a worker's
+  // OffscreenCanvas, tools/viewer/clip_worker.js).
+  prepare(canvas, ratio) {
+    const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
+    renderer.setPixelRatio(ratio);
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = NeutralToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.setClearColor(0x000000, 0);
+    this.renderer = renderer;
+    return renderer;
+  }
+
+  // The room it is lit by, its lights, and its shadow on the ground.
+  light() {
+    const pmrem = new PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.55;
+    pmrem.dispose();
+    if (!this.lights) {
+      this.lights = true;
+      this.scene.add(new HemisphereLight(0xffffff, 0x8d8a85, 0.9));
+      const key = new DirectionalLight(0xffffff, 1.5);
+      key.position.set(0.5, 1, 0.8);
+      this.scene.add(key);
+      const fill = new DirectionalLight(0xffffff, 0.35);
+      fill.position.set(-0.8, 0.3, -0.5);
+      this.scene.add(fill);
+      this.scene.add(this.shadow());
+    }
   }
 
   // On a touch screen inline, one finger across turns the model and one
@@ -262,7 +283,8 @@ export class View {
 
   // A soft shadow on the ground under the model.
   shadow() {
-    const c = document.createElement("canvas");
+    // A worker has no document: its canvas is an OffscreenCanvas.
+    const c = typeof document === "undefined" ? new OffscreenCanvas(128, 128) : document.createElement("canvas");
     c.width = c.height = 128;
     const g = c.getContext("2d");
     const fade = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -289,14 +311,16 @@ export class View {
     const r = Math.max(sphere.radius, 20);
     const { centre, distance } = this.fitting(sphere.center);
     const fit = Math.max(distance, 20) * 1.05;
-    this.controls.target.copy(centre);
     this.camera.position.copy(centre).addScaledVector(this.from, fit);
     this.camera.near = Math.max(0.5, fit / 400);
     this.camera.far = fit * 30;
     this.camera.updateProjectionMatrix();
+    this.home = { eye: this.camera.position.clone(), target: centre.clone() };
+    // A view nobody turns (its clip's) has no controls.
+    if (!this.controls) return;
+    this.controls.target.copy(centre);
     this.controls.minDistance = r * 0.15;
     this.controls.maxDistance = fit * 6;
-    this.home = { eye: this.camera.position.clone(), target: centre.clone() };
     this.controls.update();
   }
 

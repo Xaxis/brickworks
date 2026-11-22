@@ -260,8 +260,8 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # the index tools/collection_data.py writes, put beside it here.
 # /api/share is a model shared by link (the same keys, and the publishable
 # one for a visitor's read): /m/<id>, its pictures (.png, .cutout.png for
-# its page, and .webp for the gallery's cards) and its card are mapped
-# onto it, and the LDraw library's sets, each a page at /library/<id> with its
+# its page, and .webp for the gallery's cards), its clip (.mp4 or .webm,
+# supabase/model_clips.sql) and its card are mapped onto it, and the LDraw library's sets, each a page at /library/<id> with its
 # pictures (.webp the card's, .cutout.webp the page's, .cover.webp the app's
 # cover), its file (.mpd) and its parts (api/_library.js; /library is
 # web/library.html); and every set in Rebrickable's catalogue, each a page
@@ -596,6 +596,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})[.](mp4|webm)", "dest": "/api/share?op=clip&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
@@ -658,6 +659,7 @@ $docs_moved
       "continue": true },
     { "src": "/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page" },
+    { "src": "/challenge[.]png", "dest": "/api/people?op=challenge&picture=1" },
     { "src": "/($langs)/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page&lang=\$1" },
     { "src": "/(app|b/.*|e/.*)",

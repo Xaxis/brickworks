@@ -9,6 +9,14 @@
 // the year's themes with the day each is told. Drawn from the report the
 // Gallery asks (admin-gallery.js loadReport).
 //
+// A challenge's own panel also sets how it runs (challengehonours,
+// supabase/challenge_rounds.sql): in rounds, entries to a day, then a
+// shortlist of up to five in each group that the owner or a guest judge
+// chooses here, then a fan vote from a day; the guest judge named on its
+// page, with a link to their profile; and its cover, a model in the gallery
+// that is its picture where it is shared (api/admin.js challenge_rounds,
+// shortlist).
+//
 // Titles and briefs go on the page as text.
 import { $, TESTS, adminJson, ago, cell, emptyRow, make, post, rowAct as act, say, segmented, when } from "/admin-kit.js";
 import { again, onReport } from "/admin-gallery.js";
@@ -146,9 +154,167 @@ function drawChallenges(list) {
 // --- One challenge whole (#challenges/<id>) ---------------------------------
 
 const WAY = { hand: "Built by hand", assistant: "Built with the assistant" };
+const ROUND = { entries: "entries coming in", judging: "the judges choosing", vote: "the fan vote", upcoming: "to come",
+  ended: "ended" };
 
-/// One challenge whole, for the panel: {title, parts}.
-export async function challengeOf(id) {
+/// A day as three dropdowns, day, month and year (this one and the next),
+/// as every date the site asks (site.css fieldset.date): [name]_day,
+/// [name]_month, [name]_year, [value] chosen (YYYY-MM-DD) or none.
+function dayPicker(name, legend, value) {
+  const set = make("fieldset", "date");
+  set.dataset.date = name;
+  const at = value ? new Date(`${String(value).slice(0, 10)}T00:00:00Z`) : null;
+  const year = new Date().getUTCFullYear();
+  const choose = (part, said, choices, chosen) => {
+    const label = make("label");
+    const select = make("select");
+    select.name = `${name}_${part}`;
+    const none = new Option(said, "", chosen === null, chosen === null);
+    none.disabled = true;
+    none.hidden = true;
+    select.append(none, ...choices.map(([v, text]) => new Option(text, String(v), v === chosen, v === chosen)));
+    label.append(make("span", "visually-hidden", `${legend}: ${said.toLowerCase()}`), select);
+    return label;
+  };
+  set.append(make("legend", "", legend), make("div", "dropdowns",
+    choose("day", "Day", Array.from({ length: 31 }, (_, i) => [i + 1, String(i + 1)]), at ? at.getUTCDate() : null),
+    choose("month", "Month", MONTH_SHORT.map((m, i) => [i + 1, m]), at ? at.getUTCMonth() + 1 : null),
+    choose("year", "Year", [...new Set([at ? at.getUTCFullYear() : year, year, year + 1])].sort().map((y) => [y, String(y)]),
+      at ? at.getUTCFullYear() : null)));
+  return set;
+}
+
+/// The model a cover names: its link's ten characters, or a link to it.
+const coverOf = (text) => (/(?:^|\/m\/)([A-Za-z0-9]{10})(?:[/?#.].*)?$/.exec(String(text || "").trim()) || [])[1] || "";
+
+/// How it runs: in one round, or in rounds with their days; the guest
+/// judge; the cover. Saved all at once (POST op=challenge_rounds).
+function roundsPart(c, rounds, redraw) {
+  const part = make("div", "part rounds-part");
+  part.append(make("h3", "", "How it runs"));
+  if (!rounds) {
+    part.append(make("p", "note", "Rounds, a guest judge and a cover are not open yet: supabase/challenge_rounds.sql is not applied."));
+    return part;
+  }
+  const form = make("form", "rounds-form");
+  form.noValidate = true;
+  const toggle = make("label", "choice");
+  const on = make("input");
+  Object.assign(on, { type: "checkbox", name: "rounds", checked: rounds.rounds });
+  toggle.append(on, " In rounds: entries, then the judges' shortlist of up to five in each group, then a fan vote");
+  const days = make("div", "dates");
+  days.append(dayPicker("entries_until", "Last day of entries", rounds.entries_until),
+    dayPicker("votes_from", "First day of the fan vote", rounds.votes_from));
+  days.hidden = !rounds.rounds;
+  on.addEventListener("change", () => { days.hidden = !on.checked; });
+  const judge = make("input");
+  Object.assign(judge, { name: "judge_name", value: rounds.judge?.typed ? rounds.judge.name : "", placeholder: rounds.judge?.handle ? rounds.judge.name : "Brickworks" });
+  const handle = make("input");
+  Object.assign(handle, { name: "judge_handle", value: rounds.judge?.handle || "", placeholder: "their-handle" });
+  const cover = make("input");
+  Object.assign(cover, { name: "cover", value: rounds.cover?.id || "", placeholder: "A model's link, /m/…" });
+  const note = make("p", "note");
+  note.setAttribute("role", "status");
+  const save = make("button", "cta", "Save how it runs");
+  save.type = "submit";
+  form.append(toggle, days,
+    make("label", "", "The guest judge named on its page (empty: their profile's name, or Brickworks chooses)", judge),
+    make("label", "", "Their profile's handle, for a link (optional)", handle),
+    make("label", "", "Its cover where it is shared: a model in the gallery (optional)", cover),
+    make("div", "acts-row", save), note);
+  if (rounds.cover?.name) cover.title = rounds.cover.name;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const dayAt = (name) => {
+      const [d, m, y] = ["day", "month", "year"].map((p) => Number(form.elements[`${name}_${p}`].value));
+      if (!d || !m || !y) return "";
+      const made = new Date(Date.UTC(y, m - 1, d));
+      return made.getUTCDate() === d ? made.toISOString().slice(0, 10) : null;
+    };
+    const body = { challenge: c.id, entries_until: null, votes_from: null, judge_name: judge.value.trim() || null,
+      judge_handle: handle.value.trim().replace(/^@/, "") || null, cover: coverOf(cover.value) || null };
+    if (cover.value.trim() && !body.cover) return say(note, "The cover is a model's link, or its ten characters.", true);
+    if (on.checked) {
+      body.entries_until = dayAt("entries_until");
+      body.votes_from = dayAt("votes_from");
+      if (!body.entries_until || !body.votes_from) return say(note, "Choose both days, each one on the calendar.", true);
+    }
+    save.disabled = true;
+    const done = await post({ op: "challenge_rounds", challenge: String(c.id) }, note, on.checked
+      ? `Saved: entries to ${dayOf(body.entries_until)}, the fan vote from ${dayOf(body.votes_from)}.` : "Saved.", { body });
+    save.disabled = false;
+    if (done) await redraw(note.textContent);
+  });
+  part.append(form);
+  return part;
+}
+
+/// The shortlist, while the judges choose: a tick on each entry that keeps
+/// the rules, at most five in each group, published at once (POST
+/// op=shortlist). [groups] the entries by group.
+function shortlistPart(c, rounds, groups, redraw) {
+  const part = make("div", "part shortlist-part");
+  part.append(make("h3", "", "The shortlist"));
+  const judged = rounds.judge?.name ? `${rounds.judge.name}, the guest judge` : "Brickworks";
+  if (rounds.round === "entries" || rounds.round === "upcoming") {
+    part.append(make("p", "note", `Chosen once entries close, after ${dayOf(rounds.entries_until)}: up to five in each group. `
+      + `Its page says ${judged} chose it.`));
+    return part;
+  }
+  if (rounds.round !== "judging") {
+    const listed = Object.values(groups).flat().filter((entry) => entry.shortlisted);
+    part.append(make("p", "note", listed.length ? `${listed.length} shortlisted by ${judged}; the fan vote voted for these alone.`
+      : "No shortlist was chosen, so nothing could be voted for."));
+    return part;
+  }
+  const form = make("form", "shortlist-form");
+  for (const way of ["hand", "assistant"]) {
+    const list = groups[way] || [];
+    const set = make("fieldset", "picks");
+    set.dataset.way = way;
+    set.append(make("legend", "", `${WAY[way]}: up to five`));
+    if (!list.length) set.append(make("p", "note", "No entries."));
+    for (const entry of list) {
+      const label = make("label", "choice");
+      const box = make("input");
+      Object.assign(box, { type: "checkbox", name: "model", value: entry.model, checked: entry.shortlisted === true,
+        disabled: (!entry.keeps || !entry.shown) && entry.shortlisted !== true });
+      label.append(box, ` ${entry.name || entry.model}`, make("small", "", ` ${!entry.keeps ? "breaks its rules"
+        : !entry.shown ? "not in the gallery" : entry.email || ""}`));
+      set.append(label);
+    }
+    form.append(set);
+  }
+  const note = make("p", "note");
+  note.setAttribute("role", "status");
+  const save = make("button", "cta", "Publish the shortlist");
+  save.type = "submit";
+  form.append(make("div", "acts-row", save), note);
+  form.addEventListener("change", (event) => {
+    const set = event.target.closest("fieldset");
+    if (set && set.querySelectorAll("input:checked").length > 5) {
+      event.target.checked = false;
+      say(note, "At most five in each group.", true);
+    }
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const models = [...form.querySelectorAll('input[name="model"]:checked')].map((box) => box.value);
+    const opens = rounds.votes_from && rounds.votes_from > today() ? `on ${dayOf(rounds.votes_from)}` : "at once";
+    if (!confirm(models.length ? `Publish a shortlist of ${models.length}? Visitors see it at once, as chosen by ${judged}, and the `
+      + `fan vote opens ${opens}. Once it opens the shortlist stays as it is.` : "Clear the shortlist? Nothing can be voted for until one is published.")) return;
+    save.disabled = true;
+    const done = await post({ op: "shortlist", challenge: String(c.id) }, note, models.length ? "Published." : "Cleared.", { body: { models } });
+    save.disabled = false;
+    if (done) await redraw(note.textContent);
+  });
+  part.append(form);
+  return part;
+}
+
+/// One challenge whole, for the panel: {title, parts}. [told]: what the
+/// last act said, kept in its place once the panel is drawn again.
+export async function challengeOf(id, told = "") {
   const one = await adminJson({ op: "challenge_view", challenge: String(id) });
   if (one.ready === false) return { title: "Not open yet", parts: [make("p", "note", "supabase/challenges.sql is not applied.")] };
   const c = one.challenge;
@@ -164,6 +330,13 @@ export async function challengeOf(id) {
     + `${v.entries ? `, with ${v.entries} ${v.entries === 1 ? "entry" : "entries"}` : ""}: `, toPage(v.page, "its page"))
     : `${v.said}${v.told_from ? `, from ${dayOf(v.told_from)}` : ""}`);
   if (c.test) fact("A test's", "set by the site's checks");
+  const r = one.rounds;
+  if (r?.rounds) {
+    fact("Rounds", `entries to ${dayOf(r.entries_until)}, the fan vote from ${dayOf(r.votes_from)}`
+      + `${c.state === "open" ? `; now ${ROUND[r.round] || r.round}` : ""}`);
+  }
+  if (r?.judge?.name) fact("Guest judge", r.judge.handle ? toPage(`/u/${encodeURIComponent(r.judge.handle)}`, r.judge.name) : r.judge.name);
+  if (r?.cover) fact("Cover", toPage(`/m/${encodeURIComponent(r.cover.id)}`, r.cover.name || r.cover.id));
   parts.push(facts);
   if (c.winners?.length) {
     parts.push(make("div", "part", make("h3", "", "Winners"), make("ul", "entries", ...c.winners.map((w) => make("li", "",
@@ -185,12 +358,29 @@ export async function challengeOf(id) {
             : `${Number(entry.parts).toLocaleString()} parts`} · ${entry.email || "nobody's"} · ${ago(entry.at)}`
             + `${entry.shown ? "" : " · not in the gallery"}`));
         if (!entry.keeps) li.append(make("span", "failed", `Breaks its rules: ${entry.failed.join("; ")}`));
+        if (entry.shortlisted) li.append(make("span", "badge accent", "Shortlisted"));
         return li;
       })));
     }
     groups.append(box);
   }
   parts.push(groups);
+  // Drawn again in its place after an act, saying what came of it.
+  const redraw = async (said) => {
+    const holder = facts.parentElement;
+    if (!holder) return;
+    const fresh = await challengeOf(id, said);
+    holder.replaceChildren(...fresh.parts);
+  };
+  if (c.state !== "ended" || r?.rounds) {
+    if (r?.rounds) parts.push(shortlistPart(c, r, one.groups || {}, redraw));
+    if (c.state !== "ended") parts.push(roundsPart(c, r, redraw));
+  }
+  if (told) {
+    const said = make("p", "note good", told);
+    said.setAttribute("role", "status");
+    parts.unshift(said);
+  }
   if (one.failing) parts.unshift(make("p", "note bad", `${one.failing} ${one.failing === 1 ? "entry breaks" : "entries break"} its rules today.`));
   if (c.state !== "ended") {
     const said = make("p", "note");

@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:motors run by their cables, lib:axles and gears on a line, ui:simulate mechanism, cli:telescope probe, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
 
 ## Sub-features
 
@@ -1141,6 +1141,50 @@ an 8 in a Technic-brick frame built beside the walk's bridge, which
 way, "a piece apart from it, held by its largest part"), move_part turns 30° and 90°
 and one undo puts back, a loose 24 still refused as floating; it ends "PASS: 0
 failed", and on pre261 926a97e3e fails 4 ("it is floating").
+
+Motors run by their cables (docs/APP_UX11.md row 7, wires, fixed by wfix after the wreview and
+wfix2; `src/assembly/wiring.gd`, pure, a Later class the first screen never compiles, read by
+`SimulatePanel.read_wiring`, `Wiring.places` (Flex.anchors_in reaches it through Later) and
+lay_flex, in one pass over the parts: under 16 ms on Orthanc): each Power Functions, Powered Up and 9 V plug (58124c01/c02/c03, 23816c01/c02, 5306,
+2726c01, 6625c01; whole wires 60656, 58118, 75652) is read as seated on contacts when its
+origin is its lift (16 LDU; Powered Up 0, in a hub's port) over a battery box's, a receiver
+output's, a pole reverser's, a 9 V motor's or another plug's contacts, within 1.5 LDU and
+square to them; Power Functions: facing the contacts' +x forward, half round back, a quarter
+round no contact; 9 V: its metal on a diagonal, so each quarter turn makes contact, two ways
+forward and two back; Powered Up goes in one way only. A cable is an LDCad path sub-model of
+two ends (start cap the motor, skin built or not), LSynth's run in the motor's own sub-model
+(8258's LS70), a laid run of cable pieces (u9190, u9392, 993) with its plug, or a part with
+its own cable (99499c01, 58120c01, 22169c01); only cable pieces make one (S1). Sources: PF
+boxes 58119/64228, 9 V boxes 4760c01/74650c01 (off/forward/back), receivers, pole reversers,
+hubs (a hub drawn in pieces, 42131's 22127, is no source). A motor with no cable of it drawn
+turns by hand and says so; one whose cable is drawn runs as what it reaches gives, and
+stops, said, when its plug is pulled. Simulate's Power row lists each source's switch, each
+receiver output's lever and speed dial, each hub and its ports, and each motor's line, in the
+person's language. A click with Select on a source's part in the view works its switch
+(`EditVerbs.part_click` -> `SimulatePanel.take_click`, the receiver lever nearest the click),
+inside a sub-assembly or a cable path as anywhere; a selection made any other way flips
+nothing. Play on a motor whose cable reaches a source that is off switches it on and runs
+(`Wiring.switch_on_for`). Switches are Simulate's, never written, and forgotten when another
+model opens (`BrickWorld.generation`). Make, Hose, tube or chain lays a Power Functions cable
+(a motor's own, 20 cm; extension wires 8886 20 cm and 8871 50 cm, contacts to contacts), a
+Powered Up cable (25 cm, outlet only) or a 9 V wire (5306bc lengths, contacts to contacts),
+the lengths offered by its ends, two outlets refused; "Turn the plug" for PF and 9 V. A laid
+cable is an item (`Flex.items_among`, `ends_of_item`): Reshape after a reopen or undo, lay_flex
+item=, Turn the plug; an LDCad extension wire's path (two plugs and its skin) too. Not done: a
+cable laid again as a part it is on is dragged (FlexFollow), the IR remote's channels.
+`lay_flex kind=pf_cable|pu_cable|9v_wire reversed=true` does the same over MCP and says what it
+wired, why an end is refused: first what the ends are (two outlets make no cable), then a place
+taken (its cable laid, a plug on it); item= lays a cable again, its own pieces and plug in no
+end's way. Reading wiring writes nothing: an untouched file, and one Simulate read and switched,
+saves byte for byte. `simulate_mechanism` runs the
+driver as Play does (power= not given switches its cable's sources on; power=off none; a
+pulled cable refuses). `tools/probe.sh wires_probe` ends "wires_probe: all passed" (`--
+--only=hand,laid,42042,time` those parts alone, hand the pure readings); `godot --headless --path . --script
+src/dev/wires_repro.gd -- FILES` ends "wires_repro: all passed" over the OMR power sets;
+`tools/wires_sets.py OUT` writes the listing of KINEFUNCS' motorised sets and `wires_probe --
+--sets=OUT --rows=ROWS` writes each set's clicks and each motor's row: what it is wired to,
+its run, each KINEFUNCS function its output drives measured the KINEFUNCS way, and that it
+stops with its plug pulled.
 
 Stability measured: `stabletruth_probe` ends on "every check passed". StableLego's
 eight structures (tests/fixtures/stability/stablelego, each on a 48 x 48 baseplate,

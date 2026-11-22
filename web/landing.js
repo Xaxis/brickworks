@@ -8,7 +8,10 @@
 //   its looks in web/view3d.css), both asked for as the section nears;
 // - #sets, four of the LDraw library's biggest sets with a 3D model, as
 //   /library orders them by Most parts, each a link to its page;
-// - #challenge, this month's challenge, or the next one told;
+// - #now, at once, under the app's picture: #challenge, this month's
+//   challenge with its days left (and where it runs in rounds, which round
+//   and how long it has), or the next one told; and #pick, This week's pick
+//   from the gallery (challengehonours: both within the first two screens);
 // - #top, the gallery's Top builds as the gallery orders them, then its
 //   collections, each drawn as web/card.js draws every card.
 //
@@ -116,31 +119,84 @@ function days(from, to) {
   }
 }
 
-/// This month's challenge (GET /api/people?op=challenge): its name, brief,
-/// days and entries, and Enter; between challenges the next one told.
-/// Its name and brief are Brickworks' own words, in English as written.
-async function challenge() {
+const DAY_MS = 86400000;
+/// Whole days from now to the end of [day] (UTC, the day counted), at least 1.
+const daysTo = (day) => Math.max(1, Math.ceil((Date.parse(`${day}T00:00:00Z`) + DAY_MS - Date.now()) / DAY_MS));
+/// "10 days left", "Last day": what is left of a stretch ending on [day].
+const leftSaid = (day) => (daysTo(day) === 1 ? say("Last day") : say("{n} days left", { n: number(daysTo(day)) }));
+
+/// The challenge open now as the home page says it: [badge, left, go], by
+/// its round where it runs in rounds (entries, the judges choosing, the fan
+/// vote), each with how long it has.
+function standing(c) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (c.entries_until && c.votes_from) {
+    if (today <= c.entries_until) {
+      return [say("Entries open"), daysTo(c.entries_until) === 1 ? say("Entries close today")
+        : say("Entries close in {n} days", { n: number(daysTo(c.entries_until)) }), say("Enter the challenge")];
+    }
+    if (today >= c.votes_from && c.shortlisted) return [say("Fan vote"), leftSaid(c.ends_on), say("Vote for your favourite")];
+    return [say("Judging"), say("The judges are choosing"), say("See the entries")];
+  }
+  return [say("This month"), leftSaid(c.ends_on), say("Enter the challenge")];
+}
+
+/// This month's challenge and This week's pick (GET /api/share?op=shelves,
+/// the gallery front's own answer): the challenge's name, brief, days and
+/// days left, and the way in; between challenges the next one told; and
+/// the week's pick as a picture beside its name. Their names and briefs are
+/// their makers' words, as written. A test challenge is never shown here.
+async function now() {
   const tile = document.getElementById("challenge");
   if (!tile) return;
-  const answer = await ask("/api/people?op=challenge");
-  const now = answer?.challenge && answer.challenge.state === "open" && !answer.challenge.test ? answer.challenge : null;
-  const next = !now && answer?.next && !answer.next.test ? answer.next : null;
-  const shown = now || next;
-  html.dataset.challenge = now ? "open" : next ? "next" : "none";
-  if (!shown) return;
-  const entries = now ? (now.groups || []).reduce((n, group) => n + (group.entries || []).length, 0) : 0;
-  const line = [days(shown.starts_on, shown.ends_on), entries ? counted(entries, "entry", "entries") : ""].filter(Boolean).join(" · ");
-  document.getElementById("challenge-when").textContent = say(now ? "This month" : "Coming next");
-  const name = document.getElementById("challenge-h");
-  name.textContent = String(shown.title || "");
-  name.lang = "en";
-  const brief = document.getElementById("challenge-brief");
-  brief.textContent = String(shown.brief || "");
-  brief.lang = "en";
-  const when = document.getElementById("challenge-days");
-  when.textContent = line;
-  when.hidden = !line;
-  if (now) document.getElementById("challenge-go").textContent = say("Enter the challenge");
+  const answer = await ask("/api/share?op=shelves");
+  const c = answer?.challenge && !answer.challenge.test && ["open", "upcoming"].includes(answer.challenge.state) ? answer.challenge : null;
+  html.dataset.challenge = c ? (c.state === "open" ? "open" : "next") : "none";
+  if (c) {
+    const open = c.state === "open";
+    const [badge, left, go] = open ? standing(c) : [say("Coming next"), say("Opens {day}", { day: days(c.starts_on, c.starts_on) }), ""];
+    document.getElementById("challenge-when").textContent = badge;
+    const leftBadge = document.getElementById("challenge-left");
+    leftBadge.textContent = left;
+    leftBadge.hidden = false;
+    const name = document.getElementById("challenge-h");
+    name.textContent = String(c.title || "");
+    name.lang = "en";
+    const brief = document.getElementById("challenge-brief");
+    if (c.brief) {
+      brief.textContent = String(c.brief);
+      brief.lang = "en";
+    }
+    // Its days in place of the line held for them, so nothing under it moves.
+    const span = days(c.starts_on, c.ends_on);
+    if (span) document.getElementById("challenge-days").textContent = span;
+    const link = document.getElementById("challenge-go");
+    if (go) link.textContent = go;
+    if (c.id) link.href = `${langAt()}/challenge`;
+  }
+  pick(answer?.pick?.model || null);
+}
+
+/// This week's pick: its picture, once it has arrived (never a dead one),
+/// beside its name and its designer; none, the tile keeps its own words
+/// and goes to the gallery.
+async function pick(m) {
+  html.dataset.pick = m && GALLERY.test(String(m.id)) ? "shown" : "none";
+  if (!m || !GALLERY.test(String(m.id))) return;
+  const link = document.getElementById("pick-go");
+  link.href = `/m/${m.id}`;
+  const name = document.getElementById("pick-name");
+  name.textContent = String(m.name || "");
+  name.translate = false;
+  const by = m.by?.name || m.author || "";
+  document.getElementById("pick-by").textContent = by ? say("by {who}", { who: by }) : "";
+  link.setAttribute("aria-label", say("This week’s pick: {name}", { name: String(m.name || "") }));
+  const src = pictureOf(m);
+  if (!src) return;
+  const img = document.getElementById("pick-img");
+  img.src = src;
+  img.alt = "";
+  if (await drawn(img)) img.hidden = false;
 }
 
 /// The first model in 3D in its picture's place, its code and looks asked
@@ -248,7 +304,6 @@ function near(id, work, margin = "150% 0px") {
 // screen that reaches the section does not ask for it.
 near("made-lead", view3d, "0px");
 near("why", sets);
-near("community", () => {
-  challenge();
-  top();
-});
+// This month's challenge and This week's pick: at once, in the first two screens.
+now();
+near("community", top);

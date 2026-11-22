@@ -924,6 +924,7 @@ func _toggle(direction: int) -> void:
 	elif direction < 0 and _shown <= 0:
 		_show(_length())
 	_playing = direction
+	set_process(true)
 	_owed = 0.0
 	_play.text = "Pause" if direction > 0 else "Play"
 	_reverse.text = "Pause" if direction < 0 else "Reverse"
@@ -956,6 +957,9 @@ func _process(delta: float) -> void:
 	if _find_waiting and visible and _library != null and _library.search_ready():
 		_find_now()
 	if _playing == 0 or not visible:
+		# Asleep unless playing or a find waits for the search (Wake).
+		if not _find_waiting:
+			Wake.rest(self)
 		return
 	_owed += delta * rate()
 	var whole: int = int(_owed)
@@ -1631,6 +1635,7 @@ func _find_now() -> void:
 	if not _library.search_ready():
 		_library.prepare_search(true)
 		_find_waiting = true
+		set_process(true)
 		_hits = []
 		_hit_set = {}
 		_say_found("Reading the parts…", false)

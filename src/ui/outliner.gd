@@ -318,6 +318,11 @@ func _process(_delta: float) -> void:
 		return
 	_looked_at = now
 	_refresh(false)
+	# Asleep once it has looked since the last thing that happened settled
+	# (Wake), nothing pressed or dragged: an edit, a press, a drawn frame
+	# and a Together peer's change wake it.
+	if not _pressed and not get_viewport().gui_is_dragging() and not Wake.owed(_looked_at):
+		Wake.rest(self)
 
 
 ## The tree drawn again when its shape, names, counts or toggles changed.

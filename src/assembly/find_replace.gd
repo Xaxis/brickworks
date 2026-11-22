@@ -333,7 +333,7 @@ func plan(found: Dictionary, into: Dictionary, cache: Dictionary = {}) -> Dictio
 			if shape == null:
 				out["missing"] = new_part
 				continue
-			at = builder._in_place_of(brick.transform, library.mesh_for(brick.part_id), shape)
+			at = builder.swap_place(brick, new_part, shape)
 		moving[brick_id] = {"part": new_part, "color": new_colour, "at": at, "follows": follows}
 		order.append(brick_id)
 	# Each with its twins: those found, and those its copies' follow reaches.

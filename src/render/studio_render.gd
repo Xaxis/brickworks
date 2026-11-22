@@ -265,6 +265,7 @@ var _frame_began_us: int = 0
 func _process(_delta: float) -> void:
 	if not _busy:
 		_frame_began_us = 0
+		Wake.rest(self)
 		return
 	var now: int = Time.get_ticks_usec()
 	if _frame_began_us > 0:
@@ -404,6 +405,7 @@ func render(world: BrickWorld, settings: RenderSettings) -> Image:
 	if _busy or not possible() or world == null:
 		return null
 	_busy = true
+	set_process(true)
 	_cancelled = false
 	worst_frame_ms = 0.0
 	worst_step = ""
@@ -423,6 +425,7 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 	if _busy or not possible() or world == null:
 		return 0
 	_busy = true
+	set_process(true)
 	_cancelled = false
 	worst_frame_ms = 0.0
 	worst_step = ""
@@ -474,6 +477,7 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 	if _busy or not possible() or world == null:
 		return 0
 	_busy = true
+	set_process(true)
 	_cancelled = false
 	worst_frame_ms = 0.0
 	worst_step = ""

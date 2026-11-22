@@ -158,6 +158,35 @@ export function email() {
   return (kept() || {}).email || "";
 }
 
+/// The account it is for, by its id (its address where none was kept).
+export function accountId() {
+  const was = kept() || {};
+  return was.user_id || was.email || "";
+}
+
+/// This browser's notifications (web/push.js) stop with the sign-in, from
+/// any Sign out (the header's, Settings', a sign-in found ended): the
+/// server is told to forget the device by its endpoint and its secret,
+/// which only this browser knows, so no sign-in is needed and a page that
+/// is left at once still sends it; and the browser's subscription ends
+/// (web/push.js ends it on the next page, if not here).
+function forgetDevice() {
+  let device = null;
+  try {
+    device = JSON.parse(localStorage.getItem("brickworks.push") || "null");
+  } catch {
+    device = null;
+  }
+  if (device && typeof device === "object" && device.endpoint && device.auth) {
+    fetch("/api/people?op=push", { method: "POST", keepalive: true, headers: { "content-type": "application/json" },
+      body: JSON.stringify({ on: false, endpoint: device.endpoint, auth: device.auth }) }).catch(() => null);
+  }
+  navigator.serviceWorker?.getRegistration("/")
+    .then((registration) => registration?.pushManager?.getSubscription())
+    .then((subscription) => subscription?.unsubscribe())
+    .catch(() => null);
+}
+
 // The sign-in dialog open in this tab, if one is: ended as signed in when
 // another tab signs in (below). False when it has ended already.
 let signedInElsewhere = () => false;
@@ -507,6 +536,7 @@ function connectOrangecheck(access) {
 }
 
 export function signOut() {
+  forgetDevice();
   try {
     localStorage.removeItem(KEY);
     sessionStorage.removeItem(ACCESS);

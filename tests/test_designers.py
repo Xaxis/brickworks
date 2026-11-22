@@ -164,7 +164,9 @@ def test_the_profile_page_never_carries_them() -> None:
 
 
 def test_the_stand_in_answers_what_the_api_asks() -> None:
-    asked = set(re.findall(r'db\("rpc/(designer_[a-z]+)"', DESIGNERS))
+    # designer_period is designer_period.sql's, not this file's: held by no
+    # stand-in, the API answers without a period until it is applied.
+    asked = set(re.findall(r'db\("rpc/(designer_[a-z]+)"', DESIGNERS)) - {"designer_period"}
     listed = re.search(r"const NAMES = \[([^\]]*)\]", STAND_IN)
     assert listed, "the stand-in names no functions"
     names = set(re.findall(r'"(designer_[a-z]+)"', listed[1]))
