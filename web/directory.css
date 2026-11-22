@@ -706,11 +706,13 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .design-builders .build-strip .build { width: min(200px, 60vw); }
 .design-builders .build-strip .build img { height: 140px; }
 .design-builders figcaption a { font-weight: 600; }
-/* Against the 30 days before (insights2, web/designs.js drawPeriod): six
-   tiles and six numbers a model, each with its change (green up, red down,
-   in words as well as colour); the two dropdowns; the weeks as the
+/* Against the 30 days before (insights2 and i2fix, web/designs.js
+   drawPeriod): six tiles and six numbers a model, each with its change
+   (green up, red down, in words as well as colour) or, counted for under 30
+   days, the day it was counted since; the two dropdowns; the weeks as the
    console's chart (the --viz tokens: one series, a hairline grid) with its
-   table, and each model's weeks as a line. */
+   table, and each model's weeks as a line in --ink-faint (3:1 and more on
+   the panel in both themes; --viz-muted is 2.6:1 on white). */
 .designs .period-days { margin: -4px 0 12px; font-size: var(--t-small); color: var(--ink-soft); max-width: 72ch; }
 .earned.period { max-width: none; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
 .earned li .change, .design-numbers .change { font-size: var(--t-tiny); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -718,7 +720,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .change.up { color: var(--green); }
 .change.down { color: var(--bad); }
 .change.new { color: var(--accent-ink); }
-.change.none { color: var(--ink-faint); font-weight: 400; }
+.change.none, .change.short { color: var(--ink-faint); font-weight: 400; }
 .period-controls { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-4); align-items: end; margin: var(--s-4) 0 var(--s-3); }
 .period-controls label { min-width: min(100%, 220px); }
 .period-chart { margin: 0 0 var(--s-3); max-width: 920px; }
@@ -750,7 +752,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .design-numbers.period dd small + small { margin-top: -2px; }
 .design-weeks { display: flex; align-items: center; gap: var(--s-2); margin: 10px 0 0; font-size: var(--t-tiny); color: var(--ink-faint); }
 .design-weeks svg { flex: none; overflow: visible; }
-.design-weeks .line { fill: none; stroke: var(--viz-muted); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.design-weeks .line { fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.designs .period-left { margin: 0 0 var(--s-2); font-size: var(--t-small); color: var(--ink-soft); max-width: 72ch; }
 .design-weeks .dot { fill: var(--viz-1); }
 @media (width >= 900px) {
 	.period-means { grid-template-columns: 11em minmax(0, 1fr); }

@@ -60,3 +60,4 @@ announce.sql	announcement_read	announce2.sql	public.announce_tally(p_id
 announce.sql	announce_mail_take	announce2.sql	public.news_mail_stopped()
 announce.sql	announce_mail_done	announce2.sql	public.announce_tally(p_id
 announce.sql	announce_mail_due	announce2.sql	public.announcement_to t
+designer_period.sql	designer_period	designer_period_2.sql	'before_days'

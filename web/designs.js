@@ -9,12 +9,14 @@
 // (api/_designers.js), which answers nobody else with anything of yours and
 // is never kept by the CDN; the page the CDN keeps has none of it.
 //
-// Against last month (insights2, 2026-11-22; supabase/designer_period.sql):
-// when the server sends `period`, each model's views, builds finished,
-// likes, saves, comments and remixes in the last 30 UTC days (today so far)
-// beside the 30 before, with the change (up, down, new, none), the last 8
-// weeks as a chart (the console's: one series, a hairline grid, a tip on
-// hover and focus, and its numbers as a table), each model's weeks as a
+// Against last month (insights2 and i2fix, 2026-11-22;
+// supabase/designer_period_2.sql): when the server sends `period`, each
+// model's views, builds finished, likes, saves, comments and remixes in the
+// last 30 whole UTC days (ending yesterday) beside the 30 before, with the
+// change (up, down, none before, no change) where both were counted in full, and
+// otherwise from which day it was counted; the last 8 weeks as a chart from
+// the first week counted (the console's: one series, a hairline grid, a tip
+// on hover and focus, and its numbers as a table), each model's weeks as a
 // line, and the models sorted by any of it. Without it, as before.
 //
 // Everything is put on the page as text, in the page's language (say: a
@@ -108,7 +110,10 @@ function builders(model) {
 
 const KINDS = ["views", "builds", "likes", "saves", "comments", "remixes"];
 const WEEKS = 8;
+/// Each window's whole UTC days (the server's period.days).
+const DAYS = 30;
 const DAY_MS = 86400000;
+const MINUS = "−";
 /// Each kind's heading, and its count's words for one and for more.
 const NAMED = {
   views: () => [say("Views"), say("view"), say("views")],
@@ -118,29 +123,41 @@ const NAMED = {
   comments: () => [say("Comments"), say("comment"), say("comments")],
   remixes: () => [say("Remixes"), say("remix"), say("remixes")],
 };
-/// What each counts, said beside the numbers (supabase/designer_period.sql).
+/// What each counts, said beside the numbers (supabase/designer_period_2.sql).
 const MEANS = {
   views: () => say("Visitors who opened its page: each once a day, never a robot, your own visits too."),
   builds: () => say("Devices that reached its last step, each once, on the day it first did."),
   likes: () => say("People who like it now, on the day they liked it. Not yours; a like taken back is not counted."),
-  saves: () => say("People who keep it in Saved or one of their lists, each once, from the day they first did. Not yours."),
+  saves: () => say("People who keep it in Saved or one of their lists, private ones included, each once, from the day they first did. Only how many, never who; not yours."),
   comments: () => say("Comments anybody can see on its page, on the day they were written. Not yours, and only since its link was last shared."),
   remixes: () => say("Remixes of it shared, on the day each was."),
 };
 const SHORT = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", timeZone: "UTC" });
+/// A share without its sign: the page writes the sign itself, so every
+/// minus on it is the one minus sign (U+2212), as the counts' are.
 const PERCENT = new Intl.NumberFormat(globalThis.brickworksLang?.locale || "en-US",
-  { style: "percent", maximumFractionDigits: 0, signDisplay: "exceptZero" });
+  { style: "percent", maximumFractionDigits: 0 });
 /// Under ten per cent, a tenth of one: +0.2%, not +0%.
 const PERCENT_FINE = new Intl.NumberFormat(globalThis.brickworksLang?.locale || "en-US",
-  { style: "percent", maximumFractionDigits: 1, signDisplay: "exceptZero" });
-const percent = (ratio) => (Math.abs(ratio) < 0.1 ? PERCENT_FINE : PERCENT).format(ratio);
+  { style: "percent", maximumFractionDigits: 1 });
+const percent = (ratio) => `${ratio < 0 ? MINUS : "+"}${(Math.abs(ratio) < 0.1 ? PERCENT_FINE : PERCENT).format(Math.abs(ratio))}`;
 /// A day the server named ("2026-11-22"), at its noon UTC, [plus] days on.
 const dayAt = (day, plus = 0) => Date.parse(`${day}T12:00:00Z`) + plus * DAY_MS;
 const short = (day, plus = 0) => SHORT.format(dayAt(day, plus));
+/// The day [plus] days on from [day], as the server writes one.
+const dayPlus = (day, plus) => new Date(dayAt(day, plus)).toISOString().slice(0, 10);
 
-/// How [counts] moved: up, down, new (none in the 30 days before) or none
-/// (the same, nought included).
+/// Whether [counts] were counted on every day of both windows: only then is
+/// the last 30 days set against the 30 before. Views are kept by the day
+/// only from a day in October 2026, and a model only from the day it was
+/// shared; a change against days nobody counted would be made up.
+const whole = (counts) => Number(counts?.now_days) >= DAYS && Number(counts?.before_days) >= DAYS;
+
+/// How [counts] moved: up, down, new (none in the 30 days before), none
+/// (the same, nought included); or short: either window counted for under
+/// 30 days, so no change is said.
 function changeOf(counts) {
+  if (!whole(counts)) return "short";
   const now = Number(counts?.now) || 0;
   const before = Number(counts?.before) || 0;
   if (now === before) return "none";
@@ -148,19 +165,22 @@ function changeOf(counts) {
   return now > before ? "up" : "down";
 }
 
-/// The change, in words and marked: "▲ +12 (+40%)", "▼ −3 (−20%)", New, No change.
+/// The change, in words and marked: "▲ +12 (+40%)", "▼ −3 (−20%)",
+/// "▲ +12 (none before)", No change; or, counted for under 30 days of either
+/// window, "Counted since 22 Oct" with no arrow and no per cent.
 function changeSaid(counts) {
   const how = changeOf(counts);
   const now = Number(counts?.now) || 0;
   const before = Number(counts?.before) || 0;
   const mark = make("small", `change ${how}`);
   mark.dataset.change = how;
-  if (how === "none") mark.append(say("No change"));
-  else if (how === "new") mark.append(say("New"));
+  if (how === "short") mark.append(counts?.from ? say("Counted since {day}", { day: short(counts.from) }) : say("Not counted yet"));
+  else if (how === "none") mark.append(say("No change"));
   else {
-    const arrow = make("span", "", how === "up" ? "▲" : "▼");
+    const arrow = make("span", "", how === "down" ? "▼" : "▲");
     arrow.setAttribute("aria-hidden", "true");
-    mark.append(arrow, ` ${how === "up" ? "+" : "−"}${number(Math.abs(now - before))} (${percent((now - before) / before)})`);
+    mark.append(arrow, ` ${how === "down" ? MINUS : "+"}${number(Math.abs(now - before))} `
+      + `(${how === "new" ? say("none before") : percent((now - before) / before)})`);
   }
   return mark;
 }
@@ -171,6 +191,9 @@ function marked(element, kind, counts) {
   element.dataset.now = String(Number(counts.now) || 0);
   element.dataset.before = String(Number(counts.before) || 0);
   element.dataset.ever = String(Number(counts.ever) || 0);
+  element.dataset.from = counts.from || "";
+  element.dataset.nowDays = String(Number(counts.now_days) || 0);
+  element.dataset.beforeDays = String(Number(counts.before_days) || 0);
   element.dataset.change = changeOf(counts);
   return element;
 }
@@ -206,63 +229,88 @@ function svg(tag, attrs = {}) {
   return made;
 }
 
-/// A model's weeks of [kind] as a line, the newest week marked; its numbers
-/// said for a screen reader.
+/// The weeks of [weeks] that were counted, from the first: a week wholly
+/// before counting began is null from the server, and is not drawn at all
+/// (never as nought). [first] is where they begin among the 8, or -1.
+function countedWeeks(weeks) {
+  const first = weeks.findIndex((value) => value !== null && value !== undefined);
+  return { first, values: first < 0 ? [] : weeks.slice(first).map((value) => Number(value) || 0) };
+}
+
+/// A model's weeks of [kind] as a line on the 8 weeks' scale, from the
+/// first week counted, the newest marked; its numbers said for a screen
+/// reader.
 function weeksLine(model, kind) {
-  const values = model.period[kind].weeks;
+  const { first, values } = countedWeeks(model.period[kind].weeks);
   const [name] = NAMED[kind]();
+  const line = make("div", "design-weeks", make("span", "", say("{kind} by week", { kind: name })));
+  line.dataset.kind = kind;
+  line.dataset.weeks = values.join(",");
+  if (!values.length) {
+    line.append(make("small", "", say("Not counted yet")));
+    return line;
+  }
   const w = 120;
   const h = 28;
   const most = Math.max(1, ...values);
-  const x = (at) => (at / (values.length - 1)) * (w - 6) + 3;
+  const x = (at) => ((first + at) / (WEEKS - 1)) * (w - 6) + 3;
   const y = (v) => h - 3 - (v / most) * (h - 6);
   const shape = svg("svg", { viewBox: `0 0 ${w} ${h}`, width: w, height: h, role: "img",
     "aria-label": say("{kind} by week, the oldest first: {numbers}", { kind: name, numbers: values.map(number).join(", ") }) });
-  shape.append(svg("polyline", { points: values.map((v, at) => `${x(at)},${y(v)}`).join(" "), class: "line" }),
-    svg("circle", { cx: x(values.length - 1), cy: y(values.at(-1)), r: 3, class: "dot" }));
-  const line = make("div", "design-weeks", make("span", "", say("{kind} by week", { kind: name })), shape);
-  line.dataset.kind = kind;
-  line.dataset.weeks = values.join(",");
+  if (values.length > 1) shape.append(svg("polyline", { points: values.map((v, at) => `${x(at)},${y(v)}`).join(" "), class: "line" }));
+  shape.append(svg("circle", { cx: x(values.length - 1), cy: y(values.at(-1)), r: 3, class: "dot" }));
+  line.append(shape);
   return line;
 }
 
-/// A clean top for an axis that reaches [most], and its ticks (as the console's).
+/// A clean top for an axis that reaches [most], and its ticks (as the
+/// console's): whole numbers only, since every count is one.
 function ticksOf(most) {
   if (most <= 0) return [0, 1];
   const step = 10 ** Math.floor(Math.log10(most));
-  const nice = [1, 2, 2.5, 5, 10].map((k) => k * step).find((s) => most / s <= 4) || step * 10;
+  const nice = [1, 2, 2.5, 5, 10].map((k) => k * step).filter(Number.isInteger).find((s) => most / s <= 4) || step * 10;
   const top = Math.ceil(most / nice) * nice;
   const out = [];
-  for (let at = 0; at <= top + 1e-9; at += nice) out.push(Math.round(at * 100) / 100);
+  for (let at = 0; at <= top; at += nice) out.push(at);
   return out;
 }
 
-/// Week [at] (0 the oldest) of [period], in words: "28 Sep to 4 Oct".
-function weekSaid(period, at) {
-  const from = short(period.weeks_from, 7 * at);
-  const to = short(period.weeks_from, 7 * at + 6);
-  return at === WEEKS - 1 ? say("{from} to {to} (today so far)", { from, to }) : say("{from} to {to}", { from, to });
+/// Week [at] (0 the oldest of the 8) of [period], in words: "28 Sep to
+/// 4 Oct"; a week counting began in, from that day.
+function weekSaid(period, at, from = null) {
+  const first = dayPlus(period.weeks_from, 7 * at);
+  return say("{from} to {to}", { from: short(from && from > first ? from : first), to: short(period.weeks_from, 7 * at + 6) });
 }
 
 // The chart's width followed, let go when it is made again.
 let watching = null;
 
-/// Every model's [kind] added up, a column a week, with its table.
+/// Every model's [kind] added up, a column a week from the first week
+/// counted, with its table.
 function chartOf(period, kind) {
   watching?.disconnect();
   const [name, one, many] = NAMED[kind]();
-  const values = period.totals[kind].weeks;
+  const counts = period.totals[kind];
+  const { first, values } = countedWeeks(counts.weeks);
   const figure = make("figure", "period-chart");
   figure.dataset.kind = kind;
-  figure.append(make("figcaption", "", make("span", "", say("{kind} by week, all your models", { kind: name })),
-    make("small", "", say("8 weeks, {from} to {to}, UTC", { from: short(period.weeks_from), to: short(period.today) }))));
+  figure.dataset.first = String(first);
+  const caption = make("figcaption", "", make("span", "", say("{kind} by week, all your models", { kind: name })));
+  figure.append(caption);
+  if (!values.length) {
+    figure.append(make("p", "note", say("Nothing counted yet: a day is counted once it ends, at midnight UTC.")));
+    return figure;
+  }
+  caption.append(make("small", "", say("{from} to {to}, UTC", { from: short(counts.from && counts.from > dayPlus(period.weeks_from, 7 * first)
+    ? counts.from : dayPlus(period.weeks_from, 7 * first)), to: short(period.til) })));
   const plot = make("div", "plot");
   figure.append(plot);
   const tip = make("div", "tip");
   tip.hidden = true;
   const words = (at) => `${number(values[at])} ${values[at] === 1 ? one : many}`;
+  const saidWeek = (at) => weekSaid(period, first + at, counts.from);
   const tipAt = (target, at) => {
-    tip.replaceChildren(make("b", "", words(at)), make("span", "", weekSaid(period, at)));
+    tip.replaceChildren(make("b", "", words(at)), make("span", "", saidWeek(at)));
     tip.hidden = false;
     const box = plot.getBoundingClientRect();
     const bar = target.getBoundingClientRect();
@@ -292,7 +340,7 @@ function chartOf(period, kind) {
     const hits = [];
     values.forEach((value, at) => {
       const hit = svg("rect", { x: left + at * slot, y: 0, width: slot, height: h, class: "hit", tabindex: at === lit ? 0 : -1,
-        role: "img", "aria-label": `${weekSaid(period, at)}: ${words(at)}` });
+        role: "img", "aria-label": `${saidWeek(at)}: ${words(at)}` });
       hits.push(hit);
       hit.addEventListener("keydown", (event) => {
         const to = { ArrowLeft: at - 1, ArrowDown: at - 1, ArrowRight: at + 1, ArrowUp: at + 1, Home: 0, End: values.length - 1 }[event.key];
@@ -315,10 +363,11 @@ function chartOf(period, kind) {
         shape.append(svg("path", { class: "bar", d: `M${x},${h} v${-(height - r)} q0,${-r} ${r},${-r} h${width - 2 * r} `
           + `q${r},0 ${r},${r} v${height - r} z` }));
       } else shape.append(svg("g"));
-      // Each week's first day under it; every other one, the newest kept, where they would touch.
+      // Each week's first day counted under it; every other one, the newest kept, where they would touch.
       if (slot >= 52 || (values.length - 1 - at) % 2 === 0) {
         const label = svg("text", { x: left + at * slot + slot / 2, y: h + 15, "text-anchor": "middle" });
-        label.textContent = short(period.weeks_from, 7 * at);
+        const begins = dayPlus(period.weeks_from, 7 * (first + at));
+        label.textContent = short(counts.from && counts.from > begins ? counts.from : begins);
         shape.append(label);
       }
     });
@@ -329,7 +378,7 @@ function chartOf(period, kind) {
   // Its numbers as words, for anybody: a screen reader's and a reader's.
   const table = make("table", "",
     make("thead", "", make("tr", "", make("th", "", say("Week")), make("th", "n", name))),
-    make("tbody", "", ...values.map((value, at) => make("tr", "", make("td", "", weekSaid(period, at)), make("td", "n", number(value))))));
+    make("tbody", "", ...values.map((value, at) => make("tr", "", make("td", "", saidWeek(at)), make("td", "n", number(value))))));
   for (const th of table.querySelectorAll("th")) th.scope = "col";
   const holder = make("div", "table", table);
   holder.setAttribute("role", "region");
@@ -347,6 +396,10 @@ const SORTS = {
   fading: (a, b) => (a.now - a.before) - (b.now - b.before) || b.before - a.before,
   ever: (a, b) => b.ever - a.ever,
 };
+/// The orders that set a model against its 30 days before: a model counted
+/// for under 30 days of either window is left out of them, and comes after
+/// the rest, most in the last 30 days first.
+const AGAINST = new Set(["gaining", "fading"]);
 
 /// A labelled dropdown of [options] ([value, words]).
 function choice(id, words, options) {
@@ -366,19 +419,21 @@ function choice(id, words, options) {
 function meaning(period) {
   const list = make("dl", "period-means");
   for (const kind of KINDS) list.append(make("dt", "", NAMED[kind]()[0]), make("dd", "", MEANS[kind]()));
-  list.append(make("dt", "", say("The days")), make("dd", "", say("The last 30 days are today so far and the 29 days before it; "
-    + "the 30 days before are the 30 before those; a week is 7 days, the newest ending today. Days begin at midnight UTC.")));
-  const why = Date.parse(period.views_from || "") > Date.parse(period.before_from || "")
-    ? make("p", "", say("Views are kept by the day only from {day}, so their 30 days before hold only the days since.",
-      { day: DATE.format(dayAt(period.views_from)) })) : null;
-  return make("details", "qa period-what", make("summary", "", say("What each number counts")), make("div", "", list, why));
+  list.append(make("dt", "", say("The days")), make("dd", "", say("The last 30 days are the 30 whole days ending yesterday; "
+    + "the 30 days before are the 30 before those; a week is 7 days, the newest ending yesterday. Days begin at midnight UTC, "
+    + "and today is counted once it ends.")));
+  list.append(make("dt", "", say("Counted since")), make("dd", "", say("A change is shown only where both 30 days were counted "
+    + "in full. Where either was not, the number says from which day it was counted instead, and its model is left out of "
+    + "Gaining and Fading: a model is counted from the day it was shared, and views have been kept by the day only since {day}.",
+  { day: DATE.format(dayAt(period.views_from || period.today)) })));
+  return make("details", "qa period-what", make("summary", "", say("What each number counts")), make("div", "", list));
 }
 
 /// Draw [models] against the 30 days before, into [box] after [title] and [only].
 function drawPeriod(box, title, only, period, models) {
   const t = period.totals;
-  const days = make("p", "period-days", say("The last 30 days, {from} to {to} (today so far), beside the 30 before, {before} to {last}.",
-    { from: short(period.now_from), to: short(period.today), before: short(period.before_from), last: short(period.now_from, -1) }));
+  const days = make("p", "period-days", say("The last 30 days, {from} to {to}, beside the 30 before, {before} to {last}.",
+    { from: short(period.now_from), to: short(period.til), before: short(period.before_from), last: short(period.before_til) }));
   const totals = make("ul", "earned mine-totals period",
     ...KINDS.map((kind, at) => periodTile(kind, t[kind], at < 2)));
   totals.setAttribute("aria-label", say("All your models, the last 30 days"));
@@ -393,13 +448,27 @@ function drawPeriod(box, title, only, period, models) {
     return { model, item };
   });
   const list = make("ol", "design-rows", ...rows.map((one) => one.item));
+  // Under Gaining and Fading: which models were left out of the order, and why.
+  const left = make("p", "note period-left");
+  left.setAttribute("role", "status");
+  left.hidden = true;
   let chart = chartOf(period, "views");
   const order = () => {
     const kind = kindChoice.select.value;
-    const how = SORTS[sortChoice.select.value] || SORTS.most;
+    const how = sortChoice.select.value;
+    const against = AGAINST.has(how);
+    const by = (sort) => (a, b) => sort(a.model.period[kind], b.model.period[kind]);
+    const compared = rows.filter((one) => !against || whole(one.model.period[kind]));
+    const out = against ? rows.filter((one) => !whole(one.model.period[kind])) : [];
+    for (const one of rows) one.item.dataset.compared = String(!out.includes(one));
     list.dataset.kind = kind;
-    list.dataset.sort = sortChoice.select.value;
-    list.append(...rows.slice().sort((a, b) => how(a.model.period[kind], b.model.period[kind])).map((one) => one.item));
+    list.dataset.sort = how;
+    list.append(...compared.slice().sort(by(SORTS[how] || SORTS.most)).map((one) => one.item),
+      ...out.slice().sort(by(SORTS.most)).map((one) => one.item));
+    left.hidden = !out.length;
+    left.textContent = !out.length ? ""
+      : compared.length ? say("Not compared, so last: {n} counted for under 30 days of either window.", { n: number(out.length) })
+        : say("None is compared yet: no model was counted for all 60 days. They are in order of the most in the last 30 days.");
   };
   kindChoice.select.addEventListener("change", () => {
     const kind = kindChoice.select.value;
@@ -411,7 +480,7 @@ function drawPeriod(box, title, only, period, models) {
   });
   sortChoice.select.addEventListener("change", order);
   order();
-  box.replaceChildren(title, only, days, totals, controls, chart, meaning(period), list);
+  box.replaceChildren(title, only, days, totals, controls, chart, meaning(period), left, list);
   return list;
 }
 
@@ -527,14 +596,17 @@ function eager(list) {
 }
 
 /// The server's `period`, when it sent one whole: its days, and every
-/// model's six kinds (api/_designers.js periodOf). Null otherwise: drawn as before.
+/// model's six kinds with the days each was counted (api/_designers.js
+/// periodOf). Null otherwise: drawn as before.
 function periodIn(mine) {
   const period = mine?.period;
   const day = /^\d{4}-\d{2}-\d{2}$/;
-  if (!period || !["today", "now_from", "before_from", "weeks_from"].every((key) => day.test(String(period[key] || "")))) return null;
-  const whole = (counts) => counts && Array.isArray(counts.weeks) && counts.weeks.length === WEEKS;
-  if (!KINDS.every((kind) => whole(period.totals?.[kind]))) return null;
-  if (!(mine.models || []).every((model) => !ID.test(String(model.id)) || KINDS.every((kind) => whole(model.period?.[kind])))) return null;
+  if (!period || !["today", "til", "now_from", "before_from", "before_til", "weeks_from"]
+    .every((key) => day.test(String(period[key] || "")))) return null;
+  const complete = (counts) => counts && Array.isArray(counts.weeks) && counts.weeks.length === WEEKS
+    && Number.isFinite(counts.now_days) && Number.isFinite(counts.before_days);
+  if (!KINDS.every((kind) => complete(period.totals?.[kind]))) return null;
+  if (!(mine.models || []).every((model) => !ID.test(String(model.id)) || KINDS.every((kind) => complete(model.period?.[kind])))) return null;
   return period;
 }
 

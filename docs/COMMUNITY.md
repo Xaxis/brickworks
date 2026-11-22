@@ -46,7 +46,10 @@ the pages say what the site does.
   from the moment it is applied.
 - `supabase/designer_period.sql` after designers.sql and replies.sql (it
   reads `model_opens` and `comment_parent_shown`): one function, nothing
-  else. Until then Insights is drawn as before.
+  else (live 2026-11-22). Then `supabase/designer_period_2.sql`, which
+  replaces that one function (i2fix: the days each number was counted,
+  whole days ending yesterday; `supabase/later.tsv`). Until then Insights is
+  drawn as before.
 - `supabase/challenges.sql` after designers.sql (it reads `model_needs`,
   the Tested mark, `gallery_shows`, `directory_card` and trust's and
   moderation's rules), and after follows.sql, whose `feed_rows` it
@@ -437,7 +440,7 @@ remixes, best of three: the page 21 to 31 ms and their own numbers 46 to
 in public is asked once a person, not once a comment or photo: asked of
 every one, the two took 110 to 250 ms.
 
-**Against last month** (insights2, 2026-11-22; `supabase/designer_period.sql`,
+**Against last month** (insights2 and i2fix, 2026-11-22; `supabase/designer_period_2.sql`,
 `api/_designers.js` `periodOf`, `web/designs.js` `drawPeriod`). Totals say
 nothing of whether a model is gaining or fading; Printables shows a
 designer that, no LEGO® site did. `designer_period(designer)` gives each
@@ -452,33 +455,51 @@ database already kept, by the UTC day they were made.
 | Views | `model_opens`, as opens above; in all `model_stats.views` |
 | Builds finished | `model_builds`, a device once, the day it first reached the last step; in all `model_stats.builds` |
 | Likes | `model_likes` standing now, the day each was made; not the designer's own |
-| Saves | a person once, from the oldest of their Saved (`model_favourites`) and their lists (`model_collection_items`) still holding it; not the designer |
+| Saves | a person once, from the oldest of their Saved (`model_favourites`) and their lists (`model_collection_items`, private ones included) still holding it; not the designer; only how many, never who (web/privacy.html says so) |
 | Comments | `designer_said`'s rule, the day each was written |
 | Remixes | published remixes, the day each was shared |
 
-**The days, one rule everywhere:** UTC days; the last 30 are today so far
-and the 29 before it, the 30 before are the 30 days before those, and week
-w (0 the oldest) is the 7 days from today − 55 + 7w, the newest ending
-today. Each kind's change is up, down, new (none in the 30 before) or none
-(the same, nought included), with its number and per cent. Views are kept
-by the day only from 2026-10-19, so until 2026-12-17 their 30 before hold
-only the days since, and the panel says so.
+**The days, one rule everywhere:** whole UTC days, and today is not
+counted until it ends: the last 30 are the 30 ending yesterday, the 30
+before are the 30 days before those, and week w (0 the oldest) is the 7
+days from today − 56 + 7w, the newest ending yesterday (the first file ended
+them with today so far, so a steady model read as fading early in the day).
+Each number is counted only from the day its counting began (`from`): its
+kind's start (views from the first day a model that is not a test model has
+in `model_opens`, 2026-10-22 live, so no test row moves it; builds and
+comments 2026-10-19; likes, saves and remixes 2026-10-13) and the day the
+model was shared; the answer says the whole days of each window that is
+(`now_days`, `before_days`), and a week wholly before it is null. Only where
+both are 30 is a change said: up, down, none before (`new`) or no change
+(the same, nought included), with its number and per cent, every minus
+U+2212. Otherwise the number says "Counted since <day>", with no arrow or
+per cent, and its model is left out of Gaining and Fading, after the rest
+(the review found the first file's +480% for a steady 10 views a day: its
+30 before held 5 counted days). Until mid-December nothing is compared yet,
+and the panel says so.
 
 The panel: six tiles (the last 30 days large, the change, the 30 before and
 in all), two dropdowns (which kind, and the order: most in the last 30
 days, gaining the most, fading the most, most in all), the kind's weeks for
 all the models as the console's chart (`--viz-*`: one series, a hairline
-grid, a tip on hover and on focus, one Tab stop moved by the arrows) with
-its numbers as a table under As a table, What each number counts, and every
+grid, whole-number ticks, a tip on hover and on focus, one Tab stop moved
+by the arrows) from the first week counted, never a run of zeros, with its
+numbers as a table under As a table, What each number counts, and every
 model's six with its change and its weeks of the chosen kind as a line
-(`role="img"`, its numbers in its name). The same on the designer's own
-`/u/` page. The dry run (`tools/designer_period_try.sql`) holds all 3,300
-numbers of 50 made-up models against counts written plainly from the rows,
-comments against `designer_said` itself: 24.5 ms the middle of ten in SQL
-(26 KB of JSON); the owner with the most models (49) 8.4 ms.
+(`--ink-faint`, 3:1 and more in both themes; `role="img"`, its numbers in
+its name). The same on the designer's own `/u/` page. An error from
+`designer_period` leaves Insights drawn without it (orUnknown). The dry run
+(`tools/designer_period_try.sql`) holds all 3,900 numbers and days of 50
+made-up models against counts written plainly from the rows, comments
+against `designer_said` itself: 37.5 ms the middle of ten in SQL (45 KB of
+JSON); the owner with the most models (49) 13.8 ms.
 `tools/web/designer_period_flow.mjs` holds the same on a deployment, with
 the 1 s bar for 50 models; its comments are written through the API (the
-secret key has no grant on them), so they are all today's.
+secret key has no grant on them), so they are all today's. It writes views
+only on days `model_opens` already has, on test models, so no real
+designer's start moves, and its accounts are the run's own
+(`bw-flowrun-*`), deleted however it ends and swept by the next run when
+killed outright.
 ## Play: what moves, on its link and on its card
 
 `supabase/play.sql` (2026-10-19), the words in `src/assembly/playable.gd`

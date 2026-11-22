@@ -896,11 +896,13 @@ is on the page, `hidden`, for the script to show.
   then Saved · Sets · Insights, which only you see, each a `?tab=` of its
   own. Insights (`web/designs.js`, insights2) sets each number against the
   30 days before: the `.earned` tiles, the change as words in `--green`
-  (up), `--bad` (down), `--accent-ink` (new) or `--ink-faint` (none), two
+  (up), `--bad` (down), `--accent-ink` (none before) or `--ink-faint` (no
+  change, and "Counted since" where a window was counted under 30 days), two
   dropdowns in a `form` (which kind, and the order), the kind's weeks as
   the console's chart (`--viz-1` columns on a `--viz-grid`, a `.tip`, one
   Tab stop, its numbers in a `.table` under As a table), and each model's
-  weeks as a line in `--viz-muted` ending in a `--viz-1` dot (`role="img"`,
+  weeks as a line in `--ink-faint` (3:1 and more; `--viz-muted` is 2.6:1 on
+  white) ending in a `--viz-1` dot (`role="img"`,
   its numbers in its name). Edit profile is a `dialog` of the site's fields; signed in with no
   profile, the same form is in the page with its two fields, name and
   handle. `/settings` is one `.settings` panel: Profile, Appearance, Email,

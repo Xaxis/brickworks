@@ -2462,24 +2462,35 @@ plan with Claude as the client.
   its numbers `dd[data-kind]`, the last 30 days large and in all beneath,
   who built it with their photos). `document.documentElement.dataset.designs`
   is `ready`, `empty`, `not-yet`, `not-mine`, `signed-out` or `trouble`.
-  With `designer_period.sql` applied (`dataset.period` `ready`, else `none`
-  and the panel as before), `drawPeriod`: `.period-days`, six tiles
-  (`.mine-totals.period li[data-earned][data-now][data-before][data-ever]
-  [data-change]`, the change `.change.up|down|new|none`), the two dropdowns
-  (`#designs-kind`, `#designs-sort`: most, gaining, fading, ever), the chart
-  (`figure.period-chart[data-kind]`, 8 `.hit` columns, one Tab stop, its
-  table under As a table), What each number counts (`details.period-what`),
-  and each row's six (`dd[data-kind]` as the tiles) and its weeks
-  (`.design-weeks[data-kind][data-weeks]`, `role="img"`).
+  With `designer_period_2.sql` applied (`dataset.period` `ready`, else
+  `none` and the panel as before), `drawPeriod`: `.period-days` (the 30
+  whole UTC days ending yesterday), six tiles (`.mine-totals.period
+  li[data-earned][data-now][data-before][data-ever][data-from][data-now-days]
+  [data-before-days][data-change]`, the change `.change.up|down|new|none`,
+  or `.change.short` "Counted since <day>" with no arrow or per cent where
+  either window was counted for under 30 days), the two dropdowns
+  (`#designs-kind`, `#designs-sort`: most, gaining, fading, ever; Gaining and
+  Fading leave the short out, last, `.design-row[data-compared=false]`, and
+  say so in `.period-left`), the chart (`figure.period-chart[data-kind]
+  [data-first]`, a `.hit` column a week from the first week counted, one Tab
+  stop, its table under As a table), What each number counts
+  (`details.period-what`, with Counted since), and each row's six
+  (`dd[data-kind]` as the tiles) and its weeks from the first counted
+  (`.design-weeks[data-kind][data-weeks]`, `role="img"`, `--ink-faint`).
 - `designers browser flow` (`tools/web/designers_flow.mjs`): below.
-- `a designer's numbers against last month` (`supabase/designer_period.sql`,
-  insights2, 2026-11-22): `designer_period(designer)`, service role only,
-  each of `designer_mine`'s models' views, builds, likes, saves, comments
-  and remixes in the last 30 UTC days (today so far), the 30 before, 8
-  weeks (the newest ending today) and in all; `api/_designers.js`
+- `a designer's numbers against last month` (`supabase/designer_period_2.sql`,
+  which replaces `designer_period.sql`'s one function, i2fix, 2026-11-22):
+  `designer_period(designer)`, service role only, each of `designer_mine`'s
+  models' views, builds, likes, saves, comments and remixes in the last 30
+  whole UTC days (ending yesterday), the 30 before, 8 weeks (the newest
+  ending yesterday, null before counting began) and in all, each from the
+  day its counting began (`from`: the kind's start, `starts`, views' read
+  from real models only, and the day the model was shared) with the whole
+  days of each window (`now_days`, `before_days`); `api/_designers.js`
   `periodOf`, `PERIOD_KINDS`, `WEEKS` put it on `?op=designs` as `period`
-  (null before the file). docs/COMMUNITY.md "Against last month" says what
-  each counts. Replaces no function.
+  (null before the file, for the first file's answer, or on any error:
+  orUnknown). docs/COMMUNITY.md "Against last month" says what each counts.
+  `supabase/later.tsv` keeps designer_period.sql from going on again alone.
 - `designer period browser flow` (`tools/web/designer_period_flow.mjs`,
   preview check `[designer_period]`): below.
 - `profile browser flow` (`tools/web/profile_flow.mjs`, preview check
@@ -6288,39 +6299,52 @@ and sends `public, max-age=0`, the CDN answering it again); no page errors.
 39 checks, all ok, 2026-10-19, against the held relay with the live
 project (about 2 minutes). Never paired with `discovery` on a preview: each
 reads the week's test models, and one's castle took the other's pick.
-With designer_period.sql applied the panel names opens views; the flow
+With designer_period_2.sql applied the panel names opens views; the flow
 reads them as opens, the same count.
 
 **A designer's numbers against last month** (`a designer's numbers against
 last month`, `designer period browser flow`). The SQL first, rolled back on
-the live project (after designers.sql and replies.sql):
+the live project (designer_period_2.sql replaces designer_period.sql's one
+function, after it, designers.sql and replies.sql):
 
 ```sh
-PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designer_period.sql \
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designer_period_2.sql \
   --dry --try=tools/designer_period_try.sql --table=model_opens
 python3 tools/minitest.py tests/test_designer_period.py
 BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designer_period_flow.mjs --url=<preview> --out=shots/designer_period
 ```
 
-The dry run proves it when the days read today the UTC day, 29, 30 and 55;
-Ada's 50 models and none other (300 model-kinds); "numbers held" 3300 with
-0 wrong in the last 30, the 30 before, the weeks and in all; each kind's
-sums above nought; A001's likes 2 now and saves 1 and 1, A002's saves 2,
-A050's comments 0; Bob's only his own, no account null; the timing (24.5
-ms the middle of ten, 2026-11-22); the function the service role's alone;
-"rolled back, nothing kept". The tests: 7 passed. The flow proves it when
-it ends "designer_period: a designer's numbers against last month, for
-them alone (N checks, all ok)": ?op=designs within 1 s (the middle and the
-slowest of ten), every number against the rows read back (comments,
+The dry run proves it when the days read today the UTC day, 1, 30 (last),
+30 (before), 1 (they meet) and 56, "views_from from real models" true;
+views_from the same after test rows 65 days back (the review's R7) and
+moved only by a real model's row; Ada's 50 models and none other (300
+model-kinds); "numbers held" 3900 with 0 wrong in the last 30, the 30
+before, the weeks (null before counting began), in all, the first day and
+the days; each kind's sums above nought; A049 (shared today) 0 and 0 days
+and every week null, A050 (20 days ago) 20 and 0 days; Bob's only his own,
+no account null; the timing (37.5 ms the middle of ten for 50 models,
+2026-11-22); the function the service role's alone; "rolled back, nothing
+kept". The review's R6 and R10 (bench/results/i2fix-2026-11-22/
+review_days.sql) say "no percent, no arrow: Counted since" for steady
+views. The tests: 11 passed. The flow proves it when it ends
+"designer_period: a designer's numbers against last month, for them alone
+(N checks, all ok)": nobody's start moved (model_opens' first day and
+views_from read before and after), ?op=designs within 1 s (the middle and
+the slowest of ten), 3,900 numbers against the rows read back (comments,
 which only the API writes, as comments_on lists them to a visitor: Bob's 8
-and Cy's 4 today, not Ada's own, the hidden one, the reply under it or the
-removed one), the six tiles and the chart's table the API's, sorted by the
-change and by another kind, a choice of either within 16 ms, the newest
-week the UTC days in Kiritimati and Pago Pago, the chart's keys, German
-words, her /u/ page, Bob's own only, by her handle
-`{"mine":false}`, signed out 401, `private, no-store`; pictures
+and Cy's 4, not Ada's own, the hidden one, the reply under it or the
+removed one), a model shared today and one 20 days ago, the six tiles each
+its page's own answer's with "Counted since" where short, the chart from
+the first week counted with whole-number ticks, the newest week ending
+yesterday in Kiritimati and Pago Pago, the weeks' line at 3:1 or more,
+Gaining leaving out the short and saying so, with ten models' views made
+whole in the browser those ten first with their change, another kind, a
+choice of either within 16 ms, the chart's keys, German words, her /u/
+page, Bob's own only, by her handle `{"mine":false}`, signed out 401,
+`private, no-store`, and the accounts gone; pictures
 `<width>_<light|dark>*.png`. Before the file it ends "(before the file)",
-having checked only the panel as before and the timing.
+having checked only the panel as before and the timing. Its accounts are
+the run's own (bw-flowrun-*): a killed run's are swept by the next.
 **Play** (`play in a shared model`, `what moves in a model`, `what moves on
 a gallery card`, `share play probe`, `play browser flow`). The SQL first,
 in a rolled-back dry run on the live project (after discovery.sql), and
