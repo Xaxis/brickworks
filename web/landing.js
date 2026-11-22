@@ -3,11 +3,11 @@
 // At once, in the first screen (landing, 2026-11-22):
 // - #shelf, real models with their pictures: Top (Trending once a week
 //   has enough), New and the real sets in 3D, each a tab of one row of
-//   cards. Each tab's cards are in the page as served (tools/web/
-//   home_shelf.mjs, at the deploy): the one shown is asked again once
-//   the page is in, and each other the first time it is opened, and what
-//   changed goes in a card for a card, its picture decoded first, so
-//   nothing moves. A page with no cards in it (a checkout's own, or a
+//   cards. The shown tab's cards are in the page as served (tools/web/
+//   home_shelf.mjs, at the deploy), asked again once the page is in; each
+//   other tab is asked the first time it is opened, its skeletons holding
+//   the row; what changed goes in a card for a card, its picture decoded
+//   first, so nothing moves. A page with no cards in it (a checkout's own, or a
 //   deploy that could read nothing) fills the tab from the answer, its
 //   skeletons holding the row's place, or takes the shelf away when
 //   fewer than FEWEST could come;
@@ -140,8 +140,9 @@ function choose(tab, { focus = false } = {}) {
   const all = document.getElementById("shelf-all");
   if (all && panel.dataset.all) all.href = `${langAt()}${panel.dataset.all}`;
   if (focus) tab.focus();
-  // A tab opened with only its markers in it (a checkout's own page): its
-  // skeletons hold the row until its cards come.
+  // A tab opened with only its markers in it (every tab but the one shown
+  // first, and all of a checkout's own page): its skeletons hold the row
+  // until its cards come.
   if (!panel.querySelector(".model, .skeleton-card")) {
     panel.innerHTML = Array.from({ length: 6 }, () => '<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div>'
       + '<div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>').join("");

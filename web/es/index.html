@@ -103,9 +103,9 @@
 @media (width < 900px) { .home-challenge { order: 3; } .home-hero { display: contents; } .home-top > .wrap { display: flex; flex-direction: column; gap: var(--s-5); } }
 
 /* The shelf: its tabs and See all over one row of cards that scrolls in
-   itself (site.css .models.scroller). Each tab's cards are in the page as
-   it is served (tools/web/home_shelf.mjs, at the deploy); the shown one's
-   first pictures asked for at once. */
+   itself (site.css .models.scroller). The shown tab's cards are in the
+   page as it is served (tools/web/home_shelf.mjs, at the deploy), its
+   first picture asked for at once. */
 .shelf { margin-top: var(--s-6); }
 @media (width < 900px) { .shelf { margin-top: 0; } }
 .shelf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-3); border-bottom: 1px solid var(--line); }
@@ -268,13 +268,14 @@
 			</div>
 			<!-- The shelf: Top (Trending first once a week has enough), New and
 			     the real sets in 3D, each a tab of one row of cards that
-			     scrolls in itself. Each tab's cards are written into the page
-			     at the deploy (tools/web/home_shelf.mjs: the live gallery's, or
-			     web/_home.json's when it cannot be read), each picture copied
-			     beside the page, and this week's pick first on the first tab;
-			     web/landing.js asks each list again once the page is in and
-			     puts in what changed, a card for a card, so nothing moves. The
-			     skeletons are what a checkout's own page shows until then. -->
+			     scrolls in itself. The shown tab's cards are written into the
+			     page at the deploy (tools/web/home_shelf.mjs: the live
+			     gallery's, or web/_home.json's when it cannot be read), each
+			     picture copied beside the page, this week's pick first;
+			     web/landing.js asks it again once the page is in, and each
+			     other tab when first opened, and puts in what changed, a card
+			     for a card, so nothing moves. The skeletons are what a
+			     checkout's own page shows until then. -->
 			<div class="shelf" id="shelf" data-shelf="skeleton">
 				<div class="shelf-head">
 					<div class="tabs" role="tablist" aria-label="Modelos para abrir">

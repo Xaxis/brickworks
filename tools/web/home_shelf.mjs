@@ -161,8 +161,11 @@ export function filled(page, code, plan, copied) {
   for (const tab of TABS) {
     const marker = new RegExp(`<!--shelf:${tab}-->[\\s\\S]*?<!--/shelf:${tab}-->`);
     if (!marker.test(text)) throw new Error(`the shelf's ${tab} has no <!--shelf:${tab}--> markers`);
-    const cards = plan.cards[tab] || [];
+    // Only the tab shown: the others are the first screen's only once
+    // opened, and web/landing.js fills each then. Written in, they were a
+    // third of the page (21 KB of 66), parsed before a phone's first paint.
     // A tab with nothing to show keeps what it holds (the top's skeletons).
+    const cards = tab === plan.first ? plan.cards[tab] || [] : [];
     if (!cards.length) continue;
     const html = inLanguage(code, words, () => cards.map((m, i) => {
       const shownFirst = tab === plan.first;
@@ -191,7 +194,7 @@ export function filled(page, code, plan, copied) {
   }
   // The marks nearly every card carries are not said (web/card.js
   // quietPage, which the gallery's cards run as they are drawn).
-  const quiet = quietMarks(Object.values(plan.cards).flat().map(marksOf));
+  const quiet = quietMarks((plan.cards[plan.first] || []).map(marksOf));
   if (quiet) text = text.replace(/<body>/, `<body data-quiet="${quiet}">`);
   const c = plan.challenge;
   if (c) {
@@ -230,7 +233,7 @@ async function main() {
     const keep = Object.fromEntries(wanted.filter((path) => answers[path]).map((path) => [path, kept(path, answers[path])]));
     writeFileSync(SNAPSHOT, `${JSON.stringify({ at: new Date().toISOString().slice(0, 10), answers: keep }, null, 1)}\n`);
   }
-  const all = Object.values(plan.cards).flat();
+  const all = plan.cards[plan.first] || [];
   const copied = args.offline ? new Map() : await copyPictures(all, join(out, "img/home"));
   let pages = 0;
   for (const code of LANGS) {

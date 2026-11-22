@@ -59,8 +59,9 @@ another", 2026-11-02).
   how few; a tab shows only with four models with pictures; the sets tab
   shows depth that is real today; the talk shows only with talk.
 - **In the HTML as served.** `tools/deploy.sh` runs `tools/web/home_shelf.mjs`
-  after `tools/site.py`: each tab's cards and the challenge are written
-  into the page and each language's copy from brickworks.diy's own answers
+  after `tools/site.py`: the shown tab's cards and the challenge are
+  written into the page and each language's copy (the other tabs, a
+  third of the page if written too, come when first opened) from brickworks.diy's own answers
   (or `web/_home.json`, the last kept with `--save`), the cards' pictures
   copied beside the page (`/img/home/`, the CDN, a day's cache, never the
   bucket). A visitor sees models before any script runs.

@@ -69,6 +69,8 @@ def test_todays_gallery_leads_with_the_pick():
     assert plan["first"] == "top" and "trending" not in plan["tabs"]
     top = cards(page, "top")
     assert len(top) == 10 and top[0] == pick and top.count(pick) == 1
+    # Only the tab shown is written in: the others fill when first opened.
+    assert cards(page, "new") == [] and cards(page, "sets") == []
     assert page.count('data-pick="yes"') == 1
     assert re.search(r'id="tab-trending"[^>]* hidden>', page) and re.search(r'id="tab-top" aria-selected="true"', page)
     assert "skeleton-card" not in page and 'data-shelf="served"' in page

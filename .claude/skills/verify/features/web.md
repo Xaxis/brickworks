@@ -2804,7 +2804,8 @@ plan with Claude as the client.
   answer was live or kept. Never fails a deploy for an answer it could not
   read. `tests/test_home_shelf.py` drives its `decide` and `filled` on the
   cases a deploy meets: nothing read (the skeletons stay), today's gallery
-  (the pick first, ten cards, Trending hidden), a busy week in German
+  (the pick first, ten cards, Trending hidden, only the shown tab
+  written), a busy week in German
   (Trending first, See all to the week), a test challenge (never written)
   and an open one with its days in French.
 - `achievements on a profile` (`api/people.js` `achievementsOf`, `levelsOf`,
@@ -4893,8 +4894,9 @@ plan with Claude as the client.
   The cards are in the page as served: `tools/deploy.sh` runs
   `tools/web/home_shelf.mjs` after `tools/site.py`, which asks each
   panel's `data-ask` and `op=shelves` of brickworks.diy (else reads
-  `web/_home.json`, kept by `--save`), writes 10 cards a tab between the
-  `<!--shelf:NAME-->` markers in each language (from its copy's
+  `web/_home.json`, kept by `--save`), writes the shown tab's 10 cards
+  between its `<!--shelf:NAME-->` markers (the other tabs fill when first
+  opened) in each language (from its copy's
   `#site-words`), copies their pictures to `/img/home/` (the CDN, a day's
   cache, the picture's version in its name; `data-from` keeps its own
   address) and sets `data-shelf="served"`. `landing.js` asks the shown
