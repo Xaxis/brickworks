@@ -406,6 +406,10 @@ func _process(_delta: float) -> void:
 		for held: Variant in waited:
 			if is_instance_valid(held) and held in _open:
 				_place(held)
+	# Asleep with nothing waiting for a finger and no field typed in (Wake):
+	# a touch, a focus and the page's resize as the keyboard comes wake it.
+	if _after_lift.is_empty() and keyboard == 0.0 and (not OS.has_feature("web") or typing() == null):
+		Wake.rest(self)
 	if not OS.has_feature("web") or Time.get_ticks_msec() < _look_at:
 		return
 	_look_at = Time.get_ticks_msec() + 250

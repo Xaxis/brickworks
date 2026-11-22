@@ -51,7 +51,7 @@ var base_url: String = ""
 ## preview deployment (src/dev/together_probe.gd).
 var extra_headers: PackedStringArray = PackedStringArray()
 
-## In a session now.
+## In a session now (asleep out of one, Wake: a session begun wakes it).
 var live: bool = false
 ## This side started it.
 var owns: bool = false
@@ -284,6 +284,11 @@ func _process(delta: float) -> void:
 	if not live:
 		if store != null and store.paced_always:
 			store.paced_always = false
+		# Out of a session, asleep at rest (Wake) once the page has been
+		# told since the last thing that happened: a check's question
+		# (brickworksTogetherAsk) and a session begun wake it.
+		if not _answering and (not OS.has_feature("web") or not Wake.owed(_page_at)):
+			Wake.rest(self)
 		return
 	store.paced_always = true
 	_note_worst("frame_ms", delta * 1000.0)
@@ -421,6 +426,7 @@ func start() -> String:
 	# parts somebody else may have changed since.
 	builder.forget_history()
 	live = true
+	set_process(true)
 	_heard = _model_now()
 	ended_words = ""
 	changed.emit()
@@ -470,6 +476,7 @@ func check_alone(others: Array) -> void:
 		_offline = true
 		_token = "probe"
 		live = true
+		set_process(true)
 		_heard = _model_now()
 	people = [{"who": "00000000", "name": "You", "me": true, "here": true, "owner": true}] + others
 	_show_presence()
@@ -644,6 +651,7 @@ func join(address: String, rejoining: bool = false) -> String:
 	chat_words = str(body.get("chat", ""))
 	_keep_place()
 	live = true
+	set_process(true)
 	_heard = _model_now()
 	ended_words = ""
 	changed.emit()
@@ -3322,6 +3330,8 @@ func _ask(op: String, body: Dictionary, timeout: float = 20.0) -> Array:
 		http.queue_free()
 		return [0, {}]
 	var done: Array = await http.request_completed
+	# A peer's edit, or who is in, can change what any panel shows (Wake).
+	Wake.all("together")
 	http.queue_free()
 	return [int(done[1]) if int(done[0]) == HTTPRequest.RESULT_SUCCESS else 0,
 		_parsed((done[3] as PackedByteArray).get_string_from_utf8())]
@@ -3404,12 +3414,14 @@ func _page_headers(session: String) -> Dictionary:
 
 
 func _on_page_answer(args: Array) -> void:
+	Wake.all("together")
 	_page_answers[int(args[0])] = [int(args[1]), str(args[2])]
 	_page_answered.emit(int(args[0]))
 
 
 ## A line of the page's poll, which waits on: who is in it, now.
 func _on_page_heard(args: Array) -> void:
+	Wake.all("together")
 	if live and int(args[0]) == _page_poll:
 		_heard_people(_parsed(str(args[1])), _unix_ms())
 

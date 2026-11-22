@@ -11,6 +11,17 @@
 //                               model's last 30 days of opens, builds
 //                               finished, remixes and comments, the same
 //                               since it was shared, and who built it.
+//                               With supabase/designer_period_2.sql (insights2
+//                               and i2fix, 2026-11-22), each model's `period`
+//                               too: its views, builds, likes, saves, comments
+//                               and remixes in the last 30 whole UTC days
+//                               (ending yesterday), the 30 before, each of
+//                               the last 8 weeks and in all, from which day
+//                               each was counted and the whole days of each
+//                               window counted; and `period` the days and
+//                               every model's added up. Null before the file,
+//                               or when it cannot be read: Insights is drawn
+//                               without it, never failed.
 //                               &handle=X answers {mine: false} and nothing
 //                               else unless X is the caller's own profile,
 //                               which is how /u/X asks without showing
@@ -20,7 +31,7 @@
 // proves: there is no way to ask for anybody else's numbers.
 
 import { bearer, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, orUnknown } from "./_db.js";
 import { photoUrls } from "./_card.js";
 import { Unacceptable } from "./_directory.js";
 
@@ -75,6 +86,60 @@ function mineOf(origin, row) {
 
 const KINDS = ["opens", "builds", "remixes", "comments"];
 
+/// What designer_period counts, each over the same UTC days
+/// (supabase/designer_period_2.sql says what each is).
+export const PERIOD_KINDS = ["views", "builds", "likes", "saves", "comments", "remixes"];
+/// How many weeks it gives, the oldest first and the newest ending yesterday.
+export const WEEKS = 8;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const dayOf = (value) => (DAY.test(String(value ?? "")) ? String(value) : null);
+
+/// One model's counts of one kind, as numbers only: a week wholly before it
+/// was counted is null, never nought; from which day it was counted, and the
+/// whole days of each window that is.
+function countsOf(said) {
+  const weeks = Array.isArray(said?.weeks) ? said.weeks.slice(0, WEEKS).map((value) => (value === null ? null : n(value))) : [];
+  while (weeks.length < WEEKS) weeks.unshift(null);
+  return { now: n(said?.now), before: n(said?.before), ever: n(said?.ever), weeks, from: dayOf(said?.from),
+    now_days: n(said?.now_days), before_days: n(said?.before_days) };
+}
+
+/// designer_period's answer for the models designer_mine listed: each
+/// model's counts by kind, and the days; every model's added up, counted
+/// from the earliest of their first days and for the most days any of them
+/// was. Null when it said nothing, or said it as the first file did (no
+/// days counted, `til`): never a change set against days nobody counted.
+function periodOf(said, models) {
+  if (!said || typeof said !== "object" || !dayOf(said.today) || !dayOf(said.til)) return null;
+  const all = Object.fromEntries(PERIOD_KINDS.map((kind) => [kind,
+    { now: 0, before: 0, ever: 0, weeks: Array(WEEKS).fill(null), from: null, now_days: 0, before_days: 0 }]));
+  const each = {};
+  for (const model of models) {
+    const row = said.models?.[model.id];
+    each[model.id] = Object.fromEntries(PERIOD_KINDS.map((kind) => [kind, countsOf(row?.[kind])]));
+    for (const kind of PERIOD_KINDS) {
+      const one = each[model.id][kind];
+      const sum = all[kind];
+      sum.now += one.now;
+      sum.before += one.before;
+      sum.ever += one.ever;
+      one.weeks.forEach((value, at) => { if (value !== null) sum.weeks[at] = (sum.weeks[at] || 0) + value; });
+      if (one.from && (!sum.from || one.from < sum.from)) sum.from = one.from;
+      sum.now_days = Math.max(sum.now_days, one.now_days);
+      sum.before_days = Math.max(sum.before_days, one.before_days);
+    }
+  }
+  return { each, period: { today: dayOf(said.today), til: dayOf(said.til), days: n(said.days) || DAYS,
+    now_from: dayOf(said.now_from), before_from: dayOf(said.before_from), before_til: dayOf(said.before_til),
+    weeks_from: dayOf(said.weeks_from), views_from: dayOf(said.views_from),
+    starts: Object.fromEntries(PERIOD_KINDS.map((kind) => [kind, dayOf(said.starts?.[kind])])), weeks: WEEKS, totals: all } };
+}
+
+/// designer_period for [account]; null before the file is applied, or when
+/// it cannot be read (orUnknown): Insights is then drawn without it.
+const periodRead = (account) => orUnknown("designers: designer_period",
+  db("rpc/designer_period", { method: "POST", body: { designer: account } }));
+
 /// GET ?op=designs: the caller's own numbers, and nobody else's.
 export async function designs(request, response, { origin }) {
   response.setHeader("Cache-Control", MINE_CACHE);
@@ -84,19 +149,25 @@ export async function designs(request, response, { origin }) {
   const person = (await db(`people?account=eq.${account}&select=handle,name`))[0] || null;
   // Asked from /u/X: only X's own owner is answered with anything.
   if (asked !== null && person?.handle !== asked) return response.status(200).json({ mine: false });
-  let said;
-  try {
-    said = await db("rpc/designer_mine", { method: "POST", body: { designer: account, days: DAYS } });
-  } catch (trouble) {
-    if (!missing(trouble)) throw trouble;
+  // Both at once: the period's numbers beside the models and their photos.
+  const [mine, period] = await Promise.allSettled([
+    db("rpc/designer_mine", { method: "POST", body: { designer: account, days: DAYS } }),
+    periodRead(account),
+  ]);
+  if (mine.status === "rejected") {
+    if (!missing(mine.reason)) throw mine.reason;
     return response.status(200).json({ mine: true, ready: false, handle: person?.handle ?? null });
   }
+  const said = mine.value;
   const models = (said?.models || []).filter((row) => ID.test(String(row?.id || ""))).map((row) => mineOf(origin, row));
   const totals = {};
   for (const kind of KINDS) {
     totals[kind] = models.reduce((sum, one) => sum + one[kind], 0);
     totals[`${kind}_ever`] = models.reduce((sum, one) => sum + one[`${kind}_ever`], 0);
   }
+  const counted = periodOf(period.value, models);
+  if (counted) for (const one of models) one.period = counted.each[one.id];
   return response.status(200).json({ mine: true, ready: true, handle: person?.handle ?? null,
-    days: n(said?.days) || DAYS, since: said?.since ?? null, counted_from: said?.counted_from ?? null, totals, models });
+    days: n(said?.days) || DAYS, since: said?.since ?? null, counted_from: said?.counted_from ?? null, totals,
+    period: counted ? counted.period : null, models });
 }

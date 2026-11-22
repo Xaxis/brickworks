@@ -48,6 +48,9 @@
   bar's colour in each theme, and web/theme.js, which sets the theme the
   person chose before the page is drawn, so it never flashes the other.
   A file, not inline: the server's pages allow no inline script.
+  Then what installs the site (homescreen, 2026-11-22): its manifest,
+  and the icon and name an iPhone's Add to Home Screen takes, which
+  reads no manifest's icons.
 
   The theme is chosen in the footer, on Menu (a phone's) and in Settings:
   System, Light or Dark, three buttons in a row (.segmented), the chosen
@@ -62,6 +65,9 @@
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="apple-mobile-web-app-title" content="Brickworks">
 <header class="site-head">
 	<div class="wrap bar">
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>

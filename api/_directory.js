@@ -577,7 +577,10 @@ const chromes = new Map();
 // that sets the theme the person chose before the page is drawn.
 const THEME_HEAD = '<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">\n'
   + '<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">\n'
-  + '<script src="/theme.js"></script>';
+  + '<script src="/theme.js"></script>\n'
+  + '<link rel="manifest" href="/site.webmanifest">\n'
+  + '<link rel="apple-touch-icon" href="/favicon-180.png">\n'
+  + '<meta name="apple-mobile-web-app-title" content="Brickworks">';
 
 /// The languages the site's pages are in besides English (web/theme.js
 /// CODES, tools/site_lang.py LANGUAGES).
@@ -604,7 +607,8 @@ export function siteChrome(code = "en") {
   if (!english && !page) return siteChrome();
   const header = (page.match(/<header class="site-head">[\s\S]*?<\/header>/) || [""])[0];
   const footer = (page.match(/<footer class="site-foot">[\s\S]*?<\/footer>/) || [""])[0];
-  const head = (page.match(/(?:<meta name="theme-color"[^>]*>\n)+<script src="\/theme\.js"><\/script>/) || [""])[0];
+  // With what installs the site after it (homescreen: tools/site_shell.py HEAD).
+  const head = (page.match(/(?:<meta name="theme-color"[^>]*>\n)+<script src="\/theme\.js"><\/script>(?:\n<link rel="manifest"[^>]*>)?(?:\n<link rel="apple-touch-icon"[^>]*>)?(?:\n<meta name="apple-mobile-web-app-title"[^>]*>)?/) || [""])[0];
   const plain = (html) => html.replace(/\s+aria-current="page"/g, "");
   // A copy's footer says the notice in its language, the mark with it.
   const noticed = footer && (english ? footer.includes(NOTICE.slice(0, 40)) : footer.includes("LEGO®"));

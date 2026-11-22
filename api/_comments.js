@@ -290,7 +290,9 @@ export async function listComments(request, response) {
 
 /// A new comment. Its model's owner, if they asked to be emailed and no
 /// email has gone to them today, is told now (sendCommentDigests); a
-/// test's is a dry run, said back as told.
+/// test's is a dry run, said back as told. Whoever hears of it on a device is
+/// pushed it by brickworks.diy, which the database knocks on as it is written
+/// (supabase/push.sql, api/_push.js): never by the deployment it was made on.
 export async function addComment(request, response, { origin }) {
   response.setHeader("Cache-Control", "no-store");
   const who = await account(request);

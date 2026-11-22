@@ -175,7 +175,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "gauge", "globe", "library",
-  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down"];
+  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down", "pause", "play"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {

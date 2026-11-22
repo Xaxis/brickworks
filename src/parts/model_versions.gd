@@ -74,10 +74,11 @@ static func folder(stem: String) -> String:
 	return ROOT + stem + "/"
 
 
-## Keep [param text], just saved as [param stem], as its newest version.
-## The version's path, or "" when nothing was written: the same as the
-## newest already, or not writable.
-static func keep(stem: String, text: String) -> String:
+## Keep [param text], just saved as [param stem], as its newest version:
+## the file's own [param bytes] where given (an unedited save's, a Latin-1
+## file's too), else the text's. The version's path, or "" when nothing was
+## written: the same as the newest already, or not writable.
+static func keep(stem: String, text: String, bytes: PackedByteArray = PackedByteArray()) -> String:
 	if stem.is_empty():
 		return ""
 	var had: Array[Version] = of(stem)
@@ -86,7 +87,8 @@ static func keep(stem: String, text: String) -> String:
 	DirAccess.make_dir_recursive_absolute(folder(stem))
 	var stamp: int = maxi(int(Time.get_unix_time_from_system() * 1000.0), _last_stamp + 1)
 	_last_stamp = stamp
-	var packed: PackedByteArray = text.to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+	var packed: PackedByteArray = (bytes if not bytes.is_empty() else text.to_utf8_buffer()).compress(
+		FileAccess.COMPRESSION_GZIP)
 	var path: String = folder(stem) + "%013d-%d-%d.ldr.gz" % [stamp, ModelStore.count_in(text),
 		packed.size()]
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)

@@ -151,6 +151,18 @@ declare -A CMD=(
   # Achievements tab, read once opened. Throwaway accounts, deleted after;
   # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # The site on a home screen, offline, and this device's notifications
+  # (homescreen): two deploys on one address served here, the next load the
+  # new one's; installable at 390 and 1280; the offline page with the
+  # network cut, in the address's language; /app, /b/ and /e/ never the
+  # worker's (a request log); the offer from a second visit, No thanks
+  # kept; a first visit waiting on nothing of it; Bob's comment on Ada's
+  # model shown on her device within 60 s (knocked as Ada: a preview takes
+  # only a check's own account), nothing once off, her device gone at the
+  # header's Sign out, Turn off on every device, her sign-in ending and her
+  # account deleted; Settings and the offline page at 390, 768 and
+  # 1280 in both themes. Throwaway accounts, deleted after.
+  [homescreen]="tools/web/homescreen_flow.mjs --url=$P --out=$S/${TAG}_homescreen"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
   # nobody shows Latest on Brickworks (the newest models as the gallery's
   # cards, every picture drawn) and designers to follow by Top builds; a
@@ -173,6 +185,13 @@ declare -A CMD=(
   # them alone and never cached: API routes only, with the bypass
   # (supabase/designers.sql).
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
+  # A designer's numbers against last month (insights2, i2fix): 50 test
+  # models with rows dated by hand (none that moves a real designer's
+  # numbers), ?op=designs within 1 s, its 3,900 numbers and days against the
+  # rows read back, Insights at 1280, 768 and 390 in both themes and German,
+  # no change against days nobody counted, and nobody else's
+  # (supabase/designer_period_2.sql; "(before the file)" until it is applied).
+  [designer_period]="tools/web/designer_period_flow.mjs --url=$P --out=$S/${TAG}_designer_period"
   # The monthly challenge: set on /admin?tests=1 (a test one, which no
   # visitor sees), entered from a model's page with each broken rule named,
   # voted in its two groups, ended and won, the winners told to a voter in
@@ -292,6 +311,14 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # The model turns in its link's preview (unit turntable): a throwaway
+  # designer's first visit to its page records its clip (/m/<id>.mp4, or
+  # .webm where Chromium cannot record MP4), 4 s or less, at most 1.5 MB,
+  # a seamless loop; Discordbot, Slackbot and Twitterbot get og:video and a
+  # twitter:card player, and the clip with 200; the embed with ?autoplay=1
+  # plays it muted with Pause and Play, at 390, 768 and 1280, light and
+  # dark; the clip's refusals; unpublished, its file gone from storage.
+  [turntable]="tools/web/turntable_flow.mjs --url=$P --out=$S/${TAG}_turntable"
   # In your room (APP_UX5 #13, arview), the deployment's first model: not
   # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
   # Quick Look stub) and an iPad offered, nothing of it asked before the
@@ -394,6 +421,15 @@ declare -A CMD=(
   # its own run is local, with a throwaway owner (the flow's head).
   # Throwaway accounts, deleted after.
   [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
+  # Share a model you made (bringyours): /share-model and the gallery's
+  # Share yours. Files that are no model refused in words with nothing sent,
+  # an LDD file's one tap to the app, four BrickLink Studio files read in
+  # the page; a 353-part .mpd at 1280 (60 s) and its Studio .io at 390
+  # (120 s) chosen to their own pages with one tap, each with the server's
+  # count, the file's steps, version 1 and its three pictures; signed out
+  # asked to sign in, under 13 refused, nothing kept. Throwaway accounts,
+  # deleted after with what they shared.
+  [share_model]="tools/web/share_model_flow.mjs --url=$P --out=$S/${TAG}_share_model"
   # Report a bug (bugreport): window.brickworksReportBug over the page at 390
   # and 1280, the page's picture drawn, a box marked on it and found in the
   # kept picture where it was drawn (within 2 px), Your reports listing each
@@ -481,6 +517,13 @@ declare -A CMD=(
   # which the answer says). The account deleted after, and its row of
   # profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
+  # People and lists in search (seo2, docs/SOCIAL.md rank 9): every /u/ and
+  # /c/ page the sitemap lists, in four languages, each tab and next page,
+  # carries one ProfilePage (a Person, its numbers as the page shows them)
+  # or CollectionPage (hasPart, a card each), read against schema.org's own
+  # vocabulary; the Person's image answers and robots.txt lets a crawler
+  # fetch every address in it. Read-only, about 20 s.
+  [seo]="tools/web/seo_check.mjs --url=$P"
   # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
   # set all the old account page could (her name, words, links, banner and
   # pins, a favourite, a collection, her emails, whom she follows shown)

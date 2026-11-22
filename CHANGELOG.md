@@ -15,6 +15,14 @@ whole cycle.
 
 ### Added
 
+- **A model's link turns where it is pasted.** The first time you visit
+  your shared model's page, your browser records the model turning once
+  round, four seconds and a seamless loop, and its link carries it: Discord,
+  Slack and the other sites that play a link's video play it where they
+  showed a still picture (X keeps its large picture), and the embed plays
+  it too. It is recorded while the page is open and shown, without slowing
+  the page. Republish, and your next visit records the new version.
+  Unpublish or delete your account, and the clip goes with it.
 - **Own, Want and your lists, on the website.** Every set in the library,
   every set's page and every model in the gallery has one control: **Own**
   (a set) or **Save** (a model) at a tap, with **Undo**, and a chevron for
