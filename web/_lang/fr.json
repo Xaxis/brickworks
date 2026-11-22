@@ -2097,6 +2097,8 @@
   "Reset the view": "Réinitialiser la vue",
   "Full screen": "Plein écran",
   "Back to the picture": "Retour à l’image",
+  "Pause": "Mettre en pause",
+  "Play": "Lire",
   "Open in the app": "Ouvrir dans l’application",
   "The 3D view could not load: {why}. The picture is still here.": "La vue 3D n’a pas pu se charger : {why}. L’image est toujours là.",
   "Try again": "Réessayer",

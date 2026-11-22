@@ -3539,6 +3539,14 @@
       "tests": []
     },
     {
+      "id": "cli:turntable browser flow",
+      "kind": "cli",
+      "entry": "tools/web/turntable_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/turntable_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh turntable: a throwaway designer's visit records the clip in a worker from version 1's own scene, 4 s or less, 1.5 MB or less, a seamless loop; two cold bytes=0- asks, the second the CDN's 206 (x-vercel-cache HIT); Discordbot, Slackbot and Twitterbot read og:video and the player's tags beside summary_large_image; the embed plays it at 390, 768 and 1280 light and dark; republished within the CDN's minute, version 2 recorded from its own scene; the clip's refusals; unpublished, its file gone from storage and its address 404. Needs supabase/model_clips.sql)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:twist probe",
       "kind": "cli",
       "entry": "src/dev/twist_probe.gd",
@@ -7476,7 +7484,8 @@
       "area": "web",
       "tests": [
         "tests/test_model_page.py",
-        "tests/test_share_unknowns.py"
+        "tests/test_share_unknowns.py",
+        "tests/test_turntable_page.py"
       ]
     },
     {
@@ -7576,6 +7585,14 @@
       "kind": "ui",
       "entry": "web/room.js",
       "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the model turning in its link's preview",
+      "kind": "ui",
+      "entry": "web/turntable-clip.js",
+      "reach": "the designer's own visit to https://brickworks.diy/m/<id> records its clip once per version, in a worker off the page's thread (web/model-page.js clipOwn, <html data-clip> and data-clip-of; tools/viewer/clip_worker.js built as web/turntable-worker.js from that version's own scene; WebCodecs, an MP4 of H.264 or a WebM of VP9/VP8); POST /api/share?op=clip {version, at, clip} reads it (api/_clip.js readClip: its length from its frames' own times) and keeps it in shared-clips (supabase/model_clips.sql); /m/<id>.mp4 or .webm?v=N&c=K serves it whole, the CDN answering ranges; /m/<id>'s head names it in og:video and the player's tags beside X's summary_large_image card; /m/<id>/embed?autoplay=1 plays it muted with Pause and Play (web/embed.js)",
       "area": "web",
       "tests": []
     },

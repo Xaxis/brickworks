@@ -251,14 +251,16 @@ w.sharedModels = [{ id: "ModelAaa01", owner: ADA.sub }, { id: "ModelBbb02", owne
   { id: "ModelCcc03", owner: "someone-else" }];
 w.modelFiles = { "shared-models": ["ModelAaa01.mpd", "ModelAaa01.v1.mpd", "ModelAaa01.v2.mpd", "ModelAaa01.png",
   "ModelAaa01.cutout.png", "ModelAaa01.v1.png", "ModelBbb02.mpd", "ModelCcc03.mpd", "XModelAaa01.mpd"],
-  "shared-thumbs": ["ModelAaa01.webp", "ModelBbb02.webp", "ModelCcc03.webp"] };
+  "shared-thumbs": ["ModelAaa01.webp", "ModelBbb02.webp", "ModelCcc03.webp"],
+  "shared-clips": ["ModelAaa01.mp4", "ModelBbb02.webm", "ModelCcc03.webm"] };
 const said = await del(ADA);
 return { said, left: w.modelFiles, deleted: w.deleted };
 """, billing="")
     if got is None:
         return
     assert got["said"] == DELETED
-    assert got["left"] == {"shared-models": ["ModelCcc03.mpd", "XModelAaa01.mpd"], "shared-thumbs": ["ModelCcc03.webp"]}
+    assert got["left"] == {"shared-models": ["ModelCcc03.mpd", "XModelAaa01.mpd"], "shared-thumbs": ["ModelCcc03.webp"],
+                           "shared-clips": ["ModelCcc03.webm"]}
     assert got["deleted"] == ["7d6c1a2e-0000-4000-8000-00000000ada0"]
 
 

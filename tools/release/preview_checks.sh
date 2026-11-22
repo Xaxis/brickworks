@@ -299,6 +299,14 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # The model turns in its link's preview (unit turntable): a throwaway
+  # designer's first visit to its page records its clip (/m/<id>.mp4, or
+  # .webm where Chromium cannot record MP4), 4 s or less, at most 1.5 MB,
+  # a seamless loop; Discordbot, Slackbot and Twitterbot get og:video and a
+  # twitter:card player, and the clip with 200; the embed with ?autoplay=1
+  # plays it muted with Pause and Play, at 390, 768 and 1280, light and
+  # dark; the clip's refusals; unpublished, its file gone from storage.
+  [turntable]="tools/web/turntable_flow.mjs --url=$P --out=$S/${TAG}_turntable"
   # In your room (APP_UX5 #13, arview), the deployment's first model: not
   # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
   # Quick Look stub) and an iPad offered, nothing of it asked before the

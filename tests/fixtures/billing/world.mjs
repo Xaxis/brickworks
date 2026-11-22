@@ -239,7 +239,7 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
       const owner = /^eq\.(.+)$/.exec(url.searchParams.get("owner") || "")?.[1];
       return json(200, self.sharedModels.filter((one) => one.owner === owner).map((one) => ({ id: one.id })));
     }
-    const modelBucket = /^\/storage\/v1\/object\/(?:list\/)?(shared-models|shared-thumbs)$/.exec(url.pathname);
+    const modelBucket = /^\/storage\/v1\/object\/(?:list\/)?(shared-models|shared-thumbs|shared-clips)$/.exec(url.pathname);
     if (self.modelFiles && modelBucket) {
       const names = self.modelFiles[modelBucket[1]] || [];
       if (url.pathname.includes("/list/")) {
