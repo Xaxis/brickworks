@@ -6398,8 +6398,8 @@
     {
       "kind": "ui",
       "label": "the latest in talk on the home page",
-      "entry": "web/talk-strip.js",
-      "reach": "https://brickworks.diy/ (#talk-latest, filled from GET /api/people?op=talk_latest&n=4&html=1)",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/ (#talk-latest under the shelf, filled from GET /api/people?op=talk_latest&n=4&html=1, shown with three threads or more)",
       "area": "web"
     },
     {

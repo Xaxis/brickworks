@@ -216,7 +216,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "api/_talk.js": ("cleanPost", "cleanTitle", "bodyHtml", "boardSaid", "whenSaid", "threadRowHtml", "embedsHtml",
                              "postHtml", "postsHtml", "talkingHtml", "boardsHtml", "threadSchema", "rssOf", "listPageHtml",
                              "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell"),
-            "web/talk.js": (), "web/talk-strip.js": ()}
+            "web/talk.js": ()}
 # And what the site is put together with says on a page (tools/site.py: the
 # changelog's heads, links and dates), each say("...") of it.
 WRITTEN = ("tools/site.py",)

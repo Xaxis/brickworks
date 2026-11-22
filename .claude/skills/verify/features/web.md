@@ -3029,11 +3029,15 @@ plan with Claude as the client.
   --try=tools/talk_try.sql --table=talk_threads` (grants, row security,
   anon, another account and a banned one refused; the log is
   bench/results/talk-2026-11-22/talk_dry.log).
-- `the latest in talk on the home page` (`web/talk-strip.js`, the
-  homepage's `#talk-latest`): filled as it nears the screen from
-  `?op=talk_latest&n=4&html=1`, the rows Talk draws; its words and Start a
-  thread stand if it never comes. The header, Menu and the footer's
-  Community link `/talk` (`web/_shell.html`).
+- `the latest in talk on the home page` (`web/landing.js` `talk()`, the
+  homepage's `#talk-latest` under the shelf): asked as the section under
+  it nears the screen, from `?op=talk_latest&n=4&html=1` (`&tests=1` where
+  the address has it), the rows Talk draws; shown only with three threads
+  or more, and only while its place is under the window, so nothing in
+  view moves; else never drawn. `data-talk` on `<html>` and the band's
+  `data-filled` say how it ended (`tools/web/landing_check.mjs`,
+  `tools/web/talk_flow.mjs`). The header (Gallery, Talk, Challenges,
+  Docs), Menu and the footer's Community link `/talk` (`web/_shell.html`).
 - `talk in the owner's console` (`web/admin-talk.js`, `api/_console_talk.js`):
   /admin#talk as MASTER_EMAIL: Reported (Hide or Show, Remove, Let the
   reports go, Ban for a day, week, month or good), Threads (Pin, Lock,

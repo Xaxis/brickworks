@@ -302,11 +302,15 @@ async function talk() {
     return;
   }
   const code = langAt().slice(1);
-  const answer = await ask(`/api/people?op=talk_latest&n=${Number(band.dataset.n) || 4}&html=1${code ? `&lang=${code}` : ""}`);
+  // The checks' own pool where the address asks for it (?tests=1), as Talk's pages.
+  const tests = new URLSearchParams(location.search).get("tests") === "1";
+  const answer = await ask(`/api/people?op=talk_latest&n=${Number(band.dataset.n) || 4}&html=1${code ? `&lang=${code}` : ""}`
+    + (tests ? "&tests=1" : ""));
   const count = typeof answer?.html === "string" ? Number(answer.count) || 0 : 0;
   html.dataset.talk = count >= LEAST ? String(count) : "none";
   if (count < LEAST) return;
   list.innerHTML = answer.html;
+  band.dataset.filled = String(count);
   // Its link only now: a page with no Talk links nowhere it would 404.
   document.getElementById("talk-all")?.setAttribute("href", `${langAt()}/talk`);
   whenUnder(band.nextElementSibling, () => { band.hidden = false; });

@@ -1926,7 +1926,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 }
 
 /* A thread of Talk as a row (api/_talk.js threadRowHtml): Talk's lists and
-   the homepage's latest from it (#talk-latest, web/talk-strip.js), so it
+   the homepage's latest from it (#talk-latest, web/landing.js), so it
    is here and not in talk.css, which only Talk's pages load. */
 .talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .talk-row {

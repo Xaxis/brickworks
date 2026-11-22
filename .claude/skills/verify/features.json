@@ -54,6 +54,7 @@
         "tests/test_designers.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
+        "tests/test_home_shelf.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
         "tests/test_model_page.py",
@@ -170,6 +171,7 @@
       "area": "web",
       "tests": [
         "tests/test_flows_for.py",
+        "tests/test_home_shelf.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
@@ -336,6 +338,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_home_shelf.py",
         "tests/test_library_site.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
@@ -4662,6 +4665,7 @@
         "tests/fixtures/social/api_check.mjs",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
+        "tests/test_home_shelf.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
@@ -7758,10 +7762,13 @@
     {
       "id": "ui:the latest in talk on the home page",
       "kind": "ui",
-      "entry": "web/talk-strip.js",
-      "reach": "https://brickworks.diy/ (#talk-latest, filled from GET /api/people?op=talk_latest&n=4&html=1)",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/ (#talk-latest under the shelf, filled from GET /api/people?op=talk_latest&n=4&html=1, shown with three threads or more)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/test_insights.py"
+      ]
     },
     {
       "id": "ui:the loader's words for a phone and a browser without WebGL 2",
@@ -7946,6 +7953,7 @@
         "tests/test_challenges.py",
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_home_shelf.py",
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -8227,6 +8235,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
+        "tests/test_home_shelf.py",
         "tests/test_insights.py",
         "tests/test_realset.py",
         "tests/test_start_abba.py"

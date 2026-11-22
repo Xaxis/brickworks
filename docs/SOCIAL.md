@@ -1624,9 +1624,9 @@ made-up members.
   the replies as Comment [TK-DF], hreflang copies in German, French and
   Spanish, and an RSS feed for every board and for all of Talk.
 - **On the first screen.** "Talk" in the header beside Gallery, in Menu
-  and in the footer's Community; the homepage's "Ask, show, swap ideas"
-  section draws the newest threads as Talk draws them
-  (`web/talk-strip.js`).
+  and in the footer's Community; the homepage's "What builders are
+  talking about", under the shelf, draws the newest threads as Talk draws
+  them once there are three (`web/landing.js`).
 - **The two pools.** Throwaway test accounts talk in a pool of their own
   (`?tests=1`), as the gallery's; a preview never writes the real pool's
   house threads.
