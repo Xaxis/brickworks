@@ -1305,6 +1305,66 @@ them).
 4. **The paired judge** will find any staging left: 6660's B-pillar, the
    minifigs' printing on a small face, and 6512, which no render can pass.
 
+## 5i. The judge's tells, one change at a time (photoreal5)
+
+The owner's ask, 2026-11-22, continued. Each of the judge's tells got one
+change, committed alone. A locked snapshot of the tree after each change
+was drawn (`photoreal_probe`, 256 samples, seed 1), and all of them were
+judged in one pool with photoreal4's final (f3) and the photographs: the
+solo judge, three rounds of two trials (`solo_p5w1.json`). A change stayed
+only if the tree's mean over all ten shots rose over the tree before it.
+
+| tree | the change | solo, per round | close-ups | sets | called a photograph | kept |
+|---|---|---|---|---|---|---|
+| f3 | photoreal4's final, judged again today | 0.246 0.227 0.236 | 0.29-0.33 | 0.12-0.13 | 11 of 60 | |
+| s1 | stud logos: tall, narrow letters slanted a fifth, as a real stud's; a half-millimetre gate | 0.242 0.245 0.227 | 0.30-0.32 | 0.11-0.13 | 8 of 60 | yes |
+| s2 | a part resting on the floor is turned only about the vertical, never lifted | 0.231 0.215 0.230 | 0.29-0.31 | 0.11-0.12 | 5 of 60 | no |
+| s3 | a dark hairline under each part: its sides' lowest 0.6 LDU darkened, their gloss gone | 0.240 0.257 0.255 | 0.32-0.34 | 0.12-0.14 | 11 of 60 | yes |
+| s4 | the close-ups' surfaces: leather under the black 2x4, a stone counter under the green plate | 0.164 0.153 0.161 | 0.17-0.19 | 0.12-0.13 | 0 of 60 | no |
+| s5 | wear with a shot's age: wider scratches over more of a part, edges rubbed matt | 0.174 0.165 0.179 | 0.18-0.20 | 0.13-0.14 | 1 of 60 | yes |
+| s6 | an edge's rounding varies along it, 0.3 to 0.9 LDU | 0.155 0.157 0.164 | 0.16-0.17 | 0.14-0.16 | 0 of 60 | no |
+| s7 | a matte desk's specks and smudges under the grey 1x3 | 0.222 0.234 0.241 | 0.28-0.30 | 0.13-0.15 | 9 of 60 | yes |
+
+The photographs: 0.901 to 0.914, 54 of 54.
+
+- **The logos.** Verdicts that called our logos mirrored or garbled fell
+  from 11 (f3) to 4 (s1); the black 2x4's, upside down to the camera as in
+  its photograph, is still read as "mirrored" (6 in s7). The tree's mean
+  did not move (0.236 against 0.238), and the logo was kept for its tell.
+- **Contact** cut "floating" from 17 verdicts to 13 but the tree fell
+  (0.225 against 0.238), and was taken out.
+- **Seams** rose 0.026 and were kept.
+- **Leather and stone** were the largest fall: every verdict on the black
+  called its floor a "procedural Voronoi" texture, and the plate's counter
+  "flat procedural speckle" (the black 0.70 to 0.04, the plate 0.62 to
+  0.26). Both were taken out. Our black's glossy sides mirrored the
+  pattern, a second tell.
+- **The desk** under the grey 1x3 took it from 0.10 to 0.68, and its
+  "blotchy denoiser" mottle and "diagonal shadow wedge" left the verdicts:
+  they were the paper's fine fibre mirrored in its glossy faces. The desk
+  has no fine grain. Other shots on paper may gain from the same, untried.
+- **Edges** with a rounding that varies fell 0.014 in every round, the
+  close-ups most, and were taken out.
+- **Wear** rose 0.014, the sets 0.01. It rides on a shot's age, which is 0
+  in the app, so the app's plastic is unchanged.
+- **One shot's number is still a lottery.** The red slope, which neither
+  s4 nor s7 touched, went 0.21 to 0.24 at s4 and 0.24 to 0.48 at s7. Only changes of 0.05 or
+  more in the tree's mean are clear; s1, s2, s5 and s6 are inside that.
+
+**The car at Best** (Product, 1280x720, 256 samples), each snapshot's
+median: 2.46, 2.53, 2.46, 2.58, 2.49, 2.71 and 2.36 s.
+
+**What is left, in order:**
+1. **The black 2x4**: its plastic is a dull blue-grey where the
+   photograph's mirrors the room (ΔE2000 39 on its top), and its logo
+   reads as mirrored.
+2. **Sets show no logo on their studs** at a set's distance; the
+   photographs' do.
+3. **Speckle**: the grain of 256 samples on dark faces, read as a path
+   tracer's.
+4. **Colour**: the red slope reads crimson beside its photograph's orange
+   red, though its measured face is ΔE2000 1.8.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
