@@ -3057,6 +3057,16 @@ picture the assistant is shown.
   and the same drawn on nothing glass, alpha over 0.3 and lightness over
   0.35 (black before, 1.00 and 0.16); pictures in `shots/render/product_*`,
   `product_swatches.png` the swatches, `product_glass*.png` the walls.
+  Best path traced on a backdrop (photoreal2, docs/RENDERING.md 5f) is
+  staged as a product photograph: on a light backdrop in the studio a light
+  tent (white walls at `TENT_FILL`, a panel overhead, a soft key the
+  light's turn moves, `TENT_KEY`), the backdrop drawn at its own colour
+  with the model's shadow on it (the shadow catcher), a white card where the
+  model stands metered `PHOTO_EV` over the paper's own light, and a
+  camera's response: saturation in linear light (`PHOTO_LINEAR_SATURATION`)
+  and `camera_curve`'s wide shoulder. Clear parts absorb by Beer-Lambert.
+  Check: `tools/probe.sh photoreal_probe`, then `python3
+  tools/bench/photoreal.py colour TAG` from the same tree.
   In a browser: `cli:product look in a browser`.
   A model: `tools/probe.sh render_probe -- --model=models/sports_car.ldr
   --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best
@@ -3544,7 +3554,12 @@ picture the assistant is shown.
   `shots/photoreal/<tag>/`. Run bare, it then times the car at Best,
   Product, 1280 x 720, three runs (own time), the median at most 8.4 s
   (twice the 4.2 s of pathtrace's last measure); `-- --car` times only the
-  car. `-- --tag=NAME --only=a,b --samples=N --yaws=0,90`. An edited `.glsl` is drawn only after
+  car. `-- --tag=NAME --only=a,b --samples=N --yaws=0,90`; `--turns=0,90`
+  and `--lighting=window,daylight` draw each shot with its light turned and
+  lit each way, named `<name>_t<turn>_<lighting>`, to find where a
+  photograph's light stood; `--raw` also writes each picture's light before
+  exposure and curve, `<name>.exr`, and what it was drawn at, `<name>.json`
+  (photoreal2, docs/RENDERING.md 5f). An edited `.glsl` is drawn only after
   `godot --headless --path . --import`.
 - `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
   pictures are judged on. `pairs TAG` writes each render beside its
@@ -3561,7 +3576,11 @@ picture the assistant is shown.
   pick rate and mean confidence for close-ups, sets and all). A render as
   real as the photograph is picked half the time; the bar is a lower pick
   rate after than before, judged the same day against a before drawn from
-  a locked tree.
+  a locked tree. `colour TAG [--out DIR]` measures each close-up's faces
+  (shots.json's `faces`, the photograph's box and the render's) as the
+  trimmed mean of their CIELAB and prints and writes (`colour_TAG.json`)
+  each face's CIEDE2000 from its photograph's; the bar is 5 on every main
+  face.
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
   class `PosePanel`, in the column beside the model (`Main._tool_column`) so
   what moves is seen and no part to be dragged is under it; the

@@ -819,6 +819,173 @@ beside them.
      seats them.
    - Old sets' plastic is yellowed and faded in their photographs.
 
+## 5f. Staged as the photographs, and colour fitted to them (photoreal2)
+
+The owner's ask, the same day: match the staging and calibrate the colour
+against the photographs before anything else, and be honest in the
+numbers. photoreal1's judge had been comparing staging as much as
+rendering: a sweep's horizon against a cut-out on white, a pool of light
+against a tent.
+
+**Staging taken out first** (bench copies only; no set file changed).
+- **The shadow catcher.** Best, Product, path traced on a backdrop draws
+  the backdrop at exactly its colour, darkened only where the model keeps
+  light from it (each light once and the sky four times, weighed by the
+  light each brings, so a big soft light's shadow is as soft as it is).
+- **A light tent** where a photograph has one (the product look, studio
+  light, a light backdrop):
+  - white walls at `TENT_FILL` 0.4 and a panel overhead at 3 more;
+  - a soft key where the rig's key stands (`TENT_KEY`, 0.45 rad from its
+    middle to its edge), which the light's turn moves;
+  - a dark port where the camera stands, which a glossy top mirrors.
+- **Photographed places** (the window and daylight HDRIs) only for the
+  room photographs: the black 2x4, the green plate and set 6657.
+- **The white card.** Exposure is metered as a photographer meters: a
+  white card where the model stands, on the floor, `PHOTO_EV` (0.33) stops
+  over the paper's own light.
+- **Framing, lens and figures** fitted to each photograph
+  (`tools/photoreal/shots.json`). In the bench copies, 6660's driver is
+  seated in the cab and 6657's pilot, who stood beside the copter, is
+  taken out. The judge still names 6657's empty cockpit: its picture's
+  pilot sits inside, which the OMR file does not have.
+
+**The same-day before.** photoreal1's renderer with the staging matched,
+drawn from a locked worktree (4b3250dbf), judged three times. The rounds
+agree within 0.002:
+
+| Round | Close-ups (12) | Sets (8) | All (20) |
+|---|---|---|---|
+| before1 | 12 found, sure 0.917 | 7, 0.815 | 19, 0.877 |
+| before2 | 12, 0.914 | 7, 0.823 | 19, 0.878 |
+| before3 | 12, 0.915 | 7, 0.825 | 19, 0.879 |
+
+**How colour is measured.** Each close-up has a box on its lit faces in
+the photograph and the same face in the render (`faces` in shots.json,
+drawn before any fitting). Each box's colour is the mean CIELAB (D65) of
+its pixels with the lightest and darkest fifths dropped. The distance is
+CIEDE2000. `python3 tools/bench/photoreal.py colour TAG` writes the table.
+
+**What the measure found.** Three faults, each fixed at its root:
+- **A white backdrop's model was drawn a stop too light.** Inverting the
+  curve at 1.0 never stopped below the top in floating point
+  (1.055 − 0.055), so the search ran on to twice white.
+- **A low camera metered the wall.** The card was read from everything
+  that was not the model, which for the red slope (13° up) was mostly the
+  sweep's rise. That is lit less than the floor, so the model came out
+  twice as light as the card. The card's picture now leaves the rise
+  black (`path_tracer.glsl`), and only the floor is read.
+- **The plastic was dull.** LDraw's colours, kept exactly as the file
+  says, came out duller and darker than a camera draws the same parts.
+
+**The camera, fitted.** The probe's `--raw` writes each picture's light
+before any exposure or curve. A camera was fitted to the tent close-ups'
+faces from that light, so each try costs no render:
+- saturation in linear light, as a camera's colour matrix gives it
+  (`PHOTO_LINEAR_SATURATION` 1.6);
+- `camera_curve`: linear to 0.6, then a shoulder reaching white at 2.5
+  times white, so a lit red keeps its shading. A narrow shoulder clipped
+  the red slope to flat pure red;
+- no contrast or saturation after the curve: contrast round 0.5 capped
+  white at 0.91, and the paper's goal ran off the top again.
+- A full 3x3 matrix fitted no better. It turned LDraw yellow orange, so
+  it was not used.
+
+**ΔE2000 on each close-up's faces** (main faces carry the bar of 5):
+
+| Shot | Face | Before | After |
+|---|---|---|---|
+| black 2x4 (room) | top, main | 39.3 | 38.3 |
+| | long side | 14.3 | 15.3 |
+| red 2x4 slope (tent) | slope, main | 14.9 | **1.9** |
+| | end | 11.8 | 21.3 |
+| grey 1x3 (tabletop) | long side, main | 26.5 | 18.3 |
+| clear round 1x1 (cut-out) | body, main | 32.9 | 48.2 |
+| three 2x2s (tent) | green top, main | 8.2 | **4.2** |
+| | red top, main | 13.7 | **3.2** |
+| | blue top, main | 7.1 | **3.5** |
+| green plate (room) | top, main | 13.4 | 23.7 |
+
+Read plainly:
+- **Every tent face is under 5**, on two photographs from two cameras.
+- **The room and cut-out photographs are not.** In each, the face is lit
+  by a light we do not have:
+  - the black 2x4's top mirrors a bright window (L* 62 on black plastic);
+  - the grey 1x3's long side is in a lamp's deep shade (L* 13);
+  - the green plate's top carries a sheen;
+  - the clear brick was cut out from a dark surround, so it shows dark
+    teal where ours, in front of white paper, shows light.
+- None of the three HDRIs at any of eight turns brought them within 10:
+  `--turns=… --lighting=…` sweeps, in the unit's scratch.
+- **The red slope's shaded end is 21 off.** The photograph's end is a
+  sixth of its lit face's light; the tent's fill leaves ours at half.
+
+**Renderer tells, in the brief's order.**
+- **The logo's true outline.** Letters 0.2 LDU high, strokes 0.6 wide
+  (a fifth of the letter height, as the real logo's), flat on top with
+  steep flanks. Strokes a whole LDU wide were read as "LE¢O".
+- **Clear parts absorb by thickness (Beer–Lambert).** The colour is lost
+  over `GLASS_DEPTH`, 8 LDU, along the path inside, in place of a tint at
+  each face. A pane seen through both faces is no longer squared.
+- **A soft area light without a crescent in the studs**: the tent's key.
+- **Variety without fireflies.** Each stud's logo is turned, offset,
+  deepened and softened a hair by its own hash. A third of the studs
+  carry a gate dimple.
+- **Edges.** A rounded edge's paths now leave by its rounded normal. By
+  the flat face's, half of each rounding found the part itself in every
+  shadow ray, and every edge had a thin dark line.
+- **The slope's grain**: finer than photoreal1's, as shallow. A deeper,
+  coarser grain was read as "blotchy procedural noise": the denoise
+  takes its glints for sampling grain.
+- **Not done: the denoise guided by albedo and normal.** It is the
+  grain's real fix, and the clear brick's "smeared edges".
+
+**The judge** (claude-opus-5-5, the same prompt, both orders, 20 trials):
+
+| Round | Code | Close-ups (12) | Sets (8) | All (20) |
+|---|---|---|---|---|
+| before, three rounds | photoreal1's renderer, staged (4b3250dbf) | 12, 0.914 to 0.917 | 7, 0.815 to 0.825 | 19, 0.877 to 0.879 |
+| after (first) | camera, tent key, Beer–Lambert (da72622af) | 12, 0.913 | 8, 0.843 | 20, 0.885 |
+| **after** | + legible logo, fine grain, gate dimples (aa773ad1b) | **12, 0.902** | **6, 0.811** | **18, 0.865** |
+
+- **The bar was not met.** It was the photograph found 16 times or fewer
+  in 20, or a mean confidence of 0.80 or less.
+- Found 18 against 19, sure 0.865 against 0.878.
+- Set 6512 was taken for the photograph in both orders (at 55 and 58).
+  Every close-up was still found, in both orders.
+- **What it names now** (tells a round, before1 against after):
+  - clean, no wear: 28 against 30;
+  - uniform: 34 against 29;
+  - backdrop: 18 against 15;
+  - noise: 15 against 10;
+  - edges: 16 against 14;
+  - saturated: 4 against 9.
+- "Oversaturated" is new, said of reds and greens whose mean colour is
+  within 5 of the photograph's. It is the flatness of a saturated face
+  with no wear on it, not its colour.
+
+**Time.** The car at Best, Product, 1280x720, 256 samples: 1.99, 2.08 and
+2.26 s (the bar is 8.4 s).
+
+**Pictures.** `bench/results/photoreal2-2026-11-21/side_by_side/` has one
+row per shot: the photograph, photoreal1's renderer staged, and
+photoreal2. The colour tables are `colour_before.json` and
+`colour_after.json`; every verdict is in `judge_<round>.json`.
+
+**What is left, in order:**
+1. **Wear and variety on the plastic.** This is the judge's first tell in
+   every round: scuffs, dust and mould marks it does not read as
+   procedural, and a face's tone varying across it.
+2. **The denoise guided by albedo and normal**, so a grain's glints and a
+   clear part's edges survive it.
+3. **The room photographs' light.** Their lights cannot be matched with
+   the three HDRIs we have. A light placed per shot (a lamp, a window
+   panel) would let the black 2x4's top mirror a window, as its
+   photograph does.
+4. **The backdrops' texture** (leather, stone, desk): R5's lifestyle
+   scenes. They are the judge's third tell.
+5. **A clear part's photograph needs its surround.** The cut-out's dark
+   teal cannot be reached in front of white paper.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

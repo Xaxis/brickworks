@@ -4432,14 +4432,14 @@
       "kind": "cli",
       "label": "photoreal probe",
       "entry": "src/dev/photoreal_probe.gd",
-      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car --turns=0,90 --lighting=window,daylight --raw]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr)",
       "area": "view"
     },
     {
       "kind": "cli",
       "label": "photoreal judge",
       "entry": "tools/bench/photoreal.py",
-      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons)",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; colour writes each close-up face's CIEDE2000 from its photograph's)",
       "area": "view"
     },
     {
