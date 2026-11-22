@@ -3082,7 +3082,7 @@
       "id": "cli:smalls12 probe",
       "kind": "cli",
       "entry": "src/dev/smalls12_probe.gd",
-      "reach": "tools/probe.sh smalls12_probe   (headless, seconds: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before)",
+      "reach": "tools/probe.sh smalls12_probe   (headless, about a minute: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before; an unedited save keeps the file's bytes, Latin-1, BOM and CRLF, no last line end, each back byte for byte twice, no second copy held after a save or an autosave)",
       "area": "view",
       "tests": []
     },

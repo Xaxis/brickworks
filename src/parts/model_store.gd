@@ -540,13 +540,13 @@ func save_as(name: String) -> bool:
 	# worked out. Otherwise pre261's save, as it was.
 	var moment: Array = _moment()
 	var as_kept: bool = _kept_now(path, name)
-	if (_store(path, _kept_text) if as_kept else _write(path, name, true)):
+	if (_store_kept(path) if as_kept else _write(path, name, true, "", true)):
 		title = name
 		example = false
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
 		_program_kept = world.program
-		_keep_moment(_stored, path.get_base_dir(), name, moment)
+		_keep_stored(path.get_base_dir(), name, moment)
 		saved.emit(name)
 		return true
 	return false
@@ -560,15 +560,16 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 	var was: Array = [_known_path, _known_time, _known_lines]
 	var moment: Array = _moment()
 	var as_kept: bool = _kept_now(path, file_title)
-	var ok: bool = _store(path, _kept_text) if as_kept else _write(path, file_title, true)
+	# The model's own file: what was written is the moment's file. Another
+	# file of it leaves that as it was, and holds nothing of what it wrote.
+	var own: bool = path == saved_path(file_title)
+	var ok: bool = _store_kept(path) if as_kept else _write(path, file_title, true, "", own)
 	if ok:
 		_views_kept = world.saved_views
 		_lights_kept = world.scene_lights
 		_program_kept = world.program
-		# The model's own file: what was written is the moment's text. Another
-		# file of it leaves that as it was.
-		if path == saved_path(file_title):
-			_keep_moment(_stored, path.get_base_dir(), file_title, moment)
+		if own:
+			_keep_stored(path.get_base_dir(), file_title, moment)
 	# Still watching the model's own file for saves from elsewhere.
 	if path != saved_path(title):
 		_known_path = was[0]
@@ -1329,19 +1330,21 @@ static func retitled(text: String, name: String) -> String:
 ## Which is to say: it quietly deleted parts of somebody's model and
 ## then made that permanent.
 func open(path: String) -> int:
-	var text: String = _file_text(path)
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var text: String = _file_text(path, bytes)
 	if text.is_empty():
 		return 0
-	return _opened_from(path, open_text(text, path.get_file()))
+	return _opened_from(path, open_text(text, path.get_file()), bytes, text)
 
 
 ## [method open], once what the parts the file carries are drawn from has
 ## been fetched, where this build has not got it ([method open_text_fetched]).
 func open_fetched(path: String, job: Working.Job = null) -> int:
-	var text: String = _file_text(path)
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var text: String = _file_text(path, bytes)
 	if text.is_empty():
 		return 0
-	return _opened_from(path, await open_text_fetched(text, path.get_file(), null, job))
+	return _opened_from(path, await open_text_fetched(text, path.get_file(), null, job), bytes, text)
 
 
 ## Why the last open left the model on the baseplate as it was, in words
@@ -1353,10 +1356,11 @@ func open_fetched(path: String, job: Working.Job = null) -> int:
 var not_opened: String = ""
 
 
-## The text of the file at [param path]; "" with [member not_opened] saying
-## why when there is none to open.
-func _file_text(path: String) -> String:
-	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path))
+## The text of the file at [param path], read as [param bytes] just now (read
+## here when not given); "" with [member not_opened] saying why when there
+## is none to open.
+func _file_text(path: String, bytes: PackedByteArray = PackedByteArray()) -> String:
+	var text: String = LdrModel.text_of(bytes if not bytes.is_empty() else FileAccess.get_file_as_bytes(path))
 	if not text.is_empty():
 		return text
 	not_opened = ("there is no such file" if not FileAccess.file_exists(path)
@@ -1365,13 +1369,17 @@ func _file_text(path: String) -> String:
 	return ""
 
 
-func _opened_from(path: String, result: Dictionary) -> int:
+## [param result], an open of the file at [param path] read as [param bytes],
+## [param text] as text: the moment the open kept is this file's.
+func _opened_from(path: String, result: Dictionary, bytes: PackedByteArray, text: String) -> int:
 	if str(result["error"]).is_empty():
 		example = path.begins_with(EXAMPLE_DIR)
 		if path.begins_with(SAVE_DIR):
 			know(path)
-		# The moment the open kept is this file's, in its folder, under the
-		# name the model now has.
+		# The moment the open kept is this file's, its bytes as read, in its
+		# folder, under the name the model now has.
+		_kept_bytes = bytes
+		_kept_parts = _has_parts(text)
 		_kept_dir = path.get_base_dir()
 		_kept_name = title
 	return int(result["placed"])
@@ -1684,9 +1692,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
-	# The file's text as it came, its BOM too, kept once the model is down
-	# (_keep_moment): the string itself, not a copy.
-	var file_text: String = text
 	var bom: bool = text.begins_with(LdrModel.bom())
 	text = text.substr(1) if bom else text
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
@@ -2111,8 +2116,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	loaded.emit(title, placed)
 	_phase("loaded")
 	# The model down as its file says it: an unedited save writes the file.
-	# Its folder and name are a path open's alone (_opened_from).
-	_keep_moment(file_text, "", "")
+	# Its bytes, folder and name are a path open's alone (_opened_from): an
+	# open of text kept none, as no save's folder is "".
+	_keep_moment(PackedByteArray(), false, "", "")
 	# Still arriving: those asked for now, not every part whose geometry was
 	# not read yet. A desktop reads it from disk as each is put down, and a
 	# Studio file opened there said "4 are still arriving" of parts it had
@@ -5083,12 +5089,12 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 	var moment: Array = _moment()
 	var ok: bool = false
 	if _kept_now(path, name):
-		ok = _store(path, _kept_text)
+		ok = _store_kept(path)
 	else:
 		var text: String = await to_text_paced(name, job)
 		if text.is_empty() or job.cancelled:
 			return false
-		ok = _write(path, name, true, text)
+		ok = _write(path, name, true, text, true)
 	if ok:
 		title = name
 		example = false
@@ -5097,7 +5103,7 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 		_program_kept = world.program
 		# Kept as the moment it was made from: changed while its order was
 		# worked out, the next save works it out again (_kept_now).
-		_keep_moment(_stored, path.get_base_dir(), name, moment)
+		_keep_stored(path.get_base_dir(), name, moment)
 		saved.emit(name)
 		return true
 	return false
@@ -5219,7 +5225,7 @@ func _export_text(path: String, text: String) -> bool:
 
 
 func _write(path: String, title: String, with_steps: bool = false,
-		written: String = "") -> bool:
+		written: String = "", keep: bool = false) -> bool:
 	if read_only:
 		return false
 	# A newer build is live: this tab stores nothing outside its own session
@@ -5239,7 +5245,7 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
-	return _store(path, _with_bom(text))
+	return _store(path, _with_bom(text), keep)
 
 
 ## What a save of the model on the baseplate called [param title] writes,
@@ -5271,40 +5277,60 @@ func saved_text() -> String:
 
 
 ## [param text] written to [param path] as it is, the page told; in the
-## person's models, kept as a version too.
-func _store(path: String, text: String) -> bool:
+## person's models, kept as a version too. With [param keep] (a save), what
+## was written is held for the save to keep ([method _keep_stored]).
+func _store(path: String, text: String, keep: bool = false) -> bool:
+	return _store_bytes(path, text.to_utf8_buffer(), keep, text)
+
+
+## [method _store] of [param bytes] as they are: the kept file of an
+## unedited save, a Latin-1 one too. [param text] is them read as text, for
+## the version kept; read from them when not given.
+func _store_bytes(path: String, bytes: PackedByteArray, keep: bool = false, text: String = "") -> bool:
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	file.store_string(text)
+	file.store_buffer(bytes)
 	file.close()
-	_tell_page_wrote(path, text.to_utf8_buffer().size())
+	_tell_page_wrote(path, bytes.size())
+	if text.is_empty() and (keep or path.begins_with(SAVE_DIR)):
+		text = LdrModel.text_of(bytes)
 	if path.begins_with(SAVE_DIR):
 		know(path)
 		# Each save kept as a version too, the last 20 (File, Versions…).
-		var kept: String = ModelVersions.keep(path.get_file().get_basename(), text)
+		var kept: String = ModelVersions.keep(path.get_file().get_basename(), text, bytes)
 		if not kept.is_empty():
 			_tell_page_wrote(kept, FileAccess.get_file_as_bytes(kept).size())
 		# A browser asked to keep the person's models, now that there are some.
 		StorageKeep.ask()
 		kept_save.emit(path)
 	# Last, as what this call wrote: a write the signal led to is not it.
-	_stored = text
+	if keep:
+		_stored = bytes
+		_stored_parts = _has_parts(text)
 	return true
 
 
-## The text [method _store] last wrote, as it wrote it.
-var _stored: String = ""
+## The bytes a save's [method _store] wrote, as it wrote them, and whether
+## they hold parts, until the save keeps them ([method _keep_stored]). Held
+## for a save alone: an autosave's held a second copy of the model as text,
+## 10 to 20 MB of 42082's, for as long as the model was open (kbk3review L1).
+var _stored := PackedByteArray()
+var _stored_parts: bool = false
 
 
 ## An unedited save writes the file the model was opened from, or last saved
 ## to, as it is: one fast path in front of the save. keepbytes and kbkeep
 ## (11-18 to 11-20) made the save itself keep an unedited file's bytes, and
 ## each round broke another save; this leaves the save as it was and writes
-## the kept text only when nothing can have changed since it was read or
-## written. The text, and the moment it stands for ([method _moment]):
-var _kept_text: String = ""
+## the kept bytes only when nothing can have changed since they were read or
+## written. The file's bytes as read or written, never text: a String is 4
+## bytes a character, and a 36 MB file kept 137.6 MB (kbk3review L1), and a
+## Latin-1 file came back as UTF-8. Whether they hold parts, and the moment
+## they stand for ([method _moment]):
+var _kept_bytes := PackedByteArray()
+var _kept_parts: bool = false
 ## the folder it was read from or written to, "" for an open of no file;
 var _kept_dir: String = ""
 ## the name the model had then;
@@ -5360,11 +5386,11 @@ func _said_now() -> Array:
 
 
 ## Whether a save of the model called [param name] to [param path] writes
-## the kept text: the same moment, the same name, its own file in the same
+## the kept bytes: the same moment, the same name, its own file in the same
 ## folder, and nothing pre261's save would refuse (read_only, a newer
 ## build, a model of no parts).
 func _kept_now(path: String, name: String) -> bool:
-	if _kept_at.is_empty() or _kept_text.is_empty() or read_only or name != _kept_name \
+	if _kept_at.is_empty() or _kept_bytes.is_empty() or read_only or name != _kept_name \
 			or path != saved_path(name) or path.get_base_dir() != _kept_dir:
 		return false
 	# The moment before the text is read: an edited save asks only this.
@@ -5373,17 +5399,33 @@ func _kept_now(path: String, name: String) -> bool:
 			or now[2] != _kept_at[2] or now[3] != _kept_at[3] or not is_same(now[4], _kept_at[4]) \
 			or now[5] != _kept_at[5]:
 		return false
-	return NewerBuild.may_write(path) and _has_parts(_kept_text)
+	return NewerBuild.may_write(path) and _kept_parts
 
 
-## Keep [param text], the file as it was read from or written to
-## [param dir] for the model called [param name], standing for
-## [param moment] (now, when not given).
-func _keep_moment(text: String, dir: String, name: String, moment: Array = []) -> void:
-	_kept_text = text
+## The kept bytes written to [param path] by a save, held again as written.
+func _store_kept(path: String) -> bool:
+	return _store_bytes(path, _kept_bytes, true)
+
+
+## Keep [param bytes], the file as it was read from or written to
+## [param dir] for the model called [param name], whether they hold
+## [param parts], standing for [param moment] (now, when not given). An
+## open of no file keeps none: its folder is "", which no save's is.
+func _keep_moment(bytes: PackedByteArray, parts: bool, dir: String, name: String,
+		moment: Array = []) -> void:
+	_kept_bytes = bytes
+	_kept_parts = parts
 	_kept_dir = dir
 	_kept_name = name
 	_kept_at = moment if not moment.is_empty() else _moment()
+
+
+## What the save's [method _store] wrote, kept for [param name] in
+## [param dir] at [param moment], and let go of as the save's own: one copy
+## of the file held, not two.
+func _keep_stored(dir: String, name: String, moment: Array) -> void:
+	_keep_moment(_stored, _stored_parts, dir, name, moment)
+	_stored = PackedByteArray()
 
 
 ## Run [param work], the open's own follow-up (Main: the floor laid under a

@@ -4144,6 +4144,12 @@ PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # that is only spaces round its words is trimmed at both ends, as it always
 # was. The line's other words still split on any run of spaces or tabs: every
 # motion line in the repo's models reads as the old reading read it.
+# And an unedited save's kept file (ModelStore._kept_bytes, kbk3review L1):
+# the file's bytes as read, its size the file's, never text (4 bytes a
+# character); a Latin-1 file, a BOM and CRLF one and one with no last line
+# end each saved back byte for byte by the fast path twice; neither a save
+# nor an autosave holds a second copy; an edit saved is kept as its new
+# file, and Undo saves the file as it was.
 tools/probe.sh smalls12_probe
 # The camera keyed in a motion (src/dev/camerakeys_probe.gd, docs/MOTIONS.md
 # camerakeys): 1484-1, a new motion keyed by Key the camera at 0, 2 and 4 s
