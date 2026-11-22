@@ -41,8 +41,10 @@ STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links (or
 # Menu's: Download is there since site356). The landing page marks the
 # mark; your settings are part of your account; the gallery's tabs at
-# their own addresses (tools/browse_pages.py) are the gallery.
-OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/gallery",
+# their own addresses (tools/browse_pages.py) are the gallery, but for the
+# Sets tab, which is the header's Sets (landing, 2026-11-22).
+OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/library",
+       "challenge.html": "/challenge",
        "collections.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
        "settings.html": "/profile", "plans.html": "/plans"}
 

@@ -107,6 +107,13 @@ import { collectionsList } from "/collections.js";
       if (which === now) tab.setAttribute("aria-current", "page");
       else tab.removeAttribute("aria-current");
     }
+    // The header's own mark with it: Sets is a link of its own there
+    // (web/_shell.html), every other tab is the Gallery.
+    const own = now === "sets" ? "/library" : "/gallery";
+    for (const link of document.querySelectorAll('.site-head a[href$="/gallery"], .site-head a[href$="/library"]')) {
+      if (new URL(link.href).pathname.endsWith(own)) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    }
   }
 
   /// An address as the history compares it: its path and its question.
