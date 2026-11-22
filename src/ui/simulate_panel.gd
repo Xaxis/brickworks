@@ -26,6 +26,24 @@
 ## keys still in the box keeps them as any change; and only the model they
 ## were typed for (hpreview F1, F2). Running it moves nothing.
 ##
+## The power row (APP_UX11 wires): the model's cables read (Wiring), each
+## battery box's switch, each IR receiver's and pole reverser's levers and
+## each hub's ports worked on the part (a click on the part under the
+## pointer while Simulate is open, inside a sub-assembly or a cable's path
+## as anywhere: EditVerbs.part_click; a receiver's lever the one nearest the
+## click) or by the row's buttons, and each motor said with its cable. A
+## selection made any other way (the model tree, a session, an undo) works
+## no switch. In a model that holds a battery box, a receiver or a hub, a
+## motor whose cable reaches one runs at its rated speed with no load, the
+## way its plugs face and its box's switch is setting its direction; Play on
+## it switches on what its cable reaches where that is off, as a person
+## pressing Play wants it run. Its cable pulled, it stops and says why. A
+## motor with no cable of it drawn, and every motor in a model with nothing
+## that gives power, turns by hand as before, and says so. The switches are
+## Simulate's, not the model's: nothing is written; they are kept by the
+## parts' numbers while the model changes, and forgotten when another model
+## is opened (BrickWorld.generation).
+##
 ## The balance is weighed over the cycle (Balance, through Shell's
 ## weigh_balance, which draws the support polygon and the centre of mass on
 ## the floor), and the arm that reaches furthest past the base's edge named.
@@ -117,6 +135,18 @@ var _last: Dictionary = {}
 var _told_page: String = ""
 var _told_page_at: int = 0
 
+## The model's cables and the switches as worked here (Wiring), and while
+## Play runs a motor by its power, its rate in driver turns a second, signed
+## (0 while Play turns the driver by hand).
+var wiring: Wiring = null
+## The model the switches were worked in (BrickWorld.generation): another
+## one's part numbers start again at 1, so its switches are not these.
+var _wiring_generation: int = -1
+var _power_rate: float = 0.0
+var _power_rows: VBoxContainer
+var _power_buttons: HFlowContainer
+var _power_said: Label
+
 ## The program row: the program running, how far in (seconds), its run
 ## (HubProgram.run), the motors on the hub's ports (HubProgram.ports_of),
 ## and each port's mechanism, driven from its motor, with its torque curve
@@ -206,8 +236,13 @@ func read() -> void:
 	await job.shown()
 	sim = await read_mechanism()
 	_seen_revision = world.revision
+	read_wiring()
 	var body: int = sim.marked()
 	var how: String = "its motor turns it" if sim.motored.has(body) else "the model marks it"
+	var running: int = _running_body()
+	if running >= 0:
+		body = running
+		how = "its cable's box is on"
 	if body < 0:
 		body = _selected_body()
 		how = "selected"
@@ -224,6 +259,45 @@ func read() -> void:
 		_fill_references()
 		return
 	await drive(body, how)
+	# A motor its cable gives power runs, as the real one would, whether it
+	# ran before this reading or its plug was put back just now.
+	if running >= 0 and sim != null and sim.driver == running:
+		play()
+
+
+## The model's cables read again (Wiring), the switches as they were worked
+## kept by the parts' numbers, and the power row shown.
+func read_wiring() -> void:
+	var same: bool = wiring != null and _wiring_generation == world.generation()
+	var before: Dictionary = wiring.settings if same else {}
+	wiring = Wiring.read(world.bricks(), sim.motors if sim != null
+		else Simulation.motors_in(world.bricks(), library), true)
+	_wiring_generation = world.generation()
+	for key: Variant in before:
+		wiring.settings[key] = before[key]
+	_show_power()
+
+
+## The body of the first motor its cable runs, -1 for none: with nothing in
+## the model that gives power, none.
+func _running_body() -> int:
+	if wiring == null or sim == null or not wiring.has_power():
+		return -1
+	for body: int in sim.motored:
+		var motor: int = int(sim.motored[body])
+		if absf(float(wiring.power_of(motor)["run"])) > 1e-6 and sim.can_drive(body):
+			return body
+	return -1
+
+
+## The driver's motor's power, when the model holds a battery box, a
+## receiver or a hub and a cable of its motor is drawn: {"run", "why",
+## "words", "wired", "by_hand"}; empty when Play turns the driver by hand.
+func driver_power() -> Dictionary:
+	if wiring == null or sim == null or not wiring.has_power() or not sim.motored.has(sim.driver):
+		return {}
+	var power: Dictionary = wiring.power_of(int(sim.motored[sim.driver]))
+	return {} if bool(power["by_hand"]) else power
 
 
 ## The mechanism as the model stands, read on a worker for a big model so
@@ -463,14 +537,71 @@ func play() -> void:
 	if sim == null or sim.moving.is_empty():
 		_status.text = "Nothing turns from this driver."
 		return
-	if _stopping() and turns >= sim.stop_on() - 1e-6:
+	_power_rate = 0.0
+	var power: Dictionary = driver_power()
+	var by_hand: String = _by_hand_said()
+	if not by_hand.is_empty():
+		_status.text = by_hand
+	if not power.is_empty():
+		var motor: int = int(sim.motored[sim.driver])
+		# Play on a motor wants it run: what its cable reaches switched on
+		# where it is off (a box, a receiver's lever, a hub and its port),
+		# as a person would before pressing it.
+		var switched: PackedStringArray = wiring.switch_on_for(motor) if absf(float(power["run"])) < 1e-6 \
+			else PackedStringArray()
+		if not switched.is_empty():
+			power = wiring.power_of(motor)
+			_show_power()
+		var run: float = float(power["run"])
+		if absf(run) < 1e-6:
+			_status.text = tr("%s does not run: %s.") % [_motor_said(motor), str(power["why"])]
+			return
+		# At its rated speed with no load, the way its cable runs it.
+		_power_rate = float((Simulation.MOTORS[sim.motors[motor]] as Array)[2]) / 60.0 * run
+		_status.text = tr("%s runs %s at %s rpm: %s.") % [_motor_said(motor), tr("forward", &"power") if run > 0.0
+			else tr("back", &"power"), Simulation.figure(roundf(absf(_power_rate) * 60.0)), str(power["words"])]
+		if not switched.is_empty():
+			var first: String = "; ".join(switched)
+			_status.text = first.left(1).to_upper() + first.substr(1) + ". " + _status.text
+	if _stopping() and turns >= sim.stop_on() - 1e-6 and _power_rate >= 0.0:
+		turns = 0.0
+	if _power_rate < 0.0 and sim.stops_done and sim.stop_back() != -INF and turns <= sim.stop_back() + 1e-6:
 		turns = 0.0
 	playing = true
 	_play.text = "Pause"
 
 
+## "The Power Functions L motor (#12)".
+func _motor_said(motor: int) -> String:
+	return tr("The %s (#%d)") % [str((Simulation.MOTORS[sim.motors[motor]] as Array)[0]), motor]
+
+
+## Why Play turns the driver's motor by hand where the model gives motors
+## power: no cable of it is drawn. "" for any other driver.
+func _by_hand_said() -> String:
+	if wiring == null or sim == null or not wiring.has_power() or not sim.motored.has(sim.driver):
+		return ""
+	var motor: int = int(sim.motored[sim.driver])
+	var power: Dictionary = wiring.power_of(motor)
+	return tr("%s: %s.") % [_motor_said(motor), str(power["why"])] if bool(power["by_hand"]) else ""
+
+
+## A click with Select on the part [param brick] under the pointer (along
+## the line from [param origin] along [param way]) while Simulate is open:
+## a battery box's, a receiver's, a pole reverser's or a hub's switch is
+## worked, as a finger works it on the part, whatever sub-assembly or cable
+## path it is in, and the click selects nothing. False for any other part,
+## whose click selects as ever (EditVerbs.part_click).
+func take_click(brick: int, origin: Vector3, way: Vector3) -> bool:
+	if not visible or wiring == null or _reading or not wiring.sources.has(brick):
+		return false
+	work_switch(brick, wiring.output_at(brick, origin, way))
+	return true
+
+
 func _stop() -> void:
 	playing = false
+	_power_rate = 0.0
 	if _play != null:
 		_play.text = "Play"
 
@@ -510,6 +641,11 @@ func _show_pose() -> void:
 		if playing:
 			_stop()
 			_status.text = "Stopped at %s: %s." % [Simulation.angle(turns), sim.stopped_said()]
+	elif sim.stops_done and turns < 0.0 and sim.stop_back() != -INF and turns < sim.stop_back():
+		turns = sim.stop_back()
+		if playing:
+			_stop()
+			_status.text = "Stopped at %s going back." % Simulation.angle(turns)
 	world.set_drawn(sim.placed(turns))
 	var span: float = sim.cycle()
 	_quiet = true
@@ -533,7 +669,7 @@ func _process(delta: float) -> void:
 		program_time = (Time.get_ticks_usec() - _program_began) / 1e6
 		_show_program_pose()
 	elif playing and sim != null:
-		turns += speed * delta
+		turns += (_power_rate if _power_rate != 0.0 else speed) * delta
 		_show_pose()
 	# The model's program changed by an undo, a redo, an open or a session:
 	# the box shows it, whether or not the person is writing in it, as the
@@ -1018,16 +1154,49 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	if input.has("program"):
 		job.end()
 		return await _program_for_session(simulation, str(input["program"]))
+	var power_asked: String = str(input.get("power", "")).strip_edges().to_lower()
+	var wired: Wiring = session_wiring(power_asked, simulation)
 	var chosen: Dictionary = _session_driver(simulation, str(input.get("driver", "")))
+	# The motor its cable runs drives, unless driver= names another.
+	if str(input.get("driver", "")).strip_edges().is_empty() and wired.has_power():
+		for turned: int in simulation.motored:
+			var power: Dictionary = wired.power_of(int(simulation.motored[turned]))
+			if absf(float(power["run"])) > 1e-6 and simulation.can_drive(turned):
+				chosen = {"body": turned, "how": "its cable's box is on"}
+				break
 	job.end()
 	if chosen.has("refusal"):
-		return str(chosen["refusal"])
+		return "\n".join(PackedStringArray([str(chosen["refusal"])]) + power_words(wired))
 	var body: int = chosen["body"]
+	# The driver's motor as Play runs it (S2): by its cable, the way its
+	# plugs face; with power= not given, what its cable reaches switched on
+	# where it is off, as Play does; not run at all when its cable is pulled
+	# or what it reaches is off. One with no cable drawn turns by hand.
+	var run: float = 1.0
+	var said_power: String = ""
+	if wired.has_power() and simulation.motored.has(body):
+		var motor: int = int(simulation.motored[body])
+		var power: Dictionary = wired.power_of(motor)
+		if not bool(power["by_hand"]):
+			if power_asked.is_empty() and absf(float(power["run"])) < 1e-6:
+				var switched: PackedStringArray = wired.switch_on_for(motor)
+				if not switched.is_empty():
+					power = wired.power_of(motor)
+					said_power = " Switched on as Play would: %s." % "; ".join(switched)
+			run = float(power["run"])
+			if absf(run) < 1e-6:
+				return "\n".join(PackedStringArray(["The %s (#%d) does not run: %s; nothing turns.%s" % [
+					str((Simulation.MOTORS[simulation.motors[motor]] as Array)[0]), motor, str(power["why"]),
+					said_power]]) + power_words(wired))
+			chosen["how"] = "%s; its cable runs it %s at %d%%, %s" % [str(chosen["how"]),
+				"forward" if run > 0.0 else "back", roundi(absf(run) * 100.0), str(power["words"])]
+		else:
+			chosen["how"] = "%s; it turns by hand: %s" % [str(chosen["how"]), str(power["why"])]
 	job = Working.begin("Turning the mechanism…")
 	await job.shown()
 	simulation.drive(body)
 	job.end()
-	var how: String = str(chosen["how"])
+	var how: String = str(chosen["how"]) + said_power.trim_suffix(".")
 	if bool(simulation.solved.get("locked", false)) and how.begins_with("chosen"):
 		how = "the app's pick; driver= picks another"
 	var ref: int = _default_reference(simulation)
@@ -1050,6 +1219,7 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 		for line: String in simulation.rate_lines(ref, targets, 16):
 			lines.append("  " + line)
 	lines.append_array(simulation.trouble_lines())
+	lines.append_array(power_words(wired))
 	# Where it stops: what meets, its range, a motor's stall.
 	if not simulation.moving.is_empty():
 		job = Working.begin("Checking where it stops…")
@@ -1080,7 +1250,11 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	# of the balance.
 	var shown: float = worst
 	var why: String = ""
-	if simulation.stops_done and simulation.stop_on() != INF:
+	if simulation.stops_done and run < 0.0 and simulation.stop_back() != -INF:
+		# Its cable runs it back: where it stops going back.
+		shown = simulation.stop_back()
+		why = ", where it stops going back"
+	elif simulation.stops_done and run > 0.0 and simulation.stop_on() != INF:
 		shown = simulation.stop_on()
 		why = ", where it stops: %s" % simulation.stopped_said()
 	job = Working.begin("Drawing the mechanism…")
@@ -1168,6 +1342,48 @@ func _program_for_session(simulation: Simulation, words: String) -> Variant:
 
 ## The driver a session asks for, or the one the model marks, or the one
 ## that turns most: {body, how}, or {refusal} saying what to give instead.
+## The model's cables for a session, the switches as Simulate has them, or
+## with [param power] "on" every battery box, receiver lever, pole reverser
+## and hub on (its ports at full speed), "off" every one off.
+func session_wiring(power: String, simulation: Simulation = null) -> Wiring:
+	var out: Wiring = Wiring.read(world.bricks(), simulation.motors if simulation != null
+		else Simulation.motors_in(world.bricks(), library))
+	if wiring != null and _wiring_generation == world.generation():
+		for key: Variant in wiring.settings:
+			out.settings[key] = wiring.settings[key]
+	power = power.strip_edges().to_lower()
+	if power == "on" or power == "off":
+		out.set_all(power)
+	return out
+
+
+## What a session is told of the cables: each motor's, and the switches.
+static func power_words(wired: Wiring) -> PackedStringArray:
+	var out := PackedStringArray()
+	if wired == null or wired.motors.is_empty():
+		return out
+	if not wired.has_power():
+		out.append("Power: nothing here gives a motor power (no battery box, IR receiver or hub), "
+			+ "so Play turns a motor by hand. A motor runs by its cable once there is one: "
+			+ "lay_flex kind=pf_cable, pu_cable or 9v_wire lays one from the motor to the box or hub.")
+		return out
+	# Ten of each at most, and the rest counted: an answer is read whole.
+	var switches: PackedStringArray = wired.switch_lines()
+	var said: String = "; ".join(switches.slice(0, 10))
+	if switches.size() > 10:
+		said += "; and %d more" % (switches.size() - 10)
+	out.append("Power (a motor whose cable is drawn runs only when it reaches a box, receiver or "
+		+ "hub that is on, the way its plugs face, and stops when its cable is pulled; one with no "
+		+ "cable drawn turns by hand; power not given switches the driver's on where it is off, as "
+		+ "Play does; power=on switches every one on, power=off every one off): " + said + ".")
+	var lines: PackedStringArray = wired.motor_lines()
+	for line: String in lines.slice(0, 10):
+		out.append("  " + line)
+	if lines.size() > 10:
+		out.append("  And %d more motors." % (lines.size() - 10))
+	return out
+
+
 static func _session_driver(simulation: Simulation, asked: String) -> Dictionary:
 	asked = asked.strip_edges()
 	if not asked.is_empty():
@@ -1316,6 +1532,7 @@ func _build() -> void:
 			scrub_to(value))
 	column.add_child(_scrub)
 	_at = _words(column, 11, 0.7)
+	_build_power(column)
 	_build_program(column)
 	_weighed = _words(column, 12, 0.92)
 	var recording := HBoxContainer.new()
@@ -1391,6 +1608,136 @@ func _program_into_view() -> void:
 		await get_tree().process_frame
 	if is_instance_valid(scroll) and _program_box.has_focus():
 		LaidOut.into_view(scroll as ScrollContainer, _program_box)
+
+
+## The power row: a title, a button for each switch and each dial (shown
+## for a model that holds a battery box, a receiver or a hub), and each
+## motor said with its cable.
+func _build_power(column: VBoxContainer) -> void:
+	_power_rows = VBoxContainer.new()
+	_power_rows.add_theme_constant_override("separation", 4)
+	_power_rows.visible = false
+	column.add_child(_power_rows)
+	var title := _words(_power_rows, 12, 1.0)
+	title.text = "Power: click a battery box, receiver or hub to work its switch"
+	_power_buttons = HFlowContainer.new()
+	_power_buttons.add_theme_constant_override("h_separation", 6)
+	_power_buttons.add_theme_constant_override("v_separation", 4)
+	_power_rows.add_child(_power_buttons)
+	_power_said = _words(_power_rows, 11, 0.85)
+
+
+## The power row as the switches now are.
+func _show_power() -> void:
+	if _power_rows == null:
+		return
+	_power_rows.visible = wiring != null and (wiring.has_power() or not wiring.motors.is_empty())
+	for child: Node in _power_buttons.get_children():
+		child.queue_free()
+	if wiring == null:
+		_power_said.text = ""
+		return
+	for brick: int in wiring.sources:
+		var spec: Dictionary = Wiring.SOURCES[wiring.sources[brick]]
+		match str(spec["kind"]):
+			"box", "reverser", "hub":
+				var said: String = _switch_words(brick, 0)
+				_button(_power_buttons, said, work_switch.bind(brick, 0), "Work its switch, as a finger "
+					+ "moves it on the part")
+				if str(spec["kind"]) == "hub":
+					var contacts: Array = Wiring.CONTACTS.get(Wiring.SAME.get(Wiring.base_part(str(
+						wiring.parts[brick])), Wiring.base_part(str(wiring.parts[brick]))), [])
+					for port: int in contacts.size():
+						_dial(brick, port, Wiring.PORT_SPEEDS, tr("port %d") % (port + 1))
+			"receiver":
+				for output: int in 2:
+					_button(_power_buttons, _switch_words(brick, output), work_switch.bind(brick, output),
+						"Work its remote's lever for this output")
+					_dial(brick, output, [1.0, 0.75, 0.5, 0.25], tr("%s speed") % tr(str((spec["outputs"] as Array)[output]), &"power"))
+	var lines: PackedStringArray = wiring.motor_lines()
+	if not wiring.has_power() and not wiring.motors.is_empty():
+		lines.append(tr("Nothing here gives a motor power, so Play turns it by hand: add a battery box "
+			+ "or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."))
+	_power_said.text = "\n".join(lines)
+
+
+## A switch said for its button: "Battery box #12: off".
+func _switch_words(brick: int, output: int) -> String:
+	var spec: Dictionary = Wiring.SOURCES[wiring.sources[brick]]
+	var short: String = str(spec["label"]).replace("Power Functions ", "")
+	short = short.left(1).to_upper() + short.substr(1)
+	match str(spec["kind"]):
+		"box":
+			return "%s #%d: %s" % [tr(short), brick, tr(str(((spec["switch"] as Array)[wiring.switch_index(brick)]
+				as Array)[0]), &"power")]
+		"receiver":
+			return tr("%s #%d, %s output: %s") % [tr(short), brick, tr(str((spec["outputs"] as Array)[output]), &"power"),
+				tr(str((Wiring.LEVER[wiring.lever_index(brick, output)] as Array)[0]), &"power")]
+		"reverser":
+			return "%s #%d: %s" % [tr(short), brick, tr(str((Wiring.LEVER[wiring.lever_index(brick, 0)]
+				as Array)[0]), &"power")]
+	return "%s #%d: %s" % [tr(short), brick, tr("on", &"power") if bool(wiring.settings.get(brick, false)) else tr("off", &"power")]
+
+
+## A dial for a receiver's output (its speed remote's) or a hub's port,
+## [param words] already in the person's language.
+func _dial(brick: int, output: int, shares: Array, words: String) -> void:
+	var dial := OptionButton.new()
+	dial.accessibility_name = words
+	dial.add_theme_font_size_override("font_size", 12)
+	dial.focus_mode = Control.FOCUS_NONE
+	var hub: bool = str(Wiring.SOURCES[wiring.sources[brick]]["kind"]) == "hub"
+	var now: float = wiring.port_speed(brick, output) if hub else wiring.dial_of(brick, output)
+	for share: float in shares:
+		dial.add_item("%s %d%%" % [words, roundi(share * 100.0)])
+	var at: int = 0
+	for n: int in shares.size():
+		if absf(float(shares[n]) - now) < 1e-3:
+			at = n
+	dial.select(at)
+	dial.item_selected.connect(func(index: int) -> void:
+		if hub:
+			wiring.set_to(brick, str(shares[index]), output)
+		else:
+			wiring.set_dial(brick, float(shares[index]), output)
+		_after_power())
+	_power_buttons.add_child(dial)
+
+
+## Work [param brick]'s switch (a receiver's [param output] lever): said,
+## and each motor run or stopped as its cable now gives it power.
+func work_switch(brick: int, output: int = 0) -> void:
+	if wiring == null:
+		return
+	var said: String = wiring.work(brick, output)
+	_after_power()
+	if not said.is_empty():
+		_status.text = said.left(1).to_upper() + said.substr(1) + ". " + _status.text
+
+
+## After a switch or a dial: the row shown, and the motor its cable runs
+## driven and played; the driver's motor stopped when its power is gone.
+func _after_power() -> void:
+	_show_power()
+	if sim == null:
+		return
+	var running: int = _running_body()
+	if running < 0:
+		if playing and _power_rate != 0.0:
+			_stop()
+		var power: Dictionary = driver_power()
+		if not power.is_empty():
+			_status.text = tr("%s does not run: %s.") % [_motor_said(int(sim.motored[sim.driver])),
+				str(power["why"])]
+		return
+	if running != sim.driver:
+		if _driving:
+			_wanted = running
+			return
+		await drive(running, "its cable's box is on")
+	if sim != null and sim.driver == running:
+		_stop()
+		play()
 
 
 ## The program row: its title and Run, the box its words are written in, and

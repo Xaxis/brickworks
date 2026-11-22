@@ -7107,6 +7107,10 @@ func _make_simulate() -> void:
 	simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_seat_tool_panel(simulate)
 	_builder.selection_changed.connect(Callable(simulate, &"_on_selection"))
+	# A click on a battery box, a receiver or a hub works its switch, the
+	# part under the pointer, wherever it is in the model (F3).
+	if _verbs != null:
+		_verbs.part_click = Callable(simulate, &"take_click")
 
 
 ## Share this model: File › Share… and the toolbar's Share.

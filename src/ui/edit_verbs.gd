@@ -21,6 +21,11 @@ var edited: Callable = func() -> void: pass
 var drawn_pick: Callable = Callable()
 ## Aim the ghost where the pointer is, after what is held has changed.
 var aim_again: Callable = func() -> void: pass
+## A click with Select on a part, offered first to what works the part
+## itself (Simulate's switches, SimulatePanel.take_click): given the part
+## under the pointer and the pointer's line (origin, direction), true when it
+## took the click, and then nothing is selected. Unset, every click selects.
+var part_click: Callable = Callable()
 ## Undo (or Redo, given true) of an open, once there is no other change to
 ## take back: what it took off the baseplate back (ModelBar.reopen). True
 ## when it was.
@@ -1456,6 +1461,9 @@ func click(at: Vector2, shift: bool) -> bool:
 		if builder.is_locked(brick_id):
 			say.call(Keymap.filled("that part is locked — {unlock|unlocks everything}"))
 			return false
+		if not shift and part_click.is_valid() and bool(part_click.call(brick_id,
+				camera.ray_origin(at), camera.ray_normal(at))):
+			return true
 		return builder.select_brick(brick_id, shift)
 	if brick_id == 0:
 		return false

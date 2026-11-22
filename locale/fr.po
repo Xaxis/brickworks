@@ -16073,3 +16073,274 @@ msgstr "Retour au début"
 
 msgid "The steps are still being worked out: try again in a moment"
 msgstr "Les étapes sont encore en cours de calcul : réessayez dans un instant"
+# Simulate's power row and the flex tool's cables (APP_UX11 wires)
+msgid "Power: click a battery box, receiver or hub to work its switch"
+msgstr "Alimentation : cliquez sur un boîtier à piles, un récepteur ou un hub pour actionner son interrupteur"
+
+msgid "Work its switch, as a finger moves it on the part"
+msgstr "Actionner son interrupteur, comme un doigt le bouge sur la pièce"
+
+msgid "Work its remote's lever for this output"
+msgstr "Actionner le levier de sa télécommande pour cette sortie"
+
+msgid "Power Functions cable"
+msgstr "Câble Power Functions"
+
+msgid "Powered Up cable"
+msgstr "Câble Powered Up"
+
+msgid "Power Functions motor's own cable, 20 cm"
+msgstr "câble propre d'un moteur Power Functions, 20 cm"
+
+msgid "Power Functions extension wire 8871, 50 cm"
+msgstr "câble d'extension Power Functions 8871, 50 cm"
+
+msgid "Powered Up motor's own cable, 25 cm"
+msgstr "câble propre d'un moteur Powered Up, 25 cm"
+
+msgid "Turn the plug"
+msgstr "Tourner la prise"
+
+msgid "Turn the plug half round on its contacts, so its motor runs the other way"
+msgstr "Tourner la prise d'un demi-tour sur ses contacts, pour que son moteur tourne dans l'autre sens"
+
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
+msgstr "Rien ici n'alimente un moteur, donc Lire le tourne à la main : ajoutez un boîtier à piles ou un hub et posez son câble (Créer, Tuyau, tube ou chaîne…, Câble Power Functions)."
+
+msgid "Stopped at %s going back."
+msgstr "Arrêté à %s en revenant."
+
+msgid "%s does not run: %s."
+msgstr "%s ne tourne pas : %s."
+
+msgid "%s speed"
+msgstr "vitesse %s"
+
+# Simulate's power words, said in the person's language (wfix: N1, 9 V, cables by their ends)
+msgid "its contacts"
+msgstr "ses contacts"
+
+msgid "the plug's own top"
+msgstr "le dessus de la prise"
+
+msgid "the extension wire"
+msgstr "le câble d'extension"
+
+msgid "its own cable"
+msgstr "son propre câble"
+
+msgid "the cable"
+msgstr "le câble"
+
+msgid "turned half round in %s's port %d, which a Powered Up plug goes into one way only"
+msgstr "retournée dans %s, port %d, où une prise Powered Up n'entre que dans un sens"
+
+msgid "a quarter turn round on %s, so it makes no contact"
+msgstr "tournée d'un quart de tour sur %s, donc sans contact"
+
+msgid "on %s"
+msgstr "sur %s"
+
+msgid ", turned half round"
+msgstr ", retournée"
+
+msgid "on nothing"
+msgstr "sur rien"
+
+msgid "on nothing, %d LDU from %s"
+msgstr "sur rien, à %d LDU de %s"
+
+msgid "the %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "a plug (#%d)"
+msgstr "une prise (#%d)"
+
+msgid "%s's port %d"
+msgstr "%s, port %d"
+
+msgid "%s's contacts"
+msgstr "contacts de %s"
+
+msgid "its plug (#%d) is %s"
+msgstr "sa prise (#%d) est %s"
+
+msgid "its own cable's plug is in nothing, so it turns by hand; put the plug on a box or lay a cable from it to run it by the box"
+msgstr "la prise de son propre câble n'est branchée sur rien, il tourne donc à la main ; branche la prise sur un boîtier ou pose un câble depuis lui pour que le boîtier l'entraîne"
+
+msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Hose, tube or chain…, a cable) to run it by the box"
+msgstr "aucun câble n'est dessiné depuis lui dans le modèle, il tourne donc à la main ; poses-en un de lui à un boîtier (Créer › Tuyau, tube ou chaîne…, un câble) pour que le boîtier l'entraîne"
+
+msgid "its cable reaches no battery box, receiver or hub"
+msgstr "son câble n'atteint aucun boîtier à piles, récepteur ou hub"
+
+msgid "nothing gives it power"
+msgstr "rien ne l'alimente"
+
+msgid "%s is off: click it to switch it on"
+msgstr "%s est éteint : clique dessus pour l'allumer"
+
+msgid "%s's own plug is %s"
+msgstr "la prise de %s est %s"
+
+msgid "%s's own cable reaches nothing that gives power"
+msgstr "le câble de %s n'atteint rien qui l'alimente"
+
+msgid "%s %s is off: click it to work its lever"
+msgstr "%s, %s, est éteint : clique dessus pour actionner son levier"
+
+msgid "%s's port %d is at 0%%"
+msgstr "%s, port %d, est à 0 %%"
+
+msgid "on %s %s"
+msgstr "sur %s, %s"
+
+msgid "in %s's port %d"
+msgstr "dans %s, port %d"
+
+msgid "%s output"
+msgstr "sortie %s"
+
+msgid "%s switched %s"
+msgstr "%s mis sur %s"
+
+msgid "%s's port %d at 100%%"
+msgstr "%s, port %d à 100 %%"
+
+msgid ", its dial at %d%%"
+msgstr ", son réglage à %d %%"
+
+msgid " at %d%%"
+msgstr " à %d %%"
+
+msgid "%s: turns by hand, as nothing here gives a motor power."
+msgstr "%s : tourne à la main, car rien ici n'alimente un moteur."
+
+msgid "%s: stopped, %s."
+msgstr "%s : arrêté, %s."
+
+msgid "%s: wired %s; stopped, as %s."
+msgstr "%s : câblé %s ; arrêté, car %s."
+
+msgid "%s: wired %s; runs %s at %d%%."
+msgstr "%s : câblé %s ; tourne %s à %d %%."
+
+msgid "%s runs %s at %s rpm: %s."
+msgstr "%s tourne %s à %s tr/min : %s."
+
+msgid "The %s (#%d)"
+msgstr "%s (#%d)"
+
+msgid "%s #%d, %s output: %s"
+msgstr "%s #%d, sortie %s : %s"
+
+msgid "port %d"
+msgstr "port %d"
+
+msgid "Power Functions battery box"
+msgstr "boîtier à piles Power Functions"
+
+msgid "Power Functions AAA battery box"
+msgstr "boîtier à piles AAA Power Functions"
+
+msgid "9 V battery box"
+msgstr "boîtier à piles 9 V"
+
+msgid "Power Functions IR receiver"
+msgstr "récepteur IR Power Functions"
+
+msgid "Power Functions pole reverser"
+msgstr "inverseur de polarité Power Functions"
+
+msgid "Control+ hub"
+msgstr "hub Control+"
+
+msgid "Powered Up hub"
+msgstr "hub Powered Up"
+
+msgid "Boost Move hub"
+msgstr "hub Boost Move"
+
+msgid "SPIKE Prime hub"
+msgstr "hub SPIKE Prime"
+
+msgid "SPIKE Essential hub"
+msgstr "hub SPIKE Essential"
+
+msgid "9 V wire"
+msgstr "câble 9 V"
+
+msgid "Power Functions extension wire 8886, 20 cm"
+msgstr "câble d'extension Power Functions 8886, 20 cm"
+
+msgid "A Powered Up cable runs from a motor's outlet: Powered Up has no extension wire from contacts to contacts"
+msgstr "Un câble Powered Up part de la sortie d'un moteur : Powered Up n'a pas de câble d'extension de contacts à contacts"
+
+msgid "A cable runs from a motor's outlet to a plug's place (a battery box's, a receiver's or a plug's contacts, a hub's port): two outlets make none"
+msgstr "Un câble va de la sortie d'un moteur à la place d'une prise (les contacts d'un boîtier à piles, d'un récepteur ou d'une prise, le port d'un hub) : deux sorties n'en font pas"
+
+msgid "9 V wire, 11 studs"
+msgstr "câble 9 V, 11 tenons"
+
+msgid "9 V wire, 15 studs"
+msgstr "câble 9 V, 15 tenons"
+
+msgid "9 V wire, 17 studs"
+msgstr "câble 9 V, 17 tenons"
+
+msgid "9 V wire, 20 studs"
+msgstr "câble 9 V, 20 tenons"
+
+msgid "9 V wire, 21 studs"
+msgstr "câble 9 V, 21 tenons"
+
+msgid "9 V wire, 26 studs"
+msgstr "câble 9 V, 26 tenons"
+
+msgid "9 V wire, 33 studs"
+msgstr "câble 9 V, 33 tenons"
+
+msgid "9 V wire, 36 studs"
+msgstr "câble 9 V, 36 tenons"
+
+msgid "9 V wire, 46 studs"
+msgstr "câble 9 V, 46 tenons"
+
+msgid "9 V wire, 69 studs"
+msgstr "câble 9 V, 69 tenons"
+
+msgid "9 V wire, 162 studs"
+msgstr "câble 9 V, 162 tenons"
+
+msgid "9 V wire, 378 studs"
+msgstr "câble 9 V, 378 tenons"
+
+# A switch's, a lever's and an output's one word (Wiring._w): kept apart by
+# the context power from the camera's back view and the like.
+msgctxt "power"
+msgid "on"
+msgstr "allumé"
+
+msgctxt "power"
+msgid "off"
+msgstr "éteint"
+
+msgctxt "power"
+msgid "forward"
+msgstr "en avant"
+
+msgctxt "power"
+msgid "back"
+msgstr "en arrière"
+
+msgctxt "power"
+msgid "lever"
+msgstr "levier"
+
+msgctxt "power"
+msgid "red"
+msgstr "rouge"
+
+msgctxt "power"
+msgid "blue"
+msgstr "bleu"

@@ -674,7 +674,15 @@ func definitions() -> Array:
 				+ "between new ends. band: a rubber belt round sprockets= (pulleys, wheels, "
 				+ "bushes or axles, in order round the loop); spring: between from= and to=, "
 				+ "its turns kept when a part it is on moves. part= picks the band, the "
-				+ "spring or the shock absorber by number."),
+				+ "spring or the shock absorber by number. pf_cable, pu_cable or 9v_wire: a "
+				+ "motor's cable, from= the motor (or an IR receiver or a pole reverser, by its "
+				+ "own cable) to= the battery box, receiver, hub or plug it goes on, in the real "
+				+ "cable's length; pf_cable or 9v_wire from= one part's contacts to= another's is "
+				+ "an extension wire (8886, 8871; 9 V's 5306 lengths), and to= a plug stacks it "
+				+ "on that plug's top. Its plug faces forward, reversed=true turns it half round "
+				+ "so the motor runs the other way (a Powered Up plug goes in one way only). It is "
+				+ "an item like a hose: item= lays it again, also after the model is reopened. "
+				+ "simulate_mechanism then runs the motor as Play does."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["kind"], "properties": {
 				"kind": {"type": "string", "enum": FlexTool.KIND_ORDER},
@@ -684,6 +692,8 @@ func definitions() -> Array:
 				"color": {"type": "integer", "description": "LDraw colour; black when omitted"},
 				"item": {"type": "string", "description": "a hose already laid, by its name in an earlier answer"},
 				"part": {"type": "string", "description": "a band, spring or shock absorber's number (85546, 73129)"},
+				"reversed": {"type": "boolean", "description": "a pf_cable's or 9v_wire's plug put on "
+					+ "turned half round, so its motor runs the other way; cables only"},
 			}},
 		},
 		{
@@ -919,7 +929,12 @@ func definitions() -> Array:
 				+ "where it ended. A line each: to 90° at 50% (to an angle from where it was "
 				+ "built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines "
 				+ "indented under it); with two hub motors or more, each line begins with its "
-				+ "port, A to F."),
+				+ "port, A to F. Motors run by their cables as Play runs them: it says each "
+				+ "motor's cable and what it reaches, and the driver's motor turns the way its "
+				+ "plugs face, what its cable reaches switched on where it is off; a motor whose "
+				+ "cable is pulled does not turn, and one with no cable drawn turns by hand. "
+				+ "power=on switches every battery box, receiver and hub on first, power=off "
+				+ "every one off."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
@@ -929,6 +944,7 @@ func definitions() -> Array:
 				"turns": {"type": "number", "description": "turns of the reference (or the driver) a recording covers; 1 when omitted"},
 				"record": {"type": "boolean"},
 				"program": {"type": "string", "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out"},
+				"power": {"type": "string", "enum": ["on", "off"], "description": "every battery box, IR receiver, pole reverser and hub switched on or off before it turns; not given, what the driver's cable reaches is switched on where it is off, as Play does"},
 			}},
 		},
 		{
@@ -3044,16 +3060,25 @@ func _lay_flex(input: Dictionary) -> String:
 	if not Flex.KINDS.has(kind):
 		return "kind is one of %s." % ", ".join(FlexTool.KIND_ORDER)
 	var item: String = str(input.get("item", ""))
+	# A part laid again is not in its own way: its pieces, and a cable's plug,
+	# take no place its ends go (as the Make tool reshapes one).
+	var own: Dictionary = {}
 	if not item.is_empty():
 		var found: String = ""
-		for path: String in Flex.items_in(world).keys():
+		var items: Dictionary = Flex.items_in(world)
+		for path: String in items.keys():
 			if path == item or Assemblies.label(path) == item:
 				found = path
 		if found.is_empty():
-			return "No hose or chain called %s. There is: %s." % [item,
-				", ".join(PackedStringArray(Flex.items_in(world).keys().map(
-					func(path: String) -> String: return Assemblies.label(path))))]
+			# Ten named at most, and the rest counted: an answer is read whole.
+			var named: Array = Flex.items_in(world).keys().map(
+				func(path: String) -> String: return Assemblies.label(path))
+			return "No hose, chain or cable called %s. There is: %s%s." % [item,
+				", ".join(PackedStringArray(named.slice(0, 10))) if not named.is_empty() else "none",
+				"" if named.size() <= 10 else ", and %d more" % (named.size() - 10)]
 		item = found
+		for brick: BrickWorld.Brick in (items[found] as Dictionary)["bricks"]:
+			own[brick.id] = true
 	var colour: int = int(input.get("color", 0))
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
 	var anchors: Array = []
@@ -3075,7 +3100,11 @@ func _lay_flex(input: Dictionary) -> String:
 		if sprockets.size() < 2:
 			return "Give sprockets= two or more gears' part numbers, in one plane."
 	else:
-		var all: Array = Flex.anchors_in(world, library, kind, {})
+		# A cable's places, taken ones too: what its ends are decides first
+		# whether they make a cable at all, and only then is a taken one said.
+		var electric: bool = Flex.KINDS[kind].has("electric")
+		var all: Array = Wiring.places(world, library, kind, own) if electric \
+			else Flex.anchors_in(world, library, kind, own)
 		var ends: Array = [input.get("from", {}), input.get("to", {})]
 		var on: Array = []
 		for n: int in 2:
@@ -3086,10 +3115,40 @@ func _lay_flex(input: Dictionary) -> String:
 				return "No part numbered %d." % int((ends[n] as Dictionary)["brick"])
 			var mine: Array = all.filter(func(a: Flex.Anchor) -> bool: return a.brick == brick.id)
 			if mine.is_empty():
+				var other: String = Wiring.system_refusal(brick.part_id, kind) if electric else ""
+				if not other.is_empty():
+					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id, other]
 				return ("#%d (%s) has nothing a %s goes on: it takes %s."
 					% [brick.id, brick.part_id, kind.replace("_", " "),
 						", ".join(PackedStringArray(Flex.KINDS[kind].get("takes", []))).replace("_", " ")])
 			on.append(mine)
+		if electric:
+			# A cable runs from an outlet to a plug's place, or an extension
+			# wire from contacts to contacts, as the Make tool's ends
+			# (Flex.cable_ends_refusal): two outlets make none, free or not.
+			var refused: String = ""
+			var makes: bool = false
+			for a: Flex.Anchor in on[0]:
+				for b: Flex.Anchor in on[1]:
+					var why_not: String = Flex.cable_ends_refusal(kind, a.kind, b.kind)
+					makes = makes or why_not.is_empty()
+					refused = why_not if not why_not.is_empty() else refused
+			if not makes:
+				return "%s: give a motor's outlet and a plug's place%s." % [refused,
+					"" if Flex.lengths_between(null, kind, ["contacts", "contacts"]).is_empty()
+						else ", or two parts' contacts for an extension wire"]
+			# Then a place taken: its cable laid already, a plug on it.
+			for n: int in 2:
+				var free: Array = (on[n] as Array).filter(func(a: Flex.Anchor) -> bool: return a.taken.is_empty())
+				if free.is_empty():
+					var brick: BrickWorld.Brick = _brick(int((ends[n] as Dictionary)["brick"]))
+					var why: PackedStringArray = []
+					for a: Flex.Anchor in on[n]:
+						if not why.has(a.taken):
+							why.append(a.taken)
+					return "No %s end goes on #%d (%s): %s." % [kind, brick.id, brick.part_id,
+						"; ".join(why.slice(0, 3))]
+				on[n] = free
 		# Each end on the connector asked for, else the two nearest each other.
 		for n: int in 2:
 			var asked: Dictionary = ends[n]
@@ -3100,17 +3159,33 @@ func _lay_flex(input: Dictionary) -> String:
 				on[n] = [_nearest(on[n], near)]
 		var best: Array = []
 		var gap: float = INF
+		var refused: String = ""
 		for a: Flex.Anchor in on[0]:
 			for b: Flex.Anchor in on[1]:
 				var apart: float = a.middle().distance_to(b.middle())
+				var why_not: String = Flex.cable_ends_refusal(kind, a.kind, b.kind) if electric else ""
+				if not why_not.is_empty():
+					refused = why_not
+					continue
 				if apart < gap and a != b:
 					gap = apart
 					best = [a, b]
+		if best.is_empty() and not refused.is_empty():
+			# The connectors asked for (x=, y=, z=) make no cable.
+			return "%s: give a motor's outlet and a plug's place." % refused
 		if best.is_empty():
 			return "Both ends are the same connector; give two."
 		anchors = best
+	var facing: int = 1
+	if input.get("reversed") is bool and bool(input["reversed"]):
+		if kind == "pu_cable":
+			return "A Powered Up plug goes into its port one way only; it cannot be reversed."
+		if not Flex.KINDS[kind].has("electric"):
+			return ("reversed= turns a cable's plug half round (pf_cable, 9v_wire); a %s has no plug "
+				+ "to turn: leave it out.") % kind.replace("_", " ")
+		facing = -1
 	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item,
-		str(input.get("part", "")))
+		str(input.get("part", "")), facing)
 	if laid == null or laid.pieces.is_empty():
 		var why: String = "" if laid == null else "; ".join(laid.warnings)
 		return "Nothing laid%s." % (": " + why if not why.is_empty() else
@@ -3119,6 +3194,23 @@ func _lay_flex(input: Dictionary) -> String:
 		laid.pieces.size(), "%.0f LDU along" % laid.length if laid.length > 0.0 else "round the sprockets"]
 	if not laid.warnings.is_empty():
 		said += " But: %s." % "; ".join(laid.warnings)
+	if Flex.KINDS[kind].has("electric"):
+		# What the cable does now: the motor it wires, and to what.
+		var wired: Wiring = Wiring.read_with(world.bricks(), library)
+		var ends: Dictionary = {}
+		for anchor: Flex.Anchor in anchors:
+			ends[anchor.brick] = true
+		var lines: Array = []
+		for motor: int in wired.motors:
+			if ends.has(motor):
+				lines.append(wired.motor_line(motor))
+		if lines.is_empty():
+			# A receiver's or a pole reverser's own cable: every motor it reaches.
+			for motor: int in wired.motors:
+				lines.append(wired.motor_line(motor))
+		if not lines.is_empty():
+			said += " " + " ".join(PackedStringArray(lines)) + (" simulate_mechanism runs it as Play "
+				+ "does, switching on what it reaches.")
 	return said
 
 

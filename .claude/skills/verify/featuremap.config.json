@@ -6338,6 +6338,20 @@
       "entry": "tools/web/homescreen_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "motors run by their cables",
+      "entry": "src/assembly/wiring.gd",
+      "reach": "tools/probe.sh wires_probe   (headless: PF cables, plugs, a receiver, a pole reverser, a Control+ hub and an extension wire read by hand, a motor with no cable by hand, a plug beside other parts no cable, the model mirrored the same, 9 V boxes, wires and 58124c02; a Power Functions cable laid by lay_flex from an M motor to a box, 500 LDU, one undo, saved and reopened byte for byte, then an item: Reshape reads its ends, lay_flex item= lays it again, outlet to outlet refused; 42042's L motor in Simulate runs at 390 rpm once its box is clicked through EditVerbs.click, Play switches an off box on, a selection made otherwise flips nothing, and it stops with its plug pulled; -- --sets=bench/results/wires-2026-11-22/sets.json --rows=ROWS clicks each set's sources and measures its motors as KINEFUNCS reads their functions, tools/wires_sets.py writes the listing; src/dev/wires_repro.gd -- FILES reads every OMR power set and the review's synthetic cases)",
+      "area": "geometry"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
     }
   ]
 }
