@@ -846,13 +846,15 @@ run() {
   # "passed" in 0 s without running (2026-10-13).
   if [ -z "${CMD[$name]:-}" ]; then echo "$name exit=127 fails=1 0s :: FAIL no such check" >> "$S/$TAG.out"; return; fi
   # Held for the check's run only, and never by what it starts: a browser
-  # left behind would hold the database from every other run.
+  # left behind would hold the database from every other run. Taken inside
+  # heavy, once the check has its slot (live_db.sh, which also writes the
+  # "left" line): taken before heavy, a check held one of the three while it
+  # queued for a CPU, and at load 70 three checks queued 1 h 47 min holding
+  # all three, so every other unit's gave way or waited unstarted (2026-11-22).
+  local lock=()
   if live "$name"; then
-    alone "$name" && how=alone
-    if ! take_live_db "$how" "$TAG $name"; then
-      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
-      return
-    fi
+    alone "$name" && how=--alone
+    lock=(bash "$RELEASE_HERE/live_db.sh" ${how:+"$how"} "$TAG $name")
   fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
@@ -868,13 +870,16 @@ run() {
   # checks run back to back while the box is calm.
   local gap=""
   [ -n "$solo" ] && [ "${BOX_HEAVY_PRIORITY:-}" != 1 ] && gap="BOX_HEAVY_SOLO_GAP=0"
-  without_live_db env $gap "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
+  env $gap "$H" $solo "${lock[@]}" timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
   local code=$?
-  leave_live_db
   # heavy --solo says the load it began at, after how long, and beside what.
   local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)
   [ -n "$solo" ] && echo "$name began ${began:-with no word from heavy}" >> "$S/${TAG}_calm.log"
-  live "$name" && echo "$(date '+%F %T') left $TAG $name exit=$code" >> "$LIVE_DB.log"
+  # live_db.sh exits 75 only when the lock stayed busy; heavy gives up with 2.
+  if [ "$code" = 75 ] && live "$name"; then
+    echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
+    return
+  fi
   echo "$name exit=$code fails=$(grep -c 'FAIL' "$S/${TAG}_$name.log") $(( $(date +%s) - t0 ))s :: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-200)" >> "$S/$TAG.out"
 }
 : > "$S/$TAG.out"

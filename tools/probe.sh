@@ -34,6 +34,10 @@
 # PROBE_COMPAT=1 runs a windowed probe on Compatibility, the web's renderer,
 # on the card through Mesa's zink: Xvfb has no OpenGL of its own, and
 # without zink llvmpipe draws it in software (look_probe's header).
+# PROBE_TIMEOUT=SECONDS bounds the run, inside heavy, so the time spent
+# queued for a slot is never counted: `timeout N probe.sh` counts the
+# queue, and on 11-22 every probe of a gate run died at exit 124 that way
+# without starting. heavy's own BOX_HEAVY_WAIT bounds the queue.
 set -u
 # Read whole before it runs: bash reads a script as it goes, and the
 # release's own edit to this file, made while a probe ran, cut that run off
@@ -42,6 +46,10 @@ set -u
 name=${1:?usage: probe.sh NAME [ARGS…]}; shift
 name=${name%.gd}; name=${name##*/}
 cd "$(dirname "$0")/.." || exit 1
+# A timeout round this script counts heavy's queue: refused here, at once.
+# shellcheck source=release/queue_wrap.sh
+. tools/release/queue_wrap.sh
+[ -n "${PROBE_DRY:-}" ] || queue_wrap_check || exit 2
 file="src/dev/$name.gd"
 # The suite's lists name most probes without "_probe" (tested_seeds), and
 # probe.sh was handed those names twice in one night (2026-10-27).
@@ -108,6 +116,7 @@ echo "probe.sh: $name, data in $data"
 core="$HOME/.claude/claude-core/bin"
 heavy=(); [ -x "$core/heavy" ] && heavy=("$core/heavy")
 gpu=(); [ -x "$core/gpu" ] && gpu=("$core/gpu")
+limit=(); [ -n "${PROBE_TIMEOUT:-}" ] && limit=(timeout "$PROBE_TIMEOUT")
 tail=(); [ $# -gt 0 ] && tail=(-- "${@/#@out/$data/$name}")
 # This shell's desktop is the owner's, and nothing a probe does opens on it.
 # A probe's run opens no link and no folder (Outside, in the app), and
@@ -150,7 +159,7 @@ held=(env -u WAYLAND_DISPLAY PATH="$stubs:$PATH" BRICKWORKS_OPEN_NOTHING=1
 case " $block " in
   *" --headless "*)
     how="headless"
-    cmd=("${heavy[@]}" "${held[@]}" XDG_DATA_HOME="$data"
+    cmd=("${heavy[@]}" "${limit[@]}" "${held[@]}" XDG_DATA_HOME="$data"
       godot --headless --path . --script "$file" "${tail[@]}") ;;
   *)
     size=$(grep -oE -- '--resolution [0-9]+x[0-9]+' <<<"$block" | head -1 | cut -d' ' -f2)
@@ -163,7 +172,7 @@ case " $block " in
         MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1)
       engine=(--rendering-method gl_compatibility)
     fi
-    cmd=("${heavy[@]}" "${gpu[@]}" "${held[@]}" XDG_DATA_HOME="$data" MESA_VK_WSI_DEBUG=sw
+    cmd=("${heavy[@]}" "${gpu[@]}" "${limit[@]}" "${held[@]}" XDG_DATA_HOME="$data" MESA_VK_WSI_DEBUG=sw
       "${compat[@]}" xvfb-run -a --server-args="-screen 0 ${size}x24"
       godot --path . "${engine[@]}" --resolution "$size" --script "$file" "${tail[@]}") ;;
 esac

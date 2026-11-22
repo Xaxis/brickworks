@@ -22,8 +22,11 @@ for spec in "$@"; do
   args=()
   [ "$spec" != "$name" ] && read -r -a args <<< "${spec#*:}"
   log="${prefix}_${name}.log"
-  # A bare name runs as the suite lists it (probe.sh, PROBE_LISTED).
-  PROBE_LISTED=1 timeout 2400 tools/probe.sh "$name" "${args[@]}" > "$log" 2>&1
+  # A bare name runs as the suite lists it (probe.sh, PROBE_LISTED). The
+  # 40 minutes bound the run only (PROBE_TIMEOUT, inside heavy): an outer
+  # `timeout 2400` counted heavy's queue and killed every probe of a gate
+  # run unstarted under a release's solo job (11-22).
+  PROBE_LISTED=1 PROBE_TIMEOUT=2400 tools/probe.sh "$name" "${args[@]}" > "$log" 2>&1
   code=$?
   # "ok   ..." in most probes, "PASS: ..." in some (own_copies_probe).
   ok=$(grep -cE '^\s*(ok |PASS:)' "$log")
