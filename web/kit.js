@@ -131,10 +131,6 @@ if (typeof document !== "undefined") {
     if (event.key !== "Escape") return;
     const open = document.querySelector("details.more-menu[open]");
     if (!open) return;
-    // Escape in a dialog over the menu is the dialog's: an ask opened from
-    // a More menu (Block) closes, and the menu under it stays as it was.
-    const over = event.target.closest?.("dialog");
-    if (over && !over.contains(open)) return;
     open.open = false;
     open.querySelector("summary")?.focus();
   });
