@@ -1,5 +1,9 @@
 ## The strip across the top: the menus, what this model is called, and who
-## is signed in.
+## is signed in. It is the app's header (AppHeader), the site's: the mark and
+## the name at the left, the app's menu and Account at the right, 60 points
+## tall over a line, in every mode. A shared model's viewer and Build it's
+## step player keep it, plain (looking): the mark, Menu and Account, their
+## own bars under it.
 ##
 ## It was a row of a dozen buttons — New, Save, Open, Export, Parts list,
 ## Timeline, Mosaic, Minifig, Help, Account, Clear — with a status line
@@ -10,23 +14,40 @@
 class_name ModelBar
 extends PanelContainer
 
+## The header every mode has, the site's (src/ui/app_header.gd).
+const AppHeader := preload("res://src/ui/app_header.gd")
+
 var store: ModelStore
 var world: BrickWorld
 var builder: Builder
 
-## The app's own menu, first in the row: the mark and the app's name, as
-## the site's header has them, the way a CAD program's top left has its
-## logo. Shell fills it (Shell.APP_MENU). Where the row has no room for the
-## name on one line, the mark alone ([method _fit_mark]).
+## The app's own menu (Shell fills it, Shell.APP_MENU). On the desktop it is
+## first in the row, the mark and the app's name, the way a CAD program's top
+## left has its logo. In a browser the mark and the name are the way home, as
+## the site's header has them ([member home]), and this is Menu at the right,
+## beside Account, where the site's phone header has its Menu (AppHeader).
 var mark: MenuButton
+## In a browser, the mark and the app's name at the left, the site's home page
+## in this tab (AppHeader.go_home); null on the desktop, where [member mark]
+## is there. Where the row has no room for the name on one line, the mark
+## alone ([method _fit_mark]).
+var home: Button
+## Whichever is at the left with the mark on it: [member home] or [member mark].
+var brand: Button
+## The header plain, for a shared model's viewer, Build it's step player and
+## the booklet's page laid out by hand (looking): the menus, the model's name
+## and the Claude tab out of sight, the mark, Menu and Account kept.
+var plain: bool = false
+## Looking at somebody else's model: Account is the site's settings page,
+## since the viewer reads nobody's account (Main._enter_view).
+var visiting: bool = false
 ## Where the menus go, between the app's menu and the model's name.
 var menus: HBoxContainer
 
 const NAME := "Brickworks"
 ## The mark (web/icon.svg; this copy is tools/web/make_icons.mjs's), drawn
-## this many units tall.
+## AppHeader.MARK points tall.
 const MARK := "res://assets/ui/mark.svg"
-const MARK_TALL := 18.0
 ## The model's name box: its width, and the least it gives way to in a
 ## narrow window (_fit_mark).
 const NAME_WIDE := 200.0
@@ -108,14 +129,7 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var backing := StyleBoxFlat.new()
-	backing.bg_color = Color(0.11, 0.12, 0.14, 0.97)
-	backing.content_margin_left = 10
-	backing.content_margin_right = 10
-	backing.content_margin_top = 3
-	backing.content_margin_bottom = 3
-	add_theme_stylebox_override("panel", backing)
-
+	# The site's ground, 60 points and a line (_fit_header).
 	# Wraps onto a second line rather than running off the side, on a
 	# phone: the bar sets the width of everything under it, and a row wider
 	# than the page once took the assistant's rail off it.
@@ -126,7 +140,6 @@ func _build() -> void:
 
 	mark = MenuButton.new()
 	mark.name = "app_menu"
-	mark.text = NAME
 	mark.flat = true
 	# Pointed at with another menu open, it opens in that one's place, as
 	# File does from Edit.
@@ -135,25 +148,26 @@ func _build() -> void:
 	# Tab and the arrows reach it (F6 goes in here first); a click leaves
 	# the keys with the model.
 	FocusGuard.by_keyboard(mark)
-	mark.add_theme_font_size_override("font_size", 14)
-	mark.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
-	mark.add_theme_color_override("font_focus_color", Color(1, 1, 1, 0.75))
-	mark.add_theme_color_override("font_hover_color", Color.WHITE)
-	mark.add_theme_color_override("font_pressed_color", Color.WHITE)
-	mark.add_theme_constant_override("h_separation", 7)
-	mark.custom_minimum_size = Vector2(0, 28)
-	mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var face := StyleBoxEmpty.new()
-	face.content_margin_left = 2
-	face.content_margin_right = 4
-	for state: String in ["normal", "hover", "pressed", "disabled"]:
-		mark.add_theme_stylebox_override(state, face)
-	mark.add_theme_stylebox_override("focus", FocusGuard.ring())
 	mark.accessibility_name = NAME
-	row.add_child(mark)
+	if AppHeader.web_layout:
+		home = Button.new()
+		home.name = "app_home"
+		home.text = NAME
+		home.focus_mode = Control.FOCUS_NONE
+		home.accessibility_name = NAME
+		home.tooltip_text = "Brickworks: the home page"
+		home.accessibility_description = "The site's home page, in this tab"
+		home.pressed.connect(AppHeader.go_home)
+		brand = home
+		mark.text = "Menu"
+	else:
+		mark.text = NAME
+		brand = mark
+	brand.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(brand)
 	row.sort_children.connect(_fit_mark, CONNECT_DEFERRED)
-	get_viewport().size_changed.connect(_draw_mark)
-	_draw_mark.call_deferred()
+	get_viewport().size_changed.connect(_fit_header)
+	_fit_header.call_deferred()
 
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(8, 0)
@@ -161,6 +175,7 @@ func _build() -> void:
 
 	menus = HBoxContainer.new()
 	menus.add_theme_constant_override("separation", 0)
+	menus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(menus)
 
 	var gap_two := Control.new()
@@ -187,6 +202,7 @@ func _build() -> void:
 	# House had a model called "UntitledMy House" (brickworks.diy at
 	# dd5c10c, 2026-10-12). A second click places the caret.
 	_name.select_all_on_focus = true
+	_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_name)
 
 	var push := Control.new()
@@ -199,6 +215,7 @@ func _build() -> void:
 	# A press opens Account, where the chats are and a new chat for this tab.
 	_claude_tab = HBoxContainer.new()
 	_claude_tab.add_theme_constant_override("separation", 6)
+	_claude_tab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_claude_tab.visible = false
 	row.add_child(_claude_tab)
 	_claude_dot = ColorRect.new()
@@ -215,9 +232,15 @@ func _build() -> void:
 	_claude_words.pressed.connect(func() -> void: account_wanted.emit())
 	_claude_tab.add_child(_claude_words)
 
+	# In a browser the app's menu, Menu, before Account: the site's phone
+	# header has its Menu there, and your account last at the far right.
+	if home != null:
+		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(mark)
 	# Who is signed in, and the way out. Everyone using Brickworks is.
-	_account = _button(row, "Account", func() -> void: account_wanted.emit(),
-		"Who is signed in, and Sign out")
+	_account = _button(row, "Account", _account_pressed, "Who is signed in, and Sign out")
+	_account.name = "account"
+	_account.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	_confirm = ConfirmationDialog.new()
 	_confirm.title = "Clear the baseplate?"
@@ -362,7 +385,7 @@ func show_claude_tab(said: Array) -> void:
 	if _claude_tab == null:
 		return
 	var text: String = str(said[0])
-	_claude_tab.visible = not text.is_empty()
+	_claude_tab.visible = not text.is_empty() and not plain
 	if _claude_words.text != text:
 		_claude_words.text = text
 	_claude_dot.color = said[1]
@@ -374,18 +397,60 @@ func claude_tab_words() -> String:
 	return _claude_words.text if _claude_tab != null and _claude_tab.visible else ""
 
 
-## The mark at the screen's own density, sharp at 1x and at 2x alike, as
-## the toolbar draws its icons (Toolbar._draw_icons).
-func _draw_mark() -> void:
-	var density: float = Icons.density(mark)
-	if is_equal_approx(density, _mark_drawn_at):
+## The header at the site's size in points (AppHeader), and the mark at
+## the screen's own density, sharp at 1x and at 2x alike, as the toolbar
+## draws its icons (Toolbar._draw_icons): again whenever the window's size
+## or density changes.
+func _fit_header() -> void:
+	if not is_inside_tree():
+		return
+	# Dressed for a phone (Main._dress_for_phone), the phone's top bar is the
+	# header, and this keeps no height of its own.
+	if not brand.get_parent().visible:
+		return
+	var pt: float = AppHeader.points(self)
+	var density: float = Icons.density(brand)
+	var gutter: float = AppHeader.GUTTER_NARROW if Room.across() < 600.0 else AppHeader.GUTTER
+	add_theme_stylebox_override("panel", AppHeader.ground(pt, AppHeader.TARGET * pt, gutter))
+	custom_minimum_size.y = (AppHeader.TALL + AppHeader.LINE) * pt
+	AppHeader.dress_mark(brand, pt)
+	brand.accessibility_name = NAME
+	if home != null:
+		AppHeader.dress_button(mark, pt)
+	AppHeader.dress_button(_account, pt)
+	if is_equal_approx(density, _mark_drawn_at) and is_equal_approx(pt, _mark_drawn_pt):
 		return
 	_mark_drawn_at = density
-	mark.icon = Icons.icon_for(MARK, MARK_TALL, density)
-	mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_mark_drawn_pt = pt
+	brand.icon = Icons.icon_for(MARK, AppHeader.MARK * pt, density)
+	brand.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 var _mark_drawn_at: float = 0.0
+var _mark_drawn_pt: float = 0.0
+
+
+## The header plain or whole: plain for a mode that is not the studio's
+## (the viewer, Build it, the page laid out by hand), the menus, the model's
+## name and the Claude tab out of sight and the mark, Menu and Account kept,
+## so the header is the same in each.
+func set_plain(yes: bool) -> void:
+	plain = yes
+	for part: Control in [menus, _name]:
+		part.visible = not yes
+	if _claude_tab != null:
+		_claude_tab.visible = not yes and not _claude_words.text.is_empty()
+	_fit_mark.call_deferred()
+
+
+## Account pressed: who is signed in, in the app; on somebody else's model,
+## which reads nobody's account, the site's own settings, in a tab of their
+## own so the model stays open here.
+func _account_pressed() -> void:
+	if visiting:
+		Outside.open_link(Deployment.api_base() + "/settings")
+		return
+	account_wanted.emit()
 
 
 ## The app's name beside the mark while the row holds everything on one
@@ -397,13 +462,13 @@ var _mark_drawn_at: float = 0.0
 ## name box gives way, down to NAME_NARROW: the Make menu (keys3) took 50
 ## of those 40, and a Claude tab put Account on a second line.
 func _fit_mark() -> void:
-	var row: HFlowContainer = mark.get_parent()
+	var row: HFlowContainer = brand.get_parent()
 	var gap: int = row.get_theme_constant("h_separation")
 	var wide: float = 0.0
-	var mine: bool = _name.get_parent() == row
+	var mine: bool = _name.get_parent() == row and _name.visible
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		if control != null and control != mark and control.visible and not (mine and control == _name):
+		if control != null and control != brand and control.visible and not (mine and control == _name):
 			wide += control.get_combined_minimum_size().x + gap
 	# Account as wide as its count makes it ("Account · 99+"), whether the
 	# count has come or not: it comes seconds in, signed in, and the name
@@ -414,9 +479,9 @@ func _fit_mark() -> void:
 		var size: int = _account.get_theme_font_size("font_size")
 		wide += maxf(0.0, font.get_string_size("Account · 99+", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 			- font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-	var word: float = mark.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
-		-1, mark.get_theme_font_size("font_size")).x + mark.get_theme_constant("h_separation")
-	var bare: float = mark.get_combined_minimum_size().x - (0.0 if mark.text.is_empty() else word)
+	var word: float = brand.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
+		-1, brand.get_theme_font_size("font_size")).x + brand.get_theme_constant("h_separation")
+	var bare: float = brand.get_combined_minimum_size().x - (0.0 if brand.text.is_empty() else word)
 	if mine:
 		wide += gap
 		var box: float = clampf(floorf(row.size.x - wide - bare), NAME_NARROW, NAME_WIDE)
@@ -425,13 +490,16 @@ func _fit_mark() -> void:
 		if not is_equal_approx(_name.custom_minimum_size.x, box):
 			_name.custom_minimum_size.x = box
 		wide += box
+	# Inside the header's gutters: the row is the panel's width less them.
 	var named: String = NAME if wide + bare + word <= row.size.x else ""
-	if mark.text != named:
-		mark.text = named
+	if brand.text != named:
+		brand.text = named
 
 
 func controls_by_name() -> Dictionary:
-	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark}
+	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark, "app_header": self}
+	if home != null:
+		out["app_home"] = home
 	if _claude_tab != null and _claude_tab.is_visible_in_tree():
 		out["claude_tab"] = _claude_words
 	# New's question, for tools/web/progress_check.mjs.

@@ -16861,3 +16861,13 @@ msgstr "Publicado, no inscrito: %s"
 
 msgid "Brickworks could not enter it just now. Press Enter again in a minute."
 msgstr "Brickworks no pudo inscribirlo ahora. Pulsa Participar de nuevo dentro de un minuto."
+
+# The app's header in every mode (appchrome): the mark home, Menu at the right
+msgid "Menu"
+msgstr "Menú"
+
+msgid "Brickworks: the home page"
+msgstr "Brickworks: la página de inicio"
+
+msgid "The site's home page, in this tab"
+msgstr "La página de inicio del sitio, en esta pestaña"

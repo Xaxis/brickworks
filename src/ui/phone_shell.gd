@@ -9,8 +9,11 @@
 ## toolbar, the key strip and the status line (Main hides them), laid out
 ## in points through Phone.px:
 ##
-##   along the top    the mark (the app's menu), the model's name, the
-##                    assistant while it is on, Undo and Redo
+##   along the top    the app's header (AppHeader), the site's 60 points and a
+##                    line: the mark (in a browser the way home, with Menu,
+##                    the app's menu, at the right; on the desktop the app's
+##                    menu), the model's name, the assistant while it is on,
+##                    Undo and Redo
 ##   along the foot   one row of what a phone builder reaches for: Parts,
 ##                    Colour, Turn, Tip, Select, Delete, and More, where
 ##                    every command of every menu is
@@ -36,6 +39,9 @@
 class_name PhoneShell
 extends Control
 
+## The header every mode has, the site's (src/ui/app_header.gd).
+const AppHeader := preload("res://src/ui/app_header.gd")
+
 var app: Node
 var shell: Shell
 ## Laid out again in other points to the unit (a phone turned, a browser's
@@ -55,6 +61,9 @@ var _pill: PanelContainer
 var _pill_words: Label
 var _fit: Button
 var _mark: Button
+## In a browser, the app's menu at the right of the top bar, the mark being
+## the way home there (AppHeader); null on the desktop, where the mark is it.
+var _menu: Button
 var _assistant: Button
 var _name: LineEdit
 var _colour_button: Button
@@ -71,7 +80,8 @@ var _all_colours: bool = false
 var _newest: Sheet
 var _look_again_at: int = 0
 
-const TOP := 52.0
+## The header's height (AppHeader): the site's 60 points and its line.
+const TOP := AppHeader.TALL + AppHeader.LINE
 const ROW := 72.0
 ## A tablet's panel, across: the parts bin's own width and its margins.
 const SIDE := 400.0
@@ -230,20 +240,35 @@ func _build() -> void:
 	wide = Phone.wide()
 	_name = (app.get("_bar") as ModelBar).get("_name")
 
-	# Along the top: the app's menu, the name, the assistant, Undo, Redo.
-	_top = _bar_panel()
+	# Along the top: the app's header, the mark, the name, the assistant, Undo,
+	# Redo, and in a browser Menu.
+	_top = PanelContainer.new()
+	_top.mouse_filter = Control.MOUSE_FILTER_STOP
+	_top.add_theme_stylebox_override("panel", AppHeader.ground(p(1.0), p(Phone.TARGET),
+		AppHeader.GUTTER_NARROW))
 	_pin(_top, 0.0, 0.0, 1.0, 0.0, Rect2(0, 0, 0, p(TOP)))
 	add_child(_top)
 	var top_row := HBoxContainer.new()
 	top_row.add_theme_constant_override("separation", ceili(p(6)))
 	_top.add_child(top_row)
-	# The mark first, as the desktop's bar and the site's header have it:
-	# the app's own menu, the way back to the site in it. The menu is the
+	# The mark first, as the desktop's bar and the site's header have it. In a
+	# browser it is the way home, as the site's is, and the app's own menu is
+	# Menu at the right; on the desktop it opens that menu. The menu is the
 	# desktop's (ModelBar.mark), which Shell fills and keeps.
 	_mark = _icon_button(ModelBar.MARK, p(Phone.TARGET))
-	_mark.name = "phone_app_menu"
+	# Where the desktop's bar and the viewer's header draw it: the cube at the
+	# site's size, a fingertip square, its left at the gutter.
+	AppHeader.dress_mark(_mark, p(1.0))
+	_mark.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_mark.icon = Icons.icon_for(ModelBar.MARK, p(AppHeader.MARK), Icons.density(self))
 	_mark.accessibility_name = ModelBar.NAME
-	_mark.pressed.connect(_open_app_menu)
+	if AppHeader.web_layout:
+		_mark.name = "phone_home"
+		_mark.tooltip_text = "Brickworks: the home page"
+		_mark.pressed.connect(AppHeader.go_home)
+	else:
+		_mark.name = "phone_app_menu"
+		_mark.pressed.connect(_open_app_menu)
 	top_row.add_child(_mark)
 	if _name.get_parent() != null:
 		_name.get_parent().remove_child(_name)
@@ -282,6 +307,16 @@ func _build() -> void:
 		button.pressed.connect(func() -> void: shell.run(what))
 		top_row.add_child(button)
 		_tool_buttons[what] = button
+	if AppHeader.web_layout:
+		_menu = Button.new()
+		_menu.name = "phone_app_menu"
+		_menu.text = "Menu"
+		_menu.focus_mode = Control.FOCUS_NONE
+		_menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		AppHeader.dress_button(_menu, p(1.0))
+		_menu.add_theme_font_size_override("font_size", ceili(p(16)))
+		_menu.pressed.connect(_open_app_menu)
+		top_row.add_child(_menu)
 	_share_top()
 
 	# Along the foot: one row.
@@ -434,9 +469,15 @@ func _icon_button(icon: String, across: float) -> Button:
 ## TouchSizing makes its rows a fingertip tall.
 func _open_app_menu() -> void:
 	var menu: PopupMenu = (app.get("_bar") as ModelBar).mark.get_popup()
-	var scale: Vector2 = _mark.get_global_transform_with_canvas().get_scale()
+	var opener: Button = _menu if _menu != null else _mark
+	var scale: Vector2 = opener.get_global_transform_with_canvas().get_scale()
 	menu.reset_size()
-	menu.position = Vector2i(_mark.get_screen_position() + Vector2(0.0, _mark.size.y * scale.y))
+	var at: Vector2 = opener.get_screen_position() + Vector2(0.0, opener.size.y * scale.y)
+	# Menu's right edge under its own at the right of the bar, as the site's
+	# phone Menu drops its list.
+	if opener == _menu:
+		at.x = opener.get_screen_position().x + opener.size.x * scale.x - float(menu.size.x)
+	menu.position = Vector2i(at)
 	menu.popup()
 
 
@@ -497,7 +538,7 @@ func _share_top() -> void:
 		return
 	var row: HBoxContainer = _name.get_parent() as HBoxContainer
 	var gap: float = row.get_theme_constant("separation")
-	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
+	var inside: float = get_viewport().get_visible_rect().size.x - p(AppHeader.GUTTER_NARROW) * 2.0
 	# Everything but the name, Redo shown, each with its gap before it.
 	var rest: float = 0.0
 	for child: Node in row.get_children():
@@ -1078,8 +1119,12 @@ func controls_by_name() -> Dictionary:
 		out["phone_" + what] = _tool_buttons[what]
 	out["phone_fit"] = _fit
 	out["phone_name"] = _name
-	# The desktop's mark is hidden here: this one is the app's menu.
-	out["app_menu"] = _mark
+	# The desktop's mark is hidden here: this one is the app's menu, or in a
+	# browser the way home with Menu the app's menu.
+	out["app_menu"] = _menu if _menu != null else _mark
+	if _menu != null:
+		out["app_home"] = _mark
+	out["app_header"] = _top
 	for sheet: Sheet in _sheets:
 		if not sheet.is_open():
 			continue
