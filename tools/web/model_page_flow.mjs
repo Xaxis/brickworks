@@ -18,9 +18,10 @@
 //      designer and the action bar are wholly on the first screen. At 1280
 //      the picture and the column beside it are on the first screen, and
 //      the column is still beside it, on screen, after the page scrolls.
-//   2. One action bar: Like, Save, Share, Comment, I built it and More,
-//      each named for a screen reader with its count ("Like, 96 likes"),
-//      the count beside its icon, and never a count of none.
+//   2. One action bar: Like, Save, Share and More, each named for a
+//      screen reader with its count ("Like, 96 likes"), the count beside
+//      its icon, and never a count of none; no Comment and no I built it
+//      (pagekit): the Comments and Builds tabs carry those counts.
 //   3. Share opens its sheet (docs/SOCIAL.md U14), the site's dialog: the
 //      page's link, selected, and Copy link puts it on the clipboard and
 //      says "Link copied" in the sheet; the embed code, and Copy code puts
@@ -33,38 +34,48 @@
 //   4. Save, signed out, asks to sign in; signed in, its arrow opens the
 //      card's panel (web/keep.js, lists2a: one Save on the card and the
 //      page), Saved first and ticked when it is saved.
-//   5. More holds Report it and Takedown requests (the embed code is in
-//      Share's sheet).
+//   5. More holds Download first, a link to the model's .mpd file, then
+//      Report it and Takedown requests (the embed code is in Share's
+//      sheet); for its owner, their own come before them, in place of
+//      Report it.
 //   6. More by and Similar models show only with three cards or more, six
 //      at most. On the stand-in: the watchtower has More by Robin Castell
 //      (3) and no Similar (2 found); its remix at dusk has Similar (3: kind
 //      and a shared tag) and no More by (Jo has no other model).
 //   7. The paragraph that explained the buttons is gone.
-//   8. Tabs under it, About, Comments, Builds, Remixes and (with two or
-//      more versions, or one shared as work in progress) Log, each with its count once there is one; a tab chosen
-//      brings its part to just under the tabs, which stay on screen under
-//      the header, marked as the one being read.
+//   8. Tabs under it (pagekit, web/tabs.js), a row of role tablist:
+//      Overview, Comments, Parts, Builds, Remixes and (with two or more
+//      versions, or one shared as work in progress) Log, in that order, each with its count once there is one and
+//      never a count of none; Overview chosen on open, its panel alone
+//      shown. A tab pressed shows its panel alone, marked aria-selected,
+//      its key in the address (#comments), the page where it was; Right,
+//      Left, Home and End move along the tabs choosing as they go, the
+//      focus with them; Back goes back to the tab before; and
+//      /m/<id>#comments opens on Comments.
 //   9. A strip of its pictures under the picture: the published one first
 //      and marked, then the photos; choosing one shows it in the picture's
 //      place. With none it is not shown, but to its owner, who has Add a
 //      picture there, which opens the photo form.
 //  10. A model with no comments, builds or remixes (the stand-in's bakery,
-//      Sam's, shared by link) says so in one line each, with the way in,
-//      and shows no count of none anywhere.
+//      Sam's, shared by link): each of those tabs, chosen, says so in one
+//      line in its panel (.obj-empty; the comments' in their list), with
+//      the way in, and no count of none is shown anywhere.
 //  11. The last screen always has another model to open: with neither row,
 //      the gallery's own (More in the gallery).
 //  12. Comments that talk (docs/SOCIAL.md U8), on the stand-in's
-//      watchtower: the newest thread first and its replies oldest first
-//      under it; an avatar on every one; Designer on Robin's (the
-//      model's owner's); a step comment's pill a link to the viewer at
-//      that step (an older version's changed step, that version's
-//      viewer); the box shown to everybody, and Reply on each comment
-//      opening a box under its thread; signed out, sending asks to sign
-//      in and keeps what was typed; signed in, the reply goes.
+//      watchtower, its Comments tab chosen: the newest thread first and its
+//      replies oldest first under it; an avatar on every one; Designer on
+//      Robin's (the model's owner's); a step comment's pill a link to the
+//      viewer at that step (an older version's changed step, that version's
+//      viewer); the box shown to everybody, above the list, and Reply on
+//      each comment opening a box under its thread; signed out, sending
+//      asks to sign in and keeps what was typed; signed in, the reply goes.
 //  14. In N lists (docs/SOCIAL.md U11; collections until lists2a): a pill
-//      among its facts, and a tab, both going to its Lists part, a card for
-//      each public list it is in; none when it is in none. The watchtower is in
-//      two (Robin's and Sam's public ones), the dusk in one.
+//      among its facts going to its In lists block, the last part of
+//      Overview (Overview chosen, the block on screen), a card for each
+//      public list it is in; no tab of its own (pagekit); none when it is
+//      in none. The watchtower is in two (Robin's and Sam's public ones),
+//      the dusk in one.
 //  15. The embed (/m/<id>/embed) in the theme its viewer chose: light
 //      chosen on a dark computer is light, dark chosen on a light one dark,
 //      and with no choice the computer's. Its button is Build it, the
@@ -73,10 +84,10 @@
 //      (tools/web/embed_flow.mjs drives it), and its name the model's page,
 //      each link a tab of its own; in a frame a phone's column wide the bar
 //      still fits, Build it whole.
-//  16. Its parts (site278): a Parts tab and section saying one count, the
-//      app's (api/_parts.js); the list asked for only as the section nears
-//      the screen and drawn into the space kept for it, nothing under it
-//      moving; a row a colour over its lots, the lots' counts adding up to
+//  16. Its parts (site278): a Parts tab and panel saying one count, the
+//      app's (api/_parts.js); the list not asked for while its panel is
+//      hidden, asked once its tab is chosen and drawn into the space kept
+//      for it in the panel, nothing under it moving; a row a colour over its lots, the lots' counts adding up to
 //      the total, Kind grouping them by kind; each lot on screen its part
 //      drawn on the page from its geometry (site304, web/part-pictures.js):
 //      a canvas in place of the swatch, a part on it (not blank, lit and
@@ -92,9 +103,9 @@
 //      the list api/_parts.js pickABrick makes of the same version's lots
 //      as its parts.json gives them, its pieces and the pieces it leaves
 //      off adding up to the total, and what it leaves off said under the
-//      buttons, counted; and Download the stored file byte for byte, signed
-//      out, named for the model. And Like and I built it say their names
-//      beside their icons.
+//      buttons, counted; and Download (More's first) the stored file byte
+//      for byte, signed out, named for the model. And Like says its name
+//      beside its icon.
 //  17. In 3D, here (viewer369, tools/viewer/inline.js), on the watchtower
 //      (a deployment's first model), signed out: none of the 3D view's code
 //      (viewer3d.js, three.js and all) asked for until View in 3D is used;
@@ -108,9 +119,9 @@
 //      (touch-action pan-y until the person takes hold), a swipe across
 //      turns it; Back to the picture puts the picture back. Its costs said: the code's bytes,
 //      the scene's, the geometry's, and the first frame from the click.
-//  19. Change it with your Claude (claudelink), signed out: Open in
-//      Brickworks' second half, named for a screen reader, beside it in one
-//      control on the page's width; Tab from Open in Brickworks reaches it,
+//  19. Change it with your Claude (claudelink), signed out: Open in the
+//      studio's second half, named for a screen reader, beside it in one
+//      control on the page's width; Tab from Open in the studio reaches it,
 //      Enter opens the panel with the keyboard in What should it change?;
 //      Copy for Claude copies the message (the model's link, open_model
 //      link=<id> and the ask, as one line: Unicode spaces made spaces, the
@@ -161,18 +172,52 @@ async function settled(page) {
   }
 }
 const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { timeout: ms }).then(() => true, () => false);
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+/// [key]'s tab pressed, as a visitor does (web/tabs.js), until its panel shows.
+async function choose(page, key) {
+  await page.click(`#page-tabs [data-tab="${key}"]`);
+  return until(page, (k) => !document.getElementById(k)?.hidden, key, 4000);
+}
+/// 8's tabs as they are, read in the page: the tabs shown, the ones chosen,
+/// the panels shown, the tab with the focus, the address's key, and how far
+/// down the page is.
+function tabsNow() {
+  const tabs = [...document.querySelectorAll('#page-tabs [role="tab"]')].filter((tab) => !tab.hidden);
+  return { keys: tabs.map((tab) => tab.dataset.tab), hash: location.hash, y: Math.round(scrollY),
+    chosen: tabs.filter((tab) => tab.getAttribute("aria-selected") === "true").map((tab) => tab.dataset.tab),
+    shown: [...document.querySelectorAll('.obj-panels > [role="tabpanel"]')].filter((panel) => !panel.hidden).map((panel) => panel.id),
+    focused: document.activeElement?.closest?.('#page-tabs [role="tab"]')?.dataset.tab || "" };
+}
+/// 10's line where a tab has nothing yet, read once its tab is chosen: its
+/// words and whether they show, the lines its panel says, whether its way
+/// in shows, and any count of none its panel says in words.
+function emptyOf(key) {
+  const shown = (el) => Boolean(el) && !el.hidden && el.getClientRects().length > 0;
+  const panel = document.getElementById(key);
+  const [line, lines, ways] = {
+    comments: ["#comments .comment-list .none", "#comments p.note:not(.owner-line), #comments li.note",
+      "#comments .comment-why button, #comments form.comment-new"],
+    builds: ["#builds .obj-empty.no-builds", "#builds > p", "#builds [data-add-build]"],
+    remixes: ["#remixes .obj-empty", "#remixes > p", '#remixes .obj-empty a[href^="/app?copy="]'],
+  }[key];
+  const one = document.querySelector(line);
+  return { panel: shown(panel), words: one?.textContent.replace(/\s+/g, " ").trim() || "", shown: shown(one),
+    lines: [...document.querySelectorAll(lines)].filter((el) => shown(el) && el.textContent.trim()).length,
+    wayIn: [...document.querySelectorAll(ways)].some(shown),
+    noneSaid: panel?.innerText.match(/(^|[^\d,])0 (comments?|builds?|built|remix(es)?|likes?|views?|photos?)\b/g) || [] };
+}
 
 // The pages visited, and what each must lead on to: the number of cards in
 // More by and in Similar (0 for no row). On a deployment, its own model, and
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Lists 2", "Log 2"], thumbs: 3, threads: true, lists: 2 },
+    tabs: ["Overview", "Comments 6", "Parts 3", "Builds 37", "Remixes 3", "Log 2"], thumbs: 3, threads: true, lists: 2 },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
-    tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Lists 1"], thumbs: 0, lists: 1 },
+    tabs: ["Overview", "Comments 1", "Parts 3", "Builds 3", "Remixes"], thumbs: 0, lists: 1 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
   { name: "bakery", path: "/m/SamModel02", by: 0, like: 0, gallery: true, favourite: false, designer: null,
-    tabs: ["About", "Parts 3", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
+    tabs: ["Overview", "Comments", "Parts 3", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
 ];
 let remoteDb = "";
 const asProject = (text) => (remoteDb ? text.split(stand.DB).join(remoteDb) : text);
@@ -194,9 +239,13 @@ function read() {
     return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
   };
   const bar = document.getElementById("marks");
-  const buttons = bar ? [...bar.querySelectorAll(":scope > button, :scope > a, :scope > details > summary")] : [];
+  // Save is the card's control (web/card.js keepHtml, lists2a): its main
+  // button, named "Save <the model>", read as Save; its arrow is its own.
+  const buttons = bar ? [...bar.querySelectorAll(":scope > button, :scope > a, :scope > .keep > [data-keep-main], :scope > details > summary")] : [];
   const named = buttons.filter((b) => !b.hidden && b.getClientRects().length).map((b) => ({
-    label: (b.getAttribute("aria-label") || "").replace(/^Saved$/, "Save"), n: b.querySelector(".n")?.textContent || "",
+    label: (b.getAttribute("aria-label") || "").replace(b.matches("[data-keep-main]") ? /^.*$/ : /^Saved$/, "Save"),
+    // (Its count is the keep control's own, which lists2a's flows check.)
+    n: b.matches("[data-keep-main]") ? "" : b.querySelector(".n")?.textContent || "",
     box: box(b), pressed: b.getAttribute("aria-pressed"),
   }));
   const rows = Object.fromEntries(["more-by", "similar", "from-gallery"].map((key) => [key,
@@ -215,8 +264,14 @@ function read() {
     bar: box(bar),
     side: box(document.querySelector(".model-page .side")),
     named, rows, zeros,
+    // The buttons the tabs took over (pagekit), drawn or not.
+    oldMarks: document.querySelectorAll('#marks [data-mark="comment"], #marks [data-mark="built"]').length,
     tabs: [...document.querySelectorAll("#page-tabs a")].filter((a) => !a.hidden)
       .map((a) => a.textContent.replace(/\s+/g, " ").trim()),
+    tablist: document.getElementById("page-tabs")?.getAttribute("role") || "",
+    // Each tab's count, as Comments and Builds now carry theirs.
+    counts: Object.fromEntries([...document.querySelectorAll("#page-tabs [data-tab]")]
+      .map((a) => [a.dataset.tab, a.querySelector(".n")?.textContent || ""])),
     strip: (() => {
       const row = document.getElementById("pictures");
       if (!row || row.hidden) return null;
@@ -236,18 +291,6 @@ function read() {
       return rows.length ? rows[rows.length - 1].querySelectorAll(".model").length : 0;
     })(),
     noneSaid: (document.querySelector("main")?.innerText.match(/(^|[^\d,])0 (comments?|builds?|built|remix(es)?|likes?|views?|photos?)\b/g) || []),
-    empties: {
-      comments: document.querySelector("#comments .comment-list .none")?.textContent || "",
-      commentsWayIn: Boolean([...document.querySelectorAll("#comments .comment-why button, #comments form.comment-new")]
-        .find((el) => !el.hidden && el.getClientRects().length)),
-      commentsLines: [...document.querySelectorAll("#comments p.note:not(.owner-line), #comments li.note")]
-        .filter((el) => !el.hidden && el.getClientRects().length && el.textContent.trim()).length,
-      builds: document.querySelector("#builds .no-builds")?.textContent || "",
-      buildsLines: [...document.querySelectorAll("#builds > p")].filter((el) => el.getClientRects().length && el.textContent.trim()).length,
-      buildsWayIn: Boolean([...document.querySelectorAll("#builds [data-add-build]")].find((el) => el.getClientRects().length)),
-      remixes: document.querySelector("#remixes .none")?.textContent.replace(/\s+/g, " ").trim() || "",
-      remixesWayIn: Boolean(document.querySelector('#remixes .none a[href^="/app?copy="]')),
-    },
     // The old paragraph that said what View in 3D and Open in Brickworks do.
     paragraph: /View in 3D turns it, steps through its build/.test(document.body.innerText),
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -307,33 +350,34 @@ async function lotPictures(page, label, how) {
       && (remote ? lots.every((lot) => lot.state === "drawn" || (lot.state === "none" && lot.swatch)) : drawn.length === lots.length));
 }
 
-/// 16. The Parts section, the shops' lists and the file, on [page].
+/// 16. The Parts panel, the shops' lists and the file, on [page].
 async function partsChecks(page, label, seen, one) {
   const before = await page.evaluate(() => {
     const section = document.getElementById("parts");
     if (!section) return null;
     const list = section.querySelector(".lot-list");
-    return { busy: list.getAttribute("aria-busy"), height: section.getBoundingClientRect().height,
+    return { busy: list.getAttribute("aria-busy"), hidden: section.hidden,
       drawn: document.documentElement.dataset.parts || "", note: section.querySelector(".note").textContent,
       at: section.dataset.parts,
-      // Shown beside their icons on a tablet or a laptop; on a phone the
-      // row of six has room for icons and counts alone.
+      // Shown beside its icon on a tablet or a laptop; on a phone the
+      // row has room for icons and counts alone.
       words: [...document.querySelectorAll("#marks .icon-btn.labelled .word")]
         .filter((w) => innerWidth <= 600 || w.getClientRects().length).map((w) => w.textContent),
-      download: document.querySelector('.side .actions a[download]')?.getAttribute("href") || "",
-      // When the list was asked for, against the page's load: never with
-      // the page itself, nor before what the first screen shows.
+      // Download, More's first (pagekit).
+      download: document.querySelector("#more .menu-list a[download]")?.getAttribute("href") || "",
+      // Whether the list was asked for yet, against the page's load: never
+      // with the page itself, nor while its panel is hidden.
       asked: performance.getEntriesByType("resource").find((r) => r.name.includes("/parts.json"))?.startTime ?? null,
       loaded: performance.getEntriesByType("navigation")[0]?.loadEventStart ?? null,
       painted: performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null };
   });
-  check(`${label}: a Parts section (${before ? before.note : "none"})`, Boolean(before));
+  check(`${label}: a Parts panel (${before ? before.note : "none"})`, Boolean(before));
   if (!before) return;
   const total = Number((/^([\d,]+) parts?/.exec(before.note) || [])[1]?.replace(/,/g, ""));
   const tab = seen.tabs.find((t) => t.startsWith("Parts")) || "";
-  check(`${label}: its tab (${tab}) and its section say one count, ${total}`, tab === `Parts ${total.toLocaleString("en-US")}`);
-  check(`${label}: Like and I built it say their names beside their icons on a tablet or a laptop (${before.words.join(", ")})`,
-    JSON.stringify(before.words) === JSON.stringify(["Like", "Built"]));
+  check(`${label}: its tab (${tab}) and its panel say one count, ${total}`, tab === `Parts ${total.toLocaleString("en-US")}`);
+  check(`${label}: Like says its name beside its icon on a tablet or a laptop (${before.words.join(", ")})`,
+    JSON.stringify(before.words) === JSON.stringify(["Like"]));
   // With its words the row is wider: on a laptop it may take a second row
   // for More where the counts are long, never more, and never past the column.
   const bar = await page.evaluate(() => {
@@ -343,12 +387,22 @@ async function partsChecks(page, label, seen, one) {
   });
   check(`${label}: the action bar in ${bar.rows} row${bar.rows === 1 ? "" : "s"}, inside its column`,
     bar.rows <= 2 && bar.inside && (seen.viewport.width > 600 || bar.rows === 1));
-  check(`${label}: the list its own request, once the page has loaded (asked at ${before.asked === null ? "none yet"
-    : Math.round(before.asked)} ms, loaded at ${Math.round(before.loaded)} ms, first paint at ${Math.round(before.painted)} ms)`,
-  before.loaded !== null && (before.asked === null ? before.busy === "true" : before.asked >= before.loaded));
+  check(`${label}: the list not asked for while its panel is hidden (${before.asked === null ? "not asked"
+    : `asked at ${Math.round(before.asked)} ms`}, loaded at ${Math.round(before.loaded)} ms, first paint at ${Math.round(before.painted)} ms)`,
+  before.loaded !== null && before.hidden && before.asked === null && before.busy === "true");
+  // Its tab pressed in the page, so the panel's space is read in the same
+  // turn, before the list can come.
+  const kept = await page.evaluate(() => {
+    const at = performance.now();
+    document.querySelector('#page-tabs [data-tab="parts"]').click();
+    const section = document.getElementById("parts");
+    return { at, shown: !section.hidden, height: section.getBoundingClientRect().height, drawn: document.documentElement.dataset.parts || "" };
+  });
   await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start", behavior: "instant" }));
   const drawn = await until(page, () => document.documentElement.dataset.parts === "drawn", null, 20000);
-  check(`${label}: the list drawn once it nears the screen`, drawn);
+  const asked = await page.evaluate(() => performance.getEntriesByType("resource").find((r) => r.name.includes("/parts.json"))?.startTime ?? null);
+  check(`${label}: the list its own request, asked once its tab is chosen (chosen at ${Math.round(kept.at)} ms, asked at ${asked === null
+    ? "none" : Math.round(asked)} ms) and drawn`, kept.shown && !kept.drawn && drawn && asked !== null && asked >= kept.at - 1);
   if (!drawn) return;
   const after = await page.evaluate(() => {
     const section = document.getElementById("parts");
@@ -358,8 +412,8 @@ async function partsChecks(page, label, seen, one) {
       firstGroup: rows[0]?.classList.contains("group"), pictures: section.querySelectorAll(".lot-list img").length,
       all: Boolean(section.querySelector("[data-all]:not([hidden])")) };
   });
-  check(`${label}: drawn into the space kept for it (${Math.round(before.height)} px before, ${Math.round(after.height)} after)`,
-    Math.abs(after.height - before.height) < 0.5);
+  check(`${label}: drawn into the space kept for it in its panel (${Math.round(kept.height)} px before, ${Math.round(after.height)} after)`,
+    kept.height > 0 && Math.abs(after.height - kept.height) < 0.5);
   check(`${label}: ${after.shown} rows shown, a colour's row first, no picture loaded from anywhere (${after.pictures})`,
     after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
   // Each lot's picture, drawn on the page (site304): only images from the
@@ -648,7 +702,7 @@ async function threeD(page, label, stem, phone) {
     && JSON.stringify(closed.picture) === JSON.stringify(was.picture));
 }
 
-/// 19. With your Claude, Open in Brickworks' second choice (claudelink): the
+/// 19. With your Claude, Open in the studio's second choice (claudelink): the
 /// control, the keyboard's way through it, the message copied, the refusal of
 /// an ask too long, the message kept for the connect page, and on a phone the
 /// share sheet. The page's clipboard is this flow's (window.__copied).
@@ -666,17 +720,17 @@ async function withYourClaude(page, context, { label, stem, phone, width }) {
       inside: Boolean(b && b.right <= innerWidth + 0.5 && o.left >= -0.5), sideways: document.scrollingElement.scrollWidth > innerWidth + 1 };
   });
   check(`${label}: With your Claude beside ${control.open} in one control, "${control.words}", named "${control.name}"`,
-    control.shown && control.name === "Change it with your Claude" && control.expanded === "false" && control.open === "Open in Brickworks"
+    control.shown && control.name === "Change it with your Claude" && control.expanded === "false" && control.open === "Open in the studio"
       && /^\/app\?copy=/.test(control.href) && control.oneRow && control.inside && !control.sideways
       && control.words === (width < 600 ? "Claude" : "With your Claude"));
-  // The keyboard: Tab from Open in Brickworks, Enter opens it, in the box.
+  // The keyboard: Tab from Open in the studio, Enter opens it, in the box.
   await page.focus(".open-split > a.cta");
   await page.keyboard.press("Tab");
   const reached = await page.evaluate(() => document.activeElement?.matches("[data-open-claude]"));
   await page.keyboard.press("Enter");
   const opened = await until(page, () => !document.getElementById("claude-panel")?.hidden
     && document.activeElement?.id === "claude-ask", null, 4000);
-  check(`${label}: Tab reaches it from Open in Brickworks, Enter opens it with the keyboard in What should it change?`, reached && opened);
+  check(`${label}: Tab reaches it from Open in the studio, Enter opens it with the keyboard in What should it change?`, reached && opened);
   const id = await page.evaluate(() => document.getElementById("claude-panel").dataset.id);
   const url = await page.evaluate(() => document.getElementById("claude-panel").dataset.url);
   // Typed with a no-break space and a zero-width one in it, as a paste brings them.
@@ -792,10 +846,10 @@ try {
           });
           try {
             const visited = await page.goto(base + one.path, { waitUntil: "load", timeout: 60000 });
-            // Signed in, the lists asked for; and the comments listed, which
-            // say Comment's count.
-            await until(page, () => !document.getElementById("comments")?.hidden
-              || document.documentElement.dataset.commentsReady === "no", null, 8000);
+            // Signed in, the lists asked for; and the comments answered,
+            // which say the Comments tab's count: their skeleton goes then,
+            // listed or not (the panel itself hidden until its tab is chosen).
+            await until(page, () => !document.getElementById("comments-hold"), null, 8000);
             await page.waitForTimeout(400);
             if (out) await page.screenshot({ path: path.join(out, `${stem}-fold.png`) });
             const seen = await page.evaluate(read);
@@ -835,15 +889,16 @@ try {
             // 2. The action bar.
             const labels = seen.named.map((b) => b.label);
             const names = labels.map((l) => l.split(",")[0]);
-            check(`${label}: the action bar says ${labels.join(" | ")}`,
-              JSON.stringify(names) === JSON.stringify(["Like", "Save", "Share", "Comment", "I built it", "More"]));
+            check(`${label}: the action bar says ${labels.join(" | ")}, no Comment or I built it (${seen.oldMarks} drawn)`,
+              JSON.stringify(names) === JSON.stringify(["Like", "Save", "Share", "More"]) && seen.oldMarks === 0);
             const counted = seen.named.filter((b) => b.label.includes(","));
             check(`${label}: each count beside its icon as its label says it (${counted.map((b) => b.n).join(", ") || "none"})`,
               counted.every((b) => b.label.includes(` ${b.n} `)) && seen.named.every((b) => b.n === "" || b.label.includes(",")));
             check(`${label}: no count of none (${seen.zeros.join(", ") || "none"})`, !seen.zeros.length && seen.named.every((b) => b.n !== "0"));
             if (!remote && one.name === "watchtower") {
-              check(`${label}: its counts are the stand-in's (96 likes, 37 builds, 6 comments and replies)`,
-                labels.includes("Like, 96 likes") && labels.includes("I built it, 37 builds") && labels.includes("Comment, 6 comments"));
+              check(`${label}: its counts are the stand-in's (96 likes on Like; on their tabs ${seen.counts.builds || "no"} builds of 37, `
+                + `${seen.counts.comments || "no"} comments and replies of 6)`,
+              labels.includes("Like, 96 likes") && seen.counts.builds === "37" && seen.counts.comments === "6");
             }
             check(`${label}: the paragraph explaining the buttons is gone`, !seen.paragraph);
 
@@ -864,12 +919,18 @@ try {
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
             // On a deployment its own model's: in this order, each there or
             // not as the model has it (Comments where they are open,
-            // Lists once it is in one, Log with two versions), and About,
-            // Parts, Builds and Remixes always.
-            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Lists", "Log"];
+            // Log with two versions or work in progress), and Overview, Parts, Builds and Remixes
+            // always; never a count of none. The lists it is in are
+            // Overview's now, no tab of their own.
+            const ORDER = ["Overview", "Comments", "Parts", "Builds", "Remixes", "Log"];
             const ordered = tabNames.every((n, k) => ORDER.includes(n) && (k === 0 || ORDER.indexOf(tabNames[k - 1]) < ORDER.indexOf(n)));
-            check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
-              : ordered && ["About", "Parts", "Builds", "Remixes"].every((n) => tabNames.includes(n)));
+            check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, (one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
+              : ordered && ["Overview", "Parts", "Builds", "Remixes"].every((n) => tabNames.includes(n)))
+              && seen.tabs.every((t) => !/ 0$/.test(t)));
+            const onOpen = await page.evaluate(tabsNow);
+            check(`${label}: the row a tablist (${seen.tablist || "none"}), Overview chosen on open (${onOpen.chosen.join(", ") || "none"}), `
+              + `its panel alone shown (${onOpen.shown.join(", ") || "none"})`,
+            seen.tablist === "tablist" && same(onOpen.chosen, ["overview"]) && same(onOpen.shown, ["overview"]));
 
             // 16. Its parts, signed out.
             if (!signedIn) await partsChecks(page, label, seen, one);
@@ -901,54 +962,90 @@ try {
               check(`${label}: its owner has Add a picture, in the strip or over the picture while it has no photo (${seen.addPicture || "none"}, ${JSON.stringify(seen.strip?.thumbs.length ?? 0)} pictures)`,
                 seen.addPicture === (seen.strip ? "strip" : "picture"));
               await page.click("[data-add-picture]");
-              const formOpen = await until(page, () => !document.querySelector("#builds .build-form").hidden, null, 4000);
-              check(`${label}: Add a picture opens the photo form`, formOpen);
+              // On the Builds tab, which it chooses (pagekit).
+              const formOpen = await until(page, () => !document.querySelector("#builds .build-form").hidden
+                && !document.getElementById("builds").hidden, null, 4000);
+              const onBuilds = await page.evaluate(tabsNow);
+              check(`${label}: Add a picture opens the photo form, on the Builds tab (${onBuilds.chosen.join(", ") || "none"} chosen)`,
+                formOpen && same(onBuilds.chosen, ["builds"]));
               await page.click("#builds .build-form [data-cancel]").catch(() => {});
             }
 
             // 10. Nothing yet, said once, with the way in.
             check(`${label}: no count of none said in words (${seen.noneSaid.join(", ") || "none"})`, !seen.noneSaid.length);
             if (one.empty) {
-              const e = seen.empties;
-              check(`${label}: no comments is one line, "${e.comments}", and the way in`,
-                e.comments === "Nobody has commented yet." && e.commentsLines === 1 && e.commentsWayIn);
-              check(`${label}: no builds is one line, "${e.builds}", and the way in`,
-                e.builds.startsWith("Nobody has built it yet.") && e.buildsLines === 1 && e.buildsWayIn);
-              check(`${label}: no remixes is one line, "${e.remixes.slice(0, 40)}…", and the way in`,
-                e.remixes.startsWith("Nobody has remixed it yet.") && e.remixesWayIn);
+              // Each tab chosen first: a panel not chosen is hidden.
+              const said = {};
+              for (const key of ["comments", "builds", "remixes"]) {
+                said[key] = (await choose(page, key)) ? await page.evaluate(emptyOf, key) : { words: "", noneSaid: [] };
+              }
+              const { comments: c, builds: b, remixes: r } = said;
+              check(`${label}: Comments chosen, no comments is one line, "${c.words}", and the way in`,
+                c.panel && c.shown && c.words === "Nobody has commented yet." && c.lines === 1 && c.wayIn);
+              check(`${label}: Builds chosen, no builds is one line, "${b.words}", and the way in`,
+                b.panel && b.shown && b.words.startsWith("Nobody has built it yet.") && b.lines === 1 && b.wayIn);
+              check(`${label}: Remixes chosen, no remixes is one line, "${r.words.slice(0, 40)}…", and the way in`,
+                r.panel && r.shown && r.words.startsWith("Nobody has remixed it yet.") && r.lines === 1 && r.wayIn);
+              const none = [c, b, r].flatMap((tab) => tab.noneSaid);
+              check(`${label}: and none of the three says a count of none in words (${none.join(", ") || "none"})`, !none.length);
             }
 
-            // 8b. A tab chosen: its part just under the tabs, the tabs on
-            // screen under the header, it marked; the page scrolled on, the
-            // tabs still there.
+            // 8b. The tabs at work, their row on screen: one pressed shows
+            // its panel alone, chosen, its key in the address, the page
+            // where it was; the arrows, Home and End move along them
+            // choosing as they go, the focus with them; Back goes back a tab.
             // Comments, or where comments are not open, Builds.
             const target = await page.evaluate(() => (document.querySelector('#page-tabs a[data-tab="comments"]').hidden
               ? "builds" : "comments"));
+            await page.evaluate(() => document.getElementById("page-tabs").scrollIntoView({ block: "center", behavior: "instant" }));
+            await page.waitForTimeout(150);
+            const from = await page.evaluate(tabsNow);
             await page.click(`#page-tabs a[data-tab="${target}"]`);
             await settled(page);
-            const went = await page.evaluate((key) => {
-              const tabs = document.getElementById("page-tabs").getBoundingClientRect();
-              const head = document.querySelector(".site-head").getBoundingClientRect();
-              const part = document.getElementById(key).getBoundingClientRect();
-              const end = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
-              return { tabsTop: tabs.top, tabsBottom: tabs.bottom, head: head.bottom, part: part.top, end,
-                current: document.querySelector("#page-tabs [aria-current]")?.dataset.tab };
-            }, target);
-            check(`${label}: the ${target} tab brings its part under the tabs (${Math.round(went.part)} px, tabs ${Math.round(went.tabsTop)}-${Math.round(went.tabsBottom)}), marked ${went.current}`,
-              went.current === target && Math.abs(went.tabsTop - went.head) <= 2
-              && (went.end || (went.part >= went.tabsBottom - 1 && went.part <= went.tabsBottom + 40)));
-            await page.mouse.wheel(0, 500);
-            await settled(page);
-            const later = await page.evaluate(() => ({ top: document.getElementById("page-tabs").getBoundingClientRect().top,
-              head: document.querySelector(".site-head").getBoundingClientRect().bottom,
-              rest: document.querySelector(".model-page .rest").getBoundingClientRect().bottom,
-              current: document.querySelector("#page-tabs [aria-current]")?.dataset.tab }));
-            check(`${label}: scrolled on, the tabs stay under the header (${Math.round(later.top)} px), marking ${later.current}`,
-              Boolean(later.current) && (Math.abs(later.top - later.head) <= 2 || later.rest < later.head + 120));
+            const pressed = await page.evaluate(tabsNow);
+            check(`${label}: ${target} pressed (from ${from.chosen.join(", ") || "none"}) shows its panel alone (${pressed.shown.join(", ") || "none"}), `
+              + `chosen (${pressed.chosen.join(", ") || "none"}), ${pressed.hash || "no key"} in the address, the page where it was (${from.y} px, then ${pressed.y})`,
+            same(pressed.chosen, [target]) && same(pressed.shown, [target]) && pressed.hash === `#${target}` && pressed.y === from.y);
             if (out) await page.screenshot({ path: path.join(out, `${stem}_tabs.png`) });
+            const keys = pressed.keys;
+            const last = keys[keys.length - 1];
+            await page.focus(`#page-tabs a[data-tab="${target}"]`);
+            for (const [press, want] of [["ArrowRight", keys[(keys.indexOf(target) + 1) % keys.length]], ["ArrowLeft", target],
+              ["End", last], ["Home", keys[0]]]) {
+              await page.keyboard.press(press);
+              const now = await page.evaluate(tabsNow);
+              // The first tab is the address with no key (web/tabs.js).
+              const hash = want === keys[0] ? "" : `#${want}`;
+              check(`${label}: ${press} chooses ${want} (${now.chosen.join(", ") || "none"} chosen, ${now.shown.join(", ") || "none"} shown, `
+                + `the focus on ${now.focused || "none"}, ${now.hash || "no key"} in the address)`,
+              same(now.chosen, [want]) && same(now.shown, [want]) && now.focused === want && now.hash === hash);
+            }
+            await page.evaluate(() => history.back());
+            await until(page, (key) => document.querySelector('#page-tabs [aria-selected="true"]')?.dataset.tab === key, last, 4000);
+            const back = await page.evaluate(tabsNow);
+            check(`${label}: Back goes back to the tab before, ${last} (${back.chosen.join(", ") || "none"} chosen, ${back.hash || "no key"})`,
+              same(back.chosen, [last]) && same(back.shown, [last]) && back.hash === `#${last}`);
+            // A link to a tab opens on it: once a page, at the first size.
+            if (width === widths[0] && theme === themes[0]) {
+              const deep = await context.newPage();
+              deep.on("pageerror", (e) => errors.push(`${label} #${target}: ${String(e).slice(0, 200)}`));
+              try {
+                await deep.goto(`${base}${one.path}#${target}`, { waitUntil: "load", timeout: 60000 });
+                await until(deep, (key) => document.querySelector(`#page-tabs [data-tab="${key}"]`)?.getAttribute("aria-selected") === "true",
+                  target, 8000);
+                const there = await deep.evaluate(tabsNow);
+                check(`${label}: ${one.path}#${target} opens on ${target} (${there.chosen.join(", ") || "none"} chosen, `
+                  + `${there.shown.join(", ") || "none"} shown)`, same(there.chosen, [target]) && same(there.shown, [target]));
+              } catch (trouble) {
+                check(`${label}: ${one.path}#${target} opened (${String(trouble).split("\n")[0]})`, false);
+              } finally {
+                await deep.close();
+              }
+            }
 
-            // 12. Comments that talk.
+            // 12. Comments that talk, on their tab, chosen.
             if (one.threads) {
+              const chosen = await choose(page, "comments");
               const t = await page.evaluate(() => {
                 const top = [...document.querySelectorAll("#comments .comment-list > li.comment")];
                 const pill = (li) => li.querySelector(":scope > .comment-main > .comment-head a.pill.step");
@@ -962,6 +1059,14 @@ try {
                     ":scope > .comment-main > .comment-head .pill.designer")?.textContent === "Designer").map((li) => li.id),
                   steps: Object.fromEntries(top.filter(pill).map((li) => [li.id, [pill(li).textContent, pill(li).getAttribute("href")]])),
                   box: !document.querySelector("#comments form.comment-new").hidden,
+                  // The box to write one above the list (pagekit), in the
+                  // page's order and on the screen.
+                  above: (() => {
+                    const form = document.querySelector("#comments form.comment-new");
+                    const list = document.querySelector("#comments .comment-list");
+                    return Boolean(form.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING)
+                      && form.getBoundingClientRect().bottom <= list.getBoundingClientRect().top + 0.5;
+                  })(),
                   send: document.querySelector("#comments form.comment-new button[type=submit]").textContent,
                   replyButtons: [...document.querySelectorAll("#comments .comment-acts button")].filter((b) => b.textContent === "Reply").length,
                   wide: document.documentElement.scrollWidth > innerWidth + 1,
@@ -977,8 +1082,9 @@ try {
                 t.steps["comment-103"]?.[0] === "Step 5" && t.steps["comment-103"]?.[1] === `/app?view=${stand.MODEL_ID}&step=5`
                 && /^Step 3/.test(t.steps["comment-101"]?.[0] || "") && /[?&]step=3$/.test(t.steps["comment-101"]?.[1] || "")
                 && !t.steps["comment-102"]);
-              check(`${label}: the box is shown (${t.send}), Reply on each of the 3 comments (${t.replyButtons}), nothing wider than the screen`,
-                t.box && t.send === (signedIn ? "Add the comment" : "Sign in and add it") && t.replyButtons === 3 && !t.wide);
+              check(`${label}: the box is shown (${t.send}) ${t.above ? "above" : "not above"} the list, Reply on each of the 3 comments (${t.replyButtons}), `
+                + "nothing wider than the screen", chosen && t.box && t.above && t.send === (signedIn ? "Add the comment" : "Sign in and add it")
+                && t.replyButtons === 3 && !t.wide);
               await page.click("#comment-103 > .comment-main > .comment-acts button:text-is('Reply')");
               const boxed = await until(page, () => document.activeElement?.closest?.("#comment-103 form.reply-new"), null, 4000);
               check(`${label}: Reply opens a box under Priya's thread, ready to type`, boxed);
@@ -1059,32 +1165,48 @@ try {
               && document.activeElement?.matches("#marks [data-share]"), null, 4000);
             check(`${label}: Escape closes it, back on Share`, closed);
 
-            // 5. More.
+            // 5. More: Download first (pagekit), a link to its file, then
+            // Report it and Takedown requests; its owner's own before them
+            // (web/model-page.js commentsSaid), in place of Report it.
             await page.click("#more > summary");
             const more = await page.evaluate(() => [...document.querySelectorAll("#more .menu-list > *")]
-              .filter((el) => !el.hidden && el.getClientRects().length).map((el) => el.textContent.trim()));
+              .filter((el) => !el.hidden && el.getClientRects().length).map((el) => ({ text: el.textContent.trim(),
+                own: el.classList.contains("owner-only"), href: el.getAttribute("href") || "", download: el.hasAttribute("download") })));
             const owns = signedIn && one.owner;
-            check(`${label}: More holds ${more.join(" | ")}`, [owns ? "How your models are doing" : "Report it",
-              "Takedown requests"].every((want) => more.includes(want)) && (!owns || !more.includes("Report it"))
-              && !more.includes("Copy the embed code"));
+            const everyone = more.filter((item) => !item.own);
+            check(`${label}: More holds ${more.map((item) => item.text).join(" | ")}, Download a link to ${everyone[0]?.href || "nothing"}`,
+              same(everyone.map((item) => item.text), ["Download", ...(owns ? [] : ["Report it"]), "Takedown requests"])
+              && everyone[0].download && /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.mpd$/.test(everyone[0].href)
+              && (!owns || more.some((item) => item.own && item.text === "How your models are doing")));
             if (out) await page.screenshot({ path: path.join(out, `${stem}_more.png`) });
             await page.keyboard.press("Escape");
 
-            // 14. In N lists: the pill and the tab, to a card each.
+              // 14. In N lists: the pill, to the In lists block at the end
+              // of Overview, a card each; no tab of its own (pagekit).
             const lists = await page.evaluate(() => ({
               pill: document.querySelector('.facts a[href="#collections"]')?.textContent || "",
-              tab: (document.querySelector('#page-tabs a[data-tab="collections"]')?.textContent || "").replace(/\s+/g, " ").trim(),
+              tab: Boolean(document.querySelector('#page-tabs [data-tab="collections"]')),
+              block: Boolean(document.getElementById("collections")),
+              last: document.getElementById("overview")?.lastElementChild?.id === "collections",
               cards: [...document.querySelectorAll("#collections .list-card")].map((card) => card.getAttribute("href")) }));
             const n = one.lists ?? Number((/^In (\d+) lists?$/.exec(lists.pill) || [])[1] || 0);
-            check(`${label}: "${lists.pill || "in no list"}", ${lists.cards.length} cards (${lists.cards.join(" ")})`,
-              n ? lists.pill === `In ${n} list${n === 1 ? "" : "s"}` && lists.tab === `Lists ${n}`
+            check(`${label}: "${lists.pill || "in no list"}", ${lists.cards.length} cards (${lists.cards.join(" ")}), `
+              + `${lists.last ? "the last part of Overview" : "not Overview's last"}, ${lists.tab ? "a tab of its own" : "no tab of its own"}`,
+            !lists.tab && (n ? lists.pill === `In ${n} list${n === 1 ? "" : "s"}` && lists.last
                 && lists.cards.length === Math.min(n, 12) && lists.cards.every((href) => /^\/c\/[A-Za-z0-9]{10}$/.test(href))
-                : !lists.pill && !lists.tab && lists.cards.length === 0);
+              : !lists.pill && !lists.block && lists.cards.length === 0));
             if (n) {
               await page.click('.facts a[href="#collections"]');
               await settled(page);
-              const at = await page.evaluate(() => Math.round(document.getElementById("collections").getBoundingClientRect().top));
-              check(`${label}: the pill brings its lists into view (${at} px down)`, at >= 0 && at < 300);
+              const at = await page.evaluate(() => {
+                const r = document.getElementById("collections").getBoundingClientRect();
+                return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: innerHeight, shown: !document.getElementById("overview").hidden,
+                  chosen: document.querySelector('#page-tabs [aria-selected="true"]')?.dataset.tab || "" };
+              });
+              // On screen: its top in the screen's upper part, or, taller
+              // than the screen, filling it.
+              check(`${label}: the pill opens Overview (${at.chosen || "none"} chosen) with its lists on screen (${at.top} to ${at.bottom} px of ${at.vh})`,
+                at.chosen === "overview" && at.shown && ((at.top >= 0 && at.top < at.vh - 60) || (at.top < 0 && at.bottom > at.vh)));
               await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
             }
 

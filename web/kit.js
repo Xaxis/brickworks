@@ -47,10 +47,12 @@ export function ago(iso) {
 // And a dialog (the site's <dialog>, opened with showModal) keeps the
 // keyboard while it is open: Tab from its last control comes round to its
 // first, and Shift+Tab the other way, rather than out into the browser.
-// Closed, the focus goes back where it was; when that is gone or hidden
-// (Report it, in a More menu that closed behind it), to the button that
-// opened what held it, so a person on the keyboard is never left on the
-// page's body.
+// Closed, the focus goes back to what had it when the dialog took it: an
+// ask over /admin's sheet back into the sheet, not to what opened the
+// sheet. When that is gone or hidden (Report it, in a More menu that closed
+// behind it), to the button that opened what held it; when it is held
+// (disabled) while what it asked is done, once it is let go; so a person on
+// the keyboard is never left on the page's body.
 if (typeof document !== "undefined") {
   const free = () => !document.activeElement || document.activeElement === document.body;
   // Drawn, and not shut away: in an inert part, or folded in a closed
@@ -62,14 +64,24 @@ if (typeof document !== "undefined") {
   const shown = (el) => el.isConnected && el.getClientRects().length > 0 && !el.closest("[inert]") && !folded(el);
   let waiting = null;
   let before = null;
+  // What had the focus as each open dialog took it, and what has it now.
+  const openers = new WeakMap();
+  let last = null;
   new MutationObserver((changes) => {
     for (const { target, attributeName } of changes) {
       if (attributeName === "open") {
-        if (target.localName === "dialog" && !target.open && free()) {
-          // Where it was, else what opened the menu it was in.
-          const back = before && (shown(before) ? before : before.closest("details")?.querySelector(":scope > summary"));
-          if (back && shown(back)) back.focus({ preventScroll: true });
-        }
+        if (target.localName !== "dialog" || target.open) continue;
+        const opener = openers.get(target) || before;
+        openers.delete(target);
+        // Lost: on the page's body, or still on a button of the dialog
+        // that closed, where the browser left it when what had the focus
+        // before was held (an act's button, disabled while it asks).
+        if (!free() && !target.contains(document.activeElement)) continue;
+        // Where it was, else what opened the menu it was in.
+        const back = opener && (shown(opener) ? opener : opener.closest("details")?.querySelector(":scope > summary"));
+        if (!back || !shown(back)) continue;
+        if (back.disabled) waiting = back;
+        else back.focus({ preventScroll: true });
         continue;
       }
       if (target.disabled && target === document.activeElement) waiting = target;
@@ -80,13 +92,18 @@ if (typeof document !== "undefined") {
     }
   }).observe(document.documentElement, { attributes: true, attributeFilter: ["disabled", "open"], subtree: true });
   document.addEventListener("focusin", (event) => {
-    if (!event.target.closest?.("dialog")) before = event.target;
+    const into = event.target.closest?.("dialog");
+    if (!into) before = event.target;
+    else if (!openers.has(into) && last && !into.contains(last)) openers.set(into, last);
+    last = event.target;
   });
   // The stops Tab makes in [dialog], a group of radio buttons as one.
   const group = (el) => (el.type === "radio" && el.name ? `radio ${el.name}` : el);
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Tab" || event.defaultPrevented) return;
-    const dialog = [...document.querySelectorAll("dialog[open]")].find((one) => one.matches(":modal"));
+    // The one on top: an ask over a sheet is the ask.
+    const modals = [...document.querySelectorAll("dialog[open]")].filter((one) => one.matches(":modal"));
+    const dialog = modals.find((one) => one.contains(document.activeElement)) || modals.at(-1);
     if (!dialog) return;
     const stops = [...dialog.querySelectorAll("a[href], button, input, select, textarea, summary, [tabindex]")]
       .filter((el) => el.tabIndex >= 0 && !el.disabled && el.type !== "hidden" && shown(el)
@@ -116,5 +133,92 @@ if (typeof document !== "undefined") {
     if (!open) return;
     open.open = false;
     open.querySelector("summary")?.focus();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ask and tell: the site's own dialog for a question before an act, and for
+// a word after one (docs/DESIGN_SYSTEM.md "Ask"), never the browser's
+// confirm() or alert(), which look like another program's and ask in its
+// words (owner, 2026-11-23). The house dialog: showModal over the scrim,
+// rising in over --motion-open, a sheet from the window's foot on a phone.
+// An alertdialog named by its title and described by its line. Escape and a
+// press beside it answer No; Enter answers what has the focus, so it
+// confirms only from the confirm button. The focus goes back where it was
+// (above).
+
+let asks = 0;
+
+/// [title] asked over the page, [body] under it: true when [yes] is
+/// pressed; false for [no], Escape or a press beside it. [danger]: [yes]
+/// cannot be undone (delete, remove, sign out everywhere), so it is the
+/// danger button and the focus starts on [no], the safe choice. Words as the
+/// page says them: say() them first.
+export function ask({ title, body = "", yes = say("OK"), no = say("Cancel"), danger = false } = {}) {
+  return answered(title, body, [[yes, true, danger ? "cta ghost danger" : "cta"], [no, false, "cta ghost"]], danger ? 1 : 0);
+}
+
+/// [title] told over the page, [body] under it, with one button ([ok]):
+/// resolves once it is closed, by [ok], Escape or a press beside it.
+export async function tell({ title, body = "", ok = say("OK") } = {}) {
+  await answered(title, body, [[ok, true, "cta"]], 0);
+}
+
+function answered(title, body, buttons, start) {
+  return new Promise((resolve) => {
+    asks += 1;
+    const dialog = document.createElement("dialog");
+    dialog.className = "ask";
+    dialog.setAttribute("role", "alertdialog");
+    const head = document.createElement("h2");
+    head.id = `ask-${asks}-title`;
+    head.textContent = title;
+    dialog.setAttribute("aria-labelledby", head.id);
+    dialog.append(head);
+    if (body) {
+      const line = document.createElement("p");
+      line.id = `ask-${asks}-body`;
+      line.textContent = body;
+      dialog.setAttribute("aria-describedby", line.id);
+      dialog.append(line);
+    }
+    const row = document.createElement("div");
+    row.className = "actions";
+    let answer = false;
+    for (const [words, value, className] of buttons) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.dataset.answer = value ? "yes" : "no";
+      button.textContent = words;
+      button.addEventListener("click", () => {
+        answer = value;
+        dialog.close();
+      });
+      row.append(button);
+    }
+    dialog.append(row);
+    // Beside it, on the scrim: pressed and let go there, not a drag out of
+    // its words, nor the second press of a double click on the button that
+    // asked, which lands on the scrim the moment the ask is open.
+    const beside = (event) => {
+      const box = dialog.getBoundingClientRect();
+      return event.target === dialog && (event.clientX < box.left || event.clientX > box.right
+        || event.clientY < box.top || event.clientY > box.bottom);
+    };
+    const opened = performance.now();
+    let down = false;
+    dialog.addEventListener("pointerdown", (event) => { down = beside(event) && performance.now() - opened > 400; });
+    dialog.addEventListener("click", (event) => {
+      if (down && beside(event)) dialog.close();
+      down = false;
+    });
+    dialog.addEventListener("close", () => {
+      dialog.remove();
+      resolve(answer);
+    }, { once: true });
+    document.body.append(dialog);
+    dialog.showModal();
+    row.children[start].focus();
   });
 }

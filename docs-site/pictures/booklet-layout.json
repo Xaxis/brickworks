@@ -26,7 +26,7 @@
    "setup": [
     {
      "run": "timeline",
-     "after": 30
+     "after": 240
     },
     {
      "run": "booklet_lay_out",

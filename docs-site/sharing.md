@@ -143,7 +143,8 @@ lib:work in progress kept and ranked
 
 ## Remixes and credit {#remix}
 
-**Open in Brickworks** on any model's page copies it into your own models. Share your changed copy and its page says *Remixed from* the original, and under it [what you changed](/docs/model-pages#remix-changes) from the version you copied, counted as Compare counts it, with **See what changed in 3D**. The original's **Remixes** tab draws yours in [its tree](/docs/model-pages#remix-tree), with what you changed. A model opened from [the LDraw library](/docs/ldraw-library) keeps the name of whoever modelled it, and its page credits them, whoever shares it.
+**Open in the studio** on any model's page copies it into your own models. Share your changed copy and its page says *Remixed from* the original, and under it [what you changed](/docs/model-pages#remix-changes) from the version you copied, counted as Compare counts it, with **See what changed in 3D**. The original's **Remixes** tab draws yours in [its tree](/docs/model-pages#remix-tree), with what you changed. A model opened from [the LDraw library](/docs/ldraw-library) keeps the name of whoever modelled it, and its page credits them, whoever shares it.
+**Open in Brickworks** on any model's page copies it into your own models. Share your changed copy and its page says *Remixed from* the original, and under it [what you changed](/docs/model-pages#remix-changes) from the version you copied, counted as Compare counts it, with **See what changed in 3D**. The original's **Remixes** tab draws yours in [its tree](/docs/model-pages#remix-tree), with what you changed. And you can [send your change back](/docs/model-pages#send-back) to its designer, who takes all of it, part or none, and credits you. A model opened from [the LDraw library](/docs/ldraw-library) keeps the name of whoever modelled it, and its page credits them, whoever shares it.
 
 <!-- covers
 lib:who modelled a shared model

@@ -15,6 +15,18 @@ whole cycle.
 
 ### Added
 
+- **Make your own version of a set.** A set's page whose set LDraw has
+  modelled says **Build it**, which opens that model at its first step to
+  build step by step, and **Make your own version**, which opens a copy of
+  it credited to whoever modelled it. Change it and publish it, and it is
+  listed on the set's page under **Versions of this set** within a minute,
+  said to be changed from LDraw's model.
+- **Every modelled set turns in 3D on its own page.** A set's page in the
+  library whose set LDraw has modelled, about 1,300 of them, says **View
+  in 3D** on its picture, and the set turns right there, as a shared
+  model's does: drag, zoom, the keys, full screen, and **Open in the app**
+  beside it. Nothing of it loads until you ask. A set LDraw has not
+  modelled says **No 3D model of this set yet** under its picture.
 - **Choose what you hear of, and where.** Settings › Notifications has a
   row for each kind of notification, from comments on your models to news
   from Brickworks, and a box for each place it can reach you: here (the
@@ -339,14 +351,16 @@ whole cycle.
   is.** "Parts have new numbers in the LDraw library" is offered only for
   your own LDraw file, and only once.
 
-- **The loading page builds its wall in 3D, with a tip under it.** While
-  the app loads in a browser, real-looking bricks drop onto a baseplate and
-  seat, course by course, as the app arrives, and the wall turns slowly
-  under one light, in the site's own colours, dark or light. Under it a tip
-  about Brickworks changes every five seconds: a key on a computer, a
+- **The loading page builds our mark in 3D bricks, with a tip under it.**
+  While the app loads in a browser, bricks fly in and build the Brickworks
+  mark, the cube with one corner cut away, course by course as the app
+  arrives: yellow on top, red and blue down the sides, the cut a shade
+  darker, as big as the window allows and turning slowly under one light.
+  The mark complete is the app ready. Under it the name, and under that a
+  tip about Brickworks changes every five seconds: a key on a computer, a
   gesture on a phone, and the menus' best commands, in your language; point
   at one to keep it, and the next visit starts with new ones. With reduced
-  motion it stands still.
+  motion the mark stands finished and still.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say

@@ -11,6 +11,7 @@ import { askToSignIn, call, say, signedIn } from "/account.js";
 import { langAt, number, told } from "/card.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
+import { ask, tell as tellOver } from "/kit.js";
 
 const root = document.querySelector("[data-talk]");
 const TESTS = new URLSearchParams(location.search).get("tests") === "1";
@@ -227,9 +228,13 @@ function edit(post) {
 async function remove(post) {
   const id = Number(post.dataset.post);
   const first = post === $("#talk-posts > li");
-  if (!confirm(first ? say("Remove your post? It starts the thread, so the whole thread goes with it.") : say("Remove your post?"))) return;
+  if (!(await ask({ title: say("Remove your post?"), body: first ? say("It starts the thread, so the whole thread goes with it.") : "",
+    yes: say("Remove"), no: say("Cancel"), danger: true }))) return;
   const done = await call(asked("op=talk_change"), { method: "POST", body: { post: id, what: "remove" } });
-  if (done.status !== 200) return alert(told(done.body?.error, say("That did not work just now. Try again in a minute.")));
+  if (done.status !== 200) {
+    return tellOver({ title: say("Your post was not removed"),
+      body: told(done.body?.error, say("That did not work just now. Try again in a minute.")) });
+  }
   if (done.body.thread_removed) {
     location.href = `${langAt()}/talk${TESTS ? "?tests=1" : ""}`;
     return;

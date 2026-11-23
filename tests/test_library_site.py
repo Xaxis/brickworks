@@ -220,7 +220,7 @@ console.log(JSON.stringify({ page, none: none.status, junk: junk.status }));""")
     page = said["page"]
     html = page["body"]
     assert page["status"] == 200
-    assert "<h1>Millennium Falcon</h1>" in html
+    assert '<h1 class="obj-title">Millennium Falcon</h1>' in html
     assert "<title>Millennium Falcon, LEGO® set 10179-1 — from the LDraw library</title>" in html
     # Every modeller the file names, each credited, LDraw linked.
     assert re.search(r'Modelled by <b>Roland Dahl and Evert-Jan Boer</b> for <a href="https://library\.ldraw\.org/omr/sets/320">', html)

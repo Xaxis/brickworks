@@ -16,7 +16,7 @@
     "test-account"
    ],
    "wait": "a.picture img",
-   "alt": "A model's page: the model's picture with View in 3D, the tabs About, Parts, Comments, Builds and Remixes under it, and beside it its name and designer, Build it, Open in Brickworks, Download, and the bar of Like, Save, Share, Comment and Built.",
+   "alt": "A model's page: the model's picture with View in 3D, its pictures and the tabs Overview, Comments, Parts, Builds and Remixes under it, and beside it its name and designer, Build it, Open in the studio with With your Claude, the bar of Like, Save, Share and More, and its facts.",
    "caption": "A shared model's page.",
    "features": [
     "ui:shared model page and card",
@@ -461,7 +461,7 @@
     "#claude-panel"
    ],
    "pad": 12,
-   "alt": "A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
+   "alt": "A model's page with Open in the studio and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
    "caption": "With your Claude, on a model's page.",
    "features": [
     "ui:change a model with your Claude"
@@ -915,6 +915,81 @@
    "caption": "The Remixes tab, both ways.",
    "features": [
     "ui:what a remix changed and the remix tree"
+   ]
+  },
+  {
+   "id": "suggest-credit",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "db": {
+    "rest/v1/rpc/suggestion_list": {
+     "open": null,
+     "taken": [
+      {
+       "id": 7,
+       "n": 4,
+       "remix": "DocsSprt04",
+       "name": "Sports car with a roof rack",
+       "by": {
+        "name": "Priya Example",
+        "handle": "priya-example"
+       },
+       "taken": {
+        "added": 6,
+        "removed": 0,
+        "moved": 2,
+        "recoloured": 0,
+        "swapped": 1,
+        "restepped": 0
+       },
+       "whole": false,
+       "at": "2026-11-21T15:00:00Z"
+      },
+      {
+       "id": 3,
+       "n": 3,
+       "remix": "DocsSprt03",
+       "name": "Sports car in blue",
+       "by": {
+        "name": "Jon Reyes",
+        "handle": "jonreyes"
+       },
+       "taken": {
+        "added": 0,
+        "removed": 0,
+        "moved": 0,
+        "recoloured": 14,
+        "swapped": 0,
+        "restepped": 0
+       },
+       "whole": true,
+       "at": "2026-11-12T10:00:00Z"
+      }
+     ]
+    }
+   },
+   "wait": ".model-page .suggested-credit",
+   "crop": [
+    ".model-page .facts",
+    ".model-page .suggested-credit"
+   ],
+   "pad": 16,
+   "alt": "A model's page under its facts: With part of Priya Example’s change from their remix “Sports car with a roof rack”, version 4, and With Jon Reyes’s change from their remix “Sports car in blue”, version 3, each name, remix and version a link.",
+   "caption": "The changes a model took in from its remixes, credited on its page.",
+   "features": [
+    "ui:a change sent back on a model's page",
+    "api:suggested edits"
    ]
   },
   {

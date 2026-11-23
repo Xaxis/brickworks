@@ -1,5 +1,6 @@
-// The app's loading page (src/boot/shell.html; bootlook, 2026-11-23): its
-// wall in 3D and the tips under it, pictured and checked.
+// The app's loading page (src/boot/shell.html; bootlook, bootlook2,
+// 2026-11-23): our mark built of bricks in 3D as the app arrives, and the
+// tips under it, pictured and checked.
 //
 //   set -a; . ./.env; set +a
 //   ~/.claude/claude-core/bin/heavy node tools/web/bootlook_flow.mjs --dir=build/web --out=DIR \
@@ -12,7 +13,7 @@
 //
 // Pictures: at 1280 x 800 and a phone's 390 x 844 (3x, by touch), dark and
 // light, early, mid and late in a load held to a slow network (--kbps,
-// 2500), so the wall is caught being built: DIR/pictures/<size>-<scheme>-
+// 2500), so the mark is caught being built: DIR/pictures/<size>-<scheme>-
 // <when>.png, each the window as it was (never a full page). In each of
 // those loads: nothing on the page moved (the layout shifts' sum is 0),
 // and the tip changed every 5 s or so with its card where it was.
@@ -24,14 +25,16 @@
 //     page's own clock (page.clock) with the engine kept away;
 //   - under the pointer a tip waits, and the next comes once it leaves;
 //   - the next visit begins at the next tip (localStorage brickworks.tip);
-//   - with reduced motion nothing animates and a tip changes without a fade;
+//   - with reduced motion nothing animates, the mark stands finished, and
+//     a tip changes without a fade;
 //   - the site's kept theme (brickworks.theme) wins over the system's;
-//   - the page goes on to start the app (#boot done), and then nothing on it
-//     moves; its tab opened by link in another tab says where it is, its
-//     tip put away and its wall stopped; with --base, it asked for nothing
+//   - the page goes on to start the app (#boot done) with the mark
+//     complete, and then nothing on it moves; its tab opened by link in
+//     another tab says where it is, its tip put away and its mark stopped;
+//     with --base, it asked for nothing
 //     the base's page did not;
 //   - in a browser without WebGL 2, the trouble said, the tip put away and
-//     the wall stopped, nothing moved; the tips also fit a 320-wide phone.
+//     the mark stopped, nothing moved; the tips also fit a 320-wide phone.
 // Exit 1 on any FAIL.
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -67,6 +70,11 @@ function check(ok, what) {
 // One build folder, served until the run ends.
 const servers = [];
 async function serve(dir, at) {
+  // A server left on the port by a run that crashed would answer for this
+  // one, whose own dies unbound: the flow would look at that one's page.
+  if (await fetch(`http://127.0.0.1:${at}/`).then(async (r) => { await r.arrayBuffer(); return true; }).catch(() => false)) {
+    throw new Error(`port ${at} is already served: stop what holds it, or give --port another`);
+  }
   const child = spawn("python3", [join(ROOT, "tools/web/serve.py"), resolve(String(dir)), String(at), "--compressed", "--cached"],
     { stdio: ["ignore", "ignore", "inherit"] });
   servers.push(child);
@@ -74,6 +82,9 @@ async function serve(dir, at) {
   while (Date.now() < until) {
     try {
       const reply = await fetch(`http://127.0.0.1:${at}/index.html`);
+      // Read to its end: an answer left unread, then closed by serve.py,
+      // threw inside node's fetch and ended the run (bootlook's flow1).
+      await reply.arrayBuffer();
       if (reply.ok) return `http://127.0.0.1:${at}/index.html`;
     } catch {}
     await new Promise((done) => setTimeout(done, 200));
@@ -87,7 +98,7 @@ const PHONE = { label: "390", viewport: { width: 390, height: 844 }, deviceScale
 const SMALL = { label: "320", viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
 
 // What the page did, watched from before its first script: each layout
-// shift, each tip as it came (with where its card and the wall were), and
+// shift, each tip as it came (with where its card and the mark were), and
 // every address it asked for.
 function watchPage() {
   window.__look = { shifts: [], tips: [] };
@@ -120,7 +131,11 @@ async function newPage(browser, device, { scheme = "dark", motion = "no-preferen
   if (init) await context.addInitScript(init.fn, init.arg);
   const page = await context.newPage();
   const asked = [];
-  page.on("request", (request) => asked.push(new URL(request.url()).pathname));
+  // Its own addresses; a blob: or data: one is made afresh by each page.
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.protocol === "http:" || url.protocol === "https:") asked.push(url.pathname);
+  });
   page.on("pageerror", (error) => console.log(`  page error: ${String(error.message || error).split("\n")[0]}`));
   return { context, page, asked };
 }
@@ -157,8 +172,8 @@ async function pictures(browser, url) {
             await page.waitForTimeout(250);
             now = await read(page);
           }
-          // The bricks just laid seated: a drop takes 0.56 s.
-          await page.waitForTimeout(700);
+          // The bricks just laid half way in: a flight takes 0.76 s.
+          await page.waitForTimeout(380);
           now = await read(page);
           if (now.done) break;
           await page.screenshot({ path: join(out, "pictures", `${name}-${when}.png`) });
@@ -169,7 +184,7 @@ async function pictures(browser, url) {
           if (when === "mid") during = now.look;
         }
         if (!last) {
-          check(false, `${name}: the wall was never caught being built (the page was up first)`);
+          check(false, `${name}: the mark was never caught being built (the page was up first)`);
           continue;
         }
         const { look } = last;
@@ -180,7 +195,7 @@ async function pictures(browser, url) {
         const gaps = timed.slice(1).map((tip, i) => tip.at - timed[i].at).slice(1);
         const still = look.tips.every((tip) => tip.tip === look.tips[0].tip && tip.wall === look.tips[0].wall);
         check(gaps.length >= 1 && gaps.every((gap) => gap > 4500 && gap < 6500) && still,
-          `${name}: ${look.tips.length} tips, one every ${gaps.map((gap) => (gap / 1000).toFixed(1)).join(", ")} s while the files came, the card and the wall where they were`);
+          `${name}: ${look.tips.length} tips, one every ${gaps.map((gap) => (gap / 1000).toFixed(1)).join(", ")} s while the files came, the card and the mark where they were`);
       } catch (trouble) {
         check(false, `${name}: ${String(trouble.message || trouble).split("\n")[0]}`);
       } finally {
@@ -202,7 +217,12 @@ async function tips(browser, url) {
       // The engine kept away (its script never answered), so the page stays.
       await context.route(/\/index\.js$/, () => {});
       try {
-        await page.clock.install();
+        // Only runFor moves the page's clock: an installed clock also runs in
+        // real time, and on a loaded box the seconds before or between two
+        // looks brought a tip more (the first gone, a tip heard twice).
+        const start = Date.now();
+        await page.clock.install({ time: start });
+        await page.clock.pauseAt(start + 1);
         await page.goto(`${url}${code === "en" ? "" : `?lang=${code}`}`, { waitUntil: "domcontentloaded", timeout: 60000 });
         await page.waitForSelector("#tip-text", { timeout: 30000 });
         const count = await page.evaluate(() => window.brickworksTips.count);
@@ -282,7 +302,7 @@ async function cannot(browser, url) {
       turn: getComputedStyle(document.querySelector("#wall .scene")).animationPlayState,
       shifts: window.__look.shifts.reduce((sum, s) => sum + s.value, 0) }));
     check(seen.bad && seen.tip === "hidden" && !seen.on && seen.turn === "paused" && seen.shifts === 0,
-      `no WebGL 2: "${seen.note.slice(0, 50)}…" said as trouble, the tip put away (${seen.tip}), the wall stopped (${seen.turn}), nothing moved (${seen.shifts.toFixed(4)})`);
+      `no WebGL 2: "${seen.note.slice(0, 50)}…" said as trouble, the tip put away (${seen.tip}), the mark stopped (${seen.turn}), nothing moved (${seen.shifts.toFixed(4)})`);
   } catch (trouble) {
     check(false, `no WebGL 2: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
@@ -302,11 +322,14 @@ async function manners(browser, url, base) {
       const said = await page.evaluate(() => ({
         running: document.getAnimations().filter((a) => a.playState === "running").map((a) => a.animationName || "?"),
         fade: getComputedStyle(document.getElementById("tip-text")).transitionDuration,
+        shown: [...document.querySelectorAll("#bricks .brick")].filter((one) => getComputedStyle(one).visibility === "visible").length,
+        bricks: document.querySelectorAll("#bricks .brick").length,
       }));
       if (motion === "reduce") {
-        check(!said.running.length && /^0s(, 0s)*$/.test(said.fade), `reduced motion: nothing animates (${said.running.join(", ") || "none"}), a tip changes without a fade (${said.fade})`);
+        check(!said.running.length && /^0s(, 0s)*$/.test(said.fade) && said.bricks > 0 && said.shown === said.bricks,
+          `reduced motion: nothing animates (${said.running.join(", ") || "none"}), the mark stands finished (${said.shown} of ${said.bricks} bricks shown), a tip changes without a fade (${said.fade})`);
       } else {
-        check(said.running.includes("turn"), `the wall turns (${said.running.join(", ")})`);
+        check(said.running.includes("turn"), `the mark turns (${said.running.join(", ")})`);
       }
     } catch (trouble) {
       check(false, `motion ${motion}: ${String(trouble.message || trouble).split("\n")[0]}`);
@@ -342,11 +365,14 @@ async function manners(browser, url, base) {
       const after = await page.evaluate(() => ({
         running: document.getAnimations().filter((a) => a.playState === "running").length,
         still: Boolean(document.querySelector(".stage.still")),
+        laid: document.querySelectorAll("#bricks .brick.laid").length,
+        bricks: document.querySelectorAll("#bricks .brick").length,
       }));
       const { look } = await read(page);
       loads[arm] = new Set(asked);
       if (arm === "mine") {
-        check(after.running === 0 && after.still, `the app came up behind it in ${(took / 1000).toFixed(1)} s, then nothing on the page moved (${after.running} animations)`);
+        check(after.running === 0 && after.still && after.bricks > 0 && after.laid === after.bricks,
+          `the app came up behind it in ${(took / 1000).toFixed(1)} s, the mark complete (${after.laid} of ${after.bricks} bricks), then nothing on the page moved (${after.running} animations)`);
         const moved = (look?.shifts || []).reduce((sum, s) => sum + s.value, 0);
         check(moved === 0, `nothing on the page moved before the app was up (layout shifts ${moved.toFixed(4)})`);
         // Its tab asked for by link in another tab of this browser: that page
@@ -359,7 +385,7 @@ async function manners(browser, url, base) {
           note: document.getElementById("note").textContent, tip: getComputedStyle(document.getElementById("tip")).visibility,
           on: window.brickworksTips.on, held: document.getElementById("wall").classList.contains("held") }));
         check(Boolean(id) && there.elsewhere === id && /another Brickworks tab/.test(there.note) && there.tip === "hidden" && !there.on && there.held,
-          `its tab opened by link in another tab: "${there.note.slice(0, 60)}…", the tip put away (${there.tip}), the wall stopped`);
+          `its tab opened by link in another tab: "${there.note.slice(0, 60)}…", the tip put away (${there.tip}), the mark stopped`);
         await linked.close();
       } else {
         console.log(`  base: up in ${(took / 1000).toFixed(1)} s`);

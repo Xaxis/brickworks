@@ -51,6 +51,7 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { signWebhook } from "../../tests/fixtures/billing/fake_admission.mjs";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -379,13 +380,10 @@ try {
         document.querySelector("#delete-plan a")?.href === "https://atypic.ai/refunds"));
       await page.fill("#delete-confirm", email);
       await shot(page, "delete-pro-1280-light.png");
-      let asked = "";
-      page.once("dialog", (dialog) => {
-        asked = dialog.message();
-        dialog.accept();
-      });
+      const heard = await answerAsks(page, { times: 1 });
       await page.click("#delete-go");
       await until(page, () => document.documentElement.dataset.deleted === "yes", null, 40000);
+      const asked = heard.at(-1) || "";
       check(`asked first: "${asked}"`, asked === "Delete this account and everything in it, for good? "
         + "Your Pro plan ends now, with the account, and you are not charged again.");
       const lede = await page.evaluate(() => document.querySelector("#signed-out .lede")?.textContent || "");

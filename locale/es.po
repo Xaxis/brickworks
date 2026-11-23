@@ -17005,6 +17005,15 @@ msgstr "«%s» es tu copia, hecha hace un momento: abierta, no copiada otra vez"
 msgid "could not save “%s” into your models: File › Save as… keeps it"
 msgstr "no se pudo guardar «%s» en tus modelos: Archivo › Guardar como… lo conserva"
 
+# The app's header in every mode (appchrome): the mark home, Menu at the right
+msgid "Menu"
+msgstr "Menú"
+
+msgid "Brickworks: the home page"
+msgstr "Brickworks: la página de inicio"
+
+msgid "The site's home page, in this tab"
+msgstr "La página de inicio del sitio, en esta pestaña"
 # The studio's first screen (studiostart, src/ui/studio_start.gd).
 msgid "Welcome back"
 msgstr "Bienvenido de nuevo"

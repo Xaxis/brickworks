@@ -29,6 +29,10 @@
 //   "use"       ["test-account"]: docs-site/pictures/answers/<name>.json's
 //               answers, db and storage first, the picture's own over them
 //   "storage"   what localStorage holds (a session), "session" sessionStorage
+//   "store"     true: the parts store (the database's storage/v1/object/public/parts/,
+//               for the handlers and the page alike) read from this machine's
+//               copy (storage_mirror.mjs), for a page that draws real parts or
+//               an LDraw set in 3D (set3d); "db" and "answers" still first
 //   "steps"     after the page is up, a person's: {"click": selector},
 //               {"hover": selector}, {"press": "Escape"}, {"wait": selector}
 //               (for up to "within" ms, 30 s unless said), {"scroll": selector},
@@ -39,6 +43,7 @@
 //   "phone"     a phone's browser (touch, mobile), "scale" its pixels a point
 import { launch } from "./browser.mjs";
 import { serveDir } from "./static_server.mjs";
+import { object as storeObject } from "./storage_mirror.mjs";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -151,6 +156,9 @@ const SERVER = [
   // page, from this checkout's catalogue (ownedparts).
   [/^\/m\/([A-Za-z0-9]{10})\/parts\.(json|xml|csv)$/, "share", (m) => ({ op: "parts", id: m[1], as: m[2] })],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", (m) => ({ op: "catalog_set", set: m[1] })],
+  // An LDraw set's model packed for a page's 3D view (set3d), from its file
+  // in the store ("store").
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/scene\.json$/, "share", (m) => ({ op: "set_scene", id: m[1] })],
   // The embed, as a challenge's vote two at a time frames it (?blind=1).
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", (m) => ({ op: "embed", id: m[1] })],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", (m) => ({ op: "page", handle: m[1] })],
@@ -160,13 +168,36 @@ const SERVER = [
   [/^\/talk\/t\/([1-9][0-9]{0,11})(?:\/[a-z0-9-]{0,80})?\/?$/, "people", (m) => ({ op: "talk_page", thread: m[1] })],
 ];
 const DB = "https://db.docs.example";
-let asking = { db: {}, unanswered: [] };
+// The parts store as the handlers name it, under the database (never the
+// real bucket a .env names), and the real bucket a copy is fetched from once.
+const STORE = "storage/v1/object/public/parts/";
+const GIVEN_PARTS_URL = process.env.PARTS_URL;
+const BUCKET = (() => {
+  if (process.env.PARTS_URL) return process.env.PARTS_URL.replace(/\/?$/, "/");
+  try {
+    const line = readFileSync(path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."), ".env"), "utf8")
+      .split("\n").find((one) => one.startsWith("PARTS_URL="));
+    return line ? line.slice(10).trim().replace(/^["']|["']$/g, "").replace(/\/?$/, "/") : "";
+  } catch {
+    return "";
+  }
+})();
+/// [name] in the parts store, from this machine's copy: {status, contentType, body}.
+async function stored(name) {
+  const got = await storeObject(name, `${BUCKET}${name}`);
+  return { status: got.status, contentType: String(got.headers["content-type"] || "application/octet-stream"), body: got.body };
+}
+let asking = { db: {}, unanswered: [], store: false };
 let realFetch = null;
 const handlers = {};
 async function serverMade(name, query, host, proto) {
   process.env.SUPABASE_URL = DB;
   process.env.SUPABASE_SECRET_KEY = "docs";
   process.env.SUPABASE_PUBLISHABLE_KEY = "docs";
+  // A picture that reads the store reads it here, whatever the shell's .env says.
+  if (asking.store) process.env.PARTS_URL = `${DB}/${STORE}`;
+  else if (GIVEN_PARTS_URL === undefined) delete process.env.PARTS_URL;
+  else process.env.PARTS_URL = GIVEN_PARTS_URL;
   if (!realFetch) {
     realFetch = globalThis.fetch;
     globalThis.fetch = async (input, init = {}) => {
@@ -176,6 +207,10 @@ async function serverMade(name, query, host, proto) {
       const said = answerOf(asking.db, where);
       if (said) {
         const { status, contentType, body } = fulfilment(said[1]);
+        return new Response(body, { status, headers: { "content-type": contentType } });
+      }
+      if (asking.store && where.startsWith(STORE) && BUCKET) {
+        const { status, contentType, body } = await stored(where.slice(STORE.length));
         return new Response(body, { status, headers: { "content-type": contentType } });
       }
       const method = String(init.method || "GET").toUpperCase();
@@ -253,7 +288,7 @@ for (const shot of shots) {
       colorScheme: theme, reducedMotion: "reduce", extraHTTPHeaders: headers, locale: "en-GB",
       timezoneId: "UTC" });
     const said = given(shot);
-    asking = { db: said.db, unanswered: [] };
+    asking = { db: said.db, unanswered: [], store: shot.store === true };
     const unknown = [];
     try {
       // What the page asks the server, answered as the manifest says; a page
@@ -295,6 +330,11 @@ for (const shot of shots) {
         if (local && asked.pathname.startsWith("/api/")) unknown.push(`${route.request().method()} ${where}`);
         if (local && served) return route.fulfill({ response: await route.fetch({ url: served.url + where }) });
         if (local) return route.continue();
+        // The parts a 3D view draws, from the store its scene names.
+        if (asking.store && BUCKET && asked.href.startsWith(`${DB}/${STORE}`)) {
+          const { status, contentType, body } = await stored(asked.pathname.slice(`/${STORE}`.length));
+          return route.fulfill({ status, contentType, body, headers: { "access-control-allow-origin": "*" } });
+        }
         return route.fulfill({ status: 404, contentType: "text/plain", body: "" });
       }
       await context.addInitScript(([kept, held]) => {

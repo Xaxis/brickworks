@@ -5,7 +5,11 @@
 //
 // Everything is put on the page as text, never as markup: almost every word
 // the console shows was typed by somebody else.
+//
+// And the site's own ask (web/kit.js), before an act: never the browser's
+// confirm(), which looked like another program's (owner, 2026-11-23).
 import { call, signedIn } from "/account.js";
+export { ask } from "/kit.js";
 
 export const $ = (id) => document.getElementById(id);
 

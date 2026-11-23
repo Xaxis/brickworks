@@ -156,15 +156,20 @@ try {
   check(/href="\/u\/robin-castell"/.test(linked) && /Robin &lt;Castell&gt;/.test(linked) && /aria-pressed="true"/.test(linked)
     && !/href="\/u\//.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
   // How it was made is no card's mark (the owner, 2026-11-02): not as its
-  // app said, not by its tags. Its own page says it, among its facts.
+  // app said, not by its tags. Its own page says it, among its facts, and
+  // only where its owner chose to (the owner, 2026-11-23,
+  // supabase/made_with_shown.sql).
   const madeCards = await drawn([SAMPLES[8][0], SAMPLES[9][0], SAMPLES[10][0], SAMPLES[4][0], SAMPLES[5][0]], {});
   const saying = madeCards.filter((one) => /class="pill made"|data-made=|>Assistant<|>Brickify</.test(one));
   check(!saying.length, `no card says how it was made: hand-built, Claude's, Brickify's, tagged ai-designed or brickify (${saying.length} of ${madeCards.length} do)`);
-  const madeFacts = async (id) => /<ul class="facts pills">[^]*?<\/ul>/.exec((await stand.serverPage(api, `/m/${id}`)).html)?.[0] || "";
-  const [houseFacts, robinFacts] = [await madeFacts("HouseMod01"), await madeFacts(stand.MODEL_ID)];
-  check(/<li class="pill made" title="Designed with the assistant, as its designer tagged it">With the assistant<\/li>/.test(houseFacts)
-    && !/class="pill made"/.test(robinFacts), "a model's own page says it: With the assistant among the facts of one tagged ai-designed, "
-    + "nothing for one built by hand");
+  const pageOf = async (id) => (await stand.serverPage(api, `/m/${id}`)).html;
+  const madeFacts = (html) => /<ul class="facts pills">[^]*?<\/ul>/.exec(html)?.[0] || "";
+  const [quietPage, shownPage, robinPage] = [await pageOf("HouseMod01"), await pageOf("HouseMod02"), await pageOf(stand.MODEL_ID)];
+  check(/<li class="pill made" title="Designed with the assistant, as its designer tagged it">With the assistant<\/li>/.test(madeFacts(shownPage))
+    && !/class="pill made"/.test(madeFacts(robinPage)), "a model's own page says it: With the assistant among the facts of one tagged "
+    + "ai-designed whose owner chose to show it, nothing for one built by hand");
+  check(!/class="pill made"|ai-designed|With the assistant/.test(quietPage) && /ai-designed/.test(shownPage),
+    "one tagged ai-designed whose owner did not choose to show it: no fact, no ai-designed tag, nothing anywhere on its page says it");
   // Their own picture only from this site's address for one.
   const [face, elsewhere] = await drawn([SAMPLES[6][0], SAMPLES[7][0]], {});
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)

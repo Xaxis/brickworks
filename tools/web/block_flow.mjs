@@ -34,6 +34,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -213,8 +214,8 @@ try {
   const adaSite = await context({ as: ada });
   const adaPage = await adaSite.newPage();
   listen(adaPage, "Ada");
-  let asked = "";
-  adaPage.on("dialog", (dialog) => { asked = dialog.message(); dialog.accept().catch(() => {}); });
+  // What each ask said (web/kit.js ask: its question, then its line).
+  const heard = await answerAsks(adaPage);
   await adaPage.goto(`${site}/u/${BOB}?tests=1`, { waitUntil: "load" });
   await until(adaPage, () => !document.querySelector("button[data-block]")?.hidden, "Block in the More menu");
   await adaPage.click(".profile-head .more-menu summary");
@@ -228,6 +229,7 @@ try {
   await shot(adaPage, "1_profile_menu-390.png");
   await adaPage.click("button[data-block]");
   await until(adaPage, () => document.querySelector("button[data-block]")?.dataset.blocked === "yes", "Unblock drawn");
+  const asked = heard.at(-1) || "";
   check(`one line asked first, saying what it does: "${asked}"`, /^Block Bob Block\? Their models leave your gallery and feed, their comments on your models are hidden, and follows between you end\. They aren’t told\.$/.test(asked));
   const after = await adaPage.evaluate(() => ({ item: document.querySelector("button[data-block]").textContent,
     follow: document.querySelector("button[data-follow]")?.textContent, said: document.querySelector(".follow-line .said")?.textContent || "" }));
@@ -430,7 +432,7 @@ try {
 
   // --- 7. from a comment's row ------------------------------------------------
   console.log("blocked again from Bob's comment on the tower");
-  asked = "";
+  heard.length = 0;
   await adaPage.goto(`${site}/m/${towerId}`, { waitUntil: "load" });
   const blockButton = `#comment-${bobComment} button[data-block-comment="${BOB}"]`;
   await until(adaPage, (selector) => Boolean(document.querySelector(selector)), "Block on Bob's comment", 45, blockButton);
@@ -444,7 +446,7 @@ try {
   await shot(adaPage, "5_comment_row-390.png");
   await adaPage.click(blockButton);
   await until(adaPage, (id) => !document.getElementById(`comment-${id}`), "Bob's comment gone from the page", 30, bobComment);
-  check(`asked first: "${asked.slice(0, 40)}…"`, asked.startsWith("Block Bob Block? "));
+  check(`asked first: "${(heard.at(-1) || "").slice(0, 40)}…"`, (heard.at(-1) || "").startsWith("Block Bob Block? "));
   check("Cy's comment still on the page", await adaPage.evaluate((id) => Boolean(document.getElementById(`comment-${id}`)), cyComment));
   await shot(adaPage, "6_comment_blocked-390.png");
   const ended = await block(ada, BOB, false);

@@ -135,7 +135,21 @@ export async function followsSent() {
 /// One Follow button, made live: drawn from [known] when the page already
 /// knows how it stands (the feed's designers to follow, none of whom you
 /// follow yet), else as the server says.
+// Each Follow made live once (followButton): button -> how to draw it anew
+// from a later [known], null while its first ask is out.
+const wired = new WeakMap();
+
 export async function followButton(button, known = null) {
+  // Asked again for a Follow already live (follow.js makes every Follow live
+  // as it loads, and the home feed then each of its posts'): drawn from what
+  // the page knows, never a second press. Two presses opened two sign-in
+  // dialogs at once, the second left over the page when the first was
+  // closed (rel-m320's home feed check: its 3D button under it).
+  if (wired.has(button)) {
+    if (known) wired.get(button)?.(known);
+    return;
+  }
+  wired.set(button, null);
   const named = button.dataset.followList ? "list" : "person";
   const kind = FOLLOWS[named];
   const handle = button.dataset.followList || button.dataset.follow;
@@ -189,8 +203,14 @@ export async function followButton(button, known = null) {
     state = { followers: 0, ...known };
     draw();
   } else if (!(await ask())) {
+    // Not live: a later call may make it so.
+    wired.delete(button);
     return;
   }
+  wired.set(button, (next) => {
+    state = { followers: 0, ...next };
+    draw();
+  });
   // Signed in from the header, or anywhere on the page: drawn again as it
   // stands for them (yours hidden, Following where you follow).
   addEventListener("brickworks:signed-in-done", () => {
@@ -726,6 +746,19 @@ document.addEventListener("pager:drawn", (event) => {
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: ![`${langAt()}/feed`, `${langAt()}/notifications`].includes(location.pathname) }).catch(() => null);
+// And again every 45 s while the page is in front, and as it comes back to
+// the front (suggestedit, 2026-11-23): a change a remixer sends back is on
+// its designer's avatar within a minute, with no reload. A tab behind
+// others asks nothing.
+const ASK_AGAIN_MS = 45000;
+let countAskedAt = Date.now();
+function askCountAgain() {
+  if (document.visibilityState !== "visible" || !signedIn() || Date.now() - countAskedAt < ASK_AGAIN_MS - 1000) return;
+  countAskedAt = Date.now();
+  showFeedCount().catch(() => null);
+}
+setInterval(askCountAgain, ASK_AGAIN_MS);
+document.addEventListener("visibilitychange", askCountAgain);
 
 // Sign in, in the header and the phone's Menu (signinux, 2026-11-13: the
 // owner, "it then takes them to another page where they have to click

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, ui:where does this part go, cli:partstep probe, cli:partstep bench, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:change a model with your Claude, cli:claudelink bench, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, cli:ask to leave timing, lib:a request asked of the page, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, lib:blocking a person, ui:block a person, cli:block browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe, cli:console2 browser flow, cli:Resend's webhook set up, lib:your sets and lists, ui:own want and save, ui:your lists page, ui:the sets you own on a profile, cli:lists browser flow, cli:console3 browser flow, ui:the site notice, lib:the social desk, lib:the social desk's Reddit adapter, ui:the owner's social desk, cli:socialdesk browser flow, ui:a phone asked before a big model opens, ui:the loader's words for a phone and a browser without WebGL 2, endpoint:the numbers a phone is warned by, ui:the engine an iPhone or iPad starts, cli:which engine each browser starts, cli:phonewarn browser flow, cli:phonetruth measures, lib:the counter's route and its reads, ui:the counter and its ask, ui:the owner's Analytics, ui:what is counted page, cli:insights browser flow, cli:the start by phase, lib:Claude in the console, lib:Claude's read-only tools, lib:the Claude API client, ui:Claude in the owner's console, cli:adminclaude browser flow, lib:the owner's notifications, lib:each server error kept, lib:work after the answer, ui:the owner's notifications page, cli:ownernotify browser flow, lib:announcements, ui:an announcement on a person's Notifications, cli:announce browser flow, lib:a designer's numbers against last month, cli:designer period browser flow, lib:judges and a fan vote and honours, ui:this month's challenge on the home page, cli:challenge home check, ui:the model turning in its link's preview, cli:turntable browser flow, ui:share a model file from the site, lib:a BrickLink Studio file read in the browser, lib:a file's private lines left out of a shared model, cli:share model browser flow, ui:installing the site, lib:the site's service worker, ui:offline page, ui:this device's notifications, lib:push sent to devices, lib:push subscriptions, cli:homescreen browser flow, lib:talk threads and posts, ui:the talk forum, ui:a thread in talk, ui:the latest in talk on the home page, ui:talk in the owner's console, cli:talk browser flow, cli:the talk stand-in, lib:the loop's read, cli:the loop as JSON, cli:the loop's card check, lib:what a remix changed, ui:what a remix changed and the remix tree, cli:remix browser flow, cli:remix backfill, cli:a page's LCP in two checkouts, lib:comments pinned to parts, ui:comment on a part in 3D, ui:comments on parts in the studio, cli:partpins probe, cli:partpins browser flow, cli:pin version pairs, ui:a kit to post a model elsewhere, cli:postkit browser flow, ui:show your build, cli:makes probe, cli:makes browser flow, lib:alternate builds counted, cli:altbuilds probe, cli:alternate builds backfill, cli:alternate builds index, cli:altbuilds set page paint, lib:the weekly quick build, lib:the weekly quick build's house work, lib:the weekly quick build's stack, ui:the weekly quick build's page, ui:the weekly quick build on the home page, ui:a quick build's notice, cli:prompts check, cli:prompt pictures, cli:prompts browser flow, cli:prompt start pair, ui:the fan vote two at a time, cli:challenge pair check, cli:challenge rules check, lib:work in progress kept and ranked, ui:work in progress shared by version, ui:a model's log, cli:wip probe, cli:wip browser flow, cli:the log's largest paint, cli:sharelink probe, ui:the home page's feed, ui:the home page's search, cli:home shelf at deploy, cli:homefeed check, ui:open in brickworks for a stranger, ui:a copy's first acts, cli:firstminute browser flow, cli:firstminute probe, ui:the loading page, cli:loading page browser flow, lib:what you hear of and where, ui:what you hear of in settings, ui:mute a model's notifications, ui:notifications done, ui:the account menu's newest five, cli:inbox browser flow, ui:the studio's first screen, cli:studiostart browser flow, cli:studio start probe -->
+<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, ui:where does this part go, cli:partstep probe, cli:partstep bench, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:change a model with your Claude, cli:claudelink bench, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, cli:ask to leave timing, lib:a request asked of the page, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, lib:blocking a person, ui:block a person, cli:block browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe, cli:console2 browser flow, cli:Resend's webhook set up, lib:your sets and lists, ui:own want and save, ui:your lists page, ui:the sets you own on a profile, cli:lists browser flow, cli:console3 browser flow, ui:the site notice, lib:the social desk, lib:the social desk's Reddit adapter, ui:the owner's social desk, cli:socialdesk browser flow, ui:a phone asked before a big model opens, ui:the loader's words for a phone and a browser without WebGL 2, endpoint:the numbers a phone is warned by, ui:the engine an iPhone or iPad starts, cli:which engine each browser starts, cli:phonewarn browser flow, cli:phonetruth measures, lib:the counter's route and its reads, ui:the counter and its ask, ui:the owner's Analytics, ui:what is counted page, cli:insights browser flow, cli:the start by phase, lib:Claude in the console, lib:Claude's read-only tools, lib:the Claude API client, ui:Claude in the owner's console, cli:adminclaude browser flow, lib:the owner's notifications, lib:each server error kept, lib:work after the answer, ui:the owner's notifications page, cli:ownernotify browser flow, lib:announcements, ui:an announcement on a person's Notifications, cli:announce browser flow, lib:a designer's numbers against last month, cli:designer period browser flow, lib:judges and a fan vote and honours, ui:this month's challenge on the home page, cli:challenge home check, ui:the model turning in its link's preview, cli:turntable browser flow, ui:share a model file from the site, lib:a BrickLink Studio file read in the browser, lib:a file's private lines left out of a shared model, cli:share model browser flow, ui:installing the site, lib:the site's service worker, ui:offline page, ui:this device's notifications, lib:push sent to devices, lib:push subscriptions, cli:homescreen browser flow, lib:talk threads and posts, ui:the talk forum, ui:a thread in talk, ui:the latest in talk on the home page, ui:talk in the owner's console, cli:talk browser flow, cli:the talk stand-in, lib:the loop's read, cli:the loop as JSON, cli:the loop's card check, lib:what a remix changed, ui:what a remix changed and the remix tree, cli:remix browser flow, cli:remix backfill, cli:a page's LCP in two checkouts, lib:comments pinned to parts, ui:comment on a part in 3D, ui:comments on parts in the studio, cli:partpins probe, cli:partpins browser flow, cli:pin version pairs, ui:a kit to post a model elsewhere, cli:postkit browser flow, ui:show your build, cli:makes probe, cli:makes browser flow, lib:alternate builds counted, cli:altbuilds probe, cli:alternate builds backfill, cli:alternate builds index, cli:altbuilds set page paint, lib:the weekly quick build, lib:the weekly quick build's house work, lib:the weekly quick build's stack, ui:the weekly quick build's page, ui:the weekly quick build on the home page, ui:a quick build's notice, cli:prompts check, cli:prompt pictures, cli:prompts browser flow, cli:prompt start pair, ui:the fan vote two at a time, cli:challenge pair check, cli:challenge rules check, lib:work in progress kept and ranked, ui:work in progress shared by version, ui:a model's log, cli:wip probe, cli:wip browser flow, cli:the log's largest paint, cli:sharelink probe, ui:the home page's feed, ui:the home page's search, cli:home shelf at deploy, cli:homefeed check, ui:open in brickworks for a stranger, ui:a copy's first acts, cli:firstminute browser flow, cli:firstminute probe, ui:the loading page, cli:loading page browser flow, lib:what you hear of and where, ui:what you hear of in settings, ui:mute a model's notifications, ui:notifications done, ui:the account menu's newest five, cli:inbox browser flow, cli:set3d browser flow, cli:sethub browser flow, lib:a set's versions, ui:an object's page and its tabs, ui:the studio's first screen, cli:studiostart browser flow, cli:studio start probe, lib:a change sent back and taken, api:suggested edits, ui:a change sent back on a model's page, cli:suggest browser flow -->
 
 ## Sub-features
 
@@ -950,7 +950,32 @@ plan with Claude as the client.
   assistant or brickify, as the app says (400 for anything else), kept by a
   PATCH of its own that never stops the publish (nothing before the file is
   applied) and answered as `made_with`; not said, it stays as it was.
-  `share_probe` checks both. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
+  `share_probe` checks both. `made_with_shown` (2026-11-23, the owner: not
+  "unless a user wants to share it that way"; `supabase/made_with_shown.sql`,
+  false for every model): whether its owner chose to say how it was made,
+  true or false on a publish (400 otherwise; not said, kept as it was), and
+  `?op=made&id=X` the owner's own GET `{made_with, way, by, made_with_shown,
+  ready}` and POST `{shown}`. Until it is true nothing public says it:
+  `web/card.js madePublic` takes `made_with` and the `ai-designed`/`brickify`
+  tags off in `cardOf`, `modelPage` (its fact, its tags, its keywords,
+  similar models) and the viewer's JSON (`publishedRow` reads the column
+  where it is, and without it before the file); the feed's way pill is only
+  Designed with the assistant or Made with Brickify, shown (no Built by
+  hand, which would tell the rest apart); Made's With the assistant and
+  `tag=ai-designed` list only shown models (gallery_models, and the API
+  drops a row not shown), Hand-built every other. A challenge's track is
+  the entrant's own and unchanged. `node tools/web/made_shown_check.mjs`
+  (stand-in, no browser: HouseMod01 tagged and not shown, HouseMod02
+  shown; 5 FAIL on base 919471139). The owner's choice on the model page
+  (web/model-page.js `madeChoice`): signed in as its owner, More has **Say
+  it was made with the assistant** (Brickify's: **with Brickify**), or
+  **Stop saying it...** once shown, from `?op=made` (none for a hand-built
+  model, or before the column); pressed, it POSTs `{shown}` and puts the
+  page's `li.pill.made` fact in or takes it out at once. On the real
+  functions and database: `node tools/web/made_shown_relay.mjs
+  --url=<a local relay_server.mjs>` (a run's own throwaway publishes as the
+  app does for Claude's model, a stranger reads its page and JSON, its owner
+  shows it and takes it back; 7 ok on 11-23 once the SQL was applied). Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) whose links each open a tab — the threaded engine
@@ -1262,15 +1287,22 @@ plan with Claude as the client.
   With no photo the strip is drawn hidden, and shown to the model's owner
   alone with `[data-add-picture]` Add a picture, which opens the photo
   form (three an account on a model, as for any builder). Under it,
-  `#page-tabs`, the kit's `.tabs`: About (`#about`: its words, tags and
-  licence), Comments (counted once listed; hidden where comments are not
-  open), Builds, Remixes and, with two or more, Versions, each with its
-  count, never one of none; sticky under the header (`.loose`, with no
-  ground, until it sticks), the part at the top marked `aria-current`, a
-  tab chosen marked until the reader scrolls on. Nothing yet is one line
-  and the way in: "Nobody has commented yet." and the box or Sign in to
-  comment, "Nobody has built it yet. Built it? Add a photo of yours." and
-  I built it, "Nobody has remixed it yet." with Open it in Brickworks.
+  `#page-tabs`, real tabs since pagekit (2026-11-23, `api/_tabs.js`,
+  `web/tabs.js`, the owner: comments the second tab, and the page far more
+  organised): Overview (`#overview`, also `#about`: its words, tags,
+  licence and the collections it is in), Comments (counted once listed;
+  hidden where comments are off and none show), Parts, Builds, Remixes
+  and, with two or more, Versions, each with its count, never one of
+  none; one panel shown, its key in the address (Back goes to the tab
+  before; `/m/<id>#comments` and `#comment-12` open on Comments), the
+  arrow keys, Home and End choosing. Nothing yet is one line and the way
+  in: "Nobody has commented yet." and the box or Sign in to comment,
+  "Nobody has built it yet. Built it? Add a photo of yours." and I built
+  it: add a photo, "Nobody has remixed it yet." with Open it in
+  Brickworks. Prove the tabs: `heavy node
+  bench/results/pagekit-2026-11-23/tabs_check.mjs --root=TREE` (the
+  stand-in's pages: the model's at 1280 and 390, a set's, a challenge's;
+  press, keys, Back, deep links, Skip to content, nothing sideways).
   `tests/test_model_page.py` makes the stand-in's pages with the real
   handler (no browser): the rows, their order, the bar's names and counts,
   and the page drawn when `directory_models` answers 500. Since 2026-10-26
@@ -1782,8 +1814,11 @@ plan with Claude as the client.
   `object-fit: cover`; Tested is a `.pill.good`. The Assistant or Brickify
   mark is `madeOf(model)`: `made_with` as the app said (`cardOf` passes it
   from `directory_card`), else the `ai-designed`/`brickify` tags; its title
-  says which. `card_check` holds a hand-built model tagged ai-designed
-  unmarked, an untagged one of Claude's marked (red on base). Since
+  says which, and only where its owner chose to show it (`madePublic`,
+  `made_with_shown`, below). `card_check` holds a hand-built model tagged
+  ai-designed unmarked, an untagged one of Claude's marked (red on base),
+  and the model page's fact on HouseMod02 (shown) alone, never HouseMod01
+  (tagged, not shown). Since
   2026-10-26 (site277, from site273's review) the marks are one row
   (`.marks` one pill tall; a mark that does not fit is left off whole),
   and a mark 90% or more of a page's cards carry (four cards or more) is
@@ -1855,6 +1890,14 @@ plan with Claude as the client.
   `[keyboard]`): axe and the accessibility tree's names on every page,
   and the site's journeys by keyboard alone; below, "The site for
   everyone" (docs/DESIGN_SYSTEM.md "Accessibility").
+- `ask dialog` (`web/kit.js` `ask` and `tell`, `dialog.ask` in
+  `web/site.css`; dialogkit, 2026-11-23): the site's own question before an
+  act, where the browser's `confirm()` and `alert()` were (32 of them, on
+  /admin, /settings, /profile, a model's page, Talk and Block), with its
+  `ask flow` (`tools/web/ask_flow.mjs`, preview check `[ask]`); flows
+  answer it with `tools/web/asks.mjs` `answerAsks`; `tools/check.sh
+  --lists` names any `confirm(`, `alert(` or `prompt(` that comes back.
+  Below, "The site's own ask" (docs/DESIGN_SYSTEM.md "Ask").
 - `theme choice` (2026-10-22, docs/SOCIAL.md U1): System, Light or Dark,
   a `.segmented` row of three buttons, the chosen one `aria-pressed` and
   edged in `--accent-edge` (the yellow in dark, `#a67c00` in light: the
@@ -3029,8 +3072,11 @@ plan with Claude as the client.
   false), and deploy.sh's `app_closed` lets the site's own pages frame it;
   its ways out take the whole window (`src/main.gd` `WHOLE_WINDOW`). Signed
   in (`<html data-signed="in">`, web/theme.js before the first frame): the
-  band gives way to Share a build (`/app?share`, `main.gd`
-  `_maybe_share`) and the tabs For you, Following (`op=feed`) and New.
+  band is its search row alone, `#find-q` with Share a build (`/app?share`,
+  `main.gd` `_maybe_share`) and Share a file beside it (`.home-acts >
+  .mine`), over the tabs For you, Following (`op=feed`) and New
+  (homefix, 2026-11-23; homefeed_check step 7: the search in view, level
+  with Share a build, "/" focusing it, the first post over the foot).
   Prove it with `tools/web/homefeed_check.mjs --url=<a served site>
   [--signed-in] [--try-start]` and `tools/web/landing_check.mjs`: a site
   put together by `tools/site.py OUT` and filled by `node
@@ -3258,6 +3304,58 @@ plan with Claude as the client.
   before the file, counted by the same `countRemix`; `--dry` writes
   nothing; `--current=` a build's `part_names/part_current.json`
   (required).
+- `a change sent back and taken` (`api/_suggest.js`): a remix's change to
+  the designer's model said by the file, a section (FILE to NOFILE) at a
+  time in its own coordinates, by Compare's rules plus swapped (another
+  part where one stood) and restepped (matched, in a step other than the
+  one its step aligns with; steps aligned as two sequences, the most
+  matched lines first, then the most steps); a sub-model only the remix has
+  comes with the first line taken that places it, one only the designer's
+  has goes once nothing places it. `suggestionChanges(mine, theirs)` lists
+  each change `{id, kind, section, part, colour, was, now (line, step from
+  1, at: the app's axes at each place its section stands), restepped,
+  brings}`; `mergeSuggestion(mine, theirs, "all" | ids)` takes them into
+  the designer's lines, every line it does not touch kept as written, in
+  their line ends and BOM; a COPY, BTG or LeoCAD PIECE meta goes with its
+  part; a part put in goes after the last of its step's parts in the same
+  brackets (LPub, MLCad, LeoCAD, a copy built in the step). Proof: `python3
+  tools/minitest.py tests/test_suggest.py` (16 real sets of `vendor/omr`
+  with every class: whole, every change ticked, each alone, all but each,
+  held part for part and step for step; nothing taken byte for byte; the
+  bell's lines). Every set: `node tests/fixtures/suggest/check.mjs
+  vendor/omr/files/*.mpd` (a JSON line; each set's `faults` empty).
+- `suggested edits` (`api/_suggestions.js`, `api/share.js`,
+  `api/_notifications.js`, `supabase/suggestions.sql`, applied by the lead 2026-11-23): `POST /api/share?op=suggest
+  {remix, note}` (the remix's owner; refused in words: not theirs, not a
+  remix, their own model's, blocked, the checks' pool to a real one, 20 an
+  hour, no change), `GET ?op=suggestion&id=N` (its designer, with their
+  newest version's text, or its sender), `POST ?op=suggestion_merge {id,
+  n, take}` (the merged text, nothing kept), `POST ?op=suggestion_close
+  {id, status}`, `GET ?op=suggestions&id=X` (open ones for its designer
+  alone, every one taken with its version), and a publish's `{suggestion:
+  {id, taken, whole}}` marking it taken by the version it makes. The
+  designer's Notifications get `suggestion` under their model (its link
+  `/app?suggestion=N`) the moment it is sent, counted on the avatar
+  (`suggestion_new_count` added to `notification_counts`'); the remixer's
+  get `suggestion_taken` under their remix. Dry run:
+  `PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs
+  supabase/suggestions.sql --dry --try=tools/suggestions_try.sql
+  --table=model_suggestions`.
+- `a change sent back on a model's page` (`web/model-page.js` `suggestBox`,
+  `api/share.js` `suggestedLine` / `suggestedWords`, the box
+  `#suggest-box`): a remix's page, to its own builder signed in, offers
+  Send your change with a note (`op=suggest`; "Sent to “R”’s designer, who
+  hears of it now: counts", "Sent again" when it was open already); the
+  designer's page lists those sent to it, each with its counts, its note
+  and Open it in the studio (`/app?suggestion=N`); nobody else sees the
+  box. A version that took one says "With [part of] X’s change from their
+  remix “R”, version N" under the model's credit and in its Log entry (both
+  links). The site asks the header's count again every 45 s while the tab
+  is seen (`web/follow.js` `askCountAgain`), so the bell lights within a
+  minute. Proof: `node tools/web/suggest_flow.mjs --out=DIR` under heavy
+  (`suggest browser flow`: no network, `tests/fixtures/suggest/world.mjs`
+  through the real handlers, at 390 and 1280; pictures `send_`, `open_`,
+  `credit_<width>.png`).
 - `a page's LCP in two checkouts` (`tools/web/page_lcp_pairs.mjs`): the
   stand-in's pages in a base tree (`git archive` of the branch into a
   folder with `assets/generated` linked) and this checkout, a browser each,
@@ -3945,6 +4043,52 @@ plan with Claude as the client.
   all on a deployment (preview_checks.sh `sets_flow`). Locally:
   `node tools/web/relay_server.mjs 8364` serves the pages but not LDraw's
   `/library/<id>` ones.
+- **A set in 3D on its own page** (set3d, 2026-11-23): a set's page whose set
+  LDraw modelled (1,323 sets) turns it in its picture's frame with
+  `ui:a model in 3D on its page`'s viewer and lazy path (the picture is
+  `a.picture[data-scene=/library/<id>/scene.json]`, web/model-page.js calls
+  `start3d`; `/viewer3d.js` only on View in 3D; `/library/<id>/scene.json`
+  `?op=set_scene`, kept a week by the CDN, its file read from storage once
+  per instance by `storeFile`'s memo). A catalogue-only set (no LDraw model,
+  every Duplo set among them) keeps its picture and says
+  `p.no3d` "No 3D model of this set yet" under it (`.picture-foot`, its
+  credit at the right). `cli:set3d browser flow`
+  (`tools/web/set3d_flow.mjs`) drives ten modelled sets of 30 to 9,092 parts
+  (three Technic) at 1280 and 390 in both themes against a site, two
+  catalogue-only ones, a browser without WebGL, and de/fr/es; with the relay
+  run as `node --import ./tools/web/store_count.mjs tools/web/relay_server.mjs`
+  (its storage reads sent to `storage_mirror.mjs serve` and logged) and
+  `--store-log`, the bytes each view read from storage
+  (bench/results/set3d-2026-11-23/). tests/test_sets.py holds
+  the page's markup. The docs' pictures `set-3d`, `set-3d-phone` and
+  `set-no3d` (docs-site/pictures/ldraw-library.json, `"store": true`:
+  tools/web/docs_shots_flow.mjs reads the parts store from the machine's
+  copy for them).
+- **A set's page as the place search sends people** (sethub, 2026-11-23,
+  docs/PLAN.md row 2): a set LDraw modelled has, under its name, **Build it**
+  (`[data-build3d]`, `/app?new=1&library=<id>&build`: Main's `--library`
+  with `--build` opens the model and then its timeline at the first step,
+  `_build_from_step_one`, once its parts are in; an app without it opens the
+  model as before; `tools/probe.sh sethub_probe`, headless, opens Moon
+  Walker both ways from a stand-in store on port 11763) and **Make your own version** (`[data-version]`,
+  `/app?new=1&library=<id>`: the studio writes LDraw's credit into the copy,
+  and its publish is counted the set's own model, `api/_alts.js` role
+  `own`). `lib:a set's versions` (`supabase/set_versions.sql`
+  `set_versions(set, tests)`, the lead applies it; before, `[]`) lists those
+  copies in `?op=set_based`'s `versions` (`api/_bases.js setVersions`, the
+  answer kept 20 s by the CDN and 20 s more stale, so a version is on the
+  page within a minute); `web/set-page.js versionsOf` draws
+  `section#versions` "Versions of this set" before `#built-from`, each card's
+  `small.version-said[data-changed]`, or none said with Make your own
+  version (`[data-version-empty]`), `<html data-versions>` the count or
+  "broken". A version's own page says `#alt-build[data-alt=version]` "A
+  version of LEGO® set <set>" (`api/share.js altLine` from its `own` row,
+  `web/card.js altHtml`), linking `/library/set/<n>#versions`, which the
+  set's page scrolls to once the row is drawn. A set with no model has
+  neither button and no row. You own n is
+  ownedparts' (the Own button's ×n, You own − n + in Parts you own).
+  `cli:sethub browser flow` (`tools/web/sethub_flow.mjs`) drives it;
+  `--publish` proves the minute after the SQL is applied.
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and
@@ -4461,39 +4605,48 @@ plan with Claude as the client.
   given. The question, the time to wait and the console's "Kept" are each
   checked inside the screen. Passes on
   "phonewarn: N passed, 0 failed".
-- `the loading page` (`src/boot/shell.html` `#boot`, bootlook 2026-11-23):
-  the mark beside the wordmark; the wall in CSS 3D (`bootWall`, built as the
-  page is read): 27 bricks of four faces each in the mark's colours and
-  LDConfig's, lit from one side, on a 20 x 8 baseplate in perspective with
-  the site's faint dots, turning slowly (CSS animation `turn`, run by the
-  compositor, so it moves through the engine's compile); each brick drops
-  and seats with a bounce as the engine's files come (`#laid` of `#total`,
-  one every 70 ms at most), the last laid only when the app is up; no studs
-  on a brick (docs/TRADEMARKS.md Decision 1). Under it a tip (`bootTips`,
+- `the loading page` (`src/boot/shell.html` `#boot`, bootlook and bootlook2
+  2026-11-23): our mark, the cube with one corner cut away (web/icon.svg),
+  built in CSS 3D (`bootWall`, made as the page is read) of 40 bricks two
+  studs deep in six courses, each course across the last, the cut the top
+  three courses' front quarter; each brick's three faces a camera above the
+  cut corner sees are the mark's colours by where they face (yellow up, red
+  and blue the sides, the cut's floor and walls a shade darker), as one
+  light falls, the joints dark; about two fifths of the window's height
+  (`--u`, a stud, 14 to the stage's width), turning slowly from side to
+  side about the cut corner (CSS animation `turn`, run by the compositor,
+  so it moves through the engine's compile). Each brick flies in from above
+  and towards the camera, turning a little, and is pressed home as the
+  engine's files come (`#laid` of `#total`, the bottom course first and
+  each from the back, one every 70 ms at most), the last laid only when the
+  app is up; no studs on a brick (docs/TRADEMARKS.md Decision 1). Under it
+  the name, Brickworks, in the site's type. Under that a tip (`bootTips`,
   `#tip`, `window.brickworksTips`): 41 tips, a computer's 28 (its keys and
   menus) and a touch screen's 14 (its gestures, the menus through More), every 5 s with a fade in a card of one
   height, each in en/de/fr/es through `loaderSays`, keys drawn as keys (Cmd
   for Ctrl on a Mac); waits under the pointer; a screen reader hears each
   once (aria-live polite, off for the first and for one come round again);
   the next visit starts at the next (`localStorage brickworks.tip`); when
-  the start fails or the model is in another tab, the tip goes and the wall
+  the start fails or the model is in another tab, the tip goes and the mark
   stops (`bootWall.hold`). The
   site's tokens, dark or light by the system or the site's kept choice
-  (`brickworks.theme`); reduced motion: no turn, no drop, no fade. Proven by
-  the loading page browser flow.
+  (`brickworks.theme`); reduced motion: the mark stands finished at its own
+  angle, no turn, no flight, no fade. Proven by the loading page browser
+  flow.
 - `loading page browser flow` (`tools/web/bootlook_flow.mjs`, local, under
   heavy): `--dir=<build> [--base=<build>] --out=DIR [--port=11651]`, each
   served by serve.py `--compressed --cached`. Pictures at 1280x800 and
   390x844 (3x, touch) in dark and light, early, mid and late in a load held
   to 2.5 Mbps (`--kbps`), each the window (DIR/pictures/); in each load the
   layout shifts' sum is 0 and a tip came every ~5 s with its card and the
-  wall where they were. Then every tip in each language on a computer and a
+  mark where they were. Then every tip in each language on a computer and a
   phone stepped through on `page.clock` with the engine's script held: in
   its card (on a 320 x 568 phone too), new each time, in the language, keys
   as keys, aria-live as above; under the pointer it waits; the next visit's
-  first; reduced motion; the theme kept; the app up behind it and nothing
-  moving after; its tab opened by link in another tab says so, its tip put
-  away and its wall stopped; without WebGL 2 the trouble said, the same;
+  first; reduced motion (every brick shown, nothing moving); the theme kept;
+  the app up behind it with every brick laid and nothing moving after; its
+  tab opened by link in another tab says so, its tip put away and its mark
+  stopped; without WebGL 2 the trouble said, the same;
   with `--base`, no address the base did not ask. Its build need not be an
   export of its own: `python3 tools/web/shell_arm.py BASE OUT` puts this
   checkout's loading page in front of an export's engine and packs, filled
@@ -5565,8 +5718,11 @@ plan with Claude as the client.
   under, `#hero-mark`: see `home hero`), then `#feed`: `.feed-head` (its
   h2, the tabs hidden) and `#stream`, the posts (see `the home page's
   feed`), the first begun in the first screen; Show more (`#feed-more`).
-  Signed in: no band, `.feed-you` (Share a build, Share a file from another
-  program) and the tabs. Then `#beta`, `#why` (the studio, `#sets-models`
+  Signed in: the band is `.home-acts` alone, the same `#find` with Share
+  a build and Share a file from another program (`.mine`) beside it, and
+  the tabs. The band's foot: `--s-7` under its last line and over the
+  feed's heading, `--s-5` on a phone (landing_check's "room", each at
+  least 24 px, the two within 8 px; homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
   four real sets live) and `#start`. `tools/web/landing_check.mjs` checks at
   390 x 844 and 1280 x 800, light and dark: the search and Start building
   whole in the first screen, on a phone the first post's picture begun in it
@@ -9360,6 +9516,30 @@ visit (`studio_start.car` in `window.brickworksState`); the pin
 lit within 1 s of the press; a pin written while the studio is open shown
 within 60 s; a gallery model on the baseplate as a copy. Without the change
 `/app?start` opens on the example car and it fails at step 2.
+### The site's own ask (where confirm() was)
+
+No network and no account: this checkout's pages, the stand-in's API (Sam,
+the site's owner for /admin).
+
+```sh
+heavy node tools/web/ask_flow.mjs --out=shots/ask
+BW_BYPASS=$VERCEL_BYPASS node tools/web/ask_flow.mjs --url=<preview>   # a deployment's pages, the API stood in
+bash tools/check.sh --lists                                          # names any native confirm/alert/prompt by file:line
+```
+
+`ask_flow` drives the ask on /admin › Gallery (Take out, a danger ask: an
+alertdialog named by its question and described by its line, the focus on
+Cancel, the answer `.danger`; Tab and Shift+Tab kept in it; Escape, Enter on
+Cancel and a press on the scrim each send nothing and give the focus back to
+Take out once it is let go; Enter on Take it out sends `op=unlist` once),
+over /admin's account sheet (Escape closes the ask alone, the focus back in
+the sheet on Sign out everywhere), on /admin › Site (Run now, no danger: the
+focus on the yellow answer, Enter sends `op=run_cron` once), and on
+/settings (Delete my account asks, Cancel sends nothing; at /de/settings in
+German), at 1280 and 390 (a sheet from the foot), light and dark, counting
+every native dialog (none). Pictures `admin_ask_*` and `delete_ask_*`. Plant
+`if (!confirm("x")) return;` in a file under web/ and `check.sh --lists`
+fails naming it; on pre261 it named 32.
 
 ## Gotchas
 

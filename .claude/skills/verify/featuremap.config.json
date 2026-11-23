@@ -3011,14 +3011,14 @@
       "kind": "ui",
       "label": "model page action bar",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Save: the card's control, Saved and your lists in one panel (web/keep.js), Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: the card's control, Saved and your lists in one panel (web/keep.js), Share: the share sheet with its link, Post it to each network and the embed code, More: Download first, Report it; Like and Save sign in on the way; Comment and I built it are its tabs' counts since pagekit)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "change a model with your Claude",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Open in Brickworks' second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
+      "reach": "https://brickworks.diy/m/<id>   (Open in the studio's second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
       "area": "web"
     },
     {
@@ -3032,7 +3032,7 @@
       "kind": "ui",
       "label": "model page pictures and tabs",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs About, Comments, Builds, Remixes, Versions, kept on screen)",
+      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs Overview, Comments, Parts, Builds, Remixes, Versions: one panel shown, its key in the address, arrow keys, Back)",
       "area": "web"
     },
     {
@@ -3919,6 +3919,13 @@
     },
     {
       "kind": "cli",
+      "label": "set3d browser flow",
+      "entry": "tools/web/set3d_flow.mjs",
+      "reach": "node --env-file=.env tools/web/set3d_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--langs=de,fr,es] [--store-log=FILE]   (set3d: ten modelled sets, 30 to 9,092 parts, turned in 3D on their own pages at 1280 and 390 in both themes, no 3D code before View in 3D, the frame, keys or a swipe, full screen, the named stage; two catalogue-only sets saying they have no 3D model; no WebGL keeping the picture; de/fr/es; what each view cost and read from storage)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "set parts probe",
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
@@ -3970,7 +3977,7 @@
       "kind": "ui",
       "label": "the app menu",
       "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Back to brickworks.diy too)",
+      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Menu at the header's right opens it, Back to brickworks.diy too, and the mark goes home)",
       "area": "building"
     },
     {
@@ -3984,7 +3991,7 @@
       "kind": "cli",
       "label": "app menu in a browser",
       "entry": "tools/web/app_menu_flow.mjs",
-      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",
+      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, Menu's rows, About, the mark landing on the site)",
       "area": "building"
     },
     {
@@ -6838,27 +6845,6 @@
     },
     {
       "kind": "ui",
-      "label": "the studio's first screen",
-      "entry": "src/ui/studio_start.gd",
-      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "studiostart browser flow",
-      "entry": "tools/web/studiostart_flow.mjs",
-      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11750 --static=build/web --hold=pins & node tools/web/studiostart_flow.mjs --url=http://127.0.0.1:11750 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>: two throwaway accounts; before and after pictures at 1280 and 390, dark and light; three real things within the studio's open time + 1 s, never the example car; the pin pressed lit within 1 s; a pin written meanwhile shown within 60 s; a gallery model as a copy; summary.json)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "studio start probe",
-      "entry": "src/dev/studio_start_probe.gd",
-      "reach": "tools/probe.sh studio_start_probe -- --pictures=DIR   (windowed, PROBE_SIZE=390x844 too: the first screen opened once signed in, its lists from a stand-in server, the pin pressed lit within 1 s, a pin written meanwhile shown within a minute unasked, Escape, a gallery model as a copy)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
       "label": "open in brickworks for a stranger",
       "entry": "src/net/asked_copy.gd",
       "reach": "https://brickworks.diy/m/<id> signed out: Open in Brickworks (/app?copy=<id>): that model on the baseplate behind the sign-in screen (Sign in to make it yours), never the example car; signed in by the code, by orangecheck through /profile?then=/app?copy=<id>, or in another tab, its copy saved in your models under its name, credited, framed; a reload or a second tab on the same link opens that copy, never a second",
@@ -6889,14 +6875,14 @@
       "kind": "ui",
       "label": "the loading page",
       "entry": "src/boot/shell.html",
-      "reach": "<deployment>/app while the app loads (#boot): the mark beside the wordmark; the wall in CSS 3D (#wall, bootWall), its bricks dropping in as the engine's files come (#laid of #total), turning slowly; a tip under it every 5 s (#tip, bootTips, window.brickworksTips): a computer's keys or a touch screen's gestures, en/de/fr/es, waiting under the pointer, the next visit at the next (localStorage brickworks.tip); dark or light by the system or the site's kept brickworks.theme; reduced motion still. heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>]",
+      "reach": "<deployment>/app while the app loads (#boot): our mark, the cube with its corner cut, built in CSS 3D bricks as the engine's files come (#wall, bootWall: 40 bricks, each flying in, #laid of #total), turning slowly, the name under it; a tip under that every 5 s (#tip, bootTips, window.brickworksTips): a computer's keys or a touch screen's gestures, en/de/fr/es, waiting under the pointer, the next visit at the next (localStorage brickworks.tip); dark or light by the system or the site's kept brickworks.theme; reduced motion: the mark finished and still. heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>]",
       "area": "web"
     },
     {
       "kind": "cli",
       "label": "loading page browser flow",
       "entry": "tools/web/bootlook_flow.mjs",
-      "reach": "heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>] [--port=11651] [--only=pictures|checks]   (pictures at 1280x800 and 390x844 touch, dark and light, early/mid/late in a 2.5 Mbps load; layout shifts 0; every tip in en/de/fr/es on a computer and a phone on page.clock: fits, new, in the language, heard once; hover waits; the next visit's first; reduced motion; the theme kept; the app up behind it; no new address against --base). A build to flow: python3 tools/web/shell_arm.py BASE OUT, an export's engine and packs behind this checkout's page",
+      "reach": "heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>] [--port=11651] [--only=pictures|checks]   (pictures at 1280x800 and 390x844 touch, dark and light, early/mid/late in a 2.5 Mbps load, the mark caught being built; layout shifts 0; every tip in en/de/fr/es on a computer and a phone on page.clock: fits, new, in the language, heard once; hover waits; the next visit's first; reduced motion: the mark finished, nothing moving; the theme kept; the app up behind it, the mark complete; no new address against --base). A build to flow: python3 tools/web/shell_arm.py BASE OUT, an export's engine and packs behind this checkout's page",
       "area": "web"
     },
     {
@@ -6947,6 +6933,90 @@
       "entry": "src/dev/wirekeep_probe.gd",
       "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "sethub browser flow",
+      "entry": "tools/web/sethub_flow.mjs",
+      "reach": "node --env-file=.env tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--publish]   (sethub: a modelled set's Build it at its first step and Make your own version under its name, Versions of this set before Built from this set with each card said changed or as it is, or none said with Make your own version, the first screen unmoved; a set with no model offering neither; de/fr/es; --versions=FILE answers the row from a set_versions dry run; --publish, once supabase/set_versions.sql is applied, this run's own account publishes a changed version of 346-2 and it is among its versions through the CDN within 60 s, its card first on the page)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a set's versions",
+      "entry": "supabase/set_versions.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/set_versions.sql --dry --try=tools/set_versions_try.sql --table=model_alt_sets   (sethub: set_versions(set, tests), the gallery's copies of a set's own LDraw model (model_alt_sets role own), changed first, a work in progress and an alternate never; read by api/_bases.js setVersions into ?op=set_based's versions)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "one header in every mode",
+      "entry": "src/ui/app_header.gd",
+      "reach": "godot --path .  (the studio, a shared model's viewer /app?view=ID, Build it /app?view=ID&build, Booklet, Lay out page: the same header, the mark at the left, the app's menu and Account at the right, 61 points on the site's ground; Build it's bar and the page editor under it; on the web the mark goes to /)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "appchrome probe",
+      "entry": "src/dev/appchrome_probe.gd",
+      "reach": "tools/probe.sh appchrome_probe; PROBE_SIZE=390x844 tools/probe.sh appchrome_probe   (the desktop's and the web's header in the studio, the viewer, Build it, after Close, Lay out page and after Done: one rect, mark and right controls; pictures in shots/appchrome/)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "an object's page and its tabs",
+      "entry": "web/tabs.js",
+      "reach": "https://brickworks.diy/m/<id>, /library/set/<id>, /library/omr-<id>, /u/<handle>, /c/<id>, /challenge, /talk/t/<n>   (pagekit: the sticky aside with the title, one main action, the social row and the facts; real tabs from api/_tabs.js, web/tabs.js: one panel shown, #key in the address, arrow keys, Back, a link inside a panel chooses its tab; bench/results/pagekit-2026-11-23/tabs_check.mjs and the model page browser flow's 8)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the studio's first screen",
+      "entry": "src/ui/studio_start.gd",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "studiostart browser flow",
+      "entry": "tools/web/studiostart_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11750 --static=build/web --hold=pins & node tools/web/studiostart_flow.mjs --url=http://127.0.0.1:11750 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>: two throwaway accounts; before and after pictures at 1280 and 390, dark and light; three real things within the studio's open time + 1 s, never the example car; the pin pressed lit within 1 s; a pin written meanwhile shown within 60 s; a gallery model as a copy; summary.json)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "studio start probe",
+      "entry": "src/dev/studio_start_probe.gd",
+      "reach": "tools/probe.sh studio_start_probe -- --pictures=DIR   (windowed, PROBE_SIZE=390x844 too: the first screen opened once signed in, its lists from a stand-in server, the pin pressed lit within 1 s, a pin written meanwhile shown within a minute unasked, Escape, a gallery model as a copy)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a change sent back and taken",
+      "entry": "api/_suggest.js",
+      "reach": "python3 tools/minitest.py tests/test_suggest.py   (suggestedit: each class of edit (add, remove, move, recolour, swap, another step, a step of its own, inside a sub-model, a sub-model of its own) made to 16 real sets of vendor/omr (tests/fixtures/suggest/check.mjs), taken whole, every change ticked, each alone and all but each, read again and held to the model it should be part for part and step for step; nothing taken is the designer's file byte for byte; their header, comments, metas and line ends kept; bound metas and brackets; the bell's lines. node tests/fixtures/suggest/check.mjs vendor/omr/files/*.mpd for every set)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "suggested edits",
+      "entry": "api/_suggestions.js",
+      "reach": "POST /api/share?op=suggest {remix, note}; GET ?op=suggestion&id=N; POST ?op=suggestion_merge {id, n, take}; POST ?op=suggestion_close; GET ?op=suggestions&id=X; a publish's {suggestion}   (supabase/suggestions.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/suggestions.sql --dry --try=tools/suggestions_try.sql --table=model_suggestions: sent, sent again, refused, heard of by the designer at once, listed for them alone, taken as a version, heard of by the remixer)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a change sent back on a model's page",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<a remix> as its builder: Send your change, with a note; https://brickworks.diy/m/<id> as its designer: the changes sent to it with Open it in the studio; and once a version took one, With [part of] X's change from their remix R, version N under the credit and in its Log",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest browser flow",
+      "entry": "tools/web/suggest_flow.mjs",
+      "reach": "node tools/web/suggest_flow.mjs --out=DIR   (no network: tests/fixtures/suggest/world.mjs through the real handlers; at 390 and 1280: Send from the remix's page, nobody else sees the box, the designer's header counts it within 60 s with no reload, the list and its studio link, the credit under the credit and in the Log after a version takes part of it)",
+      "area": "web"
     }
   ]
 }
