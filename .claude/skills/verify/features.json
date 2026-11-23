@@ -4990,6 +4990,14 @@
       "tests": []
     },
     {
+      "id": "lib:moulded edges",
+      "kind": "lib",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal13, docs/RENDERING.md 5q: at Best in the Product look, path traced, each edge's rounding straying along it, each part its own way, with a nick here and there, and a slope's face rounded into the part's ends (RenderSettings.edge, StudioRender.PRODUCT_EDGE 1; path_tracer.glsl edge_round, bevelled; PathTracer.edge in each part's info.w, the byte above studs'); --without=edge draws photoreal10's pictures)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:moving a body on its joint",
       "kind": "lib",
       "entry": "src/assembly/grab.gd",

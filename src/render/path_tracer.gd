@@ -151,14 +151,12 @@ const PLAY_SHIFT := 1.5
 ## card with each part (its record's last number, 0 to 255), as the closest
 ## hit, which draws the logo, reads no scene.
 var studs: float = 0.0
-## Real plastic (photoreal13, RenderSettings logo, edge and mould), set
-## before [method stage]: each stud's logo as moulded, each edge's rounding
-## as worn, the gate and the sink moulding leaves, 0 for none and 1 as the
-## photographs show them. They go to the card with each part, as studs does
-## (its record's last number, a byte each above studs', in hundredths).
-var logo: float = 0.0
+## How far each edge's rounding strays along it (photoreal13,
+## RenderSettings.edge), set before [method stage]: 0 the same radius
+## everywhere, 1 as a moulded part's (the radius straying, a nick here and
+## there). It goes to the card with each part, as studs does (its record's
+## last number, the byte above studs', in hundredths).
 var edge: float = 0.0
-var mould: float = 0.0
 ## Whether the picture asks for the wear hands leave (photoreal9,
 ## RenderSettings.rubbed), set before [method stage]: it is then traced by
 ## the shader's "marks" version.
@@ -407,9 +405,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	var placed: Array[RDAccelerationStructureInstance] = []
 	var stud_code: int = clampi(roundi(studs * 255.0), 0, 255) if product else 0
 	if product:
-		stud_code |= (clampi(roundi(logo * 100.0), 0, 255) << 8) \
-			| (clampi(roundi(edge * 100.0), 0, 255) << 16) \
-			| (clampi(roundi(mould * 100.0), 0, 255) << 24)
+		stud_code |= clampi(roundi(edge * 100.0), 0, 255) << 8
 	_has_glass = false
 	for node: Variant in batches:
 		var batch := node as MultiMeshInstance3D

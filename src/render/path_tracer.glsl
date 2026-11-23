@@ -820,67 +820,6 @@ void gathered_wear(vec3 local, vec4 lo, vec4 hi, vec3 ng, float own, uint which,
 }
 #endif
 
-// Settled dust and lint (photoreal13, scene.marks.y), on a top of a part (its
-// own space, [param lo] and [param hi] its box, lo.w where its studs begin):
-// how much of the point, 0 to 1, a speck or a fibre covers. A photograph's
-// dust is a scatter of specks, most too small to see and a few a fifth of a
-// millimetre, thicker in patches and in the corner at each stud's foot where
-// no cloth reaches, and now and then a fibre of lint, a few millimetres of
-// thin curl. Never an even noise (photoreal12's motes, "procedural").
-float settled(vec3 local, vec4 lo, vec4 hi, float own, float amount) {
-	float body_top = min(lo.w, hi.y);
-	bool on_body = abs(local.y - body_top) < 0.3;
-	bool on_stud = hi.y > body_top + 0.5 && abs(local.y - hi.y) < 0.3;
-	if (!on_body && !on_stud) {
-		return 0.0;
-	}
-	vec2 p = local.xz;
-	float patchy = smoothstep(-0.3, 0.7, gloss_noise(vec3(p / 17.0, own * 23.0 + 5.0)));
-	float foot = 0.0;
-	if (on_body && hi.y > body_top + 0.5) {
-		vec2 centre = lo.xz + 10.0 + 20.0 * floor((p - lo.xz) / 20.0);
-		foot = 1.0 - smoothstep(6.0, 8.0, length(p - centre));
-	}
-	float density = amount * (0.25 + 1.5 * patchy + 2.0 * foot);
-	vec2 salt = vec2(own * 131.0, own * 71.0);
-	float cover = 0.0;
-	const float CELL = 1.6;
-	vec2 cell = floor(p / CELL);
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			vec2 c = cell + vec2(float(x), float(y));
-			vec2 h = cell_hash(c + salt);
-			if (fract(h.x * 13.37 + h.y * 7.13) > 0.05 * density) {
-				continue;
-			}
-			vec2 at = (c + 0.15 + 0.7 * h) * CELL;
-			float size = 0.07 + 0.38 * pow(fract(h.y * 91.7), 3.0);
-			cover = max(cover, 1.0 - smoothstep(size * 0.4, size, length(p - at)));
-		}
-	}
-	const float FIBRE_CELL = 14.0;
-	vec2 big = floor(p / FIBRE_CELL);
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			vec2 c = big + vec2(float(x), float(y));
-			vec2 h = cell_hash(c + salt + vec2(17.0, 3.0));
-			if (fract(h.x * 7.7 + h.y * 3.3) > 0.08 * amount * (0.5 + patchy)) {
-				continue;
-			}
-			vec2 d = p - (c + h) * FIBRE_CELL;
-			float bend = 3.0 + 6.0 * h.y;
-			float start = 6.2832 * fract(h.x * 19.1);
-			float sweep = 0.4 + 1.2 * fract(h.y * 23.7);
-			if (mod(atan(d.y, d.x) - start + 12.5664, 6.2832) > sweep) {
-				continue;
-			}
-			float thick = 0.05 + 0.04 * fract(h.x * 5.3);
-			cover = max(cover, 0.85 * (1.0 - smoothstep(thick * 0.5, thick, abs(length(d) - bend))));
-		}
-	}
-	return cover;
-}
-
 // textured: the hit is on a straight slope's face (closest_hit's grain);
 // which: the part's own number (info.z: its body, print and window alike),
 // so no two parts are worn alike and one part is worn as one; ng: the
@@ -952,17 +891,6 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		s.coat_roughness = mix(0.03, 0.085 + 0.25 * scene.wear.x, smoothstep(-0.6, 0.8, handled))
 			+ 0.02 * own;
 		s.roughness += 0.05 * handled;
-		if (scene.variety.w > 0.0) {
-			// Brick to brick (photoreal13): each part's skin as its own cavity
-			// and its own run of the press polished it, one glossier than the
-			// next (a bell of 30 percent, sd, of its blur), and across each
-			// part its colour drifts a hair where the plastic flowed, as a
-			// photograph's parts are never one flat colour face to face.
-			float sheen = scene.variety.w;
-			s.coat_roughness = max(0.015, s.coat_roughness * (1.0 + 0.9 * part_bell(which, 7u) * sheen));
-			float flow = gloss_noise(local / 21.0 + vec3(own * 11.0, 4.0, own * 5.0));
-			body *= 1.0 + 0.04 * sheen * flow;
-		}
 		float age = scene.wear.x;
 		// How much more this part has been handled than the set's age says
 		// (photoreal8): most parts a little, a few a lot, and only on the faces
@@ -1004,23 +932,10 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			// fireflies, photoreal1).
 			float film = 0.5 + 0.5 * gloss_noise(at / 6.0 + vec3(own * 17.0, 3.0, 1.0));
 			float mote = smoothstep(0.35, 0.7, gloss_noise(at * 1.3 + vec3(5.0, own * 7.0, 2.0)));
-			// Settled specks and lint (scene.marks.y, below) take the even motes'
-			// place: spread as a noise, they read as "evenly scattered speckle
-			// marks that look procedural" (photoreal12's lit studs).
-			mote *= 1.0 - clamp(scene.marks.y, 0.0, 1.0);
 			float cover = clamp(dust * (0.25 * film + 0.8 * mote), 0.0, 0.8);
 			body = mix(body, vec3(0.5, 0.48, 0.45), cover);
 			s.coat *= 1.0 - cover;
 			s.roughness = mix(s.roughness, 0.9, cover);
-		}
-		if (scene.marks.y > 0.0 && ng.y > 0.55) {
-			float speck = settled(local, thing.box_min, thing.box_max, own, scene.marks.y)
-				* smoothstep(0.55, 0.9, ng.y);
-			if (speck > 0.0) {
-				body = mix(body, vec3(0.62, 0.6, 0.56), speck);
-				s.coat *= 1.0 - speck;
-				s.roughness = mix(s.roughness, 0.95, speck);
-			}
 		}
 		// A handled part's scratches and scuffs are as an older part's
 		// (photoreal8): its own handling added to the set's age.
@@ -1040,19 +955,11 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat_roughness = mix(s.coat_roughness, 0.4, scuffed * scuff_age);
 			body = mix(body, body * 1.08 + vec3(0.015), scuffed * scuff_age);
 		}
-		if (textured > 0.5 && textured < 1.5) {
+		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
 			// mirror, each bump of its grain a small glint.
 			s.coat = 1.0;
 			s.coat_roughness = 0.1;
-		} else if (textured > 1.5) {
-			// The gate (photoreal13, the closest hit's gate_mark): where the
-			// plastic went in and the runner was cut off, its skin whitened by
-			// the stress and dull, as three_2x2_top's photograph shows a pale
-			// ring in one stud's letters.
-			float gate = clamp(textured - 2.0, 0.0, 1.0);
-			body = mix(body, body * 1.18 + vec3(0.05, 0.045, 0.035), 0.6 * gate);
-			s.coat_roughness = mix(s.coat_roughness, 0.4, gate);
 		}
 		// The joint under a part (photoreal5): a real part's bottom edge is
 		// rounded and stands a tenth of a millimetre off what it sits on,
@@ -2091,21 +1998,16 @@ vec3 normal_at(uint v) {
 
 const float ROUND = 0.6;
 
-// Real plastic (photoreal13), each 0 for none, from the instance's info.w
-// (PathTracer.logo, .edge, .mould, in hundredths): the stud logo as the
-// mould raises it, the edges' rounding as a worn tool and handling leave
-// it, and the marks moulding leaves (one gate per part, sink over the tubes).
-float logo_amount = 0.0;
+// How far each edge's rounding strays (photoreal13, PathTracer.edge in the
+// instance's info.w's second byte, in hundredths; 0 for none), and the part's
+// own number (info.z).
 float edge_amount = 0.0;
-float mould_amount = 0.0;
 uint part_key = 0u;
-// Where the gate's ring is, for surface_of (hit.unused 2 to 3).
-float gate_mark = 0.0;
 
 float wave_noise(vec3 p);
 
 // The edge's rounding where it is hit (photoreal13): a moulded edge is
-// rounded by a tool, 0.1 to 0.3 mm, and a judge sees ours as "razor-sharp,
+// rounded by a tool, 0.1 to 0.3 mm, and a judge saw ours as "razor-sharp,
 // perfectly uniform bevels": the same radius along every edge of every
 // part, so the line of light it catches is ruled. A real edge's radius
 // strays along it, each part its own way, and here and there a nick, where
@@ -2275,26 +2177,6 @@ float logo_distance(vec2 p) {
 // catch the light, as the photographs' do. [param soft] widens the flank: a
 // worn mould's letters are softer.
 float logo_height(vec2 p, float soft) {
-	if (logo_amount > 0.0) {
-		// As moulded (photoreal13): each stroke a rounded ridge, no flat top,
-		// about 0.25 mm across and 0.09 mm high, the letters 1.65 mm tall. Seen
-		// from above, its crest mirrors what the stud's top mirrors and its
-		// two sides do not, so a letter reads as a fine outline with gaps
-		// between the letters (three_2x2_top's photograph); seen from the side
-		// under a window, the whole stroke is turned from the light and reads
-		// dark and bold (green_plate_macro's). The flat-topped stroke above,
-		// half again as wide with steep flanks, drew the letters crowded and
-		// smeared from above ("like a normal map") and as two hairlines a
-		// stroke from the side ("OSIII", "garbled").
-		float a = min(logo_amount, 1.0);
-		vec2 q = vec2(p.x, mix(p.y, p.y * 1.07, a));
-		float wide = mix(0.36, 0.31, a) + soft;
-		float d = logo_distance(q);
-		float ridge = d < wide ? cos(1.5708 * d / wide) : 0.0;
-		float moulded = mix(0.2, 0.22, a) * ridge * ridge;
-		float flat_topped = 0.2 * smoothstep(0.36 + soft, 0.18, d);
-		return mix(flat_topped, moulded, a);
-	}
 	return 0.2 * smoothstep(0.36 + soft, 0.18, logo_distance(p));
 }
 
@@ -2345,24 +2227,9 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	// photoreal3's ring twice that, over the letters, read as "garbled marks
 	// inside the logo"), off the middle by a hair. A gloss over it catches
 	// the light as a bright dot.
-	bool gated = stud_hash(centre, 6u) < 0.25;
-	if (mould_amount > 0.0) {
-		// One gate a part, as a real part is filled through one (photoreal13):
-		// most parts show it on one stud's top, chosen by the part's own
-		// number; a quarter of all studs gated read as a pattern.
-		vec2 across = max(floor((box_max.xz - box_min.xz) / 20.0 + 0.5), vec2(1.0));
-		float pick = floor(key_hash(vec2(0.0), 31u) * across.x * across.y);
-		vec2 chosen = box_min.xz + 10.0 + 20.0 * vec2(mod(pick, across.x), floor(pick / across.x));
-		gated = key_hash(vec2(0.0), 32u) < 0.8 && distance(chosen, centre) < 1.0;
-	}
-	if (gated) {
+	if (stud_hash(centre, 6u) < 0.25) {
 		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.6;
 		float r = length(g);
-		if (mould_amount > 0.0) {
-			// Where the plastic went in, its skin whitened by the stress of the
-			// gate's cut, and duller (surface_of reads it from gate_mark).
-			gate_mark = min(mould_amount, 1.0) * (1.0 - smoothstep(0.7, 1.4, r));
-		}
 		if (r > 0.001 && r < 1.2) {
 			// h = 0.15 exp(-(r / 0.25)^2) - 0.08 exp(-((r - 0.6) / 0.18)^2):
 			// its slope along g, downhill outwards.
@@ -2429,36 +2296,6 @@ vec3 grain_bumps(vec3 at, vec3 face, vec3 n) {
 // it, so a light mirrored across a long face bends, as a real part's does.
 const float SINK = 0.0005;
 
-// The sink over each of a part's tubes (photoreal13): where the plastic is
-// thickest, under the top, it shrinks most as it cools and leaves a shallow
-// dip, about 0.015 mm deep and 4 mm across, that a photograph shows only as
-// a wobble in what the top mirrors. The tubes stand at the corners where
-// four studs meet (a 1-wide part's pins halfway between two); the tilt it
-// gives a point of the top, to add to its normal.
-vec3 sunk(vec3 at, vec3 low, vec3 high) {
-	vec2 across = floor((high.xz - low.xz) / 20.0 + 0.5);
-	if (across.x < 1.5 && across.y < 1.5) {
-		return vec3(0.0);
-	}
-	vec2 grid = (at.xz - low.xz) / 20.0;
-	vec2 tube = floor(grid + 0.5);
-	if (across.x < 1.5) {
-		tube.x = 0.5;
-	}
-	if (across.y < 1.5) {
-		tube.y = 0.5;
-	}
-	if (tube.x < 0.5 || tube.x > across.x - 0.5 || tube.y < 0.5 || tube.y > across.y - 0.5) {
-		return vec3(0.0);
-	}
-	vec2 d = at.xz - (low.xz + 20.0 * tube);
-	const float WIDE = 4.5;
-	const float DEEP = 0.04;
-	// h = -DEEP exp(-(r / WIDE)^2): the top's rise outwards, its slope.
-	vec2 rise = d * (2.0 * DEEP / (WIDE * WIDE)) * exp(-dot(d, d) / (WIDE * WIDE));
-	return vec3(-rise.x, 0.0, -rise.y);
-}
-
 vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	vec3 high = vec3(box_max.x, min(box_max.y, box_min.w), box_max.z);
 	vec3 bent = bevelled(at, n, box_min.xyz, high);
@@ -2471,9 +2308,6 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	if (bent == n && max(abs(n.x), max(abs(n.y), abs(n.z))) > 0.97) {
 		vec3 off = at - (box_min.xyz + high) * 0.5;
 		bent = normalize(n - (off - n * dot(off, n)) * SINK);
-		if (mould_amount > 0.0 && n.y > 0.97 && abs(at.y - high.y) < 0.3) {
-			bent = normalize(bent + sunk(at, box_min.xyz, high) * mould_amount);
-		}
 	}
 	vec3 s = at / 14.0;
 	vec3 wave = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)));
@@ -2485,12 +2319,9 @@ void main() {
 	part_number = which;
 	uint codes = instances[which].info.w;
 	stud_variety = float(codes & 255u) / 255.0;
-	logo_amount = float((codes >> 8) & 255u) / 100.0;
-	edge_amount = float((codes >> 16) & 255u) / 100.0;
-	mould_amount = float((codes >> 24) & 255u) / 100.0;
+	edge_amount = float((codes >> 8) & 255u) / 100.0;
 	part_key = instances[which].info.z;
 	logo_grime = 0.0;
-	gate_mark = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];
 	uint first = mesh.y + uint(gl_PrimitiveID) * 3u;
 	uint a = mesh.x + indices[first];
@@ -2528,9 +2359,6 @@ void main() {
 		}
 		if (logo_grime > 0.0 && hit.unused < 0.5) {
 			hit.unused = -logo_grime;
-		}
-		if (gate_mark > 0.01 && hit.unused < 0.5) {
-			hit.unused = 2.0 + gate_mark;
 		}
 	}
 	// Normals go by the inverse transpose: v * M is transpose(M) * v.
