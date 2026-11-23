@@ -28,9 +28,15 @@
 // the same with a lamp or without, so what a lamp does not light comes out
 // the same, sample for sample.
 
+#[versions]
+
+plain = "";
+marks = "#define MARKS";
+
 #[raygen]
 
 #version 460
+VERSION_DEFINES
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -148,6 +154,9 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// strays (x), how unevenly the parts have been handled (y), and how far
 	// each stud's logo and top differ from the next (z). 0 for none.
 	vec4 variety;
+	// Where hands leave their marks (photoreal9): how much handled wear
+	// gathers where fingers and stacking touch (x). 0 for none.
+	vec4 marks;
 } scene;
 
 struct Instance {
@@ -733,6 +742,74 @@ float stud_own(vec2 centre, uint which, uint salt) {
 	return float(pcg(h) & 0xffffu) / 65535.0;
 }
 
+#ifdef MARKS
+// Handled wear gathered where it gathers on a real part (photoreal9,
+// scene.marks.x): photoreal8's scuffs over every face of a handled part read
+// to the judge as "spread evenly like a procedural texture". On a handled
+// part the wear is where it is touched: the body's edges and corners, gripped,
+// knocked and slid across others (the bench's black 2x4 is scuffed pale along
+// its top's edges and nowhere else); each stud's top rim and its wall, rubbed
+// by the tubes of every brick pressed on and pulled off; and dust settled at
+// each stud's foot on the top, where a cloth never reaches. Every part a
+// little and some more, each its own way (its own number), patchy along an
+// edge, never a film over a face. [param local] is the hit in the part's
+// space, [param lo] and [param hi] its box (lo.w where its studs begin).
+void gathered_wear(vec3 local, vec4 lo, vec4 hi, vec3 ng, float own, uint which, float amount,
+		inout vec3 body, inout Surface s) {
+	if (hi.x <= lo.x || hi.y <= lo.y || hi.z <= lo.z) {
+		return;
+	}
+	float a = amount * (0.35 + 0.65 * part_unit(which, 61u));
+	float body_top = min(lo.w, hi.y);
+	float scuff = 0.0;
+	float dust = 0.0;
+	float patchy = smoothstep(0.1, 0.6, gloss_noise(local * 0.32 + vec3(own * 53.0, 1.7, 4.1)));
+	if (local.y <= body_top + 0.05) {
+		// Within about half a millimetre of an edge of the body, most at the
+		// edge, and most near its top, where it is held.
+		float edge = seam_at(local, lo.xyz, vec3(hi.x, body_top, hi.z), 2.2);
+		edge *= 0.25 + 0.75 * smoothstep(lo.y, body_top, local.y);
+		scuff = edge * patchy;
+		// Hairline scratches across the edge's band, as a fingernail or a
+		// neighbour's corner leaves them.
+		if (edge > 0.25 && worn(local * 1.6, fract(own * 7.31), 1.0)) {
+			s.coat_roughness = max(s.coat_roughness, 0.55 * a);
+		}
+	}
+	if (body_top < hi.y - 0.5) {
+		vec2 centre = lo.xz + 10.0 + 20.0 * floor((local.xz - lo.xz) / 20.0);
+		vec2 d = local.xz - centre;
+		float r = length(d);
+		float above = local.y - body_top;
+		float stud_high = hi.y - body_top;
+		if (abs(local.y - hi.y) < 0.3 && ng.y > 0.6) {
+			// A stud's top rim, rubbed by the tube of every brick pressed on.
+			scuff = max(scuff, smoothstep(4.2, 5.8, r) * patchy);
+		} else if (above > 0.3 && above < stud_high - 0.3 && r > 5.5 && r < 6.6) {
+			// Its wall, streaked up and down where it slid in and out.
+			float around = atan(d.y, d.x);
+			float streak = smoothstep(0.35, 0.8, gloss_noise(vec3(around * 9.0, above * 0.15, own * 31.0)));
+			scuff = max(scuff, 0.8 * streak);
+		} else if (abs(above) < 0.3 && ng.y > 0.6 && r > 5.9 && r < 8.2) {
+			// Dust at its foot on the top, thicker in the corner it makes.
+			dust = (1.0 - smoothstep(6.0, 8.2, r)) * (0.5 + 0.5 * patchy);
+		}
+	}
+	if (scuff > 0.0) {
+		// Rubbed matt, and paler where the skin is scratched white.
+		float w = clamp(a * scuff, 0.0, 1.0);
+		s.coat_roughness = mix(s.coat_roughness, 0.36, w);
+		body = mix(body, body * 1.04 + vec3(0.01), w);
+	}
+	if (dust > 0.0) {
+		float cover = clamp(0.55 * a * dust, 0.0, 0.6);
+		body = mix(body, vec3(0.46, 0.44, 0.41), cover);
+		s.coat *= 1.0 - 0.8 * cover;
+		s.roughness = mix(s.roughness, 0.9, cover);
+	}
+}
+#endif
+
 // textured: the hit is on a straight slope's face (closest_hit's grain);
 // which: the part's own number (info.z: its body, print and window alike),
 // so no two parts are worn alike and one part is worn as one; ng: the
@@ -899,6 +976,14 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 				s.coat_roughness = 0.3 * mix(1.0, 0.55 + 1.1 * own_stud, scene.variety.z);
 			}
 		}
+#ifdef MARKS
+		if (scene.marks.x > 0.0) {
+			// Handled wear where hands and stacking touch (photoreal9), not
+			// spread over every face: photoreal8's scuffs everywhere read as "a
+			// procedural texture" on a part alone.
+			gathered_wear(local, thing.box_min, thing.box_max, ng, own, which, scene.marks.x, body, s);
+		}
+#endif
 		if (textured < 0.0) {
 			// Grime in the lee of a stud's raised letters (photoreal8): on an
 			// old part, dirt where each letter meets the stud's top, more on
@@ -1620,6 +1705,7 @@ void main() {
 #[miss]
 
 #version 460
+VERSION_DEFINES
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -1641,6 +1727,7 @@ void main() {
 #[closest_hit]
 
 #version 460
+VERSION_DEFINES
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {

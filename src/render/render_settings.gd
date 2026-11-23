@@ -166,6 +166,12 @@ var studs: float = -1.0
 ## wider, as measured from above (0 as photoreal4 drew it, 1 as measured).
 ## Below 0, StudioRender's PRODUCT_PLAY.
 var play: float = -1.0
+## How much handled wear gathers where fingers and stacking touch
+## (photoreal9), path traced in the product look: the body's edges, each
+## stud's rim and wall, dust at each stud's foot, each part its own (0 none,
+## 1 as the bench's black 2x4 shows it). Below 0, StudioRender's
+## PRODUCT_RUBBED.
+var rubbed: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

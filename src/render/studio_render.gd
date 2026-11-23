@@ -160,6 +160,12 @@ const PRODUCT_BATCH := 1.0
 const PRODUCT_HANDLING := 0.0
 const PRODUCT_STUDS := 1.0
 const PRODUCT_PLAY := 1.0
+## Handled wear gathered where fingers and stacking touch (photoreal9,
+## RenderSettings.rubbed). 0 unless asked: in four pools beside the
+## photographs it lifted the close-ups by 0.025 on the mean, within the
+## judge's noise (the black 2x4 every time, the grey 1x3 down every time),
+## and the sets not at all (docs/RENDERING.md 5m).
+const PRODUCT_RUBBED := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2619,6 +2625,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
+	_tracer.marked = _tracer.product and _own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
@@ -3022,6 +3029,8 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([_own(settings.batch, PRODUCT_BATCH) if worn else 0.0,
 		_own(settings.handling, PRODUCT_HANDLING) if worn else 0.0,
 		_own(settings.studs, PRODUCT_STUDS) if worn else 0.0, 0.0])
+	# The wear hands leave (photoreal9).
+	data.append_array([_own(settings.rubbed, PRODUCT_RUBBED) if worn else 0.0, 0.0, 0.0, 0.0])
 	return data
 
 

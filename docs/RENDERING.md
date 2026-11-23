@@ -1904,6 +1904,145 @@ roof's glass and the face is hidden behind its edge. The next
 levers: a stud's gate mark and its logo's lettering, handling's scuffs
 gathered where a hand holds a part, and 6660's driver seated as built.
 
+## 5m. Where hands leave their marks (photoreal9)
+
+photoreal8's judge still named the same things: no wear, the backdrop, the
+light, the stud lettering ("garbled, overlapping", "mirrored") and, on 6660,
+a driver with no face. photoreal9 measured the photographs for each, built
+what they show as render-only levers, and judged each alone and together.
+
+**Measured on the photographs first** (each picture's backdrop outside the
+model's mask, in CIELAB, against photoreal8's kept draw):
+- **The tables.** The close-ups' surfaces vary by 12 L* (the leather), 11.7
+  (the desk) and 18 (the stone) across the frame; ours by 9, 2.4 and 3. The
+  desk falls 6.4 L* darker from right to left; ours by 0.2. The leather's
+  grain is 3.5 near the camera and 0.9 far off (a shallow depth of field);
+  ours is 0.2 at both.
+- **The shade.** Under the two white-backdrop sets (6532, 6660) the shade is
+  3 to 4 b* bluer than the lit white (b* -4.2 and -3.2); ours is 2.8 and 1.4
+  yellower. Under the close-ups on white it is within 1 of ours.
+- **Wear.** Of the close-ups, only the black 2x4 is handled: pale scuffs
+  along its top's edges and specks. The rest are clean.
+- **Studs.** The photographs' letters read as single raised strokes. Ours
+  read as outlined strokes, which the judge calls garbled. three_2x2_top shows
+  a gate mark on 2 of its 12 studs.
+- **6660's driver.** The set's car base (4212b) has a 2 x 2 open centre,
+  and the driver sits in it, his face turned to the camera. Ours sat on the
+  base's studs, 20 LDU higher, with his cap 9 LDU up through the roof's
+  glass and his face hidden.
+
+**The levers.** Each is drawn only where Best is path traced, in the
+Product look, and is seeded by the part's place. The model and its file are
+never changed.
+- **rubbed** (`RenderSettings.rubbed`, path_tracer.glsl `gathered_wear`):
+  handled wear where hands and stacking touch a part, not spread over every
+  face. Patchy scuffs, matt and a little paler, within half a millimetre of
+  the body's edges, most near its top. Hairline scratches across that band.
+  Each stud's top rim rubbed and its wall streaked up and down. Dust in the
+  corner at each stud's foot. Every part gets some, and some get more (its
+  own number). Kept as a lever, 0 unless asked (below).
+- **Letters, tried and taken out.** Each stud's letters were moulded crisp
+  (a flank a tenth of an LDU, so a stroke is one stroke), with rough, pale
+  tops and the gate mark wider. Two versions were judged in two pools, and
+  both lowered the close-ups, by 0.04 and 0.035. three_2x2_top lost its
+  "garbled LEG0" tell, but the black 2x4 fell from 0.38 to 0.18 ("stud logos
+  look like a flat texture", "printed flat, not raised").
+- **The room's walls, tried and taken out.** The tent's walls were made
+  bluer than its lamps. The shadow catcher's shade moved by 1 b*, even with
+  walls far bluer than any room's, because the shade is lit mostly by the
+  lights the walls do not colour. The photographs' gap is 6 to 7.
+- **The stage, not built.** The leather at 750 LDU drew as speckled sand,
+  since it is a colour with no relief. The terrazzo's chips came out pink
+  against the photograph's grey stone. On grey_1x3, no aperture from f/4 to
+  f/16 blurred the desk as the photograph does without also blurring the
+  brick's far end (`measure9`'s near and far grain).
+
+**Off is the old picture exactly: two versions of the shader.** A shader
+with the levers compiled in but all at 0 moved 20,000 pixels of
+three_2x2_top by up to 11 levels. The compiler orders and fuses the arithmetic
+differently once there is more code, and the closest hit's added code alone
+was enough to do it. So `path_tracer.glsl` has `#[versions]`. "plain" is
+photoreal8's code, byte for byte, and "marks" adds the levers under
+`#ifdef MARKS`. `PathTracer` makes the marks pipeline only when a picture
+asks for wear (`marked`, `_make_marked`). Its hit table's range is the
+plain one's, so the staged instances find their hit group in either. With
+rubbed at 0, 20 of 20 pictures (10 shots, both seeds) match photoreal8's
+kept draws byte for byte, at 13eb4a8fa plus this change.
+
+**What the judge said.** Solo, two draws each, two rounds of two trials,
+the photographs in the pool, photoreal8's kept draws (base) in every pool:
+
+| pool | tree | close-ups, per round | sets, per round | called a photograph |
+|---|---|---|---|---|
+| 1 | base | 0.434 0.397 | 0.151 0.152 | 21 of 80 |
+| 1 | letters | 0.367 0.383 | 0.157 0.170 | 20 of 80 |
+| 1 | rubbed | 0.406 0.403 | 0.184 0.166 | 21 of 80 |
+| 1 | driver seated | 0.411 0.404 | 0.154 0.161 | 22 of 80 |
+| 1 | all three | 0.338 0.360 | 0.161 0.170 | 16 of 80 |
+| 2 | base | 0.365 0.388 | 0.164 0.159 | 19 of 80 |
+| 2 | letters as high as photoreal8's | 0.340 0.343 | 0.173 0.167 | 16 of 80 |
+| 2 | rubbed, driver seated | **0.448 0.448** | 0.154 0.149 | **24 of 80** |
+| 2 | all three | 0.400 0.390 | 0.153 0.144 | 20 of 80 |
+| 3 | base | 0.386 0.362 | 0.194 0.191 | 20 of 80 |
+| 3 | rubbed, driver seated | 0.394 0.370 | 0.139 0.138 | 18 of 80 |
+| 4 | base | 0.338 0.331 | 0.160 0.165 | 13 of 80 |
+| 4 | rubbed, driver seated | 0.364 0.364 | 0.147 0.138 | 18 of 80 |
+| 4 | that, his head turned | 0.376 0.403 | 0.148 0.138 | 18 of 80 |
+
+- **The wear lifted the close-ups by 0.025 on the mean of four pools,
+  within the judge's noise.** It was beyond the noise in pool 2 only. It
+  lifted the black 2x4, whose photograph is handled, in all four pools (0.38
+  to 0.46, 0.18 to 0.72, 0.19 to 0.44, 0.24 to 0.41). It lowered the grey
+  1x3, whose photograph is clean, in all four ("uniform blotchy noise on the
+  faces"). It moved the sets by -0.015 on the mean. So `PRODUCT_RUBBED`
+  stays 0, and the wear is drawn only when asked for, as photoreal8's
+  handling is.
+- **A picture alone moves 0.1 to 0.2 between pools.** The base's identical
+  black 2x4 scored 0.38, 0.18, 0.19 and 0.24, and its 6660 scored 0.18,
+  0.23, 0.32 and 0.21. Pool 4's two kept trees differ only in 6660, yet
+  their close-ups differ by 0.03. Only a tree judged beside its base, over
+  many pools, says anything.
+- **The driver is seated as built** (tools/photoreal/models/set_6660.mpd).
+  He sits in the base's open centre, his cap 3 LDU under the roof's glass,
+  his head and cap turned 55 degrees to the camera as the photograph shows
+  his face. 6660 scored 0.02 to 0.18 below the base in each pool, inside
+  that shot's own spread. The tells are the same as before ("no LEGO logo
+  on the studs", spotless plastic, the white void). The model is the set's
+  bench model, so it is kept as the set is built.
+
+**Against the brief's bars** (the kept tree: photoreal8's look, the wear
+lever off, 6660's driver seated):
+
+| bar | photoreal9 | met |
+|---|---|---|
+| close-ups' lowest round above photoreal8's highest (0.392) | the wear and driver: 0.448 in pool 2, 0.370, 0.364 in pools 3 and 4 | no |
+| sets' lowest round above photoreal8's highest (0.191) | 0.138 to 0.184 | no |
+| at least 24 of 80 called a photograph | 24 (pool 2), then 18 and 18 | once |
+| the backdrop tell under 50 of 80, the light tell under 50 | backdrop 75 to 78, light 61 to 68 | no |
+| the wear tell under 60 of 80 | 75 to 80 | no |
+| paired judge at most 18 of 20, or sure at most 0.80 | 18 of 20, sure 0.82 (the kept tree, its close-ups photoreal8's own pictures; with the wear on 18 of 20, 0.83; photoreal8 was judged 20 of 20) | yes, within the paired judge's own noise |
+| tent faces within ΔE2000 5 | green 3.7, red 1.6, blue 2.7, the slope 1.3 (the levers on and off alike) | yes |
+| the car at Best within 2.9 s | medians 2.80 and 2.85 s with the wear on, at load 60 (off by default: the plain pipeline, as photoreal8) | yes |
+| the model unchanged | the levers act in the shader; the bench's 6660 model is corrected, as the brief asked | yes |
+| pixel-identical with every lever off | 20 of 20 byte for byte | yes |
+
+**Desktop, Compatibility and the web.** All of it is drawn by the desktop's
+path tracer at Best. Compatibility and the web draw none of it, since they
+have no path tracer. The web could have the wear cheaply. `gathered_wear`
+needs only a hit's place in its part's box, which the raster's product
+material can have from the instance's box. The edge band and the dust ring
+would then be a roughness and albedo change in that shader, at about the
+cost of its existing edge highlight.
+
+**Next.** The judge's three tells are unchanged on every tree: the white
+void ("seamless pure white background"), the light, and spotless plastic.
+For the sets, it also says the studs have no LEGO logo. At a set's
+distance the letters' relief is under a pixel, so a stud there needs its
+logo drawn as the eye resolves it, not as geometry. The tables need relief,
+not colour: leather's cells and stone's grain shaded by a normal from the
+surface's own texture. The wear on light colours reads as noise: its scuffs
+should follow the edge, not a 3D noise.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
