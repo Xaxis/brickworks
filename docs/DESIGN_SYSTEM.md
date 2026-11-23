@@ -65,8 +65,9 @@ sized its own titles, from 26 to 74 px. Now:
   `--t-section` 28-40 px, `--t-h2` 22-26 px, `--t-h3` 18 px, `--t-lede`,
   then the words: `--t-body` 16,
   `--t-small` 14.5, `--t-tiny` 13, `--t-micro` 12): `h1` is a page's
-  title at `--t-h1` on every page; the landing page's one line is
-  `h1.display`; `h2` a section's, at `--t-h2` wherever it is (a model's
+  title at `--t-h1` on every page; the home page's one line too, so its
+  shelf stays in the first screen (landfix; it was `h1.display` before the
+  shelf); `h2` a section's, at `--t-h2` wherever it is (a model's
   About it and More by, a settings row, a notice, a dialog's title, a
   legal page's parts); `h3` a part of a section, at `--t-h3`. A page
   does not size its own titles, and design_flow.mjs fails an h2 or an
