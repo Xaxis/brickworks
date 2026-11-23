@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe -->
 
 ## Sub-features
 
@@ -3152,11 +3152,68 @@ picture the assistant is shown.
   and the same drawn on nothing glass, alpha over 0.3 and lightness over
   0.35 (black before, 1.00 and 0.16); pictures in `shots/render/product_*`,
   `product_swatches.png` the swatches, `product_glass*.png` the walls.
+  Best path traced on a backdrop (photoreal2, docs/RENDERING.md 5f) is
+  staged as a product photograph: on a light backdrop in the studio a light
+  tent (white walls at `TENT_FILL`, a panel overhead, a soft key the
+  light's turn moves, `TENT_KEY`), the backdrop drawn at its own colour
+  with the model's shadow on it (the shadow catcher), a white card where the
+  model stands metered `PHOTO_EV` over the paper's own light, and a
+  camera's response: saturation in linear light (`PHOTO_LINEAR_SATURATION`)
+  and `camera_curve`'s wide shoulder. Clear parts absorb by Beer-Lambert.
+  The plastic is gloss as ABS is (photoreal3, docs/RENDERING.md 5g): one
+  sharp coat at index 1.55 (`ABS_F0`) over the colour, stud tops satin, a
+  slope's grain small round bumps that glint, each stud a hair off true;
+  the tent has two soft boxes behind the model (`TENT_BOX`, `tent_box`) for
+  it to mirror, and a panel 60 degrees across (`TENT_TOP`); red, green, blue
+  and black take albedos fitted to the photographs (`PathTracer.
+  PRODUCT_ALBEDO`); the denoise is guided by the first hit's normal and
+  albedo (`guide`, binding 10 and 2); a stud's logo reads across the part
+  (along its z); in a photographed place what the model mirrors past the
+  backdrop's floor is the place, not the sweep's rise. Check: `tools/probe.sh
+  photoreal_probe`, then `python3 tools/bench/photoreal.py colour TAG` and
+  `gloss TAG` from the same tree: tent faces within ΔE2000 5, the stud rims
+  and logo flanks lighter than the face in the pictures.
   In a browser: `cli:product look in a browser`.
   A model: `tools/probe.sh render_probe -- --model=models/sports_car.ldr
   --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best
   --size=1280x720 --picture=OUT.png`. Over MCP: render_model with
   look=product (mcp_sync_probe keeps tools/mcp_tools.json in step).
+- `staged product photographs` (`RenderSettings.stage`, Render's choice under
+  Background, `StudioRender.STAGES`; photoreal7, docs/RENDERING.md 5k): at
+  Best in the Product look, the model stands on white, paper, a desk, a
+  wooden table, a leather desk pad or terrazzo, lit as a photograph is: a
+  soft key near the model (`STAGE_KEY_RISE`, `_FAR`, `_SIZE`, `_SHARE`;
+  path_tracer.glsl `near`, `near_light`, falling off with the square of
+  the distance and across the box's face), the surface lit rather than a
+  shadow catcher (white keeps the catcher), its grain a Poly Haven tile
+  (`assets/surfaces/*.webp`, binding 11 `surface_map`, at its real size in
+  LDU, its displacement in alpha tilting the floor's normal by
+  `stage_relief`, STAGES' depth), a table's floor running on behind the
+  model (traced only), and past its far edge the room (the lighting's HDRI
+  or the window's).
+  The white card where the model stands is metered for exposure as before
+  and its colour read (`_floor_colour`) for a white balance
+  (`balance`, `PRODUCT_BALANCE` 1); `tone` (`PRODUCT_TONE` 0.5) bends the
+  encoded picture by a camera's S in the resolve (`camera_tone`), both on
+  every photographic product picture, staged or not. With no stage and tone
+  and balance 0 every buffer field is zero or one and no random number is
+  drawn, so a render is pixel-identical to before (photoreal_probe
+  --without=tone,balance against photoreal6's). The tile is an Image import read on
+  a worker (`_read_surfaces`), never in a frame. Choosing a stage puts its
+  colour on the backdrop; Seamless backdrop again gives back the background
+  had before (`_before_stage`). Over MCP, render_model and render_queue take
+  `stage` (`RenderSettings.use_stage`: none or a STAGES key; its colour
+  unless `backdrop` is given; refused with backdrop none). The web export
+  leaves `assets/surfaces/` out; Compatibility and the web draw the stage's
+  colour alone. Check: `tools/probe.sh photoreal_probe -- --tag=T
+  --shots=FILE` with shots naming `stage` (and `key_rise`, `key_far`,
+  `key_share`, `tone`, `balance`): each path traced; `--stage=none`
+  draws a shot unstaged, and its picture must equal photoreal6's of the
+  same shot byte for byte; `--keys=R:F:S,..` with `--turns` draws the
+  key's sweep that `tools/photoreal/fit_light.py DRAWN --shots FILE` scores
+  against each photograph. Every run but `--car` first prints five ok lines
+  for a stage asked by name (`_stage_asked`: wood's colour, a backdrop asked
+  beside it kept, none, refused with backdrop none and with a name it lacks).
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong
@@ -3639,12 +3696,64 @@ picture the assistant is shown.
   `shots/photoreal/<tag>/`. Run bare, it then times the car at Best,
   Product, 1280 x 720, three runs (own time), the median at most 8.4 s
   (twice the 4.2 s of pathtrace's last measure); `-- --car` times only the
-  car. `-- --tag=NAME --only=a,b --samples=N --yaws=0,90`. An edited `.glsl` is drawn only after
-  `godot --headless --path . --import`.
+  car. `-- --tag=NAME --only=a,b --samples=N --yaws=0,90`; `--turns=0,90`
+  and `--lighting=window,daylight` draw each shot with its light turned and
+  lit each way, named `<name>_t<turn>_<lighting>`, to find where a
+  photograph's light stood; `--raw` also writes each picture's light before
+  exposure and curve, `<name>.exr`, and what it was drawn at, `<name>.json`
+  (photoreal2, docs/RENDERING.md 5f). A shot may name what its
+  photograph's part stands on (`surface`: 0 paper, 1 a matte desk; photoreal5, docs/RENDERING.md 5i), drawn as its backdrop's
+  grain; `--without=KEY` draws a shot with one of its camera, wear or
+  surface settings at none, to measure what each brings. An edited `.glsl`
+  is drawn only after `godot --headless --path . --import`. `--draw=N`
+  draws with the tracer's seed N (another draw of the same tree: its noise
+  and lens samples only; photoreal6). `--cycles` also writes each shot's
+  scene as drawn, read back from the render: `<name>.cycles.ldr` (the
+  parts where they stood, seated, in LDraw's space) and
+  `<name>.cycles.json` (camera, lens, tent or place, key, sweep, exposure,
+  the camera's marks), for `photoreal cycles`. A shot may also name its
+  photograph's camera processing (photoreal6, docs/RENDERING.md 5j):
+  `sharpen`, an unsharp mask after the curve in the resolve (the share of
+  an edge's step added back), and `jpeg`, the finished picture through a
+  JPEG at that quality and back (StudioRender._through_jpeg); the close-ups
+  carry 0.6 and JPEG 90, the sets none (the judge marked them down). The
+  Product look's own are none (PRODUCT_SHARPEN, PRODUCT_JPEG 0), so a
+  render outside the bench is unchanged; check a shot's picture differs
+  from `--without=sharpen,jpeg`'s at its edges and in 8x8 blocks.
+- `photoreal cycles` (`tools/photoreal/cycles/render.py` and its folder, photoreal6,
+  docs/RENDERING.md 5j): the realism ceiling, a bench tool on this box and
+  never part of the app or its build. Blender 5.2.4 LTS in
+  `~/.local/opt/blender-5.2.4-linux-x64` and ldr_tools_blender 0.5.3 (MIT)
+  in `~/.local/opt/ldr_tools_blender-0.5.3`; Cycles on the CPU (the card's
+  HIP needs `/dev/kfd`, which this user cannot open). `heavy
+  tools/photoreal/cycles/tree.sh SCENES PNG_DIR EXR_DIR DRAW [--samples
+  1024 --sss 0 --studs Normal --resolution Normal --gap 0]` draws every
+  shot whose scene `photoreal probe -- --cycles` wrote into SCENES:
+  `render.py` imports the parts through ldr_tools_blender with its own
+  materials (subsurface, smudged gloss, bevel, logo studs, 48-sided round
+  parts, a gap between parts), lights them by the tracer's own tent formula
+  or its HDRI turned as the tracer turns it plus the tent's key as a sun,
+  the sweep as a shadow catcher, and writes the light as a multilayer EXR;
+  `finish.py` (Blender's own Python: numpy and OpenImageIO) composites the
+  backdrop as the tracer's catcher draws it and gives it the tracer's
+  finish (softness, the white card's exposure, vignette, linear
+  saturation, camera_curve, sRGB, grain) into `PNG_DIR/<name>.png`, ready
+  for `photoreal.py solo`. `render.py -- SCENE OUT --check` builds a scene
+  and draws nothing. `camera_pipeline.py FROM TO` puts a tree's pictures
+  through a camera's sharpening and the photographs' own JPEG (90 for the
+  close-ups, 75 for the sets; `--only sharpen|jpeg` one half).
+  `photo_trees.py OUT` writes each photograph as the judge sees it as a
+  tree of its own, as it is (a control) and through a 5-pixel median (the
+  photograph side). `decide.py SOLO_JSON` tables a solo run's
+  trees over their draws (labels `TREE_dN`): per round, close-ups and
+  sets, called a photograph, each shot, the tells.
 - `photoreal judge` (`tools/bench/photoreal.py`): the bench the probe's
   pictures are judged on. `pairs TAG` writes each render beside its
   photograph (cropped to the render's aspect, both the same size);
   `compare BEFORE AFTER --out DIR` writes photograph | before | after rows;
+  `gloss TAG --out DIR` writes each close-up's highlight share and peak in
+  its `gloss` boxes (shots.json) and its main faces' L* spread, photograph
+  against render, to `DIR/gloss_TAG.json` and a table (photoreal3);
   `env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge TAG
   --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
   subscription, `judge.call`) the photograph and the render under opaque
@@ -3656,7 +3765,11 @@ picture the assistant is shown.
   pick rate and mean confidence for close-ups, sets and all). A render as
   real as the photograph is picked half the time; the bar is a lower pick
   rate after than before, judged the same day against a before drawn from
-  a locked tree.
+  a locked tree. `colour TAG [--out DIR]` measures each close-up's faces
+  (shots.json's `faces`, the photograph's box and the render's) as the
+  trimmed mean of their CIELAB and prints and writes (`colour_TAG.json`)
+  each face's CIEDE2000 from its photograph's; the bar is 5 on every main
+  face.
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
   class `PosePanel`, in the column beside the model (`Main._tool_column`) so
   what moves is seen and no part to be dragged is under it; the

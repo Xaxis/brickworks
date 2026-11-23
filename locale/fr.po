@@ -16406,3 +16406,27 @@ msgstr "verrouillée"
 
 msgid "frozen"
 msgstr "figée"
+
+msgid "Best, Product look: what the model stands on, lit by a light standing near it as in a photograph"
+msgstr "Meilleure, Photo produit : ce sur quoi le modèle est posé, éclairé par une lumière proche comme sur une photo"
+
+msgid "Seamless backdrop"
+msgstr "Fond sans raccord"
+
+msgid "Photographed on white"
+msgstr "Photographié sur fond blanc"
+
+msgid "On paper"
+msgstr "Sur du papier"
+
+msgid "On a desk"
+msgstr "Sur un bureau"
+
+msgid "On a wooden table"
+msgstr "Sur une table en bois"
+
+msgid "On a leather desk pad"
+msgstr "Sur un sous-main en cuir"
+
+msgid "On terrazzo"
+msgstr "Sur du terrazzo"
