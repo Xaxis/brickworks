@@ -17004,3 +17004,13 @@ msgstr "„%s“ ist deine Kopie davon, eben erst gemacht: geöffnet, nicht noch
 
 msgid "could not save “%s” into your models: File › Save as… keeps it"
 msgstr "„%s“ konnte nicht in deinen Modellen gespeichert werden: Datei › Speichern unter… behält es"
+
+# The app's header in every mode (appchrome): the mark home, Menu at the right
+msgid "Menu"
+msgstr "Menü"
+
+msgid "Brickworks: the home page"
+msgstr "Brickworks: die Startseite"
+
+msgid "The site's home page, in this tab"
+msgstr "Die Startseite der Website, in diesem Tab"

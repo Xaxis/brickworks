@@ -689,8 +689,9 @@ static func screen_factor(across: float, down: float, web: bool) -> float:
 ## The interface's height, in its own units, below which the frame runs off
 ## the window: the menus, the toolbar, a row of parts, the properties, the
 ## colours and the status bar, one under another (a11y_size_probe found the
-## colours under the status bar at 579).
-const LEAST_DOWN := 620.0
+## colours under the status bar at 579). 650 since the menu bar became the
+## site's header, 61 points where it was 34 (appchrome, AppHeader).
+const LEAST_DOWN := 650.0
 
 
 ## [method screen_factor], times Settings, Interface size: bigger or smaller
@@ -3120,9 +3121,16 @@ func _enter_view() -> void:
 	# way to the first step on 4,000 parts.
 	_store.lattice_later = true
 	var column: Control = _bar.get_parent()
+	# The header stays, as it is in every mode (AppHeader, the owner
+	# 2026-11-23: Build it "opens the view of the app that doesnt have the
+	# brickworks logo in the header"): plain, the mark, Menu and Account,
+	# Account the site's settings since nobody's account is read here. The
+	# viewer's own bar goes under it.
+	_bar.set_plain(true)
+	_bar.visiting = true
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
-	for hidden: Control in [_bar, _shell.toolbar, _shell.inspector, _shell.outliner,
+	for hidden: Control in [_shell.toolbar, _shell.inspector, _shell.outliner,
 			_shell.banner, _bin_dock, _props_dock, _chat_dock, _tools, _seat_offer]:
 		if hidden != null:
 			hidden.visible = false
@@ -3134,7 +3142,7 @@ func _enter_view() -> void:
 		(_hint.get_parent() as Control).visible = false
 	_share_view = Later.make(&"ShareView")
 	$HUD.add_child(_share_view)
-	_share_view.put_bar_in(column)
+	_share_view.put_bar_in(column, _bar)
 	_share_view.steps_wanted.connect(_toggle_steps)
 	_share_view.booklet_wanted.connect(_booklet_wanted)
 	_share_view.parts_wanted.connect(_toggle_parts)
@@ -3175,6 +3183,8 @@ func _enter_view() -> void:
 	_build_mode = Later.make(&"BuildMode")
 	_build_mode.thumbnails = _thumbnails
 	_add_to_hud(_build_mode)
+	# Under the header, which stays over the step player as over every mode.
+	_under_header(_build_mode)
 	_build_mode.next_wanted.connect(_build_next)
 	_build_mode.back_wanted.connect(_build_back)
 	# A part at a time or the step whole, chosen on the page: the step it is
@@ -7955,6 +7965,22 @@ func _make_page_editor() -> void:
 	_page_editor_made = editor
 	editor.app = self
 	_add_to_hud(editor)
+	# Under the header, plain while the page is up: the menus and the name are
+	# the model's, and the page's own tools are along its top.
+	_under_header(editor)
+	editor.visibility_changed.connect(func() -> void:
+		_bar.set_plain(editor.visible or not _viewing.is_empty()))
+
+
+## [param mode], a part of the app over the whole window (Build it's step
+## player, the page laid out by hand), kept under the header: from its foot
+## down, as the header is laid out again (AppHeader).
+func _under_header(mode: Control) -> void:
+	var fit: Callable = func() -> void:
+		mode.offset_top = _bar.get_global_rect().end.y if _bar.is_visible_in_tree() else 0.0
+	_bar.resized.connect(fit)
+	_bar.visibility_changed.connect(fit)
+	fit.call()
 
 
 ## The ruler, and what it says, under the counts: made the first time it is
@@ -11524,6 +11550,9 @@ func _dress_for_phone() -> void:
 	for child: Node in _bar.get_children():
 		if child is Control:
 			(child as Control).visible = false
+	# The phone's own top bar is the header (PhoneShell): the bar keeps no
+	# height of its own here (ModelBar._fit_header).
+	_bar.custom_minimum_size = Vector2.ZERO
 	_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.said.connect(Callable(_phone, &"say"))

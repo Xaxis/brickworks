@@ -30,6 +30,8 @@
 ## Pictures in shots/app_menu/.
 extends SceneTree
 
+## The header the menu bar is (appchrome): the mark drawn at its size.
+const AppHeader := preload("res://src/ui/app_header.gd")
 const DESKTOP_ROWS: Array = ["About Brickworks", "Send feedback…", "-", "Find a command…", "-",
 	"Brickworks website", "Documentation", "-", "Account…"]
 
@@ -87,13 +89,14 @@ func _run() -> void:
 	if not _check("the menu bar has the mark", mark != null and mark.is_visible_in_tree()):
 		_finish()
 		return
-	# Drawn at the screen's density: so many pixels, shown 18 units tall
-	# whatever the density (ModelBar.MARK_TALL, Icons.icon_for).
+	# Drawn at the screen's density: so many pixels, shown the site's 26
+	# points tall whatever the density (AppHeader.MARK, Icons.icon_for).
+	var want: float = AppHeader.MARK * _bar.points
 	var pixels: Vector2i = mark.icon.get_image().get_size() if mark.icon != null else Vector2i.ZERO
 	var tall: float = mark.icon.get_height() if mark.icon != null else 0.0
-	_check("...a picture, %s pixels, %.1f units tall" % [str(pixels), tall],
-		absf(tall - ModelBar.MARK_TALL) < 1.5
-		and absf(pixels.y - ModelBar.MARK_TALL * Icons.density(mark)) < 1.5)
+	_check("...a picture, %s pixels, %.1f units tall (want %.1f)" % [str(pixels), tall, want],
+		absf(tall - want) < 1.5
+		and absf(pixels.y - want * Icons.density(mark)) < 1.5)
 	_check("...named for a screen reader: \"%s\", \"%s\"" % [mark.accessibility_name,
 		mark.accessibility_description], mark.accessibility_name == "Brickworks"
 		and mark.accessibility_description.contains("About"))
@@ -126,14 +129,10 @@ func _at_width(mark: MenuButton) -> void:
 	var room: Vector2 = root.get_visible_rect().size
 	var row: Control = mark.get_parent()
 	var first: Control = null
-	var lines: Dictionary = {}
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		if control == null or not control.visible:
-			continue
-		if first == null:
+		if control != null and control.visible and first == null:
 			first = control
-		lines[roundi(control.position.y)] = true
 	var with_it: Array = _layout()
 	# Before the mark the row began with the app's name, in words: put back,
 	# in its place, for the bar as it was.
@@ -141,7 +140,10 @@ func _at_width(mark: MenuButton) -> void:
 	name.text = "Brickworks"
 	name.add_theme_font_size_override("font_size", 14)
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name.custom_minimum_size = Vector2(0, 28)
+	# As tall as the mark: the header's height is its own (appchrome), and
+	# what this weighs is the room across the mark takes.
+	name.custom_minimum_size = Vector2(0, mark.size.y)
+	name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mark.visible = false
 	row.add_child(name)
 	row.move_child(name, 0)
@@ -153,7 +155,7 @@ func _at_width(mark: MenuButton) -> void:
 	print("    %d x %d units: the mark %s, the toolbar showing %d controls" % [room.x, room.y,
 		"and its name" if not mark.text.is_empty() else "alone", with_it[2]])
 	_check("...the mark first in the bar, at its left (%d), the bar one line (%d)" % [
-		mark.position.x, lines.size()], first == mark and mark.position.x < 1.0 and lines.size() == 1)
+		mark.position.x, _line_count(row)], first == mark and mark.position.x < 1.0 and _line_count(row) == 1)
 	_check("...the bar's height, the toolbar's top and the tools it shows as they were with the name in words: %s, %s" % [
 		str(with_it), str(without)], with_it == without)
 	await _shot("bar_%d" % roundi(room.x))
@@ -179,7 +181,8 @@ func _count_moves_nothing(mark: MenuButton) -> void:
 ## The mark's words, and where it, the menus and the model's name are.
 func _bar_places(mark: MenuButton) -> Array:
 	var name: Control = _bar.controls_by_name()["model_name"]
-	return [mark.text, mark.get_global_rect(), _bar.menus.get_global_rect(), name.get_global_rect()]
+	return [mark.text, mark.get_global_rect(), _bar.menus.get_global_rect(), name.get_global_rect(),
+		(_bar.controls_by_name()["account"] as Control).get_global_rect()]
 
 
 ## At the narrowest, with this tab's Claude line showing too, the name
@@ -188,16 +191,34 @@ func _name_gives_way(mark: MenuButton) -> void:
 	var was: String = mark.text
 	_bar.show_claude_tab(["Tab 3", Color(0.55, 0.57, 0.6), "Claude knows this tab as 3."])
 	await _frames(12)
-	var lines: Dictionary = {}
-	for child: Node in mark.get_parent().get_children():
-		if child is Control and (child as Control).visible:
-			lines[roundi((child as Control).position.y)] = true
+	var lines: int = _line_count(mark.get_parent())
 	_check("at %d units with this tab's Claude line, the mark alone (\"%s\"), the bar one line (%d)" % [
-		root.get_visible_rect().size.x, mark.text, lines.size()], mark.text.is_empty() and lines.size() == 1)
+		root.get_visible_rect().size.x, mark.text, lines], mark.text.is_empty() and lines == 1)
 	await _shot("bar_%d_claude_tab" % roundi(root.get_visible_rect().size.x))
 	_bar.show_claude_tab(["", Color.TRANSPARENT, ""])
 	await _frames(12)
 	_check("...and the line gone, the mark as it was (\"%s\")" % mark.text, mark.text == was)
+
+
+## How many lines a row's shown controls take: one starts a new line when its
+## top is at or below the foot of the line before. The header centres each
+## control in its line (appchrome), so their tops differ on one line.
+func _line_count(row: Node) -> int:
+	var shown: Array[Control] = []
+	for child: Node in row.get_children():
+		var control: Control = child as Control
+		if control != null and control.visible and control.size.y > 0.5:
+			shown.append(control)
+	shown.sort_custom(func(a: Control, b: Control) -> bool: return a.position.y < b.position.y)
+	var count: int = 0
+	var foot: float = -INF
+	for control: Control in shown:
+		if control.position.y >= foot - 0.5:
+			count += 1
+			foot = control.position.y + control.size.y
+		else:
+			foot = maxf(foot, control.position.y + control.size.y)
+	return count
 
 
 ## The bar's height, the toolbar's top and how many of its controls show.

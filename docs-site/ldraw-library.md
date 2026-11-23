@@ -100,4 +100,4 @@ Every part is from the [LDraw Parts Library](https://library.ldraw.org), the com
 
 ## Credits {#credits}
 
-**Brickworks › About Brickworks** (the mark at the left of the menu bar) names every piece of other people's work Brickworks is built with, the LDraw library among them, with its terms. LDraw™ is a trademark owned and licensed by the Estate of James Jessiman; Brickworks is not affiliated with or endorsed by LDraw.org. Catalogue data is from [Rebrickable](https://rebrickable.com/downloads/).
+**About Brickworks** in the app's menu (**Menu** at the right of the header in a browser, the mark at the left in the desktop app) names every piece of other people's work Brickworks is built with, the LDraw library among them, with its terms. LDraw™ is a trademark owned and licensed by the Estate of James Jessiman; Brickworks is not affiliated with or endorsed by LDraw.org. Catalogue data is from [Rebrickable](https://rebrickable.com/downloads/).
