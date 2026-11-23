@@ -3546,7 +3546,9 @@ func _update_status() -> void:
 
 
 ## The model's sub-assembly called [param typed] (any case), as it is
-## written; "" for none. Read from the parts' paths once a revision.
+## written; "" for none. Read from the parts' paths once a revision, each
+## path once: a keystroke after an edit reads every part's two fields and
+## no more (timed on Orthanc by ux12_walk_probe's UX13 checks).
 func _own_assembly_named(typed: String) -> String:
 	var world: BrickWorld = builder.world if builder != null else null
 	if typed.is_empty() or world == null:
@@ -3555,8 +3557,13 @@ func _own_assembly_named(typed: String) -> String:
 		_assembly_names_at = world.revision
 		_assembly_names_of = world.get_instance_id()
 		_assembly_names = {}
+		var seen: Dictionary = {}
 		for brick: BrickWorld.Brick in world.bricks():
-			for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+			var path: String = brick.unit if not brick.unit.is_empty() else brick.group
+			if path.is_empty() or seen.has(path):
+				continue
+			seen[path] = true
+			for segment: String in Assemblies.segments(path):
 				var def: String = Assemblies.definition(segment)
 				if not def.is_empty():
 					_assembly_names[def.to_lower()] = def

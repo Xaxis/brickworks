@@ -248,6 +248,15 @@ func _checks13() -> void:
 		await _frames(10)
 		_check13("View, Panels, Key strip brings it back whole (%d pills)" % hint.get_child_count(),
 			hint.get_child_count() == ControlsHint.ON_THE_STRIP.size() + 1)
+	# The bin's word on a sub-assembly, read on the largest model at the first
+	# keystroke after an edit: inside a frame (self_attack, Time).
+	await _open_model("res://models/orthanc.ldr", "Orthanc")
+	_bin.set("_assembly_names_at", -1)
+	var began: int = Time.get_ticks_usec()
+	_bin.call("_own_assembly_named", "tower")
+	var took: float = (Time.get_ticks_usec() - began) / 1000.0
+	_check13("the bin reads Orthanc's %d parts for its sub-assemblies in %.1f ms" % [
+		_world.bricks().size(), took], took < 16.0)
 	# 4. Every window and panel closes with Close.
 	for panel: Array in [["library", "library_dialog", ""], ["collection", "collection", ""],
 			["parts_list", "", "_inventory"], ["keys", "", "_controls"],
