@@ -417,9 +417,32 @@ func _studio_friend() -> void:
 	print("UX12 p6 opened: %d parts, %d renumbered, %d not shown" % [_world.bricks().size(),
 		MovedParts.renumbered_count(store_moved), _store.unshown.size()])
 	await _step("p6_03_opened", "the friend's model open")
+	var offer: MovedOffer = _shell.get("moved_offer")
+	_check13("a friend's Studio file opens with no LDraw renumbering strip (%d renumbered)" % (
+		MovedParts.renumbered_count(store_moved)), not offer.visible)
 	await _run_command("parts_list", "p6_04_parts_list", "View, Parts list", 60)
+	var marked: Array = []
+	var inventory: Variant = _main.get("_inventory")
+	if inventory is Node:
+		for label: Node in (inventory as Node).find_children("*", "Label", true, false):
+			var said: String = (label as Label).text
+			if said.begins_with("=") or said.begins_with("~"):
+				marked.append(said)
+	_check13("the parts list names no part by LDraw's marks (%s)" % ", ".join(marked.slice(0, 3)),
+		inventory is Node and marked.is_empty())
 	await _close_all()
-	await _run_command("timeline", "p6_05_timeline", "Build, Timeline: Studio's steps", 40)
+	_shell.run("timeline")
+	var widest: float = 0.0
+	var busy: bool = false
+	for _n: int in 40:
+		await process_frame
+		busy = busy or Working.is_busy()
+		var status: Control = _shell.get("status")
+		widest = maxf(widest, status.get_combined_minimum_size().x)
+	await _step("p6_05_timeline", "Build, Timeline: Studio's steps")
+	var window: float = root.get_visible_rect().size.x
+	_check13("while it works (%s), the status bar stays inside the window (%.0f of %.0f)" % [
+		"seen" if busy else "not seen", widest, window], widest <= window)
 	await _run_command("timeline", "", "", 10)
 	await _run_command("panel_outliner", "p6_06_model_tree", "the model tree: Studio's sub-models", 30)
 	await _run_command("panel_outliner", "", "", 10)
@@ -459,6 +482,9 @@ func _sub_assembly() -> void:
 	await _step("p7_03_made", "the sub-assembly made")
 	await _run_command("panel_outliner", "p7_04_model_tree", "the model tree", 30)
 	await _search_bin("Bumper", "p7_05_bin_bumper", "the parts bin's search for it, to place another")
+	var bin_said: String = (_bin.get("_status") as Label).text
+	_check13("the bin searched for the sub-assembly says where another comes from (%s)" % (
+		bin_said.get_slice("\n", 0)), bin_said.contains("is a sub-assembly of this model"))
 	await _run_command("duplicate", "p7_06_duplicate", "Edit, Duplicate: a second one in hand", 20)
 	await _put_down(Vector3(0, 0, -160), "p7_07_second_down", "the second one put down")
 	await _run_command("enter_assembly", "p7_08_inside", "Build, Edit inside the sub-assembly", 30)
@@ -488,10 +514,24 @@ func _stability() -> void:
 	await _frames(20)
 	await _step("p8_01_floating", "a part left floating over the roof")
 	await _run_command("stability", "p8_02_check", "Tools, Check stability", 120)
+	var said: String = _bar.status_text()
+	_check13("Check stability says the part in the air and selects it (%s)" % said.left(90),
+		top != null and said.contains("floats in the air") and _builder.selection.has(top.id))
 	await _run_command("stress", "p8_03_stress", "View, Stress", 40)
+	var stress_panel: Variant = (_shell.get("stress") as Node).get("panel") if _shell.get("stress") != null else null
+	var stress_tips: String = ""
+	if stress_panel is Node:
+		for label: Node in (stress_panel as Node).find_children("*", "Label", true, false):
+			if (label as Label).visible and (label as Label).text.begins_with("In the air"):
+				stress_tips = (label as Label).text
+	_check13("View, Stress says it (%s)" % stress_tips.left(90), not stress_tips.is_empty())
 	await _run_command("stress", "", "", 10)
 	await _menu("Tools", "p8_04_tools_menu", "Tools: what fixes a part off its studs")
+	_builder.clear_selection()
 	await _run_command("reseat", "p8_05_reseat", "Tools, Seat parts on their studs", 120)
+	said = _bar.status_text()
+	_check13("Seat parts says the part in the air, not that every part is seated (%s)" % said.left(90),
+		said.contains("floats in the air") and top != null and _builder.selection.has(top.id))
 	await _run_command("stability", "p8_06_check_again", "Check stability again", 120)
 	await _close_all()
 
@@ -550,6 +590,13 @@ func _figure_on_a_phone() -> void:
 				(grid.get_child(0) as BaseButton).pressed.emit()
 				await _frames(20)
 			await _step(slot[2], "the figure's %s: %s" % [slot[0], slot[1]])
+			if slot[0] == "torso":
+				var first: String = str(grid.get_child(0).get_meta("part", "")) \
+					if grid.get_child_count() > 0 else ""
+				var info: PartLibrary.PartInfo = (_main.get("_library") as PartLibrary).parts.get(first)
+				_check13("the torso searched for space is one named so (%s %s)" % [first,
+					info.name if info != null else "?"],
+					info != null and info.name.to_lower().contains("space"))
 		var name: LineEdit = figures.get("_name")
 		name.text = "Nova"
 		name.text_changed.emit("Nova")
@@ -558,6 +605,10 @@ func _figure_on_a_phone() -> void:
 		await _step("p10_05_in_hand", "Place in model: the figure in hand")
 		await _put_down(Vector3(0, 0, 0), "p10_06_stood", "the figure stood on the baseplate")
 	await _run_command("share", "p10_07_share", "Share", 60)
+	var share: Variant = _main.get("_share_panel")
+	if share is Node and (share as Control).visible:
+		var called: String = ((share as Node).get("_name") as LineEdit).text
+		_check13("Share names the model for its one figure (%s)" % called, called == "Nova")
 	await _close_all()
 
 
