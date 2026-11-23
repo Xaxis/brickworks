@@ -99,8 +99,10 @@ const LIT := Color(0.36, 0.6, 1.0, 0.38)
 ## to 1, Check stability 4 to 5 to 1, Cut away 9 to 11 to 2, Simulate 9 to 2
 ## (docs/app_ux8/phonewalk.md, smalls2). Each is in its menu too, and one
 ## the window does not offer (Shell._shown) is left out here as there.
+## Share last (askhelp): More, Share, Ask in Talk is a question in Talk in
+## three taps, File's menu folded under More made it four.
 const QUICK: Array[String] = ["save", "instructions", "timeline", "render", "measure", "cut",
-	"stability", "simulate", "pose", "select_all"]
+	"stability", "simulate", "pose", "select_all", "share"]
 
 ## A check that holds a browser's scale in a desktop's window (phonepanels,
 ## twist_probe): the scale is left as it set it, and the rest is laid out

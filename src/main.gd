@@ -3691,6 +3691,7 @@ func _part_pins_now() -> Control:
 	_part_pins.seat = _seat_tool_panel
 	_part_pins.token_for = func() -> String: return await _account.access_token()
 	_part_pins.look_again = _look_for_pins
+	_part_pins.look_asks_again = _look_for_asks
 	_part_pins.comment_wanted.connect(func(part: Dictionary) -> void:
 		_share_view.comments.aim(part, str(part.get("said", ""))))
 	# A pin's part lit in the viewer, from its line or its dot, is let go
@@ -3778,6 +3779,7 @@ func _look_for_pins() -> void:
 	var token: String = await _account.access_token()
 	if token.is_empty() or id != _store.share_id:
 		return
+	_look_for_asks()
 	var answer: Dictionary = await _shared.comments(id, 0, token)
 	var body: Variant = answer.get("body")
 	if id != _store.share_id or int(answer.get("code", 0)) != 200 or not body is Dictionary:
@@ -3788,6 +3790,50 @@ func _look_for_pins() -> void:
 		any = any or (one is Dictionary and (one as Dictionary).get("pin") is Dictionary)
 	if _part_pins != null or any:
 		_part_pins_now().set_answer(body)
+
+
+## The open model's questions in Talk (askhelp) and their answers on parts,
+## asked as its builder: handed to PartPins, which lights each new one and,
+## while there are any, asks again every few seconds (set_asks). None for a
+## model with no link, or with nobody signed in.
+func _look_for_asks() -> void:
+	if not _viewing.is_empty() or _shared == null or _account == null:
+		return
+	var id: String = _store.share_id
+	if id.is_empty() or not _account.signed_in():
+		if _part_pins != null:
+			_part_pins.set_asks([], 0.0)
+		return
+	if _part_pins != null and not _part_pins.asks_of.is_empty() and _part_pins.asks_of != id:
+		_part_pins.set_asks([], 0.0)
+	var token: String = await _account.access_token()
+	if token.is_empty() or id != _store.share_id:
+		return
+	var answer: Dictionary = await _shared.talk_asks(token, id)
+	var body: Variant = answer.get("body")
+	if id != _store.share_id or int(answer.get("code", 0)) != 200 or not body is Dictionary:
+		return
+	var asks: Variant = (body as Dictionary).get("asks")
+	if _part_pins != null or (asks is Array and not (asks as Array).is_empty()):
+		_part_pins_now().set_asks(asks if asks is Array else [], float((body as Dictionary).get("every", 20)), id)
+
+
+## What Ask the builders asks about (SharePanel): the step the timeline is
+## on (0, the whole model) and the parts picked, each as a pin sends its part
+## (PinPlace, in the file's coordinates) with its words.
+func _ask_context() -> Dictionary:
+	var parts: Array = []
+	if not _builder.selection.is_empty():
+		for one: Dictionary in PinPlace.bricks_of(_world, _store.lift(), _store.scenery):
+			if not _builder.selection.has(int(one["id"])):
+				continue
+			var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
+			var colour: PartLibrary.BrickColor = _library.colors.get(int(one["colour"]))
+			var said: String = PinPlace.part_said(info.name if info != null else "")
+			one["words"] = ("the %s" % said if not said.is_empty() else "a part") \
+				+ (", %s" % colour.name.replace("_", " ").to_lower() if colour != null else "")
+			parts.append(one)
+	return {"step": _timeline_page(), "parts": parts}
 
 
 ## The page's address for what the viewer has open: the link, or an older
@@ -7706,6 +7752,15 @@ func _make_share_panel() -> void:
 	share.picture = _exports.picture
 	share.named = _bar.model_name
 	share.challenge_line = _challenge_line
+	# Ask the builders (askhelp): the step and parts asked about, and the
+	# answers watched for once it is asked.
+	share.ask_context = _ask_context
+	share.asked.connect(func(_said: Dictionary) -> void: _look_for_asks())
+	var follow := func(_given: Variant = null) -> void:
+		if share.visible:
+			share.call("_fresh_ask")
+	_builder.selection_changed.connect(follow)
+	_steps.stepped.connect(follow)
 	share.setup()
 	_add_to_hud(share)
 	var kind: GDScript = Later.script(&"SharePanel")

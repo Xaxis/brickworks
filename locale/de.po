@@ -16861,3 +16861,121 @@ msgstr "Veröffentlicht, nicht eingereicht: %s"
 
 msgid "Brickworks could not enter it just now. Press Enter again in a minute."
 msgstr "Brickworks konnte es gerade nicht einreichen. Drücke in einer Minute erneut auf Teilnehmen."
+
+# Ask the builders (askhelp): the Share panel's question in Talk, and the answers on parts in the studio
+msgid "Ask the builders"
+msgstr "Frag die Bauenden"
+
+msgid "What are you stuck on?"
+msgstr "Wo kommst du nicht weiter?"
+
+msgid "Ask in Talk"
+msgstr "In Talk fragen"
+
+msgid "Asking"
+msgstr "Wird gefragt"
+
+msgid "Open the thread"
+msgstr "Thema öffnen"
+
+msgid "Open the question's thread in Talk"
+msgstr "Das Thema der Frage in Talk öffnen"
+
+msgid "Post the question in Talk's Help, with the model in 3D at this step and the parts you picked lit"
+msgstr "Die Frage in der Hilfe von Talk stellen, mit dem Modell in 3D bei diesem Bauschritt und den gewählten Teilen hervorgehoben"
+
+msgid "Builders answer on the parts, and the answers light them here"
+msgstr "Bauende antworten an den Teilen, und die Antworten heben sie hier hervor"
+
+msgid "How should I build step %d?"
+msgstr "Wie baue ich Bauschritt %d?"
+
+msgid "How should I build this?"
+msgstr "Wie baue ich das?"
+
+msgid "Asks in Talk's Help about step %d, shown in 3D"
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, in 3D gezeigt"
+
+msgid "Asks in Talk's Help about the whole model, shown in 3D"
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, in 3D gezeigt"
+
+msgid "Pick parts first to have them lit"
+msgstr "Wähle zuerst Teile, damit sie hervorgehoben werden"
+
+msgid "Asks in Talk's Help about step %d, with %s lit in 3D"
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s in 3D hervorgehoben"
+
+msgid "Asks in Talk's Help about the whole model, with %s lit in 3D"
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s in 3D hervorgehoben"
+
+msgid "%d more"
+msgstr "%d weitere"
+
+msgid "a part"
+msgstr "ein Teil"
+
+msgid "Asking in Talk"
+msgstr "Wird in Talk gefragt"
+
+msgid "Asked in Talk's Help, step %d in 3D"
+msgstr "In der Hilfe von Talk gefragt, Bauschritt %d in 3D"
+
+msgid "Asked in Talk's Help, step %d in 3D with 1 part lit"
+msgstr "In der Hilfe von Talk gefragt, Bauschritt %d in 3D mit 1 hervorgehobenen Teil"
+
+msgid "Asked in Talk's Help, step %d in 3D with %d parts lit"
+msgstr "In der Hilfe von Talk gefragt, Bauschritt %d in 3D mit %d hervorgehobenen Teilen"
+
+msgid "Asked in Talk's Help, the model in 3D"
+msgstr "In der Hilfe von Talk gefragt, das Modell in 3D"
+
+msgid "Asked in Talk's Help, the model in 3D with 1 part lit"
+msgstr "In der Hilfe von Talk gefragt, das Modell in 3D mit 1 hervorgehobenen Teil"
+
+msgid "Asked in Talk's Help, the model in 3D with %d parts lit"
+msgstr "In der Hilfe von Talk gefragt, das Modell in 3D mit %d hervorgehobenen Teilen"
+
+msgid "Answers on a part light it here as they come"
+msgstr "Antworten an einem Teil heben es hier hervor, sobald sie kommen"
+
+msgid "Sign in to Brickworks to ask in Talk"
+msgstr "Melde dich bei Brickworks an, um in Talk zu fragen"
+
+msgid "Not asked: %s"
+msgstr "Nicht gefragt: %s"
+
+msgid "Not asked: it could not be published just now"
+msgstr "Nicht gefragt: Es konnte gerade nicht veröffentlicht werden"
+
+msgid "Talk could not take the question just now"
+msgstr "Talk konnte die Frage gerade nicht annehmen"
+
+msgid "Try again in a minute"
+msgstr "Versuche es in einer Minute erneut"
+
+msgid "Help with %s"
+msgstr "Hilfe bei %s"
+
+msgid "Help with my model"
+msgstr "Hilfe bei meinem Modell"
+
+msgid "New answer on a part in Talk, from %s"
+msgstr "Neue Antwort an einem Teil in Talk, von %s"
+
+msgid "%d new answers on parts in Talk, the newest from %s"
+msgstr "%d neue Antworten an Teilen in Talk, die neueste von %s"
+
+msgid "a builder"
+msgstr "jemandem, der baut"
+
+msgid "Select its part and turn the view to it"
+msgstr "Sein Teil auswählen und die Ansicht dorthin drehen"
+
+msgid "in Talk"
+msgstr "in Talk"
+
+msgid "Back on its part, here"
+msgstr "Wieder an seinem Teil, hier"
+
+msgid "Done with it: folded away here, and kept in its thread in Talk"
+msgstr "Erledigt: hier eingeklappt und in seinem Thema in Talk behalten"

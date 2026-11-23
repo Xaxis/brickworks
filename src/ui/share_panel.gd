@@ -71,6 +71,14 @@
 ## Publish then says Publish as finished: that version finishes it, said in
 ## the thread too, and from then it ranks as any model does.
 ##
+## And Ask the builders (2026-11-23, askhelp; api/_asks.js): a question about
+## the step open in the studio, posted to Talk's Help board in one press, with
+## the parts picked. A model with no link, or changed since this panel last
+## published it, is published first as Publish or Share progress would (a
+## work in progress stays one, a finished model stays finished); the thread
+## then shows the model in 3D at that step with those parts lit, and its
+## answers on parts come back to the studio (PartPins, main.gd's watch).
+##
 ## Beside Publish, the community guidelines (2026-10-18, web/guidelines.html):
 ## publishing means agreeing to them. And for an account that said it is
 ## under 13 (Account.over_13, supabase/trust.sql), List it in the gallery and
@@ -79,7 +87,15 @@
 class_name SharePanel
 extends PanelContainer
 
+## A question was asked in Talk (Ask the builders): [param said] is the
+## server's answer, {thread, ask, path, url, every}.
+signal asked(said: Dictionary)
+
 const WIDE := 490.0
+## A question's first line is its thread's title: 3 to 120 characters.
+const MOST_TITLE := 120
+## The parts a question may be about, as api/_asks.js takes them.
+const MOST_ASKED := 12
 const TALL := 780.0
 ## The size social sites show a link's picture at.
 const CARD := Vector2i(1200, 630)
@@ -187,6 +203,30 @@ var _progress: Button
 ## what Talk said of the last publish's post ({url} or {why}).
 var wip: bool = false
 var talk: Dictionary = {}
+## What a question is about, from the studio (main.gd): {step, parts}, the
+## step its timeline is on (0: the whole model) and the parts picked, each
+## as a pin sends one ({part, colour, at, turn}) with its words ("the 2 × 4
+## brick, red").
+var ask_context: Callable = Callable()
+## idle, asking, asked, failed.
+var ask_state: String = "idle"
+## The thread the last question opened: {thread, path, url}.
+var asked_thread: Dictionary = {}
+var ask_said: String = ""
+## What was last asked about, for the box and a check.
+var _asking: Dictionary = {}
+var _ask_about: Label
+var _question: LineEdit
+var _ask: Button
+var _ask_open: Button
+## The default question last put in the box, so one typed is never replaced.
+var _question_said: String = ""
+## The model as this panel last published it: its link and the world's
+## revision then. A question about it as it still is needs no new version.
+var _published_for: String = ""
+var _published_revision: int = -1
+## The link whose state (published, work in progress) has been read.
+var _checked_for: String = ""
 var _link_box: VBoxContainer
 var _link: LineEdit
 var _opens_row: HBoxContainer
@@ -394,6 +434,36 @@ func setup() -> void:
 	_enter_said = _line("", 11, 0.75)
 	_enter_said.visible = false
 	column.add_child(_enter_said)
+	# Ask the builders: the open step, its question in Talk.
+	var ask_head: Label = _line("Ask the builders", 13, 0.9)
+	ask_head.autowrap_mode = TextServer.AUTOWRAP_OFF
+	column.add_child(ask_head)
+	_ask_about = _line("", 11, 0.7)
+	column.add_child(_ask_about)
+	var ask_row := HBoxContainer.new()
+	ask_row.add_theme_constant_override("separation", 6)
+	column.add_child(ask_row)
+	_question = LineEdit.new()
+	_question.placeholder_text = "What are you stuck on?"
+	_question.max_length = 4000
+	_question.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_question.custom_minimum_size = Vector2(0, 34)
+	_question.text_submitted.connect(func(_text: String) -> void: ask_builders())
+	ask_row.add_child(_question)
+	_ask = Button.new()
+	_ask.text = "Ask in Talk"
+	_ask.custom_minimum_size = Vector2(0, 34)
+	_ask.focus_mode = Control.FOCUS_NONE
+	_ask.tooltip_text = "Post the question in Talk's Help, with the model in 3D at this step and the " \
+		+ "parts you picked lit. Builders answer on the parts, and the answers light them here."
+	_ask.pressed.connect(ask_builders)
+	ask_row.add_child(_ask)
+	_ask_open = _small(column, "Open the thread", "Open the question's thread in Talk")
+	_ask_open.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_ask_open.visible = false
+	_ask_open.pressed.connect(func() -> void:
+		if asked_thread.has("url"):
+			Outside.open_link(str(asked_thread["url"])))
 	# What publishing agrees to, where it is agreed to.
 	# One line, never wrapped: a wrapping label in a row is given no width
 	# and stands one letter to a line down the panel.
@@ -691,6 +761,7 @@ func open() -> void:
 	_way.select(1 if store.made_with == "assistant" else 0)
 	_follow_enter()
 	_ask_entry()
+	_fresh_ask()
 	if challenge_line != null:
 		challenge_line.call("check_now")
 
@@ -830,6 +901,7 @@ func _check_link(id: String, words: bool = true) -> void:
 			var barred: bool = bool((one as Dictionary).get("barred", false))
 			# Work in progress: Publish then finishes it.
 			wip = up and bool((one as Dictionary).get("wip", false))
+			_checked_for = id
 			if words:
 				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
@@ -1056,6 +1128,9 @@ func publish(as_wip: bool = false) -> void:
 	if said.get("author") is String and body.has("author"):
 		_author.text = str(said["author"])
 	state = "published"
+	_published_for = store.share_id
+	_published_revision = revision
+	_checked_for = store.share_id
 	# Work in progress now, or finished by this one (api/_wip.js), and what
 	# Talk said of its post.
 	wip = bool(said.get("wip", false))
@@ -1106,6 +1181,161 @@ func publish(as_wip: bool = false) -> void:
 	if not prompt_said.is_empty():
 		_status.text = "%s %s" % [_status.text.strip_edges(), prompt_said]
 	_follow_enter()
+
+
+# -- ask the builders --------------------------------------------------------
+
+## What the studio has open to ask about: {step, parts}, the parts at most
+## MOST_ASKED.
+func _context() -> Dictionary:
+	var said: Variant = ask_context.call() if ask_context.is_valid() else {}
+	var context: Dictionary = said if said is Dictionary else {}
+	var parts: Array = context.get("parts", []) if context.get("parts") is Array else []
+	return {"step": int(context.get("step", 0)), "parts": parts.slice(0, MOST_ASKED)}
+
+
+## The question a box starts with: the step that is open, or the model.
+static func question_for(step: int) -> String:
+	return "How should I build step %d?" % step if step > 0 else "How should I build this?"
+
+
+## What a question is about, in words: "Asks in Talk's Help about step 12,
+## with the 2 × 4 brick, red, lit in 3D."
+static func about_words(step: int, parts: Array) -> String:
+	var named := PackedStringArray()
+	for part: Variant in parts.slice(0, 3):
+		var words: String = str((part as Dictionary).get("words", "")) if part is Dictionary else ""
+		named.append(words if not words.is_empty() else "a part")
+	if parts.size() > 3:
+		named.append("%d more" % (parts.size() - 3))
+	if named.is_empty():
+		return ("Asks in Talk's Help about step %d, shown in 3D. " % step if step > 0
+			else "Asks in Talk's Help about the whole model, shown in 3D. ") + "Pick parts first to have them lit."
+	var listed: String = named[0] if named.size() == 1 \
+		else ", ".join(named.slice(0, named.size() - 1)) + " and " + named[named.size() - 1]
+	return "Asks in Talk's Help about step %d, with %s lit in 3D." % [step, listed] if step > 0 \
+		else "Asks in Talk's Help about the whole model, with %s lit in 3D." % listed
+
+
+## What the status line says once it is asked.
+static func asked_words(step: int, lit: int) -> String:
+	var said: String
+	if step > 0:
+		said = "Asked in Talk's Help, step %d in 3D" % step if lit == 0 \
+			else ("Asked in Talk's Help, step %d in 3D with 1 part lit" % step if lit == 1
+			else "Asked in Talk's Help, step %d in 3D with %d parts lit" % [step, lit])
+	else:
+		said = "Asked in Talk's Help, the model in 3D" if lit == 0 \
+			else ("Asked in Talk's Help, the model in 3D with 1 part lit" if lit == 1
+			else "Asked in Talk's Help, the model in 3D with %d parts lit" % lit)
+	return said + ". Answers on a part light it here as they come."
+
+
+## The box and its line as the studio stands now: the default question
+## follows the step, never replacing one typed.
+func _fresh_ask() -> void:
+	if _question == null or ask_state == "asking":
+		return
+	_asking = _context()
+	var step: int = int(_asking["step"])
+	_ask_about.text = about_words(step, _asking["parts"])
+	# In the language in use: it is what is posted, unless it is changed.
+	var question: String = String(TranslationServer.translate(question_for(step)))
+	if _question.text.strip_edges().is_empty() or _question.text == _question_said:
+		_question.text = question
+	_question_said = question
+	_ask.disabled = state in ["publishing", "unpublishing"]
+
+
+## A question's thread title: its first line, cut to MOST_TITLE; one too
+## short for Talk said as the model's.
+func title_of(question: String) -> String:
+	var first: String = question.strip_edges().get_slice("\n", 0).strip_edges()
+	if first.length() > MOST_TITLE:
+		first = first.left(MOST_TITLE - 1).strip_edges() + "…"
+	if first.length() >= 3:
+		return first
+	var name: String = _name.text.strip_edges() if _name != null else ""
+	return (String(TranslationServer.translate("Help with %s")) % name if not name.is_empty()
+		else String(TranslationServer.translate("Help with my model"))).left(MOST_TITLE)
+
+
+## Ask in Talk: the question posted to Talk's Help about the step open, with
+## the parts picked, as the signed-in account. Published first unless this
+## panel published the model as it still is: as Share progress for a work in
+## progress, as Publish for any other, so asking never finishes one or
+## starts one. The status line says where it went, or the server's words.
+func ask_builders() -> void:
+	if ask_state == "asking" or state in ["publishing", "unpublishing"]:
+		return
+	_fresh_ask()
+	var question: String = _question.text.strip_edges()
+	if question.is_empty():
+		question = String(TranslationServer.translate(question_for(int(_asking["step"]))))
+	if account.renewing:
+		_status.text = Account.waiting_words("It is asked")
+	var token: String = await account.access_token()
+	if token.is_empty():
+		_ask_fail("Sign in to Brickworks to ask in Talk.")
+		return
+	ask_state = "asking"
+	_ask.disabled = true
+	_ask.text = "Asking…"
+	_ask_open.visible = false
+	# The link's state read first, so a work in progress publishes as one.
+	if not store.share_id.is_empty() and _checked_for != store.share_id:
+		await _check_link(store.share_id, false)
+	var revision: int = store.world.revision
+	if store.share_id.is_empty() or state != "published" or _published_for != store.share_id \
+			or _published_revision != revision:
+		await publish(wip and not store.share_id.is_empty())
+		if state != "published" or store.share_id.is_empty():
+			_ask_fail("Not asked: %s" % _status.text if not _status.text.is_empty()
+				else "Not asked: it could not be published just now.")
+			return
+	_status.text = "Asking in Talk…"
+	var parts: Array = []
+	for part: Variant in _asking["parts"]:
+		if part is Dictionary:
+			var one: Dictionary = part
+			parts.append({"part": one.get("part", ""), "colour": one.get("colour", 0), "at": one.get("at", []),
+				"turn": one.get("turn")})
+	var step: int = int(_asking["step"])
+	var body: Dictionary = {"model": store.share_id, "step": step if step > 0 else null, "parts": parts,
+		"title": title_of(question), "body": question}
+	if version > 0 and _published_for == store.share_id:
+		body["version"] = version
+	var answer: Dictionary = await shared.talk_ask(token, body)
+	var said: Variant = answer.get("body")
+	if int(answer.get("code", 0)) != 201 or not said is Dictionary:
+		_ask_fail(SharedModels.trouble(answer, "Talk could not take the question just now. Try again in a minute."))
+		return
+	var made: Dictionary = said
+	var thread: Variant = made.get("thread")
+	var path: String = str(made.get("path", ""))
+	asked_thread = {"thread": int((thread as Dictionary).get("id", 0)) if thread is Dictionary else 0,
+		"path": path, "url": str(made.get("url", "")) if made.get("url") is String
+			else SharedModels.talk_link(path)}
+	ask_state = "asked"
+	_ask.disabled = false
+	_ask.text = "Ask in Talk"
+	_ask_open.visible = true
+	ask_said = asked_words(step, parts.size())
+	_status.text = ask_said
+	# The question asked: the box starts again for the next one.
+	_question.text = ""
+	_question_said = ""
+	_fresh_ask()
+	asked.emit(made)
+
+
+func _ask_fail(words: String) -> void:
+	ask_state = "failed"
+	ask_said = words
+	if _ask != null:
+		_ask.disabled = false
+		_ask.text = "Ask in Talk"
+	_status.text = words
 
 
 func unpublish() -> void:
@@ -1187,7 +1417,9 @@ func controls_by_name() -> Dictionary:
 	var named_controls: Dictionary = {"share_name": _name, "share_credit": _credit,
 		"share_about": _about, "share_tags": _tags, "share_kind": _kind,
 		"share_licence": _licence, "share_list": _list, "share_publish": _publish, "share_progress": _progress,
-		"share_guidelines": _guidelines, "share_done": _done}
+		"share_guidelines": _guidelines, "share_done": _done, "share_question": _question, "share_ask": _ask}
+	if _ask_open.is_visible_in_tree():
+		named_controls["share_ask_open"] = _ask_open
 	if _prompt_box.is_visible_in_tree():
 		named_controls["share_prompt"] = _prompt_box
 	if _enter_row.is_visible_in_tree():
@@ -1243,6 +1475,12 @@ func page_state() -> Dictionary:
 		"enter_line": _enter_said.text if _enter_said != null and _enter_said.visible else "",
 		"enter_said": enter_said, "entry": entry.duplicate(),
 		"wip": wip, "talk": talk, "publish_text": _publish.text if _publish != null else "",
+		"ask": {"state": ask_state, "said": ask_said, "thread": asked_thread.duplicate(),
+			"question": _question.text if _question != null else "",
+			"about": _ask_about.text if _ask_about != null else "",
+			"step": int(_asking.get("step", 0)), "parts": (_asking.get("parts", []) as Array).size()
+				if _asking.get("parts") is Array else 0,
+			"disabled": _ask.disabled if _ask != null else true},
 		"progress_disabled": _progress.disabled if _progress != null else true}
 
 
