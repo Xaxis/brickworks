@@ -31,8 +31,8 @@ tools/release/train.sh reship rel-m219 --accept progress "why"  # past a check f
 
 | The branch changed | Lane | What runs | About |
 |---|---|---|---|
-| only `web/`, `api/`, `docs/`, `docs-site/`, `tests/`, `supabase/`, `.claude/`, `*.md`, and tools the export does not run | **web** (chosen by itself; `--web` to insist) | merge with no import; no probe; `ci_gate` beside the deploy; a preview of the live export with this tree's pages and API (`deploy.sh --dir --no-fit`); the checks named, those its change reaches less those proven since (`lean.py`), and site; promote; the live smoke | 15 min |
-| anything else (`src/`, scenes, `assets/`, `locale/`, `project.godot`, `export_presets.cfg`, `tools/mcp_tools.json`, `tools/export.sh` and the scripts it runs) | **full** (`--full` to insist) | merge and import, the headless probes its change reaches (`lean.py`), export once, the same checks with frames, promotion and smoke | 35 min for a change to one part of the app; a core class reaches most probes |
+| only `web/`, `api/`, `docs/`, `docs-site/`, `tests/`, `supabase/`, `.claude/`, `*.md`, and tools the export does not run | **web** (chosen by itself; `--web` to insist) | merge with no import; no probe; `ci_gate` beside the deploy; a preview of the live export with this tree's pages and API (`deploy.sh --dir --no-fit`); the checks named, those its change reaches less those proven since (`lean.py`), and site; promote; the live smoke | 15 min is the aim; 28 measured on a preview at a unit's priority (deploy 4, checks 23, smoke 1), 11-23 |
+| anything else (`src/`, scenes, `assets/`, `locale/`, `project.godot`, `export_presets.cfg`, `tools/mcp_tools.json`, `tools/export.sh` and the scripts it runs) | **full** (`--full` to insist) | merge and import, the headless probes its change reaches (`lean.py`), export once, the same checks with frames, promotion and smoke | 35 min is the aim for a change to one part of the app, not yet measured; a core class reaches most probes |
 
 ### What a release runs (lean.py, fastship 2026-11-23)
 
@@ -79,6 +79,15 @@ Checks run 6 at a time (`PC_AT_ONCE`), probes 6 (`TRAIN_PROBES_AT_ONCE`), and a
 timing check waits at most 180 s for its project to calm
 (`SHIP_SOLO_WAIT`). `ci_gate.sh` runs beside the deploy and the checks;
 main moves only once it passed.
+
+**No check longer than it must be.** A release takes as long as its
+longest check, so the three longest are two checks each, side by side:
+`design` and `design_dark`, `a11y` and `a11y_dark` (light and dark),
+`site_lang` (English and German) and `site_lang_fr_es`. Each visit they make
+is judged alone; on one preview the halves found what the whole did, and
+the longest went from 32 to 23 minutes at a unit's priority (fastship,
+2026-11-23). What still names most checks is a hub file: `api/_talk.js`
+reaches 78, `web/site.css` and `web/follow.js` 73, `api/share.js` 65.
 
 **Nothing made twice.** A reship whose fix touched only `tools/web` (but
 the files the build runs: `deploy_reads.sh`), `tools/release` or `tests/`
