@@ -162,6 +162,14 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .open-split > .open-claude .icon { width: 18px; height: 18px; }
 .open-split > .open-claude .narrow { display: none; }
 @media (width < 600px) { .open-split > .open-claude .wide { display: none; } .open-split > .open-claude .narrow { display: inline; } }
+/* On a phone the control fills the row Download shared, and Download on a
+   row of its own pushed the action bar below the first screen (it ended at
+   866 of 844 at 390 px, gatefix): there Download is More's first item. */
+.more-menu .menu-download { display: none; }
+@media (width < 600px) {
+	.model-page .side:has(.open-claude:not([hidden])) .actions > a[download] { display: none; }
+	.model-page .side:has(.open-claude:not([hidden])) .more-menu .menu-download { display: block; }
+}
 /* What should it change, Copy for Claude and the way to connect it: under
    the row, as Save's lists are, pushing the page down. */
 .claude-panel {

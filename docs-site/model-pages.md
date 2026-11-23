@@ -93,7 +93,7 @@ ui:model page pictures and tabs
 
 ## The buttons {#actions}
 
-- **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`).
+- **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`; on a phone it is in **More**).
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first.
