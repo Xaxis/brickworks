@@ -580,6 +580,10 @@ func _own_version() -> void:
 		await _step("p17_02c_inside", "Edit inside, the part tapped again")
 		_check15("inside it, a tap takes the part alone (%d)" % _builder.selection.size(),
 			_builder.selection.size() >= 1 and _builder.selection.size() < took)
+		# The part in front where the finger came down, which the middle's
+		# nearest may be behind.
+		if not _builder.selection.is_empty():
+			brick = _world.get_brick(int(_builder.selection.keys()[0]))
 	await _tool("colour")
 	await _step("p17_03_colours", "Colour tapped")
 	var was: int = brick.color_code if brick != null else -1

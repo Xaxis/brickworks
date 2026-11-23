@@ -807,7 +807,11 @@ func say(words: String) -> void:
 	var said: String = Phone.touch_words(words)
 	# How many are selected and nothing more: the hint says it, and what a
 	# finger does with them.
+	# And what was said before them is over, so it says it now: a set's
+	# "opened" line stood four seconds over a tower's Edit inside (ux15).
 	if said.ends_with(" selected") and said.trim_suffix(" selected").is_valid_int():
+		_said_until = 0
+		set_process(true)
 		return
 	_said = said
 	_said_until = Time.get_ticks_msec() + 4000
