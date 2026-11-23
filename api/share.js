@@ -3704,18 +3704,20 @@ export async function publishModel(claims, body, request, { test = isTestAccount
     }, "share: first model");
   }
 
-  // What a remix changed from the version of the model it was copied from,
-  // counted once and kept with it (api/_remix.js): begun only once the
-  // answer below is written (afterAnswer runs it after this code), so the
-  // publish waits on neither the original's file nor the count.
-  if (remixedFrom) {
-    countAfter({ id, n, text: model, from: remixedFrom, said: remixedFromVersion, since: existing ? null : now, getFile });
-  }
   const origin = originOf(request);
   // A copy of the template of this week's quick build, published in the
   // gallery, enters it; prompt_out (the dialog's one tap) keeps it out
   // (api/_prompts.js). Never in the way of the publish.
   const prompt = await promptOnPublish(origin, owner, id, remixedFrom, body.prompt_out === true);
+  // What a remix changed from the version of the model it was copied from,
+  // counted once and kept with it (api/_remix.js): begun only once the
+  // answer is written (countAfter waits a turn past this code and the
+  // caller's await on it), so the publish waits on neither the original's
+  // file nor the count. Last before the answer: an await after it would
+  // let the count start first.
+  if (remixedFrom) {
+    countAfter({ id, n, text: model, from: remixedFrom, said: remixedFromVersion, since: existing ? null : now, getFile });
+  }
   return { status: existing ? 200 : 201, answer: {
     id, name, author, parts, bytes, published: true, updated: Boolean(existing),
     listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
