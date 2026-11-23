@@ -96,6 +96,7 @@ var _found_said: Label
 var _keep: CheckBox
 var _typed: Timer
 var _named: Dictionary = {}
+var _bringing: bool = false
 
 
 func _ready() -> void:
@@ -240,11 +241,14 @@ func _ready() -> void:
 
 
 ## Shown, with [param saved] (ModelStore.Entry, newest first) in Continue,
-## and what the server says asked for at once.
-func open(saved: Array) -> void:
+## and what the server says asked for at once. [param bringing]: the
+## account's models are on their way to this device (CloudModels), and
+## set_models lists them when they are here.
+func open(saved: Array, bringing: bool = false) -> void:
 	shown_ms = Time.get_ticks_msec()
 	filled_ms = -1
 	visible = true
+	_bringing = bringing
 	_lay()
 	set_models(saved)
 	_title.text = "Welcome back"
@@ -255,6 +259,8 @@ func open(saved: Array) -> void:
 ## Continue's models: [param saved] as ModelStore lists them, its first
 ## few, each with its link where it has one (its picture is its card's).
 func set_models(saved: Array) -> void:
+	if not saved.is_empty():
+		_bringing = false
 	models.clear()
 	for entry: Variant in saved:
 		if models.size() >= CONTINUE_MOST:
@@ -352,6 +358,8 @@ func _find(words: String) -> void:
 func _fill_continue() -> void:
 	_clear(_continue)
 	_continue_none.visible = models.is_empty()
+	_continue_none.text = "Bringing your models here from your account…" if _bringing \
+		else "Nothing saved yet: a model you save is here next time, on any device you sign in on."
 	var n: int = 0
 	for one: Dictionary in models:
 		var facts: String = "%s · %s" % [_parts_words(int(one["bricks"])), _ago_unix(int(one["modified"]))]
@@ -581,7 +589,10 @@ func _tile(title: String, facts: String, picture: String, picture_size: Vector2)
 	tile.mouse_filter = Control.MOUSE_FILTER_PASS
 	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	tile.clip_contents = true
-	tile.custom_minimum_size = Vector2(picture_size.x, picture_size.y + 50.0)
+	# As wide as its column, which the grid shares out (_lay): a phone's two
+	# columns are narrower than a picture's own width.
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tile.custom_minimum_size = Vector2(0, picture_size.y + 50.0)
 	_face_button(tile, Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.09))
 	var inside := VBoxContainer.new()
 	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE

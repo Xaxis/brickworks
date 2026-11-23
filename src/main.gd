@@ -6873,6 +6873,12 @@ func _build_ui() -> void:
 	_cloud.short_of_room.connect(_full_offer.tell)
 	_cloud.looked.connect(_open_theirs)
 	_cloud.looked.connect(_maybe_start)
+	# The account's list is enough to know it keeps a model: the first screen
+	# goes up then, and its Continue is filled once they are all here.
+	_cloud.list_answered.connect(_maybe_start)
+	_cloud.looked.connect(func() -> void:
+		if _studio_start != null and _studio_start.visible:
+			_studio_start.call("set_models", _store.list_saved()))
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -10814,7 +10820,7 @@ func _maybe_start() -> void:
 			_camera.frame(_built_bounds())
 		return
 	_start_decided = true
-	_studio_start_now().call("open", saved)
+	_studio_start_now().call("open", saved, saved.is_empty())
 
 
 ## StudioStart, made the first time: over the model, under the sign-in screen.

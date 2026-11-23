@@ -16973,3 +16973,7 @@ msgstr "Der Kommentar von %s ist an diesem Teil: „%s“"
 
 msgid "%s commented: “%s” — reply on its page"
 msgstr "%s hat kommentiert: „%s“ — antworte auf seiner Seite"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Bringing your models here from your account…"
+msgstr "Deine Modelle kommen aus deinem Konto hierher…"

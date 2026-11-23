@@ -93,6 +93,9 @@ signal short_of_room(words: String, pro: String)
 ## A look at the account ended, its models here as it keeps them: [member
 ## newest] names the one saved last.
 signal looked
+## The account's list answered, before any model is fetched: [member newest]
+## says already whether it keeps any (the studio's first screen, StudioStart).
+signal list_answered
 
 ## The account's model saved last, as its list said at the last look; ""
 ## when it keeps none. What a returning person opens on (Main._open_theirs).
@@ -238,6 +241,7 @@ func _sync_once() -> void:
 				newest = str(one["name"])
 	var kept: Variant = (listed["body"] as Dictionary).get("kept")
 	room = kept if kept is Dictionary else {}
+	list_answered.emit()
 	var sent: int = 0
 	var fetched: int = 0
 	var gone: int = 0
