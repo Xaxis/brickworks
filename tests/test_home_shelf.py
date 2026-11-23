@@ -115,6 +115,6 @@ def test_an_open_challenge_is_written_with_its_days():
     answers["shelves"] = {**answers["shelves"], "challenge": {"title": "Microscale", "brief": "Small & mighty.", "state": "open",
                                                               "test": False, "starts_on": "2026-11-01", "ends_on": "2026-11-30"}}
     _, page = written(answers, "fr")
-    assert '<h2 id="challenge-h" lang="en">Microscale</h2>' in page
+    assert '<h3 id="challenge-h" lang="en">Microscale</h3>' in page
     assert '<p id="challenge-brief" lang="en">Small &amp; mighty.</p>' in page
     assert '<p class="note" id="challenge-days">1–30 novembre</p>' in page

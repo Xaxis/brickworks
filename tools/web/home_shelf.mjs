@@ -199,7 +199,7 @@ export function filled(page, code, plan, copied) {
   const c = plan.challenge;
   if (c) {
     // Its maker's words, as written (English): marked so; its days in the page's.
-    text = text.replace(/<h2 id="challenge-h">[^<]*<\/h2>/, `<h2 id="challenge-h" lang="en">${escapeHtml(c.title)}</h2>`);
+    text = text.replace(/<h3 id="challenge-h">[^<]*<\/h3>/, `<h3 id="challenge-h" lang="en">${escapeHtml(c.title)}</h3>`);
     if (c.brief) text = text.replace(/<p id="challenge-brief">[^<]*<\/p>/, `<p id="challenge-brief" lang="en">${escapeHtml(c.brief)}</p>`);
     const span = days(c.starts_on, c.ends_on, code || "en-GB");
     if (span) text = text.replace(/<p class="note" id="challenge-days">[^<]*<\/p>/, `<p class="note" id="challenge-days">${escapeHtml(span)}</p>`);

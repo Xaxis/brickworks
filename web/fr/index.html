@@ -59,12 +59,12 @@
 }
 .home-words .lede { margin: 0 0 var(--s-5); max-width: 52ch; }
 /* The search and Start building in a row, the search taking what is left;
-   on a phone one over the other, each the whole width. */
+   on a phone one over the other, each the whole width. Both at the 44 px
+   every field and button is (docs/DESIGN_SYSTEM.md): the search was 52 and
+   Start building a big one, the only field on the site drawn its own size
+   (landfix, 2026-11-22). */
 .home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
 .find { position: relative; flex: 1 1 320px; min-width: 0; }
-.find .search input { min-height: 52px; font-size: var(--t-body); }
-.find .search .icon { top: 16px; }
-.find .search .hint { top: 15px; }
 .home-acts > .cta { flex: none; }
 @media (width < 600px) {
 	.home-acts > .cta { flex: 1 1 100%; justify-content: center; }
@@ -95,8 +95,8 @@
    a phone. Every line holds its room from the first frame, so what the
    server says fills it and moves nothing. */
 .home-challenge .words { padding: var(--s-5); }
-/* Its name a tile's heading, as an h3 is, though it is the page's second level. */
-.home-challenge h2 { margin: 0; font-size: var(--t-h3); line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
+/* Its name a tile's heading: an h3 at --t-h3, a part of the first screen. */
+.home-challenge h3 { margin: 0; font-size: var(--t-h3); line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
 .home-challenge .badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
 .home-challenge #challenge-left[hidden] { display: inline-flex !important; visibility: hidden; }
 #challenge-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2lh; }
@@ -110,9 +110,9 @@
 @media (width < 900px) { .shelf { margin-top: 0; } }
 .shelf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-3); border-bottom: 1px solid var(--line); }
 /* The tabs scroll in themselves where a language's words outrun a phone
-   (Echte Sets in 3D), their underline kept on the line under them. */
-.shelf-head .tabs { margin: 0 0 -1px; padding-bottom: 1px; border-bottom: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.shelf-head .tabs::-webkit-scrollbar { display: none; }
+   (Echte Sets in 3D), their underline kept on the line under them, with the
+   thin scrollbar every row has (site.css .tabs), shown under a pointer. */
+.shelf-head .tabs { margin: 0 0 -1px; padding-bottom: 1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
 @media (width < 600px) {
 	.shelf-head { gap: var(--s-2); }
 	.shelf-head .tabs button { padding: 0 var(--s-2); }
@@ -249,7 +249,7 @@
 							</label>
 							<div class="find-list" id="find-list" role="listbox" aria-label="Ce que trouve la recherche" hidden></div>
 						</form>
-						<a class="cta big" href="/app?lang=fr">Commencer à construire <span class="arrow" aria-hidden="true">→</span></a>
+						<a class="cta" href="/app?lang=fr">Commencer à construire <span class="arrow" aria-hidden="true">→</span></a>
 					</div>
 					<p class="note">Gratuit, sans rien à installer. <a href="/fr/compare">Comparé à Studio</a></p>
 				</div>
@@ -261,7 +261,7 @@
 				<article class="tile challenge home-challenge" id="challenge" aria-labelledby="challenge-h">
 					<div class="words">
 						<p class="badges"><span class="badge accent" id="challenge-when">Chaque mois</span><span class="badge good" id="challenge-left" hidden></span></p>
-						<h2 id="challenge-h">Un nouveau défi</h2>
+						<h3 id="challenge-h">Un nouveau défi</h3>
 						<p id="challenge-brief">Construisez selon le thème du mois, à la main ou avec de l’aide, et les constructeurs votent pour leurs préférés.</p>
 						<p class="note" id="challenge-days">Un nouveau thème chaque mois</p>
 						<p class="go-on"><a class="cta ghost" href="/fr/challenge" id="challenge-go">Voir le défi</a></p>
