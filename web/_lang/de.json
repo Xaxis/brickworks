@@ -3558,6 +3558,12 @@
   "Say what you think of it": "Sag, was du davon hältst",
   "All its comments": "Alle Kommentare",
   "Opening the studio…": "Das Studio wird geöffnet…",
-  "The Brickworks studio, with {name}": "Das Brickworks-Studio, mit {name}"
+  "The Brickworks studio, with {name}": "Das Brickworks-Studio, mit {name}",
+  "{who} sent you a change from their remix {name}: {changes}": "{who} hat dir eine Änderung aus dem Remix {name} geschickt: {changes}",
+  "{who} sent you a change from their remix {name}": "{who} hat dir eine Änderung aus dem Remix {name} geschickt",
+  "The designer": "Der Designer",
+  "{who} took your change into {name}": "{who} hat deine Änderung in {name} übernommen",
+  "{who} took part of your change into {name}": "{who} hat einen Teil deiner Änderung in {name} übernommen",
+  "their model": "sein Modell"
  }
 }

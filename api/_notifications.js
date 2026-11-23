@@ -196,6 +196,24 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     return { ...base, who: base.who || say("Somebody"), link: `${origin}/m/${model}`,
       line: say("{who} remixed it as {name}").replace("{name}", quote(quoted(row.name || say("a model"), 80))) };
   }
+  if (row.kind === "suggestion") {
+    // A remixer sent their change back (supabase/suggestions.sql): opened
+    // in the studio, as Compare, to take all of it or part.
+    const changes = suggestionLine(row.counts);
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.note, 240),
+      link: `${origin}/app?suggestion=${Number(row.suggestion) || 0}`, suggestion: Number(row.suggestion) || 0,
+      line: changes ? say("{who} sent you a change from their remix {name}: {changes}")
+        .replace("{name}", quote(quoted(row.name || say("a model"), 80))).replace("{changes}", changes)
+        : say("{who} sent you a change from their remix {name}").replace("{name}", quote(quoted(row.name || say("a model"), 80))) };
+  }
+  if (row.kind === "suggestion_taken") {
+    // The designer took it into a version of their model.
+    const of = ID.test(String(row.of || "")) ? row.of : model;
+    const n = Number(row.n) || 0;
+    return { ...base, who: base.who || say("The designer"), link: `${origin}/m/${of}${n ? `/v/${n}` : ""}`,
+      line: (row.whole === true ? say("{who} took your change into {name}") : say("{who} took part of your change into {name}"))
+        .replace("{name}", quote(quoted(row.name || say("their model"), 80))) };
+  }
   if (row.kind === "likes") {
     return { ...base, link: `${origin}/m/${model}`,
       line: `${counted(Number(row.likes) || 0, "new like", "new likes")} ${dayWords(row.day, now)}`.trim() };
@@ -230,6 +248,36 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
       : say("won {title} among the models built by hand, with {votes}", { title, votes }) };
   }
   return { ...base, link: `${origin}/m/${model}`, line: say("something happened") };
+}
+
+/// What a change sent back changes, kind by kind, as a notification says
+/// it: "2 added, 1 moved"; "" for none.
+export function suggestionLine(counts) {
+  const words = { added: (n) => say("{n} added", { n }), removed: (n) => say("{n} taken away", { n }),
+    moved: (n) => say("{n} moved", { n }), recoloured: (n) => say("{n} recoloured", { n }),
+    swapped: (n) => say("{n} swapped", { n }), restepped: (n) => say("{n} to another step", { n }) };
+  return Object.keys(words).filter((kind) => Number.isInteger(counts?.[kind]) && counts[kind] > 0)
+    .map((kind) => words[kind](counts[kind])).join(", ");
+}
+
+/// [listed] (notification_list's page) with what [viewer] hears of changes
+/// sent back (supabase/suggestions.sql suggestion_notices) among its rows,
+/// newest first, and the models those are about among its models; as it
+/// was before that file.
+async function withSuggestions(listed, viewer) {
+  const rows = await call("suggestion_notices", { viewer, since: null }, () => null).catch((trouble) => {
+    console.error(`notifications: changes sent back: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return null;
+  });
+  if (!Array.isArray(rows) || rows.length === 0) return listed;
+  const all = [...(listed.rows || []), ...rows].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 200);
+  const models = { ...(listed.models || {}) };
+  const wanted = [...new Set(rows.map((row) => String(row.on || "")).filter((id) => ID.test(id) && !models[id]))];
+  if (wanted.length) {
+    const cards = await db(`shared_models?id=in.(${wanted.join(",")})&select=id,name,has_image,has_thumb,updated_at`).catch(() => []);
+    for (const card of cards) models[card.id] = card;
+  }
+  return { ...listed, rows: all, models };
 }
 
 /// The rows of notification_list, grouped by the model they are about,
@@ -344,8 +392,9 @@ export async function notifications(request, response, { origin }) {
   // Opened: what was counted is seen now, with any level reached since.
   await marked(asker);
   const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
-  const listed = page && page.missing ? await listBefore(asker, true) : page;
-  if (!listed) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
+  const before = page && page.missing ? await listBefore(asker, true) : page;
+  if (!before) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
+  const listed = await withSuggestions(before, asker);
   // Nothing by anybody they blocked, nor about a model of theirs: a remix
   // of yours whose maker is unnamed, a reply on their model.
   const handles = await blockedHandles(asker);
@@ -416,15 +465,18 @@ export async function notificationsRead(request, response) {
 /// before until that file is applied. A level reached is written down
 /// first, so it is in the count at once.
 export async function newCounts(asker) {
-  const [both, since, barred] = await Promise.all([
+  const [both, since, barred, suggested] = await Promise.all([
     marked(asker).then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
     call("feed_new_count", { viewer: asker }, () => null),
     // Counted again without what their blocks leave out of the lists
     // (supabase/block.sql), for somebody who blocked anybody.
     blockCounts(asker),
+    // Changes sent back to them, or of theirs taken, since they last
+    // looked (supabase/suggestions.sql): blocks already left out.
+    call("suggestion_new_count", { viewer: asker }, () => 0).catch(() => 0),
   ]);
   if (both && !both.missing) {
-    const notices = barred ? barred.notifications : Number(both.notifications) || 0;
+    const notices = (barred ? barred.notifications : Number(both.notifications) || 0) + (Number(suggested) || 0);
     const feed = barred ? barred.feed : since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0;
     return { count: Math.min(notices + feed, 99), notifications: notices, feed, ready: true };
   }

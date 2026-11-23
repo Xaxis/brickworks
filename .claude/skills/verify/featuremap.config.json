@@ -6460,6 +6460,20 @@
     },
     {
       "kind": "lib",
+      "label": "a change sent back and taken",
+      "entry": "api/_suggest.js",
+      "reach": "python3 tools/minitest.py tests/test_suggest.py   (suggestedit: each class of edit (add, remove, move, recolour, swap, another step, a step of its own, inside a sub-model, a sub-model of its own) made to 16 real sets of vendor/omr (tests/fixtures/suggest/check.mjs), taken whole, every change ticked, each alone and all but each, read again and held to the model it should be part for part and step for step; nothing taken is the designer's file byte for byte; their header, comments, metas and line ends kept; bound metas and brackets; the bell's lines. node tests/fixtures/suggest/check.mjs vendor/omr/files/*.mpd for every set)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "suggested edits",
+      "entry": "api/_suggestions.js",
+      "reach": "POST /api/share?op=suggest {remix, note}; GET ?op=suggestion&id=N; POST ?op=suggestion_merge {id, n, take}; POST ?op=suggestion_close; GET ?op=suggestions&id=X; a publish's {suggestion}   (supabase/suggestions.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/suggestions.sql --dry --try=tools/suggestions_try.sql --table=model_suggestions: sent, sent again, refused, heard of by the designer at once, listed for them alone, taken as a version, heard of by the remixer)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
       "label": "what a remix changed",
       "entry": "api/_remix_changes.js",
       "reach": "python3 tools/minitest.py tests/test_remix_changes.py   (remixdiff: the 12 pairs of tests/fixtures/remix_pairs counted as expected.json says, which PROBE compare_probe holds the app's Compare to; the line, the runs the 3D view lights, which version it is counted against, the tree both ways; a remix published through api/share.js (tests/fixtures/remix_pairs/publish.mjs) counted once its answer is written; supabase/remix_changes.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/remix_changes.sql --dry --try=tools/remix_changes_try.sql --table=remix_changes)",

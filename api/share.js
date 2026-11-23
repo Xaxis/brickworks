@@ -300,6 +300,8 @@ import { changedLineHtml, changesAnswer, countAfter, ownChanges, treeHtml, treeO
 import { NOT_YET as WIP_NOT_YET, SHOWN as WIP_SHOWN, finish as finishWip, isWip, postVersion, wipReady } from "./_wip.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
+import { checkSuggestion, closeAnswer, listOf as suggestionsOf, markTaken, mergeAnswer, sendSuggestion,
+  suggestionAnswer } from "./_suggestions.js";
 import { freshPool, heldOf, keyed, missingOf, ownedKey, poolOf, readShard, shardOf } from "./_owned.js";
 // Every set in the catalogue, a page each (sets364), and the picture drawn
 // of one LDraw has no model of.
@@ -2410,6 +2412,17 @@ async function read(request, response) {
   const origin = originOf(request);
 
   if (op === "mine") return mine(request, response, origin);
+  // A change a remixer sent back (api/_suggestions.js): one, for its
+  // designer or its sender; and a model's, open ones for its designer alone.
+  if (op === "suggestion") {
+    response.setHeader("Cache-Control", "private, no-store");
+    return response.status(200).json(await suggestionAnswer(await verify(bearer(request), request), request.query, { getFile }));
+  }
+  if (op === "suggestions") {
+    response.setHeader("Cache-Control", "private, no-store");
+    const viewer = bearer(request) ? (await verify(bearer(request), request)).sub : null;
+    return response.status(200).json(await suggestionsOf(id, viewer));
+  }
   if (op === "tested") return testedOwn(request, response);
   if (op === "clip_need") return clipNeed(request, response);
   if (op === "sweep") return sweep(request, response);
@@ -3552,6 +3565,8 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // motions' names, from the text itself (supabase/motions.sql).
   const moves = checkMoves(body.moves);
   const motions = motionsIn(model);
+  // A change a remixer sent back that this version takes (api/_suggestions.js).
+  const suggestion = checkSuggestion(body.suggestion);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   // A credit is the person's profile, by its name, when they have one shown
@@ -3787,6 +3802,9 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // counted from those needs against every set's inventory: after the
   // answer, so the publish never waits on it.
   if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
+  // The change it takes, marked taken by this version: its sender is
+  // named in its Versions and hears of it. Never stops the publish.
+  const suggested = suggestion && existing ? await markTaken(owner, id, n, suggestion) : null;
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
@@ -3834,7 +3852,8 @@ export async function publishModel(claims, body, request, { test = isTestAccount
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...links(origin, id),
+    made_with: madeKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...(suggested ? { suggestion: suggested } : {}),
+    ...links(origin, id),
   } };
 }
 
@@ -4402,6 +4421,15 @@ async function handler(request, response) {
     if (op === "built") return await built(request, response);
     if (op === "bases") return await basesPut(request, response);
     if (op === "clip") return await clipPut(request, response);
+    if (op === "suggest") {
+      const { status, answer } = await sendSuggestion(await verify(bearer(request), request), request.body, { getFile,
+        origin: originOf(request) });
+      return response.status(status).json(answer);
+    }
+    if (op === "suggestion_merge") {
+      return response.status(200).json(await mergeAnswer(await verify(bearer(request), request), request.body, { getFile }));
+    }
+    if (op === "suggestion_close") return response.status(200).json(await closeAnswer(await verify(bearer(request), request), request.body));
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
