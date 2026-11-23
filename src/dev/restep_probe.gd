@@ -130,10 +130,17 @@ func _restep(path: String, into: String) -> void:
 		print("    line %d (%s) from step %d of %s to %d" % [line + 1, file.lines[line].strip_edges().get_slice(" ", 14),
 			file.was[line] + 1, file.section_name(line), int(file.block[line]) + 1])
 	for line: int in left:
-		print("    left: line %d (%s), %s" % [line + 1, file.lines[line].strip_edges(), left[line]])
+		print("    once in the air past every part of its section: line %d (%s)" % [line + 1,
+			file.lines[line].strip_edges()])
+	# Left: those still in the air at the end, which no later step of their
+	# own section holds.
+	var still: int = 0
+	for float_at: Array in now["floats"]:
+		if left.has(int(_line_of(now, int(float_at[0]), int(float_at[1]), file)[0])):
+			still += 1
 	_check("%s: in the air %d (was %d; %d only a flattening could hold); hidden %d (was %d)"
-		% [path, now["floats"].size(), first["floats"].size(), left.size(), now["hidden"].size(),
-		first["hidden"].size()], now["floats"].size() == left.size())
+		% [path, now["floats"].size(), first["floats"].size(), still, now["hidden"].size(),
+		first["hidden"].size()], now["floats"].size() == still)
 	var others: Array = Restepped.other_changes(text, made)
 	_check("%s: every other line the file's, in its section (%d changed: %s)" % [path, others.size(),
 		others.slice(0, 3)], others.is_empty())
@@ -414,13 +421,15 @@ class Restepped extends RefCounted:
 			tail -= 1
 		var count: int = blocks[section_of[from]]
 		var parts_in: Array = []
+		# Each step's lines in an Array: a PackedStringArray read out of an
+		# Array is a copy, and what was appended to it went nowhere.
 		var kept: Array = []
 		for _b: int in count:
 			parts_in.append(0)
-			kept.append(PackedStringArray())
+			kept.append([])
 		var moved_in: Array = []
 		for _b: int in count:
-			moved_in.append(PackedStringArray())
+			moved_in.append([])
 		var at: int = 0
 		var steps_at: Array = []        # the file's STEP lines, by the step they open
 		for n: int in range(from, tail):
@@ -432,23 +441,23 @@ class Restepped extends RefCounted:
 			if block.has(n):
 				parts_in[int(block[n])] += 1
 				if int(block[n]) == at:
-					(kept[at] as PackedStringArray).append(lines[n])
+					(kept[at] as Array).append(lines[n])
 				else:
 					if n > from and _attached(n - 1):
-						(moved_in[int(block[n])] as PackedStringArray).append(lines[n - 1])
-					(moved_in[int(block[n])] as PackedStringArray).append(lines[n])
+						(moved_in[int(block[n])] as Array).append(lines[n - 1])
+					(moved_in[int(block[n])] as Array).append(lines[n])
 				continue
 			if _attached(n) and int(block[n + 1]) != at:
 				continue
-			(kept[at] as PackedStringArray).append(lines[n])
+			(kept[at] as Array).append(lines[n])
 		var out := PackedStringArray()
 		var any_before: bool = false
 		for b: int in count:
 			var has_parts: bool = int(parts_in[b]) > 0
 			if b > 0 and has_parts and any_before:
 				out.append(steps_at[b - 1] if b - 1 < steps_at.size() else "0 STEP")
-			out.append_array(moved_in[b])
-			out.append_array(kept[b])
+			out.append_array(PackedStringArray(moved_in[b]))
+			out.append_array(PackedStringArray(kept[b]))
 			any_before = any_before or has_parts
 		for n: int in range(tail, to):
 			out.append(lines[n])
