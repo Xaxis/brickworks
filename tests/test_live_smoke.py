@@ -24,7 +24,11 @@ case "$1" in
     printf 'Vercel CLI 48.12.1\n> Fetched deployment "%s" in team\n\n  General\n\n    id\t\tdpl_x\n    url\t\thttps://%s\n' "$d" "$d" >&2 ;;
   alias|rollback)
     n=$(cat "$STUB/moves" 2>/dev/null || echo 0); echo $((n + 1)) > "$STUB/moves"
-    if [ "$n" -lt "${STUB_MOVE_FAILS:-0}" ]; then echo "Error: a rollback or promotion is in progress (409)" >&2; exit 1; fi
+    if [ "$n" -lt "${STUB_MOVE_FAILS:-0}" ]; then
+      # STUB_MOVED_ANYWAY: refused in words, but moved (the CLI's own wait ran out after the move).
+      [ -n "${STUB_MOVED_ANYWAY:-}" ] && { [ "$1" = alias ] && echo "${3#https://}" > "$STUB/points.$4" || echo "${2#https://}" > "$STUB/points.brickworks.diy"; }
+      echo "Error: a rollback or promotion is in progress (409)" >&2; exit 1
+    fi
     if [ "$1" = alias ]; then to=$3 domain=$4; else to=$2 domain=brickworks.diy; fi
     [ -n "${STUB_STUCK:-}" ] || echo "${to#https://}" > "$STUB/points.$domain"
     echo "> Success! $domain now points to $to" ;;
@@ -166,6 +170,8 @@ def _points(stub: pathlib.Path, domain: str, url: str) -> None:
 
 
 def test_arguments_it_does_not_take_are_refused_before_anything_runs(tmp_path):
+    # ship.sh runs it as "$HERE/live_smoke.sh", as it runs release_live.sh.
+    assert os.access(SCRIPT, os.X_OK), f"{SCRIPT} is not executable"
     stub = _stub(tmp_path)
     for args in [(), ("promote",), ("current", "a", "b"), ("check",), ("check", "brickworks.diy"),
                  ("check", "https://x.vercel.app/app"), ("check", "https://a", "https://b"),
@@ -297,6 +303,23 @@ def test_a_refused_move_is_asked_once_more_then_given_up(tmp_path):
     assert "live_smoke: rolled back" not in run.stdout and not _read(stub, "rpc.log")
 
 
+def test_a_refusal_after_the_move_was_made_is_not_asked_again(tmp_path):
+    stub = _stub(tmp_path)
+    _points(stub, "brickworks.diy", BAD)
+    run = _run(stub, "guard", "brickworks.diy", GOOD, "rel-m9", STUB_MOVE_FAILS="1", STUB_MOVED_ANYWAY="1")
+    assert run.returncode == 3, run.stdout
+    assert _read(stub, "moves").strip() == "1" and "refused" not in run.stdout, run.stdout
+    assert "live_smoke: rolled back brickworks.diy to " in run.stdout, run.stdout
+
+
+def test_the_gallerys_model_ids_are_checked_before_a_page_is_asked(tmp_path):
+    stub = _stub(tmp_path)
+    (stub / "site.example.test").write_text("good\n")
+    run = _run(stub, "check", "https://example.test", STUB_LOOK="  ok    home: fine  [1.0s]\n")
+    assert run.returncode == 0 and "its first model with a picture is BBBBBBBBBB" in run.stdout, run.stdout
+    assert "/m/AAAAAAAAAA" not in _read(stub, "curl.log"), "a model with no picture was asked for"
+
+
 def test_a_move_the_domain_never_shows_is_1_with_no_rolled_back_line(tmp_path):
     stub = _stub(tmp_path)
     _points(stub, "brickworks-x-rb.vercel.app", BAD)
@@ -337,6 +360,15 @@ def test_check_passes_a_good_site_through_the_browser_and_keeps_the_bypass_at_ho
     # Not a deployment's own URL: no GET carried the bypass.
     asked = _read(stub, "curl.log").splitlines()
     assert asked and all(line.endswith("bypass=False") for line in asked), asked
+
+
+def test_the_gets_alone_say_so_and_start_no_browser(tmp_path):
+    stub = _stub(tmp_path)
+    (stub / "site.example.test").write_text("good\n")
+    run = _run(stub, "check", "https://example.test", LIVE_SMOKE_BROWSER="0")
+    assert run.returncode == 0 and not _read(stub, "heavy.log"), run.stdout
+    assert run.stdout.strip().splitlines()[-1].startswith("live_smoke: passed https://example.test (build abc1234 of abc1234, ")
+    assert " (GETs only): home, /m/BBBBBBBBBB, /app; no Talk on this build" in run.stdout, run.stdout
 
 
 def test_check_without_a_browser_has_no_verdict_and_with_a_failing_one_says_why(tmp_path):

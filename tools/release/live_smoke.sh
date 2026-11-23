@@ -76,6 +76,9 @@
 #   LIVE_SMOKE_VERCEL   the vercel command (npx --yes vercel@48)
 #   LIVE_SMOKE_CHECK    the check guard runs ("this script" check)
 #   LIVE_SMOKE_HEAVY    the heavy the browser runs under (~/.claude/claude-core/bin/heavy)
+#   LIVE_SMOKE_BROWSER=0  the GETs alone, said in its passed line: to prove the
+#                       rollback's own steps on a throwaway alias while heavy's
+#                       queue is full; never in a release
 #   LIVE_SMOKE_OUT      where the browser's pictures go (a fresh folder)
 #   LIVE_SMOKE_HEAVY_WAIT (1200) LIVE_SMOKE_BROWSER_S (420) LIVE_SMOKE_AGAIN_WAIT (20)
 #   LIVE_SMOKE_SERVES_WAIT (180) LIVE_SMOKE_POLL (5)
@@ -197,13 +200,13 @@ check() {
     fail "the gallery's list (/api/share?op=list) answers $(answer)"
   else
     said=$(python3 -I -c '
-import json, sys
+import json, re, sys
 try:
     models = json.load(open(sys.argv[1])).get("models") or []
 except Exception:
     print("not json"); sys.exit()
 for one in models:
-    if one.get("image") and len(str(one.get("id", ""))) == 10:
+    if one.get("image") and re.fullmatch(r"[A-Za-z0-9]{10}", str(one.get("id", ""))):
         print("model", one["id"], " ".join(str(one.get("name") or "").split())); sys.exit()
 print("none", len(models))' "$tmp/body")
     case "$said" in
@@ -267,10 +270,13 @@ print(title)' "$tmp/body")
   esac
 
   # The browser, only over pages that answered.
-  local verdict=0 why=""
+  local verdict=0 why="" gets=""
   if [ ${#fails[@]} -gt 0 ]; then
     echo "  (the browser does not look: the pages' GETs failed)"
     verdict=1
+  elif [ "${LIVE_SMOKE_BROWSER:-1}" = 0 ]; then
+    echo "  (the browser does not look: LIVE_SMOKE_BROWSER=0, the GETs alone)"
+    gets=" (GETs only)"
   else
     local browser=() look lcode
     # Its pictures: kept in LIVE_SMOKE_OUT, else in a folder of their own that a pass takes away.
@@ -305,7 +311,7 @@ print(title)' "$tmp/body")
     echo "live_smoke: not checked $origin: $why"
     return 2
   fi
-  echo "live_smoke: passed $origin ($about): home, /m/$model, /app$([ "$talk" = 1 ] && echo ", Talk" || echo "; no Talk on this build")"
+  echo "live_smoke: passed $origin ($about)$gets: home, /m/$model, /app$([ "$talk" = 1 ] && echo ", Talk" || echo "; no Talk on this build")"
   return 0
 }
 
@@ -353,10 +359,15 @@ guard() {
     *" $domain "*) moving() { vc 300 rollback "$previous" --yes --timeout 3m 2>&1; } ;;
     *) moving() { vc 120 alias set "$previous" "$domain" 2>&1; } ;;
   esac
-  if ! said=$(moving); then
-    echo "live_smoke: the first ask to move $domain was refused ($(tail -1 <<< "$said" | cut -c1-200)); again in 30 s"
+  # A refusal may come after the move was made (the CLI's own wait ran out):
+  # the domain serving the build before is the answer, whatever was said.
+  if ! said=$(moving) && [ "$(build_of "https://$domain")" != "$prev_build" ]; then
+    echo "live_smoke: the first ask to move $domain was refused ($(tail -1 <<< "$said" | cut -c1-200)); again in ${LIVE_SMOKE_REFUSED_WAIT:-30} s"
     sleep "${LIVE_SMOKE_REFUSED_WAIT:-30}"
-    said=$(moving) || { echo "live_smoke: FAILED, could not roll $domain back to $previous: $(tail -2 <<< "$said" | tr '\n' ' ' | cut -c1-300)"; return 1; }
+    if ! said=$(moving) && [ "$(build_of "https://$domain")" != "$prev_build" ]; then
+      echo "live_smoke: FAILED, could not roll $domain back to $previous: $(tail -2 <<< "$said" | tr '\n' ' ' | cut -c1-300)"
+      return 1
+    fi
   fi
   # Moved is not served: done once the domain names the build before's files.
   local until=$((SECONDS + ${LIVE_SMOKE_SERVES_WAIT:-180})) now=""
