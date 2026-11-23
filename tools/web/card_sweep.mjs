@@ -53,8 +53,21 @@ if (!SUPABASE || !SECRET) {
 }
 const headers = { apikey: SECRET, authorization: `Bearer ${SECRET}` };
 
+// A request sent again once when the connection itself failed: the files
+// are read, then the drawing holds this process for many minutes in the
+// GPU's queue, and the first request after it went down a kept-alive
+// connection the server had long closed (EPIPE, "fetch failed").
+async function send(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch (trouble) {
+    if (!(trouble instanceof TypeError)) throw trouble;
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(30000) });
+  }
+}
+
 async function rest(path, init = {}) {
-  const reply = await fetch(`${SUPABASE}/rest/v1/${path}`, {
+  const reply = await send(`${SUPABASE}/rest/v1/${path}`, {
     ...init, headers: { ...headers, "content-type": "application/json", ...(init.headers || {}) },
     signal: AbortSignal.timeout(30000) });
   const text = await reply.text();
@@ -100,7 +113,7 @@ let read = 0;
 for (const row of wanted) {
   const file = join(cache, `${row.id}@${stamp(row)}.mpd`);
   if (!existsSync(file)) {
-    const reply = await fetch(`${SUPABASE}/storage/v1/object/shared-models/${row.id}.mpd`, { headers,
+    const reply = await send(`${SUPABASE}/storage/v1/object/shared-models/${row.id}.mpd`, { headers,
       signal: AbortSignal.timeout(30000) });
     if (!reply.ok) {
       console.log(`  --    ${row.id}: its file: ${reply.status}`);
@@ -144,7 +157,7 @@ for (const one of swept.filter((s) => s.ok)) {
     console.log(`  --    ${one.id}: published again or taken down while it was drawn; left as it is`);
     continue;
   }
-  const answer = await fetch(`${SUPABASE}/storage/v1/object/shared-thumbs/${one.id}.webp`, {
+  const answer = await send(`${SUPABASE}/storage/v1/object/shared-thumbs/${one.id}.webp`, {
     method: "POST", body: readFileSync(join(run, `${one.id}.webp`)),
     headers: { ...headers, "content-type": "image/webp", "x-upsert": "true", "cache-control": "no-store" },
     signal: AbortSignal.timeout(30000) });

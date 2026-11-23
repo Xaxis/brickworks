@@ -48,9 +48,15 @@ const check = (ok, what) => {
   if (!ok) failed += 1;
 };
 const ask = async (path, token, body) => {
-  const reply = await fetch(`${base}${path}`, { method: body === undefined ? "GET" : "POST",
+  const init = { method: body === undefined ? "GET" : "POST",
     headers: { ...headers, ...(token ? { authorization: `Bearer ${token}` } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body) });
+    body: body === undefined ? undefined : JSON.stringify(body) };
+  // Once more when the connection failed: after the sweep's minutes in the
+  // GPU's queue, the kept-alive one to the relay is long closed.
+  const reply = await fetch(`${base}${path}`, init).catch((trouble) => {
+    if (!(trouble instanceof TypeError)) throw trouble;
+    return fetch(`${base}${path}`, init);
+  });
   const bytes = Buffer.from(await reply.arrayBuffer());
   let said = {};
   try { said = JSON.parse(bytes.toString("utf8")); } catch { /* a picture */ }
