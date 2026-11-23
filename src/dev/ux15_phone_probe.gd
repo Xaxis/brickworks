@@ -5,14 +5,16 @@
 ## leaving and coming back to the same step), someone building a small model
 ## from scratch (p16: a part picked, put down, turned, recoloured, undone,
 ## held for its menu, saved), and someone opening a set from its page with
-## Make your own version and changing one thing (p17).
+## Make your own version and changing one thing (p17). And the studio's own
+## timeline on a model with steps (p18), as a set's Build it opens it: on the
+## desktop at 1280 x 800 it is the layout that must not change.
 ## Research, not in the suite: each step prints the walk's own "UX12 step"
 ## line (what covers the model, the status, the sheets, the targets under a
 ## fingertip) and a picture; "UX15 check" lines judge the instructions bar
 ## and the gestures. Exits 0 once every step is pictured, 1 when the app
 ## never came up.
 ##
-##   godot --path . --resolution 390x844 --script src/dev/ux15_phone_probe.gd -- [--phone] [--pictures=DIR] [--only=p15,p16,p17]
+##   godot --path . --resolution 390x844 --script src/dev/ux15_phone_probe.gd -- [--phone] [--pictures=DIR] [--only=p15,p16,p17,p18]
 ##
 ## --phone lays the app out for a phone at a browser's scale, by fingers, as
 ## ux12_walk_probe does (run it in a 360x780, 390x844 or 430x932 window).
@@ -81,7 +83,7 @@ func _run() -> void:
 			return
 		await _follower()
 		await _down()
-	if _wants("p16") or _wants("p17"):
+	if _wants("p16") or _wants("p17") or _wants("p18"):
 		if not await _up(false):
 			quit(1)
 			return
@@ -90,6 +92,8 @@ func _run() -> void:
 			await _scratch_builder()
 		if _wants("p17"):
 			await _own_version()
+		if _wants("p18"):
+			await _studio_steps()
 	print("UX15 done: %d steps pictured, %d check(s) failed" % [_steps, _ux15_failures])
 	quit(0)
 
@@ -185,13 +189,26 @@ func _follower() -> void:
 	await _until_still(60)
 	await _step("p15_01_opened", "the gallery model's link opened: its steps at the foot")
 	await _bar_report("p15_01")
+	# To the first step: the step's number and step 1, or the bar's Start.
+	var number: Control = _control("steps_at")
+	if number != null:
+		await _press_at(_centre(number))
+		await _frames(30)
+		await _jump_in_sheet(1)
+	else:
+		var start: Control = _control("steps_start")
+		if start != null:
+			await _press_at(_centre(start))
+	await _frames(20)
+	await _step("p15_02_first", "to the first step")
+	_check15("at the first step (%d)" % _at(), _at() == 1)
 	# Next, as a thumb finds it.
 	var next: Control = _control("steps_next")
 	var was: int = _at()
 	if next != null:
 		await _press_at(_centre(next))
 		await _frames(20)
-	await _step("p15_02_next", "Next tapped")
+	await _step("p15_02b_next", "Next tapped")
 	_check15("Next tapped goes a step on (%d to %d)" % [was, _at()], _at() > was)
 	if next != null:
 		await _press_at(_centre(next))
@@ -378,12 +395,15 @@ func _scratch_builder() -> void:
 	_main.call("clear_model")
 	await _frames(30)
 	await _step("p16_01_empty", "an empty baseplate")
-	await _search_bin("brick 2 x 4", "p16_02_parts", "Parts, searched: brick 2 x 4")
+	await _phone_parts("brick 2 x 4", "p16_02_parts", "Parts, searched: brick 2 x 4")
 	await _take_first_tile("p16_03_in_hand", "the first tile tapped")
 	await _put_down(Vector3(0, 0, 0), "p16_04_put_down", "tapped on the baseplate")
 	var placed: int = _world.bricks().size()
 	_check15("a part put down by tapping (%d parts)" % placed, placed >= 1)
-	# Selected by a tap on it, as a phone selects.
+	# What is in hand let go (Select, as the row's hint says), then the part
+	# tapped to select it, as a phone selects.
+	if _builder.is_carrying():
+		await _tool("select")
 	var brick: BrickWorld.Brick = _newest_brick()
 	if brick != null:
 		await _tap(_camera.unproject_position(brick.transform.origin + Vector3(0, 12, 0)))
@@ -450,6 +470,57 @@ func _tool(what: String) -> void:
 	if button is Control:
 		await _press_at(_centre(button as Control))
 		await _frames(30)
+
+
+## The phone's Parts, searched: the row's Parts tapped, the words typed.
+func _phone_parts(words: String, shot: String, what: String) -> void:
+	if _phone_sheet() != "Parts":
+		await _tool("parts")
+	var search: LineEdit = _bin.get("_search")
+	search.grab_focus()
+	search.text = words
+	search.text_changed.emit(words)
+	await create_timer(0.6).timeout
+	await _frames(20)
+	await _step(shot, what)
+
+
+# -- p18: the studio's own timeline -------------------------------------------------
+
+
+## A model with steps open in the studio, its timeline from More (on a phone)
+## or Build, Timeline: the instructions bar as a set's Build it opens it.
+func _studio_steps() -> void:
+	print("\nUX15 p18: the studio's timeline on %s" % ("a phone" if _on_phone else "the desktop"))
+	await _open_model("res://models/kart.ldr", "Kart")
+	var steps: StepsBar = _bar_()
+	if _on_phone and _phone != null:
+		await _tool("more")
+		var row: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_quick_timeline")
+		if row is Control:
+			await _press_at(_centre(row as Control))
+		else:
+			_shell.run("timeline")
+	else:
+		_shell.run("timeline")
+	var since: int = Time.get_ticks_msec()
+	while (steps.is_starting() or not steps.is_playing_back()) and Time.get_ticks_msec() - since < 60000:
+		await process_frame
+	await _frames(30)
+	await _step("p18_01_timeline", "the studio's timeline, at its first step")
+	await _bar_report("p18_01")
+	var next: Control = _control("steps_next")
+	if next != null:
+		await _press_at(_centre(next))
+		await _frames(20)
+	await _step("p18_02_next", "Next")
+	var more: Control = _control("steps_more")
+	if more != null:
+		await _press_at(_centre(more))
+		await _frames(30)
+		await _step("p18_03_more", "the bar's More: the rest, in a sheet")
+		await _close_all()
+	await _leave_steps()
 
 
 # -- p17: Make your own version of a set --------------------------------------------
