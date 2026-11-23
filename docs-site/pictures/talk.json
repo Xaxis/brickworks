@@ -380,6 +380,154 @@
    "features": [
     "ui:a thread in talk"
    ]
+  },
+  {
+   "id": "talk-wip",
+   "source": "site",
+   "route": "/talk/t/14",
+   "viewport": [
+    1280,
+    1500
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "#talk-posts .comment",
+   "db": {
+    "rest/v1/rpc/talk_thread_page": {
+     "thread": {
+      "id": 14,
+      "board": "show",
+      "title": "Sports car and its driver",
+      "by": {
+       "name": "Test builder",
+       "handle": "test-builder"
+      },
+      "said": "Work in progress, version 1. Each new version will be posted in this thread as it is shared.",
+      "at": "2026-10-30T10:00:00Z",
+      "last_at": "2026-11-02T18:10:00Z",
+      "last_by": {
+       "name": "Test builder",
+       "handle": "test-builder"
+      },
+      "replies": 3,
+      "model": {
+       "id": "DocsSprt01",
+       "name": "Sports car and its driver",
+       "has_image": true,
+       "has_thumb": false,
+       "updated_at": "2026-10-02T09:00:00Z"
+      },
+      "photo": null,
+      "hidden": false,
+      "locked": false,
+      "pinned": false,
+      "unread": false,
+      "following": false,
+      "mine": false,
+      "by_house": false,
+      "challenge": null
+     },
+     "posts": [
+      {
+       "id": 41,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "body": "Work in progress, version 1.\nEach new version will be posted in this thread as it is shared.\nhttps://brickworks.diy/m/DocsSprt01/v/1",
+       "at": "2026-10-30T10:00:00Z",
+       "first": true,
+       "answers": null,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": true
+      },
+      {
+       "id": 42,
+       "by": "Mira Okafor",
+       "handle": "mira-builds",
+       "body": "The stance is right already. Will the doors open?",
+       "at": "2026-10-30T19:05:00Z",
+       "first": false,
+       "answers": 41,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": false
+      },
+      {
+       "id": 43,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "body": "Work in progress, version 2. Doors that open, on 2 x 2 hinge bricks one plate lower.\nVersion 2: 8 parts added in step 21.\nhttps://brickworks.diy/m/DocsSprt01/v/2",
+       "at": "2026-10-31T16:40:00Z",
+       "first": false,
+       "answers": null,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": true
+      },
+      {
+       "id": 44,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "body": "Work in progress, version 3. The roof, and the driver in his seat.\nVersion 3: 7 parts added in step 34.\nhttps://brickworks.diy/m/DocsSprt01/v/3",
+       "at": "2026-11-02T18:10:00Z",
+       "first": false,
+       "answers": null,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": true
+      }
+     ],
+     "blocked_some": false,
+     "you": {
+      "trouble": "sign_in",
+      "standing": null,
+      "pool": true,
+      "starter": false
+     }
+    },
+    "rest/v1/shared_models?id=in.(DocsSprt01)": [
+     {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "has_image": true,
+      "has_thumb": false,
+      "updated_at": "2026-10-02T09:00:00Z"
+     }
+    ]
+   },
+   "alt": "A Show and tell thread kept by a work in progress: the model's card, the first post with version 1's card, a builder's question, then a post a version with its note, what changed and that version's card.",
+   "caption": "A model shared as work in progress: one thread, one post a version.",
+   "features": [
+    "ui:a thread in talk",
+    "ui:work in progress shared by version"
+   ],
+   "answers": {
+    "/m/DocsSprt01/v/": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    }
+   }
   }
  ]
 }

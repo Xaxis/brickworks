@@ -90,7 +90,7 @@ const ENTER_SAID = {
   not_asked: [422, ASK_FIRST],
   barred: [422, "This account was taken out of the gallery, so it cannot enter a challenge."],
   not_in_gallery: [422, "Only a model in the gallery with your name on it can enter: share it again with "
-    + "Show it in the gallery ticked and your name on it."],
+    + "Show it in the gallery ticked and your name on it. A work in progress enters once it is finished."],
   no_challenge: [409, "No challenge is open just now."],
   entered: [409, "It is in this challenge already."],
   three: [409, "Three of your models are in this challenge already: that is the most."],

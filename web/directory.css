@@ -247,6 +247,28 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .earlier { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
+/* The Log (api/share.js versionsSection): every version newest first, its
+   small picture beside its date, what changed and its note; the one shown
+   edged. A picture holds its 4:3 place before it comes, so nothing moves. */
+.model-page .versions h3 { margin: 18px 0 8px; font-size: var(--t-body); }
+.model-page .earlier.log { list-style: none; padding: 0; display: grid; gap: 10px; }
+.model-page .log-entry {
+	display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; margin: 0;
+	padding: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.model-page .log-entry[aria-current="true"] { border-color: var(--line-strong); }
+.model-page .log-picture { display: block; aspect-ratio: 4 / 3; border-radius: var(--r-1); background: var(--panel-hi); overflow: hidden; }
+.model-page .log-picture img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.model-page .log-main p { margin: 0 0 4px; }
+.model-page .log-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink-soft); }
+.model-page .log-head > a { font-weight: 600; }
+.model-page .log-head .when { margin-left: 0; }
+.model-page .log-changed { color: var(--ink-soft); }
+.model-page .log-note q { color: var(--ink); white-space: pre-line; }
+.model-page .wip-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--ink-soft); }
+@media (max-width: 520px) {
+	.model-page .log-entry { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+}
 /* Its parts (api/share.js partsSection, web/model-page.js startParts): how
    many in how many lots, Colour or Kind and the shops' lists (a model's
    three: what LEGO® Pick a Brick leaves off said under them), then a

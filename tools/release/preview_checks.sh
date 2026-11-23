@@ -87,6 +87,10 @@ declare -A CMD=(
   # player's last step at 390 and 1280, signed out asked in place and kept
   # through the sign-in; throwaway accounts, deleted after.
   [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
+  # Work in progress (buildlog, supabase/wip.sql): Share progress in the app
+  # puts the model in a follower's feed and its Talk thread within 60 s, and
+  # publishing it as finished ends it. Two throwaway accounts, deleted after.
+  [wip]="tools/web/wip_flow.mjs --url=$P --out=$S/${TAG}_wip"
   [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
   # Following a collection (docs/SOCIAL.md U11, supabase/collection_follows.sql):
   # Follow on its page and its count; a model put in it in the follower's

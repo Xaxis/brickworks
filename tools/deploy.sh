@@ -597,6 +597,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/room[.]json", "dest": "/api/share?op=room&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]webp", "dest": "/api/share?op=thumb&id=\$1&n=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1" },

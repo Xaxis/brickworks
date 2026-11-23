@@ -1135,6 +1135,7 @@ function startComments(section) {
     pinBridge.view?.pinsChanged();
     commentsSaid(state, setOpen);
     talkAbout(state.you?.owner === true);
+    finishFor(state.you?.owner === true);
   }
   commentsLoaded = { reload: load };
 
@@ -1173,6 +1174,36 @@ function startComments(section) {
       return;
     }
     place.hidden = false;
+  }
+
+  /// Mark it finished, on a work in progress's Log, for its designer alone
+  /// (api/_wip.js finish, buildlog): its newest version is the finished
+  /// one, told in its Talk thread and to their followers, and from then it
+  /// ranks in the gallery as any model does. Anybody else never sees it.
+  let finishWired = false;
+  function finishFor(owner) {
+    const button = document.querySelector("[data-finish]");
+    const said = document.querySelector(".finish-said");
+    if (!button || !said || !owner || finishWired) return;
+    finishWired = true;
+    button.hidden = false;
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      said.hidden = false;
+      said.textContent = say("Marking it finished…");
+      const answer = await call("/api/share?op=finish", { method: "POST", body: { id: model } }).catch(() => null);
+      if (!answer || answer.status !== 200) {
+        button.disabled = false;
+        said.textContent = told(answer?.body?.error, say("It could not be marked finished just now. Try again in a minute."));
+        return;
+      }
+      const n = Number(answer.body.version) || 1;
+      document.querySelectorAll(".pill.wip").forEach((pill) => pill.closest("li:not(.log-entry)")?.remove());
+      button.closest(".wip-line")?.remove();
+      const posted = answer.body.talk?.url ? " " + say("It is said in its Talk thread too.") : "";
+      said.textContent = say("Finished: version {n} is the finished one, and your followers are told.", { n }) + posted;
+      document.documentElement.dataset.finished = String(n);
+    });
   }
 
   /// The viewer at [at], a step of version [of]: Build it, opened there.

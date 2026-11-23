@@ -187,6 +187,8 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
+  // A version's small picture (the page's Log, Talk's cards): ?n=, not ?v=.
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]webp$/, "share", "thumb_version"],
   // Its file to download, and its parts list as JSON, a BrickLink wanted
   // list and a Rebrickable CSV, of the newest version or an older one.
   [/^\/m\/([A-Za-z0-9]{10})[.]mpd$/, "share", "file"],
@@ -387,6 +389,7 @@ http.createServer(async (incoming, outgoing) => {
     if (captured[1] && mapped[1] === "share") query.id = captured[1];
     if (captured[2] && mapped[1] === "share") query.v = captured[2];
     if (captured[3] && mapped[1] === "share") query.as = captured[3];
+    if (mapped[2] === "thumb_version") Object.assign(query, { op: "thumb", n: captured[2], v: undefined });
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (mapped[2] === "page_lang" && mapped[1] === "people") Object.assign(query, { op: "page", lang: captured[1], handle: captured[2] });
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];

@@ -3695,6 +3695,14 @@
       "tests": []
     },
     {
+      "id": "cli:the log's largest paint",
+      "kind": "cli",
+      "entry": "tools/web/log_lcp.mjs",
+      "reach": "node tools/web/log_lcp.mjs --base=DIR [--rounds=8] --out=DIR   (DIR: git archive of the tree before, its node_modules and assets linked in)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the loop as JSON",
       "kind": "cli",
       "entry": "tools/loop_read.mjs",
@@ -4047,6 +4055,22 @@
       "kind": "cli",
       "entry": "tools/web/engine_choice.mjs",
       "reach": "heavy node tools/web/engine_choice.mjs --url=<page> --expect=on|off [--base=<base's page>] [--only=iphone,ipad,ipad_mac,mac,android,computer] --out=DIR   (nothreads: WebKit as an iPhone 13, an iPad, an iPad that says it is a Mac, a Mac; Chromium as a Pixel 7 and at 1280x800; each signed out: the engine its page asked for, window.brickworksEngine's choice, nothing of the other engine, the window up, no script error; --base: the same requests, each as often, the build's /b/<sha>/ as /b/SHA/; DIR/choice.json, exit 1 on a miss)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:wip browser flow",
+      "kind": "cli",
+      "entry": "tools/web/wip_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/flow.env tools/web/wip_flow.mjs --url=http://127.0.0.1:11440 --out=DIR over relay_server.mjs 11440 --static=build/web, once supabase/wip.sql is applied (before, NOT RUN, exit 2); on a preview BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:wip probe",
+      "kind": "cli",
+      "entry": "src/dev/wip_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/wip_probe.gd   (tools/probe.sh wip_probe; the panel's picture: tools/docs_shots.py --only=sharing-progress)",
       "area": "web",
       "tests": []
     },
@@ -5723,6 +5747,16 @@
       "tests": []
     },
     {
+      "id": "lib:work in progress kept and ranked",
+      "kind": "lib",
+      "entry": "supabase/wip.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/wip.sql --dry --try=tools/wip_try.sql --table=share_versions   (not applied yet; the lead applies it; tools/sql_compare.mjs for the gallery's queries; python3 tools/minitest.py tests/test_wip.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_wip.py"
+      ]
+    },
+    {
       "id": "lib:worked constructions",
       "kind": "lib",
       "entry": "src/ai/techniques.gd",
@@ -5925,6 +5959,14 @@
       "entry": "src/collection/own_swap.gd",
       "reach": "godot --path .  (with a collection, signed in or on this device: P, the parts list: the row over the rows says how many lots you own too few of, the pieces short and the share that is yours, as submit_design mine=true counts it, each such row tagged N not yours; pressed, each with its swap from what you own and the rest of the model does not use, the same shape in its colour or the same part in a colour within \u0394E 10 of its finish, or none you own; no owned piece taken twice; Use what I own, a part in hand put back first, one undo step, the row then says what is still missing; a session's replace_parts mine=true swaps the same in one call, lots= names some; tools/probe.sh ownswap_probe)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:a model's log",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>#versions (the Log tab; /m/<id>/v/<n> each version, /m/<id>/v/<n>.webp its picture; Mark it finished for its owner while it is work in progress)   (tools/web/log_lcp.mjs --base=DIR)",
+      "area": "web",
       "tests": []
     },
     {
@@ -8565,6 +8607,14 @@
       "tests": []
     },
     {
+      "id": "ui:work in progress shared by version",
+      "kind": "ui",
+      "entry": "api/_wip.js",
+      "reach": "the studio: File \u203a Share\u2026 then Share progress (src/ui/share_panel.gd); POST /api/share {wip: true} and ?op=finish {id}; a follower's /feed, the model's Show and tell thread in /talk   (godot --headless --path . --script src/dev/wip_probe.gd; tools/web/wip_flow.mjs once wip.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:working model that could not open",
       "kind": "ui",
       "entry": "src/ui/restore_notice.gd",
@@ -8594,7 +8644,8 @@
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_wip.py"
       ]
     },
     {
@@ -8697,7 +8748,8 @@
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_shell.py",
+        "tests/test_wip.py"
       ]
     },
     {

@@ -1,12 +1,12 @@
 ---
 panels: SharePanel#share
-ai: Sharing publishes a model at brickworks.diy/m/<id>, and in the gallery only when List it in the gallery is ticked, with its steps, booklet, motions and moving parts. It is tested for being buildable, gets new versions when shared again, and credits what it was remixed from.
+ai: Sharing publishes a model at brickworks.diy/m/<id>, and in the gallery only when List it in the gallery is ticked, with its steps, booklet, motions and moving parts. It is tested for being buildable, gets new versions when shared again, and credits what it was remixed from. Share progress publishes a version as work in progress, to followers and one Talk thread, kept out of Top and the challenges until it is published as finished.
 rules:
   - Sharing needs the person signed in, and is the person's to do: no tool shares a model.
   - Names, tags and words are checked; brands and trademarks are refused in titles, tags and handles.
 title: Sharing a model
 nav: Sharing a model
-description: Publish a model at a link anyone can open in 3D, step through and build, list it in the gallery, update it with new versions, or take it down.
+description: Publish a model at a link anyone can open in 3D, step through and build, list it in the gallery, share its progress version by version, update it, or take it down.
 ---
 
 Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in.
@@ -19,9 +19,9 @@ Sharing gives a model a link anyone can open with no account: the model in 3D, i
 4. Choose a **Licence**: **CC BY 4.0** (anyone may share and change it, crediting you), **CC BY-SA 4.0** (and what they make is shared the same way) or **All rights reserved** (people may build it for themselves and ask you before sharing it).
 5. Tick **Show who made it** to put a name on its page: **The name to credit** is your profile's name when you have one.
 6. Tick **List it in the gallery** to put it in [the gallery](/docs/gallery) as well. Unticked, only people you send the link to find it.
-7. Press **Publish**. Publishing means you agree to the [guidelines](/guidelines).
+7. Press **Publish**. Publishing means you agree to the [guidelines](/guidelines). Still building it? Press **Share progress** beside it instead: see [Share progress](#progress).
 
-![The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and the guidelines.](/docs/img/sharing-panel.webp "File › Share…, before it is published.")
+![The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and Share progress side by side, and the guidelines.](/docs/img/sharing-panel.webp "File › Share…, before it is published.")
 
 <!-- covers
 ui:share panel
@@ -29,7 +29,7 @@ ui:share panel
 
 Its link is `brickworks.diy/m/<id>`. Once it is published the panel shows the link, with **Copy link**, **Copy embed code** (a frame to paste into a page of your own; see [the embed](/docs/model-pages#actions)) and **Open**, and the line under Publish says what was shared: *Shared at this link, 187 parts*, and whether it is listed in the gallery and marked Tested.
 
-![The Share panel once published: Publish now reading Update the link, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.](/docs/img/sharing-published.webp "The panel once the model is published.")
+![The Share panel once published: Publish now reading Update the link beside Share progress, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.](/docs/img/sharing-published.webp "The panel once the model is published.")
 
 Anyone with the link can download the model's file itself. An email address in its **Author** line, and the folders on your computer that a program wrote into it (a background picture's, a parts folder's), are left out of the shared copy, however it is shared.
 
@@ -112,10 +112,33 @@ lib:the Tested mark kept and shown
 
 Change the model, then **File › Share…** again from the same model: **Publish** now reads **Update the link**. **What changed? (shown with the new version)** takes up to 280 characters, such as *Fixed the roof; the door opens now*.
 
-The link then shows the new version, and the one before is kept at its own address, `/m/<id>/v/<n>`: *Version 2 is up at this link, and version 1 is kept at its own*. The model's page says **Version 2**, and its **Versions** tab lists the **Earlier versions** with what changed in each. Someone who built an earlier one and opens Build it again is told *This model changed from step 12*, with **Go to step 12**.
+The link then shows the new version, and the one before is kept at its own address, `/m/<id>/v/<n>`: *Version 2 is up at this link, and version 1 is kept at its own*. The model's page says **Version 2**, and its **Log** lists every version, the newest first, with what changed in each ([the Log](/docs/model-pages#log)). Someone who built an earlier one and opens Build it again is told *This model changed from step 12*, with **Go to step 12**.
 
 <!-- covers
 lib:versions of a shared model
+-->
+
+## Share progress {#progress}
+
+A model can be shared while you are still building it, a version at a time, so the people who follow you see it grow. In **File › Share…**, press **Share progress** beside **Publish**: one press publishes this version as Publish does, marked **Work in progress**, listed in the gallery with your name on it. Write what you did in **What changed?** before each one after the first.
+
+![The Share panel after Share progress: Publish now reading Publish as finished beside Share progress, then the line Version 1 is shared as work in progress, in the gallery's Newest and your followers' feeds, kept out of Top and the challenges until you publish it as finished, and that its Talk thread has the post.](/docs/img/sharing-progress.webp "Share progress: this version, shared while it is still being built.")
+
+Each version shared as work in progress goes:
+
+- **to its page**, marked *Work in progress*, and into its [Log](/docs/model-pages#log) with its picture, its note and what changed;
+- **to your followers' feeds**: *Ada shared work in progress: Harbour crane*, then *shared progress on Harbour crane: version 2*;
+- **to Talk**: the first opens one [Show and tell](/docs/talk#wip) thread by you, with the model's card; each version after is one post in that thread, never a new one, with the version's picture, your note and the line of what changed, as the Log says it. People who follow the thread are told of each post.
+
+While it is work in progress the model is in the gallery's **Newest**, marked so, and never in **Top**, the other sorts, **This week's pick**, a challenge or the shelves on the gallery and the home page.
+
+When it is done, press **Publish as finished** (Publish reads so while it is work in progress), or **Mark it finished** in the Log on its page to call the newest version the finished one. Either says so in its Talk thread and to your followers, and from then the model ranks as any other. Share progress again later starts a new stretch of work in progress in the same thread.
+
+Work in progress follows Talk's rules: its posts count towards Talk's hourly limit, someone who blocked you never sees them, and an account under 13 cannot share progress, as it cannot list a model. If Talk cannot take a post, the version is published all the same and the panel says why.
+
+<!-- covers
+ui:work in progress shared by version
+lib:work in progress kept and ranked
 -->
 
 ## Remixes and credit {#remix}

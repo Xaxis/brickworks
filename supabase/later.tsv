@@ -91,3 +91,7 @@ challenge_list_order.sql	challenge_list	challenge_prompts.sql	kind = 'month'
 talk.sql	talk_ensure	challenge_prompts.sql	k.kind = 'month'
 achievements.sql	achievement_ladders	challenge_prompts.sql	('streak', 7,
 achievements.sql	achievement_numbers	challenge_prompts.sql	prompt_streak(
+discovery.sql	gallery_shows	wip.sql	m.wip_at is null
+modelled_by.sql	directory_card	wip.sql	'wip', m.wip_at
+made_with.sql	gallery_models	wip.sql	a.sort in ('newest', 'added')
+collection_follows.sql	follow_rows	wip.sql	wip_rows(viewer

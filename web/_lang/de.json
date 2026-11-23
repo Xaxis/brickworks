@@ -3534,6 +3534,24 @@
   "I like “{name}” more": "„{name}“ gefällt mir besser",
   "Of all {n} you like “{name}” most.": "Von allen {n} gefällt dir „{name}“ am besten.",
   "You cannot vote in this challenge.": "Du kannst bei dieser Challenge nicht abstimmen.",
-  "{seen} of {n}: press This one under the one you like more. It stays, and the next comes beside it.": "{seen} von {n}: Drücke „Dieses“ unter dem, das dir besser gefällt. Es bleibt, und das nächste kommt daneben."
+  "{seen} of {n}: press This one under the one you like more. It stays, and the next comes beside it.": "{seen} von {n}: Drücke „Dieses“ unter dem, das dir besser gefällt. Es bleibt, und das nächste kommt daneben.",
+  "Its designer is still building it, and shares each version": "Sein Designer baut noch daran und teilt jede Version",
+  "Work in progress": "In Arbeit",
+  "Only a model in the gallery with your name on it can enter: share it again with Show it in the gallery ticked and your name on it. A work in progress enters once it is finished.": "Einreichen kann nur ein Modell in der Galerie mit deinem Namen: Teile es noch einmal mit angehaktem „In der Galerie zeigen“ und deinem Namen. Ein Modell in Arbeit kann eingereicht werden, sobald es fertig ist.",
+  "Marking it finished…": "Wird als fertig markiert…",
+  "It could not be marked finished just now. Try again in a minute.": "Es konnte gerade nicht als fertig markiert werden. Versuch es in einer Minute noch einmal.",
+  "It is said in its Talk thread too.": "Das steht auch in seinem Thema im Forum.",
+  "Finished: version {n} is the finished one, and your followers are told.": "Fertig: Version {n} ist die fertige, und deine Follower erfahren es.",
+  "Log": "Verlauf",
+  "Its designer is still building it: each new version comes here, to their followers and to its Talk thread.": "Sein Designer baut noch daran: Jede neue Version kommt hierher, zu seinen Followern und in sein Thema im Forum.",
+  "Mark it finished": "Als fertig markieren",
+  "Finished": "Fertig",
+  ", this one": ", diese hier",
+  "The first version.": "Die erste Version.",
+  "Every version, the newest first": "Jede Version, die neueste zuerst",
+  "{who} shared work in progress: {name}": "{who} hat ein Modell in Arbeit geteilt: {name}",
+  "{who} finished {name}: version {n} is the finished one": "{who} hat {name} fertiggestellt: Version {n} ist die fertige",
+  "{who} shared progress on {name}: version {n}": "{who} hat einen Fortschritt an {name} geteilt: Version {n}",
+  "Version {n}: open it": "Version {n}: öffnen"
  }
 }
