@@ -281,6 +281,35 @@ is on the page, `hidden`, for the script to show.
   keeps the keyboard in it (Tab from the last control comes round to the
   first) and, closed, gives the focus back to what opened it, or to the
   More menu's button when what opened it was folded away with the menu.
+- **Ask** (`web/kit.js` `ask` and `tell`, `dialog.ask`; dialogkit,
+  2026-11-23): the question before an act and the word after one, on the
+  site and in /admin (`admin-kit.js` passes it on), never the browser's
+  `confirm()`, `alert()` or `prompt()`, which looked like another program's
+  and asked in its words (the owner found them in /admin). `await ask({
+  title, body, yes, no, danger })` answers true or false: the title the
+  question ("Delete this account and everything in it, for good?"), the
+  body a line of what it does, `yes` the act's own words ("Delete my
+  account", never OK), `no` Cancel. The site's dialog, as above: an
+  `alertdialog` named by its title and described by its line, over the
+  scrim, rising in over `--motion-open`, the answer first. `danger` (it
+  cannot be undone, or it takes something from somebody) makes the answer
+  `.cta.ghost.danger` and puts the focus on Cancel, the safe choice; else
+  the answer is the yellow `.cta` and has the focus. Escape and a press on
+  the scrim answer no; Enter answers whatever button has the focus, so it
+  confirms only from the answer. Closed, the focus goes back to the button
+  that asked, once that button is let go (an act's button is held while it
+  runs); an ask over /admin's sheet gives it back in the sheet. On a phone
+  (under 600 px) it is a sheet from the window's foot, the buttons stacked
+  its width, Cancel last, under the thumb. `tell({ title, body })` is the
+  same with one OK, for what went wrong after an act (Talk's Remove). Words
+  through `say()`, each with its de/fr/es entry. No `prompt()` was ever on
+  the site, so there is no field for one: a question that needs words is a
+  form on the page or in a dialog of its own. `tools/check.sh` (and its
+  `--lists`) fails naming the file and line of any bare `confirm(`,
+  `alert(` or `prompt(` in web/ or api/; `tools/web/ask_flow.mjs` drives
+  the ask with the mouse, the keyboard alone and a screen reader's tree;
+  other flows answer it with `tools/web/asks.mjs` `answerAsks` where they
+  accepted a confirm.
 - **Sheet**: `dialog.sheet`, a dialog at the window's right edge, the
   window's height, holding one row of a list whole over the list it came
   from (/admin's account and an act of its audit; Stripe's, Supabase

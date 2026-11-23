@@ -24,6 +24,7 @@ import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -58,7 +59,7 @@ function listen(page, who) {
   page.on("console", (m) => {
     if (m.type() === "error" || /Content Security Policy|Refused to/.test(m.text())) errors.push(`${who}: ${m.text().slice(0, 220)}`);
   });
-  page.on("dialog", (d) => d.accept());
+  return answerAsks(page);
 }
 const shot = (page, name, full = false) => page.screenshot({ path: path.join(out, name), fullPage: full, timeout: 60000 })
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
@@ -95,7 +96,7 @@ try {
   console.log("a visitor reports it from its page");
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, userAgent: PERSON });
   const page = await context.newPage();
-  listen(page, "visitor");
+  await listen(page, "visitor");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load", timeout: 60000 });
   // Report it is in the action bar's More (web/model-page.js): made live
   // there by web/report.js, and seen only once More is open.
@@ -148,7 +149,7 @@ try {
   await admin.addInitScript(([name, value]) => { try { localStorage.setItem(name, value); } catch {} },
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   const desk = await admin.newPage();
-  listen(desk, "admin");
+  await listen(desk, "admin");
   await desk.goto(`${site}/admin#report-${reportId}`, { waitUntil: "load", timeout: 60000 });
   await desk.waitForSelector(`#report-${reportId}`, { timeout: 30000 }).catch(() => {});
   // The page scrolls to the row smoothly (site.css: scroll-behavior), so it

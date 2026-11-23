@@ -46,6 +46,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -129,7 +130,7 @@ async function open(pathname, { who = null, phone = false } = {}) {
   page.on("console", (m) => {
     if (/SCRIPT ERROR|Content Security Policy|Refused to/.test(m.text())) errors.push(`${pathname}: ${m.text().slice(0, 220)}`);
   });
-  page.on("dialog", (dialog) => dialog.accept());
+  await answerAsks(page);
   await page.goto(`${site}${pathname}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   return page;
 }

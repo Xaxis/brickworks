@@ -31,6 +31,7 @@ import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -66,7 +67,7 @@ function listen(page, who) {
   page.on("console", (m) => {
     if (m.type() === "error" || /Content Security Policy|Refused to/.test(m.text())) errors.push(`${who}: ${m.text().slice(0, 220)}`);
   });
-  page.on("dialog", (d) => d.accept());
+  return answerAsks(page);
 }
 const shot = (page, name, full = true) => page.screenshot({ path: path.join(out, name), fullPage: full, timeout: 60000 })
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
@@ -107,7 +108,7 @@ try {
   for (const [width, height, label] of [[1280, 900, "laptop"], [390, 844, "phone"]]) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, userAgent: PERSON });
     const page = await context.newPage();
-    listen(page, `visitor ${label}`);
+    await listen(page, `visitor ${label}`);
     await page.goto(`${site}/m/${house1}`, { waitUntil: "load", timeout: 60000 });
     // Report it is in the action bar's More (web/model-page.js): made live
     // there by web/report.js, and seen only once More is open.
@@ -133,7 +134,7 @@ try {
   for (const [width, height, label] of [[1280, 900, "laptop"], [390, 844, "phone"]]) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, userAgent: PERSON });
     const page = await context.newPage();
-    listen(page, `takedown ${label}`);
+    await listen(page, `takedown ${label}`);
     await page.goto(`${site}/takedown`, { waitUntil: "load", timeout: 60000 });
     check(`/takedown at ${label} width: nothing sideways`, !(await sideways(page)));
     if (label === "laptop") {
@@ -156,7 +157,7 @@ try {
   await admin.addInitScript(([name, value]) => { try { localStorage.setItem(name, value); } catch {} },
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   const page = await admin.newPage();
-  listen(page, "admin");
+  await listen(page, "admin");
   await page.goto(`${site}/admin#gallery/reported`, { waitUntil: "load", timeout: 60000 });
   await page.waitForSelector("#reports tr", { timeout: 30000 });
   const rows = () => page.evaluate((id) => [...document.querySelectorAll("#reports tr")]

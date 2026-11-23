@@ -44,6 +44,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -170,7 +171,7 @@ try {
     const adminContext = await context({ as: master, dark: true });
     const admin = await adminContext.newPage();
     listen(admin, "admin");
-    admin.on("dialog", (dialog) => dialog.accept());
+    await answerAsks(admin);
     await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     await admin.check('#challenge-form input[name="kind"][value="prompt"]');

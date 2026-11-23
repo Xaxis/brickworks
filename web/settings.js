@@ -20,7 +20,7 @@ import {
 import { langAt, say, told } from "/card.js";
 import { codeBoxes } from "/code-boxes.js";
 import { showFeedCount } from "/follow.js";
-import { avatarHtml } from "/kit.js";
+import { ask, avatarHtml } from "/kit.js";
 import { blockPerson } from "/block.js";
 import * as device from "/push.js";
 
@@ -125,9 +125,9 @@ async function claude() {
     end.addEventListener("click", async () => {
       // Claude forgets the tool permissions given to a connection when it is
       // disconnected, which is why nothing here suggests doing it (2026-10-20).
-      if (!confirm(say("Disconnect {app}? It can no longer work in your tabs, and it may "
-        + "forget the tool permissions you gave it, so connecting again asks for them all again.",
-      { app: one.client ? String(one.client) : say("this app") }))) return;
+      if (!(await ask({ title: say("Disconnect {app}?", { app: one.client ? String(one.client) : say("this app") }),
+        body: say("It can no longer work in your tabs, and it may forget the tool permissions you gave it, so connecting "
+          + "again asks for them all again."), yes: say("Disconnect"), danger: true }))) return;
       end.disabled = true;
       const gone = await call(`/api/oauth?op=disconnect&id=${encodeURIComponent(String(one.id))}`, { method: "POST" });
       if (gone.status === 200) claude();
@@ -735,7 +735,8 @@ $("delete-form").closest("details").addEventListener("toggle", () => {
 /// again, or a fresh sign-in with orangecheck. Asked first, for good.
 async function deleteAccount(body) {
   const ends = planEnds();
-  if (!confirm(`${say("Delete this account and everything in it, for good?")}${ends ? ` ${ends.words}` : ""}`)) return;
+  if (!(await ask({ title: say("Delete this account and everything in it, for good?"), body: ends ? ends.words : "",
+    yes: say("Delete my account"), danger: true }))) return;
   $("delete-go").disabled = true;
   const answer = await call("/api/account?op=delete", { method: "POST", body });
   $("delete-go").disabled = false;

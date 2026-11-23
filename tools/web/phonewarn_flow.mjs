@@ -42,6 +42,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./browser.mjs";
 import { mintSession, STORAGE_KEY } from "./session.mjs";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...v] = a.replace(/^--/, "").split("=");
@@ -260,7 +261,7 @@ try {
           } catch { /* nothing kept */ }
         }, [STORAGE_KEY, JSON.stringify(owner.kept), access]);
         const page = await context.newPage();
-        page.on("dialog", (d) => d.accept());
+        await answerAsks(page);
         await page.goto(`${site}/admin#switches`, { waitUntil: "load", timeout: 120000 });
         await page.waitForFunction(() => document.querySelector("#phones-form input[name=phone_parts]")?.value, null, { timeout: 60000 });
         return { context, page };

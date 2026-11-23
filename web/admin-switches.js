@@ -10,7 +10,7 @@
 // value, never its length (/api/admin?op=switches, api/_console_switches.js).
 //
 // Everything is put on the page as text, never as markup.
-import { $, act, adminJson, ago, cell, emptyRow, make, post, say, segmented, sift, when } from "/admin-kit.js";
+import { $, act, adminJson, ago, ask, cell, emptyRow, make, post, say, segmented, sift, when } from "/admin-kit.js";
 
 const LANGS = { en: "English", de: "Deutsch", fr: "Français", es: "Español" };
 let tone = "info";
@@ -109,7 +109,7 @@ $("notice-form").addEventListener("submit", async (event) => {
 });
 
 $("notice-clear").addEventListener("click", async () => {
-  if (!confirm("Clear the notice? It goes from every page within a minute or two.")) return;
+  if (!(await ask({ title: "Clear the notice?", body: "It goes from every page within a minute or two.", yes: "Clear it" }))) return;
   $("notice-clear").disabled = true;
   await post({ op: "notice_clear" }, "notice-note", "Cleared: it goes from every page within a minute or two.",
     { after: async () => { await loadSwitches(); after(); } });
@@ -241,11 +241,11 @@ function drawSettings(s) {
     // The beta's switch here: Beta's act, the one place it is done.
     if (one.switch === "beta_switch" && one.here) {
       const next = one.value === "open" ? "off" : "open";
-      acts.append(act(next === "open" ? "Open the beta" : "Turn the beta off", () => (confirm(next === "open"
-        ? "Open the beta here? Visitors may join it." : "Turn the beta off here? Nobody new may join; testers stay testers.")
-        ? post({ op: "beta_switch" }, "settings-note", next === "open" ? "The beta is open here." : "The beta is off here.",
-          { body: { mode: next }, after: async () => { await loadSwitches(); after(); } })
-        : Promise.resolve(false)), "cta ghost small"));
+      acts.append(act(next === "open" ? "Open the beta" : "Turn the beta off", async () => (await ask(next === "open"
+        ? { title: "Open the beta here?", body: "Visitors may join it.", yes: "Open the beta" }
+        : { title: "Turn the beta off here?", body: "Nobody new may join; testers stay testers.", yes: "Turn the beta off" }))
+        && post({ op: "beta_switch" }, "settings-note", next === "open" ? "The beta is open here." : "The beta is off here.",
+          { body: { mode: next }, after: async () => { await loadSwitches(); after(); } }), "cta ghost small"));
     }
     row.append(acts);
     body.append(row);

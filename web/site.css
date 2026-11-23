@@ -766,6 +766,24 @@ dialog.beta-welcome .actions { margin-top: var(--s-5); }
 dialog.beta-welcome .note { margin: var(--s-3) 0 0; }
 /* On a phone the two choices stack, each the dialog's width, Join on top. */
 @media (width < 600px) { dialog.beta-welcome .actions .cta { flex: 1 1 100%; } }
+/* Ask and tell (kit.js ask, tell): a question before an act, its title the
+   question, a line of what it does, then the answer and Cancel, the answer
+   first; a danger answer in the danger style. On a phone a sheet from the
+   window's foot, its buttons stacked the sheet's width under the thumb,
+   Cancel last, as a phone's own sheets have them. */
+dialog.ask { width: min(440px, calc(100vw - 32px)); }
+dialog.ask h2 { margin: 0 0 var(--s-2); overflow-wrap: anywhere; text-wrap: balance; }
+dialog.ask p { margin: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+dialog.ask .actions { margin-top: var(--s-5); }
+@media (width < 600px) {
+	dialog.ask {
+		inset: auto 0 0 0; width: 100%; max-width: 100%; margin: 0; border-bottom: 0; border-radius: var(--r-4) var(--r-4) 0 0;
+		padding: var(--s-5) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+	}
+	dialog.ask[open] { animation-name: sheet-up; }
+	dialog.ask .actions { flex-direction: column; align-items: stretch; }
+}
+@keyframes sheet-up { from { opacity: 0; transform: translateY(24px); } }
 
 /* A person to follow (the feed's designers, First steps): their avatar,
    their name and best models, and Follow. A list of them is .people-list. */

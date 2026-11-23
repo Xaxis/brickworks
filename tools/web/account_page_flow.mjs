@@ -49,6 +49,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -590,7 +591,7 @@ try {
     const again = await mintSession(adaEmail);
     const { page, context } = await open("/settings", { width: 1280, theme: "dark", who: again, label: "delete" });
     await until(page, () => document.documentElement.dataset.settings === "ready", null, 30000);
-    page.once("dialog", (dialog) => dialog.accept());
+    await answerAsks(page, { times: 1 });
     await page.click("#delete-part summary");
     await page.fill("#delete-confirm", adaEmail);
     await shot(page, "delete_1280.png", false);

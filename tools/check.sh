@@ -3,7 +3,8 @@
 #
 #   tools/check.sh              the offline suite
 #   tools/check.sh --network    also the checks that need the internet
-#   tools/check.sh --lists      only whether every probe is in a list, in a second
+#   tools/check.sh --lists      only whether every probe is in a list, and that the site asks
+#                               nothing in the browser's own dialogs, in a second
 #   tools/check.sh --dry-run    each check's command in the order it runs, none run
 #
 # Three layers, because they fail in different ways.
@@ -73,8 +74,25 @@ if [ -n "$unlisted$unknown$twice$shadowed" ]; then
   echo "  put each probe on one line of tools/suite/headless.txt or windowed.txt, or of out.txt with why it is not"
   exit 1
 fi
+# The site and /admin ask and tell in their own dialog (web/kit.js ask and
+# tell, docs/DESIGN_SYSTEM.md "Ask"), never the browser's confirm(), alert()
+# or prompt(): those look like another program's and speak its language, and
+# 28 of them were on the site and in the console until 2026-11-23 (owner:
+# "not our consistent ui/ux modal dialog"). Each one named by file and line;
+# a method of that name (this.confirm(), offered.prompt()) is not one.
+# web/de, fr and es are made from the English (tools/site_lang.py).
+natives=$({ git ls-files -co --exclude-standard -- 'web/*.js' 'web/*.mjs' 'web/*.html' 'api/*.js'; } \
+  | grep -vE '^web/(de|fr|es)/' | sort -u \
+  | xargs -r grep -nE '(^|[^.[:alnum:]_$])((window|globalThis|self|top|parent)\.)?(confirm|alert|prompt)\(' \
+  | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|\*|/\*)' \
+  | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(async[[:space:]]+)?(confirm|alert|prompt)\([^)]*\)[[:space:]]*\{')
+if [ -n "$natives" ]; then
+  echo "check: the browser's own dialog, where the site's ask or tell belongs (web/kit.js):"
+  echo "$natives" | cut -c1-200 | sed 's/^/  /'
+  exit 1
+fi
 # --lists: only that, which a merge can ask in a second.
-case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list"; exit 0 ;; esac
+case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list, and the site asks in its own dialog"; exit 0 ;; esac
 network=0 dry=0
 for argument in "$@"; do
   case "$argument" in
