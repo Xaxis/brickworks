@@ -23,6 +23,9 @@
 //     container's, its top not the pattern's, its size not --t-h1; its
 //     tabs (when it has views) not the site's .tabs, their left not the
 //     container's, or their top not the pattern's distance under the head;
+//   pages sharing a tab bar (the same addresses in their head's tabs or
+//     Talk's boards): a main column (the list, or the body's content box)
+//     at another x or width than the first of them drawn, by over a pixel;
 //   a list page (LIST): no .list-main, its left not the container's, its
 //     right not the container's (from 900 px, not the aside's column: 320
 //     px and --s-6 in from it), its width not the feed's (two tabs of one
@@ -86,6 +89,9 @@ const PAGES = [
   .filter((one) => one.name && (!only || only.includes(one.name)));
 
 let passed = 0;
+/// Each tab bar's first page drawn, at each width, theme and sign-in: the
+/// others in its bar are held to its main column.
+const bars = new Map();
 /// The pages that failed, each counted once however many faults it has.
 const failing = new Set();
 const fail = (where, what) => {
@@ -128,6 +134,20 @@ function layout() {
   const tabs = band ? [...band.querySelectorAll(":scope > .wrap > .tabs, :scope > .wrap > .tab-bar > .tabs")].find(drawn) : null;
   const listMain = [...(main?.querySelectorAll(".list-main") || [])].find(drawn) || null;
   const aside = [...(main?.querySelectorAll(".list-aside") || [])].find(drawn) || null;
+  // The tab bar it shares with other pages (its head's tabs, or Talk's
+  // boards), as the addresses in it; and its main column: the list, or the
+  // body's content box under the head.
+  const bar = [...(band?.querySelectorAll(":scope > .wrap .tabs a") || []), ...(main?.querySelectorAll(".talk-boards > a") || [])]
+    .map((a) => a.getAttribute("href")).sort().join(" ");
+  const body = main ? [...main.children].find((el) => el !== band && drawn(el)) : null;
+  const inner = (el) => {
+    if (!drawn(el)) return null;
+    const r = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    const left = r.left + parseFloat(style.paddingLeft) + parseFloat(style.borderLeftWidth);
+    const right = r.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth);
+    return { left, right, width: right - left };
+  };
   return {
     screen: innerWidth,
     header: box(document.querySelector(".site-head > .wrap")),
@@ -138,6 +158,7 @@ function layout() {
     want: { h1: token("--t-h1"), pad: px(innerWidth < 600 ? "--s-4" : "--s-6"), gap: px("--s-6") },
     tabs: box(tabs),
     listMain: box(listMain), aside: box(aside),
+    bar, column: listMain ? box(listMain) : inner(body),
   };
 }
 
@@ -224,6 +245,17 @@ try {
             // The pattern: the feed's, held to the tokens like every page.
             if (one.name === "feed" && !patterns.has(key)) patterns.set(key, got);
             const found = judge(one, got, patterns.get(key) || patterns.get(`${width} ${theme} out`));
+            // Pages that share a tab bar (the feed and the notifications,
+            // Talk's boards, the gallery's tabs, the rules) are one place:
+            // their main column at one x and one width, within a pixel.
+            if (got.bar && got.column) {
+              const barKey = `${key} ${got.bar}`;
+              const first = bars.get(barKey);
+              if (!first) bars.set(barKey, { name: one.name, column: got.column });
+              else if (!near(got.column.left, first.column.left) || !near(got.column.width, first.column.width)) {
+                found.push(["its main column", `is at ${n(got.column.left)} px, ${n(got.column.width)} wide; ${first.name}'s, a tab of the same bar, at ${n(first.column.left)}, ${n(first.column.width)} wide`]);
+              }
+            }
             for (const [what, why] of found) fail(label, `${what} ${why}`);
             if (!found.length) {
               passed += 1;

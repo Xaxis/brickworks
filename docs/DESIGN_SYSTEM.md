@@ -536,6 +536,8 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
     and its column is kept while it has nothing to show, so the list is
     one width on every list page and in every state: two tabs of one area
     (the feed and the notifications) never differ, the owner's example.
+    Pages that share a tab bar (the head's tabs, or Talk's boards) have
+    their main column at one x and one width, which layout_audit holds.
     No column of its own width with empty sides (the lead, 2026-11-23); a
     row's words keep a 75ch measure inside it. Under 900 px, the site's
     breakpoint, the aside follows the list.
@@ -1152,9 +1154,11 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   `.tabs` row on the band's foot, each tab's count in `.n`, hidden at none.
   Its aside (listkit, 2026-11-23), as the feed's designers are beside its
   posts: Show, the list's kinds (All, Comments, Remixes, Builds, Mentions,
-  `?kind=`) a line each with how many groups have it, the one shown lit;
-  "Your achievements" as a card, the group's row without its frame and its
-  newest two levels; and where to choose what you hear of.
+  Achievements, `?kind=`) a line each with how many groups have it, the
+  one shown lit, filtering the rows in place; "Your achievements" as a
+  card, the group's row without its frame and its newest two levels (in
+  the list, every level, while Show says Achievements); and where to
+  choose what you hear of.
 - **The feed** (`/feed`, docs/SOCIAL.md U9): the one head and list
   layout, its posts `ol.list-rows.feed-list` of `.list-row.feed-row`: the
   avatar as `.row-face`, `.what` the sentence with who and the thing's

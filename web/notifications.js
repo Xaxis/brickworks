@@ -39,6 +39,7 @@ const KINDS = {
   remixes: ["remix", "suggestion", "suggestion_taken"],
   builds: ["photo"],
   mentions: ["mention", "talk_mention"],
+  achievements: ["achievement"],
 };
 /// Which of them the list shows (?kind=).
 let kind = Object.hasOwn(KINDS, new URLSearchParams(location.search).get("kind") || "") ? new URLSearchParams(location.search).get("kind") : "all";
@@ -84,8 +85,15 @@ function allRead() {
 }
 
 /// The list as the aside's Show says: each group's rows of that kind, a group
-/// with none of them left out, and how many groups each kind has.
+/// with none of them left out, and how many groups each kind has. Your
+/// achievements are a card in the aside, or in the list, every level of them,
+/// when Show says Achievements: one group, moved, never drawn twice.
 function shown() {
+  const card = document.querySelector("ol.notices .notice[data-achievements]");
+  if (card && kind === "achievements" && card.parentElement !== $("groups")) $("groups").prepend(card);
+  if (card && kind !== "achievements" && card.parentElement !== $("achievements")) $("achievements").append(card);
+  $("achieved").hidden = !card || kind === "achievements";
+  const every = [...drawn()];
   const groups = [...$("groups").children];
   const wanted = KINDS[kind] || null;
   let left = 0;
@@ -100,8 +108,8 @@ function shown() {
   }
   for (const link of $("kinds").querySelectorAll("[data-kind]")) {
     const of = KINDS[link.dataset.kind];
-    const count = of ? groups.filter((item) => [...item.querySelectorAll(".lines > li")].some((row) => of.includes(row.dataset.kind))).length
-      : groups.length;
+    const count = of ? every.filter((item) => [...item.querySelectorAll(".lines > li")].some((row) => of.includes(row.dataset.kind))).length
+      : every.filter((item) => item !== card).length;
     if (link.dataset.kind === kind) link.setAttribute("aria-current", "true");
     else link.removeAttribute("aria-current");
     const n = link.querySelector(".n");
