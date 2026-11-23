@@ -29,7 +29,8 @@
 // With --static=DIR it also serves a web export from DIR, with the two
 // headers the threaded build needs, so a local build talks to these same
 // functions as it would on Vercel: tools/web/freeze_check.mjs drives one
-// over the connector this way.
+// over the connector this way. The export is at / and, as on a deployment,
+// at /app (its address kept).
 //
 //   node tools/web/relay_server.mjs 8790 --static=build/web
 //
@@ -433,12 +434,16 @@ http.createServer(async (incoming, outgoing) => {
     handler = await route("people");
     Object.assign(query, { op: "challenge", picture: "1" });
   }
-  // The app is at /app, which the deployment sends on to the build with
-  // its query (?view=<id>, ?copy=<id>) intact.
-  if (site && /^\/app\/?$/.test(url.pathname)) {
-    outgoing.writeHead(302, { location: `/${url.search}` });
+  // The app is at /app, which the deployment answers with the build's page,
+  // the address kept with its query (?view=<id>, ?copy=<id>): deploy.sh's
+  // route. Sent on to / here, the app's own sign-in screen sent the site
+  // then=/?copy=…, which /profile rightly follows only to /app, and the
+  // person was left on /profile (fmfin, 2026-11-23).
+  if (site && url.pathname === "/app/") {
+    outgoing.writeHead(302, { location: `/app${url.search}` });
     return outgoing.end();
   }
+  if (site && url.pathname === "/app" && serveFile("/index.html", outgoing)) return;
   if (!handler && !found && !mapped && serveFile(url.pathname, outgoing)) return;
   if (!handler) {
     const file = incoming.method === "GET" ? page(url.pathname) : null;

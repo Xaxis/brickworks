@@ -429,11 +429,13 @@ const loaderSays = (function () {
 // carried with it, are then here when the viewer asks (SharedModels.fetch
 // takes them from window.brickworksSharePrefetch; it asks again itself if
 // this failed). On a preview the answer took 2.4 s after the engine's first
-// frame, which was most of the way to a shared model's first step.
+// frame, which was most of the way to a shared model's first step. And Open
+// in Brickworks' (?copy=<id>), whose model the studio opens at start in
+// place of the example car (Main._open_asked).
 (function () {
 	try {
 		const query = new URLSearchParams(location.search);
-		const id = query.get("view") || "";
+		const id = query.get("view") || query.get("copy") || "";
 		if (!/^[A-Za-z0-9]{10}$/.test(id)) return;
 		// And which version of it, when an older one's page sent it here
 		// (/m/<id>/v/<n>: ?view=<id>&v=<n>).

@@ -16941,3 +16941,39 @@ msgid "Model name or designer"
 msgstr "Nom du modèle ou concepteur"
 msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
 msgstr "« %s » est un sous-ensemble de ce modèle : sélectionnez-le, et Édition, Dupliquer en pose un autre"
+# Open in Brickworks for a stranger: the model asked for behind the sign-in, and its copy's first acts (firstminute)
+msgid "Sign in to make it yours"
+msgstr "Connectez-vous pour en faire le vôtre"
+
+msgid "“%s” opens as your own copy, saved in your models, to change as you like."
+msgstr "« %s » s’ouvre en copie à vous, enregistrée dans vos modèles, à modifier comme vous voulez."
+
+msgid "“%s” is yours to change:"
+msgstr "« %s » est à vous, à modifier :"
+
+msgid "Recolour a part"
+msgstr "Recolorer une pièce"
+
+msgid "Add a part"
+msgstr "Ajouter une pièce"
+
+msgid "The Paint tool: pick a colour, then click a part to paint it"
+msgstr "L’outil Peinture : choisissez une couleur, puis cliquez sur une pièce pour la peindre"
+
+msgid "The parts: pick one, then click where it goes"
+msgstr "Les pièces : choisissez-en une, puis cliquez là où elle va"
+
+msgid "The timeline: the model step by step, as its booklet builds it"
+msgstr "La chronologie : le modèle étape par étape, comme sa notice le construit"
+
+msgid "Paint: pick a colour, then a part to paint it that colour"
+msgstr "Peinture : choisissez une couleur, puis une pièce à peindre de cette couleur"
+
+msgid "Pick a part, then where it goes on the model"
+msgstr "Choisissez une pièce, puis l’endroit du modèle où elle va"
+
+msgid "“%s” is your copy of it, made a moment ago: opened, not copied again"
+msgstr "« %s » est votre copie, faite à l’instant : ouverte, pas copiée une seconde fois"
+
+msgid "could not save “%s” into your models: File › Save as… keeps it"
+msgstr "impossible d’enregistrer « %s » dans vos modèles : Fichier › Enregistrer sous… le garde"
