@@ -248,7 +248,10 @@ for (const [at, [name, kind, parts]] of [["Wizard's Tower", "castle", 9541], ["S
   ["Space Shuttle", "space", 1320], ["Steam Train", "vehicle", 760]].entries()) {
   MODELS.push(model({ id: `HouseMod0${at + 1}`, owner: HOUSE, name, author: "Brickworks", parts, steps: 12 + at, kind,
     tags: ["ai-designed"], test: true, listed_at: `2026-10-1${at}T10:00:00Z`, updated_at: `2026-10-1${at}T10:00:00Z`,
-    description: "Designed with the assistant." }));
+    description: "Designed with the assistant.",
+    // The second's owner chose to say how it was made (made_with_shown.sql);
+    // the rest say nothing of it.
+    made_with_shown: at === 1 }));
 }
 for (let at = 1; at <= 60; at++) {
   const day = new Date(Date.UTC(2025, 10, 2) + at * 7 * 864e5).toISOString();
@@ -634,7 +637,8 @@ function card(m) {
     steps: m.steps, own_steps: m.own_steps, technic: m.technic, views, likes, builds,
     remixes: remixesOf(m.id).length, by: m.author !== null && owner ? { handle: owner.handle, name: owner.name } : null,
     tested: TESTED.has(m.id), ...(APPLIED ? { comments: commentsOn(m.id) } : {}),
-    ...(m.made_with !== undefined ? { made_with: m.made_with } : {}) };
+    ...(m.made_with !== undefined ? { made_with: m.made_with } : {}),
+    ...(m.made_with_shown !== undefined ? { made_with_shown: m.made_with_shown } : {}) };
 }
 
 /// How many comments a visitor may read on [id]'s page (gallery_tabs.sql
@@ -643,9 +647,10 @@ const commentsOn = (id) => COMMENTS.filter((one) => one.model === id && !one.rem
   && !ADMIN.barred.some((barred) => barred.account === one.author)).length;
 
 /// How a model was made: as its app said (made_with.sql), else as its tags
-/// say (web/card.js madeOf).
-const madeOf = (m) => (m.made_with ? (m.made_with === "hand" ? "hand" : "assistant")
-  : (m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify") ? "assistant" : "hand");
+/// say (web/card.js madeOf); with the assistant only where its owner chose
+/// to say so (made_with_shown.sql), by hand every other.
+const madeOf = (m) => (m.made_with_shown === true && (m.made_with ? m.made_with !== "hand"
+  : (m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify")) ? "assistant" : "hand");
 
 /// directory_model: a model's page, with the line it came from and its listed remixes.
 function modelPage(id) {

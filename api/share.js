@@ -88,11 +88,18 @@
 //                            model, image?, cutout?, thumb?, id?, listed?,
 //                            remixed_from?, remixed_from_version?,
 //                            description?, tags?, kind?, licence?, note?,
-//                            tested?, made_with?}. tested is what the app
-//                            found of the model as it published it
-//                            (api/_tested.js); made_with who laid its parts,
-//                            as the app knows it: hand, assistant or
-//                            brickify (supabase/made_with.sql).
+//                            tested?, made_with?, made_with_shown?}. tested
+//                            is what the app found of the model as it
+//                            published it (api/_tested.js); made_with who
+//                            laid its parts, as the app knows it: hand,
+//                            assistant or brickify (supabase/made_with.sql),
+//                            kept for its owner; made_with_shown whether
+//                            its owner chose to say so on its page, which
+//                            nothing public says otherwise
+//                            (supabase/made_with_shown.sql)
+//   GET  ?op=made&id=X       the owner's own: {made_with, made_with_shown,
+//                            ready}, for its page's More
+//   POST ?op=made&id=X       the owner says whether it is shown: {shown}
 //                            With an id, the owner's own link gets its
 //                            next version, and the one before is kept.
 //                            listed puts it in the gallery; remixed_from
@@ -299,7 +306,7 @@ import { challengeLine, withWins } from "./_challenges.js";
 import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, madePublic, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -609,6 +616,15 @@ export function checkMadeWith(given) {
   return given;
 }
 
+/// Whether its owner says on its page how it was made
+/// (supabase/made_with_shown.sql): undefined when the app does not say,
+/// which a republish keeps as it was.
+export function checkMadeShown(given) {
+  if (given === undefined || given === null) return undefined;
+  if (typeof given !== "boolean") throw new Refusal("made_with_shown is true or false");
+  return given;
+}
+
 /// The small picture for the gallery's cards, from the base64 the app
 /// sends, or null for none: a WebP of at most 64 KB.
 export function checkThumb(given) {
@@ -639,7 +655,11 @@ function cleanText(given, limit) {
 /// 2026-10-24), where row security used to say what was published.
 async function publishedRow(id) {
   if (!ID.test(id || "")) return null;
-  const rows = await db(`shared_models?id=eq.${id}&published=is.true&select=${PUBLIC}`);
+  const at = (select) => db(`shared_models?id=eq.${id}&published=is.true&select=${select}`);
+  // Whether its owner shows how it was made (supabase/made_with_shown.sql);
+  // before that is applied the column is refused, and the row is read
+  // without it: shown by nobody.
+  const rows = await at(`${PUBLIC},made_with_shown`).catch(() => at(PUBLIC));
   return rows[0] || null;
 }
 
@@ -2224,7 +2244,9 @@ async function leaveOffBlocked(own, page, next, lists) {
 async function modelPage(id) {
   if (!ID.test(id || "")) return null;
   const page = await db("rpc/directory_model", { method: "POST", body: { model_id: id } });
-  return page && typeof page === "object" ? page : null;
+  // How it was made, only where its owner chose to say (web/card.js
+  // madePublic): its fact, its tags, its keywords and what it is like.
+  return page && typeof page === "object" ? madePublic(page) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -2235,6 +2257,7 @@ async function read(request, response) {
   const origin = originOf(request);
 
   if (op === "mine") return mine(request, response, origin);
+  if (op === "made") return madeShown(request, response);
   if (op === "tested") return testedOwn(request, response);
   if (op === "clip_need") return clipNeed(request, response);
   if (op === "sweep") return sweep(request, response);
@@ -2432,7 +2455,9 @@ async function read(request, response) {
     // What its owner said about it, for a session reading it as a
     // reference (src/net/gallery_tool.gd) as for its page.
     description: row.description ?? null,
-    tags: row.tags || [],
+    // As its page says them: the two that say how it was made only where
+    // its owner chose to (web/card.js madePublic).
+    tags: madePublic(row).tags || [],
     kind: row.kind ?? null,
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
@@ -2824,6 +2849,10 @@ async function gallery(request, response, origin) {
     tabs = false;
     rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
   }
+  // With the assistant: only a model its owner chose to say so of, which
+  // gallery_models asks itself once supabase/made_with_shown.sql is
+  // applied. Before, its rows say nothing shown, and none is listed.
+  if (asked.made === "assistant") rows = rows.filter((row) => row.made_with_shown === true);
   // Signed in: nothing of anybody they blocked (supabase/block.sql). A
   // page may then hold fewer; the next is where it was.
   const models = await withoutTheirBlocked(mine,
@@ -2967,6 +2996,51 @@ async function keepMadeWith(id, owner, madeWith) {
   } catch {
     return null;
   }
+}
+
+/// Whether its owner shows how it was made, kept with its row: its page's
+/// fact, its two tags and the gallery's With the assistant read it
+/// (supabase/made_with_shown.sql). Not said, it stays as it was. What was
+/// kept, or null for nothing: never stops the publish, and before that
+/// file there is nowhere to keep it, and nothing is shown.
+async function keepMadeShown(id, owner, shown) {
+  if (shown === undefined) return null;
+  try {
+    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { made_with_shown: shown } });
+    return shown;
+  } catch {
+    return null;
+  }
+}
+
+/// ?op=made: the owner's own say in whether its page tells how it was made
+/// (supabase/made_with_shown.sql). GET {made_with, made_with_shown, ready}:
+/// who laid its parts, as its app said, and whether that is shown; ready
+/// false before that file is applied, when it cannot be kept. POST {shown}
+/// keeps it, and answers the same. Nobody else is answered anything of it.
+async function madeShown(request, response) {
+  const owner = await signedIn(request);
+  const id = String(request.query?.id || request.body?.id || "");
+  if (!ID.test(id)) throw new Refusal("there is no shared model at that link", 404);
+  const row = await ownRow(id);
+  if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
+  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  response.setHeader("Cache-Control", "no-store");
+  if (request.method === "POST") {
+    const shown = checkMadeShown(request.body?.shown);
+    if (shown === undefined) throw new Refusal("shown is true or false");
+    try {
+      await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { made_with_shown: shown } });
+    } catch {
+      throw new Refusal("Brickworks cannot keep that yet: try again after its next update", 503);
+    }
+  }
+  const at = (select) => db(`shared_models?id=eq.${id}&owner=eq.${owner}&select=${select}`);
+  const kept = await at("made_with,tags,made_with_shown").then((rows) => ({ ...rows[0], ready: true }))
+    .catch(async () => ({ ...(await at("made_with,tags"))[0], made_with_shown: false, ready: false }));
+  const made = madeOf(kept);
+  return response.status(200).json({ id, made_with: MADE_WITH.includes(kept.made_with) ? kept.made_with : null,
+    way: made.way, by: made.by, made_with_shown: kept.made_with_shown === true, ready: kept.ready });
 }
 
 /// Who modelled it, as the app's Library has it (api/_omr_credit.js), kept
@@ -3201,6 +3275,7 @@ async function publish(request, response) {
   const cutout = checkImage(body.cutout, "the picture for its page");
   const thumb = checkThumb(body.thumb);
   const madeWith = checkMadeWith(body.made_with);
+  const madeShown = checkMadeShown(body.made_with_shown);
   // What the app found, checked against this very file as the app sent it
   // (api/_tested.js), which it hashed before anything was left out.
   const finding = checkTested(body.tested, body.model);
@@ -3413,6 +3488,7 @@ async function publish(request, response) {
   await keepNeeds(id, needs);
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
+  const shownKept = await keepMadeShown(id, owner, madeShown);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
   // A person's first model told to the owner (api/_notify.js): no other
   // link of theirs made before this one wrote its row (one row at most, by
@@ -3437,7 +3513,7 @@ async function publish(request, response) {
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, modelled_by: modelledKept, ...links(origin, id),
+    made_with: madeKept, made_with_shown: shownKept, modelled_by: modelledKept, ...links(origin, id),
   });
 }
 
@@ -3937,6 +4013,7 @@ async function handler(request, response) {
     if (op === "built") return await built(request, response);
     if (op === "bases") return await basesPut(request, response);
     if (op === "clip") return await clipPut(request, response);
+    if (op === "made") return await madeShown(request, response);
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {

@@ -21,7 +21,7 @@
 //   people     builders to follow
 //   photo      a photo of a real build of a model
 import {
-  avatarHtml, counted, escapeHtml, iconButtonHtml, iconHtml, langAt, likeName, madeOf, motionWords, number, photoSrc, pictureOf, say,
+  avatarHtml, counted, escapeHtml, iconButtonHtml, iconHtml, langAt, likeName, madeOf, madePublic, motionWords, number, photoSrc, pictureOf, say,
 } from "./card.js";
 
 /// The cards the deploy writes into the page: a laptop's first two rows of
@@ -42,11 +42,13 @@ const BOARDS = { show: "Show and tell", help: "Help", ideas: "Ideas", challenges
 
 /// How a model was made, and what it does, as the feed says it: each a
 /// small pill to the docs page of the feature that made it so, so a card
-/// says what the studio did as well as what the builder did.
+/// says what the studio did as well as what the builder did. How it was
+/// made only where its owner chose to say (web/card.js madePublic): no
+/// card says Built by hand either, or one that says nothing would be told
+/// apart by it.
 export const MADE_DOCS = {
   assistant: ["Designed with the assistant", "/docs/ai"],
   brickify: ["Made with Brickify", "/docs/art-and-brickify"],
-  hand: ["Built by hand", "/docs/placing-parts"],
   moves: ["/docs/joints-and-mechanisms"],
   steps: ["/docs/instructions"],
 };
@@ -89,12 +91,15 @@ function headHtml(by, line, { follow = false, author = "" } = {}) {
 }
 
 /// The pills that say how [model] was made and what it does: two at most,
-/// how it was made first.
+/// how it was made first, where its owner chose to say it.
 export function madeHtml(model) {
   const pills = [];
-  const made = madeOf(model);
-  const [words, docs] = MADE_DOCS[made.by === "brickify" ? "brickify" : made.way] || MADE_DOCS.hand;
-  pills.push(`<a class="pill" href="${docs}" data-made="${escapeHtml(made.by === "brickify" ? "brickify" : made.way)}">${escapeHtml(say(words))}</a>`);
+  const made = madeOf(madePublic(model));
+  if (made.way === "assistant") {
+    const by = made.by === "brickify" ? "brickify" : "assistant";
+    const [words, docs] = MADE_DOCS[by];
+    pills.push(`<a class="pill" href="${docs}" data-made="${by}">${escapeHtml(say(words))}</a>`);
+  }
   const motions = Array.isArray(model.motions) ? model.motions.filter((one) => typeof one === "string" && one) : [];
   const moves = Array.isArray(model.moves) ? model.moves.filter((one) => typeof one === "string" && one) : [];
   if (motions.length || moves.length) {
