@@ -6919,6 +6919,13 @@
       "entry": "tools/web/inbox_flow.mjs",
       "reach": "node --env-file=.env tools/web/inbox_flow.mjs --url=<relay or preview> --out=DIR   (BW_BYPASS=$VERCEL_BYPASS for a preview; checks before and after supabase/notification_prefs.sql)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
     }
   ]
 }

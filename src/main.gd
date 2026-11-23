@@ -2841,7 +2841,14 @@ func _clear_undone() -> Array:
 	# undone, a clear named the model's own after its title, and Save wrote
 	# "0 FILE cf_2_saved_as.ldr" over the file's "0 FILE model.ldr".
 	back.append({"undo": "sectionfiles", "files": _world.section_files.duplicate()})
+	# And the lines its file carried that it does not read (BrickWorld
+	# .kept_lines): undone without them, the next whole write lost them.
+	back.append({"undo": "keptlines", "lines": _world.kept_lines})
 	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
+	# And whether its steps are the app's own saved ones (BrickWorld.steps_own):
+	# undone without it, the steps came back the person's, and Save wrote
+	# AUTHORED_STEPS into a file that had none (copyfaults clear_lit).
+	back.append({"undo": "stepsown", "own": _world.steps_own})
 	for unit: String in _world.unit_steps:
 		var step: int = int(_world.unit_steps[unit])
 		back.append({"undo": "unitstep", "unit": unit, "step": step, "kept": step == -1})

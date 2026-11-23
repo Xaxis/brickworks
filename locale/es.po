@@ -16010,6 +16010,33 @@ msgstr "Ya hay una clave en %s s: esta se queda donde estaba."
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clave de %s s fijada de nuevo, a menos de un fotograma del tiempo: dónde está la cámara, a qué mira y su objetivo."
 
+msgid "Plan steps"
+msgstr "Planificar pasos"
+
+msgid "Work the steps out again from the model as it is, in place of these. One undo"
+msgstr "Volver a calcular los pasos a partir del modelo tal como está, en lugar de estos. Un solo deshacer"
+
+msgid "these are the steps of the file's author, kept as they made them"
+msgstr "estos son los pasos del autor del archivo, guardados tal como los hizo"
+
+msgid "the steps are worked out already, from the model as it is"
+msgstr "los pasos ya están calculados a partir del modelo tal como está"
+
+msgid "worked the steps out again from the model as it is"
+msgstr "pasos calculados de nuevo a partir del modelo tal como está"
+
+msgid "the parts in hand are in no step: put them down, or press Escape, first"
+msgstr "las piezas en la mano no están en ningún paso: suéltalas o pulsa Esc primero"
+
+msgid "worked the steps out again from the model as it is: %d of the %d steps with a name, notes or a page of their own share a step with another now, where one name and page stand"
+msgstr "pasos calculados de nuevo a partir del modelo tal como está: %d de los %d pasos con nombre, notas o página propios comparten ahora un paso con otro, donde quedan un nombre y una página"
+
+msgid "worked the steps out again from the model as it is, each step's name, notes and page with its parts"
+msgstr "pasos calculados de nuevo a partir del modelo tal como está, el nombre, las notas y la página de cada paso con sus piezas"
+
+msgid "%d of the %d steps with a name, notes or a page of their own would share a step with another, where one name and page stand: their notes are kept. One undo brings them back."
+msgstr "%d de los %d pasos con nombre, notas o página propios compartirían un paso con otro, donde quedan un nombre y una página: sus notas se conservan. Un deshacer los recupera."
+
 # Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
 msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
 msgstr "La foto que eliges se envía a Brickognize (brickognize.com), un servicio de terceros que identifica piezas LEGO®. Según sus condiciones, puede guardar la foto y usarla para entrenar su reconocimiento, y es solo para uso personal y no comercial: la licencia comercial de Pro no lo cubre.\n\nSolo se envía la foto, nunca tu modelo, y no se envía nada hasta que eliges una foto."

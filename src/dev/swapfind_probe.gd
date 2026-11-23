@@ -107,6 +107,19 @@ func _bar_on(text: String) -> PanelContainer:
 	return _bar
 
 
+## The bar found again, as typing into it does (refresh), and waited for:
+## where the copies' frames are not to hand they are worked out a slice of a
+## frame at a time first (FindReplace.frames_paced_for), and what was found
+## is empty until then. On a busy box the car's took more than a slice, and
+## the car read "found" before it was there (keepfix: wkfix's run).
+func _refresh() -> void:
+	_bar.call("refresh")
+	for _n: int in 3000:
+		if not bool(_bar.get("_framing")):
+			return
+		await process_frame
+
+
 ## Find and replace's key pressed as the window delivers it, nothing focused
 ## and the pointer over the model; the bar once it is up, or null.
 func _by_key() -> PanelContainer:
@@ -309,7 +322,7 @@ func _case_car() -> void:
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("set_where", "all")
-	_bar.call("refresh")
+	await _refresh()
 	var found: Dictionary = _bar.get("found")
 	var said: String = _bar_said()
 	print("  bar: %s" % said)
@@ -344,7 +357,7 @@ func _case_car() -> void:
 	await _open(text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	await _frames(4)
 	var undone: String = await _undone()
@@ -362,7 +375,7 @@ func _case_mcp() -> void:
 	await _bar_on(text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	await _frames(4)
 	var by_bar: String = _save()
@@ -395,7 +408,7 @@ func _case_two_colours() -> void:
 	await _bar_on(_fixture(CAR))
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "3794b", -1)
-	_bar.call("refresh")
+	await _refresh()
 	var said: String = _bar_said()
 	print("  bar: %s" % said)
 	var found: Dictionary = _bar.get("found")
@@ -421,7 +434,7 @@ func _case_mirror() -> void:
 	var before: String = _save()
 	_bar.call("set_find", "3822", -1)
 	_bar.call("set_into", "3821", -1)
-	_bar.call("refresh")
+	await _refresh()
 	var found: Dictionary = _bar.get("found")
 	_check("mirror: 3822 found once, the right side's: the mirrored side's door is seen as 3821 (%d, %d mirrored)"
 		% [(found["ids"] as Array).size(), (found["mirrored"] as Dictionary).size()],
@@ -446,7 +459,7 @@ func _case_mirror() -> void:
 	await _open(text)
 	_bar.call("set_find", "3822", -1)
 	_bar.call("set_into", "3821", -1)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	var undone: String = await _undone()
 	_check("mirror: one undo, the save before to the byte (%s)" % _diff(before, undone),
@@ -457,7 +470,7 @@ func _case_mirror() -> void:
 	await _open(text)
 	_bar.call("set_find", "3821", -1)
 	_bar.call("set_into", "3822", -1)
-	_bar.call("refresh")
+	await _refresh()
 	found = _bar.get("found")
 	_check("mirror: 3821 found once, in the mirrored copy (%d, %d mirrored)" % [
 		(found["ids"] as Array).size(), (found["mirrored"] as Dictionary).size()],
@@ -494,7 +507,7 @@ func _case_three_deep() -> void:
 	var before: String = _save()
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	var said: String = _bar_said()
 	_check("three_deep: Cap's 3023 in each of 3 copies (%s)" % said,
 		said.contains("Cap: 1 in each of 3 copies") and said.contains("Changes all 3 copies of Cap"))
@@ -513,7 +526,7 @@ func _case_three_deep() -> void:
 	await _open(text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	var undone: String = await _undone()
 	_check("three_deep: one undo, the save before to the byte (%s)" % _diff(before, undone),
@@ -529,7 +542,7 @@ func _case_wheels() -> void:
 	var before: String = _save()
 	_bar.call("set_find", "4624", 7)
 	_bar.call("set_into", "", 71)
-	_bar.call("refresh")
+	await _refresh()
 	var said: String = _bar_said()
 	_check("wheels: the rim in each of 4 copies, all 4 said (%s)" % said,
 		said.contains("Wheel: 1 in each of 4 copies") and said.contains("Changes all 4 copies of Wheel"))
@@ -560,7 +573,7 @@ func _case_printed() -> void:
 	var was: Transform3D = tile.transform
 	_bar.call("set_find", "3068b", -1)
 	_bar.call("set_into", printed, -1)
-	_bar.call("refresh")
+	await _refresh()
 	var said: String = _bar_said()
 	_check("printed: %s sits as 3068b, nothing said of a fit (%s)" % [printed, said],
 		not said.contains("sit the same") and not said.contains("no room"))
@@ -578,7 +591,7 @@ func _case_printed() -> void:
 	await _open(text)
 	_bar.call("set_find", "3068b", -1)
 	_bar.call("set_into", printed, -1)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	var undone: String = await _undone()
 	_check("printed: one undo, the save before to the byte (%s)" % _diff(before, undone),
@@ -594,7 +607,7 @@ func _case_footprint() -> void:
 		var before: String = _save()
 		_bar.call("set_find", "3023", BLACK)
 		_bar.call("set_into", into, -1)
-		_bar.call("refresh")
+		await _refresh()
 		var said: String = _bar_said()
 		print("  %s: %s" % [into, said])
 		var made: Dictionary = _bar.get("made")
@@ -632,7 +645,7 @@ func _case_crlf() -> void:
 		spaced == _fixture(CAR) and before.count("\r\n") == before.count("\n"))
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	await _frames(4)
 	var after: String = _save()
@@ -664,7 +677,7 @@ func _case_live() -> void:
 	var before: String = _save()
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	await _frames(4)
 	_check("live: replaced, 4 Dark Bluish Grey", _count("3023b", DARK_BLUISH_GREY) == 4
@@ -704,7 +717,7 @@ func _case_together() -> void:
 	var waiting: int = together.waiting()
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	await _bar.call("replace_now")
 	await _frames(10)
 	var sent: Dictionary = _sent_since(together, waiting)
@@ -763,7 +776,7 @@ func _case_words() -> void:
 		"1 locked, left out: unlock it to change it", "3 locked, left out: unlock them to change them"]
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "3623", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	for node: Control in _shown_in_bar():
 		if node is Label and not (node as Label).text.is_empty():
 			texts.append_array((node as Label).text.split("\n"))
@@ -842,7 +855,7 @@ func _case_room_selection() -> void:
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "3623", -1)
 	_bar.call("set_where", "selection")
-	_bar.call("refresh")
+	await _refresh()
 	var said: String = _bar_said()
 	print("  selection: %s" % said)
 	var made: Dictionary = _bar.get("made")
@@ -866,7 +879,7 @@ func _case_room_selection() -> void:
 	_builder.selection_changed.emit(1)
 	_bar.call("set_where", "selection")
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
+	await _refresh()
 	said = _bar_said()
 	print("  locked twin: %s" % said)
 	await _bar.call("replace_now")
@@ -890,7 +903,7 @@ func _case_big_room() -> void:
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "3069b", -1)
 	var began: int = Time.get_ticks_msec()
-	_bar.call("refresh")
+	await _refresh()
 	# 10179's copies' frames are worked out a slice of a frame at a time,
 	# and found once they are (smalls9).
 	for _n: int in 3000:
@@ -944,7 +957,7 @@ func _case_puts() -> void:
 			["qqzzxx", "No part qqzzxx", true], ["3023b", "All 4 are that already", true]]:
 		_bar.call("set_find", "3023", BLACK)
 		_bar.call("set_into", typed[0], -1)
-		_bar.call("refresh")
+		await _refresh()
 		var said: String = _bar_said()
 		print("  %s: %s" % [typed[0], said])
 		_check("puts %s: the bar says '%s', Replace %s" % [typed[0], typed[1], "off" if typed[2] else "on"],

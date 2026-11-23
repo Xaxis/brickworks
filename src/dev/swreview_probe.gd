@@ -132,8 +132,21 @@ func _find_into(part: String, colour: int, into_part: String, into_colour: int,
 	_bar.call("set_find", part, colour)
 	_bar.call("set_into", into_part, into_colour)
 	_bar.call("set_where", where)
-	_bar.call("refresh")
+	await _refresh()
 	return _bar.get("found")
+
+
+## The bar found again (refresh), and waited for: where the copies' frames
+## are not to hand they are worked out a slice of a frame at a time first
+## (FindReplace.frames_paced_for), and "found" is empty until then. On a busy
+## box a small model's took more than a slice: swapfind's car read it empty
+## and stopped on a script error (keepfix, from wkfix's run).
+func _refresh() -> void:
+	_bar.call("refresh")
+	for _n: int in 3000:
+		if not bool(_bar.get("_framing")):
+			return
+		await process_frame
 
 
 func _block(text: String, file: String) -> Array:
@@ -164,7 +177,7 @@ func _r_swap_save() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
 	var before: String = _save()
-	_find_into("3023", BLACK, "3794b", -1)
+	await _find_into("3023", BLACK, "3794b", -1)
 	print("  bar: %s" % _bar_said())
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(6)
@@ -184,7 +197,7 @@ func _r_swap_save() -> void:
 	await _open(after)
 	_check("swap_save: opened again as shown%s" % _unlike(shown, _looks(false)), shown == _looks(false))
 	await _open(text)
-	_find_into("3023", BLACK, "3794b", -1)
+	await _find_into("3023", BLACK, "3794b", -1)
 	await _bar.call("replace_now")
 	await _frames(4)
 	var undone: String = await _undone()
@@ -201,7 +214,7 @@ func _r_two_replaces() -> void:
 	await _bar_on(text)
 	var before: String = _save()
 	var depth: int = _builder.history_depth()
-	_find_into("3023", BLACK, "", DARK_BLUISH_GREY)
+	await _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
 	await _bar.call("replace_now")
 	await _frames(4)
 	var first: String = _save()
@@ -209,7 +222,7 @@ func _r_two_replaces() -> void:
 	_shell.run("redo")
 	await _frames(6)
 	_check("two: redo gives the first replace (%s)" % _diff(first, _save()), _save() == first)
-	_find_into("3024", -1, "3070b", -1)
+	await _find_into("3024", -1, "3070b", -1)
 	print("  bar: %s" % _bar_said())
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(6)
@@ -243,7 +256,7 @@ func _r_submodel_only() -> void:
 	await _frames(4)
 	_bar = _main.get("_find_replace_made")
 	var before: String = _save()
-	var found: Dictionary = _find_into("", 4, "", 14, "submodel")
+	var found: Dictionary = await _find_into("", 4, "", 14, "submodel")
 	var said: String = _bar_said()
 	print("  entered %s; bar: %s" % [side, said])
 	var done: Dictionary = await _bar.call("replace_now")
@@ -263,7 +276,7 @@ func _r_submodel_only() -> void:
 	_check("submodel_only: undo to the byte (%s)" % _diff(before, undone), undone == before)
 	# The model's own parts only.
 	await _bar_on(text)
-	_find_into("", BLACK, "", 14, "submodel")
+	await _find_into("", BLACK, "", 14, "submodel")
 	said = _bar_said()
 	print("  top bar: %s" % said)
 	await _bar.call("replace_now")
@@ -281,7 +294,7 @@ func _r_shared() -> void:
 	await _bar_on(SHARED)
 	var before: String = _save()
 	print("  opened: %s" % _diff(SHARED, before))
-	var found: Dictionary = _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
+	var found: Dictionary = await _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
 	var said: String = _bar_said()
 	print("  bar all: %s" % said)
 	var paths: Array = Array(_shell.assemblies.paths())
@@ -310,7 +323,7 @@ func _r_shared() -> void:
 	_builder.clear_selection()
 	_shell.run("find_replace")
 	await _frames(4)
-	found = _find_into("3023", BLACK, "", DARK_BLUISH_GREY, "submodel")
+	found = await _find_into("3023", BLACK, "", DARK_BLUISH_GREY, "submodel")
 	said = _bar_said()
 	print("  bar in %s: %s" % [side, said])
 	var answer: String = await _say("replace_parts", {"find": {"part": "3023", "color": 0},
@@ -334,7 +347,7 @@ func _r_colour16() -> void:
 	await _bar_on(C16)
 	var before: String = _save()
 	print("  opened: %s" % _diff(C16, before))
-	var found: Dictionary = _find_into("", 4, "", DARK_BLUISH_GREY)
+	var found: Dictionary = await _find_into("", 4, "", DARK_BLUISH_GREY)
 	print("  bar Red: %s" % _bar_said())
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(6)
@@ -369,7 +382,7 @@ func _r_direct() -> void:
 	var before: String = _save()
 	var direct: int = 0x2FF0000
 	_bar.call("set_find", "", direct)
-	_bar.call("refresh")
+	await _refresh()
 	var said: String = _bar_said()
 	print("  bar direct: %s" % said)
 	var found: Dictionary = _bar.get("found")
@@ -380,7 +393,7 @@ func _r_direct() -> void:
 	_check("direct: replace_parts finds a direct colour too", a.contains("Found 3"))
 	a = await _say("replace_parts", {"find": {"part": "3023"}, "preview": true})
 	print("  mcp 3023: %s" % a.replace("\n", " / "))
-	_find_into("", direct, "3710", -1)
+	await _find_into("", direct, "3710", -1)
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(6)
 	var after: String = _save()
@@ -397,7 +410,7 @@ func _r_mirror_colour() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
 	var before: String = _save()
-	var found: Dictionary = _find_into("3024", 46, "", 4)
+	var found: Dictionary = await _find_into("3024", 46, "", 4)
 	print("  bar 3024/46: %s" % _bar_said())
 	await _bar.call("replace_now")
 	await _frames(6)
@@ -409,7 +422,7 @@ func _r_mirror_colour() -> void:
 	await _open(after)
 	_check("mirror_colour: opened as shown%s" % _unlike(shown, _looks(false)), shown == _looks(false))
 	await _open(text)
-	found = _find_into("3821", -1, "", 14)
+	found = await _find_into("3821", -1, "", 14)
 	print("  bar 3821 (mirrored door): %s" % _bar_said())
 	await _bar.call("replace_now")
 	await _frames(6)
@@ -431,7 +444,7 @@ func _r_allblack() -> void:
 	for line: String in before.split("\n"):
 		if line.begins_with("1 0 "):
 			blacks += 1
-	var found: Dictionary = _find_into("", BLACK, "", DARK_BLUISH_GREY)
+	var found: Dictionary = await _find_into("", BLACK, "", DARK_BLUISH_GREY)
 	print("  bar: %s" % _bar_said())
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(6)
@@ -447,7 +460,7 @@ func _r_allblack() -> void:
 	await _open(after)
 	_check("allblack: opened as shown%s" % _unlike(shown, _looks(false)), shown == _looks(false))
 	await _open(text)
-	_find_into("", BLACK, "", DARK_BLUISH_GREY)
+	await _find_into("", BLACK, "", DARK_BLUISH_GREY)
 	await _bar.call("replace_now")
 	await _frames(4)
 	var undone: String = await _undone()
@@ -459,7 +472,7 @@ func _r_tiles() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
 	var before: String = _save()
-	var found: Dictionary = _find_into("3024", -1, "3070b", -1)
+	var found: Dictionary = await _find_into("3024", -1, "3070b", -1)
 	print("  bar: %s" % _bar_said())
 	var made: Dictionary = _bar.get("made")
 	print("  made: otherwise %d floats %d room %d follow %d changes %d" % [(made["otherwise"] as Array).size(),
@@ -479,7 +492,7 @@ func _r_tiles() -> void:
 	await _open(after)
 	_check("tiles: opened as shown%s" % _unlike(shown, _looks(false)), shown == _looks(false))
 	await _open(text)
-	_find_into("3024", -1, "3070b", -1)
+	await _find_into("3024", -1, "3070b", -1)
 	await _bar.call("replace_now")
 	await _frames(4)
 	var undone: String = await _undone()
@@ -501,7 +514,7 @@ func _r_locked() -> void:
 	_builder.selection[target.id] = true
 	_builder.lock_selection(true)
 	_builder.clear_selection()
-	var found: Dictionary = _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
+	var found: Dictionary = await _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
 	var said: String = _bar_said()
 	print("  bar: %s" % said)
 	var done: Dictionary = await _bar.call("replace_now")
@@ -530,7 +543,7 @@ func _r_selection_copy() -> void:
 	await _frames(4)
 	_bar = _main.get("_find_replace_made")
 	var before: String = _save()
-	_find_into("4624", 7, "", 71, "selection")
+	await _find_into("4624", 7, "", 71, "selection")
 	var said: String = _bar_said()
 	print("  bar: %s" % said)
 	_check("selection_copy: says all 4 copies of Wheel change", said.contains("Changes all 4 copies of Wheel"))
@@ -589,7 +602,7 @@ func _r_hostile() -> void:
 func _r_write_paths() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
-	_find_into("3023", BLACK, "3794b", DARK_BLUISH_GREY)
+	await _find_into("3023", BLACK, "3794b", DARK_BLUISH_GREY)
 	await _bar.call("replace_now")
 	await _frames(6)
 	var shown: Array = _looks(false)
@@ -619,7 +632,7 @@ func _r_together_actor() -> void:
 	together.check_alone([{"who": "a11ce000", "name": "Ann", "here": true, "owner": false,
 		"at": null, "sel": [], "view": null}])
 	await _frames(10)
-	_find_into("3023", BLACK, "", DARK_BLUISH_GREY)
+	await _find_into("3023", BLACK, "", DARK_BLUISH_GREY)
 	await _bar.call("replace_now")
 	await _frames(10)
 	# The room's server numbers this side's sends (none here): confirmed, as
@@ -688,7 +701,7 @@ const PL := """0 FILE pl.mpd
 func _r_room_copies() -> void:
 	await _bar_on(PL)
 	var before: String = _save()
-	_find_into("3023", BLACK, "3623", -1)
+	await _find_into("3023", BLACK, "3623", -1)
 	var said: String = _bar_said()
 	var made: Dictionary = _bar.get("made")
 	print("  bar: %s" % said)
@@ -727,7 +740,7 @@ func _r_resolve() -> void:
 			finder.call("part_name", part) if not part.is_empty() else "-", _library.parts.has(typed)])
 		_bar.call("set_find", "3023", BLACK)
 		_bar.call("set_into", typed, -1)
-		_bar.call("refresh")
+		await _refresh()
 		var said: String = _bar_said()
 		print("    bar: %s" % said.right(200))
 		_check("resolve: the bar names %s before Replace for '%s'" % [part, typed],
@@ -753,13 +766,13 @@ func _r_big() -> void:
 	began = Time.get_ticks_msec()
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "", -1)
-	_bar.call("refresh")
+	await _refresh()
 	var found: Dictionary = _bar.get("found")
 	print("  find 3023: %d found, %d ms; %s" % [(found["ids"] as Array).size(), Time.get_ticks_msec() - began,
 		_bar_said().left(300)])
 	began = Time.get_ticks_msec()
 	_bar.call("set_into", "3069b", -1)
-	_bar.call("refresh")
+	await _refresh()
 	print("  plan into 3069b: %d ms; %s" % [Time.get_ticks_msec() - began, _bar_said().left(400)])
 	began = Time.get_ticks_msec()
 	var done: Dictionary = await _bar.call("replace_now")
