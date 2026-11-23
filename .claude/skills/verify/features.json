@@ -4410,6 +4410,14 @@
       "tests": []
     },
     {
+      "id": "lib:a large source on a table",
+      "kind": "lib",
+      "entry": "src/dev/source_probe.gd",
+      "reach": "tools/probe.sh source_probe [OUT]  (photoreal14, docs/RENDERING.md 5r: File, Render..., Best, the Product look, each table under Background: a bright window behind the model that glossy tops mirror, the table's own key nearly gone (RenderSettings.source and source_*, StudioRender.PRODUCT_SOURCE 128, SOURCE_KEY 0.05, _source_rows; path_tracer.glsl source_light, source_pick, lit_mask: a way to it passes the sweep), rising with the camera so a flat top mirrors its middle; none in the tent; the car on each table at Best within 2.9 s; photoreal_probe --without=source draws the parent's pictures byte for byte; tools/photoreal/reflect_measure.py measures each close-up's top against its side and its edges' lines, photograph against render)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:a model that tips falls",
       "kind": "lib",
       "entry": "src/assembly/topple.gd",

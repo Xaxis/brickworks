@@ -157,6 +157,12 @@ var studs: float = 0.0
 ## there). It goes to the card with each part, as studs does (its record's
 ## last number, the byte above studs', in hundredths).
 var edge: float = 0.0
+## The stud's logo as the photographs show it (photoreal14,
+## RenderSettings.logo), set before [method stage]: 0 as before, 1 its
+## strokes thinner with gaps between the letters and one injection gate a
+## part. It goes to the card with each part, as studs does (the byte above
+## edge's, 0 to 255 of 1).
+var logo: float = 0.0
 ## Whether the picture asks for the wear hands leave (photoreal9,
 ## RenderSettings.rubbed), set before [method stage]: it is then traced by
 ## the shader's "marks" version.
@@ -406,6 +412,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	var stud_code: int = clampi(roundi(studs * 255.0), 0, 255) if product else 0
 	if product:
 		stud_code |= clampi(roundi(edge * 100.0), 0, 255) << 8
+		stud_code |= clampi(roundi(logo * 255.0), 0, 255) << 16
 	_has_glass = false
 	for node: Variant in batches:
 		var batch := node as MultiMeshInstance3D
