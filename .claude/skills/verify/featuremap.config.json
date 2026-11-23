@@ -6415,6 +6415,13 @@
       "entry": "tools/web/talk_stand_in.mjs",
       "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "no two parts alike",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal8, docs/RENDERING.md 5l: at Best in the Product look, path traced, each part its own: its colour batch turned in Oklab (batch, path_tracer.glsl batch_of), its polish and wear by how much it was handled (handling, handled_of, print_of; 0 unless asked), each stud's logo and top (studs, the instance's info.w to stud_logo), its seat as LEGO's play lets it sit (play, PathTracer._seated); seeded by the part's place, the model untouched; all four 0 (--without=batch,handling,studs,play) draws photoreal7's pictures byte for byte)",
+      "area": "view"
     }
   ]
 }
