@@ -457,6 +457,10 @@ a:focus-visible { border-radius: var(--r-1); }
    over the beta bar, as it is over the page: the bar covered Sign out at
    390 x 844 once Report a bug was in the menu (bugbar, 2026-11-13). */
 .site-head .menu-list { max-height: calc(100dvh - var(--head-h) - var(--s-4)); overflow-y: auto; overscroll-behavior: contain; }
+/* The beta's strip over the header puts the menu that much lower, so it
+   fits the window less the strip: its foot was 1 px past the window at
+   430 x 844 and 375 x 667 (the lead, 2026-11-23). */
+:root[data-betabar] .site-head .menu-list { max-height: calc(100dvh - var(--betabar-row) - var(--head-h) - var(--s-4)); }
 .site-head:has(details[open]) { z-index: 55; }
 /* Under 900 px the mark, Open the app and Menu fill the bar (the four
    links and Sign in are on Menu), and the last keeps the page's 16 px
@@ -2153,7 +2157,12 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	.page-head .lede, .page-head .binding, .page-acts .hint { display: none; }
 	.page-title { flex: 1 1 0; }
 	.page-head h1 { display: flex; align-items: center; min-height: var(--control-h); }
-	.page-acts { flex: none; }
+	/* Never wider than the page: two buttons whose words are longer in
+	   French or Spanish (compare's Ouvrir l'application, Voir tous les
+	   outils) took the row whole and the page scrolled sideways; they go
+	   one under the other, and a button's own words wrap. */
+	.page-acts { flex: none; max-width: 100%; }
+	.page-acts > .cta { max-width: 100%; white-space: normal; text-align: center; }
 	.page-acts:has(> :is(.search, [role="search"])) { display: contents; }
 	.page-acts > :is(.search, [role="search"]) { order: 1; flex: 1 1 100%; max-width: none; }
 	.page-acts .search input { padding-right: 12px; }

@@ -2063,7 +2063,9 @@ async function oembed(request, response, origin) {
 /// for itself; [row] is given it without its maker (embedAnswer).
 function embedCard(origin, id, row, lang = "en", words = null, clip = null, blind = false) {
   const link = links(origin, id);
-  const poster = row.has_image ? `/m/${id}.png` : "/share.png";
+  // Its own picture, or the picture's ground with nothing on it: never the
+  // site's share card, which read as an advert where the model should be.
+  const poster = row.has_image ? `/m/${id}.png` : "";
   const at = lang === "en" ? "" : `/${lang}`;
   const page = at ? `${origin}${at}/m/${id}` : link.url;
   const viewer = at ? `${link.viewer}&lang=${lang}` : link.viewer;
@@ -2105,8 +2107,8 @@ ${scriptWords}${siteChrome().head}
 <div class="media">
 <a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
   data-scene="/m/${id}/scene.json">${clip
-    ? `<video src="${escapeHtml(clip.path)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
-    : `<img src="${escapeHtml(poster)}" alt="">`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
+    ? `<video src="${escapeHtml(clip.path)}"${poster ? ` poster="${escapeHtml(poster)}"` : ""} muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
+    : poster ? `<img src="${escapeHtml(poster)}" alt="">` : ""}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 ${clip ? iconButtonHtml({ icon: "pause", name: say("Pause"), small: true, attrs: 'data-clip-toggle hidden' }) : ""}
 </div>
 ${blind ? "" : `<div class="embed-bar">

@@ -167,6 +167,9 @@
 .home-acts > .mine { display: none; }
 @media (width < 600px) {
 	.home-acts > .start { flex: 1 1 100%; justify-content: center; }
+	/* A button never wider than the page: German's Eine Datei aus einem
+	   anderen Programm teilen ran 46 px past a 390 px window; its words wrap. */
+	.home-acts > .cta { max-width: 100%; white-space: normal; text-align: center; }
 	.find .search .hint { display: none; }
 	.find .search input { padding-right: 12px; }
 	.home-words .note { display: none; }
