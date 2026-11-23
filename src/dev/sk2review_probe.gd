@@ -22,9 +22,11 @@
 ##           a part picked up: refused, or the part put down planned with the
 ##           rest, never the one part with a step and the model after it; and
 ##           Escape then puts the part back (control: edit_steps next instead)
+##   looks   a step named (edit_steps name), then Plan steps: what it takes off
+##           with the steps (the step's name) said in its words
 ##
 ##   godot --headless --path . --script src/dev/sk2review_probe.gd
-##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand   only those
+##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand,looks   only those
 ##   SK2R_OUT=DIR                                the texts written there
 extends SceneTree
 
@@ -131,6 +133,8 @@ func _run() -> void:
 		await _into()
 	if _asked("hand"):
 		await _hand()
+	if _asked("looks"):
+		await _looks()
 	print("")
 	print("%d FAILURE(S)" % _failures if _failures else "every case holds")
 	quit(1 if _failures else 0)
@@ -535,6 +539,36 @@ func _lowest_of_own(but: BrickWorld.Brick) -> BrickWorld.Brick:
 		if best == null or brick.transform.origin.y < best.transform.origin.y:
 			best = brick
 	return best
+
+
+# -- looks ---------------------------------------------------------------------
+
+
+func _looks() -> void:
+	print("\n== looks (station): a step named, then Plan steps")
+	await _open(STATION)
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var named: String = str(await tools.run("edit_steps", {"op": "name", "step": 5,
+		"name": "The platform's first course"}))
+	await _frames(2)
+	var looks_before: int = _world.step_looks.size()
+	var text_named: String = _store.to_text(_store.title, true)
+	print("  named: \"%s\" (looks %d, the name in the save %s)" % [named.left(90), looks_before,
+		text_named.contains("The platform's first course")])
+	var said: String = str(await tools.run("edit_steps", {"op": "plan"}))
+	await _frames(2)
+	var text: String = _store.to_text(_store.title, true)
+	var kept: bool = text.contains("The platform's first course")
+	_check("looks: Plan steps (\"%s\"): the step's name %s, and the words say so (%s)"
+		% [said.left(110), "kept" if kept else "taken off", said.contains("name")],
+		kept or said.contains("name"))
+	_builder.undo()
+	await _frames(2)
+	_check("looks: undone, the name back (%s)" % _store.to_text(_store.title, true).contains(
+		"The platform's first course"), _store.to_text(_store.title, true).contains(
+		"The platform's first course"))
 
 
 # -- into ----------------------------------------------------------------------
