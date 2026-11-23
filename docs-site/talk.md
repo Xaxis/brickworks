@@ -28,13 +28,25 @@ ui:the latest in talk on the home page
 - **Challenges**: each month's [challenge](/docs/challenges) has its own thread, started by Brickworks.
 - **News**: what is new on Brickworks. Only Brickworks starts a thread here; anybody can reply.
 
-Beside the threads, **On the models** shows the newest comments under the gallery's models. The homepage shows the newest threads too.
+Beside the threads, **On the models** shows the newest comments under the gallery's models. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
 
 ## Start a thread {#start}
 
 Press **Start a thread**, choose a board, give it a title (3 to 120 characters) and say what you want to say (up to 4,000 characters of plain text). You can add one photo. Brickworks takes out where and when a photo was taken before anybody sees it.
 
 On your own shared model's page, under **Comments**, **Start a Show and tell thread about it** starts one with the model's card at the top. A model has one Show and tell thread; once it has one, its page links to it for everybody.
+
+## Work in progress {#wip}
+
+A model you [share as work in progress](/docs/sharing#progress) keeps its Show and tell thread for you. The first version you share opens it, by you, with the model's card at the top. Each version after is one post in it, never a new thread: *Work in progress, version 2*, your note, what changed as its [Log](/docs/model-pages#log) says it, and the version's own card with its picture, which opens that version. Publishing it as finished, or **Mark it finished** on its page, adds the last post and says it is finished.
+
+Everybody can reply in between, as in any thread. Whoever follows the thread is told of each version; whoever follows you sees each in their [feed](/docs/profiles#feed) too.
+
+![A Show and tell thread kept by a work in progress: the model's card, the first post with version 1's card, a builder's question, then a post a version with its note, what changed and that version's card.](/docs/img/talk-wip.webp "A model shared as work in progress: one thread, one post a version.")
+
+<!-- covers
+ui:work in progress shared by version
+-->
 
 ## A thread {#thread}
 
@@ -44,7 +56,7 @@ On your own shared model's page, under **Comments**, **Start a Show and tell thr
 ui:a thread in talk
 -->
 
-- **Paste a link** to a model, a step of one (open it in the viewer at that step and copy the address), a set or the challenge on Brickworks: it shows as a card with its picture. A part number from Rebrickable or BrickLink shows as a part. A link to any other site stays plain words.
+- **Paste a link** to a model, one version of it (`/m/<id>/v/<n>`), a step of one (open it in the viewer at that step and copy the address), a set or the challenge on Brickworks: it shows as a card with its picture, a version's with that version's. A part number from Rebrickable or BrickLink shows as a part. A link to any other site stays plain words.
 - **Write `@` and a handle** to tell somebody: they see it on their [Notifications](/docs/profiles#notifications). Up to three a post.
 - **Reply** answers the whole thread; Reply on a post says whom you are answering.
 - **Edit** and **Remove** are on your own posts. Removing the first post removes the whole thread.

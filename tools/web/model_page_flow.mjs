@@ -40,7 +40,7 @@
 //      and a shared tag) and no More by (Jo has no other model).
 //   7. The paragraph that explained the buttons is gone.
 //   8. Tabs under it, About, Comments, Builds, Remixes and (with two or
-//      more) Versions, each with its count once there is one; a tab chosen
+//      more versions, or one shared as work in progress) Log, each with its count once there is one; a tab chosen
 //      brings its part to just under the tabs, which stay on screen under
 //      the header, marked as the one being read.
 //   9. A strip of its pictures under the picture: the published one first
@@ -166,7 +166,7 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
+    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Log 2"], thumbs: 3, threads: true, lists: 2 },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
     tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Collections 1"], thumbs: 0, lists: 1 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
@@ -362,12 +362,13 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: ${after.shown} rows shown, a colour's row first, no picture loaded from anywhere (${after.pictures})`,
     after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
   // Each lot's picture, drawn on the page (site304): only images from the
-  // site itself, and a fetch only to it, its own Supabase project and what
-  // the page made itself (blob:, the GLB In your room writes, arview).
+  // site itself and what the page made (blob:, a kit's pictures, postkit),
+  // and a fetch only to it, its own Supabase project and what the page made
+  // itself (blob:, the GLB In your room writes, arview).
   const sources = (name) => (new RegExp(`(?:^|;)\\s*${name}\\s+([^;]*)`).exec(seen.policy || "") || [])[1]?.trim().split(/\s+/) || [];
   const project = remote ? remoteDb : stand.DB;
-  check(`${label}: its policy lets in pictures from itself alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
-    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'"])
+  check(`${label}: its policy lets in pictures from itself and what it made alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
+    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'", "blob:"])
       && sources("connect-src").every((one) => one === "'self'" || one === project || one === "blob:") && sources("connect-src").includes("'self'"));
   await lotPictures(page, label, "drawn from its geometry");
   if (after.all) await page.click("#parts [data-all]");
@@ -862,9 +863,9 @@ try {
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
             // On a deployment its own model's: in this order, each there or
             // not as the model has it (Comments where they are open,
-            // Collections once it is in one, Versions with two), and About,
+            // Collections once it is in one, Log with two versions), and About,
             // Parts, Builds and Remixes always.
-            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Collections", "Versions"];
+            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Collections", "Log"];
             const ordered = tabNames.every((n, k) => ORDER.includes(n) && (k === 0 || ORDER.indexOf(tabNames[k - 1]) < ORDER.indexOf(n)));
             check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
               : ordered && ["About", "Parts", "Builds", "Remixes"].every((n) => tabNames.includes(n)));

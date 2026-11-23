@@ -143,6 +143,51 @@ function spelled(rawPart, rawColour, given = ownedFacts()) {
   return { key: `${part}/${code}`, part, colour: code };
 }
 
+/// A part and colour's key in the one spelling ("3794/0": a mould's letter
+/// off, a colour as a shop files it), or "" for one nobody owns on its own.
+export const ownedKey = (part, colour, given = ownedFacts()) => spelled(part, colour, given)?.key || "";
+
+/// What a person is missing of a parts list (ownedparts): [inventory] is
+/// api/_parts.js inventoryOf's or inventoryOfLots' {lots}, each lot {part,
+/// colour, count, ...}; [held] how many of each key ([ownedKey]) their pool
+/// has. Each lot takes from its key in the list's order, so two lots of one
+/// key (3794a and 3794b, a tyre in Rubber Black and one in Black) share what
+/// is held, as the app's Collection.allocate shares it, and a part held once
+/// is never counted for two lots. {pieces, have, lots: how many lots can be
+/// owned, missing: [each lot short, as it is with count the number short,
+/// need its whole count and have what it takes], whole: how many lots they
+/// have every one of, left: {lots, pieces, keys ("part/colour" as the list
+/// names them)} nobody owns on their own (a sticker, a made part), counted
+/// in neither}.
+export function missingOf(inventory, held, given = ownedFacts()) {
+  const left = new Map(held);
+  const missing = [];
+  let pieces = 0;
+  let have = 0;
+  let lots = 0;
+  let whole = 0;
+  const unowned = { lots: 0, pieces: 0, keys: [] };
+  for (const lot of inventory?.lots || []) {
+    const count = Number(lot.count) || 0;
+    const key = count > 0 && !lot.custom ? ownedKey(lot.part, lot.colour, given) : "";
+    if (!key) {
+      unowned.lots += 1;
+      unowned.pieces += Math.max(0, count);
+      unowned.keys.push(`${lot.part}/${lot.colour}`);
+      continue;
+    }
+    const there = Math.max(0, Number(left.get(key)) || 0);
+    const taken = Math.min(there, count);
+    left.set(key, there - taken);
+    pieces += count;
+    have += taken;
+    lots += 1;
+    if (taken < count) missing.push({ ...lot, count: count - taken, need: count, have: taken });
+    else whole += 1;
+  }
+  return { pieces, have, lots, whole, missing, left: unowned };
+}
+
 /// [lots] ([part, colour, qty] or {part, colour, qty}) in the one spelling,
 /// the same key counted once: [{part, colour, qty}]. A part the catalogue
 /// does not know is left out, when there is a catalogue to ask.
@@ -281,3 +326,27 @@ export async function freshPool(account, origin) {
   const made = await keep({ account, lots, unknown, rule: POOL_RULE }) ?? await keep({ account, lots, unknown });
   return made ? { ...made, unknown, rule: POOL_RULE, at: new Date().toISOString() } : null;
 }
+
+/// How many of each of [parts]' keys [account]'s pool holds, as the gallery
+/// counts their shares (freshPool first, so a collection changed since is
+/// counted again): {held: Map key -> qty, unknown: how many of their sets
+/// no inventory has}, or null for nobody with a collection. Only the parts
+/// asked for are read (supabase/owned_quantity.sql owned_pool_holds), never
+/// the whole pool; before that file, the pool is counted from the
+/// collection as a set's page counts it (poolOf).
+export async function heldOf(account, origin, parts) {
+  const pool = await freshPool(account, origin);
+  if (!pool) return null;
+  const unknown = Array.isArray(pool.unknown) ? pool.unknown.length : Number(pool.unknown) || 0;
+  const asked = [...new Set(parts.filter(Boolean))].slice(0, MOST_HELD_ASKED);
+  const rows = asked.length
+    ? await db("rpc/owned_pool_holds", { method: "POST", body: { account, parts: asked } }).catch(notYet) : [];
+  if (Array.isArray(rows)) return { held: new Map(rows.map(([part, colour, qty]) => [`${part}/${colour}`, Number(qty) || 0])), unknown };
+  const found = await db(`collections?owner=eq.${account}&select=sets,parts`);
+  const counted = await poolOf(found && found[0], (n) => readShard(n, origin));
+  return { held: new Map(counted.lots.map((lot) => [`${lot.part}/${lot.colour}`, lot.qty])), unknown: counted.unknown.length };
+}
+
+/// The most parts one ask of owned_pool_holds names: a model's distinct
+/// parts, mould letters off (Orthanc's 4,000-odd pieces are 300-odd).
+export const MOST_HELD_ASKED = 5000;

@@ -65,11 +65,14 @@
 //                                 owner who asked for one. Needs no secret:
 //                                 it can send nothing else
 //   GET  ?op=comments&id=X&v=N    the comments on a model, and on its steps
-//   POST ?op=comment, reply, comment_change, comments_open&id=X, mail
-//                                 (session) a comment or a reply written, changed,
-//                                 hidden or removed; comments on a model
-//                                 turned on or off; the comments' email
-//                                 chosen (api/_comments.js)
+//   POST ?op=comment, reply, pin, comment_change, comments_open&id=X, mail
+//                                 (session) a comment, a reply or a comment on a
+//                                 part (a pin) written, changed, hidden or
+//                                 removed; comments on a model turned on or
+//                                 off; the comments' email chosen
+//                                 (api/_comments.js)
+//   POST ?op=pin_resolve          (session) a pin's model's owner done with it,
+//                                 or not (supabase/comment_pins.sql)
 //   GET  ?op=photos&id=X          the photos of real builds of model X that
 //                                 may be shown; with the session, also the
 //                                 caller's own on it, and for its owner the
@@ -153,6 +156,13 @@
 //                                 rules say of X
 //   POST ?op=enter, withdraw, vote  (session) a model entered or taken back,
 //                                 a vote cast (api/_challenges.js)
+//   GET  ?op=challenge_rules      the month's challenge open now and its
+//                                 rules, its set's parts as kept: what the
+//                                 studio ticks on the model as it is built
+//                                 (api/_challenges.js challengeRules)
+//   GET  ?op=prompt_of&model=X    the weekly quick build open now whose
+//                                 template X is, or null: what the studio and
+//                                 its publish dialog say (api/_prompts.js)
 //   GET  ?op=talk_page, talk, talk_thread, talk_latest, talk_rss, talk_model,
 //        talk_photo               Talk, the builders' forum: /talk, a board,
 //                                 a thread, its feeds and photos (api/_talk.js)
@@ -240,7 +250,8 @@ import {
   startPhoto,
 } from "./_builds.js";
 import {
-  addComment, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
+  addComment, addPin, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, resolvePin,
+  sendCommentDigests,
   setCommentsOpen,
 } from "./_comments.js";
 import { chooseNews, newsOf, newsUnsubscribe } from "./_announce.js";
@@ -270,7 +281,8 @@ import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietM
 import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
-import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, challengeRules, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import { promptOfAnswer } from "./_prompts.js";
 import {
   reportPost, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead, talkReply,
   talkRss, talkStart, talkThread,
@@ -2014,6 +2026,8 @@ async function handler(request, response) {
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);
+      if (op === "challenge_rules") return await challengeRules(request, response, { origin: originOf(request) });
+      if (op === "prompt_of") return await promptOfAnswer(request, response, { origin: originOf(request) });
       // Your lists (api/_mylists.js, supabase/lists.sql).
       if (op === "keeps") return await keeps(request, response);
       if (op === "lists") return await yourLists(request, response);
@@ -2049,6 +2063,8 @@ async function handler(request, response) {
       if (op === "digest") return await knock(request, response);
       if (op === "comment") return await addComment(request, response, { origin: originOf(request) });
       if (op === "reply") return await addReply(request, response, { origin: originOf(request) });
+      if (op === "pin") return await addPin(request, response, { origin: originOf(request) });
+      if (op === "pin_resolve") return await resolvePin(request, response);
       if (op === "comment_change") return await changeComment(request, response);
       if (op === "comments_open") return await setCommentsOpen(request, response);
       if (op === "mail") return await chooseMail(request, response);

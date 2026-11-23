@@ -111,9 +111,30 @@ const CHALLENGE = { id: 7, title: "Wheels and tracks", brief: "Build something t
     { way: "hand", label: "Built by hand", entries: [entry("DocsSprt01", "hand", "2026-11-02T10:00:00Z"), entry("DocsKart01", "hand", "2026-11-03T10:00:00Z")] },
     { way: "assistant", label: "Built with the assistant", entries: [entry("DocsRckt01", "assistant", "2026-11-04T10:00:00Z")] },
   ], winners: [] };
+// This week's quick build (api/_prompts.js): the house's template and its
+// two entries, their pictures drawn by tools/prompt_pictures.mjs.
+const HOUSE = { handle: "brickworks", name: "Brickworks" };
+const houseRow = (id, name, parts, at, x = {}) => ({ id, name, author: HOUSE.name, parts, has_image: true, has_thumb: true,
+  listed_at: at, updated_at: at, kind: "town", tags: ["quick-build"], licence: "cc-by-4.0", steps: 1, own_steps: true,
+  technic: false, views: 0, likes: 0, builds: 0, remixes: 0, comments: 0, by: HOUSE, tested: false, made_with: "assistant",
+  moves: [], motions: [], ...x });
+const PROMPT_ROWS = [houseRow("DocsTmpl01", "Habitat: the template", 1, "2026-11-23T00:41:00Z", { made_with: "hand", remixes: 2 }),
+  houseRow("DocsHab001", "Reading nook", 27, "2026-11-23T01:41:00Z"), houseRow("DocsHab002", "Garden shed", 26, "2026-11-23T01:42:00Z")];
+const promptCard = (r) => {
+  const c = dir.cardOf("https://brickworks.diy", r);
+  return { ...c, url: `/m/${r.id}`, image: `/m/${r.id}.png`, thumb: c.thumb.replace("https://brickworks.diy", "") };
+};
+for (const r of PROMPT_ROWS) A[`/m/${r.id}.webp`] = { file: `docs-site/pictures/files/${r.id}.webp` };
+const PROMPT = { id: 21, title: "Habitat", brief: "A home for one minifigure on an 8×8 plate: a room, a nook, a nest, a lair. "
+  + "Keep it within 10 bricks tall, so every habitat of the week stacks into one tower.", starts_on: "2026-11-23",
+  ends_on: "2026-11-29" };
+A["/api/people?op=challenge&id=21"] = { ready: true, challenge: null, prompt: { kind: "prompt", ...PROMPT, ended_on: null,
+  state: "open", test: false, days_said: "23 November 2026 to 29 November 2026", template: promptCard(PROMPT_ROWS[0]),
+  start: "/app?copy=DocsTmpl01", stack: null, makers: 1,
+  entries: PROMPT_ROWS.slice(1).reverse().map((r) => ({ ...promptCard(r), way: "assistant", entered_at: r.listed_at })) } };
 A["/api/people?op=challenge"] = { ready: true, year: true, challenge: CHALLENGE,
   next: { id: 8, title: "Winter lights", brief: "A scene with lights in the windows: a street, a station, a cabin.", starts_on: "2026-12-01", ends_on: "2026-12-31" },
-  past: [] };
+  past: [], prompt_now: { ...PROMPT, page: "https://brickworks.diy/challenge?id=21", start: "/app?copy=DocsTmpl01", entries: 2 } };
 
 // ---- what the database answers a page the server makes (/m/DocsSprt01)
 const D = {};
@@ -200,4 +221,80 @@ const signed = { "$comment": "Signed in as the shared test account (you@example.
   answers: S, storage: { "brickworks.session": { refresh_token: "docs", email: EMAIL, user_id: TB,
     url: "https://sign-in.example", key: "docs" } } };
 fs.writeFileSync(`${outDir}/signed-in.json`, JSON.stringify(signed, null, 1) + "\n");
+
+// ---- signed in with a collection (ownedparts): each card's share of it,
+// what the sports car is missing of it as its Parts tab asks
+// (api/share.js missingAnswer, from its own file less a made-up hand of
+// parts), and King's Castle owned twice with the public lists it is in.
+const parts = await import(pathToFileURL(path.join(wt, "api/_parts.js")).href);
+const owned = await import(pathToFileURL(path.join(wt, "api/_owned.js")).href);
+const share = await import(pathToFileURL(path.join(wt, "api/share.js")).href);
+const O = {};
+const carParts = parts.inventoryOf(fs.readFileSync(path.join(wt, `models/${main._file}.ldr`), "utf8"));
+// Every lot but some: a fifth of them half had, one in seven none.
+const hand = new Map();
+carParts.lots.forEach((lot, n) => {
+  const key = owned.ownedKey(lot.part, lot.colour);
+  if (!key) return;
+  const had = n % 7 === 3 ? 0 : n % 5 === 1 ? Math.floor(lot.count / 2) : lot.count;
+  hand.set(key, (hand.get(key) || 0) + had);
+});
+const carMissing = share.missingAnswer(carParts, { held: hand, unknown: [] },
+  { id: main.id, version: 1, newest: 1, name: "Sports-car-and-its-driver" });
+O[`/api/share?op=parts_missing&id=${main.id}`] = carMissing;
+// The cards: half their parts or more say so, under half nothing.
+const SHARES = { DocsSprt01: [carMissing.have, carMissing.pieces], DocsShop01: [797, 797], DocsFire01: [161, 535],
+  DocsOwl001: [661, 1032], DocsRckt01: [247, 353], DocsOrry01: [104, 520], DocsKart01: [57, 57], DocsLite01: [51, 84],
+  DocsHous01: [20, 71], DocsTree01: [69, 69], DocsRock01: [22, 68], DocsBoat01: [30, 49] };
+const ownedCard = (r) => ({ ...card(r), owned: { have: SHARES[r.id][0], pieces: SHARES[r.id][1] } });
+O["/api/share?op=list"] = { ...A["/api/share?op=list"], models: rows.map(ownedCard),
+  mine: { lots: 214, pieces: 3120, unknown: 0 } };
+O["/api/share?op=shelves"] = { ...A["/api/share?op=shelves"], pick: { ...A["/api/share?op=shelves"].pick, model: ownedCard(main) },
+  small: { models: rows.filter((r) => r.parts < 200).map(ownedCard).slice(0, 8), more: false } };
+const CASTLE = "6080-1";
+const castleLists = [["DocsList05", "Castles to build", "Ada Lovelace", "ada", 9], ["DocsList06", "Classic Castle", "Ben", "ben-b", 14],
+  ["DocsList07", "My childhood sets", "Kim", "kimbricks", 31]];
+O[`/api/share?op=set_based&set=${CASTLE}`] = { set: CASTLE, models: [],
+  lists: { count: castleLists.length, lists: castleLists.map(([id, name, by, handle, count]) => ({ id, name, count,
+    by: { handle, name: by } })) } };
+O[`/api/people?op=keeps&sets=${CASTLE}`] = { sets: { [CASTLE]: { own: 2, lists: [] } }, models: {}, lists: [], want: null };
+const castle = (await owned.readShard(owned.shardOf(CASTLE))).sets[CASTLE];
+const castlePieces = owned.keyed(castle.p).reduce((n, lot) => n + lot.qty, 0);
+O[`/api/share?op=catalog_owned&set=${CASTLE}`] = { set: CASTLE, collection: true, pieces: castlePieces, have: castlePieces,
+  missing: 0 };
+const ownedWorld = { "$comment": "Signed in as the shared test account with a collection, over signed-in.json: each card's "
+  + "share of it, what the sports car is missing of it (api/share.js missingAnswer of its own file less a made-up hand) and "
+  + "King's Castle owned twice. Written by tools/web/docs_world.mjs: change it there.", answers: O };
+fs.writeFileSync(`${outDir}/owned.json`, JSON.stringify(ownedWorld, null, 1) + "\n");
+console.log(`owned: the sports car ${carMissing.have} of ${carMissing.pieces}, ${carMissing.missing.length} lots short`);
+// ---- built from a set (altbuilds): the little rocket, counted against every
+// set as a publish counts it (api/_alts.js countRows), its own page's line
+// and the page of the first set of its group listing it.
+const alts = await import(pathToFileURL(path.join(wt, "api/_alts.js")).href);
+const basesMod = await import(pathToFileURL(path.join(wt, "api/_bases.js")).href);
+const rocket = byId.DocsRock01;
+const rocketNeeds = share.checkModel(fs.readFileSync(path.join(wt, `models/${rocket._file}.ldr`), "utf8")).needs;
+const rocketCount = alts.countRows(owned.keyed(rocketNeeds), alts.altIndex());
+const rocketSet = rocketCount.rows[0];
+if (!rocketSet) throw new Error("docs_world: the rocket is built from no set now; choose another model for altbuilds' pictures");
+const Alt = {};
+Alt[`/api/share?op=set_based&set=${rocketSet.set}`] = { set: rocketSet.set,
+  models: [{ ...card(rocket), based: null, alt: basesMod.altCard({ role: rocketSet.role, have: rocketSet.have,
+    pieces: rocketCount.pieces, with: rocketCount.rows.filter((row) => row.set !== rocketSet.set).map((row) => row.set) }) }],
+  lists: { count: 0, lists: [] } };
+const AltDb = {};
+AltDb["rest/v1/rpc/directory_model"] = { ...dbRow(rocket), listed: true, from: [], remixes_listed: [] };
+AltDb[`rest/v1/share_versions?model=eq.${rocket.id}`] = [{ n: 1, at: day(2), note: null, parts: rocket.parts,
+  steps: rocket.steps, bytes: rocket.parts * 117, has_image: true, changes: null, first_changed: null,
+  remixed_from_version: null }];
+AltDb[`rest/v1/shared_models?id=eq.${rocket.id}`] = [{ id: rocket.id, owner: TB, test: false }];
+AltDb[`storage/v1/object/shared-models/${rocket.id}.mpd`] = { file: `models/${rocket._file}.ldr` };
+AltDb[`rest/v1/share_tests?model=eq.${rocket.id}`] = [];
+AltDb["rest/v1/rpc/alt_of"] = [{ model: rocket.id, pieces: rocketCount.pieces, rule: alts.ALT_RULE, cut: rocketCount.cut,
+  sets: rocketCount.rows }];
+const altWorld = { "$comment": "Built from a set, over test-account.json: the little rocket's page and the page of the "
+  + "first set of the group it is counted from (api/_alts.js countRows of models/rocket.ldr against every set). "
+  + "Written by tools/web/docs_world.mjs: change it there.", answers: Alt, db: AltDb };
+fs.writeFileSync(`${outDir}/alts.json`, JSON.stringify(altWorld, null, 1) + "\n");
+console.log(`alts: the rocket, ${rocketCount.pieces} pieces, ${rocketCount.rows.map((row) => `${row.role} ${row.set} ${row.have}`).join(", ")}`);
 console.log("world:", Object.keys(A).length, "answers,", Object.keys(D).length, "db;", Object.keys(S).length, "signed in");

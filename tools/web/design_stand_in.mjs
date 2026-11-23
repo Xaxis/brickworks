@@ -89,7 +89,10 @@ import { basesAsked, basesSaid } from "../../api/_bases.js";
 // Who a comment names (@handle), read as the API reads it.
 import { mentionsIn } from "../../web/card.js";
 
-export const ORIGIN = "http://design.test";
+// The site's origin; STAND_IN_ORIGIN=https://design.test for a flow whose
+// page needs a secure one (WebCodecs, which a kit's turn is recorded with:
+// tools/web/postkit_flow.mjs). Read when this is first imported.
+export const ORIGIN = process.env.STAND_IN_ORIGIN || "http://design.test";
 export const DB = "https://stub.supabase.test";
 export const MODEL_ID = "DesignAbc1";
 export const HANDLE = "design-tester";
@@ -591,9 +594,11 @@ const ADMIN = {
 // ---------------------------------------------------------------------------
 // Reading the world, as the database's functions read it.
 
-// supabase/achievements.sql's ladders, in its order.
+// supabase/achievements.sql's ladders, in its order, and the weekly quick
+// build's streak (supabase/challenge_prompts.sql).
 const LADDERS = [["designer", [1, 3, 10, 25, 50, 100]], ["built", [1, 10, 50, 100, 500, 1000]],
-  ["builder", [1, 5, 10, 25, 50]], ["remixed", [1, 5, 25, 100]], ["tested", [1, 5, 10, 25]], ["challenger", [1, 3, 6, 12]]];
+  ["builder", [1, 5, 10, 25, 50]], ["remixed", [1, 5, 25, 100]], ["tested", [1, 5, 10, 25]], ["challenger", [1, 3, 6, 12]],
+  ["streak", [2, 4, 8, 13, 26, 52]]];
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const personOf = (account) => PEOPLE.find((one) => one.account === account) || null;
@@ -803,7 +808,8 @@ function achievementLevels(account, tests = false) {
   const entered = new Set([...CHALLENGE.entries.filter(([model]) => modelOf(model)?.owner === account).map(() => CHALLENGE.id),
     ...PAST.filter((one) => one.winners.some(([model]) => modelOf(model)?.owner === account)).map((one) => one.id)]);
   const numbers = { designer: earned.models, built: earned.builds, remixed: earned.remixes, tested: earned.tested,
-    builder: photosWhere((one) => one.account === account && shownModel(one.model)?.listed).length, challenger: entered.size };
+    builder: photosWhere((one) => one.account === account && shownModel(one.model)?.listed).length, challenger: entered.size,
+    streak: 0 };
   return LADDERS.map(([track, steps]) => {
     const n = numbers[track];
     const level = steps.filter((step) => step <= n).length;

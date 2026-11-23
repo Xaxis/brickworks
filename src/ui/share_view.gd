@@ -59,6 +59,12 @@
 ## for less motion (Settings, Reduce motion) sees it played once. A name the
 ## model has no motion of opens it still, and the pill says so at once.
 ##
+## Show your build (makes, 2026-11-23): the timeline stepped onto its last
+## step, a card just above it says how many have built the model and offers
+## Show your build, as the step player's last step does (MakeCard), and
+## main.gd sends the photo. Stepped back off the end, it goes, what it holds
+## kept.
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -164,6 +170,10 @@ var looping: String = ""
 var missing: String = ""
 var _play_pt: float = 1.0
 var _play_narrow: bool = false
+## Show your build, at the timeline's end (makes), and whether it is there.
+var make: MakeCard
+var ending: bool = false
+var _make_pt: float = 1.0
 
 
 func _ready() -> void:
@@ -206,6 +216,9 @@ func _ready() -> void:
 		return Rect2(0.0, top, size.x, maxf(bottom - top, 1.0))
 	comments.pill.visibility_changed.connect(func() -> void:
 		set_process(true))
+	make = MakeCard.new()
+	add_child(make)
+	make.minimum_size_changed.connect(func() -> void: set_process(true))
 	get_viewport().size_changed.connect(_fit_big)
 	_fit_big()
 
@@ -839,8 +852,11 @@ func _fit_big() -> void:
 	_party_bar.visible = not _narrow and state != "gone"
 	_party_pill.visible = _big.visible
 	_fit_party()
+	_make_pt = pt if _narrow else 1.0
+	make.fit(_make_pt)
+	make.visible = ending and ready
 	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible
-		or _party_card.visible)
+		or _party_card.visible or make.visible)
 	# Placed now, not next frame: shown, Build it was drawn and told to the
 	# page for a frame where it was last, the window's corner the first time.
 	_lay_out()
@@ -878,13 +894,44 @@ func _lay_out() -> void:
 			comments.pill.position = at
 	_lay_party(bottom)
 	if not _big.visible:
-		if not _place.visible and not _pill_shown() and not _play.visible and not _party_card.visible:
+		_lay_make(bottom)
+		if not _place.visible and not _pill_shown() and not _play.visible and not _party_card.visible \
+				and not make.visible:
 			set_process(false)
 		return
 	var spot := Vector2((size.x - _big.size.x) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
 	if _big.position != spot:
 		_big.position = spot
 	_lay_party_pill()
+	_lay_make(spot.y)
+
+
+## The timeline at its last step ([param on]), stepped there from the step
+## before: Show your build's card up, or put away with what it holds kept.
+func show_end(on: bool) -> void:
+	ending = on
+	_fit_big()
+
+
+## Show your build's card, in the middle just above [param bottom]: the
+## timeline, or a phone's big Build it; above the comments' count where the
+## window is too narrow for both side by side.
+func _lay_make(bottom: float) -> void:
+	if not make.visible:
+		return
+	var gap: float = 10.0 * _make_pt
+	var wide: float = minf(size.x - 2.0 * gap, (600.0 if _narrow else 460.0) * _make_pt)
+	make.custom_minimum_size = Vector2(wide, 0.0)
+	var tall: float = make.get_combined_minimum_size().y
+	var left: float = (size.x - wide) * 0.5
+	var top: float = bottom - tall - gap
+	if _pill_shown() and comments.pill.position.x + comments.pill.size.x + gap > left:
+		top = minf(top, comments.pill.position.y - tall - gap)
+	var at := Vector2(left, top)
+	if make.position != at:
+		make.position = at
+	if make.size != Vector2(wide, tall):
+		make.size = Vector2(wide, tall)
 
 
 ## Whether the count is up: once the model is ready, and the bar with it.
@@ -956,6 +1003,7 @@ func covers(point: Vector2) -> bool:
 		or (_play.is_visible_in_tree() and _play.get_global_rect().has_point(point)) \
 		or (_party_card.visible and _party_card.get_global_rect().has_point(point)) \
 		or (_party_pill.is_visible_in_tree() and _party_pill.get_global_rect().has_point(point)) \
+		or (make.is_visible_in_tree() and make.get_global_rect().has_point(point)) \
 		or (_pill_shown() and comments.covers(point))
 
 
@@ -981,6 +1029,7 @@ func controls_by_name() -> Dictionary:
 		for n: int in _motion_buttons.size():
 			named["view_motion_%d" % (n + 1)] = _motion_buttons[n]
 	_party_controls(named)
+	named.merge(make.controls_by_name())
 	return named
 
 
@@ -993,6 +1042,7 @@ func page_state() -> Dictionary:
 		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else "",
 		"tested": _tested.visible, "tested_says": _tested.tooltip_text,
 		"built": built.duplicate(), "builds": builds,
+		"ending": ending, "make": make.card_state(),
 		"comment_step": comments.step,
 		"play": {"ready": play_ready, "shown": _play.is_visible_in_tree(), "moves": Array(play_moves),
 			"title": _play_title.text, "says": _play_words.text, "played": played,

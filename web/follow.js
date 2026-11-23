@@ -359,8 +359,9 @@ function bone(kind) {
 }
 
 /// What the account menu holds: who you are, your places with their
-/// counts, and (once, at its end) the theme and Sign out.
-function accountPart(state) {
+/// counts, and (once, at its end) the theme and Sign out. [menu]: on a
+/// phone's Menu, whose own links hold Plans and Desktop app already.
+function accountPart(state, { menu = false } = {}) {
   const part = document.createElement("div");
   part.className = "account-part";
   const whoIs = document.createElement("p");
@@ -385,7 +386,10 @@ function accountPart(state) {
   for (const [href, words, data] of [[`${at}/profile`, say("Your profile"), "profile"],
     [`${at}/notifications`, say("Notifications"), "notifications"], [`${at}/feed`, say("Your feed"), "feed"],
     [`${at}/lists`, say("Your lists"), "lists"],
-    [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"]]) {
+    [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"],
+    // Your plan and the desktop app, where an account's menu keeps them
+    // since the header gave their links to the community (landing, 2026-11-22).
+    ...(menu ? [] : [[`${at}/plans`, say("Plans"), "plans"], [`${at}/download`, say("Desktop app"), "download"]])]) {
     const link = document.createElement("a");
     link.href = href;
     link.dataset.place = data;
@@ -533,7 +537,7 @@ function drawSignedIn(state) {
     list.querySelector(".account-part")?.remove();
     list.querySelector(".menu-owner")?.remove();
     list.querySelector(".sign-out")?.remove();
-    list.querySelector("nav")?.after(accountPart(state));
+    list.querySelector("nav")?.after(accountPart(state, { menu: true }));
     list.append(...adminPart(state), signOutButton());
   }
 }

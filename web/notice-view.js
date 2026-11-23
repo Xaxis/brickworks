@@ -141,6 +141,14 @@ export function group(one, i = 0) {
   lines.className = "lines";
   for (const row of one.rows || []) lines.append(line(row));
   body.append(title, lines);
+  // A weekly quick build's notice opens the studio on its template.
+  if (one.start) {
+    const start = document.createElement("a");
+    start.className = "cta small";
+    start.href = here(one.start);
+    start.textContent = say("Start");
+    body.append(start);
+  }
   item.append(picture, body);
   return item;
 }

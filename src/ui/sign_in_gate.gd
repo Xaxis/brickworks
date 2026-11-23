@@ -45,8 +45,27 @@
 ## and quits (Main._gate_wanted). And not when the deployment has no
 ## accounts (a local server, somebody's own copy): there is nothing to
 ## sign in to.
+##
+## Over a shared model's viewer it is asked for one act ([member purpose],
+## makes, 2026-11-23): a visitor building a model with no account until the
+## photo of their build, who presses Post, signs in here in place, and Not
+## now takes them back. It is up only while asked, says what it is for in
+## place of "Sign in to start building", and goes once they are let in, the
+## step player and the photo they chose as they left them.
 class_name SignInGate
 extends Control
+
+## Asked for, the visitor signed in and let in: the act can go on.
+signal let_in
+## Not now: put away with nobody signed in.
+signal dismissed
+
+## What it is asked for, in its title ("Sign in to post your build"); empty
+## for the way into the app, which is up whenever nobody is signed in.
+var purpose: String = ""
+## Asked for [member purpose], and not answered yet.
+var asked: bool = false
+var _put_off: LinkButton
 
 ## The card's width, before the window has its say.
 const WIDE := 420.0
@@ -205,8 +224,24 @@ func setup(with_account: Account) -> void:
 	# What an account is and is not, where it is asked for.
 	_keeps = _line(keeps_words(), 11, 0.6)
 	column.add_child(_keeps)
+	_put_off = Look.link("Not now", 13)
+	_put_off.tooltip_text = "Back, signed out: what you chose is kept"
+	_put_off.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_put_off.custom_minimum_size = Vector2(0, 36)
+	_put_off.visible = false
+	_put_off.pressed.connect(func() -> void:
+		asked = false
+		_follow()
+		dismissed.emit())
+	column.add_child(_put_off)
 
 	account.changed.connect(_follow)
+	_follow()
+
+
+## Up for [member purpose], until the visitor is let in or says Not now.
+func ask() -> void:
+	asked = true
 	_follow()
 
 
@@ -428,6 +463,14 @@ func controls_by_name() -> Dictionary:
 		return {"beta_join": _welcome_join, "beta_not_now": _welcome_later}
 	if _thanks.visible:
 		return {"beta_start": _thanks_go}
+	if _put_off.visible:
+		var asked_for: Dictionary = _form.controls_by_name() if _form.visible else {}
+		if _age.visible:
+			asked_for = {"age_year": _year, "age_go": _age_go}
+			for at: int in _months.size():
+				asked_for["age_month_%d" % (at + 1)] = _months[at]
+		asked_for["signin_not_now"] = _put_off
+		return asked_for
 	if _age.visible:
 		var asked: Dictionary = {"age_year": _year, "age_go": _age_go}
 		for at: int in _months.size():
@@ -488,12 +531,25 @@ func _follow() -> void:
 	var thanking: bool = signed_in and _thanking and not asking_age
 	var welcoming: bool = signed_in and account.beta_welcome and not asking_age and not waiting \
 		and not thanking
-	visible = not account.lets_in() or asking_age or waiting or welcoming or thanking
+	var needed: bool = not account.lets_in() or asking_age or waiting or welcoming or thanking
+	if purpose.is_empty():
+		visible = needed
+	else:
+		# Asked for one act: up while asked and not yet let in, and the act
+		# goes on the moment it is.
+		var was: bool = visible
+		visible = asked and needed
+		if asked and not needed and account.signed_in():
+			asked = false
+			if was:
+				let_in.emit.call_deferred()
 	var told: bool = account.refused and state == Account.State.SIGNED_OUT
 	_title.text = "One question first" if asking_age else (
 		"Welcome to Brickworks" if welcoming else (
 		"You are a beta tester" if thanking else (
-		"Accounts are for 13 and over" if told else "Sign in to start building")))
+		"Accounts are for 13 and over" if told else (
+		purpose if not purpose.is_empty() else "Sign in to start building"))))
+	_put_off.visible = not purpose.is_empty() and not welcoming and not thanking
 	_beta_mark.visible = welcoming or thanking
 	_welcome.visible = welcoming
 	_thanks.visible = thanking

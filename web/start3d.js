@@ -1,27 +1,21 @@
-// The model in 3D in its picture's place, the way in (viewer369,
-// 2026-10-30): a model's page (web/model-page.js), a set's page, and the
-// embed somebody else's page frames (/m/<id>/embed, web/embed.js). The
-// picture is a link to the app; with this, a click on it (or Enter, or the
-// first drag across it) opens the 3D view over it instead, and only then
-// is /viewer3d.js (tools/viewer/inline.js, three.js and all) asked for.
-// Its looks are web/view3d.css.
+// The model in 3D in its picture's place (viewer369): on a model's page,
+// a set's page and the embed (web/embed.js). /viewer3d.js (inline.js,
+// three.js) is asked for only once it opens. Looks: web/view3d.css.
+// Every byte here is the embed's too: tools/web/embed_flow.mjs holds its
+// scripts under 24 KB, comments and all, so these stay short.
 
-// [words] with each {name} filled from [values], in the page's language
-// (web/theme.js brickworksLang). Here, not imported: the embed loads this
-// and theme.js alone.
+// [words] in the page's language (theme.js), {name}s from [values]: not
+// imported, as the embed loads this and theme.js alone.
 const say = (words, values = {}) => (globalThis.brickworksLang ? globalThis.brickworksLang.say(words) : words)
   .replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
 
-/// The model in 3D over [big], the picture, which without this script is
-/// the way into the app: a click on it (or Enter, or a drag across it)
-/// opens the 3D view in its frame instead; with a key held, a new tab is
-/// still the app's, as a link is. Until three.js and the model come, the
-/// frame says so and how far it has got; nothing moves, since the view is
-/// the picture's own shape over it (web/view3d.css .view3d). {open(how,
-/// changesOn), close()} for the page: a remix's picture names what it
-/// changed (data-changes, api/_remix.js), and the view offers What changed,
-/// on from the start when [changesOn] (its page's "See what changed in 3D").
-export function start3d(big) {
+/// The 3D view over [big], the picture (a link to the app): a click, Enter
+/// or a drag opens it in the picture's frame (a key held, the app's tab), the
+/// frame saying how far it has got. {open(how, changesOn), close(),
+/// pinsChanged(), showPin(id, how), light(index)}: [changesOn] opens a
+/// remix's What changed (data-changes); [pins], a model page's, go to
+/// inline.js open3d as they are.
+export function start3d(big, pins = {}) {
   // The model's name, from the picture's label as its page wrote it.
   const label = big.getAttribute("aria-label") || "";
   const [before, after = ""] = say("View {name} in 3D").split("{name}");
@@ -60,13 +54,12 @@ export function start3d(big) {
     shell.querySelector(".stage").setAttribute("aria-label", say("{name} in 3D", { name }));
     shell.querySelector(".view3d-said").textContent = say("Getting the model in 3D…");
     shell.dataset.how = how;
-    // A picture published before cut-outs carries the ground it was drawn
-    // on: the model in 3D is put on that ground too, so nothing jumps.
+    // An old picture's own ground: the 3D view drawn on it too, so nothing jumps.
     if (img && img.complete && img.naturalWidth && opaqueCorners(img)) shell.dataset.ground = "render";
     big.after(shell);
     const closed = () => { big.focus({ preventScroll: true }); };
     viewing = import("/viewer3d.js")
-      .then((made) => made.open3d(shell, { scene: big.dataset.scene, name, app: big.getAttribute("href"), how,
+      .then((made) => made.open3d(shell, { ...pins, scene: big.dataset.scene, name, app: big.getAttribute("href"), how,
         look: big.dataset.scene.startsWith("/library/") ? "corner" : "app", timings: { asked }, closed,
         changes: big.dataset.changes || "", changesOn }))
       .catch(() => {
@@ -90,8 +83,8 @@ export function start3d(big) {
     event.preventDefault();
     open("key");
   });
-  // The first drag across it: a mouse's as it starts, a finger's once it
-  // goes across (up or down, the page scrolls: directory.css touch-action).
+  // The first drag across: a mouse's at once, a finger's once it goes
+  // across (up or down scrolls the page).
   big.addEventListener("dragstart", (event) => { event.preventDefault(); open("mouse"); });
   let from = null;
   big.addEventListener("pointerdown", (event) => {
@@ -106,11 +99,21 @@ export function start3d(big) {
     }
   });
   for (const kind of ["pointerup", "pointercancel"]) big.addEventListener(kind, () => { from = null; });
-  return { open, close: () => viewing && viewing.then((view) => view && view.close()) };
+  const later = (run) => viewing && viewing.then((view) => view && run(view));
+  return {
+    open,
+    close: () => later((view) => view.close()),
+    pinsChanged: () => later((view) => view.pinsChanged?.()),
+    // A pin pressed on the page: the view opened, then turned to its part.
+    showPin: (id, how = "mouse") => {
+      if (!shell || shell.hidden) open(how);
+      later((view) => view.showPin?.(id));
+    },
+    light: (index) => later((view) => view.light?.(index)),
+  };
 }
 
-/// Whether [img] is opaque at its four corners: a picture drawn on a ground
-/// of its own, not a cut-out.
+/// Whether [img]'s four corners are opaque: its own ground, not a cut-out.
 function opaqueCorners(img) {
   const w = 60;
   const h = Math.max(1, Math.round((w * img.naturalHeight) / img.naturalWidth));

@@ -49,6 +49,7 @@ declare -A CMD=(
   # itself. A throwaway at a Resend test address, its code minted.
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
+  # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
   # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).
@@ -71,9 +72,25 @@ declare -A CMD=(
   # accounts, deleted after; before supabase/replies.sql, that nobody is
   # offered Reply (it reads which from the answer).
   [comments]="tools/web/comments_flow.mjs --url=$P --out=$S/${TAG}_comments"
+  # Comments on a part (partpins, supabase/comment_pins.sql): on five models,
+  # 20 right clicks at 1280 and 20 long presses at 390 by touch, each the
+  # part the viewer's own pick finds there; three pins through the page's
+  # box, their numbered dots and lines turning the view; a new version, the
+  # moved part's pin following it and the recoloured one's on version 1;
+  # Resolve seen by a visitor within 60 s; a blocked commenter's pins gone.
+  # Throwaway accounts, deleted after with their models.
+  [partpins]="tools/web/partpins_flow.mjs --url=$P --out=$S/${TAG}_partpins"
   [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"
+  # Show your build (makes): a photo of the real build posted from the step
+  # player's last step at 390 and 1280, signed out asked in place and kept
+  # through the sign-in; throwaway accounts, deleted after.
+  [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
+  # Work in progress (buildlog, supabase/wip.sql): Share progress in the app
+  # puts the model in a follower's feed and its Talk thread within 60 s, and
+  # publishing it as finished ends it. Two throwaway accounts, deleted after.
+  [wip]="tools/web/wip_flow.mjs --url=$P --out=$S/${TAG}_wip"
   [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
   # Following a collection (docs/SOCIAL.md U11, supabase/collection_follows.sql):
   # Follow on its page and its count; a model put in it in the follower's
@@ -151,6 +168,15 @@ declare -A CMD=(
   # many; 1280 and 430 in both themes, nothing sideways. Throwaway
   # accounts, deleted after with everything of theirs.
   [lists]="tools/web/lists_flow.mjs --url=$P --out=$S/${TAG}_lists"
+  # What you own and lack (ownedparts): three throwaway collections (sets
+  # owned more than once, loose parts), each one's gallery page of 24 cards
+  # against a count from the raw rows (read only), the line each card
+  # draws; What you're missing on three models' Parts tabs against the
+  # list less the raw rows, its BrickLink XML and Pick a Brick list read
+  # back; You own on a set's page and its attacks (100, -1, x, two tabs,
+  # taken out elsewhere, signed out); 1280 and 390 in both themes, no API
+  # ask a card. Deleted after with everything of theirs.
+  [ownedparts]="tools/web/ownedparts_flow.mjs --url=$P --out=$S/${TAG}_ownedparts"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with
@@ -208,12 +234,20 @@ declare -A CMD=(
   # Notifications, and its link's own head: API routes only, with the bypass
   # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
+  # local only: prompts_flow.mjs. The weekly quick build needs supabase/challenge_prompts.sql,
+  # which no preview has until the lead applies it; before it the flow stops (exit 2). Name it here once it is.
   # The challenge on the home page with its days left and This week's pick,
   # both within the first two screens at 390 and 1280; /challenge moving no
   # more than 0.1 as it loads at 390, 768 and 1280; its own picture
   # (/challenge.png); the test challenge's How it runs panel (challengehonours,
   # supabase/challenge_rounds.sql). Read only, signed out but the panel.
   [challengehome]="tools/web/challengehome_check.mjs --url=$P --out=$S/${TAG}_challengehome --admin"
+  # The home's feed (homefeed): its posts in the HTML as served, Like, a
+  # comment and Follow asking a visitor to sign in on the spot, 3D, the
+  # studio in a post on the engine without threads; signed in (throwaways,
+  # deleted after) the tabs, a like, a comment and a follow made, and a
+  # visitor signing in from a like.
+  [homefeed]="tools/web/homefeed_check.mjs --url=$P --out=$S/${TAG}_homefeed --signed-in --try-start"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its

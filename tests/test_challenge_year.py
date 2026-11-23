@@ -55,7 +55,9 @@ def test_the_file_only_adds() -> None:
 
 
 def test_it_replaces_only_three_of_challenges_and_each_is_guarded() -> None:
-    others = {name for path in (ROOT / "supabase").glob("*.sql") if path.name != "challenge_year.sql"
+    # challenge_prompts.sql replaces some of these again, each guarded and each
+    # the live body with one edit (tests/test_prompts.py).
+    others = {name for path in (ROOT / "supabase").glob("*.sql") if path.name not in ("challenge_year.sql", "challenge_prompts.sql")
               for name in defined(path.read_text())}
     assert set(defined(SQL)) & others == set(REPLACED)
     for name in REPLACED:

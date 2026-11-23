@@ -72,7 +72,12 @@ export async function countRemix({ id, n, text, from, said = null, since = null,
 /// is no slower for it, and a failure (the table not there yet, storage
 /// down) is logged, never the person's.
 export function countAfter(given) {
-  afterAnswer(() => countRemix(given), "share: what the remix changed");
+  // A turn of the event loop later, not afterAnswer's next microtask: the
+  // publish is an async function (share.js publishModel) whose caller writes
+  // the answer when its await resumes, a microtask after afterAnswer's own,
+  // so the count's reads began before the answer (challengestudio's merge).
+  afterAnswer(() => new Promise((resolve) => setImmediate(resolve)).then(() => countRemix(given)),
+    "share: what the remix changed");
 }
 
 /// What model [id]'s Remixes tab draws (remix_tree): {changes, up, down},

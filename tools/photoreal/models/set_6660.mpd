@@ -1,5 +1,5 @@
 0 FILE 6660 - main.ldr
-0 photoreal2's copy of the OMR's 6660-1.mpd (Robert Paciorek, CCAL 2.0): the driver seated in the cab, legs bent, as the set's own picture has the figure. photoreal4: his hands forward to the wheel, and the windscreen and roof glass Trans Light Blue (43) as the photographed set's are, where the OMR has Trans Medium Blue (41).
+0 photoreal2's copy of the OMR's 6660-1.mpd (Robert Paciorek, CCAL 2.0): the driver seated in the cab, legs bent, as the set's own picture has the figure. photoreal4: his hands forward to the wheel, and the windscreen and roof glass Trans Light Blue (43) as the photographed set's are, where the OMR has Trans Medium Blue (41). photoreal9: the driver seated in the car base's 2 x 2 open centre (4212b), as the set is built and photographed, 20 LDU lower than on the base's studs: his cap 3 LDU under the roof's glass, where it stood 9 LDU up through it; and his head and cap turned 55 degrees to the camera, as the photograph shows his face.
 0 !LEOCAD MODEL BACKGROUND GRADIENT 0 0 0.74902 1 1 1
 0 main
 0 Name: 6660 - main.ldr
@@ -10,7 +10,7 @@
 0 !HELP Redistribution and use in source or any others forms, with or without modification, ARE PERMITTED provided save information about author(s).
 0 !HELP This material is distributed WITHOUT any warranty, use at YOUR own risk.
 1 15 40 -56 -30 1 0 0 0 1 0 0 0 1 6660 - car.ldr
-1 4 -2.26 -38 -33.37 1 0 0 0 1 0 0 0 1 6660 - minifig.ldr
+1 4 -2.26 -18 -33.37 1 0 0 0 1 0 0 0 1 6660 - minifig.ldr
 
 0 NOFILE
 0 FILE 6660 - car.ldr
@@ -89,8 +89,8 @@
 0 !HELP Released under a dual license, you can choise "CCAL version 2.0" or "BSD/MIT-type licence":
 0 !HELP Redistribution and use in source or any others forms, with or without modification, ARE PERMITTED provided save information about author(s).
 0 !HELP This material is distributed WITHOUT any warranty, use at YOUR own risk.
-1 1 2.26 -96 3.37 1 0 0 0 1 0 0 0 1 4485.dat
-1 14 2.26 -96 3.37 1 0 0 0 1 0 0 0 1 3626bp01.dat
+1 1 2.26 -96 3.37 0.5736 0 0.8192 0 1 0 -0.8192 0 0.5736 4485.dat
+1 14 2.26 -96 3.37 0.5736 0 0.8192 0 1 0 -0.8192 0 0.5736 3626bp01.dat
 1 15 2.26 -72 3.37 1 0 0 0 1 0 0 0 1 973p1t.dat
 1 1 2.26 -40 3.37 1 0 0 0 1 0 0 0 1 3815.dat
 1 14 17.76 -64 3.37 0.99 0.17 0 -0.139 0.811 0.574 0.098 -0.568 0.819 3819.dat

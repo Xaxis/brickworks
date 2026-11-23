@@ -121,4 +121,4 @@ ui:the booklet as a PDF and as PNG pages
 
 ## On the website {#web}
 
-A shared model's page has its booklet and **Build it**, the step player: see [A model's page](/docs/model-pages#build-it).
+A shared model's page has its booklet and **Build it**, the step player: see [A model's page](/docs/model-pages#build-it). Its last step posts a photo of what you built on the model's page: [Show your build](/docs/model-pages#show-your-build).
