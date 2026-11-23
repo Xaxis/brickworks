@@ -272,6 +272,10 @@ func _header(main: Node, layout: String, mode: String) -> Dictionary:
 		at[name] = control.get_global_rect()
 		_ok(control.get_global_rect().size.y >= AppHeader.TARGET * pt - 0.5,
 			"%s %s: %s a fingertip tall (%.0f points)" % [layout, mode, name, control.get_global_rect().size.y / pt])
+		# Drawn as a button, as the site's are: a MenuButton is flat unless
+		# told, and Menu showed as bare words beside Account's frame.
+		var button: Button = control as Button
+		_ok(button == null or not button.flat, "%s %s: %s drawn as a button, not flat" % [layout, mode, name])
 	at["right"] = right
 	# The right-most thing in the header's row, the gutter from the edge.
 	var last: float = 0.0

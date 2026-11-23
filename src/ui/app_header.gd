@@ -118,6 +118,9 @@ static func dress_button(button: Button, pt: float) -> void:
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
 	button.custom_minimum_size = Vector2(0.0, TARGET * pt)
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# A MenuButton is flat unless told: Menu drew as bare words beside
+	# Account's button, with nothing to show a hover.
+	button.flat = false
 	for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
 		var face := StyleBoxFlat.new()
 		face.bg_color = {"normal": Color(0.082, 0.090, 0.106), "hover": Color(0.110, 0.122, 0.141),
