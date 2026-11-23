@@ -755,9 +755,72 @@ const CHALLENGE_REFUSED = {
   set_empty: "That set's inventory has no parts in it.",
 };
 
+/// The weekly quick builds (supabase/challenge_prompts.sql prompt_list),
+/// beside the month's; null before that file.
+async function promptsListed(tests) {
+  try {
+    return (await db("rpc/prompt_list", { method: "POST", body: { tests } })) || [];
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
+}
+
+const PROMPT_REFUSED = {
+  past: "It would end before today.",
+  days: "A quick build runs a week, two at most, and ends after it starts.",
+  no_template: "There is no published model at that link to be its template.",
+};
+
+/// A weekly quick build set (the form's kind): a title, a brief, its days
+/// (a week from the first unless said) and a template, a published model's
+/// link, or none for the house's 8x8 plate, published within the hour
+/// (api/_prompts.js). Refused, in words, for one sharing a day with another.
+async function setPrompt(request, response, given) {
+  // Its words as typed, a zero-width or odd space made a plain one, and
+  // refused when too long rather than cut.
+  const plain = (words) => String(words ?? "").normalize("NFKC")
+    .replace(/[\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]+/g, " ");
+  const title = line(plain(given.title), 1000);
+  const brief = plain(given.brief).replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, " ")
+    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  if (!title) return response.status(400).json({ error: "Give it a title." });
+  if (title.length > 80) return response.status(400).json({ error: `A title is at most 80 characters: this is ${title.length}.` });
+  if (!brief) return response.status(400).json({ error: "Give it a brief: a line or two of what to build." });
+  if (brief.length > 600) return response.status(400).json({ error: `A brief is at most 600 characters: this is ${brief.length}.` });
+  const starts = String(given.starts_on || "");
+  const ends = given.ends_on ? String(given.ends_on) : null;
+  if (!DATE.test(starts) || Number.isNaN(Date.parse(starts)) || (ends && (!DATE.test(ends) || Number.isNaN(Date.parse(ends))))) {
+    return response.status(400).json({ error: "Give the first day, and the last if not a week on." });
+  }
+  const template = given.template ? String(given.template).trim().replace(/^.*\/m\/([A-Za-z0-9]{10}).*$/, "$1") : null;
+  if (template && !ID.test(template)) return response.status(400).json({ error: "The template is a model's link, as brickworks.diy/m/AbCdEfGhIj." });
+  const tests = String(request.query?.tests || "") === "1";
+  let made;
+  try {
+    made = await db("rpc/prompt_set", { method: "POST", body: { title, brief, starts_on: starts, ends_on: ends, template,
+      seed: null, test: tests } });
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) {
+      return response.status(503).json({ error: "Quick builds are not open yet: supabase/challenge_prompts.sql is not applied." });
+    }
+    throw trouble;
+  }
+  if (made?.refused === "overlap") {
+    return response.status(409).json({ error: `One a week: “${made.with?.title}” has a day of these. End it first, or `
+      + "choose other days." });
+  }
+  if (made?.refused) return response.status(422).json({ error: PROMPT_REFUSED[made.refused] || "That was refused." });
+  return response.status(200).json({ challenge: made.challenge, kind: "prompt", starts_on: made.starts_on,
+    ends_on: made.ends_on, template: template || null, test: tests });
+}
+
 /// A challenge set: refused, in words, for one sharing a day with another.
+/// A weekly quick build when the form's kind says so (setPrompt).
 async function setChallenge(request, response) {
-  const asked = challengeAsked(request.body && typeof request.body === "object" ? request.body : {});
+  const given = request.body && typeof request.body === "object" ? request.body : {};
+  if (given.kind === "prompt") return setPrompt(request, response, given);
+  const asked = challengeAsked(given);
   if (asked.error) return response.status(400).json({ error: asked.error });
   let setName = null;
   let setParts = null;
@@ -924,6 +987,7 @@ async function report(tests = false) {
     challengesListed(tests),
     yearReady(),
   ]);
+  const prompts = await promptsListed(tests);
   // The models taken out one by one (console3), each with since when its
   // file has been refused, for Moderation's Taken out and its Let back in.
   const barredModels = await asServer(`/rest/v1/shared_models?barred=is.true&select=id,name,owner,created_at&order=created_at.desc`
@@ -1010,6 +1074,7 @@ async function report(tests = false) {
     picks: pickNow,
     // The monthly challenges (supabase/challenges.sql); null before it.
     challenges,
+    prompts,
     // Whether a year of themes can be set (supabase/challenge_year.sql).
     year,
   };

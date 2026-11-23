@@ -23,6 +23,11 @@
 //                                 challenge open now, whether X is in it, and
 //                                 what its rules say of X. Only X's owner is
 //                                 told anything.
+//   GET  ?op=challenge_rules      the studio's: the month's challenge open now,
+//                                 its rules and its set's parts as kept
+//                                 (challengeRules), and the week's quick
+//                                 build open now, so the studio ticks the
+//                                 rules on the model as it is built
 //   POST ?op=enter                (session) {model, way}: X entered, built by
 //                                 hand or with the assistant; refused in words
 //                                 that name each rule it breaks (422)
@@ -56,6 +61,8 @@ import { db, orUnknown } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { SITE_LANGS, TESTS_CACHE, Unacceptable, cardOf, escapeHtml, inLanguage, siteWords, summary, testsAsked } from "./_directory.js";
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
+import { promptAnswer, promptNow } from "./_prompts.js";
+import { keyed, readShard, shardOf } from "./_owned.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -271,18 +278,23 @@ export function pictureFor(origin, page, rounds = null) {
 /// the page's own.
 export function challengeHead(html, origin, page, tests = false, lang = "en", rounds = null) {
   if (!page || !page.id || !page.title) return html;
-  const title = say("{title} · Brickworks challenge", { title: String(page.title).replace(/\s+/g, " ").trim() });
+  // A weekly quick build (api/_prompts.js) is named as one.
+  const prompt = page.kind === "prompt";
+  const title = say(prompt ? "{title} · Brickworks quick build" : "{title} · Brickworks challenge",
+    { title: String(page.title).replace(/\s+/g, " ").trim() });
   const brief = String(page.brief || "").replace(/\s+/g, " ").trim();
   const days = lang === "en" ? daysSaid(page.starts_on, page.ends_on) : new Intl.DateTimeFormat(lang,
     { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatRange(dateOf(page.starts_on), dateOf(page.ends_on));
-  const when = page.state === "ended" ? say("Ran {days}: see who won.", { days })
+  const when = prompt ? (page.state === "ended" ? say("Ran {days}: see every entry, and the stack of them all.", { days })
+    : say("Open {days}: start from the template in the studio.", { days }))
+    : page.state === "ended" ? say("Ran {days}: see who won.", { days })
     : page.state === "upcoming" ? say("From {days}.", { days }) : say("Open {days}.", { days });
   const about = `${summary(brief, 220)} ${when}`.trim();
   const asked = `?id=${n(page.id)}${tests && page.test ? "&tests=1" : ""}`;
   // The page in [code], English's for x-default.
   const copy = (code) => `${origin}${["en", "x-default"].includes(code) ? "" : `/${code}`}/challenge${asked}`;
   const url = copy(lang);
-  const image = pictureFor(origin, page, rounds) || `${origin}/share.png`;
+  const image = (prompt ? promptPicture(origin, page) : pictureFor(origin, page, rounds)) || `${origin}/share.png`;
   const swaps = [
     [/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`],
     [/<meta name="description" content="[^"]*">/, `<meta name="description" content="${escapeHtml(about)}">`],
@@ -310,10 +322,20 @@ export async function challengePageHtml(origin, id, tests, lang = "en") {
   const code = SITE_LANGS.includes(lang) && challengeFile(lang) ? lang : "en";
   const html = challengeFile(code);
   if (!id) return html;
-  const page = await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
+  const prompt = await db("rpc/prompt_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
+  const page = prompt && prompt.id ? prompt
+    : await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
   const rounds = page && page.id ? await roundsAsked(page.id).catch(() => null) : null;
   return inLanguage(code, code === "en" ? null : siteWords(code),
     () => challengeHead(html, origin, page && page.id ? page : null, tests, code, rounds));
+}
+
+/// A prompt's picture where it is shared: its stack's once made, else its
+/// newest entry's, else its template's; each only with a picture. Pure.
+export function promptPicture(origin, page) {
+  const pictured = [page.stack, ...(page.entries || []).map((one) => one && one.card), page.template]
+    .find((card) => card && card.has_image && ID.test(String(card.id || "")));
+  return pictured ? `${origin}/m/${pictured.id}.png` : null;
 }
 
 /// GET ?op=challenge&picture=1: the picture of the challenge /challenge
@@ -454,8 +476,16 @@ export async function challenge(request, response, { origin }) {
   if (String(request.query?.picture || "") === "1") return pictureRedirect(response, origin, tests);
   const who = bearer(request) ? await caller(request) : null;
   response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : PAGE_CACHE);
+  // A weekly quick build's own page (api/_prompts.js): its template, its
+  // entries and its stack; no rules, no vote.
+  if (asked) {
+    const prompt = await orUnknown("prompts", promptAnswer(origin, asked, tests));
+    if (prompt) return response.status(200).json(await withFaces({ ready: true, challenge: null, prompt }));
+  }
+  // The hub names the week's quick build beside the month's challenge.
+  const week = asked ? null : await orUnknown("prompts", promptNow(origin, tests));
   const { ready, page } = await pageOf(tests, asked);
-  if (!ready) return response.status(200).json({ ready: false, challenge: null });
+  if (!ready) return response.status(200).json({ ready: false, challenge: null, ...(week ? { prompt_now: week } : {}) });
   if (asked && !page) return response.status(404).json({ error: "There is no challenge at that number to show." });
   // The hub says what ran before and what comes next; a challenge's own page
   // is that challenge alone. What is beside the challenge asked for (what
@@ -464,7 +494,7 @@ export async function challenge(request, response, { origin }) {
   const between = asked ? {} : await orUnknown("challenges", betweenOf(origin, tests, page ? n(page.id) : null));
   if (!page) {
     return response.status(200).json(await withFaces({ ready: true, challenge: null, ...between,
-      ...(who ? { you: { signed_in: true } } : {}) }));
+      ...(week ? { prompt_now: week } : {}), ...(who ? { you: { signed_in: true } } : {}) }));
   }
   const [wins, rounds] = await Promise.all([
     orUnknown("challenges", winsOf((page.entries || []).map((one) => one.model), tests)).then((said) => said || new Map()),
@@ -486,7 +516,62 @@ export async function challenge(request, response, { origin }) {
         : !kind ? "A test account votes only in a test challenge."
           : mine?.under_13 ? VOTE_SAID.under_13[1] : mine?.may_vote !== true ? ASK_FIRST : null };
   }
-  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...between, ...(you ? { you } : {}) }));
+  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...between,
+    ...(week ? { prompt_now: week } : {}), ...(you ? { you } : {}) }));
+}
+
+// ---------------------------------------------------------------------------
+// The studio's: the rules of the challenge open now, to tick on the model as
+// it is built (unit challengestudio, src/net/challenge_rules.gd).
+
+/// The set's parts kept with challenge [id] when it was set
+/// (supabase/challenge_studio.sql challenge_set_lots): [[part, colour, qty]],
+/// from: "challenge". Before that file, the set's inventory counted again
+/// as /admin counted it (api/admin.js setChallenge), from: "inventory",
+/// which the site's check may not match where the inventory changed since.
+async function setLotsOf(id, setNumber, origin) {
+  try {
+    const kept = await db("rpc/challenge_set_lots", { method: "POST", body: { challenge_id: id } });
+    return { lots: (Array.isArray(kept) ? kept : []).map((one) => [String(one.part), n(one.colour), n(one.qty)]),
+      from: "challenge" };
+  } catch (trouble) {
+    if (!missing(trouble)) throw trouble;
+  }
+  const shard = await readShard(shardOf(setNumber), origin).catch(() => null);
+  const record = shard?.sets?.[setNumber];
+  if (!record) return { lots: [], from: "none" };
+  return { lots: keyed([...(record.p || []), ...(record.s || [])]).map((one) => [one.part, one.colour, one.qty]),
+    from: "inventory" };
+}
+
+/// GET ?op=challenge_rules: the month's challenge open now and its rules
+/// as the studio ticks them, the set's parts with them. A test account's
+/// (its sign-in, when sent) is the flows' own. Kept by the CDN a minute
+/// when asked without a sign-in. {challenge: null} when none is open. The
+/// week's quick build is the studio's to name from the copy it has open
+/// (?op=prompt_of), so it is not said here.
+export async function challengeRules(request, response, { origin }) {
+  const who = bearer(request) ? await caller(request).catch(() => null) : null;
+  const tests = who ? who.test : testsAsked(request.query || {});
+  response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : "public, max-age=0, s-maxage=60, stale-while-revalidate=60");
+  let row;
+  try {
+    row = await db("rpc/challenge_open", { method: "POST", body: { tests } });
+  } catch (trouble) {
+    if (missing(trouble)) return response.status(200).json({ ready: false, challenge: null });
+    throw trouble;
+  }
+  if (!row || !row.id) return response.status(200).json({ ready: true, challenge: null });
+  const today = new Date().toISOString().slice(0, 10);
+  const rounds = DATE.test(String(row.entries_until || "")) && DATE.test(String(row.votes_from || ""));
+  const set = row.set_number ? { number: String(row.set_number), name: row.set_name ? String(row.set_name) : null,
+    ...(await setLotsOf(n(row.id), String(row.set_number), origin)) } : null;
+  return response.status(200).json({ ready: true, challenge: {
+    id: n(row.id), title: String(row.title), brief: String(row.brief || ""), starts_on: row.starts_on, ends_on: row.ends_on,
+    entries_until: rounds ? row.entries_until : null, entering: !rounds || String(row.entries_until) >= today,
+    test: row.test === true, page: `${origin}/challenge?id=${n(row.id)}${row.test ? "&tests=1" : ""}`,
+    rules: { most_parts: row.most_parts ?? null, set, tested: row.tested === true },
+    rules_said: rulesSaid({ most_parts: row.most_parts, set_number: row.set_number, set_name: row.set_name, tested: row.tested }) } });
 }
 
 /// GET ?op=challenge_entry&id=X: for X's own designer, the challenge open

@@ -76,3 +76,18 @@ replies.sql	comments_on	comment_pins.sql	'pins', true
 comments.sql	comments_on	comment_pins.sql	'pins', true
 made_with.sql	gallery_models	alt_builds.sql	a.one_set
 wip.sql	gallery_models	alt_builds.sql	a.one_set
+challenges.sql	challenge_open	challenge_prompts.sql	kind = 'month'
+challenges.sql	challenge_shown	challenge_prompts.sql	kind = 'month'
+challenge_year.sql	challenge_shown	challenge_prompts.sql	kind = 'month'
+challenge_year.sql	challenge_next	challenge_prompts.sql	kind = 'month'
+challenge_year.sql	challenge_past	challenge_prompts.sql	kind = 'month'
+challenge_rounds.sql	challenge_settle_due	challenge_prompts.sql	kind = 'month'
+challenges.sql	challenge_set	challenge_prompts.sql	kind = 'month'
+challenge_year.sql	challenge_plan	challenge_prompts.sql	kind = 'month'
+challenges.sql	challenge_vote	challenge_prompts.sql	c.kind <> 'month'
+challenges.sql	challenge_list	challenge_prompts.sql	kind = 'month'
+challenge_year.sql	challenge_list	challenge_prompts.sql	kind = 'month'
+challenge_list_order.sql	challenge_list	challenge_prompts.sql	kind = 'month'
+talk.sql	talk_ensure	challenge_prompts.sql	k.kind = 'month'
+achievements.sql	achievement_ladders	challenge_prompts.sql	('streak', 7,
+achievements.sql	achievement_numbers	challenge_prompts.sql	prompt_streak(

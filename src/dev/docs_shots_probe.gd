@@ -109,6 +109,29 @@ class Answered extends SharedModels:
 	func comments(_id: String, _version: int = 0, _token: String = "") -> Dictionary:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		return {"code": 200, "body": {"comments": [], "open": true, "you": {"signed_in": true}}}
+
+	## The month's challenge, as "challenge_rules" says (ChallengeLine); none
+	## where it says nothing. Enter, and whether a link is in it, as
+	## "enter" and "challenge_entry" say.
+	func challenge_rules(_token: String) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return _wire(said.get("challenge_rules", {"code": 200, "body": {"ready": true, "challenge": null}}))
+
+	func enter(_token: String, _model: String, _way: String) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return _wire(said.get("enter", {"code": 503, "body": {"error": "no answer given"}}))
+
+	func challenge_entry(_token: String, _model: String) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return _wire(said.get("challenge_entry", {"code": 200, "body": {"entry": null}}))
+
+	func mine(_token: String) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return _wire(said.get("mine", {"code": 200, "body": {"shared": [], "credit": null}}))
+
+	## An answer as it comes off the wire: its numbers floats, as JSON reads them.
+	static func _wire(answer: Dictionary) -> Dictionary:
+		return JSON.parse_string(JSON.stringify(answer))
 var _failed: PackedStringArray = PackedStringArray()
 ## The panels and windows in sight before the setup (the "@opened" crop).
 var _shown_before: Dictionary = {}

@@ -230,6 +230,8 @@ declare -A CMD=(
   # Notifications, and its link's own head: API routes only, with the bypass
   # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
+  # local only: prompts_flow.mjs. The weekly quick build needs supabase/challenge_prompts.sql,
+  # which no preview has until the lead applies it; before it the flow stops (exit 2). Name it here once it is.
   # The challenge on the home page with its days left and This week's pick,
   # both within the first two screens at 390 and 1280; /challenge moving no
   # more than 0.1 as it loads at 390, 768 and 1280; its own picture

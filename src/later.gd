@@ -64,6 +64,10 @@ const PATHS: Dictionary[StringName, String] = {
 	&"PartPins": "res://src/ui/part_pins.gd",
 	&"PartPinsPanel": "res://src/ui/part_pins_panel.gd",
 	&"PinPlace": "res://src/net/pin_place.gd",
+	# The month's challenge in the studio: its line over the model and its
+	# rules ticked on it.
+	&"ChallengeLine": "res://src/ui/challenge_line.gd",
+	&"ChallengeRules": "res://src/net/challenge_rules.gd",
 	&"SimulatePanel": "res://src/ui/simulate_panel.gd",
 	&"TogetherDialog": "res://src/ui/together_dialog.gd",
 	# What they make: Brick Art, figures, motions played, the booklet.

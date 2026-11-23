@@ -6604,6 +6604,146 @@
       "entry": "tools/web/altbuilds_lcp.mjs",
       "reach": "node tools/web/altbuilds_lcp.mjs --a=<relay of the tree before> --b=<relay of this one> --out=DIR   (a set's page from both at the same moment, 390 and 1280 px, 8 rounds each: LCP and when Built from this set was there)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build",
+      "entry": "supabase/challenge_prompts.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_prompts.sql --dry --try=tools/challenge_prompts_try.sql --table=challenges   (after challenges.sql, challenge_year.sql, challenge_rounds.sql, challenge_list_order.sql, talk.sql and achievements.sql; the month's answers' md5s equal the live ones; then the prompts browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build's house work",
+      "entry": "api/_prompts.js",
+      "reach": "GET /api/share/prompts with the cron's key (hourly at :41; ?tests=1 a flow's): each template published as the house, the house's two entries of its own prompts, an ended week's stack; written down in the console's Site as the job prompts",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build's stack",
+      "entry": "api/_prompts.js",
+      "reach": "node tools/prompts_check.mjs OUT   (the house's eight entries stacked: each its own 0 FILE credited to its maker, the parts their sum, each foot on the studs below; OUT/stack.png and stack.mpd)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the weekly quick build's page",
+      "entry": "web/challenge.js",
+      "reach": "<deployment>/challenge?id=<a prompt's id>   (Start to /app?copy=<template>, its entries newest first turning in 3D on a tap, the stack once it ended; the hub's This week's quick build; GET /api/people?op=challenge&id=N answers {prompt})",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the weekly quick build on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#challenge-week, a line under the month's challenge: This week's quick build: <title>, from GET /api/share?op=shelves prompt_now)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a quick build's notice",
+      "entry": "web/notice-view.js",
+      "reach": "<deployment>/notifications   (a weekly quick build's group, Quick build: <title>, with Start to /app?copy=<template>; api/_notifications.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "setting the weekly quick build",
+      "entry": "web/admin-challenges.js",
+      "reach": "<deployment>/admin#gallery/challenges as MASTER_EMAIL: Kind, Weekly quick build: a title, a brief, its days and a template link or the house's plate; listed under the month's with End it now (POST /api/admin?op=challenge {kind: prompt})",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the quick build in the studio",
+      "entry": "src/main.gd",
+      "reach": "/app?copy=<a template's id>: This week's quick build said above the model with Got it (GET /api/people?op=prompt_of); Share's Enters this week's quick build, ticked, one tap to keep it out (src/ui/share_panel.gd)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt probe",
+      "entry": "src/dev/prompt_probe.gd",
+      "reach": "tools/probe.sh prompt_probe   (the brief above the model at 1280 and on a phone, the publish dialog's box, prompt_out sent only when unticked)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the month's challenge in the studio",
+      "entry": "src/ui/challenge_line.gd",
+      "reach": "godot --path .  while a challenge is open (GET /api/people?op=challenge_rules, each hour and with the sign-in): one line with the model's notices, its name and days left; pressed, its rules ticked on the model (src/net/challenge_rules.gd, api/share.js checkModel ported), each failed one saying what to change; Test it; x hides it for that challenge (user://challenge_line.cfg)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "Enter from Share",
+      "entry": "src/ui/share_panel.gd",
+      "reach": "File > Share while the month's rules pass on the model: Enter <title> under Publish with its way (Built by hand, Built with the assistant); one press lists it with the name, publishes and POSTs /api/people?op=enter; a failing rule says what to change, Publish stays one press",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge line probe",
+      "entry": "src/dev/challenge_line_probe.gd",
+      "reach": "PROBE_SIZE=WxH tools/probe.sh challenge_line_probe   (390x844 430x932 768x1024 1280x800 1920x1080: the line never over the model, named for a screen reader, its rules ticked live, Hide, Enter in one press)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge rules probe",
+      "entry": "src/dev/challenge_rules_probe.gd",
+      "reach": "tools/probe.sh challenge_rules_probe --fixtures=DIR   (the port against challenge_check on the same 30 stored files x 3 rules, 90 of 90; writes DIR/studio, the texts and findings the studio would publish, for challenge_rules_check --studio)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge rules check",
+      "entry": "tools/challenge_rules_check.mjs",
+      "reach": "node tools/challenge_rules_check.mjs --out=DIR   (the site's challenge_check on 30 published models under 3 test challenges, in a rolled-back transaction: the rules probe's fixtures); --studio=DIR/studio after the probe: the studio's texts and findings published in a rolled-back transaction, its 90 ticks against challenge_check's answers to them",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the fan vote two at a time",
+      "entry": "web/challenge.js",
+      "reach": "https://brickworks.diy/challenge?pair=hand (or =assistant), or Compare them two at a time, in 3D over the cards while votes are cast: two entries side by side (stacked on a phone), each its blind embed /m/<id>/embed?blind=1&autoplay=1 turning; This one keeps one and brings the next; then Vote for it",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge pair check",
+      "entry": "tools/web/challenge_pair_check.mjs",
+      "reach": "node tools/web/challenge_pair_check.mjs --url=<a local relay> --out=DIR   (the pair at 1280 and 390, no maker's name or count in the page or its frames, a vote cast, LCP beside the cards' at the same moments)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompts check",
+      "entry": "tools/prompts_check.mjs",
+      "reach": "node tools/prompts_check.mjs [OUT]   (no network: the house's templates and entries checked part by part, and their stack)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt pictures",
+      "entry": "tools/prompt_pictures.mjs",
+      "reach": "node tools/prompt_pictures.mjs OUT   (the docs world's template and Habitat entries, as the run draws them)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompts browser flow",
+      "entry": "tools/web/prompts_flow.mjs",
+      "reach": "node --env-file=.env tools/web/prompts_flow.mjs --url=<relay or preview> --out=DIR   (MASTER_EMAIL, CRON_SECRET; after challenge_prompts.sql is applied, else exit 2)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt start pair",
+      "entry": "tools/web/prompt_start_pair.mjs",
+      "reach": "node --env-file=.env tools/web/prompt_start_pair.mjs --url=<relay_server --static=build/web> --out=DIR [--rounds=6]   (Start on a quick build against a plain copy link, the same build at the same moments, at 390 and 1280: within + 2 s)",
+      "area": "web"
     }
   ]
 }

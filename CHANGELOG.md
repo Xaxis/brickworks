@@ -78,6 +78,29 @@ whole cycle.
   from yet says so, with **Build something from it**. Say a model is an
   alternate build of a set that lacks some of its parts, and your own page
   tells you how many.
+- **The month's challenge in the studio.** While a challenge is open, one
+  small line over the model names it and its days left; press it and its
+  rules are ticked on the model as you build (*112 of 150 parts*, *only
+  parts from set 31009*, *Tested*), each one it breaks saying what to
+  change. They are the rules the site checks, ticked the same way. When the
+  model keeps them, Share says **Enter** under Publish, with how you built
+  it: one press publishes it in the gallery with your name and enters it.
+  **×** hides the line for that challenge.
+- **The fan vote two at a time.** On the challenge's page, **Compare them
+  two at a time, in 3D** shows two entries side by side, one above the
+  other on a phone, each turning, with nobody's name and no counts. Keep
+  the one you like more and the next comes beside it, until one is left
+  to vote for.
+- **A quick build every week.** Beside the month's challenge, each week
+  has a short brief and a template to start from, an 8×8 plate. **Start**,
+  on its page or in its notice, opens the studio on a copy of the template
+  with the brief said above the model. Publish it in the gallery that week
+  and it is entered: the publish dialog says so, and one tap keeps it out.
+  There is no vote. Its page shows every entry, the newest first, each
+  turning in 3D on a tap, and when the week ends Brickworks stacks them all
+  into one model, each entry its own sub-model credited to its maker, to
+  turn, open or build. Weeks entered in a row are a **Streak** on your
+  profile. The owner sets them in the console's Challenges.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

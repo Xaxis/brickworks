@@ -111,9 +111,30 @@ const CHALLENGE = { id: 7, title: "Wheels and tracks", brief: "Build something t
     { way: "hand", label: "Built by hand", entries: [entry("DocsSprt01", "hand", "2026-11-02T10:00:00Z"), entry("DocsKart01", "hand", "2026-11-03T10:00:00Z")] },
     { way: "assistant", label: "Built with the assistant", entries: [entry("DocsRckt01", "assistant", "2026-11-04T10:00:00Z")] },
   ], winners: [] };
+// This week's quick build (api/_prompts.js): the house's template and its
+// two entries, their pictures drawn by tools/prompt_pictures.mjs.
+const HOUSE = { handle: "brickworks", name: "Brickworks" };
+const houseRow = (id, name, parts, at, x = {}) => ({ id, name, author: HOUSE.name, parts, has_image: true, has_thumb: true,
+  listed_at: at, updated_at: at, kind: "town", tags: ["quick-build"], licence: "cc-by-4.0", steps: 1, own_steps: true,
+  technic: false, views: 0, likes: 0, builds: 0, remixes: 0, comments: 0, by: HOUSE, tested: false, made_with: "assistant",
+  moves: [], motions: [], ...x });
+const PROMPT_ROWS = [houseRow("DocsTmpl01", "Habitat: the template", 1, "2026-11-23T00:41:00Z", { made_with: "hand", remixes: 2 }),
+  houseRow("DocsHab001", "Reading nook", 27, "2026-11-23T01:41:00Z"), houseRow("DocsHab002", "Garden shed", 26, "2026-11-23T01:42:00Z")];
+const promptCard = (r) => {
+  const c = dir.cardOf("https://brickworks.diy", r);
+  return { ...c, url: `/m/${r.id}`, image: `/m/${r.id}.png`, thumb: c.thumb.replace("https://brickworks.diy", "") };
+};
+for (const r of PROMPT_ROWS) A[`/m/${r.id}.webp`] = { file: `docs-site/pictures/files/${r.id}.webp` };
+const PROMPT = { id: 21, title: "Habitat", brief: "A home for one minifigure on an 8×8 plate: a room, a nook, a nest, a lair. "
+  + "Keep it within 10 bricks tall, so every habitat of the week stacks into one tower.", starts_on: "2026-11-23",
+  ends_on: "2026-11-29" };
+A["/api/people?op=challenge&id=21"] = { ready: true, challenge: null, prompt: { kind: "prompt", ...PROMPT, ended_on: null,
+  state: "open", test: false, days_said: "23 November 2026 to 29 November 2026", template: promptCard(PROMPT_ROWS[0]),
+  start: "/app?copy=DocsTmpl01", stack: null, makers: 1,
+  entries: PROMPT_ROWS.slice(1).reverse().map((r) => ({ ...promptCard(r), way: "assistant", entered_at: r.listed_at })) } };
 A["/api/people?op=challenge"] = { ready: true, year: true, challenge: CHALLENGE,
   next: { id: 8, title: "Winter lights", brief: "A scene with lights in the windows: a street, a station, a cabin.", starts_on: "2026-12-01", ends_on: "2026-12-31" },
-  past: [] };
+  past: [], prompt_now: { ...PROMPT, page: "https://brickworks.diy/challenge?id=21", start: "/app?copy=DocsTmpl01", entries: 2 } };
 
 // ---- what the database answers a page the server makes (/m/DocsSprt01)
 const D = {};
