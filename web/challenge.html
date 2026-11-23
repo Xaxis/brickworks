@@ -140,7 +140,7 @@
 			<div class="challenge-top">
 				<div class="challenge-words">
 					<p class="challenge-status"><span class="badge" id="status" hidden></span><span class="eyebrow" id="eyebrow">Monthly challenge</span></p>
-					<h1 id="title">This month’s challenge</h1>
+					<h1 class="obj-title" id="title">This month’s challenge</h1>
 					<p class="lede" id="brief"><span class="bone wide"></span><span class="bone"></span></p>
 					<p class="judge" id="judge" hidden></p>
 					<div class="rules-box" id="rules-part" hidden>
@@ -177,6 +177,16 @@
 	<div class="wrap wide page-body">
 		<noscript><p class="state">The challenge is drawn with a little JavaScript, which is off in this browser.</p></noscript>
 
+		<!-- Its parts as tabs (pagekit, web/tabs.js): the entries (the winners
+		     first once it ends), how it works and what comes next, the past
+		     challenges; a tab shown once its part has something (challenge.js). -->
+		<div class="obj-panels">
+		<div class="tabs obj-tabs" id="page-tabs" role="tablist" aria-label="The challenge">
+			<a href="#entries-part" role="tab" id="tab-entries-part" aria-controls="entries-part" data-tab="entries-part" data-also="entries winners" aria-selected="true" hidden>Entries</a>
+			<a href="#how-part" role="tab" id="tab-how-part" aria-controls="how-part" data-tab="how-part" data-also="how next" aria-selected="false" hidden>How it works</a>
+			<a href="#past-part" role="tab" id="tab-past-part" aria-controls="past-part" data-tab="past-part" data-also="past" aria-selected="false" hidden>Past challenges</a>
+		</div>
+		<div id="entries-part" role="tabpanel" aria-labelledby="tab-entries-part" tabindex="0">
 		<!-- Once it ends: who won, one in each group, before everything else. -->
 		<section id="winners" class="challenge-part" aria-labelledby="winners-h" hidden>
 			<h2 id="winners-h">The winners</h2>
@@ -186,7 +196,7 @@
 		<!-- The entries: the two groups as tabs, each with its count, a sort, and the gallery's cards. -->
 		<section id="entries" class="challenge-part" aria-labelledby="entries-h" hidden>
 			<div class="entries-head">
-				<h2 id="entries-h">Entries</h2>
+				<h2 class="visually-hidden" id="entries-h">Entries</h2>
 				<div class="segmented" id="sort" role="group" aria-label="Sort the entries" hidden></div>
 			</div>
 			<div class="tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
@@ -195,9 +205,11 @@
 			<p class="said" id="said" role="status"></p>
 		</section>
 
+		</div>
+		<div id="how-part" role="tabpanel" aria-labelledby="tab-how-part" tabindex="0" hidden>
 		<!-- How it works: entering in three steps; voting and the rules folded. -->
 		<section id="how" class="challenge-part" aria-labelledby="how-h" hidden>
-			<h2 id="how-h">How it works</h2>
+			<h2 class="visually-hidden" id="how-h">How it works</h2>
 			<ol class="steps">
 				<li><h3>Build it</h3><p>Build to the brief in the app, by hand or with the assistant, keeping the rules.</p></li>
 				<li><h3>Share it in the gallery</h3><p>Share it with your name on it and Show it in the gallery ticked.</p></li>
@@ -236,10 +248,14 @@
 			</article>
 		</section>
 
+		</div>
+		<div id="past-part" role="tabpanel" aria-labelledby="tab-past-part" tabindex="0" hidden>
 		<section id="past" class="challenge-part" aria-labelledby="past-h" hidden>
-			<h2 id="past-h">Past challenges</h2>
+			<h2 class="visually-hidden" id="past-h">Past challenges</h2>
 			<div class="models past-grid" id="past-list"></div>
 		</section>
+		</div>
+		</div>
 	</div>
 </main>
 

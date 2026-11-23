@@ -1493,7 +1493,7 @@ function stripHtml(photos, { by = false } = {}) {
 /// A profile's tabs, each a page of its own (?tab=): its work, its builds,
 /// its lists, the sets they own and the models they liked, those two when
 /// they chose to show them, each with its count once there is one.
-const TABS = ["models", "builds", "collections", "sets", "likes"];
+const TABS = ["models", "collections", "builds", "sets", "likes"];
 /// A tab's name, in the page's language.
 function tabSaid(id) {
   return { models: say("Models"), builds: say("Builds"), collections: say("Collections"), sets: say("Sets"), likes: say("Likes") }[id];
@@ -1703,27 +1703,33 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
   // The banner is its model's picture with nothing behind the model, on
   // the theme's own ground as a card's is (web/directory.css); the server
-  // gives the picture itself for a model published before cut-outs.
-  const head = `${showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.cutout.png" alt="" width="1200" height="630" decoding="async"></div>` : ""}
-  <header class="profile-head">
+  // gives the picture itself for a model published before cut-outs. It
+  // leads the page's work, as a model's picture leads its page (pagekit).
+  const banner = showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.cutout.png" alt="" width="1200" height="630" decoding="async"></div>` : "";
+  // Who they are, in the page's aside (pagekit, site.css .obj-aside): their
+  // avatar, name and handle, Follow (or Edit profile, for them), Share and
+  // More; their words, links, numbers and what they earned.
+  const head = `<aside class="obj-aside person-card profile-head" aria-label="${asText(say("About {name}", { name: person.name }))}">
+  <div class="person-id">
     ${avatarHtml({ handle: person.handle, name: person.name, picture: person.picture }, { size: "huge" })}
     <div class="who">
-      <h1>${name}</h1>
+      <h1 class="obj-title">${name}</h1>
       <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? asText(say("Designer")) : asText(say("Builder"))}</span>${Number.isFinite(since)
         ? ` · ${asText(say("building here since {when}", { when: sinceSaid(since) }))}` : ""}</p>
     </div>
-    <div class="acts">
-      ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
-        data-follow="${escapeHtml(person.handle)}" hidden>${asText(say("Follow"))}</button><span class="said" role="status"></span></p>
-      <a class="cta ghost" href="${at}/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
-      ${iconButtonHtml({ icon: "share", name: say("Share"),
-        attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
-      ${more}
-    </div>
-  </header>
+  </div>
+  <div class="acts">
+    ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta follow"
+      data-follow="${escapeHtml(person.handle)}" hidden>${asText(say("Follow"))}</button><span class="said" role="status"></span></p>
+    <a class="cta ghost" href="${at}/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
+    ${iconButtonHtml({ icon: "share", name: say("Share"),
+      attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
+    ${more}
+  </div>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>
+  </aside>`;
 
   // Pinned: up to three of their models, in the order they chose.
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">${asText(say("Pinned"))}</h2>
@@ -1751,7 +1757,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
       eager: i < (showcase.pins.length ? 4 : FIRST_SCREEN) })).join("")}</div>
     ${pager.after}`
       : shown.page > 1 ? pastEnd(shown.page, pageHref("models"))
-      : `<p class="state">${sayHtml("Nothing in the gallery yet. The models {name} shares in the gallery with their name show here.", { name })}</p>`;
+      : `<p class="obj-empty">${sayHtml("Nothing in the gallery yet. The models {name} shares in the gallery with their name show here.", { name })}</p>`;
   } else if (tab === "builds") {
     panel = counts.builds ? `${built?.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">${sayHtml("Built by {name}", { name })}</h2>
       <p class="note">${asText(say("Photos of their real builds of models in the gallery."))}</p>
@@ -1761,7 +1767,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
         : "{n} people posted photos of their real builds of {name}’s models.", { n: escapeHtml(number(earned.builders)), name })}</p>
       <div class="build-grid">${stripHtml(theirs, { by: true })}</div></section>` : ""}`
       // Their own builds not read (null): not said to be none.
-      : !built ? "" : `<p class="state">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
+      : !built ? "" : `<p class="obj-empty">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
         + "and the ones other people post of {name}’s models.", { name })}</p>`;
   } else if (tab === "likes") {
     const pager = likedAt ? pagerHtml({ id: "models", first: likedAt.page, shown: cards.length, more: likedAt.more,
@@ -1773,7 +1779,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     <div class="models" id="models" data-models data-page="${likedAt.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
     ${pager.after}`
       : likedAt && likedAt.page > 1 ? pastEnd(likedAt.page, pageHref("likes"))
-      : `<p class="state">${sayHtml("No likes yet. The models {name} likes in the gallery show here, as they chose.", { name })}</p>`;
+      : `<p class="obj-empty">${sayHtml("No likes yet. The models {name} likes in the gallery show here, as they chose.", { name })}</p>`;
   } else if (tab === "sets" && owned) {
     // Page n of their sets, as filtered.
     const setsHref = (n) => `${at}/u/${person.handle}${query({ tab: "sets", ...(filters.q ? { q: filters.q } : {}),
@@ -1784,14 +1790,17 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     drawn.push(...owned.cards);
   } else {
     panel = lists.length ? `<div class="list-cards">${lists.map((list, i) => listCardHtml(list, covers, { eager: i < 4 })).join("")}</div>`
-      : `<p class="state">${sayHtml("No collections yet. The lists of models {name} makes public show here.", { name })}</p>`;
+      : `<p class="obj-empty">${sayHtml("No collections yet. The lists of models {name} makes public show here.", { name })}</p>`;
   }
-  const tabsHtml = `<nav class="tabs" aria-label="${sayHtml("{name}’s work", { name })}">${tabs.map((id) =>
+  const tabsHtml = `<nav class="tabs obj-tabs" aria-label="${sayHtml("{name}’s work", { name })}">${tabs.map((id) =>
     `<a href="${at}/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
     + `${asText(tabSaid(id))}${counts[id] ? ` <span class="n">${escapeHtml(number(counts[id]))}</span>` : ""}</a>`).join("")}</nav>`;
 
-  const main = `<div class="wrap wide person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
+  const main = `<div class="wrap wide person profile obj-page${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
+  <div class="obj-layout">
   ${head}
+  <div class="obj-main">
+  ${banner}
   ${pinned}
   <div class="work" id="work">
   ${tabsHtml}
@@ -1811,6 +1820,8 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     <p class="note">${sayHtml("Designers whose models share the most with {name}’s: themes, tags and parts.", { name })}</p>
     <ul class="people-list" id="alike-people"></ul>
   </section>` : ""}
+  </div>
+  </div>
 </div>
 ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { name: person.name }),
     about: say("Its link opens their page: their models, their builds and their collections."),
@@ -1900,33 +1911,38 @@ function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, w
     + "</div></details>";
   const counts = [shown.sets ? countedSaid(shown.sets, "set") : "", shown.models ? countedSaid(shown.models, "model") : ""]
     .filter(Boolean).join(", ") || countedSaid(0, "model");
-  const main = `<div class="wrap wide person list" data-id="${id}"${wish ? ' data-kind="want"' : ""}>
-  <header class="list-head">
+  // An object's page (pagekit, site.css .obj-layout): what is in it, and
+  // beside it the aside, its cover over its name, whose it is, its words,
+  // numbers, Follow, Share, the CSV and More.
+  const main = `<div class="wrap wide person list obj-page" data-id="${id}"${wish ? ' data-kind="want"' : ""}>
+  <div class="obj-layout">
+  <aside class="obj-aside list-card-aside list-head" aria-label="${asText(say("About {name}", { name: list.name }))}">
     <div class="cover">${mosaicHtml(covers.get(id) || [], { eager: true })}</div>
-    <div class="who">
-      <p class="eyebrow">${asText(wish ? say("Wishlist") : say("Collection"))}</p>
-      <h1>${escapeHtml(list.name)}</h1>
-      <p class="handle">${Number.isFinite(updated) ? sayHtml("Collected by {who} · updated {when}", { who: by, when: escapeHtml(daySaid(updated)) })
-        : sayHtml("Collected by {who}", { who: by })}</p>
-      ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
-      <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${shown.sets ? stat("sets", shown.sets, say("set"), say("sets")) : ""}${
-        shown.models || !shown.sets ? stat("models", shown.models, say("model"), say("models")) : ""}${ready
-        ? stat("followers", follows.followers, say("follower"), say("followers"), ` data-list-followers="${id}"`) : ""}</ul>
-      <div class="acts">
-        ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>`
-          + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
-        ${iconButtonHtml({ icon: "share", name: say("Share"),
-          attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
-        <a class="cta ghost small" href="/api/people?op=list_csv&amp;id=${id}" download data-list-csv>${asText(say("Download as CSV"))}</a>
-        ${more}
-      </div>
+    <p class="eyebrow">${asText(wish ? say("Wishlist") : say("Collection"))}</p>
+    <h1 class="obj-title"${list.name.length > 48 ? ` title="${escapeHtml(list.name)}"` : ""}>${escapeHtml(list.name)}</h1>
+    <p class="handle">${Number.isFinite(updated) ? sayHtml("Collected by {who} · updated {when}", { who: by, when: escapeHtml(daySaid(updated)) })
+      : sayHtml("Collected by {who}", { who: by })}</p>
+    ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
+    <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${shown.sets ? stat("sets", shown.sets, say("set"), say("sets")) : ""}${
+      shown.models || !shown.sets ? stat("models", shown.models, say("model"), say("models")) : ""}${ready
+      ? stat("followers", follows.followers, say("follower"), say("followers"), ` data-list-followers="${id}"`) : ""}</ul>
+    <div class="acts">
+      ${ready ? `<p class="follow-line"><button type="button" class="cta follow" data-follow-list="${id}" hidden>`
+        + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
+      ${iconButtonHtml({ icon: "share", name: say("Share"),
+        attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
+      <a class="cta ghost small" href="/api/people?op=list_csv&amp;id=${id}" download data-list-csv>${asText(say("Download as CSV"))}</a>
+      ${more}
     </div>
-  </header>
+  </aside>
+  <div class="obj-main">
   ${cards.length ? `${pager.earlier}
   <div class="models" id="models">${cards.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>
   ${pager.after}`
     : at > 1 ? pastEnd(at, pageHref)
-    : `<p class="state">${asText(say("Nothing in it is in the gallery just now. The models put in it show here once they are."))}</p>`}
+    : `<p class="obj-empty">${asText(say("Nothing in it is in the gallery just now. The models put in it show here once they are."))}</p>`}
+  </div>
+  </div>
 </div>
 ${shareSheetHtml({ url, name: list.name, text: wish ? say("{name}: a wishlist on Brickworks", { name: list.name })
     : say("{name}, a collection on Brickworks", { name: list.name }),

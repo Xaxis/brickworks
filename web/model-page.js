@@ -29,6 +29,7 @@ import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, ph
 import { copy, wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
+import { startTabs } from "/tabs.js";
 
 // A date as the page's language writes one: "30 October 2026".
 const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
@@ -64,6 +65,10 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 // many its designer's page shows, "not-open" before model_bases.sql
 // (tools/web/based_on_flow.mjs reads it).
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
+// The page's tabs (api/share.js pageTabs, web/tabs.js): each switches its
+// panel in place, and the address says which. Started before the comments,
+// whose link (#comment-12) opens their tab once they are listed.
+const pageTabs = startTabs(document.getElementById("page-tabs"));
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 // Its photos of real builds, the whole one where a copy would be drawn
@@ -115,9 +120,6 @@ if (frame && frame.dataset.scene) roomWay().then((how) => { if (how) offerRoom(f
 // is still the way into the viewer.
 const strip = document.getElementById("pictures");
 if (strip) startPictures(strip);
-// The page's tabs: the part being read is marked as the page scrolls.
-const tabs = document.getElementById("page-tabs");
-if (tabs) startTabs(tabs);
 // Its parts (api/share.js partsSection): the list asked for as it nears the
 // screen, so a visit that never gets there asks for nothing.
 const partsPart = document.getElementById("parts");
@@ -539,61 +541,6 @@ function startPictures(row) {
   });
 }
 
-/// The tab of the part at the top of the screen, under the tabs; a tab
-/// chosen stays marked until the reader scrolls on themselves, since the
-/// last parts are often too short to reach the top.
-function startTabs(nav) {
-  const links = [...nav.querySelectorAll("a[data-tab]")];
-  let held = "";
-  let queued = false;
-  const mark = (key) => {
-    for (const link of links) {
-      if (link.dataset.tab !== key) {
-        link.removeAttribute("aria-current");
-        continue;
-      }
-      link.setAttribute("aria-current", "true");
-      // On a phone the row scrolls inside itself: the marked tab in view.
-      if (link.offsetLeft < nav.scrollLeft || link.offsetLeft + link.offsetWidth > nav.scrollLeft + nav.clientWidth) {
-        nav.scrollLeft = Math.max(0, link.offsetLeft - 16);
-      }
-    }
-  };
-  const stuckAt = parseFloat(getComputedStyle(nav).top) || 0;
-  const reading = () => {
-    queued = false;
-    // Only stuck under the header does it need a ground of its own: under
-    // the picture, it would cut across the picture's shadow.
-    nav.classList.toggle("loose", nav.getBoundingClientRect().top > stuckAt + 1);
-    if (held) return mark(held);
-    // The part read is the one across the top third of what shows under the tabs.
-    const under = nav.getBoundingClientRect().bottom;
-    const line = under + Math.max(16, (innerHeight - under) / 3);
-    let key = links[0]?.dataset.tab || "";
-    for (const link of links) {
-      const part = document.getElementById(link.dataset.tab);
-      if (part && !part.hidden && !link.hidden && part.getBoundingClientRect().top <= line) key = link.dataset.tab;
-    }
-    mark(key);
-  };
-  addEventListener("scroll", () => {
-    if (!queued) {
-      queued = true;
-      requestAnimationFrame(reading);
-    }
-  }, { passive: true });
-  for (const name of ["wheel", "touchmove", "keydown"]) {
-    addEventListener(name, () => { held = ""; }, { passive: true });
-  }
-  nav.addEventListener("click", (event) => {
-    const link = event.target.closest("a[data-tab]");
-    if (!link) return;
-    held = link.dataset.tab;
-    mark(held);
-  });
-  reading();
-}
-
 // How many rows the list shows before Show all, as api/share.js LOTS_SHOWN
 // keeps their space.
 const LOTS_SHOWN = 12;
@@ -822,17 +769,17 @@ function startComments(section) {
     // The skeleton holding its place (api/share.js commentsSection) goes in
     // the frame it is drawn in.
     const hold = document.getElementById("comments-hold");
+    const body = section.querySelector(".comments-body");
     if (answer.status !== 200) {
-      // The section stays hidden, and so does its tab.
+      // Its tab says why, where the comments would be.
       hold?.remove();
-      const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
-      if (tab && section.hidden) tab.hidden = true;
       return tell(told(answer.body.error, say("The comments did not load just now.")));
     }
     state = answer.body;
-    // Not open on this deployment yet (comments.sql): nothing to show.
+    // Not open on this deployment yet (comments.sql): nothing to show, and
+    // no tab (commentsSaid).
     hold?.remove();
-    section.hidden = state.ready === false;
+    body.hidden = state.ready === false;
     draw();
     commentsSaid(state, setOpen);
     talkAbout(state.you?.owner === true);
@@ -1089,6 +1036,7 @@ function startComments(section) {
     if (named && !draw.shown) {
       draw.shown = true;
       named.classList.add("asked");
+      pageTabs?.show("comments", { push: false });
       named.scrollIntoView({ block: "center" });
     }
   }
@@ -1257,6 +1205,7 @@ function buildPhotos(box) {
   box.hidden = false;
   // The owner's own pictures go the same way, from the strip's last tile.
   addPicture?.addEventListener("click", () => {
+    pageTabs?.show("builds");
     document.getElementById("builds")?.scrollIntoView({ block: "start" });
     open.click();
   });
@@ -1689,15 +1638,13 @@ function tabCount(tab, n) {
 
 /// The action bar (api/share.js actionBar): Like; Save, which opens your
 /// lists, Favourites first (docs/SOCIAL.md D2); Share, which opens its sheet
-/// (web/share-sheet.js); Comment and I built it, which go to their sections; and
-/// More: Report it, Takedown requests, and the owner's own. Like and Save
-/// ask to sign in first when this browser is not.
+/// (web/share-sheet.js); and More: Download, Report it, Takedown requests,
+/// and the owner's own. Like and Save ask to sign in first when this
+/// browser is not. Comments and builds are their tabs'.
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
   const save = marks.querySelector('[data-mark="save"]');
   const share = marks.querySelector("[data-share]");
-  const comment = marks.querySelector('[data-mark="comment"]');
-  const built = marks.querySelector('[data-mark="built"]');
   const panel = document.getElementById("save-panel");
   const lists = panel.querySelector(".collect-list");
   const make = panel.querySelector("form.collect-new");
@@ -1852,44 +1799,27 @@ function start() {
   const sheet = document.getElementById("share-sheet");
   if (sheet) wireShare(share, sheet);
 
-  // The box is everybody's: sending it signs a visitor in.
-  comment.addEventListener("click", () => {
-    const section = document.getElementById("comments");
-    if (!section) return;
-    section.scrollIntoView({ block: "start" });
-    const box = document.getElementById("comment-body");
-    if (box && !box.closest("form").hidden) box.focus({ preventScroll: true });
-  });
-
-  built.addEventListener("click", () => {
-    document.getElementById("builds")?.scrollIntoView({ block: "start" });
-    const add = document.querySelector("[data-add-build]");
-    if (add && !add.hidden && !add.disabled) add.click();
-    else document.querySelector('.build-form input[type="file"]')?.focus({ preventScroll: true });
-  });
-
   load();
   // Signed in from the header (signinux): drawn for them, where they are.
   addEventListener("brickworks:signed-in-done", () => load());
 }
 
-/// What the comments, once listed, change in the action bar: Comment's
-/// count (the ones everybody sees), Comment gone where comments are not
-/// open on this deployment, and for the model's owner their own in More:
-/// comments off or on, and their models' numbers, in place of Report it.
+/// What the comments, once listed, change: the Comments tab's count (the
+/// ones everybody sees), the tab gone where comments are not open on this
+/// deployment, and for the model's owner their own in More: comments off
+/// or on, and their models' numbers, in place of Report it.
 function commentsSaid(state, setOpen) {
-  const comment = marks && marks.querySelector('[data-mark="comment"]');
-  if (!comment) return;
-  comment.hidden = state.ready === false;
   // What everybody sees: not hidden, and not under a comment that is.
   const hidden = new Set((state.comments || []).filter((one) => one.hidden).map((one) => one.id));
   const shown = (state.comments || []).filter((one) => !one.hidden && !hidden.has(one.parent)).length;
-  setCount(comment, shown, say("Comment"), "comment");
   const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
   if (tab) {
     tab.hidden = state.ready === false;
     tabCount(tab, shown);
+    // Opened on a tab that is not there: the first.
+    if (tab.hidden && tab.getAttribute("aria-selected") === "true") pageTabs?.show("overview", { push: false });
   }
+  if (!marks) return;
   const menu = marks.querySelector("#more .menu-list");
   for (const old of menu.querySelectorAll(".owner-only")) old.remove();
   if (!state.you?.owner) return;

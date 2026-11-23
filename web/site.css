@@ -1273,6 +1273,75 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .tabs [aria-current="page"], .tabs [aria-current="true"], .tabs [aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent-edge); }
 .tabs .n { color: var(--ink-faint); font-weight: 500; font-variant-numeric: tabular-nums; }
 
+/* An object's page (pagekit, 2026-11-23; docs/DESIGN_SYSTEM.md "An object's
+   page"): a model's, a set's, a person's, a collection's, a challenge's and
+   a Talk thread's, one pattern, as Printables and MakerWorld lay theirs out.
+   The owner, on a model's page: "somehow you need to drastically improve the
+   ui/ux patterns used but probably across the entire site so everything
+   looks far more organized and intuitive".
+
+   - .obj-layout: the page's work (.obj-main) and beside it, from 900 px,
+     .obj-aside, a panel that stays on screen as the page scrolls: what it
+     is, whose, the one action that matters, the rest in More, and one
+     quiet line of facts. Under 900 px the aside comes first, as the
+     page's head. (A model's and a set's page keep .model-page's own grid.)
+   - .obj-title: a title of two lines at most, at a size a column holds.
+   - .obj-tabs: the kit's .tabs as a tablist (web/tabs.js), each tab its
+     panel's, a count in .n; the panels in .obj-panels.
+   - .obj-facts: facts in one quiet line, a dot between two.
+   - .obj-empty: what a tab with nothing yet says, one line and its way in,
+     never a block. */
+.obj-layout {
+	display: grid; gap: var(--s-5) var(--s-7); align-items: start;
+	grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "main aside";
+}
+.obj-main { grid-area: main; min-width: 0; }
+.obj-aside {
+	grid-area: aside; min-width: 0; position: sticky; top: calc(var(--head-h) + var(--s-4));
+	max-height: calc(100dvh - var(--head-h) - 2 * var(--s-4)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); box-shadow: var(--highlight), var(--shadow-2);
+}
+.obj-aside > :first-child { margin-top: 0; }
+.obj-aside > :last-child { margin-bottom: 0; }
+.obj-aside .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-4) 0 0; }
+.obj-aside .actions > .cta { flex: 1 1 auto; }
+.obj-aside .actions > .cta:first-child { flex-basis: 100%; }
+.obj-aside .obj-facts { margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+@media (width >= 1200px) { .obj-layout { grid-template-columns: minmax(0, 1fr) 380px; } }
+@media (width < 900px) {
+	.obj-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "aside" "main"; gap: var(--s-4); }
+	.obj-aside { position: static; max-height: none; overflow: visible; padding: 0; border: 0; background: none; box-shadow: none; }
+}
+.obj-title {
+	margin: 0 0 var(--s-3); font-size: clamp(24px, 2.1vw, 30px); line-height: 1.18; letter-spacing: -0.02em;
+	overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.obj-tabs { margin: var(--s-5) 0 var(--s-4); overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.obj-tabs::-webkit-scrollbar { display: none; }
+.obj-tabs [role="tab"] { scroll-margin-inline: var(--s-4); padding-inline: 10px; }
+.obj-tabs [role="tab"]:focus-visible { outline-offset: -3px; }
+.obj-panels > [role="tabpanel"] { margin-top: 0; }
+.obj-panels > [role="tabpanel"]:focus-visible { outline: 2px solid var(--accent-edge); outline-offset: 4px; border-radius: var(--r-2); }
+/* With no script (web/tabs.js not run), the panel the address names shows
+   in the first one's place: every tab still a link that works. */
+.obj-panels:not([data-tabs]) > [role="tabpanel"]:is(:target, :has(:target)) { display: block !important; }
+.obj-panels:not([data-tabs]):has(> [role="tabpanel"]:is(:target, :has(:target))) > [role="tabpanel"]:not(:target, :has(:target)) { display: none !important; }
+.obj-facts {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin: 0; padding: 0; list-style: none;
+	color: var(--ink-soft); font-size: var(--t-small);
+}
+.obj-facts > li { min-width: 0; overflow-wrap: anywhere; }
+.obj-facts > li + li::before { content: "\00B7"; display: inline-block; width: 16px; text-align: center; color: var(--ink-faint); }
+.obj-facts a { color: var(--ink); }
+.obj-facts b { color: var(--ink); font-weight: 640; font-variant-numeric: tabular-nums; }
+.obj-empty {
+	display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: 0; padding: var(--s-3) 0;
+	color: var(--ink-soft);
+}
+.obj-empty a:not(.cta) { color: var(--ink); font-weight: 600; }
+.obj-empty[hidden] { display: none; }
+
 /* The scroller: the one way anything on the site scrolls sideways
    (docs/DESIGN_SYSTEM.md "Scroller", web/scroller.js). It scrolls inside
    itself, never the page, and a swipe past its end never takes the

@@ -3348,6 +3348,11 @@
   "{parts} moved": "{parts} verschoben",
   "{n} taken away": "{n} entfernt",
   "no parts changed": "keine Teile geändert",
-  "What it changed:": "Was es geändert hat:"
+  "What it changed:": "Was es geändert hat:",
+  "Open in the studio": "Im Studio öffnen",
+  "Overview": "Überblick",
+  "About this set": "Über dieses Set",
+  "About {name}": "Über {name}",
+  "About this thread": "Über dieses Thema"
  }
 }
