@@ -322,7 +322,7 @@ static func search(of: Array, ask: Dictionary) -> Dictionary:
 
 
 ## Whether [param word] begins one of [param said]'s words: "car" finds Car,
-## Cars and Cargo, not Scarecrow, Helicarrier or Carbonite's Han Solo; "6080"
+## Cars, Cargo and Carbonite, not Scarecrow or Helicarrier; "6080"
 ## finds 6080-1. Anywhere in a word, a first visitor's "car" filled the
 ## Library's first page with a scarecrow and a helicarrier (ux12).
 static func _begins_a_word(said: String, word: String) -> bool:
