@@ -452,13 +452,18 @@ async function open() {
   if (state.key) listen(show.channel);
   catchUp();
   // Counted among the watchers, and anything missed read back: as often as
-  // the relay asks, and every 1.5 s where this browser cannot check a
-  // message's signature (no Ed25519), the page's only way to hear then.
-  const every = state.key ? Number(show.heard_ms) || 20_000 : 1500;
+  // the relay asks while the channel is heard, and every 1.5 s while it is
+  // not (no Ed25519 in this browser to check a message, the channel refused,
+  // or reconnecting), the page's only way to hear then.
+  const often = Number(show.heard_ms) || 20_000;
+  let asked = Date.now();
   const tick = setInterval(() => {
     if (state.ended) return clearInterval(tick);
-    if (document.visibilityState === "visible" || !state.key) catchUp();
-  }, every);
+    const hearing = Boolean(state.key) && state.channel === "joined";
+    if (hearing && (Date.now() - asked < often || document.visibilityState !== "visible")) return;
+    asked = Date.now();
+    catchUp();
+  }, 1500);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && catchUp());
 }
 

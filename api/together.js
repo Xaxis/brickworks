@@ -109,7 +109,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, createPrivate
 import { AuthError, authConfigured, bearer, isTestAccount, verify } from "./_auth.js";
 import { standingBetween } from "./_blocks.js";
 import { storeRoot } from "./_omr_credit.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, dbCount } from "./_db.js";
 import { ageOf, shownPublicly } from "./_trust.js";
 import { namesTrouble } from "./_names.js";
 
@@ -1351,10 +1351,10 @@ const WATCH_ROW = "session,watch,owner,title,model,opened_at,closed_at,peak";
 // PostgREST's 404 (PGRST205) or 42P01.
 const notMade = (trouble) => /PGRST205|42P01|does not exist|Could not find the table/.test(String(trouble?.message || trouble));
 
-async function showOf(w) {
+async function showOf(w, { session = false } = {}) {
   let rows;
   try {
-    rows = await db(`together_watch?watch=eq.${w}&select=${WATCH_ROW}`);
+    rows = await db(`together_watch?watch=eq.${w}&select=${WATCH_ROW}${session ? ",together_sessions(last_seq,ended_at)" : ""}`);
   } catch (trouble) {
     if (notMade(trouble)) throw new Refusal(404, "no such build");
     throw trouble;
@@ -1461,9 +1461,11 @@ async function watchAppend(id, me, changes) {
   }
 }
 
+// Counted by the database (a HEAD, no rows): read as rows, each watcher's
+// heartbeat cost a row for every other watcher, which grows as their square.
 async function watchersOf(id) {
   const since = new Date(Date.now() - WATCHED_MS).toISOString();
-  return (await db(`together_watchers?session=eq.${id}&seen_at=gt.${since}&select=viewer`).catch(() => []) || []).length;
+  return dbCount(`together_watchers?session=eq.${id}&seen_at=gt.${since}`).catch(() => 0);
 }
 
 async function watchOpen(request, me) {
@@ -1590,18 +1592,14 @@ async function live(request, response) {
   if (rows.length === 0) return { live: [] };
   const ids = rows.map((row) => row.session);
   const owners = [...new Set(rows.map((row) => row.owner))];
-  const since = new Date(Date.now() - WATCHED_MS).toISOString();
-  const [sessions, owning, profiles, watching] = await Promise.all([
+  const [sessions, owning, profiles] = await Promise.all([
     db(`together_sessions?id=in.(${ids.join(",")})&ended_at=is.null&select=id,title`),
     db(`together_people?session=in.(${ids.join(",")})&account=in.(${owners.join(",")})&select=session,account,seen_at,left_at`),
     db(`people?account=in.(${owners.join(",")})&select=account,handle,name`),
-    db(`together_watchers?session=in.(${ids.join(",")})&seen_at=gt.${since}&select=session`).catch(() => []),
   ]);
   const open = new Map((sessions || []).map((one) => [one.id, one]));
   const heard = new Map((owning || []).filter((one) => !one.left_at).map((one) => [`${one.session}:${one.account}`, Date.parse(one.seen_at)]));
   const named = new Map((profiles || []).map((one) => [one.account, one]));
-  const counts = new Map();
-  for (const one of watching || []) counts.set(one.session, (counts.get(one.session) || 0) + 1);
   const out = [];
   for (const row of rows) {
     if (!open.has(row.session) || Date.now() - (heard.get(`${row.session}:${row.owner}`) || 0) > OWNER_HEARD_MS) continue;
@@ -1610,10 +1608,13 @@ async function live(request, response) {
     if (!person?.handle || !(await shownPublicly(row.owner).catch(() => false))) continue;
     out.push({ watch: row.watch, link: `/live/${row.watch}`, title: open.get(row.session).title || row.title || "",
       model: row.model || null, designer: { name: String(person.name || person.handle), handle: person.handle },
-      watchers: counts.get(row.session) || 0, since: row.opened_at });
+      session: row.session, since: row.opened_at });
     if (out.length >= LIVE_MOST) break;
   }
-  return { live: out };
+  // How many watch each one listed, counted by the database: a read of the
+  // watchers' rows grew with every page watching.
+  const counts = await Promise.all(out.map((one) => watchersOf(one.session)));
+  return { live: out.map(({ session, ...one }, n) => ({ ...one, watchers: counts[n] })) };
 }
 
 // The model of session [id] as it stands, every change applied to the
@@ -1704,11 +1705,16 @@ async function watchOps(request) {
   const w = watchAsked(request);
   const after = Math.max(0, Math.floor(Number(body.after) || 0));
   const viewer = String(body.viewer || "");
-  const show = await showOf(w);
+  // The show and its session in one read; the log only when it has gone
+  // past [after]. Most calls are a page's heartbeat with nothing new: the
+  // show, the count and the page's own row, and no rows of the log.
+  const show = await showOf(w, { session: true });
   const id = show.session;
-  const [session, rows] = await Promise.all([sessionRow(id),
-    db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}&select=seq,author,changes`)]);
+  const session = show.together_sessions || null;
   if (!session) return { w, ended: true, ops: [], seq: after };
+  const rows = Number(session.last_seq) > after
+    ? await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}&select=seq,author,changes`)
+    : [];
   if (VIEWER.test(viewer)) {
     await db("together_watchers?on_conflict=session,viewer", { method: "POST", prefer: "resolution=merge-duplicates",
       body: { session: id, viewer: createHash("sha256").update(`${id}:${viewer}`).digest("hex").slice(0, 16),
