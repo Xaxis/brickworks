@@ -36,8 +36,8 @@
 ##                      two outlines over each other); draws nothing else.
 ##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
-##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, and a
-##                      staged picture's tone and balance) at 0, and its
+##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, and the
+##                      camera's tone and balance) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
 ##   -- --draw=N        the tracer's seed (default 1): another draw of the same
 ##                      tree, its noise and lens samples only (photoreal6)

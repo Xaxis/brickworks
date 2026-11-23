@@ -3161,10 +3161,12 @@ picture the assistant is shown.
   or the window's).
   The white card where the model stands is metered for exposure as before
   and its colour read (`_floor_colour`) for a white balance
-  (`balance`, `STAGE_BALANCE`); `tone` (`STAGE_TONE`) bends the encoded
-  picture by a camera's S in the resolve (`camera_tone`). With no stage
-  every buffer field is zero or one and no random number is drawn, so a
-  render is pixel-identical to before. The tile is an Image import read on
+  (`balance`, `PRODUCT_BALANCE` 1); `tone` (`PRODUCT_TONE` 0.5) bends the
+  encoded picture by a camera's S in the resolve (`camera_tone`), both on
+  every photographic product picture, staged or not. With no stage and tone
+  and balance 0 every buffer field is zero or one and no random number is
+  drawn, so a render is pixel-identical to before (photoreal_probe
+  --without=tone,balance against photoreal6's). The tile is an Image import read on
   a worker (`_read_surfaces`), never in a frame. Choosing a stage puts its
   colour on the backdrop; Seamless backdrop again gives back the background
   had before (`_before_stage`). Over MCP, render_model and render_queue take

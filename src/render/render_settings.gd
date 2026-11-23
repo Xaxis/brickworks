@@ -144,8 +144,7 @@ var key_share: float = -1.0
 ## That staged photograph's camera (photoreal7): how far its tone curve bends
 ## the picture (0 the light's own sRGB, 1 a camera JPEG's S), and how much of
 ## a white card's cast where the model stands its white balance takes out
-## (0 none, 1 all). Below 0, StudioRender's STAGE_TONE and STAGE_BALANCE on a
-## stage, none without one.
+## (0 none, 1 all). Below 0, StudioRender's PRODUCT_TONE and PRODUCT_BALANCE.
 var tone: float = -1.0
 var balance: float = -1.0
 ## How far each part sits from exactly in place, as a built set's never sit

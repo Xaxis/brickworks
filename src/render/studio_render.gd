@@ -114,15 +114,10 @@ const STAGES: Dictionary = {
 const STAGE_KEY_RISE := 40.0
 const STAGE_KEY_FAR := 4.0
 const STAGE_KEY_SIZE := 1.0
-const STAGE_KEY_SHARE := 1.0
+const STAGE_KEY_SHARE := 2.0
 ## How a staged key's light falls off its axis: the power of the cosine
 ## (a softbox's face sends most of its light straight ahead).
 const STAGE_KEY_BEAM := 2.0
-## A staged photograph's camera (photoreal7, RenderSettings tone and
-## balance): its tone curve's S, and how much of the white card's cast its
-## white balance takes out. Each kept only where the judge moved.
-const STAGE_TONE := 0.0
-const STAGE_BALANCE := 0.0
 ## The room a staged table stands in, when the studio's light is asked for:
 ## a room's light through its windows, not a tent.
 const STAGE_ROOM := "window"
@@ -147,6 +142,13 @@ const PRODUCT_SEATING := 1.0
 ## none of its own, so a render is the light as drawn unless asked for.
 const PRODUCT_SHARPEN := 0.0
 const PRODUCT_JPEG := 0.0
+## The camera's tone and white balance (photoreal7, RenderSettings tone and
+## balance), staged or not: its tone curve's S, and how much of the white
+## card's cast its white balance takes out. Both lifted the close-ups in two
+## judge runs (the red slope from 0.44 to 0.67) and cost the sets nothing
+## (docs/RENDERING.md 5k).
+const PRODUCT_TONE := 0.5
+const PRODUCT_BALANCE := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2657,9 +2659,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if scale <= 0.0:
 			return null
 		# The camera's white balance (photoreal7): the white card where the
-		# model stands drawn white, as much as the balance asks (a stage's own
-		# by default, none without one).
-		var amount: float = clampf(_own(settings.balance, STAGE_BALANCE if staged else 0.0), 0.0, 1.0)
+		# model stands drawn white, as much as the balance asks.
+		var amount: float = clampf(_own(settings.balance, PRODUCT_BALANCE), 0.0, 1.0)
 		if amount > 0.0:
 			var gain := Color(lerpf(1.0, 1.0 / _card_colour.r, amount),
 				lerpf(1.0, 1.0 / _card_colour.g, amount), lerpf(1.0, 1.0 / _card_colour.b, amount))
@@ -2726,9 +2727,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# the finished picture.
 	var sharpen: float = _own(settings.sharpen, PRODUCT_SHARPEN) if photo else 0.0
 	var jpeg: float = _own(settings.jpeg, PRODUCT_JPEG) if photo else 0.0
-	# A photograph's camera draws its own tone curve (photoreal7): a stage's
-	# by default, none without one unless asked.
-	var tone: float = _own(settings.tone, STAGE_TONE if staged else 0.0) if photo else 0.0
+	# A photograph's camera draws its own tone curve (photoreal7).
+	var tone: float = _own(settings.tone, PRODUCT_TONE) if photo else 0.0
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
