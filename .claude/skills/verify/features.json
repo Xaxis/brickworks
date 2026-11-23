@@ -2751,6 +2751,14 @@
       "tests": []
     },
     {
+      "id": "cli:prompt start pair",
+      "kind": "cli",
+      "entry": "tools/web/prompt_start_pair.mjs",
+      "reach": "node --env-file=.env tools/web/prompt_start_pair.mjs --url=<relay_server --static=build/web> --out=DIR [--rounds=6]   (Start on a quick build against a plain copy link, the same build at the same moments, at 390 and 1280: within + 2 s)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:prompts browser flow",
       "kind": "cli",
       "entry": "tools/web/prompts_flow.mjs",
