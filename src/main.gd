@@ -5556,7 +5556,7 @@ func _build_ui() -> void:
 	_builder.picked.connect(func(part_id: String, color_code: int) -> void:
 		_bin.show_held(part_id, color_code)
 		_refresh_preview()
-		_bar.say("picked %s" % part_id))
+		_bar.say("picked %s" % _part_said(part_id)))
 
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.chose_by_keyboard.connect(func() -> void:
@@ -8869,8 +8869,16 @@ func _on_part_chosen(part_id: String) -> void:
 		# does nothing, which reads as the app being broken rather than
 		# as the app waiting — and on a slow connection that is several
 		# seconds of it.
-		_bar.say("fetching %s…" % part_id)
+		_bar.say("fetching %s…" % _part_said(part_id))
 	_refresh_preview()
+
+
+## A part by the name its tile shows ("Brick 2 × 4"), its number where the
+## catalogue has none: the status bar said "3001 ready" when a part came,
+## a number a first visitor never typed and does not know (ux12).
+func _part_said(part_id: String) -> String:
+	var info: PartLibrary.PartInfo = _library.parts.get(part_id) if _library != null else null
+	return PartsBin.said_name(info) if info != null else part_id
 
 
 func _on_part_fetched(part_id: String) -> void:
@@ -8882,7 +8890,7 @@ func _on_part_fetched(part_id: String) -> void:
 			_on_landed())
 	if _builder.held_part == part_id:
 		_refresh_preview()
-		_bar.say("%s ready" % part_id)
+		_bar.say("%s ready to put down" % _part_said(part_id))
 
 
 ## Parts on their way put down: as each arrives, or once motions kept as one

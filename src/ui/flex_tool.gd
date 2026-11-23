@@ -355,7 +355,12 @@ func _connector_words() -> String:
 	for one: Variant in takes:
 		words.append({"pin_hole": "pin hole", "axle_hole": "axle hole", "pin": "pin",
 			"axle": "axle", "clip": "clip or hollow stud", "stud": "stud",
-			"nozzle": "pneumatic outlet"}.get(str(one), str(one)))
+			"nozzle": "pneumatic outlet",
+			# A cable's ends in a builder's words: "Click the outlet or contacts
+			# it starts on" named no part a Technic builder wiring a motor knew
+			# to click (ux12).
+			"outlet": "motor's cable outlet", "contacts": "contacts of a box or hub"}.get(str(one),
+				str(one)))
 	if words.size() <= 1:
 		return "".join(words)
 	return ", ".join(words.slice(0, words.size() - 1)) + " or " + words[words.size() - 1]

@@ -120,7 +120,7 @@ func _run() -> void:
 		_field.accessibility_name == "Search the LDraw sets"
 		and _field.accessibility_description.contains("Escape clears it"))
 	_check("...and says what it searches: \"%s\"" % _field.placeholder_text,
-		_field.placeholder_text == "Search sets by name, set number, theme or designer")
+		_field.placeholder_text == "Set number or name, theme, designer")
 	await _until(func() -> bool: return _covers() == 8, 20.0)
 	await _shot("library_search_%sopen" % tag)
 

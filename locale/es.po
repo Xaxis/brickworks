@@ -3821,11 +3821,11 @@ msgstr "Sets de LDraw"
 msgid "Community"
 msgstr "Comunidad"
 
-msgid "Search sets by name, set number, theme or designer"
-msgstr "Buscar sets por nombre, número de set, tema o diseñador"
+msgid "Set number or name, theme, designer"
+msgstr "Número o nombre del set, tema, diseñador"
 
-msgid "Search models by name, designer or tag"
-msgstr "Buscar modelos por nombre, diseñador o etiqueta"
+msgid "Model name, designer or tag"
+msgstr "Nombre del modelo, diseñador o etiqueta"
 
 msgid "Any theme"
 msgstr "Cualquier tema"
@@ -16429,3 +16429,15 @@ msgstr "Cualquiera de los modelos LDraw de sets reales, o un modelo compartido e
 
 msgid "Search the gallery's models"
 msgstr "Buscar en los modelos de la galería"
+
+msgid "%s ready to put down"
+msgstr "%s listo para colocar"
+
+msgid "fetching %s…"
+msgstr "cargando %s…"
+
+msgid "picked %s"
+msgstr "%s tomado"
+
+msgid "motor's cable outlet or contacts of a box or hub"
+msgstr "salida de cable de un motor o contactos de una caja o un hub"

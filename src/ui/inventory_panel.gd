@@ -249,6 +249,13 @@ func _build() -> void:
 		"BrickLink wanted list: new or used, which of your wanted lists, and an email when one is listed")
 	# A drop-down's own arrow: the font has no small one.
 	_bricklink_wants.icon = get_theme_icon("arrow", "OptionButton")
+	# In the middle of its box and as wide as a letter: at its own size, at
+	# the box's left, a phone's 44-point box showed a speck in a corner and
+	# read as a button with nothing on it (ux12, the parts list at 390).
+	_bricklink_wants.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bricklink_wants.expand_icon = true
+	_bricklink_wants.add_theme_constant_override("icon_max_width", 12)
+	_bricklink_wants.custom_minimum_size.x = 24.0
 	_bricklink_wants.pressed.connect(ask_bricklink)
 	_rebrickable = _header_button(header, "Rebrickable",
 		"A Rebrickable parts list (.csv), to import into a list of your own")

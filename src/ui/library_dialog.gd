@@ -383,14 +383,16 @@ func _build() -> void:
 	_page_words.modulate = Color(1, 1, 1, 0.7)
 	foot.add_child(_page_words)
 	_next = _button(foot, "Next ›", func() -> void: _turn(1), "library_next")
+	# Under the pages' row, as wide as the panel: beside it, on a phone, it
+	# was a column a third of the width wrapped to six lines, and the cards
+	# above lost that height (ux12, the fan's walk at 390).
 	var mark := Label.new()
 	mark.text = DISCLAIMER
 	mark.add_theme_font_size_override("font_size", 10)
 	mark.modulate = Color(1, 1, 1, 0.45)
 	mark.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mark.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mark.custom_minimum_size = Vector2(200, 0)
-	foot.add_child(mark)
+	column.add_child(mark)
 
 
 func _choice(row: Container, named: String, tip: String) -> OptionButton:
@@ -432,9 +434,11 @@ func _show(source: String) -> void:
 	for control: Control in _community_row:
 		control.visible = not sets
 	# What each shelf's words are matched against: ModelLibrary.search, and
-	# the gallery's directory_words (supabase/directory.sql).
-	_search.placeholder_text = "Search sets by name, set number, theme or designer" if sets \
-		else "Search models by name, designer or tag"
+	# the gallery's directory_words (supabase/directory.sql). Short, the set
+	# number first: a phone's field beside Any theme showed "Search sets by
+	# na", and a fan with a set's number never read that it takes one (ux12).
+	_search.placeholder_text = "Set number or name, theme, designer" if sets \
+		else "Model name, designer or tag"
 	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the gallery's models"
 	_note.text = ("Models of real LEGO® sets from LDraw's Official Model Repository, each made by "
 		+ "the LDraw member credited and free to use under its licence. Open puts one in a new %s; "
