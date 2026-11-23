@@ -28,6 +28,8 @@ import { langAt, say, told } from "/card.js";
 import { openReport } from "/report.js";
 
 const W = /\/live\/([A-Za-z0-9]{12})\/?$/.exec(location.pathname)?.[1] || "";
+// The longest line the relay keeps (api/together.js CHAT_MOST).
+const LINE_MOST = 280;
 const TESTS = new URLSearchParams(location.search).get("tests") === "1" ? "&tests=1" : "";
 const API = "/api/together";
 const $ = (id) => document.getElementById(id);
@@ -324,6 +326,13 @@ $("live-say").addEventListener("submit", async (event) => {
   const field = $("live-text");
   const text = field.value.trim();
   if (!text) return;
+  // Too long is said, never cut: the field has no maxlength, which a paste
+  // would have cut short without a word.
+  const length = [...text].length;
+  if (length > LINE_MOST) {
+    $("live-note").textContent = say("A line is at most {most} characters; this one has {n}.", { most: LINE_MOST, n: length });
+    return;
+  }
   field.disabled = true;
   const got = await call(`${API}?op=watch_say`, { method: "POST", body: { w: W, text } });
   field.disabled = false;

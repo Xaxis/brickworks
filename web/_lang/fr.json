@@ -3623,6 +3623,7 @@
   "It is your own build: open it in the studio.": "C’est votre propre construction : ouvrez-la dans le studio.",
   "The designer took you out of this build.": "Le créateur vous a retiré de cette construction.",
   "Nobody like that asked to build.": "Cette personne n’a pas demandé à construire.",
-  "The designer has ended this build.": "Le créateur a terminé cette construction."
+  "The designer has ended this build.": "Le créateur a terminé cette construction.",
+  "A line is at most {most} characters; this one has {n}.": "Une ligne fait au plus {most} caractères ; celle-ci en a {n}."
  }
 }

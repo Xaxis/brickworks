@@ -38,6 +38,10 @@ signal changed
 ## Something to say on the status line: another side changed a part this
 ## side was changing, an undo left a part somebody changed since.
 signal said(words: String)
+## A session that was open to watchers ended: {watch, peak, model}, as the
+## server said it (api/together.js end). Main keeps it as a version in the
+## model's log (Share progress) when the model is shared.
+signal watched_ended(watched: Dictionary)
 
 var world: BrickWorld
 var builder: Builder
@@ -61,6 +65,15 @@ var link: String = ""
 var people: Array = []
 ## Why the last session stopped, for the panel to say.
 var ended_words: String = ""
+## Building now (buildlive): the owner's session open to watchers, at a
+## page of its own (/live/<watch>) listed first in the home feed and on
+## their profile: {watch, link, watchers}, or {} while it is not.
+var watch: Dictionary = {}
+## Who asked to build from the watch page and has no seat yet, the oldest
+## first: [{who, name}]. A watcher's line and ask come in the session's log
+## from the client "watching", each with its name as "~by".
+var asks: Array = []
+const WATCHING := "watching"
 ## The last change number put down here.
 var seq: int = 0
 ## The time from a change sent here to its number coming back, in ms, the
@@ -705,10 +718,16 @@ func end() -> void:
 	if not live or not owns:
 		return
 	var token: String = _token
+	var watched: bool = not watch.is_empty()
 	_capture()
 	await _flush_all()
 	_stop("You ended the session. The model is yours, as it always was.")
-	await _ask("end", {"s": token})
+	var got: Array = await _ask("end", {"s": token})
+	var answer: Variant = got[1].get("watched") if int(got[0]) == 200 else null
+	if answer is Dictionary:
+		watched_ended.emit(answer)
+	elif watched:
+		watched_ended.emit({})
 
 
 ## Leave the session; the model as it stands stays on this baseplate.
@@ -740,6 +759,8 @@ func _stop(words: String, tell_server: bool = false) -> void:
 	var token: String = _token if not _offline else ""
 	var was_owner: bool = owns
 	live = false
+	watch = {}
+	asks = []
 	_forget_place()
 	_forget_pending()
 	following = ""
@@ -763,6 +784,8 @@ func _reset() -> void:
 	live = false
 	owns = false
 	link = ""
+	watch = {}
+	asks = []
 	people = []
 	seq = 0
 	_token = ""
@@ -1561,6 +1584,8 @@ func _take(ops: Array) -> void:
 		_last_cid[from] = cid_now
 		if changes.has("~chat"):
 			_heard_chat(op, from == _client)
+		if from == WATCHING:
+			_heard_watcher(op)
 		# A part made in the app, before any part of it is put down.
 		for key: String in changes:
 			if key.begins_with(MADE_PART):
@@ -2173,13 +2198,99 @@ func _heard_chat(op: Dictionary, mine: bool) -> void:
 	var line: String = str((op.get("changes", {}) as Dictionary).get("~chat", "")).left(280)
 	if line.is_empty():
 		return
-	var name: String = "You" if mine else _name_of(str(op.get("who", "")))
+	var by: Variant = (op.get("changes", {}) as Dictionary).get("~by")
+	var name: String = "You" if mine else _name_of(str(op.get("who", ""))) \
+		if not by is String or (by as String).is_empty() else (by as String).left(60)
 	messages.append({"who": str(op.get("who", "")), "name": name, "text": line, "mine": mine})
 	if messages.size() > MESSAGES_KEPT:
 		messages.pop_front()
 	if not mine:
 		said.emit("%s: %s" % [name, line])
 	changed.emit()
+
+
+## A watcher's ask to build, or the seat the owner gave one: kept for the
+## panel's Give a seat, said on the status line to the owner.
+func _heard_watcher(op: Dictionary) -> void:
+	var changes: Dictionary = op.get("changes", {})
+	var who: String = str(op.get("who", ""))
+	if changes.has("~ask"):
+		var name: String = str(changes.get("~by", changes.get("~ask", ""))).left(60)
+		if name.is_empty():
+			name = "A watcher"
+		asks = asks.filter(func(one: Variant) -> bool: return str((one as Dictionary)["who"]) != who)
+		asks.append({"who": who, "name": name})
+		if owns:
+			said.emit("%s asks to build with you. Give them a seat in Build together." % name)
+		changed.emit()
+	if changes.has("~seat"):
+		var seated: String = str(changes["~seat"])
+		asks = asks.filter(func(one: Variant) -> bool: return str((one as Dictionary)["who"]) != seated)
+		changed.emit()
+
+
+# -- watching (buildlive) ---------------------------------------------------------
+
+## Open the session to watchers: anyone may watch it at its own page, signed
+## in chat and ask to build. "" when open, or why not. The model's shared
+## page is named with it when it is the owner's (store.share_id).
+func open_to_watchers() -> String:
+	if not live or not owns:
+		return "Only the owner of the session opens it to watchers."
+	var body: Dictionary = {"s": _token}
+	if RegEx.create_from_string("^[A-Za-z0-9]{10}$").search(store.share_id) != null:
+		body["model"] = store.share_id
+	var got: Array = await _ask("watch_open", body)
+	if int(got[0]) != 200:
+		return _trouble(got, "Could not open it to watchers")
+	var answer: Dictionary = got[1]
+	watch = {"watch": str(answer.get("watch", "")), "link": str(answer.get("link", "")),
+		"watchers": int(answer.get("watchers", 0))}
+	said.emit("Open to watchers: anyone with its page can watch you build, and ask to join.")
+	changed.emit()
+	return ""
+
+
+## Close it to watchers again: its page says so, and it is listed no more.
+func close_to_watchers() -> String:
+	if watch.is_empty():
+		return ""
+	var got: Array = await _ask("watch_close", {"s": _token})
+	if int(got[0]) != 200:
+		return _trouble(got, "Could not close it to watchers")
+	watch = {}
+	asks.clear()
+	changed.emit()
+	return ""
+
+
+## How many watch it now, asked of the server (the panel, while it is open).
+func count_watchers() -> void:
+	if watch.is_empty() or not live:
+		return
+	var got: Array = await _ask("watch_count", {"s": _token})
+	if int(got[0]) != 200 or watch.is_empty():
+		return
+	var answer: Dictionary = got[1]
+	if not bool(answer.get("open", false)):
+		watch = {}
+		changed.emit()
+	elif int(answer.get("watchers", 0)) != int(watch.get("watchers", 0)):
+		watch["watchers"] = int(answer.get("watchers", 0))
+		changed.emit()
+
+
+## Give [param who], who asked to build, a seat: they are in the session from
+## now, and their watch page opens it in their studio. "" or why not.
+func give_seat(who: String) -> String:
+	if not live or not owns:
+		return "Only the owner of the session gives a seat."
+	var got: Array = await _ask("seat", {"s": _token, "who": who})
+	if int(got[0]) != 200:
+		return _trouble(got, "Could not give the seat")
+	asks = asks.filter(func(one: Variant) -> bool: return str((one as Dictionary)["who"]) != who)
+	changed.emit()
+	return ""
 
 
 # -- where each person is working ----------------------------------------------

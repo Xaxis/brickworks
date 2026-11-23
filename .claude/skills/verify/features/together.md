@@ -21,7 +21,16 @@ app, joined by a link (docs/TOGETHER.md).
   to `--together=`) joins once signed in and the first model is down
   (`Main._maybe_join_together`), then shows the panel. Controls for checks:
   `together_start`, `together_join_field`, `together_join`, `together_copy`,
-  `together_end`, `together_remove_N`, `together_close`.
+  `together_end`, `together_remove_N`, `together_close`. The owner's watch box (buildlive): **Open to watchers**
+  (`together_watch_open`, `Together.open_to_watchers`), then the watch
+  page's address with **Copy** (`together_watch_copy`), how many watch
+  (`op=watch_count` every 20 s while the panel is open), **Close to
+  watchers** (`together_watch_close`), and each watcher who asked with
+  **Give a seat** (`together_seat_N`, `Together.give_seat`); none of it for
+  a joiner. A watcher's line is in the chat by its `~by` name. Ending a
+  watched session emits `watched_ended`, and `Main._keep_watched` shares
+  progress as a version when the model is shared (`together_watch_probe`,
+  headless, no server).
 - `building together` (`src/net/together.gd`, `Together`): start (uids for
   every part, a snapshot), join (opens the text, matches parts to uids, pins
   each to the owner's exact state and lift), capture (the world's change log

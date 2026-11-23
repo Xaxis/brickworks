@@ -1505,6 +1505,16 @@ async function watchOpen(request, me) {
   return { watch: row.watch, link: `${originOf(request)}/live/${row.watch}`, watchers: await watchersOf(id), model: row.model || null };
 }
 
+// How many watch the owner's session now, for the studio's Build together
+// panel while it is open: one read of the session and one of its watchers.
+async function watchCount(request, me) {
+  const id = idOf(secretOf(request.body));
+  const session = await inSession(id, me);
+  if (session.owner !== me) throw new Refusal(403, "only the designer counts their watchers");
+  const show = await watchedNow(id);
+  return { open: Boolean(show), watchers: show ? await watchersOf(id) : 0 };
+}
+
 async function watchClose(request, me) {
   const id = idOf(secretOf(request.body));
   const session = await inSession(id, me);
@@ -1803,7 +1813,7 @@ const WATCH_SIGNED_OPS = { watch_me: watchMe, watch_say: watchSay, watch_ask: wa
 // -- end of Watching ---------------------------------------------------------
 
 const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart,
-  watch_open: watchOpen, watch_close: watchClose, seat, ...WATCH_SIGNED_OPS };
+  watch_open: watchOpen, watch_close: watchClose, watch_count: watchCount, seat, ...WATCH_SIGNED_OPS };
 const LINES = "application/x-ndjson";
 
 async function handler(request, response) {

@@ -54,6 +54,7 @@
 "A kit for {place}": "Un kit para {place}",
 "A kit to post {name} on {place}": "Un kit para publicar {name} en {place}",
 "A line about it": "Una frase sobre tu construcción",
+"A line is at most {most} characters; this one has {n}.": "Una línea tiene como máximo {most} caracteres; esta tiene {n}.",
 "A list": "Una lista",
 "A list of LEGO® element numbers to upload at LEGO® Pick a Brick": "Una lista de números de elemento LEGO® para subir a LEGO® Pick a Brick",
 "A lot of people are signing in just now. Try again in a minute.": "Mucha gente está iniciando sesión ahora mismo. Vuelve a intentarlo en un minuto.",

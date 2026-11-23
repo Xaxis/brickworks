@@ -3045,6 +3045,21 @@ func _make_challenge_line() -> void:
 	_challenge_line.call("ask")
 
 
+## A build watched live has ended (Together.watched_ended): where it got to
+## kept as a version in the model's log, Share progress in the Share panel,
+## when the model is shared; else said how to (PLAN row 6, buildlive).
+func _keep_watched(watched: Dictionary) -> void:
+	var peak: int = int(watched.get("peak", 0))
+	var seen: String = "Nobody watched it" if peak == 0 else "1 person watched it" if peak == 1 \
+		else "%d people watched it" % peak
+	if _store.share_id.is_empty() or not _viewing.is_empty() or not _built:
+		_bar.say("%s. Share progress keeps where it got to as a version in the model's log." % seen)
+		return
+	_share_panel.open()
+	_bar.say("%s. Sharing its progress as a version in the model's log." % seen)
+	_share_panel.call("publish", true)
+
+
 ## File › Share…: the panel that publishes this model as the signed-in
 ## account and hands back its link.
 func _share_wanted() -> void:
@@ -9331,6 +9346,7 @@ func _make_together() -> void:
 	made.camera = _camera
 	made.base_url = Deployment.api_base()
 	made.said.connect(func(words: String) -> void: _bar.say(words))
+	made.watched_ended.connect(_keep_watched)
 	# An edit the copies of its sub-model have not yet followed, or refused
 	# (_edited_soon, at the frame's end), done before the session reads the
 	# model: one taken back is never sent at all.
