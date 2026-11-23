@@ -1853,6 +1853,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	world.section_lines = Assemblies.lines_of(model)
 	# And each section's name in the file, a whole write's again.
 	world.section_files = model.file_names()
+	# And every line of its sections it does not read, beside the line it
+	# was beside: a whole write writes it there again (LdrModel.kept_lines).
+	world.kept_lines = model.kept_lines
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -4003,6 +4006,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			int(step_of.get(brick.id, 0)))
 		placement.group = brick.group
 		placement.unit = Assemblies.path_of(brick)
+		# Its line in the file, which the lines kept beside it are written
+		# beside again (LdrModel.kept_lines).
+		placement.origin = brick.origin
 		placements.append(placement)
 	# In build order where there is one, and bottom to top otherwise, so
 	# the file reads the way it would be built. Sorting by height alone
@@ -4034,6 +4040,10 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	for item: Variant in _held_placements():
 		used[(item as LdrModel.Placement).part_id] = true
 	var embedded: Dictionary = _part_files(used.keys())
+	# And the pictures the file carried, which the TEXMAP lines a whole write
+	# keeps name (LdrModel.kept_lines), each once: none was a part's, and
+	# every one went at the first whole write (wholekeep).
+	embedded.merge(world.kept_lines.get("data", {}))
 	# Sub-assemblies, nested or copied, go out as a tree of sub-models: each
 	# definition once, every copy a reference to it (LdrModel.write_tree).
 	var tree := Assemblies.new()
@@ -4091,6 +4101,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
 				pair[1], maxi(waiting.step, 0))
 			held.group = waiting.group
+			held.origin = waiting.origin
 			# In its sub-model, as the file had it: one with nothing on the
 			# baseplate (a band whose pieces could not be made) is written
 			# still, not its parts loose in the model.
@@ -4154,12 +4165,19 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# A sub-model's own lights, views and motions in its own section, by its
 	# definition; one that has none, every copy built in its parent's steps,
 	# after the IN line of one of its copies (Assemblies.lines_within).
+	# Each copy built in the model's own steps whose section its file had is
+	# written as that section, placed by its line (LdrModel.built_sections):
+	# its sub-model's own lines in it, by the steps the save writes.
+	var sectioned: Dictionary = LdrModel.built_sections(placements, instances, unit_steps,
+		world.section_files, steps) if not instances.is_empty() else {}
+	var units_written: Dictionary = sectioned.get("units", unit_steps)
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, tree.lines_written(world, instances, back, unit_steps),
-		world.section_files, tree.lines_within(world, instances, back, unit_steps)) \
+		unit_steps, known, steps, tree.lines_written(world, instances, back, units_written),
+		world.section_files, tree.lines_within(world, instances, back, units_written),
+		world.kept_lines, sectioned) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
-			world.section_files)
+			world.section_files, world.kept_lines)
 	if authored:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,

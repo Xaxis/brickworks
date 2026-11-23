@@ -782,6 +782,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.section_files = (step["files"] as Dictionary).duplicate()
 		return {"undo": "sectionfiles", "files": named}
 
+	# The lines the model's file carried (BrickWorld.kept_lines), the table
+	# as it was: set once at the open and never changed, so shared, not copied.
+	if step.get("undo", "") == "keptlines":
+		var had: Dictionary = world.kept_lines
+		world.kept_lines = step["lines"]
+		return {"undo": "keptlines", "lines": had}
+
 	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
 	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
 	# Each found by what it is, not where it is in the list, and the list made

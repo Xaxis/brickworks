@@ -477,7 +477,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
   paints 42079-1's rope, saves, opens another file, comes back to it
   yellow), `keep_text` and `kt3r` (each save a patch keeping every line
-  the edit did not touch, or live's write), `copyfaults` (a copy renamed,
+  the edit did not touch, or live's write), `wholekeep` (a save written
+  whole keeps each line the file carried that the app does not read beside
+  the line it was beside, `LdrModel.kept_lines`: comments, other programs'
+  lines, TEXMAP blocks round their parts, moved as their parts move, and the
+  pictures they name; and
+  each sub-model its file had a section, one built in the model's steps
+  placed by its line after `0 !BRICKWORKS BUILT`, which says the step each
+  of its section's steps is built in), `copyfaults` (a copy renamed,
   duplicated, swapped over MCP or given a step edit leaves its twin as it
   was, or both alike, and one moved or painted moves or paints only the
   twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
@@ -1777,6 +1784,7 @@ godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, parts only the file has, write, round trip, refusals
+godot --headless --path . --script src/dev/wholekeep_probe.gd   # a save written whole keeps the file's sub-models, comments, other programs' lines, TEXMAPs and pictures (WK_CASES=ldcad,own,built,castle; ~5 min)
 godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
 godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
 # ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py
