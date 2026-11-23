@@ -26,8 +26,11 @@
 ## Tested where their other three pass.
 extends SceneTree
 
+## The home page's hero, the Brickworks mark in 186 parts (hero3d,
+## tools/web/hero_mark.mjs), is one of them: a course a step, each across the
+## one under it.
 const SHIPPED: Array[String] = ["res://models/kart.ldr", "res://models/castle.ldr",
-	"res://models/orrery.ldr"]
+	"res://models/orrery.ldr", "res://models/brickworks_mark.ldr"]
 ## A real set whose figures and stretcher stand beside its ambulance, and
 ## whose file draws one 1 x 2 plate inside a 1 x 6 at the same height (the
 ## exact check finds it, and its steps hide it): without it, it builds.

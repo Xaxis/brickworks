@@ -1,7 +1,7 @@
 // The beta's bar (betahome, 2026-11-09), on every page while the beta is
 // open: Open beta (/beta, the hub), Report a bug, and Join (to the hub's
 // way in, where what joining agrees to is said) or "You’re a tester". It
-// floats at the window's foot and moves nothing (docs/DESIGN_SYSTEM.md,
+// is docked at the window's foot, the page's end clear of it, and moves nothing (docs/DESIGN_SYSTEM.md,
 // Beta bar). Its × hides it in this browser until the person shows it
 // again (bugbar, 2026-11-13: before, a day went by with nothing to say
 // where it went): a toast says so, with Undo and the way to Settings,
@@ -269,6 +269,7 @@ function drawBar(heard) {
   if (heard.beta !== "open" || !barShown()) {
     bar?.remove();
     delete root.dataset.betabar;
+    root.style.removeProperty("--betabar-h");
     return;
   }
   if (!bar) {
@@ -303,6 +304,8 @@ function drawBar(heard) {
 function fit(bar) {
   bar.classList.remove("tight");
   if (bar.scrollWidth > bar.clientWidth + 1) bar.classList.add("tight");
+  // The page's end clears it (site.css, :root[data-betabar] body).
+  root.style.setProperty("--betabar-h", `${Math.ceil(bar.getBoundingClientRect().height)}px`);
 }
 
 async function start() {

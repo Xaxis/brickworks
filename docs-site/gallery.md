@@ -16,13 +16,13 @@ api:GET/POST /api/share
 lib:directory
 -->
 
-![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Collections and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
+![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Lists and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
 
 ## On the home page {#home}
 
 The [home page](/) is a feed of what builders make and say. Signed out, one line over it says what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Then the feed, one post after another:
 
-- **A build**: who made it, with **Follow**; its picture; how it was made (**Designed with the assistant**, **Built by hand**, **Made with Brickify**) and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
+- **A build**: who made it, with **Follow**; its picture; how it was made, where its builder chose to say (**Designed with the assistant**, **Made with Brickify**), and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
 - **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**.
 - **This month's [challenge](/docs/challenges)**, its days left and its entries, with **Enter the challenge**.
 - **Try the studio, right here**: **Try it here** puts the studio itself in the post, a model on it to turn, play with and build step by step. **Open the whole studio** opens a copy of it as yours.
@@ -32,7 +32,7 @@ The [home page](/) is a feed of what builders make and say. Signed out, one line
 
 Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept. **Show more** at the end adds more posts.
 
-Signed in, the line gives way to **Share a build**, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
+Signed in, the line gives way to the same search, with **Share a build** beside it, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
 
 ![The home page on a phone: Build, share and find LEGO® models, the search and Start building, and under them the feed's first post, a build with its picture and the studio's verbs.](/docs/img/home-phone.webp "On a phone, the feed starts in the first screen.")
 
@@ -60,7 +60,7 @@ The gallery's list can also be asked for the models built from a set, as its pag
 
 - **Order**: Top builds, Newest, Most liked, Most remixed, Most built, and, signed in with [your collection](/docs/collection), **Parts I own**, which puts first the models you own most of the parts for.
 - **Size**: Any size; Small, under 200 parts; Medium, 200 to 999; Large, 1,000 parts or more.
-- **Made**: **Hand-built** or **With the assistant**, as the app that shared it said.
+- **Made**: **With the assistant** lists the models whose builders chose to say so; **Hand-built** every other. How a model was made is its builder's to say, and nothing on the site says it until they do: **Say it was made with the assistant** as they share it, or under **More** on its page ([Model pages](/docs/model-pages#actions)).
 - **Has instructions** (steps laid out by whoever built it), **Technic or mechanism**, **Tested only**.
 
 Each filter that is on shows as a pill beside Filters; press its × to drop it, or **Clear all** when there are two or more. **Clear the filters** in the sheet drops them all. On a phone, Top's time is in the sheet too, as **Top over**.
@@ -74,7 +74,7 @@ lib:Top builds and this week's pick
 
 ## The tabs {#tabs}
 
-The tabs are **Top**, **New**, **Following** (signed in: what the people you follow made), **Builds** ([photos of real builds](#builds)), **Collections** (the [directory of collections](/docs/collections#directory)) and **Sets** (every [real LEGO® set](/docs/ldraw-library#website)). A tab keeps the search's words, and has an address of its own (`/builds`, `/collections`, `/library`) to reload or send.
+The tabs are **Top**, **New**, **Following** (signed in: what the people you follow made), **Builds** ([photos of real builds](#builds)), **Lists** (the [directory of public lists](/docs/lists#directory)) and **Sets** (every [real LEGO® set](/docs/ldraw-library#website)). A tab keeps the search's words, and has an address of its own (`/builds`, `/gallery-lists`, `/library`) to reload or send.
 
 ## More than 24 {#pages}
 
@@ -111,7 +111,7 @@ lib:the gallery's card as a photograph
 
 A card's picture is a photograph of the model standing on a desk, drawn when it was shared: path traced in daylight where the computer's graphics card traces rays (the same stage as [Render's](/docs/render) Best), and under a studio's soft lights in a browser. A model shared from a phone, or from a computer too slow to draw it in a few seconds, shows the model on the page's own ground instead.
 
-Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/collections#own)). Only you see it, and the gallery counts it for the whole page at once.
+Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
 
 ![Four gallery cards seen signed in with a collection: the sports car says You have 73%, the corner shop You have every part with a check, the barn owl You have 64%, and the fire station, under half, says nothing of it.](/docs/img/gallery-owned.webp "What you have of each model, on its card.")
 
@@ -133,7 +133,7 @@ lib:builds in the gallery
 
 ## A designer's page {#designer}
 
-`/u/<handle>` is a designer's page: their models in Top builds order, **Start with their most built** with **Build it**, their numbers (builds finished, remixes, models, likes, followers) and what their models won, and the tabs **Models**, **Builds**, **Collections** and, if they chose to show them, **Likes**. **Follow** puts what they make in [your feed](/docs/profiles#feed). Brickworks' own page, [brickworks.diy/u/brickworks](/u/brickworks), shares the house's models.
+`/u/<handle>` is a designer's page: their models in Top builds order, **Start with their most built** with **Build it**, their numbers (builds finished, remixes, models, likes, followers) and what their models won, and the tabs **Models**, **Builds**, **Lists** and, if they chose to show them, **Likes**. **Follow** puts what they make in [your feed](/docs/profiles#feed). Brickworks' own page, [brickworks.diy/u/brickworks](/u/brickworks), shares the house's models.
 
 <!-- covers
 ui:a designer's page

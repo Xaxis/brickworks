@@ -166,8 +166,8 @@ export function feedSaid(row, origin = "") {
   // A model put in a collection the reader follows (supabase/collection_follows.sql):
   // whose collection, and which, a link of its own.
   if (row.kind === "collection") {
-    return { ...base, did: "added", link: `${origin}/m/${row.model}`, line: say("{who} added {name} to their collection {list}"),
-      list: { id: String(row.collection || ""), name: quoted(row.list_name || say("a collection"), 80), link: `${origin}/c/${row.collection}` } };
+    return { ...base, did: "added", link: `${origin}/m/${row.model}`, line: say("{who} added {name} to their list {list}"),
+      list: { id: String(row.collection || ""), name: quoted(row.list_name || say("a list"), 80), link: `${origin}/c/${row.collection}` } };
   }
   if (row.kind === "challenge") {
     const title = quoted(row.title || say("this month’s challenge"), 80);

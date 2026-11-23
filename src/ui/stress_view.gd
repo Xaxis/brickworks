@@ -530,6 +530,10 @@ static func part_words(weighed: Stability.Report, world: BrickWorld, library: Pa
 		"other":
 			return "%s: held by a clip, a hinge, a ball or a turntable, which are not weighed" % name
 		"nothing":
+			# Touching nothing at all, a part in the air (Stability.FLOATS).
+			for risk: Stability.Risk in weighed.risks:
+				if risk.kind == Stability.FLOATS and risk.brick_id == id:
+					return "%s: touches nothing, floating in the air" % name
 			return "%s: held by nothing that can be weighed" % name
 		"rests":
 			return "%s: stands on what is under it, its weight over where they touch" % name

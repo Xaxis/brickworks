@@ -13,9 +13,16 @@
 // Then the first screen as a visitor opens it (homefeed, 2026-11-23,
 // docs/HOME.md; landing's shelf before it), at a phone's 390 x 844 and a
 // laptop's 1280 x 800, light and dark: the search and Start building whole
-// in the window, and the feed's first post begun within 600 px on a phone,
-// its picture drawn (and on a laptop one whole in the window); the page
-// moving not at all (CLS 0.01 at most) as the feed's live answers come.
+// in the window; on a phone the first post's picture begun in it, and on a
+// laptop at least 60% of each first-row picture's height in it, real builds
+// plainly seen beside the hero (the lead, 2026-11-23), "in it" meaning over
+// the beta bar; the pictures drawn; the page moving not at all (CLS 0.01 at
+// most) as the feed's live answers come. And the band's foot in the page's
+// rhythm (homefix, 2026-11-23, the owner on its caption sitting on the line
+// and the heading under it): at least 24 px from the band's last line (the
+// mark's caption, the search's row) down to its edge and from the edge to
+// "What builders are making" (48 from 600 px, 24 on a phone), the two the
+// same within 8 px.
 // Signed out there are no tabs, one stream, and Show more puts more posts
 // under it, none twice. The search finding as it is typed (models, builders
 // and sets, then the gallery's and the sets' own search), its arrows and
@@ -49,6 +56,8 @@ const bypass = process.env.VERCEL_BYPASS || process.env.BW_BYPASS;
 const live = site === null;
 // The fewest posts a first page of the feed has, with a gallery behind it.
 const FEWEST = 4;
+// The share of each first-row picture's height a laptop's first screen shows.
+const SHOWN = 0.6;
 
 const out = args.out ? resolve(String(args.out)) : "";
 if (out) mkdirSync(out, { recursive: true });
@@ -138,8 +147,9 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 800]
 }
 
 /// The first screen as it opens: the search and Start building whole in
-/// the window, the feed's first post begun within 600 px on a phone, its
-/// pictures drawn, and nothing moving as the live answers come.
+/// the window, the first post's picture begun in it on a phone and 60% of
+/// each first-row picture in it on a laptop (SHOWN), the pictures drawn, and
+/// nothing moving as the live answers come.
 async function firstScreen(label, width, height, theme) {
   const { page } = await open(width, height, { theme });
   const where = `${label} ${theme}`;
@@ -147,10 +157,14 @@ async function firstScreen(label, width, height, theme) {
     .then(() => true, () => false);
   await page.waitForTimeout(1000);
   const seen = await page.evaluate(() => {
+    // The window down to the beta bar, docked at its foot (site.css): what
+    // is under the bar is not seen.
+    const bar = document.querySelector("#beta-bar.shown");
+    const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
     const whole = (el) => {
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+      return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= foot && r.left >= 0 && r.right <= innerWidth;
     };
     const stream = document.getElementById("stream");
     const posts = [...(stream?.querySelectorAll(":scope > .post:not(.skeleton)") || [])];
@@ -161,7 +175,17 @@ async function firstScreen(label, width, height, theme) {
     // A picture in the window drawn; the rest are lazy, asked for as they near.
     const pictures = posts.flatMap((post) => [...post.querySelectorAll(".post-pic img")]).filter(inView);
     const drawn = (img) => img.complete && img.naturalWidth > 0;
+    // The first row: the posts level with the first, each its picture's
+    // share of its height over the window's foot.
+    const top0 = posts[0] ? posts[0].getBoundingClientRect().top : 0;
+    const row = posts.filter((post) => Math.abs(post.getBoundingClientRect().top - top0) < 2)
+      .map((post) => post.querySelector(".post-pic img")).filter(Boolean).map((img) => img.getBoundingClientRect());
+    const share = (r) => (r.height ? Math.max(0, Math.min(r.bottom, foot) - Math.max(r.top, 0)) / r.height : 0);
     return {
+      row: row.length,
+      rowShown: row.length ? Math.min(...row.map(share)) : 0,
+      firstPicture: row.length ? Math.round(row[0].top) : -1,
+      foot: Math.round(foot),
       said: document.documentElement.dataset.feedLive || "",
       served: stream?.dataset.stream || "",
       posts: posts.length,
@@ -175,6 +199,15 @@ async function firstScreen(label, width, height, theme) {
       words: document.getElementById("stream-said")?.textContent.trim() || "",
       tabs: Boolean(document.getElementById("feed-tabs")?.offsetHeight),
       search: whole(document.getElementById("find-q")),
+      // The room under the band's last line and over the feed's heading.
+      room: (() => {
+        const band = document.getElementById("home")?.getBoundingClientRect();
+        const line = document.getElementById("feed")?.getBoundingClientRect().top;
+        const heading = document.getElementById("feed-h")?.getBoundingClientRect();
+        const last = [...document.querySelectorAll("#home .hero-credit, #home .home-acts, #home .note")]
+          .filter((el) => el.offsetHeight).map((el) => el.getBoundingClientRect().bottom);
+        return band && heading && last.length ? { under: Math.round(band.bottom - Math.max(...last)), over: Math.round(heading.top - line) } : null;
+      })(),
       start: whole(document.querySelector('#home a[href^="/app"]')),
       shifts: window.__shifts || [],
     };
@@ -182,14 +215,21 @@ async function firstScreen(label, width, height, theme) {
   const moved = seen.shifts.reduce((sum, s) => sum + s.value, 0);
   if (!settled) problems.push(`${where}: the feed never settled (no data-feed-live after 30 s)`);
   if (!seen.search) problems.push(`${where}: the search is not whole in the first screen`);
+  if (!seen.room || seen.room.under < 24 || seen.room.over < 24 || Math.abs(seen.room.under - seen.room.over) > 8) {
+    problems.push(`${where}: the band's foot is out of the page's rhythm: ${seen.room ? `${seen.room.under} px under its last line, ${seen.room.over} px over the feed's heading` : "not measured"}`);
+  }
   if (!seen.start) problems.push(`${where}: Start building is not whole in the first screen`);
   if (seen.tabs) problems.push(`${where}: a visitor is shown the signed-in tabs`);
   if (seen.posts) {
     if (seen.posts < FEWEST || seen.named !== seen.posts || seen.skeletons || seen.drawn !== seen.pictures) {
       problems.push(`${where}: the feed shows ${seen.posts} posts, ${seen.named} named, ${seen.drawn} of ${seen.pictures} pictures in view drawn, ${seen.skeletons} skeletons`);
     }
-    if (width < 600 && seen.first > 600) problems.push(`${where}: the first post begins ${seen.first} px down, past 600`);
-    if (width >= 600 && seen.whole < 1) problems.push(`${where}: no post's picture is whole in the first screen`);
+    if (width < 600 && !(seen.firstPicture >= 0 && seen.firstPicture < seen.foot)) {
+      problems.push(`${where}: the first post's picture begins at ${seen.firstPicture} px, not in the first screen (its foot ${seen.foot})`);
+    }
+    if (width >= 600 && seen.rowShown < SHOWN) {
+      problems.push(`${where}: a first-row picture shows ${Math.round(seen.rowShown * 100)}% of its height in the first screen, under ${SHOWN * 100}%`);
+    }
   } else if (live) {
     problems.push(`${where}: the feed shows nothing with a gallery behind the page (${seen.said})`);
   } else if (seen.skeletons || !seen.words) {
@@ -200,8 +240,9 @@ async function firstScreen(label, width, height, theme) {
     problems.push(`${where}: the first screen moved ${moved.toFixed(3)} as it came (${seen.shifts.map((s) => `${s.value.toFixed(3)}@${s.at} ${s.from}`).join("; ")})`);
   }
   if (out) await page.screenshot({ path: `${out}/first_${width}_${theme}.png` });
-  console.log(`  ${where.padEnd(13)} feed ${seen.posts ? `${seen.posts} posts (${seen.served}, then ${seen.said}: ${seen.kinds.join(" ")}), first at ${seen.first} px, ${seen.whole} pictures whole` : `empty (${seen.said}: "${seen.words}")`}; `
-    + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; moved ${moved.toFixed(3)}`);
+  console.log(`  ${where.padEnd(13)} feed ${seen.posts ? `${seen.posts} posts (${seen.served}, then ${seen.said}: ${seen.kinds.join(" ")}), first at ${seen.first} px, its picture at ${seen.firstPicture} (foot ${seen.foot}), first row's least shown ${Math.round(seen.rowShown * 100)}% of ${seen.row}, ${seen.whole} pictures whole` : `empty (${seen.said}: "${seen.words}")`}; `
+    + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; `
+    + `room ${seen.room ? `${seen.room.under}/${seen.room.over} px` : "?"}; moved ${moved.toFixed(3)}`);
   await page.close();
 }
 

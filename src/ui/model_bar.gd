@@ -1,5 +1,9 @@
 ## The strip across the top: the menus, what this model is called, and who
-## is signed in.
+## is signed in. It is the app's header (AppHeader), the site's: the mark and
+## the name at the left, the app's menu and Account at the right, 60 points
+## tall over a line, in every mode. A shared model's viewer and Build it's
+## step player keep it, plain (looking): the mark, Menu and Account, their
+## own bars under it.
 ##
 ## It was a row of a dozen buttons — New, Save, Open, Export, Parts list,
 ## Timeline, Mosaic, Minifig, Help, Account, Clear — with a status line
@@ -10,23 +14,40 @@
 class_name ModelBar
 extends PanelContainer
 
+## The header every mode has, the site's (src/ui/app_header.gd).
+const AppHeader := preload("res://src/ui/app_header.gd")
+
 var store: ModelStore
 var world: BrickWorld
 var builder: Builder
 
-## The app's own menu, first in the row: the mark and the app's name, as
-## the site's header has them, the way a CAD program's top left has its
-## logo. Shell fills it (Shell.APP_MENU). Where the row has no room for the
-## name on one line, the mark alone ([method _fit_mark]).
+## The app's own menu (Shell fills it, Shell.APP_MENU). On the desktop it is
+## first in the row, the mark and the app's name, the way a CAD program's top
+## left has its logo. In a browser the mark and the name are the way home, as
+## the site's header has them ([member home]), and this is Menu at the right,
+## beside Account, where the site's phone header has its Menu (AppHeader).
 var mark: MenuButton
+## In a browser, the mark and the app's name at the left, the site's home page
+## in this tab (AppHeader.go_home); null on the desktop, where [member mark]
+## is there. Where the row has no room for the name on one line, the mark
+## alone ([method _fit_mark]).
+var home: Button
+## Whichever is at the left with the mark on it: [member home] or [member mark].
+var brand: Button
+## The header plain, for a shared model's viewer, Build it's step player and
+## the booklet's page laid out by hand (looking): the menus, the model's name
+## and the Claude tab out of sight, the mark, Menu and Account kept.
+var plain: bool = false
+## Looking at somebody else's model: Account is the site's settings page,
+## since the viewer reads nobody's account (Main._enter_view).
+var visiting: bool = false
 ## Where the menus go, between the app's menu and the model's name.
 var menus: HBoxContainer
 
 const NAME := "Brickworks"
 ## The mark (web/icon.svg; this copy is tools/web/make_icons.mjs's), drawn
-## this many units tall.
+## AppHeader.MARK points tall.
 const MARK := "res://assets/ui/mark.svg"
-const MARK_TALL := 18.0
 ## The model's name box: its width, and the least it gives way to in a
 ## narrow window (_fit_mark).
 const NAME_WIDE := 200.0
@@ -85,10 +106,11 @@ signal library_wanted()
 ## Someone wants to rename or delete saved models (SavedModelsDialog).
 signal saved_models_wanted()
 signal opened(bricks: int)
-## A person's own open found parts its file names by a number LDraw has moved
-## or made an alias, or has no file for (ModelStore.moved): Shell offers them
-## (MovedOffer) and asks about a part with no file (MovedPartsDialog).
-signal moved_found()
+## An open found parts its file names by a number LDraw has moved or made an
+## alias, or has no file for (ModelStore.moved): Shell offers the renumbered
+## ones in a person's [param own] file once, the file named by [param of]
+## (MovedOffer), and asks about a part with no file (MovedPartsDialog).
+signal moved_found(own: bool, of: String)
 ## Whatever the bar says (say), for a phone's line over the model.
 signal said(text: String)
 
@@ -108,25 +130,20 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var backing := StyleBoxFlat.new()
-	backing.bg_color = Color(0.11, 0.12, 0.14, 0.97)
-	backing.content_margin_left = 10
-	backing.content_margin_right = 10
-	backing.content_margin_top = 3
-	backing.content_margin_bottom = 3
-	add_theme_stylebox_override("panel", backing)
-
+	# The site's ground, 60 points and a line (_fit_header).
 	# Wraps onto a second line rather than running off the side, on a
 	# phone: the bar sets the width of everything under it, and a row wider
 	# than the page once took the assistant's rail off it.
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 4)
 	row.add_theme_constant_override("v_separation", 2)
+	# Centred in the header's height (_fit_header), whatever its tallest
+	# control is.
+	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(row)
 
 	mark = MenuButton.new()
 	mark.name = "app_menu"
-	mark.text = NAME
 	mark.flat = true
 	# Pointed at with another menu open, it opens in that one's place, as
 	# File does from Edit.
@@ -135,25 +152,28 @@ func _build() -> void:
 	# Tab and the arrows reach it (F6 goes in here first); a click leaves
 	# the keys with the model.
 	FocusGuard.by_keyboard(mark)
-	mark.add_theme_font_size_override("font_size", 14)
-	mark.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
-	mark.add_theme_color_override("font_focus_color", Color(1, 1, 1, 0.75))
-	mark.add_theme_color_override("font_hover_color", Color.WHITE)
-	mark.add_theme_color_override("font_pressed_color", Color.WHITE)
-	mark.add_theme_constant_override("h_separation", 7)
-	mark.custom_minimum_size = Vector2(0, 28)
-	mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var face := StyleBoxEmpty.new()
-	face.content_margin_left = 2
-	face.content_margin_right = 4
-	for state: String in ["normal", "hover", "pressed", "disabled"]:
-		mark.add_theme_stylebox_override(state, face)
-	mark.add_theme_stylebox_override("focus", FocusGuard.ring())
 	mark.accessibility_name = NAME
-	row.add_child(mark)
+	if AppHeader.web_layout:
+		home = Button.new()
+		home.name = "app_home"
+		home.text = NAME
+		# Tab reaches it, as the site's mark is a link Tab reaches; a click
+		# leaves the keys with the model.
+		FocusGuard.by_keyboard(home)
+		home.accessibility_name = NAME
+		home.tooltip_text = "Brickworks: the home page"
+		home.accessibility_description = "The site's home page, in this tab"
+		home.pressed.connect(AppHeader.go_home)
+		brand = home
+		mark.text = "Menu"
+	else:
+		mark.text = NAME
+		brand = mark
+	brand.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(brand)
 	row.sort_children.connect(_fit_mark, CONNECT_DEFERRED)
-	get_viewport().size_changed.connect(_draw_mark)
-	_draw_mark.call_deferred()
+	get_viewport().size_changed.connect(_fit_header)
+	_fit_header.call_deferred()
 
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(8, 0)
@@ -161,6 +181,7 @@ func _build() -> void:
 
 	menus = HBoxContainer.new()
 	menus.add_theme_constant_override("separation", 0)
+	menus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(menus)
 
 	var gap_two := Control.new()
@@ -187,6 +208,7 @@ func _build() -> void:
 	# House had a model called "UntitledMy House" (brickworks.diy at
 	# dd5c10c, 2026-10-12). A second click places the caret.
 	_name.select_all_on_focus = true
+	_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_name)
 
 	var push := Control.new()
@@ -199,6 +221,7 @@ func _build() -> void:
 	# A press opens Account, where the chats are and a new chat for this tab.
 	_claude_tab = HBoxContainer.new()
 	_claude_tab.add_theme_constant_override("separation", 6)
+	_claude_tab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_claude_tab.visible = false
 	row.add_child(_claude_tab)
 	_claude_dot = ColorRect.new()
@@ -215,9 +238,28 @@ func _build() -> void:
 	_claude_words.pressed.connect(func() -> void: account_wanted.emit())
 	_claude_tab.add_child(_claude_words)
 
+	# In a browser the app's menu, Menu, before Account: the site's phone
+	# header has its Menu there, and your account last at the far right.
+	if home != null:
+		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(mark)
 	# Who is signed in, and the way out. Everyone using Brickworks is.
-	_account = _button(row, "Account", func() -> void: account_wanted.emit(),
-		"Who is signed in, and Sign out")
+	_account = _button(row, "Account", _account_pressed, "Who is signed in, and Sign out")
+	_account.name = "account"
+	_account.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# What came into the feed: a count over Account's corner, as the site
+	# draws it (web/site.css .site-head .count), never in its words. In
+	# words ("Account · 3") Account grew as the count came, seconds in, and
+	# moved Menu beside it from under the pointer (appchrome's app_menu_flow
+	# clicked where Menu had been).
+	_count = Label.new()
+	_count.name = "account_count"
+	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_count.visible = false
+	_account.add_child(_count)
+	_account.resized.connect(_place_count)
 
 	_confirm = ConfirmationDialog.new()
 	_confirm.title = "Clear the baseplate?"
@@ -226,6 +268,8 @@ func _build() -> void:
 	_confirm.ok_button_text = "Clear it"
 	_confirm.confirmed.connect(func() -> void: attend.call("clear", _on_clear))
 	add_child(_confirm)
+	# It cannot be undone: in red, not Save's blue (Look.danger).
+	Look.danger(_confirm.get_ok_button())
 
 	_confirm_new = ConfirmationDialog.new()
 	_confirm_new.title = "Start a new model?"
@@ -362,7 +406,7 @@ func show_claude_tab(said: Array) -> void:
 	if _claude_tab == null:
 		return
 	var text: String = str(said[0])
-	_claude_tab.visible = not text.is_empty()
+	_claude_tab.visible = not text.is_empty() and not plain
 	if _claude_words.text != text:
 		_claude_words.text = text
 	_claude_dot.color = said[1]
@@ -374,18 +418,101 @@ func claude_tab_words() -> String:
 	return _claude_words.text if _claude_tab != null and _claude_tab.visible else ""
 
 
-## The mark at the screen's own density, sharp at 1x and at 2x alike, as
-## the toolbar draws its icons (Toolbar._draw_icons).
-func _draw_mark() -> void:
-	var density: float = Icons.density(mark)
-	if is_equal_approx(density, _mark_drawn_at):
+## The header at the site's size in points (AppHeader), and the mark at
+## the screen's own density, sharp at 1x and at 2x alike, as the toolbar
+## draws its icons (Toolbar._draw_icons): again whenever the window's size
+## or density changes.
+func _fit_header() -> void:
+	if not is_inside_tree():
+		return
+	# Dressed for a phone (Main._dress_for_phone), the phone's top bar is the
+	# header, and this keeps no height of its own.
+	if not brand.get_parent().visible:
+		return
+	var gutter: float = AppHeader.GUTTER_NARROW if Room.across() < 600.0 else AppHeader.GUTTER
+	var pt: float = AppHeader.points(self)
+	# Capped to keep the studio's row on one line where this bar is ever the
+	# studio's: on a phone the studio has its own top bar (PhoneShell), and
+	# this one heads only the viewer and Build it, at the full 61 points.
+	if not Phone.on():
+		pt = minf(pt, _fitting_pt(gutter))
+	points = pt
+	var density: float = Icons.density(brand)
+	add_theme_stylebox_override("panel", AppHeader.ground(pt, gutter))
+	custom_minimum_size.y = (AppHeader.TALL + AppHeader.LINE) * pt
+	AppHeader.dress_mark(brand, pt)
+	brand.accessibility_name = NAME
+	if home != null:
+		AppHeader.dress_button(mark, pt)
+	AppHeader.dress_button(_account, pt)
+	_dress_count(pt)
+	if is_equal_approx(density, _mark_drawn_at) and is_equal_approx(pt, _mark_drawn_pt):
 		return
 	_mark_drawn_at = density
-	mark.icon = Icons.icon_for(MARK, MARK_TALL, density)
-	mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_mark_drawn_pt = pt
+	brand.icon = Icons.icon_for(MARK, AppHeader.MARK * pt, density)
+	brand.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 var _mark_drawn_at: float = 0.0
+var _mark_drawn_pt: float = 0.0
+## The interface's units to the header's point it is drawn at now: the
+## window's (AppHeader.points), or fewer where the studio's row needs them.
+var points: float = 1.0
+
+
+## The most points to the header that keep the studio's whole row on one
+## line. The menus and the model's name (at its narrowest) are in the
+## interface's units; the bare mark, Menu, Account and the gutters are in
+## points. A window narrower than the menus' 720 units has more units to
+## the point (1.85 in a browser 390 across), and the header in points put
+## Menu and Account on a second line there. Counted for the studio's row in
+## every mode, the plain ones too, so the header is one size in all of them;
+## the Claude tab, when it shows, takes the mark's name first (_fit_mark).
+func _fitting_pt(gutter: float) -> float:
+	var row: HFlowContainer = brand.get_parent()
+	var gap: float = float(row.get_theme_constant("h_separation"))
+	# The menus, each by its own size (hidden in a plain mode, the box would
+	# count none), the model's name, the 8-unit gap after the mark, and the
+	# gaps between the row's six.
+	var units: float = NAME_NARROW + 8.0 + gap * 6.0
+	for child: Node in menus.get_children():
+		var menu: Control = child as Control
+		if menu != null and menu.visible:
+			units += menu.get_combined_minimum_size().x + float(menus.get_theme_constant("separation"))
+	# Per point: the gutters, the bare mark, and Menu and Account as
+	# dress_button sizes them (15-point words, 14 points either side).
+	var font: Font = _account.get_theme_font("font")
+	var per_pt: float = 2.0 * gutter + AppHeader.TARGET + 28.0 \
+		+ font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	if home != null:
+		per_pt += 28.0 + font.get_string_size(mark.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	# A few units spare: sizes are rounded to whole units and points.
+	var room: float = get_viewport().get_visible_rect().size.x - units - 6.0
+	return maxf(room / per_pt, 0.5)
+
+
+## The header plain or whole: plain for a mode that is not the studio's
+## (the viewer, Build it, the page laid out by hand), the menus, the model's
+## name and the Claude tab out of sight and the mark, Menu and Account kept,
+## so the header is the same in each.
+func set_plain(yes: bool) -> void:
+	plain = yes
+	for part: Control in [menus, _name]:
+		part.visible = not yes
+	if _claude_tab != null:
+		_claude_tab.visible = not yes and not _claude_words.text.is_empty()
+	_fit_mark.call_deferred()
+
+
+## Account pressed: who is signed in, in the app; on somebody else's model,
+## which reads nobody's account, the site's own settings, in a tab of their
+## own so the model stays open here.
+func _account_pressed() -> void:
+	if visiting:
+		Outside.open_link(Deployment.api_base() + "/settings")
+		return
+	account_wanted.emit()
 
 
 ## The app's name beside the mark while the row holds everything on one
@@ -397,26 +524,21 @@ var _mark_drawn_at: float = 0.0
 ## name box gives way, down to NAME_NARROW: the Make menu (keys3) took 50
 ## of those 40, and a Claude tab put Account on a second line.
 func _fit_mark() -> void:
-	var row: HFlowContainer = mark.get_parent()
+	var row: HFlowContainer = brand.get_parent()
 	var gap: int = row.get_theme_constant("h_separation")
 	var wide: float = 0.0
-	var mine: bool = _name.get_parent() == row
+	var mine: bool = _name.get_parent() == row and _name.visible
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		if control != null and control != mark and control.visible and not (mine and control == _name):
+		if control != null and control != brand and control.visible and not (mine and control == _name):
 			wide += control.get_combined_minimum_size().x + gap
-	# Account as wide as its count makes it ("Account · 99+"), whether the
-	# count has come or not: it comes seconds in, signed in, and the name
-	# that fitted beside "Account" went, every control of the row moving
-	# twice in two seconds (rel-m223's app_menu_flow found the mark gone).
-	if _account != null and _account.visible:
-		var font: Font = _account.get_theme_font("font")
-		var size: int = _account.get_theme_font_size("font_size")
-		wide += maxf(0.0, font.get_string_size("Account · 99+", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-			- font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-	var word: float = mark.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
-		-1, mark.get_theme_font_size("font_size")).x + mark.get_theme_constant("h_separation")
-	var bare: float = mark.get_combined_minimum_size().x - (0.0 if mark.text.is_empty() else word)
+	# Account's count comes seconds in, signed in, over its corner
+	# (_count), so Account is as wide with it as without: nothing in the row
+	# moves when it comes (rel-m223's app_menu_flow found the mark gone when
+	# it was in Account's words).
+	var word: float = brand.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
+		-1, brand.get_theme_font_size("font_size")).x + brand.get_theme_constant("h_separation")
+	var bare: float = brand.get_combined_minimum_size().x - (0.0 if brand.text.is_empty() else word)
 	if mine:
 		wide += gap
 		var box: float = clampf(floorf(row.size.x - wide - bare), NAME_NARROW, NAME_WIDE)
@@ -425,13 +547,16 @@ func _fit_mark() -> void:
 		if not is_equal_approx(_name.custom_minimum_size.x, box):
 			_name.custom_minimum_size.x = box
 		wide += box
+	# Inside the header's gutters: the row is the panel's width less them.
 	var named: String = NAME if wide + bare + word <= row.size.x else ""
-	if mark.text != named:
-		mark.text = named
+	if brand.text != named:
+		brand.text = named
 
 
 func controls_by_name() -> Dictionary:
-	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark}
+	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark, "app_header": self}
+	if home != null:
+		out["app_home"] = home
 	if _claude_tab != null and _claude_tab.is_visible_in_tree():
 		out["claude_tab"] = _claude_words
 	# New's question, for tools/web/progress_check.mjs.
@@ -483,16 +608,52 @@ var _feed := 0
 func _say_account() -> void:
 	if _account == null:
 		return
-	_account.text = "Account" if _feed == 0 else "Account · %s" % ("99+" if _feed > 98 else str(_feed))
+	_count.text = "99+" if _feed > 98 else str(_feed)
+	_count.visible = _feed > 0
+	_account.accessibility_name = account_words()
+	_place_count.call_deferred()
 	var who: String = ("Signed in as %s. Sign out from here." % _email
 		if not _email.is_empty() else "Who is signed in, and Sign out")
 	_account.tooltip_text = who if _feed == 0 else "%s new in your feed. %s" % [
 		"99+" if _feed > 98 else str(_feed), who]
 
 
-## What Account says now, for the browser flows.
+## What Account says now, its count with it ("Account · 3"), for a screen
+## reader and the browser flows.
 func account_words() -> String:
-	return _account.text if _account != null else ""
+	if _account == null:
+		return ""
+	return _account.text if _feed == 0 else "%s · %s" % [_account.text, _count.text]
+
+
+## The count's look: the site's .count, a pill of its accent 18 points
+## tall, its micro type in bold.
+func _dress_count(pt: float) -> void:
+	var face := StyleBoxFlat.new()
+	face.bg_color = Color(0.949, 0.804, 0.216)
+	face.set_corner_radius_all(roundi(9.0 * pt))
+	face.content_margin_left = 5.0 * pt
+	face.content_margin_right = 5.0 * pt
+	_count.add_theme_stylebox_override("normal", face)
+	_count.add_theme_color_override("font_color", Color(0.090, 0.075, 0.039))
+	_count.add_theme_font_override("font", AppHeader.word_font(_count))
+	_count.add_theme_font_size_override("font_size", roundi(12.0 * pt))
+	_count.custom_minimum_size = Vector2(18.0 * pt, 18.0 * pt)
+	_count_pt = pt
+	_place_count.call_deferred()
+
+
+var _count: Label
+var _count_pt: float = 1.0
+
+
+## Over Account's top right corner, as the site's sits over its Menu's
+## (top -7, right -7): inside the header's 8-point margin above it.
+func _place_count() -> void:
+	if _count == null or _account == null:
+		return
+	_count.reset_size()
+	_count.position = Vector2(_account.size.x - _count.size.x + 7.0 * _count_pt, -7.0 * _count_pt)
 
 
 func model_name() -> String:
@@ -706,8 +867,10 @@ func _on_open() -> void:
 	# Exporting an .ldr and then having nowhere to put it back was the
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
-	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
-	_saves.add_item("From the library: real sets and the community's models…", LIBRARY)
+	# "From a file", not "on this computer": on a phone or a tablet, where
+	# it opens the device's own files, that was wrong (ux12, the walk at 390).
+	_saves.add_item("From a file (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_saves.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	# With the other commands, above the saves. Under them, forty saves put
 	# it below the window's foot, out of sight until the menu was scrolled,
 	# and no tap on a phone found it (fling272b, 2026-10-26).
@@ -750,7 +913,7 @@ func _on_pick(id: int) -> void:
 	var placed: int = await open_with_progress(entry.path)
 	if placed >= 0:
 		opened.emit(placed)
-		offer_moved()
+		offer_moved(not entry.example, entry.path)
 
 
 ## Open a saved model or an example, the status bar saying so first
@@ -776,14 +939,24 @@ func open_with_progress(path: String) -> int:
 	return placed
 
 
-## After a person's own open (File, Open; a file; Recent; the library): the
-## parts its file names by a moved or alias number, or has no file for,
-## offered to them (moved_found: Shell's bar over the model, and the list
-## for a part with no file), when it has any. Not a session's open,
-## Together's or an undo's, which say it their own way or not at all.
-func offer_moved() -> void:
+## After a person's open (File, Open; a file; Recent; the library): the parts
+## its file names by a moved or alias number, or has no file for, offered to
+## them (moved_found: Shell's bar over the model, and the list for a part with
+## no file), when it has any. Not a session's open, Together's or an undo's,
+## which say it their own way or not at all.
+##
+## The renumbered ones only in the person's [param own] file, named by [param
+## of] (its path or file name; the model's title when not given), and once
+## (MovedOffer). An official set from the library or an example opens as it
+## is: drawn right already, it is not theirs to renumber, and the strip over
+## a set just opened was in the way of every fan who opened one (ux12). So
+## does another program's file, a Studio .io or an LDD .lxf (MovedOffer
+## .is_ldraw): "5 parts have new numbers in the LDraw library" stood over a
+## friend's Studio file through every step of ux13's walk (p6), LDraw's
+## history said of a file that is not LDraw's, which Studio opens unasked.
+func offer_moved(own: bool = true, of: String = "") -> void:
 	if store != null and store.not_opened.is_empty() and not store.moved.is_empty():
-		moved_found.emit()
+		moved_found.emit(own and MovedOffer.is_ldraw(of), of if not of.is_empty() else store.title)
 
 
 ## Missing and moved parts' Update all and Replace checked, and open_model
@@ -989,8 +1162,8 @@ func into_model() -> void:
 	_into_entries = store.list_saved()
 	var examples: Array[ModelStore.Entry] = store.list_examples()
 	_into.clear()
-	_into.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
-	_into.add_item("From the library: real sets and the community's models…", LIBRARY)
+	_into.add_item("From a file (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_into.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	_into.add_separator("Put in this model, then click where it goes")
 	for n: int in _into_entries.size():
 		_into.add_item(_into_entries[n].describe(), n)
@@ -1128,7 +1301,7 @@ func _import() -> void:
 			if not _picker.notes.is_empty():
 				note += " — " + _picker.notes
 			_say(note)
-			offer_moved())
+			offer_moved(true, file_name))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()
 

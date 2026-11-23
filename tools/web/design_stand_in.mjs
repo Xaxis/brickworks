@@ -212,7 +212,9 @@ const MODELS = [
     updated_at: "2026-10-16T07:00:00Z", description: "Six-wheeled, with a turntable mast and working suspension." }),
   model({ id: "SamModel01", owner: SAM, name: "Harbour Tram", author: "Sam Okafor", parts: 340, steps: 14,
     kind: "vehicle", tags: ["tram", "train", "town"], listed_at: "2026-09-12T10:00:00Z",
-    updated_at: "2026-09-12T10:00:00Z", description: "A two-car harbour tram with a pantograph." }),
+    updated_at: "2026-09-12T10:00:00Z", description: "A two-car harbour tram with a pantograph.",
+    // Laid with the assistant, as its app said, and not shown (made_with_shown.sql).
+    made_with: "assistant", made_with_shown: false }),
   model({ id: "SamModel02", owner: SAM, name: "Corner Bakery", author: null, parts: 610, steps: 22, kind: "town",
     tags: ["town", "modular"], listed: false, updated_at: "2026-10-08T10:00:00Z" }),
 ];
@@ -251,7 +253,10 @@ for (const [at, [name, kind, parts]] of [["Wizard's Tower", "castle", 9541], ["S
   ["Space Shuttle", "space", 1320], ["Steam Train", "vehicle", 760]].entries()) {
   MODELS.push(model({ id: `HouseMod0${at + 1}`, owner: HOUSE, name, author: "Brickworks", parts, steps: 12 + at, kind,
     tags: ["ai-designed"], test: true, listed_at: `2026-10-1${at}T10:00:00Z`, updated_at: `2026-10-1${at}T10:00:00Z`,
-    description: "Designed with the assistant." }));
+    description: "Designed with the assistant.",
+    // The second's owner chose to say how it was made (made_with_shown.sql);
+    // the rest say nothing of it.
+    made_with_shown: at === 1 }));
 }
 for (let at = 1; at <= 60; at++) {
   const day = new Date(Date.UTC(2025, 10, 2) + at * 7 * 864e5).toISOString();
@@ -639,7 +644,8 @@ function card(m) {
     steps: m.steps, own_steps: m.own_steps, technic: m.technic, views, likes, builds,
     remixes: remixesOf(m.id).length, by: m.author !== null && owner ? { handle: owner.handle, name: owner.name } : null,
     tested: TESTED.has(m.id), ...(APPLIED ? { comments: commentsOn(m.id) } : {}),
-    ...(m.made_with !== undefined ? { made_with: m.made_with } : {}) };
+    ...(m.made_with !== undefined ? { made_with: m.made_with } : {}),
+    ...(m.made_with_shown !== undefined ? { made_with_shown: m.made_with_shown } : {}) };
 }
 
 /// How many comments a visitor may read on [id]'s page (gallery_tabs.sql
@@ -648,9 +654,10 @@ const commentsOn = (id) => COMMENTS.filter((one) => one.model === id && !one.rem
   && !ADMIN.barred.some((barred) => barred.account === one.author)).length;
 
 /// How a model was made: as its app said (made_with.sql), else as its tags
-/// say (web/card.js madeOf).
-const madeOf = (m) => (m.made_with ? (m.made_with === "hand" ? "hand" : "assistant")
-  : (m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify") ? "assistant" : "hand");
+/// say (web/card.js madeOf); with the assistant only where its owner chose
+/// to say so (made_with_shown.sql), by hand every other.
+const madeOf = (m) => (m.made_with_shown === true && (m.made_with ? m.made_with !== "hand"
+  : (m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify")) ? "assistant" : "hand");
 
 /// directory_model: a model's page, with the line it came from and its listed remixes.
 function modelPage(id) {
@@ -1114,6 +1121,21 @@ function rest(where, init) {
     const visitor = !new Headers(init.headers || {}).get("authorization");
     const rows = table().filter((row) => !(visitor && path === "shared_models" && !row.published));
     return reply(200, chosen(rows, where.searchParams));
+  }
+  // Its owner's choice of whether its page says how it was made
+  // (supabase/made_with_shown.sql): kept, so the page and the gallery say it
+  // after (made_shown_flow.mjs).
+  if (method === "PATCH" && path === "shared_models") {
+    let body = {};
+    try {
+      body = JSON.parse(init.body || "{}");
+    } catch {
+      body = {};
+    }
+    const id = /^eq\.(.+)$/.exec(where.searchParams.get("id") || "")?.[1];
+    if (Object.keys(body).join() === "made_with_shown" && id) {
+      for (const row of MODELS.filter((one) => one.id === id)) row.made_with_shown = body.made_with_shown === true;
+    }
   }
   // What a remix changed: kept, by its model, as the table keeps it.
   if (path === "remix_changes" && method === "POST") {
@@ -1723,8 +1745,8 @@ function people(method, params, body, who, state) {
     // what they saved.
     if (op === "lists" || op === "keeps") {
       const mine = LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at")).map(({ models, owner, ...list }) =>
-        ({ ...list, description: list.description || null, kind: null, sort: "added", cover: null, down: false, sets: 0,
-          models: models.length, count: models.length }));
+        ({ ...list, description: list.description || null, visibility: list.public ? "public" : "private", link: null, kind: null,
+          sort: "added", cover: null, down: false, sets: 0, models: models.length, count: models.length }));
       if (op === "lists") {
         return answer(200, { lists: mine, owned: { sets: 0, unique: 0, pieces: 0, shown: false },
           saved: { models: FAVOURITES.filter(([account]) => account === ME).length }, profile: { handle: personOf(ME).handle } });

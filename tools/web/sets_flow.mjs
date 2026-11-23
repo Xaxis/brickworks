@@ -24,7 +24,7 @@
 //      deploy is said, with what it waited on longest, and a visitor after
 //      it, in a browser of their own, is what is held to 2.5 s.
 //   3. A set with one, 10179-1 Millennium Falcon: its LDraw model's render,
-//      Build it in 3D, the model's page, which links back.
+//      Build it (at its first step), Make your own version, the model's page, which links back.
 //   4. Parts you own: a throwaway account (a Resend test address, its session
 //      minted here) with three of 10497-1's lots in its collection sees
 //      "Parts you own: N of M" with N those lots' pieces and M the set's
@@ -246,13 +246,15 @@ try {
       title: document.querySelector("h1")?.textContent.trim(), picture: document.querySelector(".picture img")?.getAttribute("src"),
       drawn: document.querySelector(".picture img")?.naturalWidth || 0,
       build: document.querySelector("[data-build3d]")?.getAttribute("href"),
+      version: document.querySelector("[data-version]")?.getAttribute("href"),
       model: [...document.querySelectorAll("a")].some((one) => one.getAttribute("href") === "/library/omr-10179-1"),
     }));
     check(`its page answers (${answer?.status()}): "${facts.title}"`, answer?.status() === 200 && facts.title === "Millennium Falcon");
     check(`its picture is its LDraw model's render (${facts.picture}, ${facts.drawn} px)`,
       facts.picture === "/library/omr-10179-1.cutout.webp" && facts.drawn > 0);
-    check(`Build it in 3D opens the model (${facts.build}), and its page is linked`,
-      facts.build === "/app?new=1&library=omr-10179-1" && facts.model);
+    check(`Build it opens the model at its first step (${facts.build}), Make your own version opens it as a copy `
+      + `(${facts.version}), and its page is linked`,
+      facts.build === "/app?new=1&library=omr-10179-1&build" && facts.version === "/app?new=1&library=omr-10179-1" && facts.model);
     await page.screenshot({ path: path.join(out, "set_modelled.png") });
     await page.goto(`${site}/library/omr-10179-1`, { waitUntil: "load" });
     const back = await page.$eval(`a[href="/library/set/${MODELLED}"]`, (one) => one.textContent.trim()).catch(() => "");

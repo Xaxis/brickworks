@@ -1657,7 +1657,7 @@ func _show_power() -> void:
 	var lines: PackedStringArray = wiring.motor_lines()
 	if not wiring.has_power() and not wiring.motors.is_empty():
 		lines.append(tr("Nothing here gives a motor power, so Play turns it by hand: add a battery box "
-			+ "or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."))
+			+ "or a hub and lay its cable (Make, Cable, hose or chain…, Power Functions cable)."))
 	_power_said.text = "\n".join(lines)
 
 

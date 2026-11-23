@@ -19,5 +19,6 @@
   "instructions#lay-out": "booklet-layout#lay-out",
   "ai#key-custody": "connect#key-custody",
   "ai#ask-provider": "claude-code#command-line",
-  "connector#chatgpt": "connect-chatgpt"
+  "connector#chatgpt": "connect-chatgpt",
+  "collections": "lists"
 }

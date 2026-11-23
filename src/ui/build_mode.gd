@@ -196,7 +196,9 @@ func _build_top() -> void:
 	_top.add_child(column)
 	var row := HBoxContainer.new()
 	column.add_child(row)
-	_close = _button("Close", "Back to the whole model (Esc)")
+	# Done, as a mode left for the whole model says it (Look.DONE): the
+	# timeline's own Done says the same.
+	_close = _button("Done", "Back to the whole model (Esc)")
 	_close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_close.pressed.connect(func() -> void: close_wanted.emit())
 	row.add_child(_close)

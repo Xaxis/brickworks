@@ -29,7 +29,8 @@
 ##   over the model (MovedOffer) saying how many; Review… opens the list
 ##   (MovedPartsDialog): moved and alias rows checked; one row unchecked and
 ##   Replace checked replaces the others only; Keep as is on the bar changes
-##   nothing; an open with a part that has no file asks in the list, its
+##   nothing, and the same file opened again is not offered them again (said
+##   once, ux13); an open with a part that has no file asks in the list, its
 ##   Search putting the number in the parts bin's search.
 ## - edits: a part put down, then Update all, then Undo twice: the replace
 ##   taken off, then the part (mvreview F3).
@@ -334,6 +335,10 @@ func _case_dialog() -> void:
 	_check("...Keep as is on the bar: gone, the file as it opened%s" % _first_unlike(before,
 		_store.saved_text()), keep != null and not offer.visible and _store.saved_text() == before
 		and before == text)
+	# Said once: the same file opened again is not offered them again.
+	await _open_as_person("dragonfly_keep", text)
+	_check("...the same file opened again: no bar, said once (%s)" % offer.words_now(),
+		not offer.visible and MovedParts.renumbered_count(_store.moved) > 0)
 	# A part with no file: asked about in the list as it opens, as before,
 	# and Search looks for it among the parts.
 	await _open_as_person("lion", _text_kept(OMR + "6056-1.mpd"))
@@ -838,7 +843,7 @@ func _open_as_person(name: String, text: String) -> void:
 	var placed: int = await _bar.open_with_progress(MODELS + name + ".ldr")
 	if placed >= 0:
 		_bar.opened.emit(placed)
-		_bar.offer_moved()
+		_bar.offer_moved(true, MODELS + name + ".ldr")
 	await _settled()
 
 

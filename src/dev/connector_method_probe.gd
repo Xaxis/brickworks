@@ -43,34 +43,26 @@ func _run() -> void:
 
 	print("\nthe method, once a sitting")
 	var first: Dictionary = _answer("look")
-	var sent: Variant = connector._taught(connector._sitting(_call("a1b2", "look_at_model")),
-		"look_at_model", first)
+	var sent: Variant = _sent(connector, "a1b2", "look_at_model", first)
 	var said: Array = _texts(sent)
 	_check(said.size() == 2 and str(said[0]) == Assistant.METHOD and str(said[1]) == "look",
 		"a chat's first answer says how to work, then the tool's own words")
 	_check(_texts(first) == ["look"], "...and the answer the panel shows is the tool's alone")
-	said = _texts(connector._taught(connector._sitting(_call("a1b2", "search_parts")),
-		"search_parts", _answer("found")))
+	said = _texts(_sent(connector, "a1b2", "search_parts", _answer("found")))
 	_check(said == ["found"], "its second answer does not say it again")
-	said = _texts(connector._taught(connector._sitting(_call("c3d4", "plan_scale")),
-		"plan_scale", _answer("scale")))
+	said = _texts(_sent(connector, "c3d4", "plan_scale", _answer("scale")))
 	_check(said.size() == 2 and str(said[0]) == Assistant.METHOD, "another chat is told once too")
-	said = _texts(connector._taught(connector._sitting(_call("", "plan_scale")),
-		"plan_scale", _answer("scale")))
-	var again: Array = _texts(connector._taught(connector._sitting(_call("", "view_model")),
-		"view_model", _answer("view")))
+	said = _texts(_sent(connector, "", "plan_scale", _answer("scale")))
+	var again: Array = _texts(_sent(connector, "", "view_model", _answer("view")))
 	_check(said.size() == 2 and again == ["view"],
 		"a tab's own address, naming no chat, is told once")
 	var refused: Variant = {"jsonrpc": "2.0", "id": 1, "error": {"code": -32603, "message": "no"}}
-	var sitting: Dictionary = connector._sitting(_call("e5f6", "look_at_model"))
-	_check(connector._taught(sitting, "look_at_model", refused) == refused
-		and _texts(connector._taught(connector._sitting(_call("e5f6", "look_at_model")),
-			"look_at_model", _answer("look"))).size() == 2,
+	_check(_sent(connector, "e5f6", "look_at_model", refused) == refused
+		and _texts(_sent(connector, "e5f6", "look_at_model", _answer("look"))).size() == 2,
 		"an answer with nothing to carry it waits for the next")
 	(connector._sittings["a1b2"] as Dictionary)["last"] = \
 		Time.get_ticks_msec() - ClaudeConnector.QUIET_MS - 1000
-	said = _texts(connector._taught(connector._sitting(_call("a1b2", "look_at_model")),
-		"look_at_model", _answer("look")))
+	said = _texts(_sent(connector, "a1b2", "look_at_model", _answer("look")))
 	_check(said.size() == 2, "a chat quiet for half an hour is told again, as a new sitting")
 	_check(Assistant.METHOD.length() < 1500,
 		"the method is %d characters, a few lines" % Assistant.METHOD.length())
@@ -101,6 +93,17 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ClaudeConnector.where))
 	print("\n%s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures > 0 else 0)
+
+
+## [param answer] as the chat is sent it, through the steps a relay's call
+## takes in the tab (ClaudeConnector's work loop): its sitting, the call
+## beginning there, then the answer taught. _taught reads what _begin decided
+## of the sitting: called alone, a first look had decided nothing, as a first
+## gallery read has (claudelink), and was told nothing.
+static func _sent(connector: ClaudeConnector, chat: String, tool: String, answer: Variant) -> Variant:
+	var sitting: Dictionary = connector._sitting(_call(chat, tool))
+	connector._begin(sitting, tool, {})
+	return connector._taught(sitting, tool, answer)
 
 
 ## A tool call as the relay hands it to the tab, from [param chat].

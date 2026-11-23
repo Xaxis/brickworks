@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""The gallery's tabs at their own addresses: /library, /builds, /collections.
+"""The gallery's tabs at their own addresses: /library, /builds, /gallery-lists.
 
-    tools/browse_pages.py           write web/library.html, web/builds.html and web/collections.html
+    tools/browse_pages.py           write web/library.html, web/builds.html and web/gallery-lists.html
     tools/browse_pages.py --check   say which differ from what this writes, and exit 1 if any do
 
 The gallery is one page to browse (web/gallery.html, web/gallery.js;
-browse, 2026-11-02): Top, New, Following, Builds, Collections and Sets are
+browse, 2026-11-02): Top, New, Following, Builds, Lists and Sets are
 its tabs, switched in place. Each tab is at the address its own page had,
 so every link anyone kept, every sitemap's line and every search engine's
-entry still lands on it: /builds, /collections and /library. A static site
+entry still lands on it: /builds and /library. Lists, the public lists,
+were Collections at /collections until lists2a (2026-11-23), which named
+them as people do: /gallery-lists now, /collections answering with a
+permanent redirect there, its query kept (api/people.js op=moved, the
+route in tools/deploy.sh), since /lists is your own (web/lists.html). A static site
 serves a file at each, so each is a copy of web/gallery.html, written here:
 the same page, with its own head (its title, its description, its canonical
 link and its languages' alternates, its share card's words), the tab it
@@ -57,15 +61,14 @@ COPIES = {
         "card_said": "Photos of real builds of models from the Brickworks gallery, each linked to its model and its builder.",
         "label": "Search the builds", "placeholder": "Search builds by the model built",
     },
-    "collections.html": {
-        "path": "/collections", "tab": "collections",
-        "title": "Collections — the Brickworks gallery",
-        "description": "Collections of models built in Brickworks, made by the people who build them: follow one to see what "
-                       "is put in it.",
-        "card": "Collections in the Brickworks gallery",
-        "card_said": "Collections of models built in Brickworks, made by the people who build them: follow one to see what "
-                     "is put in it.",
-        "label": "Search the collections", "placeholder": "Search collections by name or builder",
+    "gallery-lists.html": {
+        "path": "/gallery-lists", "tab": "collections",
+        "title": "Lists — the Brickworks gallery",
+        "description": "Lists of sets and models made by the people who build them: what to build next, a theme, a shelf. "
+                       "Follow one to see what is put in it.",
+        "card": "Lists in the Brickworks gallery",
+        "card_said": "Lists of sets and models made by the people who build them: follow one to see what is put in it.",
+        "label": "Search the lists", "placeholder": "Search lists by name or builder",
     },
 }
 

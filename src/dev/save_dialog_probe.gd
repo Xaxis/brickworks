@@ -383,7 +383,7 @@ func _instructions() -> void:
 	_check("...named after the model (%s)" % dialog.current_file,
 		dialog.current_file == _bar.model_name().to_snake_case() + "_instructions.html")
 	_check("...its title saying what it is (%s)" % dialog.title,
-		dialog.title == "Save the instructions")
+		dialog.title == "Save the instructions: they open in your browser, to print or save as a PDF")
 	await _shot("06_instructions_dialog")
 	var path: String = _out.path_join("tug booklet.html")
 	await _answer(dialog, path)

@@ -3,7 +3,7 @@
 ## five studs apart, then another onto three in a triangle, each in four
 ## actions or fewer; one onto two wheels turned and tilted, as a session
 ## over MCP lays one; a wheel nudged and its band following. A spring from
-## Build, Hose, tube or chain… between two pin holes four studs apart,
+## Build, Cable, hose or chain… between two pin holes four studs apart,
 ## stretched to six by nudging one, and a shock absorber picked from the
 ## bin. Saved, opened again, and found the same.
 ##

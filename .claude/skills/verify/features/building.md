@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe -->
 
 ## Sub-features
 
@@ -353,8 +353,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   command after the assistant is turned on (`Shell._fill` gives a command one
   id for good; a menu made again once handed its ids to others).
   `app menu in a browser` (preview check `app_menu`) does it in a browser at
-  1280 and 390 wide, reads the mark's colours off the canvas, and follows
-  Back to brickworks.diy to the site's header.
+  1280 and 390 wide, reads the mark's colours off the canvas, opens the
+  rows from Menu at the right, and follows the mark to the site's header
+  (before appchrome, Back to brickworks.diy).
+- `one header in every mode` (`src/ui/app_header.gd`, appchrome 2026-11-23):
+  the menu bar is the site's header (web/site.css `.site-head`, 60 points and
+  a line, `--bg`, the 26-point mark and 18-point name, 44-point controls,
+  16/24-point gutters) in the studio, the viewer (`Main._enter_view` keeps
+  the bar, plain: no menus or model name), Build it (`BuildMode` under it,
+  `Main._under_header`), after Build it's Close, Lay out page
+  (`PageEditor` under it) and after its Done, and a phone's top bar
+  (`PhoneShell._top`). In a browser (`AppHeader.web_layout`) the mark is
+  `app_home`, the site's `/` in this tab (`AppHeader.go_home`), and Menu
+  (`app_menu`) beside Account; on the desktop the mark is the menu. In the
+  viewer Account opens the site's /settings. Account's feed count sits over
+  its corner (`ModelBar._count`), so nothing in the header moves when it
+  comes; the header's points are capped so the studio's row stays one line
+  (`ModelBar._fitting_pt`), the same cap in every mode. `tests/test_app_header.py`
+  holds the numbers to site.css; `appchrome probe` (windowed) opens every
+  mode in both layouts at 1280 x 800 and 390 x 844 and compares the
+  header's rect, mark and right controls with the viewer's.
 - `find a command` (`src/ui/command_palette.gd`, `Shell.palette`): Ctrl+/
   (and Ctrl+Shift+P on the desktop; a browser keeps that one), or the app
   menu's Find a command…, opens a box over the model with the keys in it.
@@ -491,7 +509,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   meant for a part landed on them. The sub-assembly banner and the offer to
   seat old parts are in a strip above the model (`Main._notices`), not over
   it. The panels that work on the model as it is seen (Build, Motions…; Tools,
-  Simulate mechanism…; Make, Hose, tube or chain…; Tools, Colour the hidden
+  Simulate mechanism…; Make, Cable, hose or chain…; Tools, Colour the hidden
   parts…; View, Stress's legend) are in one more column, beside the model's on
   its left (`Main._tool_column`), shown while any is open: opening one folds
   the parts bin and closing the last puts it back, and where nothing folds
@@ -1909,9 +1927,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   sub-model renamed to a gone one's name drops that one's looks
   (`BookletLooks.renamed`). A model nobody gave steps (an app's own file:
   `0 Author: Brickworks`, no `AUTHORED_STEPS`) is planned again after every
-  edit of what holds what, and again on open, from parts numbered in the
-  order the file's lines come: a nested drop saved and opened again showed
-  4 of its 8 parts in other steps (tdcheck; open, treerows). Probe:
+  edit of what holds what; up to stepkeep2 it was planned again on open too,
+  from parts numbered in the order the file's lines come: a nested drop saved
+  and opened again showed 4 of its 8 parts in other steps (tdcheck; open,
+  treerows). Since, an open keeps the steps the file was saved in (see
+  [view](view.md) `the author's steps`), so the counts it notes are 0. Probe:
   `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`, `copies`, `7140`,
   `siblings` or `own` for one; own drives a drag in the tree, Ungroup,
   Ctrl-G, Make unique, Rename, parts taken out, a paste and a delete on
@@ -3560,7 +3580,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (a brick with studs on its side) goes onto those studs: a socket on the stud
   nearest the pointer, flat on the face (`Builder._onto_side_studs`).
 - `hoses and chains by hand` (`src/ui/flex_tool.gd`, the laying itself in
-  `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel in a column
+  `src/assembly/flex.gd`): Make, Cable, hose or chain… opens a panel in a column
   beside the model's (main's `_tool_column`, Simulate's too), never over it:
   over the model's left edge it covered the left one of two gears a chain was
   to go round at 1400 x 900 (keys3). Opening it keeps the parts column beside
@@ -3599,7 +3619,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `src/ui/flex_tool.gd`, LDCad's path and spring the reference): a rubber belt
   (85543, 85545, 85546, u151) or a shock absorber picked in the bin opens the
   flexible part tool on it instead of putting it down (`Main._on_part_chosen`,
-  `FlexTool.lays_part`); a bare spring is Build, Hose, tube or chain…, Spring
+  `FlexTool.lays_part`); a bare spring is Build, Cable, hose or chain…, Spring
   or shock. A band: click the pulleys, wheels, bushes or axles it goes round in
   order (pointing lights one yellow; a groove before an axle). Each click lays
   it again: tangent runs and arcs (`Bands.loop`), each round wrapped on the

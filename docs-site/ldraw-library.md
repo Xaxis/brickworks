@@ -1,5 +1,5 @@
 ---
-ai: The LDraw community's 3D models of real sets, opened in the app (File › Library) or browsed at /library with every other LEGO® set and its parts list, and the LDraw Parts Library every part comes from. An assistant searches them with gallery library=true and opens one with open_model library=.
+ai: The LDraw community's 3D models of real sets, opened in the app (File › Library) or turned in 3D on a set's page (/library/set/<number>), browsed at /library with every other LEGO® set and its parts list, and the LDraw Parts Library every part comes from. An assistant searches them with gallery library=true and opens one with open_model library=.
 rules:
   - One LDraw unit is 0.4 mm exactly; files go to and from LDCad, LeoCAD and Studio unchanged.
   - Each set says who modelled it and under which licence.
@@ -12,9 +12,9 @@ description: Open LDraw's 3D models of real LEGO® sets, find any set's parts li
 
 ## Open a real set {#sets}
 
-**File › Library…** ([[Ctrl+Shift+O]]), or **File › Open…** then *From the library*, holds the LDraw community's models of real sets. Its other shelf, **Community**, has the models people shared in the gallery.
+**File › Library…** ([[Ctrl+Shift+O]]), or **File › Open…** then *From the library*, holds the LDraw community's models of real sets. Its other shelf, **Gallery**, has the models people shared in the gallery at brickworks.diy, the place a remix starts.
 
-1. Type a set's name, number or theme in the search at the top. It asks as you type, and finds the set through a misspelling or words run together. [[Ctrl+F]] comes back to the search; [[Esc]] clears it.
+1. Type a set's number, or words of its name, theme or designer, in the search at the top. It asks as you type, and each word finds the words that begin with it: **car** finds Car, Cars and Cargo, not Scarecrow. [[Ctrl+F]] comes back to the search; [[Esc]] clears it.
 2. Narrow it by theme, years and size, or choose another order.
 3. Press **Open** under a cover, or [[Enter]] for the first set found (on a phone, Enter only searches).
 
@@ -53,7 +53,9 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - signed in, with sets in [My collection](/docs/collection), **Parts you own: N of M**, and what you are missing as a BrickLink wanted list or a Rebrickable CSV;
 - **Open its parts in Brickworks**: the app with the set's parts in the bin, the most used first (`/app?parts=<number>` does the same);
 - **Design with these parts**: the app with the assistant on and a brief naming the set's parts, for your own AI to design from when you send it;
-- where LDraw has a model of it, **Build it in 3D**, and that model's own page at `brickworks.diy/library/<id>`: who modelled it and under which licence, **Share**, and **Open in Brickworks**, which opens it as File › Library… does;
+- where LDraw has a model of it, **Build it**: Brickworks opens that model at its first step, in the timeline (**B**), to build it step by step; and that model's own page at `brickworks.diy/library/<id>`: who modelled it and under which licence, **Share**, and **Open in Brickworks**, which opens it as File › Library… does;
+- where LDraw has a model of it, **Make your own version**: Brickworks opens a copy of that model, credited to whoever modelled it for LDraw. Change it as you like and [publish it](/docs/sharing); it keeps the credit, says it was changed, and is listed on the set's page under **Versions of this set**, within a minute;
+- **Versions of this set**: the copies of LDraw's model of it that people published, theirs changed first, each card saying *Their own version: changed from LDraw's model* or *LDraw's model, as it is*. When there are none yet it says so, with **Make your own version**;
 - **Built from this set**: gallery models built from its parts, as Brickworks counted them when they were published (every part from this set; 80% or more of their parts from it; or from it and up to four other sets together), and models whose designers said they were built from it, changed from it or inspired by it ([based on](/docs/model-pages#based-on)). Each card says how much of it is from the set: *Every part from this set*, *92% of its parts from this set*, *73% from this set, the rest from 9764 and 11032*. When there are none yet it says so, and **Build something from it** opens Brickworks with the set's parts in the bin; publish what you build and it is listed here.
 
 ![Built from this set on a set's page: the little rocket's card, saying 73% from this set, the rest from 9764 and 11032.](/docs/img/set-built-from.webp "What people built from a set, on its page.")
@@ -67,6 +69,29 @@ ui:an LDraw set's page
 ui:every set's page
 api:a set's own picture
 lib:a set's picture drawn from its parts
+lib:a set's versions
+-->
+
+### Turn it in 3D on its page {#set-3d}
+
+Where LDraw has a model of the set, about 1,300 of them, its picture says **View in 3D**. Press it, click the picture or drag across it, and the set turns right there in the picture's frame, as a [shared model's](/docs/model-pages#viewer) does, with nothing to install and nothing else on the page moving.
+
+- Drag to turn it and right-drag to move it; once you have pressed it, the wheel zooms (before that the wheel scrolls the page).
+- With it focused, the arrow keys turn it, **+** and **−** zoom, **0** goes back to where it started and **F** is full screen. The buttons under it do the same, and **Back to the picture** puts the picture back.
+- On a phone, a finger across turns it and up or down scrolls the page, until you take hold of it with a tap; then one finger turns it and two pinch.
+- **Open in the app** beside it opens the model in Brickworks, to step through its build, take it apart or change it.
+- A model larger than your device turns smoothly, over 3 million triangles on a phone, asks first. A browser that cannot draw in 3D says so and keeps the picture.
+
+Nothing of the 3D view is loaded until you ask for it, so the page opens as quickly as one without it. A set LDraw has not modelled keeps its picture and says **No 3D model of this set yet** under it.
+
+![The Boutique Hotel's page with LDraw's model of it turning in 3D where its picture was: Zoom out, Zoom in, Reset the view, Full screen and Back to the picture under it, Open in the app beside them, and beside it the set's name, Own, Want, Build it, Make your own version and its facts.](/docs/img/set-3d.webp "A set LDraw has modelled, turned in 3D on its own page.")
+
+![On a phone, the Boutique Hotel in 3D in its page's square picture frame, its tools under it and Open in the app.](/docs/img/set-3d-phone.webp "The same on a phone: a finger across turns it, up or down scrolls the page.")
+
+![Concorde's page, a set LDraw has no model of: a few of its parts drawn by Brickworks, and under them, No 3D model of this set yet.](/docs/img/set-no3d.webp "A set with no 3D model says so under its picture.")
+
+<!-- covers
+ui:a model in 3D on its page
 -->
 
 ## The parts {#parts}
@@ -75,4 +100,4 @@ Every part is from the [LDraw Parts Library](https://library.ldraw.org), the com
 
 ## Credits {#credits}
 
-**Brickworks › About Brickworks** (the mark at the left of the menu bar) names every piece of other people's work Brickworks is built with, the LDraw library among them, with its terms. LDraw™ is a trademark owned and licensed by the Estate of James Jessiman; Brickworks is not affiliated with or endorsed by LDraw.org. Catalogue data is from [Rebrickable](https://rebrickable.com/downloads/).
+**About Brickworks** in the app's menu (**Menu** at the right of the header in a browser, the mark at the left in the desktop app) names every piece of other people's work Brickworks is built with, the LDraw library among them, with its terms. LDraw™ is a trademark owned and licensed by the Estate of James Jessiman; Brickworks is not affiliated with or endorsed by LDraw.org. Catalogue data is from [Rebrickable](https://rebrickable.com/downloads/).

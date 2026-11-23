@@ -17,6 +17,7 @@ const outDir = path.join(wt, "docs-site/pictures/answers");
 const dir = await import(pathToFileURL(path.join(wt, "api/_directory.js")).href);
 const cards = await import(pathToFileURL(path.join(wt, "web/card.js")).href);
 const tested = await import(pathToFileURL(path.join(wt, "api/_tested.js")).href);
+const notices = await import(pathToFileURL(path.join(wt, "api/_notifications.js")).href);
 const fs = await import("node:fs");
 const TB = "d0c5d0c5-d0c5-4d0c-8d0c-d0c5d0c5d0c5";
 const BY = { handle: "test-builder", name: "Test builder" };
@@ -198,6 +199,33 @@ S["/api/people?op=profile&handle=test-builder"] = { handle: BY.handle, name: BY.
   levels: levels.map(([track, n, level, of, reached, next]) => ({ track, n, level, of, reached, next })) };
 S["/api/people?op=favourites"] = { page: 1, per_page: 24, more: false, models: [card(byId.DocsShop01), card(byId.DocsOwl001)] };
 S["/api/people?op=following"] = { mine: true, ready: true, following: [] };
+// What keep.js asks of every card and a model's page (api/_mylists.js keeps):
+// Saved, and each list with who sees it, Ideas for later shared by its link
+// (lists2a) so the panel shows all three.
+const LINKED = "DocsList04";
+const seen = (l) => (l.public ? "public" : l.id === LINKED ? "link" : "private");
+const listed = (l) => ({ id: l.id, name: l.name, description: l.description, public: l.public, visibility: seen(l),
+  link: seen(l) === "link" ? `https://brickworks.diy/c/${l.id}?link=DocsLinkKey0000000000a` : null, kind: null,
+  sort: "added", cover: null, down: false, sets: 0, models: l.models.length, count: l.models.length,
+  updated_at: "2026-11-02T10:00:00Z" });
+S["/api/people?op=keeps"] = { signed_in: true, want: null, lists: LISTS.map((l) => listed(l)),
+  sets: {}, models: Object.fromEntries(rows.map((r) => [r.id, { saved: r.id === main.id,
+    lists: LISTS.filter((l) => l.models.includes(r.id)).map((l) => l.id) }])) };
+// Your lists (/lists, api/_mylists.js yourLists): the same lists, and one
+// only you see, Weekend builds, to share (lists2a: Share asks who may open
+// it, Anyone with the link chosen); Small and quick's Add sets answered
+// with what it would add, nothing written (op=import_preview).
+const WEEKEND = { id: "DocsList05", name: "Weekend builds", public: false, models: ["DocsShop01", "DocsHous01", "DocsTree01"],
+  description: null, followers: 0 };
+S["/api/people?op=lists"] = { lists: [...LISTS, WEEKEND].map(listed), owned: { sets: 0, unique: 0, pieces: 0, shown: false },
+  saved: { models: 1 }, profile: { handle: BY.handle } };
+for (const l of [WEEKEND, LISTS[1]]) {
+  S[`/api/people?op=list_items&id=${l.id}`] = { ...listed(l), mine: true, by: { handle: BY.handle, name: BY.name },
+    url: `https://brickworks.diy/c/${l.id}`, total: l.models.length, page: 1, more: false,
+    items: l.models.map((id) => ({ key: `model:${id}`, kind: "model", card: card(byId[id]) })) };
+}
+S["/api/people?op=import_preview"] = { into: LISTS[1].id, matched: ["10497-1", "75192-1", "42115-1"], already: ["6080-1"],
+  missing: ["99999-1"], counts: { matched: 3, already: 1, missing: 1 } };
 S["/api/people?op=alike"] = { handle: BY.handle, name: BY.name, designers: [], yours: true };
 S["/api/people?op=follows&handle=test-builder"] = { handle: BY.handle, ready: true, followers: 6, following: 0, shows: true,
   you_follow: false, mine: true, may: false, why_not: "That is you.", signed_in: true };
@@ -216,6 +244,34 @@ S[`/api/people?op=photos&id=${main.id}`] = { model: main.id, owner: true, photos
 S["/api/orangecheck?op=status"] = { ready: true, did: false, only: false, fresh: false };
 S["/api/oauth?op=connections"] = { connections: [], before: false };
 S["/api/plans?op=feedback"] = { beta: false, reports: [] };
+// Notifications (and the account menu's newest five, its first five), as
+// api/_notifications.js draws them from what the database hands it, on a
+// day of its own (NOW), so a picture never says the day's "2 hours ago";
+// and what the account chose (Settings' grid, Muted models).
+const NOW = Date.parse("2026-11-20T12:00:00Z");
+const ago = (minutes) => new Date(NOW - minutes * 60000).toISOString();
+const MIA = { handle: "mia-builds", name: "Mia" };
+const LEO = { handle: "leo-bricks", name: "Leo" };
+const SAM = { handle: "sam-makes", name: "Sam" };
+const noticeRows = [
+  { kind: "comment", at: ago(12), on: "DocsSprt01", model: "DocsSprt01", comment: 41, by: MIA,
+    said: "The steering really works. My son built it twice." },
+  { kind: "likes", at: ago(40), on: "DocsSprt01", model: "DocsSprt01", likes: 4, day: "2026-11-20" },
+  { kind: "photo", at: ago(95), on: "DocsSprt01", model: "DocsSprt01", photo: "DocsPhoto1", words: "Ours, in blue", yours: true, by: LEO },
+  { kind: "reply", at: ago(150), on: "DocsShop01", model: "DocsShop01", comment: 52, parent: 50, by: SAM,
+    said: "The awning is two slopes, yes." },
+  { kind: "achievement", at: ago(300), track: "designer", level: 3, of: 6, reached: 10 },
+  { kind: "remix", at: ago(420), on: "DocsOwl001", model: "DocsOwlRmx", of: "DocsOwl001", name: "Owl on a branch", of_name: "Barn owl", by: LEO },
+  { kind: "challenge_closing", at: ago(600), challenge: CHALLENGE.id, title: CHALLENGE.title, ends_on: CHALLENGE.ends_on },
+  { kind: "mention", at: ago(900), on: "DocsFire01", model: "DocsFire01", comment: 63, by: MIA, said: "@test-builder how did you hang the ladder?" },
+];
+const noticeModels = Object.fromEntries(["DocsSprt01", "DocsShop01", "DocsOwl001", "DocsFire01"].map((id) => [id,
+  { name: byId[id].name, has_image: true, has_thumb: true, updated_at: byId[id].updated_at }]));
+const drawnNotices = notices.noticeGroups({ rows: noticeRows, models: noticeModels, seen_at: ago(60), read_at: null, reads: {} }, "", NOW);
+S["/api/people?op=notifications"] = { ready: true, kept: true, chosen: true, view: "inbox", ...drawnNotices };
+S["/api/people?op=notification_prefs"] = { ready: true, kinds: notices.KINDS, mailed_as: notices.MAILED_AS,
+  here: notices.KINDS, push: ["reply", "mention", "comment"], email: ["reply", "mention"],
+  muted: [{ model: "DocsBoat01", name: byId.DocsBoat01.name, link: "/m/DocsBoat01", picture: "/m/DocsBoat01.webp" }] };
 const signed = { "$comment": "Signed in as the shared test account (you@example.com), over test-account.json. "
   + "Written by tools/web/docs_world.mjs: change it there.",
   answers: S, storage: { "brickworks.session": { refresh_token: "docs", email: EMAIL, user_id: TB,
@@ -254,7 +310,7 @@ O["/api/share?op=shelves"] = { ...A["/api/share?op=shelves"], pick: { ...A["/api
 const CASTLE = "6080-1";
 const castleLists = [["DocsList05", "Castles to build", "Ada Lovelace", "ada", 9], ["DocsList06", "Classic Castle", "Ben", "ben-b", 14],
   ["DocsList07", "My childhood sets", "Kim", "kimbricks", 31]];
-O[`/api/share?op=set_based&set=${CASTLE}`] = { set: CASTLE, models: [],
+O[`/api/share?op=set_based&set=${CASTLE}`] = { set: CASTLE, models: [], versions: [],
   lists: { count: castleLists.length, lists: castleLists.map(([id, name, by, handle, count]) => ({ id, name, count,
     by: { handle, name: by } })) } };
 O[`/api/people?op=keeps&sets=${CASTLE}`] = { sets: { [CASTLE]: { own: 2, lists: [] } }, models: {}, lists: [], want: null };
@@ -281,7 +337,7 @@ const Alt = {};
 Alt[`/api/share?op=set_based&set=${rocketSet.set}`] = { set: rocketSet.set,
   models: [{ ...card(rocket), based: null, alt: basesMod.altCard({ role: rocketSet.role, have: rocketSet.have,
     pieces: rocketCount.pieces, with: rocketCount.rows.filter((row) => row.set !== rocketSet.set).map((row) => row.set) }) }],
-  lists: { count: 0, lists: [] } };
+  versions: [], lists: { count: 0, lists: [] } };
 const AltDb = {};
 AltDb["rest/v1/rpc/directory_model"] = { ...dbRow(rocket), listed: true, from: [], remixes_listed: [] };
 AltDb[`rest/v1/share_versions?model=eq.${rocket.id}`] = [{ n: 1, at: day(2), note: null, parts: rocket.parts,

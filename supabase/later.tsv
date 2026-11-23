@@ -95,3 +95,10 @@ discovery.sql	gallery_shows	wip.sql	m.wip_at is null
 modelled_by.sql	directory_card	wip.sql	'wip', m.wip_at
 made_with.sql	gallery_models	wip.sql	a.sort in ('newest', 'added')
 collection_follows.sql	follow_rows	wip.sql	wip_rows(viewer
+replies.sql	claim_comment_digest	notification_prefs.sql	notices_told
+talk.sql	push_collect	notification_prefs.sql	notification_kind(r.kind)
+modelled_by.sql	directory_card	made_with_shown.sql	'made_with_shown', m.made_with_shown
+wip.sql	directory_card	made_with_shown.sql	'made_with_shown', m.made_with_shown
+made_with.sql	gallery_models	made_with_shown.sql	not (m.made_with_shown and
+wip.sql	gallery_models	made_with_shown.sql	not (m.made_with_shown and
+alt_builds.sql	gallery_models	made_with_shown.sql	not (m.made_with_shown and

@@ -184,6 +184,8 @@ def test_the_lines_as_drawn() -> None:
         " group: c.altHtml({ how: 'group', sets: [s('42115-1', 300), s('42054-1', 20), s('6111-1', 3)], pieces: 330 }),"
         " best: c.altHtml({ how: 'best', sets: [s('31009-1', 29)], pieces: 30 }),"
         " none: c.altHtml(null),"
+        " version: c.altHtml({ how: 'version', sets: [{ set: '346-2', name: 'House with Car', have: 140,"
+        "   href: '/library/set/346-2#versions' }], pieces: 150 }),"
         " card: [c.altCardSaid({ role: 'whole', have: 5, pieces: 5 }), c.altCardSaid({ role: 'group', have: 4, pieces: 9,"
         "   with: [{ set: '2000-1' }] }), c.altCardSaid({ role: 'best', have: 9, pieces: 10 }), c.altCardSaid(null, 'changed'),"
         "   c.altCardSaid(null, null)],"
@@ -198,6 +200,8 @@ def test_the_lines_as_drawn() -> None:
     assert said["best"] == ('<p class="from alt-build" id="alt-build" data-alt="best">96% from '
                             '<a href="/library/set/31009-1">31009 Small Cottage</a></p>')
     assert said["none"] == ""
+    assert said["version"] == ('<p class="from alt-build" id="alt-build" data-alt="version">A version of LEGO® set '
+                               '<a href="/library/set/346-2#versions">346-2 House with Car</a></p>')
     assert said["card"] == ["Every part from this set", "44% from this set, the rest from 2000", "90% of its parts from this set",
                            "Changed from it", ""]
     assert "(uses 6 parts not in the set)" in said["short"] and 'data-short="6"' in said["short"]

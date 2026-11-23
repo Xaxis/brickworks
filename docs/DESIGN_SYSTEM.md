@@ -90,11 +90,28 @@ sized its own titles, from 26 to 74 px. Now:
   for the app, `assets/ui/mark.svg` (the app reads nothing under web/).
   Change the mark in `web/icon.svg`, run the script, commit what it wrote;
   `tests/test_mark.py` and `tests/test_boot_splash.py` fail on a copy that
-  drifted. In the app the mark opens the app's own menu, first in the menu
-  bar where its name in words was (`ModelBar.mark`: About, the website, the
-  docs, your account, and in a browser Back to brickworks.diy), where a CAD
-  program keeps its logo's menu. It is never drawn on the model, a render
-  or an export.
+  drifted. In the app it heads **the app's header**
+  (appchrome, 2026-11-23, `src/ui/app_header.gd`), the site's own: the mark
+  at 26 px and the name at 18 px bold at the left, the app's menu and
+  Account at the right, 60 px and a line on the site's `--bg`, in every mode
+  of the app (the studio, a shared model's viewer, Build it's step player,
+  the page laid out by hand); what a mode adds goes under it, never in its
+  place. The owner found Build it's view with no mark in its header ("it
+  seems obvious that you should build a cohesive consistent view in that
+  regard when using the app"). In a browser the mark is the way home, as
+  the site's is, and the app's menu is **Menu** beside Account (About, the
+  website, the docs, your account, Back to brickworks.diy); the desktop app
+  keeps that menu on the mark, where a CAD program keeps its logo's menu. A
+  phone's top bar is the same header with its tools in it, Menu at the
+  right holding Account, as the site's phone header does. What came into
+  the feed is a count over Account's corner, as the site draws it, never in
+  its words: written in, it widened Account as it came and moved Menu from
+  under the pointer. Where a window is too narrow for the studio's menus
+  and the header at full size on one line, the header takes fewer points,
+  the same in every mode.
+  `tests/test_app_header.py` fails when its numbers and site.css's part, and
+  `src/dev/appchrome_probe.gd` compares the header across the modes. It is
+  never drawn on the model, a render or an export.
 - **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
   no others, in `site.css`, `directory.css` and a page's own `<style>`.
   Under 600 is a phone, 600 to 900 a tablet, 900 to 1200 a laptop, 1200
@@ -417,16 +434,27 @@ is on the page, `hidden`, for the script to show.
   a collection's Follow on it). Not for shelves (`.models.scroller`).
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
-  person, a collection, a model's page and the feed (the landing page's
+  person, a collection and a model's page (the landing page's
   two strips keep `--page` since site356, in line with its other
-  sections, and scroll inside it); and for the header and the footer on every page, so the
+  sections, and scroll inside it; the feed keeps it since sitepolish, as
+  Notifications, the tab beside it, does, so the title does not jump
+  between them); and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
+  page keeps `--gutter` from the window's edge: 16 px on a phone, 24 from
+  600 px, 32 from 1200 px (sitepolish, 2026-11-23: the gallery, a model, a
+  person and a set ran to 16 px of a laptop's edge). A
   model's page: from 1200 px its column is 480 px, room for its action
   bar in one row inside the panel it is from 900 px (site357), and its
-  picture the rest; on a phone (under 600 px) its picture is square, the model drawn
-  as large as its width lets it (`web/model-page.js` `fitPicture`, by
-  transform alone, so nothing shifts).
+  picture the rest; on a phone (under 600 px) its picture is square, and
+  from 900 px 4:3 (16:10 from 1600 px, so it stays on a 900 px tall
+  window's first screen), as tall as the column beside it, where it was
+  the picture's own 1200 x 630 and 380 px tall beside a column of 560
+  (sitepolish); in each the model is drawn as large as its width lets it
+  (`web/model-page.js` `fitPicture`, by transform alone, so nothing
+  shifts); between 600 and 900 px the frame is the picture's own shape.
+  Its facts are one quiet line of words, a dot between two on a line,
+  those that lead somewhere links, not pills.
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -445,7 +473,14 @@ is on the page, `hidden`, for the script to show.
   /feed, /notifications, /admin and the 404. Before, each opened on a bare
   title of its own making and read as another product beside the new home
   and pricing.
-- **Empty**: `.state`, a dashed box for what has nothing yet.
+- **Empty**: `.state`, a dashed box for what has nothing yet: a quiet
+  panel on `--bg-soft`, its words and its way on (`.actions`) in the middle
+  (sitepolish, 2026-11-23: a faint line round words in its corner read as a
+  placeholder nobody finished). One laid out as a row (`.feed-ask`,
+  `.share-drop`) keeps its start.
+- **Gate**: `.gate`, what a page that is yours alone says signed out
+  (Settings, Notifications): its lede and Sign in, on a panel where the
+  page's own would be.
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
   `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field
   (its buttons 36 px); under 600 px its buttons are a finger's 44.
@@ -753,7 +788,10 @@ is on the page, `hidden`, for the script to show.
   then a check (a filled bookmark for Save), the accent edge when
   pressed (`aria-pressed`; the words never change, so a voice names what
   it sees), ×N when more than one is owned; the chevron opens the lists,
-  with a dot when the thing is in one. In a compact grid only the icons.
+  with a dot when the thing is in one. In a compact grid, and in a phone's
+  two to a row, only the icons. With a mouse it comes over the picture as
+  the pointer or the keyboard reaches the card, and stays while the thing
+  is kept or in a list (sitepolish); on a touch screen it is always there.
   Every keep is in a toast with Undo. A set's page has the same as `.keep-bar`, three ghost `.cta`s: Own,
   Want, Add to a list.
 - **A thing's lists**: `dialog.keep-panel`, a popover by the button that
@@ -772,9 +810,11 @@ is on the page, `hidden`, for the script to show.
   with `.moves` arrows in your order, and `dialog.lists-dialog` for New
   list, Edit and Add sets.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
-  `web/theme.js` on every page while the beta is open): a floating pill
-  at the foot of the window, bottom left (centred under 600 px), above
-  the page and moving nothing in it: an accent `.badge` to /beta, a
+  `web/theme.js` on every page while the beta is open): docked at the
+  foot of the window, the whole width, its buttons centred, the page's
+  end given its height (`--betabar-h`) so it is never over what the page
+  says (floating, it covered the home's first post; hero3d, 2026-11-23),
+  moving nothing as it comes: an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
   hides it in this browser until it is shown again (bugbar, 2026-11-13;
