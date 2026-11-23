@@ -3194,7 +3194,7 @@ picture the assistant is shown.
   where the letters meet the top, and each stud's top its own sheen (the
   instance's fourth word, `info.w`, carries the amount to the closest hit's
   `stud_logo`). **play** (`PathTracer._seated`): photoreal4's seating as
-  LEGO's tolerance lets a part sit, its turn about the vertical
+  a real brick's play lets it sit, its turn about the vertical
   `PLAY_TURN` of the seating's and its slide across `PLAY_SHIFT` times.
   **handling** (`handled_of`, `print_of`): a part's polish its own, dulled
   and scuffed the more it was handled, a fingertip's print on the most
@@ -3206,7 +3206,7 @@ picture the assistant is shown.
   `batch`, `handling`, `studs` or `play` per shot draws one lever alone;
   `python3 tools/bench/photoreal.py colour T` keeps the tent's faces within
   ΔE2000 5; between two parts of one colour on the sets the render's
-  CIEDE2000 stays no more than the photographs' (6657's reds 2.7 against
+  CIEDE2000 stays no more than the photographs' (6657's reds 2.4 against
   4.2).
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe

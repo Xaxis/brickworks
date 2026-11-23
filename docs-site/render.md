@@ -55,7 +55,7 @@ lib:path tracer
 **Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true. At Best it is finished as a camera finishes a photograph: white-balanced on a white card where the model stands, with a camera's gentle tone curve.
 
 > [!NOTE]
-> Where Best is path traced (the desktop app, coming soon), no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits as LEGO's own play lets it. Only the picture changes, never the model, and the same model renders the same every time.
+> Where Best is path traced (the desktop app, coming soon), no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Only the picture changes, never the model, and the same model renders the same every time.
 
 <!-- covers
 lib:product look
