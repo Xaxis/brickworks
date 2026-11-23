@@ -1754,10 +1754,11 @@ plan with Claude as the client.
   whenever cards come onto the page (a MutationObserver the first
   `modelCard` starts; the landing strip puts its cards in frames after it
   made them), before the page is drawn, and site.css
-  hides it. The gallery's like (`like: true`) is over the picture's
-  top-right corner; likes elsewhere, builds and comments are `.tally`s in
-  `small.acts` on the designer's `.by` line; no card ends in a row of
-  numbers. Titles 16 px at every width. `.models` is 2/3/4/5/6 a row at
+  hides it. The gallery's cards (`like: true`) end in `.social` since
+  sitebold (2026-11-23): Like (`button[data-like]`), Comments
+  (`/m/<id>#comments`) and Remix (`/app?copy=<id>`), icons with a count
+  once there is one, then builds; elsewhere likes, builds and comments are
+  `.tally`s in `small.acts` on the designer's `.by` line. Titles 16 px at every width. `.models` is 2/3/4/5/6 a row at
   0/600/900/1200/1600 px; card pages are `.wrap.wide` (`--page-wide`
   1600 px, as the header and footer on every page). On the live gallery
   before: marks over 30.7% of a phone's picture in three rows, Tested and
@@ -2334,7 +2335,12 @@ plan with Claude as the client.
   the shelf's bodies matched the live store, unchanged (2026-10-25). Then
   the card's who-line is "Modelled by <name>" (`web/card.js`,
   `[data-modelled-by]`, words that wrap on a phone's card) in place of the
-  sharer's profile; the page has `.from.modelled-by` under `.shared-by`
+  sharer's profile; since sitebold (2026-11-23), where a sharer shares it,
+  the modeller's initial and name lead (`.who.modeller`) and `small.via`
+  says "Shared by" the sharer, and the model's and the set's pages lead
+  with them too (`.shared-by.credit`: their avatar, `.from.modelled-by`,
+  then `p.shared-via` with the sharer's link and Follow; `api/_sets.js`
+  `modellerHtml`); else the page has `.from.modelled-by` under `.shared-by`
   ("Modelled by **name** for LDraw's Official Model Repository", linked to
   its LDraw page, and ", changed by <sharer>" when changed); the licence
   words credit them with that link (and ask to say who changed it), the
@@ -2486,8 +2492,11 @@ plan with Claude as the client.
   build now) and `?op=list&mine=1` (each card's `owned: {pieces, have,
   share}`, sort `owned`, `ready=1`), never kept by the CDN with `mine=1`.
 - `the gallery's front shelves` (`web/gallery.js`): on `/gallery` with
-  nothing asked, This week's pick (a wide card, its why: "Built twice this
-  week", "New this week, and Tested", "Chosen by Brickworks"), You can
+  nothing asked, This week's pick (a row of its own across the grid, its
+  why: "Built twice this week", "New this week, and Tested", "Chosen by
+  Brickworks"; from 900 px its picture large beside its words, Build it
+  and Open in Brickworks, and with a mouse resting on its picture the
+  model turning in 3D, `web/turn3d.js`, sitebold 2026-11-23), You can
   build now (signed in: the shelf, or how to tell Brickworks what you own),
   Small builds (sideways inside itself on a phone, See every small build
   past eight); a card's "✓ You have every part" / "You have N of its M
@@ -3111,7 +3120,14 @@ plan with Claude as the client.
   `boardsListHtml`), its Follow is `button[data-talk-follow]` (the header's
   `follow.js` owns `button[data-follow]` and is on every Talk page now, so
   the header's account shows signed in), and Talk is the header's current
-  link. SQL proof: `PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js
+  link. Since sitebold (2026-11-23): a row leads with the picture of the
+  model it is about (`a.talk-row-pic`), else its board's icon on the
+  board's colour (`.talk-tile.b-<board>`, `BOARD_ICONS`), and ends in
+  `.talk-row-end`: the starter's and the last replier's avatars
+  (`.talk-faces`), then the replies and when the last came, or "Be the
+  first to reply"; the boards are a row of tiles (`a.talk-board-tile`, an
+  icon, the name, the count), and On the models is a grid of pictures
+  (`.talk-talking`). SQL proof: `PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js
   node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry
   --try=tools/talk_try.sql --table=talk_threads` (grants, row security,
   anon, another account and a banned one refused; the log is

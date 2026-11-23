@@ -56,7 +56,7 @@ import { unnameable } from "./_blocks.js";
 import { withFaces } from "./_faces.js";
 import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } from "./_builds.js";
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
-import { avatarHtml, langAt, mentionPieces, mentionsIn, number, say } from "./_card.js";
+import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, say } from "./_card.js";
 
 export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
 export const MOST_CHARACTERS = 4000;
@@ -308,6 +308,11 @@ export function boardSaid(board) {
   return { name: say("Latest"), about: say("Every board, newest talk first.") };
 }
 
+/// Each board's icon (web/icons.svg), on its tile and on a thread's row
+/// that has no picture of its own (sitebold, 2026-11-23); Latest's is talk.
+export const BOARD_ICONS = { show: "camera", help: "help", ideas: "spark", challenges: "award", news: "news" };
+const boardIcon = (board) => BOARD_ICONS[board] || "comment";
+
 /// When, as a forum says it: just now, minutes and hours ago, yesterday,
 /// then the day. [now] in ms.
 export function whenSaid(iso, now = Date.now()) {
@@ -341,11 +346,13 @@ const modelPicture = (model) => {
   return model.has_thumb ? `/m/${model.id}.webp?v=${version.toString(36)}` : model.has_image ? `/m/${model.id}.png` : "";
 };
 
-/// One row of a list of threads: its title (a link), its first words, then
-/// one line of who started it (their avatar, as a forum shows it), when,
-/// its replies once there is one and its last word, and its marks: pinned,
-/// locked, its board, new (sitepolish, 2026-11-23: the board was a pill on a
-/// line of its own in every row, and every row said "0 replies").
+/// One row of a list of threads, as a forum lays one out (sitebold,
+/// 2026-11-23): the picture of the model it is about (or its photo), else
+/// its board's icon on a tile; its title (a link) and first words; who
+/// started it and when; then, at the row's end, the starter's avatar with
+/// the last replier's over it, how many replied and when the last did, or
+/// an invitation to be the first; and its marks: pinned, locked, its
+/// board, new. Never "0 replies" (sitepolish).
 export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const at = langAt();
   const pills = [
@@ -356,16 +363,24 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   ].filter(Boolean).join(" ");
   const picture = modelPicture(thread.model) || (thread.photo && PHOTO.test(thread.photo.id || "") ? `/talk/p/${thread.photo.id}.card.jpg` : "");
   const replies = Number(thread.replies) || 0;
-  const last = thread.last_by && replies ? ` · ${sayHtml("last from {who}", { who: escapeHtml(thread.last_by.name || "") })}` : "";
-  return `<li class="talk-row${thread.pinned ? " pinned" : ""}" data-thread="${Number(thread.id)}">`
-    + `${picture ? `<img class="talk-row-picture" src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">` : ""}`
-    + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${at}${threadPath(thread)}">${escapeHtml(thread.title)}</a></h3>`
+  const href = `${at}${threadPath(thread)}`;
+  const last = replies && thread.last_by ? thread.last_by : null;
+  const faces = [thread.by?.handle || thread.by?.name ? avatarHtml(thread.by, { size: "small" }) : "",
+    last && (last.handle || last.name) && last.handle !== thread.by?.handle ? avatarHtml(last, { size: "small" }) : ""].join("");
+  const lastLine = replies
+    ? `<span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
+      + `<small>${last ? `${sayHtml("last from {who}", { who: escapeHtml(last.name || "") })} ` : ""}${timeHtml(thread.last_at, now)}</small>`
+    : `<span class="talk-first">${asText(say("Be the first to reply"))}</span>`;
+  return `<li class="talk-row${thread.pinned ? " pinned" : ""}${picture ? "" : " no-picture"}" data-thread="${Number(thread.id)}" data-board="${thread.board}">`
+    + `<a class="talk-row-pic" href="${href}" tabindex="-1" aria-hidden="true">${picture
+      ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">`
+      : `<span class="talk-tile b-${thread.board}">${iconHtml(boardIcon(thread.board))}</span>`}</a>`
+    + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${href}">${escapeHtml(thread.title)}</a></h3>`
     + `${thread.said ? `<p class="talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
-    + `<div class="talk-row-foot"><p class="talk-row-meta">${thread.by?.handle ? avatarHtml(thread.by, { size: "small" }) : ""}`
-    + `<span>${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}`
-    + `${replies ? ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>` : ""}`
-    + `${last}${replies ? ` ${timeHtml(thread.last_at, now)}` : ""}</span></p>`
-    + `${pills ? `<p class="pills">${pills}</p>` : ""}</div></div></li>`;
+    + `<div class="talk-row-foot"><p class="talk-row-meta">`
+    + `<span>${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}</span></p>`
+    + `${pills ? `<p class="pills">${pills}</p>` : ""}</div></div>`
+    + `<div class="talk-row-end"><span class="talk-faces">${faces}</span><span class="talk-last">${lastLine}</span></div></li>`;
 }
 
 /// The cards under a post, for what it links ([embeds], embedsIn), each
@@ -447,41 +462,44 @@ export function postsHtml(page, { found = {}, hosts = SITE_HOSTS, now = Date.now
   return (page.posts || []).map((post) => postHtml(post, { posts, found, hosts, now, signedIn, locked })).join("");
 }
 
-/// The talk under the gallery's models (talk_talking's rows): each a line
-/// to the comment on its model's page. With none, the newest models, each
-/// a way to start some.
+/// The talk under the gallery's models (talk_talking's rows): each its
+/// model's picture, large, two to a row (sitebold, 2026-11-23), and who
+/// said what under it, a link to the comment on its model's page. With
+/// none, the newest models, each a way to start some, with who modelled it.
 export function talkingHtml(rows, models = [], now = Date.now()) {
   const at = langAt();
+  const tile = (href, picture, words) => `<li><a href="${escapeHtml(href)}">`
+    + `<span class="talk-talking-pic">${picture ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="160" height="120">` : ""}</span>`
+    + `<span class="talk-talking-words">${words}</span></a></li>`;
   if (rows.length) {
-    return `<ol class="talk-talking">${rows.map((one) => {
-      const picture = modelPicture({ id: one.model, has_thumb: one.has_thumb, has_image: one.has_image, updated_at: one.updated_at });
-      return `<li><a href="${at}/m/${encodeURIComponent(one.model)}#comment-${Number(one.comment)}">`
-        + `${picture ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="64" height="48">` : ""}`
-        + `<span><b>${escapeHtml(one.by?.name || say("A builder"))}</b> ${escapeHtml(say("on {name}", { name: one.name || say("a model") }))}`
-        + `<q>${escapeHtml(summary(one.said, 120))}</q><small>${escapeHtml(whenSaid(one.at, now))}</small></span></a></li>`;
-    }).join("")}</ol>`;
+    return `<ol class="talk-talking">${rows.map((one) => tile(`${at}/m/${encodeURIComponent(one.model)}#comment-${Number(one.comment)}`,
+      modelPicture({ id: one.model, has_thumb: one.has_thumb, has_image: one.has_image, updated_at: one.updated_at }),
+      `<b>${escapeHtml(one.name || say("a model"))}</b><q>${escapeHtml(summary(one.said, 90))}</q>`
+      + `<small>${escapeHtml(one.by?.name || say("A builder"))} · ${escapeHtml(whenSaid(one.at, now))}</small>`)).join("")}</ol>`;
   }
   if (!models.length) return `<p class="note">${asText(say("What builders say under the gallery’s models shows here."))}</p>`;
   return `<p class="note">${asText(say("Nobody has said anything under a model yet. Open one and be the first:"))}</p>`
     + `<ol class="talk-talking">${models.map((one) => {
-      const picture = modelPicture(one);
-      return `<li><a href="${at}/m/${encodeURIComponent(one.id)}#comments">`
-        + `${picture ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="64" height="48">` : ""}`
-        + `<span><b>${escapeHtml(one.name)}</b><small>${escapeHtml(one.author ? say("by {name}", { name: one.author }) : say("A model in the gallery"))}</small></span></a></li>`;
+      const who = modellerOf(one) || one.author;
+      return tile(`${at}/m/${encodeURIComponent(one.id)}#comments`, modelPicture(one),
+        `<b>${escapeHtml(one.name)}</b><small>${escapeHtml(who ? say("by {name}", { name: who }) : say("A model in the gallery"))}</small>`);
     }).join("")}</ol>`;
 }
 
-/// The boards as tabs: Latest, then each board with its count.
+/// The boards as a row of tiles (sitebold, 2026-11-23): Latest, then each
+/// board, each its icon, its name and its count of threads once there is
+/// one, the one shown marked; links, as tabs are.
 export function boardsHtml(board, counts = {}, tests = false) {
   const at = langAt();
   const query = tests ? "?tests=1" : "";
-  const tab = (id, href) => {
+  const tile = (id, href) => {
     const n = id ? Number(counts[id]) || 0 : 0;
-    return `<a href="${href}${query}"${board === id ? ' aria-current="page"' : ""}>${asText(boardSaid(id).name)}`
+    return `<a class="talk-board-tile b-${id || "latest"}" href="${href}${query}"${board === id ? ' aria-current="page"' : ""}>`
+      + `<span class="talk-tile">${iconHtml(boardIcon(id))}</span><span class="talk-board-name">${asText(boardSaid(id).name)}</span>`
       + `${n ? ` <span class="n">${escapeHtml(number(n))}</span>` : ""}</a>`;
   };
-  return `<nav class="tabs talk-boards" aria-label="${asText(say("Boards"))}">${tab(null, `${at}/talk`)}`
-    + `${BOARDS.map((id) => tab(id, `${at}/talk/b/${id}`)).join("")}</nav>`;
+  return `<nav class="talk-boards" aria-label="${asText(say("Boards"))}">${tile(null, `${at}/talk`)}`
+    + `${BOARDS.map((id) => tile(id, `${at}/talk/b/${id}`)).join("")}</nav>`;
 }
 
 /// A thread's schema.org DiscussionForumPosting (Google's forum results):
@@ -784,8 +802,8 @@ ${older}
 <section aria-labelledby="talk-on-models">
 <h2 id="talk-on-models">${asText(say("On the models"))}</h2>
 ${talkingHtml(talking, models, now)}
+<p class="note talk-links"><a href="${at}/guidelines">${asText(say("Community guidelines"))}</a> · <a href="/talk${board ? `/b/${board}` : ""}.rss">${asText(say("RSS feed"))}</a></p>
 </section>
-${boardsListHtml(board)}
 </aside>
 </div>
 </div>`;
@@ -798,7 +816,7 @@ function boardsListHtml(board) {
   const at = langAt();
   return `<section aria-labelledby="talk-boards-title">
 <h2 id="talk-boards-title">${asText(say("The boards"))}</h2>
-<dl class="talk-board-list">${BOARDS.map((id) => `<dt><a href="${at}/talk/b/${id}"${id === board ? ' aria-current="page"' : ""}>${asText(boardSaid(id).name)}</a></dt><dd>${asText(boardSaid(id).about)}</dd>`).join("")}</dl>
+<dl class="talk-board-list">${BOARDS.map((id) => `<dt><a href="${at}/talk/b/${id}"${id === board ? ' aria-current="page"' : ""}><span class="talk-tile b-${id}">${iconHtml(boardIcon(id))}</span>${asText(boardSaid(id).name)}</a></dt><dd>${asText(boardSaid(id).about)}</dd>`).join("")}</dl>
 <p class="note"><a href="${at}/guidelines">${asText(say("Community guidelines"))}</a> · <a href="/talk${board ? `/b/${board}` : ""}.rss">${asText(say("RSS feed"))}</a></p>
 </section>`;
 }
@@ -954,7 +972,7 @@ export async function talkPage(request, response, { origin }) {
     call("talk_board_counts", { p_tests: tests }, () => ({})).catch(() => ({})),
     call("talk_talking", { p_tests: tests, viewer: null, p_limit: 8 }, () => []).catch(() => []),
     db(`shared_models?listed=is.true&published=is.true&barred=is.false&test=is.${tests}&order=listed_at.desc&limit=4`
-      + "&select=id,name,author,has_image,has_thumb,updated_at").catch(() => []),
+      + "&select=id,name,author,modelled_by,has_image,has_thumb,updated_at").catch(() => []),
   ]);
   if (listed && listed.missing) {
     return sendPage(response, 503, draw(() => talkShell(origin, { title: say("Talk · Brickworks"), about: NOT_YET, path: "/talk", lang, words,

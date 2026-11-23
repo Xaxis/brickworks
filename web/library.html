@@ -139,18 +139,37 @@ html[data-tab="builds"] .toolbar { position: static; }
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (today's spotlight, what you can build now, small builds)
-   across the grid after its first whole rows: twelve places, at two,
-   three or four to a row. The list's cards are #models' own, laid out in
+   across the grid after the pick's row and twelve cards, whole rows at
+   two, three or four to a row. The list's cards are #models' own, laid out in
    this grid. */
 .feed #models { display: contents; }
-.feed > .pick { min-width: 0; display: grid; }
+/* Three to a row at a laptop's width, each picture its card's hero, four
+   from 1600 px (sitebold, 2026-11-23: four of 280 px read as a list). */
+@media (width >= 900px) { .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-6) var(--s-5); } }
+@media (width >= 1600px) { .feed { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* The week's pick across the grid's width: from 900 px its picture large on
+   the left, wide as a share's picture is, turning in 3D under a resting
+   mouse (web/turn3d.js), and beside it its name, who made it, why it is
+   picked, what people did with it and the ways into the studio. */
+.feed > .pick { min-width: 0; display: grid; grid-column: 1 / -1; }
+.pick-card .pick-go { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0 0; }
+.pick-card .pick-go > .cta { position: relative; z-index: 1; flex: 1 1 auto; }
+@media (width >= 900px) {
+	.feed .pick-card { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+	.feed .pick-card .frame { aspect-ratio: 2 / 1; }
+	.feed .pick-card .words { justify-content: center; gap: var(--s-2); padding: var(--s-5) var(--s-6); }
+	.feed .pick-card .open b { font-size: var(--t-h2); line-height: 1.2; -webkit-line-clamp: 3; }
+	.feed .pick-card .why { font-size: var(--t-small); }
+	.feed .pick-card .pick-go > .cta { flex: 0 1 auto; }
+}
+/* Its 3D view over the whole picture, whatever the picture's shape. */
+.pick-card .frame.showcase .view3d { inset: 0; width: auto; aspect-ratio: auto; border-radius: 0; }
 .feed > .shelves {
 	grid-column: 1 / -1; order: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6);
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-.feed[data-front="pick"] #models > .model:nth-child(n+12),
-.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+.feed:is([data-front="pick"], [data-front="plain"]) #models > .model:nth-child(n+13) { order: 2; }
 .pick-card .why, #spotlight .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 /* The week's pick, edged as what is chosen is. */
 .feed .pick-card { border-color: var(--accent-edge); }
@@ -339,7 +358,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
-			<!-- Four rows of skeletons at four a row (site.css .skeleton) where the first page's
+			<!-- Sixteen skeletons, four rows at four a row and more at three (site.css .skeleton), where the first page's
 			     cards go, taken out when it comes (gallery.js), so nothing under
 			     them moves. web/card.js skeletonHtml draws the same. -->
 			<div id="models">

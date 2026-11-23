@@ -159,15 +159,22 @@ def test_the_card_says_who_modelled_it_not_who_shares_it() -> None:
         "const c = await import('./web/card.js');"
         "const base = { id: 'Abcde12345', name: 'LEGO® set 6080 King\\'s Castle', parts: 691, author: 'Brickworks',"
         "  by: { handle: 'brickworks', name: 'Brickworks' }, tags: [] };"
-        "console.log(JSON.stringify([c.cardHtml({ ...base, modelled_by: { name: 'Stefan Frenz',"
-        "  page: 'https://library.ldraw.org/omr/sets/1034' } }), c.cardHtml(base)]));")
+        "const credit = { name: 'Stefan Frenz', page: 'https://library.ldraw.org/omr/sets/1034' };"
+        "console.log(JSON.stringify([c.cardHtml({ ...base, modelled_by: credit }), c.cardHtml(base),"
+        "  c.cardHtml({ ...base, by: null, author: '', modelled_by: credit })]));")
     if said is None:
         return
-    modelled, shared = said
-    # Words straight in the who-line, which wrap on a narrow card, not a
-    # span that ends in "…" (at 390 px it read "Modelled by Stefan Fr…").
-    assert '<span class="who" data-modelled-by>Modelled by Stefan Frenz</span>' in modelled
+    modelled, shared, alone = said
+    # The person who modelled it leads, as a sharer would, and who shares
+    # it is said under it (sitebold): forty such cards read "Brickworks".
+    assert ('<span class="who modeller" data-modelled-by title="Modelled by Stefan Frenz">'
+            '<span class="avatar small c') in modelled and '<span>Stefan Frenz</span></span>' in modelled
+    assert '<small class="via">Shared by Brickworks</small>' in modelled
     assert 'href="/u/brickworks"' not in modelled
+    # With nobody sharing it (a set's card), words straight in the who-line,
+    # which wrap on a narrow card, not a span that ends in "…" (at 390 px it
+    # read "Modelled by Stefan Fr…").
+    assert '<span class="who" data-modelled-by>Modelled by Stefan Frenz</span>' in alone and "via" not in alone
     # A model its sharer made: their profile, as before.
     assert 'href="/u/brickworks"' in shared and "Modelled by" not in shared
 

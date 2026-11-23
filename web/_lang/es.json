@@ -3348,6 +3348,11 @@
   "{parts} moved": "mueve {parts}",
   "{n} taken away": "quita {n}",
   "no parts changed": "no cambió ninguna pieza",
-  "What it changed:": "Lo que cambió:"
+  "What it changed:": "Lo que cambió:",
+  "Shared by {name}": "Compartido por {name}",
+  "Comments on {name}": "Comentarios sobre {name}",
+  "Remix {name} in the studio": "Remezclar {name} en el estudio",
+  "Remix it: a copy of your own to change, in the studio": "Remezclarlo: una copia tuya para cambiar, en el estudio",
+  "Be the first to reply": "Sé el primero en responder"
  }
 }

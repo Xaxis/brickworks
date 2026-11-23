@@ -355,22 +355,32 @@ is on the page, `hidden`, for the script to show.
   browser it is said again whenever cards `modelCard` made come onto the
   page, before it is drawn).
   They stacked two and three rows deep, 30% of a phone's picture, and
-  every card said "Tested" and "Assistant" (site273). Where the page
-  passes `like: true` (the gallery), its like is an `.icon-btn.small` over
-  the picture's top-right corner, on a `--panel` ground, `aria-pressed`,
-  its count beside the heart. It is an `article`: its name (`a.open`, 16
-  px at every width) is the one link to the model, stretched over the
-  whole card, so the designer's name and the like sit inside it as a link
-  and a button of their own. Under the name, one line, `.by`: the
-  designer's `.small` avatar and name (`a.who`, to their page), its size,
-  then `.acts`, its numbers, each an icon and a count and none at nought:
-  likes (a `.tally` where the like is not a button), builds finished and
-  comments. Then a line each for what it has (Moves, what your collection
-  holds, what it won). No card ends in a row of its own for its numbers:
-  it held only an empty heart on every card, a fifth of its height. In
+  every card said "Tested" and "Assistant" (site273). It is an
+  `article`: its name (`a.open`, 16 px at every width) is the one link to
+  the model, stretched over the whole card, so the designer's name and its
+  controls sit inside it as links and buttons of their own (`position:
+  relative; z-index: 1`). Under the name, one line, `.by`: the designer's
+  `.small` avatar and name (`a.who`, to their page), its size, then
+  `.acts`, its numbers, each an icon and a count and none at nought: likes
+  (a `.tally`), builds finished and comments. Where somebody else modelled
+  it (`modelled_by`: a set from LDraw's library the house shares), they
+  lead the line instead, their initial for an avatar (`.who.modeller`,
+  "Modelled by" them said on hover), and a `small.via` line under it says
+  "Shared by" the sharer (sitebold, 2026-11-23: forty of the gallery's
+  cards read "Brickworks"). Then a line each for what it has (Moves, what
+  your collection holds, what it won). Where the page passes `like: true`
+  (the gallery), the card ends in `.social`, what people do with a model,
+  as a post on a social site does (sitebold): Like (`.icon-btn.small`,
+  `aria-pressed`, named with the model), Comments (to its page's
+  comments) and Remix (`/app?copy=`, into the studio), each its icon and
+  its count once there is one, then its builds; the picture carries only
+  its marks and Save. It replaced a like over the picture's corner and a
+  row that held only an empty heart, a fifth of the card. In
   `.models` (a grid: two to a row on a phone, three from 600 px and four
   from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
-  page of 24 is whole rows at every width), `.models.compact` (more to a
+  page of 24 is whole rows at every width; the gallery's own feed three
+  from 900 px, each picture its card's hero, and four from 1600 px,
+  sitebold), `.models.compact` (more to a
   row, beside a rail) or `.models.scroller` (one row of them, a
   Scroller). A card that carries an action keeps it inside, at its foot
   over the card's link as the designer's name is (a collection's Follow, a
