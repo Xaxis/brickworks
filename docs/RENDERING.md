@@ -2248,6 +2248,70 @@ photograph's top mirrors a bright room and ours is dark. That is the
 staging, not the plastic: photoreal12 measured it at 5.7 stops of top over
 side in the photograph, against -1.3 in photoreal11's render.
 
+## 5r. A large source behind the model, measured then judged (photoreal14)
+
+photoreal13's verdicts named the light next to the plastic: a black
+brick's top drawn as dark as its sides, where the photograph's top is 7.4
+stops over its side. In the photographs, a glossy top mirrors something large and
+bright behind the model: a window or a softbox. photoreal14 added one, render-only, seeded, off unless asked:
+a rectangle (`RenderSettings.source`, `source_rise`, `_turn`, `_wide`,
+`_tall`, `_fall`, `_key`; path_tracer.glsl `source_light`, `source_pick`
+uniform on its plane, one-sample MIS with the BSDF), 90 by 50 degrees,
+sharp-edged, behind the model, rising with the camera's pitch so a flat
+top mirrors its middle. A way towards it passes the sweep (`lit_mask`),
+as a softbox stands in front of the paper.
+
+**Measured first** (tools/photoreal/reflect_measure.py, each close-up's
+top against its side in stops and its edges' lines of light, the boxes
+in shots.json `reflect`; bench/results/photoreal14-2026-11-23/
+reflect_table.txt and reflect_default.txt):
+
+| close-up | photograph | photoreal13 | fitted | the default kept |
+|---|---|---|---|---|
+| black_2x4 top/side | +7.42 | -2.09 | +7.30 | +7.30 |
+| grey_1x3 top/side | +0.95 | -1.93 | +0.96 | +4.54 |
+| green_plate top/side | +3.05 | +0.88 | +2.47 | +2.45 |
+| green_plate top edge line | 3.1 px | 8.8 | 5.0 | 4.9 |
+| red_slope top/side | +1.77 | +1.32 | +1.44 | +1.33 |
+| red_slope slope top line | 2.3 px | 5.9 | 2.4 | 5.8 |
+| red_slope slope foot line | 2.8 px | 1.2 | 1.1 | 1.2 |
+| trans_round top/side | -0.37 | +0.12 | +0.24 | +0.12 |
+| three_2x2 stud rim line | 3.5 px | 2.9 | 3.0 | 3.0 |
+
+Three lines no source reaches: the red slope's foot (the bevel rounds
+only a box's own edges, none at the slope's crease), and the grey and
+green top edges (their width is the edge's shape, whatever the light).
+
+**Judged after** (solo, 2 rounds of 2 trials, two draws an arm, the
+photographs in each pool). The fit by measure, each shot its own, gained
+nothing beyond noise twice (p14pool +0.018, p14confirm none). The black
+brick's fit on every table did gain, and in every round and draw:
+
+| arm (pool) | called a photograph | mean p | close-ups | sets |
+|---|---|---|---|---|
+| off: photoreal13's tree (p14tables) | 19 of 80 | 0.262 | 0.394 | 0.065 |
+| **on every table: 128, the key at 0.05** | **28 of 80** | 0.337 | 0.515 | 0.071 |
+| on, with a thinner logo (p14logo) | 17 of 80 | 0.262 | 0.387 | 0.074 |
+| on (p14logo) | 28 of 80 | 0.325 | 0.487 | 0.083 |
+
+grey_1x3 went from 0.13 to 0.58 and black_2x4 from 0.24 to 0.41. In
+the tent the source lost the red slope (0.53 against 0.75), so the tent
+has none: its pictures are byte for byte as before. The default
+(`StudioRender.PRODUCT_SOURCE` 128, `SOURCE_KEY` 0.05) is a table's, at
+Best in the Product look under the studio's light. The judge preferred
+it over its measured mismatch on grey (+4.5 stops against +0.95): matching
+the numbers is not what the judge rewards. The thinner logo (strokes
+with gaps between the letters, one gate a part) was read as outlined lettering and taken out.
+
+**What is left.** A table drawn this way pales towards the source, most on
+the whole car at the app's camera (bench/results/photoreal14-2026-11-23/
+probes/source_pair): the white card is metered round the model, in its
+shade when lit from behind, so the picture is exposed up and the table,
+drawn at its own colour, goes towards white. The photographs keep their
+tables at their own level. The light-and-shadow tell is still named on
+92% of verdicts and 28 of 80 is short of 32: the next lever is the
+metering with the source on (`StudioRender._meter_card`).
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
