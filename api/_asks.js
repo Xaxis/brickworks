@@ -200,15 +200,6 @@ const chipWords = (part) => {
   return words ? `${colour} ${words}`.trim() : say("a part");
 };
 
-/// The asked model's own picture, as the app drew it when it published that
-/// version (its newest's, or the asked older version's): the ask's poster
-/// and its thread's link preview. "" when it has none: then a plain frame,
-/// never the site's share card.
-export function askPicture(ask) {
-  if (!ask?.model || !ask.has_image) return "";
-  return ask.newest && ask.version !== ask.newest ? `/m/${ask.model}/v/${ask.version}.png` : `/m/${ask.model}.png`;
-}
-
 /// The ask at the top of its thread: the model in 3D at the asked step (its
 /// picture first, the 3D view on a press, web/talk.js), what was asked
 /// about, and the way into the viewer at that step. "" for none.
@@ -219,7 +210,7 @@ export function askHtml(ask) {
     return `<section class="talk-ask gone" data-ask><p class="note">${asText(say("This was asked about a model that is not shared any more."))}</p></section>`;
   }
   const page = `${at}/m/${ask.model}${ask.newest && ask.version !== ask.newest ? `/v/${ask.version}` : ""}`;
-  const picture = askPicture(ask);
+  const picture = ask.has_image ? (ask.newest && ask.version !== ask.newest ? `/m/${ask.model}/v/${ask.version}.png` : `/m/${ask.model}.png`) : "";
   const viewer = `/app?view=${ask.model}${ask.step ? `&step=${ask.step}` : ""}`;
   const where = ask.step ? say("Step {step} of {name}, version {version}", { step: number(ask.step), name: ask.name, version: number(ask.version) })
     : say("{name}, version {version}", { name: ask.name, version: number(ask.version) });
