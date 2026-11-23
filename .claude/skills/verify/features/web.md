@@ -1925,8 +1925,10 @@ plan with Claude as the client.
   run at the end of `design_flow`, so by `[design]`; `--no-layout` leaves
   it out): every list, signed-in and words page on the one head
   (`.page-hero` > `.page-head`: h1 and one lede left, `.page-acts` right,
-  `.tabs` on the band's foot), list pages on `.list-layout` (760 px list,
-  320 px aside at the right edge) with `.list-row` rows, `.state` empty
+  `.tabs` on the band's foot), list pages on `.list-layout` (the list
+  from the left edge, a 320 px aside on every list page, its column kept
+  while empty, so the list is the feed's width on every list page: it
+  fails two tabs of one area that differ) with `.list-row` rows, `.state` empty
   and `.pager` more: /feed, /notifications, /talk, /talk/b/<board>,
   /talk/new, /lists, the gallery's five addresses and its search,
   /settings, /faq, the legal pages, /takedown, /changelog, /compare,
@@ -1937,7 +1939,9 @@ plan with Claude as the client.
   the head's top, 16 on a phone) as well as to the feed's. On rel-m323
   (630700306) it fails /notifications four ways at 1280: its h1 111 px
   under the head's top, the head padded 72, the h1 outside a
-  .page-title, its list not the site's. Talk's lists and its new thread
+  .page-title, its list not the site's; on 237645b19, before the
+  notifications' aside, it fails /notifications' list at 1216 px against
+  the feed's 864. Talk's lists and its new thread
   are drawn here by `design_stand_in.mjs` (three threads, the boards'
   counts).
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check

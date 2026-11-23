@@ -2166,7 +2166,10 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .list-aside > section { min-width: 0; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); }
 .list-aside h2 { margin: 0 0 var(--s-3); }
 @media (width >= 900px) {
-	.list-layout:has(> .list-aside:not([hidden])) { grid-template-columns: minmax(0, 1fr) 320px; }
+	/* The aside's column kept while it has nothing to show (the feed with
+	   no designers to suggest), so the list is one width on every list
+	   page and in every state: two tabs of one area never differ. */
+	.list-layout:has(> .list-aside) { grid-template-columns: minmax(0, 1fr) 320px; }
 	.list-aside { position: sticky; top: calc(var(--head-h) + var(--s-5)); }
 }
 

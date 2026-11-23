@@ -82,7 +82,7 @@
 			<div class="page-head">
 				<div class="page-title">
 					<h1>Benachrichtigungen</h1>
-					<p class="lede">Kommentare, Nachbauten, Remixe und Likes zu deinen Modellen, Antworten, Wettbewerbe und Stufen. <a href="/de/settings#kinds-part">Wähle, wovon du hörst, und wo</a>.</p>
+					<p class="lede">Kommentare, Nachbauten, Remixe und Likes zu deinen Modellen, Antworten, Wettbewerbe und Stufen.</p>
 				</div>
 				<div class="page-acts">
 					<button class="cta ghost small" type="button" id="all-read" hidden>Alle als gelesen markieren</button>
@@ -121,6 +121,7 @@
 					</div>
 					<p class="state" id="not-yet" hidden>Benachrichtigungen gibt es auf Brickworks noch nicht.</p>
 					<ol class="list-rows notices" id="groups" aria-label="Benachrichtigungen"></ol>
+					<p class="state" id="no-kind" hidden>Noch nichts dieser Art.</p>
 					<div class="state" id="empty" hidden>
 						<p>Noch nichts. Wenn jemand eines deiner Modelle kommentiert, es nachbaut und ein Foto davon postet, es remixt oder liket oder auf deinen Kommentar antwortet, steht es hier, beim Modell.</p>
 						<p><a href="/de/profile">Deine Modelle</a> · <a href="/de/gallery">Galerie</a> · <a href="/de/challenge">Wettbewerb des Monats</a></p>
@@ -131,6 +132,27 @@
 					<p class="said" id="said" role="status"></p>
 				</section>
 			</div>
+			<!-- Beside the list as the feed's designers are beside its posts, one
+			     column on both tabs (listkit, 2026-11-23): which kinds the list shows,
+			     your achievements as a card, and where to choose what you hear of. -->
+			<aside class="list-aside notices-aside" aria-label="Deine Benachrichtigungen">
+				<section class="kinds" id="kinds" aria-labelledby="kinds-title" hidden>
+					<h2 id="kinds-title">Zeigen</h2>
+					<ul class="kind-list">
+						<li><a href="?kind=all" data-kind="all" aria-current="true">Alle <span class="n" hidden></span></a></li>
+						<li><a href="?kind=comments" data-kind="comments">Kommentare <span class="n" hidden></span></a></li>
+						<li><a href="?kind=remixes" data-kind="remixes">Remixe <span class="n" hidden></span></a></li>
+						<li><a href="?kind=builds" data-kind="builds">Nachbauten <span class="n" hidden></span></a></li>
+						<li><a href="?kind=mentions" data-kind="mentions">Erwähnungen <span class="n" hidden></span></a></li>
+					</ul>
+				</section>
+				<section class="achieved" id="achieved" hidden>
+					<ol class="list-rows notices" id="achievements" aria-label="Deine Erfolge"></ol>
+				</section>
+				<section class="hear">
+					<p><a href="/de/settings#kinds-part">Wähle, wovon du hörst, und wo</a></p>
+				</section>
+			</aside>
 		</div>
 	</div>
 </main>
