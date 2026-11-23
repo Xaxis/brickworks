@@ -47,6 +47,7 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { sayBeta } from "./_settings.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords, summary,
   testsAsked, visitorKey,
@@ -769,6 +770,7 @@ function talkCsp() {
 }
 
 function sendPage(response, status, body, tests) {
+  if (response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", talkCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");

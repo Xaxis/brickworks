@@ -1365,6 +1365,10 @@ export async function serverAsk(apiDir, { name, query }) {
   process.env.SUPABASE_URL = DB;
   process.env.SUPABASE_SECRET_KEY = SECRET;
   process.env.SUPABASE_PUBLISHABLE_KEY = PUBLISHABLE;
+  // The beta open, as ?op=beta_spots answers here (a flow that turns it
+  // off sets this first): what a page says of it in its head, for the
+  // strip's room (api/_settings.js betaSaid).
+  process.env.BRICKWORKS_BETA ??= "open";
   standIn();
   const handler = (await handlersOf(apiDir))[name];
   const site = new URL(ORIGIN);

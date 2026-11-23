@@ -6230,7 +6230,20 @@ plan with Claude as the client.
   moves nothing as it comes and scrolls away with the page (pagebar,
   2026-11-23: docked at the foot it covered whatever reached the fold, an
   object page's tabs and its Like and Save; floating, the home's first
-  post; bench/results/pagekit-2026-11-23/bar_check.mjs): Open beta (to /beta), Report a bug
+  post; bench/results/pagekit-2026-11-23/bar_check.mjs). The room is
+  decided before the first frame and never comes or goes after but by the
+  person's own act (betabar.js drawBar {act}: Settings' switch, Undo, a
+  show in another tab): a page the server makes says the beta in its head
+  (`<meta name="brickworks-beta">` just before theme.js, api/_settings.js
+  sayBeta and betaSaid, from share.js, people.js and Talk's html senders);
+  a file page holds it unless the beta was last heard off (a first visit
+  holds it, so a never-seen visitor's first file page while the beta is off
+  is the one page that loses it, said by `--only=steady`); a kept "off"
+  holds none, and an "open" heard then shows the strip from the next page.
+  Not heard (the server not answering), a held room keeps the strip
+  without Join. A set's page held 48 px on a phone, then let it go as the
+  server said off (checkdrift, 2026-11-23); `tests/test_beta_strip_room.py`
+  holds what the server writes. Open beta (to /beta), Report a bug
   (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
@@ -6264,7 +6277,9 @@ plan with Claude as the client.
   early features (GET ?op=beta_hub). Prove: `node
   tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
   ends "betahome: all ok"; `--only=hide,back` for the x, its toast, Undo,
-  Settings' choice and the menus' Report a bug), then on a `tools/deploy.sh --unit --beta-open`
+  Settings' choice and the menus' Report a bug; `--only=steady` for the
+  header's top every frame of the first second at 390, open, off, open
+  heard two days ago and off heard an hour ago), then on a `tools/deploy.sh --unit --beta-open`
   preview `--url=<preview>` with `BW_BYPASS`: the months left are the
   deployment's (?op=beta_spots), and Join's focus is read a frame after the
   page has loaded and drawn, when web/beta.js puts it there.

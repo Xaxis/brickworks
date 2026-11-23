@@ -171,9 +171,15 @@
 // day, <html data-beta="open"> is set before anything is drawn, so what is
 // held for it is in place at the first frame; off in the last ten minutes,
 // the bar's script is not asked for. The bar's own room at the top
-// (<html data-betabar>, site.css) is held from the first frame too, open
-// or not yet heard of, unless its × hid it here, so it moves nothing as it
-// comes (pagebar). Never on an embed's card or the connector's consent page.
+// (<html data-betabar>, site.css) is decided here, before the first frame,
+// and never after but by the person's own act (betabar.js), so the strip
+// moves nothing as it comes (pagebar) and never goes once drawn: unless its
+// × hid it here, a page the server makes holds it as that page says the
+// beta is (<meta name="brickworks-beta">, api/_settings.js sayBeta); any other holds it
+// unless the beta was last heard off, so a first visit holds it as for the
+// open beta. A set's page on a phone held it, then let it go half a second
+// in, as the server said off (checkdrift, 2026-11-23). Never on an embed's
+// card or the connector's consent page.
 (() => {
   const root = document.documentElement;
   if (root.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
@@ -183,9 +189,10 @@
   } catch {
     heard = null;
   }
+  const said = document.querySelector('meta[name="brickworks-beta"]')?.content || "";
   const age = Date.now() - Number(heard?.at || 0);
-  if (heard?.beta === "open" && age < 86400000) root.dataset.beta = "open";
-  if (heard?.beta === "off" && age < 600000) {
+  if (said === "open" || (!said && heard?.beta === "open" && age < 86400000)) root.dataset.beta = "open";
+  if (said === "off" || (!said && heard?.beta === "off" && age < 600000)) {
     // Said for the page's own scripts (web/landing.js), which then ask nothing.
     window.brickworksBeta = "off";
     return;
@@ -198,7 +205,7 @@
     hidden = null;
   }
   const shown = !(hidden === "off" || (typeof hidden === "number" && hidden > Date.now()));
-  if (shown && (!heard || (heard.beta === "open" && age < 86400000))) root.dataset.betabar = "held";
+  if (shown && (said === "open" || (!said && heard?.beta !== "off"))) root.dataset.betabar = "held";
   // Not loaded (offline), the room held for it goes.
   const load = () => import("/betabar.js").catch(() => { delete root.dataset.betabar; });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);

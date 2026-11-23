@@ -283,7 +283,7 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
 import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { raise } from "./_notify.js";
-import { scopeOf } from "./_settings.js";
+import { betaSaid, sayBeta, scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
   ASSISTANT_TAGS, KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -2198,6 +2198,7 @@ function embedCsp() {
 export const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 
 function html(response, status, body, { embed = false, cache = SHARED_CACHE } = {}) {
+  if (!embed && response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", embed ? embedCsp() : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -2490,6 +2491,8 @@ async function read(request, response) {
   const op = String(request.query?.op || "");
   const id = String(request.query?.id || "");
   const origin = originOf(request);
+  // A page: what it says of the beta, for its strip (sayBeta).
+  if (op === "page" || op === "catalog_set" || op === "set") response.betaSaid = await betaSaid(request);
 
   if (op === "mine") return mine(request, response, origin);
   if (op === "made") return madeShown(request, response);
