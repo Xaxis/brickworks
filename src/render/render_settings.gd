@@ -190,11 +190,6 @@ var fill: float = -1.0
 ## everywhere, 1 as the photographs show it. Below 0, StudioRender's
 ## PRODUCT_EDGE.
 var edge: float = -1.0
-## The stud's logo as the photographs show it (photoreal14), path traced in
-## the product look: 0 as before, 1 its strokes thinner with gaps between
-## the letters and one injection gate a part, where a quarter of the studs
-## had one. Below 0, StudioRender's PRODUCT_LOGO.
-var logo: float = -1.0
 ## A large bright source the glossy tops mirror (photoreal14), path traced in
 ## the product look on a backdrop: a softbox or a window card standing above
 ## and behind the model as the camera sees it, sharp-edged, the tent or the

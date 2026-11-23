@@ -2204,12 +2204,6 @@ uint part_number = 0u;
 // the stud just hit, for the raygen's surface_of (as a negative hit.unused).
 float stud_variety = 0.0;
 float logo_grime = 0.0;
-// The logo as the photographs show it (photoreal14, PathTracer.logo in the
-// instance's info.w, the byte above edge's, 0 to 255 of 1): 0 as before; 1
-// its strokes thinner, so the letters stand apart with gaps between them,
-// and one injection gate on one stud of each part, where a quarter of the
-// studs had one.
-float logo_shape = 0.0;
 
 // A stud's own number from 0 to 1 by its place on its part and the part's own
 // number (raygen's stud_own, the same studs the same).
@@ -2310,7 +2304,7 @@ float logo_distance(vec2 p) {
 // catch the light, as the photographs' do. [param soft] widens the flank: a
 // worn mould's letters are softer.
 float logo_height(vec2 p, float soft) {
-	return 0.2 * smoothstep(mix(0.36, 0.22, logo_shape) + soft, mix(0.18, 0.09, logo_shape), logo_distance(p));
+	return 0.2 * smoothstep(0.36 + soft, 0.18, logo_distance(p));
 }
 
 vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
@@ -2360,15 +2354,7 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	// photoreal3's ring twice that, over the letters, read as "garbled marks
 	// inside the logo"), off the middle by a hair. A gloss over it catches
 	// the light as a bright dot.
-	bool gate = stud_hash(centre, 6u) < 0.25;
-	if (logo_shape > 0.0) {
-		// One gate a part (photoreal14): on the stud its own number picks.
-		vec2 count = max(floor((box_max.xz - box_min.xz) / 20.0 + 0.5), vec2(1.0));
-		vec2 index = floor((centre - box_min.xz) / 20.0);
-		vec2 pick = min(floor(vec2(key_hash(vec2(0.0), 41u), key_hash(vec2(0.0), 42u)) * count), count - 1.0);
-		gate = all(equal(index, pick));
-	}
-	if (gate) {
+	if (stud_hash(centre, 6u) < 0.25) {
 		vec2 g = p - (vec2(stud_hash(centre, 7u), stud_hash(centre, 8u)) - 0.5) * 0.6;
 		float r = length(g);
 		if (r > 0.001 && r < 1.2) {
@@ -2461,7 +2447,6 @@ void main() {
 	uint codes = instances[which].info.w;
 	stud_variety = float(codes & 255u) / 255.0;
 	edge_amount = float((codes >> 8) & 255u) / 100.0;
-	logo_shape = float((codes >> 16) & 255u) / 255.0;
 	part_key = instances[which].info.z;
 	logo_grime = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];
