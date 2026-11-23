@@ -347,6 +347,14 @@ python3 tools/site.py .vercel/output/static | sed 's/^/deploy: /' || {
   echo "deploy FAILED: could not put the website together (tools/site.py)"; exit 1; }
 [ -f .vercel/output/static/index.html ] && [ -f .vercel/output/static/404.html ] || {
   echo "deploy FAILED: the website has no index.html or 404.html"; exit 1; }
+# The home page's first screen in the page as it is served (landing,
+# 2026-11-22): the shelf's real models, their pictures copied beside the
+# page, and the month's challenge, from the live gallery, else from
+# web/_home.json. It never fails the deploy for an answer it could not
+# read: the page then asks for them itself (web/landing.js).
+HOME_FROM="${HOME_FROM:-https://brickworks.diy}"
+timeout 300 node tools/web/home_shelf.mjs .vercel/output/static --from="$HOME_FROM" </dev/null | sed 's/^/deploy: /' || {
+  echo "deploy FAILED: could not write the home page's first screen (tools/web/home_shelf.mjs)"; exit 1; }
 
 # The site's pages at addresses without .html: /download, not
 # /download.html. The owner, 2026-10-12: "do you realize how oldschool
@@ -488,7 +496,12 @@ closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 
 # blob: in the site's connect-src: a model page's In your room writes its GLB
 # in the page and hands <model-viewer> its blob: address (web/room.js).
 site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach} blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
+# The app may be framed by the site's own pages, and only by them: the home
+# page's feed opens the studio in a post (Try it here, web/landing.js
+# tryHere; homefeed, 2026-11-23). Every page of the origin is the site's,
+# with no script but its own, so nothing else can frame it.
+app_closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${app_closed}"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
 # And none of the cross-origin isolation headers: the app's threaded build

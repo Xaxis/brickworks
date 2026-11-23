@@ -225,6 +225,11 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 // touch screen. Its switch answered, or not within SWITCH_MS, the engine's
 // wasm and script are asked for; brickworksEngine.ready is then that
 // choice, and window.brickworksEngine says what it was.
+// A page that cannot share memory at all (crossOriginIsolated false) cannot
+// start the threaded engine anywhere: the studio in the home page's feed
+// (web/landing.js tryHere, homefeed 2026-11-23) is in a frame of a page
+// that keeps its sign-in popups, so is never isolated. It starts the one
+// without threads at once, with no switch asked, where there is one.
 const brickworksEngine = (function () {
 	const SWITCH_MS = 2500;
 	const other = GODOT_CONFIG.nothreads || null;
@@ -235,6 +240,7 @@ const brickworksEngine = (function () {
 		const agent = navigator.userAgent || "";
 		chosen.apple = /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1);
 	} catch (e) {}
+	chosen.shared = window.crossOriginIsolated !== false;
 	let loaded = null;
 	const ready = new Promise(function (resolve) { loaded = resolve; });
 	let asked = false;
@@ -254,7 +260,12 @@ const brickworksEngine = (function () {
 		script.onload = script.onerror = function () { loaded(chosen); };
 		document.head.appendChild(script);
 	}
-	if (!chosen.apple || !other) {
+	if (!chosen.shared && other) {
+		Object.assign(GODOT_CONFIG, other);
+		chosen.at = other.engine;
+		chosen.threads = false;
+	}
+	if (!chosen.apple || !other || !chosen.shared) {
 		load();
 		return { ready: ready, rules: null };
 	}

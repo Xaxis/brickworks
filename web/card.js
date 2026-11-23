@@ -508,14 +508,20 @@ const catalogueSet = (model) => (isSet(model) && typeof model.library.set === "s
 /// view: a lazy picture in the first screen came last (site273).
 /// [keep]: a model's card carries Save and your lists (keepHtml), the
 /// gallery's; a set of the catalogue always carries Own and your lists.
-export function cardHtml(model, { earned = false, like = false, eager = false, keep = false } = {}) {
+/// [pick]: this week's pick (/api/share?op=shelves), first on the home
+/// page's shelf: Week's pick its first mark, as the gallery's front marks it.
+export function cardHtml(model, { earned = false, like = false, eager = false, keep = false, pick = false } = {}) {
   const id = String(model.id);
   const name = escapeHtml(model.name);
   const picture = pictureOf(model);
   const data = [`data-id="${escapeHtml(id)}"`, `data-builds="${Number(model.builds) || 0}"`];
   if (earned) data.push(`data-remixes="${Number(model.remixes) || 0}"`, `data-comments="${Number(model.comments) || 0}"`);
-  // Over the picture's corner: the Tested mark.
+  // Over the picture's corner: the week's pick, the Tested mark.
   const marks = [];
+  if (pick) {
+    marks.push(`<span class="pill new">${escapeHtml(say("Week’s pick"))}</span>`);
+    data.push('data-pick="yes"');
+  }
   // Marked Tested: its newest version passed the four tests the app ran
   // as it was published (api/_tested.js), said on hover.
   if (model.tested === true) {

@@ -1006,8 +1006,27 @@ export async function talkThread(request, response, { origin }) {
   return response.status(200).json({ thread: page.thread, posts: page.posts || [], blocked_some: page.blocked_some === true, you });
 }
 
-/// GET ?op=talk_latest&n=4: the newest threads of every board, for the
-/// homepage's Latest talk; &html=1 drawn in the language asked.
+/// The newest post of [thread] that is not its first, as the home's feed
+/// shows a thread's latest reply (homefeed, 2026-11-23): {by, said, at},
+/// its words cut to 200 characters; null for none, or when it cannot be
+/// read. As the thread's page shows it to somebody signed out.
+async function lastReply(thread, tests) {
+  if (!(Number(thread.replies) > 0)) return null;
+  const page = await call("talk_thread_page", { p_thread: Number(thread.id), p_tests: tests, viewer: null }, () => null)
+    .catch(() => null);
+  const posts = Array.isArray(page?.posts) ? page.posts.filter((one) => one && !one.first && !one.hidden && one.body) : [];
+  const last = posts[posts.length - 1];
+  if (!last) return null;
+  return { by: last.handle ? { handle: String(last.handle), name: String(last.by || last.handle) } : null,
+    said: summary(String(last.body), 200), at: last.at };
+}
+
+/// GET ?op=talk_latest&n=4: the newest threads of every board; &html=1
+/// drawn in the language asked. With &reply=1 (the home's feed, homefeed,
+/// 2026-11-23) each thread also carries its address (path) and its latest
+/// reply (reply, lastReply's); with &talking=N as well the newest N comments
+/// on the gallery's models (talking, talk_talking's), which the feed's cards
+/// show under their models. Signed out, kept by the CDN.
 export async function talkLatest(request, response) {
   const query = request.query || {};
   const tests = testsAsked(query);
@@ -1016,6 +1035,15 @@ export async function talkLatest(request, response) {
   await houseWrites(tests);
   const listed = await call("talk_threads_of", { p_board: null, p_tests: tests, viewer: null, p_before: null, p_limit: n, p_q: null },
     () => ({ threads: [], missing: true }));
+  if (String(query.reply || "") === "1" && String(query.html || "") !== "1") {
+    const asked = Math.min(24, whole(query.talking) || 0);
+    const [replies, talking] = await Promise.all([
+      Promise.all((listed.threads || []).map((one) => lastReply(one, tests))),
+      asked ? call("talk_talking", { p_tests: tests, viewer: null, p_limit: asked }, () => []).catch(() => []) : []]);
+    const faced = await withFaces({ threads: (listed.threads || []).map((one, i) => ({ ...one, path: threadPath(one), reply: replies[i] })),
+      talking: Array.isArray(talking) ? talking : [] });
+    return response.status(200).json({ ready: !listed.missing, threads: faced.threads, talking: faced.talking });
+  }
   const threads = (await withFaces({ threads: listed.threads || [] })).threads;
   if (String(query.html || "") === "1") {
     const lang = langOf(query);
