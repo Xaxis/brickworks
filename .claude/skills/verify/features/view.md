@@ -3208,6 +3208,49 @@ picture the assistant is shown.
   ΔE2000 5; between two parts of one colour on the sets the render's
   CIEDE2000 stays no more than the photographs' (6657's reds 2.4 against
   4.2).
+- `where hands leave their marks` (`RenderSettings.rubbed`,
+  `StudioRender.PRODUCT_RUBBED`; photoreal9, docs/RENDERING.md 5m): at Best
+  in the Product look, path traced, a part's handled wear gathered where
+  hands and stacking touch it (path_tracer.glsl `gathered_wear`): patchy
+  matt scuffs within half a millimetre of the body's edges, most near its
+  top, hairline scratches across them, each stud's top rim rubbed and its
+  wall streaked, dust at each stud's foot; each part its own, seeded by its
+  place, the model never changed. 0 unless asked: judged within the noise
+  in four pools. It is drawn by the shader's "marks" version
+  (`#[versions]` in path_tracer.glsl; `PathTracer.marked`, `_make_marked`
+  builds that pipeline the first time a picture asks), so a picture without
+  it is drawn by the "plain" version, photoreal8's code. Compatibility and
+  the web draw none of it. Check: `tools/probe.sh photoreal_probe --
+  --tag=T --without=rubbed` draws photoreal8's pictures byte for byte (20
+  of 20, both seeds, beside its kept draws), and `--shots=FILE` with
+  `rubbed` 1 per shot draws the wear; `python3 tools/bench/photoreal.py
+  colour T` keeps the tent's faces within ΔE2000 5 with it on. The bench's
+  6660 (tools/photoreal/models/set_6660.mpd) seats its driver in the car
+  base's 2 x 2 open centre, his cap under the roof's glass.
+- `the stage matched to the photographs` (`RenderSettings.table`, `table_light`,
+  `fill`; `StudioRender.PRODUCT_TABLE`, `_TABLE_LIGHT`, `_FILL`; photoreal10,
+  docs/RENDERING.md 5n): at Best in the Product look, path traced on a
+  backdrop, the stage each photograph shows, matched by measure: the
+  table's own relief and colour (`surface` 1 a desk's laminate and blotches,
+  2 a leather pad's domed cells and creases, 3 a stone counter's grains and
+  mottle; path_tracer.glsl `table_height`, `table_normal`, `table_paper`;
+  the relief is in the denoiser's guide, so it is kept), the light falling
+  off across it from a lamp that stands near (`table_light` model radii
+  toward the staged key; `table_falloff`), and the shade tinted towards
+  daylight's fill by as much of the light as the model keeps from it
+  (`fill`; `shadow_marked`), so the open floor stays the backdrop's colour.
+  Each 0 unless asked; drawn by the shader's "marks" version, so a picture
+  without them is drawn by "plain", photoreal9's code. The bench's shots
+  (tools/photoreal/shots.json) keep the tables on black_2x4, grey_1x3 and
+  green_plate_macro (judged: the close-ups 0.38 to 0.49). Check:
+  `tools/probe.sh photoreal_probe -- --tag=T --shots=FILE` with photoreal9's
+  shots file (`git show fea8a984b:tools/photoreal/shots.json`) draws
+  photoreal9's pictures byte for byte (10 of 10), the bench's own shots
+  draw the three tables, and `fill` per shot tints the shade; the
+  photographs' measures (`python3 tools/photoreal/stage_measure.py
+  shots/photoreal/T --frame-fix`) put each table's spread and the desk's
+  fall within 20% of the photograph's, and the white sets' shade within
+  1 b*.
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong

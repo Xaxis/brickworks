@@ -5616,6 +5616,14 @@
       "tests": []
     },
     {
+      "id": "lib:the stage matched to the photographs",
+      "kind": "lib",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal10, docs/RENDERING.md 5n: at Best in the Product look, path traced on a backdrop, the stage matched to each photograph by measure: the table's own relief and colour (RenderSettings.table with surface 1 a desk, 2 a leather pad, 3 a stone counter; path_tracer.glsl table_height, table_normal, table_paper, the relief also in the denoiser's guide), the light falling off across it from a lamp that stands near (table_light, the model's radii, toward the staged key; table_falloff) and the shade tinted towards daylight's fill by as much of the light as the model keeps from it (fill; shadow_marked); each 0 unless asked (StudioRender.PRODUCT_TABLE, _TABLE_LIGHT, _FILL), drawn by the shader's marks version so a picture without them is the plain version's, byte for byte photoreal9's (--shots= photoreal9's shots file); the bench's shots keep the tables on black_2x4, grey_1x3 and green_plate_macro)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:the surface pass",
       "kind": "lib",
       "entry": "src/ai/surface_pass.gd",
@@ -5746,6 +5754,14 @@
       "tests": [
         "tests/test_live_ab.py"
       ]
+    },
+    {
+      "id": "lib:where hands leave their marks",
+      "kind": "lib",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal9, docs/RENDERING.md 5m: at Best in the Product look, path traced, the handled wear gathered where hands and stacking touch a part (RenderSettings.rubbed, path_tracer.glsl gathered_wear: the body's edges, each stud's rim and wall, dust at each stud's foot; 0 unless asked, StudioRender.PRODUCT_RUBBED), drawn by the shader's marks version (#[versions], PathTracer.marked, _make_marked) so a picture without it is the plain version's, byte for byte photoreal8's (--without=rubbed); the bench's 6660 driver seated in its car base's open centre)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "lib:who modelled a shared model",
