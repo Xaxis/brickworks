@@ -55,7 +55,9 @@
 .beta-head .terms { max-width: 34rem; margin: var(--s-4) auto 0; color: var(--ink-soft); font-size: var(--t-small); }
 :root[data-beta-page="off"] .beta-head .terms,
 :root[data-beta-page="tester"] .beta-head .terms { visibility: hidden; }
-.beta .narrow { width: min(100% - 32px, 980px); }
+/* The page as wide as every page (homefix, 2026-11-23), what is in it
+   centred at 980 px. */
+.beta .narrow > * { max-width: 980px; margin-inline: auto; }
 .beta .section-head { margin-bottom: var(--s-5); }
 #report .actions { margin-top: var(--s-5); }
 /* What is new: each release a card, its heads a list. */
