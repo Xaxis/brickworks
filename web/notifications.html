@@ -92,62 +92,88 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow">For you</p>
-			<div class="notices-head">
-				<h1>Notifications</h1>
-				<div class="actions">
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Notifications</h1>
+					<p class="lede">Comments, builds, remixes and likes on your models, replies, challenges and levels.</p>
+				</div>
+				<div class="page-acts">
 					<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
 					<button class="cta ghost small" type="button" id="all-done" hidden>Mark all done</button>
 				</div>
 			</div>
-			<p class="lede">Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter, each level you reach and news from Brickworks. <a href="/settings#kinds-part">Choose what you hear of, and where</a>.</p>
 			<nav class="tabs" aria-label="What is new for you">
 				<a href="/notifications" aria-current="page">Notifications <span class="n" data-count="notifications" hidden></span></a>
 				<a href="/feed">Your feed <span class="n" data-count="feed" hidden></span></a>
 			</nav>
 		</div>
 	</div>
-	<div class="wrap page-body notices-page">
-
-		<section id="signed-out" class="gate" hidden>
-			<p class="lede">Sign in to see what happens to your models: comments, photos of
-				people’s builds, remixes, likes and the challenges you enter, and replies to your
-				comments. We email you a code: no password.</p>
-			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
-		</section>
-		<!-- The list's place while it is asked (notifications.js), as skeletons. -->
-		<div class="skeleton" id="loading" role="status">
-			<span class="visually-hidden">Looking for your sign-in…</span>
-			<div class="notices" aria-hidden="true">
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+	<div class="wrap page-body">
+		<div class="list-layout">
+			<div class="list-main">
+				<section class="gate" id="signed-out" hidden>
+					<p class="lede">Sign in to see what happens to your models: comments, photos of
+						people’s builds, remixes, likes and the challenges you enter, and replies to your
+						comments. We email you a code: no password.</p>
+					<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
+				</section>
+				<!-- The list's place while it is asked (notifications.js), as skeletons of the site's rows. -->
+				<div class="skeleton" id="loading" role="status">
+					<span class="visually-hidden">Looking for your sign-in…</span>
+					<div class="list-rows" aria-hidden="true">
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+					</div>
+				</div>
+				<section class="list-main" id="signed-in" hidden>
+					<!-- The list, or what was marked done (supabase/notification_prefs.sql): Done takes a group
+					     out of the count and keeps it here until something new about it comes. -->
+					<div class="segmented notices-view" role="group" aria-label="Show" id="views" hidden>
+						<button type="button" data-view="inbox" aria-pressed="true">Inbox</button>
+						<button type="button" data-view="done" aria-pressed="false">Done</button>
+					</div>
+					<p class="state" id="not-yet" hidden>Notifications are not open on Brickworks yet.</p>
+					<ol class="list-rows notices" id="groups" aria-label="Notifications"></ol>
+					<p class="state" id="no-kind" hidden>Nothing of this kind yet.</p>
+					<div class="state" id="empty" hidden>
+						<p>Nothing yet. When somebody comments on one of your models, posts a photo of
+							their build of it, remixes it or likes it, or replies to your comment, it is
+							here, with the model.</p>
+						<p><a href="/profile">Your models</a> · <a href="/gallery">the gallery</a> ·
+							<a href="/challenge">this month’s challenge</a></p>
+					</div>
+					<div class="state" id="empty-done" hidden>
+						<p>Nothing marked done. Done takes a notification out of your count and keeps it here; anything
+							new about it comes back to the inbox.</p>
+					</div>
+					<p class="said" id="said" role="status"></p>
+				</section>
 			</div>
+			<!-- Beside the list as the feed's designers are beside its posts, one
+			     column on both tabs (listkit, 2026-11-23): which kinds the list shows,
+			     your achievements as a card, and where to choose what you hear of. -->
+			<aside class="list-aside notices-aside" aria-label="Your notifications">
+				<section class="kinds" id="kinds" aria-labelledby="kinds-title" hidden>
+					<h2 id="kinds-title">Show</h2>
+					<ul class="kind-list">
+						<li><a href="?kind=all" data-kind="all" aria-current="true">All <span class="n" hidden></span></a></li>
+						<li><a href="?kind=comments" data-kind="comments">Comments <span class="n" hidden></span></a></li>
+						<li><a href="?kind=remixes" data-kind="remixes">Remixes <span class="n" hidden></span></a></li>
+						<li><a href="?kind=builds" data-kind="builds">Builds <span class="n" hidden></span></a></li>
+						<li><a href="?kind=mentions" data-kind="mentions">Mentions <span class="n" hidden></span></a></li>
+						<li><a href="?kind=achievements" data-kind="achievements">Achievements <span class="n" hidden></span></a></li>
+					</ul>
+				</section>
+				<section class="achieved" id="achieved" hidden>
+					<ol class="list-rows notices" id="achievements" aria-label="Your achievements"></ol>
+				</section>
+				<section class="hear">
+					<p><a href="/settings#kinds-part">Choose what you hear of, and where</a></p>
+				</section>
+			</aside>
 		</div>
-
-		<section id="signed-in" hidden>
-			<!-- The list, or what was marked done (supabase/notification_prefs.sql): Done takes a group
-			     out of the count and keeps it here until something new about it comes. -->
-			<div class="segmented notices-view" role="group" aria-label="Show" id="views" hidden>
-				<button type="button" data-view="inbox" aria-pressed="true">Inbox</button>
-				<button type="button" data-view="done" aria-pressed="false">Done</button>
-			</div>
-			<p class="note" id="not-yet" hidden>Notifications are not open on Brickworks yet.</p>
-			<ol class="notices" id="groups" aria-label="Notifications"></ol>
-			<div class="state" id="empty" hidden>
-				<p>Nothing yet. When somebody comments on one of your models, posts a photo of
-					their build of it, remixes it or likes it, or replies to your comment, it is
-					here, with the model.</p>
-				<p><a href="/profile">Your models</a> · <a href="/gallery">the gallery</a> ·
-					<a href="/challenge">this month’s challenge</a></p>
-			</div>
-			<div class="state" id="empty-done" hidden>
-				<p>Nothing marked done. Done takes a notification out of your count and keeps it here; anything
-					new about it comes back to the inbox.</p>
-			</div>
-			<p class="said" id="said" role="status"></p>
-		</section>
 	</div>
 </main>
 

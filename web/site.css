@@ -105,12 +105,15 @@
 	--r-pill: 999px;
 	--control-radius: var(--r-2);
 	--radius: var(--r-3);
-	/* A page's width: a page of words keeps --page; a page of cards and
-	   pictures (.wrap.wide: the gallery, a person, a collection, a model,
-	   the landing page's row of models) and the header and
-	   footer on every page use the window up to --page-wide. Nothing was
-	   wider than 1,140 px, 59% of a 1920 window (site273). */
-	--page: 1140px;
+	/* A page's width: one for every page, the header's and the footer's
+	   too, the window less its gutters (--gutter: 16, 24 from 600 px, 32 from
+	   1200 px; sitepolish) up to --page-wide (homefix,
+	   2026-11-23, the owner: Talk "does not have the same page width as
+	   the other pages"; a page of words had kept 1,140 px, so its edges
+	   sat 54 px inside the header's at 1280). A page of words keeps its
+	   lines to a measure inside it (.prose, .lede, a setting's line), not
+	   by a narrower page. tools/web/design_flow.mjs fails a page whose
+	   main container's edges are not the header's. */
 	--page-wide: 1600px;
 	/* The room between a page and the window's edge: a phone's 16 px, and
 	   more as the window grows, so a page of cards on a laptop does not run
@@ -309,8 +312,7 @@ a:focus-visible { border-radius: var(--r-1); }
 
 @media (width >= 600px) { :root { --gutter: 24px; } }
 @media (width >= 1200px) { :root { --gutter: 32px; } }
-.wrap { width: min(100% - 2 * var(--gutter), var(--page)); margin-inline: auto; }
-.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 2 * var(--gutter), var(--page-wide)); }
+.wrap { width: min(100% - 2 * var(--gutter), var(--page-wide)); margin-inline: auto; }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);
@@ -872,15 +874,10 @@ h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: 
 main > section, .band { padding: var(--section) 0; }
 main > section + section { border-top: 1px solid var(--line); }
 
-/* A page: every page but the landing one is this. Its head (an eyebrow,
-   the title, a lede), then what it has; .prose for the pages that are
-   words (questions, the legal pages), narrower and quieter. */
+/* A page's parts under its head (.page-hero, below); .prose for the
+   pages that are words (questions, the legal pages), narrower and
+   quieter. */
 .page { padding: var(--page-top) 0 var(--section); }
-.page-head { margin-bottom: var(--s-6); }
-/* A page made of wraps side by side under <main>, its head the first. */
-main > .wrap.page-head:first-child { padding-top: var(--page-top); }
-.page-head .lede { margin-bottom: 0; }
-.page-head .eyebrow { margin-bottom: var(--s-3); }
 .page section { margin-top: var(--s-7); }
 .page section > h2:first-child { margin-top: 0; }
 .prose { max-width: 760px; }
@@ -892,16 +889,22 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    of its own, its words and its way on in the middle (sitepolish,
    2026-11-23: a faint dashed line round words left in its corner, on the
    page's own ground, read as a placeholder nobody had finished). A state
-   laid out as a row of its own (.feed-ask, .share-drop) keeps its start. */
+   laid out as a row of its own (.feed-ask, .share-drop) keeps its start.
+   The one empty state (listkit, 2026-11-23): every list's "nothing here
+   yet" and its way in, the feed's, the notifications', Talk's, a list's;
+   its words, then at most a line of links or one .actions. */
 .state {
 	margin: 0; padding: var(--s-6) var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--radius);
 	background: var(--bg-soft); color: var(--ink-soft); text-align: center; text-wrap: pretty;
 }
+.state > * { margin-block: 0; }
+.state > * + * { margin-top: var(--s-3); }
 .state:not(.feed-ask, .share-drop) > * { max-width: 62ch; margin-inline: auto; }
 .state :is(.actions, .pills) { justify-content: center; }
 .state:is(.feed-ask, .share-drop) { text-align: start; }
 .state .link { color: var(--ink); }
-/* A page that is yours alone, signed out (settings, notifications): what
+/* A page that is yours alone, signed out (settings, notifications, the
+   feed, your lists; listkit made it the one for every such page): what
    signing in gives and the way in, a panel where the page's own would be,
    not a line of words in the open (sitepolish). */
 .gate {
@@ -1219,6 +1222,23 @@ dialog.keep-panel.at-foot::backdrop { background: var(--scrim); }
 .model .by .acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-3); font-size: inherit; }
 .model .tally { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink-soft); }
 .model .tally .icon { width: 16px; height: 16px; }
+/* The gallery's card ends in what people do with a model (web/card.js,
+   sitebold, 2026-11-23): Like, its comments and Remix into the studio,
+   quiet icon buttons with their counts once there are some, then its
+   builds; each over the name's stretched link, as the designer's is. */
+.model .social { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: var(--s-2) 0 0 -10px; }
+.model .social > * { position: relative; z-index: 1; }
+.model .social .icon-btn { min-height: 36px; padding: 0 10px; gap: 6px; border-color: transparent; background: none; color: var(--ink-soft); }
+.model .social .icon-btn:hover { background: var(--panel-hi); color: var(--ink); }
+/* Liked: the heart filled in red, its count in ink (red words were 3.6:1 on a dark card). */
+.model .social .icon-btn[aria-pressed="true"] { border-color: transparent; color: var(--ink); }
+.model .social .icon-btn[aria-pressed="true"] .icon { color: var(--red); }
+.model .social .n { font-size: var(--t-small); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* None yet: a quiet 0, so a row of counts never reads as counts missing. */
+.model .social .n.zero { color: var(--ink-faint); font-weight: 400; }
+.model .social .tally { margin-left: var(--s-2); }
+/* Who shares a model somebody else modelled, under that person's name. */
+.model small.via { color: var(--ink-faint); }
 /* A photo of a real build as a card (web/card.js buildCardHtml), the
    gallery's Builds tab: the model card's shape, the photo cut to its 4:3;
    who built it and when on one line, and what they said of it, two lines
@@ -1333,8 +1353,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
    looks far more organized and intuitive".
 
    - .obj-layout: the page's work (.obj-main) and beside it, from 900 px,
-     .obj-aside, a panel that stays on screen as the page scrolls, between
-     the header and the beta's bar (--betabar-h) while it shows: what it
+     .obj-aside, a panel that stays on screen as the page scrolls: what it
      is, whose, the one action that matters, the rest in More, and one
      quiet line of facts. Under 900 px the aside comes first, as the
      page's head. (A model's and a set's page keep .model-page's own grid.)
@@ -1351,7 +1370,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .obj-main { grid-area: main; min-width: 0; }
 .obj-aside {
 	grid-area: aside; min-width: 0; position: sticky; top: calc(var(--head-h) + var(--s-4));
-	max-height: calc(100dvh - var(--head-h) - 2 * var(--s-4) - var(--betabar-h, 0px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+	max-height: calc(100dvh - var(--head-h) - 2 * var(--s-4)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
 	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
 	background: var(--panel); box-shadow: var(--highlight), var(--shadow-2);
 }
@@ -1466,10 +1485,10 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	}
 }
 
-/* An avatar: a person's picture, or one made from their handle (web/kit.js
-   avatarHtml): a round tile in one of eight colours and its first letter,
-   never a figure's likeness (docs/TRADEMARKS.md). Four sizes: .small 24
-   (a byline), 40, .big 64 (your account), .huge 112 (a profile). */
+/* An avatar: a person's picture (which may be a minifig they made), or the
+   minifig made from their handle (web/card.js avatarHtml, .minifig below)
+   on a round tile in one of eight colours. Four sizes: .small 24 (a
+   byline), 40, .big 64 (your account), .huge 112 (a profile). */
 .avatar {
 	display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; overflow: hidden;
 	border-radius: 50%; background: var(--avatar-8); color: var(--on-avatar);
@@ -1486,6 +1505,17 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 /* Somebody not known yet (your own in the header before the server has
    said who you are): the same circle, blank, on the neutral ground. */
 .avatar.unknown { background: var(--panel-hi); box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* A minifigure (web/card.js minifigHtml): its layers, each a picture of
+   the whole circle, laid over its colour. Head and shoulders at a profile's
+   and an account's sizes; at a byline's and a list's, closer, so the face
+   reads. */
+.avatar.house { background: var(--panel-hi) url(/icon.svg) 50% 50% / 64% no-repeat; box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* A minifig or the mark has no letter in it, and an empty box sits on the
+   text's baseline, which made every byline 4 px taller: an empty line in
+   it keeps the baseline a letter had. */
+.avatar.minifig::before, .avatar.house::before { content: "\200b"; }
+.avatar.minifig { background-size: cover; background-position: 50% 50%; background-repeat: no-repeat; }
+.avatar.minifig:not(.big):not(.huge) { background-size: 150%; background-position: 50% 8%; }
 
 /* A picture of your own cropped to a circle (web/picture.js, Edit
    profile's Choose a picture): the picture on a square canvas, the circle
@@ -1498,6 +1528,42 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	background: var(--field); touch-action: none; cursor: grab; }
 .cropper canvas:active { cursor: grabbing; }
 .cropper .zoom { display: flex; gap: var(--s-2); }
+
+/* Make a minifig (web/minifig-maker.js, Edit profile): the figure as it
+   will be shown beside its choices (above them on a phone), at a byline's,
+   a card's and a profile's size on a light page and a dark one; each choice
+   a row of radio tiles, the one chosen ringed in the accent. Only the
+   choices scroll, so Save stays in reach. */
+.minifig-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); display: none; }
+.minifig-dialog[open] { display: flex; flex-direction: column; }
+.minifig-maker { display: grid; grid-template-columns: 200px 1fr; grid-template-rows: minmax(0, 1fr); gap: var(--s-5); min-height: 0; flex: 1 1 auto; }
+.minifig-look { display: grid; gap: var(--s-3); justify-items: center; align-content: start; }
+.minifig-look .avatar.huge { width: 160px; height: 160px; }
+.minifig-themes { display: grid; gap: var(--s-2); width: 100%; }
+.minifig-on { display: flex; align-items: center; justify-content: center; gap: var(--s-3); padding: var(--s-2) var(--s-3);
+	border-radius: var(--radius); border: 1px solid var(--line-strong); }
+.minifig-on.light { background: #fbfbfa; }
+.minifig-on.dark { background: #0b0c0e; }
+.minifig-choices { overflow-y: auto; min-height: 0; padding-right: var(--s-2); }
+.minifig-group { border: 0; padding: 0; margin: 0 0 var(--s-4); min-width: 0; }
+.minifig-group legend { font-weight: 600; margin-bottom: var(--s-2); padding: 0; }
+.minifig-tiles { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.minifig-tile { position: relative; display: block; margin: 0; cursor: pointer; }
+.minifig-tile input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.minifig-tile .tile { display: block; width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
+	box-shadow: 0 0 0 1px var(--line-strong); }
+.minifig-tiles.swatch .tile, .minifig-tiles.ground .tile { width: 32px; height: 32px; }
+.minifig-tile .tile .avatar { width: 100%; height: 100%; }
+.minifig-tile:hover .tile { box-shadow: 0 0 0 2px var(--ink-faint); }
+.minifig-tile input:checked + .tile { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-edge); }
+.minifig-tile input:focus-visible + .tile { outline: 2px solid var(--accent-edge); outline-offset: 4px; }
+.minifig-credit { margin: var(--s-3) 0 var(--s-2); font-size: var(--t-small); }
+@media (max-width: 640px) {
+	.minifig-dialog { padding: var(--s-4); }
+	.minifig-maker { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: var(--s-3); }
+	.minifig-look { grid-template-columns: auto 1fr; align-items: center; justify-items: start; }
+	.minifig-look .avatar.huge { width: 112px; height: 112px; grid-row: span 2; }
+}
 
 /* An icon from the sprite (web/icons.svg, web/kit.js iconHtml), in the
    words' colour; filled when its button is pressed. */
@@ -1556,24 +1622,26 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 
 /* The beta's bar (web/betabar.js), on every page while the beta is open:
    Open beta, Report a bug and Join (or You're a tester), and its × that
-   hides it. Docked at the window's foot, the whole width, and the page
-   given its height at its end (--betabar-h, web/betabar.js), so it is the
-   window's edge and never over what the page says: floating over the page
-   it covered the home's first post (hero3d, 2026-11-23). Arriving with the
-   server's answer it moves nothing: a strip over the header that came so
-   pushed every page down (Steady loads). It rises and fades in. */
+   hides it. A strip of its own at the page's top, the whole width, over
+   the header, in a room the page holds for it from its first frame
+   (:root[data-betabar], set by web/theme.js before anything is drawn), so
+   it covers nothing and moves nothing: it scrolls away with the page and
+   the header stays. Floating over the page it covered the home's first
+   post (hero3d); docked at the window's foot it covered whatever reached
+   the fold, an object page's tabs at 1280x800 and its Like and Save on a
+   phone (pagebar, 2026-11-23); coming over the header with the server's
+   answer it pushed every page down (Steady loads). It fades in. */
+:root { --betabar-row: 48px; }
 .beta-bar {
-	position: fixed; z-index: 50; left: 0; right: 0; bottom: 0;
+	position: absolute; z-index: 30; top: 0; left: 0; right: 0; height: var(--betabar-row); box-sizing: border-box;
 	display: flex; align-items: center; justify-content: center; gap: var(--s-1);
-	padding: 5px max(var(--s-3), env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(var(--s-3), env(safe-area-inset-left, 0px));
-	border-top: 1px solid var(--line-strong);
+	padding: 0 max(var(--s-3), env(safe-area-inset-right, 0px)) 0 max(var(--s-3), env(safe-area-inset-left, 0px));
+	border-bottom: 1px solid var(--line);
 	background: var(--panel);
-	box-shadow: 0 -6px 18px -12px rgba(0, 0, 0, 0.35);
-	opacity: 0; transform: translateY(8px);
-	transition: opacity var(--motion-open) var(--ease), transform var(--motion-open) var(--ease);
+	opacity: 0; transition: opacity var(--motion-open) var(--ease);
 }
-.beta-bar.shown { opacity: 1; transform: none; }
-:root[data-betabar] body { padding-bottom: var(--betabar-h, 0px); }
+.beta-bar.shown { opacity: 1; }
+:root[data-betabar] body { padding-top: var(--betabar-row); }
 .beta-bar > * { flex: none; }
 .beta-bar > .badge { margin: 0 var(--s-1) 0 var(--s-1); }
 .beta-bar .short { display: none; }
@@ -1599,15 +1667,6 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	.beta-bar .icon-btn.small { min-width: 40px; }
 }
 .beta-bar.tight > .badge { display: none; }
-/* While it is shown the toast speaks above it, and the footer ends past
-   it, so the page's last line is never under it. Whatever is scrolled to,
-   by Tab, a link or a page's own script, stops clear above it, as under
-   the header (scroll-padding-top): a tester tabbing down Settings at 390
-   came to its Beta row's Beta hub and Leave the beta under the bar
-   (betaopen, 2026-11-10). Its 52 px at most, 16 below it, 12 clear. */
-:root[data-betabar] { scroll-padding-bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom, 0px)); }
-:root[data-betabar] .toast { bottom: calc(var(--s-5) + 60px); }
-:root[data-betabar] .site-foot { padding-bottom: calc(var(--s-6) + 64px); }
 
 /* The site's notice (web/notice.js, console3): what the owner set in the
    console, on every page until its × hides it. A card floating at the
@@ -1632,7 +1691,6 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	overflow-wrap: anywhere; white-space: pre-line; }
 .site-notice .icon-btn.small { flex: none; border-color: transparent; background: transparent; color: var(--ink-soft); }
 .site-notice .icon-btn.small:hover { background: var(--panel-hi); color: var(--ink); }
-@media (width < 900px) { :root[data-betabar] .site-notice { bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom, 0px)); } }
 @media (width < 600px) { .site-notice { right: 0; left: 0; margin-inline: auto; } }
 @media (prefers-reduced-motion: reduce) { .site-notice { transition: none; } }
 :root[data-notice] .site-foot { padding-bottom: calc(var(--s-6) + 96px); }
@@ -1986,6 +2044,13 @@ summary.pill:active, .segmented button:active, .menu summary:active { transform:
 .model:active, .list-card:active, .tile:has(> a.open):active { transform: scale(0.99); }
 @media (hover: hover) {
 	.model:hover, .list-card:hover, .tile:has(> a.open):hover { transform: translateY(-2px); }
+	/* A card rises under the mouse, its picture nearer, as a post on a
+	   social site does (sitebold, 2026-11-23: 2 px went unseen); not while
+	   its model turns in 3D in it, whose full screen a moved card would hold. */
+	.model:hover { transform: translateY(-4px); }
+	.model:has(.view3d):hover { transform: none; }
+	.model .frame img { transition: transform 300ms var(--ease); }
+	.model:hover .frame img { transform: scale(1.04); }
 	.tile:has(> a.open):hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 	.feature:hover { border-color: var(--line-strong); }
 	.model:active, .list-card:active { transform: translateY(-1px) scale(0.99); }
@@ -2003,7 +2068,8 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 		transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important;
 	}
 	.cta:active, :where(button):active, .icon-btn:active, .pill:active, .segmented button:active, .menu summary:active,
-	.model:hover, .model:active, .list-card:hover, .list-card:active, .tile:hover, .tile:active { transform: none; }
+	.model:hover, .model:active, .list-card:hover, .list-card:active, .tile:hover, .tile:active,
+	.model:hover .frame img { transform: none; }
 }
 
 /* Read aloud, not shown. */
@@ -2021,31 +2087,133 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 
    .page-hero: the head, the whole width: the yellow's light from above
    over the baseplate of studs, which fade into the ground under the words
-   (a gradient over them, not a mask: one layer to paint). Its .wrap
-   holds the .eyebrow, the h1, the .lede and, under them, .hero-meta (a
-   date, a count) or .actions. */
+   (a gradient over them, not a mask: one layer to paint).
+
+   One head for every page but the landing page and an object's (listkit,
+   2026-11-23; the owner, of the feed beside the notifications:
+   "inconsistent widths and layouts"; each page had built its own, its
+   title 32 to 104 px under the header). Its .wrap holds:
+     .page-head    the title and its one line at the left (.page-title:
+                   the h1, the .lede), the page's actions at the right
+                   (.page-acts: a button, a search, a date), their feet
+                   on one line;
+     .tabs         the page's views, when it has them, on the band's foot,
+                   the one shown underlined on its line.
+   No eyebrow over the title: the header says where you are, and the tabs
+   which view. Under 600 px the line is left out (the gallery's was, so
+   what a page lists starts on a phone's first screen), and a search
+   takes a row of its own under the title. tools/web/layout_audit.mjs
+   fails a page whose h1 or tabs are not where this puts them. */
 .page-hero {
-	padding: var(--page-top) 0 var(--s-7); border-bottom: 1px solid var(--line);
+	padding: var(--s-6) 0; border-bottom: 1px solid var(--line);
 	background-image: var(--glow), linear-gradient(180deg, transparent 10%, var(--bg) 90%), var(--studs);
 	background-size: auto, auto, 24px 24px; background-repeat: no-repeat, no-repeat, repeat;
 }
-.page-hero h1 { max-width: 22ch; }
-.page-hero .lede { margin-bottom: 0; }
-.page-hero .actions { margin-top: var(--s-5); }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.page-title { flex: 1 1 360px; min-width: 0; align-self: flex-start; }
+.page-head h1 { margin: 0; overflow-wrap: anywhere; }
+.page-head .lede { margin: var(--s-2) 0 0; max-width: 72ch; }
+.page-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); min-width: 0; }
+.page-acts:not(:has(> :not([hidden]))) { display: none; }
+/* A search among them (the gallery's, Talk's): the site's .search, in its
+   form when it has one. */
+.page-acts:has(> :is(.search, [role="search"])) { flex: 1 1 520px; max-width: 640px; flex-wrap: nowrap; justify-content: flex-end; }
+/* Wide enough for the longest of its words, the Sets tab's "Search sets by
+   name, number or theme", beside the "/" (sitepolish: cut at "or the" at 1280). */
+.page-acts > :is(.search, [role="search"]) { flex: 1 1 380px; max-width: 460px; min-width: 0; }
+.page-acts .hero-meta { margin: 0; }
 /* A rule page's copy in another language: one line under its heading,
    that the English text binds (tools/site_lang.py BOUND). */
-.page-hero .binding { margin: 0 0 var(--s-3); color: var(--ink-faint); font-size: var(--t-small); }
-/* A head that ends in .tabs (the legal pages, /feed and /notifications):
-   the tabs sit on the head's line, the one shown underlined on it. */
-.page-hero:has(> .wrap > .tabs:last-child) { padding-bottom: 0; }
-.page-hero > .wrap > .tabs:last-child { margin-block: var(--s-5) -1px; border-bottom: 0; }
+.page-hero .binding { margin: var(--s-2) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
+/* The tabs on the band's foot, alone or in a .tab-bar with a control at
+   its end (the gallery's Top over). */
+.tab-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; }
+.tab-bar > .tabs { flex: 1; min-width: 0; margin: 0 0 -1px; border-bottom: 0; }
+.page-hero:has(> .wrap > :is(.tabs, .tab-bar):last-child) { padding-bottom: 0; }
+.page-hero > .wrap > :is(.tabs, .tab-bar):last-child { margin: var(--s-5) 0 0; }
+.page-hero > .wrap > .tabs:last-child { margin-bottom: -1px; border-bottom: 0; }
+@media (width < 600px) {
+	/* The title and the actions on one row, a search on the next; the
+	   title's row a control's height on every page, so the h1 is where it
+	   is on every page whatever is beside it. */
+	.page-hero { padding-top: var(--s-4); }
+	.page-head { align-items: flex-start; column-gap: var(--s-3); }
+	.page-head .lede, .page-head .binding, .page-acts .hint { display: none; }
+	.page-title { flex: 1 1 0; }
+	.page-head h1 { display: flex; align-items: center; min-height: var(--control-h); }
+	.page-acts { flex: none; }
+	.page-acts:has(> :is(.search, [role="search"])) { display: contents; }
+	.page-acts > :is(.search, [role="search"]) { order: 1; flex: 1 1 100%; max-width: none; }
+	.page-acts .search input { padding-right: 12px; }
+}
 .hero-meta {
 	display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: var(--s-4) 0 0; padding: 0;
 	list-style: none; color: var(--ink-faint); font-size: var(--t-small);
 }
 .hero-meta b { color: var(--ink-soft); font-weight: 600; }
 /* Under the head, the page's own parts. */
-.page-body { padding: var(--s-7) 0 var(--section); }
+.page-body { padding: var(--s-6) 0 var(--section); }
+
+/* A list page's body (listkit): the whole page's width, its list
+   (.list-main) from the page's left edge and from 900 px its aside
+   (.list-aside, 320 px, sticky under the header) ending at its right edge,
+   32 px between, no island of a column with empty sides (the lead,
+   2026-11-23). A row's words keep a reading measure inside it. Under
+   900 px, the site's breakpoint, the aside follows the list. */
+.list-layout { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.list-main { display: grid; gap: var(--s-4); align-content: start; min-width: 0; }
+.list-aside { min-width: 0; display: grid; gap: var(--s-6); align-content: start; }
+.list-aside > section { min-width: 0; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); }
+.list-aside h2 { margin: 0 0 var(--s-3); }
+@media (width >= 900px) {
+	/* The aside's column kept while it has nothing to show (the feed with
+	   no designers to suggest), so the list is one width on every list
+	   page and in every state: two tabs of one area never differ. */
+	.list-layout:has(> .list-aside) { grid-template-columns: minmax(0, 1fr) 320px; }
+	.list-aside { position: sticky; top: calc(var(--head-h) + var(--s-5)); }
+}
+
+/* A row (listkit): one for every list of what was made, said or done: a
+   post of the feed, a notification, a thread of Talk. ol.list-rows >
+   li.list-row: its picture (.row-pic, 4:3) or who (.row-face, an
+   avatar), then .row-body (.row-title, .row-said, .row-meta: who and
+   when), then at most one .row-act; a post's card (.row-card) under the
+   words. Not read yet, or pinned: .unread, edged in the accent. */
+.list-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.list-row {
+	display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-2) var(--s-4); align-items: start;
+	min-width: 0; padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+.list-row:is(.unread, .new, .pinned) { border-color: var(--accent-edge); }
+.list-row > .row-pic, .list-row > .row-face { grid-column: 1; grid-row: 1 / span 2; }
+.list-row > .row-pic {
+	display: block; width: 96px; aspect-ratio: 4 / 3; height: auto; overflow: hidden; object-fit: cover;
+	border-radius: var(--r-2); background: var(--picture-ground);
+}
+.list-row > .row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.list-row > .row-face { display: inline-flex; flex: none; text-decoration: none; }
+/* The row spans the list; its words keep a reading measure inside it. */
+.row-body { grid-column: 2; min-width: 0; }
+.row-body > * { max-width: 75ch; }
+.list-row:not(:has(> .row-pic, > .row-face)) > .row-body { grid-column: 1 / 3; }
+.row-act { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: var(--s-2); }
+.row-card { grid-column: 2 / -1; min-width: 0; max-width: 560px; }
+.list-row:not(:has(> .row-pic, > .row-face)) > .row-card { grid-column: 1 / -1; }
+.row-title { margin: 0; line-height: 1.35; overflow-wrap: anywhere; }
+.row-title a { color: var(--ink); text-decoration: none; }
+.row-title a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.row-said { display: block; margin: var(--s-1) 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.row-meta { display: block; margin: var(--s-1) 0 0; color: var(--ink-faint); font-size: var(--t-small); overflow-wrap: anywhere; }
+.row-meta a { color: var(--ink-soft); }
+.row-body .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s-1) 0 0; }
+.list-row .dot { display: inline-block; width: 10px; height: 10px; margin-left: var(--s-2); vertical-align: middle; border-radius: 50%; background: var(--accent-edge); }
+@media (width < 600px) {
+	.list-row { padding: var(--s-3); column-gap: var(--s-3); }
+	.list-row > .row-pic { width: 72px; }
+	/* A post's card the row's whole width on a phone, as it was. */
+	.list-row > .row-card { grid-column: 1 / -1; }
+}
 
 /* .page-grid: what is on the page (.page-toc) down the left from 900 px,
    sticky under the header, and the parts beside it; over them, in one
@@ -2085,20 +2253,39 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
    is here and not in talk.css, which only Talk's pages load. */
 /* A row is a card as a model's is: its title the one link, stretched over
    all of it, the starter's name and the board links of their own over it;
-   its first words two lines at most; under them one line, the starter's
-   avatar, who and when, and its marks at the line's end (sitepolish,
-   2026-11-23: the board was a pill on a line of its own in every row, each
-   row a wall of four lines, "0 replies" on every one). */
-.talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.talk-row {
-	position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start;
-	border: 1px solid var(--line); border-radius: var(--r-3); padding: 14px 16px; background: var(--panel);
-	box-shadow: var(--highlight), var(--shadow-1); transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
-}
+   its first words two lines at most; under them who started it and when,
+   and its marks (sitepolish). As a forum lays a row out (sitebold,
+   2026-11-23): its picture first, the model it is about or else its
+   board's icon on a tile, and at its end who is in it (the starter's
+   avatar, the last replier's over it), how many replied and when the last
+   did; on a phone the end goes under the words. */
+/* The row itself is the site's (.list-row, listkit): its grid, edge,
+   padding and ground; here only what a thread adds to it. */
+.talk-row { position: relative; align-items: center; transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease); }
 .talk-row:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
-.talk-row:has(.talk-row-picture) { grid-template-columns: 96px minmax(0, 1fr); }
-.talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
-.talk-row-picture { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.talk-row-pic { align-self: start; border-radius: var(--r-2); background: var(--picture-ground); text-decoration: none; }
+.talk-row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* A board's icon on its own tint (Talk's tiles, a row with no picture). */
+.talk-tile {
+	display: grid; place-items: center; width: 100%; height: 100%; border-radius: inherit;
+	background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
+.talk-tile .icon { width: 30px; height: 30px; stroke-width: 1.6; }
+/* Each board its own colour, on the tile itself or on the board's link around it. */
+:is(.talk-tile.b-show, .b-show > .talk-tile) { background: color-mix(in srgb, var(--blue) 16%, var(--panel)); color: color-mix(in srgb, var(--blue) 70%, var(--ink)); }
+:is(.talk-tile.b-help, .b-help > .talk-tile) { background: color-mix(in srgb, var(--green) 16%, var(--panel)); color: color-mix(in srgb, var(--green) 70%, var(--ink)); }
+:is(.talk-tile.b-ideas, .b-ideas > .talk-tile) { background: color-mix(in srgb, var(--yellow) 16%, var(--panel)); color: color-mix(in srgb, var(--yellow) 70%, var(--ink)); }
+:is(.talk-tile.b-challenges, .b-challenges > .talk-tile) { background: color-mix(in srgb, var(--red) 16%, var(--panel)); color: color-mix(in srgb, var(--red) 70%, var(--ink)); }
+:is(.talk-tile.b-news, .b-news > .talk-tile) { background: color-mix(in srgb, var(--ink-soft) 16%, var(--panel)); color: color-mix(in srgb, var(--ink-soft) 70%, var(--ink)); }
+/* A challenge's month while it has no picture (api/_talk.js monthTileHtml):
+   a calendar's page, its band over the month alone (not its year, which
+   read as a mistake); the band red for the one open now, its tint for the
+   ones to come or that ran. */
+.talk-tile.talk-month { display: flex; flex-direction: column; place-items: stretch; border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line)); }
+.talk-month::before { content: ""; display: block; height: 10px; background: color-mix(in srgb, var(--red) 26%, var(--panel)); }
+.talk-month.open::before { background: var(--avatar-1); }
+.talk-month b { display: grid; flex: 1; place-items: center; font-size: var(--t-h2); font-weight: 700; line-height: 1; color: var(--ink); }
+.talk-month.ran b { color: var(--ink-soft); }
 .talk-row-title { margin: 0; font-size: var(--t-h3); font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .talk-row-title a { color: var(--ink); text-decoration: none; }
 .talk-row-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
@@ -2109,16 +2296,32 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.talk-row-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 10px 0 0; }
+.talk-row-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 0; }
 .talk-row-foot .talk-row-meta { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .talk-row .pills { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .talk-row-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
 .talk-row-meta a { color: var(--ink); }
 .talk-row :is(.talk-row-meta, .pills) a { position: relative; z-index: 1; }
+/* A reply made in the row (web/composer.js replyInCard, feedinline): its
+   room and composer on lines of their own under the row's line, over the
+   row's link. */
+.talk-row-foot > :is(.said-room, .composer) { flex: 1 0 100%; order: 1; }
+.talk-row :is(.said-room, .composer) { position: relative; z-index: 1; }
+/* Its end: who is in it, then how many replied and when the last did. */
+.talk-row-end { display: grid; justify-items: end; gap: 6px; min-width: 120px; text-align: end; }
+.talk-faces { display: flex; }
+.talk-faces .avatar { box-shadow: 0 0 0 2px var(--panel); }
+.talk-faces .avatar + .avatar { margin-left: -8px; }
+.talk-last { display: grid; gap: 2px; font-size: var(--t-small); color: var(--ink-soft); }
+.talk-last .talk-replies { color: var(--ink); font-weight: 650; }
+.talk-last small { color: var(--ink-faint); font-size: var(--t-tiny); }
+.talk-last .talk-first[data-replies="0"] { color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 400; }
 .talk-empty, .talk-searched { color: var(--ink-soft); }
 @media (width < 600px) {
-	.talk-row:has(.talk-row-picture) { grid-template-columns: 72px minmax(0, 1fr); }
-	.talk-row-picture { width: 72px; height: 54px; }
+	.talk-tile .icon { width: 24px; height: 24px; }
+	.talk-row { align-items: start; }
+	.talk-row-end { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-items: start; gap: 8px; min-width: 0; text-align: start; }
+	.talk-last { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
 }
 /* The homepage's latest: two columns from 900 px, a skeleton row's height
    held until the rows come. */
@@ -2185,35 +2388,62 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	.post-verbs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 	.post-verbs > :first-child { grid-column: 1 / -1; }
 }
-/* What was said of it: the newest comment, two lines held whatever comes,
-   and the way to say something, opened in place (web/landing.js). */
+/* What was said, in a post of the feed and a row of Talk (web/home-feed.js
+   saidLineHtml; web/composer.js puts in what is posted there the same way):
+   each a small face, a name and the words on one line, the room held for
+   two whatever comes, so a line that comes later moves nothing. Opened (the
+   composer there), each says up to three lines; all of them ("n more"),
+   whole, scrolled within the post past a few. */
 .post-talk { display: flex; flex-direction: column; gap: var(--s-1); margin-top: auto; padding-top: var(--s-2); border-top: 1px solid var(--line); }
-.post-said {
-	display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small);
-	line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere;
+.said-room { display: flex; flex-direction: column; justify-content: center; gap: var(--s-1); min-height: calc(48px + var(--s-1)); }
+.talk-row .said-room { min-height: 0; margin-top: var(--s-2); }
+.talk-row .said-room:not(:has(.said-line)) { display: none; }
+.said-lines { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.said-lines[hidden] { display: none; }
+.said-line { display: flex; align-items: center; gap: var(--s-2); min-width: 0; min-height: 24px; }
+.said-line > .avatar { flex: none; }
+.said-line p { flex: 1; min-width: 0; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small); line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.said-line .who { color: var(--ink); font-weight: 650; text-decoration: none; }
+.said-line a.who:hover { text-decoration: underline; }
+.said-line.reply { padding-left: calc(24px + var(--s-2)); }
+.said-line.pending { opacity: .65; }
+.said-wait { color: var(--ink-faint); font-size: var(--t-tiny); }
+.said-none { margin: 0; color: var(--ink-faint); font-size: var(--t-small); line-height: 1.45; }
+:is(.post-talk.open, .post.talk, .talk-row) .said-line { align-items: flex-start; }
+:is(.post-talk.open, .post.talk, .talk-row) .said-line p {
+	display: -webkit-box; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3;
 }
-.post-said .who { color: var(--ink); font-weight: 650; text-decoration: none; }
-.post-said .first { color: var(--ink-faint); }
-.post-say {
-	align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-soft);
+.post.talk .said-line p { -webkit-line-clamp: 2; line-clamp: 2; }
+.post-talk.every .said-lines { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--s-1); }
+.post-talk.every .said-line p { display: block; }
+.said-acts { display: flex; align-items: center; gap: var(--s-3); margin: 0; }
+.post-say, .said-more {
+	min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-soft);
 	font: inherit; font-size: var(--t-small); font-weight: 600; cursor: pointer;
 }
-.post-say:hover { color: var(--ink); text-decoration: underline; }
-.post-comments { display: flex; flex-direction: column; gap: var(--s-2); }
-.post-comments[hidden] { display: none; }
-.post-comments ol { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
-.post-comments li { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
-.post-comments li b { color: var(--ink); }
-.post-comments textarea { width: 100%; min-height: 72px; resize: vertical; }
-.post-comments .actions { justify-content: flex-end; }
-/* A thread's latest reply, on the soft ground under its first words. */
-.post-reply { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-radius: var(--r-2); background: var(--bg-soft); }
-.post-reply p {
-	display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small);
-	line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere;
-}
-.post-reply b { color: var(--ink); }
-.post-reply.none p { color: var(--ink-faint); }
+.said-more { margin-left: auto; color: var(--ink-faint); font-weight: 500; }
+.said-more[hidden] { display: none; }
+:is(.post-say, .said-more):hover { color: var(--ink); text-decoration: underline; }
+.post-acts a.tally { color: var(--ink-soft); text-decoration: none; }
+.post-acts a.tally:hover { color: var(--ink); text-decoration: underline; }
+/* The composer (web/composer.js), the same wherever something is said: a
+   feed's post, a row of Talk, a model's page, a thread's page. The box,
+   the guidelines and the keys that post under it, then what happened, and
+   Cancel and Post. A finger has no Ctrl, so a phone is not told of it. */
+.composer { display: grid; gap: var(--s-2); margin: 0; }
+.composer[hidden] { display: none; }
+.composer textarea { width: 100%; min-height: 72px; resize: vertical; }
+.composer-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-3); margin: 0; color: var(--ink-faint); font-size: var(--t-tiny); }
+.composer-foot[hidden] { display: none; }
+.composer-foot a { color: var(--ink-soft); }
+.composer-count { margin-left: auto; }
+.composer-count:empty { display: none; }
+.composer-count.bad { color: var(--bad); }
+@media (pointer: coarse) { .composer-keys { display: none; } }
+.composer-go { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.composer-said { flex: 1 1 12em; min-width: 0; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+:is(.post, .talk-row) .composer { margin-top: var(--s-2); }
+.post-talk .composer { margin-top: var(--s-1); }
 .post.talk .post-acts, .post.challenge .go-on { margin-top: auto; }
 /* The month's challenge: lit from above in the accent, as its tile is. */
 .post.challenge { border-color: var(--accent-edge); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; }

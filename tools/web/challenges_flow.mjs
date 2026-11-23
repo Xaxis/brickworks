@@ -788,7 +788,7 @@ try {
       await until(page, () => document.documentElement.dataset.notifications === "ready", "his notifications");
       const card = (id) => page.evaluate((one) => {
         const item = document.querySelector(`#groups .notice[data-challenge="${one}"]`);
-        return item && { name: item.querySelector("h2 a")?.textContent || "", unread: item.classList.contains("unread"),
+        return item && { name: item.querySelector(".row-title a")?.textContent || "", unread: item.classList.contains("unread"),
           brick: Boolean(item.querySelector(".pic.challenge .icon")), line: item.querySelector(".lines .what")?.textContent || "",
           icon: Boolean(item.querySelector(".lines a .icon")), href: item.querySelector(".lines a")?.getAttribute("href") || "" };
       }, id);

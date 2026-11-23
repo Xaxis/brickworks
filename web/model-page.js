@@ -35,6 +35,7 @@ import { askToSignIn, call, email, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 import { ask, avatarHtml } from "/kit.js";
+import { makeComposer, wireComposer } from "/composer.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, pinPart, pinSaid, rulesSaid, say, setPhoto,
   sharpPhotos, themeSaid, told } from "/card.js";
 import { copy, wireShare } from "/share-sheet.js";
@@ -1034,7 +1035,6 @@ function startComments(section) {
   const step = form.querySelector("#comment-step");
   const box = form.querySelector("#comment-body");
   const send = form.querySelector('button[type="submit"]');
-  const left = form.querySelector(".comment-count");
   const why = section.querySelector(".comment-why");
   const said = section.querySelector(".comments-said");
   let state = null;
@@ -1493,7 +1493,6 @@ function startComments(section) {
     }
     const you = state.you || {};
     form.hidden = !mayTry();
-    send.textContent = you.signed_in ? say("Add the comment") : say("Sign in and add it");
     why.replaceChildren();
     why.hidden = !you.signed_in || Boolean(you.may_write);
     if (you.signed_in && !you.may_write) {
@@ -1530,16 +1529,6 @@ function startComments(section) {
     }
   }
 
-  /// Signed in, or signed in now from the box: whether to go on sending.
-  async function signInFirst(words) {
-    if (signedIn()) return true;
-    if (!(await askToSignIn(words))) return false;
-    await load();
-    if (state.you?.may_write) return true;
-    tell(told(state.you?.why_not, say("That did not go just now. Try again in a minute.")));
-    return false;
-  }
-
   /// The reply box under thread [to], with [text] in it.
   function openReply(to, text = "", focus = true) {
     const thread = document.getElementById(`comment-${to}`);
@@ -1550,73 +1539,54 @@ function startComments(section) {
     for (const open of list.querySelectorAll("form.reply-new")) if (open.dataset.to !== String(to)) open.remove();
     let made = thread.querySelector("form.reply-new");
     if (!made) {
-      made = document.createElement("form");
-      made.className = "reply-new";
+      // The composer, as everywhere (web/composer.js): Ctrl+Enter or Post
+      // sends it, Enter is a new line, Cancel or Escape takes it away, the
+      // focus back on Reply; signed out, Post signs them in first.
+      made = makeComposer({ id: `reply-${to}`, label: say("Your reply"),
+        placeholder: say("Reply to {name}", { name: thread.querySelector(".comment-head a, .comment-head b")?.textContent || say("them") }) });
+      made.classList.add("reply-new");
       made.dataset.to = String(to);
-      const label = document.createElement("label");
-      label.className = "visually-hidden";
-      label.htmlFor = `reply-${to}`;
-      label.textContent = say("Your reply");
-      const field = document.createElement("textarea");
-      field.id = `reply-${to}`;
-      field.maxLength = 1000;
-      field.rows = 2;
-      field.placeholder = say("Reply to {name}", { name: thread.querySelector(".comment-head a, .comment-head b")?.textContent || say("them") });
-      const go = document.createElement("div");
-      go.className = "actions";
-      const post = document.createElement("button");
-      post.type = "submit";
-      post.className = "cta small";
-      post.textContent = signedIn() ? say("Reply") : say("Sign in and reply");
-      // Cancel, or Escape in the box: gone, the focus back on Reply.
+      const field = made.querySelector("textarea");
       const cancel = () => {
         replying = null;
         made.remove();
         thread.querySelector(`[data-reply="${to}"]`)?.focus();
       };
-      go.append(post, button(say("Cancel"), cancel, "cta ghost small"));
-      made.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        cancel();
+      wireComposer(made, {
+        said,
+        signIn: "Sign in to add your reply: we email you a code, no password. What you wrote is kept.",
+        ready: async () => {
+          await load();
+          return state.you?.may_write ? "" : told(state.you?.why_not, say("That did not go just now. Try again in a minute."));
+        },
+        send: async (words) => {
+          const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: words } });
+          return answer.status === 201 ? { ok: true, made: answer.body.comment } : { ok: false, error: told(answer.body?.error) };
+        },
+        close: cancel,
+        done: async (comment) => {
+          replying = null;
+          tell(say("Posted."));
+          await load();
+          // The reply, read out where it now is; else its comment's Reply.
+          const there = document.getElementById(`comment-${comment?.id}`);
+          if (there) {
+            there.tabIndex = -1;
+            there.focus({ preventScroll: true });
+            there.scrollIntoView({ block: "nearest" });
+          } else document.querySelector(`[data-reply="${to}"]`)?.focus();
+        },
       });
-      made.append(label, field, go);
       field.addEventListener("input", () => {
         replying = { id: to, text: field.value };
       });
       pickMentions(field, people);
-      made.addEventListener("submit", (event) => {
-        event.preventDefault();
-        sendReply(to, field, post);
-      });
       thread.querySelector(".comment-main").append(made);
     }
     const field = made.querySelector("textarea");
     if (text && !field.value) field.value = text;
     replying = { id: to, text: field.value };
     if (focus) field.focus();
-  }
-
-  async function sendReply(to, field, post) {
-    const text = field.value.trim();
-    if (!text) return tell(say("Say something first."));
-    replying = { id: to, text: field.value };
-    if (!(await signInFirst("Sign in to add your reply: we email you a code, no password. What you wrote is kept."))) return;
-    post.disabled = true;
-    tell(say("Adding it…"));
-    const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: text } });
-    post.disabled = false;
-    if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
-    replying = null;
-    tell(say("Replied."));
-    await load();
-    // The reply, read out where it now is; else its comment's Reply.
-    const made = document.getElementById(`comment-${answer.body.comment?.id}`);
-    if (made) {
-      made.tabIndex = -1;
-      made.focus({ preventScroll: true });
-      made.scrollIntoView({ block: "nearest" });
-    } else document.querySelector(`[data-reply="${to}"]`)?.focus();
   }
 
   async function change(one, what) {
@@ -1633,30 +1603,29 @@ function startComments(section) {
     await load();
   }
 
-  box.addEventListener("input", () => {
-    const n = [...box.value].length;
-    left.textContent = n > 900 ? say("{n} characters left", { n: number(1000 - n) }) : "";
-  });
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const text = box.value.trim();
-    if (!text) return tell(say("Say something first."));
-    if (!(await signInFirst("Sign in to add your comment: we email you a code, no password. What you wrote is kept."))) return;
-    send.disabled = true;
-    tell(say("Adding it…"));
-    const at = step.value === "" ? null : Number(step.value);
-    // On the part pressed in 3D: a pin, the part as the 3D view had it.
-    const part = aiming && { part: aiming.part, colour: aiming.colour, at: aiming.at, turn: aiming.turn };
-    const answer = await call(part ? "/api/people?op=pin" : "/api/people?op=comment", { method: "POST",
-      body: { model, version, step: at, body: text, ...(part ? { part } : {}) } });
-    send.disabled = false;
-    if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
-    box.value = "";
-    left.textContent = "";
-    if (part) unaim(false);
-    tell(at ? say("Added, on step {n}.", { n: at }) : say("Added."));
-    await load();
+  // The page's own box, the composer as everywhere (web/composer.js).
+  wireComposer(form, {
+    field: box,
+    button: send,
+    said,
+    signIn: "Sign in to add your comment: we email you a code, no password. What you wrote is kept.",
+    ready: async () => {
+      await load();
+      return state.you?.may_write ? "" : told(state.you?.why_not, say("That did not go just now. Try again in a minute."));
+    },
+    send: async (words) => {
+      const at = step.value === "" ? null : Number(step.value);
+      // On the part pressed in 3D: a pin, the part as the 3D view had it.
+      const part = aiming && { part: aiming.part, colour: aiming.colour, at: aiming.at, turn: aiming.turn };
+      const answer = await call(part ? "/api/people?op=pin" : "/api/people?op=comment", { method: "POST",
+        body: { model, version, step: at, body: words, ...(part ? { part } : {}) } });
+      return answer.status === 201 ? { ok: true, made: { at, part } } : { ok: false, error: told(answer.body?.error) };
+    },
+    done: async ({ at, part }) => {
+      if (part) unaim(false);
+      tell(at ? say("Posted, on step {n}.", { n: at }) : say("Posted."));
+      await load();
+    },
   });
 
   load();
@@ -2987,106 +2956,3 @@ function muteItem() {
 }
 const ID_OK = /^[A-Za-z0-9]{10}$/;
 muteItem();
-
-// A change sent back (suggestedit, 2026-11-23; api/_suggestions.js): on a
-// remix's page, its own builder may send what their remix changed to the
-// designer of the model it came from, with a word about it; on any model's
-// page, its designer sees the changes sent to it, each to open in the
-// studio (/app?suggestion=N) and take all of or part. Nobody else sees
-// either: the answer's open list is null for anybody but the designer.
-const SUGGEST_KINDS = ["added", "removed", "moved", "recoloured", "swapped", "restepped"];
-/// "2 added, 1 taken away, 1 moved", as the bell says it.
-function suggestionCounts(counts) {
-  const words = { added: "{n} added", removed: "{n} taken away", moved: "{n} moved", recoloured: "{n} recoloured",
-    swapped: "{n} swapped", restepped: "{n} to another step" };
-  return SUGGEST_KINDS.filter((kind) => Number(counts?.[kind]) > 0)
-    .map((kind) => say(words[kind], { n: number(Number(counts[kind])) })).join(", ");
-}
-
-async function suggestBox(box) {
-  if (!signedIn()) return;
-  const model = box.dataset.model;
-  const answer = await call(`/api/share?op=suggestions&id=${model}`).catch(() => null);
-  if (!answer || answer.status !== 200 || !Array.isArray(answer.body?.open)) return;
-  // Theirs: the list of changes sent to it is an array for its designer alone.
-  const open = answer.body.open;
-  box.replaceChildren();
-  if (open.length) {
-    const head = document.createElement("h2");
-    head.className = "suggest-head";
-    head.textContent = open.length === 1 ? say("A change sent to you") : say("{n} changes sent to you", { n: number(open.length) });
-    const list = document.createElement("ul");
-    list.className = "suggest-open";
-    for (const one of open) {
-      const item = document.createElement("li");
-      const who = document.createElement("b");
-      who.textContent = one.by?.name || (one.by?.handle ? `@${one.by.handle}` : say("A remixer"));
-      const remix = document.createElement("a");
-      remix.href = `${langAt()}/m/${one.remix}`;
-      remix.textContent = `“${one.name || ""}”`;
-      const words = document.createElement("span");
-      words.textContent = `: ${suggestionCounts(one.counts)}.`;
-      item.append(who, " ", say("sent a change from their remix"), " ", remix, words);
-      if (one.note) {
-        const note = document.createElement("q");
-        note.textContent = one.note;
-        item.append(" ", note);
-      }
-      const go = document.createElement("a");
-      go.className = "cta small";
-      go.href = `/app?suggestion=${Number(one.id)}`;
-      go.textContent = say("Open it in the studio");
-      go.title = say("Your model with the change drawn on it, to take all of it, some of it, or none");
-      item.append(" ", go);
-      list.append(item);
-    }
-    box.append(head, list);
-  }
-  if (box.dataset.remixOf) {
-    const form = document.createElement("form");
-    form.className = "suggest-send";
-    const label = document.createElement("label");
-    label.htmlFor = "suggest-note";
-    label.textContent = say("Send your change back to its designer: they see it in their studio, and take all of it or part.");
-    const note = document.createElement("textarea");
-    note.id = "suggest-note";
-    note.rows = 2;
-    note.placeholder = say("What you changed, and why (if you like)");
-    const send = document.createElement("button");
-    send.type = "submit";
-    send.className = "cta ghost small";
-    send.textContent = say("Send your change");
-    const said = document.createElement("p");
-    said.className = "said";
-    said.setAttribute("role", "status");
-    form.append(label, note, send, said);
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      // Over the limit refused here in words, never cut (the server says the same).
-      const length = [...note.value.trim()].length;
-      if (length > 500) {
-        said.textContent = say("What you say of it is {n} characters: 500 at most.", { n: number(length) });
-        return;
-      }
-      send.disabled = true;
-      said.textContent = say("Sending it…");
-      const sent = await call("/api/share?op=suggest", { method: "POST", body: { remix: model, note: note.value } })
-        .catch(() => null);
-      send.disabled = false;
-      if (!sent || (sent.status !== 200 && sent.status !== 201)) {
-        said.textContent = told(sent?.body?.error, say("It could not be sent just now. Try again in a minute."));
-        return;
-      }
-      const to = sent.body.to?.name || "";
-      said.textContent = sent.body.again
-        ? say("Sent again: “{model}” has your change as it is now ({changes}).", { model: to, changes: suggestionCounts(sent.body.counts) })
-        : say("Sent to the designer of “{model}”, who hears of it now: {changes}.", { model: to, changes: suggestionCounts(sent.body.counts) });
-    });
-    box.append(form);
-  }
-  box.hidden = box.childElementCount === 0;
-}
-for (const box of document.querySelectorAll("#suggest-box[data-model]")) suggestBox(box).catch(() => null);
-addEventListener("brickworks:signed-in-done", () => {
-  for (const box of document.querySelectorAll("#suggest-box[data-model]")) suggestBox(box).catch(() => null);
-});

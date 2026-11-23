@@ -13,7 +13,7 @@
 //
 // - a profile carries one ProfilePage whose mainEntity is a Person: their
 //   name as its heading says it, their handle, the page's own address, an
-//   image that answers as a picture (theirs, or the tile they are shown as,
+//   image that answers as a picture (theirs, or the minifig they are shown as,
 //   ?op=avatar&handle=), and their numbers as the page shows them: followers
 //   as interactionStatistic (FollowAction); their models (WriteAction) and
 //   whom they follow (FollowAction) as agentInteractionStatistic, as Google's
@@ -357,9 +357,9 @@ check(wanted.every((one) => refused.some((said) => one.test(said))) && refused.l
 // What robots.txt lets a crawler fetch, and that it reads as meant.
 const robotsText = remote ? (await get("/robots.txt")).html : readFileSync(path.join(root, "web", "robots.txt"), "utf8");
 mayCrawl = robotsOf(robotsText);
-const tile = "/api/people?op=avatar&handle=sam-builds";
-check(mayCrawl("/u/sam-builds") && mayCrawl(tile) && mayCrawl("/api/people?op=avatar&id=FacePriya1") && !mayCrawl("/api/people?op=me")
-  && !mayCrawl("/api/share?op=list") && !mayCrawl("/admin"), `robots.txt lets a crawler fetch a profile and a person's picture or tile, `
+const minifig = "/api/people?op=avatar&handle=sam-builds";
+check(mayCrawl("/u/sam-builds") && mayCrawl(minifig) && mayCrawl("/api/people?op=avatar&id=FacePriya1") && !mayCrawl("/api/people?op=me")
+  && !mayCrawl("/api/share?op=list") && !mayCrawl("/admin"), `robots.txt lets a crawler fetch a profile and a person's picture or minifig, `
   + `and keeps it from the rest of the API and /admin (${robotsText.split("\n").filter((line) => /^(Allow|Disallow):/.test(line)).length} rules)`);
 
 // What the sitemap lists.

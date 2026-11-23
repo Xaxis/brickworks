@@ -26,10 +26,10 @@
     {"frames": 30}
    ],
    "settle": 60,
-   "crop": "@opened",
+   "crop": "_render._preview",
    "pad": 0,
-   "alt": "The Render dialog after Render picture at Best in the Product look on white: the car in glossy plastic, each edge rounded and catching a thin line of light, its shadow soft under it.",
-   "caption": "Quality › Best, Look › Product: the car as a set's box shows it, its edges rounded as moulded parts' are.",
+   "alt": "The car rendered at Best in the Product look on white, path traced: glossy red and black plastic, clear windows, a soft shadow under it.",
+   "caption": "Quality › Best, Look › Product: the car as a set's box shows it.",
    "features": ["lib:product look", "lib:moulded edges"]
   },
   {

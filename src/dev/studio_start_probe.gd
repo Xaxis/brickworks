@@ -126,9 +126,17 @@ func _run() -> void:
 	start.call("_fill_came")
 	start.call("_fill_found", true)
 	await _settle()
+	# Continue's three with no stored picture drawn from their files.
+	var drawn_ms: int = Time.get_ticks_msec()
+	for _n: int in 1200:
+		if int(start.call("page_state")["pictured"]) >= 4:
+			break
+		await process_frame
+	drawn_ms = Time.get_ticks_msec() - drawn_ms
 	await _a_while(30)
 	await _picture("studio_start_%d.png" % int(root.get_visible_rect().size.x))
 	await _the_list(start, signed_ms)
+	_the_faces(start, drawn_ms)
 	await _the_pin(start, fake)
 	await _a_new_pin(fake)
 	await _a_copy(start, fake)
@@ -137,8 +145,15 @@ func _run() -> void:
 
 # -- what is set up -----------------------------------------------------------------
 
+## Where StudioStart keeps the pictures it draws (StudioStart.DRAWN_AT),
+## emptied first so this run draws them.
+const DRAWN_AT := "user://thumbnails/"
+
+
 func _save_models() -> void:
 	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
+	for file: String in DirAccess.get_files_at(DRAWN_AT):
+		DirAccess.remove_absolute(DRAWN_AT + file)
 	var names: Array[String] = ["Harbour Tug", "Castle Gate", "Red Racer", "Pinned Tower"]
 	for n: int in names.size():
 		var text: String = _grid_text(names[n], 3 + n * 2, n == 3)
@@ -168,14 +183,15 @@ func _fake() -> FakeShared:
 		"page": "/challenge?id=7", "start": "/app?copy=Pr0beTemp1", "entries": 14},
 		"came": [
 			{"kind": "comment", "model": ID, "name": "Pinned Tower", "picture": "/m/%s.webp" % ID,
-				"line": "{who} commented on a part, step 1", "who": "Lia", "said": "This yellow brick wants a slope on top",
+				"line": "{who} commented on a part, step 1", "who": "Lia", "by": {"handle": "lia", "name": "Lia", "picture": "/api/people?op=avatar&id=Av4tarPrb1"},
+				"said": "This yellow brick wants a slope on top",
 				"at": _iso_ago(600), "new": true, "link": "/m/%s#comment-%d" % [ID, COMMENT],
 				"comment": COMMENT, "pinned": true},
 			{"kind": "photo", "model": ID, "name": "Pinned Tower", "picture": "/m/%s.webp" % ID,
-				"line": "{who} posted a photo of their build", "who": "Sam", "said": "Built it with my daughter",
+				"line": "{who} posted a photo of their build", "who": "Sam", "by": {"handle": "sam-builds", "name": "Sam"}, "said": "Built it with my daughter",
 				"at": _iso_ago(7200), "new": true, "link": "/m/%s#photo-abc" % ID, "comment": 0, "pinned": false},
 			{"kind": "remix", "model": ID, "name": "Pinned Tower", "picture": "/m/%s.webp" % ID,
-				"line": "{who} remixed it as “Tall Tower”", "who": "Bo", "said": "", "at": _iso_ago(90000),
+				"line": "{who} remixed it as “Tall Tower”", "who": "Bo", "by": {"handle": "bo", "name": "Bo"}, "said": "", "at": _iso_ago(90000),
 				"new": false, "link": "/m/Pr0beRemx1", "comment": 0, "pinned": false}]}
 	var models: Array = []
 	var names: Array[String] = ["Gallery Tower", "Moon Base", "Steam Train", "Fire Station", "Mini Mech", "Bonsai"]
@@ -227,6 +243,49 @@ func _the_list(start: Control, signed_ms: int) -> void:
 	_check(bool(_main.get("_start_decided")), "(a) decided once a tab")
 
 
+## (e) Every Continue tile shows its model, every row whoever it was, and
+## the head's buttons are a button's height, × at the top right.
+func _the_faces(start: Control, drawn_ms: int) -> void:
+	var state: Dictionary = start.call("page_state")
+	var kept: int = 0
+	for file: String in DirAccess.get_files_at(DRAWN_AT):
+		kept += 1 if file.get_extension() == "png" else 0
+	_check(int(state["pictured"]) == 4 and kept >= 3,
+		"(e) every Continue tile shows its model, the three with none stored drawn from their files in %d ms and kept (%d of 4 shown, %d kept)"
+		% [drawn_ms, state["pictured"], kept])
+	var letters: int = 0
+	for tile: Node in (start.get("_continue") as Node).get_children():
+		for label: Node in tile.find_children("*", "Label", true, false):
+			letters += 1 if (label as Label).text.length() == 1 else 0
+	_check(letters == 0, "(e) no tile is a letter (%d)" % letters)
+	var rows: Array = (start.get("_came_list") as Node).get_children()
+	var faces: Array = rows.map(func(row: Node) -> Node: return row.find_child("Face", true, false))
+	var lia: TextureRect = faces[0].find_child("Picture", true, false) as TextureRect if faces[0] != null else null
+	var sam: Label = faces[1].get_child(0) as Label if faces[1] != null else null
+	var sam_tone: Color = ((faces[1] as Panel).get_theme_stylebox("panel") as StyleBoxFlat).bg_color \
+		if faces[1] != null else Color.BLACK
+	_check(int(state["faces"]) == 3 and lia != null and lia.texture != null and sam != null and sam.text == "S"
+		and sam_tone == start.call("tone_of", "sam-builds"),
+		"(e) each came-back row shows whoever it was: Lia's picture, Sam's initial on Sam's colour (%d faces)"
+		% state["faces"])
+	var row_left: float = (rows[0] as Control).get_global_rect().position.x if not rows.is_empty() else 0.0
+	_check(faces[0] != null and (faces[0] as Control).get_global_rect().position.x - row_left <= 16.0 * float(start.get("text_k")),
+		"(e) the face sits at the row's left, no gap before it")
+	var card: Rect2 = (start.get("_card") as Control).get_global_rect()
+	var close_at: Rect2 = (start.get("_close") as Control).get_global_rect()
+	var new_at: Rect2 = (start.get("_new") as Control).get_global_rect()
+	var least: float = 34.0 * maxf(1.0, float(start.get("text_k")))
+	var titles: Rect2 = (start.get("_titles") as Control).get_global_rect()
+	var phone: bool = float(start.get("text_k")) > 1.0
+	_check(close_at.size.y <= least * 1.5 and new_at.size.y <= least * 1.5
+		and card.end.x - close_at.end.x <= 40.0 and close_at.position.y - card.position.y <= 40.0,
+		"(e) × at the card's top right and New model a button's height (× %d tall, %d from the right; New model %d tall)"
+		% [close_at.size.y, card.end.x - close_at.end.x, new_at.size.y])
+	_check(not phone or (titles.position.y >= close_at.end.y - 1.0 and titles.size.x >= card.size.x - 60.0),
+		"(e) on a phone the title and its line have the card's width under the buttons (%d of %d)"
+		% [titles.size.x, card.size.x])
+
+
 func _the_pin(start: Control, fake: FakeShared) -> void:
 	var row: Control = (start.call("controls_by_name") as Dictionary).get("start_came_0")
 	if row == null:
@@ -235,6 +294,7 @@ func _the_pin(start: Control, fake: FakeShared) -> void:
 	var world: BrickWorld = _main.get("_world")
 	var store: ModelStore = _main.get("_store")
 	var asked: int = fake.asked_comments
+	await _into_sight(row)
 	var pressed_ms: int = Time.get_ticks_msec()
 	_press_now(row)
 	var meant: int = 0
@@ -317,6 +377,7 @@ func _a_copy(start: Control, fake: FakeShared) -> void:
 	if tile == null:
 		_check(false, "(d) a gallery model to press")
 		return
+	await _into_sight(tile)
 	_press_now(tile)
 	var store: ModelStore = _main.get("_store")
 	for _n: int in 600:
@@ -336,6 +397,16 @@ func _brick_coloured(world: BrickWorld, colour: int) -> int:
 	return 0
 
 
+## Scrolled into sight, as a person does before pressing: below the fold of
+## a phone's window a press landed on the scrim and put the screen away.
+func _into_sight(control: Control) -> void:
+	var scroll: ScrollContainer = _scroll_of(control)
+	if scroll != null:
+		scroll.ensure_control_visible(control)
+		for _n: int in 3:
+			await process_frame
+
+
 func _press_now(control: Control) -> void:
 	var at: Vector2 = control.get_global_rect().get_center()
 	for down: bool in [true, false]:
@@ -347,6 +418,13 @@ func _press_now(control: Control) -> void:
 		event.global_position = event.position
 		Input.parse_input_event(event)
 		await process_frame
+
+
+func _scroll_of(control: Control) -> ScrollContainer:
+	var up: Node = control.get_parent()
+	while up != null and not up is ScrollContainer:
+		up = up.get_parent()
+	return up as ScrollContainer
 
 
 func _as_event(at: Vector2) -> Vector2:

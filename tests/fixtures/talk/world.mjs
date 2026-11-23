@@ -85,6 +85,10 @@ export async function talkWorld() {
   await db.q(NEEDS);
   await db.q("set check_function_bodies = off");
   await db.q(file("supabase/talk.sql"));
+  // Ask the builders: comment_pins.sql's pin_shaped, then the file itself.
+  const pinShaped = /create or replace function public\.pin_shaped[\s\S]*?\n\$\$;\n/.exec(file("supabase/comment_pins.sql"))[0];
+  await db.q(pinShaped);
+  await db.q(file("supabase/talk_asks.sql"));
   await db.q("set check_function_bodies = on");
   const pool = [];
   for (let at = 0; at < 4; at += 1) pool.push(await db.connect());
@@ -92,7 +96,10 @@ export async function talkWorld() {
   db.call = async (name, args = {}) => {
     const names = Object.keys(args || {});
     if (!/^[a-z_]+$/.test(name) || names.some((key) => !/^[a-z_]+$/.test(key))) throw new Error(`rpc ${name}`);
-    const values = names.map((key) => (args[key] !== null && typeof args[key] === "object" && !Array.isArray(args[key])
+    // An object, or an array of objects (an ask's parts), is jsonb as
+    // PostgREST sends it; an array of numbers a Postgres array.
+    const values = names.map((key) => (args[key] !== null && typeof args[key] === "object"
+      && (!Array.isArray(args[key]) || args[key].some((one) => one !== null && typeof one === "object"))
       ? JSON.stringify(args[key]) : args[key]));
     const client = pool[next++ % pool.length];
     const rows = (await client.query(`select * from public.${name}(${names.map((key, at) => `${key} => $${at + 1}`).join(", ")}) as answer`,

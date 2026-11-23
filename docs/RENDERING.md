@@ -2147,6 +2147,107 @@ number was not judged.
   two, and the faces' own grain (0.16 against the photographs' 0.04) does not
   come from the wear. No measure could see it.
 
+## 5q. The plastic itself: five things real parts have, judged one at a time (photoreal13)
+
+Every verdict on photoreal10 to photoreal12 named the plastic as the main
+tell: the parts too clean, too even, their edges ruled. photoreal13 drew five
+things a real part has, each as a lever on photoreal10's stage. Each was then
+judged alone beside the photographs, against the same tree with all five
+off, in one pool, at one moment, on the same seeds. The pictures are the
+app's own: File › Render, Best, Product, as a person draws them
+(`tools/photoreal/app_shots.py --older`, photoreal10's stage).
+
+**The five** (commit 1b8320906 keeps all of them):
+- **logo**: each stroke of the stud's letters as a rounded ridge with no flat
+  top, as the mould raises it.
+- **edge**: each edge's rounding (`ROUND`, 0.6 LDU) strays along it, half as
+  much again either way, each part its own way. A nick here and there widens
+  it to twice that, so the line of light along the edge breaks. A slope's face is also rounded into the part's ends: photoreal10
+  drew that edge as a ruled corner.
+- **lint**: dust settled on what faces up, as specks a few hundredths to
+  a fifth of a millimetre across, thicker in patches and at each stud's
+  foot, with now and then a curl of fibre.
+- **mould**: one injection gate per part on one stud's top, whitened by
+  the stress, and a faint sink over each tube.
+- **sheen**: each part's gloss its own, its colour drifting a hair across it.
+
+**Judged** (solo, 2 rounds of 2 trials, the photographs in the same pool,
+600 verdicts, none lost: bench/results/photoreal13-2026-11-23/solo_p13pool;
+the pictures side by side: arms_grid.jpg there):
+
+| arm | called a photograph | mean p | close-ups | sets |
+|---|---|---|---|---|
+| all five off (photoreal10) | 11 of 80 | 0.188 | 0.271 | 0.062 |
+| logo | 4 of 80 | 0.159 | 0.218 | 0.069 |
+| **edge** | **16 of 80** | 0.223 | 0.333 | 0.059 |
+| lint | 10 of 80 | 0.184 | 0.266 | 0.062 |
+| mould | 12 of 80 | 0.189 | 0.275 | 0.060 |
+| sheen | 11 of 80 | 0.186 | 0.270 | 0.059 |
+| all five | 14 of 80 | 0.228 | 0.337 | 0.063 |
+
+The edge's gain is on one picture and one seed, and it is not noise there.
+On seed 1, red_slope_2x4 was called a render 4 times of 4 with the edges
+off, in every arm that leaves them off. With the edges on, alone or with
+the other four, it was called a photograph 4 times of 4. The judge's words
+changed from "crisp, regular edge bevels" and "sharp, perfectly straight
+edges and corners" to "the side faces have small surface flaws". On seed 2
+the slope was already called a photograph 4 of 4. green_plate_macro went
+from 7 of 8 to 8 of 8.
+
+**Kept: the edges**, on unless asked off (`StudioRender.PRODUCT_EDGE` 1,
+`RenderSettings.edge`). The amount goes to the card in each part's record,
+in the byte of `info.w` above the studs' (`PathTracer.edge`), because the
+closest hit reads no scene. **Taken out**, rather than left as levers:
+- **logo** lost green_plate_macro, every one of its 8 calls (0.28 against
+  0.65). The judge saw the letters "rotated inconsistently from stud to
+  stud, some upside down", "garbled or mirrored". A rounded ridge lit from
+  the side reads as sunk on some studs and raised on others.
+- **lint, mould and sheen** moved nothing the judge sees. With lint on, "no
+  dust" was still named in 78% of the verdicts (82% with it off). With the
+  gates drawn, missing "mould marks" were named in 42% (46%). With sheen,
+  "uniform colour" was named in 90% (90%). At the judge's 1024 pixels a
+  speck a fifth of a millimetre across is a pixel or two on a close-up. The
+  gate's ring was made twice as big once before (photoreal3), and the judge
+  then called it "garbled marks inside the logo".
+
+**Confirmed on the kept tree** (76a70e95a, imported, no runtime patch),
+its edges on against `--without=edge`, on four seeds, in a second pool
+(360 verdicts, none lost: solo_p13confirm). Without the edges the pictures
+are photoreal10's within the pass split's 4 levels (10 of 10 shots, seed
+1), and with them the judged edge arm's within 4:
+
+| tree | called a photograph | mean p | close-ups | sets | paired |
+|---|---|---|---|---|---|
+| edges off (photoreal10) | 29 of 160 | 0.217 | 0.313 | 0.073 | 19 of 20, sure 0.860 |
+| edges on (photoreal13) | 32 of 160 | 0.251 | 0.368 | 0.076 | 19 of 20, sure 0.859 |
+
+The mean p is higher with the edges on every seed, in both rounds (8 of 8:
+seed 1 0.249 against 0.212, seed 3 0.246 against 0.179). In the first pool
+it was higher on both seeds in both rounds too (4 of 4). red_slope_2x4 is
+called a photograph 16 of 16 times with them and 13 of 16 without. The
+count, 32 of 160 against 29, is a small gain. Scaled to the brief's 80
+verdicts, the two pools give 16 and 16 against photoreal10's 15 in
+photoreal12's pool. **The bar (above 15 of 80, beyond the noise) is not
+met.** The edges are kept because they are a consistent gain at no cost.
+The paired judge holds (19 of 20 against 19 of 20).
+
+**Time.** The car at Best, Product, 1280x720, 256 samples, drawn at the
+same moment with the edges and without (photoreal_probe --car, three
+renders each, four rounds, each tree started first twice): the median of
+12 renders is 2.87 s with the edges against 2.73 s without, 5% more. The
+round medians overlap (on 2.47 to 3.21 s, off 2.51 to 2.79 s). The edge
+adds two value noises to each hit, and only near an edge does it change
+the normal.
+
+**What the judge still names**, of the 80 verdicts on the edge arm (with
+the edges off in brackets): the backdrop or what the model stands on 85%
+(86%), the light or the shadow 82% (81%), "uniform" colour or gloss 94%
+(90%), no dust 68% (82%), no scratches or wear 72% (81%). The edges took
+some of the dust and wear tells, the only ones that moved. On black_2x4 the
+photograph's top mirrors a bright room and ours is dark. That is the
+staging, not the plastic: photoreal12 measured it at 5.7 stops of top over
+side in the photograph, against -1.3 in photoreal11's render.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

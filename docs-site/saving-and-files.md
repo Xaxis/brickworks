@@ -50,9 +50,9 @@ ui:working model that could not open
 
 Signed in, the studio opens on a screen of your own, over your model:
 
-- **Continue**: the models you saved last, on this device or any other you sign in on. One tap opens one. On a device you have not used before, they are listed at once and each opens as soon as it has come from your account.
+- **Continue**: the models you saved last, on this device or any other you sign in on, each with its picture: its gallery picture if you shared it, otherwise one the studio draws from the file and keeps until the file changes. One tap opens one. On a device you have not used before, they are listed at once and each opens as soon as it has come from your account.
 - **This week's quick build**: its brief and its day. **Start from its template** puts your own copy of the template on the baseplate, ready to publish as your entry. A week with no template has **See it and its entries**, its page.
-- **What came back on your models**: the newest comments, photos of builds and remixes. A comment on a part opens your model with that part selected. A photo or a remix opens its page. Nothing is marked read: the count on your avatar stays until you open Notifications.
+- **What came back on your models**: the newest comments, photos of builds and remixes, each beside the avatar of whoever sent it. A comment on a part opens your model with that part selected. A photo or a remix opens its page. Nothing is marked read: the count on your avatar stays until you open Notifications.
 - **Find in the gallery**: the newest models, and a search. A model you press opens as a copy of your own, credited to its designer.
 
 Press **Esc**, click outside the screen or start building, and it goes. Untick **Open the studio on this screen** to start straight on your model. While the studio is open, comments on parts of a shared model are checked every 30 seconds, so a new one shows on its part within a minute.
@@ -103,11 +103,11 @@ ui:rename or delete saved models
 
 ## Get an earlier save back {#versions}
 
-![The Versions dialog for Red car: a line on what Open and Compare do, a note that the model has changes not saved, Save it now, then its four saves, newest first, each with the day, the time and its count of parts, the newest marked the last save, and Compare and Open on each.](/docs/img/saving-versions.webp "File › Versions…: the model's last 20 saves, to compare or open.")
+![The Versions dialog for Red car: a line on what Open and Compare do, a note that the model has changes not saved, Save it now, then its four saves, newest first, each with the day, the time and its count of parts, and how many more than the save before it, the newest marked the last save, and Compare and Open on each.](/docs/img/saving-versions.webp "File › Versions…: the model's last 20 saves, to compare or open.")
 
 Every save is also kept as a version: the last 20 of each model. A save that changes nothing keeps no copy.
 
-1. Choose **File › Versions…**. The saves of the model on the baseplate are listed newest first, each with when it was saved and how many parts it has.
+1. Choose **File › Versions…**. The saves of the model on the baseplate are listed newest first, each with when it was saved (today's to the second, yesterday's as yesterday, last week's with how many days ago) and how many parts it has, more or fewer than the save before it.
 2. Press **Compare** to see what changed since that save, or **Open** to put that save on the baseplate in place of what is there. Save it then, and it is the newest again.
 
 If the model has changes you have not saved, Versions says so: **Save it now** keeps them as a version before you open another.

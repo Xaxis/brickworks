@@ -48,6 +48,8 @@ var store: ModelStore
 var account: Account
 ## Fetches the models' pictures (ModelLibrary.fetch).
 var pictures: ModelLibrary
+## The parts' geometry, for a picture of a model with none stored (Main's).
+var library: PartLibrary
 ## What each choice does (Main's): open_saved(path), copy(id), came(item),
 ## begin_new().
 var open_saved: Callable = Callable()
@@ -110,6 +112,28 @@ var text_k: float = 1.0
 ## What was asked before it showed (prepare) is shown as it is when younger
 ## than this; older, it is asked again.
 const FRESH_MS := 60000
+## A model with no stored picture is drawn from its file (ModelThumbnail's
+## drawing, on a worker), this many pixels square, and kept here by the
+## file's hash, so it is drawn once a change and not once a visit.
+const DRAWN_AT := "user://thumbnails/"
+const DRAWN_SIZE := 176
+## How long a tile waits for a model still on its way from the account.
+const COMING_MS := 120000
+## The site's avatar colours, in its order (web/site.css --avatar-N).
+const TONES: Array[Color] = [Color("#b42318"), Color("#1f5fbf"), Color("#1f7a3d"), Color("#7a3fb0"),
+	Color("#9a4a00"), Color("#0e6f8a"), Color("#a3175a"), Color("#4b5563")]
+const FACE := 40.0
+## Pictures drawn this run, by the file's hash; what waits to be drawn
+## ([rect, path, since, tries]), one at a time.
+var _drawn: Dictionary = {}
+var _drawing: Array = []
+var _draw_running: bool = false
+var _shapes_read: bool = false
+## The header's pieces, which a phone lays out in two rows (_lay).
+var _head: HBoxContainer
+var _titles: VBoxContainer
+var _head_gap: Control
+var _under_head: VBoxContainer
 
 
 func _ready() -> void:
@@ -152,29 +176,39 @@ func _ready() -> void:
 	column.add_theme_constant_override("separation", 14)
 	_scroll.add_child(column)
 
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 10)
-	column.add_child(head)
-	var titles := VBoxContainer.new()
-	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	titles.add_theme_constant_override("separation", 2)
-	head.add_child(titles)
+	# The title beside its two buttons, which stay their own height: on a
+	# phone the buttons have the row to themselves and the words go under
+	# them, the width of the card (_lay).
+	_head = HBoxContainer.new()
+	_head.add_theme_constant_override("separation", 10)
+	column.add_child(_head)
+	_titles = VBoxContainer.new()
+	_titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_titles.add_theme_constant_override("separation", 2)
+	_head.add_child(_titles)
+	_head_gap = Control.new()
+	_head_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_head_gap.visible = false
+	_head.add_child(_head_gap)
+	_under_head = VBoxContainer.new()
+	_under_head.visible = false
+	column.add_child(_under_head)
 	_title = _label("Welcome back", 21, Color(0.97, 0.97, 0.98))
-	titles.add_child(_title)
-	titles.add_child(_label("Pick up where you left off, or see what came back from other builders.", 13,
+	_titles.add_child(_title)
+	_titles.add_child(_label("Pick up where you left off, or see what came back from other builders.", 13,
 		Look.GREYED, true))
 	_new = _button("New model", false)
+	_new.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_new.tooltip_text = "An empty baseplate"
 	_new.pressed.connect(func() -> void:
 		_chose({"what": "new"})
 		if begin_new.is_valid():
 			begin_new.call())
-	head.add_child(_new)
-	# The site's own close sign: the web's fonts have no ✕ (a box was drawn).
-	_close = _button("×", false)
+	_head.add_child(_new)
+	_close = _close_button()
 	_close.tooltip_text = "Put this away (Esc): the model is behind it"
 	_close.pressed.connect(func() -> void: close("closed"))
-	head.add_child(_close)
+	_head.add_child(_close)
 	_name("start_new", _new)
 	_name("start_close", _close)
 
@@ -442,9 +476,9 @@ func _fill_continue() -> void:
 	for one: Dictionary in models:
 		var facts: String = "%s · %s" % [_parts_words(int(one["bricks"])), _ago_unix(int(one["modified"]))]
 		var picture: String = _picture_of(str(one["link"])) if not str(one["link"]).is_empty() else ""
-		var tile: Button = _tile(str(one["name"]), facts, picture, PICTURE)
-		tile.tooltip_text = "Open “%s”" % str(one["name"])
 		var path: String = str(one["path"])
+		var tile: Button = _tile(str(one["name"]), facts, picture, PICTURE, path)
+		tile.tooltip_text = "Open “%s”" % str(one["name"])
 		tile.pressed.connect(func() -> void:
 			_chose({"what": "continue", "path": path})
 			if open_saved.is_valid():
@@ -545,23 +579,14 @@ func _came_row(item: Dictionary, n: int) -> Button:
 	line.offset_right = -8
 	line.add_theme_constant_override("separation", 10)
 	row.add_child(line)
-	var picture := TextureRect.new()
-	picture.custom_minimum_size = SMALL
-	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	picture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line.add_child(picture)
-	var where: String = str(item.get("picture", "")) if item.get("picture") is String else ""
-	if not where.is_empty():
-		_picture_into(picture, _absolute(where))
+	var who: String = str(item.get("who", "")) if item.get("who") is String else ""
+	line.add_child(_face_of(item.get("by"), who))
 	var words := VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.alignment = BoxContainer.ALIGNMENT_CENTER
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.add_theme_constant_override("separation", 1)
 	line.add_child(words)
-	var who: String = str(item.get("who", "")) if item.get("who") is String else ""
 	var said: String = str(item.get("line", "")).replace("{who}", who if not who.is_empty() else "A builder")
 	var head := _label(said, 13, Color(0.95, 0.95, 0.96))
 	head.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -668,13 +693,22 @@ func _lay() -> void:
 	_found_grid.columns = clampi(floori((inner + 12.0) / (PICTURE.x * 0.82 * maxf(1.0, text_k * 0.75) + 12.0)),
 		2, FOUND_MOST)
 	_middle.columns = 1 if narrow else 2
+	var titles_at: Container = _under_head if narrow else _head
+	if _titles.get_parent() != titles_at:
+		_titles.get_parent().remove_child(_titles)
+		titles_at.add_child(_titles)
+		if not narrow:
+			_head.move_child(_titles, 0)
+	_head_gap.visible = narrow
+	_under_head.visible = narrow
 	for tile: Control in _continue.get_children() + _found_grid.get_children():
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 # -- the pieces ----------------------------------------------------------------------
 
-func _tile(title: String, facts: String, picture: String, picture_size: Vector2) -> Button:
+func _tile(title: String, facts: String, picture: String, picture_size: Vector2,
+		model_path: String = "") -> Button:
 	var tile := Button.new()
 	tile.focus_mode = Control.FOCUS_NONE
 	tile.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -704,19 +738,21 @@ func _tile(title: String, facts: String, picture: String, picture_size: Vector2)
 	ground.set_corner_radius_all(6)
 	frame.add_theme_stylebox_override("panel", ground)
 	inside.add_child(frame)
-	var initial := _label(title.left(1).to_upper(), 34, Color(1, 1, 1, 0.22))
-	initial.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	frame.add_child(initial)
 	var shown := TextureRect.new()
+	shown.name = "Shown"
 	shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shown.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	frame.add_child(shown)
+	# Its stored picture, or, with none or none that comes, its own file
+	# drawn: a model is shown as itself, never as a letter.
 	if not picture.is_empty():
-		_picture_into(shown, picture, initial)
+		_picture_into(shown, picture, func() -> void:
+			if not model_path.is_empty():
+				_drawn_into(shown, model_path))
+	elif not model_path.is_empty():
+		_drawn_into(shown, model_path)
 	var name_line := _label(title, 13, Color(0.96, 0.96, 0.97))
 	name_line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	inside.add_child(name_line)
@@ -747,6 +783,31 @@ func _face_button(button: Button, fill: Color, lit: Color) -> void:
 		face.set_border_width_all(1)
 		face.set_corner_radius_all(10)
 		button.add_theme_stylebox_override(state, face)
+
+
+## A close button as a window's: a sign in a square, its ground only under
+## the pointer.
+func _close_button() -> Button:
+	var button := Button.new()
+	button.text = "×"
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.custom_minimum_size = Vector2(34, 34)
+	button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	button.add_theme_font_size_override("font_size", 22)
+	for state: String in ["normal", "hover", "pressed", "disabled"]:
+		var face := StyleBoxFlat.new()
+		face.bg_color = Color(1, 1, 1, 0.0 if state == "normal" or state == "disabled"
+			else (0.10 if state == "hover" else 0.16))
+		face.set_corner_radius_all(8)
+		face.content_margin_left = 4
+		face.content_margin_right = 4
+		face.content_margin_top = 0
+		face.content_margin_bottom = 2
+		button.add_theme_stylebox_override(state, face)
+	for colour: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		button.add_theme_color_override(colour, Color(0.86, 0.88, 0.92) if colour == "font_color" else Color.WHITE)
+	return button
 
 
 func _button(words: String, main: bool) -> Button:
@@ -832,7 +893,27 @@ func page_state() -> Dictionary:
 		"found": found.size(), "found_for": found_for,
 		"found_title": _found_title.text if _found_title != null else "", "real": real_items(), "asked": asked,
 		"shown_ms": shown_ms, "filled_ms": filled_ms, "chosen": chosen, "items": items,
-		"names": models.map(func(one: Dictionary) -> String: return str(one["name"]))}
+		"names": models.map(func(one: Dictionary) -> String: return str(one["name"])),
+		"pictured": _pictured(_continue), "faces": _faces()}
+
+
+## How many of [param grid]'s tiles show a picture.
+func _pictured(grid: Container) -> int:
+	var n: int = 0
+	if grid != null:
+		for tile: Node in grid.get_children():
+			var shown: TextureRect = tile.find_child("Shown", true, false) as TextureRect
+			n += 1 if shown != null and shown.texture != null else 0
+	return n
+
+
+## How many came-back rows show whoever it was.
+func _faces() -> int:
+	var n: int = 0
+	if _came_list != null:
+		for row: Node in _came_list.get_children():
+			n += 1 if row.find_child("Face", true, false) != null else 0
+	return n
 
 
 # -- pictures, links and words ---------------------------------------------------------
@@ -846,21 +927,202 @@ static func _absolute(address: String) -> String:
 	return address if address.begins_with("http") else Deployment.api_base() + address
 
 
-func _picture_into(rect: TextureRect, address: String, hidden: Control = null) -> void:
+## The picture at [param address] into [param rect]; [param otherwise] called
+## when there is none to be had.
+func _picture_into(rect: TextureRect, address: String, otherwise: Callable = Callable(),
+		hidden: Control = null) -> void:
+	var texture: Texture2D = null
 	if _covers.has(address):
-		rect.texture = _covers[address]
-		if hidden != null and rect.texture != null:
-			hidden.visible = false
+		texture = _covers[address]
+	elif pictures != null:
+		var got: Dictionary = await pictures.fetch(address, ModelLibrary.MOST_COVER)
+		texture = ModelLibrary.picture(got["bytes"]) if int(got.get("code", 0)) == 200 else null
+		_covers[address] = texture
+	if not is_instance_valid(rect):
 		return
-	if pictures == null:
+	if texture == null:
+		if otherwise.is_valid():
+			otherwise.call()
 		return
-	var got: Dictionary = await pictures.fetch(address, ModelLibrary.MOST_COVER)
-	var texture: Texture2D = ModelLibrary.picture(got["bytes"]) if int(got.get("code", 0)) == 200 else null
-	_covers[address] = texture
-	if is_instance_valid(rect):
-		rect.texture = texture
-	if texture != null and hidden != null and is_instance_valid(hidden):
+	rect.texture = texture
+	if hidden != null and is_instance_valid(hidden):
 		hidden.visible = false
+
+
+## [param rect] given the picture of the model file at [param path], drawn
+## when it has none kept: in turn, one model at a time.
+func _drawn_into(rect: TextureRect, path: String) -> void:
+	_drawing.append([rect, path, Time.get_ticks_msec(), 0])
+	if not _draw_running:
+		_draw_running = true
+		_draw_all()
+
+
+func _draw_all() -> void:
+	while not _drawing.is_empty() and is_inside_tree():
+		var job: Array = _drawing.pop_front()
+		var rect: TextureRect = job[0] as TextureRect if is_instance_valid(job[0]) else null
+		if rect == null:
+			continue
+		var path: String = job[1]
+		if not FileAccess.file_exists(path):
+			# Still on its way from the account (set_listed): drawn once here.
+			if Time.get_ticks_msec() - int(job[2]) < COMING_MS:
+				_drawing.append(job)
+				await get_tree().create_timer(1.0).timeout
+			continue
+		var drawn: Array = await _drawing_of(path)
+		if drawn[0] != null and is_instance_valid(rect):
+			rect.texture = drawn[0]
+		# Parts still coming over the wire: drawn again once they may be here.
+		if not bool(drawn[1]) and int(job[3]) < 2:
+			job[3] = int(job[3]) + 1
+			get_tree().create_timer(6.0).timeout.connect(func() -> void:
+				if is_instance_valid(rect):
+					_drawing.append(job)
+					if not _draw_running:
+						_draw_running = true
+						_draw_all())
+	_draw_running = false
+
+
+## The picture of the model file at [param path] and whether it has every
+## part ([texture or null, whole]): kept by its file's hash, or drawn by
+## ModelThumbnail's drawer on a worker, so the frame goes on meanwhile.
+func _drawing_of(path: String) -> Array:
+	var key: String = FileAccess.get_md5(path)
+	if key.is_empty():
+		return [null, true]
+	if _drawn.has(key):
+		return [_drawn[key], true]
+	var kept: String = DRAWN_AT + key + ".png"
+	if FileAccess.file_exists(kept):
+		var image: Image = Image.load_from_file(kept)
+		if image != null and not image.is_empty():
+			_drawn[key] = ImageTexture.create_from_image(image)
+			return [_drawn[key], true]
+	if library == null:
+		return [null, true]
+	var read: Dictionary = ModelThumbnail.model_text(path)
+	if not str(read.get("error", "")).is_empty():
+		return [null, true]
+	var placed: Array[LdrModel.Placement] = LdrModel.parse(str(read["text"]), path.get_file()).flatten()
+	# Each part's geometry where it lies (the build's or the library's
+	# files), read on the worker; a part only in memory (fetched, or one of
+	# the person's own) taken from there now.
+	var files: Dictionary = {}
+	var shapes: Dictionary = {}
+	var missing: Array = []
+	for placement: LdrModel.Placement in placed:
+		var id: String = placement.part_id
+		if files.has(id) or shapes.has(id):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		var on_disk: String = library._on_disk(info.mesh_hash) if info != null else ""
+		if not on_disk.is_empty():
+			files[id] = on_disk
+		elif library.is_resident(id):
+			var mesh: Lbm.PartMesh = library.mesh_for(id)
+			if mesh != null:
+				shapes[id] = ModelThumbnail.Shape.of_part(mesh)
+		elif info != null:
+			missing.append(id)
+	if not missing.is_empty():
+		library.want(missing)
+	var colours: Dictionary = {}
+	for code: Variant in library.colors:
+		var colour: PartLibrary.BrickColor = library.colors[code]
+		colours[int(code)] = Color(colour.rgb, float(colour.alpha) / 255.0)
+	# A function's first run on two threads at once can take the engine
+	# down (WorkerTasks.first_here): the first part read here.
+	if not _shapes_read and not files.is_empty():
+		_shapes_read = true
+		var first: String = str(files.keys()[0])
+		var shape: ModelThumbnail.Shape = ModelThumbnail.Shape.read(str(files[first]))
+		files.erase(first)
+		if shape != null:
+			shapes[first] = shape
+	var out: Dictionary = {}
+	var lock := Mutex.new()
+	var task: int = WorkerThreadPool.add_task(func() -> void:
+		var all: Dictionary = shapes.duplicate()
+		for id: String in files:
+			var shape: ModelThumbnail.Shape = ModelThumbnail.Shape.read(str(files[id]))
+			if shape != null:
+				all[id] = shape
+		var names: Dictionary = {}
+		for id: String in all:
+			names[id] = id
+		var drawer := ModelThumbnail.Drawer.new()
+		drawer.alone = true
+		drawer.colours = colours
+		var image: Image = drawer.draw(placed, names, all, DRAWN_SIZE)
+		lock.lock()
+		out["image"] = image
+		lock.unlock(), false, "studio start picture")
+	while not WorkerThreadPool.is_task_completed(task):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+	lock.lock()
+	var image: Image = out.get("image")
+	lock.unlock()
+	if image == null:
+		return [null, missing.is_empty()]
+	var texture := ImageTexture.create_from_image(image)
+	if missing.is_empty():
+		_drawn[key] = texture
+		DirAccess.make_dir_recursive_absolute(DRAWN_AT)
+		image.save_png(kept)
+	return [texture, missing.is_empty()]
+
+
+## Whoever a came-back row names, as the site shows them (web/card.js
+## avatarHtml): their picture, or the first letter of their name on their
+## colour. [param who] names one the answer gives no person for.
+func _face_of(by: Variant, who: String) -> Control:
+	var person: Dictionary = by if by is Dictionary else {}
+	var handle: String = str(person.get("handle", ""))
+	var named: String = str(person.get("name", "")).strip_edges()
+	var said: String = named if not named.is_empty() else (handle if not handle.is_empty() else who)
+	var across: float = roundf(FACE * text_k)
+	var face := Panel.new()
+	face.name = "Face"
+	face.custom_minimum_size = Vector2(across, across)
+	face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	var disc := StyleBoxFlat.new()
+	disc.set_corner_radius_all(ceili(across * 0.5))
+	disc.bg_color = tone_of(handle if not handle.is_empty() else said) if not said.is_empty() \
+		else Color(1, 1, 1, 0.12)
+	face.add_theme_stylebox_override("panel", disc)
+	var letter := _label(said.left(1).to_upper() if not said.is_empty() else "?", 17, Color.WHITE)
+	letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	face.add_child(letter)
+	var picture: String = str(person.get("picture", ""))
+	if picture.begins_with("/api/people?op=avatar&id="):
+		var shown := TextureRect.new()
+		shown.name = "Picture"
+		shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shown.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		face.add_child(shown)
+		_picture_into(shown, _absolute(picture), Callable(), letter)
+	return face
+
+
+## A person's colour, as the site picks it (web/card.js avatarTone): FNV-1a
+## of their handle, lower case, into the eight.
+static func tone_of(handle: String) -> Color:
+	var mixed: int = 0x811c9dc5
+	var lower: String = handle.to_lower()
+	for i: int in lower.length():
+		mixed = mixed ^ lower.unicode_at(i)
+		mixed = (mixed * 0x01000193) & 0xFFFFFFFF
+	return TONES[mixed % 8]
 
 
 ## The link a saved model was shared under (its 0 !BRICKWORKS SHARE line,

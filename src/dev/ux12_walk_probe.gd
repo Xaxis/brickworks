@@ -6,10 +6,14 @@
 ## WALK.md): someone opening a Studio .io a friend sent, a builder making a
 ## sub-assembly and using it again, a MOC designer checking stability and
 ## fixing what floats, someone making instructions and their PDF, and a
-## teenager on a phone making a minifigure and sharing it (p6 to p10).
-## Research, not in the suite: its "UX12 check" and "UX13 check" lines judge
-## the fixes, and it exits 0 once every step is pictured, 1 when the app
-## never came up.
+## teenager on a phone making a minifigure and sharing it (p6 to p10). And
+## ux14 (bench/results/ux14-2026-11-23/WALK.md): a builder recolouring a
+## whole model for a new theme, someone measuring and aligning parts
+## exactly, a Technic builder making gears mesh, and someone coming back to
+## last week's model and its versions (p11 to p14).
+## Research, not in the suite: its "UX12 check", "UX13 check" and "UX14
+## check" lines judge the fixes, and it exits 0 once every step is
+## pictured, 1 when the app never came up.
 ##
 ##   godot --path . --resolution 1280x800 --script src/dev/ux12_walk_probe.gd -- [--phone] [--pictures=DIR] [--only=p6,p7] [--studio-file=PATH]
 ##
@@ -127,6 +131,16 @@ func _run() -> void:
 		await _booklet_pdf()
 	if _runs("p10"):
 		await _figure_on_a_phone()
+	if _runs("p11"):
+		await _recolour()
+	if _runs("p12"):
+		await _measure_align()
+	if _runs("p13"):
+		await _gears()
+	if _runs("p14"):
+		await _returning()
+	if _runs("x14"):
+		await _leftovers()
 	await _checks()
 	print("UX12 done: %d steps pictured, %d check(s) failed" % [_steps, _failures])
 	quit(0)
@@ -497,6 +511,17 @@ func _sub_assembly() -> void:
 	var bin_said: String = (_bin.get("_status") as Label).text
 	_check13("the bin searched for the sub-assembly says where another comes from (%s)" % (
 		bin_said.get_slice("\n", 0)), bin_said.contains("is a sub-assembly of this model"))
+	# ux14 (f): the bin's row for the model's own sub-assembly, first.
+	var own_row: Variant = _bin.get("_own_row")
+	if own_row is Button and (own_row as Button).visible:
+		(own_row as Button).pressed.emit()
+		await _frames(20)
+		await _step("p7_05b_own_row", "the bin's Bumper row pressed: another in hand")
+	_check14("the bin's row puts another Bumper in hand (%s, holding: %s)" % [
+		(own_row as Button).text if own_row is Button else "no row", str(_builder.is_carrying())],
+		own_row is Button and _builder.is_carrying())
+	_main.get("_verbs").call("put_away")
+	await _frames(10)
 	await _run_command("duplicate", "p7_06_duplicate", "Edit, Duplicate: a second one in hand", 20)
 	await _put_down(Vector3(0, 0, -160), "p7_07_second_down", "the second one put down")
 	await _run_command("enter_assembly", "p7_08_inside", "Build, Edit inside the sub-assembly", 30)
@@ -622,6 +647,390 @@ func _figure_on_a_phone() -> void:
 		var called: String = ((share as Node).get("_name") as LineEdit).text
 		_check13("Share names the model for its one figure (%s)" % called, called == "Nova")
 	await _close_all()
+
+
+# -- 11. a whole model recoloured for a new theme ---------------------------------------
+
+
+func _recolour() -> void:
+	print("\nUX14 p11: a whole model recoloured for a new theme")
+	await _open_model("res://models/house.ldr", "House")
+	await _step("p11_01_house", "the house, to be made a winter cabin")
+	await _menu("Edit", "p11_02_edit_menu", "Edit: where a colour is changed everywhere")
+	var counts: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			counts[brick.color_code] = int(counts.get(brick.color_code, 0)) + 1
+	var most: int = -1
+	for code: int in counts:
+		if most < 0 or int(counts[code]) > int(counts[most]):
+			most = code
+	print("UX14 p11 the house's colours: %s" % str(counts))
+	# One part of the commonest colour selected, as a person points at it.
+	_builder.clear_selection()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.color_code == most and not _store.scenery.has(brick.id):
+			_builder.select_brick(brick.id, false)
+			break
+	await _run_command("select_colour", "p11_03_same_colour", "Edit, Select by, Same colour", 20)
+	print("UX14 p11 selected by colour: %d of %d" % [_builder.selection.size(), int(counts.get(most, 0))])
+	await _run_command("find_replace", "p11_04_find_replace", "Edit, Find and replace", 30)
+	var bar: Variant = _main.get("_find_replace_made")
+	if bar is Control:
+		var into: OptionButton = (bar as Node).get("_into_colour")
+		var find: OptionButton = (bar as Node).get("_find_colour")
+		print("UX14 p11 find lists %d colours, replace with %d; swatches: %s" % [find.item_count,
+			into.item_count, str(into.item_count > 1 and into.get_item_icon(1) != null)])
+		var find_part: LineEdit = (bar as Node).get("_find_part")
+		_check14("Find takes what the 24 share: any part (\"%s\") in %s" % [find_part.text,
+			find.get_item_text(find.selected)], find_part.text.is_empty()
+			and int((bar as Node).call("_picked", find)) == most)
+		_check14("...its colours with their swatches (%s)" % str(into.get_item_icon(1) != null),
+			into.item_count > 1 and into.get_item_icon(1) != null)
+		into.show_popup()
+		await _frames(20)
+		await _step("p11_05_replace_colours", "Replace with: the colours to choose from")
+		into.get_popup().hide()
+		await _frames(5)
+		# White, for snow.
+		(bar as Node).call("set_into", "", 15)
+		(bar as Node).call("refresh")
+		await _frames(10)
+		await _step("p11_06_ready", "the commonest colour to white, ready")
+		var done: Dictionary = await (bar as Node).call("replace_now")
+		await _frames(20)
+		await _step("p11_07_replaced", "replaced: %d" % int(done.get("changed", 0)))
+		var left: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.color_code == most and not _store.scenery.has(brick.id):
+				left += 1
+		print("UX14 p11 left in the old colour: %d" % left)
+		_check14("Replace recolours all %d, none left in the old colour (%d left)"
+			% [int(counts.get(most, 0)), left], left == 0)
+	await _close_all()
+	# The second colour by painting: what is selected, a colour clicked.
+	var second: int = -1
+	for code: int in counts:
+		if code != most and (second < 0 or int(counts[code]) > int(counts[second])):
+			second = code
+	_builder.clear_selection()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.color_code == second and not _store.scenery.has(brick.id):
+			_builder.select_brick(brick.id, false)
+			break
+	await _run_command("select_colour", "", "", 20)
+	await _step("p11_08_second_selected", "the second colour selected, to paint")
+	_builder.held_color = second
+	await _run_command("paint", "p11_09_painted", "Paint the selection with the colour in hand", 30)
+	_check14("Paint in the colour they are already says why: %s" % _bar.status_text().left(90),
+		_bar.status_text().contains("already"))
+	await _close_all()
+
+
+# -- 12. parts measured and aligned exactly ------------------------------------------------
+
+
+func _measure_align() -> void:
+	print("\nUX14 p12: parts measured and aligned exactly")
+	await _open_model("res://models/car.ldr", "Car")
+	await _run_command("measure", "p12_01_ruler", "Tools, Measure", 20)
+	var bricks: Array = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
+		return not _store.scenery.has(brick.id))
+	bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.x < b.transform.origin.x)
+	if bricks.size() >= 2:
+		for brick: BrickWorld.Brick in [bricks[0], bricks[-1]]:
+			var at: Vector2 = _camera.unproject_position((brick as BrickWorld.Brick).transform.origin)
+			if _on_phone:
+				await _tap(at)
+			else:
+				await _move(at)
+				await _click(at)
+			await _frames(10)
+	await _step("p12_02_measured", "two points measured, end to end")
+	print("UX14 p12 the ruler said: %s" % _bar.status_text())
+	if not _on_phone:
+		_check14("the status line says the measurement: %s" % _bar.status_text().left(80),
+			_bar.status_text().contains("studs across") or _bar.status_text().contains(" deep")
+			or _bar.status_text().contains("plates up"))
+	await _key(KEY_ESCAPE)
+	await _frames(10)
+	# One part selected, to move by exactly one stud along x.
+	_builder.clear_selection()
+	if not bricks.is_empty():
+		_builder.select_brick((bricks[0] as BrickWorld.Brick).id, false)
+	await _run_command("panel_properties", "p12_03_properties", "Properties: where the part is", 30)
+	await _run_command("mode_move", "p12_04_move_tool", "Tools, Move", 20)
+	var verbs: EditVerbs = _shell.get("verbs")
+	var part_id: String = ""
+	var over: Vector2 = get_root().get_visible_rect().size * 0.5
+	if not _builder.selection.is_empty():
+		var picked: BrickWorld.Brick = _world.get_brick(int(_builder.selection.keys()[0]))
+		part_id = picked.part_id
+		over = _camera.unproject_position(picked.transform.origin)
+	if verbs != null and not _builder.selection.is_empty():
+		verbs.lift()
+		await _frames(10)
+		# The pointer over the model where the part was, as a person's is
+		# when they type: a ghost only shows under it (EditVerbs._begin_typing).
+		if not _on_phone:
+			await _move(over)
+			await _move(over + Vector2(1, 0))
+			await _frames(10)
+		# Where its ghost is as the number is typed: a typed move goes from
+		# there, as typed_moves_probe's "-2z" does.
+		var would: Vector3 = Vector3.INF
+		if _builder.is_carrying():
+			var placements: Array = _builder.carrying.placements(_builder)
+			if not placements.is_empty():
+				would = (placements[0]["at"] as Transform3D).origin
+		await _type("x -1")
+		await _frames(10)
+		await _step("p12_05_typed", "x -1 typed with the part in hand")
+		await _key(KEY_ENTER)
+		await _frames(10)
+		await _step("p12_06_moved", "moved one stud along x")
+		var there: bool = false
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.part_id == part_id and would.is_finite() \
+					and brick.transform.origin.is_equal_approx(would + Vector3(-20, 0, 0)):
+				there = true
+		# A phone has no keys to type with: its number pad is the handles'.
+		if not _on_phone:
+			_check14("x -1 and Enter put it down a stud along x from its ghost (%s; %s; in hand: %s)"
+				% [would, _bar.status_text().left(40), str(_builder.is_carrying())],
+				not _builder.is_carrying() and there)
+	await _run_command("panel_properties", "", "", 10)
+	await _run_command("grid", "p12_07_grid", "View, Stud grid", 20)
+	await _run_command("grid", "", "", 10)
+	await _close_all()
+
+
+# -- 13. gears made to mesh ------------------------------------------------------------------
+
+
+func _gears() -> void:
+	print("\nUX14 p13: a Technic builder making gears mesh")
+	_main.call("clear_model")
+	await _frames(30)
+	await _search_bin("gear", "p13_01_bin_gear", "the parts bin's search: gear")
+	await _search_bin("24 tooth gear", "p13_02_bin_24", "the parts bin's search: 24 tooth gear")
+	await _take_first_tile("p13_03_gear_in_hand", "the first gear tile pressed")
+	await _put_down(Vector3(-40, 0, 0), "p13_04_gear_down", "the gear put down")
+	await _search_bin("24 tooth gear", "", "")
+	await _take_first_tile("", "")
+	var beside: Vector2 = _camera.unproject_position(Vector3(-16, 8, 0))
+	if not _on_phone:
+		await _move(beside)
+		await _move(beside + Vector2(1, 0))
+	await _frames(10)
+	await _step("p13_05_second_aimed", "a second gear held beside the first")
+	await _put_down(Vector3(-16, 0, 0), "p13_06_second_down", "the second gear put down beside it")
+	await _run_command("joint_marks", "p13_07_joints", "View, Connection points", 30)
+	await _run_command("joint_marks", "", "", 10)
+	await _run_command("simulate", "p13_08_simulate", "Tools, Simulate mechanism", 90)
+	var simulate: Variant = _main.get("_simulate")
+	var play: Variant = (simulate as Node).get("_play") if simulate is Node else null
+	var driver_words: Variant = (simulate as Node).get("_driver") if simulate is Node else null
+	var play_shown: bool = play is Control and (play as Control).is_visible_in_tree()
+	var none_turns: bool = driver_words is Label \
+		and (driver_words as Label).text.begins_with("Nothing here")
+	_check14("Simulate: Play %s while it says %s" % ["shown" if play_shown else "out of sight",
+		(driver_words as Label).text if driver_words is Label else "?"],
+		simulate is Node and (not play_shown or not none_turns))
+	await _close_all()
+
+
+# -- 14. coming back to last week's model and its versions ------------------------------------
+
+
+func _returning() -> void:
+	print("\nUX14 p14: last week's model and its versions")
+	var text: String = FileAccess.get_file_as_string(ProjectSettings.globalize_path("res://models/car.ldr"))
+	var stem: String = "Weekend racer"
+	# As the app saved it: its own name in its head, as in the file's.
+	text = text.replace("0 Car\r\n", "0 %s\r\n" % stem).replace("0 Name: car.ldr", "0 Name: %s.ldr" % stem)
+	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
+	var path: String = ModelStore.SAVE_DIR + stem + ".ldr"
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	OS.execute("touch", ["-d", "7 days ago", ProjectSettings.globalize_path(path)])
+	# Three saves of it last week, each with a few more parts: the versions.
+	var lines: PackedStringArray = text.split("\n")
+	var week: int = int(Time.get_unix_time_from_system() * 1000.0) - 7 * 86400000
+	DirAccess.make_dir_recursive_absolute(ModelVersions.folder(stem))
+	for n: int in 3:
+		var kept: String = "\n".join(lines.slice(0, maxi(4, lines.size() - (2 - n) * 6)))
+		var packed: PackedByteArray = kept.to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+		var at: String = ModelVersions.folder(stem) + "%013d-%d-%d.ldr.gz" % [week + n * 3600000,
+			ModelStore.count_in(kept), packed.size()]
+		var out: FileAccess = FileAccess.open(at, FileAccess.WRITE)
+		out.store_buffer(packed)
+		out.close()
+	_main.call("clear_model")
+	await _frames(30)
+	await _open_menu("p14_01_open_menu", "File, Open: last week's model")
+	await _menu("File", "p14_02_file_menu", "File: where its versions are")
+	var entries: Array = _store.list_saved()
+	var index: int = -1
+	for n: int in entries.size():
+		if (entries[n] as ModelStore.Entry).name == stem:
+			index = n
+	_bar.call("_on_open")
+	await _frames(10)
+	(_bar.get("_saves") as PopupMenu).hide()
+	if index >= 0:
+		_bar.call("_on_pick", index)
+		await _answer_dont_save()
+		await _until_still(120)
+	await _step("p14_03_opened", "last week's model open")
+	await _run_command("versions", "p14_04_versions", "File, Versions", 30)
+	var dialog: Variant = _shell.get("versions")
+	var compares: Array = (dialog as Node).get("_compares") if dialog is Node else []
+	if compares.size() > 1:
+		(compares[1] as Button).pressed.emit()
+		await _frames(40)
+		await _step("p14_05_compare", "Compare with the save before")
+	await _close_all()
+
+
+## Words typed as a person types them: each a key with its character.
+func _type(words: String) -> void:
+	for n: int in words.length():
+		var character: int = words.unicode_at(n)
+		for down: bool in [true, false]:
+			var event := InputEventKey.new()
+			event.keycode = OS.find_keycode_from_string(words[n].to_upper()) if words[n] != " " \
+				else KEY_SPACE
+			event.physical_keycode = event.keycode
+			event.unicode = character
+			event.pressed = down
+			Input.parse_input_event(event)
+			await process_frame
+	await _frames(3)
+
+
+# -- ux14: ux13's leftovers, judged ------------------------------------------------------------
+
+
+func _leftovers() -> void:
+	print("\nUX14 x14: ux13's leftovers")
+	# (a) Duplicate: the car's front, copied, seated beside it at once.
+	await _open_model("res://models/car.ldr", "Car")
+	var bricks: Array = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
+		return not _store.scenery.has(brick.id))
+	bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.z > b.transform.origin.z)
+	_builder.clear_selection()
+	for brick: BrickWorld.Brick in bricks.slice(0, 8):
+		_builder.select_brick(brick.id, true)
+	var had: int = _world.bricks().size()
+	var originals: Dictionary = _builder.selection.duplicate()
+	await _run_command("duplicate", "x14_a_duplicate", "Edit, Duplicate: the front's copy", 30)
+	var copies: Array = _builder.selection.keys().filter(func(id: int) -> bool:
+		return not originals.has(id))
+	var report: Stability.Report = (_main.get("_stability") as Stability).check(_world)
+	var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind == Stability.FLOATS and copies.has(risk.brick_id))
+	_check14("Duplicate puts the copy down beside it at once (%d to %d parts, %d selected, in hand: %s): %s"
+		% [had, _world.bricks().size(), copies.size(), str(_builder.is_carrying()), _bar.status_text().left(80)],
+		not _builder.is_carrying() and _world.bricks().size() == had + 8 and copies.size() == 8)
+	_check14("...seated: none of the copy floats (%d)" % floating.size(), floating.is_empty())
+	# Straight after, "2x" and Enter: a row of copies a step apart.
+	var one_copy: int = _world.bricks().size()
+	await _type("2x")
+	await _key(KEY_ENTER)
+	await _frames(20)
+	await _step("x14_a_row", "Duplicate, then 2x and Enter: a row")
+	_check14("...then 2x and Enter makes a row: two more copies (%d to %d parts)"
+		% [one_copy, _world.bricks().size()], _world.bricks().size() == one_copy + 8)
+	# The row and the copy it began from are one step, as after a clone.
+	_builder.undo()
+	await _frames(10)
+	_check14("...and one undo takes the copy and its row back (%d parts)" % _world.bricks().size(),
+		_world.bricks().size() == had)
+	await _close_all()
+	# (b) Instructions: the dialog asks for a PDF, and a PDF is what is written.
+	SaveTo.native = false
+	var booklet: Variant = Later.script(&"BookletMaker")
+	booklet.open_when_written = false
+	_shell.run("instructions")
+	for _n: int in 120:
+		await process_frame
+		if SaveTo.showing != null and SaveTo.showing.visible:
+			break
+	var dialog: FileDialog = SaveTo.showing
+	await _step("x14_b_dialog", "File, Instructions: what it asks for")
+	_check14("Instructions asks for a PDF, a web page the other kind (%s; %s)" % [
+		dialog.current_file if dialog != null else "no dialog",
+		", ".join(dialog.filters) if dialog != null else ""],
+		dialog != null and dialog.current_file.ends_with(".pdf")
+		and str(dialog.filters[0]).begins_with("*.pdf"))
+	var pdf: String = ProjectSettings.globalize_path(_out.path_join("car_booklet.pdf"))
+	if dialog != null:
+		dialog.file_selected.emit(pdf)
+	for _n: int in 480:
+		await create_timer(0.5).timeout
+		if FileAccess.file_exists(pdf) and not Working.is_busy():
+			break
+	await _frames(20)
+	await _step("x14_b_written", "the instructions written as the PDF asked for")
+	_check14("...the PDF where it was asked, no page beside it: %s" % _bar.status_text().left(100),
+		FileAccess.file_exists(pdf) and not FileAccess.file_exists(pdf.get_basename() + ".html"))
+	await _close_all()
+	# (c) The Library's pages: no pager for one page, and clear of the
+	# trademark line.
+	await _library("6080", "sets", "x14_c_library", "File, Library: 6080, one page")
+	var library: Node = _shell.get("library_dialog")
+	var foot: Control = library.get("_foot")
+	_check14("one page: no Previous, Page 1 of 1, Next (%s)" % str(foot.visible), not foot.visible)
+	await _library("castle", "sets", "x14_c_library_pages", "File, Library: castle, many pages")
+	var previous: Button = library.get("_previous")
+	var gap: float = 0.0
+	for child: Node in (foot.get_parent() as Node).get_children():
+		if child is Label and (child as Label).text.begins_with("LEGO®"):
+			gap = (child as Label).get_global_rect().position.y - foot.get_global_rect().end.y
+	_check14("many pages: the pager in sight, %.0f px over the trademark line" % gap,
+		foot.visible and previous.is_visible_in_tree() and gap >= 4.0)
+	await _close_all()
+	# (d) Share, signed out: says why and offers to sign in.
+	await _open_model("res://models/car.ldr", "Car")
+	await _run_command("share", "x14_d_share", "File, Share, signed out", 40)
+	var share: Variant = _main.get("_share_panel")
+	var sign_in: Variant = (share as Node).get("_sign_in") if share is Node else null
+	_check14("Share signed out offers Sign in (%s)" % str(sign_in is Button
+		and (sign_in as Button).is_visible_in_tree()),
+		sign_in is Button and (sign_in as Button).is_visible_in_tree())
+	await _close_all()
+	if _on_phone:
+		_main.call("clear_model")
+		await _frames(30)
+		var more: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_more")
+		if more is Control:
+			await _tap((more as Control).get_global_rect().get_center())
+			await _frames(30)
+		# Share is under File there; More's first tiles are greyed on an
+		# empty model, the reason they share said once over them.
+		var said: Variant = null
+		for found: Node in _phone.find_children("tiles_why", "Label", true, false):
+			said = found
+		var greyed: int = 0
+		for found: Node in _phone.find_children("quick_*", "Button", true, false):
+			if (found as Button).disabled:
+				greyed += 1
+		await _step("x14_d_more_greyed", "More, on an empty model: its greyed tiles, and why")
+		_check14("More's greyed tiles say why, once (%d greyed; %s)" % [greyed,
+			(said as Label).text if said is Label else "nothing said"],
+			greyed > 0 and said is Label and (said as Label).is_visible_in_tree()
+			and not (said as Label).text.is_empty())
+		await _close_all()
+
+
+func _check14(what: String, ok: bool) -> void:
+	print("UX14 check %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1
 
 
 func _open_menu(shot: String, what: String) -> void:

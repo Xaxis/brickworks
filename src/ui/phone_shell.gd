@@ -109,8 +109,10 @@ const LIT := Color(0.36, 0.6, 1.0, 0.38)
 ## to 1, Check stability 4 to 5 to 1, Cut away 9 to 11 to 2, Simulate 9 to 2
 ## (docs/app_ux8/phonewalk.md, smalls2). Each is in its menu too, and one
 ## the window does not offer (Shell._shown) is left out here as there.
+## Share last (askhelp): More, Share, Ask in Talk is a question in Talk in
+## three taps, File's menu folded under More made it four.
 const QUICK: Array[String] = ["save", "instructions", "timeline", "render", "measure", "cut",
-	"stability", "simulate", "pose", "select_all"]
+	"stability", "simulate", "pose", "select_all", "share"]
 
 ## A check that holds a browser's scale in a desktop's window (phonepanels,
 ## twist_probe): the scale is left as it set it, and the rest is laid out
@@ -1051,14 +1053,18 @@ func _fill_more() -> void:
 			# Once the tap is done with its row, which this puts away.
 			_fill_more.call_deferred())
 		if open:
-			_more_rows(menu[1] as Array, "")
+			for row: Array in _menu_rows(menu[1] as Array, ""):
+				_more.add_row(str(row[0]), str(row[1]))
 
 
 ## The menus open in More, by name, while it is up: each opens folded.
 var _more_open: Dictionary = {}
 
 
-func _more_rows(items: Array, under: String) -> void:
+## More's rows for a menu's items, [words, command] each, a submenu's under
+## its name: what _fill_more lists and [method more_holds] reads.
+func _menu_rows(items: Array, under: String) -> Array:
+	var rows: Array = []
 	var seen: Dictionary = {}
 	for item: String in shell._shown(items):
 		if item == "-" or seen.has(item):
@@ -1067,7 +1073,8 @@ func _more_rows(items: Array, under: String) -> void:
 		if item.begins_with(">"):
 			var kind: String = item.substr(1)
 			if Shell.SUBMENUS.has(kind):
-				_more_rows(Shell.SUBMENUS[kind] as Array, str(Shell.SUBMENU_WORDS.get(kind, kind)))
+				rows.append_array(_menu_rows(Shell.SUBMENUS[kind] as Array,
+					str(Shell.SUBMENU_WORDS.get(kind, kind))))
 			continue
 		var command: Shell.Command = shell.command(item)
 		if command == null:
@@ -1075,7 +1082,22 @@ func _more_rows(items: Array, under: String) -> void:
 		var label: String = command.words
 		if not under.is_empty():
 			label = "%s: %s" % [under, label]
-		_more.add_row(label, item)
+		rows.append([label, item])
+	return rows
+
+
+## Whether More lists [param command], as a tile or a row of one of its
+## menus (folded or open): where Redo is once the top bar has no room for it.
+func more_holds(command: String) -> bool:
+	if shell == null or shell.command(command) == null:
+		return false
+	if shell._shown(QUICK).has(command):
+		return true
+	for menu: Array in Shell.touch_menus():
+		for row: Array in _menu_rows(menu[1] as Array, ""):
+			if row[1] == command:
+				return true
+	return false
 
 
 ## The colours, big: the current ones by group, or every one.
@@ -1179,8 +1201,13 @@ func state() -> Dictionary:
 		open = _newest.title
 		how = _newest.state
 	var verbs: EditVerbs = app.get("_verbs")
+	var redo: Button = _tool_buttons.get("redo")
+	# Redo on the top bar, or where it goes when the bar has no room
+	# (_share_top): tools/web/fit_check.mjs takes it missing from the bar
+	# only when More says it holds it.
 	return {"sheet": open, "sheet_state": how, "sheets": titles, "wide": wide, "hint": hint(),
-		"adding": verbs != null and verbs.adding}
+		"adding": verbs != null and verbs.adding,
+		"redo_on_top": redo != null and redo.is_visible_in_tree(), "more_redo": more_holds("redo")}
 
 
 ## A picture drawn over a row button's word, where there is no icon: the
@@ -1519,14 +1546,41 @@ class Sheet extends PanelContainer:
 		grid.add_theme_constant_override("h_separation", ceili(phone.p(6)))
 		grid.add_theme_constant_override("v_separation", ceili(phone.p(6)))
 		grid.mouse_filter = Control.MOUSE_FILTER_PASS
+		# A reason most greyed tiles share is said once, over them: on an
+		# empty model nine tiles each said "Put a part on the baseplate
+		# first" under their names (ux14's after walk).
+		var reasons: Dictionary = {}
+		for item: String in commands:
+			var why: String = phone.shell.why_not(item) if not phone.shell.can(item) else ""
+			if not why.is_empty():
+				reasons[why] = int(reasons.get(why, 0)) + 1
+		var shared: String = ""
+		for why: String in reasons:
+			if int(reasons[why]) >= 2 and (shared.is_empty() or int(reasons[why]) > int(reasons[shared])):
+				shared = why
+		if not shared.is_empty():
+			var said := Label.new()
+			said.name = "tiles_why"
+			said.text = shared
+			said.add_theme_font_size_override("font_size", ceili(phone.p(14)))
+			said.add_theme_color_override("font_color", Color(1, 1, 1, 0.62))
+			said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			said.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			said.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_list.add_child(said)
 		for item: String in commands:
 			var tile: Button = _row(phone.shell.command(item).words, item)
 			tile.name = "quick_" + item
 			# Its words without the menu's "…", in the window's language: a
 			# tile is a button, and four to a line the "…" wrapped onto a
-			# line of its own ("Instructions" over "…").
+			# line of its own ("Instructions" over "…"). Its reason under
+			# them only where it is not the one said over the tiles.
 			tile.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-			tile.text = String(TranslationServer.translate(tile.text)).trim_suffix("…").strip_edges()
+			var own: String = str(tile.get_meta("why", ""))
+			tile.text = String(TranslationServer.translate(phone.shell.command(item).words)) \
+				.trim_suffix("…").strip_edges()
+			if not own.is_empty() and own != shared:
+				tile.text += "\n" + String(TranslationServer.translate(own))
 			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			tile.clip_text = false
 			tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1559,6 +1613,17 @@ class Sheet extends PanelContainer:
 			row.add_theme_stylebox_override(state_name, face)
 		row.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.32))
 		row.disabled = not phone.shell.can(command)
+		# A greyed row says why under its name, as Find a command says it
+		# beside one: on a phone signed out, Share sat greyed with no word
+		# of what it waited for, and a finger has no pointer to rest on it
+		# for a tip (ux13's walk, left 5).
+		var why: String = phone.shell.why_not(command) if row.disabled else ""
+		if not why.is_empty():
+			row.text = "%s\n%s" % [tr(words), tr(why)]
+			row.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			row.clip_text = false
+			row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.set_meta("why", why)
 		row.pressed.connect(func() -> void:
 			close()
 			phone.shell.run(command))

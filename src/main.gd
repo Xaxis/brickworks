@@ -167,6 +167,10 @@ var _start_bare: bool = false
 ## When the studio was first up to use, in ticks: what the first screen's
 ## time is counted from.
 var _first_open_ms: int = -1
+## A row of what came back pressed (_open_came): when, and how long until its
+## part was lit, in ms of the app's own clock (-1 while it is not).
+var _came_pressed_ms: int = -1
+var _came_lit_ms: int = -1
 ## The comments on parts of the model open asked again this often while the
 ## studio is open, so one written meanwhile shows within a minute (partpins'
 ## gap, docs/PLAN.md row 1).
@@ -3792,6 +3796,7 @@ func _part_pins_now() -> Control:
 	_part_pins.seat = _seat_tool_panel
 	_part_pins.token_for = func() -> String: return await _account.access_token()
 	_part_pins.look_again = _look_for_pins
+	_part_pins.look_asks_again = _look_for_asks
 	_part_pins.comment_wanted.connect(func(part: Dictionary) -> void:
 		_share_view.comments.aim(part, str(part.get("said", ""))))
 	# A pin's part lit in the viewer, from its line or its dot, is let go
@@ -3879,6 +3884,7 @@ func _look_for_pins(again: bool = false) -> void:
 	var token: String = await _account.access_token()
 	if token.is_empty() or id != _store.share_id:
 		return
+	_look_for_asks()
 	var answer: Dictionary = await _shared.comments(id, 0, token)
 	var body: Variant = answer.get("body")
 	if id != _store.share_id or int(answer.get("code", 0)) != 200 or not body is Dictionary:
@@ -3893,6 +3899,50 @@ func _look_for_pins(again: bool = false) -> void:
 		any = any or (one is Dictionary and (one as Dictionary).get("pin") is Dictionary)
 	if _part_pins != null or any:
 		_part_pins_now().set_answer(body)
+
+
+## The open model's questions in Talk (askhelp) and their answers on parts,
+## asked as its builder: handed to PartPins, which lights each new one and,
+## while there are any, asks again every few seconds (set_asks). None for a
+## model with no link, or with nobody signed in.
+func _look_for_asks() -> void:
+	if not _viewing.is_empty() or _shared == null or _account == null:
+		return
+	var id: String = _store.share_id
+	if id.is_empty() or not _account.signed_in():
+		if _part_pins != null:
+			_part_pins.set_asks([], 0.0)
+		return
+	if _part_pins != null and not _part_pins.asks_of.is_empty() and _part_pins.asks_of != id:
+		_part_pins.set_asks([], 0.0)
+	var token: String = await _account.access_token()
+	if token.is_empty() or id != _store.share_id:
+		return
+	var answer: Dictionary = await _shared.talk_asks(token, id)
+	var body: Variant = answer.get("body")
+	if id != _store.share_id or int(answer.get("code", 0)) != 200 or not body is Dictionary:
+		return
+	var asks: Variant = (body as Dictionary).get("asks")
+	if _part_pins != null or (asks is Array and not (asks as Array).is_empty()):
+		_part_pins_now().set_asks(asks if asks is Array else [], float((body as Dictionary).get("every", 20)), id)
+
+
+## What Ask the builders asks about (SharePanel): the step the timeline is
+## on (0, the whole model) and the parts picked, each as a pin sends its part
+## (PinPlace, in the file's coordinates) with its words.
+func _ask_context() -> Dictionary:
+	var parts: Array = []
+	if not _builder.selection.is_empty():
+		for one: Dictionary in PinPlace.bricks_of(_world, _store.lift(), _store.scenery):
+			if not _builder.selection.has(int(one["id"])):
+				continue
+			var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
+			var colour: PartLibrary.BrickColor = _library.colors.get(int(one["colour"]))
+			var said: String = PinPlace.part_said(info.name if info != null else "")
+			one["words"] = ("the %s" % said if not said.is_empty() else "a part") \
+				+ (", %s" % colour.name.replace("_", " ").to_lower() if colour != null else "")
+			parts.append(one)
+	return {"step": _timeline_page(), "parts": parts}
 
 
 ## The page's address for what the viewer has open: the link, or an older
@@ -6429,6 +6479,7 @@ func _build_ui() -> void:
 		_refresh_preview())
 	_bin.construction_chosen.connect(func(parts: Array, what: String) -> void:
 		_verbs.hold(parts, what))
+	_bin.own_assembly_chosen.connect(_hold_own_assembly)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_bin.swatch_pressed.connect(_on_swatch_pressed)
 	# A part dragged out of the bin: in hand from the start of the drag
@@ -8035,6 +8086,16 @@ func _make_share_panel() -> void:
 	share.rig_lights = _rig_lights()
 	share.named = _bar.model_name
 	share.challenge_line = _challenge_line
+	# Ask the builders (askhelp): the step and parts asked about, and the
+	# answers watched for once it is asked.
+	share.ask_context = _ask_context
+	share.asked.connect(func(_said: Dictionary) -> void: _look_for_asks())
+	var follow := func(_given: Variant = null) -> void:
+		if share.visible:
+			share.call("_fresh_ask")
+	_builder.selection_changed.connect(follow)
+	_steps.stepped.connect(follow)
+	share.sign_in = func() -> void: _bar.account_wanted.emit()
 	share.setup()
 	_add_to_hud(share)
 	var kind: GDScript = Later.script(&"SharePanel")
@@ -8076,6 +8137,7 @@ func _make_measure() -> Node3D:
 		_measure.camera = _camera
 		_measure.world = _world
 		_measure.library = _library
+		_measure.say_line = func(line: String) -> void: _bar.say(line)
 		_measure.label = _viewport_label(13)
 		_measure.label.visible = false
 		_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -8146,6 +8208,8 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		called: String = "") -> String:
 	var title: String = called if not called.is_empty() else _bar.model_name()
 	var given: bool = not to.is_empty()
+	# Where the PDF the person asked for goes, when it was a PDF ("" for a page).
+	var pdf_to: String = ""
 	if not given and not OS.has_feature("web"):
 		var leave: Dictionary = skip if skip is Dictionary else _store.scenery
 		if not _world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
@@ -8158,11 +8222,27 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_warm_booklet()
 		# What happens next said in the title: a parent who asked for
 		# instructions to print was asked where to put a web page, and could
-		# not tell it opens in their browser with Print there (ux12).
-		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
-			"Save the instructions: they open in your browser, to print or save as a PDF")
+		# not tell it opens in their browser with Print there (ux12). Then
+		# someone who wanted a PDF was still asked for a web page, and the PDF
+		# was a file beside it said only after (ux13's walk, p9). So the
+		# dialog asks for a PDF, with a web page the other kind in its list,
+		# and what is chosen is what is written (ux14). Where no dialog asks
+		# (a probe's or a session's folder), the page and its PDF, as before.
+		if SaveTo.asks():
+			to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.pdf"), "",
+				"Save the instructions as a PDF, or as a web page to read and print in your browser",
+				PackedStringArray(["html"]))
+		else:
+			to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
+				"Save the instructions: they open in your browser, to print or save as a PDF")
 		if to.is_empty():
 			return ""
+		if not to.get_extension().to_lower() in ["html", "htm"]:
+			pdf_to = to if to.get_extension().to_lower() == "pdf" else to + ".pdf"
+			# The page the PDF is read from, kept where the app keeps its own.
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(BOOKLET_PAGES))
+			to = ProjectSettings.globalize_path(BOOKLET_PAGES).path_join(
+				pdf_to.get_file().get_basename() + ".html")
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -8191,7 +8271,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_booklet_out.queue_free()
 	_booklet_out = (await Later.script_in_background(&"BookletOut", job)).new()
 	add_child(_booklet_out)
-	var show: bool = not given and Later.script(&"BookletMaker").open_when_written
+	var show: bool = not given and Later.script(&"BookletMaker").open_when_written and pdf_to.is_empty()
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(Callable(_booklet_out, &"take"))
@@ -8228,7 +8308,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 			# (walk256 D9, 2026-10-25). A session's or a command line's
 			# booklet, written where it was told, is the page alone.
 			var pdf: String = ""
-			var beside: String = to.get_basename() + ".pdf"
+			var beside: String = to.get_basename() + ".pdf" if pdf_to.is_empty() else pdf_to
 			if not given and not _booklet_writing and beside != to:
 				job.say("Writing the PDF…")
 				_booklet_writing = true
@@ -8240,6 +8320,8 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 					note += ", and as a PDF in %s%s" % [pdf, _pdf_missed]
 			if show:
 				note = _open_booklet(to, steps, _booklet_out, pdf)
+			elif not pdf_to.is_empty():
+				note = _booklet_pdf_said(pdf, pdf_to, steps)
 	elif _booklet_out.shown:
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
@@ -8255,6 +8337,20 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 ## The last booklet drawn, still there to be read (BookletOut).
 var _booklet_out: Node = null
+## Where the page a PDF the person asked for is read from is kept: theirs is
+## the PDF, so the page is not put beside it (ux14).
+const BOOKLET_PAGES := "user://booklets"
+
+
+## What is said once the instructions asked for as a PDF are written: the
+## PDF, opened in the reader the system has for one, or where it is.
+func _booklet_pdf_said(pdf: String, wanted: String, steps: int) -> String:
+	if pdf.is_empty():
+		return "could not write the PDF %s" % wanted
+	if Later.script(&"BookletMaker").open_when_written and SaveTo.open(pdf):
+		return "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s%s" % [
+			steps, pdf, _pdf_missed]
+	return "the instructions are saved as a PDF, %d steps: %s%s" % [steps, pdf, _pdf_missed]
 
 
 ## BookletMaker.warm, its script compiled on a worker first, the frames
@@ -9035,9 +9131,13 @@ const SHEET_MOST := 0.6
 ## picking from at 1280 x 720 and 1400 x 900, and its rail brought it back
 ## beside Stress with every shelf in sight (binstay, APP_UX9 #2).
 func _tool_column_shown() -> void:
+	# The list of comments and answers on parts too (PartPins): seated here
+	# and left out, it opened in a column never shown, so nothing in it could
+	# be pressed (partpins' own probe, 0 of 10, 2026-11-23).
 	var open: bool = _shown(_simulate_made) or _flex.panel.visible or _shown(_pose_made) \
 		or _shown(_hidden_colours_made) or _shell.stress.panel.visible \
-		or _shown(_finish_made) and _finish_made.get_parent() == _tool_panels
+		or _shown(_finish_made) and _finish_made.get_parent() == _tool_panels \
+		or _part_pins != null and _part_pins.list_open()
 	if open == _tool_column.visible:
 		return
 	var room: Rect2 = _model_rect()
@@ -9860,6 +9960,41 @@ func _on_part_failed(part_id: String, why: String) -> void:
 		_bar.say("%d %s — %d %s could not be loaded, and %s kept in the file"
 			% [down, "brick" if down == 1 else "bricks", lost, "part" if lost == 1 else "parts",
 				"is" if lost == 1 else "are"])
+
+
+## The bin's row for the model's own sub-assembly [param name] (PartsBin,
+## ux14): its first copy selected and another in hand, as Edit, Duplicate's
+## clone does, each click putting one down. A copy, so an edit inside one is
+## in them all.
+func _hold_own_assembly(name: String) -> void:
+	var first: String = ""
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		var segments: PackedStringArray = Assemblies.segments(path)
+		var upto: String = ""
+		for segment: String in segments:
+			upto = Assemblies.join(upto, segment)
+			if Assemblies.definition(segment) == name:
+				break
+		if not upto.is_empty() and Assemblies.definition(upto.get_file()) == name:
+			if first.is_empty():
+				first = upto
+			if upto == first:
+				ids.append(brick.id)
+	if ids.is_empty():
+		_bar.say("“%s” is not in this model now" % name)
+		return
+	# Set, not toggled: select_brick toggles, and a click on a part of a
+	# sub-assembly takes all of it, so each of its parts in turn took the
+	# copy and let it go again (ux14's after walk: nothing selected).
+	_builder.clear_selection()
+	for brick_id: int in ids:
+		_builder.selection[brick_id] = true
+	_builder.selection_changed.emit(_builder.selection.size())
+	_verbs.duplicate_selection(true)
 
 
 func _on_color_chosen(color_code: int) -> void:
@@ -11145,6 +11280,7 @@ func _studio_start_now() -> Control:
 	_studio_start.set("store", _store)
 	_studio_start.set("account", _account)
 	_studio_start.set("pictures", _model_library)
+	_studio_start.set("library", _library)
 	_studio_start.set("open_saved", func(path: String) -> void:
 		if _store.title == path.get_file().get_basename() and not _store.example:
 			return
@@ -11190,6 +11326,9 @@ func _start_state() -> Dictionary:
 	var filled: int = int(state["filled_ms"])
 	state["after_open_ms"] = filled - _first_open_ms if filled >= 0 and _first_open_ms >= 0 else -1
 	state["lit"] = _part_pins.lit if _part_pins != null else 0
+	# A pinned row pressed: how long until its part was lit, as the app
+	# counts it (the page hears of it only at its next telling).
+	state["pin_ms"] = _came_lit_ms
 	# The example car on the baseplate, untouched; and how many models are
 	# saved here, by their files' names alone (a device the account's
 	# models are being brought to).
@@ -11218,6 +11357,8 @@ func _start_copy(id: String) -> void:
 ## that part (_light_comment); a photo of a build or a remix is on the
 ## model's page, in a new tab.
 func _open_came(item: Dictionary) -> void:
+	_came_pressed_ms = Time.get_ticks_msec()
+	_came_lit_ms = -1
 	var link: String = str(item.get("link", ""))
 	var address: String = link if link.begins_with("http") else Deployment.api_base() + link
 	var id: String = str(item.get("model", ""))
@@ -11237,6 +11378,7 @@ func _open_came(item: Dictionary) -> void:
 		_bar.opened.emit(placed)
 	var who: String = str(item.get("who", "")) if item.get("who") is String else ""
 	if bool(item.get("pinned", false)) and await _light_comment(int(item.get("comment", 0))):
+		_came_lit_ms = Time.get_ticks_msec() - _came_pressed_ms
 		_bar.say("%s's comment is on this part: “%s”" % [who if not who.is_empty() else "A builder",
 			str(item.get("said", ""))])
 		return

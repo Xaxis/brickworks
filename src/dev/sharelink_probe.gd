@@ -40,7 +40,16 @@ func _run() -> void:
 	var store: ModelStore = _main.get("_store")
 	store.keeps = true
 	store.open("res://models/house.ldr")
-	store.title = NAME
+	# Named as a person names it, in the header's name field: the field is
+	# what the panel reads (main: share.named = _bar.model_name), and its
+	# typing is what keeps the store's title. A title set on the store alone
+	# never reaches the field, so the panel said the file's own "House".
+	var bar: ModelBar = _main.get("_bar")
+	var field: LineEdit = bar.get("_name")
+	field.text = NAME
+	field.text_changed.emit(NAME)
+	_check("named in the header (%s), the store's title too (%s)" % [bar.model_name(), store.title],
+		bar.model_name() == NAME and store.title == NAME)
 	var account: Account = _main.get("_account")
 	_check("the app has come up (its first open done)", bool(_main.get("_first_open_done")))
 	_check("nothing asked for the share panel without ?share", not bool(_main.get("_share_asked")))

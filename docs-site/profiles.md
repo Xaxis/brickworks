@@ -26,10 +26,17 @@ api:GET/POST /api/people
 
 ### Your picture {#avatar}
 
-**Edit profile › Choose a picture**: a JPEG, PNG or WebP up to 8 MB and at least 120 pixels a side. Drag it in the circle, and zoom with the buttons, the wheel, two fingers or [[+]] and [[-]]; **Use this picture** keeps it. **Remove the picture** goes back to the letter on a coloured tile.
+Everybody starts with a minifig made from their handle: a face, hair or a hat and a torso of real parts from the LDraw™ library, the same on every page. You can make your own, or put a picture of your own in its place.
+
+**Edit profile › Make a minifig** opens the maker on your minifig. Pick a **Face**, **Hair or hat** (and its **Hair colour**), a **Torso** print, the **Torso colour**, the **Legs colour** and a **Background**; each choice shows your minifig with it. **Surprise me** makes one at random. The minifig is shown large and at the sizes the site uses (beside a comment, on a card, on your profile) on a light page and a dark one. **Save** makes it your avatar; **Change your minifig** opens the maker on it again.
+
+![Make your minifig: the minifig large, then at its sizes on a light and a dark page, Surprise me, and its choices: faces, hair or a hat, hair colour, torso prints and colours, legs colour and background, then Save and Cancel.](/docs/img/profile-minifig.webp "Edit profile › Make a minifig.")
+
+**Edit profile › Choose a picture**: a JPEG, PNG or WebP up to 8 MB and at least 120 pixels a side. Drag it in the circle, and zoom with the buttons, the wheel, two fingers or [[+]] and [[-]]; **Use this picture** keeps it. Your minifig and a picture are alternatives: whichever you saved last is your avatar. **Remove the picture** (or **Remove your minifig**) goes back to the minifig made from your handle.
 
 <!-- covers
 ui:your own picture as your avatar
+ui:a minifig of your own as your avatar
 -->
 
 ### Achievements and insights {#achievements}

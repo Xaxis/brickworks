@@ -66,9 +66,12 @@ func _run() -> void:
 	_check(not named.has("together_watch_open"), "Open to watchers is gone once it is open")
 	_check(named.has("together_watch_copy") and named.has("together_watch_close"), "its page with Copy, and Close to watchers",
 		str(named.keys()))
-	_check(dialog._watch_link.text == "https://brickworks.diy/live/AbcdEfghIjkL", "the page's address shown", dialog._watch_link.text)
-	_check(str(dialog.page_state().get("watch", "")) == "Open to watchers: 3 watching", "how many watch",
+	_check(str(dialog.page_state().get("watch", "")) == "3 watching", "how many watch",
 		str(dialog.page_state().get("watch", "")))
+	# Open and Close in End's row, apart from End: no row of their own
+	# (together_fit keeps End in sight on a tablet held sideways).
+	_check(dialog._watch_close.get_parent() == dialog._end.get_parent()
+		and dialog._watch_close.get_index() > dialog._end.get_index() + 1, "Close to watchers at the far end of End's row")
 
 	print("3. a watcher's line, as the log brings it")
 	together._take([{"seq": 1, "who": "5a5a5a5a", "client": Together.WATCHING, "cid": 1,

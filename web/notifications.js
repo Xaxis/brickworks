@@ -32,6 +32,19 @@ const $ = (id) => document.getElementById(id);
 let view = new URLSearchParams(location.search).get("view") === "done" ? "done" : "inbox";
 /// Whether this account can mark done and mute (the answer's chosen).
 let choosing = false;
+/// The kinds the aside's Show offers, each a row's kinds (api/_notifications.js
+/// noticeSaid); "all", or none of them, shows every row.
+const KINDS = {
+  comments: ["comment", "reply", "talk_reply"],
+  remixes: ["remix", "suggestion", "suggestion_taken"],
+  builds: ["photo"],
+  mentions: ["mention", "talk_mention"],
+  achievements: ["achievement"],
+};
+/// Which of them the list shows (?kind=).
+let kind = Object.hasOwn(KINDS, new URLSearchParams(location.search).get("kind") || "") ? new URLSearchParams(location.search).get("kind") : "all";
+/// Every group drawn: the list's, and your achievements' card in the aside.
+const drawn = (more = "") => document.querySelectorAll(`ol.notices .notice${more}`);
 // The language the server says each line in (?lang=, api/_notifications.js
 // noticeSaid).
 const LANG = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
@@ -61,14 +74,49 @@ async function read(group, clicked = false) {
 }
 
 function allRead() {
-  const left = document.querySelectorAll("#groups .notice.unread").length;
+  const left = drawn(".unread").length;
   $("all-read").hidden = left === 0 || view !== "inbox";
-  $("all-done").hidden = !choosing || view !== "inbox" || !document.querySelector("#groups .notice");
+  $("all-done").hidden = !choosing || view !== "inbox" || !drawn().length;
   const none = !document.querySelector("#groups .notice");
   if (none && document.documentElement.dataset.notifications === "ready") {
     $("empty").hidden = view !== "inbox";
     $("empty-done").hidden = view !== "done";
   }
+}
+
+/// The list as the aside's Show says: each group's rows of that kind, a group
+/// with none of them left out, and how many groups each kind has. Your
+/// achievements are a card in the aside, or in the list, every level of them,
+/// when Show says Achievements: one group, moved, never drawn twice.
+function shown() {
+  const card = document.querySelector("ol.notices .notice[data-achievements]");
+  if (card && kind === "achievements" && card.parentElement !== $("groups")) $("groups").prepend(card);
+  if (card && kind !== "achievements" && card.parentElement !== $("achievements")) $("achievements").append(card);
+  $("achieved").hidden = !card || kind === "achievements";
+  const every = [...drawn()];
+  const groups = [...$("groups").children];
+  const wanted = KINDS[kind] || null;
+  let left = 0;
+  for (const item of groups) {
+    let any = !wanted;
+    for (const row of item.querySelectorAll(".lines > li")) {
+      row.hidden = Boolean(wanted) && !wanted.includes(row.dataset.kind);
+      any ||= !row.hidden;
+    }
+    item.hidden = !any;
+    if (any) left += 1;
+  }
+  for (const link of $("kinds").querySelectorAll("[data-kind]")) {
+    const of = KINDS[link.dataset.kind];
+    const count = of ? every.filter((item) => [...item.querySelectorAll(".lines > li")].some((row) => of.includes(row.dataset.kind))).length
+      : every.filter((item) => item !== card).length;
+    if (link.dataset.kind === kind) link.setAttribute("aria-current", "true");
+    else link.removeAttribute("aria-current");
+    const n = link.querySelector(".n");
+    n.textContent = String(count);
+    n.hidden = count === 0;
+  }
+  $("no-kind").hidden = !wanted || left > 0 || groups.length === 0;
 }
 
 const parsed = (html) => {
@@ -84,8 +132,9 @@ const recount = async () => showTabCounts(await showFeedCount().catch(() => null
 /// first control (or the previous, or the page's title) rather than lost.
 function goneFrom(item) {
   const next = item.nextElementSibling || item.previousElementSibling;
-  const into = next?.querySelector(".notice-top [data-done], .notice-top summary, h2 a") || document.querySelector(".notices-head h1");
+  const into = next?.querySelector(".row-act [data-done], .row-act summary, .row-title a") || document.querySelector(".page-head h1");
   item.remove();
+  shown();
   if (into) {
     if (into.tagName === "H1") into.tabIndex = -1;
     into.focus({ preventScroll: false });
@@ -200,8 +249,15 @@ async function load() {
     return;
   }
   choosing = answer.body.chosen === true;
-  const groups = Array.isArray(answer.body.groups) ? answer.body.groups : [];
+  const all = Array.isArray(answer.body.groups) ? answer.body.groups : [];
+  // Your achievements are a card in the aside, the rest the list.
+  const groups = all.filter((one) => !one.achievements);
+  const achieved = all.filter((one) => one.achievements);
   $("groups").replaceChildren(...groups.map(groupOf));
+  $("achievements").replaceChildren(...achieved.map(groupOf));
+  $("achieved").hidden = achieved.length === 0;
+  $("kinds").hidden = answer.body.ready === false;
+  shown();
   $("empty").hidden = groups.length > 0 || answer.body.ready === false || view !== "inbox";
   $("empty-done").hidden = groups.length > 0 || view !== "done";
   $("not-yet").hidden = answer.body.ready !== false;
@@ -229,14 +285,14 @@ $("all-read").addEventListener("click", async () => {
     $("said").textContent = told(answer?.body?.error, say("That did not work just now. Try again in a minute."));
     return;
   }
-  for (const one of document.querySelectorAll("#groups .notice.unread")) {
+  for (const one of drawn(".unread")) {
     one.classList.remove("unread");
     one.querySelector(".dot")?.remove();
     for (const row of one.querySelectorAll(".unread")) row.classList.remove("unread");
   }
   // The button goes with what it did: said, and the keyboard's focus on
   // the page's title rather than lost with it.
-  const title = document.querySelector(".notices-head h1");
+  const title = document.querySelector(".page-head h1");
   if (title && focused) {
     title.tabIndex = -1;
     title.focus();
@@ -247,7 +303,7 @@ $("all-read").addEventListener("click", async () => {
 });
 // Mark all done: everything shown, up to its newest, with Undo.
 $("all-done").addEventListener("click", async () => {
-  const newest = [...document.querySelectorAll("#groups .notice")].map((one) => one.dataset.at).filter(Boolean).sort().pop();
+  const newest = [...drawn()].map((one) => one.dataset.at).filter(Boolean).sort().pop();
   if (!newest) return;
   $("all-done").disabled = true;
   const answer = await doneCall({ all: true, at: newest });
@@ -258,7 +314,10 @@ $("all-done").addEventListener("click", async () => {
   }
   const before = answer.body.before ?? null;
   $("groups").replaceChildren();
-  const title = document.querySelector(".notices-head h1");
+  $("achievements").replaceChildren();
+  $("achieved").hidden = true;
+  shown();
+  const title = document.querySelector(".page-head h1");
   title.tabIndex = -1;
   title.focus();
   allRead();
@@ -278,6 +337,18 @@ for (const button of $("views").querySelectorAll("[data-view]")) {
     else url.searchParams.delete("view");
     history.replaceState(null, "", url);
     load();
+  });
+}
+// Show: the list's kinds, the address saying which.
+for (const link of $("kinds").querySelectorAll("[data-kind]")) {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    kind = Object.hasOwn(KINDS, link.dataset.kind) ? link.dataset.kind : "all";
+    const url = new URL(location.href);
+    if (kind === "all") url.searchParams.delete("kind");
+    else url.searchParams.set("kind", kind);
+    history.replaceState(null, "", url);
+    shown();
   });
 }
 // Back to the list from a model: what was opened is shown read.

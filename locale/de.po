@@ -4618,6 +4618,18 @@ msgstr "Unter diesem Link geteilt und in der Galerie gezeigt. Veröffentliche er
 msgid "Brickworks took it out of the gallery, so it cannot be listed there."
 msgstr "Brickworks hat es aus der Galerie genommen, daher kann es dort nicht gezeigt werden."
 
+msgid "Share progress"
+msgstr "Fortschritt teilen"
+
+msgid "Publish this version as work in progress: listed with your name, in your followers' feeds and in its own Talk thread, kept out of Top and the challenges until you publish it as finished."
+msgstr "Diese Version als „In Arbeit“ veröffentlichen: mit deinem Namen gezeigt, in den Feeds deiner Follower und in einem eigenen Thema im Forum, nicht unter „Beste“ und nicht in den Wettbewerben, bis du es als fertig veröffentlichst."
+
+msgid "Work in progress is shared in the gallery and Talk, which are for people 13 and over."
+msgstr "Unfertiges wird in der Galerie und im Forum geteilt, und beide sind für Menschen ab 13."
+
+msgid "Brickworks took it out of the gallery, so it cannot be shared there."
+msgstr "Brickworks hat es aus der Galerie genommen, daher kann es dort nicht geteilt werden."
+
 msgid "Signing you in… %s once that is done."
 msgstr "Du wirst angemeldet… %s, sobald das erledigt ist."
 
@@ -16977,6 +16989,95 @@ msgid "Model name or designer"
 msgstr "Modellname oder Designer"
 msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
 msgstr "„%s“ ist eine Baugruppe dieses Modells: Wähle sie aus, und Bearbeiten, Duplizieren setzt eine weitere ab"
+
+# ux14: Duplicate beside, the PDF asked for, the bin's own sub-assembly, versions
+msgid "Put a copy of the selection down beside it, selected to move on"
+msgstr "Eine Kopie der Auswahl daneben absetzen, ausgewählt zum Weiterbewegen"
+
+msgid "a copy of %s put beside it, selected: drag it where it goes"
+msgstr "eine Kopie von %s daneben abgesetzt, ausgewählt: zieh sie dorthin, wo sie hingehört"
+
+msgid "%s puts another"
+msgstr "%s setzt eine weitere ab"
+
+msgid "no room beside it for a copy: holding one"
+msgstr "kein Platz daneben für eine Kopie: eine ist in der Hand"
+
+msgid "Press %s to put a copy beside the selected part."
+msgstr "Drücke %s, um eine Kopie neben das ausgewählte Teil zu setzen."
+
+msgid "Save the instructions as a PDF, or as a web page to read and print in your browser"
+msgstr "Die Anleitung als PDF speichern, oder als Webseite zum Lesen und Drucken im Browser"
+
+msgid "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s"
+msgstr "die Anleitung ist als PDF gespeichert und in deinem PDF-Programm geöffnet, %d Schritte: %s"
+
+msgid "the instructions are saved as a PDF, %d steps: %s"
+msgstr "die Anleitung ist als PDF gespeichert, %d Schritte: %s"
+
+msgid "could not write the PDF %s"
+msgstr "das PDF %s konnte nicht geschrieben werden"
+
+msgid "duplicated %s"
+msgstr "%s dupliziert"
+
+msgid "Sign in or make an account with your email: a link needs one, a look at it does not"
+msgstr "Melde dich an oder lege ein Konto mit deiner E-Mail an: ein Link braucht eins, ein Blick darauf nicht"
+
+msgid "“%s”, this model's sub-assembly: put another down"
+msgstr "„%s“, eine Baugruppe dieses Modells: eine weitere absetzen"
+
+msgid "A copy of “%s” in hand: each click puts one down, Esc stops."
+msgstr "Eine Kopie von „%s“ in der Hand: jeder Klick setzt eine ab, Esc hört auf."
+
+msgid "Each is a copy of it, and an edit inside one changes them all"
+msgstr "Jede ist eine Kopie davon, und eine Änderung in einer ändert alle"
+
+msgid "“%s” is a sub-assembly of this model: the row above puts another down"
+msgstr "„%s“ ist eine Baugruppe dieses Modells: die Zeile darüber setzt eine weitere ab"
+
+msgid "“%s” is not in this model now"
+msgstr "„%s“ ist jetzt nicht in diesem Modell"
+
+msgid "%d parts, %d more than the save before"
+msgstr "%d Teile, %d mehr als die Sicherung davor"
+
+msgid "%d parts, %d fewer than the save before"
+msgstr "%d Teile, %d weniger als die Sicherung davor"
+
+msgid "%d parts, as many as the save before"
+msgstr "%d Teile, so viele wie die Sicherung davor"
+
+msgid "%d part, %d more than the save before"
+msgstr "%d Teil, %d mehr als die Sicherung davor"
+
+msgid "%d part, %d fewer than the save before"
+msgstr "%d Teil, %d weniger als die Sicherung davor"
+
+msgid "%d part, as many as the save before"
+msgstr "%d Teil, so viele wie die Sicherung davor"
+
+msgid "Yesterday at %s"
+msgstr "Gestern um %s"
+
+msgid "yesterday at %s"
+msgstr "gestern um %s"
+
+msgid "%s at %s, %d days ago"
+msgstr "%s um %s, vor %d Tagen"
+
+msgid "the selection is %s already: click another colour in Colour, then %s paints it"
+msgstr "die Auswahl ist schon %s: klicke unter Farbe eine andere Farbe an, dann färbt %s sie"
+
+msgid "straight after Duplicate a number is copies: 5x makes it 5 in a row"
+msgstr "direkt nach Duplizieren ist eine Zahl Kopien: 5x macht 5 in einer Reihe"
+
+msgid "drag the copy to move it"
+msgstr "zieh die Kopie, um sie zu bewegen"
+
+msgid "Not made now"
+msgstr "Heute nicht hergestellt"
+
 # Open in Brickworks for a stranger: the model asked for behind the sign-in, and its copy's first acts (firstminute)
 msgid "Sign in to make it yours"
 msgstr "Melde dich an, und es gehört dir"
@@ -17195,14 +17296,17 @@ msgstr "Für Zuschauende schließen"
 msgid "Its page says it is closed, and it is listed no more; the session goes on"
 msgstr "Die Seite sagt, dass sie geschlossen ist, und sie wird nicht mehr aufgeführt; die Sitzung geht weiter"
 
-msgid "Open to watchers: nobody watching yet"
-msgstr "Für Zuschauende offen: Noch schaut niemand zu"
+msgid "Nobody watching yet"
+msgstr "Noch schaut niemand zu"
 
-msgid "Open to watchers: 1 watching"
-msgstr "Für Zuschauende offen: 1 schaut zu"
+msgid "1 watching"
+msgstr "1 schaut zu"
 
-msgid "Open to watchers: %d watching"
-msgstr "Für Zuschauende offen: %d schauen zu"
+msgid "%d watching"
+msgstr "%d schauen zu"
+
+msgid "Copy watch link"
+msgstr "Zuschau-Link kopieren"
 
 msgid "%s asks to build"
 msgstr "%s möchte mitbauen"
@@ -17227,3 +17331,127 @@ msgstr "%s. Fortschritt teilen hält fest, wie weit es ist, als Version im Verla
 
 msgid "%s. Sharing its progress as a version in the model's log."
 msgstr "%s. Der Fortschritt wird als Version im Verlauf des Modells geteilt."
+
+msgid "Less"
+msgstr "Weniger"
+
+# Ask the builders (askhelp): the Share panel's question in Talk, and the answers on parts in the studio
+msgid "Ask the builders"
+msgstr "Frag die Bauenden"
+
+msgid "What are you stuck on?"
+msgstr "Wo kommst du nicht weiter?"
+
+msgid "Ask in Talk"
+msgstr "In Talk fragen"
+
+msgid "The question is longer than Talk takes, 4,000 characters. Make it shorter and ask again."
+msgstr "Die Frage ist länger, als Talk annimmt, 4.000 Zeichen. Kürze sie und frag noch einmal."
+
+msgid "Asking"
+msgstr "Wird gefragt"
+
+msgid "Open the thread"
+msgstr "Thema öffnen"
+
+msgid "Open the question's thread in Talk"
+msgstr "Das Thema der Frage in Talk öffnen"
+
+msgid "Post the question in Talk's Help, with the model in 3D at this step and the parts you picked lit"
+msgstr "Die Frage in der Hilfe von Talk stellen, mit dem Modell in 3D bei diesem Bauschritt und den gewählten Teilen hervorgehoben"
+
+msgid "Builders answer on the parts, and the answers light them here"
+msgstr "Bauende antworten an den Teilen, und die Antworten heben sie hier hervor"
+
+msgid "How should I build step %d?"
+msgstr "Wie baue ich Bauschritt %d?"
+
+msgid "How should I build this?"
+msgstr "Wie baue ich das?"
+
+msgid "Asks in Talk's Help about step %d, shown in 3D"
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, in 3D gezeigt"
+
+msgid "Asks in Talk's Help about the whole model, shown in 3D"
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, in 3D gezeigt"
+
+msgid "Pick parts first to have them lit"
+msgstr "Wähle zuerst Teile, damit sie hervorgehoben werden"
+
+msgid "Asks in Talk's Help about step %d, with %s lit in 3D"
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s in 3D hervorgehoben"
+
+msgid "Asks in Talk's Help about the whole model, with %s lit in 3D"
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s in 3D hervorgehoben"
+
+msgid "%d more"
+msgstr "%d weitere"
+
+msgid "a part"
+msgstr "ein Teil"
+
+msgid "Asking in Talk"
+msgstr "Wird in Talk gefragt"
+
+msgid "Asked in Talk's Help, step %d in 3D"
+msgstr "In der Hilfe von Talk gefragt, Bauschritt %d in 3D"
+
+msgid "Asked in Talk's Help, step %d in 3D with 1 part lit"
+msgstr "In der Hilfe von Talk gefragt, Bauschritt %d in 3D mit 1 hervorgehobenen Teil"
+
+msgid "Asked in Talk's Help, step %d in 3D with %d parts lit"
+msgstr "In der Hilfe von Talk gefragt, Bauschritt %d in 3D mit %d hervorgehobenen Teilen"
+
+msgid "Asked in Talk's Help, the model in 3D"
+msgstr "In der Hilfe von Talk gefragt, das Modell in 3D"
+
+msgid "Asked in Talk's Help, the model in 3D with 1 part lit"
+msgstr "In der Hilfe von Talk gefragt, das Modell in 3D mit 1 hervorgehobenen Teil"
+
+msgid "Asked in Talk's Help, the model in 3D with %d parts lit"
+msgstr "In der Hilfe von Talk gefragt, das Modell in 3D mit %d hervorgehobenen Teilen"
+
+msgid "Answers on a part light it here as they come"
+msgstr "Antworten an einem Teil heben es hier hervor, sobald sie kommen"
+
+msgid "Sign in to Brickworks to ask in Talk"
+msgstr "Melde dich bei Brickworks an, um in Talk zu fragen"
+
+msgid "Not asked: %s"
+msgstr "Nicht gefragt: %s"
+
+msgid "Not asked: it could not be published just now"
+msgstr "Nicht gefragt: Es konnte gerade nicht veröffentlicht werden"
+
+msgid "Talk could not take the question just now"
+msgstr "Talk konnte die Frage gerade nicht annehmen"
+
+msgid "Try again in a minute"
+msgstr "Versuche es in einer Minute erneut"
+
+msgid "Help with %s"
+msgstr "Hilfe bei %s"
+
+msgid "Help with my model"
+msgstr "Hilfe bei meinem Modell"
+
+msgid "New answer on a part in Talk, from %s"
+msgstr "Neue Antwort an einem Teil in Talk, von %s"
+
+msgid "%d new answers on parts in Talk, the newest from %s"
+msgstr "%d neue Antworten an Teilen in Talk, die neueste von %s"
+
+msgid "a builder"
+msgstr "jemandem, der baut"
+
+msgid "Select its part and turn the view to it"
+msgstr "Sein Teil auswählen und die Ansicht dorthin drehen"
+
+msgid "in Talk"
+msgstr "in Talk"
+
+msgid "Back on its part, here"
+msgstr "Wieder an seinem Teil, hier"
+
+msgid "Done with it: folded away here, and kept in its thread in Talk"
+msgstr "Erledigt: hier eingeklappt und in seinem Thema in Talk behalten"

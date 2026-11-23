@@ -234,10 +234,14 @@ func _published(panel: SharePanel, n: int) -> void:
 	await _settle()
 
 
+## Twenty frames, and one drawn where frames are drawn. Headless, none is:
+## the engine never draws there, so frame_post_draw never comes, and the
+## probe waited on it before its first line (11-22..11-23, every run 124).
 func _settle() -> void:
 	for _n: int in 20:
 		await process_frame
-	await RenderingServer.frame_post_draw
+	if DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
 
 
 var _mouse_at := Vector2.ZERO
@@ -247,7 +251,7 @@ func _move(at: Vector2, mask: int) -> void:
 	var event := InputEventMouseMotion.new()
 	event.position = _as_event(at)
 	event.global_position = event.position
-	event.relative = _as_event(at - _mouse_at)
+	event.relative = _as_event_by(at - _mouse_at)
 	event.button_mask = mask
 	_mouse_at = at
 	Input.parse_input_event(event)
@@ -275,12 +279,17 @@ func _press(control: Control) -> void:
 	await _settle()
 
 
-## Viewport coordinates as the window's, which an event carries.
+## A place in the viewport as an event gives it, in the window's pixels: by
+## the window's own transform, as treedrag_probe does. Headless the window
+## is 0 x 0 and that transform 1/25, so a press scaled by the window's size
+## over the viewport's landed at the corner, on nothing.
 func _as_event(at: Vector2) -> Vector2:
-	var rect: Vector2 = root.get_visible_rect().size
-	if rect.x <= 0.0 or rect.y <= 0.0:
-		return at
-	return at * (Vector2(DisplayServer.window_get_size()) / rect)
+	return root.get_final_transform() * at
+
+
+## A move by so much, likewise.
+func _as_event_by(by: Vector2) -> Vector2:
+	return root.get_final_transform().basis_xform(by)
 
 
 func _save(name: String) -> void:

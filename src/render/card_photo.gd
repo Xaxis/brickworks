@@ -5,8 +5,9 @@
 ## ground: a CAD's picture beside every other site's photographs. Render's
 ## Best had learned to stand a model on a real table under a lamp
 ## (photoreal7 to photoreal10, docs/RENDERING.md 5k to 5n), but only a
-## person who opened Render saw it. So the Share panel draws the card with
-## that stage: the model from where the view looks, path traced on the
+## person who opened Render saw it. So once a publish has answered, the
+## Share panel draws the card with that stage and puts it on the link in
+## place of the cut-out it went with (SharePanel._card_after): the model from where the view looks, path traced on the
 ## table, the light falling off across it, through the camera's tone and
 ## white balance, its edges sharpened and saved as a camera saves.
 ##
@@ -17,9 +18,10 @@
 ## time. Not on a phone, whose memory a second copy of a big model may not
 ## have.
 ##
-## A card holds a publish [constant MOST_MS] at most: past it a traced card
-## keeps the samples it has (at least [constant LEAST_SAMPLES]), and one
-## frames averaged is given up for the cut-out it was. The link's picture
+## A card is drawn [constant MOST_MS] at most, beside a window in use: past
+## it a traced card keeps the samples it has (at least [constant
+## LEAST_SAMPLES]), and one frames averaged is given up, the link keeping
+## its cut-out until tools/web/card_sweep.mjs draws it. The link's picture
 ## and the page's cut-out are not this: they are drawn by Picture as
 ## before, so a model's page keeps its ground in both themes.
 class_name CardPhoto
@@ -52,11 +54,10 @@ const RASTER: Dictionary = {
 	"lighting": "studio",
 	"samples": 16,
 }
-## The longest a card may hold a publish, in milliseconds (docs/PLAN.md
-## row 4: two seconds at most, nineteen publishes in twenty). The house's
-## 49 took 1.0 to 2.7 s on the box's shared graphics card, the set's
-## making most of it; a browser drawing in software (a test's) would take
-## many seconds.
+## The longest a card is drawn, in milliseconds. The house's 49 took 1.0
+## to 2.7 s on the box's shared graphics card, the set's making most of it;
+## a browser drawing in software (a test's) would draw for many seconds
+## beside what the person, or the test, does next.
 const MOST_MS := 1800
 ## The fewest samples a traced card cut short keeps: at twice the card's
 ## size, made smaller and its grain taken out, 16 read as 64 do.
@@ -83,6 +84,8 @@ var last_ms: float = 0.0
 var steps: PackedStringArray = PackedStringArray()
 ## How many samples the last traced card kept ([constant MOST_MS]).
 var samples: int = 0
+## Whether a card is being drawn.
+var busy: bool = false
 ## How many frames the last card took: on a box drawing through software's
 ## copy of the window (a probe's Xvfb), each costs that copy's time as well.
 var frames: int = 0
@@ -161,6 +164,7 @@ func take(size: Vector2i) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
 		return null
 	var began: int = Time.get_ticks_usec()
+	busy = true
 	var render := StudioRender.new()
 	render.library = library
 	render.scenery = scenery
@@ -190,5 +194,6 @@ func take(size: Vector2i) -> Image:
 	worst_frame_ms = render.worst_frame_ms
 	worst_step = render.worst_step
 	render.queue_free()
+	busy = false
 	last_ms = float(Time.get_ticks_usec() - began) / 1000.0
 	return image

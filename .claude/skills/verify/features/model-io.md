@@ -1544,7 +1544,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Documents, with the model's name; each asks before writing over a file.
   Then the status bar says `wrote <path>` with Show in folder beside it, held
   20 s (`StatusBar.show_folder`, `SaveTo.wrote`). Cancel writes and says
-  nothing. Instructions asks before it draws, then opens the page in the
+  nothing. Instructions asks for a PDF first (`NAME_instructions.pdf`, filters
+  PDF then Web page; ux14, ux13's walk found it asking for a web page): a
+  `.pdf` answer writes the PDF there, the page kept in `user://booklets`, and
+  opens it in the PDF reader, "the instructions are saved as a PDF and open in
+  your PDF reader, N steps: <path>" (`Main._booklet_pdf_said`;
+  `save_dialog_probe`). An `.html` answer, as before: it
   browser (`SaveTo.open`), writes a PDF of it beside it (NAME.pdf, read
   back from the page: `Main._pdf_file`, `BookletPdf`; walk256 D9, the web's
   booklet saved one and the desktop only the page) and says so, "the

@@ -43,6 +43,12 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { answerAsks } from "./asks.mjs";
+import { minifigLayers, minifigOf } from "../../web/card.js";
+
+// The minifigure an avatar made from [handle] shows (web/card.js minifigOf),
+// as avatars() reads one in the page: its hair and face layers.
+const minifigKey = (handle) => minifigLayers(minifigOf(handle)).map((file) => file.match(/(?:face|hair)-[\w-]+/)?.[0])
+  .filter(Boolean).join(" ");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -122,7 +128,8 @@ async function avatars(page, scope = "body") {
       const where = one.closest("[id], .model, .comment, .feed-row, .shared-by, .profile-head, .site-head")
       return { pictured: Boolean(img), loaded: Boolean(img && img.complete && img.naturalWidth > 0),
         src: img ? img.getAttribute("src") : "", round: style.borderTopLeftRadius === "50%" || parseFloat(style.borderTopLeftRadius) >= one.offsetWidth / 2,
-        size: Math.round(one.getBoundingClientRect().width), letter: img ? "" : one.textContent.trim(),
+        size: Math.round(one.getBoundingClientRect().width),
+        minifig: one.classList.contains("minifig") ? (one.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : "",
         where: where ? (where.id || where.className.split(" ")[0]) : "" };
     }), scope);
 }
@@ -187,8 +194,8 @@ async function local() {
       check(`Robin's page ${tag}: the head's avatar is their picture, loaded and round (${seen[0]?.size} px)`,
         seen[0]?.pictured && seen[0]?.loaded && seen[0]?.round && PICTURED.test(seen[0].src));
       seen = await avatars(page, ".follows");
-      check(`Robin's page ${tag}: whom Robin follows, Priya with her picture and Mika with a tile`,
-        seen.some((one) => one.pictured && one.loaded) && seen.some((one) => !one.pictured && one.letter === "M"));
+      check(`Robin's page ${tag}: whom Robin follows, Priya with her picture and Mika with the minifig made from her handle`,
+        seen.some((one) => one.pictured && one.loaded) && seen.some((one) => !one.pictured && one.minifig === minifigKey("mika-mocs")));
       await shot(page, `local_robin_${width}_${theme}.png`);
       await context.close();
 
@@ -223,8 +230,8 @@ async function local() {
       comments.some((one) => /Robin/.test(one.who) && one.pictured) && comments.some((one) => /Priya/.test(one.who) && one.pictured)
       && comments.some((one) => /Jo/.test(one.who) && !one.pictured));
     const header = await avatars(page, ".site-head");
-    check(`model page ${width}: Sam's own avatar in the header, the tile (Sam chose none)`,
-      header.length > 0 && header.every((one) => !one.pictured && one.letter === "S"));
+    check(`model page ${width}: Sam's own avatar in the header, the minifig made from the handle (Sam chose none)`,
+      header.length > 0 && header.every((one) => !one.pictured && one.minifig === minifigKey("sam-builds")));
     await page.locator(".comment").first().scrollIntoViewIfNeeded();
     await shot(page, `local_model_${width}_dark.png`);
     await context.close();
@@ -534,7 +541,7 @@ async function deployed() {
       check(`her picture after: ${gone.status} in ${gone.waited} s (the CDN keeps it ${PICTURE_KEPT} s at most), op=me says taken out`,
         gone.status === 404 && after.json?.avatar?.picture === null && after.json?.avatar?.removed === true);
       const herPage = await fetch(`${site}/u/${ADA}?tests=1`, { headers }).then((a) => a.text());
-      check("her page shows the tile again", !herPage.includes(picture) && /class="avatar huge c\d"/.test(herPage));
+      check("her page shows her minifig again", !herPage.includes(picture) && /class="avatar huge c\d minifig"/.test(herPage));
       const files = await heldFiles();
       if (files) check(`its file deleted: ${files.length} left in the bucket`, !files.some((one) => picture.endsWith(`${one.name.replace(".jpg", "")}`)));
     } else {

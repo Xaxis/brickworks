@@ -13,8 +13,11 @@
 //      made as pills to the docs, like, comments and share, and Open in the
 //      studio, Remix, Build it and Parts to the studio's own addresses.
 //   4. Like, Add a comment and Follow, signed out: each asks to sign in on
-//      the spot, over the page, which stays where it was; what was typed
-//      in the comment is still there after.
+//      the spot, over the page, which stays where it was. Add a comment
+//      opens the composer in the post (web/composer.js), its foot the
+//      guidelines and the keys; Enter is a new line, Ctrl+Enter posts (here,
+//      asks to sign in), what was typed is still there after, and Escape
+//      closes it, the focus back on Add a comment.
 //   5. 3D: the 3D button turns the model in its picture's place (its scene
 //      asked for only then, and three.js too unless the hero's mark asked
 //      for it first), Escape puts the picture back; on a laptop a
@@ -33,15 +36,21 @@
 //      and the tabs For you, Following and New, For you pressed, the arrows
 //      moving along them;
 //   8. likes Ann's post (counted at once and by the server) and takes it
-//      back; comments on it in place (its comment there and on the model);
+//      back; comments on it in place with Ctrl+Enter (its line at once,
+//      marked as going, then the server's, its count one; on the model);
+//      replies to Ann's thread from its post in the feed (the reply under
+//      the latest, its count, in the thread, the page not left);
 //      follows Ann from it, and Following at once shows Ann's model (it
-//      waits for the follow's answer); New puts
-//      Ann's newest first;
-//   9. a visitor presses Like on Ann's post, signs in in the dialog that
-//      opens, and is back where they were with the like made, no dialog
-//      over it; their First steps then offered in a snackbar, opening when
-//      pressed (never over the like, which waited behind them till 11-23).
-// Both accounts and Ann's model are deleted at the end.
+//      waits for the follow's answer); New puts Ann's newest first;
+//   9. a visitor types a comment on Ann's post and presses Post, signs in
+//      in the dialog that opens, and the comment goes from the same post,
+//      the page where it was; their First steps then offered in a snackbar
+//      over nothing, opening when pressed; then Like, signed in, goes at once.
+//  10. another visitor presses Like on Ann's post, signs in in the dialog
+//      that opens, and is back where they were with the like made, no
+//      dialog over it, First steps offered after it in a snackbar (never
+//      over the like, which waited behind them till 11-23).
+// The accounts, Ann's model and her thread are deleted at the end.
 //
 // Pictures in --out. It passes when it ends "homefeed: all ok".
 import { launch } from "./browser.mjs";
@@ -157,7 +166,7 @@ const buildPost = (page, id = "") => page.evaluate((wanted) => {
     share: Boolean(post.querySelector("[data-share]")),
     verbs: [href('[data-verb="open"]'), href('[data-verb="remix"]'), href('[data-verb="build"]'), href('[data-verb="parts"]')],
     page: href(".post-title a"),
-    said: post.querySelector(".post-said")?.textContent.trim() || "",
+    said: post.querySelector(".said-room")?.textContent.trim() || "",
   };
 }, id);
 
@@ -166,6 +175,8 @@ const verbsRight = (one) => one && one.verbs[0] === `/app?view=${one.id}` && one
 
 const people = {};
 let modelId = "";
+let threadId = 0;
+let threadPost = 0;
 try {
   // --- 1. As served ---------------------------------------------------------
   console.log(`homefeed: ${site}`);
@@ -213,15 +224,27 @@ try {
     const after = await buildPost(page, id);
     check(`4. ${label}: Like asks to sign in (${Boolean(likeAsks)}), and closed changes nothing (${after?.like}, ${after?.likes} likes)`,
       Boolean(likeAsks) && after?.like === one.like && after?.likes === one.likes);
+    const said = `#stream > .post.build[data-id="${id}"] .post-talk`;
     await page.click(`#stream > .post.build[data-id="${id}"] .post-say`);
     const box = await until(page, (wanted) => document.activeElement?.id === `say-${wanted}` || null, null, 10, id);
-    await page.keyboard.type(`What a build ${rand}`);
-    await page.click(`#stream > .post.build[data-id="${id}"] .post-comments button[type="submit"]`);
+    await page.keyboard.type(`What a build`);
+    // Enter is a new line, never a post: no dialog, the words still there.
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`${rand}`);
+    const enterAsked = await until(page, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 2);
+    const foot = await page.evaluate((s) => document.querySelector(`${s} form.composer .composer-foot`)?.textContent || "", said);
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+Enter" : "Control+Enter");
     const sayAsks = await dialogOpen(page);
     await closeDialog(page);
     const kept = await page.inputValue(`#say-${id}`).catch(() => "");
-    check(`   Add a comment opens its box in place (${Boolean(box)}), Comment asks to sign in (${Boolean(sayAsks)}), the words kept: "${kept}"`,
-      Boolean(box) && Boolean(sayAsks) && kept === `What a build ${rand}`);
+    check(`   Add a comment opens the composer in the post (${Boolean(box)}), its foot "${foot}"; Enter is a new line (no sign-in: ${!enterAsked}); `
+      + `Ctrl+Enter asks to sign in (${Boolean(sayAsks)}), the words kept: "${kept.replace(/\n/g, "⏎")}"`,
+      Boolean(box) && /guidelines/i.test(foot) && !enterAsked && Boolean(sayAsks) && kept === `What a build\n${rand}`);
+    await page.focus(`#say-${id}`);
+    await page.keyboard.press("Escape");
+    const closed = await until(page, (s) => (document.querySelector(`${s} form.composer`)?.hidden
+      && document.activeElement?.matches(".post-say") ? true : null), null, 5, said);
+    check(`   Escape closes it, the focus back on Add a comment (${Boolean(closed)})`, Boolean(closed));
     // Follow is in the post's head, above its picture: brought to the middle
     // first, as a person scrolls to it, and the page's place read there. The
     // mark read before Like was 300 px off by then on a phone, with Follow
@@ -326,12 +349,17 @@ try {
       body: { name: `Feed tower ${rand}`, author: "Ann Feed", model: ldraw, image: picture, listed: true } });
     modelId = shared.body.id || "";
     check(`Ann's tower /m/${modelId}: ${shared.status}`, shared.status === 201 && /^[A-Za-z0-9]{10}$/.test(modelId));
+    const started = await api("/api/people?op=talk_start&tests=1", { method: "POST", token: people.ann.access_token,
+      body: { board: "help", title: `How do I hide a gear? ${rand}`, body: `The homefeed check's thread ${rand}.` } });
+    threadId = Number(started.body.thread?.id) || 0;
+    threadPost = Number(started.body.post?.id) || 0;
+    check(`Ann's thread ${threadId}: ${started.status}`, started.status === 201 && threadId > 0);
 
     // 7. The page as Bea has it.
     const { context, page } = await open("/?tests=1", { session: people.bea });
     const shown = await page.evaluate(() => {
       const bar = document.querySelector("#beta-bar.shown");
-      const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
+      const foot = bar && bar.getBoundingClientRect().top > innerHeight / 2 ? bar.getBoundingClientRect().top : innerHeight;
       const box = (el) => (el && el.offsetHeight ? el.getBoundingClientRect() : null);
       const field = box(document.getElementById("find-q"));
       const share = box(document.getElementById("share-build"));
@@ -391,12 +419,38 @@ try {
     check(`   pressed again, taken back (${Boolean(unliked)})`, Boolean(unliked));
     await page.click(`${sel} .post-say`);
     await page.fill(`#say-${modelId}`, `Lovely tower ${rand}`);
-    await page.click(`${sel} .post-comments button[type="submit"]`);
-    const listed = await until(page, (s) => [...document.querySelectorAll(`${s} .post-comments li`)].map((li) => li.textContent).join(" | ") || null,
-      null, 30, sel);
+    await page.keyboard.press("Control+Enter");
+    // At once, before the server has answered: the line, marked as going.
+    const pendingLine = await until(page, (s) => document.querySelector(`${s} .said-line.pending`)?.textContent || null, null, 5, sel);
+    const listed = await until(page, (s) => (!document.querySelector(`${s} .said-line.pending`)
+      && (/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
+      ? [...document.querySelectorAll(`${s} .said-lines li`)].map((li) => li.textContent).join(" | ") : null), null, 30, sel);
     const comments = await api(`/api/people?op=comments&id=${modelId}`);
-    check(`   a comment in place: "${listed}"; on the model too (${(comments.body.comments || []).length})`,
-      String(listed).includes(`Lovely tower ${rand}`) && (comments.body.comments || []).some((one) => one.body === `Lovely tower ${rand}`));
+    const counted = await page.evaluate((s) => document.querySelector(`${s} .post-acts [data-say] .n`)?.textContent || "", sel);
+    const folded = await page.evaluate((s) => document.activeElement?.matches(`${s} [data-say]`) && !document.querySelector(`${s} .composer-said`)?.textContent, sel);
+    check(`   a comment in place: at once "${pendingLine}", then "${listed}"; on the model too (${(comments.body.comments || []).length}); its count ${counted}; the box folded, focus on Add a comment (${folded})`,
+      folded && String(listed).includes(`Lovely tower ${rand}`) && (comments.body.comments || []).some((one) => one.body === `Lovely tower ${rand}`)
+      && counted === "1");
+    await shot(page, "commented.png");
+    // Ann's thread, as a post of the feed: Reply opens the composer there,
+    // the reply under the latest, the thread's page left alone.
+    const tsel = `#stream > .post.talk[data-thread="${threadId}"]`;
+    if (check(`   Ann's thread is in Bea's For you`, Boolean(threadId) && Boolean(await page.$(tsel)))) {
+      const at = page.url();
+      await page.locator(tsel).scrollIntoViewIfNeeded();
+      await page.click(`${tsel} [data-reply-thread]`);
+      await until(page, (s) => document.activeElement?.matches(`${s} form.composer textarea`) || null, "the reply's box", 10, tsel);
+      await page.keyboard.type(`Try a 1 x 2 plate under it ${rand}`);
+      await page.keyboard.press("Control+Enter");
+      const replied = await until(page, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
+        ? [...document.querySelectorAll(`${s} .said-lines li`)].map((li) => li.textContent).join(" | ") : null), null, 30, tsel);
+      const thread = await api(`/api/people?op=talk_thread&id=${threadId}&tests=1`);
+      const tally = await page.evaluate((s) => document.querySelector(`${s} [data-replies]`)?.textContent.trim() || "", tsel);
+      check(`   a reply in the Talk post: "${replied}", ${tally}; in the thread (${(thread.body.posts || []).length} posts); still on ${new URL(page.url()).pathname}`,
+        String(replied).includes(`1 x 2 plate under it ${rand}`) && /1/.test(tally) && page.url() === at
+        && (thread.body.posts || []).some((one) => one.body === `Try a 1 x 2 plate under it ${rand}`));
+      await shot(page, "replied.png");
+    }
     await page.click(`${sel} button[data-follow]`);
     const followed = await until(page, (s) => (document.querySelector(`${s} button[data-follow]`)?.getAttribute("aria-pressed") === "true" ? true : null),
       null, 20, sel);
@@ -410,13 +464,17 @@ try {
     check(`   New: Ann's tower first (${newest})`, newest === modelId);
     await context.close();
 
-    // 9. A visitor signs in from a like and is back where they were.
+    // 9. A visitor signs in from a comment and is back where they were.
     const visitor = await open("/?tests=1", { width: 1280, height: 800 });
     const vp = visitor.page;
     if (await findAnnIn(vp)) {
       await vp.locator(sel).scrollIntoViewIfNeeded();
       const atY = await vp.evaluate(() => Math.round(scrollY));
-      await vp.click(`${sel} [data-like]`);
+      // A comment typed signed out: Post asks to sign in, and once in, it
+      // goes from the same post, nothing typed lost, no page left.
+      await vp.click(`${sel} .post-say`);
+      await vp.fill(`#say-${modelId}`, `Signed in from here ${rand}`);
+      await vp.click(`${sel} form.composer button[type="submit"]`);
       await vp.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
       await vp.fill("dialog.sign-in input", emails.cy);
       await vp.click('dialog.sign-in button[type="submit"]');
@@ -424,49 +482,99 @@ try {
       const code = await mintCode(emails.cy, { welcome: false });
       await vp.fill("dialog.sign-in .code-boxes input:first-child", code);
       await until(vp, () => (!document.querySelector("dialog.sign-in") ? true : null), "the sign-in done", 30);
-      // What the snackbar came with, looked at from the age's answer on, so
-      // a check slower than its 8 s on the screen still sees it came.
-      await vp.evaluate((s) => {
-        window.__offer = null;
-        const look = setInterval(() => {
-          const act = document.querySelector(".toast.shown .toast-act");
-          if (!act) return;
-          clearInterval(look);
-          window.__offer = { said: act.textContent.trim(), liked: document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true",
-            dialogs: [...document.querySelectorAll("dialog[open]")].map((one) => one.className).join(",") };
-        }, 100);
-      }, sel);
+      await watchOffer(vp);
       if (await until(vp, () => (document.querySelector("dialog.age[open]") ? true : null), null, 8)) {
         await vp.selectOption("#age-month", { index: 1 });
         await vp.selectOption("#age-year", "1990");
         await vp.click("#age-go");
       }
-      // The like first, nothing over it: a new person's First steps wait
-      // until it is made, then are offered in a snackbar (web/account.js
-      // offerFirstSteps); they opened over the page and the like waited.
-      const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
-        ? !document.querySelector("dialog[open]") : null), null, 30, sel);
+      const went = await until(vp, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
+        && !document.querySelector(`${s} .said-line.pending`) ? document.querySelector(`${s} .said-lines`)?.textContent || "" : null), null, 40, sel);
       const nowY = await vp.evaluate(() => Math.round(scrollY));
-      check(`9. a visitor's Like: signed in in the dialog, the like made with no dialog over it (${done}), still at ${nowY} px (was ${atY})`,
-        done === true && Math.abs(nowY - atY) <= 40);
-      // Pressed at once: a picture first takes seconds on a loaded box,
-      // longer than the snackbar stays.
-      const offer = await until(vp, () => window.__offer, null, 30);
-      const shown = await vp.click(".toast.shown .toast-act", { timeout: 2000 }).then(() => true, () => false);
-      const steps = shown && await until(vp, () => (document.querySelector("dialog.first-steps[open]") ? true : null), null, 20);
-      check(`   then First steps offered in a snackbar ("${offer?.said}") after the like (${offer?.liked}), over no dialog (${offer?.dialogs || "none"}), `
-        + `pressed (${shown}), opening (${Boolean(steps)})`, offer?.said === "First steps" && offer.liked && !offer.dialogs && Boolean(steps));
-      await shot(vp, "first-steps-after-like.png");
-      if (steps) {
-        await vp.keyboard.press("Escape");
-        await until(vp, () => (!document.querySelector("dialog[open]") ? true : null), null, 10);
-      }
-      await shot(vp, "signed-in-from-like.png");
+      const heardIt = await api(`/api/people?op=comments&id=${modelId}`);
+      check(`9. a visitor's comment: signed in in the dialog, posted from the same post (${String(went).slice(-40)}), on the model `
+        + `(${(heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)}), still at ${nowY} px (was ${atY})`,
+        String(went).includes(`Signed in from here ${rand}`) && (heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)
+        && Math.abs(nowY - atY) <= 40);
+      await offeredAfter(vp, "the comment", "first-steps-after-comment.png");
+      // And now signed in, Like goes at once.
+      await vp.click(`${sel} [data-like]`);
+      const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true" ? true : null), null, 30, sel);
+      check(`   then Like, signed in, made (${Boolean(done)})`, Boolean(done));
+      await shot(vp, "signed-in-from-comment.png");
     } else {
       check("9. Ann's tower is in a visitor's feed", false);
     }
     await visitor.context.close();
     await deleteAccount(emails.cy).catch(() => {});
+
+    // 10. Another visitor signs in from a like: the like first, nothing
+    // over it, First steps offered after it.
+    const liker = await open("/?tests=1", { width: 1280, height: 800 });
+    const lp = liker.page;
+    const dee = `delivered+bw-feed-dee-${rand}@resend.dev`;
+    if (await findAnnIn(lp)) {
+      await lp.locator(sel).scrollIntoViewIfNeeded();
+      const atY = await lp.evaluate(() => Math.round(scrollY));
+      await lp.click(`${sel} [data-like]`);
+      await lp.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
+      await lp.fill("dialog.sign-in input", dee);
+      await lp.click('dialog.sign-in button[type="submit"]');
+      await until(lp, () => document.querySelector("dialog.sign-in .code-boxes input")?.checkVisibility() || null, "the code's boxes", 30);
+      await lp.fill("dialog.sign-in .code-boxes input:first-child", await mintCode(dee, { welcome: false }));
+      await until(lp, () => (!document.querySelector("dialog.sign-in") ? true : null), "the sign-in done", 30);
+      await watchOffer(lp);
+      if (await until(lp, () => (document.querySelector("dialog.age[open]") ? true : null), null, 8)) {
+        await lp.selectOption("#age-month", { index: 1 });
+        await lp.selectOption("#age-year", "1990");
+        await lp.click("#age-go");
+      }
+      const done = await until(lp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
+        ? !document.querySelector("dialog[open]") : null), null, 30, sel);
+      const nowY = await lp.evaluate(() => Math.round(scrollY));
+      check(`10. a visitor's Like: signed in in the dialog, the like made with no dialog over it (${done}), still at ${nowY} px (was ${atY})`,
+        done === true && Math.abs(nowY - atY) <= 40);
+      await offeredAfter(lp, "the like", "first-steps-after-like.png");
+      await shot(lp, "signed-in-from-like.png");
+    } else {
+      check("10. Ann's tower is in a visitor's feed", false);
+    }
+    await liker.context.close();
+    await deleteAccount(dee).catch(() => {});
+
+    // What the snackbar came with, looked at from the age's answer on, so a
+    // check slower than its 8 s on the screen still sees it came: its
+    // words, whether Ann's post was liked or commented on by then, and any
+    // dialog open.
+    async function watchOffer(one) {
+      await one.evaluate((s) => {
+        window.__offer = null;
+        const look = setInterval(() => {
+          const act = document.querySelector(".toast.shown .toast-act");
+          if (!act) return;
+          clearInterval(look);
+          window.__offer = { said: act.textContent.trim(),
+            done: document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
+              || /Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || ""),
+            dialogs: [...document.querySelectorAll("dialog[open]")].map((d) => d.className).join(",") };
+        }, 100);
+      }, sel);
+    }
+    // First steps offered after [what] in a snackbar over no dialog, and
+    // opened by it; pressed at once (a picture first takes seconds on a
+    // loaded box, longer than the snackbar stays), then put away.
+    async function offeredAfter(one, what, picture) {
+      const offer = await until(one, () => window.__offer, null, 30);
+      const shown = await one.click(".toast.shown .toast-act", { timeout: 2000 }).then(() => true, () => false);
+      const steps = shown && await until(one, () => (document.querySelector("dialog.first-steps[open]") ? true : null), null, 20);
+      check(`   then First steps offered in a snackbar ("${offer?.said}") after ${what} (${offer?.done}), over no dialog (${offer?.dialogs || "none"}), `
+        + `pressed (${shown}), opening (${Boolean(steps)})`, offer?.said === "First steps" && offer.done && !offer.dialogs && Boolean(steps));
+      await shot(one, picture);
+      if (steps) {
+        await one.keyboard.press("Escape");
+        await until(one, () => (!document.querySelector("dialog[open]") ? true : null), null, 10);
+      }
+    }
 
     async function findAnnIn(one) {
       for (let i = 0; i < 4; i += 1) {
@@ -483,6 +591,11 @@ try {
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
 } finally {
   if (modelId && people.ann) await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
+  // Its first post removed, the thread goes with it.
+  if (threadPost && people.ann) {
+    await api("/api/people?op=talk_change&tests=1", { method: "POST", token: people.ann.access_token, body: { post: threadPost, what: "remove" } })
+      .catch(() => {});
+  }
   await browser.close();
   for (const who of Object.keys(people)) await deleteAccount(`delivered+bw-feed-${who}-${rand}@resend.dev`).catch(() => {});
 }

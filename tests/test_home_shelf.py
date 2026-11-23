@@ -115,8 +115,10 @@ def test_talk_once_applied_is_in_the_first_screen_with_its_latest_reply():
     posts = feed(page)
     post = re.search(r'<article class="post talk" data-kind="talk" data-thread="7".*?</article>', posts, re.S).group(0)
     assert '<a href="/talk/t/7/my-lighthouse">My lighthouse, with a light that turns</a>' in post
-    assert "The gears are lovely." in post and "<b>Bea</b>" in post
-    assert 'href="/talk/t/7/my-lighthouse#reply"' in post
+    # The latest reply as a said line, its writer a link to them; Reply
+    # opens the composer in the post, the thread's box its address.
+    assert "The gears are lovely." in post and '<a class="who" href="/u/bea-bricks">Bea</a>' in post
+    assert 'href="/talk/t/7/my-lighthouse#reply" data-reply-thread="7"' in post
 
 
 def test_words_typed_never_become_the_page():

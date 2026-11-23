@@ -44,6 +44,12 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { minifigLayers, minifigOf } from "../../web/card.js";
+
+// The minifigure an avatar made from [handle] shows (web/card.js minifigOf),
+// as faceOf reads one in the page: its hair and face layers.
+const minifigKey = (handle) => minifigLayers(minifigOf(handle)).map((file) => file.match(/(?:face|hair)-[\w-]+/)?.[0])
+  .filter(Boolean).join(" ");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -148,7 +154,8 @@ const stepsDrawn = (page) => page.evaluate(() => {
     kinds: [...dialog.querySelectorAll(".kinds button.pill")].map((pill) => pill.dataset.kind),
     feed: dialog.querySelector("#first-feed")?.getAttribute("href") || "", done: Boolean(dialog.querySelector("#first-done")),
     handle: dialog.querySelector("#first-handle")?.value ?? null,
-    avatar: (dialog.querySelector(".face-row .avatar")?.textContent || "").trim(),
+    avatar: ((el) => (el?.classList.contains("minifig") ? (el.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : el?.textContent.trim() || ""))(
+      dialog.querySelector(".face-row .avatar")),
     address: dialog.querySelector(".face-row p")?.textContent || "",
     tooWide: dialog.scrollWidth > dialog.clientWidth + 1 };
 });
@@ -289,8 +296,8 @@ try {
     await page.fill("#first-name", name);
     drawn = await stepsDrawn(page);
     const handle = standIn ? "sam-okafor" : `bob-${rand}`;
-    check(`...the handle made from the name as it is typed (${drawn.handle}), the avatar from it ("${drawn.avatar}"), `
-      + `its page "${drawn.address}"`, drawn.handle === handle && drawn.avatar === name[0] && drawn.address === `brickworks.diy/u/${handle}`);
+    check(`...the handle made from the name as it is typed (${drawn.handle}), the minifig avatar from it ("${drawn.avatar}"), `
+      + `its page "${drawn.address}"`, drawn.handle === handle && drawn.avatar === minifigKey(handle) && drawn.address === `brickworks.diy/u/${handle}`);
     await page.click("#first-make");
     drawn = await atStep(page, "kinds", label);
     check(`...made, and on: "${drawn.count}", "${drawn.title}", ${drawn.kinds.length} kinds as pills`,

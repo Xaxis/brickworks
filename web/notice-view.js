@@ -89,7 +89,9 @@ export function line(one) {
 /// beside its name, made for it.
 export function group(one, i = 0, { acts = null } = {}) {
   const item = document.createElement("li");
-  item.className = `notice${one.unread ? " unread" : ""}`;
+  // The site's one row (site.css .list-row): the picture, the model and
+  // what happened to it.
+  item.className = `list-row notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
   if (one.achievements) item.dataset.achievements = "";
   if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
@@ -106,7 +108,7 @@ export function group(one, i = 0, { acts = null } = {}) {
     if (!/#announcement-\d+$/.test(String(one.link || ""))) item.dataset.own = to;
   }
   const picture = document.createElement("a");
-  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : told ? "pic announce" : one.talk ? "pic talk" : "pic";
+  picture.className = `row-pic pic${one.achievements ? " award" : one.challenge ? " challenge" : told ? " announce" : one.talk ? " talk" : ""}`;
   picture.href = to;
   picture.tabIndex = -1;
   picture.setAttribute("aria-hidden", "true");
@@ -126,8 +128,9 @@ export function group(one, i = 0, { acts = null } = {}) {
   if (told) picture.append(parsed(iconHtml("spark")));
   if (one.talk) picture.append(parsed(iconHtml("comment")));
   const body = document.createElement("div");
-  body.className = "body";
-  const title = document.createElement("h2");
+  body.className = "row-body body";
+  const title = document.createElement("h3");
+  title.className = "row-title";
   const name = document.createElement("a");
   name.href = to;
   name.textContent = String(one.name || say("Your model"));
@@ -145,15 +148,10 @@ export function group(one, i = 0, { acts = null } = {}) {
   const lines = document.createElement("ul");
   lines.className = "lines";
   for (const row of one.rows || []) lines.append(line(row));
+  // Its acts (Done, More) at the row's end, the site's .row-act.
   const made = acts ? acts(one, item) : null;
-  if (made) {
-    const top = document.createElement("div");
-    top.className = "notice-top";
-    top.append(title, made);
-    body.append(top, lines);
-  } else {
-    body.append(title, lines);
-  }
+  if (made) made.classList.add("row-act");
+  body.append(title, lines);
   // A weekly quick build's notice opens the studio on its template.
   if (one.start) {
     const start = document.createElement("a");
@@ -163,5 +161,6 @@ export function group(one, i = 0, { acts = null } = {}) {
     body.append(start);
   }
   item.append(picture, body);
+  if (made) item.append(made);
   return item;
 }

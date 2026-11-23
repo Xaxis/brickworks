@@ -6,9 +6,8 @@
 //
 // Against the stand-in database (design_stand_in.mjs), with no browser and
 // no network: --root's api/ answering as a deployment does. Two of the
-// house's models are tagged ai-designed and described "Designed with the
-// assistant.": HouseMod01's owner said nothing, HouseMod02's chose to show
-// it. For each, what a stranger is told:
+// house's models are tagged ai-designed: HouseMod01's owner said nothing,
+// HouseMod02's chose to show it. For each, what a stranger is told:
 //
 //   its page (/m/X): With the assistant among the facts, and the
 //     ai-designed tag, on HouseMod02's alone;
@@ -17,12 +16,13 @@
 //     but HouseMod02's; made=assistant lists HouseMod02 and never
 //     HouseMod01, and Hand-built lists HouseMod01; tag=ai-designed is
 //     made=assistant;
+//   Made offers With the assistant only while a public model says so;
 //   the home feed's post (web/home-feed.js postHtml): Designed with the
 //     assistant on HouseMod02's, no pill on HouseMod01's, and no Built by
 //     hand anywhere, which would tell the two apart.
 //
-// The house's own words (its descriptions, "Designed with the assistant.")
-// are its own, and stay. Exits 1 on any failure.
+// The house's own words no longer say it either (supabase/house_words.sql).
+// Exits 1 on any failure.
 import * as stand from "./design_stand_in.mjs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -81,6 +81,13 @@ const byTag = await ids({ tag: "ai-designed" });
 check(helped.includes(SHOWN) && !helped.includes(QUIET) && byHand.includes(QUIET) && !byHand.includes(SHOWN),
   `Made: With the assistant lists ${helped.join(", ") || "none"}; Hand-built has ${QUIET} ${byHand.includes(QUIET) ? "in it" : "NOT in it"}`);
 check(JSON.stringify(byTag) === JSON.stringify(helped), `tag=ai-designed lists what With the assistant does: ${byTag.join(", ") || "none"}`);
+// The Made filter offers With the assistant only while a public model says
+// so: here only the house's test model HouseMod02 does, so a visitor's list
+// (no tests) offers Hand-built alone, and a tests list offers both.
+const offered = (answer) => (answer.mades || []).map((one) => one.id).join(",");
+const visitors = JSON.parse((await stand.serverAsk(api, { name: "share", query: { op: "list", page: "1" } })).html || "{}");
+check(offered(visitors) === "hand" && offered(all) === "hand,assistant",
+  `Made offers ${offered(visitors) || "nothing"} to a visitor (nothing public is shown), ${offered(all) || "nothing"} with test models`);
 
 const feed = await import(pathToFileURL(path.join(root, "web/home-feed.js")).href);
 const quietCard = cards.find((one) => one.id === QUIET) || { id: QUIET, name: "q", parts: 1, tags: ["ai-designed"], made_with: "assistant" };

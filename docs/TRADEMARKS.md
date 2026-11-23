@@ -99,6 +99,18 @@ them from the LDraw library, as Studio, LeoCAD and Mecabricks do, and has a
 minifigure builder. The Minifigure is a LEGO Group mark [BR p.14], so it is
 never a logo, a mascot, an icon of ours or the face of a page.
 
+People's avatars are LEGO® minifigure figures (avatarkit, 2026-11-23; the
+owner: "a brickworks avatar generator that is obviously lego minifig
+themed"). The minifigure's shape is the LEGO Group's own, and "LEGO®" stays
+an adjective: a LEGO® minifigure, never "a LEGO". Ours are drawn from
+LDraw's parts (CC BY, credited in the maker and the footer), as a figure
+built in the app is: the library's geometry through our own 3D, never a
+copy of the LEGO Group's artwork. Each is a person's own and never
+ours: no page, badge or mark of Brickworks is a minifigure, and Brickworks'
+own account is shown as our mark (web/card.js HOUSE_HANDLE). Somebody who
+makes none is shown one picked from the parts by their handle; anybody may
+upload a picture instead.
+
 **4. "Tower of Orthanc" becomes "Wizard's Tower".** Orthanc is a name from
 The Lord of the Rings, and Rebrickable bars trademarked names from fan
 models' names. Every public page, the pictures' alt text, the share card

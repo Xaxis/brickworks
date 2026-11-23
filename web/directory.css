@@ -40,8 +40,22 @@
 @media (width < 900px) {
 	.model-page { padding-top: 12px; }
 	.model-page .crumbs { margin-bottom: 10px; }
-	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 16px; }
+	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 12px; }
 	.model-page .side { position: static; }
+}
+/* Where it came from, under its picture (api/share.js lineage): a remix's
+   source and what it changed, what it is based on; on a phone after the
+   column. Its row only where it has one, or the grid's gap shows twice. */
+.model-page .top:has(> .lineage) { grid-template-areas: "picture side" "under side" "rest side"; }
+.model-page .lineage {
+	grid-area: under; min-width: 0; display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4);
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+}
+.model-page .lineage > :is(p, ul, div) { margin: 0; }
+@media (width < 900px) { .model-page .top:has(> .lineage) { grid-template-areas: "picture" "side" "under" "rest"; } }
+/* View in 3D, the picture's way in, as large as the picture asks for. */
+@media (width >= 900px) {
+	.model-page .media .picture .go { min-height: 48px; padding: 0 var(--s-5); font-size: var(--t-body); }
 }
 
 /* The picture is the shape it was published at, 1200 x 630, so the page
@@ -107,7 +121,9 @@
 .set-page .picture-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-3); margin: 6px 2px 0; }
 .set-page .picture-foot .picture-credit { margin: 0 0 0 auto; }
 .set-page .no3d { margin: 0; font-size: var(--t-small); color: var(--ink-soft); }
-@media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
+/* On a phone smaller, so its Like and Save are on a 390x844 window's first
+   screen under the beta's strip at the top (pagebar). */
+@media (width < 600px) { .media-strip .thumb { width: 64px; height: 48px; } }
 /* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
    and web/model-page.js draws the model as large as its width lets it,
    the picture's own ground carried on above and below a wide one. */
@@ -235,6 +251,17 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .shared-by .names small { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
 .model-page .shared-by a.who:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
 .model-page .shared-by .said { flex-basis: 100%; }
+/* Somebody else modelled it (api/share.js designerRow, _sets.js
+   modellerHtml): they lead, by their initial and the line that credits
+   them, and who shares it is under, small (sitebold, 2026-11-23). */
+.model-page .shared-by.credit { flex-wrap: nowrap; align-items: center; }
+.model-page .shared-by.credit > .avatar { flex: none; }
+.model-page .shared-by.credit .names { flex: 1; gap: 2px; line-height: 1.4; }
+.model-page .shared-by.credit .modelled-by { margin: 0; color: var(--ink-soft); }
+.model-page .shared-by.credit .modelled-by b { color: var(--ink); font-size: var(--t-body); }
+.model-page .shared-via { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s-3); color: var(--ink-faint); font-size: var(--t-small); }
+.model-page .shared-via .who { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+.model-page .shared-via a.who:hover span { color: var(--ink); text-decoration: underline; }
 .model-page .shared-by .said:empty { display: none; }
 
 /* The action bar (web/model-page.js): the kit's icon buttons in a row,
@@ -248,6 +275,12 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 @media (width < 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
 .action-bar > .keep { border-color: var(--line); background: transparent; box-shadow: none; }
 .action-bar > .keep > button { min-height: calc(var(--control-h) - 2px); }
+/* A model's Save is its icon, as Like's and Share's are, its word in its
+   tooltip and its name ("Save Riverside Watchtower"): with the word, pre261's
+   Save took the row to a second line at 1280 (the lead, 2026-11-23). Its
+   lists' half stays as it is. */
+.model-page .action-bar > .keep > .keep-main { padding-inline: 12px 10px; }
+.model-page .action-bar > .keep > .keep-main .word { display: none; }
 .marks-said { margin: 6px 0 0; }
 .marks-said:empty { display: none; }
 
@@ -394,25 +427,6 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .remix-changes b { font-weight: 600; }
 .model-page .remix-changes .what-changed { margin-left: 4px; vertical-align: 1px; }
 .model-page .remix-changes .what-changed[hidden] { display: none; }
-/* A change sent back (suggestedit, api/_suggestions.js): whose changes its
-   versions took in, under its credit and in its Log; and for its designer
-   the ones sent to it, for a remix's own builder the way to send theirs. */
-.model-page .suggested-credit { list-style: none; margin: 0 0 10px; padding: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
-.model-page .suggested-credit li { margin: 2px 0; }
-.model-page .suggested-credit a, .model-page .log-credit a { color: var(--ink); }
-.model-page .log-credit { margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
-.model-page .suggest-box { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); }
-.model-page .suggest-box[hidden] { display: none; }
-.model-page .suggest-head { font-size: 1rem; margin: 0 0 8px; }
-.model-page .suggest-open { list-style: none; margin: 0 0 4px; padding: 0; }
-.model-page .suggest-open li { margin: 0 0 10px; overflow-wrap: anywhere; }
-.model-page .suggest-open q { color: var(--ink-soft); }
-.model-page .suggest-open .cta { margin-left: 4px; }
-.model-page .suggest-send { display: grid; gap: 8px; }
-.model-page .suggest-send label { color: var(--ink-soft); }
-.model-page .suggest-send textarea { width: 100%; box-sizing: border-box; font: inherit; resize: vertical; }
-.model-page .suggest-send button { justify-self: start; }
-.model-page .suggest-send .said:empty { display: none; }
 .remix-tree, .remix-tree ol { list-style: none; margin: 0; padding: 0; }
 .remix-tree ol { margin-left: 26px; padding-left: 14px; border-left: 2px solid var(--line-strong); }
 .remix-tree li { margin: 8px 0; }
@@ -799,75 +813,31 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 .follow-line .said, .shared-by .said { margin: 0; font-size: var(--t-small); }
 button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 
-/* Your feed (/feed, web/feed.js, docs/SOCIAL.md U9): a column of posts,
-   each who did what (their avatar, the words, when) over the thing itself,
-   the gallery's card or the photo of a build. Designers to follow beside
-   it on a laptop and under it on a phone; with nothing of its own, Latest
-   on Brickworks after them, the gallery's cards. */
-.feed-layout { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "rail" "latest"; }
-.feed-main { grid-area: main; display: grid; gap: var(--s-4); align-content: start; min-width: 0; }
-.feed-main .said:empty, .feed-list:empty { display: none; }
-.feed-main .actions { margin: 0; }
-.feed-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-4); }
-.feed-ask p { margin: 0; flex: 1 1 260px; }
-.feed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-6); max-width: 600px; }
-.feed-row { display: grid; gap: var(--s-3); min-width: 0; }
-.feed-row .post-head { display: flex; align-items: flex-start; gap: var(--s-3); }
-.feed-row .face { flex: none; text-decoration: none; }
-.feed-row .words { min-width: 0; padding-top: 1px; }
-.feed-row .what { margin: 0; line-height: 1.45; overflow-wrap: anywhere; }
-.feed-row .what b { font-weight: 650; }
-.feed-row .what a { color: var(--ink); text-decoration: none; }
-.feed-row .what .go { font-weight: 650; }
-.feed-row .what a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+/* Your feed (/feed, web/feed.js, docs/SOCIAL.md U9): the site's list
+   page (site.css .list-layout), each post the site's row (.list-row: their
+   avatar, the words, when) over the thing itself, the gallery's card or
+   the photo of a build; designers to follow in the aside. With nothing of
+   its own, Latest on Brickworks under the words, the gallery's cards. */
 .feed-row .what .pill { margin-left: 2px; vertical-align: 1px; }
-.feed-row time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
-.feed-row > q { display: block; margin: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
 .feed-photo {
 	margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
 .feed-photo img { display: block; width: 100%; height: auto; max-height: 640px; object-fit: cover; background: var(--bg-soft); }
 .feed-photo figcaption { padding: 10px 12px 12px; color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
 .feed-photo figcaption a { color: var(--ink); font-weight: 650; }
-.feed-rail {
-	grid-area: rail; min-width: 0; align-self: start; padding: var(--s-4) var(--s-4) var(--s-2);
-	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
-}
-.feed-rail h2 { margin: 0 0 var(--s-2); }
-.feed-page .latest { grid-area: latest; min-width: 0; margin: 0; }
-.feed-page .latest h3 { margin: var(--s-6) 0 var(--s-3); font-size: var(--t-h3); }
-.feed-page .latest .build-grid { columns: 2 150px; }
-@media (width >= 600px) { .feed-page .latest .build-grid { columns: 3 180px; } }
-@media (width >= 1200px) {
-	.feed-layout.with-rail {
-		grid-template-columns: minmax(0, 1fr) 320px; column-gap: var(--s-7);
-		grid-template-areas: "main rail" "latest rail";
-	}
-	/* Posts are a column of their own width: the rail stays beside them. */
-	.feed-layout.with-rail.posts { max-width: 1000px; }
-	.feed-layout.with-rail .feed-rail { position: sticky; top: 84px; }
-	.feed-layout.with-rail .latest .models { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
+.latest { min-width: 0; margin: 0; }
+.latest h3 { margin: var(--s-6) 0 var(--s-3); font-size: var(--t-h3); }
+.latest .build-grid { columns: 2 150px; }
+@media (width >= 600px) { .latest .build-grid { columns: 3 180px; } .latest .models { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* Notifications (/notifications, web/notifications.js, docs/SOCIAL.md U7):
    one group a model, its picture and name, then each thing that happened
    to it, newest first, with who did it (their avatar) or what it is (an
    icon: likes, a challenge's end). A group not opened yet is edged and
    dotted in the accent's edge. */
-.notices-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.notices-head h1 { margin: 0; }
-.notices { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); max-width: 760px; }
-.notice {
-	display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--s-4); align-items: start;
-	padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
-}
-.notice.unread { border-color: var(--accent-edge); }
-.notice .pic { display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-2); background: var(--picture-ground); }
-.notice .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.notice h2 { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); }
-.notice h2 a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
-.notice h2 a:hover { text-decoration: underline; }
-.notice .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-edge); }
+/* Each group is the site's row (site.css .list-row) in the site's list
+   (.list-rows): the model's picture, its name, then its lines. */
+.notice .row-title a { overflow-wrap: anywhere; }
 .notice .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
 .notice .lines a { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--ink); text-decoration: none; }
 .notice .lines a:hover .what { text-decoration: underline; text-decoration-color: var(--ink-faint); }
@@ -886,19 +856,32 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .pic.award, .notice .pic.challenge, .notice .pic.announce, .notice .pic.talk { display: grid; place-items: center; color: var(--ink-soft); }
 .notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon, .notice .pic.talk .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 .notice .what .words { display: block; margin-top: 2px; white-space: pre-line; }
-/* A group's Done and More (inbox, 2026-11-23): beside its name, at its end;
-   a finger's 44 px on a touch screen. Inbox and Done above the list. */
-.notice .notice-top { display: flex; align-items: flex-start; gap: var(--s-2); }
-.notice .notice-top h2 { flex: 1 1 auto; min-width: 0; }
+/* A group's Done and More (inbox, 2026-11-23): its .row-act, at the row's
+   end; a finger's 44 px on a touch screen. Inbox and Done above the list. */
 .notice .acts { display: flex; flex: none; align-items: center; gap: var(--s-1); margin: -4px -4px 0 0; }
-.notices-view { margin: 0 0 var(--s-3); }
-.notices-head .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
+.notices-view { margin: 0; justify-self: start; }
 @media (pointer: coarse) {
 	.notice .acts .icon-btn.small { min-width: 44px; min-height: 44px; }
 }
-@media (width < 600px) {
-	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
+/* Beside the list (listkit, 2026-11-23), the feed's column on both tabs:
+   Show, the list's kinds a line each, the one shown lit, each with how many
+   groups have it; your achievements as a card, the group's row without its
+   own frame, its newest two levels, the card lit while unread; and where to
+   choose what you hear of. */
+.kind-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.kind-list a {
+	display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); padding: 6px var(--s-2);
+	border-radius: var(--r-2); color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none;
 }
+.kind-list a:hover { color: var(--ink); background: var(--panel-hi); }
+.kind-list a[aria-current="true"] { color: var(--ink); background: var(--panel-hi); box-shadow: inset 2px 0 0 var(--accent-edge); }
+.kind-list .n { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { .kind-list a { min-height: 44px; } }
+.achieved:has(.notice.unread) { border-color: var(--accent-edge); }
+.achieved .list-row { grid-template-columns: 48px minmax(0, 1fr) auto; column-gap: var(--s-3); padding: 0; border: 0; background: none; box-shadow: none; }
+.achieved .list-row > .row-pic { width: 48px; aspect-ratio: 1; }
+.achieved .notice .lines > li:nth-child(n + 3) { display: none; }
+.notices-aside .hear p { margin: 0; font-size: var(--t-small); }
 
 
 /* A designer's page (api/people.js earnedHtml, supabase/designers.sql): what
@@ -1280,18 +1263,13 @@ dialog.post-kit { width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh
 }
 .post-kit .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
 
-/* The directory of collections as wide as the gallery it is a tab of, its
-   title and a line about it over the tabs. */
-.collections .page-head { margin-bottom: var(--s-4); }
-.collections .page-head h1 { margin: 0; letter-spacing: -0.03em; }
-.collections .page-head .lede { margin-top: var(--s-2); color: var(--ink-soft); }
 
 /* Your lists (/lists, web/lists.js, lists1): the lists down a rail beside
    the one shown, the rail a dropdown under 900 px; the list's head (what
    it is, its words, its numbers, its actions), its order and Select, the
    bar of what is selected, then its cards. */
 .lists-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); }
-@media (width >= 900px) { .lists-layout { grid-template-columns: 240px minmax(0, 1fr); gap: var(--s-6); } }
+@media (width >= 900px) { .lists-layout { grid-template-columns: 220px minmax(0, 1fr); gap: var(--s-5) var(--s-8); } }
 .lists-rail { display: none; }
 @media (width >= 900px) {
 	.lists-rail { display: block; position: sticky; top: calc(var(--head-h) + var(--s-4)); align-self: start; }

@@ -106,6 +106,15 @@ func publish(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/share", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
 
+## Put [param thumb] (a WebP, base64) on the account's own link [param id] as
+## its card, with no publish counted and no version (api/share.js op=card):
+## the card drawn as a photograph after the publish answered (SharePanel).
+## [param kind] is how it was drawn, traced or raster.
+func put_card(token: String, id: String, thumb: String, kind: String) -> Dictionary:
+	return await _fetch("/api/share?op=card&id=" + id.uri_encode(), HTTPClient.METHOD_POST, token,
+		JSON.stringify({"thumb": thumb, "kind": kind}))
+
+
 func unpublish(token: String, id: String) -> Dictionary:
 	return await _fetch("/api/share?op=unpublish&id=" + id.uri_encode(),
 		HTTPClient.METHOD_POST, token, "{}")
@@ -233,6 +242,31 @@ func pin(token: String, body: Dictionary) -> Dictionary:
 func resolve_pin(token: String, id: int, resolved: bool) -> Dictionary:
 	return await _fetch("/api/people?op=pin_resolve", HTTPClient.METHOD_POST, token,
 		JSON.stringify({"id": id, "resolved": resolved}))
+
+
+## Ask the builders (askhelp, 2026-11-23): a Help thread in Talk about the
+## step open in the studio, as the session's account: {model, version?, step
+## (or null), parts: [{part, colour, at, turn}], title, body}, the model one
+## of theirs with a link. 201 with {thread, post, ask, path, url, every}; a
+## refusal says why in {error} (the age rule, Talk's limits, a part not in
+## that version).
+func talk_ask(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=talk_ask", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## The asks of [param model], the caller's, and their answers on parts, as
+## they may see them (api/_asks.js asksOn): {code, body: {asks: [{thread,
+## title, path, ask, answers: [{id, body, at, by, handle, pin}]}], open,
+## every}}. 403 for somebody else's model.
+func talk_asks(token: String, model: String) -> Dictionary:
+	if not is_id(model):
+		return {"code": 0, "body": null}
+	return await _fetch("/api/people?op=talk_asks&model=" + model.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## Where a Talk thread's [param path] is, on this deployment.
+static func talk_link(path: String) -> String:
+	return Deployment.api_base() + (path if path.begins_with("/") else "/" + path)
 
 
 ## A real build's photos (api/people.js, api/_builds.js), as the step

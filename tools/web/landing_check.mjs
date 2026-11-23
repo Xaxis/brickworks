@@ -157,10 +157,11 @@ async function firstScreen(label, width, height, theme) {
     .then(() => true, () => false);
   await page.waitForTimeout(1000);
   const seen = await page.evaluate(() => {
-    // The window down to the beta bar, docked at its foot (site.css): what
-    // is under the bar is not seen.
+    // The window, down to the beta bar were it at the window's foot (since
+    // pagebar a strip at the page's top, over nothing): what is under it
+    // is not seen.
     const bar = document.querySelector("#beta-bar.shown");
-    const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
+    const foot = bar && bar.getBoundingClientRect().top > innerHeight / 2 ? bar.getBoundingClientRect().top : innerHeight;
     const whole = (el) => {
       if (!el) return false;
       const r = el.getBoundingClientRect();
@@ -358,7 +359,7 @@ async function talk(label, width, height) {
   const seen = await page.evaluate(() => [...document.querySelectorAll("#stream > .post.talk")].map((post) => ({
     href: post.querySelector(".post-title a")?.getAttribute("href") || "",
     title: post.querySelector(".post-title")?.textContent.trim() || "",
-    reply: post.querySelector(".post-reply")?.textContent.trim() || "",
+    reply: post.querySelector(".said-room")?.textContent.trim() || "",
   })));
   const answer = await asked(page, "/api/people?op=talk_latest&n=6&reply=1");
   const has = Array.isArray(answer?.threads) ? answer.threads.length : 0;

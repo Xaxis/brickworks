@@ -7,9 +7,9 @@
 // designer ({handle, name}), a comment's writer, a feed row's, a
 // notification's, a profile, the people a profile follows. withFaces looks
 // all of them up at once and gives each one with a picture its address,
-// picture, which avatarHtml draws in the tile's place. One with none, or
+// picture, which avatarHtml draws in the minifig's place. One with none, or
 // one whose picture was taken out, or whose profile may not be shown,
-// keeps the tile.
+// keeps the minifig.
 //
 // Before avatars.sql is applied there is nothing to look up, and nobody has
 // a picture. A picture is decoration beside a name, so a lookup that fails

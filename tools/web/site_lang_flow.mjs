@@ -436,7 +436,7 @@ async function modelSaid(browser, code, width, at) {
     // under each, and its step's pill where one is on a step.
     check((chrome.none ? chrome.none === script(code, "Nobody has commented yet.")
       : chrome.reply === script(code, "Reply") && (!chrome.step || chrome.step.startsWith(stepWord)))
-      && chrome.send === script(code, "Sign in and add it"),
+      && chrome.send === script(code, "Post"),
       `${where}: the comments say ${[chrome.none, chrome.reply, chrome.step, chrome.send].filter(Boolean).map((text) => `"${text}"`).join(", ")}`);
     const day = new Intl.DateTimeFormat(code === "en" ? "en-GB" : code, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
     const wrongDates = chrome.dates.filter(([iso, text]) => !text.startsWith(day.format(new Date(iso))));
@@ -1640,7 +1640,7 @@ const SEVENTH = [
   { name: "feed", file: "feed.html", at: "/feed", signedIn: true, drawn: () => document.documentElement.dataset.feed === "ready",
     theirs: ".feed-row .what b, .feed-row .what a, .feed-row q, .feed-photo figcaption, .people-list .name, .people-list .handle" },
   { name: "notifications", file: "notifications.html", at: "/notifications", signedIn: true,
-    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice h2 a, .notice .what b, .notice q" },
+    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice .row-title a, .notice .what b, .notice q" },
   { name: "builds", file: "builds.html", at: "/builds", drawn: () => ["ready", "none"].includes(document.documentElement.dataset.builds),
     theirs: "figure.build q, figure.build figcaption a" },
   { name: "feedback", file: "feedback.html", at: "/feedback", signedIn: true, drawn: () => true, theirs: "" },

@@ -41,9 +41,11 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { counted, iconButtonHtml, langAt, likeName, modelCard, number, say, sayIn, themeSaid } from "/card.js";
+import { appAt, counted, iconButtonHtml, langAt, likeName, modelCard, number, say, sayIn, themeSaid } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
+// The pick's picture turning in 3D under a resting mouse.
+import { turnOnHover } from "/turn3d.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 // A set of the LDraw library's (api/_library.js SET_ID).
@@ -323,6 +325,21 @@ export function modelsList(page) {
       why.className = "why";
       why.textContent = whyPicked(pick);
       picked.querySelector(".by").after(why);
+      // Featured across the grid's width (sitebold, 2026-11-23): its picture
+      // large, turning in 3D under a resting mouse, and the ways into the
+      // studio beside it: Build it from step 1, or a copy of your own.
+      const id = String(pick.model.id);
+      const go = document.createElement("p");
+      go.className = "pick-go";
+      const build = Object.assign(document.createElement("a"), { className: "cta", href: appAt(`view=${id}&build`),
+        textContent: say("Build it") });
+      build.title = say("Build it with real bricks, one step at a time from step 1: no account needed");
+      const open = Object.assign(document.createElement("a"), { className: "cta ghost", href: appAt(`copy=${id}`),
+        textContent: say("Open in Brickworks") });
+      open.title = say("Copy it into your own models, to change and make yours");
+      go.append(build, open);
+      picked.querySelector(".words").append(go);
+      turnOnHover(picked, frame, { id, name: String(pick.model.name || "") });
       holder.append(picked);
       // Not twice on one screen: the pick leads, the list goes on without it.
       grid.querySelector(`.model[data-id="${pick.model.id}"]`)?.remove();
@@ -564,7 +581,7 @@ export function modelsList(page) {
       const made = document.createElement("template");
       const name = button.closest(".model")?.querySelector("a.open")?.textContent || "";
       made.innerHTML = iconButtonHtml({ icon: "like", name: likeName(name), count: likes, one: "like", pressed: liked,
-        small: true, attrs: `data-like="${id}"` });
+        small: true, zero: true, attrs: `data-like="${id}"` });
       const fresh = made.content.firstElementChild;
       button.setAttribute("aria-pressed", fresh.getAttribute("aria-pressed"));
       button.setAttribute("aria-label", fresh.getAttribute("aria-label"));

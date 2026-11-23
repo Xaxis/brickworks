@@ -72,8 +72,6 @@
 <link rel="stylesheet" href="/site.css">
 <style>
 .listing { padding: 0 0 72px; }
-/* The head across the window, lit from above on its baseplate of studs. */
-.browse-band { padding: var(--s-6) 0 0; }
 /* The bar of filters stays under the header; what the keyboard reaches
    is scrolled clear of both. */
 html { scroll-padding-top: calc(var(--head-h) + 72px); }
@@ -87,39 +85,9 @@ html[data-tab="builds"] [data-list]:not([data-list~="builds"]),
 html[data-tab="collections"] [data-list]:not([data-list~="collections"]),
 html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data-list]:not([data-list~="models"]) { display: none !important; }
 
-/* The head: the title and a line under it, the search beside them (under
-   600 px the search beside the title, the line left out, so the first
-   card's picture is on the first screen). */
-.finder { margin: 0 0 var(--s-4); }
-.gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
-.gallery-title { min-width: 0; }
-.gallery-head h1 { margin: 0; }
-.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 54ch; color: var(--ink-soft); font-size: var(--t-lede); }
-/* The search (site.css .search) beside them; "/" puts the cursor in it.
-   Wide enough for the longest of its words, the Sets tab's "Search sets by
-   name, number or theme", beside the "/" (sitepolish: it was cut at
-   "or the" at 1280). */
-.search { flex: 1 1 380px; max-width: 460px; }
-/* Share yours at the head's end, beside the search (web/share-model.html).
-   On a phone it stays a word, beside the title, and the search has a row
-   of its own, so its words are read whole (byfix: three controls in one
-   row left an icon alone and the search's words cut off). */
-.gallery-head .search { margin-left: auto; }
-@media (width < 600px) {
-	.browse-band { padding-top: var(--s-4); }
-	.gallery-head { align-items: center; column-gap: var(--s-3); }
-	.gallery-head .lede, .search .hint { display: none; }
-	.gallery-title { flex: 1 1 auto; }
-	.share-yours { flex: none; }
-	.gallery-head .search { order: 1; flex: 1 1 100%; max-width: none; margin-left: 0; }
-	.search input { padding-right: 12px; }
-}
-
 /* The tabs, and Top's time at the row's end. The tabs scroll inside
    themselves on a phone: without min-width the row grew to all of them
    and Top's time, and the page scrolled sideways. */
-.gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
-.gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
 .gallery-bar .top-window { flex: none; }
 
 /* The bar of filters: the tab's Filters, then its row of pills (the
@@ -164,18 +132,47 @@ html[data-tab="builds"] .toolbar { position: static; }
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (today's spotlight, what you can build now, small builds)
-   across the grid after its first whole rows: twelve places, at two,
-   three or four to a row. The list's cards are #models' own, laid out in
+   across the grid after the pick's row and twelve cards, whole rows at
+   two, three or four to a row. The list's cards are #models' own, laid out in
    this grid. */
 .feed #models { display: contents; }
-.feed > .pick { min-width: 0; display: grid; }
+/* The owner's four a row on a desktop (2026-10-29): one on a phone, two
+   from 600 px, three from 900 and four from 1200, each picture its card's
+   hero. */
+.feed { grid-template-columns: minmax(0, 1fr); }
+@media (width >= 600px) { .feed { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (width >= 900px) { .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (width >= 1200px) { .feed { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* The week's pick across the grid's width: from 900 px its picture large on
+   the left, wide as a share's picture is, turning in 3D under a resting
+   mouse (web/turn3d.js), and beside it its name, who made it, why it is
+   picked, what people did with it and the ways into the studio. */
+.feed > .pick { min-width: 0; display: grid; grid-column: 1 / -1; }
+/* On a phone the pick comes first and the month's challenge under it: over
+   it, its two lines put the first picture 425 px down (the lead,
+   2026-11-23: above 360 wanted). */
+@media (width < 600px) { .feed > .pick { order: -1; } }
+.pick-card .pick-go { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0 0; }
+.pick-card .pick-go > .cta { position: relative; z-index: 1; flex: 1 1 auto; }
+@media (width >= 900px) {
+	/* Its picture 5:4 of the words' width: the pick whole on a 1280 x 800
+	   laptop's first screen, and the cards' first row begun under it on
+	   one 900 tall. */
+	.feed .pick-card { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+	.feed .pick-card .frame { aspect-ratio: 2 / 1; }
+	.feed .pick-card .words { justify-content: center; gap: var(--s-2); padding: var(--s-5) var(--s-6); }
+	.feed .pick-card .open b { font-size: var(--t-h2); line-height: 1.2; -webkit-line-clamp: 3; }
+	.feed .pick-card .why { font-size: var(--t-small); }
+	.feed .pick-card .pick-go > .cta { flex: 0 1 auto; }
+}
+/* Its 3D view over the whole picture, whatever the picture's shape. */
+.pick-card .frame.showcase .view3d { inset: 0; width: auto; aspect-ratio: auto; border-radius: 0; }
 .feed > .shelves {
 	grid-column: 1 / -1; order: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6);
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-.feed[data-front="pick"] #models > .model:nth-child(n+12),
-.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+.feed:is([data-front="pick"], [data-front="plain"]) #models > .model:nth-child(n+13) { order: 2; }
 .pick-card .why, #spotlight .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 /* The week's pick, edged as what is chosen is. */
 .feed .pick-card { border-color: var(--accent-edge); }
@@ -250,31 +247,33 @@ html[data-tab="builds"] .toolbar { position: static; }
 </header>
 
 <main id="main">
-	<!-- The page's head, lit as the landing page's opening is (site.css .halo):
-	     the title, the search and the tabs; the list and its bar of filters under it. -->
-	<div class="browse-band halo">
-		<div class="wrap wide">
-			<!-- Answered by gallery.js, never sent: the page asks its lists itself.
-			     The search is the form, and searches the tab it is on; the models'
-			     controls are its controls too (form="finder"), laid out under it
-			     so the bar of filters can stay on screen over the whole list. -->
-			<form class="finder" id="finder" role="search" action="/gallery" method="get">
-				<div class="gallery-head">
-					<div class="gallery-title">
-						<h1 id="gallery-h">Gallery</h1>
-						<p class="lede">Models people built and shared in Brickworks, and every LEGO® set with its parts. Turn one in 3D, build it step by step, or make it yours.</p>
-					</div>
-					<label class="search">
-						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-						<span class="visually-hidden" id="q-said">Search the gallery</span>
-						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-							placeholder="Search models, builders, tags" aria-keyshortcuts="/">
-						<kbd class="hint" aria-hidden="true">/</kbd>
-					</label>
+	<!-- The page's head, the site's one (site.css .page-hero): the title, the
+	     search and Share yours, and the tabs; the list and its bar of filters under it. -->
+	<div class="page-hero">
+		<div class="wrap">
+			<div class="page-head">
+				<div class="page-title">
+					<h1 id="gallery-h">Gallery</h1>
+					<p class="lede">Models people built and shared in Brickworks, and every LEGO® set with its parts. Turn one in 3D, build it step by step, or make it yours.</p>
+				</div>
+				<div class="page-acts">
+					<!-- Answered by gallery.js, never sent: the page asks its lists itself.
+					     The search is the form, and searches the tab it is on; the models'
+					     controls are its controls too (form="finder"), laid out under it
+					     so the bar of filters can stay on screen over the whole list. -->
+					<form class="finder" id="finder" role="search" action="/gallery" method="get">
+						<label class="search">
+							<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+							<span class="visually-hidden" id="q-said">Search the gallery</span>
+							<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+								placeholder="Search models, builders, tags" aria-keyshortcuts="/">
+							<kbd class="hint" aria-hidden="true">/</kbd>
+						</label>
+					</form>
 					<a class="cta share-yours" href="/share-model" aria-label="Share yours"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"></use></svg><span class="word">Share yours</span></a>
 				</div>
-			</form>
-			<div class="gallery-bar">
+			</div>
+			<div class="tab-bar gallery-bar">
 				<!-- What to browse, each tab at its own address and switched in place
 				     (gallery.js): Top (builds, remixes, Tested), New and Following once
 				     signed in, when the list says it can, the models; then photos of
@@ -365,7 +364,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
-			<!-- Four rows of skeletons at four a row (site.css .skeleton) where the first page's
+			<!-- Sixteen skeletons, four rows at four a row and more at three (site.css .skeleton), where the first page's
 			     cards go, taken out when it comes (gallery.js), so nothing under
 			     them moves. web/card.js skeletonHtml draws the same. -->
 			<div id="models">

@@ -8,7 +8,7 @@
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--publish]
-//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE]
+//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages]]
 //
 //   1. Each modelled set, at each width and theme, signed out: Build it
 //      opens LDraw's model at its first step (&build) and Make your own
@@ -30,6 +30,13 @@
 //      CDN, until the version is there: within 60 s (the bar). Then the
 //      set's page (?tests=1) shows its card, said changed. The account and
 //      its model are deleted at the end.
+//   5. --open-time[=ROUNDS] (3), against a deployment with the app: Make
+//      your own version's address and the studio's own (/app?new=1), each
+//      in a browser of its own at the same moment, signed in, warmed by one
+//      round not counted: the set (346-2) on the baseplate, every part down,
+//      no later than the plain studio is up + 2 s (the bar), at the median.
+//      With the app that takes --build (sethub), Build it's address too:
+//      its timeline up at step 1.
 //
 // Fails too when a script error reaches the console. Exits 1 on any FAIL.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -112,6 +119,29 @@ const look = () => {
   };
 };
 
+/// The versions' row scrolled to, its pictures given 30 s to come: each
+/// card's picture, whether it came, and whether its tile said "No picture".
+async function pictured(page) {
+  const row = await page.$("#versions");
+  if (!row) return [];
+  await row.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => [...document.querySelectorAll("#versions .model img")]
+    .every((one) => one.complete && one.naturalWidth > 0), null, { timeout: 30000, polling: 250 }).catch(() => null);
+  const tiles = await page.evaluate(() => [...document.querySelectorAll("#versions .model")].map((card) => {
+    const picture = card.querySelector(".frame img");
+    return { id: card.dataset.id, src: picture ? new URL(picture.src).pathname : "", came: Boolean(picture?.naturalWidth),
+      none: card.querySelector(".frame")?.classList.contains("none") === true };
+  }));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  return tiles;
+}
+
+/// Whether every version's tile shows its model: LDraw's as it is by the
+/// library's picture of [model]; a changed one by its own card picture or
+/// cut-out, else LDraw's; none blank, none "No picture".
+const shownWell = (tiles, model) => tiles.length > 0 && tiles.every((tile) => tile.came && !tile.none
+  && (tile.src === `/library/${model}.webp` || new RegExp(`^/m/${tile.id}(\\.webp|\\.cutout\\.png)$`).test(tile.src)));
+
 async function modelled(browser) {
   for (const set of SETS) {
     for (const width of WIDTHS) {
@@ -136,6 +166,8 @@ async function modelled(browser) {
               seen.cards.length === Number(seen.count) && seen.cards.every((card) => /^\/m\/[A-Za-z0-9]{10}$/.test(card.href)
                 && (card.changed === "true" ? card.said === "Their own version: changed from LDraw's model"
                   : card.said === "LDraw's model, as it is")));
+            const tiles = await pictured(page);
+            check(`${label}: each version's tile shows its model (${JSON.stringify(tiles)})`, shownWell(tiles, model));
           } else {
             check(`${label}: none yet, said, with Make your own version (${seen.empty}, ${seen.emptyGo})`,
               seen.empty === "Nobody has published their own version of this set yet." && seen.emptyGo === seen.version);
@@ -247,23 +279,146 @@ async function published(browser) {
     const card = seen.cards.find((one) => one.href === `/m/${id}`);
     check(`the set's page shows its card first, said changed (${JSON.stringify(card)}, first ${seen.cards[0]?.href})`,
       Boolean(card) && card.changed === "true" && seen.cards[0]?.href === `/m/${id}`);
-    const row = await page.$("#versions");
-    if (row) {
-      await row.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(out, "published_version.png") });
-    }
+    // Published with no picture of its own: shown by LDraw's model it was made from.
+    const tiles = await pictured(page);
+    check(`every version's tile shows its model, this one with no picture of its own LDraw's (${JSON.stringify(tiles)})`,
+      shownWell(tiles, "omr-346-2") && tiles.find((tile) => tile.id === id)?.src === "/library/omr-346-2.webp");
+    await (await page.$("#versions"))?.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(out, "published_version.png") });
   } finally {
     await context.close();
   }
   writeFileSync(path.join(out, "published.json"), `${JSON.stringify({ id, seconds: at / 1000 }, null, 1)}\n`);
 }
 
+/// --open-time: ms from the address asked until [ready] holds in a fresh
+/// context of [browser]; null when it never did in [most] ms. And the tab's
+/// own record of each change in what the app told the page (its state:
+/// what it is working on, its status bar, parts down and on their way), by
+/// the page's clock from its navigation, so the time between the studio up
+/// and the set down can be put where it went.
+async function timed(browser, address, ready, most = 240000) {
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: headers });
+  await context.addInitScript(() => {
+    const log = [];
+    window.sethubLog = log;
+    // The page's frames (requestAnimationFrame, the engine's own pace): each
+    // gap over 250 ms, [when, how long], to tell the app's work from frames
+    // the browser did not give.
+    const gaps = [];
+    window.sethubGaps = gaps;
+    let lastFrame = 0;
+    const frame = (at) => {
+      if (lastFrame && at - lastFrame > 250) gaps.push([Math.round(lastFrame), Math.round(at - lastFrame)]);
+      lastFrame = at;
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    let last = null;
+    setInterval(() => {
+      const state = window.brickworksState;
+      if (!state || state === last) return;
+      last = state;
+      const row = { t: Math.round(performance.now()), now: state.now, working: JSON.stringify(state.working ?? null),
+        said: state.said || "", bricks: state.bricks, awaited: state.awaited, slow: state.slow, busy: state.busy };
+      const before = log[log.length - 1];
+      if (!before || ["working", "said", "bricks", "awaited"].some((key) => before[key] !== row[key])) log.push(row);
+    }, 25);
+  });
+  const page = await context.newPage();
+  page.on("pageerror", (error) => errors.push(`${address}: ${error.message}`));
+  try {
+    const began = Date.now();
+    await page.goto(`${site}${address}`, { waitUntil: "commit", timeout: 120000 });
+    const done = await page.waitForFunction(ready, null, { timeout: most, polling: 100 }).then(() => true, () => false);
+    const ms = done ? Date.now() - began : null;
+    await page.waitForTimeout(200);
+    const log = await page.evaluate(() => window.sethubLog || []).catch(() => []);
+    const at = (test) => log.find(test)?.t ?? null;
+    const state = await page.evaluate(() => {
+      const one = window.brickworksState || {};
+      return { title: one.title, bricks: one.bricks, awaited: one.awaited, steps: one.steps, phases: one.open_phases };
+    }).catch(() => ({}));
+    // What it fetched, by the same clock: the library's index and file, the API.
+    const fetched = await page.evaluate(() => performance.getEntriesByType("resource")
+      .filter((one) => /\/library\/|\/api\//.test(one.name))
+      .map((one) => `${one.name.replace(/^https?:\/\/[^/]+/, "").slice(0, 60)} ${Math.round(one.startTime)}-${Math.round(one.responseEnd)}`))
+      .catch(() => []);
+    const slow = await page.evaluate(() => JSON.stringify(window.brickworksState?.slow ?? null)).catch(() => "");
+    const gaps = await page.evaluate(() => window.sethubGaps || []).catch(() => []);
+    return { ms, first: at(() => true), up: at((row) => row.awaited === 0), placed: at((row) => row.bricks >= 150),
+      whole: at((row) => row.bricks >= 150 && row.awaited === 0), log, fetched, slow, gaps, state, page, context };
+  } catch (trouble) {
+    await context.close();
+    return { ms: null, log: [], state: { trouble: String(trouble.message || trouble).slice(0, 200) } };
+  }
+}
+
+async function openTime(rounds) {
+  const up = () => Boolean(window.brickworksState) && window.brickworksState.awaited === 0;
+  // Its parts all down (an app before brickworksState.title says no name).
+  const set = () => window.brickworksState?.bricks >= 150 && window.brickworksState.awaited === 0;
+  const browsers = [await launch(), await launch()];
+  const got = [];
+  try {
+    for (let round = 0; round <= rounds; round += 1) {
+      const [plainOne, version] = await Promise.all([timed(browsers[round % 2], "/app?new=1", up),
+        timed(browsers[(round + 1) % 2], "/app?new=1&library=omr-346-2", set)]);
+      if (round === rounds) await version.page?.screenshot({ path: path.join(out, "make_your_own_version_app.png") });
+      await Promise.all([plainOne.context?.close(), version.context?.close()]);
+      console.log(`  round ${round}${round ? "" : " (warming, not counted)"}: the studio up at ${plainOne.up} ms `
+        + `(its page's clock; ${plainOne.ms} ms by the flow's); Make your own version's app first told the page at `
+        + `${version.first} ms, its set down at ${version.placed} ms, whole at ${version.whole} ms (${version.ms} by the flow's) `
+        + `(${JSON.stringify(version.state)})`);
+      // Where the version's time went, from its app's first word to the set whole.
+      for (const row of version.log.filter((one) => one.t <= (version.whole ?? Infinity))) {
+        console.log(`    ${String(row.t).padStart(6)} ms  engine ${row.now}  slow ${row.slow} busy ${row.busy}  `
+          + `bricks ${row.bricks} awaited ${row.awaited}  working ${row.working}  said "${row.said}"`);
+      }
+      console.log(`    its fetches: ${version.fetched?.join("; ")}`);
+      console.log(`    the plain studio's slow frames: ${plainOne.slow}`);
+      const within = (one) => (version.gaps || []).filter(([at]) => at >= (one ?? 0) - 1000 && at <= (version.whole ?? Infinity));
+      const stalled = within(version.first);
+      console.log(`    the version's page frames over 250 ms apart from its app's first word to the set whole: `
+        + `${stalled.length}, ${stalled.reduce((sum, [, ms]) => sum + ms, 0)} ms in all: ${JSON.stringify(stalled)}`);
+      if (round) got.push({ plain: plainOne.up, placed: version.placed, version: version.whole, log: version.log });
+    }
+    // Build it's address: its timeline at step 1, with an app that takes --build.
+    const built = await timed(browsers[0], "/app?new=1&library=omr-346-2&build",
+      () => Array.isArray(window.brickworksState?.steps) && window.brickworksState.steps.length === 2, 90000);
+    await built.page?.screenshot({ path: path.join(out, "build_it_app.png") });
+    await built.context?.close();
+    console.log(`  Build it: ${built.ms === null ? "no timeline (an app without --build)" : `its timeline up in ${built.ms} ms`} `
+      + `(${JSON.stringify(built.state)})`);
+    writeFileSync(path.join(out, "open_time.json"), `${JSON.stringify({ rounds: got, build: built.ms }, null, 1)}\n`);
+  } finally {
+    await Promise.all(browsers.map((one) => one.close()));
+  }
+  const median = (list) => {
+    const sorted = list.filter((one) => one !== null).sort((a, b) => a - b);
+    return sorted.length ? sorted[(sorted.length - 1) >> 1] : null;
+  };
+  const plainMs = median(got.map((one) => one.plain));
+  const placedMs = median(got.map((one) => one.placed));
+  const versionMs = median(got.map((one) => one.version));
+  // Each round's two at the same moment: the difference a round, its median.
+  const over = median(got.map((one) => (one.placed !== null && one.plain !== null ? one.placed - one.plain : null)));
+  console.log(`  every part's shape in ${versionMs} ms at the median; ${median(got.map((one) => (one.version !== null
+    && one.plain !== null ? one.version - one.plain : null)))} ms after the studio, a round's median`);
+  check(`Make your own version puts the set on the baseplate in ${placedMs} ms, the studio up in ${plainMs} ms `
+    + `(medians of ${got.length}; ${over} ms later, a round's median): within the studio's open time + 2 s`,
+  got.every((one) => one.placed !== null && one.plain !== null) && over !== null && over <= 2000);
+}
+
 const browser = await launch({ signedOut: true });
 try {
-  await modelled(browser);
-  await plain(browser);
-  await languages(browser);
+  if (!args["open-time"] || args.pages) {
+    await modelled(browser);
+    await plain(browser);
+    await languages(browser);
+  }
   if (args.publish) await published(browser);
+  if (args["open-time"]) await openTime(Number(args["open-time"]) > 0 ? Number(args["open-time"]) : 3);
 } finally {
   await browser.close();
   if (args.publish) await endOwnAccount();
