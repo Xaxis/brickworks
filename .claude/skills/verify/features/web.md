@@ -3500,7 +3500,11 @@ plan with Claude as the client.
   frame's half, at the stage's own aspect) and hits each with
   `elementFromPoint` (the 3D itself, no button or hint over it); the frame
   is square under 600 px and 16:10 from 900, as a model's page; the ask
-  and the posts share one column on the header's edges.
+  and the posts share one column on the header's edges. Its poster and the
+  thread's link preview are the model's own picture (`askPicture`, the
+  asked version's), a model with none a plain frame (and its embed's,
+  `embedCard`): never `/share.png`, which had stood in as an advert; the
+  flow publishes `tests/fixtures/talk/ask_windmill.png` and compares bytes.
   `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`,
   `--keep` leaves its thread for a look on 127.0.0.1);
   `src/dev/askhelp_probe.gd` at 1280x800 and 390x844 (`--pictures=DIR`).
@@ -6982,7 +6986,11 @@ locally (numbers in the unit's report).
 
 The design system, with no network and no account (pages from the
 checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
-`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`):
+`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`).
+Each model's picture (`/m/<id>.png`, `.webp`, a version's) and a set's
+(`/library/set/<num>.webp`) is a house card from `tests/fixtures/stand_in/`
+picked for that id (`PICTURE_OF`, else one by its id), so cards and model
+pages read true; `/share.png` is the og card's alone:
 
 ```sh
 heavy node tools/web/design_flow.mjs --out=shots/design              # this checkout

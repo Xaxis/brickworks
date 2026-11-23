@@ -2638,7 +2638,34 @@ function answered({ url, method = "GET", body, state = {} }) {
 // ---------------------------------------------------------------------------
 // The site in a browser, as deploy.sh serves it.
 
-const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../web/share.png"));
+// Each model's picture, a model's as the gallery's cards and its page show
+// it: cardlook's house cards (tests/fixtures/stand_in/, 480 x 360 WebP),
+// one per model by its id, picked to fit its name; any other id (the
+// crowd's, a flow's own) one of them by its id. The site's share card is
+// the og card's alone: as every model's picture it read as an advert in
+// every flow picture (askhelp, 2026-11-23).
+const PICTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../tests/fixtures/stand_in");
+const PICTURE_OF = {
+  DesignAbc1: "wizards_tower", DesignGea1: "windmill", DesignFox1: "red_fox", DesignBrg1: "stone_gate",
+  GoneModel1: "castle", DesignPar1: "gatehouse", MikaDraft1: "gatehouse", MikaRobot1: "robot",
+  MikaTram01: "carriage", DesignRmx1: "castle", JoDraft001: "wizards_tower", PriyaDrft1: "wizards_tower",
+  PriyaSpc01: "moon_rover", SamModel01: "tank_engine", SamModel02: "bakery",
+  // A set's own picture (/library/set/<num>.webp): the set where there is one.
+  "6080-1": "kings_castle",
+};
+const PICTURE_FILES = [...new Set(Object.values(PICTURE_OF))].sort();
+const pictureBytes = new Map();
+/// The picture for a model's or a set's [id], as bytes (WebP).
+function pictureOf(id) {
+  let name = PICTURE_OF[id];
+  if (!name) {
+    let sum = 0;
+    for (const letter of String(id)) sum = (sum * 31 + letter.charCodeAt(0)) >>> 0;
+    name = PICTURE_FILES[sum % PICTURE_FILES.length];
+  }
+  if (!pictureBytes.has(name)) pictureBytes.set(name, readFileSync(path.join(PICTURES, `${name}.webp`)));
+  return pictureBytes.get(name);
+}
 
 /// The docs as tools/docs_site.py builds them for a deployment, built
 /// once into a folder of their own, gone when this process ends.
@@ -2752,7 +2779,10 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       const files = photoFilesOf(String(url.searchParams.get("id") || ""));
       return route.fulfill({ status: 200, contentType: "image/jpeg", body: isCard(url) ? files.card : files.whole });
     }
-    if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
+    if (isPicture(url)) {
+      const id = /^\/(?:m|library\/set)\/([A-Za-z0-9][A-Za-z0-9.-]*?)(?:\/v\/\d+)?\.(?:png|webp|jpg)$/.exec(url.pathname)?.[1] || "";
+      return route.fulfill({ status: 200, contentType: "image/webp", body: pictureOf(id) });
+    }
     // A part's geometry, which a model's Parts list draws each lot from
     // (web/part-pictures.js): a deployment's from its own store, here from
     // this checkout's catalogue, as the store serves it.
