@@ -33,6 +33,7 @@ func _initialize() -> void:
 	_case(library, "a properly bonded arm, 2 studs of overlap", _arm(7), false)
 	_case(library, "a slab resting on a single 1x1", _pillar(), false)
 
+	_floating_is_said(library)
 	await _contacts_are_what_the_lattice_says(library)
 	await _checking_costs_about_what_building_costs(library)
 	await _a_tall_model_costs_no_more(library)
@@ -358,6 +359,53 @@ func _case(library: PartLibrary, label: String,
 	if not report.risks.is_empty():
 		print("        %s" % report.risks[0].message)
 	world.queue_free()
+
+
+## A part in the air, or a piece of them, touching nothing, is said
+## (Stability.FLOATS), and one beside the model, touching it, is not: a tile
+## lifted off its chimney read "stands up" (ux13's walk, p8).
+func _floating_is_said(library: PartLibrary) -> void:
+	print("\nparts in the air:")
+	for case: Array in [
+			["a tile over a stack, touching nothing", _stack(2) + [{"part": "3068b",
+				"at": Vector3(0, 200, 0)}], 1, "touches nothing: it floats in the air"],
+			["two bricks stacked in the air", _stack(2) + [{"part": "3001", "at": Vector3(0, 200, 0)},
+				{"part": "3001", "at": Vector3(0, 224, 0)}], 2, "and the part with it touch nothing else"],
+			["a brick beside the stack, touching its side", _stack(2) + [{"part": "3001",
+				"at": Vector3(80, 48, 0)}], 0, ""],
+			["a tidy stack", _stack(3), 0, ""]]:
+		var world := BrickWorld.new()
+		world.library = library
+		get_root().add_child(world)
+		var lattice := BrickLattice.new()
+		var placed: Array = []
+		for entry: Dictionary in case[1]:
+			var at: Transform3D = Transform3D(Basis.IDENTITY, entry["at"])
+			var id: int = world.add_brick(entry["part"], 4, at)
+			placed.append(id)
+			if id != 0:
+				var part: Lbm.PartMesh = library.mesh_for(entry["part"])
+				lattice.occupy(id, BrickLattice.cells_for(
+					part.boxes, BrickLattice.to_cell(at.origin), at.basis))
+		var stability := Stability.new()
+		stability.library = library
+		stability.lattice = lattice
+		stability.with_margins = true
+		var report: Stability.Report = stability.check(world)
+		var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+			return risk.kind == Stability.FLOATS)
+		var words: String = Stability.floating_words(floating)
+		# Godot's "".contains("") is false: a case with no words wants none.
+		var ok: bool = floating.size() == int(case[2]) \
+			and (words.contains(str(case[3])) if not str(case[3]).is_empty() else words.is_empty()) \
+			and (floating.is_empty() or report.summary().contains("float")) \
+			and floating.all(func(risk: Stability.Risk) -> bool:
+				return placed.slice(placed.size() - int(case[2])).has(risk.brick_id))
+		if not ok:
+			_failures += 1
+		print("  %s %-44s %d floating: %s | %s" % ["OK " if ok else "XX ", case[0], floating.size(),
+			words, report.summary()])
+		world.queue_free()
 
 
 static func _stack(n: int) -> Array:

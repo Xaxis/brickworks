@@ -21,6 +21,37 @@ whole cycle.
   anybody. Builders answer on a part (right-click or touch and hold it in
   the thread's 3D, **Answer on this part**), and with your model open the
   studio lights that part within half a minute and says who answered.
+- **Make your own version of a set.** A set's page whose set LDraw has
+  modelled says **Build it**, which opens that model at its first step to
+  build step by step, and **Make your own version**, which opens a copy of
+  it credited to whoever modelled it. Change it and publish it, and it is
+  listed on the set's page under **Versions of this set** within a minute,
+  said to be changed from LDraw's model.
+- **Every modelled set turns in 3D on its own page.** A set's page in the
+  library whose set LDraw has modelled, about 1,300 of them, says **View
+  in 3D** on its picture, and the set turns right there, as a shared
+  model's does: drag, zoom, the keys, full screen, and **Open in the app**
+  beside it. Nothing of it loads until you ask. A set LDraw has not
+  modelled says **No 3D model of this set yet** under its picture.
+- **Choose what you hear of, and where.** Settings › Notifications has a
+  row for each kind of notification, from comments on your models to news
+  from Brickworks, and a box for each place it can reach you: here (the
+  bell and your Notifications), by push on each device you turned on, and
+  in the one daily email. Push starts with replies and mentions; email is
+  off until you tick it. **Mute** a model, from its notification or its
+  page's More menu, and nothing about it reaches you until you unmute it;
+  Settings lists what you muted. **Done** takes a notification out of your
+  count and into a Done view, **Mark all done** all of them, each with
+  Undo, and anything new comes back. The account menu shows your five
+  newest, with their pictures.
+- **Building now: watch a model being built, live.** In **File › Build
+  together…**, **Open to watchers** gives your session a page anyone can
+  watch, listed first on the home page and on your profile while you
+  build. Watchers see each part land in 3D and chat with you, and anyone
+  signed in can **Ask to build**. **Give a seat** puts them in the session
+  beside you. Nothing a watcher does changes the model. When you end the
+  session, where it got to is kept as a version in the model's log (Share
+  progress), if the model is shared.
 - **Change any model with your own Claude.** Every model's page has **With
   your Claude** beside **Open in Brickworks**: say what should change (or
   nothing, and Claude asks), press **Copy for Claude**, and paste the message
@@ -119,6 +150,12 @@ whole cycle.
   every version, the newest first, each with its picture, the day, what
   changed and its note, and a link to that version.
 
+- **brickworks.diy opens on our mark, built in LEGO® bricks, in 3D.** 189
+  real parts, a course at a time: on your first visit the bricks fly up and
+  drop back into place, then the model turns slowly. Drag it to turn it, or use the arrow
+  keys; a brick lifts under your mouse. **Open it in the studio** opens it
+  in Brickworks, and it is one of the app's examples too. If you have asked
+  your device for less motion, it stays still until you turn it.
 - **brickworks.diy's home is a feed.** What builders make and say, one post
   after another: new builds, threads in Talk with their latest reply, this
   month's challenge with its entries, builders to follow and photos of
@@ -130,6 +167,15 @@ whole cycle.
   itself in the feed. Signed in, the feed has tabs (**For you**,
   **Following**, **New**) and **Share a build** opens the share panel for
   your last model.
+- **Open in Brickworks leads to the model you chose.** Pressed on a model's
+  page, it opens the studio with that model on the baseplate, never the
+  example car. Signed out, it waits behind the sign-in, which says it opens
+  as your own copy; sign in by email, with orangecheck or in another tab,
+  even as a new account, and the copy is saved in your models, credited and
+  framed. The first time, **Recolour a part**, **Add a part** and **Build it**
+  are offered along the top of the model, gone at your first change or
+  Escape. A reload or a second tab on the same link opens the copy you made,
+  never a second one.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,
@@ -138,6 +184,19 @@ whole cycle.
   it too. It is recorded while the page is open and shown, without slowing
   the page. Republish, and your next visit records the new version.
   Unpublish or delete your account, and the clip goes with it.
+- **Lists shared by a link, and one Save.** A list can now be shared by
+  its link alone: whoever has the link opens it, and it is on no profile,
+  in no gallery, in no search and in no sitemap. **Stop sharing** turns the
+  link off at once, and sharing again makes a new one. A wishlist you share
+  is shared this way unless you choose **Public**. A model's page has the
+  same **Save** as its card, one panel for Saved and your lists, and
+  Favourites is called **Saved** everywhere. The gallery's Collections are
+  **Lists** now, at brickworks.diy/gallery-lists; every old /collections
+  link still lands there.
+- **See an import before it is made.** **Add sets** on Your lists shows
+  what a Rebrickable, BrickLink or Brickset file (or numbers typed) would
+  add, what is there already and what no set has, before anything is
+  written; **Cancel** leaves everything as it was.
 - **Own, Want and your lists, on the website.** Every set in the library,
   every set's page and every model in the gallery has one control: **Own**
   (a set) or **Save** (a model) at a tap, with **Undo**, and a chevron for
@@ -285,6 +344,26 @@ whole cycle.
 
 ### Changed
 
+- **Duplicate puts its copy down beside the original.** Edit › Duplicate
+  (Ctrl+D) seats the copy next to what was selected, selected so a drag
+  takes it where it goes, and one undo takes it back; type 5x straight after
+  for a row of five. The Clone tool still holds a copy for each click.
+- **Instructions save as a PDF when that is what you ask for.** The save
+  dialog asks for a PDF first, with a web page the other choice, and opens
+  the PDF when it is written.
+- **Recolouring a whole model.** Find and replace opened with parts selected
+  finds what they share, so parts selected by their colour are all
+  recoloured at once; its colour lists show swatches, the model's most used
+  first, and the colours made now before the rest.
+- **Versions and the Open list say when as a person does**: yesterday, or
+  how many days ago, and each version how many parts it added or took away.
+- **Smaller things the walks found:** with a part in hand, X, Y or Z opens
+  the number field ("x 1" moves it a stud); the ruler's measurement is in
+  the status line; Paint says when the parts are that colour already;
+  Simulate with nothing turning keeps its controls out of the way until
+  something turns; a model's own sub-assembly is first in the parts bin to
+  put another down; Share signed out offers Sign in, and a greyed row in a
+  phone's More says why.
 - **The home page opens on the community.** Its first screen, on a phone
   and on a computer, is a search over models, builders and real sets (what
   it finds shows as you type), **Start building**, this month's challenge
@@ -295,6 +374,27 @@ whole cycle.
   builders' forum has talk, its newest threads. The header on every page
   leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
   app are in the menu and the footer.
+- **Every window and panel closes with Close.** Library, Collection, the
+  parts list, Keys, Account, Share, Brickify and a reference picture said
+  Done, Close or OK for the same act. A mode you leave for the model, such
+  as Build it, still says Done.
+- **The control hints are one short row along the model's foot,** and each
+  goes after you have used it three times. View › Panels › Key strip brings
+  them back. They were five rows of sentences over the model, for good.
+- **A set from the Library, an example, or a Studio or LDD file opens as it
+  is.** "Parts have new numbers in the LDraw library" is offered only for
+  your own LDraw file, and only once.
+
+- **The loading page builds our mark in 3D bricks, with a tip under it.**
+  While the app loads in a browser, bricks fly in and build the Brickworks
+  mark, the cube with one corner cut away, course by course as the app
+  arrives: yellow on top, red and blue down the sides, the cut a shade
+  darker, as big as the window allows and turning slowly under one light.
+  The mark complete is the app ready. Under it the name, and under that a
+  tip about Brickworks changes every five seconds: a key on a computer, a
+  gesture on a phone, and the menus' best commands, in your language; point
+  at one to keep it, and the next visit starts with new ones. With reduced
+  motion the mark stands finished and still.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say
@@ -347,6 +447,28 @@ whole cycle.
   they really work, with a picture of each.
 
 ### Fixed
+
+- A part in the air, touching nothing, was missed by everything that checks
+  a model: the status bar, Check stability ("Stands"), Stress, and Seat parts
+  ("every part is on its studs"). Each now says it by name and selects it,
+  and a group of parts in the air, such as a copy put down too high, is said
+  as one. The assistant's stability answer says it too.
+- A search for "motor" listed a minifigure jackhammer first. Motors come
+  first now, and the minifigure builder lists parts named for what you typed
+  before parts found only by their keywords ("space" gave a battle droid).
+- While the app worked, its Cancel bar could push the window past the
+  screen's edge. The status bar makes room instead.
+- The parts list named some parts with LDraw's marks, such as
+  "=Tile 1 x 2 Chamfered". The marks are gone.
+- On a phone, the Library's search said its words cut off. It says what fits.
+- Share opened with no name for a model of one minifigure or one
+  sub-assembly. It takes that name.
+- The parts bin, searched for a sub-assembly of your model, says it is
+  yours and that Edit › Duplicate puts another down.
+- **The beta bar no longer covers the page.** It sits along the bottom of the
+  window, and every page leaves room for it at its end. The home page's top
+  is shorter too, so the first row of builds shows whole on a laptop, and its
+  search's "Search the gallery for" rows always carry everything you typed.
 
 - With the bin, Stress and the assistant open at 1280 × 720, the timeline's
   Done and Instructions, Account and the status bar were past the window's

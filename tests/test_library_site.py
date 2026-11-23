@@ -220,7 +220,7 @@ console.log(JSON.stringify({ page, none: none.status, junk: junk.status }));""")
     page = said["page"]
     html = page["body"]
     assert page["status"] == 200
-    assert "<h1>Millennium Falcon</h1>" in html
+    assert '<h1 class="obj-title">Millennium Falcon</h1>' in html
     assert "<title>Millennium Falcon, LEGO® set 10179-1 — from the LDraw library</title>" in html
     # Every modeller the file names, each credited, LDraw linked.
     assert re.search(r'Modelled by <b>Roland Dahl and Evert-Jan Boer</b> for <a href="https://library\.ldraw\.org/omr/sets/320">', html)
@@ -235,7 +235,7 @@ console.log(JSON.stringify({ page, none: none.status, junk: junk.status }));""")
     assert 'data-parts="/library/omr-10179-1/parts.json"' in html
     # Share, with its link and no embed; none of a shared model's own rows.
     assert 'id="share-link" value="https://brickworks.test/library/omr-10179-1"' in html
-    for gone in ('id="share-embed"', 'id="comments"', 'id="builds"', 'id="remixes"', 'data-mark="like"', 'data-mark="save"'):
+    for gone in ('id="share-embed"', 'id="comments"', 'id="builds"', 'id="remixes"', 'data-mark="like"', 'data-keep="model:'):
         assert gone not in html, gone
     # More of its theme only with three, and this shelf has one more.
     assert 'id="similar"' not in html

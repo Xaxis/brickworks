@@ -6,14 +6,16 @@
 //   node tools/web/design_flow.mjs [--out=shots/design]              # this checkout's web/ and api/
 //   node tools/web/design_flow.mjs --root=DIR [--out=...]            # another checkout's (an old one, to see it fail)
 //   node tools/web/design_flow.mjs --url=<deployment> [--out=...]    # a deployment's pages, the API answered here
-//   [--only=gallery,model] [--widths=390,1280] [--themes=light,dark]
+//   [--only=gallery,model] [--widths=390,1280] [--themes=light,dark] [--no-layout]
 //
 // The owner found the age question's month was the browser's bare
 // dropdown, small and unstyled beside a full-size year box: each unit had
 // copied the control styles it needed, and what a copy missed fell back
 // to the browser. This visits every page and opens every dialog, at 390
 // and 1280 px, light and dark, signed out and signed in, and reads each
-// visible input, select, textarea and button as the browser draws it. It
+// visible input, select, textarea and button as the browser draws it. An
+// object's page shows one tab's panel at a time (web/tabs.js, pagekit): each
+// of its other tabs is chosen and the page judged again with it shown. It
 // fails on what a person would notice:
 //
 //   a control the browser drew its own way: a dropdown it drew (appearance
@@ -42,9 +44,17 @@
 //     to the far right with the 'Open the app' button to the left of it";
 //   a header whose last item is closer than the page's 16 px gutter to the
 //     screen's right edge, on a phone at 320, 360 and 390 px;
+//   a page whose main container (the first drawn .wrap in <main>) does not
+//     have the header's left and right edges, the gallery's, within a
+//     pixel: one page width for every page (homefix, 2026-11-23, the owner:
+//     Talk "does not have the same page width as the other pages"; every
+//     page of words was 108 px narrower than the header at 1280);
 //   a heading off the type scale: an h2 not at --t-h2 (a landing page's
 //     h2.title at --t-section) or an h3 not at --t-h3, as drawn. There were three sizes of h2 and four of h3 (site273,
 //     2026-10-26): a model's About it at 18 px under More by at 30;
+//   a page off the site's one layout: its container, its h1 or its tabs
+//     not where the pattern puts them (tools/web/layout_audit.mjs, run
+//     here after the rest, listkit 2026-11-23; --no-layout leaves it out);
 //   and, in any stylesheet or page style the page has, a font size, a
 //     corner or a colour off the token scale (site.css :root): a size not
 //     var(--t-*), a corner not var(--r-*) (or 0, or 50%), a colour written
@@ -61,6 +71,7 @@
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { onDeployment, sitePages, visit } from "./site_pages.mjs";
+import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -401,6 +412,22 @@ async function headerOrder(page, signedIn) {
 /// mark, Open the app and Menu ran Menu 8 px from the edge (2026-10-23).
 const GUTTER = 16;
 const PHONES = [320, 360, 390];
+
+/// What is wrong with the page's width, as [what, why]: its main
+/// container's edges are the header's (site.css .wrap, one width for every
+/// page). Run in the page.
+function pageEdges() {
+  const drawn = (el) => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0;
+  const head = document.querySelector(".site-head > .wrap");
+  // The page's container: the .wrap round <main> (the docs' .docs-layout,
+  // with its contents beside main), else the first drawn in it.
+  const main = document.querySelector("main")?.closest(".wrap") || [...document.querySelectorAll("main .wrap")].find(drawn);
+  if (!head || !main || !drawn(head)) return [];
+  const [h, m] = [head.getBoundingClientRect(), main.getBoundingClientRect()];
+  if (Math.abs(h.left - m.left) <= 1 && Math.abs(h.right - m.right) <= 1) return [];
+  return [["the page", `is ${Math.round(m.left)} to ${Math.round(m.right)} px wide (main .${String(main.className).trim().split(/\s+/).join(".")}), `
+    + `not the header's and the gallery's ${Math.round(h.left)} to ${Math.round(h.right)}`]];
+}
 async function headerGutter(page) {
   const { width, height } = page.viewportSize();
   const widths = width < 600 ? [...new Set([...PHONES, width])] : [width];
@@ -465,6 +492,26 @@ async function judge(page, label, what, scope, file, more = []) {
   }
 }
 
+/// The tabs of an object's page (api/_tabs.js, web/tabs.js) shown but not
+/// chosen as it opened, by key, in their order; none on other pages.
+const otherTabs = (page) => page.evaluate(() => [...document.querySelectorAll('#page-tabs[role="tablist"] [role="tab"]')]
+  .filter((tab) => !tab.hidden && tab.getAttribute("aria-selected") !== "true"
+    && document.getElementById(tab.getAttribute("aria-controls") || ""))
+  .map((tab) => tab.dataset.tab));
+
+/// [key]'s tab pressed (with none, the first shown), as a person presses
+/// it: whether it was chosen and its panel shows.
+async function chooseTab(page, key) {
+  const tab = key ? `#page-tabs [role="tab"][data-tab="${key}"]` : '#page-tabs [role="tab"]:not([hidden])';
+  if (!(await page.$(tab))) return false;
+  await page.click(tab, { timeout: 10000 }).catch(() => null);
+  return page.waitForFunction((at) => {
+    const one = document.querySelector(at);
+    const panel = document.getElementById(one?.getAttribute("aria-controls") || "");
+    return one?.getAttribute("aria-selected") === "true" && Boolean(panel) && !panel.hidden;
+  }, tab, { timeout: 5000 }).then(() => true, () => false);
+}
+
 try {
   for (const one of PAGES) {
     if ((only && !only.includes(one.name)) || one.skip || (remote && one.local)) continue;
@@ -487,7 +534,15 @@ try {
             if (one.ready && !(await one.ready(page, { width, signedIn }))) fail(label, "did not finish drawing");
             await page.waitForTimeout(300);
             if (!one.dialogOnly) {
-              await judge(page, label, "page", null, `${stem}.png`, [...await headerOrder(page, signedIn), ...await headerGutter(page)]);
+              await judge(page, label, "page", null, `${stem}.png`, [...await headerOrder(page, signedIn), ...await headerGutter(page), ...await page.evaluate(pageEdges)]);
+              // Each other tab of an object's page, pressed: the page as it
+              // then shows, its picture whole; then the first tab again, for
+              // the dialogs.
+              for (const key of await otherTabs(page)) {
+                const shown = await chooseTab(page, key);
+                await judge(page, label, shown ? `${key} tab` : `${key} tab (missing)`, null, `${stem}_tab-${key}.png`);
+              }
+              await chooseTab(page, null);
             }
             // A state that does not last is judged as it is shown.
             const now = (what, scope) => judge(page, label, what, scope, `${stem}_${what.replace(/\W+/g, "-")}.png`);
@@ -508,6 +563,19 @@ try {
   await browser.close();
 }
 for (const error of errors) fail("script", error);
+// And every page laid out as one site (tools/web/layout_audit.mjs, listkit):
+// the release's [design] runs both. Its own pages, at this run's widths,
+// in the first theme (a layout is the same in both).
+if (!args["no-layout"]) {
+  const layoutArgs = [path.join(here, "layout_audit.mjs"), `--root=${root}`, `--widths=${widths.join(",")}`, `--themes=${themes[0]}`,
+    ...(remote ? [`--url=${remote}`] : []), ...(only ? [`--only=${only.join(",")}`] : []), ...(out ? [`--out=${path.join(out, "layout")}`] : [])];
+  console.log("\nlayout audit (tools/web/layout_audit.mjs):");
+  const ran = spawnSync(process.execPath, layoutArgs, { stdio: ["ignore", "pipe", "inherit"], encoding: "utf8", maxBuffer: 64 << 20 });
+  const lines = String(ran.stdout || "").split("\n");
+  for (const line of lines) if (line) console.log(`  ${line}`);
+  if (ran.status === 0) passed += 1;
+  else fail("layout", `layout_audit.mjs failed (${lines.filter((line) => /^\s*FAIL/.test(line)).length} pages off the pattern)`);
+}
 // Off the scale: one failure a rule, named with its stylesheet.
 for (const [key, where] of offScaleSeen) fail("style", `${key}: off the token scale (first on ${where})`);
 if (!offScaleSeen.size && states) console.log("  ok    style: every font size, corner and colour on the token scale");

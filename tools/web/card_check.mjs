@@ -142,11 +142,25 @@ try {
   // The pages' card skeletons are skeletonHtml's: each page holds its own
   // copy in its HTML, and site275's stood for the card before site277's.
   const { skeletonHtml } = await import(pathToFileURL(path.join(api, "_card.js")).href);
-  for (const name of ["gallery", "index", "profile", "feed"]) {
+  for (const name of ["gallery", "profile", "feed"]) {
     const copies = readFileSync(path.join(web, `${name}.html`), "utf8").match(/<div class="skeleton-card[^\n]*?<\/span><\/div><\/div>/g) || [];
     const off = copies.filter((copy) => copy !== skeletonHtml());
     check(copies.length > 0 && !off.length, `${name}.html: ${copies.length} card skeletons, ${off.length} not skeletonHtml's`
       + (off.length ? `\n        page:    ${off[0]}\n        card.js: ${skeletonHtml()}` : ""));
+  }
+  // The home's stream holds posts, not cards, since it became the feed
+  // (homefeed, 2026-11-23): its skeletons are a post's, in the page and in
+  // each language's copy, the one web/landing.js puts back on a tab's change
+  // (web/home-feed.js postSkeletonHtml), and no card's.
+  const { postSkeletonHtml } = await import(pathToFileURL(path.join(web, "home-feed.js")).href);
+  for (const name of ["index", "de/index", "fr/index", "es/index"]) {
+    const html = readFileSync(path.join(web, `${name}.html`), "utf8");
+    const stream = /<div class="stream" id="stream"[^>]*>([\s\S]*?)<\/div>\s*<p class="stream-said"/.exec(html)?.[1] || "";
+    const copies = stream.match(/<div class="post skeleton[^\n]*?<\/span><\/div><\/div>/g) || [];
+    const off = copies.filter((copy) => copy !== postSkeletonHtml());
+    const cards = (html.match(/class="skeleton-card/g) || []).length;
+    check(copies.length > 0 && !off.length && !cards, `${name}.html: ${copies.length} post skeletons in the stream, ${off.length} not postSkeletonHtml's, ${cards} card skeletons`
+      + (off.length ? `\n        page:         ${off[0]}\n        home-feed.js: ${postSkeletonHtml()}` : ""));
   }
   // Words stay words: a name's markup is text on the card.
   const [risky] = await drawn([SAMPLES[0][0]], {});
@@ -156,15 +170,20 @@ try {
   check(/href="\/u\/robin-castell"/.test(linked) && /Robin &lt;Castell&gt;/.test(linked) && /aria-pressed="true"/.test(linked)
     && !/href="\/u\//.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
   // How it was made is no card's mark (the owner, 2026-11-02): not as its
-  // app said, not by its tags. Its own page says it, among its facts.
+  // app said, not by its tags. Its own page says it, among its facts, and
+  // only where its owner chose to (the owner, 2026-11-23,
+  // supabase/made_with_shown.sql).
   const madeCards = await drawn([SAMPLES[8][0], SAMPLES[9][0], SAMPLES[10][0], SAMPLES[4][0], SAMPLES[5][0]], {});
   const saying = madeCards.filter((one) => /class="pill made"|data-made=|>Assistant<|>Brickify</.test(one));
   check(!saying.length, `no card says how it was made: hand-built, Claude's, Brickify's, tagged ai-designed or brickify (${saying.length} of ${madeCards.length} do)`);
-  const madeFacts = async (id) => /<ul class="facts pills">[^]*?<\/ul>/.exec((await stand.serverPage(api, `/m/${id}`)).html)?.[0] || "";
-  const [houseFacts, robinFacts] = [await madeFacts("HouseMod01"), await madeFacts(stand.MODEL_ID)];
-  check(/<li class="pill made" title="Designed with the assistant, as its designer tagged it">With the assistant<\/li>/.test(houseFacts)
-    && !/class="pill made"/.test(robinFacts), "a model's own page says it: With the assistant among the facts of one tagged ai-designed, "
-    + "nothing for one built by hand");
+  const pageOf = async (id) => (await stand.serverPage(api, `/m/${id}`)).html;
+  const madeFacts = (html) => /<ul class="facts pills">[^]*?<\/ul>/.exec(html)?.[0] || "";
+  const [quietPage, shownPage, robinPage] = [await pageOf("HouseMod01"), await pageOf("HouseMod02"), await pageOf(stand.MODEL_ID)];
+  check(/<li class="pill made" title="Designed with the assistant, as its designer tagged it">With the assistant<\/li>/.test(madeFacts(shownPage))
+    && !/class="pill made"/.test(madeFacts(robinPage)), "a model's own page says it: With the assistant among the facts of one tagged "
+    + "ai-designed whose owner chose to show it, nothing for one built by hand");
+  check(!/class="pill made"|ai-designed|With the assistant/.test(quietPage) && /ai-designed/.test(shownPage),
+    "one tagged ai-designed whose owner did not choose to show it: no fact, no ai-designed tag, nothing anywhere on its page says it");
   // Their own picture only from this site's address for one.
   const [face, elsewhere] = await drawn([SAMPLES[6][0], SAMPLES[7][0]], {});
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)

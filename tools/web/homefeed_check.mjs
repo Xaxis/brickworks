@@ -13,10 +13,14 @@
 //      made as pills to the docs, like, comments and share, and Open in the
 //      studio, Remix, Build it and Parts to the studio's own addresses.
 //   4. Like, Add a comment and Follow, signed out: each asks to sign in on
-//      the spot, over the page, which stays where it was; what was typed
-//      in the comment is still there after.
-//   5. 3D: the 3D button turns the model in its picture's place (three.js
-//      asked for only then), Escape puts the picture back; on a laptop a
+//      the spot, over the page, which stays where it was. Add a comment
+//      opens the composer in the post (web/composer.js), its foot the
+//      guidelines and the keys; Enter is a new line, Ctrl+Enter posts (here,
+//      asks to sign in), what was typed is still there after, and Escape
+//      closes it, the focus back on Add a comment.
+//   5. 3D: the 3D button turns the model in its picture's place (its scene
+//      asked for only then, and three.js too unless the hero's mark asked
+//      for it first), Escape puts the picture back; on a laptop a
 //      pointer resting on a picture turns it, and leaving puts it back.
 //   6. Try it here: nothing of the studio asked for before the tap; the tap
 //      puts the studio in the post (/app?view=<id>). With --try-start, the
@@ -26,15 +30,22 @@
 // --signed-in (a deployment whose checks' accounts may post: a preview or
 // this machine's relay; never brickworks.diy): Ann shares a model of her
 // own (in the checks' pool, ?tests=1) and Bea, signed in:
-//   7. sees no line, Share a build to /app?share, and the tabs For you,
-//      Following and New, For you pressed, the arrows moving along them;
+//   7. sees no line, the home's search whole in the first screen in one
+//      row with Share a build to /app?share ("/" puts the cursor in it;
+//      homefix, 2026-11-23), the first post begun over the window's foot,
+//      and the tabs For you, Following and New, For you pressed, the arrows
+//      moving along them;
 //   8. likes Ann's post (counted at once and by the server) and takes it
-//      back; comments on it in place (its comment there and on the model);
+//      back; comments on it in place with Ctrl+Enter (its line at once,
+//      marked as going, then the server's, its count one; on the model);
+//      replies to Ann's thread from its post in the feed (the reply under
+//      the latest, its count, in the thread, the page not left);
 //      follows Ann from it, and Following then shows Ann's model; New puts
 //      Ann's newest first;
-//   9. a visitor presses Like on Ann's post, signs in in the dialog that
-//      opens, and is back where they were with the like made.
-// Both accounts and Ann's model are deleted at the end.
+//   9. a visitor types a comment on Ann's post and presses Post, signs in
+//      in the dialog that opens, and the comment goes from the same post,
+//      the page where it was; then Like, signed in, goes at once.
+// The accounts, Ann's model and her thread are deleted at the end.
 //
 // Pictures in --out. It passes when it ends "homefeed: all ok".
 import { launch } from "./browser.mjs";
@@ -72,6 +83,16 @@ const check = (what, ok) => {
 };
 const errors = [];
 const browser = await launch({ signedOut: true });
+
+/// [selector] scrolled to the middle of the window at once, as a person
+/// scrolls to what they mean to press; the page's place then.
+async function centre(page, selector) {
+  await page.waitForSelector(selector, { state: "attached", timeout: 30000 });
+  return page.evaluate((wanted) => {
+    document.querySelector(wanted)?.scrollIntoView({ block: "center", behavior: "instant" });
+    return Math.round(scrollY);
+  }, selector);
+}
 
 async function open(where, { width = 1280, height = 800, session = null, theme = "light" } = {}) {
   const phone = width < 600;
@@ -140,7 +161,7 @@ const buildPost = (page, id = "") => page.evaluate((wanted) => {
     share: Boolean(post.querySelector("[data-share]")),
     verbs: [href('[data-verb="open"]'), href('[data-verb="remix"]'), href('[data-verb="build"]'), href('[data-verb="parts"]')],
     page: href(".post-title a"),
-    said: post.querySelector(".post-said")?.textContent.trim() || "",
+    said: post.querySelector(".said-room")?.textContent.trim() || "",
   };
 }, id);
 
@@ -149,6 +170,8 @@ const verbsRight = (one) => one && one.verbs[0] === `/app?view=${one.id}` && one
 
 const people = {};
 let modelId = "";
+let threadId = 0;
+let threadPost = 0;
 try {
   // --- 1. As served ---------------------------------------------------------
   console.log(`homefeed: ${site}`);
@@ -196,32 +219,64 @@ try {
     const after = await buildPost(page, id);
     check(`4. ${label}: Like asks to sign in (${Boolean(likeAsks)}), and closed changes nothing (${after?.like}, ${after?.likes} likes)`,
       Boolean(likeAsks) && after?.like === one.like && after?.likes === one.likes);
+    const said = `#stream > .post.build[data-id="${id}"] .post-talk`;
     await page.click(`#stream > .post.build[data-id="${id}"] .post-say`);
     const box = await until(page, (wanted) => document.activeElement?.id === `say-${wanted}` || null, null, 10, id);
-    await page.keyboard.type(`What a build ${rand}`);
-    await page.click(`#stream > .post.build[data-id="${id}"] .post-comments button[type="submit"]`);
+    await page.keyboard.type(`What a build`);
+    // Enter is a new line, never a post: no dialog, the words still there.
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`${rand}`);
+    const enterAsked = await until(page, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 2);
+    const foot = await page.evaluate((s) => document.querySelector(`${s} form.composer .composer-foot`)?.textContent || "", said);
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+Enter" : "Control+Enter");
     const sayAsks = await dialogOpen(page);
     await closeDialog(page);
     const kept = await page.inputValue(`#say-${id}`).catch(() => "");
-    check(`   Add a comment opens its box in place (${Boolean(box)}), Comment asks to sign in (${Boolean(sayAsks)}), the words kept: "${kept}"`,
-      Boolean(box) && Boolean(sayAsks) && kept === `What a build ${rand}`);
+    check(`   Add a comment opens the composer in the post (${Boolean(box)}), its foot "${foot}"; Enter is a new line (no sign-in: ${!enterAsked}); `
+      + `Ctrl+Enter asks to sign in (${Boolean(sayAsks)}), the words kept: "${kept.replace(/\n/g, "⏎")}"`,
+      Boolean(box) && /guidelines/i.test(foot) && !enterAsked && Boolean(sayAsks) && kept === `What a build\n${rand}`);
+    await page.focus(`#say-${id}`);
+    await page.keyboard.press("Escape");
+    const closed = await until(page, (s) => (document.querySelector(`${s} form.composer`)?.hidden
+      && document.activeElement?.matches(".post-say") ? true : null), null, 5, said);
+    check(`   Escape closes it, the focus back on Add a comment (${Boolean(closed)})`, Boolean(closed));
+    // Follow is in the post's head, above its picture: brought to the middle
+    // first, as a person scrolls to it, and the page's place read there. The
+    // mark read before Like was 300 px off by then on a phone, with Follow
+    // under the sticky header, and the click's own scrolling to reach it
+    // read as the page jumping (rel-m320: 485 then 191).
+    const followAt = await centre(page, `#stream > .post.build[data-id="${id}"] button[data-follow]`);
     await page.click(`#stream > .post.build[data-id="${id}"] button[data-follow]`);
     const followAsks = await dialogOpen(page);
     await closeDialog(page);
     const still = await page.evaluate(() => Math.round(scrollY));
-    check(`   Follow asks to sign in (${Boolean(followAsks)}); the page stayed where it was (${at} then ${still})`,
-      Boolean(followAsks) && Math.abs(still - at) <= 2);
+    check(`   Follow asks to sign in (${Boolean(followAsks)}); the page stayed where it was (${followAt} then ${still})`,
+      Boolean(followAsks) && Math.abs(still - followAt) <= 2);
 
     // --- 5. 3D ----------------------------------------------------------------
-    const before3d = asked.filter((url) => /\/viewer3d\.js|\/scene\.json/.test(url)).length;
-    await page.click(`#stream > .post.build[data-id="${id}"] [data-turn]`);
+    // Nothing of a post's 3D before its tap: no model's scene and not the
+    // 3D view's stylesheet. three.js (web/viewer3d.js) is the hero's too
+    // (hero3d, 2026-11-23), which asks for it once the page is idle with
+    // the mark on screen: asked before the tap only when the hero says it
+    // went for it (<html data-hero> past "poster").
+    const hero = await page.evaluate(() => document.documentElement.dataset.hero || "");
+    const early = asked.filter((url) => /\/viewer3d\.js|\/scene\.json|\/view3d\.css/.test(new URL(url).pathname));
+    const postsOwn = early.filter((url) => !/\/viewer3d\.js$/.test(new URL(url).pathname));
+    const shared = early.length - postsOwn.length;
+    const before3d = postsOwn.length + (shared && (!hero || hero === "poster") ? shared : 0);
+    const said3d = `${postsOwn.map((url) => new URL(url).pathname).join(" ") || "no scene"}; three.js ${shared ? `asked ${shared}x, by the hero (${hero || "nothing said"})` : "not asked"}`;
+    // The picture's 3D button, at its foot (web/home-feed.js, the card's
+    // .turn): brought to the middle first, where neither the sticky header
+    // nor the beta bar at the window's foot is over it.
+    await centre(page, `#stream > .post.build[data-id="${id}"] .post-pic button.turn[data-turn]`);
+    await page.click(`#stream > .post.build[data-id="${id}"] .post-pic button.turn[data-turn]`);
     const turned = await until(page, () => (window.brickworks3d?.state === "ready" ? document.documentElement.dataset.feedTurn || "?" : null),
       null, 60);
     const canvas = await page.evaluate(() => Boolean(document.querySelector("#stream .post-pic .view3d.shown canvas")));
     await shot(page, `turn-${label}.png`);
     await page.keyboard.press("Escape");
     const back = await until(page, () => (!document.querySelector("#stream .view3d") ? true : null), null, 10);
-    check(`5. ${label}: nothing of 3D asked before (${before3d}); 3D turns it in place (${turned}, canvas ${canvas}); Escape puts the picture back (${Boolean(back)})`,
+    check(`5. ${label}: nothing of a post's 3D asked before (${said3d}); 3D turns it in place (${turned}, canvas ${canvas}); Escape puts the picture back (${Boolean(back)})`,
       before3d === 0 && turned === id && canvas && Boolean(back));
     if (width >= 600) {
       const second = await page.evaluate(() => [...document.querySelectorAll("#stream > .post.build")][1]?.dataset.id || "");
@@ -289,16 +344,39 @@ try {
       body: { name: `Feed tower ${rand}`, author: "Ann Feed", model: ldraw, image: picture, listed: true } });
     modelId = shared.body.id || "";
     check(`Ann's tower /m/${modelId}: ${shared.status}`, shared.status === 201 && /^[A-Za-z0-9]{10}$/.test(modelId));
+    const started = await api("/api/people?op=talk_start&tests=1", { method: "POST", token: people.ann.access_token,
+      body: { board: "help", title: `How do I hide a gear? ${rand}`, body: `The homefeed check's thread ${rand}.` } });
+    threadId = Number(started.body.thread?.id) || 0;
+    threadPost = Number(started.body.post?.id) || 0;
+    check(`Ann's thread ${threadId}: ${started.status}`, started.status === 201 && threadId > 0);
 
     // 7. The page as Bea has it.
     const { context, page } = await open("/?tests=1", { session: people.bea });
-    const shown = await page.evaluate(() => ({
-      band: Boolean(document.getElementById("home")?.offsetHeight),
-      share: document.getElementById("share-build")?.offsetHeight ? document.getElementById("share-build").getAttribute("href") : "",
-      tabs: [...document.querySelectorAll("#feed-tabs [role=tab]")].map((tab) => `${tab.textContent.trim()}${tab.getAttribute("aria-selected") === "true" ? "*" : ""}`),
-    }));
-    check(`7. signed in: no line (${!shown.band}), Share a build to ${shown.share}, tabs ${shown.tabs.join(" ")}`,
-      !shown.band && shown.share === "/app?share" && shown.tabs.join() === "For you*,Following,New");
+    const shown = await page.evaluate(() => {
+      const bar = document.querySelector("#beta-bar.shown");
+      const foot = bar && bar.getBoundingClientRect().top > innerHeight / 2 ? bar.getBoundingClientRect().top : innerHeight;
+      const box = (el) => (el && el.offsetHeight ? el.getBoundingClientRect() : null);
+      const field = box(document.getElementById("find-q"));
+      const share = box(document.getElementById("share-build"));
+      const post = box(document.querySelector("#stream > .post:not(.skeleton)"));
+      return {
+        line: Boolean(document.querySelector("#home .lede")?.offsetHeight),
+        search: Boolean(field && field.top >= 0 && field.bottom <= foot && field.width >= 240),
+        row: Boolean(field && share && Math.abs(field.top - share.top) < 2),
+        first: post ? Math.round(post.top) : -1,
+        foot: Math.round(foot),
+        share: share ? document.getElementById("share-build").getAttribute("href") : "",
+        tabs: [...document.querySelectorAll("#feed-tabs [role=tab]")].map((tab) => `${tab.textContent.trim()}${tab.getAttribute("aria-selected") === "true" ? "*" : ""}`),
+      };
+    });
+    await page.keyboard.press("/");
+    const slash = await page.evaluate(() => document.activeElement?.id || "");
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => document.activeElement?.blur());
+    check(`7. signed in: no line (${!shown.line}), the search in view (${shown.search}) beside Share a build (${shown.row}) to ${shown.share}, "/" to ${slash || "nothing"}, `
+      + `the first post at ${shown.first} px (foot ${shown.foot}), tabs ${shown.tabs.join(" ")}`,
+      !shown.line && shown.search && shown.row && slash === "find-q" && shown.first >= 0 && shown.first < shown.foot - 100
+      && shown.share === "/app?share" && shown.tabs.join() === "For you*,Following,New");
     await page.focus("#tab-foryou");
     await page.keyboard.press("ArrowRight");
     const arrowed = await until(page, () => (document.documentElement.dataset.feedTab === "following"
@@ -336,12 +414,38 @@ try {
     check(`   pressed again, taken back (${Boolean(unliked)})`, Boolean(unliked));
     await page.click(`${sel} .post-say`);
     await page.fill(`#say-${modelId}`, `Lovely tower ${rand}`);
-    await page.click(`${sel} .post-comments button[type="submit"]`);
-    const listed = await until(page, (s) => [...document.querySelectorAll(`${s} .post-comments li`)].map((li) => li.textContent).join(" | ") || null,
-      null, 30, sel);
+    await page.keyboard.press("Control+Enter");
+    // At once, before the server has answered: the line, marked as going.
+    const pendingLine = await until(page, (s) => document.querySelector(`${s} .said-line.pending`)?.textContent || null, null, 5, sel);
+    const listed = await until(page, (s) => (!document.querySelector(`${s} .said-line.pending`)
+      && (/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
+      ? [...document.querySelectorAll(`${s} .said-lines li`)].map((li) => li.textContent).join(" | ") : null), null, 30, sel);
     const comments = await api(`/api/people?op=comments&id=${modelId}`);
-    check(`   a comment in place: "${listed}"; on the model too (${(comments.body.comments || []).length})`,
-      String(listed).includes(`Lovely tower ${rand}`) && (comments.body.comments || []).some((one) => one.body === `Lovely tower ${rand}`));
+    const counted = await page.evaluate((s) => document.querySelector(`${s} .post-acts [data-say] .n`)?.textContent || "", sel);
+    const folded = await page.evaluate((s) => document.activeElement?.matches(`${s} [data-say]`) && !document.querySelector(`${s} .composer-said`)?.textContent, sel);
+    check(`   a comment in place: at once "${pendingLine}", then "${listed}"; on the model too (${(comments.body.comments || []).length}); its count ${counted}; the box folded, focus on Add a comment (${folded})`,
+      folded && String(listed).includes(`Lovely tower ${rand}`) && (comments.body.comments || []).some((one) => one.body === `Lovely tower ${rand}`)
+      && counted === "1");
+    await shot(page, "commented.png");
+    // Ann's thread, as a post of the feed: Reply opens the composer there,
+    // the reply under the latest, the thread's page left alone.
+    const tsel = `#stream > .post.talk[data-thread="${threadId}"]`;
+    if (check(`   Ann's thread is in Bea's For you`, Boolean(threadId) && Boolean(await page.$(tsel)))) {
+      const at = page.url();
+      await page.locator(tsel).scrollIntoViewIfNeeded();
+      await page.click(`${tsel} [data-reply-thread]`);
+      await until(page, (s) => document.activeElement?.matches(`${s} form.composer textarea`) || null, "the reply's box", 10, tsel);
+      await page.keyboard.type(`Try a 1 x 2 plate under it ${rand}`);
+      await page.keyboard.press("Control+Enter");
+      const replied = await until(page, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
+        ? [...document.querySelectorAll(`${s} .said-lines li`)].map((li) => li.textContent).join(" | ") : null), null, 30, tsel);
+      const thread = await api(`/api/people?op=talk_thread&id=${threadId}&tests=1`);
+      const tally = await page.evaluate((s) => document.querySelector(`${s} [data-replies]`)?.textContent.trim() || "", tsel);
+      check(`   a reply in the Talk post: "${replied}", ${tally}; in the thread (${(thread.body.posts || []).length} posts); still on ${new URL(page.url()).pathname}`,
+        String(replied).includes(`1 x 2 plate under it ${rand}`) && /1/.test(tally) && page.url() === at
+        && (thread.body.posts || []).some((one) => one.body === `Try a 1 x 2 plate under it ${rand}`));
+      await shot(page, "replied.png");
+    }
     await page.click(`${sel} button[data-follow]`);
     const followed = await until(page, (s) => (document.querySelector(`${s} button[data-follow]`)?.getAttribute("aria-pressed") === "true" ? true : null),
       null, 20, sel);
@@ -361,7 +465,11 @@ try {
     if (await findAnnIn(vp)) {
       await vp.locator(sel).scrollIntoViewIfNeeded();
       const atY = await vp.evaluate(() => Math.round(scrollY));
-      await vp.click(`${sel} [data-like]`);
+      // A comment typed signed out: Post asks to sign in, and once in, it
+      // goes from the same post, nothing typed lost, no page left.
+      await vp.click(`${sel} .post-say`);
+      await vp.fill(`#say-${modelId}`, `Signed in from here ${rand}`);
+      await vp.click(`${sel} form.composer button[type="submit"]`);
       await vp.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
       await vp.fill("dialog.sign-in input", emails.cy);
       await vp.click('dialog.sign-in button[type="submit"]');
@@ -374,10 +482,18 @@ try {
         await vp.selectOption("#age-year", "1990");
         await vp.click("#age-go");
       }
-      const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true" ? true : null), null, 30, sel);
+      const went = await until(vp, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
+        && !document.querySelector(`${s} .said-line.pending`) ? document.querySelector(`${s} .said-lines`)?.textContent || "" : null), null, 40, sel);
       const nowY = await vp.evaluate(() => Math.round(scrollY));
-      check(`9. a visitor's Like: signed in in the dialog, the like made (${Boolean(done)}), still at ${nowY} px (was ${atY})`,
-        Boolean(done) && Math.abs(nowY - atY) <= 40);
+      const heardIt = await api(`/api/people?op=comments&id=${modelId}`);
+      check(`9. a visitor's comment: signed in in the dialog, posted from the same post (${String(went).slice(-40)}), on the model `
+        + `(${(heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)}), still at ${nowY} px (was ${atY})`,
+        String(went).includes(`Signed in from here ${rand}`) && (heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)
+        && Math.abs(nowY - atY) <= 40);
+      // And now signed in, Like goes at once.
+      await vp.click(`${sel} [data-like]`);
+      const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true" ? true : null), null, 30, sel);
+      check(`   then Like, signed in, made (${Boolean(done)})`, Boolean(done));
       await shot(vp, "signed-in-from-like.png");
     } else {
       check("9. Ann's tower is in a visitor's feed", false);
@@ -400,6 +516,11 @@ try {
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
 } finally {
   if (modelId && people.ann) await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
+  // Its first post removed, the thread goes with it.
+  if (threadPost && people.ann) {
+    await api("/api/people?op=talk_change&tests=1", { method: "POST", token: people.ann.access_token, body: { post: threadPost, what: "remove" } })
+      .catch(() => {});
+  }
   await browser.close();
   for (const who of Object.keys(people)) await deleteAccount(`delivered+bw-feed-${who}-${rand}@resend.dev`).catch(() => {});
 }

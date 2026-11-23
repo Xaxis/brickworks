@@ -1,8 +1,9 @@
 // The beta's bar (betahome, 2026-11-09), on every page while the beta is
 // open: Open beta (/beta, the hub), Report a bug, and Join (to the hub's
 // way in, where what joining agrees to is said) or "You’re a tester". It
-// floats at the window's foot and moves nothing (docs/DESIGN_SYSTEM.md,
-// Beta bar). Its × hides it in this browser until the person shows it
+// is a strip at the page's top, in a room the page holds for it from its
+// first frame (web/theme.js), so it covers nothing and moves nothing
+// (docs/DESIGN_SYSTEM.md, Beta bar). Its × hides it in this browser until the person shows it
 // again (bugbar, 2026-11-13: before, a day went by with nothing to say
 // where it went): a toast says so, with Undo and the way to Settings,
 // whose Beta row has "Show the beta bar on every page"; Report a bug stays
@@ -290,8 +291,9 @@ function drawBar(heard) {
     hide.addEventListener("click", hideFromBar);
     bar.append(badge, report, made("span", { className: "third" }), hide);
     document.body.append(bar);
+    // In the room web/theme.js held for it, or made now (not heard of before).
     root.dataset.betabar = "shown";
-    // In the frame after: it rises and fades in (site.css), moving nothing.
+    // In the frame after: it fades in (site.css), moving nothing.
     requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add("shown")));
   }
   bar.querySelector(".third").replaceChildren(third(heard));

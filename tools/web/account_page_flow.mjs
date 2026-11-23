@@ -49,6 +49,13 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
+import { minifigLayers, minifigOf } from "../../web/card.js";
+
+// The minifigure an avatar made from [handle] shows (web/card.js minifigOf),
+// as faceOf reads one in the page: its hair and face layers.
+const minifigKey = (handle) => minifigLayers(minifigOf(handle)).map((file) => file.match(/(?:face|hair)-[\w-]+/)?.[0])
+  .filter(Boolean).join(" ");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -149,7 +156,8 @@ function watchHeader() {
   };
   new MutationObserver(() => {
     for (const face of document.querySelectorAll(".site-head .avatar")) {
-      add(seen.avatars, `${face.textContent} ${[...face.classList].find((c) => /^(c[1-8]|unknown)$/.test(c)) || ""}`);
+      const said = face.classList.contains("minifig") ? (face.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : face.textContent;
+      add(seen.avatars, `${said} ${[...face.classList].find((c) => /^(c[1-8]|unknown)$/.test(c)) || ""}`);
     }
     for (const who of document.querySelectorAll(".site-head .menu-who > span:not(.avatar)")) add(seen.who, who.textContent.trim());
   }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
@@ -164,7 +172,8 @@ async function headerSeen(page, go, letter) {
   const reply = await answered;
   await page.waitForTimeout(500);
   const drawn = Boolean(reply) && await until(page,
-    (want) => document.querySelector(".site-head .nav .account-menu .avatar")?.textContent === want, letter);
+    (want) => ((face) => (face?.classList.contains("minifig") ? (face.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : face?.textContent))(
+      document.querySelector(".site-head .nav .account-menu .avatar")) === want, letter);
   return { drawn, seen: await page.evaluate(() => window.headerSeen) };
 }
 
@@ -205,7 +214,8 @@ const profileSaid = (page) => page.evaluate(() => {
     columns: getComputedStyle(document.getElementById("my-models")).gridTemplateColumns.split(" ").filter(Boolean).length,
     avatar: (() => {
       const a = document.getElementById("avatar");
-      return a ? { letter: a.textContent, tile: [...a.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(a).bottom } : null;
+      return a ? { minifig: (a.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" "),
+        tile: [...a.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(a).bottom } : null;
     })(),
     nameBottom: box(document.getElementById("title"))?.bottom ?? 1e9,
     editBottom: box(document.getElementById("edit"))?.bottom ?? 1e9,
@@ -302,8 +312,9 @@ try {
   console.log("3. the header's avatar from the first paint");
   {
     const context = await coldContext(ada, { viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
-    const letter = "A";
-    const address = adaEmail[0].toUpperCase();
+    // Her minifig, made from her handle; never the one made from her address.
+    const letter = minifigKey(ADA);
+    const address = minifigKey(adaEmail);
     let tone = "";
     let page = null;
     for (const visit of ["cold", "a new tab", "a reload"]) {
@@ -315,7 +326,7 @@ try {
       const { drawn, seen } = await headerSeen(page, () => (visit === "a reload" ? page.reload({ waitUntil: "load" })
         : page.goto(where, { waitUntil: "load", timeout: 60000 })), letter);
       const shown = seen?.avatars || [];
-      tone ||= (shown.find((face) => face.startsWith(`${letter} `)) || "").split(" ")[1];
+      tone ||= (shown.find((face) => face.startsWith(`${letter} `)) || "").slice(letter.length + 1);
       const named = shown.filter((face) => face !== " unknown");
       const who = seen?.who || [];
       check(`${visit}: the header's avatar showed ${shown.map((face) => `"${face}"`).join(", ")}: `
@@ -334,8 +345,8 @@ try {
       deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const page = await context.newPage();
     listen(page, "header no profile");
-    // As written: the tile shows it in capitals (text-transform).
-    const letter = beaEmail[0];
+    // The minifig made from her address (web/follow.js avatarOf).
+    const letter = minifigKey(beaEmail);
     const { drawn, seen } = await headerSeen(page, () => page.goto(`${site}/faq`, { waitUntil: "load", timeout: 60000 }), letter);
     const shown = seen?.avatars || [];
     check(`no profile: the header's avatar showed ${shown.map((face) => `"${face}"`).join(", ")}: blank, then her address's ${letter}`,
@@ -357,9 +368,9 @@ try {
           new Promise((done) => setTimeout(done, 6000))]);
       });
       const said = await profileSaid(page);
-      check(`${label}: "${said.name}", ${said.handle.split(" · ")[0]}, an avatar "${said.avatar?.letter}" on a tile`,
+      check(`${label}: "${said.name}", ${said.handle.split(" · ")[0]}, the minifig "${said.avatar?.minifig}" on a tile`,
         said.me && !said.start && said.name === "Ada Account" && said.handle.startsWith(`@${ADA}`)
-        && said.avatar?.tile && said.avatar.letter === "A");
+        && said.avatar?.tile && said.avatar.minifig === minifigKey(ADA));
       check(`${label}: her words, links (ugc nofollow), the banner and her pins in her order`,
         said.bio === "Castles and small machines.\nFor the account page flow."
         && said.links.map((one) => one.href).join(" ") === LINKS.join(" ")
@@ -500,7 +511,8 @@ try {
         .filter((one) => !one.closest("[hidden]")).map((one) => one.querySelector("h2, summary")?.textContent.trim()));
       const choices = await page.evaluate(() => ({
         comments: document.getElementById("mail-comments").checked,
-        kinds: [...document.querySelectorAll("#mail-kinds input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).join(" "),
+        // The feed's two, and the email column of photos and remixes in the grid (inbox, 2026-11-23).
+        kinds: [...document.querySelectorAll("#email-part input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).join(" "),
         follows: document.getElementById("shows-follows").checked,
         who: document.getElementById("who").textContent, edit: document.getElementById("edit-profile").getAttribute("href") }));
       // orangecheck's row is there where the deployment signs in with it
@@ -590,7 +602,7 @@ try {
     const again = await mintSession(adaEmail);
     const { page, context } = await open("/settings", { width: 1280, theme: "dark", who: again, label: "delete" });
     await until(page, () => document.documentElement.dataset.settings === "ready", null, 30000);
-    page.once("dialog", (dialog) => dialog.accept());
+    await answerAsks(page, { times: 1 });
     await page.click("#delete-part summary");
     await page.fill("#delete-confirm", adaEmail);
     await shot(page, "delete_1280.png", false);

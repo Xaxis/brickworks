@@ -36,7 +36,8 @@
 // tools/web/homefeed_check.mjs wait on.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { counted, escapeHtml, iconButtonHtml, langAt, likeName, number, pictureOf, say, told } from "/card.js";
-import { FIRST, compose, feedItem, keyOf, postHtml } from "/home-feed.js";
+import { commentsInCard, replyInCard } from "/composer.js";
+import { FIRST, compose, feedItem, keyOf, postHtml, postSkeletonHtml } from "/home-feed.js";
 import { ago, toast } from "/kit.js";
 
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
@@ -150,10 +151,11 @@ function freshen(post, item) {
     comments.setAttribute("aria-label", fresh.getAttribute("aria-label"));
     comments.replaceChildren(...fresh.childNodes);
   }
-  if (item.said) {
-    const fresh = postsOf([item])[0]?.querySelector(".post-said");
-    const said = post.querySelector(".post-said");
-    if (fresh && said && fresh.innerHTML !== said.innerHTML) said.replaceWith(fresh);
+  // What was said, and "n more", where nobody is saying something there.
+  const talk = post.querySelector(".post-talk");
+  if (talk && !talk.__said) {
+    const fresh = postsOf([item])[0]?.querySelector(".post-talk");
+    if (fresh && fresh.innerHTML !== talk.innerHTML) talk.replaceWith(fresh);
   }
 }
 
@@ -191,7 +193,7 @@ function putIn() {
 /// draw, the posts the page was served with stay where they are, told
 /// their counts; the rest go in after them. Otherwise (a tab chosen, a
 /// sign-in) what is there makes way for the new.
-async function draw({ first = false } = {}) {
+async function draw({ first = false, kept = false } = {}) {
   const mine = ++run;
   page = 1;
   ended = false;
@@ -207,7 +209,9 @@ async function draw({ first = false } = {}) {
     ended = !(got.top?.more || got.newest?.more);
   }
   if (mine !== run || items === null) return;
-  const keep = first && served;
+  // Kept too after a sign-in: what they were doing in a post (a comment
+  // typed, a like) stays where it is, the post told what is so for them.
+  const keep = (first && served) || kept;
   if (keep) {
     // Told what is so now, each served post that is still in the stream.
     const byKey = new Map(items.map((item) => [keyOf(item), item]));
@@ -312,9 +316,7 @@ function choose(chosen, { focus = false } = {}) {
   }
   if (focus) chosen.focus();
   tab = chosen.dataset.tab;
-  stream.innerHTML = Array.from({ length: 3 }, () => '<div class="post skeleton" aria-hidden="true"><div class="post-head">'
-    + '<span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words">'
-    + '<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>').join("");
+  stream.innerHTML = Array.from({ length: 3 }, postSkeletonHtml).join("");
   draw();
 }
 
@@ -340,7 +342,7 @@ if (stream) {
   // Signed in or out, here or in another part of the page: drawn for them.
   addEventListener("brickworks:signed-in", () => {
     html.dataset.signed = "in";
-    draw();
+    draw({ kept: tab === "foryou" });
   });
   addEventListener("brickworks:signed-out", () => {
     delete html.dataset.signed;
@@ -410,96 +412,19 @@ async function share(button) {
   }
 }
 
-/// The comments of [id]'s post, opened in place under it: the newest few,
-/// and a box to add one, which asks a visitor to sign in as they send, what
-/// they wrote kept.
-async function comments(button) {
-  const id = button.dataset.say;
-  const post = button.closest(".post");
-  if (!MODEL.test(id) || !post) return;
-  const talk = post.querySelector(".post-talk");
-  let box = post.querySelector(".post-comments");
-  const toggles = post.querySelectorAll(`[data-say="${id}"]`);
-  if (box) {
-    box.hidden = !box.hidden;
-    for (const one of toggles) one.setAttribute("aria-expanded", String(!box.hidden));
-    if (!box.hidden) box.querySelector("textarea")?.focus();
-    return;
+/// What a post's comment and reply buttons open: the composer in the post
+/// (web/composer.js), the same as under a row of Talk and on the full pages.
+function talkIn(pressed) {
+  const post = pressed.closest(".post");
+  if (!post) return;
+  if (pressed.matches("[data-reply-thread]")) {
+    const lang = langAt() ? langAt().slice(1) : "";
+    replyInCard(post, Number(pressed.dataset.replyThread), { opener: pressed, tests: TESTS, lang });
+  } else if (pressed.matches("[data-more]") && MODEL.test(pressed.dataset.more)) {
+    commentsInCard(post, pressed.dataset.more, { all: true, tests: TESTS });
+  } else if (MODEL.test(pressed.dataset.say)) {
+    commentsInCard(post, pressed.dataset.say, { opener: pressed, tests: TESTS });
   }
-  box = document.createElement("div");
-  box.className = "post-comments";
-  box.innerHTML = `<ol aria-label="${escapeHtml(say("Comments"))}"></ol>`
-    + `<form><label class="visually-hidden" for="say-${id}">${escapeHtml(say("Your comment"))}</label>`
-    + `<textarea id="say-${id}" rows="2" placeholder="${escapeHtml(say("Say what you think of it"))}"></textarea>`
-    + `<p class="said note" role="status"></p><div class="actions"><a class="cta ghost small" href="${langAt()}/m/${id}#comments">`
-    + `${escapeHtml(say("All its comments"))}</a><button class="cta small" type="submit">${escapeHtml(say("Comment"))}</button></div></form>`;
-  talk.append(box);
-  for (const one of toggles) one.setAttribute("aria-expanded", "true");
-  const list = box.querySelector("ol");
-  const field = box.querySelector("textarea");
-  const said = box.querySelector(".said");
-  field.focus();
-  // No maxlength: a paste over it would be cut without a word. The count
-  // shows near the end, and the server says what is over (MOST_CHARACTERS).
-  field.addEventListener("input", () => {
-    const n = [...field.value].length;
-    said.textContent = n > 900 ? say("{n} characters left", { n: number(1000 - n) }) : "";
-  });
-  let version = null;
-  let sending = false;
-  const load = async () => {
-    const answer = await ask(`/api/people?op=comments&id=${id}`, { mine: true });
-    if (!answer) {
-      said.textContent = say("The comments did not load just now.");
-      return;
-    }
-    version = Number(answer.version) || null;
-    const shown = (Array.isArray(answer.comments) ? answer.comments : []).filter((one) => one && !one.hidden && !one.parent).slice(-3);
-    list.replaceChildren(...shown.map((one) => {
-      const item = document.createElement("li");
-      const who = document.createElement("b");
-      who.textContent = String(one.by || say("A builder"));
-      item.append(who, " ", String(one.body || ""));
-      return item;
-    }));
-    if (answer.you && answer.you.signed_in && !answer.you.may_write && answer.you.why_not) said.textContent = told(answer.you.why_not);
-  };
-  load();
-  box.querySelector("form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    // One comment a press: a second press (or Enter) while the first waits
-    // on the sign-in, the version or the answer sends nothing more.
-    if (sending) return;
-    const text = field.value.trim();
-    if (!text) {
-      said.textContent = say("Say something first.");
-      return;
-    }
-    const send = box.querySelector('button[type="submit"]');
-    sending = true;
-    send.disabled = true;
-    let answer = null;
-    let sent = "";
-    try {
-      if (!signedIn() && !(await askToSignIn("Sign in to add your comment: we email you a code, no password. What you wrote is kept."))) return;
-      if (!version) await load();
-      said.textContent = say("Adding it…");
-      sent = field.value.trim();
-      answer = await call("/api/people?op=comment", { method: "POST", body: { model: id, version, step: null, body: sent } })
-        .catch(() => ({ status: 0, body: {} }));
-    } finally {
-      sending = false;
-      send.disabled = false;
-    }
-    if (answer.status !== 201) {
-      said.textContent = told(answer.body?.error, say("That did not go just now. Try again in a minute."));
-      return;
-    }
-    // Only what went is cleared: words typed while it went stay.
-    if (field.value.trim() === sent) field.value = "";
-    said.textContent = say("Added.");
-    await load();
-  });
 }
 
 // The people the stream's Follow buttons follow, each asked once: a page of
@@ -651,11 +576,13 @@ function tryHere(button) {
 if (stream) {
   stream.addEventListener("click", (event) => {
     const at = event.target instanceof Element ? event.target : null;
-    const pressed = at?.closest("[data-like], [data-say], [data-share], [data-turn], [data-try]");
+    const pressed = at?.closest("[data-like], [data-say], [data-more], [data-reply-thread], [data-share], [data-turn], [data-try]");
     if (!pressed || pressed.disabled) return;
+    // A new tab or window asked for (a middle press, Ctrl): the thread's own page.
+    if (pressed.matches("a[data-reply-thread]") && (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0)) return;
     event.preventDefault();
     if (pressed.matches("[data-like]")) like(pressed);
-    else if (pressed.matches("[data-say]")) comments(pressed);
+    else if (pressed.matches("[data-say], [data-more], [data-reply-thread]")) talkIn(pressed);
     else if (pressed.matches("[data-share]")) share(pressed);
     else if (pressed.matches("[data-turn]")) {
       const post = pressed.closest(".post");
@@ -899,3 +826,47 @@ function near(id, work, margin = "150% 0px") {
 // #why within a screen and a half of the top, so its four pictures (139 KB
 // with their list) came with the first screen, which shows none of them.
 near("sets", sets);
+
+// --- the hero: our mark in bricks, in 3D -------------------------------------
+
+// The mark's 3D in its poster's place (hero3d, 2026-11-23; web/viewer3d.js
+// hero3d, three.js and all, which a post's 3D turn uses too): asked for only
+// once the page is in (its load), the browser idle and the hero on the
+// screen, on a device that draws in 3D and has not asked to save data. One
+// that draws the finished mark slower than SLOW ms a frame keeps the poster
+// (software, an old phone): the assembly's middle frame takes about four
+// fifths of that, so whoever sees it move sees 30 frames a second or more.
+// Any trouble on the way keeps it too; a check that must turn it on a slow
+// machine says otherwise in sessionStorage "brickworks.hero.slow" (ms).
+// Signed in, the band is not shown and none of it is asked for. <html data-hero>: what it came to (poster, loading,
+// 3d, kept-slow, kept-failed), which tools/web/hero_check.mjs reads.
+const heroStage = document.getElementById("hero-stage");
+const SLOW = (() => { try { return Number(sessionStorage.getItem("brickworks.hero.slow")) || 40; } catch { return 40; } })();
+function heroCan() {
+  if (navigator.connection?.saveData || (navigator.hardwareConcurrency || 4) < 4 || (navigator.deviceMemory || 4) < 2) return false;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return Boolean(gl);
+  } catch {
+    return false;
+  }
+}
+function hero() {
+  if (!heroStage || heroStage.offsetParent === null) return;
+  if (!heroCan()) { html.dataset.hero = "poster"; return; }
+  html.dataset.hero = "loading";
+  import("/viewer3d.js")
+    .then((made) => made.hero3d(heroStage, { scene: heroStage.dataset.scene, slow: SLOW,
+      name: say("The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.") }))
+    .then((made) => made.ready)
+    .then((live) => { html.dataset.hero = live ? "3d" : "kept-slow"; })
+    .catch(() => { html.dataset.hero = "kept-failed"; });
+}
+if (heroStage) {
+  html.dataset.hero = "poster";
+  const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
+  const whenIn = () => idle(() => near("hero-stage", hero, "0px"), { timeout: 2500 });
+  if (document.readyState === "complete") whenIn();
+  else addEventListener("load", whenIn, { once: true });
+}

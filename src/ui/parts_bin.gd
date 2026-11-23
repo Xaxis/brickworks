@@ -173,6 +173,9 @@ signal stickers_wanted
 ## A worked construction chosen under Techniques, to hold whole: its parts
 ## as Carry holds them, and its name.
 signal construction_chosen(parts: Array, name: String)
+## The model's own sub-assembly, named in the search, chosen to put
+## another of down (Main: a copy of it in hand, ux14).
+signal own_assembly_chosen(name: String)
 ## A part or a construction chosen from the keyboard (Tab to its tile, then
 ## Return): the keys go to the model, to aim it and put it down.
 signal chose_by_keyboard
@@ -395,6 +398,22 @@ func _build() -> void:
 	# model tree and the properties open give back their room before the
 	# parts do (PanelStack.heights).
 	_scroll.custom_minimum_size.y = _z(PARTS_LEAST)
+	# The model's own sub-assembly the search names, first, to put another
+	# down: the bin said "Bumper" was the model's and where another came
+	# from, where Studio's and LDCad's palettes list a model's own sub-models
+	# to place (ux13's walk, p7, left 1).
+	_own_row = Button.new()
+	_own_row.name = "bin_own_assembly"
+	_own_row.visible = false
+	_own_row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_own_row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_own_row.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_own_row.custom_minimum_size = Vector2(0, _z(Phone.TARGET if by_finger else 34.0))
+	FocusGuard.by_keyboard(_own_row)
+	_own_row.pressed.connect(func() -> void:
+		if not _own_named.is_empty():
+			own_assembly_chosen.emit(_own_named))
+	root.add_child(_own_row)
 	root.add_child(_scroll)
 
 	_grid = GridContainer.new()
@@ -3535,6 +3554,56 @@ func _update_status() -> void:
 	var named: PartLibrary.PartInfo = library.parts.get(typed) if library != null else null
 	if named != null and not named.reachable:
 		_status.text = "%s is not in this build of the app\n%s" % [typed, _status.text]
+	# A sub-assembly of the model asked for by its name: the bin holds parts,
+	# and "Bumper", just made, found 39 parts called bumper and not it, where
+	# Studio's palette lists a model's own sub-models (ux13's walk, p7). Said
+	# first, with where another copy of it comes from.
+	var own: String = _own_assembly_named(typed)
+	_own_named = own
+	_own_row.visible = not own.is_empty()
+	if not own.is_empty():
+		_own_row.text = "“%s”, this model's sub-assembly: put another down" % own
+		_own_row.tooltip_text = ("A copy of “%s” in hand: each click puts one down, Esc stops. "
+			+ "Each is a copy of it, and an edit inside one changes them all") % own
+		_status.text = ("“%s” is a sub-assembly of this model: the row above puts another down\n%s") \
+			% [own, _status.text]
+
+
+## The model's sub-assembly called [param typed] (any case), as it is
+## written; "" for none. Read from the parts' paths once a revision, each
+## path once: a keystroke after an edit reads every part's two fields and
+## no more (timed on Orthanc by ux12_walk_probe's UX13 checks).
+func _own_assembly_named(typed: String) -> String:
+	var world: BrickWorld = builder.world if builder != null else null
+	if typed.is_empty() or world == null:
+		return ""
+	if _assembly_names_at != world.revision or _assembly_names_of != world.get_instance_id():
+		_assembly_names_at = world.revision
+		_assembly_names_of = world.get_instance_id()
+		_assembly_names = {}
+		var seen: Dictionary = {}
+		for brick: BrickWorld.Brick in world.bricks():
+			var path: String = brick.unit if not brick.unit.is_empty() else brick.group
+			if path.is_empty() or seen.has(path):
+				continue
+			seen[path] = true
+			for segment: String in Assemblies.segments(path):
+				var def: String = Assemblies.definition(segment)
+				if not def.is_empty():
+					_assembly_names[def.to_lower()] = def
+	return str(_assembly_names.get(typed, ""))
+
+
+## The sub-assembly the search names now, and the row that puts another down.
+var _own_named: String = ""
+var _own_row: Button
+
+
+## The model's sub-assemblies by name, lowercase -> as written, and the
+## world and revision they were read at (_own_assembly_named).
+var _assembly_names: Dictionary = {}
+var _assembly_names_at: int = -1
+var _assembly_names_of: int = 0
 
 
 ## A tile for [param info]; for a set's, in its own colour and counting

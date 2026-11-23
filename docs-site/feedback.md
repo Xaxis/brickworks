@@ -1,5 +1,5 @@
 ---
-ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and the account menu, and at brickworks.diy/feedback; Help › Report a bug… (Alt+Shift+R) opens the app's bug report, over the window with its picture taken to mark the spot on. Both send something wrong, an idea or a question to the people who make Brickworks, with only what the person ticks: a picture, the app's version and system, the open model, the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, Send feedback asks an email address. While the beta is open, as it is on brickworks.diy, Report a bug is also beside Account on the app's top bar, on its error notices as Report this, and in the site's beta bar. No tool sends feedback; send the person to Brickworks › Send feedback…, Help › Report a bug… or /feedback.
+ai: Send feedback is in the app's menu (Menu at the right of the app's header in a browser, the mark at the left in the desktop app), in every site page's footer and the account menu, and at brickworks.diy/feedback; Help › Report a bug… (Alt+Shift+R) opens the app's bug report, over the window with its picture taken to mark the spot on. Both send something wrong, an idea or a question to the people who make Brickworks, with only what the person ticks: a picture, the app's version and system, the open model, the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, Send feedback asks an email address. While the beta is open, as it is on brickworks.diy, Report a bug is also beside Account on the app's top bar, on its error notices as Report this, and in the site's beta bar. No tool sends feedback; send the person to Brickworks › Send feedback…, Help › Report a bug… or /feedback.
 rules:
   - Nothing goes with a report unless the person chooses it, and they can see all of it first.
   - Only the people who make Brickworks read reports; answers come by email and are kept with the report.
@@ -12,7 +12,7 @@ Something wrong, an idea, or a question: send it from wherever you are. We read 
 
 ## Send feedback {#send}
 
-- **In the app**: **Brickworks › Send feedback…**, in the menu under the mark at the top left.
+- **In the app**: **Send feedback…** in the app's menu: **Menu** at the top right in a browser, the mark at the top left in the desktop app.
 - **On the site**: **Send feedback** in the footer of every page or in your account menu (your picture, top right), or [/feedback](/feedback).
 
 Choose what it is (something is wrong, an idea, or a question), say what happened or what you would like, and **Send**. Signed out, give your email address so we can answer you.
@@ -35,7 +35,7 @@ api:sending feedback
 
 It then says the report's number, and **Your reports** opens [your settings page](/settings#feedback), where it is listed. You need to be signed in: your reports, and our answers, are kept with your account.
 
-While the [beta](/docs/beta) is open, **Report a bug** is one press from more places: beside **Account** on the app's top bar; **Report this** on the app's notice when something goes wrong, which sends the app's log lines up to the error, ticked; and the beta bar at the foot of every page of the site, which opens the same report over the page you are on.
+While the [beta](/docs/beta) is open, **Report a bug** is one press from more places: beside **Account** on the app's top bar; **Report this** on the app's notice when something goes wrong, which sends the app's log lines up to the error, ticked; and the beta bar at the top of every page of the site, which opens the same report over the page you are on.
 
 <!-- covers
 ui:report a bug in the app
@@ -74,7 +74,7 @@ lib:feedback kept and answered
 
 While the beta is open, its page, [/beta](/beta), is its hub, with **Beta hub** in a tester's account menu and the app's Brickworks menu. It shows what is new this week, from the [changelog](/changelog), how to report a bug, and for a [tester](/docs/beta) what is new to try, what we already know is wrong, and the early features on your account.
 
-While the beta is open, a slim bar floats at the foot of every page of the site: **Open beta**, which opens the hub; **Report a bug**; and **Join**, or once you have joined, that you are a tester. Its × hides it for a day.
+While the beta is open, a slim strip sits at the top of every page of the site, over the header and over nothing of the page: **Open beta**, which opens the hub; **Report a bug**; and **Join**, or once you have joined, that you are a tester. Its × hides it for a day.
 
 Early features reach testers before anyone else, in the app and on the site, and turn on when you sign in. When a feature opens to everyone, it simply stays.
 

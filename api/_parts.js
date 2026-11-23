@@ -1187,6 +1187,36 @@ export function stepParts(text, step, given = partsTable(), table = sceneTable()
 
 const sha256Hex = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 
+/// What the light viewer draws parts [ids] in colours [codes] with, as
+/// sceneOf's meshes and colours say them, by part and by colour: {meshes:
+/// {id: [hash, name, min x, min y, min z, max x, max y, max z, ...the
+/// colours it is moulded in]}, colours: {code: [name, "rrggbb", alpha]}}.
+/// A part the catalogue does not draw (one made in the app) has no hash,
+/// and its box stands in. For a watched session (api/together.js, buildlive),
+/// whose parts come as the app places them, by the library's own ids.
+export function meshRowsOf(ids, codes = [], given = partsTable(), table = sceneTable()) {
+  const meshes = {};
+  const colours = {};
+  if (!given || !table) return { meshes, colours };
+  const library = makeLibrary(given);
+  const wanted = new Set(codes.filter(Number.isInteger));
+  for (const id of new Set(ids)) {
+    const drawn = drawnAs(library, String(id), table);
+    const row = table.parts[drawn ? drawn.part : id] || [];
+    const box = row.length >= 6 ? row.slice(0, 6) : [-10, -24, -10, 10, 0, 10];
+    const fixed = row.slice(7).filter(Number.isInteger);
+    for (const code of fixed) wanted.add(code);
+    meshes[id] = [drawn ? drawn.info.mesh : "", tidy(drawn ? drawn.info.name : library.info(id)?.name || id), ...box, ...fixed];
+  }
+  for (const code of wanted) {
+    const row = given.colours[code];
+    const direct = isDirect(code) ? directOf(code) : null;
+    colours[code] = [direct ? direct.name : row ? String(row[0]).replace(/_/g, " ") : `Colour ${code}`,
+      direct ? direct.hex : row ? row[1] : "ff00ff", !direct && row && Number.isInteger(row[6]) ? row[6] : 255];
+  }
+  return { meshes, colours };
+}
+
 export function sceneOf(text, root, of = "", given = partsTable(), table = sceneTable(), only = null) {
   if (!given || !table) return null;
   const model = parse(String(text).replace(/^﻿/, ""));

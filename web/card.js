@@ -154,28 +154,141 @@ export function avatarTone(handle) {
 // never an address from anywhere else.
 const PICTURE = /^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/;
 
+// A minifigure for an avatar (avatarkit, 2026-11-23; the owner: "a brickworks
+// avatar generator that is obviously lego minifig themed"). Built of real
+// parts of the LDraw library (CC BY), each drawn once by the site's own 3D
+// (tools/web/minifig_layers.mjs) from the same camera into a layer of its
+// own, its hidden parts cut away by the parts in front of it: the legs, the
+// torso in its colour with its arms and yellow hands, its print, the head
+// with its face, the hair or hat. A browser lays them over each other as the
+// avatar's backgrounds (no script, no request of the API, every layer a file
+// the CDN keeps for good), on one of the eight avatar colours. Each choice is
+// named by its part's LDraw number and colours by their LDraw codes, so a
+// layer's file says what it is, and a choice appended to a list never moves
+// another's.
+//
+// A person makes their own in Edit profile (web/minifig-maker.js), kept as
+// their picture with its recipe (api/_avatars.js); everybody else is shown
+// one made from their handle (minifigOf), the same everywhere and every time.
+// The site's parts, credited as every part is; never our own mark or mascot
+// (docs/TRADEMARKS.md, Decision 3).
+/// Brickworks' own account (api/_prompts.js talk_house): shown as the mark.
+export const HOUSE_HANDLE = "brickworks";
+
+export const MINIFIG = {
+  // Faces, on the classic yellow head (3626c).
+  faces: ["3626cp01", "3626cp7g", "3626cp8c", "3626cp71", "3626cp87", "3626cp88", "3626cp84", "3626cp8b", "3626cp7c",
+    "3626cp73"],
+  // Hair in a hair colour, or a hat in its own colour; "" for none.
+  hair: ["3901", "40251", "6093a", "62711", "53981", "21778", "23186", "36806", "41334", "3833", "61506", "3878", "3624",
+    "2514", ""],
+  hats: { 41334: 4, 3833: 14, 61506: 70, 3878: 0, 3624: 0, 2514: 72 },
+  hairColours: [0, 308, 70, 19, 484, 71],
+  // A torso's print over its colour ("" for plain): the print's own colours,
+  // the rest the torso's.
+  prints: ["", "973p13", "973p18", "973p9c", "973p1a", "973pcf", "973p0b", "973pd7f"],
+  // The torso's colours and the legs'.
+  colours: [4, 1, 2, 14, 0, 15, 72, 25, 272, 320, 322, 30],
+  // The avatar colours (site.css --avatar-1..8), one set for both themes.
+  backgrounds: ["#b42318", "#1f5fbf", "#1f7a3d", "#7a3fb0", "#9a4a00", "#0e6f8a", "#a3175a", "#4b5563"],
+  // The two sizes each layer is drawn at, CSS px times what a sharp screen
+  // needs: 128 for every avatar up to the header's 36 px, 256 above it and
+  // for a picture made of one.
+  sizes: [128, 256],
+};
+
+const hashOf = (text, salt) => {
+  let hash = 0x811c9dc5 ^ salt;
+  for (const c of String(text || "").toLowerCase()) {
+    hash ^= c.codePointAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  hash ^= hash >>> 15;
+  hash = Math.imul(hash, 0x2c1b3c6d) >>> 0;
+  return (hash ^ (hash >>> 12)) >>> 0;
+};
+
+/// The minifigure made from [handle]: the same every time and on every
+/// page, its background the handle's avatar colour (avatarTone).
+export function minifigOf(handle) {
+  const pick = (list, salt) => list[hashOf(handle, salt) % list.length];
+  const hair = pick(MINIFIG.hair.filter(Boolean), 2);
+  return { v: 1, face: pick(MINIFIG.faces, 1), hair, hairColour: pick(MINIFIG.hairColours, 3),
+    print: pick(MINIFIG.prints, 4), torso: pick(MINIFIG.colours, 5), legs: pick(MINIFIG.colours, 6),
+    background: avatarTone(handle) };
+}
+
+/// [recipe] as the maker makes one, or null for anything else: what a
+/// request's body may say is held to the lists, never passed on as it came.
+export function minifigShape(recipe) {
+  if (!recipe || typeof recipe !== "object" || Array.isArray(recipe)) return null;
+  const { face, hair, hairColour, print, torso, legs, background } = recipe;
+  const ok = MINIFIG.faces.includes(face) && MINIFIG.hair.includes(hair) && MINIFIG.hairColours.includes(hairColour)
+    && MINIFIG.prints.includes(print) && MINIFIG.colours.includes(torso) && MINIFIG.colours.includes(legs)
+    && Number.isInteger(background) && background >= 1 && background <= MINIFIG.backgrounds.length;
+  return ok ? { v: 1, face, hair, hairColour, print, torso, legs, background } : null;
+}
+
+/// The files [recipe]'s layers are, at [side] (MINIFIG.sizes), top first:
+/// hair or hat, head, print, torso, legs.
+export function minifigLayers(recipe, side = 128) {
+  const at = `/minifig/${side}/`;
+  const hat = MINIFIG.hats[recipe.hair];
+  return [
+    recipe.hair ? `${at}hair-${recipe.hair}-${hat ?? recipe.hairColour}.webp` : "",
+    `${at}face-${recipe.face}.webp`,
+    recipe.print ? `${at}print-${recipe.print}.webp` : "",
+    `${at}torso-${recipe.torso}.webp`,
+    `${at}legs-${recipe.legs}.webp`,
+  ].filter(Boolean);
+}
+
+/// A minifigure's avatar as HTML: its layers as the backgrounds of the
+/// avatar's circle, in its background colour.
+export function minifigHtml(recipe, { size = "", id = "" } = {}) {
+  const side = size === "big" || size === "huge" ? 256 : 128;
+  const layers = minifigLayers(recipe, side).map((file) => `url(${file})`).join(",");
+  return `<span class="${["avatar", size, `c${recipe.background}`, "minifig"].filter(Boolean).join(" ")}"`
+    + `${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true" style="background-image:${layers}"></span>`;
+}
+
 /// A person's avatar: their picture when they have one (supabase/avatars.sql),
-/// else a tile in their handle's colour with the first letter of their
-/// name. Never a figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11).
-/// Given none of the three, somebody not known yet (your own in the header
-/// before the server has said who you are, or an orangecheck account's with
-/// no profile): the circle blank, no letter or colour that might not be
-/// theirs. [size] is "small", "", "big" or "huge"; it is decoration beside
-/// their name, so hidden from a screen reader.
+/// which may be a minifigure they made; else the minifigure made from their
+/// handle (minifigOf). Given none of the three, somebody not known yet (your
+/// own in the header before the server has said who you are, or an
+/// orangecheck account's with no profile): the circle blank, nothing that
+/// might not be theirs. [size] is "small", "", "big" or "huge"; it is
+/// decoration beside their name, so hidden from a screen reader.
 export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
   const pictured = PICTURE.test(String(picture || ""));
   const known = Boolean(handle || name || pictured);
-  const letter = known ? [...String(name || handle || "?").trim()][0] || "?" : "";
+  // Brickworks' own account is shown as its mark: a minifigure is never
+  // ours (docs/TRADEMARKS.md Decision 3).
+  if (handle === HOUSE_HANDLE && !pictured) {
+    return `<span class="${["avatar", size, "house"].filter(Boolean).join(" ")}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true"></span>`;
+  }
+  if (known && !pictured) return minifigHtml(minifigOf(handle || name), { size, id });
   const classes = ["avatar", size, known ? `c${avatarTone(handle || name)}` : "unknown", pictured ? "pictured" : ""]
     .filter(Boolean).join(" ");
   return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${pictured
-    ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
+    ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : ""}</span>`;
+}
+
+/// A page's head (site.css .page-hero, listkit 2026-11-23), for a page the
+/// server or a script makes, as the site's own pages write it: [title] and
+/// its one line [lede] at the left, [acts] (markup: a button, a search) at
+/// the right, [tabs] (markup: a nav.tabs) on the band's foot. Text is
+/// escaped here; [acts] and [tabs] are the caller's markup.
+export function pageHeadHtml({ title, lede = "", acts = "", tabs = "" }) {
+  return `<div class="page-hero"><div class="wrap"><div class="page-head"><div class="page-title">`
+    + `<h1>${escapeHtml(title)}</h1>${lede ? `<p class="lede">${escapeHtml(lede)}</p>` : ""}</div>`
+    + `${acts ? `<div class="page-acts">${acts}</div>` : ""}</div>${tabs}</div></div>`;
 }
 
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "gauge", "globe", "library",
-  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down", "pause", "play"];
+  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down", "pause", "play", "remix", "help", "news"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {
@@ -187,16 +300,21 @@ export function iconHtml(name) {
 /// its name and count its label ("Like, 12 likes"; "Like" at none). A
 /// toggle ([pressed] true or false) is aria-pressed. [labelled] shows a
 /// word for it between the two, [word] (its name unless said), which is
-/// in its label.
+/// in its label. [zero] shows a quiet 0 at none, where a row of them
+/// (the gallery card's) would read as counts missing.
 export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, labelled = false,
-  word = name, attrs = "" }) {
+  word = name, attrs = "", zero = false }) {
   const n = Number(count) || 0;
   const said = n ? `${name}, ${counted(n, one, many)}` : name;
   return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
-    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}`
-    + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>` : ""}</button>`;
+    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}${countHtml(n, zero)}</button>`;
 }
+
+/// An icon button's count: its number, a quiet 0 at none when [zero], else
+/// nothing. Its label says it (aria-hidden).
+const countHtml = (n, zero) => (n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>`
+  : zero ? `<span class="n zero" aria-hidden="true">${escapeHtml(number(0))}</span>` : "");
 
 /// What a person earned, as the row of pills under their numbers on their
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
@@ -379,6 +497,8 @@ export function motionWords(names, most = 3) {
 /// not: a page of cards is quick on a phone. "" when it has neither. A set
 /// of the LDraw library (api/_library.js) has its cover, drawn by the app.
 export function pictureOf(model) {
+  // One the page chose for it, of this site (a set's versions: web/set-page.js).
+  if (typeof model.picture === "string" && /^\/(library|m)\/[A-Za-z0-9._/-]+$/.test(model.picture)) return model.picture;
   // A set of the whole catalogue (api/_sets.js catalogCard) names its own:
   // its LDraw model's cover, else its own picture, else the one drawn of
   // its parts, or none.
@@ -413,6 +533,14 @@ export const langAt = () => {
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
+/// A link into the app with [query], in the page's language as theme.js
+/// carries it into the links a page is served with: a link drawn later,
+/// a card's or the pick's, is not among those (sitebold, 2026-11-23).
+export const appAt = (query) => {
+  const code = langAt().slice(1);
+  return `/app?${query}${code ? `&lang=${code}` : ""}`;
+};
+
 /// The tags that say a model was made with the assistant or Brickify, as
 /// the guidelines ask a designer to tag it (web/guidelines.html), read for
 /// a model whose app did not say (docs/SOCIAL.md D7). The gallery's "With
@@ -437,6 +565,20 @@ export function madeOf(model) {
   const brickify = tags.includes("brickify") && !tags.includes("ai-designed");
   return { way: tags.some((tag) => ASSISTANT_TAGS.includes(tag)) ? "assistant" : "hand",
     by: brickify ? "brickify" : tags.includes("ai-designed") ? "assistant" : "hand", said: "tags" };
+}
+
+/// [model] as anybody may be told of it. How it was made is its owner's to
+/// say (the owner, 2026-11-23: not "unless a user wants to share it that
+/// way"): until they chose to show it (made_with_shown,
+/// supabase/made_with_shown.sql) its made_with is not said and the tags
+/// that say it are left off, so madeOf finds it built by hand, as it does
+/// any model that never said. Before that file is applied no model says it
+/// is shown, and none is. made_with is still kept, for its owner.
+export function madePublic(model) {
+  if (!model || typeof model !== "object") return model;
+  if (model.made_with_shown === true) return model;
+  return { ...model, made_with: null, made_with_shown: false,
+    tags: Array.isArray(model.tags) ? model.tags.filter((tag) => !ASSISTANT_TAGS.includes(tag)) : model.tags };
 }
 
 /// The marks a card for [model] carries over its picture that a page may
@@ -483,7 +625,8 @@ export function keepHtml(key, name) {
   const main = set ? (what ? say("Own {name}", { name: what }) : say("Own it")) : (what ? say("Save {name}", { name: what }) : say("Save it"));
   const more = what ? say("Add {name} to a list", { name: what }) : say("Add it to a list");
   return `<div class="keep" data-keep="${escapeHtml(key)}" data-name="${escapeHtml(what)}">`
-    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}">`
+    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}" `
+    + `title="${escapeHtml(set ? say("Own it") : say("Save it"))}">`
     + (set ? `<span class="off">${iconHtml("plus")}</span><span class="on">${iconHtml("check")}</span>` : iconHtml("save"))
     + `<span class="word">${escapeHtml(set ? say("Own") : say("Save"))}</span><span class="n" aria-hidden="true" hidden></span></button>`
     + `<button type="button" class="keep-more" data-keep-more aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml(more)}" `
@@ -548,9 +691,17 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
   // have one shown in public (supabase directory_card's by); else the name
   // they credited it to, as words; else nobody.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
-  const modeller = model.modelled_by && typeof model.modelled_by === "object" && typeof model.modelled_by.name === "string"
-    ? model.modelled_by.name : "";
-  const who = modeller
+  const modeller = modellerOf(model);
+  const sharer = by ? by.name || by.handle : model.author || "";
+  // A model somebody shares that a person modelled (a set from LDraw's
+  // library, shared by the house): that person leads, as a sharer would,
+  // their initial for an avatar, and who shares it is said under it, small
+  // (sitebold, 2026-11-23: forty such cards read "Brickworks", the gallery
+  // one company's posts). A set's own card names them in words.
+  const who = modeller && sharer && sharer !== modeller
+    ? `<span class="who modeller" data-modelled-by title="${escapeHtml(say("Modelled by {name}", { name: modeller }))}">`
+      + `${avatarHtml({ name: modeller }, { size: "small" })}<span>${escapeHtml(modeller)}</span></span>`
+    : modeller
     ? `<span class="who" data-modelled-by>${escapeHtml(say("Modelled by {name}", { name: modeller }))}</span>`
     : by
     ? `<a class="who" href="${langAt()}/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
@@ -558,6 +709,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
+  if (modeller && sharer && sharer !== modeller) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
   if (set) {
     const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
@@ -603,26 +755,52 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
   // likes (where the like is not a button), builds finished to the last
   // step, once per device (supabase/builds.sql), and comments. Views are
   // never shown or ranked (docs/SOCIAL.md D6).
-  const tallies = earned ? "" : (like ? "" : tallyHtml("like", model.likes, "like"))
+  // Where the page makes the like a button (the gallery's), the card ends in
+  // a row of what people do with a model, as a social site's post does
+  // (sitebold, 2026-11-23): Like, its comments and Remix into the studio,
+  // each with its count, a quiet 0 at none (a row of bare icons read as
+  // counts missing), then its builds; the picture carries only its marks.
+  const social = like && !earned && !set && MODEL_ID.test(id);
+  const tallies = earned || social ? "" : (like ? "" : tallyHtml("like", model.likes, "like"))
     + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
-  // The like, where the page makes it a button: over the picture's other
-  // corner, its count beside its heart. Named with the model: twenty
-  // cards' "Like" in a row say which they like.
-  const liked = like && !earned ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
-    pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
+  // The like, named with the model: twenty cards' "Like" in a row say which
+  // they like.
+  const liked = social ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
+    pressed: model.liked === true, small: true, zero: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
+  const doing = social ? `<div class="social">${liked}${iconLinkHtml({ icon: "comment", href: `${langAt()}/m/${id}#comments`,
+    name: say("Comments on {name}", { name: model.name }), count: model.comments, one: "comment", zero: true })}`
+    + `${iconLinkHtml({ icon: "remix", href: appAt(`copy=${id}`), name: say("Remix {name} in the studio", { name: model.name }),
+      count: model.remixes, one: "remix", many: "remixes", zero: true, attrs: `title="${escapeHtml(say("Remix it: a copy of your own to change, in the studio"))}"` })}`
+    + `${tallyHtml("build", model.builds, "built", "built")}</div>` : "";
   // Own (a set) or Save (a model) and your lists, over the picture's foot.
   const owned = catalogueSet(model);
   const kept = owned ? keepHtml(`set:${owned}`, model.name)
-    : keep && !set && /^[A-Za-z0-9]{10}$/.test(id) ? keepHtml(`model:${id}`, model.name) : "";
+    : keep && !set && MODEL_ID.test(id) ? keepHtml(`model:${id}`, model.name) : "";
   return `<article class="model" ${data.join(" ")}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
-      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}${kept}</div>`
+      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${kept}</div>`
     + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `${langAt()}/m/${id}`)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
-    + `${lines.join("")}</div></article>`;
+    + `${lines.join("")}${doing}</div></article>`;
+}
+
+/// A model's id as a link is built from (api/share.js newId).
+const MODEL_ID = /^[A-Za-z0-9]{10}$/;
+
+/// Whoever modelled [model] when that is not who shares it (the app's
+/// Library's model it is: supabase/modelled_by.sql), by name; "" for none.
+export const modellerOf = (model) => (model && model.modelled_by && typeof model.modelled_by === "object"
+  && typeof model.modelled_by.name === "string" ? model.modelled_by.name.trim() : "");
+
+/// An icon link, an icon button's look (iconButtonHtml): its icon, then its
+/// count once there is one; its name and count its label.
+function iconLinkHtml({ icon, href, name, count = 0, one = "", many = "", attrs = "", zero = false }) {
+  const n = Number(count) || 0;
+  return `<a class="icon-btn small" href="${escapeHtml(href)}" aria-label="${escapeHtml(n ? `${name}, ${counted(n, one, many)}` : name)}"`
+    + `${attrs ? ` ${attrs}` : ""}>${iconHtml(icon)}${countHtml(n, zero)}</a>`;
 }
 
 // When a build was posted, as a card says it: "30 Oct 2026", as the page's
@@ -963,6 +1141,8 @@ export function altHtml(said) {
   const fill = (words, html) => escapeHtml(words).split(mark).join(html);
   let line;
   if (said.how === "whole") line = fill(say("An alternate build of {set}: every part from the set", { set: mark }), link(said.sets[0]));
+  // A version of the set itself (sethub): its own LDraw model, published.
+  else if (said.how === "version") line = fill(say("A version of LEGO® set {set}", { set: mark }), link(said.sets[0]));
   else if (said.how === "group") {
     const names = said.sets.map((_, at) => `${mark}${at}${mark}`);
     line = escapeHtml(say("An alternate build of {sets}", { sets: andSaid(names) }))

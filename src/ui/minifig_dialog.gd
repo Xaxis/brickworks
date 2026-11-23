@@ -727,11 +727,26 @@ func _fill_grid() -> void:
 	var matching: int = 0
 	if Minifig.OPTIONAL.has(_slot) and words.is_empty() and group.is_empty():
 		_grid.add_child(_cell(null))
+	# Those whose own name says the words first, then those only their
+	# keywords do, each in the slot's order, as the parts bin lists them
+	# (PartLibrary.matched): "space" for a torso led with 30375, a battle
+	# droid's, which says Space only in its keywords and takes the hands and
+	# hips off, before the Classic Space torsos (ux13's walk, p10).
+	var by_keywords: Array[PartLibrary.PartInfo] = []
 	for info: PartLibrary.PartInfo in all:
 		if not group.is_empty() and Minifig.group_of(info, _slot) != group:
 			continue
-		if not _matches(info, words):
+		var by: int = PartLibrary.matched(info, words)
+		if by == PartLibrary.NOT_MATCHED:
 			continue
+		if by == PartLibrary.BY_KEYWORDS:
+			by_keywords.append(info)
+			continue
+		matching += 1
+		if shown < _limit:
+			_grid.add_child(_cell(info))
+			shown += 1
+	for info: PartLibrary.PartInfo in by_keywords:
 		matching += 1
 		if shown < _limit:
 			_grid.add_child(_cell(info))

@@ -19,6 +19,17 @@ files to a few dozen.
     tools/storage_parts.py --check      say what would be uploaded
     tools/storage_parts.py --all        re-upload everything
 
+Every deploy runs the first, and listing the bucket's 90,000 names (51 MB
+in 90 pages) took a minute of each, to find nothing to upload almost every
+time. So a listing that finds every mesh up is written down (STAMP), keyed
+by exactly what it was asked about: the bucket and each mesh's name and
+size. A run asked about the very same meshes within a day takes that for
+its answer and lists nothing; any change to them (a rebuild names its
+meshes anew) lists again. The bucket only ever grows (nothing here deletes
+from it), so what was up then is up now. --check and --all always list.
+Pages asked for eight at a time came back no faster: the server answers
+them about one at a time (fastship, 2026-11-23).
+
 Reads SUPABASE_URL and SUPABASE_SECRET_KEY from .env beside the project.
 The bucket is public: this is geometry derived from a CC BY licensed
 library, and putting a signature on every request would cost a round
@@ -28,6 +39,9 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import datetime
+import hashlib
+import json
 import os
 import sys
 import threading
@@ -42,6 +56,11 @@ BUCKET = "parts"
 # never change and the only reason to come back is a new part.
 CACHE_CONTROL = "public, max-age=31536000, immutable"
 WORKERS = 24
+# Where the last listing that found every mesh up is written down, shared
+# by every worktree (their assets/generated is the main checkout's), and how
+# long it is taken for the bucket's answer.
+STAMP = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "brickworks" / "storage_parts.json"
+STAMP_HOURS = 24
 
 
 def env() -> tuple[str, str]:
@@ -67,8 +86,6 @@ def listing(url: str, key: str) -> set[str]:
     back looking like an almost-empty bucket, and every run would then
     re-upload the lot.
     """
-    import json
-
     have: set[str] = set()
     offset = 0
     page = 1000
@@ -93,6 +110,42 @@ def listing(url: str, key: str) -> set[str]:
             break
         offset += page
     return have
+
+
+def stamp_key(url: str, sizes: dict[str, int]) -> str:
+    """What a listing was asked about: the bucket, and each mesh's name and size."""
+    digest = hashlib.sha256(f"{url}/{BUCKET}\n".encode())
+    for name in sorted(sizes):
+        digest.update(f"{name}\t{sizes[name]}\n".encode())
+    return digest.hexdigest()
+
+
+def stamped(key: str, stamp: Path | None = None, now: float | None = None) -> str | None:
+    """When a listing asked about exactly KEY found every mesh up, if it
+    was within STAMP_HOURS; else None."""
+    stamp = stamp or STAMP
+    try:
+        said = json.loads(stamp.read_text())
+        at = float(said["at"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    now = time.time() if now is None else now
+    if said.get("key") != key or not 0 <= now - at < STAMP_HOURS * 3600:
+        return None
+    return datetime.datetime.fromtimestamp(at, datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def write_stamp(key: str, count: int, stamp: Path | None = None) -> None:
+    """A listing asked about KEY found all COUNT meshes up. Whole, then
+    named, so a deploy reading it at once finds all of it or nothing."""
+    stamp = stamp or STAMP
+    try:
+        stamp.parent.mkdir(parents=True, exist_ok=True)
+        part = stamp.with_name(f"{stamp.name}.{os.getpid()}.part")
+        part.write_text(json.dumps({"key": key, "at": time.time(), "meshes": count}))
+        os.replace(part, stamp)
+    except OSError as trouble:
+        print(f"  (could not write {stamp}: {trouble})")
 
 
 def upload(url: str, key: str, path: Path) -> str | None:
@@ -155,13 +208,23 @@ def main() -> int:
         print(f"storage: {len(exact):,} exact shapes as well")
     meshes += exact
 
-    total_bytes = sum(mesh.stat().st_size for mesh in meshes)
+    sizes = {mesh.name: mesh.stat().st_size for mesh in meshes}
+    total_bytes = sum(sizes.values())
     print(f"storage: {len(meshes):,} meshes, {total_bytes / 1e6:.0f} MB on disk")
+
+    asked = stamp_key(url, sizes)
+    when = None if args.check or args.all else stamped(asked)
+    if when:
+        print(f"  already up: {len(meshes):,} (these very meshes were all up at {when}; not listed again)")
+        print("  to upload : 0  (0 MB)")
+        return 0
 
     have: set[str] = set() if args.all else listing(url, key)
     if have:
         print(f"  already up: {len(have):,}")
     todo = [mesh for mesh in meshes if mesh.name not in have]
+    if not todo and not args.all:
+        write_stamp(asked, len(meshes))
     if args.reverse:
         todo.reverse()
     todo_bytes = sum(mesh.stat().st_size for mesh in todo)

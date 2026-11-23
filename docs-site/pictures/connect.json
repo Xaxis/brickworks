@@ -143,7 +143,7 @@
     "#claude-panel"
    ],
    "pad": 12,
-   "alt": "A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
+   "alt": "A model's page with Open in the studio and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
    "caption": "A model's page hands your Claude the model.",
    "features": [
     "ui:change a model with your Claude"

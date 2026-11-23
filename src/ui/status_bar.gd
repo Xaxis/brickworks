@@ -241,8 +241,12 @@ const HINT_ROOM := 160.0
 ## The fields on the right fitted to the bar, every frame, as what they say
 ## changes: where they would not all fit beside the line on the left, the
 ## least wanted goes first (how big a stud is on screen, then the snap and
-## turn, then the size), so none runs past the window's edge. On a narrow
-## screen the first two go whatever room is left, as before.
+## turn, then the size, the weight and the selection), so none runs past the
+## window's edge. On a narrow screen the first two go whatever room is left,
+## as before. The left keeps the room of what stands there: Working's bar and
+## Cancel while the app works, wider than the hint's room, pushed a Studio
+## file's long stability line, and Account and the Properties tab with it,
+## past a 1280 window's right edge (ux13's walk, p6_05).
 func _fit() -> void:
 	var window: float = get_viewport().get_visible_rect().size.x
 	var narrow: bool = window < 900.0
@@ -250,12 +254,17 @@ func _fit() -> void:
 	# fields have already pushed the bar wider than that.
 	var room: float = minf(size.x, window - global_position.x)
 	var shown: Dictionary = {_zoom: not narrow, _settings: not narrow,
-		_size: not _size.text.is_empty()}
-	var needed: float = get_theme_stylebox("panel").get_minimum_size().x + HINT_ROOM
+		_size: not _size.text.is_empty(), _selected: true}
+	var left: float = HINT_ROOM
+	if working.visible:
+		left = maxf(left, working.get_combined_minimum_size().x)
+	var needed: float = get_theme_stylebox("panel").get_minimum_size().x + left
 	for label: Label in [_place, counts, _size, _selected, _settings, _zoom]:
 		if bool(shown.get(label, label.visible)):
 			needed += _width(label)
-	if _weight.visible:
+	# The weight, said beside the counts whenever there is one (_show_weight).
+	var weighed: bool = not _weight.text.is_empty() and counts.visible
+	if weighed:
 		needed += _weight_join.get_minimum_size().x + _weight.get_minimum_size().x
 	if show_folder.visible:
 		needed += show_folder.get_combined_minimum_size().x
@@ -263,10 +272,19 @@ func _fit() -> void:
 		if needed > room and bool(shown[least]):
 			shown[least] = false
 			needed -= _width(least)
+	if needed > room and weighed:
+		weighed = false
+		needed -= _weight_join.get_minimum_size().x + _weight.get_minimum_size().x
+	if needed > room and bool(shown[_selected]):
+		shown[_selected] = false
+		needed -= _width(_selected)
 	for label: Label in shown:
 		if label.visible != bool(shown[label]):
 			label.visible = shown[label]
 			(label.get_meta("line") as Control).visible = shown[label]
+	if _weight.visible != weighed:
+		_weight.visible = weighed
+		_weight_join.visible = weighed
 
 
 ## A field's width and the line before it.
@@ -278,7 +296,8 @@ static func _width(label: Label) -> float:
 ## in the frame the model changes (ModelSize.of_model keeps it for the
 ## revision), the parts on their way in. Not while a model is laid, part of
 ## it down: the weight said before stays, and a model just opened says none
-## until it is all down, so its first number is its weight.
+## until it is all down, so its first number is its weight. Shown by _fit,
+## where it fits.
 func _show_weight() -> void:
 	var world: BrickWorld = shell.world
 	var words: String = ""
@@ -295,10 +314,6 @@ func _show_weight() -> void:
 				_weighed_in = world.generation()
 	if _weight.text != words:
 		_weight.text = words
-	var shown: bool = not words.is_empty() and counts.visible
-	if _weight.visible != shown:
-		_weight.visible = shown
-		_weight_join.visible = shown
 
 
 ## The model's size beside its counts, or the selection's beside "3

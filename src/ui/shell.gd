@@ -277,7 +277,10 @@ var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
-	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
+	# ux12: the instructions too, where a parent looking to print them looks
+	# first (File, Export); the same command as Build's row, one id in both.
+	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "instructions",
+		"export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
 		"-",
@@ -1163,7 +1166,7 @@ func _define() -> void:
 	_add("open", "Open…", CTRL | KEY_O, bar._on_open, Callable(),
 		"Reopen a saved model, an example, or a file from this computer")
 	_add("library", "Library…", 0, func() -> void: library_dialog.open(), Callable(),
-		"Any of LDraw's models of real sets, or a model the community shared, opened in a new %s"
+		"Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new %s"
 		% ("tab" if web else "window"))
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
@@ -1239,7 +1242,7 @@ func _define() -> void:
 	_add("pose", "Motions…", 0, func() -> void: app.call("open_pose"), something,
 		"The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered")
 	_add("instructions", "Instructions…", 0, _instructions, something,
-		"Building instructions for this model, step by step")
+		"Building instructions for this model, step by step, to print or to save as a PDF")
 	_add("share", "Share…", 0, func() -> void: app.call("_share_wanted"), something,
 		"A link anyone can open to see this model, its steps and its parts list")
 	# src/net/together.gd, src/ui/together_dialog.gd.
@@ -1281,8 +1284,8 @@ func _define() -> void:
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),
 		"Hold a copy of what was copied: click to put it down, {rotate_held|turns it}")
-	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
-		selected, "Hold a copy of the selection, to put down beside it")
+	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_beside(),
+		selected, "Put a copy of the selection down beside it, selected to move on")
 	# src/assembly/pattern.gd, src/ui/pattern_dialog.gd.
 	_add("pattern", "Pattern…", CTRL | SHIFT | KEY_D, func() -> void:
 		if builder.is_carrying():
@@ -1454,8 +1457,8 @@ func _define() -> void:
 	_add("booklet_page_setup", "Page setup…", 0, open_page_setup, Callable(),
 		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another")
 	# src/ui/flex_tool.gd.
-	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
-		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
+	_add("flex", "Cable, hose or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
+		"Lay a motor's cable or a wire, a hose, a tube, a string or a chain from one connector to another, along a curve")
 	_add("reshape_flex", "Reshape the hose or chain", 0, func() -> void: app.call("reshape_flex"),
 		func() -> bool: return bool(app.call("can_reshape_flex")),
 		"Drag the selected hose's bend, or put its chain round other sprockets")
@@ -1599,7 +1602,7 @@ func _define() -> void:
 		inspector.set_open(true)
 		inspector.show_place(), selected,
 		"What it is, its colour by every name, where it stands and what it is joined to")
-	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
+	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown(), true))
 	_ticked("panel_keys", key_strip_shown)
 	# A straight-on view beside the model (SplitView). F8: LDCad's Space,
 	# which swaps its split for one large view, is the app's to slide the
@@ -1692,7 +1695,10 @@ func _define() -> void:
 	_add("brickify", "Brickify a 3D model…", CTRL | KEY_I,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
-	_add("part_maker", "Part maker…", 0, func() -> void:
+	# One name with the bin's button and the panel's title, "Make a part":
+	# the menu called it "Part maker…", so a person who met it in the bin did
+	# not know it again in Make (ux12).
+	_add("part_maker", "Make a part…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
@@ -2138,7 +2144,7 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
-		bar.offer_moved()
+		bar.offer_moved(not _recent[id].example, _recent[id].path)
 
 
 func _fill_history(menu: PopupMenu) -> void:
@@ -2229,26 +2235,35 @@ func _check_stability() -> void:
 	# joint, selected" of its lean, with nothing selected (smalls4). A lean
 	# is said as itself, and a tip as the balance says it.
 	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
-		return not risk.kind in Stability.BALANCE_KINDS)
+		return not risk.kind in Stability.BALANCE_KINDS and risk.kind != Stability.FLOATS)
 	var leans: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
 		return risk.kind in ["leaning", "top-heavy"])
+	# A part in the air, touching nothing: selected and said first, as no
+	# joint (Stability.FLOATS).
+	var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind == Stability.FLOATS)
 	if weak.is_empty() and not leans.is_empty():
 		said = (leans[0] as Stability.Risk).message
-	if not weak.is_empty():
+	if not weak.is_empty() or not floating.is_empty():
 		builder.selection.clear()
-		for risk: Stability.Risk in weak:
+		for risk: Stability.Risk in floating + weak:
 			if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
 				builder.selection[risk.brick_id] = true
 		builder.selection_changed.emit(builder.selection.size())
-		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
-			(weak[0] as Stability.Risk).message]
+		var parts := PackedStringArray()
+		if not floating.is_empty():
+			parts.append(Stability.floating_words(floating) + ", selected")
+		if not weak.is_empty():
+			parts.append("%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
+				(weak[0] as Stability.Risk).message])
+		said = "; ".join(parts)
 	bar.say(said)
 	# With no pose to weigh, the balance as it stands is what the check read
 	# its margins from.
 	var balance: Balance.Report = await weigh_balance(poses, true, true,
 		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
-		bar.say(balance.words() if weak.is_empty() and leans.is_empty()
+		bar.say(balance.words() if weak.is_empty() and leans.is_empty() and floating.is_empty()
 			else "%s. %s" % [said, balance.words()])
 
 
@@ -2376,8 +2391,27 @@ func _brace() -> void:
 
 func _reseat() -> void:
 	var offer: SeatOffer = app.get("_seat_offer")
-	if offer.check() == 0:
+	if offer.check() != 0:
+		return
+	# Nothing near its studs to seat; a part in the air is not near any, and
+	# "every part is on its studs" was said over a tile floating off its
+	# chimney (ux13's walk, p8): it is said, and selected, to move by hand.
+	var report: Variant = await app.call("weighed_now") if app.has_method("weighed_now") else null
+	var floating: Array = []
+	if report is Stability.Report:
+		for risk: Stability.Risk in (report as Stability.Report).risks:
+			if risk.kind == Stability.FLOATS and world.get_brick(risk.brick_id) != null:
+				floating.append(risk)
+	if floating.is_empty():
 		bar.say("every part is on its studs")
+		return
+	builder.selection.clear()
+	for risk: Stability.Risk in floating:
+		builder.selection[risk.brick_id] = true
+	builder.selection_changed.emit(builder.selection.size())
+	bar.say(("every part near its studs is on them; %s, selected: move it by hand" if floating.size() == 1
+		else "every part near its studs is on them; %s, selected: move them by hand")
+		% Stability.floating_words(floating))
 
 
 func _toggle_full_screen() -> void:
@@ -2795,15 +2829,23 @@ func set_grid(on: bool) -> void:
 	ShellPrefs.put("grid", on)
 
 
+## Whether the key strip shows: on, and not every control on it learned
+## (ControlsHint.learn).
 func key_strip_shown() -> bool:
-	var hint: Control = app.get("_hint")
-	return hint != null and hint.get_parent() != null and (hint.get_parent() as Control).visible
+	var hint: ControlsHint = app.get("_hint")
+	return hint != null and hint.get_parent() != null and (hint.get_parent() as Control).visible \
+		and not hint.is_empty()
 
 
-func set_key_strip(on: bool) -> void:
-	var hint: Control = app.get("_hint")
+## The key strip on or off. Turned on by [param asked] (View, Panels, Key
+## strip), whole again: what it had left as learned comes back.
+func set_key_strip(on: bool, asked: bool = false) -> void:
+	var hint: ControlsHint = app.get("_hint")
 	if hint == null or hint.get_parent() == null:
 		return
+	if on and asked:
+		ShellPrefs.put("hints_used", {})
+		hint.rebuild()
 	(hint.get_parent() as Control).visible = on
 	ShellPrefs.put("key_strip", on)
 
@@ -2924,18 +2966,26 @@ func edit_steps(op: String) -> void:
 	if read_only:
 		return
 	var steps: StepsBar = app.get("_steps")
-	bar.say(change_steps(op, Array(builder.selection.keys()), steps.current_step()))
+	var said: String = change_steps(op, Array(builder.selection.keys()), steps.current_step(), true)
+	if not said.is_empty():
+		bar.say(said)
 
 
 ## The same edit for [param ids], or the step [param at]: what the
 ## selection and the timeline give, or what a session over MCP names by
-## number (AppTools). Returns what was done, or why nothing was.
-func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
+## number (AppTools). Returns what was done, or why nothing was. With
+## [param ask], the person's own press: Plan steps asks first where it
+## cannot keep every step's look ([method _plan_again]), and says nothing
+## here.
+func change_steps(op: String, ids: Array, at: Instructions.Step, ask: bool = false) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	var waits: String = _steps_wait()
+	if not waits.is_empty():
+		return waits
 	if op in ["prev", "next", "new", "to"] and ids.is_empty():
 		return "select the parts first"
-	if not op in ["prev", "next", "new", "close"] and at == null:
+	if not op in ["prev", "next", "new", "close", "plan"] and at == null:
 		return "go to a step on the timeline first"
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number if at != null else -1
@@ -2943,6 +2993,8 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	var level: String = assemblies.entered if assemblies != null else ""
 	if op == "close":
 		return _close_step(level, skip)
+	if op == "plan":
+		return _plan_again(skip, ask)
 	# Parts of the sub-model whose step the timeline shows are its parts to
 	# move, as they are once it is entered: a booklet's steps are a
 	# sub-model's steps as often as the model's own.
@@ -3327,6 +3379,9 @@ const HELD_FIELDS: Array[String] = ["turn", "how", "zoom", "size", "page", "part
 func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	var waits: String = _steps_wait()
+	if not waits.is_empty():
+		return waits
 	if at == null:
 		return "go to a step on the timeline first"
 	# A name of only what draws nothing is refused, before the model is
@@ -4041,6 +4096,107 @@ func _close_step(level: String, skip: Dictionary) -> String:
 	return words
 
 
+## Why a step edit, or a step's look, waits: parts in hand. Picked up off the
+## model they are in no step, and put down they take the step they were
+## lifted from, which an edit made meanwhile has numbered again or taken
+## off; and any edit kept while they are held leaves Escape nothing to put
+## back. Plan steps asked over MCP while the person held a part put it down
+## alone in a step, every other part planned after it, and marked the steps
+## as the person's (sk2review F2). The same for the timeline, the keys and
+## every session's tool, as all come here. "" when nothing is held.
+func _steps_wait() -> String:
+	if builder != null and builder.is_carrying():
+		return "the parts in hand are in no step: put them down, or press Escape, first"
+	return ""
+
+
+## The model's steps worked out afresh from the model as it is, its own taken
+## off, as a model nobody gave steps has them: the timeline's Plan steps and
+## edit_steps "plan", one undo (AuthorSteps.cleared). A model opens in the
+## steps its file was saved in, and is planned again only when asked, here
+## (stepkeep2); a save writes the steps worked out then. Not someone else's
+## file, whose author's steps are kept as they made them.
+##
+## A step with a look of its own (a name, notes, a page, a zoom, a turn) keeps
+## it with its parts: the worked-out steps are given to the model in place of
+## its own (AuthorSteps.adopt_plan), still whoever's they were
+## (BrickWorld.steps_own: a step named made them the person's, saved with
+## AUTHORED_STEPS, so another program, an older build and Into this model
+## keep each name on its step), and each look goes to the step most of its
+## parts went to (BookletLooks.carried). Up to sk2fix every one went without a word, and
+## after a save was lost (sk2review F5). Where two such steps' parts come to
+## share one step, one name and page stand: with [param ask] (the person's
+## press) that is asked first, how many said, and else said after.
+func _plan_again(skip: Dictionary, ask: bool = false) -> String:
+	if store._live_source() != null:
+		return "these are the steps of the file's author, kept as they made them"
+	if not AuthorSteps.any(world, skip):
+		return "the steps are worked out already, from the model as it is"
+	var was: Dictionary = world.step_looks.duplicate(true)
+	var whose: bool = world.steps_own
+	var own: int = BookletLooks.own_count(was)
+	# Every step's look, a turn too: nothing where no step has one.
+	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
+	var undo: Array = AuthorSteps.cleared(world, skip)
+	if not looked.is_empty():
+		undo.append_array(AuthorSteps.adopt_plan(world, library, skip))
+		undo.append_array(BookletLooks.carried(world, was, looked, skip))
+		if world.steps_own != whose:
+			undo.append({"undo": "stepsown", "own": world.steps_own})
+			world.steps_own = whose
+		# Applied in the order kept, each part's first entry is its step
+		# before the press (AuthorSteps.squash); and none where the press
+		# changed nothing, as a second press does.
+		undo = AuthorSteps.squash(undo, world).filter(func(entry: Dictionary) -> bool:
+			match str(entry["undo"]):
+				"stepsown":
+					return bool(entry["own"]) != world.steps_own
+				"steplooks":
+					return entry["looks"] != world.step_looks
+			return true)
+	if undo.is_empty():
+		return "the steps are as they were"
+	var shared: int = own - BookletLooks.own_count(world.step_looks)
+	if shared > 0 and ask:
+		_take_back(undo)
+		_ask_plan(shared, own)
+		return ""
+	var words: String = "worked the steps out again from the model as it is"
+	if shared > 0:
+		words = ("worked the steps out again from the model as it is: %d of the %d steps with "
+			+ "a name, notes or a page of their own share a step with another now, where one "
+			+ "name and page stand") % [shared, own]
+	elif own > 0:
+		words = "worked the steps out again from the model as it is, each step's name, notes and page with its parts"
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	(app.get("_steps") as StepsBar).replan()
+	return words
+
+
+var _plan_asked: ConfirmationDialog
+
+
+## Plan steps, pressed where [param shared] of the [param own] steps with a
+## look of their own would share a step with another: asked first, and done
+## only on Plan steps (Cancel changes nothing).
+func _ask_plan(shared: int, own: int) -> void:
+	if _plan_asked == null:
+		_plan_asked = ConfirmationDialog.new()
+		_plan_asked.title = "Plan steps"
+		_plan_asked.ok_button_text = "Plan steps"
+		_plan_asked.dialog_autowrap = true
+		_plan_asked.min_size = Vector2i(420, 0)
+		_plan_asked.confirmed.connect(func() -> void:
+			bar.say(change_steps("plan", [], null)))
+		add_child(_plan_asked)
+	_plan_asked.dialog_text = tr("%d of the %d steps with a name, notes or a page of their own "
+		+ "would share a step with another, where one name and page stand: their notes are "
+		+ "kept. One undo brings them back.") % [shared, own]
+	_plan_asked.popup_centered()
+
+
 ## Where the timeline's step is among the author's: [section, step], or
 ## ["", -1]. Read off its first part when it was a worked-out step, which
 ## giving the model its steps has just made one of the author's.
@@ -4179,12 +4335,14 @@ var _moved: Window = null
 var moved_offer: MovedOffer
 
 
-## A person's open found parts its file names by a moved or alias number, or
-## has no file for (ModelBar.moved_found): the moved and alias ones offered
-## in the strip over the model, in nobody's way; a part with no file at all
-## asked about in the list, as an open always asked.
-func _show_moved() -> void:
-	moved_offer.offer()
+## An open found parts its file names by a moved or alias number, or has no
+## file for (ModelBar.moved_found): the moved and alias ones of a person's
+## [param own] file offered in the strip over the model, once for the file
+## [param of] (MovedOffer), in nobody's way; a part with no file at all asked
+## about in the list, as an open always asked.
+func _show_moved(own: bool, of: String) -> void:
+	if own:
+		moved_offer.offer(of)
 	for row: Dictionary in store.moved.values():
 		if str(row["kind"]) == MovedParts.MISSING:
 			_review_moved()

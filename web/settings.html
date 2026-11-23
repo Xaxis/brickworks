@@ -20,7 +20,7 @@
 <script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Settings · Brickworks</title>
-<meta name="description" content="Your Brickworks settings: the theme, your notifications on this device and by email, what your profile shows, the AI apps connected, signing out and deleting the account.">
+<meta name="description" content="Your Brickworks settings: the theme, what you hear of here, by push and by email, the models you muted, what your profile shows, the AI apps connected, signing out and deleting the account.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://brickworks.diy/settings">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/settings">
@@ -33,14 +33,14 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Your Brickworks settings">
-<meta property="og:description" content="Publish your models, keep favourites, follow designers and post photos of what you build.">
+<meta property="og:description" content="Publish your models, save what you like, follow designers and post photos of what you build.">
 <meta property="og:url" content="https://brickworks.diy/settings">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Your Brickworks settings">
-<meta name="twitter:description" content="Publish your models, keep favourites, follow designers and post photos of what you build.">
+<meta name="twitter:description" content="Publish your models, save what you like, follow designers and post photos of what you build.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
@@ -71,8 +71,24 @@
 .blocked button { min-height: 44px; }
 .delete-form, .code-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
 #beta-bar-out { margin-top: var(--s-6); }
-/* Notifications' two parts, this device and email, each under its own heading. */
+/* Notifications' parts, this device, what you hear of where, your feed by
+   email and the muted models, each under its own heading. */
 .setting h3 { margin: var(--s-3) 0 var(--s-1); }
+/* What you hear of, and where: a row a kind, a box a place, each box a
+   finger's 44 px; the kind's words wrap, the boxes keep their column. */
+.kinds-wrap { max-width: 640px; }
+.kinds { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.kinds th, .kinds td { padding: 0; border-bottom: 1px solid var(--line); text-align: center; vertical-align: middle; }
+.kinds thead th { padding: 0 0 var(--s-1); color: var(--ink-soft); font-weight: 600; }
+.kinds th[scope="row"], .kinds thead th:first-child { padding: var(--s-1) var(--s-2) var(--s-1) 0; text-align: left;
+	font-weight: 400; color: var(--ink); overflow-wrap: anywhere; }
+.kinds td, .kinds thead th:not(:first-child) { width: 64px; }
+.kinds .cell { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+.kinds tbody tr:last-child > * { border-bottom: 0; }
+@media (width < 600px) {
+	.kinds td, .kinds thead th:not(:first-child) { width: 48px; }
+}
+.muted-pic { flex: none; width: 48px; aspect-ratio: 4 / 3; border-radius: var(--r-1); object-fit: cover; background: var(--picture-ground); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -116,9 +132,13 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow"><a href="/profile" id="to-profile">Your profile</a></p>
-			<h1>Settings</h1>
-			<p class="lede">Your profile, how Brickworks looks, what it tells you and where, what others see of you, and the AI that works in your tabs.</p>
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Settings</h1>
+					<p class="lede">How Brickworks looks, what it tells you, what others see and the AI in your tabs.</p>
+				</div>
+				<div class="page-acts"><a class="cta ghost small" href="/profile" id="to-profile">Your profile</a></div>
+			</div>
 		</div>
 	</div>
 	<div class="wrap page-body page-grid settings-page">
@@ -151,7 +171,7 @@
 				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
 			</div>
 
-			<section id="signed-out" hidden>
+			<section id="signed-out" class="gate" hidden>
 				<p class="lede">Sign in to choose what Brickworks emails you, what your profile shows and which AI
 					apps can work in your tabs. We email you a code: no password.</p>
 				<div class="actions"><button class="cta big" id="sign-in" type="button">Sign in</button></div>
@@ -161,7 +181,7 @@
 					<div class="setting">
 						<div class="wide">
 							<h2>Beta</h2>
-							<p>Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.</p>
+							<p>Brickworks is in open beta. Its bar at the top of every page has Report a bug and the way to join. Chosen for this browser.</p>
 							<label class="choice"><input type="checkbox" data-beta-bar-show checked>
 								Show the beta bar on every page</label>
 						</div>
@@ -198,7 +218,7 @@
 						<!-- The beta's bar (web/betabar.js): shown or hidden in this
 						     browser at once; its × turns this off. -->
 						<div class="wide">
-							<p>The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.</p>
+							<p>The bar at the top of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.</p>
 							<label class="choice"><input type="checkbox" data-beta-bar-show checked>
 								Show the beta bar on every page</label>
 						</div>
@@ -228,8 +248,8 @@
 						</div>
 						<div class="wide" id="push-part">
 							<h3>On this device</h3>
-							<p>A comment or a reply, a mention, a photo of a build of your model, a remix or a challenge’s
-								result, as this device’s own notification within the minute. Chosen for each device you use.</p>
+							<p>What you choose to have pushed below, as this device’s own notification within the minute.
+								Chosen for each device you use.</p>
 							<label class="choice"><input type="checkbox" id="push-on" disabled>
 								Notify me on this device</label>
 							<p class="said" id="push-said" role="status"></p>
@@ -240,29 +260,90 @@
 								<button class="cta ghost" type="button" id="install">Install Brickworks</button>
 							</div>
 						</div>
-						<div class="wide">
-							<h3>By email</h3>
+						<!-- Each kind, here (the bell and Notifications), by push and by the
+						     day's email (supabase/notification_prefs.sql; inbox,
+						     2026-11-23): a box each, as a platform's own settings
+						     have them. The email of comments, photos and remixes is
+						     the day's email's own choice (api/_comments.js), and of
+						     news the news choice (api/_announce.js), as before. -->
+						<div class="wide" id="kinds-part">
+							<h3>What you hear of, and where</h3>
 							<p id="who"></p>
+							<p>Here is the bell at the top of every page and your Notifications. Push is each device you
+								turned on above. Email is one email a day at most, from the address sign-in codes come from.</p>
+							<div class="kinds-wrap">
+							<table class="kinds" id="kinds">
+								<thead><tr><th scope="col" id="col-kind">What happened</th><th scope="col" id="col-here">Here</th>
+									<th scope="col" id="col-push">Push</th><th scope="col" id="col-email">Email</th></tr></thead>
+								<tbody>
+								<tr data-notice="comment"><th scope="row" id="kind-comment">Comments on your models</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-comment col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-comment col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" id="mail-comments" aria-labelledby="kind-comment col-email" disabled></label></td></tr>
+								<tr data-notice="reply"><th scope="row" id="kind-reply">Replies to your comments</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-reply col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-reply col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-reply col-email" disabled></label></td></tr>
+								<tr data-notice="mention"><th scope="row" id="kind-mention">Mentions of you, in comments and in Talk</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-mention col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-mention col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-mention col-email" disabled></label></td></tr>
+								<tr data-notice="photo"><th scope="row" id="kind-photo">Photos of builds of your models</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-photo col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-photo col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" id="mail-photos" data-kind="photos" aria-labelledby="kind-photo col-email" disabled></label></td></tr>
+								<tr data-notice="remix"><th scope="row" id="kind-remix">Remixes of your models</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-remix col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-remix col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" id="mail-remixes" data-kind="remixes" aria-labelledby="kind-remix col-email" disabled></label></td></tr>
+								<tr data-notice="likes"><th scope="row" id="kind-likes">Likes on your models, a number a day</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-likes col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-likes col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-likes col-email" disabled></label></td></tr>
+								<tr data-notice="talk"><th scope="row" id="kind-talk">New posts in Talk threads you follow</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-talk col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-talk col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-talk col-email" disabled></label></td></tr>
+								<tr data-notice="challenge"><th scope="row" id="kind-challenge">Challenges opening, and their last two days</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-challenge col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-challenge col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-challenge col-email" disabled></label></td></tr>
+								<tr data-notice="result"><th scope="row" id="kind-result">Who won a challenge you entered or voted in</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-result col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-result col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-result col-email" disabled></label></td></tr>
+								<tr data-notice="achievement"><th scope="row" id="kind-achievement">Levels of achievements you reach</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-achievement col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-achievement col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" aria-labelledby="kind-achievement col-email" disabled></label></td></tr>
+								<tr data-notice="news"><th scope="row" id="kind-news">News from Brickworks</th>
+									<td><label class="cell"><input type="checkbox" data-channel="here" aria-labelledby="kind-news col-here" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="push" aria-labelledby="kind-news col-push" disabled></label></td>
+									<td><label class="cell"><input type="checkbox" data-channel="email" id="mail-news" aria-labelledby="kind-news col-email" disabled></label></td></tr>
+								</tbody>
+							</table>
+							</div>
 						</div>
 						<div class="wide" id="mail" hidden>
-							<p>Brickworks emails you only what you ask for here, from the address sign-in codes
-								come from. Off until you turn it on.</p>
-							<label class="choice"><input type="checkbox" id="mail-comments">
-								Email me when somebody comments on a model I shared: at most one email a day</label>
+							<h3>Your feed by email</h3>
 							<div id="mail-kinds" hidden>
-								<p>And in the same email, at most one a day, what came into your feed:</p>
+								<p>In the same email, at most one a day, what came into your feed; photos of builds by people
+									you follow come with the photos of yours above.</p>
 								<label class="choice"><input type="checkbox" id="mail-models" data-kind="models">
 									New models from people I follow</label>
 								<label class="choice"><input type="checkbox" id="mail-versions" data-kind="versions">
 									New versions of their models</label>
-								<label class="choice"><input type="checkbox" id="mail-photos" data-kind="photos">
-									Photos of builds: of my models, and by people I follow</label>
-								<label class="choice"><input type="checkbox" id="mail-remixes" data-kind="remixes">
-									Remixes of my models</label>
 							</div>
-							<label class="choice" id="news-choice" hidden><input type="checkbox" id="mail-news">
-								Email me Brickworks news: new features and planned maintenance, a few times a month at most</label>
-							<p class="said" id="mail-said" role="status"></p>
+						</div>
+						<!-- What a box ticked here did, said: one line for the grid and the feed's email. -->
+						<p class="said wide" id="mail-said" role="status"></p>
+						<!-- Muted models (notification_mute): nothing about them reaches you until unmuted. -->
+						<div class="wide" id="muted-part">
+							<h3>Muted models</h3>
+							<p id="muted-none">None. Mute a model from its page’s More menu, or from its notification, and
+								nothing about it reaches you here, by push or by email until you unmute it.</p>
+							<ul class="connections blocked" id="muted"></ul>
+							<p class="said" id="muted-said" role="status"></p>
 						</div>
 					</div>
 
@@ -353,7 +434,7 @@
 							<summary class="cta ghost">Delete this account…</summary>
 							<form class="delete-form" id="delete-form">
 								<p>Your models come out of the gallery and their links stop working; your
-									profile, favourites, collections, comments, follows, photos, the sets you own and your
+									profile, saved models, lists, comments, follows, photos, the sets you own and your
 									AI apps' connections are deleted with the account. It cannot be undone.</p>
 								<label>Type your email address to confirm
 									<input id="delete-confirm" type="email" autocomplete="off" required></label>
@@ -410,7 +491,7 @@
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenges</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

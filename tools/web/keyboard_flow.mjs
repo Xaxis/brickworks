@@ -14,8 +14,10 @@
 //             Tab to the first card's name and Enter opens its model;
 //   model     Like (pressed, its count in its name, the focus kept), Save
 //             (its lists, the focus in them; a list ticked and the focus
-//             kept; Escape closes it back to Save), a comment typed and
-//             sent (said in the page's status), Reply under a comment (the
+//             kept; Escape closes it back to Save), the Comments tab (Tab
+//             to the row of tabs, Right to Comments: its panel shown and
+//             #comments in the address), a comment typed and sent (said in
+//             the page's status), Reply under a comment below the box (the
 //             focus in its box; Escape takes it away, back to Reply; sent,
 //             the focus not lost); Share's toast, said as it is shown;
 //   report    signed out, More, Report it: the dialog takes the focus,
@@ -241,7 +243,8 @@ const JOURNEYS = {
   async model(browser, theme) {
     const { context, page, errors } = await visit(browser, `/m/${stand.MODEL_ID}`, { theme, state: { likes: new Map() } });
     const label = `model ${theme}`;
-    await until(page, () => !document.getElementById("comments")?.hidden && document.querySelector("#comments .comment"), null, 15000);
+    // The comments listed, in their tab's panel, not shown until it is chosen.
+    await until(page, () => !document.querySelector("#comments .comments-body")?.hidden && document.querySelector("#comments .comment"), null, 15000);
     // Like: pressed, its count in its name, the focus kept.
     if (await tabTo(page, label, '[data-mark="like"]')) {
       const before = await page.evaluate(focusNow);
@@ -256,27 +259,32 @@ const JOURNEYS = {
       const back = await until(page, () => document.activeElement?.getAttribute("aria-pressed") === "false", null, 5000);
       check(back, `${label}: Enter again takes the like back`);
     }
-    // Save: its lists, the focus in them; a list ticked; Escape back.
-    if (await tabTo(page, label, '[data-mark="save"]', { most: 5 })) {
+    // Save: the card's control (web/keep.js, lists2a); its arrow opens your
+    // lists, the focus in them; a box ticked; Escape back on the arrow.
+    if (await tabTo(page, label, "#marks .keep [data-keep-more]", { most: 5 })) {
       await page.keyboard.press("Enter");
-      const opened = await until(page, () => !document.getElementById("save-panel")?.hidden
-        && document.activeElement?.closest("#save-panel"), null, 5000);
+      const opened = await until(page, () => document.querySelector("dialog.keep-panel[open]")
+        && document.activeElement?.closest("dialog.keep-panel"), null, 5000);
       const into = await page.evaluate(focusNow);
-      check(opened, `${label}: Enter on Save opens your lists, the focus in them (${into.said})`);
-      if (opened && into.tag === "input") {
+      check(opened, `${label}: Enter on Save's arrow opens your lists, the focus in them (${into.said})`);
+      if (opened) {
+        await page.evaluate(() => document.querySelector("dialog.keep-panel .keep-row input")?.focus());
         const was = await page.evaluate(() => document.activeElement.checked);
         await page.keyboard.press("Space");
-        await until(page, () => (document.querySelector(".marks-said")?.textContent || "").trim(), null, 5000);
+        await until(page, () => (document.querySelector("dialog.keep-panel .said")?.textContent || "").trim(), null, 5000);
         await settle(page);
-        const kept = await page.evaluate(() => ({ focus: document.activeElement?.closest("#save-panel") ? document.activeElement.tagName : "",
-          checked: document.activeElement?.checked, said: document.querySelector(".marks-said")?.textContent || "" }));
-        check(kept.focus === "INPUT" && kept.checked === !was && /Saved|Out of/.test(kept.said),
-          `${label}: Space ${was ? "unticks" : "ticks"} a list, the focus stays on it, and the page says "${kept.said}"`);
+        const kept = await page.evaluate(() => ({ focus: document.activeElement?.closest("dialog.keep-panel") ? document.activeElement.tagName : "",
+          checked: document.activeElement?.checked, said: document.querySelector("dialog.keep-panel .said")?.textContent || "" }));
+        check(kept.focus === "INPUT" && kept.checked === !was && kept.said.trim().length > 0,
+          `${label}: Space ${was ? "unticks" : "ticks"} Saved, the focus stays on it, and the panel says "${kept.said}"`);
+        // Back as it was, so the next check finds the model as it was.
+        await page.keyboard.press("Space");
+        await settle(page);
       }
       await page.keyboard.press("Escape");
-      const closed = await until(page, () => document.getElementById("save-panel")?.hidden
-        && document.activeElement?.matches('[data-mark="save"]'), null, 3000);
-      check(closed, `${label}: Escape closes the lists, back on Save (${(await page.evaluate(focusNow)).said})`);
+      const closed = await until(page, () => !document.querySelector("dialog.keep-panel[open]")
+        && document.activeElement?.matches("[data-keep-more]"), null, 3000);
+      check(closed, `${label}: Escape closes your lists, back on Save's arrow (${(await page.evaluate(focusNow)).said})`);
     }
     // Share: its sheet (docs/SOCIAL.md U14), by the keyboard alone: Enter
     // opens it on the link, selected; Tab to Copy link and Enter, said by
@@ -310,19 +318,30 @@ const JOURNEYS = {
         && document.activeElement?.matches("#marks [data-share]"), null, 3000);
       check(back, `${label}: Escape closes the sheet, back on Share (${(await page.evaluate(focusNow)).said})`);
     }
-    // A comment, typed and sent.
-    if (await tabTo(page, label, "#comment-body")) {
+    // The Comments tab: Tab reaches the chosen tab (Overview), Right moves
+    // to Comments and chooses it, as a tablist does (web/tabs.js).
+    let commentsOpen = false;
+    if (await tabTo(page, label, '#page-tabs [role="tab"]')) {
+      await page.keyboard.press("ArrowRight");
+      commentsOpen = await until(page, () => document.activeElement?.matches('#page-tabs [data-tab="comments"]')
+        && document.activeElement.getAttribute("aria-selected") === "true" && !document.getElementById("comments")?.hidden, null, 3000);
+      const now = await judgeStop(page, label);
+      const hash = await page.evaluate(() => location.hash);
+      check(commentsOpen && hash === "#comments", `${label}: Right on the tabs chooses Comments, its panel shown, ${hash || "no key"} in the address (${now.said})`);
+    }
+    // A comment, typed and sent: its box is the panel's first, over the list.
+    if (commentsOpen && await tabTo(page, label, "#comment-body")) {
       await page.keyboard.type("The tower's hinge is clever.");
       await tabTo(page, label, 'form.comment-new button[type="submit"]', { most: 3 });
       await page.keyboard.press("Enter");
-      const said = await until(page, () => /Added/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
+      const said = await until(page, () => /Posted/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
       await settle(page);
       const now = await page.evaluate(focusNow);
       check(said && !now.lost, `${label}: a comment sent with Enter: "${await page.evaluate(() => document.querySelector(".comments-said")?.textContent)}", the focus on ${now.said}`);
     }
-    // Reply, back up the page from the comment's box: its box, Escape,
-    // then sent.
-    if (await tabTo(page, label, '.comment-acts button[data-reply]', { most: 30, back: true })) {
+    // Reply, on down the page from the comment's box (the list under it):
+    // its box, Escape, then sent.
+    if (commentsOpen && await tabTo(page, label, '.comment-acts button[data-reply]', { most: 30 })) {
       const reply = await page.evaluate(focusNow);
       check(/^Reply to .+/.test(reply.name) || /^Reply/.test(reply.name), `${label}: a comment's Reply says whose (${reply.said})`);
       await page.keyboard.press("Enter");
@@ -337,10 +356,10 @@ const JOURNEYS = {
       await page.keyboard.type("Thank you!");
       await tabTo(page, label, 'form.reply-new button[type="submit"]', { most: 3 });
       await page.keyboard.press("Enter");
-      const said = await until(page, () => /Replied/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
+      const said = await until(page, () => /Posted/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
       await settle(page);
       const now = await page.evaluate(focusNow);
-      check(said && !now.lost && now.said.length > 0, `${label}: a reply sent with Enter: said "Replied.", the focus on ${now.said}`);
+      check(said && !now.lost && now.said.length > 0, `${label}: a reply sent with Enter: said "Posted.", the focus on ${now.said}`);
     }
     check(!errors.length, `${label}: no script errors (${errors.join("; ") || "none"})`);
     await shot(page, `model_${theme}`);

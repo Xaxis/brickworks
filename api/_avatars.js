@@ -34,6 +34,7 @@ import { db } from "./_db.js";
 import { decodePicture, encodeJpeg, PhotoTrouble, QUALITY, resample, upright } from "./_photo.js";
 import { deleteFiles, getFile, newPhotoId, putFile } from "./_builds.js";
 import { pictureAt } from "./_faces.js";
+import { minifigShape } from "./_card.js";
 
 export const AVATARS = "avatars";
 export const AVATAR_SIDE = 400;
@@ -80,22 +81,43 @@ export async function cleanAvatar(given, declared = "") {
 /// none); ready false before avatars.sql.
 export async function avatarOf(account) {
   try {
-    const row = (await db(`profile_avatars?account=eq.${account}&select=id,at,removed_at`))[0];
-    return { ready: true, id: row && !row.removed_at ? row.id : null, at: row?.at ?? null, removed: Boolean(row?.removed_at) };
+    // Every column (*): the minifigure's recipe is there once
+    // avatar_minifig.sql is, and asking for it by name before then fails.
+    const row = (await db(`profile_avatars?account=eq.${account}&select=*`))[0];
+    const shown = row && !row.removed_at;
+    return { ready: true, id: shown ? row.id : null, at: row?.at ?? null, removed: Boolean(row?.removed_at),
+      minifig: shown ? minifigShape(row.minifig) : null };
   } catch (trouble) {
-    if (notThere(trouble)) return { ready: false, id: null, at: null, removed: false };
+    if (notThere(trouble)) return { ready: false, id: null, at: null, removed: false, minifig: null };
     throw trouble;
   }
 }
 
-/// What [account] is told of their picture: {ready, picture, removed}.
+/// What [account] is told of their picture: {ready, picture, removed,
+/// minifig (the recipe, when the picture is a minifigure they made)}.
 export const avatarSaid = (kept) => ({ ready: kept.ready, picture: kept.id ? pictureAt(kept.id) : null,
-  removed: kept.removed });
+  removed: kept.removed, minifig: kept.id ? kept.minifig ?? null : null });
+
+/// What [account]'s picture was made of, kept beside it: [recipe] for a
+/// minifigure they made, null for a picture of their own. Before
+/// avatar_minifig.sql there is no column for it (PostgREST's 400), and the
+/// picture is kept all the same.
+async function keepRecipe(account, recipe) {
+  try {
+    await db(`profile_avatars?account=eq.${account}`, { method: "PATCH", body: { minifig: recipe } });
+    return true;
+  } catch (trouble) {
+    if (/: 400$/.test(String(trouble?.message || ""))) return false;
+    throw trouble;
+  }
+}
 
 /// A picture kept as [account]'s avatar, in place of the one before.
 /// [check] is the caller's own refusals (a profile, the age rule, the rate
-/// limit), asked once the picture itself is in order.
-export async function keepAvatar(account, base64, type, check) {
+/// limit), asked once the picture itself is in order. [recipe] is what a
+/// minifigure made in the maker was made of (web/card.js minifigShape), the
+/// picture the maker drew of it; null for a picture of their own.
+export async function keepAvatar(account, base64, type, check, recipe = null) {
   const before = await avatarOf(account);
   if (!before.ready) throw new AvatarRefusal(NOT_YET, 503);
   if (typeof base64 !== "string" || !base64) throw new AvatarRefusal("send the picture: {picture: <base64>, type}");
@@ -120,7 +142,9 @@ export async function keepAvatar(account, base64, type, check) {
     await deleteFiles(AVATARS, [`${before.id}.jpg`]).catch((trouble) =>
       console.error(`avatars: the picture before was not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`));
   }
-  return { ready: true, picture: pictureAt(id), removed: false, side: made.side, bytes: made.bytes.length };
+  const kept = await keepRecipe(account, recipe);
+  return { ready: true, picture: pictureAt(id), removed: false, side: made.side, bytes: made.bytes.length,
+    minifig: kept ? recipe : null };
 }
 
 /// [account]'s own picture taken off: its file and its row deleted, and the
@@ -131,7 +155,7 @@ export async function dropAvatar(account) {
   const rows = await db(`profile_avatars?account=eq.${account}&select=id`);
   if (rows.length) await deleteFiles(AVATARS, rows.map((row) => `${row.id}.jpg`));
   await db(`profile_avatars?account=eq.${account}`, { method: "DELETE" });
-  return { ready: true, picture: null, removed: false };
+  return { ready: true, picture: null, removed: false, minifig: null };
 }
 
 /// Picture [id], for whoever may see it: null when it was taken out, its

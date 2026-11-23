@@ -138,7 +138,7 @@ def test_it_is_a_tab_of_the_gallery_beside_top_new_and_collections() -> None:
         tabs = tabs[:tabs.index("</nav>")]
         links = re.findall(r'<a href="([^"]+)"', tabs)
         assert "/builds" in links, page
-        assert links.index("/builds") == links.index("/collections") - 1, page
+        assert links.index("/builds") == links.index("/gallery-lists") - 1, page
 
 
 def card(photo: dict) -> str:
@@ -578,3 +578,18 @@ def test_the_copy_is_served_kept_and_deleted_with_its_photo() -> None:
     assert "await putFile(PHOTOS, cardName(id), made.card.bytes" in builds
     assert builds.count("deleteFiles(PHOTOS, [photoName(id), cardName(id)])") == 2
     assert "${one.id}.card.jpg" in (ROOT / "api/_erase.js").read_text()
+
+
+def test_a_gallery_card_counts_likes_comments_and_remixes_from_0() -> None:
+    """The lead, 2026-11-23: the gallery's icons read as counts missing. Each shows its
+    count, 0 as a quiet 0 (.n.zero), and only where the card is the gallery's (like)."""
+    said = node("""
+import { cardHtml } from "./web/card.js";
+const model = { id: "AbCdEfGh12", name: "Cactus", parts: 37, author: "Brickworks", likes: 3, comments: 0, remixes: 0 };
+console.log(JSON.stringify({ gallery: cardHtml(model, { like: true }), elsewhere: cardHtml(model, {}) }));
+""")
+    social = said["gallery"][said["gallery"].index('<div class="social">'):]
+    assert re.search(r'data-like="AbCdEfGh12"[^>]*>.*?<span class="n" aria-hidden="true">3</span></button>', social)
+    assert social.count('<span class="n zero" aria-hidden="true">0</span>') == 2, "the comments' and the remixes'"
+    assert 'aria-label="Comments on Cactus"' in social, "a screen reader hears no 0"
+    assert "n zero" not in said["elsewhere"]

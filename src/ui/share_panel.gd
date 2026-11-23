@@ -124,6 +124,11 @@ const LICENCES: Array = [
 ]
 
 var account: Account
+## Brings up signing in (Main: Account…), for Sign in… while signed out.
+var sign_in: Callable = Callable()
+## Sign in…, shown while nobody is: Share said "Sign in to Brickworks to
+## share a model" and gave nothing to press (ux13's walk, left 5).
+var _sign_in: Button
 var store: ModelStore
 var shared: SharedModels
 ## What moves in the model as it stands (main.gd: Playable's words, from the
@@ -132,6 +137,16 @@ var moves_of: Callable = Callable()
 ## What the last publish sent of it.
 var moves: PackedStringArray = PackedStringArray()
 var picture: Picture
+## The window's environment and its Sun, Fill and Rim (main's), for the card
+## drawn as a photograph (CardPhoto).
+var look: Environment
+var rig_lights: Array[DirectionalLight3D] = []
+var _card: CardPhoto
+## The last card drawn as a photograph after a publish answered, for a check
+## to read: {id, kind (traced or raster), ms (drawing it), code (the
+## server's answer to op=card), answered_ms (how long after the publish's
+## answer it was put)}; {} while none has been.
+var card_put: Dictionary = {}
 ## The model's name as the bar has it.
 var named: Callable = func() -> String: return "Model"
 
@@ -156,6 +171,10 @@ var _words_for: String = "-"
 var _licence: OptionButton
 var _licence_says: Label
 var _list: CheckBox
+## Whether its page says how it was made (supabase/made_with_shown.sql):
+## off unless ticked, and only for a model made with the assistant or
+## Brickify. Nothing on the site says so otherwise (the owner, 2026-11-23).
+var _say_made: CheckBox
 ## This week's quick build the model is a copy of the template of
 ## (SharedModels.prompt_in), {} for none; its box, shown only then; and
 ## whether the person keeps it in (ticked unless they untick it), for the
@@ -377,6 +396,14 @@ func setup() -> void:
 	_prompt_box.visible = false
 	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
 	form.add_child(_prompt_box)
+	# Off unless ticked: how it was made is the builder's to say. After the
+	# quick build's box, which belongs to List it in the gallery.
+	_say_made = CheckBox.new()
+	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
+	_say_made.focus_mode = Control.FOCUS_NONE
+	_say_made.add_theme_font_size_override("font_size", 12)
+	_say_made.visible = false
+	form.add_child(_say_made)
 	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
 		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
 	_young.visible = false
@@ -441,6 +468,17 @@ func setup() -> void:
 	_enter_said = _line("", 11, 0.75)
 	_enter_said.visible = false
 	column.add_child(_enter_said)
+	_sign_in = Button.new()
+	_sign_in.text = "Sign in"
+	_sign_in.name = "share_sign_in"
+	_sign_in.custom_minimum_size = Vector2(0, 34)
+	_sign_in.focus_mode = Control.FOCUS_NONE
+	_sign_in.tooltip_text = "Sign in or make an account with your email: a link needs one, a look at it does not"
+	_sign_in.visible = false
+	_sign_in.pressed.connect(func() -> void:
+		if sign_in.is_valid():
+			sign_in.call())
+	column.add_child(_sign_in)
 	# Ask the builders: the open step, its question in Talk.
 	var ask_head: Label = _line("Ask the builders", 13, 0.9)
 	ask_head.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -538,7 +576,8 @@ func setup() -> void:
 	_link_box.add_child(_unpublish)
 
 	_done = Button.new()
-	_done.text = "Done"
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_done.text = "Close"
 	_done.custom_minimum_size = Vector2(0, 32)
 	_done.focus_mode = Control.FOCUS_NONE
 	_done.pressed.connect(func() -> void: visible = false)
@@ -715,6 +754,31 @@ func _words_from(row: Dictionary) -> void:
 	_set_licence(str(row["licence"]) if row.get("licence") is String else "cc-by-4.0")
 
 
+## Who laid its parts and whether its page says so, as a publish sends
+## them: made_with when this app knows (ModelStore.made_with), kept for its
+## owner; made_with_shown only where the box is offered, as its owner left
+## it, and nothing public says it otherwise (supabase/made_with_shown.sql).
+func made_fields() -> Dictionary:
+	var said: Dictionary = {}
+	if store.made_with in ModelStore.MADE_WAYS:
+		said["made_with"] = store.made_with
+	if _say_made.visible:
+		said["made_with_shown"] = _say_made.button_pressed
+	return said
+
+
+## The box that says how it was made, for the way this model was made
+## (ModelStore.made_with): with the assistant, or Brickify; none for one
+## built by hand. Unticked on a model with no link; a link's own choice is
+## put in by [method _check_link].
+func _follow_made() -> void:
+	var way: String = store.made_with if store != null else ""
+	_say_made.visible = way == "assistant" or way == "brickify"
+	_say_made.text = "Say it was made with Brickify" if way == "brickify" else "Say it was made with the assistant"
+	if store == null or store.share_id.is_empty():
+		_say_made.button_pressed = false
+
+
 ## The account's profile, by its name, in the box: what a credit is, as
 ## the server keeps it (api/share.js ?op=mine credit). Nothing with no
 ## profile shown in public, and never a name made from the address the
@@ -740,6 +804,12 @@ func open() -> void:
 		return
 	var title: String = str(named.call())
 	_name.text = "" if title == ModelStore.UNTITLED else title
+	# A model never named that is one sub-assembly or figure is called what
+	# it is: a minifigure named Nova, made and stood on the baseplate, was
+	# shared under an empty name, and Publish said "Give the model a name
+	# first" (ux13's walk, p10).
+	if title == ModelStore.UNTITLED and store != null and store.world != null:
+		_name.text = SharePanel.one_assembly(store.world, store.scenery)
 	if state in ["publishing", "unpublishing"]:
 		return
 	_show_link(store.share_id)
@@ -750,6 +820,7 @@ func open() -> void:
 	if fresh:
 		_words_for = which
 		_fresh_words()
+	_follow_made()
 	if store.share_id.is_empty():
 		state = "idle"
 		wip = false
@@ -912,6 +983,8 @@ func _check_link(id: String, words: bool = true) -> void:
 				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
 			_list.disabled = barred
+			# As its link says it: shown only where its owner chose.
+			_say_made.button_pressed = bool((one as Dictionary).get("made_with_shown", false))
 			_follow_age()
 			_status.text = ("Shared at this link. Publish again to update what it shows."
 				if up else "Taken down. Publish again to bring it back at the same link.")
@@ -986,6 +1059,7 @@ func _fill_opens() -> void:
 ## nothing signed in, that sharing waits while the session kept here is
 ## renewed (Account.renewing), and that it needs a sign-in signed out.
 func _waiting_words() -> String:
+	_sign_in.visible = not account.renewing and not account.signed_in() and sign_in.is_valid()
 	if account.renewing:
 		return Account.waiting_words("Publish goes on")
 	return "" if account.signed_in() else "Sign in to Brickworks to share a model."
@@ -994,8 +1068,23 @@ func _waiting_words() -> String:
 ## The account's renewal answered while the panel said it waited on it.
 func _on_account() -> void:
 	if visible and state == "idle" and store.share_id.is_empty() \
-			and _status.text == Account.waiting_words("Publish goes on"):
+			and (_status.text == Account.waiting_words("Publish goes on") or _sign_in.visible):
 		_status.text = _waiting_words()
+
+
+## The name of the one sub-assembly or figure every part of [param world]
+## but the floor ([param scenery]) is in; "" when some part is in none, or
+## they are in more than one.
+static func one_assembly(world: BrickWorld, scenery: Dictionary) -> String:
+	var name: String = ""
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var group: String = Assemblies.group_of(Assemblies.path_of(brick))
+		if group.is_empty() or (not name.is_empty() and group != name):
+			return ""
+		name = group
+	return name
 
 
 ## Publish the model as it stands, at its own link if it has one; [as_wip]
@@ -1020,6 +1109,7 @@ func publish(as_wip: bool = false) -> void:
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_fail("Sign in to Brickworks to share a model.")
+		_sign_in.visible = sign_in.is_valid()
 		return
 	if as_wip and _author.text.strip_edges().is_empty():
 		await _suggest_author()
@@ -1082,10 +1172,7 @@ func publish(as_wip: bool = false) -> void:
 		body["cutout"] = Marshalls.raw_to_base64(pictures["cutout"])
 	if not (pictures["thumb"] as PackedByteArray).is_empty():
 		body["thumb"] = Marshalls.raw_to_base64(pictures["thumb"])
-	# Who laid its parts, when this app knows (ModelStore.made_with): its card
-	# says Hand-built or With the assistant from that, not from its tags.
-	if store.made_with in ModelStore.MADE_WAYS:
-		body["made_with"] = store.made_with
+	body.merge(made_fields())
 	# What its page and the gallery say about it: said every time, so a
 	# box emptied empties it there too.
 	body["description"] = _about.text.strip_edges()
@@ -1126,6 +1213,9 @@ func publish(as_wip: bool = false) -> void:
 		return
 	var said: Dictionary = reply
 	store.share_id = str(said.get("id", ""))
+	# Its card a photograph, drawn now the publish has answered (_card_after):
+	# not waited for.
+	_card_after(token, store.share_id, revision, Time.get_ticks_msec())
 	# Kept with the model, so the next Publish updates this link.
 	store.touch()
 	# What was said stays in the boxes, as the link now has it: the credit
@@ -1400,7 +1490,8 @@ func _fail(words: String) -> void:
 ## own ground in its light theme and its dark one alike, and a WebP four
 ## to three, drawn so, for the cards. {png, cutout, thumb}, each empty when
 ## there is none to be had (a run with nothing to draw with), or when it
-## came out too large to send.
+## came out too large to send. The card goes as the cut-out, and is drawn
+## as a photograph once the publish has answered (_card_after).
 func _pictures() -> Dictionary:
 	var none := {"png": PackedByteArray(), "cutout": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
@@ -1412,16 +1503,57 @@ func _pictures() -> Dictionary:
 	var card: Image = Picture.on_ground(shot)
 	var png: PackedByteArray = _png_under(card)
 	var cutout: PackedByteArray = _png_under(shot)
-	var thumb := PackedByteArray()
-	var framed: Image = await picture.take(THUMB * 2)
-	if framed != null and not framed.is_empty():
-		framed.convert(Image.FORMAT_RGBA8)
-		framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
-		thumb = framed.save_webp_to_buffer(true, 0.8)
-		if thumb.size() > MOST_THUMB:
-			thumb = framed.save_webp_to_buffer(true, 0.55)
-	return {"png": png, "cutout": cutout,
-		"thumb": thumb if thumb.size() <= MOST_THUMB else PackedByteArray()}
+	var thumb: PackedByteArray = _card_bytes(await picture.take(THUMB * 2), false)
+	return {"png": png, "cutout": cutout, "thumb": thumb}
+
+
+## [param framed] at twice the card's size as the card's WebP: opaque when
+## [param photographed], the cut-out's clear ground kept when not. Empty when
+## there is none, or even the smaller one is over the server's limit.
+static func _card_bytes(framed: Image, photographed: bool) -> PackedByteArray:
+	if framed == null or framed.is_empty():
+		return PackedByteArray()
+	framed.convert(Image.FORMAT_RGB8 if photographed else Image.FORMAT_RGBA8)
+	framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
+	var thumb: PackedByteArray = framed.save_webp_to_buffer(true, 0.8)
+	if thumb.size() > MOST_THUMB:
+		thumb = framed.save_webp_to_buffer(true, 0.55)
+	return thumb if thumb.size() <= MOST_THUMB else PackedByteArray()
+
+
+## The card drawn as a photograph of the model (CardPhoto) once the publish
+## has answered, and put on its link in place of the cut-out it went with
+## (api/share.js op=card): a second or two the person does not wait for.
+## Not when the model changed since the publish began (the photograph would
+## be of another model), while another card is being drawn, or where none
+## can be (CardPhoto.possible, a phone); tools/web/card_sweep.mjs draws
+## those later, and a browser's frames-averaged ones again, traced.
+func _card_after(token: String, id: String, revision: int, answered_at: int) -> void:
+	if id.is_empty() or not CardPhoto.possible() or picture == null or picture.world == null \
+			or picture.world.revision != revision:
+		return
+	if _card == null:
+		_card = CardPhoto.new()
+		add_child(_card)
+	elif _card.busy:
+		return
+	_card.world = picture.world
+	_card.library = picture.world.library
+	_card.scenery = picture.scenery
+	_card.eye = picture.camera
+	_card.look = look
+	_card.rig_lights = rig_lights
+	var kind: String = "traced" if CardPhoto.traced() else "raster"
+	var thumb: PackedByteArray = _card_bytes(await _card.take(THUMB * 2), true)
+	# Not put when the model was changed, or published again, while it was drawn.
+	if thumb.is_empty() or picture.world.revision != revision or store.share_id != id:
+		return
+	var answer: Dictionary = await shared.put_card(token, id, Marshalls.raw_to_base64(thumb), kind)
+	card_put = {"id": id, "kind": kind, "ms": roundi(_card.last_ms), "code": int(answer["code"]),
+		"answered_ms": Time.get_ticks_msec() - answered_at}
+	if not int(answer["code"]) in [200, 201]:
+		push_warning("share: the card's photograph was not put on %s: %s" % [id,
+			SharedModels.trouble(answer, "no answer")])
 
 
 ## [param image] as a PNG under the server's limit: smaller if it must be,
@@ -1447,6 +1579,8 @@ func controls_by_name() -> Dictionary:
 		named_controls["share_ask_open"] = _ask_open
 	if _prompt_box.is_visible_in_tree():
 		named_controls["share_prompt"] = _prompt_box
+	if _say_made.is_visible_in_tree():
+		named_controls["share_say_made"] = _say_made
 	if _enter_row.is_visible_in_tree():
 		named_controls["share_enter"] = _enter
 		named_controls["share_way"] = _way
@@ -1479,6 +1613,8 @@ func page_state() -> Dictionary:
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
 		"made_with": store.made_with if store != null else "",
+		"say_made": _say_made.text if _say_made != null and _say_made.visible else "",
+		"made_with_shown": _say_made.button_pressed if _say_made != null else false,
 		"kind": _kind_id() if _kind != null else "",
 		"licence": _licence_id() if _licence != null else "",
 		"note": _note.text if _note != null else "",

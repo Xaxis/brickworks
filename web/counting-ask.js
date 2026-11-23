@@ -36,7 +36,6 @@ const LOOK = `.count-ask { position: fixed; z-index: 55; left: var(--s-4); botto
 .count-ask .row { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
 .count-ask .icon-btn.small { flex: none; border-color: transparent; background: transparent; color: var(--ink-soft); }
 .count-ask .icon-btn.small:hover { background: var(--panel-hi); color: var(--ink); }
-@media (width < 900px) { :root[data-betabar] .count-ask { bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom, 0px)); } }
 @media (width < 600px) { .count-ask { right: 0; left: 0; margin-inline: auto; }
   :root[data-notice] .count-ask { bottom: calc(var(--s-4) + 120px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .count-ask { transition: none; } }`;

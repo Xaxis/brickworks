@@ -791,8 +791,11 @@ Each decided here, with its reason (`brickworks-decide-dont-wait`).
   Notifications with its count, Your feed, Saved, Settings, the theme,
   Sign out), as GitHub's and YouTube's do.
 - **D11. Avatars: a generated one for everybody, a picture for who wants
-  one.** Generated from the handle (a coloured tile and the initial, no
-  figure likeness: the Minifigure is a mark, `docs/TRADEMARKS.md`). An
+  one.** Generated from the handle: since 2026-11-23 (avatarkit, the
+  owner's ask) a minifigure of real LDraw parts picked by the handle, on
+  the handle's colour, which a person may remake in Edit profile's Make a
+  minifig (a person's own figure, never our mark: `docs/TRADEMARKS.md`
+  Decision 3); before it, a coloured tile and the initial. An
   uploaded picture goes through the build-photo pipeline (metadata
   stripped, at most 8 MB, reportable, removable by the owner on /admin),
   13+ as every public thing. A banner is one of their own models'
@@ -1574,8 +1577,12 @@ made-up members.
 ### Decisions
 
 - **Boards, not categories.** Show and tell, Help, Ideas, Challenges and
-  News, as tabs over one list (the site's `.tabs`), "Latest" being every
-  board. News is the house's alone to start; anybody may reply.
+  News, as a row of tiles over one list, each its icon on its own colour,
+  its name and its count (sitebold, 2026-11-23; tabs before), "Latest"
+  being every board. A thread's row leads with the picture of the model it
+  is about, or its challenge's (its cover or top entry), else a
+  challenge's month as a calendar's page, else its board's icon, and ends in the faces of who started it
+  and who replied last, the replies and when. News is the house's alone to start; anybody may reply.
 - **Threads and replies are the comments' own.** The same post markup
   (`.comment`), mentions (@handle, three a post, told only to people of
   the same pool who may be named, never somebody blocked), Report,

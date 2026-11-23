@@ -19,8 +19,9 @@
 //
 //   1. The owner publishes a six-step tower, then version 2 with step 3
 //      changed, and asks to be emailed of comments.
-//   2. The builder, on the model's page: a comment on the model, and one on
-//      step 4 picked from the step list. Each says where ("on version 2",
+//   2. The builder, on the model's Comments tab (each visit below chooses
+//      it): a comment on the model, and one on step 4 picked from the step
+//      list. Each says where ("on version 2",
 //      "on step 4 of version 2"). The owner's email of them is a dry run,
 //      once: the second comment that day waits. One on step 2 of version
 //      1 says it is on an older version, and is on step 2 of version 2
@@ -67,6 +68,7 @@ import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -201,10 +203,15 @@ async function heldDigests(owner) {
   return kept;
 }
 
+/// The model's page on its Comments tab: only the chosen tab's panel shows
+/// (pagekit), and Overview is chosen on open.
+const toComments = (page) => page.click('#page-tabs [data-tab="comments"]');
+
 /// The comments on the model's page, as drawn: each comment and reply in
-/// the page's order (the newest thread first, its replies under it).
+/// the page's order (the newest thread first, its replies under it). Shown:
+/// their tab chosen and the comments listed (.comments-body).
 const drawn = (page) => page.evaluate(() => ({
-  shown: !document.getElementById("comments")?.hidden,
+  shown: !document.getElementById("comments")?.hidden && !document.querySelector("#comments .comments-body")?.hidden,
   items: [...document.querySelectorAll("#comments .comment")].map((li) => {
     const main = li.querySelector(":scope > .comment-main");
     const pill = main?.querySelector(":scope > .comment-head a.pill.step");
@@ -265,6 +272,7 @@ try {
   listen(page, "builder");
   hearTold(page);
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await toComments(page);
   let now = await untilDrawn(page, (d) => d.shown && d.form, "the comment box");
   check(`the comments are on the page with a box to add one (${now.items.length} so far)`, now.items.length === 0 && now.form);
   const options = await page.$$eval("#comment-step option", (all) => all.map((o) => o.textContent));
@@ -329,9 +337,10 @@ try {
   page = await visiting.newPage();
   listen(page, "visitor");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await toComments(page);
   now = await untilDrawn(page, (d) => d.items.length === 4, "the comments for a visitor");
   check(`reads all four, the newest first, with the box shown to them too ("${now.send}")`,
-    now.form && now.send === "Sign in and add it" && !now.why && now.items[0].body === ON_GONE);
+    now.form && now.send === "Post" && !now.why && now.items[0].body === ON_GONE);
   check(`...and may report each (${now.items[1].acts.join(", ")})`, now.items.every((c) => c.acts.includes("Report it")));
   await page.fill("#comment-body", FROM_VISITOR);
   await page.click("#comments form.comment-new button[type=submit]");
@@ -351,6 +360,7 @@ try {
   page = await phonePage.newPage();
   listen(page, "visitor phone");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await toComments(page);
   await untilDrawn(page, (d) => d.items.length === 4, "the comments on a phone");
   check("on a phone, nothing sideways", !(await sideways(page)));
   await page.evaluate(() => document.getElementById("comments").scrollIntoView());
@@ -363,6 +373,7 @@ try {
   page = await child.newPage();
   listen(page, "under 13");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await toComments(page);
   now = await untilDrawn(page, (d) => d.items.length === 4 && d.why, "the comments for an account under 13");
   check(`reads them, with no box, and is told: "${now.why}"`, !now.form && now.why === UNDER_13);
   const refusedYoung = await api("/api/people?op=comment", { method: "POST", token: young.access_token,
@@ -378,6 +389,7 @@ try {
   page = await owning.newPage();
   listen(page, "owner");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await toComments(page);
   now = await untilDrawn(page, (d) => d.items.length === 4 && d.items.every((c) => c.acts.includes("Hide it")), "the owner's view");
   check(`each comment has Hide it for its builder (${now.items[0].acts.join(", ")})`, true);
   const stepComment = () => page.locator("#comments .comment-list > li.comment").filter({ hasText: ON_STEP });
@@ -416,6 +428,7 @@ try {
   page = await reporting.newPage();
   listen(page, "reporter");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await toComments(page);
   now = await untilDrawn(page, (d) => d.items.filter((c) => !c.reply).length === 3, "the comments to report");
   if (repliesOn) {
     check(`a visitor may report a reply too (${now.items.find((c) => c.reply)?.acts.join(", ")})`,
@@ -447,7 +460,7 @@ try {
   const listedRow = page.locator("#comments tr").filter({ hasText: ON_STEP }).filter({ has: ours });
   check("...and the comment is in the admin page's list of comments", (await listedRow.count()) === 1);
   await shot(page, "6_admin_report.png");
-  page.once("dialog", (dialog) => dialog.accept());
+  await answerAsks(page, { times: 1 });
   await reportRow.first().locator("button", { hasText: "Remove the comment" }).click();
   await page.waitForFunction(() => /comment is removed/.test(document.getElementById("reports-note").textContent), null, { timeout: 30000 }).catch(() => {});
   check("Remove the comment: the report leaves the queue",
@@ -497,7 +510,7 @@ async function replies(page, stepComment) {
   const theirs = now.items.find((c) => c.body === REPLY_OWNER);
   const parent = now.items.find((c) => c.body === ON_STEP);
   check(`the owner's reply is under the step comment, marked "${theirs.designer}", with its avatar, said "${now.said}"`,
-    theirs.reply && theirs.under === parent.id && theirs.designer === "Designer" && theirs.avatar && now.said === "Replied."
+    theirs.reply && theirs.under === parent.id && theirs.designer === "Designer" && theirs.avatar && now.said === "Posted."
     && !now.items.some((c) => c.reply && c.acts.includes("Reply")));
   await page.evaluate(() => document.getElementById("comments").scrollIntoView());
   await shot(page, "5a_owner_replied.png");

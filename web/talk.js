@@ -2,15 +2,20 @@
 // does on them. Signed in, a thread is drawn again as they see it (their
 // blocks, their own hidden posts, Edit and Remove on theirs), and they
 // reply, follow, report, block, edit and remove; /talk/new starts a thread.
-// Signed out, everything reads as it is, and Reply asks them to sign in.
+// Signed out, everything reads as it is, and the reply box is there all the
+// same: Post asks them to sign in and then posts what they wrote, here.
+// Replying is the composer's (web/composer.js), as everywhere: in a row of
+// a list too, without leaving the list.
 //
 // Every word somebody typed comes from the server already escaped, in the
 // posts' HTML it draws (api/_talk.js postsHtml); nothing typed is put on
 // the page here but as text.
 import { askToSignIn, call, say, signedIn } from "/account.js";
 import { langAt, number, partSaid, told } from "/card.js";
+import { replyInCard, wireComposer } from "/composer.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
+import { ask, tell as tellOver } from "/kit.js";
 import { start3d } from "/start3d.js";
 
 const root = document.querySelector("[data-talk]");
@@ -142,9 +147,9 @@ const askStart = (() => {
     return null;
   }
 })();
-const ask = { pins: askStart?.pins || [], asked: askStart?.ask?.parts || [], mayPin: false, onPart: null, view: null };
+const question3d = { pins: askStart?.pins || [], asked: askStart?.ask?.parts || [], mayPin: false, onPart: null, view: null };
 // What a check reads (tools/web/askhelp_flow.mjs). Reading only.
-globalThis.brickworksAsk = { state: askStart ? "ready" : "none", onPart: null, pins: ask.pins.length };
+globalThis.brickworksAsk = { state: askStart ? "ready" : "none", onPart: null, pins: question3d.pins.length };
 
 /// The reply box on [part] (the 3D view's, {part, colour, at, turn, name}),
 /// or on none: said over the words, sent with them.
@@ -152,8 +157,8 @@ function onPart(part) {
   const form = $("[data-reply-form]");
   const line = $("[data-on-part]", form);
   if (!form || form.hidden || !line) return;
-  ask.onPart = part ? { part: part.part, colour: part.colour, at: part.at, turn: part.turn } : null;
-  globalThis.brickworksAsk.onPart = ask.onPart;
+  question3d.onPart = part ? { part: part.part, colour: part.colour, at: part.at, turn: part.turn } : null;
+  globalThis.brickworksAsk.onPart = question3d.onPart;
   line.hidden = !part;
   if (!part) return;
   const name = partSaid(part.name || "");
@@ -165,23 +170,23 @@ function onPart(part) {
 function startAsk() {
   const big = $(".talk-ask .picture[data-scene]");
   if (!big || !askStart?.ask?.model) return;
-  ask.view = start3d(big, {
+  question3d.view = start3d(big, {
     // The step seen whole, 8% clear on every side (the view's buttons sit
     // at its edges), before anybody turns it.
     margin: 0.08,
-    pins: () => ask.pins,
-    asked: () => ask.asked,
-    mayPin: () => ask.mayPin,
+    pins: () => question3d.pins,
+    asked: () => question3d.asked,
+    mayPin: () => question3d.mayPin,
     pinWanted: (part) => onPart(part),
     pinWord: () => say("Answer on this part"),
     placed: () => {},
     pinPressed: (id) => {
-      const one = ask.pins.find((pin) => pin.id === id);
+      const one = question3d.pins.find((pin) => pin.id === id);
       return one ? `${one.by ? `${one.by}: ` : ""}${one.said}` : "";
     },
     partName: () => "",
   });
-  root.querySelectorAll("[data-ask-part]").forEach((chip) => chip.addEventListener("click", () => ask.view.open("mouse")));
+  root.querySelectorAll("[data-ask-part]").forEach((chip) => chip.addEventListener("click", () => question3d.view.open("mouse")));
 }
 
 /// The posts as the signed-in reader sees them, and what they may do.
@@ -193,7 +198,7 @@ async function load() {
   mine = new Map((got.body.mine || []).map((one) => [Number(one.id), String(one.body)]));
   $("[data-blocked-some]").hidden = got.body.blocked_some !== true;
   wireActs();
-  const follow = $("[data-follow]");
+  const follow = $("[data-talk-follow]");
   if (follow) {
     follow.hidden = false;
     follow.setAttribute("aria-pressed", String(got.body.thread?.following === true));
@@ -205,10 +210,10 @@ async function load() {
   // An ask's answers on parts as this reader sees them, and whether they
   // may answer on one (Answer on this part in the 3D view's menu).
   if (askStart) {
-    ask.pins = got.body.pins || [];
-    ask.mayPin = got.body.you?.may_write === true;
-    globalThis.brickworksAsk.pins = ask.pins.length;
-    ask.view?.pinsChanged();
+    question3d.pins = got.body.pins || [];
+    question3d.mayPin = got.body.you?.may_write === true;
+    globalThis.brickworksAsk.pins = question3d.pins.length;
+    question3d.view?.pinsChanged();
   }
   if (place) {
     place.hidden = got.body.you?.may_write === true;
@@ -290,9 +295,13 @@ function edit(post) {
 async function remove(post) {
   const id = Number(post.dataset.post);
   const first = post === $("#talk-posts > li");
-  if (!confirm(first ? say("Remove your post? It starts the thread, so the whole thread goes with it.") : say("Remove your post?"))) return;
+  if (!(await ask({ title: say("Remove your post?"), body: first ? say("It starts the thread, so the whole thread goes with it.") : "",
+    yes: say("Remove"), no: say("Cancel"), danger: true }))) return;
   const done = await call(asked("op=talk_change"), { method: "POST", body: { post: id, what: "remove" } });
-  if (done.status !== 200) return alert(told(done.body?.error, say("That did not work just now. Try again in a minute.")));
+  if (done.status !== 200) {
+    return tellOver({ title: say("Your post was not removed"),
+      body: told(done.body?.error, say("That did not work just now. Try again in a minute.")) });
+  }
   if (done.body.thread_removed) {
     location.href = `${langAt()}/talk${TESTS ? "?tests=1" : ""}`;
     return;
@@ -310,14 +319,19 @@ function threadPage() {
     if (!button || !post) return;
     const act = button.dataset.act;
     // An answer's part, in the 3D view: opened, turned to it and lit.
-    if (act === "show-part" && ask.view) {
-      ask.view.showPin(Number(button.dataset.pin), event.detail === 0 ? "key" : "mouse");
+    if (act === "show-part" && question3d.view) {
+      question3d.view.showPin(Number(button.dataset.pin), event.detail === 0 ? "key" : "mouse");
       $(".talk-ask")?.scrollIntoView({ block: "nearest" });
       return;
     }
     if (act === "reply") {
+      // Signed in here and then, the thread drawn as they see it, the box
+      // answering the post: no page left, nothing typed lost.
       if (!signedIn()) {
-        if (await askToSignIn(say("Sign in to reply: we email you a code, no password. Anyone can read Talk."))) location.reload();
+        if (!(await askToSignIn("Sign in to reply: we email you a code, no password. Anyone can read Talk."))) return;
+        await load();
+        const again = document.getElementById(`post-${Number(post.dataset.post)}`);
+        if (again) answer(again);
         return;
       }
       answer(post);
@@ -346,42 +360,49 @@ function threadPage() {
       $("[data-answering]", form).hidden = true;
     });
     $("[data-act='off-part']", form)?.addEventListener("click", () => onPart(null));
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (overInForm(form)) return;
-      const send = $("button[type='submit']", form);
-      send.disabled = true;
-      try {
+    const field = $("textarea", form);
+    wireComposer(form, {
+      field,
+      said: $("[data-said]", form),
+      most: 4000,
+      over: (n) => overSaid(field, n),
+      count: false,
+      signIn: "Sign in to reply: we email you a code, no password. Anyone can read Talk.",
+      ready: async () => {
+        const body = await load();
+        return body?.you?.may_write ? "" : told(body?.you?.why_not, say("That did not go just now. Try again in a minute."));
+      },
+      send: async (text) => {
         const photo = await sendPhoto(form);
-        if (photo === false) return;
-        tell(form, say("Posting…"));
+        if (photo === false) return { ok: false, error: $("[data-said]", form)?.textContent || "" };
         const done = await call(asked("op=talk_reply"), { method: "POST",
-          body: { thread, body: $("textarea", form).value, ...(answering ? { answers: answering } : {}), ...(photo ? { photo } : {}),
-            ...(ask.onPart ? { part: ask.onPart } : {}) } });
-        if (done.status !== 201) return tell(form, told(done.body?.error, say("That did not go just now. Try again in a minute.")));
-        form.reset();
-        form.querySelectorAll("[data-most]").forEach((field) => field.dispatchEvent(new Event("input")));
+          body: { thread, body: text, ...(answering ? { answers: answering } : {}), ...(photo ? { photo } : {}),
+            ...(question3d.onPart ? { part: question3d.onPart } : {}) } });
+        return done.status === 201 ? { ok: true, made: done.body } : { ok: false, error: told(done.body?.error) };
+      },
+      done: async (made) => {
+        const input = $("[data-photo]", form);
+        if (input) input.value = "";
+        field.dispatchEvent(new Event("input"));
+        onPart(null);
         answering = null;
         $("[data-answering]", form).hidden = true;
         $("[data-photo-chosen]", form).hidden = true;
         onPart(null);
         await load();
-        const made = document.getElementById(`post-${Number(done.body.post?.id)}`);
-        made?.scrollIntoView({ block: "center" });
-        tell(form, done.body.mentions?.length ? say("Posted. {names} will hear of it.", { names: done.body.mentions.map((one) => `@${one.handle}`).join(", ") })
+        document.getElementById(`post-${Number(made.post?.id)}`)?.scrollIntoView({ block: "center" });
+        tell(form, made.mentions?.length ? say("Posted. {names} will hear of it.", { names: made.mentions.map((one) => `@${one.handle}`).join(", ") })
           : say("Posted."));
-      } finally {
-        send.disabled = false;
-      }
+      },
     });
   }
-  const follow = $("[data-follow]");
+  const follow = $("[data-talk-follow]");
   follow?.addEventListener("click", async () => {
     const on = follow.getAttribute("aria-pressed") !== "true";
     follow.disabled = true;
     const done = await call(asked("op=talk_follow"), { method: "POST", body: { thread, on } });
     follow.disabled = false;
-    const said = $("[data-follow-said]");
+    const said = $("[data-talk-follow-said]");
     if (done.status !== 200) {
       said.hidden = false;
       said.textContent = told(done.body?.error, say("That did not work just now. Try again in a minute."));
@@ -393,7 +414,14 @@ function threadPage() {
     said.textContent = done.body.following ? say("You will hear of each new post here.") : say("You will not hear of new posts here.");
   });
   if (!signedIn()) {
-    offerSignIn(say("Sign in to reply: we email you a code, no password. Anyone can read Talk."));
+    // The box is everybody's: Post signs them in first (wireComposer).
+    if (form) {
+      form.hidden = false;
+      const place = $("[data-signin]");
+      if (place) place.hidden = true;
+    } else {
+      offerSignIn(say("Sign in to reply: we email you a code, no password. Anyone can read Talk."));
+    }
     return;
   }
   load().then((body) => {
@@ -440,9 +468,18 @@ function newPage() {
 }
 
 // ---------------------------------------------------------------------------
-// A list: the way to start a thread keeps a test's pool.
+// A list: Reply in a row, and the way to start a thread keeps a test's pool.
 
 function listPage() {
+  // Reply in a row: the composer opened under it, the reply shown there
+  // once posted; the thread's own page for a new tab or window.
+  root.addEventListener("click", (event) => {
+    const pressed = event.target instanceof Element ? event.target.closest("a[data-reply-thread]") : null;
+    const row = pressed?.closest(".talk-row");
+    if (!row || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    replyInCard(row, Number(pressed.dataset.replyThread), { opener: pressed, tests: TESTS ? "&tests=1" : "", lang: CODE });
+  });
   if (!TESTS) return;
   for (const link of root.querySelectorAll("a[href*='/talk']")) {
     const url = new URL(link.href, location.href);

@@ -39,7 +39,7 @@ wanted() { [ "${#only[@]}" = 0 ] || [[ " ${only[*]} " == *" $1 "* ]]; }
 facts=$(mktemp -d "${TMPDIR:-/tmp}/package_api.XXXXXX") || exit 1
 trap 'rm -rf "$facts"' EXIT
 tables=()
-if wanted share; then tables=(--parts="$facts/_parts_table.json" --scene="$facts/_scene_table.json"); fi
+if wanted share || wanted together; then tables=(--parts="$facts/_parts_table.json" --scene="$facts/_scene_table.json"); fi
 if ! node tools/web/part_facts.mjs "$facts/_part_facts.json" "${tables[@]}" | sed 's/^/deploy: /' \
     || [ ! -s "$facts/_part_facts.json" ]; then
   echo "deploy FAILED: no part facts for the functions (tools/web/part_facts.mjs)"; exit 1
@@ -123,6 +123,14 @@ for handler in api/*.js; do
   # /challenge?id=N is the challenge page with that challenge's own head
   # (api/_challenges.js challengeHead), so a link to one shows it; and
   # /de/challenge?id=N its copy's (tools/site_lang.py).
+  # The minifigure avatars' layers (web/minifig/256, tools/web/minifig_layers.mjs),
+  # which ?op=avatar&handle= lays into one picture (api/_minifig.js).
+  if [ "$route" = people ]; then
+    if [ ! -d web/minifig/256 ]; then
+      echo "deploy FAILED: no web/minifig/256 for /api/people (tools/web/minifig_layers.mjs)"; exit 1
+    fi
+    mkdir -p "$fn/_minifig" && cp web/minifig/256/*.webp "$fn/_minifig/"
+  fi
   if [ "$route" = people ]; then
     cp web/challenge.html "$fn/_challenge.html"
     for copy in web/*/challenge.html; do
@@ -135,6 +143,12 @@ for handler in api/*.js; do
   if [ "$route" = admin ]; then
     node tools/web/data_facts.mjs "$fn/_data_facts.json" | sed 's/^/deploy: /' \
       || echo "deploy: no data facts for the console (tools/web/data_facts.mjs)"
+  fi
+  # A watched session's parts as the light viewer draws them (buildlive,
+  # api/_parts.js meshRowsOf): read only once a show has parts to tell.
+  if [ "$route" = together ]; then
+    cp "$facts/_parts_table.json" "$fn/_parts_table.json"
+    cp "$facts/_scene_table.json" "$fn/_scene_table.json"
   fi
   if [ "$route" = share ]; then
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
@@ -155,8 +169,10 @@ for handler in api/*.js; do
   # a few seconds, and only rewritten when it would change. And for
   # people's lists (api/_mylists.js, lists1): the sets a person owns and
   # keeps in lists, on their profile and their lists' pages, are the
-  # catalogue's.
-  if [ "$route" = share ] || [ "$route" = people ]; then
+  # catalogue's. And an import the website shows before it is made
+  # (api/collection.js asShown, lists2a) says which of a file's sets the
+  # catalogue has.
+  if [ "$route" = share ] || [ "$route" = people ] || [ "$route" = collection ]; then
     if [ -z "${catalogue_made:-}" ]; then
       if ! python3 tools/set_catalog.py | sed 's/^/deploy: /' || [ ! -f assets/generated/set_catalog.json ]; then
         echo "deploy FAILED: no set catalogue for /api/$route (tools/set_catalog.py)"; exit 1

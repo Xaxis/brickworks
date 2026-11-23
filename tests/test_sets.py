@@ -256,6 +256,7 @@ const lots = [{ count: 48, name: "Slope Brick 31 1 x 2 x 0.667", colour_name: "L
   { count: 12, name: "Plate 1 x 2", colour_name: "Blue" }];
 console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4488-1"), 2]] }),
   explorer: page("10497-1", { lots }), chain: page("853900-1"),
+  other: page("4488-1", { held: { main: null, more: [{ id: "omr-4488-1_B", name: "Millennium Falcon - Mini — B model" }] } }),
   brief: S.starterBrief(S.catalogSet("10497-1"), lots), files: S.sitemapSets(catalog.sets, "https://b.test"),
   de: S.sitemapSets(catalog.sets, "https://b.test", "de") }));""")
     falcon, explorer, chain = said["falcon"], said["explorer"], said["chain"]
@@ -267,14 +268,33 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
         assert not re.search(r"Product|offers|price|cdn\.rebrickable|lego\.com", data[0] + page, re.I)
         assert "LEGO® set" in page
     assert '<link rel="canonical" href="https://brickworks.test/library/set/10179-1">' in falcon
-    # Its LDraw model: Build it in 3D in the app, its page, and both models listed.
-    assert 'href="/app?new=1&amp;library=omr-10179-1" data-build3d' in falcon
+    # Its LDraw model: Build it in the app at its first step, Make your own
+    # version (the model opened as a credited copy: sethub), its page, and
+    # both models listed.
+    assert 'href="/app?new=1&amp;library=omr-10179-1&amp;build" data-build3d' in falcon
+    assert '<a class="cta ghost" href="/app?new=1&amp;library=omr-10179-1" data-version' in falcon
+    assert ">Make your own version</a>" in falcon and ">Build it</a>" in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
+    # Who modelled it heads its credit, by their initial, linked to LDraw's page of it (sitebold).
+    assert re.search(r'<div class="shared-by credit"><span class="avatar [^"]*" aria-hidden="true">R</span><div class="names">'
+                     r'<p class="from modelled-by">Modelled by <b>Roland Dahl</b> for <a href="https://library\.ldraw\.org/omr/sets/\d+">', falcon)
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
+    # In 3D in the page (set3d): its picture the way into the 3D view a
+    # gallery model's page has (web/start3d.js, /viewer3d.js), from its own
+    # scene; a set with no model says it has none, and offers no 3D.
+    assert ('<a class="picture" href="/app?new=1&amp;library=omr-10179-1" aria-label="View Millennium Falcon in 3D" '
+            'data-scene="/library/omr-10179-1/scene.json" data-parts="0">') in falcon
+    assert '<span class="go" aria-hidden="true">View in 3D</span>' in falcon and 'class="no3d"' not in falcon
+    assert '<script src="/model-page.js" type="module"></script>' in falcon
+    assert '<p class="no3d">No 3D model of this set yet</p>' in explorer
+    assert "data-scene" not in explorer and 'class="go"' not in explorer and '<a class="picture"' not in explorer
+    # Only another build of it in LDraw: that is listed under In 3D, and the page never says it has none.
+    assert 'href="/library/omr-4488-1_B"' in said["other"] and 'class="no3d"' not in said["other"]
     assert 'href="/library/set/4488-1">2 × 4488-1 Millennium Falcon - Mini' in falcon
     assert '<a href="/library?theme=Star%20Wars%20%3E%20Ultimate%20Collector%20Series">Ultimate Collector Series</a>' in falcon
     # No model: its picture drawn from its parts, its parts into the app, and a brief to design with them.
     assert 'src="/library/set/10497-1.jpg"' in explorer and "data-build3d" not in explorer
+    assert "data-version" not in explorer
     assert 'href="/app?new=1&amp;parts=10497-1" data-bin' in explorer
     assert "/app?new=1&amp;assistant=on&amp;parts=10497-1&amp;brief=Design%20something%20new" in explorer
     assert 'data-parts="/library/set/10497-1/parts.json"' in explorer and 'id="owned" data-set="10497-1"' in explorer
@@ -379,10 +399,10 @@ console.log(JSON.stringify({ de: de.body, es: es.body, en: en.body, statuses: [d
         assert f'<a class="skip" href="#main">{words[code]["Skip to content"]}</a>' in page
     # What it shows, its words for its scripts left out.
     de, es = (re.sub(r'<script [^>]*id="site-words".*?</script>', "", said[code], flags=re.S) for code in ("de", "es"))
-    assert "<h1>Galaxy Explorer</h1>" in de and words["de"]["Open its parts in Brickworks"] in de
+    assert '<h1 class="obj-title">Galaxy Explorer</h1>' in de and words["de"]["Open its parts in Brickworks"] in de
     assert "Open its parts in Brickworks" not in de and "every part" not in de and "Skip to content" not in es
     # Gear is a word, so said in Spanish; the set's name is a name.
-    assert "<h1>Key Chain Falcon</h1>" in es and f'>{words["es"]["theme\x04Gear"]}</a>' in es
+    assert '<h1 class="obj-title">Key Chain Falcon</h1>' in es and f'>{words["es"]["theme\x04Gear"]}</a>' in es
     assert words["es"]["Rebrickable lists no parts for it: a book, gear or something else that is not built."] in es
     # The English page names the copies and stays its own canonical.
     assert '<html lang="en">' in said["en"] and '<link rel="canonical" href="https://brickworks.test/library/set/10497-1">' in said["en"]

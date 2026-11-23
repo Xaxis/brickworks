@@ -205,7 +205,7 @@ const accountDrawn = (page) => page.evaluate(() => {
 /// The feed as drawn: [{kind, text, href, new}]: each post's words, what
 /// it said, and the link its name is (docs/SOCIAL.md U9).
 const feedDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#rows .feed-row")].map((li) => ({
-  kind: li.dataset.kind, text: [li.querySelector(".what"), li.querySelector(":scope > q")].filter(Boolean)
+  kind: li.dataset.kind, text: [li.querySelector(".what"), li.querySelector(".row-said")].filter(Boolean)
     .map((one) => one.textContent).join(" ").replace(/\s+/g, " ").trim(),
   href: li.querySelector("a.go")?.getAttribute("href") || "", new: li.classList.contains("new") })));
 
@@ -468,10 +468,12 @@ try {
   await bobPage.goto(`${site}/settings`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.settings === "ready", "Bob's /settings");
   const boxes = await bobPage.evaluate(() => ({
-    kinds: [...document.querySelectorAll("#mail-kinds input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`),
+    // The feed's two in its own part, photos and remixes the email column of
+    // their rows in the grid above it (inbox, 2026-11-23): all four, by name.
+    kinds: [...document.querySelectorAll("#email-part input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).sort(),
     shown: !document.getElementById("mail-kinds").hidden, follows: !document.getElementById("follows-choice").hidden }));
   check(`/settings: the feed's kinds ${boxes.kinds.join(" ")}; /profile: a way to the feed (${feed})`, boxes.shown && boxes.follows
-    && boxes.kinds.join(" ") === "models:true versions:true photos:true remixes:false" && feed === "/feed");
+    && boxes.kinds.join(" ") === "models:true photos:true remixes:false versions:true" && feed === "/feed");
   await bobPage.check("#shows-follows");
   await until(bobPage, () => /Shown/.test(document.getElementById("follows-said")?.textContent || ""), "shown");
   await shot(bobPage, "8_profile_choices.png", true);

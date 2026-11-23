@@ -63,14 +63,24 @@ signal dismissed
 ## What it is asked for, in its title ("Sign in to post your build"); empty
 ## for the way into the app, which is up whenever nobody is signed in.
 var purpose: String = ""
-## Asked for [member purpose], and not answered yet.
-var asked: bool = false
+## Asked for [member purpose], and not answered yet ([member asked] is the
+## model a stranger asked for, firstminute's).
+var asking: bool = false
 var _put_off: LinkButton
 
 ## The card's width, before the window has its say.
 const WIDE := 420.0
 
 var account: Account
+## The model a stranger's Open in Brickworks asked for, on the baseplate
+## behind the screen (Main._open_asked), or "": the way in says it is theirs
+## to change once they are in, rather than "start building" over a model
+## they did not choose (firstminute, 2026-11-23).
+var asked: String = "":
+	set(value):
+		asked = value
+		if _title != null:
+			_follow()
 
 var _card: PanelContainer
 var _form: SignInForm
@@ -82,6 +92,8 @@ var _unreachable: VBoxContainer
 var _retry: Button
 var _shown_form: bool = false
 var _title: Label
+## Under the title, the model asked for and what signing in does with it.
+var _asked_line: Label
 var _age: VBoxContainer
 var _months: Array[Button] = []
 var _year: LineEdit
@@ -182,6 +194,10 @@ func setup(with_account: Account) -> void:
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_title)
 
+	_asked_line = _line("", 14, 0.95)
+	_asked_line.visible = false
+	column.add_child(_asked_line)
+
 	_ended = _line("", 12, 1.0)
 	_ended.add_theme_color_override("font_color", Color(1.0, 0.72, 0.45))
 	column.add_child(_ended)
@@ -230,7 +246,7 @@ func setup(with_account: Account) -> void:
 	_put_off.custom_minimum_size = Vector2(0, 36)
 	_put_off.visible = false
 	_put_off.pressed.connect(func() -> void:
-		asked = false
+		asking = false
 		_follow()
 		dismissed.emit())
 	column.add_child(_put_off)
@@ -241,7 +257,7 @@ func setup(with_account: Account) -> void:
 
 ## Up for [member purpose], until the visitor is let in or says Not now.
 func ask() -> void:
-	asked = true
+	asking = true
 	_follow()
 
 
@@ -538,9 +554,9 @@ func _follow() -> void:
 		# Asked for one act: up while asked and not yet let in, and the act
 		# goes on the moment it is.
 		var was: bool = visible
-		visible = asked and needed
-		if asked and not needed and account.signed_in():
-			asked = false
+		visible = asking and needed
+		if asking and not needed and account.signed_in():
+			asking = false
 			if was:
 				let_in.emit.call_deferred()
 	var told: bool = account.refused and state == Account.State.SIGNED_OUT
@@ -548,8 +564,13 @@ func _follow() -> void:
 		"Welcome to Brickworks" if welcoming else (
 		"You are a beta tester" if thanking else (
 		"Accounts are for 13 and over" if told else (
-		purpose if not purpose.is_empty() else "Sign in to start building"))))
+		purpose if not purpose.is_empty() else (
+		"Sign in to make it yours" if not asked.is_empty() and state == Account.State.SIGNED_OUT
+		else "Sign in to start building")))))
 	_put_off.visible = not purpose.is_empty() and not welcoming and not thanking
+	_asked_line.text = "“%s” opens as your own copy, saved in your models, to change as you like." % asked
+	_asked_line.visible = not asked.is_empty() and state == Account.State.SIGNED_OUT and not told \
+		and purpose.is_empty()
 	_beta_mark.visible = welcoming or thanking
 	_welcome.visible = welcoming
 	_thanks.visible = thanking

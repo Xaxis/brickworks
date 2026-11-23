@@ -374,6 +374,50 @@ const TABLES = {
       return String(row.text).length > 3000000 ? "together_snapshot_parts_text_check" : "";
     },
   },
+  // supabase/together_watch.sql (buildlive): a session open to watchers, the
+  // pages watching it, and the file's one function, answered here as it
+  // makes it: a watcher's line (a chat line, an ask, a seat) numbered in the
+  // session's log as together_append numbers a builder's, refused for an
+  // ended session, a show that is closed, or any key but those.
+  together_watch: {
+    key: ["session"],
+    parents: [{ column: "session", table: "together_sessions", on: "id" }],
+    defaults: () => ({ title: "", model: null, opened_at: new Date().toISOString(), closed_at: null, peak: 0, tests: false }),
+    check(row) {
+      if (!/^[A-Za-z0-9]{12}$/.test(String(row.watch))) return "together_watch_watch_check";
+      if (String(row.title).length > 120) return "together_watch_title_check";
+      if (row.model !== null && !/^[A-Za-z0-9]{10}$/.test(String(row.model))) return "together_watch_model_check";
+      return Number.isInteger(row.peak) && row.peak >= 0 ? "" : "together_watch_peak_check";
+    },
+    rpc: {
+      async together_watch_append(real, base, url, init, rows) {
+        const { p_session: id, p_author: author, p_changes: changes } = JSON.parse(String(init.body || "{}"));
+        const keys = changes && typeof changes === "object" && !Array.isArray(changes) ? Object.keys(changes) : [];
+        if (!keys.some((key) => ["~chat", "~ask", "~seat"].includes(key))
+            || keys.some((key) => !["~chat", "~ask", "~seat", "~by", "~key"].includes(key)) || JSON.stringify(changes).length > 2000) {
+          return jsonReply(400, { code: "22023", message: "brickworks: a watcher says a line, asks to build, or is given a seat" });
+        }
+        const session = (held.get("together_sessions") || []).find((one) => one.id === id && !one.ended_at);
+        if (!session) return jsonReply(400, { code: "P0001", message: "brickworks: that session has ended", hint: "together:ended" });
+        if (!rows.some((one) => one.session === id && !one.closed_at)) {
+          return jsonReply(400, { code: "P0001", message: "brickworks: that session is not open to watchers", hint: "together:closed" });
+        }
+        session.last_seq += 1;
+        session.changed_at = new Date().toISOString();
+        (held.get("together_ops") || []).push({ session: id, seq: session.last_seq, author, client: "watching",
+          cid: session.last_seq, changes, at: new Date().toISOString() });
+        return jsonReply(200, session.last_seq);
+      },
+    },
+  },
+  together_watchers: {
+    key: ["session", "viewer"],
+    parents: [{ column: "session", table: "together_sessions", on: "id" }],
+    defaults: () => ({ seen_at: new Date().toISOString() }),
+    check(row) {
+      return /^[0-9a-f]{16}$/.test(String(row.viewer)) ? "" : "together_watchers_viewer_check";
+    },
+  },
   // supabase/plan_consents.sql: what someone agreed to before paying for
   // Pro, kept by its one function, answered here whole, with the table's
   // own refusals (its dry run proves the real ones).
@@ -637,11 +681,14 @@ async function answer(real, base, url, init = {}) {
     const among = /^in\.\((.*)\)$/.exec(said);
     const is = /^is\.(null|true|false)$/.exec(said);
     const above = /^gt\.(-?\d+)$/.exec(said);
+    // gt. a time, as a show's watchers are counted (together_watch.sql).
+    const after = /^gt\.(\d{4}-\d\d-\d\dT[\d:.]+Z)$/.exec(said);
     // gte. and lt. on a time, as social_visits' hour is read: ISO times compare as text.
     const since = /^gte\.(\d{4}-\d\d-\d\dT[\d:.]+Z)$/.exec(said);
     const until = /^lt\.(\d{4}-\d\d-\d\dT[\d:.]+Z)$/.exec(said);
     const there = said === "not.is.null";
     if (above) filters.push((row) => Number(row[column]) > Number(above[1]));
+    else if (after) filters.push((row) => String(row[column] ?? "") > after[1]);
     else if (since) filters.push((row) => String(row[column] ?? "") >= since[1]);
     else if (until) filters.push((row) => row[column] !== null && row[column] !== undefined && String(row[column]) < until[1]);
     else if (there) filters.push((row) => row[column] !== null && row[column] !== undefined);

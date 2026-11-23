@@ -84,14 +84,21 @@ export function line(one) {
   return item;
 }
 
-/// [one] group drawn; [i] its place, the first screen's pictures asked at once.
-export function group(one, i = 0) {
+/// [one] group drawn; [i] its place, the first screen's pictures asked at once;
+/// [acts] (the Notifications page's: Done, and More with Mute) what goes
+/// beside its name, made for it.
+export function group(one, i = 0, { acts = null } = {}) {
   const item = document.createElement("li");
-  item.className = `notice${one.unread ? " unread" : ""}`;
+  // The site's one row (site.css .list-row): the picture, the model and
+  // what happened to it.
+  item.className = `list-row notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
   if (one.achievements) item.dataset.achievements = "";
   if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
   if (one.talk) item.dataset.talk = String(Number(one.talk) || "");
+  // Its key for Done, and its newest row's time, up to which it is done.
+  if (one.key) item.dataset.key = String(one.key);
+  if (one.at) item.dataset.at = String(one.at);
   const told = Number(one.announcement) > 0 || one.announcement === 0;
   const to = told ? outside(one.link) : here(one.link);
   if (told) {
@@ -101,7 +108,7 @@ export function group(one, i = 0) {
     if (!/#announcement-\d+$/.test(String(one.link || ""))) item.dataset.own = to;
   }
   const picture = document.createElement("a");
-  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : told ? "pic announce" : one.talk ? "pic talk" : "pic";
+  picture.className = `row-pic pic${one.achievements ? " award" : one.challenge ? " challenge" : told ? " announce" : one.talk ? " talk" : ""}`;
   picture.href = to;
   picture.tabIndex = -1;
   picture.setAttribute("aria-hidden", "true");
@@ -121,8 +128,9 @@ export function group(one, i = 0) {
   if (told) picture.append(parsed(iconHtml("spark")));
   if (one.talk) picture.append(parsed(iconHtml("comment")));
   const body = document.createElement("div");
-  body.className = "body";
-  const title = document.createElement("h2");
+  body.className = "row-body body";
+  const title = document.createElement("h3");
+  title.className = "row-title";
   const name = document.createElement("a");
   name.href = to;
   name.textContent = String(one.name || say("Your model"));
@@ -140,6 +148,9 @@ export function group(one, i = 0) {
   const lines = document.createElement("ul");
   lines.className = "lines";
   for (const row of one.rows || []) lines.append(line(row));
+  // Its acts (Done, More) at the row's end, the site's .row-act.
+  const made = acts ? acts(one, item) : null;
+  if (made) made.classList.add("row-act");
   body.append(title, lines);
   // A weekly quick build's notice opens the studio on its template.
   if (one.start) {
@@ -150,5 +161,6 @@ export function group(one, i = 0) {
     body.append(start);
   }
   item.append(picture, body);
+  if (made) item.append(made);
   return item;
 }

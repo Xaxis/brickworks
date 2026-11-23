@@ -47,6 +47,509 @@
    "features": [
     "ui:build party"
    ]
+  },
+  {
+   "id": "live-watch",
+   "source": "site",
+   "route": "/live/DocsWatch001",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/together?op=watching": {
+     "w": "DocsWatch001",
+     "title": "Lighthouse keeper's cottage",
+     "model": null,
+     "ended": false,
+     "closed": false,
+     "designer": {
+      "name": "Ada Builds",
+      "handle": "ada-builds"
+     },
+     "seq": 15,
+     "bricks": [
+      [
+       "own00001.1",
+       "3001",
+       15,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        -40,
+        0,
+        -60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.2",
+       "3001",
+       15,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        40,
+        0,
+        -60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.3",
+       "3001",
+       15,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        -40,
+        0,
+        60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.4",
+       "3001",
+       15,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        40,
+        0,
+        60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.5",
+       "3001",
+       15,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        -60,
+        0,
+        0
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.6",
+       "3001",
+       15,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        60,
+        0,
+        0
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.7",
+       "3001",
+       4,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        24,
+        -60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.8",
+       "3001",
+       4,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        24,
+        60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.9",
+       "3001",
+       4,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        -60,
+        24,
+        -40
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.10",
+       "3001",
+       4,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        -60,
+        24,
+        40
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.11",
+       "3001",
+       4,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        60,
+        24,
+        -40
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.12",
+       "3001",
+       4,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        60,
+        24,
+        40
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.13",
+       "3001",
+       15,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        -40,
+        48,
+        -60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.14",
+       "3001",
+       15,
+       [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        40,
+        48,
+        -60
+       ],
+       "",
+       "",
+       0
+      ],
+      [
+       "own00001.15",
+       "3001",
+       15,
+       [
+        0,
+        0,
+        -1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        -60,
+        48,
+        0
+       ],
+       "",
+       "",
+       0
+      ]
+     ],
+     "meshes": {
+      "3001": [
+       "de8677674770cba0ae56",
+       "Brick 2 x 4",
+       -40,
+       -24,
+       -20,
+       40,
+       4,
+       20
+      ]
+     },
+     "colours": {
+      "4": [
+       "Red",
+       "b40000",
+       255
+      ],
+      "15": [
+       "White",
+       "f4f4f4",
+       255
+      ]
+     },
+     "root": "https://uhyhrwhkaqjwifwyzuxl.supabase.co/storage/v1/object/public/parts/",
+     "chat": [
+      {
+       "seq": 9,
+       "who": "5a5a5a5a",
+       "by": "Wren",
+       "text": "Love the red stripe!"
+      },
+      {
+       "seq": 11,
+       "who": "a1a1a1a1",
+       "by": "Ada Builds",
+       "text": "Thanks! The windows go in next."
+      },
+      {
+       "seq": 14,
+       "who": "7c7c7c7c",
+       "by": "Sam",
+       "text": "Will it have a lamp on top?"
+      }
+     ],
+     "asks": [],
+     "seats": [],
+     "people": [
+      {
+       "who": "a1a1a1a1",
+       "name": "Ada Builds",
+       "owner": true
+      },
+      {
+       "who": "5a5a5a5a",
+       "name": "Wren",
+       "owner": false
+      }
+     ],
+     "watchers": 7,
+     "since": "2026-11-23T12:00:00.000Z",
+     "channel": {
+      "url": "wss://127.0.0.1:9/realtime/v1/websocket",
+      "key": "docs",
+      "topic": "live:docs",
+      "event": "show"
+     },
+     "verify": "",
+     "heard_ms": 20000
+    },
+    "/api/together?op=watch_ops": {
+     "w": "DocsWatch001",
+     "ops": [],
+     "meshes": {},
+     "colours": {},
+     "names": {},
+     "seq": 15,
+     "more": false,
+     "watchers": 7,
+     "ended": false,
+     "closed": false
+    }
+   },
+   "wait": "#live-stage[data-parts=\"15\"]",
+   "steps": [
+    {
+     "pause": 1500
+    }
+   ],
+   "crop": "viewport",
+   "alt": "A build being watched at /live/<name>: Building now over its title and its designer, how many watch with Ask to build and Copy link, the model in 3D as it stands, and the chat beside it with who is building.",
+   "caption": "Watching a build: each part lands as it is put down.",
+   "features": [
+    "ui:watching a build live"
+   ]
+  },
+  {
+   "id": "live-listing",
+   "source": "site",
+   "route": "/",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/together?op=live": {
+     "live": [
+      {
+       "watch": "DocsWatch001",
+       "link": "/live/DocsWatch001",
+       "title": "Lighthouse keeper's cottage",
+       "model": null,
+       "designer": {
+        "name": "Ada Builds",
+        "handle": "ada-builds"
+       },
+       "watchers": 7,
+       "since": "2026-11-23T12:00:00.000Z"
+      },
+      {
+       "watch": "DocsWatch002",
+       "link": "/live/DocsWatch002",
+       "title": "Harbour crane",
+       "model": null,
+       "designer": {
+        "name": "Sam",
+        "handle": "sam-bricks"
+       },
+       "watchers": 0,
+       "since": "2026-11-23T12:05:00.000Z"
+      }
+     ]
+    }
+   },
+   "wait": "[data-live-now]:not([hidden]) .live-card",
+   "crop": "[data-live-now]",
+   "pad": 12,
+   "alt": "Building now, first in the home page's feed: a card for each build open to watchers, with Live on it, its title, who is building it and how many watch.",
+   "caption": "Building now, on the home page.",
+   "features": [
+    "ui:building now listed"
+   ]
   }
  ]
 }

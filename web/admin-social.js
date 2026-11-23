@@ -14,7 +14,7 @@
 //
 // Everything is put on the page as text, never as markup: what came in was
 // written by strangers.
-import { $, TESTS, act, adminJson, ago, cell, count, day, emptyRow, link, make, say, segmented, sift, timeCell, when }
+import { $, TESTS, act, adminJson, ago, ask, cell, count, day, emptyRow, link, make, say, segmented, sift, timeCell, when }
   from "/admin-kit.js";
 
 let desk = null;
@@ -115,7 +115,8 @@ function drawNetworks() {
       card.append(make("div", "row",
         act("Check now", () => sync("networks-note")),
         act("Disconnect", async () => {
-          if (!confirm(`Disconnect u/${account.handle}? Its keys are taken back at Reddit and forgotten here; what was sent and what came in are kept.`)) return false;
+          if (!(await ask({ title: `Disconnect u/${account.handle}?`, body: "Its keys are taken back at Reddit and forgotten here; "
+            + "what was sent and what came in are kept.", yes: "Disconnect", danger: true }))) return false;
           try {
             const done = await adminJson({ op: "social_disconnect" }, { method: "POST", body: { provider: one.id } });
             say("networks-note", done.revoked ? "Disconnected: Reddit took its keys back, and they are forgotten here."
@@ -742,8 +743,10 @@ function drawDrafts() {
 }
 
 const drop = (one, note) => act("Drop", async () => {
-  if (!confirm(`Throw away this ${one.kind}? ${one.status === "handed" ? "It was handed to you and is not marked posted; "
-    + "if you did post it on Reddit, it stays there." : "It was never sent."}`)) return false;
+  if (!(await ask({ title: `Throw away this ${one.kind}?`, body: one.status === "handed" ? "It was handed to you and is not "
+    + "marked posted; if you did post it on Reddit, it stays there." : "It was never sent.", yes: "Throw it away", danger: true }))) {
+    return false;
+  }
   try {
     await adminJson({ op: "social_drop" }, { method: "POST", body: { id: one.id } });
     if (editing.id === one.id) startNew();

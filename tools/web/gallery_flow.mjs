@@ -8,9 +8,12 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      386 px of the top, two cards to a row, four cards' names on the
-//      first two screens; at 1280 four
-//      to a row and four whole cards on the first screen, the cards marked
+//      360 px of the top (the week's pick before the month's challenge),
+//      one card to a row (the owner's, 2026-10-29), three cards' names on
+//      the first two screens; at 1280 the week's pick whole across the first
+//      screen, its picture beside its words, and under it the cards four
+//      to a row (the owner's four on a desktop, 2026-10-29), the first row's pictures begun on that screen (sitebold,
+//      2026-11-23: four whole small cards before it), the cards marked
 //      once (no row of marks, none that nearly every card carries, no
 //      card ending in a row that holds only its like); Top the tab shown,
 //      its window All time; nothing scrolls sideways; Today in the
@@ -179,6 +182,19 @@ const drawn = (page) => page.evaluate(() => {
     // Where each card's name ends, down the page, in the order they come.
     names: cards.map((el) => Math.round(el.querySelector(".open b").getBoundingClientRect().bottom + scrollY)).sort((a, b) => a - b),
     whole: boxes.filter((b) => b.top >= 0 && b.bottom <= innerHeight && b.width > 0).length,
+    // The week's pick, a row of its own: whole on the first screen, its
+    // picture left of its words; and where the cards under it begin.
+    pickFeature: (() => {
+      const card = document.querySelector("#pick:not([hidden]) #pick-card .model");
+      if (!card) return null;
+      const box = card.getBoundingClientRect();
+      const frame = card.querySelector(".frame").getBoundingClientRect();
+      const words = card.querySelector(".words").getBoundingClientRect();
+      return { top: Math.round(box.top), bottom: Math.round(box.bottom), width: Math.round(box.width),
+        beside: words.left >= frame.right - 1 && Math.abs(words.top - frame.top) < 2 };
+    })(),
+    cardsBegin: Math.round(Math.min(...cards.filter((el) => !el.closest(".models.scroller, #pick-card"))
+      .map((el) => el.querySelector(".frame").getBoundingClientRect().top))),
     tab,
     tabs: [...document.querySelectorAll("#tabs [data-tab]")].filter((a) => !a.hidden).map((a) => a.dataset.tab),
     window: document.getElementById("window-label").hidden ? null : document.getElementById("window").value,
@@ -221,14 +237,20 @@ try {
       if (width === 390) {
         // 330 until Share yours (bringyours) took the title's row and put
         // the search on its own, 56 px lower: rel-m318's first picture at
-        // 322 px, rel-m319's at 378. The same 8 px over it as before.
-        check(seen.firstPicture <= 386 && seen.columns === 2 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (386 at most), ${seen.columns} to a row, nothing sideways`);
-        check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
-          `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
+        // 322 px, rel-m319's at 378. The month's challenge over the pick put
+        // it at 425 (sitepolish); the pick comes first on a phone now.
+        check(seen.firstPicture <= 360 && seen.columns === 1 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (360 at most), ${seen.columns} to a row, nothing sideways`);
+        // One to a row, a card is half a phone's screen: the pick's name and
+        // two cards' (four at two a row before 2026-11-23).
+        check(seen.names.length >= 3 && seen.names[2] <= 2 * 844,
+          `390 ${theme}: three cards' names on the first two screens, the third's ending at ${seen.names[2]} px (${2 * 844} at most)`);
       } else {
-        check(seen.whole >= 4 && seen.columns === 4 && !seen.sideways,
-          `1280 ${theme}: ${seen.whole} whole cards on the first screen (4 at least), ${seen.columns} to a row, nothing sideways`);
+        const pick = seen.pickFeature;
+        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin < 900 - 60 && !seen.sideways,
+          `1280 ${theme}: the week's pick whole on the first screen (${pick ? `${pick.top} to ${pick.bottom} px, ${pick.width} wide, `
+          + `${pick.beside ? "its words beside its picture" : "its words not beside its picture"}` : "none"}), the cards under it `
+          + `${seen.columns} to a row from ${seen.cardsBegin} px (60 px of them at least on the screen), nothing sideways`);
       }
       const common = Object.entries(seen.markShare).filter(([, share]) => share >= 0.9).map(([mark]) => mark);
       check(seen.markRows <= 1 && !common.length && seen.lonelyLike === 0,

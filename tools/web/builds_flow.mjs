@@ -22,13 +22,14 @@
 //      Next to the last step: the app sends one finish and the model is
 //      built once. Back and Next onto the last step again, and the page
 //      reloaded and the last step reached again, send nothing more and the
-//      count stays at one. The model's page says "I built it, 1 build", its card
-//      too, and Most built puts it ahead of every card built less. A
+//      count stays at one. The model's page's Builds tab counts 1, its card
+//      says 1 built, and Most built puts it ahead of every card built less. A
 //      robot's finish is not counted, nor the same device's twice; the
 //      desktop app's is.
 //   2. A builder (13 or over, with a profile) adds a photo from the model's
-//      page: a JPEG drawn here with Exif in it — GPS, a phone's make, which
-//      way up it was held — and a comment. What comes back from the server
+//      Builds tab (each visit to a photo below opens on it): a JPEG drawn
+//      here with Exif in it — GPS, a phone's make, which way up it was
+//      held — and a comment. What comes back from the server
 //      has none of it, read from its bytes: JFIF and the picture, no Exif,
 //      no comment, no GPS, turned upright as the phone held it. The
 //      original is gone from storage. The photo is in the strip and on the
@@ -60,6 +61,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -455,9 +457,9 @@ try {
   const visitor = await visitorContext.newPage();
   listen(visitor, "visitor");
   await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
-  // The action bar's I built it, its count beside it and in its name.
-  const said = await visitor.evaluate(() => document.querySelector('#marks [data-mark="built"]')?.getAttribute("aria-label") || "");
-  check(`the model's page says "${said}"`, said === "I built it, 1 build");
+  // The Builds tab's count (pagekit: the action bar's I built it went).
+  const said = await visitor.evaluate(() => document.querySelector('#page-tabs [data-tab="builds"] .n')?.textContent || "");
+  check(`the model's page's Builds tab counts "${said}"`, said === "1");
   // When each card was listed, from the list the page drew it from (a card
   // does not say): Most built ties by it, newest first.
   const answers = [];
@@ -566,7 +568,7 @@ try {
   const youngContext = await context({ as: young });
   const child = await youngContext.newPage();
   listen(child, "young");
-  await child.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await child.goto(`${site}/m/${id}#builds`, { waitUntil: "load" });
   await until(child, () => document.documentElement.dataset.buildPhotos, "the builds section", 60);
   await child.click("[data-add-build]");
   await child.setInputFiles('.build-form input[type="file"]', photoFile);
@@ -586,7 +588,7 @@ try {
   const desk2 = await ownerContext.newPage();
   listen(desk2, "owner");
   await fresh(async () => {
-    await desk2.goto(`${site}/m/${id}`, { waitUntil: "load" });
+    await desk2.goto(`${site}/m/${id}#builds`, { waitUntil: "load" });
     await until(desk2, () => document.documentElement.dataset.buildPhotos === "owner", "the owner's tools", 60);
     return desk2.evaluate((one) => Boolean(document.querySelector(`[data-hide="${one}"]`)), photo);
   });
@@ -616,7 +618,7 @@ try {
   // --- 5. reported, and taken out -----------------------------------------------------
   console.log("reported, and taken out by the site's owner");
   await fresh(async () => {
-    await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
+    await visitor.goto(`${site}/m/${id}#builds`, { waitUntil: "load" });
     return visitor.evaluate((one) => Boolean(document.querySelector(`[data-report-photo="${one}"]`)), photo);
   });
   await visitor.click(`[data-report-photo="${photo}"]`);
@@ -634,7 +636,7 @@ try {
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   const desk3 = await admin.newPage();
   listen(desk3, "admin");
-  desk3.on("dialog", (dialog) => dialog.accept());
+  await answerAsks(desk3);
   await desk3.goto(`${site}/admin#gallery/reported`, { waitUntil: "load" });
   const row = await until(desk3, (one) => {
     const tr = document.querySelector(`#reports tr[data-photo="${one}"]`);

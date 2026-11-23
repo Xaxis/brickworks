@@ -212,7 +212,9 @@ const MODELS = [
     updated_at: "2026-10-16T07:00:00Z", description: "Six-wheeled, with a turntable mast and working suspension." }),
   model({ id: "SamModel01", owner: SAM, name: "Harbour Tram", author: "Sam Okafor", parts: 340, steps: 14,
     kind: "vehicle", tags: ["tram", "train", "town"], listed_at: "2026-09-12T10:00:00Z",
-    updated_at: "2026-09-12T10:00:00Z", description: "A two-car harbour tram with a pantograph." }),
+    updated_at: "2026-09-12T10:00:00Z", description: "A two-car harbour tram with a pantograph.",
+    // Laid with the assistant, as its app said, and not shown (made_with_shown.sql).
+    made_with: "assistant", made_with_shown: false }),
   model({ id: "SamModel02", owner: SAM, name: "Corner Bakery", author: null, parts: 610, steps: 22, kind: "town",
     tags: ["town", "modular"], listed: false, updated_at: "2026-10-08T10:00:00Z" }),
 ];
@@ -251,7 +253,10 @@ for (const [at, [name, kind, parts]] of [["Wizard's Tower", "castle", 9541], ["S
   ["Space Shuttle", "space", 1320], ["Steam Train", "vehicle", 760]].entries()) {
   MODELS.push(model({ id: `HouseMod0${at + 1}`, owner: HOUSE, name, author: "Brickworks", parts, steps: 12 + at, kind,
     tags: ["ai-designed"], test: true, listed_at: `2026-10-1${at}T10:00:00Z`, updated_at: `2026-10-1${at}T10:00:00Z`,
-    description: "Designed with the assistant." }));
+    description: "One of the studio's own models.",
+    // The second's owner chose to say how it was made (made_with_shown.sql);
+    // the rest say nothing of it.
+    made_with_shown: at === 1 }));
 }
 for (let at = 1; at <= 60; at++) {
   const day = new Date(Date.UTC(2025, 10, 2) + at * 7 * 864e5).toISOString();
@@ -446,27 +451,26 @@ export function applied(yes) {
 let LIVE = false;
 const LIVE_MODELS = [
   ["o3dLMc5A3Z", "A sports car, and its driver", "vehicle", ["car", "racing", "minifigure"], 187, 5, "2026-10-13T13:37:34Z",
-    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate. Designed by Claude."],
+    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate."],
   ["cGHqpHnEFZ", "A small modular corner shop", "town", ["modular", "shop", "street", "minifigures"], 774, 57, "2026-10-13T13:37:37Z",
-    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof. Designed by Claude."],
+    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof."],
   ["B6FhDpMowd", "A three-core heavy-lift rocket", "space", ["rocket", "launch pad", "minifigure"], 350, 9, "2026-10-13T13:37:39Z",
-    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it. Designed by Claude."],
+    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it."],
   ["uoRqCfPWYJ", "A barn owl", "nature", ["owl", "bird", "sculpture"], 1037, 3, "2026-10-13T13:37:41Z",
-    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes. Designed by Claude."],
+    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes."],
   ["kfpYMjke5U", "A castle, from one sentence", "castle", ["castle", "medieval", "moat"], 2438, 72, "2026-10-13T13:37:44Z",
-    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat. Claude designed it from a single sentence."],
+    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat."],
   ["EzEXhtXE2C", "Wizard's Tower", "castle", ["tower", "wizard", "minifigures", "display"], 9541, 1324, "2026-10-13T13:37:46Z",
-    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside. Claude designed it from one paragraph."],
+    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside."],
   ["8eb6GRvnSV", "Orrery of the Sun and eight planets", "mechanism", ["orrery", "gears", "planets", "crank"], 494, 27, "2026-10-14T06:27:39Z",
-    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own. A Claude session built it in Brickworks."],
+    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own."],
 ].map(([id, name, kind, tags, parts, steps, at, description]) => model({ id, owner: HOUSE, name, author: "Brickworks", parts, steps,
   // house.sql's step 2: ai-designed on the end of each one's tags.
   kind, tags: [...tags, "ai-designed"], listed_at: at, updated_at: at, description }));
 const LIVE_IDS = new Set(LIVE_MODELS.map((one) => one.id));
 // What supabase/house.sql gives the house: its words, the castle across
 // the top, three pinned; and each of the seven tagged ai-designed.
-const HOUSE_SAYS = { bio: "The Brickworks studio's own account. Every model here was designed with the assistant, "
-  + "Claude working in the app, and each one's description says how. Open one to build it step by step, or remix it as your own.",
+const HOUSE_SAYS = { bio: "The Brickworks studio's own account: its own models, and the collection From the LDraw library, real sets as LDraw's builders modelled them, each credited to them. Open one to build it step by step.",
 banner: "kfpYMjke5U", pins: ["EzEXhtXE2C", "8eb6GRvnSV", "cGHqpHnEFZ"] };
 export function liveCommunity(yes) {
   LIVE = Boolean(yes);
@@ -639,7 +643,8 @@ function card(m) {
     steps: m.steps, own_steps: m.own_steps, technic: m.technic, views, likes, builds,
     remixes: remixesOf(m.id).length, by: m.author !== null && owner ? { handle: owner.handle, name: owner.name } : null,
     tested: TESTED.has(m.id), ...(APPLIED ? { comments: commentsOn(m.id) } : {}),
-    ...(m.made_with !== undefined ? { made_with: m.made_with } : {}) };
+    ...(m.made_with !== undefined ? { made_with: m.made_with } : {}),
+    ...(m.made_with_shown !== undefined ? { made_with_shown: m.made_with_shown } : {}) };
 }
 
 /// How many comments a visitor may read on [id]'s page (gallery_tabs.sql
@@ -648,9 +653,10 @@ const commentsOn = (id) => COMMENTS.filter((one) => one.model === id && !one.rem
   && !ADMIN.barred.some((barred) => barred.account === one.author)).length;
 
 /// How a model was made: as its app said (made_with.sql), else as its tags
-/// say (web/card.js madeOf).
-const madeOf = (m) => (m.made_with ? (m.made_with === "hand" ? "hand" : "assistant")
-  : (m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify") ? "assistant" : "hand");
+/// say (web/card.js madeOf); with the assistant only where its owner chose
+/// to say so (made_with_shown.sql), by hand every other.
+const madeOf = (m) => (m.made_with_shown === true && (m.made_with ? m.made_with !== "hand"
+  : (m.tags || []).some((tag) => tag === "ai-designed" || tag === "brickify")) ? "assistant" : "hand");
 
 /// directory_model: a model's page, with the line it came from and its listed remixes.
 function modelPage(id) {
@@ -940,6 +946,18 @@ const BASES = [
     title: "A river tower, with its water gate", author: "Mira Holm", licence: "CC BY 4.0" },
 ];
 
+// Talk's threads (supabase/talk.sql talk_threads_of), newest first.
+const TALK_THREADS = [
+  { id: 41, board: "show", title: "Riverside Watchtower, my first castle", said: "Built it over a weekend: the gate opens and the drawbridge folds.",
+    by: { name: "Robin Castell", handle: HANDLE }, at: "2026-11-20T10:00:00Z", replies: 3, last_at: "2026-11-21T09:00:00Z",
+    last_by: { name: "Sam Ortiz", handle: "sam-builds" }, model: { id: MODEL_ID, name: "Riverside Watchtower", has_image: true, has_thumb: true, updated_at: "2026-10-01T00:00:00Z" } },
+  { id: 40, board: "help", title: "How do I hinge a roof at 45 degrees?", said: "Every hinge I try leaves a gap at the ridge.",
+    by: { name: "Sam Ortiz", handle: "sam-builds" }, at: "2026-11-19T10:00:00Z", replies: 1, last_at: "2026-11-19T12:00:00Z",
+    last_by: { name: "Robin Castell", handle: HANDLE } },
+  { id: 39, board: "ideas", title: "A train that runs on the gallery's tracks", said: "",
+    by: { name: "Robin Castell", handle: HANDLE }, at: "2026-11-18T10:00:00Z", replies: 0, last_at: "2026-11-18T10:00:00Z" },
+];
+
 // The functions the handlers call (rpc/<name>), each with what it was sent.
 const RPC = {
   // supabase/model_bases.sql
@@ -1011,6 +1029,12 @@ const RPC = {
   may_list: () => true,
   count_view: () => true,
   gallery_pick: () => ({ pick: null, chosen: false, until: null, week: PICK.week, card: card(modelOf(PICK.model)) }),
+  // supabase/talk.sql: Talk's boards, a page of threads (Show and tell's
+  // about the stand-in's model, with its picture), and what is said under
+  // the models (listkit: Talk's pages drawn here, for layout_audit.mjs).
+  talk_threads_of: ({ p_board }) => ({ more: true, threads: TALK_THREADS.filter((one) => !p_board || one.board === p_board) }),
+  talk_board_counts: () => ({ show: 2, help: 1, ideas: 1, challenges: 0, news: 0 }),
+  talk_talking: () => [],
   // Last month's winner (CHALLENGES_LISTED), on its card and its designer's page.
   challenge_wins: ({ owner, models }) => (owner === ROBIN || (models || []).includes(MODEL_ID)
     ? [{ challenge: 2, title: "Castle September", ends_on: "2026-09-30", way: "hand", model: MODEL_ID,
@@ -1114,6 +1138,21 @@ function rest(where, init) {
     const visitor = !new Headers(init.headers || {}).get("authorization");
     const rows = table().filter((row) => !(visitor && path === "shared_models" && !row.published));
     return reply(200, chosen(rows, where.searchParams));
+  }
+  // Its owner's choice of whether its page says how it was made
+  // (supabase/made_with_shown.sql): kept, so the page and the gallery say it
+  // after (made_shown_flow.mjs).
+  if (method === "PATCH" && path === "shared_models") {
+    let body = {};
+    try {
+      body = JSON.parse(init.body || "{}");
+    } catch {
+      body = {};
+    }
+    const id = /^eq\.(.+)$/.exec(where.searchParams.get("id") || "")?.[1];
+    if (Object.keys(body).join() === "made_with_shown" && id) {
+      for (const row of MODELS.filter((one) => one.id === id)) row.made_with_shown = body.made_with_shown === true;
+    }
   }
   // What a remix changed: kept, by its model, as the table keeps it.
   if (path === "remix_changes" && method === "POST") {
@@ -1230,6 +1269,10 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // Talk's lists and the page to start a thread (api/_talk.js), as deploy.sh routes them.
+  [/^\/talk\/?$/, "people", "talk_page"],
+  [/^\/talk\/b\/(show|help|ideas|challenges|news)\/?$/, "people", "talk_board"],
+  [/^\/talk\/new\/?$/, "people", "talk_new"],
   // A challenge's link (/challenge?id=N), its head the challenge's own.
   [/^\/challenge\/?$/, "people", "challenge_page"],
   [/^\/(de|fr|es)\/challenge\/?$/, "people", "challenge_page_lang"],
@@ -1282,6 +1325,9 @@ function routeOf(pathname) {
     if (op === "embed_lang") return { name, query: { op: "embed", id: found[2], lang: found[1] } };
     if (op === "page_lang") return { name, query: { op: "page", handle: found[2], lang: found[1] } };
     if (op === "list_page_lang") return { name, query: { op: "list_page", id: found[2], lang: found[1] } };
+    if (op === "talk_page") return { name, query: { op } };
+    if (op === "talk_board") return { name, query: { op: "talk_page", board: found[1] } };
+    if (op === "talk_new") return { name, query: { op: "talk_page", new: "1" } };
     if (op === "challenge_page") return { name, query: { op } };
     if (op === "challenge_page_lang") return { name, query: { op: "challenge_page", lang: found[1] } };
     if (op === "set_lang") return { name, query: { op: "set", id: found[2], lang: found[1] } };
@@ -1723,8 +1769,8 @@ function people(method, params, body, who, state) {
     // what they saved.
     if (op === "lists" || op === "keeps") {
       const mine = LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at")).map(({ models, owner, ...list }) =>
-        ({ ...list, description: list.description || null, kind: null, sort: "added", cover: null, down: false, sets: 0,
-          models: models.length, count: models.length }));
+        ({ ...list, description: list.description || null, visibility: list.public ? "public" : "private", link: null, kind: null,
+          sort: "added", cover: null, down: false, sets: 0, models: models.length, count: models.length }));
       if (op === "lists") {
         return answer(200, { lists: mine, owned: { sets: 0, unique: 0, pieces: 0, shown: false },
           saved: { models: FAVOURITES.filter(([account]) => account === ME).length }, profile: { handle: personOf(ME).handle } });
@@ -2743,6 +2789,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
     if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u|c)|sitemaps)\//.test(url.pathname)
       || /^\/oembed\/?$|^\/sitemap[.]xml$/.test(url.pathname)
+      || /^\/talk(?:\/(?:new|b\/[a-z]+))?\/?$/.test(url.pathname)
       || (/^\/((?:de|fr|es)\/)?challenge\/?$/.test(url.pathname) && /^[1-9][0-9]{0,15}$/.test(url.searchParams.get("id") || ""))) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the

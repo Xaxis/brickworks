@@ -91,14 +91,17 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow">Yours</p>
-			<h1>Your lists</h1>
-			<p class="lede">The sets you own and want, the models you saved, and lists of your own. Keep anything with one tap from its card or its page; show off what you choose.</p>
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Your lists</h1>
+					<p class="lede">The sets you own and want, the models you saved, and lists of your own.</p>
+				</div>
+			</div>
 		</div>
 	</div>
 	<div class="wrap page-body lists-page">
 
-		<section id="signed-out" hidden>
+		<section class="gate" id="signed-out" hidden>
 			<p class="lede">Sign in to keep the sets you own and want, the models you save and lists of your own. We email you a code: no password.</p>
 			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
 		</section>
@@ -132,6 +135,7 @@
 					</div>
 					<div class="actions" id="view-actions">
 						<button class="cta ghost small" type="button" id="share" hidden>Share</button>
+						<button class="cta ghost small" type="button" id="unshare" hidden>Stop sharing</button>
 						<button class="cta ghost small" type="button" id="edit" hidden>Edit list</button>
 						<button class="cta ghost small" type="button" id="import" hidden>Add sets</button>
 						<button class="cta ghost small" type="button" id="download">Download CSV</button>
@@ -201,7 +205,7 @@
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenges</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

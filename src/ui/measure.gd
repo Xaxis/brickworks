@@ -54,6 +54,8 @@ var world: BrickWorld
 var library: PartLibrary
 ## Where the words go, over the 3D: a Label the HUD owns.
 var label: Label
+## The status line, given each measurement made (Main: the bar's say).
+var say_line: Callable
 
 var active: bool = false
 var _from: Variant = null       ## Vector3, or null before the first click
@@ -165,6 +167,11 @@ func click(at: Vector2, finger: bool = false) -> void:
 		_to = point["at"]
 		_to_end = point["end"]
 		_fixed = true
+		# The status line too: it went on saying "click two points" under a
+		# measurement made, and a screen reader reads the line, not the
+		# label over the model (ux14's walk, p12).
+		if say_line.is_valid():
+			say_line.call(words())
 	_draw()
 
 

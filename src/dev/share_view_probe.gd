@@ -215,10 +215,13 @@ func _run() -> void:
 		and view.controls_by_name().has("view_remixed_from"),
 		"...and what it was remixed from, a line that opens that link (%s)" % bar_said["about"])
 	var bar: ModelBar = _main.get("_bar")
-	_ok(not bar.visible and not shell.toolbar.visible
+	# The header stays, as in every mode (appchrome, AppHeader): the mark,
+	# Menu and Account, its menus and the model's name put away.
+	_ok(bar.is_visible_in_tree() and bar.plain and not bar.menus.visible
+		and not shell.toolbar.visible
 		and not (_main.get("_bin_dock") as Control).visible
 		and not (_main.get("_chat_dock") as Control).visible,
-		"the builder's bar, toolbar, parts bin and assistant are gone")
+		"the builder's menus, toolbar, parts bin and assistant are gone, the header kept plain")
 	_ok(steps.is_playing_back() and steps.timeline_at().x == steps.timeline_at().y,
 		"the timeline is up, at the finished model (%s)" % steps.timeline_at())
 	_save("1_viewer.png")

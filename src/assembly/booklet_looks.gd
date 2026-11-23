@@ -833,6 +833,70 @@ static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionar
 	return out
 
 
+## How many steps of [param looks] (BrickWorld.step_looks) have a look of
+## their own a person set: a name, notes, a page, a zoom, arrows. Not where a
+## section starts, nor what a step is seen from (a ROTSTEP turn), which
+## follow the steps themselves ([method mark_sections], [method
+## _turns_follow]). Shell's Plan steps counts them before and after.
+static func own_count(looks: Dictionary) -> int:
+	var count: int = 0
+	for name: String in looks:
+		if _own_of(name, looks[name]).is_empty():
+			continue
+		count += 1
+	return count
+
+
+## The look at [param name] without what follows the steps of itself (a
+## section's start, a turn), or {} for the booklet's, a sub-model's for
+## all its copies, or none.
+static func _own_of(name: String, look: Variant) -> Dictionary:
+	var tail: String = name.get_slice("|", 1)
+	if name == BOOKLET or name == DATA or not tail.is_valid_int() or not look is Dictionary:
+		return {}
+	var own: Dictionary = (look as Dictionary).duplicate(true)
+	for field: String in ["section", "turn", "how", "line"]:
+		own.erase(field)
+	return own
+
+
+## After Plan steps gave the model the worked-out steps (AuthorSteps.cleared,
+## then adopt_plan, which marks where the plan's sections start): each step's
+## own look from before on the step most of its parts went to, as a step edit
+## carries looks ([method follow]): [param was] the looks before, [param
+## before] what each item was in then ([method items_by_step]). Its turn, the
+## view it was seen from, goes with its parts as a step edit's does; a
+## section starts where the plan's does, as the steps are the plan's. Where
+## two come to share a step, the first's name and page stand and both keep
+## their notes. Returns the undo.
+static func carried(world: BrickWorld, was: Dictionary, before: Dictionary,
+		skip: Dictionary = {}) -> Array:
+	var planned: Dictionary = world.step_looks.duplicate(true)
+	var own: Dictionary = {}
+	for name: String in was:
+		if name == BOOKLET or name == DATA or not name.get_slice("|", 1).is_valid_int() \
+				or not was[name] is Dictionary:
+			continue
+		var look: Dictionary = (was[name] as Dictionary).duplicate(true)
+		look.erase("section")
+		if not look.is_empty():
+			own[name] = look
+	if own.is_empty():
+		return []
+	world.step_looks = own
+	follow(world, before, skip)
+	var moved: Dictionary = world.step_looks.duplicate(true)
+	for name: String in planned:
+		if not name.get_slice("|", 1).is_valid_int():
+			moved[name] = planned[name]
+		elif (planned[name] as Dictionary).has("section"):
+			var look: Dictionary = moved.get(name, {})
+			look["section"] = planned[name]["section"]
+			moved[name] = look
+	world.step_looks = moved
+	return [{"undo": "steplooks", "looks": planned}]
+
+
 ## Whether any step has a look of its own: not the booklet's, nor a
 ## sub-model's for all its copies.
 static func any_step_look(world: BrickWorld) -> bool:

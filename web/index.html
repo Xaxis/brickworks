@@ -12,9 +12,10 @@
   a hover or a tap, and how it was made, each a link to that feature's docs.
   Signed out, one band over it says what Brickworks is, with the search and
   Start building; a post in the stream opens the studio itself in the feed
-  on a tap. Signed in, Share a build and the tabs For you, Following and
-  New. Under the feed: the beta while it is open, the studio (the app's
-  picture and five things a build needs), and one last offer. No title or
+  on a tap. Signed in, the same search with Share a build beside it, and
+  the tabs For you, Following and New. Under the feed: the beta while it
+  is open, the studio (the app's picture and five things a build needs),
+  and one last offer. No title or
   first screen calls it AI. Every claim is something the app does today
   (.claude/skills/verify/features/web.md, docs-site/).
 
@@ -77,26 +78,95 @@
 /* The first screen (homefeed, 2026-11-23; docs/SOCIAL.md section 11): the
    feed. Signed out, one band over it says what Brickworks is in a line,
    with the search and Start building; signed in (<html data-signed>,
-   web/theme.js, before the first frame) the band gives way to Share a
-   build and the feed's tabs, For you, Following and New. Laid out so a
-   phone's first post starts within 600 px and a laptop's first row of
-   pictures is in its first screen. */
-.home-band { padding: clamp(20px, 3vw, 40px) 0 var(--s-4); }
-:root[data-signed="in"] .home-band { display: none; }
+   web/theme.js, before the first frame) the band is the search alone with
+   Share a build beside it, over the feed's tabs, For you, Following and
+   New. Laid out so a phone's first post starts within 600 px and a
+   laptop's first row of pictures is whole in its first screen, above the
+   beta bar. */
+.home-band { padding: clamp(16px, 2vw, 24px) 0 var(--s-7); }
+/* The words on the left and the mark in bricks beside them from 900 px,
+   large (up to 400 px, rising into the header's shadow), its line on the
+   mark's own baseline; under that a compact band
+   over the words, the mark at 45% of the width with its line beside it
+   (hero3d, 2026-11-23). Both keep the band short enough that a laptop's
+   first screen shows at least 60% of each first-row picture of the feed
+   and a phone's shows its first picture begun (tools/web/landing_check.mjs).
+   The yellow's light behind the mark. */
+.home-hero { display: grid; gap: var(--s-3); align-items: center; }
+.hero-mark { margin: 0; min-width: 0; display: flex; align-items: flex-end; gap: var(--s-3); }
+@media (width < 900px) { .hero-mark { order: -1; } }
+@media (width >= 900px) {
+	.home-band { padding: 16px 0 var(--s-7); background-image: radial-gradient(26% 85% at 82% 48%, rgba(242, 205, 55, 0.18), transparent 72%), var(--studs); }
+	.home-hero { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-6); }
+	/* Up 47 px under the header (the stage's empty top: the bricks begin
+	   9 px under the header's edge; the header, over it, keeps its own
+	   clicks): the mark as large as it can be with the band no taller. */
+	.hero-mark { position: relative; flex-direction: column; align-items: center; gap: 0; margin: -47px 0 0; }
+}
+/* The mark: its poster in the HTML, its size given, so the page is whole
+   at its first paint and nothing moves when the 3D takes the poster's
+   place (web/landing.js, web/viewer3d.js hero3d); the poster is the same
+   drawing at the same shape. */
+.hero-stage {
+	position: relative; flex: none; width: 45%; aspect-ratio: 460 / 414; border-radius: var(--r-3);
+	touch-action: pan-y; -webkit-tap-highlight-color: transparent; outline-offset: 2px;
+}
+/* From 900 px as tall as the window leaves it, 400 px at most: the band's
+   foot and the feed's head keep the page's rhythm (homefix, 2026-11-23,
+   the owner: "you fucked up the consistent spacing above 'What builders
+   are making'"; its line sat on the band's edge and the heading on the
+   line) and a laptop's 800 px still shows the first row of builds. */
+@media (width >= 900px) {
+	.hero-stage { width: auto; height: clamp(280px, 100vh - 500px, 400px); }
+	/* Its focus ring round the mark and its line, from the header's edge
+	   down (the stage's top is under the header). */
+	@supports selector(:has(a)) {
+		.hero-stage:focus-visible { outline: none; }
+		.hero-mark:has(> .hero-stage:focus-visible)::after {
+			content: ""; position: absolute; inset: 31px 0 0; border-radius: var(--r-3);
+			box-shadow: inset 0 0 0 3px var(--focus); pointer-events: none;
+		}
+	}
+}
+.hero-stage img, .hero-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-stage img { object-fit: contain; }
+.hero-canvas { opacity: 0; transition: opacity 0.35s ease; }
+.hero-stage.live { cursor: grab; }
+.hero-stage.held { cursor: grabbing; }
+.hero-stage.live .hero-canvas { opacity: 1; }
+.hero-stage.live .hero-poster { opacity: 0; transition: opacity 0.3s ease 0.1s; }
+/* While it assembles, what crosses the picture's top fades in, so no brick
+   appears in mid-air (tools/viewer/hero.js). */
+.hero-stage.assembling .hero-canvas { -webkit-mask-image: linear-gradient(transparent, #000 7%); mask-image: linear-gradient(transparent, #000 7%); }
+/* Its line, naming it a build: what it is, and the way into the studio
+   with it. A word a row beside the phone's mark; on a laptop one line on
+   the mark's baseline, in the stage's empty foot under the bricks, so it
+   takes no row of its own. */
+.hero-credit { display: flex; flex-direction: column; gap: 2px; margin: 0; padding-bottom: var(--s-2); color: var(--ink-soft); font-size: var(--t-small); line-height: 1.4; }
+.hero-credit a { color: var(--ink); font-weight: 600; }
+.hero-credit .hero-sep { display: none; margin-inline: 0.45em; color: var(--ink-faint); }
+@media (width >= 900px) {
+	.hero-credit { position: relative; flex-direction: row; gap: 0; margin-top: -19px; padding: 0; white-space: nowrap; }
+	.hero-credit .hero-sep { display: inline; }
+}
 /* The line at --t-h1, a page title's size. */
 .home-words h1 {
 	margin: 0 0 var(--s-2); max-width: 22ch; font-size: var(--t-h1); line-height: 1.02; letter-spacing: -0.04em; font-weight: 760;
 	text-wrap: balance;
 }
 .home-words .lede { margin: 0 0 var(--s-4); max-width: 60ch; }
+/* A laptop's band: the line and the sentence each one line, so the feed's
+   first row of pictures is whole on the first screen, over the beta bar. */
+@media (width >= 900px) { .home-words h1, .home-words .lede { max-width: none; } }
 /* The search and Start building in a row, the search taking what is left;
    on a phone one over the other, each the whole width. Both at the 44 px
    every field and button is (docs/DESIGN_SYSTEM.md). */
 .home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
 .find { position: relative; flex: 1 1 320px; min-width: 0; }
 .home-acts > .cta { flex: none; }
+.home-acts > .mine { display: none; }
 @media (width < 600px) {
-	.home-acts > .cta { flex: 1 1 100%; justify-content: center; }
+	.home-acts > .start { flex: 1 1 100%; justify-content: center; }
 	.find .search .hint { display: none; }
 	.find .search input { padding-right: 12px; }
 	.home-words .note { display: none; }
@@ -121,13 +191,38 @@
 .find-list [role="option"] small { margin-left: auto; padding-left: var(--s-3); color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; }
 .find-list .all { color: var(--ink-soft); font-size: var(--t-small); }
 
-/* The feed: its head (signed in, Share a build and the tabs), then the
-   stream, a column on a phone, two from 700 px, three from 1100 and four
-   from 1560; the studio to try two columns wide where there are two. */
-.home-feed { padding: 0 0 var(--section); }
-:root[data-signed="in"] .home-feed { padding-top: clamp(16px, 3vw, 32px); }
-.feed-you { display: none; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin: 0 0 var(--s-4); }
-:root[data-signed="in"] .feed-you { display: flex; }
+/* Signed in (homefix, 2026-11-23, the owner: "for logged in users on the
+   landing page why dont you have a elegant consistent inline search bar
+   for them?!"), the band is its row alone: the same search, the field
+   and its suggestions, taking what is left of the row, and Share a build
+   and Share a file beside it where Start building was; on a phone the
+   search the whole width over them. No line, mark or ground: the feed's
+   tabs under it. The heading is kept for a screen reader. */
+:root[data-signed="in"] .home-band { padding: clamp(16px, 3vw, 32px) 0 0; background: none; }
+:root[data-signed="in"] .home-hero { display: block; }
+:root[data-signed="in"] .hero-mark, :root[data-signed="in"] .home-words .lede,
+:root[data-signed="in"] .home-words .note, :root[data-signed="in"] .home-acts > .start { display: none; }
+:root[data-signed="in"] .home-words h1 {
+	position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+:root[data-signed="in"] .home-acts { max-width: none; align-items: center; }
+:root[data-signed="in"] .home-acts > .mine { display: inline-flex; }
+@media (width < 600px) { :root[data-signed="in"] .find { flex-basis: 100%; } }
+
+/* The feed: its head (signed in, the tabs), then the stream, a column on
+   a phone, two from 700 px, three from 1100 and four from 1560; the
+   studio to try two columns wide where there are two. Signed out, its
+   head as far under the band's line as the band's foot is over it, as an
+   inner page's body is under its head (site.css .page-hero, .page-body). */
+.home-feed { padding: var(--s-7) 0 var(--section); }
+:root[data-signed="in"] .home-feed { padding-top: var(--s-5); border-top: 0; }
+/* A phone's: the same rhythm a step down (--s-5 each side of the line),
+   and the mark from the header's edge (its poster's own top is its room),
+   so its first post still starts within 600 px (homefeed_check.mjs). */
+@media (width < 600px) {
+	.home-band { padding-top: 0; padding-bottom: var(--s-5); }
+	.home-feed { padding-top: var(--s-5); }
+}
 .feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-4); border-bottom: 1px solid var(--line); }
 .feed-head h2 { margin: 0; padding: 0 0 10px; font-size: var(--t-h2); line-height: 1.25; font-weight: 650; }
 .feed-head .tabs { display: none; margin: 0 0 -1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
@@ -188,6 +283,7 @@
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/landing.js" type="module"></script>
+<script src="/live-now.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -230,10 +326,11 @@
 	<!-- The band over the feed, signed out (homefeed, 2026-11-23): what
 	     Brickworks is in a line, a search over models, builders and sets
 	     (web/home-find.js, asked for once the field is used) and Start
-	     building, which opens the studio. Signed in it gives way to Share a
-	     build and the feed's tabs (<html data-signed>, web/theme.js). -->
+	     building, which opens the studio. Signed in, the search alone with
+	     Share a build and Share a file beside it (.mine), over the feed's
+	     tabs (<html data-signed>, web/theme.js; homefix, 2026-11-23). -->
 	<section class="home-band halo" id="home" aria-labelledby="hero-h">
-		<div class="wrap wide">
+		<div class="wrap wide home-hero">
 			<div class="home-words">
 				<h1 id="hero-h">Build, share and find <em>LEGO® models</em></h1>
 				<p class="lede">A free CAD in your browser. Every build here was made in it: open one, change it, build it.</p>
@@ -251,10 +348,29 @@
 						</label>
 						<div class="find-list" id="find-list" role="listbox" aria-label="What the search finds" hidden></div>
 					</form>
-					<a class="cta" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta start" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta mine" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost mine" href="/share-model">Share a file from another program</a>
 				</div>
 				<p class="note">Free, with nothing to install. <a href="/compare">How it compares with Studio</a></p>
 			</div>
+			<!-- Our mark built in LEGO® bricks (hero3d, 2026-11-23;
+			     tools/web/hero_mark.mjs, web/hero/): its poster, drawn by the
+			     same code as its 3D (tools/web/hero_poster.mjs), until
+			     web/landing.js lets the 3D take its place, once the page is
+			     drawn, the hero is in view and the browser is idle, on a
+			     device that draws it smoothly. Open it in the studio is the
+			     gallery's Open of it (tools/web/home_shelf.mjs writes its
+			     link at the deploy), else the app's own example. -->
+			<figure class="hero-mark" id="hero-mark">
+				<div class="hero-stage" id="hero-stage" data-scene="/hero/mark.json" tabindex="0" role="application"
+					aria-roledescription="3D view" aria-label="The Brickworks mark, built in LEGO® bricks">
+					<img class="hero-poster" src="/img/hero/mark-444.webp" srcset="/img/hero/mark-222.webp 222w, /img/hero/mark-444.webp 444w, /img/hero/mark-888.webp 888w"
+						sizes="(min-width: 900px) 444px, 45vw" width="444" height="400" fetchpriority="high" decoding="async"
+						alt="The Brickworks mark built in LEGO® bricks: a cube of yellow, red and blue bricks with one corner cut away, the cut’s faces a shade darker">
+				</div>
+				<figcaption class="hero-credit">Built in Brickworks<span class="hero-sep" aria-hidden="true">·</span><span id="hero-pieces">189 pieces</span><span class="hero-sep" aria-hidden="true">·</span><a id="hero-open" href="/app?model=res://models/brickworks_mark.ldr">Open it in the studio</a></figcaption>
+			</figure>
 		</div>
 	</section>
 
@@ -271,10 +387,6 @@
 	     New. The skeletons are what a checkout's own page shows until then. -->
 	<section class="home-feed" id="feed" aria-labelledby="feed-h">
 		<div class="wrap wide">
-			<div class="feed-you">
-				<a class="cta" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
-				<a class="cta ghost" href="/share-model">Share a file from another program</a>
-			</div>
 			<div class="feed-head">
 				<h2 id="feed-h">What builders are making</h2>
 				<div class="tabs" role="tablist" aria-label="The feed" id="feed-tabs">
@@ -284,6 +396,9 @@
 				</div>
 				<a id="feed-all" href="/gallery">See the gallery</a>
 			</div>
+			<!-- Building now (web/live-now.js, buildlive): builds open to
+			     watchers this moment, first; nothing while there are none. -->
+			<div class="live-now" data-live-now hidden></div>
 			<div class="stream" id="stream" data-stream="skeleton" aria-busy="false"><!--feed-->
 				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
 				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
@@ -445,7 +560,7 @@
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenges</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

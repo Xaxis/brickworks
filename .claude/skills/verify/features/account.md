@@ -478,6 +478,15 @@ they have. A Claude connector belongs to the account that switched it on.
   published; Clear and a model begun empty make it "hand" again. Proved by
   `made_with_probe` (headless, the app as it opens, a session's real call)
   and `share_view_probe` (the three pictures and what is sent; red on base).
+  **Whether its page says so** (2026-11-23, the owner): nothing public says
+  how a model was made until its owner chooses (`supabase/made_with_shown.sql`).
+  For a model made with the assistant or Brickify, Share has one box after
+  List it in the gallery (and the quick build's box under it), unticked, `share_say_made`: **Say it was made
+  with the assistant** (or **with Brickify**); none for a hand-built one.
+  `SharePanel.made_fields` sends `made_with` and, where the box is offered,
+  `made_with_shown` as it is left; a link's own choice is put in from
+  `?op=mine` (`made_with_shown`, read where the column is). `made_with_probe`
+  checks the box for each way, unticked, and what is sent ticked and not.
   **Who modelled it** (gallery261, 2026-10-25): a model the Library opened,
   somebody else's from LDraw's Official Model Repository, is published with
   its credit in it (`0 !BRICKWORKS CREDIT {by, licence, page, from}`,
@@ -1082,7 +1091,11 @@ behind it, an address that is not one held back, Email me a code moving on (the
 deployment really sends it, to a Resend test address), a wrong code refused, the
 minted code signing in, the session kept in the browser, a reload still signed
 in, `/admin` refusing the account, Account then Sign out bringing the
-screen back with the session gone, and no security-policy refusals. `--master`
+screen back with the session gone, and no security-policy refusals; then the
+throwaway shares a model with a clip and a list shared by its link alone
+(opening by the link, 200) and deletes its account: the clip gone from
+storage, the list's row gone from `model_collections` and its link a 404
+(lists2a). `--master`
 also signs the owner's account in (no email sent) and checks the admin page
 lists the accounts.
 

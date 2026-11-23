@@ -45,8 +45,31 @@ import { askToSignIn, call, signedIn } from "/account.js";
 import { brokenSaid, counted, iconHtml, langAt, modelCard, mosaicHtml, number, rulesSaid, say, told } from "/card.js";
 import { PAGE_SIZE, pageAsked, pager } from "/pager.js";
 import { openShare, sheetFor } from "/share-sheet.js";
+import { startTabs } from "/tabs.js";
 
 const $ = (id) => document.getElementById(id);
+
+// Its parts as tabs (pagekit, web/tabs.js): each tab shown once a part of
+// its panel is (the winners and the entries, how it works and what comes
+// next, the past ones), as what follows shows and hides those parts. The
+// tabs and their panels come in only with their first tab (the page has
+// them hidden): shown empty while the challenge was asked for, they were
+// pushed down the page as its head came in, 0.25 of the screen moved at
+// 1280 (checkdrift, 2026-11-23).
+const partTabs = startTabs($("page-tabs"));
+const panels = document.querySelector("main .obj-panels");
+function syncTabs() {
+  let any = false;
+  for (const tab of document.querySelectorAll('#page-tabs [role="tab"]')) {
+    const panel = $(tab.getAttribute("aria-controls"));
+    const empty = ![...(panel?.children || [])].some((one) => one.matches("section") && !one.hidden);
+    if (tab.hidden !== empty) tab.hidden = empty;
+    any ||= !empty;
+  }
+  if (panels && panels.hidden === any) panels.hidden = !any;
+  partTabs?.refresh();
+}
+if (panels) new MutationObserver(syncTabs).observe(panels, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
 const root = document.documentElement;
 const ID = /^[A-Za-z0-9]{10}$/;
 const WAYS = ["hand", "assistant"];

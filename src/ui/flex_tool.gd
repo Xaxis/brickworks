@@ -1,4 +1,4 @@
-## Make, Hose, tube or chain…: laying a flexible part by hand.
+## Make, Cable, hose or chain…: laying a flexible part by hand.
 ##
 ## BrickLink Studio's flex tools, the way a person uses them: choose what
 ## to lay and how long a part it is, click the connector it starts on and
@@ -355,7 +355,12 @@ func _connector_words() -> String:
 	for one: Variant in takes:
 		words.append({"pin_hole": "pin hole", "axle_hole": "axle hole", "pin": "pin",
 			"axle": "axle", "clip": "clip or hollow stud", "stud": "stud",
-			"nozzle": "pneumatic outlet"}.get(str(one), str(one)))
+			"nozzle": "pneumatic outlet",
+			# A cable's ends in a builder's words: "Click the outlet or contacts
+			# it starts on" named no part a Technic builder wiring a motor knew
+			# to click (ux12).
+			"outlet": "motor's cable outlet", "contacts": "contacts of a box or hub"}.get(str(one),
+				str(one)))
 	if words.size() <= 1:
 		return "".join(words)
 	return ", ".join(words.slice(0, words.size() - 1)) + " or " + words[words.size() - 1]
@@ -1444,7 +1449,7 @@ func _build_panel() -> void:
 	column.add_theme_constant_override("separation", 7)
 	panel.add_child(column)
 	var title := Label.new()
-	title.text = "Hose, tube or chain"
+	title.text = "Cable, hose or chain"
 	title.add_theme_font_size_override("font_size", 14)
 	column.add_child(title)
 	# What to lay, every choice in sight as a button: a list that has to be

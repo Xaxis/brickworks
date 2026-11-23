@@ -1,8 +1,9 @@
-// The gallery's Collections tab (walk256 W12, supabase/collection_directory.sql;
+// The gallery's Lists tab (walk256 W12, supabase/collection_directory.sql;
 // a tab of the gallery since browse, 2026-11-02: web/collections.js, from
-// /api/people?op=collections), in real browsers at 390 and 1280 px, light
-// and dark: /collections lists the public collections as the gallery's
-// cards, each with its cover, its name, whose, how many models and Follow.
+// /api/people?op=collections; Collections at /collections until lists2a),
+// in real browsers at 390 and 1280 px, light and dark: /gallery-lists lists
+// the public lists as the gallery's cards, each with its cover, its name,
+// whose, how many models and Follow.
 //
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR
 //   node --env-file=.env tools/web/relay_server.mjs 9310 --static=web &
@@ -15,7 +16,7 @@
 //
 //   1. Ada makes a profile, shares a tower in the gallery and puts it in a
 //      public collection and in a private one.
-//   2. A visitor: /collections?tests=1 opens on the Collections tab, with
+//   2. A visitor: /gallery-lists?tests=1 opens on the Lists tab, with
 //      her public one as a card (its cover a picture of the tower, its name,
 //      Ada and her avatar, 1 model, Follow), and never the private one; the
 //      list with no tests has no test account's; the gallery's tabs and the
@@ -26,6 +27,11 @@
 //   4. At 390 and 1280 px, light and dark: the tab, its orders and its
 //      cards, nothing sideways.
 //   5. Made private: gone from the directory.
+//   6. Every old address lands (lists2a): /collections in each of its
+//      forms and languages, its query kept, answers 301 to /gallery-lists;
+//      /docs/collections goes to /docs/lists; and every link to /collections
+//      found on the site's own pages and the docs (crawled from the sitemap
+//      and /docs) lands on the Lists page too.
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
@@ -160,17 +166,17 @@ try {
     && put.status === 200 && putHidden.status === 200);
 
   // --- 2. A visitor ------------------------------------------------------------
-  console.log("a visitor's /collections");
+  console.log("a visitor's /gallery-lists");
   {
     const visitor = await context();
     const page = await visitor.newPage();
     listen(page, "visitor");
-    const opened = await page.goto(`${site}/collections?tests=1`, { waitUntil: "load" });
+    const opened = await page.goto(`${site}/gallery-lists?tests=1`, { waitUntil: "load" });
     await listed(page);
     const seen = await drawn(page);
     const card = seen.cards.find((one) => one.id === listId);
-    check(`/collections?tests=1 ${opened.status()}: the ${seen.tab} tab, ${seen.marked} marked, orders ${seen.orders.join(" · ")}, `
-      + `${seen.cards.length} cards`, opened.status() === 200 && seen.tab === "collections" && seen.marked === "Collections"
+    check(`/gallery-lists?tests=1 ${opened.status()}: the ${seen.tab} tab, ${seen.marked} marked, orders ${seen.orders.join(" · ")}, `
+      + `${seen.cards.length} cards`, opened.status() === 200 && seen.tab === "collections" && seen.marked === "Lists"
       && seen.orders.length === 2 && seen.orders[0].endsWith("*"));
     check(`her public one is a card: "${card?.name}", ${card?.who}, "${card?.numbers}", ${card?.pictures.length} picture`
       + `${card?.avatar ? ", her avatar" : ""}, its name a link to ${card?.link}`, Boolean(card) && card.name === LIST
@@ -194,10 +200,10 @@ try {
     check(`the list with no tests ${plain.status}: ${plainIds.includes(listId) ? "lists a test account's" : "no test account's"}`
       + `, ${plainIds.length} listed`, plain.status === 200 && plain.body.ready === true && !plainIds.includes(listId));
     const gallery = await page.goto(`${site}/gallery`, { waitUntil: "load" });
-    const link = await page.evaluate(() => document.querySelector('#tabs a[href="/collections"]')?.textContent || "");
-    const foot = await page.evaluate(() => Boolean(document.querySelector('.site-foot a[href="/collections"]')));
+    const link = await page.evaluate(() => document.querySelector('#tabs a[href="/gallery-lists"]')?.textContent || "");
+    const foot = await page.evaluate(() => Boolean(document.querySelector('.site-foot a[href="/gallery-lists"]')));
     check(`the gallery (${gallery.status()}) links to it: "${link}" among its tabs, and the footer${foot ? "" : " does not"}`,
-      link === "Collections" && foot);
+      link === "Lists" && foot);
     await visitor.close();
   }
 
@@ -207,7 +213,7 @@ try {
     const made = await context({ as: bob, width: 390, height: 844, dark: true });
     const page = await made.newPage();
     listen(page, "Bob");
-    await page.goto(`${site}/collections?tests=1`, { waitUntil: "load" });
+    await page.goto(`${site}/gallery-lists?tests=1`, { waitUntil: "load" });
     await listed(page);
     const button = `#models [data-id="${listId}"] button[data-follow-list]`;
     await until(page, (at) => document.querySelector(at) && !document.querySelector(at).hidden, "Follow for Bob", 30, button);
@@ -247,7 +253,7 @@ try {
       const made = await context({ as: bob, width, height, dark });
       const page = await made.newPage();
       listen(page, `${width} ${dark ? "dark" : "light"}`);
-      const opened = await page.goto(`${site}/collections?tests=1`, { waitUntil: "load" });
+      const opened = await page.goto(`${site}/gallery-lists?tests=1`, { waitUntil: "load" });
       await listed(page);
       await page.waitForTimeout(1200);
       const seen = await drawn(page);
@@ -267,6 +273,67 @@ try {
   const afterIds = (after.body.collections || []).map((one) => one.id);
   check(`made private (${shut.status}): ${afterIds.includes(listId) ? "still listed" : "gone from the directory"}`,
     shut.status === 200 && after.status === 200 && after.body.ready === true && !afterIds.includes(listId));
+
+  // --- 6. Every old address lands on Lists (lists2a) ------------------------------
+  console.log("every /collections address, and every link to one on the site and the docs, lands on Lists");
+  const hop = (where) => fetch(new URL(where, site), { headers, redirect: "manual" });
+  /// Where [where] ends up, following at most four redirects: its status
+  /// and address, the first hop's status, and whether it is the Lists page.
+  const landing = async (where) => {
+    let at = new URL(where, site).href;
+    let first = 0;
+    for (let hops = 0; hops < 5; hops++) {
+      const reply = await hop(at);
+      first ||= reply.status;
+      const next = reply.headers.get("location");
+      if (reply.status >= 300 && reply.status < 400 && next) {
+        at = new URL(next, at).href;
+        continue;
+      }
+      const text = await reply.text();
+      const url = new URL(at);
+      return { first, status: reply.status, path: url.pathname, query: url.search, lists: /data-tab="collections"/.test(text)
+        && /<link rel="canonical" href="https:\/\/brickworks\.diy(\/(de|fr|es))?\/gallery-lists"/.test(text), docs: /\/docs\/lists/.test(url.pathname) };
+    }
+    return { first, status: 0, path: "", query: "", lists: false, docs: false };
+  };
+  const OLD = [["/collections", "/gallery-lists", ""], ["/collections/", "/gallery-lists", ""], ["/collections.html", "/gallery-lists", ""],
+    ["/collections?tests=1&sort=followed&q=tower", "/gallery-lists", "?tests=1&sort=followed&q=tower"],
+    ["/de/collections", "/de/gallery-lists", ""], ["/fr/collections?sort=followed", "/fr/gallery-lists", "?sort=followed"],
+    ["/es/collections.html", "/es/gallery-lists", ""]];
+  for (const [from, to, query] of OLD) {
+    const said = await landing(from);
+    check(`${from}: ${said.first}, then ${said.status} at ${said.path}${said.query}`, said.first === 301 && said.status === 200
+      && said.path === to && said.query === query && said.lists);
+  }
+  const docsMoved = await landing("/docs/collections");
+  check(`/docs/collections: ${docsMoved.first}, then ${docsMoved.status} at ${docsMoved.path}`, docsMoved.first >= 301
+    && docsMoved.first <= 308 && docsMoved.status === 200 && docsMoved.docs);
+  // The crawl: the site's own pages (its sitemap's, not each model's or
+  // person's) and every docs page, every link on them to /collections.
+  const map = await (await fetch(`${site}/sitemap.xml`, { headers })).text();
+  const own = [...map.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname)
+    .filter((where) => !/^\/(m|u|c|library\/set)\//.test(where));
+  const docsIndex = await (await fetch(`${site}/docs/search.json`, { headers })).json().catch(() => []);
+  const docs = [...new Set((Array.isArray(docsIndex) ? docsIndex : docsIndex.pages || [])
+    .map((one) => String(one.u || "").split("#")[0]).filter((one) => one.startsWith("/docs")))];
+  const crawled = [...new Set([...own, ...docs, "/docs"])];
+  const found = new Set();
+  for (const where of crawled) {
+    const reply = await fetch(new URL(where, site), { headers });
+    const text = reply.ok ? await reply.text() : "";
+    for (const m of text.matchAll(/href="([^"]*\/collections(?:[.?#/][^"]*)?)"/g)) {
+      if (!/^\/|^https:\/\/brickworks\.diy\//.test(m[1])) continue;
+      found.add(m[1].replace(/^https:\/\/brickworks\.diy/, "").replace(/&amp;/g, "&"));
+    }
+  }
+  let landed = 0;
+  for (const where of found) {
+    const said = await landing(where);
+    if (check(`a link to ${where} on the site lands: ${said.status} at ${said.path}`, said.status === 200 && (said.lists || said.docs))) landed += 1;
+  }
+  check(`crawled ${crawled.length} pages (${own.length} of the site's, ${docs.length} of the docs): ${found.size} links to /collections, `
+    + `${landed} landing on Lists`, own.length >= 10 && docs.length >= 10 && landed === found.size);
 } catch (trouble) {
   failed += 1;
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);

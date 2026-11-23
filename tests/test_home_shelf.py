@@ -115,8 +115,10 @@ def test_talk_once_applied_is_in_the_first_screen_with_its_latest_reply():
     posts = feed(page)
     post = re.search(r'<article class="post talk" data-kind="talk" data-thread="7".*?</article>', posts, re.S).group(0)
     assert '<a href="/talk/t/7/my-lighthouse">My lighthouse, with a light that turns</a>' in post
-    assert "The gears are lovely." in post and "<b>Bea</b>" in post
-    assert 'href="/talk/t/7/my-lighthouse#reply"' in post
+    # The latest reply as a said line, its writer a link to them; Reply
+    # opens the composer in the post, the thread's box its address.
+    assert "The gears are lovely." in post and '<a class="who" href="/u/bea-bricks">Bea</a>' in post
+    assert 'href="/talk/t/7/my-lighthouse#reply" data-reply-thread="7"' in post
 
 
 def test_words_typed_never_become_the_page():
@@ -159,3 +161,30 @@ def test_an_open_challenge_is_written_with_its_days_in_french():
     assert '<h3 class="post-title" id="challenge-h" lang="en">Microscale</h3>' in page
     assert '<p id="challenge-brief" lang="en">Small &amp; mighty.</p>' in page
     assert '<p class="note" id="challenge-days">1–30 novembre</p>' in page
+
+
+def test_the_heros_open_goes_to_the_gallerys_copy_once_it_is_listed():
+    """hero3d: Open it in the studio opens the mark as the gallery's Open does once the
+    project's account lists it, in each language; anybody else's model of that name, or
+    an id that is not one, leaves the app's own copy."""
+    script = """
+import { readFileSync } from "node:fs";
+import { heroOpen, markIn } from "./tools/web/home_shelf.mjs";
+const mark = { id: "AbCdE12345", name: "The Brickworks mark", by: { handle: "brickworks", name: "Brickworks" } };
+const pages = ["", "de/"].map((code) => readFileSync(`web/${code}index.html`, "utf8"));
+console.log(JSON.stringify({
+  found: markIn({ models: [{ ...mark, id: "ZzZzZ99999", by: { handle: "someone" } }, mark] }),
+  stranger: markIn({ models: [{ ...mark, by: { handle: "someone" } }] }),
+  none: markIn(null),
+  links: pages.map((page) => [heroOpen(page, "AbCdE12345"), heroOpen(page, '"><b>'), heroOpen(page, null)]
+    .map((one) => one.match(/id="hero-open" href="([^"]*)"/)[1])),
+}));
+"""
+    done = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr[-2000:]
+    out = json.loads(done.stdout.strip().splitlines()[-1])
+    assert out["found"] == "AbCdE12345" and out["stranger"] is None and out["none"] is None
+    english, german = out["links"]
+    assert english == ["/app?view=AbCdE12345", "/app?model=res://models/brickworks_mark.ldr",
+                       "/app?model=res://models/brickworks_mark.ldr"]
+    assert german == ["/app?lang=de&amp;view=AbCdE12345"] + ["/app?lang=de&amp;model=res://models/brickworks_mark.ldr"] * 2

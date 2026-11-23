@@ -93,6 +93,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -256,7 +257,7 @@ try {
     const adminContext = await context({ as: master, width, height, phone, dark: true });
     const admin = await adminContext.newPage();
     listen(admin, `admin at ${width} px`);
-    admin.on("dialog", (dialog) => dialog.accept());
+    await answerAsks(admin);
     await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     if (width === 1280) {
@@ -691,7 +692,7 @@ try {
     const adminContext = await context({ as: master, width: 1280, height: 900, dark: true });
     const admin = await adminContext.newPage();
     listen(admin, "admin, ending");
-    admin.on("dialog", (dialog) => dialog.accept());
+    await answerAsks(admin);
     await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     const pressed = Date.now();
@@ -787,7 +788,7 @@ try {
       await until(page, () => document.documentElement.dataset.notifications === "ready", "his notifications");
       const card = (id) => page.evaluate((one) => {
         const item = document.querySelector(`#groups .notice[data-challenge="${one}"]`);
-        return item && { name: item.querySelector("h2 a")?.textContent || "", unread: item.classList.contains("unread"),
+        return item && { name: item.querySelector(".row-title a")?.textContent || "", unread: item.classList.contains("unread"),
           brick: Boolean(item.querySelector(".pic.challenge .icon")), line: item.querySelector(".lines .what")?.textContent || "",
           icon: Boolean(item.querySelector(".lines a .icon")), href: item.querySelector(".lines a")?.getAttribute("href") || "" };
       }, id);
@@ -904,7 +905,7 @@ try {
     const adminContext = await context({ as: master, width: 1280, height: 900, dark: true });
     const admin = await adminContext.newPage();
     listen(admin, "the rounds' panel");
-    admin.on("dialog", (dialog) => dialog.accept());
+    await answerAsks(admin);
     const panel = async () => {
       await admin.goto(`${site}/admin?tests=1#challenges/${ids.rounds}`, { waitUntil: "load" });
       await until(admin, () => document.querySelector("#sheet[open] .rounds-part"), "the challenge's panel", 60);

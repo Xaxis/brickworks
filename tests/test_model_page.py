@@ -102,14 +102,25 @@ def test_the_action_bar_says_each_name_and_count_and_never_a_count_of_none() -> 
     if said is None:
         return
     tower, fox = (one["html"] for one in said)
-    assert labels(tower) == ["Like, 96 likes", "Save", "Share", "Comment", "I built it, 37 builds", "More"]
-    assert labels(fox) == ["Like, 33 likes", "Save", "Share", "Comment", "I built it, 14 builds", "More"]
+    # Save is a card's (web/keep.js, lists2a): Saved at a tap, and its arrow
+    # for your lists, one panel on the card and the page. Comment and I built
+    # it are the Comments and Builds tabs, with their counts (pagekit);
+    # Download is first in More.
+    assert labels(tower) == ["Like, 96 likes", "Save Riverside Watchtower", "Add Riverside Watchtower to a list", "Share", "More"]
+    fox_said = labels(fox)
+    assert fox_said[0] == "Like, 33 likes" and fox_said[3:] == ["Share", "More"], fox_said
+    assert fox_said[1].startswith("Save ") and fox_said[2].startswith("Add ") and fox_said[2].endswith(" to a list"), fox_said
+    for html in (tower, fox):
+        bar = re.search(r'<div class="action-bar" id="marks"[\s\S]*?</details></div>', html).group(0)
+        assert bar.count('<div class="keep" data-keep="model:') == 1 and 'id="save-panel"' not in html and 'data-mark="save"' not in bar
     for html in (tower, fox):
         assert not re.search(r'class="n"[^>]*>0<', html)
         assert not re.search(r">0 (views|likes|remixes|built)<", html)
         # What the buttons do is in their names and the FAQ, not a paragraph.
         assert "View in 3D turns it" not in html
-        assert '>Build it</a>' in html and ">Open in Brickworks</a>" in html
+        assert '>Build it</a>' in html and ">Open in the studio</a>" in html
+        more = re.search(r'<div class="menu-list">([\s\S]*?)</div>', html[html.index('id="marks"'):]).group(1)
+        assert re.match(r'<a href="/m/[A-Za-z0-9]{10}\.mpd" download[^>]*>Download</a>', more), more[:200]
         # Share opens its sheet: the link and the embed code, each with Copy.
         assert 'aria-controls="share-sheet"' in html
         sheet = re.search(r'<dialog class="share-sheet" id="share-sheet"[\s\S]*?</dialog>', html).group(0)
@@ -130,7 +141,7 @@ def test_the_page_is_drawn_without_what_comes_next_when_the_database_will_not_sa
     page = said[0]
     assert page["status"] == 200
     assert row(page["html"], "more-by") is None and row(page["html"], "similar") is None
-    assert "<h1>Riverside Watchtower</h1>" in page["html"]
+    assert '<h1 class="obj-title">Riverside Watchtower</h1>' in page["html"]
 
 
 def strip(html: str) -> list[str] | None:
@@ -144,9 +155,10 @@ def strip(html: str) -> list[str] | None:
 
 
 def tabs(html: str) -> list[str]:
-    nav = re.search(r'<nav class="tabs page-tabs" id="page-tabs"[\s\S]*?</nav>', html)
-    assert nav, "no tabs"
-    return [re.sub(r"<[^>]+>", "", one).strip() for one in re.findall(r"<a [^>]*>([\s\S]*?)</a>", nav.group(0))]
+    """The page's tabs (pagekit: a tablist, each tab a link to its panel)."""
+    row = re.search(r'<div class="tabs obj-tabs page-tabs" id="page-tabs" role="tablist"[\s\S]*?</a></div>', html)
+    assert row, "no tabs"
+    return [re.sub(r"<[^>]+>", "", one).strip() for one in re.findall(r'<a [^>]*role="tab"[^>]*>([\s\S]*?)</a>', row.group(0))]
 
 
 def test_the_strip_leads_with_the_published_picture_then_the_owners_photos_then_builds() -> None:
@@ -181,26 +193,35 @@ def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
     # Comments are counted as they are listed, in the page (model-page.js).
     # Parts, counted from the file as the app counts it (api/_parts.js): the
     # stand-in's file is three bricks.
-    assert tabs(tower) == ["About", "Parts 3", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Log 2"]
-    assert tabs(bakery) == ["About", "Parts 3", "Comments", "Builds", "Remixes"]
+    # The owner, 23 Nov: comments the second tab. The lists it is in are the
+    # end of Overview, not a tab of their own.
+    assert tabs(tower) == ["Overview", "Comments", "Parts 3", "Builds 37", "Remixes 3", "Log 2"]
+    assert tabs(bakery) == ["Overview", "Comments", "Parts 3", "Builds", "Remixes"]
     for html in (tower, bakery):
-        for key in ("about", "comments", "builds", "remixes"):
-            assert f'id="{key}"' in html, key
+        for key in ("overview", "comments", "parts", "builds", "remixes"):
+            # Each panel labelled by its tab, all but the first hidden.
+            first = key == "overview"
+            assert re.search(f'id="{key}" role="tabpanel" aria-labelledby="tab-{key}" tabindex="0"{"" if first else " hidden"}', html), key
     assert 'id="versions"' in tower and 'id="versions"' not in bakery
     # In no collection: no tab, no part, no pill.
     assert 'id="collections"' not in bakery and 'href="#collections"' not in bakery
 
 
 def test_a_model_says_how_many_collections_it_is_in_and_links_them() -> None:
-    """docs/SOCIAL.md U11: "In 2 collections", a pill linked to its part of
-    the page, where each public collection it is in is a card with its
-    cover and whose it is; a private one is neither counted nor shown."""
+    """docs/SOCIAL.md U11: "In 2 lists" (collections until lists2a), a pill
+    linked to its part of the page, where each public list it is in is a
+    card with its cover and whose it is; a private one is neither counted
+    nor shown."""
     said = pages("/m/DesignAbc1", "/m/PriyaSpc01")
     if said is None:
         return
     tower, rover = (one["html"] for one in said)
-    assert '<a class="pill" href="#collections" data-lists="2">In 2 collections</a>' in tower
-    part = re.search(r'<section class="in-lists" id="collections"[\s\S]*?</section>', tower).group(0)
+    assert '<a class="pill" href="#collections" data-lists="2">In 2 lists</a>' in tower
+    assert '<h3 id="lists-h">In lists</h3>' in tower and "People put it in 2 public lists." in tower
+    part = re.search(r'<div class="in-lists" id="collections"[\s\S]*?</section>', tower).group(0)
+    # The end of Overview (pagekit).
+    overview = re.search(r'<section class="words" id="overview"[\s\S]*?</section>', tower).group(0)
+    assert overview.endswith(part)
     cards = re.findall(r'<a class="list-card" href="/c/([A-Za-z0-9]{10})"', part)
     # Sam's was put in last (updated last), then Robin's.
     assert cards == ["SamListAa1", "ListAbcde1"]
@@ -219,9 +240,9 @@ def test_a_collection_page_leads_with_its_cover_follow_and_share() -> None:
     if said is None:
         return
     castles, small = (one["html"] for one in said)
-    head = re.search(r'<header class="list-head">[\s\S]*?</header>', castles).group(0)
+    head = re.search(r'<aside class="obj-aside list-card-aside list-head"[^>]*>[\s\S]*?</aside>', castles).group(0)
     assert '<div class="cover"><div class="mosaic n3">' in head
-    assert "<h1>Castles worth a weekend</h1>" in head and 'Collected by <a href="/u/design-tester">Robin Castell</a>' in head
+    assert '<h1 class="obj-title">Castles worth a weekend</h1>' in head and 'Made by <a href="/u/design-tester">Robin Castell</a>' in head
     assert '<li data-stat="models"><b>3</b> <span>models</span></li>' in head
     assert '<li data-stat="followers" data-list-followers="ListAbcde1"><b>3</b> <span>followers</span></li>' in head
     assert 'data-follow-list="ListAbcde1" hidden>Follow</button>' in head
@@ -324,7 +345,7 @@ def test_a_model_s_page_in_each_language_of_the_site() -> None:
         assert f"<title>{name}</title>" in html
         assert f'<a href="/{code}/gallery">{words["Gallery"]}</a>' in html
         # (The Remixes tab draws its tree, the page's own "This model" in it: remixdiff.)
-        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Log", "This model"):
+        for key in ("About it", "Build it", "Open in the studio", "Remixes", "Log", "This model"):
             # (French writes some as English does.)
             assert f">{words[key]}<" in html and (words[key] == key or f">{key}<" not in html), key
         assert "A three-storey watchtower on a riverbank" in html

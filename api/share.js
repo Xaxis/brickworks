@@ -93,11 +93,18 @@
 //                            model, image?, cutout?, thumb?, id?, listed?,
 //                            remixed_from?, remixed_from_version?,
 //                            description?, tags?, kind?, licence?, note?,
-//                            tested?, made_with?, wip?}. tested is what the app
-//                            found of the model as it published it
-//                            (api/_tested.js); made_with who laid its parts,
-//                            as the app knows it: hand, assistant or
-//                            brickify (supabase/made_with.sql).
+//                            tested?, made_with?, made_with_shown?, wip?}.
+//                            tested is what the app found of the model as it
+//                            published it (api/_tested.js); made_with who
+//                            laid its parts, as the app knows it: hand,
+//                            assistant or brickify (supabase/made_with.sql),
+//                            kept for its owner; made_with_shown whether
+//                            its owner chose to say so on its page, which
+//                            nothing public says otherwise
+//                            (supabase/made_with_shown.sql)
+//   GET  ?op=made&id=X       the owner's own: {made_with, made_with_shown,
+//                            ready}, for its page's More
+//   POST ?op=made&id=X       the owner says whether it is shown: {shown}
 //                            With an id, the owner's own link gets its
 //                            next version, and the one before is kept.
 //                            listed puts it in the gallery; remixed_from
@@ -164,6 +171,12 @@
 //                            without any, put on it with no publish counted
 //                            (the site's Share from a file draws its
 //                            pictures once the server has the model)
+//   POST ?op=card&id=X       {thumb, kind?}: the owner's model given a new
+//                            card picture (/m/X.webp), its newest version's,
+//                            with no publish counted and no version made: the
+//                            photograph the app draws once a publish has
+//                            answered (kind traced or raster), and the
+//                            house's (tools/web/gallery_seed.mjs --cards)
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
@@ -273,7 +286,7 @@ import { raise } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
+  ASSISTANT_TAGS, KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
   inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, summary, testsAsked, visitorKey,
@@ -318,10 +331,12 @@ import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
 import { altRowsOf, altSaid, keepAlts } from "./_alts.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, keepHtml, langAt, madeOf, madePublic, marksOf, number, photoAttrs, photoSrc, quietMarks,
+  say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
+import { panelAttrs, tabsHtml } from "./_tabs.js";
 // Whose picture to show beside their name (supabase/avatars.sql).
 import { withFaces } from "./_faces.js";
 import { blockedHandles, blockedModels, refuseFor, standingBetween, withoutBlocked } from "./_blocks.js";
@@ -628,6 +643,15 @@ export function checkMadeWith(given) {
   return given;
 }
 
+/// Whether its owner says on its page how it was made
+/// (supabase/made_with_shown.sql): undefined when the app does not say,
+/// which a republish keeps as it was.
+export function checkMadeShown(given) {
+  if (given === undefined || given === null) return undefined;
+  if (typeof given !== "boolean") throw new Refusal("made_with_shown is true or false");
+  return given;
+}
+
 /// The small picture for the gallery's cards, from the base64 the app
 /// sends, or null for none: a WebP of at most 64 KB.
 export function checkThumb(given) {
@@ -658,7 +682,11 @@ function cleanText(given, limit) {
 /// 2026-10-24), where row security used to say what was published.
 async function publishedRow(id) {
   if (!ID.test(id || "")) return null;
-  const rows = await db(`shared_models?id=eq.${id}&published=is.true&select=${PUBLIC}`);
+  const at = (select) => db(`shared_models?id=eq.${id}&published=is.true&select=${select}`);
+  // Whether its owner shows how it was made (supabase/made_with_shown.sql);
+  // before that is applied the column is refused, and the row is read
+  // without it: shown by nobody.
+  const rows = await at(`${PUBLIC},made_with_shown`).catch(() => at(PUBLIC));
   return rows[0] || null;
 }
 
@@ -1125,16 +1153,31 @@ function testedMark(mark, steps = null) {
 /// it knows who is asking). A credit with no profile behind it is the name
 /// alone, with an avatar made from it; a model shared with no credit, none.
 function designerRow(model) {
+  // Somebody else modelled it (a set from LDraw's library the house shares):
+  // they lead, their initial for an avatar, the line that credits them
+  // beside it, and who shares it under, with Follow (sitebold, 2026-11-23:
+  // forty such pages were headed "Brickworks").
+  const modeller = modelledByOf(model.modelled_by);
+  const sharer = model.by ? model.by.name : model.author || "";
+  if (modeller && sharer && modeller.name !== sharer) {
+    const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
+      + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
+    // Follow beside the sharer it follows, not beside the modeller's name.
+    return `<div class="shared-by credit">${avatarHtml({ name: modeller.name })}<div class="names">${modelledLine(model)}`
+      + `<p class="shared-via"><span>${sayHtml("Shared by {name}", { name: via })}</span>`
+      + `${model.by ? `<button type="button" class="cta ghost small follow" data-follow="${escapeHtml(model.by.handle)}" hidden>${asText(say("Follow"))}</button>` : ""}</p></div>`
+      + `<span class="said" role="status"></span></div>`;
+  }
   if (model.by) {
     const handle = escapeHtml(model.by.handle);
     return `<div class="shared-by"><a class="who" href="${langAt()}/u/${handle}">${avatarHtml(model.by)}`
       + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
       + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>${asText(say("Follow"))}</button>`
-      + `<span class="said" role="status"></span></div>`;
+      + `<span class="said" role="status"></span></div>` + modelledLine(model);
   }
-  if (!model.author) return "";
+  if (!model.author) return modelledLine(model);
   return `<div class="shared-by"><span class="who">${avatarHtml({ name: model.author })}`
-    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
+    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>${modelledLine(model)}`;
 }
 
 /// Who shares a model, by name, as its page heads it.
@@ -1147,11 +1190,21 @@ const sharerOf = (model) => (model.by && model.by.name) || model.author || say("
 /// said on it (altbuilds): page.alt, the line under its credit (altSaid,
 /// each set named from the catalogue and linking its page under [at]); or,
 /// where its designer says it is an alternate build of that same set, its
-/// share on that line instead, so the page says it once.
+/// share on that line instead, so the page says it once. A version of a set
+/// (its own LDraw model, published: sethub) says which set, linking the
+/// set's page, where its Versions of this set lists it.
 export function altLine(page, kept, at = "") {
   page.alt = null;
   const said = kept ? altSaid(kept.sets, kept.pieces) : null;
-  if (!said) return page;
+  if (!said) {
+    const own = Array.isArray(kept?.sets) ? kept.sets.find((row) => row.role === "own") : null;
+    const entry = own ? catalogSet(own.set) : null;
+    if (entry && kept.pieces > 0) {
+      page.alt = { how: "version", pieces: kept.pieces, sets: [{ set: entry.set, name: entry.name, have: own.have,
+        href: `${at}/library/set/${encodeURIComponent(entry.set)}#versions` }] };
+    }
+    return page;
+  }
   const sets = said.sets.map((one) => {
     const entry = catalogSet(one.set);
     return entry ? { ...one, set: entry.set, name: entry.name, href: `${at}/library/set/${encodeURIComponent(entry.set)}` } : null;
@@ -1195,7 +1248,10 @@ async function nextOf(origin, id, model, own) {
   const none = { by: [], like: [], gallery: [] };
   if (!own) return none;
   const ask = (query) => orUnknown("share", rankedRows({ sort: "top", tests: own.test === true, ...query }));
-  const tags = model.tags || [];
+  // What it is of, not how it was made (api/_alike.js subjectsOf): two
+  // models made with the assistant are not alike for it, and a model whose
+  // owner did not say so is never ranked by it.
+  const tags = (model.tags || []).filter((tag) => !ASSISTANT_TAGS.includes(tag));
   const [theirs, kin, ...tagged] = await Promise.all([
     model.by ? ask({ owner: own.owner, size: NEXT_MOST + 1 }) : [],
     model.kind ? ask({ kind: model.kind, size: 24 }) : [],
@@ -1235,11 +1291,6 @@ function nextRow(key, title, cards, all = "") {
     + `<div class="models scroller" role="group" aria-labelledby="${key}-h">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
 }
 
-/// The action bar: Like, Save, Share, Comment, I built it and More, each an
-/// icon button that says its name and count (web/kit.js), never a count of
-/// none. web/model-page.js makes them work, asking to sign in first where
-/// one must be; it counts the comments as it lists them. [url] is the
-/// page's own address, an older version's its own.
 /// Open in Brickworks' second choice, With your Claude (claudelink,
 /// docs/MASTERPLAN.md "What only Brickworks can do" 6): the other half of
 /// the one control, which opens claudePanel under the row. Drawn hidden, and
@@ -1281,40 +1332,41 @@ function claudePanel(origin, id, model) {
     + `<p class="said claude-said" role="status"></p></div>`;
 }
 
-function actionBar(origin, id, model, url = links(origin, id).url) {
+/// The action bar: Like, Save, Share and More, each an icon button that
+/// says its name and count (web/kit.js), never a count of none; Download,
+/// Report it and Takedown requests in More. Commenting and saying it was
+/// built are the Comments and Builds tabs' (pagekit, 2026-11-23: nine
+/// buttons competed in the column, Comment and Built among them, each only
+/// a jump to a part of the page). web/model-page.js makes them work, asking
+/// to sign in first where one must be. Save is the one a card has
+/// (web/card.js keepHtml, lists2a): Save at a tap, and its arrow the panel
+/// of your lists (web/keep.js), one panel and one request for a model
+/// wherever it is saved. [url] is the page's own address, an older
+/// version's its own; [file] its file, for Download.
+function actionBar(origin, id, model, url = links(origin, id).url, file = "") {
   // A set of the LDraw library has no row to like, save, comment on or say
   // was built: Share and More alone.
   const more = asText(say("More"));
+  const download = file ? `<a href="${escapeHtml(file)}" download>${asText(say("Download"))}</a>` : "";
   if (model.library) {
     return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
       + iconButtonHtml({ icon: "share", name: say("Share"),
         attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link"))}"` })
       + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
-      + `${iconHtml("more")}</summary><div class="menu-list"><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
+      + `${iconHtml("more")}</summary><div class="menu-list">${download}<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
       + `</div>` + shareSheet(origin, id, model, url);
   }
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
     + iconButtonHtml({ icon: "like", name: say("Like"), count: model.likes, one: "like", many: "likes", pressed: false,
       labelled: true, attrs: `data-mark="like" title="${asText(say("Like it"))}"` })
-    + `<button type="button" class="icon-btn" data-mark="save" aria-label="${asText(say("Save"))}" aria-expanded="false" `
-      + `aria-controls="save-panel" title="${asText(say("Save it to your favourites or a collection"))}">${iconHtml("save")}</button>`
+    + keepHtml(`model:${id}`, model.name)
     + iconButtonHtml({ icon: "share", name: say("Share"),
       attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link, and the code to embed it"))}"` })
-    + iconButtonHtml({ icon: "comment", name: say("Comment"), attrs: `data-mark="comment" title="${asText(say("Comments on it and its steps"))}"` })
-    + iconButtonHtml({ icon: "build", name: say("I built it"), count: model.builds, one: "build", many: "builds", labelled: true,
-      word: say("Built"), attrs: `data-mark="built" title="${asText(say("I built it: add a photo of your build"))}"` })
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
-      + `${iconHtml("more")}</summary><div class="menu-list">`
+      + `${iconHtml("more")}</summary><div class="menu-list">${download}`
       + `<button type="button" data-report="${asText(say("this model"))}" data-report-model="${id}" hidden>${asText(say("Report it"))}</button>`
       + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
     + `</div>`
-    // Save opens your lists, Favourites first (docs/SOCIAL.md D2), and a
-    // new collection's name; drawn by web/model-page.js once signed in.
-    + `<div class="save-panel" id="save-panel" hidden><p class="save-head">${asText(say("Save it to"))}</p>`
-    + `<div class="collect-list"></div>`
-    + `<form class="collect-new"><label class="visually-hidden" for="new-list">${asText(say("A new collection's name"))}</label>`
-    + `<input id="new-list" maxlength="80" placeholder="${asText(say("A new collection"))}">`
-    + `<button class="cta ghost" type="submit">${asText(say("Make it"))}</button></form></div>`
     + `<p class="said marks-said" role="status"></p>`
     + shareSheet(origin, id, model, url);
 }
@@ -1442,6 +1494,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // and lit in its 3D view (/m/X/changes.json).
   const changed = !set && !old && parent?.id ? ownChanges(model.tree, version.n, parent.id) : null;
   const changedLine = changed ? changedLineHtml(changed, at, parent.id, fromVersion) : "";
+  // Where it came from, what it changed and what it is based on, under its
+  // picture (sitebold, 2026-11-23, as Printables says a remix's source under
+  // its pictures); on a phone after the column, so the first screen is the
+  // picture, the name, who made it and the action bar.
+  const lineage = `${fromLine}${changedLine}${basedHtml(model.based || [])}`;
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
@@ -1467,10 +1524,10 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     // Still being built (supabase/wip.sql): its Log has each version.
     isWip(versions) ? `<li><a class="pill wip" href="#versions">${asText(say("Work in progress"))}</a></li>` : "",
     Number(model.remixes) ? `<li><a class="pill" href="#remixes">${counted(model.remixes, "remix", "remixes")}</a></li>` : "",
-    // In the public collections it is in (docs/SOCIAL.md U11), each a card
-    // under Collections.
+    // In the public lists it is in (docs/SOCIAL.md U11), each a card under
+    // Lists.
     Number(lists?.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">`
-      + `${asText(say("In {collections}", { collections: counted(lists.count, "collection") }))}</a></li>` : "",
+      + `${asText(say("In {lists}", { lists: counted(lists.count, "list") }))}</a></li>` : "",
   ].join("");
   const tags = (model.tags || []).map((tag) =>
     `<li><a class="pill tag" href="${at}/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
@@ -1532,35 +1589,33 @@ ${header}
     ${mediaStrip(model, picture, photos, small)}
     </div>
     <div class="side">
-      <h1>${escapeHtml(model.name)}</h1>
+      <h1 class="obj-title"${model.name.length > 48 ? ` title="${escapeHtml(model.name)}"` : ""}>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
-      ${modelledLine(model)}
       ${altHtml(model.alt)}
       <div class="actions">
-        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
+        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in the studio"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
-        <span class="open-split"><a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>${claudeButton()}</span>`}
-        <a class="cta ghost" href="${fileAt}.mpd" download>${asText(say("Download"))}</a>
+        <span class="open-split"><a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in the studio"))}</a>${claudeButton()}</span>`}
       </div>
       ${set ? "" : claudePanel(origin, id, model)}
-      ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url)}
+      ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url, `${fileAt}.mpd`)}
       ${set || old ? "" : postFacts(origin, id, shownModel, about)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
-      ${fromLine}
-      ${changedLine}
-      ${basedHtml(model.based || [])}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
+    ${lineage ? `<div class="lineage">${lineage}</div>` : ""}
     <div class="rest">
+  <div class="obj-panels">
   ${pageTabs(model, newest, lists?.count, parts, logged(versions))}
-  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About it"))}</h2>
+  <section class="words" id="overview"${panelAttrs("overview", true)}><h2 class="visually-hidden" id="about-h">${asText(say("About it"))}</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="${asText(say("Tags"))}">${tags}</ul>` : ""}
-    <div class="licence"><h3 id="licence-h">${asText(say("Licence"))}</h3>${licenceWords(model)}</div></section>
+    <div class="licence"><h3 id="licence-h">${asText(say("Licence"))}</h3>${licenceWords(model)}</div>
+    ${listsSection(lists)}</section>
+  ${set ? "" : commentsSection(id, version.n, newest, stepsCounted ? stepsCounted.pages : null)}
   ${partsSection(fileAt, parts)}
-  ${set ? "" : `${commentsSection(id, version.n, newest, stepsCounted ? stepsCounted.pages : null)}
-  ${buildsSection(id, model, photos)}
-  <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">${asText(say("Remixes"))}</h2>
+  ${set ? "" : `${buildsSection(id, model, photos)}
+  <section class="tree" id="remixes"${panelAttrs("remixes")}><h2 class="visually-hidden" id="tree-h">${asText(say("Remixes"))}</h2>
     ${drawnTree ? `${drawnTree}${unlisted ? `<p class="note">${asText(say(listedRemixes.length
       ? "And {remixes} shared by link, not in the gallery." : "{remixes} shared by link, not in the gallery.",
     { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : ""}` : `${line ? `<h3>${asText(say("It came from"))}</h3><ol class="line">${line}</ol>` : ""}
@@ -1569,11 +1624,11 @@ ${header}
         ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
         + (unlisted ? `<p class="note">${asText(say(listedRemixes.length ? "And {remixes} shared by link, not in the gallery."
           : "{remixes} shared by link, not in the gallery.", { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : "")
-      : `<p class="note none">${sayHtml("Nobody has remixed it yet. {open} to make a copy of your own to change; share that, "
+      : `<p class="obj-empty none">${sayHtml("Nobody has remixed it yet. {open} to make a copy of your own to change; share that, "
         + "and it shows here.", { open: `<a href="${escapeHtml(copyLink)}">${asText(say("Open it in Brickworks"))}</a>` })}</p>`}`}
   </section>`}
-  ${listsSection(lists)}
   ${versionsSection(id, versions, version, at, model)}
+  </div>
     </div>
   </div>
   ${model.by ? nextRow("more-by", sayHtml("More by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>` }),
@@ -1612,18 +1667,28 @@ function mediaStrip(model, picture, photos, small = picture) {
     + `<button type="button" class="thumb add" data-add-picture hidden>${asText(say("Add a picture"))}</button></div>`;
 }
 
-/// The page's tabs (docs/SOCIAL.md U4): a link to each part below, with its
-/// count once there is one, kept on screen as the page scrolls; the one
-/// being read is marked by web/model-page.js, which also counts the
-/// comments as it lists them. Versions only once there are two.
+/// The page's tabs (docs/SOCIAL.md U4; pagekit, 2026-11-23): real tabs, each
+/// switching its panel in place (web/tabs.js), in the order a visitor wants
+/// them: Overview (what its owner said, its tags, its licence and the
+/// lists it is in), Comments, Parts, Builds, Remixes, and its Log (its
+/// versions and what was built between them, buildlog) once there is one;
+/// each with its count once there is one, each its own address
+/// (#comments), so a link opens on it and Back goes back a tab. Before,
+/// they were links down one page of 3,800 px, the 67-lot parts list over
+/// the comments, and the owner, on the live page: "Dont you think the
+/// comments section should be the second subtab". web/model-page.js counts
+/// the comments on their tab as it lists them. A set of the LDraw library
+/// has Overview and Parts.
 function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
-  const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${asText(name)}`
-    + (Number(n) ? ` <span class="n">${number(n)}</span>` : "") + "</a>";
-  return `<nav class="tabs page-tabs" id="page-tabs" aria-label="${asText(say("On this page"))}">${tab("about", say("About"))}`
-    + `${parts ? tab("parts", say("Parts"), parts.pieces) : ""}`
-    + `${model.library ? "" : `${tab("comments", say("Comments"))}${tab("builds", say("Builds"), model.builds)}${tab("remixes", say("Remixes"), model.remixes)}`}`
-    + `${Number(inLists) ? tab("collections", say("Collections"), inLists) : ""}`
-    + `${log ? tab("versions", say("Log"), newest) : ""}</nav>`;
+  const library = Boolean(model.library);
+  return tabsHtml([
+    { key: "overview", name: say("Overview"), also: "about" },
+    !library && { key: "comments", name: say("Comments") },
+    parts && { key: "parts", name: say("Parts"), n: parts.pieces },
+    !library && { key: "builds", name: say("Builds"), n: model.builds },
+    !library && { key: "remixes", name: say("Remixes"), n: model.remixes },
+    log && { key: "versions", name: say("Log"), n: newest },
+  ], { label: say("About it"), extra: "page-tabs" });
 }
 
 /// How many rows the Parts list shows before Show all, and each row's
@@ -1644,8 +1709,8 @@ function partsSection(at, parts) {
   const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
   const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
-  return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
-    + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
+  return `<section class="parts" id="parts"${panelAttrs("parts")} data-parts="${at}/parts.json">`
+    + `<h2 class="visually-hidden" id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
       { parts: counted(parts.pieces, "part"), lots: counted(parts.lots.length, "lot") }))}</p>`
     + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
     + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
@@ -1656,7 +1721,10 @@ function partsSection(at, parts) {
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
     + pickABrickNote(pab)
     + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
-    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
+    // Show all in the page from the start where the list will need it, so
+    // its row is in the space kept too: put in only with the list, it moved
+    // everything under the panel 48 px (checkdrift, 2026-11-23).
+    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }
@@ -1696,17 +1764,17 @@ function pickABrickNote(made) {
   return said.length ? `<p class="note pab-note">${said.map((one) => escapeHtml(one)).join(" ")}</p>` : "";
 }
 
-/// The public collections it is in (docs/SOCIAL.md U11, [PR-C]), each a card
+/// The public lists it is in (docs/SOCIAL.md U11, [PR-C]), each a card
 /// with its cover and whose it is, the one it was put in last first; only
 /// once it is in one, since a part that says nothing is a dead end.
 function listsSection(lists) {
   if (!lists || !Number(lists.count) || !lists.lists.length) return "";
   const more = Number(lists.count) - lists.lists.length;
-  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">${asText(say("In collections"))}</h2>`
-    + `<p class="note">${asText(say("People put it in {collections}.", { collections: counted(lists.count, "public collection") }))}</p>`
+  return `<div class="in-lists" id="collections"><h3 id="lists-h">${asText(say("In lists"))}</h3>`
+    + `<p class="note">${asText(say("People put it in {lists}.", { lists: counted(lists.count, "public list") }))}</p>`
     + `<div class="list-cards">${lists.lists.map((list) => listCardHtml(list, lists.covers, { by: true })).join("")}</div>`
-    + (more > 0 ? `<p class="note">${asText(say("And {collections} more.", { collections: counted(more, "collection") }))}</p>` : "")
-    + `</section>`;
+    + (more > 0 ? `<p class="note">${asText(say("And {lists} more.", { lists: counted(more, "list") }))}</p>` : "")
+    + `</div>`;
 }
 
 /// One photo of a real build, as the strip shows it: the photo, the line
@@ -1732,12 +1800,12 @@ function buildFigure(model, photo) {
 /// are not said to be none.
 function buildsSection(id, model, photos) {
   const builds = Number(model.builds) || 0;
-  return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
-    <h2 id="builds-h">${asText(say("Built by people"))}</h2>
+  return `<section class="builds" id="builds"${panelAttrs("builds")} data-id="${id}">
+    <h2 class="visually-hidden" id="builds-h">${asText(say("Built by people"))}</h2>
     ${builds ? `<p class="built-line">${asText(builds === 1 ? say("Built to the last step once, by people following its steps in Brickworks.")
       : say("Built to the last step {times}, by people following its steps in Brickworks.", { times: counted(builds, "time") }))}</p>` : ""}
     ${photos?.length ? `<div class="build-strip scroller" role="group" aria-labelledby="builds-h">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
-      : !photos ? `<p class="note no-builds" hidden></p>` : `<p class="note no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
+      : !photos ? `<p class="note no-builds" hidden></p>` : `<p class="obj-empty no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
         : say("Nobody has built it yet. Built it? Add a photo of yours."))}</p>`}
     <div class="add-build" id="add-build" data-id="${id}">
       <button type="button" class="cta ghost" data-add-build>${asText(say("I built it: add a photo"))}</button>
@@ -1772,25 +1840,28 @@ function commentsSection(id, shown, newest, steps) {
   // Shown once asked (web/model-page.js); until then a skeleton holds its
   // place at the size most are drawn at (none yet, and the box), so its
   // coming moves nothing under it: it pushed Builds down the screen (site275).
-  return `<div class="comments-hold skeleton" id="comments-hold" aria-hidden="true"><span class="bone short title"></span>
+  // The tab's panel (pagekit) holds the skeleton and, once they are listed,
+  // the comments (.comments-body), shown then by web/model-page.js.
+  return `<section class="comments" id="comments"${panelAttrs("comments")} data-id="${id}"
+    data-version="${shown}" data-newest="${newest}">
+  <div class="comments-hold skeleton" id="comments-hold" aria-hidden="true"><span class="bone short title"></span>
     <span class="bone line"></span><span class="bone line short"></span><span class="bone box"></span><span class="bone button"></span></div>
-  <section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
-    data-version="${shown}" data-newest="${newest}" hidden>
-    <h2 id="comments-h">${asText(say("Comments"))}</h2>
+  <div class="comments-body" hidden>
+    <h2 class="visually-hidden" id="comments-h">${asText(say("Comments"))}</h2>
     <p class="note comments-lede">${sayHtml("What builders said about it and its steps, the newest first, with the replies under each. "
       + "Plain words only; {guidelines} say what is welcome.", { guidelines: `<a href="${langAt()}/guidelines">${asText(say("the guidelines"))}</a>` })}</p>
     <p class="note talk-about" id="talk-about" hidden></p>
-    <ol class="comment-list"></ol>
     <form class="comment-new" hidden>
       <div class="comment-on"><label for="comment-step">${asText(say("On"))}</label> ${picker}
         <span class="note">${asText(shown < newest ? say("of version {n}, an older one", { n: shown }) : say("of version {n}", { n: shown }))}</span></div>
       <label class="visually-hidden" for="comment-body">${asText(say("Your comment"))}</label>
       <textarea id="comment-body" maxlength="1000" rows="3"
         placeholder="${asText(say("Say something about it, or about a step: this part goes under, not over"))}"></textarea>
-      <div class="actions"><button class="cta small" type="submit">${asText(say("Add the comment"))}</button>
-        <span class="note comment-count" aria-live="polite"></span></div>
+      <div class="actions"><button class="cta small" type="submit">${asText(say("Post"))}</button></div>
     </form>
+    <ol class="comment-list"></ol>
     <div class="comment-why" hidden><p class="note"></p></div>
+  </div>
     <p class="said comments-said" role="status"></p>
   </section>`;
 }
@@ -1847,7 +1918,7 @@ function versionsSection(id, versions, shown, at = "", model = {}) {
         : one.n === 1 ? `<p class="log-changed">${asText(say("The first version."))}</p>` : ""}`
       + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}</div></li>`;
   }).join("");
-  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">${asText(say("Log"))}</h2>
+  return `<section class="versions" id="versions"${panelAttrs("versions")}><h2 class="visually-hidden" id="versions-h">${asText(say("Log"))}</h2>
     ${building}
     <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : asText(say("Version {n}, the first.", { n: shown.n }))}
       <span class="when">${when(shown.at)}</span></p>
@@ -2405,7 +2476,9 @@ async function leaveOffBlocked(own, page, next, lists) {
 async function modelPage(id) {
   if (!ID.test(id || "")) return null;
   const page = await db("rpc/directory_model", { method: "POST", body: { model_id: id } });
-  return page && typeof page === "object" ? page : null;
+  // How it was made, only where its owner chose to say (web/card.js
+  // madePublic): its fact, its tags, its keywords and what it is like.
+  return page && typeof page === "object" ? madePublic(page) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -2416,6 +2489,7 @@ async function read(request, response) {
   const origin = originOf(request);
 
   if (op === "mine") return mine(request, response, origin);
+  if (op === "made") return madeShown(request, response);
   if (op === "tested") return testedOwn(request, response);
   if (op === "clip_need") return clipNeed(request, response);
   if (op === "sweep") return sweep(request, response);
@@ -2657,7 +2731,9 @@ async function read(request, response) {
     // What its owner said about it, for a session reading it as a
     // reference (src/net/gallery_tool.gd) as for its page.
     description: row.description ?? null,
-    tags: row.tags || [],
+    // As its page says them: the two that say how it was made only where
+    // its owner chose to (web/card.js madePublic).
+    tags: madePublic(row).tags || [],
     kind: row.kind ?? null,
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
@@ -3150,6 +3226,10 @@ async function gallery(request, response, origin) {
     tabs = false;
     rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
   }
+  // With the assistant: only a model its owner chose to say so of, which
+  // gallery_models asks itself once supabase/made_with_shown.sql is
+  // applied. Before, its rows say nothing shown, and none is listed.
+  if (asked.made === "assistant") rows = rows.filter((row) => row.made_with_shown === true);
   // Signed in: nothing of anybody they blocked (supabase/block.sql). A
   // page may then hold fewer; the next is where it was.
   const models = await withoutTheirBlocked(mine,
@@ -3293,6 +3373,51 @@ async function keepMadeWith(id, owner, madeWith) {
   } catch {
     return null;
   }
+}
+
+/// Whether its owner shows how it was made, kept with its row: its page's
+/// fact, its two tags and the gallery's With the assistant read it
+/// (supabase/made_with_shown.sql). Not said, it stays as it was. What was
+/// kept, or null for nothing: never stops the publish, and before that
+/// file there is nowhere to keep it, and nothing is shown.
+async function keepMadeShown(id, owner, shown) {
+  if (shown === undefined) return null;
+  try {
+    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { made_with_shown: shown } });
+    return shown;
+  } catch {
+    return null;
+  }
+}
+
+/// ?op=made: the owner's own say in whether its page tells how it was made
+/// (supabase/made_with_shown.sql). GET {made_with, made_with_shown, ready}:
+/// who laid its parts, as its app said, and whether that is shown; ready
+/// false before that file is applied, when it cannot be kept. POST {shown}
+/// keeps it, and answers the same. Nobody else is answered anything of it.
+async function madeShown(request, response) {
+  const owner = await signedIn(request);
+  const id = String(request.query?.id || request.body?.id || "");
+  if (!ID.test(id)) throw new Refusal("there is no shared model at that link", 404);
+  const row = await ownRow(id);
+  if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
+  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  response.setHeader("Cache-Control", "no-store");
+  if (request.method === "POST") {
+    const shown = checkMadeShown(request.body?.shown);
+    if (shown === undefined) throw new Refusal("shown is true or false");
+    try {
+      await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { made_with_shown: shown } });
+    } catch {
+      throw new Refusal("Brickworks cannot keep that yet: try again after its next update", 503);
+    }
+  }
+  const at = (select) => db(`shared_models?id=eq.${id}&owner=eq.${owner}&select=${select}`);
+  const kept = await at("made_with,tags,made_with_shown").then((rows) => ({ ...rows[0], ready: true }))
+    .catch(async () => ({ ...(await at("made_with,tags"))[0], made_with_shown: false, ready: false }));
+  const made = madeOf(kept);
+  return response.status(200).json({ id, made_with: MADE_WITH.includes(kept.made_with) ? kept.made_with : null,
+    way: made.way, by: made.by, made_with_shown: kept.made_with_shown === true, ready: kept.ready });
 }
 
 /// Who modelled it, as the app's Library has it (api/_omr_credit.js), kept
@@ -3554,6 +3679,7 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   const cutout = checkImage(body.cutout, "the picture for its page");
   const thumb = checkThumb(body.thumb);
   const madeWith = checkMadeWith(body.made_with);
+  const shownAsked = checkMadeShown(body.made_with_shown);
   // What the app found, checked against this very file as the app sent it
   // (api/_tested.js), which it hashed before anything was left out.
   const finding = checkTested(body.tested, body.model);
@@ -3798,6 +3924,7 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
+  const shownKept = await keepMadeShown(id, owner, shownAsked);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
   // A person's first model told to the owner (api/_notify.js): no other
   // link of theirs made before this one wrote its row (one row at most, by
@@ -3843,7 +3970,7 @@ export async function publishModel(claims, body, request, { test = isTestAccount
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...links(origin, id),
+    made_with: madeKept, made_with_shown: shownKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...links(origin, id),
   } };
 }
 
@@ -3892,6 +4019,49 @@ async function pictures(request, response) {
   await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { has_image: true, has_thumb: Boolean(thumb) } });
   await db(`share_versions?model=eq.${id}&n=eq.${newest.n}`, { method: "PATCH", body: { has_image: true } });
   return response.status(200).json({ id, version: newest.n, pictures: true, already: false, ...links(origin, id) });
+}
+
+/// ?op=card&id=X: {thumb, kind?}, the card the gallery and the home feed
+/// show (/m/X.webp) put on its owner's model in place of the one it has,
+/// its newest version's (cardlook, 2026-11-23). A publish sends the
+/// cut-out, and the app then draws the card as a photograph and puts it
+/// here (SharePanel._card_after), kind saying how it was drawn
+/// (card_kind.sql); the house's cards were drawn again so
+/// (tools/web/gallery_seed.mjs --cards), without a version each that
+/// changed nothing. Only the owner's
+/// own link, the picture checked as a publish checks it. Nothing more than
+/// a publish of the same model without listing it could do: a barred model
+/// may be republished at its link, pictures and all.
+async function cardPut(request, response) {
+  const owner = await signedIn(request);
+  const id = String(request.query?.id || request.body?.id || "");
+  const thumb = checkThumb(request.body?.thumb);
+  if (!thumb) throw new Refusal("there is no card picture to put on it");
+  const row = await ownRow(id);
+  if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
+  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  const kind = CARD_KINDS.includes(request.body?.kind) ? request.body.kind : null;
+  await putFile(`${id}.webp`, thumb, "image/webp");
+  await keepCard(`shared_models?id=eq.${id}&owner=eq.${owner}`, kind, row.has_thumb);
+  return response.status(200).json({ id, card: true, kind, ...links(originOf(request), id) });
+}
+
+/// How a card was drawn (supabase/card_kind.sql): what op=card and
+/// tools/web/card_sweep.mjs say of the card they put.
+export const CARD_KINDS = ["traced", "raster"];
+
+/// The row at [where] told its card was put just now, and how it was drawn
+/// ([kind], null for one op=card did not say): card_kind and card_at, which
+/// tools/web/card_sweep.mjs reads. Before supabase/card_kind.sql is applied
+/// the database has neither column and refuses the write: the card is put
+/// all the same, and has_thumb kept as it was before that file.
+export async function keepCard(where, kind, hadThumb) {
+  try {
+    await db(where, { method: "PATCH", body: { has_thumb: true, card_kind: kind, card_at: new Date().toISOString() } });
+  } catch (trouble) {
+    if (!/: 400$/.test(trouble.message)) throw trouble;
+    if (!hadThumb) await db(where, { method: "PATCH", body: { has_thumb: true } });
+  }
 }
 
 async function unpublish(request, response) {
@@ -4407,10 +4577,12 @@ async function handler(request, response) {
     if (op === "unpublish") return await unpublish(request, response);
     if (op === "finish") return response.status(200).json(await finishWip(await signedIn(request), request.body?.id, originOf(request)));
     if (op === "pictures") return await pictures(request, response);
+    if (op === "card") return await cardPut(request, response);
     if (op === "seen") return await seen(request, response);
     if (op === "built") return await built(request, response);
     if (op === "bases") return await basesPut(request, response);
     if (op === "clip") return await clipPut(request, response);
+    if (op === "made") return await madeShown(request, response);
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {

@@ -240,12 +240,8 @@ func _build_bar() -> void:
 	row.add_theme_constant_override("separation", 8)
 	_bar.add_child(row)
 
-	var home := Look.link("Brickworks", 13)
-	home.tooltip_text = "Brickworks: design LEGO® models in your browser"
-	home.pressed.connect(func() -> void: Outside.open_link(Deployment.api_base() + "/"))
-	home.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(home)
-
+	# No Brickworks of its own: the app's header is over it, with the mark and
+	# the way home (AppHeader), as over every mode.
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", 0)
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -971,11 +967,12 @@ func hover(words: String, at: Vector2) -> void:
 	_hover.position = spot
 
 
-## The bar along the top, put at the head of [param column] in place of
-## the builder's own bars, so the model's view starts below it.
-func put_bar_in(column: Control) -> void:
+## The bar along the top, put in [param column] under [param header], the
+## app's header (ModelBar, AppHeader), in place of the builder's own bars, so
+## the model's view starts below them.
+func put_bar_in(column: Control, header: Control = null) -> void:
 	column.add_child(_bar)
-	column.move_child(_bar, 0)
+	column.move_child(_bar, header.get_index() + 1 if header != null and header.get_parent() == column else 0)
 
 
 static func _count(n: int) -> String:

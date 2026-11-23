@@ -1210,6 +1210,7 @@
   "/api/share?op=set_based&set=6080-1": {
    "set": "6080-1",
    "models": [],
+   "versions": [],
    "lists": {
     "count": 3,
     "lists": [

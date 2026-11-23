@@ -114,7 +114,10 @@ static func pages_for(text: String, library: PartLibrary, store: ModelStore,
 	world.library = library
 	# Never drawn: nothing in it is written to the graphics card.
 	world.hold_drawing()
-	var authored: bool = model.steps_are_authored()
+	# The steps the file carries, an author's or the app's own saved ones, as
+	# an open keeps them (LdrModel.steps_are_kept): the pages shared are the
+	# booklet the person saw and saved (stepkeep2).
+	var authored: bool = model.steps_are_kept()
 	var known: Array = []
 	# As ModelStore.open_text puts a file down: flattened, a Studio part by
 	# its LDraw number, a mirrored copy unmirrored, a retired number as the
@@ -140,6 +143,7 @@ static func pages_for(text: String, library: PartLibrary, store: ModelStore,
 		model.author.strip_edges() != "Brickworks"), 0.0)
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
+	world.steps_own = model.steps_are_saved()
 	for placement: LdrModel.Placement in known:
 		var at: Transform3D = placement.transform
 		at.origin += up
