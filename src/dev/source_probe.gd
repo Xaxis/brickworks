@@ -9,9 +9,10 @@
 ## look, then each table under Background (On a desk, On a wooden table, On
 ## a leather desk pad, On terrazzo) and the seamless backdrop, Picture pressed,
 ## at the dialog's own size. Each picture and the window as the person sees
-## it are kept in OUT (default shots/source): render_<stage>.png,
-## dialog_<stage>.png, and offs/render_<stage>.png, the same asked without the
-## source.
+## it are kept in OUT (default shots/source): render_<stage>.png and
+## dialog_<stage>.png; and in OUT/pair, <stage>_on.png and <stage>_off.png, the
+## same picture at 640x360 with the source as by default and asked off, one
+## camera and seed, the before and after side by side.
 ##
 ## Checks, on a card that traces rays (Forward+ with Vulkan RT):
 ##   each picture path traced at the dialog's own size, the stage chosen;
@@ -50,7 +51,7 @@ func _run() -> void:
 	var named: Array = Array(OS.get_cmdline_user_args()).filter(
 		func(one: String) -> bool: return not one.begins_with("--"))
 	_out = str(named[0]) if not named.is_empty() else ProjectSettings.globalize_path("res://shots/source")
-	DirAccess.make_dir_recursive_absolute(_out.path_join("offs"))
+	DirAccess.make_dir_recursive_absolute(_out.path_join("pair"))
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	await _frames(150)
@@ -144,7 +145,7 @@ func _pick_stage(dialog: RenderDialog, choice: OptionButton, stage: String) -> b
 
 ## How far the dialog's own picture is from the same picture with the source
 ## asked off: mean |dL*| over the whole picture, both drawn at 640x360, 64
-## samples, seed 1. The one asked off is kept in OUT/offs.
+## samples, seed 1. Both are kept in OUT/pair.
 func _against_off(dialog: RenderDialog, world: BrickWorld, called: String) -> float:
 	var pictures: Array[Image] = []
 	for off: bool in [false, true]:
@@ -158,7 +159,8 @@ func _against_off(dialog: RenderDialog, world: BrickWorld, called: String) -> fl
 		if picture == null:
 			return 0.0
 		pictures.append(picture)
-	pictures[1].save_png(_out.path_join("offs").path_join("render_%s.png" % called))
+	pictures[0].save_png(_out.path_join("pair").path_join("%s_on.png" % called))
+	pictures[1].save_png(_out.path_join("pair").path_join("%s_off.png" % called))
 	var w: int = pictures[0].get_width()
 	var h: int = pictures[0].get_height()
 	var sum: float = 0.0
