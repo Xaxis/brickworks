@@ -125,7 +125,7 @@ func _run() -> void:
 		(playback as BuildPlayback).stop()
 	# A phone draws at a browser's scale, as twist_probe holds it.
 	if _layout == "phone":
-		(_main.get("_phone") as Node).set_process(false)
+		(_main.get("_phone") as Node).set("holds_scale", true)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":

@@ -25,7 +25,7 @@ func _run() -> void:
 	if playback is BuildPlayback:
 		(playback as BuildPlayback).stop()
 	if DisplayServer.get_name() != "headless":
-		(_main.get("_phone") as Node).set_process(false)
+		(_main.get("_phone") as Node).set("holds_scale", true)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":
