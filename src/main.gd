@@ -4133,7 +4133,6 @@ func _maybe_copy() -> void:
 	_asked_open = false
 	_copy_made = kept
 	AskedCopy.mark_made(_copying, person, kept)
-	_set_address("")
 	# Framed whole now that every part is down: framed at the start, a model
 	# whose parts were still on their way was framed small.
 	_camera.frame(_built_bounds())
@@ -4141,10 +4140,21 @@ func _maybe_copy() -> void:
 		_offer.visible = false
 	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was; %s"
 		% [kept, ModelBar.credit_words(_store.credit)])
-	# Offered once the sign-in screen has gone (a new account's age question
-	# and welcome come after the code), so nothing pressed there puts it away.
+	await _offer_first_acts(kept, person)
+
+
+## The first acts on [param person]'s copy [param kept], offered once the
+## sign-in screen has gone (a new account's age question and welcome come
+## after the code), so nothing pressed there puts it away. The link stays in
+## the address till then: a reload behind the age question opens the copy
+## made (_open_made) and still offers them, where with the address gone it
+## came back as a model with nothing to say what to do with it, the
+## assistant's offer in their place (fmfin, 2026-11-23). Offered to a person
+## once ever on this device (FirstActs.offer).
+func _offer_first_acts(kept: String, person: String) -> void:
 	while _gated():
 		await get_tree().create_timer(0.25).timeout
+	_set_address("")
 	if _store.title == kept:
 		_first_acts.offer(kept, person)
 
@@ -4165,7 +4175,6 @@ func _open_made(person: String) -> bool:
 		waited += 0.25
 	if not FileAccess.file_exists(ModelStore.saved_path(made)):
 		return false
-	_set_address("")
 	_copy_made = made
 	if _store.title != made:
 		if not _asked_open and not _sample_untouched and _store.has_unsaved_work():
@@ -4176,6 +4185,7 @@ func _open_made(person: String) -> bool:
 			_bar.opened.emit(placed)
 	_asked_open = false
 	_bar.say("“%s” is your copy of it, made a moment ago: opened, not copied again" % made)
+	await _offer_first_acts(made, person)
 	return true
 
 
@@ -4232,6 +4242,11 @@ func _open_asked(placed: int) -> int:
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 	if not str(result["error"]).is_empty():
 		return 0
+	# Called by the name its page gave it, as the viewer calls a shared model
+	# (_view_shared): the file's own first line can say another ("House"
+	# for the gallery's "First Minute Probe House"), and the copy was saved
+	# under that while the sign-in screen promised the page's.
+	_store.title = name
 	_credit_copy(shared)
 	_asked_open = true
 	AskedCopy.mark_shown(_copying)

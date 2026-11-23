@@ -19,7 +19,9 @@
 ## the search ready; Build it plays the timeline from its first step. Each
 ## act's press puts the line away, as does a first change made by hand (a
 ## part put down) and Escape, and a person offered it once is never offered
-## it again. A reload in the middle of signing in, the tab's working model
+## it again. A reload behind the age question, the copy made and the acts
+## not yet offered, opens that copy and offers them once the question goes,
+## no second copy made. A reload in the middle of signing in, the tab's working model
 ## brought back, is known for the model asked for only when this tab opened
 ## it so (AskedCopy.shown_here) and it says it came from the link: work of
 ## the person's own is not taken for it.
@@ -199,6 +201,32 @@ func _run() -> void:
 	_ok(not acts.visible, "Escape puts it away")
 	_ok(not acts.offer(kept, "probe-person-f"), "...and it is never offered to them again")
 
+	# The copy is made the moment the code is taken, with the age question
+	# still to come: a reload then comes back to the link's address, which
+	# opens the copy made, and the acts wait for the question to go.
+	print("\na reload behind the age question, the copy made, its acts not yet offered")
+	account.user_id = "probe-person-g"
+	AskedCopy.mark_made(LINK, "probe-person-g", kept)
+	account.age_ask = true
+	account.changed.emit()
+	await _settle()
+	var copies: Array = _saved_like()
+	_main.set("_copy_started", false)
+	_main.call("_maybe_copy")
+	for _n: int in 30:
+		await process_frame
+	_ok(gate.visible and not acts.visible, "behind the question, nothing offered yet")
+	account.age_ask = false
+	account.changed.emit()
+	for _n: int in 120:
+		await process_frame
+		if acts.visible:
+			break
+	_ok(acts.visible and _text_on(acts).contains("“%s”" % kept),
+		"the question answered, the acts offered on the copy: %s" % _text_on(acts))
+	_ok(store.title == kept and _saved_like() == copies, "...the copy made, not another: %s" % [_saved_like()])
+	acts.dismiss()
+
 	print("\na reload in the middle of signing in")
 	_main.set("_copying", "Pr0beAgain")
 	store.remixed_from = "Pr0beAgain"
@@ -248,21 +276,27 @@ func _settle() -> void:
 	await RenderingServer.frame_post_draw
 
 
-## A click on a part of the model, the pointer held there until the app
-## says it is over one.
+## A click on a part of the model, at a point the app's own hit test finds
+## one under (EditVerbs.brick_at, what a click with any tool asks). The
+## builder's hovered part was waited for here: it follows the pointer only
+## while a part is in hand, so with the Paint tool no point ever had one and
+## no click was made (fmfin, 2026-11-23).
 func _click_model() -> void:
 	var view: Control = (_main.get("_marquee") as Control).get_parent()
 	var builder: Builder = _main.get("_builder")
+	var verbs: EditVerbs = _main.get("_verbs")
 	builder.hide_preview()
 	await process_frame
 	for offset: Vector2 in [Vector2(0, 40), Vector2(0, 0), Vector2(30, 60), Vector2(-30, 20)]:
 		var at: Vector2 = view.get_global_rect().get_center() + offset
 		_move(at)
-		for _n: int in 300:
+		var found: int = 0
+		for _n: int in 60:
 			await process_frame
-			if builder.hovered_brick() != 0:
+			found = verbs.brick_at(at)
+			if found != 0:
 				break
-		if builder.hovered_brick() == 0:
+		if found == 0:
 			continue
 		_button(at, true)
 		_button(at, false)

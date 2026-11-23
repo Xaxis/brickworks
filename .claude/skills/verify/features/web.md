@@ -8494,9 +8494,11 @@ and `ui:a copy's first acts` (`src/ui/first_acts.gd`; firstminute,
 model at start in place of the example car or the model saved last, whoever
 is signed in; signed out, behind the sign-in screen titled "Sign in to make
 it yours" with "“<name>” opens as your own copy…". Once signed in it is
-saved into their models under its name (`ModelStore.unused_name`),
-credited (`remixed_from`, `credit`), framed, and the address loses
-`copy=`. The link is kept only in the browser: the address (through
+saved into their models under the name its page gives it, not the
+file's first line (`ModelStore.unused_name`), credited (`remixed_from`,
+`credit`), framed, and the address loses `copy=` once the sign-in screen
+has gone, so a reload behind the age question opens the copy made and
+still offers the acts (`Main._offer_first_acts`). The link is kept only in the browser: the address (through
 `/profile?then=/app?copy=…&with=orangecheck`, which `web/profile.js` follows
 only to `/app…`), sessionStorage `brickworks.asked` (this tab opened it,
 not made theirs yet: a reload mid sign-in brings it back as the working
@@ -8514,14 +8516,16 @@ visit's Show the assistant waits for another visit while `_copying`.
 - `firstminute probe` (`tools/probe.sh firstminute_probe`, windowed): the
   house from a stand-in gallery behind the sign-in screen, its copy once
   signed in, fetched once, each act and what it does, put away by a part
-  put down and by Escape, never offered twice, no second copy, a reload mid
-  sign-in told apart from work of the person's own. Pictures in
+  put down and by Escape, never offered twice, no second copy, the acts
+  offered after a reload behind the age question, a reload mid sign-in
+  told apart from work of the person's own. Pictures in
   `shots/firstminute/`.
 - `firstminute browser flow` (`tools/web/firstminute_flow.mjs`): a stranger
   at 1280 × 800 and 390 × 844 by finger, from a gallery model's page to a
   saved change, each way in (`code`, `returning`, `reload`, `profile`,
   `tab2`) with a throwaway address (codes minted with the admin API,
-  `/api/otp` answered in the browser), timed against 180 s; the asked-for
+  `/api/otp` answered in the browser), timed against 180 s, the change
+  made on parts the app says are drawn (`brickworksLayout.targets`); the asked-for
   model after sign-in, the example car counted at every look, copies
   counted by the files the studio writes (`brickworksWrote`, kept in
   localStorage `fm.writes`). `--before` on an older build records what it

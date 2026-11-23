@@ -253,8 +253,17 @@ async function changeAndSave(page, press, phone) {
   const s0 = await look(page);
   const history0 = (s0.history || [0])[0];
   let changed = false;
+  // Parts where the app says they are drawn (brickworksLayout's targets, as
+  // centre_check clicks them), then points of the canvas: at 1280 the
+  // canvas's middle is beside the model, framed whole right of the parts
+  // column, and no click there found a part, on pre261 too (fmfin).
+  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; }).catch(() => {});
+  const layout = await until(page, () => window.brickworksLayout || null, 15);
+  const points = (layout?.targets || []).map((t) => ({ x: t.x, y: t.y }));
   for (const [fx, fy] of [[0.5, 0.5], [0.55, 0.45], [0.45, 0.55], [0.5, 0.4], [0.6, 0.55], [0.4, 0.45]]) {
-    const at = { x: box.x + box.w * fx, y: box.y + box.h * (phone ? fy * 0.9 + 0.03 : fy) };
+    points.push({ x: box.x + box.w * fx, y: box.y + box.h * (phone ? fy * 0.9 + 0.03 : fy) });
+  }
+  for (const at of points) {
     if (phone) await page.touchscreen.tap(at.x, at.y);
     else await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(900);
