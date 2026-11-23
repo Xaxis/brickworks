@@ -165,7 +165,7 @@ async function betaSaid(page) {
       sections: ["report", "new", "testers", "about"].filter((id) => !document.getElementById(id).hidden),
       form: [...document.querySelectorAll("main form")].some((one) => one.checkVisibility()),
       // Its words, not as drawn: the eyebrow is drawn in capitals.
-      eyebrow: [...document.querySelectorAll(".beta-head .eyebrow span")].filter((s) => !s.hidden).map((s) => s.textContent).join(" "),
+      eyebrow: [...document.querySelectorAll(".beta-head .beta-state span")].filter((s) => !s.hidden).map((s) => s.textContent).join(" "),
       sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
   });
 }

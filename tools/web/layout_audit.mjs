@@ -76,9 +76,9 @@ const PAGES = [
   ["collections", HEAD], [{ name: "library", path: "/library" }, HEAD], ["settings", HEAD],
   ["faq", HEAD], ["terms", HEAD], ["privacy", HEAD], ["guidelines", HEAD], ["changelog", HEAD], ["compare", HEAD],
   ["takedown", HEAD], ["share-model", HEAD], [{ name: "feedback", path: "/feedback" }, HEAD],
-  [{ name: "counting", path: "/counting" }, HEAD],
+  [{ name: "counting", path: "/counting" }, HEAD], ["plans", HEAD], ["beta", HEAD],
   ["home", EDGES], ["model", EDGES], ["person", EDGES], ["collection", EDGES], ["challenge", EDGES], ["account", EDGES],
-  ["plans", EDGES], ["beta", EDGES], ["download", EDGES],
+  ["download", EDGES],
 ].map(([one, kind]) => ({ ...(typeof one === "string" ? listed.get(one) : one), kind }))
   .filter((one) => one.name && (!only || only.includes(one.name)));
 
