@@ -8992,9 +8992,13 @@ func _hold_own_assembly(name: String) -> void:
 	if ids.is_empty():
 		_bar.say("“%s” is not in this model now" % name)
 		return
+	# Set, not toggled: select_brick toggles, and a click on a part of a
+	# sub-assembly takes all of it, so each of its parts in turn took the
+	# copy and let it go again (ux14's after walk: nothing selected).
 	_builder.clear_selection()
 	for brick_id: int in ids:
-		_builder.select_brick(brick_id, true)
+		_builder.selection[brick_id] = true
+	_builder.selection_changed.emit(_builder.selection.size())
 	_verbs.duplicate_selection(true)
 
 

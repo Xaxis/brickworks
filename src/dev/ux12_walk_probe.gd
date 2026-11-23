@@ -770,9 +770,9 @@ func _measure_align() -> void:
 	if verbs != null and not _builder.selection.is_empty():
 		verbs.lift()
 		await _frames(10)
-		await _type("x 1")
+		await _type("x -1")
 		await _frames(10)
-		await _step("p12_05_typed", "x 1 typed with the part in hand")
+		await _step("p12_05_typed", "x -1 typed with the part in hand: outwards, it is the leftmost")
 		await _key(KEY_ENTER)
 		await _frames(10)
 		await _step("p12_06_moved", "moved one stud along x")
@@ -780,7 +780,7 @@ func _measure_align() -> void:
 		for brick: BrickWorld.Brick in _world.bricks():
 			if brick.id == lifted_id or _builder.selection.has(brick.id):
 				now_at = brick.transform.origin
-		_check14("x 1 and Enter put it down a stud along x (%s to %s, in hand: %s)" % [lifted_from,
+		_check14("x -1 and Enter put it down a stud along x (%s to %s, in hand: %s)" % [lifted_from,
 			now_at, str(_builder.is_carrying())], not _builder.is_carrying()
 			and now_at.is_finite() and lifted_from.is_finite()
 			and absf(absf(now_at.x - lifted_from.x) - 20.0) < 0.1)

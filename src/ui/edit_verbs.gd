@@ -1590,15 +1590,23 @@ func _ready() -> void:
 	# handles' (Handles); otherwise it moves what is in hand.
 	typed.takes_axis = func() -> bool:
 		return builder.is_carrying() and not _handles_want_typing() and not _handles_typing()
+	# Straight after Duplicate's copy beside, a number is copies even with
+	# the Move tool's handles out: they took "2x" as a move (ux14's after walk).
 	typed.may_open = func() -> bool:
+		if _fresh_copy():
+			return _begin_typing()
 		return handles.begin_typing() if _handles_want_typing() else _begin_typing()
 	typed.opened_as = func() -> String:
+		if _typed_was.has("copies_only"):
+			return "move"
 		return handles.typed_verb() if _handles_want_typing() else str(_armed.get("verb", "move"))
 	typed.going = func() -> Vector3:
 		return handles.typed_way() if _handles_typing() else builder.last_way
 	# Straight after a copy, "5x" and "/5" are copies (Pattern), not a move;
 	# never while a handle has the number.
 	typed.reads = func(text: String) -> Dictionary:
+		if _typed_was.has("copies_only"):
+			return _copies_read(text)
 		return {} if _handles_want_typing() or _handles_typing() else _copies_read(text)
 	typed.preview = func(what: Dictionary) -> String:
 		if _handles_typing():
@@ -1636,6 +1644,20 @@ func _ready() -> void:
 		# A paste into a model with sub-models of its own of the same name.
 		if not builder.pasted_said.is_empty():
 			say.call(builder.pasted_said))
+
+
+## Whether Duplicate's copy beside was the last change, with nothing in
+## hand: a number typed now is copies of it (_begin_typing).
+func _fresh_copy() -> bool:
+	if builder.is_carrying() or _copied.is_empty() \
+			or int(_copied["depth"]) != builder.history_depth():
+		return false
+	# Undone and something else done, the depth is the same again: the copy
+	# is gone.
+	for brick_id: int in _copied["ids"]:
+		if world.get_brick(brick_id) == null:
+			return false
+	return true
 
 
 ## Keep what is in hand before R or T, so a number typed next takes their
@@ -1694,8 +1716,7 @@ func _begin_typing() -> bool:
 	# Straight after Edit, Duplicate put its copy beside the original, a
 	# number is copies ("5x": a row a step apart), as after a clone put down
 	# by hand (duplicate_beside).
-	if not builder.is_carrying() and not _copied.is_empty() \
-			and int(_copied["depth"]) == builder.history_depth():
+	if _fresh_copy():
 		# Copies only: nothing is in hand for a move to move (_typed_apply).
 		_typed_was = {"copies_only": true}
 		return true
