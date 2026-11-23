@@ -443,7 +443,13 @@ is on the page, `hidden`, for the script to show.
   (`web/model-page.js` `fitPicture`, by transform alone, so nothing
   shifts); between 600 and 900 px the frame is the picture's own shape.
   Its facts are one quiet line of words, a dot between two on a line,
-  those that lead somewhere links, not pills.
+  those that lead somewhere links, not pills. Where it came from (a
+  remix's source, what it changed, what it is based on) is a panel under
+  the picture, `.lineage`, and on a phone after the column, so the
+  column holds the name, who made it, the actions and the counts; a model
+  somebody else modelled heads the column with them (`.shared-by.credit`,
+  "Shared by" its sharer under), as a set's page does (sitebold,
+  2026-11-23).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's

@@ -40,8 +40,8 @@
 // (hreflang) and is its own canonical.
 
 import { existsSync, readFileSync } from "node:fs";
-import { SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
-import { counted, iconHtml, say, themeSaid } from "./_card.js";
+import { LDRAW_FROM, SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
+import { avatarHtml, counted, iconHtml, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
 import { byKey, search } from "./_search.js";
 
@@ -146,6 +146,22 @@ export function catalogSet(number, given = setCatalog()) {
 
 /// "Star Wars > Ultimate Collector Series", each in the page's language.
 export const themeWords = (entry) => entry.theme.map(themeSaid).join(" > ");
+
+/// Who modelled [model], LDraw's 3D model of a set, as a model's page heads
+/// it (api/share.js designerRow, sitebold 2026-11-23): their initial for an
+/// avatar, "Modelled by" them for LDraw's library (its page there), and the
+/// model's own page here; with no name, that page alone.
+function modellerHtml(model, at) {
+  const own = sayHtml("LDraw's model of it has {page}: who modelled it, its steps and its file.",
+    { page: `<a href="${at}/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` });
+  const name = typeof model.author === "string" ? model.author.trim() : "";
+  if (!name) return `<p class="from">${own}</p>`;
+  const page = typeof model.page === "string" && model.page.startsWith("https://library.ldraw.org/") ? model.page : "";
+  return `<div class="shared-by credit">${avatarHtml({ name })}<div class="names">`
+    + `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(name)}</b>`,
+      ldraw: page ? `<a href="${escapeHtml(page)}">${asText(say(LDRAW_FROM))}</a>` : asText(say(LDRAW_FROM)) })}</p>`
+    + `<p class="shared-via">${own}</p></div></div>`;
+}
 
 /// LDraw's 3D models of each set (api/_library.js librarySets), by the set's
 /// lower-cased number: {main, more}, main its model of the set itself and
@@ -559,8 +575,7 @@ ${chrome.header}
         <a class="cta ghost" href="${escapeHtml(designLink(entry, lots))}" data-design title="${asText(say("Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with"))}">${asText(say("Design with these parts"))}</a>` : ""}
       </div>
       <ul class="facts pills">${facts(entry, model, at)}</ul>
-      ${model ? `<p class="from">${sayHtml("LDraw's model of it has {page}: who modelled it, its steps and its file.",
-        { page: `<a href="${at}/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` })}</p>` : ""}
+      ${model ? modellerHtml(model, at) : ""}
     </div>
     <div class="rest">
   ${owned}

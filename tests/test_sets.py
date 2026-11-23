@@ -270,6 +270,9 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     # Its LDraw model: Build it in 3D in the app, its page, and both models listed.
     assert 'href="/app?new=1&amp;library=omr-10179-1" data-build3d' in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
+    # Who modelled it heads its credit, by their initial, linked to LDraw's page of it (sitebold).
+    assert re.search(r'<div class="shared-by credit"><span class="avatar [^"]*" aria-hidden="true">R</span><div class="names">'
+                     r'<p class="from modelled-by">Modelled by <b>Roland Dahl</b> for <a href="https://library\.ldraw\.org/omr/sets/\d+">', falcon)
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
     assert 'href="/library/set/4488-1">2 × 4488-1 Millennium Falcon - Mini' in falcon
     assert '<a href="/library?theme=Star%20Wars%20%3E%20Ultimate%20Collector%20Series">Ultimate Collector Series</a>' in falcon
