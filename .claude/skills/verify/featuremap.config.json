@@ -6371,7 +6371,7 @@
       "kind": "cli",
       "label": "homescreen browser flow",
       "entry": "tools/web/homescreen_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--device=headless|window|firefox]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due; her device is the first of headless Chromium, Chromium in its own Xvfb and Firefox that reaches a push service: Firefox, on Playwright's builds)",
       "area": "web"
     },
     {

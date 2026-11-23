@@ -113,6 +113,12 @@ whole cycle.
   every version, the newest first, each with its picture, the day, what
   changed and its note, and a link to that version.
 
+- **brickworks.diy opens on our mark, built in LEGO® bricks, in 3D.** 189
+  real parts, a course at a time: on your first visit the bricks fly up and
+  drop back into place, then the model turns slowly. Drag it to turn it, or use the arrow
+  keys; a brick lifts under your mouse. **Open it in the studio** opens it
+  in Brickworks, and it is one of the app's examples too. If you have asked
+  your device for less motion, it stays still until you turn it.
 - **brickworks.diy's home is a feed.** What builders make and say, one post
   after another: new builds, threads in Talk with their latest reply, this
   month's challenge with its entries, builders to follow and photos of
@@ -341,6 +347,11 @@ whole cycle.
   they really work, with a picture of each.
 
 ### Fixed
+
+- **The beta bar no longer covers the page.** It sits along the bottom of the
+  window, and every page leaves room for it at its end. The home page's top
+  is shorter too, so the first row of builds shows whole on a laptop, and its
+  search's "Search the gallery for" rows always carry everything you typed.
 
 - With the bin, Stress and the assistant open at 1280 × 720, the timeline's
   Done and Instructions, Account and the status bar were past the window's
