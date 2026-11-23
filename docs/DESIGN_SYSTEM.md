@@ -1080,7 +1080,12 @@ and after scrolling, every page at 390 and 1280 px.
   here, the footer), it waits, and Show more draws it at once: put in then,
   it pushed them down under a person's eyes (site277, CLS 0.51). Show more
   stays pressable while that page is on its way, and a press then draws it
-  as soon as it comes.
+  as soon as it comes. A band that comes late in the middle of a page (the
+  home page's latest talk and its beta) goes in while the place it goes is
+  under the screen or scrolled past, never while it shows; put in above,
+  the page is scrolled on by its height where the browser keeps no anchor
+  itself. Waiting only for under the screen, it never came on a screen tall
+  enough to show that place at the top (1280 x 900, landfix).
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it

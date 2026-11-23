@@ -272,15 +272,24 @@ challenge();
 // ---------------------------------------------------------------------------
 // Under the first screen.
 
-/// [show] once [place] is under the window, now or once it is again after
-/// a scroll, so what it puts in moves nothing in view (docs/DESIGN_SYSTEM.md,
-/// Out of sight).
-function whenUnder(place, show) {
-  const under = () => !place || place.getBoundingClientRect().top >= innerHeight;
+/// [show] what goes in just above [place] once [place]'s top is out of the
+/// window, under it or scrolled past, now or after a scroll, so what it puts
+/// in moves nothing in view (docs/DESIGN_SYSTEM.md, Out of sight). Under the
+/// window only, it never came on a screen tall enough to show [place] at the
+/// top: at 1280 x 900 or 1920 x 1080 the band under the shelf stayed hidden
+/// however far down a person read (landfix, 2026-11-22). Put in above, the
+/// page is scrolled on by what came in, where the browser does not itself.
+function whenOut(place, show) {
+  const top = () => place.getBoundingClientRect().top;
   const now = () => {
-    if (!under()) return false;
+    const before = place ? top() : innerHeight;
+    if (before > 0 && before < innerHeight) return false;
     removeEventListener("scroll", now);
     show();
+    if (before <= 0) {
+      const moved = top() - before;
+      if (moved) scrollBy(0, moved);
+    }
     return true;
   };
   if (!now()) addEventListener("scroll", now, { passive: true });
@@ -313,7 +322,7 @@ async function talk() {
   band.dataset.filled = String(count);
   // Its link only now: a page with no Talk links nowhere it would 404.
   document.getElementById("talk-all")?.setAttribute("href", `${langAt()}/talk`);
-  whenUnder(band.nextElementSibling, () => { band.hidden = false; });
+  whenOut(band.nextElementSibling, () => { band.hidden = false; });
 }
 
 /// Four real sets, each its picture and a link to its page; the tile's
@@ -379,7 +388,7 @@ async function beta() {
   }
   drawBeta(heard);
   if (held) return;
-  whenUnder(band.nextElementSibling, () => { html.dataset.beta = "open"; });
+  whenOut(band.nextElementSibling, () => { html.dataset.beta = "open"; });
 }
 
 document.getElementById("beta")?.addEventListener("click", async (event) => {

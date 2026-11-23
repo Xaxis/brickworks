@@ -3033,7 +3033,8 @@ plan with Claude as the client.
   homepage's `#talk-latest` under the shelf): asked as the section under
   it nears the screen, from `?op=talk_latest&n=4&html=1` (`&tests=1` where
   the address has it), the rows Talk draws; shown only with three threads
-  or more, and only while its place is under the window, so nothing in
+  or more, and only while its place is out of the window (under it, or
+  scrolled past with the page kept where it was: `whenOut`), so nothing in
   view moves; else never drawn. `data-talk` on `<html>` and the band's
   `data-filled` say how it ended (`tools/web/landing_check.mjs`,
   `tools/web/talk_flow.mjs`). The header (Gallery, Talk, Challenges,

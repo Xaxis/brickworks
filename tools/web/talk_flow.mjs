@@ -181,9 +181,13 @@ if (await waitingOnly()) {
 
 try {
   console.log("1. The boards, signed out");
-  // The homepage's latest talk (#talk-latest), filled as it nears the screen.
+  // The homepage's latest talk (#talk-latest), filled as it nears the screen
+  // and put in only where it moves nothing in view (web/landing.js whenOut):
+  // at 1280 x 900 the section under it shows in the first screen, so it
+  // comes once a person reads on past that section's top (scrollIntoView
+  // stops under the header, with the top still in view).
   const landing = await open("/index.html?tests=1");
-  await landing.evaluate(() => document.getElementById("talk-latest")?.scrollIntoView());
+  await landing.evaluate(() => scrollBy(0, (document.getElementById("community")?.getBoundingClientRect().top || 0) + 40));
   const strip = await until(landing, () => {
     const place = document.getElementById("talk-latest");
     const rows = [...(place?.querySelectorAll(".talk-row") || [])];
