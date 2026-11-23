@@ -15,10 +15,13 @@
 ## ([constant RASTER]): no table's relief, but a desk's colour, soft light
 ## and a shadow, which the blind judge also chose over the cut-out every
 ## time. Not on a phone, whose memory a second copy of a big model may not
-## have, and never longer than [constant RASTER_MOST_MS]: past it the card
-## is the cut-out it was. The link's picture and the page's cut-out are
-## not this: they are drawn by Picture as before, so a model's page keeps
-## its ground in both themes.
+## have.
+##
+## A card holds a publish [constant MOST_MS] at most: past it a traced card
+## keeps the samples it has (at least [constant LEAST_SAMPLES]), and one
+## frames averaged is given up for the cut-out it was. The link's picture
+## and the page's cut-out are not this: they are drawn by Picture as
+## before, so a model's page keeps its ground in both themes.
 class_name CardPhoto
 extends Node
 
@@ -49,10 +52,15 @@ const RASTER: Dictionary = {
 	"lighting": "studio",
 	"samples": 16,
 }
-## The longest a frames-averaged card may take, in milliseconds, before it
-## is given up for the cut-out: a browser drawing in software (a test's)
-## would hold the publish for many seconds.
-const RASTER_MOST_MS := 2500
+## The longest a card may hold a publish, in milliseconds (docs/PLAN.md
+## row 4: two seconds at most, nineteen publishes in twenty). The house's
+## 49 took 1.0 to 2.7 s on the box's shared graphics card, the set's
+## making most of it; a browser drawing in software (a test's) would take
+## many seconds.
+const MOST_MS := 1800
+## The fewest samples a traced card cut short keeps: at twice the card's
+## size, made smaller and its grain taken out, 16 read as 64 do.
+const LEAST_SAMPLES := 16
 ## Samples a pixel: the card is drawn at twice its size and made smaller,
 ## which takes out three quarters of what is left of the noise. 64 and 96
 ## could not be told apart on the house's models at the card's size, and
@@ -73,6 +81,8 @@ var asked: Dictionary = {}
 ## its steps began (milliseconds in, then the render's words), for the bench.
 var last_ms: float = 0.0
 var steps: PackedStringArray = PackedStringArray()
+## How many samples the last traced card kept ([constant MOST_MS]).
+var samples: int = 0
 ## How many frames the last card took: on a box drawing through software's
 ## copy of the window (a probe's Xvfb), each costs that copy's time as well.
 var frames: int = 0
@@ -163,14 +173,20 @@ func take(size: Vector2i) -> Image:
 	steps = PackedStringArray()
 	var first_frame: int = Engine.get_frames_drawn()
 	render.progress.connect(func(_fraction: float, words: String) -> void:
+		var at_ms: int = (Time.get_ticks_usec() - began) / 1000
 		if steps.is_empty() or not steps[-1].ends_with(" " + words):
-			steps.append("%d %s" % [(Time.get_ticks_usec() - began) / 1000, words]))
+			steps.append("%d %s" % [at_ms, words])
+		# Said after each whole sample, just before the tracer looks whether
+		# it is to stop: the picture keeps whole samples.
+		if at_ms > MOST_MS and render.samples_traced() >= LEAST_SAMPLES:
+			render.finish_now())
 	if not traced():
-		get_tree().create_timer(RASTER_MOST_MS / 1000.0).timeout.connect(func() -> void:
+		get_tree().create_timer(MOST_MS / 1000.0).timeout.connect(func() -> void:
 			if is_instance_valid(render):
 				render.cancel())
 	var image: Image = await render.render(world, settings(size))
 	frames = Engine.get_frames_drawn() - first_frame
+	samples = render.last_samples if render.traced_last() else 0
 	worst_frame_ms = render.worst_frame_ms
 	worst_step = render.worst_step
 	render.queue_free()

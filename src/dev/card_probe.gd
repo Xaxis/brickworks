@@ -121,9 +121,11 @@ func _run() -> void:
 			took[look + "_steps"] = card.steps
 			took[look + "_worst"] = [roundi(card.worst_frame_ms), card.worst_step]
 			took[look + "_frames"] = card.frames
+			took[look + "_samples"] = card.samples
 			_ok(photo != null and photo.get_size() == SharePanel.THUMB * 2,
-				"%d %s: the card as a photograph (%s), %.0f ms in %d frames, the longest %.0f ms (%s)"
-				% [n, said["name"], look, card.last_ms, card.frames, card.worst_frame_ms, card.worst_step])
+				"%d %s: the card as a photograph (%s), %.0f ms in %d frames, %d samples, the longest %.0f ms (%s)"
+				% [n, said["name"], look, card.last_ms, card.frames, card.samples, card.worst_frame_ms,
+				card.worst_step])
 			if photo != null:
 				photo.convert(Image.FORMAT_RGB8)
 				photo.resize(SharePanel.THUMB.x, SharePanel.THUMB.y, Image.INTERPOLATE_LANCZOS)
