@@ -469,11 +469,17 @@ try {
     const vp = visitor.page;
     if (await findAnnIn(vp)) {
       await vp.locator(sel).scrollIntoViewIfNeeded();
-      const atY = await vp.evaluate(() => Math.round(scrollY));
       // A comment typed signed out: Post asks to sign in, and once in, it
       // goes from the same post, nothing typed lost, no page left.
       await vp.click(`${sel} .post-say`);
       await vp.fill(`#say-${modelId}`, `Signed in from here ${rand}`);
+      // Where the post is on the screen as Post is pressed, which a person
+      // sees, not scrollY: the visitor's band giving way to the search row
+      // moved it 268 px up and off the screen with scrollY the same
+      // (checkdrift, 2026-11-23). Post brought into view first, as a
+      // person scrolls to it: the click's own scrolling is not the page's.
+      await vp.locator(`${sel} form.composer button[type="submit"]`).scrollIntoViewIfNeeded();
+      const atTop = await topOf(vp);
       await vp.click(`${sel} form.composer button[type="submit"]`);
       await vp.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
       await vp.fill("dialog.sign-in input", emails.cy);
@@ -490,12 +496,12 @@ try {
       }
       const went = await until(vp, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
         && !document.querySelector(`${s} .said-line.pending`) ? document.querySelector(`${s} .said-lines`)?.textContent || "" : null), null, 40, sel);
-      const nowY = await vp.evaluate(() => Math.round(scrollY));
+      const nowTop = await topOf(vp);
       const heardIt = await api(`/api/people?op=comments&id=${modelId}`);
       check(`9. a visitor's comment: signed in in the dialog, posted from the same post (${String(went).slice(-40)}), on the model `
-        + `(${(heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)}), still at ${nowY} px (was ${atY})`,
+        + `(${(heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)}), the post still at ${nowTop} px on the screen (was ${atTop})`,
         String(went).includes(`Signed in from here ${rand}`) && (heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)
-        && Math.abs(nowY - atY) <= 40);
+        && Math.abs(nowTop - atTop) <= 40);
       await offeredAfter(vp, "the comment", "first-steps-after-comment.png");
       // And now signed in, Like goes at once.
       await vp.click(`${sel} [data-like]`);
@@ -515,7 +521,7 @@ try {
     const dee = `delivered+bw-feed-dee-${rand}@resend.dev`;
     if (await findAnnIn(lp)) {
       await lp.locator(sel).scrollIntoViewIfNeeded();
-      const atY = await lp.evaluate(() => Math.round(scrollY));
+      const atTop = await topOf(lp);
       await lp.click(`${sel} [data-like]`);
       await lp.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
       await lp.fill("dialog.sign-in input", dee);
@@ -531,9 +537,9 @@ try {
       }
       const done = await until(lp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
         ? !document.querySelector("dialog[open]") : null), null, 30, sel);
-      const nowY = await lp.evaluate(() => Math.round(scrollY));
-      check(`10. a visitor's Like: signed in in the dialog, the like made with no dialog over it (${done}), still at ${nowY} px (was ${atY})`,
-        done === true && Math.abs(nowY - atY) <= 40);
+      const nowTop = await topOf(lp);
+      check(`10. a visitor's Like: signed in in the dialog, the like made with no dialog over it (${done}), the post still at ${nowTop} px on the screen (was ${atTop})`,
+        done === true && Math.abs(nowTop - atTop) <= 40);
       await offeredAfter(lp, "the like", "first-steps-after-like.png");
       await shot(lp, "signed-in-from-like.png");
     } else {
@@ -542,6 +548,10 @@ try {
     await liker.context.close();
     await deleteAccount(dee).catch(() => {});
 
+    // Ann's post's top on the screen.
+    async function topOf(one) {
+      return one.evaluate((s) => Math.round(document.querySelector(s)?.getBoundingClientRect().top ?? NaN), sel);
+    }
     // What the snackbar came with, looked at from the age's answer on, so a
     // check slower than its 8 s on the screen still sees it came: its
     // words, whether Ann's post was liked or commented on by then, and any
