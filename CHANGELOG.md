@@ -31,6 +31,59 @@ whole cycle.
   from yet says so, with **Build something from it**. Say a model is an
   alternate build of a set that lacks some of its parts, and your own page
   tells you how many.
+- **Change any model with your own Claude.** Every model's page has **With
+  your Claude** beside **Open in Brickworks**: say what should change (or
+  nothing, and Claude asks), press **Copy for Claude**, and paste the message
+  into a chat with Claude and the Brickworks connector. Claude opens a copy in
+  your models, changes it, and shows you; the shared model stays as it was.
+  Publish the copy and its page says it was remixed from the original. On a
+  phone, **Share to Claude** hands the message to the Claude app; with no
+  connector yet, **Connect Claude** keeps the message for you on the connect
+  page. A chat that starts by opening a model is now told how to change what
+  is built, not how to design something new.
+- **What a remix changed, counted and shown.** A remix's page says what
+  it changed from the version it was copied from, under its credit:
+  *What it changed from version 1: 42 parts added, 8 taken away, 3
+  recoloured, 5 moved*, counted by the same rules as Compare in the app,
+  once, when it is shared. **See what changed in 3D** opens the 3D view
+  with **What changed** on: the parts it added, moved or recoloured in
+  their colours, the rest faded, and the parts it took away as faint red
+  ghosts. It is a toggle on the view's bar, off until you press it, on a
+  phone too. A model's **Remixes** tab now draws the line it is part of as
+  a tree: up to the first model, and its remixes three levels down, each
+  card saying what it is a remix of, and of what that was, and what it
+  changed.
+- **Comment on a part.** On a shared model's page, in its 3D view, or in
+  the app's viewer, right-click a part (or touch and hold it, or press
+  Shift+F10 with the part in the middle) and choose **Comment on this
+  part**. The comment keeps the part and says where it is, "on the 2 × 4
+  brick, step 12", and a small numbered dot marks the part in 3D; pressing
+  the line turns the view to it. On a newer version the dot stays on the
+  part, follows it if it moved a little ("moved since"), and is never put
+  on a part it was not about. The designer sees how many are open when
+  they open the model in the app, lists them, lights and frames each part,
+  and marks one **Resolve**d, which folds it away on the page. Notifications
+  say it is "on a part".
+
+- **Post it elsewhere.** On your shared model's page, **Share** offers a
+  kit for r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable and
+  Flickr, each in that place's own form and checked against its rules,
+  every one with your model's link: Reddit's title with its flair (SEC and
+  the designer's credit for somebody else's design) and the words to
+  paste; Instagram's 1080 × 1350 cover, a 1080 × 1920 turn and a caption of
+  five hashtags at most; LEGO® Ideas' pieces, pictures and a main picture
+  with no text checked, saying what fails; Rebrickable's parts CSV; and
+  Flickr's largest picture. Your browser makes it from what the page has
+  published; a phone hands the files to its share sheet, a computer saves
+  one zip. Brickworks posts nothing anywhere: you post it yourself.
+- **Show your build, where the build ends.** The last step of Build it
+  says how many people have built the model and offers **Show your
+  build**: the camera on a phone, a photo on a computer, a line about it
+  if you like, and **Post**. It goes on the model's page, first in its
+  Builds, and its designer is told. Not signed in, Post asks you to sign
+  in right there and brings you back to the last step with your photo
+  still chosen. What the camera wrote into the photo is taken out before
+  anyone sees it. The viewer's timeline offers the same at its last step.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,
@@ -178,6 +231,11 @@ whole cycle.
   take them back. Tell it what a set is missing and it marks one count a
   part for all your copies, says each change as it was and as it is, and
   makes a big set whole again in one call.
+- **The site's owner sees whether people go round the loop.** The owner's
+  console counts, a day at a time, how many people discovered something,
+  opened a model, changed one, shared, heard back from somebody and came
+  back, each against the days just before. It reads only what the site
+  counts already: nothing more is kept about anybody.
 
 ### Changed
 

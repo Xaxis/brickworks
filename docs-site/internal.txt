@@ -100,3 +100,4 @@ ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: th
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
 entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested
 lib:the web's catalogue as columns  # the form the web build reads the parts catalogue in (webstart11); a visitor meets the parts bin, which reads the same either way
+cli:pin version pairs  # tools/pin_pairs.mjs writes the version pairs tests/test_partpins.py and the partpins probe hold the pin rule to; a person meets the pins it tests (model-pages#on-a-part)

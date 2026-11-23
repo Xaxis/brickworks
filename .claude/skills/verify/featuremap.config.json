@@ -5608,7 +5608,7 @@
       "kind": "ui",
       "label": "the owner's Analytics",
       "entry": "web/admin-analytics.js",
-      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, the loop (each step this range against the one before as a dumbbell and a table, Built beside, each step's names; ?op=loop), retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
       "area": "web"
     },
     {
@@ -6464,6 +6464,153 @@
       "entry": "src/render/path_tracer.glsl",
       "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal8, docs/RENDERING.md 5l: at Best in the Product look, path traced, each part its own: its colour batch turned in Oklab (batch, path_tracer.glsl batch_of), its polish and wear by how much it was handled (handling, handled_of, print_of; 0 unless asked), each stud's logo and top (studs, the instance's info.w to stud_logo), its seat as LEGO's play lets it sit (play, PathTracer._seated); seeded by the part's place, the model untouched; all four 0 (--without=batch,handling,studs,play) draws photoreal7's pictures byte for byte)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "change a model with your Claude",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Open in Brickworks' second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "claudelink bench",
+      "entry": "tools/bench/claudelink.py",
+      "reach": "heavy python3 tools/bench/claudelink.py --out=DIR   (3 gallery models x a recolour, a part added and a stand with a nameplate: a Claude Code session given only the page's copied message (tools/web/claude_copy.mjs) through the relay with --instructions none, the tab src/dev/claudelink_tab.gd publishing as the person; remixed_from, the remix's page, the change, 12 calls or fewer, no tool or part there is not; DIR/SUMMARY.txt)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the loop's read",
+      "entry": "api/_loop.js",
+      "reach": "python3 tools/minitest.py tests/test_loop.py   (GET /api/admin?op=loop 401 signed out, 404 to anybody else, the same from, to, plan, device, lang, signed and tests as op=analytics; before supabase/loop_funnel.sql {ready: false}; its accounts hashed as the counter's, the checks' and the test pool's only on ?tests=1; tests/fixtures/insights/loop_check.mjs: 12 people stopped at known steps, two back, the owner, the checks' account and the test pool beside them, each step, Stopped here, Built, the kept shares, the heard-back kinds and every LOOP name equal to the hand count, the filters, a sampled visit at its weight, no VIEW_SECRET, a made-up name no step, 400 days at most, nothing left behind, --load=500 timed under 1 s over 90 days; LOOP's names all kept (python3 tools/insights_names.py --check); dry run tools/loop_funnel_try.sql; docs/ANALYTICS.md The loop)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the loop as JSON",
+      "entry": "tools/loop_read.mjs",
+      "reach": "node tools/loop_read.mjs [--days=30 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--plan=all] [--tests] [--port=11390] [--out=FILE]   (the console's ?op=loop run by a local tools/web/relay_server.mjs against the live database, MASTER_EMAIL the checks' shared account (never the owner's), given only SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_PUBLISHABLE_KEY; says what a read without VIEW_SECRET cannot know; {ready: false} before supabase/loop_funnel.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the loop's card check",
+      "entry": "tools/web/loop_card_check.mjs",
+      "reach": "node tests/fixtures/insights/loop_check.mjs --card=OUT/card_loop.json, then heavy node tools/web/loop_card_check.mjs --card=OUT/card_loop.json --out=OUT [--port=11391]   (locally, the console and api/admin.js on a relay against the live database, MASTER_EMAIL the checks' shared account: the live ?op=loop says not measured before supabase/loop_funnel.sql; the fixture's read at 1280 and 390, light and dark, six steps, a legend of two, the table's numbers the read's, Built and within 30 beside, each step's names; Tab reaches the chart in one stop, arrows, Home and End; Definitions' rules; pictures in OUT; ends loop_card: all ok)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "what a remix changed",
+      "entry": "api/_remix_changes.js",
+      "reach": "python3 tools/minitest.py tests/test_remix_changes.py   (remixdiff: the 12 pairs of tests/fixtures/remix_pairs counted as expected.json says, which PROBE compare_probe holds the app's Compare to; the line, the runs the 3D view lights, which version it is counted against, the tree both ways; a remix published through api/share.js (tests/fixtures/remix_pairs/publish.mjs) counted once its answer is written; supabase/remix_changes.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/remix_changes.sql --dry --try=tools/remix_changes_try.sql --table=remix_changes)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what a remix changed and the remix tree",
+      "entry": "api/_remix.js",
+      "reach": "https://brickworks.diy/m/<a remix>   (once supabase/remix_changes.sql is applied: under the credit What it changed from version N, See what changed in 3D, What changed on the 3D view's bar lighting what it changed and the taken away as ghosts, /m/<id>/changes.json; /m/<id>#remixes the tree both ways, three levels down); node tools/web/remix_flow.mjs --out=DIR on the stand-in",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "remix browser flow",
+      "entry": "tools/web/remix_flow.mjs",
+      "reach": "node tools/web/remix_flow.mjs --out=DIR   (the stand-in's four cottages, tools/web/remix_world.mjs: the line under the credit, What changed off then on, the lit parts and the ghost read from the drawn colours at 390 and 1280, See what changed in 3D, the tree both ways, the counts unchanged)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "remix backfill",
+      "entry": "tools/web/remix_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/remix_backfill.mjs --dry --current=<build>/part_names/part_current.json   (after remix_changes.sql, without --dry: every remix shared before it counted and kept)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a page's LCP in two checkouts",
+      "entry": "tools/web/page_lcp_pairs.mjs",
+      "reach": "node tools/web/page_lcp_pairs.mjs --base=<a tree with the base's web/ and api/> --rounds=8 --out=DIR   (the stand-in's pages in both at the same moments, a browser each; worse only past the noise)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "comments pinned to parts",
+      "entry": "supabase/comment_pins.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/comment_pins.sql --dry --try=tools/comment_pins_try.sql --table=model_comments   (after replies.sql; api/_comments.js addPin / resolvePin / pinnedAmong, web/card.js pinPlace; the rule on 100 version pairs and the promises in tests/test_partpins.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comment on a part in 3D",
+      "entry": "tools/viewer/inline.js",
+      "reach": "https://brickworks.diy/m/<id>: View in 3D, then a right click, a long press or Shift+F10 on a part, Comment on this part; the comment's line turns the view to it (web/model-page.js, web/start3d.js, tools/viewer/view.js dots); in the app's viewer /app?view=<id> the same (src/ui/part_pins.gd)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comments on parts in the studio",
+      "entry": "src/ui/part_pins_panel.gd",
+      "reach": "godot --path .  (open a model you published: the notice N comments on parts of this model, Show; each pin lights and frames its part, Resolve)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partpins probe",
+      "entry": "src/dev/partpins_probe.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/partpins_probe.gd -- --pictures=DIR",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partpins browser flow",
+      "entry": "tools/web/partpins_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 11400 --static=web --hold=pins, then node --env-file=.env tools/web/partpins_flow.mjs --url=http://127.0.0.1:11400 --out=DIR   (preview_checks.sh partpins: the pick at 1280 and 390, pins on the page, a new version, Resolve, a block)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "pin version pairs",
+      "entry": "tools/pin_pairs.mjs",
+      "reach": "node tools/pin_pairs.mjs [--check]   (writes tests/fixtures/pins/pairs.json)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a kit to post a model elsewhere",
+      "entry": "web/post-kit.js",
+      "reach": "https://brickworks.diy/m/<id>   (signed in as its designer, Share, Post it elsewhere: r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable, Flickr; each kit made in the browser from what the page published (its picture, the 3D view's scene, its parts list), checked against its place's rules (web/post-rules.js, each rule with its page), every caption with the model's link; Share the files on a phone with Web Share, Save the kit (.zip, under 50 MB) elsewhere; Open <place>; Brickworks posts nothing; counted as share.kit_<place>)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "postkit browser flow",
+      "entry": "tools/web/postkit_flow.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/postkit_flow.mjs --out=DIR   (on the design stand-in, nothing leaves the box: LDraw's 10183-1 (558 pieces) as Sam's Harbour Tram; Post it elsewhere hidden signed out and on somebody else's model, its code never loaded; each of the six kits made in 20 s or less at 1280 and 60 s or less at 390 (touch), its rules kept but Instagram's MP4 where Chromium records WebM, its zip under 50 MB read back by zipfile, every caption with the link; the kits ask only for the scene and geometry its View in 3D loads, once, nothing after the first; Ideas' main picture drawn with no text; Tab, Enter, the heading focused, Escape back to the button; pictures and timings.json in DIR. tests/test_post_kit.py holds each rule to its page)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "show your build",
+      "entry": "src/ui/make_card.gd",
+      "reach": "https://brickworks.diy/m/<id>, Build it, Next to the last step (or the viewer's timeline stepped onto its end, or Finish): a card under the top bar says how many have built it (the finish's own answer) with Show your build (Add a photo of your build on the designer's own model); the camera on a touch screen, a file elsewhere (PickImage, undecoded), the photo read on a worker and shown upright from its Exif, a line about it (140 characters at most, refused in words past it), Post: ?op=photo_start, the bytes PUT to the signed URL, ?op=photo (api/_builds.js, made safe server-side), then \"Posted: on the model's page\" with its link; signed out, Post asks for the sign-in in place (SignInGate with a purpose, Not now) and the photo and words stay on the card (sessionStorage on the web, for orangecheck's round trip); under 13 and may_act's limit said in the server's words, nothing sent; tools/probe.sh makes_probe; tools/web/makes_flow.mjs",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "makes probe",
+      "entry": "src/dev/makes_probe.gd",
+      "reach": "tools/probe.sh makes_probe; PROBE_SIZE=390x844 tools/probe.sh makes_probe   (windowed, FakeShared for the API: the card only on the last step, under the top bar with the model framed below it, 44-point targets; a JPEG with Exif orientation 6 chosen in the app's own dialog, shown upright, read on a worker (longest frame printed), sent byte for byte through photo_start, the signed URL and ?op=photo with its words, posted in 2 presses; signed out 10 of 10 back on the last step with the photo and words, Not now; under 13, may_act's limit, a non-picture and 141 characters refused in words, nothing sent; the designer's Add a photo of your build; 20 more finishes send nothing; Close at the end hands the card to the viewer, the timeline off its end puts it away; pictures in shots/makes/<WxH>/)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "makes browser flow",
+      "entry": "tools/web/makes_flow.mjs",
+      "reach": "node --env-file=.env tools/web/makes_flow.mjs --url=http://127.0.0.1:11350 --out=DIR   (against relay_server.mjs --static=build/web --hold=model_builds,build_photos,report_photos --trust-stand-in; a throwaway designer and builder: at 390 touch and 1280, the last step's Show your build, the page's file chooser, a JPEG with GPS and orientation, Post in 3 taps; served back with no Exif, upright, its card copy at most 480 wide; first in the model page's Builds strip and on the designer's notifications within 60 s; 20 more finishes counted once; a non-picture refused; signed out at 390 the sign-in in place, the page reloaded with the photo kept, a code typed, Post; accounts deleted)",
+      "area": "web"
     }
   ]
 }

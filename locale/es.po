@@ -16415,3 +16415,199 @@ msgstr "Sobre un vade de cuero"
 
 msgid "On terrazzo"
 msgstr "Sobre terrazo"
+
+# Comments on a part of a shared model (partpins): the viewer's menu on a part and the box's line, a pin's line where it is, and the studio's notice and list (PartPins, PartPinsPanel).
+msgid "Comment on this part"
+msgstr "Comentar esta pieza"
+
+msgid "Say something about this part, for its builder and everyone who looks at it"
+msgstr "Di algo sobre esta pieza, para quien lo construyó y para todos los que lo miren"
+
+msgid "Write a comment on the step instead of on this part"
+msgstr "Escribir un comentario sobre el paso en lugar de sobre esta pieza"
+
+msgid "Add your comment on this part"
+msgstr "Añadir tu comentario sobre esta pieza"
+
+msgid "Resolved (%d)"
+msgstr "Resueltos (%d)"
+
+msgid "Hide resolved"
+msgstr "Ocultar resueltos"
+
+msgid "The comments on parts its builder has dealt with"
+msgstr "Los comentarios sobre piezas de los que se ha ocupado quien lo construyó"
+
+msgid "Turn the view to its part, lit"
+msgstr "Girar la vista hacia su pieza, resaltada"
+
+msgid "On the %s, step %d"
+msgstr "En la pieza %s, paso %d"
+
+msgid "On the %s"
+msgstr "En la pieza %s"
+
+msgid "On a part, step %d"
+msgstr "En una pieza, paso %d"
+
+msgid "On a part"
+msgstr "En una pieza"
+
+msgid "On the %s, step %d, moved since"
+msgstr "En la pieza %s, paso %d, movida desde entonces"
+
+msgid "On the %s, moved since"
+msgstr "En la pieza %s, movida desde entonces"
+
+msgid "On a part, step %d, moved since"
+msgstr "En una pieza, paso %d, movida desde entonces"
+
+msgid "On a part, moved since"
+msgstr "En una pieza, movida desde entonces"
+
+msgid "On version %d"
+msgstr "En la versión %d"
+
+msgid "1 comment on a part of this model"
+msgstr "1 comentario sobre una pieza de este modelo"
+
+msgid "%d comments on parts of this model"
+msgstr "%d comentarios sobre piezas de este modelo"
+
+msgid "List them, and see each one's part"
+msgstr "Listarlos y ver la pieza de cada uno"
+
+msgid "Comments on parts"
+msgstr "Comentarios sobre piezas"
+
+msgid "Put the list away: the comments stay on their parts"
+msgstr "Guardar la lista: los comentarios se quedan en sus piezas"
+
+msgid "What people said about parts of this model on brickworks.diy, each numbered as its dot on the model. Press where one is to select its part."
+msgstr "Lo que otros dijeron sobre piezas de este modelo en brickworks.diy, cada uno numerado como su punto en el modelo. Pulsa dónde está uno para seleccionar su pieza."
+
+msgid "No open comments on parts."
+msgstr "No hay comentarios abiertos sobre piezas."
+
+msgid "No comments on parts of this model yet."
+msgstr "Aún no hay comentarios sobre piezas de este modelo."
+
+msgid "The comments you have dealt with: still on the site, folded away"
+msgstr "Los comentarios de los que te has ocupado: siguen en el sitio, plegados"
+
+msgid "Select its part, and turn the view to it"
+msgstr "Seleccionar su pieza y girar la vista hacia ella"
+
+msgid "Not on a part of the model as it is now: its part was changed or taken off since"
+msgstr "En ninguna pieza del modelo tal como está: su pieza se cambió o se quitó desde entonces"
+
+msgid "Reopen"
+msgstr "Reabrir"
+
+msgid "Back on its part, open, on the site too"
+msgstr "De vuelta en su pieza, abierto, también en el sitio"
+
+msgid "Done with it: folded away as resolved, here and on the site"
+msgstr "Hecho: plegado como resuelto, aquí y en el sitio"
+
+msgid "Sign in again to resolve comments."
+msgstr "Vuelve a iniciar sesión para resolver comentarios."
+
+msgid "A builder"
+msgstr "Un constructor"
+
+msgid "hidden from others"
+msgstr "oculto para los demás"
+
+msgid "Brickworks could not take that just now. Try again in a minute."
+msgstr "Brickworks no pudo aceptarlo ahora mismo. Inténtalo de nuevo en un minuto."
+# Show your build at Build it's last step: a real build's photo posted on the model's page (makes)
+msgid "%d people have built it"
+msgstr "%d personas lo han construido"
+
+msgid "1 person has built it"
+msgstr "1 persona lo ha construido"
+
+msgid "You built it"
+msgstr "Lo has construido"
+
+msgid "Show your build"
+msgstr "Muestra tu construcción"
+
+msgid "A photo of the model you built, posted on its page"
+msgstr "Una foto del modelo que has construido, publicada en su página"
+
+msgid "Add a photo of your build"
+msgstr "Añadir una foto de tu construcción"
+
+msgid "A photo of your build of it, among its pictures"
+msgstr "Una foto de tu construcción, entre sus imágenes"
+
+msgid "Say something about it (optional)"
+msgstr "Di algo sobre ella (opcional)"
+
+msgid "What you say about your build"
+msgstr "Lo que dices de tu construcción"
+
+msgid "Another photo"
+msgstr "Otra foto"
+
+msgid "Choose another photo instead"
+msgstr "Elegir otra foto en su lugar"
+
+msgid "Post"
+msgstr "Publicar"
+
+msgid "Post the photo on the model's page"
+msgstr "Publicar la foto en la página del modelo"
+
+msgid "Posted: on the model's page"
+msgstr "Publicada: en la página del modelo"
+
+msgid "The model's page, where your photo is"
+msgstr "La página del modelo, donde está tu foto"
+
+msgid "Look on the model's page first"
+msgstr "Mira primero en la página del modelo"
+
+msgid "Reading the photo…"
+msgstr "Leyendo la foto…"
+
+msgid "That is not a JPEG, a PNG or a WebP photo."
+msgstr "Eso no es una foto JPEG, PNG o WebP."
+
+msgid "That photo is %d × %d: too small to show a build"
+msgstr "Esa foto mide %d × %d: demasiado pequeña para mostrar una construcción"
+
+msgid "At most %d characters about it, please: that is %d"
+msgstr "Como mucho %d caracteres, por favor: son %d"
+
+msgid "You have added three photos: the most"
+msgstr "Has añadido tres fotos: es el máximo"
+
+msgid "Sending the photo…"
+msgstr "Enviando la foto…"
+
+msgid "Making it safe to show: taking out where and when it was taken…"
+msgstr "Preparándola para mostrarla: quitando dónde y cuándo se tomó…"
+
+msgid "The photo did not go: try again in a minute."
+msgstr "La foto no se envió: inténtalo de nuevo dentro de un minuto."
+
+msgid "That did not work just now."
+msgstr "Eso no ha funcionado ahora mismo."
+
+msgid "No answer came. Your photo may be on the model's page already: look there before you post it again."
+msgstr "No llegó ninguna respuesta. Puede que tu foto ya esté en la página del modelo: mira allí antes de publicarla otra vez."
+
+msgid "Sign in to post your build"
+msgstr "Inicia sesión para publicar tu construcción"
+
+msgid "Back, signed out: what you chose is kept"
+msgstr "Volver sin iniciar sesión: lo que elegiste se conserva"
+
+msgid "Signed in: press Post to post your photo."
+msgstr "Sesión iniciada: pulsa Publicar para publicar tu foto."
+
+msgid "Sign in to add a photo of your build: we email you a code, no password."
+msgstr "Inicia sesión para añadir una foto de tu construcción: te enviamos un código por correo, sin contraseña."

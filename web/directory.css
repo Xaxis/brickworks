@@ -153,6 +153,43 @@ dialog.bases-dialog .actions { margin-top: 16px; }
    sharing the row: three in a row fit neither a phone nor the column. */
 .model-page .side .actions > .cta { flex: 1 1 auto; }
 .model-page .side .actions > .cta:first-child { flex-basis: 100%; }
+/* Open in Brickworks and its second choice, With your Claude, one control
+   (claudelink): the two halves of a ghost button, the second opening the
+   panel under the row. Once the second shows, the control has the row and
+   Download the one under it; a long language's words wrap in the first
+   half rather than push the control past a phone's edge. */
+.model-page .side .actions > .open-split { display: flex; flex: 1 1 auto; min-width: 0; }
+.model-page .side .actions > .open-split:has(> .open-claude:not([hidden])) { flex-basis: 100%; }
+.open-split > .cta { flex: 1 1 auto; min-width: 0; white-space: normal; text-align: center; }
+.open-split:has(> .open-claude:not([hidden])) > .cta { border-start-end-radius: 0; border-end-end-radius: 0; }
+.open-split > .open-claude {
+	display: inline-flex; align-items: center; gap: var(--s-1); flex: none; min-height: var(--control-h); margin-inline-start: -1px; padding: 0 12px;
+	border: 1px solid var(--line-strong); border-radius: 0 var(--control-radius) var(--control-radius) 0;
+	background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); color: var(--ink); font-weight: 640;
+}
+.open-split > .open-claude:hover { background: var(--panel-hi); }
+.open-split > .open-claude[aria-expanded="true"] { border-color: var(--accent-edge); }
+.open-split > .open-claude[aria-expanded="true"] > .icon:last-child { transform: rotate(180deg); }
+.open-split > .open-claude .icon { width: 18px; height: 18px; }
+.open-split > .open-claude .narrow { display: none; }
+@media (width < 600px) { .open-split > .open-claude .wide { display: none; } .open-split > .open-claude .narrow { display: inline; } }
+/* What should it change, Copy for Claude and the way to connect it: under
+   the row, as Save's lists are, pushing the page down. */
+.claude-panel {
+	display: grid; gap: var(--s-2); margin: 0 0 12px; padding: 12px; border-radius: var(--r-3);
+	border: 1px solid var(--line); background: var(--panel);
+}
+.claude-panel[hidden] { display: none; }
+.claude-panel .claude-head { margin: 0; font-weight: 640; }
+.claude-panel .claude-about { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.claude-panel .claude-ask { display: grid; gap: var(--s-2); }
+.claude-panel .claude-ask label small { color: var(--ink-soft); font-weight: 400; }
+.claude-panel .claude-do { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.claude-panel .claude-do > .cta { flex: 1 1 auto; }
+.claude-panel .claude-connect { margin: 0; }
+.claude-panel .claude-message[hidden] { display: none; }
+.claude-panel .claude-said { margin: 0; }
+.claude-panel .claude-said:empty { display: none; }
 
 /* Who made it: their avatar, name and handle, a link to their profile,
    and Follow beside it. */
@@ -268,6 +305,38 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .line { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .line li { margin: 3px 0; overflow-wrap: anywhere; }
 .model-page .line a { color: var(--ink); }
+/* What a remix changed, under its credit, and the Remixes tab's tree both
+   ways (remixdiff, api/_remix.js): each node its picture, name, maker and
+   what it changed from the one above it; each level set in from that one
+   and joined to it by a line; the model whose page it is ringed. */
+.model-page .remix-changes { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .remix-changes a, .model-page .remix-changes b { color: var(--ink); }
+.model-page .remix-changes b { font-weight: 600; }
+.model-page .remix-changes .what-changed { margin-left: 4px; vertical-align: 1px; }
+.model-page .remix-changes .what-changed[hidden] { display: none; }
+.remix-tree, .remix-tree ol { list-style: none; margin: 0; padding: 0; }
+.remix-tree ol { margin-left: 26px; padding-left: 14px; border-left: 2px solid var(--line-strong); }
+.remix-tree li { margin: 8px 0; }
+.remix-tree .node-card {
+	display: flex; align-items: center; gap: 12px; max-width: 640px; padding: 8px 12px 8px 8px;
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); text-decoration: none;
+}
+.remix-tree a.node-card:hover { background: var(--panel-hi); border-color: var(--line-strong); }
+.remix-tree a.node-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.remix-tree .node-card.self { border-color: var(--accent-edge); box-shadow: inset 0 0 0 1px var(--accent-edge); }
+.remix-tree .node-card img, .remix-tree .no-picture {
+	flex: none; width: 64px; height: 48px; border-radius: calc(var(--radius) - 2px); background: var(--picture-ground); object-fit: contain;
+}
+.remix-tree .words { display: grid; min-width: 0; line-height: 1.35; }
+.remix-tree .name { font-weight: 600; overflow-wrap: anywhere; }
+.remix-tree .by, .remix-tree .change { font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
+.remix-tree .here { margin-left: auto; padding-left: 8px; font-size: var(--t-tiny); color: var(--ink-soft); white-space: nowrap; }
+@media (width < 600px) {
+	.remix-tree ol { margin-left: 12px; padding-left: 10px; }
+	.remix-tree .node-card { gap: 10px; }
+	.remix-tree .node-card img, .remix-tree .no-picture { width: 48px; height: 36px; }
+	.remix-tree .here { display: none; }
+}
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
 
@@ -555,6 +624,25 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 :is(.model-page, .talk-page) .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 :is(.model-page, .talk-page) .comment-new .note, .model-page .comment-why .note { margin: 0; }
 :is(.model-page, .talk-page) .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+/* A comment on a part (partpins, web/model-page.js): its number, as its
+   dot in 3D has it, and the part and step it is on, a link that turns the
+   3D view there; words alone on a part not in this version. The box on a
+   part says which over it, a pill with Cancel. Pins resolved fold away
+   under the list, a pill to open them. */
+.model-page .comment-pin { margin: 0 0 4px; display: flex; align-items: baseline; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
+.model-page .comment-pin .pin-n {
+	flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+	align-self: center;
+}
+.model-page .comment-pin.gone .pin-n { background: var(--line-strong); color: var(--ink); }
+.model-page .comment-pin .pin-go { color: var(--ink); text-align: left; }
+.model-page .comment-part { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.model-page .comment-part[hidden] { display: none; }
+.model-page .comment-part .pill.pin { color: var(--ink); border-color: var(--accent-edge); white-space: normal; }
+.model-page .comments-resolved { margin-top: 12px; }
+.model-page .comments-resolved[hidden] { display: none; }
+.model-page .comments-resolved > .comment-list { opacity: 0.85; }
 @media (width < 600px) {
 	:is(.model-page, .talk-page) .comment { gap: 10px; padding: 10px 12px; }
 	.model-page .replies { padding-left: 10px; }
@@ -921,6 +1009,35 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .actions { margin-top: var(--s-4); }
 .share-sheet .share-to { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
 .share-sheet .share-to p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+/* Post it elsewhere, its designer's (web/post-kit.js): the places as the
+   networks are, and the kit for one in a dialog of its own over the sheet,
+   its pictures in a row of thumbnails, its words to copy, its rules ticked
+   (or crossed, or a dot for one the person keeps), then how to take it. */
+.share-sheet .post-kits { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.share-sheet .post-kits p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.share-sheet .post-kits p small { display: block; color: var(--ink-faint); }
+dialog.post-kit { width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.post-kit h2:focus { outline: none; }
+.post-kit h3 { margin: var(--s-4) 0 var(--s-2); font-size: var(--t-body); }
+.post-kit .kit-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 72px; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.post-kit .kit-pictures img, .post-kit .kit-pictures video {
+	width: 100%; height: 100%; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel-hi);
+}
+.post-kit .kit-pictures video { grid-column: span 2; grid-row: span 2; }
+.post-kit .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); }
+.post-kit .copy-row label { flex: 1 1 16em; margin: 0; }
+.post-kit .kit-words > p { margin: 0 0 var(--s-3); color: var(--ink); }
+.post-kit .kit-rules b { font-weight: 560; }
+.post-kit .kit-rules li[data-how="fails"]::before {
+	left: 4px; top: 0.2em; width: 12px; height: 12px; border: 0; transform: none;
+	background: linear-gradient(45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%),
+		linear-gradient(-45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%);
+}
+.post-kit .kit-rules li[data-how="fails"] b { color: var(--bad); }
+.post-kit .kit-rules li[data-how="yours"]::before {
+	left: 7px; top: 0.55em; width: 6px; height: 6px; border: 0; border-radius: 50%; transform: none; background: var(--ink-faint);
+}
+.post-kit .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
 
 /* The directory of collections as wide as the gallery it is a tab of, its
    title and a line about it over the tabs. */

@@ -57,6 +57,10 @@ import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
 import { blockCounts, blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
+import { pinnedAmong } from "./_comments.js";
+
+/// The kinds a pin is told by: a comment on your model, and a mention.
+export const PINNABLE = new Set(["comment", "mention"]);
 
 const NOT_THERE = /: 404$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -147,11 +151,13 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
   // One of two sentences, on a step or not, its step said.
   const stepped = (on, off) => (step ? on.replace("{step}", String(step)) : off);
   if (row.kind === "comment") {
-    // A reply to somebody else's comment on your model is a comment on it.
+    // A reply to somebody else's comment on your model is a comment on it;
+    // a pin (supabase/comment_pins.sql) is one on a part of it.
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
       link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
       line: row.parent ? stepped(say("{who} replied to a comment on step {step}"), say("{who} replied to a comment"))
-        : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
+        : row.pinned ? stepped(say("{who} commented on a part, step {step}"), say("{who} commented on a part"))
+          : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
   }
   if (row.kind === "reply") {
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
@@ -165,7 +171,9 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
       link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
       line: row.parent ? stepped(say("{who} mentioned you in a reply on step {step}"), say("{who} mentioned you in a reply"))
-        : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
+        : row.pinned ? stepped(say("{who} mentioned you in a comment on a part, step {step}"),
+          say("{who} mentioned you in a comment on a part"))
+          : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
   }
   if (row.kind === "talk_reply" || row.kind === "talk_mention") {
     // In Talk (supabase/talk.sql): a post in a thread followed, or naming you.
@@ -330,6 +338,8 @@ export async function notifications(request, response, { origin }) {
   const handles = await blockedHandles(asker);
   const gone = handles.size ? await blockedModels(asker, (listed.rows || []).map((row) => row?.model)) : new Set();
   const read = handles.size ? { ...listed, rows: rowsWithout(listed.rows, handles, gone) } : listed;
+  // A comment on a part says so (api/_comments.js pinnedAmong).
+  await pinnedAmong((read.rows || []).filter((row) => PINNABLE.has(row?.kind)));
   // Each line in the language the page asks in (?lang=).
   const lang = String(request.query?.lang || "en");
   return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,

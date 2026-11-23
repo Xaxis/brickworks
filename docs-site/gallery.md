@@ -95,7 +95,7 @@ lib:what moves on a gallery card
 
 ## Builds {#builds}
 
-[brickworks.diy/builds](/builds), the **Builds** tab, is everybody's photos of gallery models built in real bricks, newest first: the photo, the model (press it to see the photo on the model's page), who built it and when, and what they said. To add yours, open the model's page and press **Built**. A photo stays off the tab once the model's designer hides it, or while a report of it is looked at.
+[brickworks.diy/builds](/builds), the **Builds** tab, is everybody's photos of gallery models built in real bricks, newest first: the photo, the model (press it to see the photo on the model's page), who built it and when, and what they said. To add yours, press **Show your build** on the last step of [Build it](/docs/model-pages#show-your-build), or open the model's page and press **Built**. A photo stays off the tab once the model's designer hides it, or while a report of it is looked at.
 
 <!-- covers
 ui:the gallery's builds tab

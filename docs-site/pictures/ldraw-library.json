@@ -197,7 +197,7 @@
     },
     {
      "wait": ".set-page .view3d[data-state=\"ready\"]",
-     "ms": 240000,
+     "within": 240000,
      "pause": 5600
     }
    ],
@@ -238,7 +238,7 @@
     },
     {
      "wait": ".set-page .view3d[data-state=\"ready\"]",
-     "ms": 240000,
+     "within": 240000,
      "pause": 5600
     }
    ],
