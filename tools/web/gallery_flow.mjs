@@ -300,16 +300,25 @@ try {
     await page.click('#kinds [data-kind=""]');
     await until(page, () => !location.search.includes("kind=") && document.documentElement.dataset.gallery === "ready");
     await page.click("#filters summary");
+    // Offered only while a public model's owner chose to say so (api/share.js
+    // madesOffered): here the stand-in crowd's every tenth, seeded shown.
+    const offered = await page.evaluate(() => [...document.querySelectorAll("#made option")].map((one) => one.value).join(","));
+    check(offered === ",hand,assistant", `Made offers "${offered}": With the assistant, as a shown model is public`);
     await page.selectOption("#made", "assistant");
     await until(page, () => location.search.includes("made=assistant") && document.documentElement.dataset.gallery === "ready");
     const made = await page.evaluate(() => {
       const cards = [...document.querySelectorAll("#models .model")];
       // The list is the filter's; no card says how it was made (its own page does).
       return { n: cards.length, saying: cards.filter((el) => el.dataset.made || el.querySelector(".marks .pill.made")).length,
-        said: document.getElementById("filters-said").textContent };
+        said: document.getElementById("filters-said").textContent,
+        ids: cards.map((el) => el.dataset.id || el.querySelector("a[href^='/m/']")?.getAttribute("href")?.slice(3) || "") };
     });
-    check(made.n > 0 && made.saying === 0 && made.said === "1",
-      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card; Filters says ${made.said} on`);
+    // Only the shown ones: Crowd00001, Crowd00011, ... (every tenth), never
+    // the ai-designed ones in between whose owners said nothing.
+    const quiet = made.ids.filter((id) => /^Crowd\d{5}$/.test(id) && (Number(id.slice(5)) - 1) % 10 !== 0);
+    check(made.n > 0 && made.saying === 0 && made.said === "1" && !quiet.length,
+      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card, ${quiet.length} not shown `
+      + `(${quiet.slice(0, 3).join(", ") || "none"}); Filters says ${made.said} on`);
     await shot(page, "2_made_assistant_1280.png");
     await context.close();
   }

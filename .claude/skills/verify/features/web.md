@@ -980,7 +980,16 @@ plan with Claude as the client.
   Designed with the assistant or Made with Brickify, shown (no Built by
   hand, which would tell the rest apart); Made's With the assistant and
   `tag=ai-designed` list only shown models (gallery_models, and the API
-  drops a row not shown), Hand-built every other. A challenge's track is
+  drops a row not shown), Hand-built every other; With the assistant is
+  offered in Made only while a public model is shown (`madesOffered`,
+  asked of gallery_models, kept 5 minutes apart for test models), so it
+  never leads to an empty list; `gallery_flow` checks it offered over the
+  stand-in crowd's seeded shown tenth and lists none of the rest. A search
+  never finds a model by those two tags unless shown
+  (`supabase/search_shown.sql`: directory_models and gallery_models recheck
+  a hidden row's words without them; dry run `tools/search_shown_try.sql`,
+  "ai-designed" finds the shown try model alone, 19 hidden live models
+  before, 0 after; `sql_compare` 17/17). A challenge's track is
   the entrant's own and unchanged. `node tools/web/made_shown_check.mjs`
   (stand-in, no browser: HouseMod01 tagged and not shown, HouseMod02
   shown; 5 FAIL on base 919471139). The owner's choice on the model page
