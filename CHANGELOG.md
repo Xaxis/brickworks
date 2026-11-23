@@ -192,6 +192,14 @@ whole cycle.
 
 ### Changed
 
+- **The loading page builds its wall in 3D, with a tip under it.** While
+  the app loads in a browser, real-looking bricks drop onto a baseplate and
+  seat, course by course, as the app arrives, and the wall turns slowly
+  under one light, in the site's own colours, dark or light. Under it a tip
+  about Brickworks changes every five seconds: a key on a computer, a
+  gesture on a phone, and the menus' best commands, in your language; point
+  at one to keep it, and the next visit starts with new ones. With reduced
+  motion it stands still.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say

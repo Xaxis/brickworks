@@ -6,13 +6,22 @@
   the wrong thing to look at for the ten to thirty seconds a 10 MB
   WebAssembly build takes to arrive. So the wait shows the thing the app
   is for: a wall lays itself, course by course, and the number of bricks
-  standing *is* the progress bar. Nothing is faked — each brick appears
+  standing *is* the progress bar. Nothing is faked — each brick drops in
   when the download crosses its share.
 
   It has to work before any of the engine exists, so it is one file with
-  no dependencies, no fonts to fetch and no images. The bricks are drawn
-  as CSS boxes in real LEGO® colours, with no studs: our own pictures draw
-  no brick and knob (docs/TRADEMARKS.md, Decisions, 2026-10-13).
+  no dependencies, no fonts to fetch and no images. The wall is built in
+  CSS 3D (bootlook, 2026-11-23; the owner: "make it look 3D and even
+  cooler and better aligned with our ui/ux"): each brick a box of four
+  faces in real LEGO® colours, lit from one side, on a baseplate seen in
+  perspective, the whole turning slowly. Its turn and each brick's drop
+  are CSS animations, which the browser's compositor runs off the page's
+  thread, so they keep moving while the engine compiles there. Still no
+  studs on a brick: our own pictures draw no brick and knob
+  (docs/TRADEMARKS.md, Decisions, 2026-10-13); the plate's faint dots are
+  the site's own (web/site.css --studs). Its colours, type and corners are
+  web/site.css's, dark or light as the site is. Under the wall a tip
+  about the app, a new one every five seconds (bootTips, below).
 
   The placeholders Godot substitutes at export time are the contract: the
   names GODOT_PROJECT_NAME, GODOT_HEAD_INCLUDE, GODOT_CONFIG and
@@ -34,24 +43,73 @@
 <meta name="color-scheme" content="dark light">
 <title>$GODOT_PROJECT_NAME</title>
 <style>
+/* web/site.css's tokens (docs/DESIGN_SYSTEM.md), the few this page uses,
+   dark by default as the site is. The light set when the site's theme
+   says so (data-theme, from the choice it keeps: the script below) or,
+   with none chosen, when the system's is light. */
 :root {
-	--backdrop: #9ea0a6;
-	--backdrop-deep: #7e8188;
-	--ink: #1b2024;
-	--ink-soft: rgba(27, 32, 36, 0.62);
-	--ink-faint: rgba(27, 32, 36, 0.4);
-	--baseplate: #1d4a33;
-	--baseplate-edge: #163a28;
-	--error: #8c1d18;
+	--bg: #0b0c0e;
+	--panel: #15171b;
+	--line: rgba(255, 255, 255, 0.08);
+	--line-strong: rgba(255, 255, 255, 0.16);
+	--ink: #f3f4f6;
+	--ink-soft: #b4b9c2;
+	--ink-faint: #8b929d;
+	--accent-ink: #f2cd37;
+	--bad: #ef7a72;
+	--highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.14), transparent 70%);
+	--r-1: 6px;
+	--r-3: 14px;
+	/* The baseplate: a shade off the ground, its studs the site's faint dots. */
+	--plate-top: #23272e;
+	--plate-front: #191c21;
+	--plate-side: #121418;
+	--plate-dots: rgba(255, 255, 255, 0.09);
+	--plate-edge: rgba(255, 255, 255, 0.1);
+	--under: rgba(0, 0, 0, 0.6);
+	color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) {
-		--backdrop: #24272c;
-		--backdrop-deep: #15181c;
-		--ink: #e8eaee;
-		--ink-soft: rgba(232, 234, 238, 0.66);
-		--ink-faint: rgba(232, 234, 238, 0.4);
-		--error: #ff9a93;
+:root[data-theme="light"] {
+	--bg: #fbfbfa;
+	--panel: #ffffff;
+	--line: rgba(17, 19, 23, 0.1);
+	--line-strong: rgba(17, 19, 23, 0.2);
+	--ink: #111317;
+	--ink-soft: #454a54;
+	--ink-faint: #5b616b;
+	--accent-ink: #7a5b00;
+	--bad: #b42318;
+	--highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+	--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.3), transparent 70%);
+	--plate-top: #e6e8eb;
+	--plate-front: #cfd3d9;
+	--plate-side: #c1c6cd;
+	--plate-dots: rgba(17, 19, 23, 0.1);
+	--plate-edge: rgba(255, 255, 255, 0.9);
+	--under: rgba(20, 30, 50, 0.22);
+	color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme]) {
+		--bg: #fbfbfa;
+		--panel: #ffffff;
+		--line: rgba(17, 19, 23, 0.1);
+		--line-strong: rgba(17, 19, 23, 0.2);
+		--ink: #111317;
+		--ink-soft: #454a54;
+		--ink-faint: #5b616b;
+		--accent-ink: #7a5b00;
+		--bad: #b42318;
+		--highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+		--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.3), transparent 70%);
+		--plate-top: #e6e8eb;
+		--plate-front: #cfd3d9;
+		--plate-side: #c1c6cd;
+		--plate-dots: rgba(17, 19, 23, 0.1);
+		--plate-edge: rgba(255, 255, 255, 0.9);
+		--under: rgba(20, 30, 50, 0.22);
+		color-scheme: light;
 	}
 }
 
@@ -60,19 +118,12 @@
 html, body {
 	margin: 0;
 	height: 100%;
-	background: var(--backdrop);
+	background: var(--bg);
 	color: var(--ink);
 	font: 400 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
 		Roboto, Helvetica, Arial, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	overscroll-behavior: none;
-}
-
-body {
-	display: grid;
-	place-items: center;
-	background: radial-gradient(
-		120% 80% at 50% 18%, var(--backdrop) 0%, var(--backdrop-deep) 100%);
 }
 
 /* The canvas fills the window once the engine takes over. */
@@ -90,98 +141,268 @@ body {
 #canvas:focus { outline: none; }
 
 #boot {
+	/* A stud's width, which every length of the wall is counted in: the
+	   wall is 23 of them wide with its plate, so it fits the window's
+	   width and a third of its height. A course is a brick's height. */
+	--u: min(24px, calc((100vw - 32px) / 23), 2.9vh);
+	--h: calc(var(--u) * 1.2);
 	position: fixed;
 	inset: 0;
 	display: grid;
-	grid-template-rows: 1fr auto 1fr;
+	grid-template-rows: 1fr auto auto 1fr;
 	justify-items: center;
 	padding: 24px 16px;
 	gap: 20px;
-	background: inherit;
+	overflow-y: auto;
+	background: var(--glow), var(--bg);
 	transition: opacity 520ms ease 140ms, visibility 0s linear 660ms;
 	z-index: 2;
 }
 #boot.done { opacity: 0; visibility: hidden; pointer-events: none; }
 
-.brand {
-	align-self: end;
-	text-align: center;
-}
+.brand { align-self: end; }
+.lockup { display: flex; align-items: center; gap: 0.34em; font-size: clamp(30px, 7vw, 42px); }
+.mark { width: 1.06em; height: 1.06em; flex: none; }
 .wordmark {
 	margin: 0;
-	font-size: clamp(30px, 7vw, 46px);
-	font-weight: 640;
-	letter-spacing: -0.022em;
-}
-.tagline {
-	margin: 8px 0 0;
-	font-size: clamp(13px, 2.4vw, 15px);
-	color: var(--ink-soft);
-	max-width: 34ch;
-	margin-inline: auto;
-	text-wrap: balance;
+	font-size: 1em;
+	line-height: 1.06;
+	font-weight: 740;
+	letter-spacing: -0.035em;
 }
 
 /* -- the wall ------------------------------------------------------- */
 
-.build { display: grid; justify-items: center; gap: 14px; }
+.build { display: grid; justify-items: center; gap: 10px; }
 
-#wall {
+/* The window onto the wall: a camera a little above it. The plate lies
+   in it, the wall stands on the plate, and the two turn together. */
+.stage {
 	position: relative;
-	width: min(420px, 86vw);
-	/* Height is set from the course count so the aspect never jumps. */
-	aspect-ratio: 420 / 172;
+	width: calc(var(--u) * 23);
+	height: calc(var(--u) * 12.5);
+	perspective: calc(var(--u) * 46);
+	perspective-origin: 50% 25%;
+}
+/* The plate's shadow on the ground, flat on the page. */
+.stage::before {
+	content: "";
+	position: absolute;
+	left: 8%;
+	right: 8%;
+	bottom: 0;
+	height: 34%;
+	background: radial-gradient(closest-side, var(--under), transparent);
+}
+.scene {
+	position: absolute;
+	left: 50%;
+	top: 66%;
+	transform-style: preserve-3d;
+	transform: rotateX(-24deg) rotateY(-20deg);
+	animation: turn 15s ease-in-out infinite alternate;
+}
+@keyframes turn {
+	from { transform: rotateX(-24deg) rotateY(-24deg); }
+	to { transform: rotateX(-24deg) rotateY(24deg); }
+}
+/* Every piece of it a box at the scene's middle (0 by 0, its centre where
+   it stands), and its faces placed round that centre. A face turned away
+   is not drawn, so the faces a box hides cost nothing. */
+.plate, .bricks, .brick { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.f { position: absolute; backface-visibility: hidden; }
+
+/* The baseplate: 20 studs by 8, half a stud thick, its top at the scene's
+   middle. */
+.plate .tp {
+	width: calc(var(--u) * 20);
+	height: calc(var(--u) * 8);
+	left: calc(var(--u) * -10);
+	top: calc(var(--u) * -4);
+	transform: rotateX(90deg);
+	background:
+		radial-gradient(circle, var(--plate-dots) 0 16%, transparent 19%) 0 0 / var(--u) var(--u),
+		var(--plate-top);
+	box-shadow: inset 0 -1px 0 var(--plate-edge);
+}
+.plate .fr {
+	width: calc(var(--u) * 20);
+	height: calc(var(--u) * 0.5);
+	left: calc(var(--u) * -10);
+	top: 0;
+	transform: translateZ(calc(var(--u) * 4));
+	background: var(--plate-front);
+}
+.plate .lt, .plate .rt {
+	width: calc(var(--u) * 8);
+	height: calc(var(--u) * 0.5);
+	left: calc(var(--u) * -4);
+	top: 0;
+	background: var(--plate-side);
+}
+.plate .lt { transform: rotateY(-90deg) translateZ(calc(var(--u) * 10)); }
+.plate .rt { transform: rotateY(90deg) translateZ(calc(var(--u) * 10)); }
+/* Where the wall stands on it, a little darker. */
+.plate .sh {
+	width: calc(var(--u) * 19);
+	height: calc(var(--u) * 5);
+	left: calc(var(--u) * -9.5);
+	top: calc(var(--u) * -2.5);
+	transform: rotateX(90deg) translateZ(1px);
+	background: radial-gradient(closest-side, rgba(0, 0, 0, 0.42), transparent);
 }
 
+/* A brick: --w studs long, 2 deep, a course high, centred at (--x, --y)
+   studs from the plate's middle, in --c. Lit from above and the left:
+   its top brightest, its front its own colour, its ends darker. */
 .brick {
-	position: absolute;
-	border-radius: 2px;
-	/* Bricks arrive by dropping the last few millimetres into place,
-	   which is what laying one actually looks like. */
-	opacity: 0;
-	transform: translateY(-14px);
-	transition: opacity 180ms ease, transform 260ms cubic-bezier(.22,1.2,.4,1);
-	box-shadow:
-		inset 0 -2px 0 rgba(0, 0, 0, 0.22),
-		inset 0 1px 0 rgba(255, 255, 255, 0.16),
-		0 1px 2px rgba(0, 0, 0, 0.2);
+	left: calc(var(--x) * var(--u));
+	top: calc(var(--y) * var(--u));
+	visibility: hidden;
 }
-.brick.laid { opacity: 1; transform: translateY(0); }
-
-.baseplate {
-	position: absolute;
-	left: -2.5%;
-	right: -2.5%;
-	bottom: -10px;
-	height: 12px;
-	border-radius: 2px;
-	background: var(--baseplate);
+.brick .fr, .brick .tp { width: calc(var(--w) * var(--u)); left: calc(var(--w) * var(--u) / -2); }
+.brick .fr {
+	height: var(--h);
+	top: calc(var(--h) / -2);
+	transform: translateZ(var(--u));
+	background:
+		linear-gradient(104deg, rgba(255, 255, 255, 0.13), transparent 42%),
+		linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.12)),
+		var(--c);
 	box-shadow:
-		inset 0 -3px 0 var(--baseplate-edge),
-		inset 0 1px 0 rgba(255, 255, 255, 0.1);
+		inset 0 1px 0 rgba(255, 255, 255, 0.3),
+		inset 1px 0 0 rgba(255, 255, 255, 0.1),
+		inset -1px 0 0 rgba(0, 0, 0, 0.24),
+		inset 0 -1px 0 rgba(0, 0, 0, 0.3);
 }
+.brick .tp {
+	height: calc(var(--u) * 2);
+	top: calc(var(--u) * -1);
+	transform: rotateX(90deg) translateZ(calc(var(--h) / 2));
+	background: linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.3)), var(--c);
+}
+.brick .lt, .brick .rt {
+	width: calc(var(--u) * 2);
+	height: var(--h);
+	left: calc(var(--u) * -1);
+	top: calc(var(--h) / -2);
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+.brick .lt {
+	transform: rotateY(-90deg) translateZ(calc(var(--w) * var(--u) / 2));
+	background: linear-gradient(rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16)), var(--c);
+}
+.brick .rt {
+	transform: rotateY(90deg) translateZ(calc(var(--w) * var(--u) / 2));
+	background: linear-gradient(rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.36)), var(--c);
+}
+/* Laid: it drops the last few studs into place and seats with a small
+   bounce, as a brick pressed home does. */
+.brick.laid { visibility: visible; animation: seat 560ms both; }
+.brick.laid .f { animation: appear 120ms linear both; }
+@keyframes seat {
+	0% { transform: translateY(calc(var(--u) * -4.5)); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.55); }
+	56% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1); }
+	74% { transform: translateY(calc(var(--u) * -0.34)); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+	88% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1); }
+	94% { transform: translateY(calc(var(--u) * -0.06)); animation-timing-function: ease-in; }
+	100% { transform: translateY(0); }
+}
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+/* Gone: nothing left moving behind the app. */
+.stage.still .scene, .stage.still .brick, .stage.still .f { animation: none; }
+/* Stopped where it stood when the start failed: nothing more is coming. */
+.stage.held .scene { animation-play-state: paused; }
 
 /* -- status --------------------------------------------------------- */
 
+/* Its height kept whatever it says, so nothing on the page moves: room
+   for the count and a line of note, and on a phone the first visit's
+   time to go under them. */
 .status {
 	display: grid;
+	align-content: start;
 	justify-items: center;
-	gap: 6px;
-	min-height: 44px;
+	gap: 4px;
+	min-height: 48px;
 	text-align: center;
+}
+@media (hover: none) and (pointer: coarse) and (max-width: 599px) {
+	.status { min-height: 90px; }
 }
 .count {
 	font-variant-numeric: tabular-nums;
 	font-size: 14px;
 	color: var(--ink-soft);
 }
-.count strong { font-weight: 600; color: var(--ink); }
+.count strong { display: inline-block; min-width: 2ch; text-align: right; font-weight: 650; color: var(--ink); }
 .note { font-size: 13px; color: var(--ink-faint); max-width: 46ch; }
-.note.bad { color: var(--error); max-width: 60ch; }
+.note.bad { color: var(--bad); max-width: 60ch; }
 .eta { font-size: 13px; color: var(--ink-soft); max-width: 46ch; }
+
+/* -- the tip -------------------------------------------------------- */
+
+/* A card in the site's way: the panel, its line and its corner, the
+   label as an eyebrow. Its height is kept for the longest tip, so the
+   next one never moves the page. */
+.tip {
+	width: min(560px, 100%);
+	padding: 12px 18px 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--r-3);
+	background: var(--panel);
+	box-shadow: var(--highlight);
+	text-align: center;
+}
+.tip.gone { visibility: hidden; }
+.tip-label {
+	display: block;
+	font-size: 12px;
+	font-weight: 680;
+	line-height: 18px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--accent-ink);
+}
+.tip-text {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 4px 0 0;
+	height: 3.2em;
+	font-size: 14.5px;
+	line-height: 1.6;
+	color: var(--ink-soft);
+	text-wrap: balance;
+	transition: opacity 240ms ease, transform 240ms ease;
+}
+@media (max-width: 599px) {
+	.tip-text { height: 4.8em; }
+}
+/* The smallest phones (320 across): room for the longest tip's four lines. */
+@media (max-width: 359px) {
+	.tip-text { height: 6.4em; }
+}
+.tip-text.out { opacity: 0; transform: translateY(3px); }
+/* Keys as the docs draw them (web/docs.css kbd), short enough for the line. */
+.tip kbd {
+	display: inline-block;
+	min-width: 1.7em;
+	padding: 0 5px;
+	border: 1px solid var(--line-strong);
+	border-bottom-width: 2px;
+	border-radius: var(--r-1);
+	font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	color: var(--ink);
+	text-align: center;
+	white-space: nowrap;
+	vertical-align: 1px;
+}
+.tip .keys { white-space: nowrap; }
 
 .legal {
 	align-self: end;
+	margin: 0;
 	font-size: 11.5px;
 	line-height: 1.6;
 	color: var(--ink-faint);
@@ -190,12 +411,31 @@ body {
 }
 .legal a { color: inherit; }
 
+/* A short window (a phone on its side, the studio in a frame on the
+   home page): the wall and its count, tighter, and no tip. */
+@media (max-height: 560px) {
+	#boot { gap: 10px; padding-block: 12px; }
+	.lockup { font-size: 26px; }
+	.tip { display: none; }
+}
+
+/* Without motion: the wall stands still at a three-quarter turn, each
+   brick is simply there, and a tip changes without fading. */
 @media (prefers-reduced-motion: reduce) {
-	.brick { transition: opacity 120ms linear; transform: none; }
-	.brick.laid { transform: none; }
+	.scene { animation: none; }
+	.brick.laid, .brick.laid .f { animation: none; }
+	.tip-text { transition: none; }
 	#boot { transition: opacity 200ms linear, visibility 0s linear 200ms; }
 }
 </style>
+<script>
+// The site's theme, as it keeps it (web/theme.js: brickworks.theme), on
+// this page too before it is drawn: System leaves it to the system.
+try {
+	const theme = localStorage.getItem("brickworks.theme");
+	if (theme === "light" || theme === "dark") document.documentElement.setAttribute("data-theme", theme);
+} catch (e) {}
+</script>
 <!--
   The engine and its pack asked for as the page is read, not once the
   engine's script has come and run and this tab has chosen its session
@@ -285,19 +525,37 @@ $GODOT_HEAD_INCLUDE
 
 <div id="boot">
 	<div class="brand">
-		<h1 class="wordmark">Brickworks</h1>
-		<p class="tagline">Every brick, at the size it really is.</p>
+		<div class="lockup">
+			<!-- The mark, as web/icon.svg draws it. -->
+			<svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+				<path d="M32 4L56.25 18L44.125 25L32 18L19.875 25L7.75 18Z" fill="#f2cd37"/>
+				<path d="M7.75 18L19.875 25V39L32 46V60L7.75 46Z" fill="#d0332f"/>
+				<path d="M56.25 18L44.125 25V39L32 46V60L56.25 46Z" fill="#2a6fc4"/>
+				<path d="M32 46L44.125 39L32 32L19.875 39Z" fill="#c29d22"/>
+				<path d="M44.125 25L32 18V32L44.125 39Z" fill="#94211e"/>
+				<path d="M19.875 25L32 18V32L19.875 39Z" fill="#1c4b88"/>
+			</svg>
+			<h1 class="wordmark">Brickworks</h1>
+		</div>
 	</div>
 
 	<div class="build">
-		<div id="wall" role="img" aria-label="A wall being built as the app loads">
-			<div class="baseplate"></div>
+		<div id="wall" class="stage" role="img" aria-label="A wall being built as the app loads">
+			<div class="scene">
+				<div class="plate"><div class="f tp"></div><div class="f fr"></div><div class="f lt"></div><div class="f rt"></div><div class="f sh"></div></div>
+				<div class="bricks" id="bricks"></div>
+			</div>
 		</div>
 		<div class="status">
 			<div class="count"><strong id="laid">0</strong> <span id="count-of">of</span> <span id="total">0</span> <span id="count-bricks">bricks</span></div>
 			<div class="note" id="note">Fetching parts…</div>
 			<div class="eta" id="eta" role="status" hidden></div>
 		</div>
+	</div>
+
+	<div class="tip" id="tip">
+		<span class="tip-label" id="tip-label">Tip</span>
+		<p class="tip-text" id="tip-text" aria-atomic="true"><span>Press <span class="keys"><kbd>F1</kbd></span> for every key and click Brickworks answers to, with a box to search them.</span></p>
 	</div>
 
 	<p class="legal" id="legal">
@@ -319,7 +577,6 @@ $GODOT_HEAD_INCLUDE
 const loaderSays = (function () {
 	const WORDS = {
 		de: {
-			"Every brick, at the size it really is.": "Jeder Stein, in seiner wahren Größe.",
 			"of": "von",
 			"bricks": "Steinen",
 			"A wall being built as the app loads": "Eine Mauer, die gebaut wird, während die App lädt",
@@ -338,9 +595,50 @@ const loaderSays = (function () {
 			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Erster Besuch auf diesem Handy: noch etwa {n} s. Spätere Besuche starten schneller.",
 			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Erster Besuch auf diesem Handy: noch etwa {n} min. Spätere Besuche starten schneller.",
 			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Dieser Browser gibt dem Studio nicht den Speicher, den es braucht ({why}). Schließe andere Tabs und lade neu, oder öffne Brickworks an einem Computer.",
+			"Tip": "Tipp",
+			"Press {{F1}} for every key and click Brickworks answers to, with a box to search them.": "Drücke {{F1}} für jede Taste und jeden Klick, die Brickworks versteht, mit einem Suchfeld dazu.",
+			"Tap a part to select it; hold on it to take it off.": "Tippe auf ein Teil, um es auszuwählen; halte den Finger darauf, um es zu entfernen.",
+			"Help › Take the tour builds your first model with you, in seven short steps.": "Hilfe › Rundgang starten baut dein erstes Modell mit dir, in sieben kurzen Schritten.",
+			"More › Help › Take the tour builds your first model with you, in seven short steps.": "Mehr › Hilfe › Rundgang starten baut dein erstes Modell mit dir, in sieben kurzen Schritten.",
+			"Press {{/}} and type a part's name or number to find it in the bin.": "Drücke {{/}} und tippe den Namen oder die Nummer eines Teils, um es im Teilekasten zu finden.",
+			"Drag with one finger to turn the view; pinch to zoom.": "Ziehe mit einem Finger, um die Ansicht zu drehen; zoome mit zwei Fingern.",
+			"{{Q}} takes the last part back into your hand; right-click or {{Esc}} lets it go.": "{{Q}} nimmt das letzte Teil wieder in die Hand; Rechtsklick oder {{Esc}} lässt es los.",
+			"Saved models follow your account: File › Open… shows them wherever you sign in.": "Gespeicherte Modelle folgen deinem Konto: Datei › Öffnen… zeigt sie überall, wo du dich anmeldest.",
+			"Saved models follow your account: More › File › Open… shows them wherever you sign in.": "Gespeicherte Modelle folgen deinem Konto: Mehr › Datei › Öffnen… zeigt sie überall, wo du dich anmeldest.",
+			"{{R}} turns the part in your hand and {{T}} tips it over.": "{{R}} dreht das Teil in deiner Hand, {{T}} kippt es um.",
+			"On a phone, tap with two fingers to undo, and with three to redo.": "Auf dem Handy tippst du mit zwei Fingern, um etwas rückgängig zu machen, und mit drei, um es zu wiederholen.",
+			"{{[}} and {{]}} step through the colours; {{Shift+C}} finds one by its name or number.": "{{[}} und {{]}} gehen die Farben durch; {{Shift+C}} findet eine nach Name oder Nummer.",
+			"Nobody sees a model until you share it: File › Share… makes a link anyone can open.": "Niemand sieht ein Modell, bis du es teilst: Datei › Teilen… erstellt einen Link, den jeder öffnen kann.",
+			"Nobody sees a model until you share it: More › File › Share… makes a link anyone can open.": "Niemand sieht ein Modell, bis du es teilst: Mehr › Datei › Teilen… erstellt einen Link, den jeder öffnen kann.",
+			"Hold {{Ctrl}} and drag a part to copy it; on nothing, it draws a box round several.": "Halte {{Ctrl}} und ziehe ein Teil, um es zu kopieren; auf leerem Grund ziehst du einen Rahmen um mehrere.",
+			"Double-tap a part to select it and give it a quarter turn.": "Tippe doppelt auf ein Teil, um es auszuwählen und um eine Vierteldrehung zu drehen.",
+			"Press {{E}} to make a build step of everything put down since the last one.": "Drücke {{E}}, um aus allem, was seit dem letzten Schritt gesetzt wurde, einen Bauschritt zu machen.",
+			"File › Versions… keeps a model's last 20 saves, to open one again or compare.": "Datei › Versionen… behält die letzten 20 Speicherungen eines Modells, zum erneuten Öffnen oder Vergleichen.",
+			"More › File › Versions… keeps a model's last 20 saves, to open one again or compare.": "Mehr › Datei › Versionen… behält die letzten 20 Speicherungen eines Modells, zum erneuten Öffnen oder Vergleichen.",
+			"Lost? Press {{Ctrl+/}}, type a few letters of what you want to do, then Enter.": "Nicht gefunden? Drücke {{Ctrl+/}}, tippe ein paar Buchstaben dessen, was du tun willst, dann Enter.",
+			"Turn two fingers about each other to turn the model round, as on a map.": "Drehe zwei Finger umeinander, um das Modell zu drehen, wie bei einer Karte.",
+			"Hold {{Shift}} and double-click a part to select every one like it.": "Halte {{Shift}} und doppelklicke auf ein Teil, um alle gleichen auszuwählen.",
+			"File › Library… opens LDraw's models of real sets, and models the community shared.": "Datei › Bibliothek… öffnet die LDraw-Modelle echter Sets und Modelle, die die Community geteilt hat.",
+			"More › File › Library… opens LDraw's models of real sets, and models the community shared.": "Mehr › Datei › Bibliothek… öffnet die LDraw-Modelle echter Sets und Modelle, die die Community geteilt hat.",
+			"Keys {{1}} to {{7}} look from the front, back, sides, top, bottom and three-quarter; {{0}} goes back.": "Die Tasten {{1}} bis {{7}} zeigen von vorn, hinten, den Seiten, oben, unten und schräg; {{0}} führt zurück.",
+			"The Brickworks logo along the top opens the menu, with Find a command… in it.": "Das Brickworks-Logo oben öffnet das Menü, mit „Befehl suchen…“ darin.",
+			"{{K}} cuts the model away to work inside it; {{I}} makes all but the selection see-through.": "{{K}} schneidet das Modell auf, damit du darin arbeiten kannst; {{I}} macht alles außer der Auswahl durchsichtig.",
+			"File › Build together… builds one model with a friend, live, each in their own browser.": "Datei › Gemeinsam bauen… baut ein Modell live mit jemandem zusammen, jeder im eigenen Browser.",
+			"More › File › Build together… builds one model with a friend, live, each in their own browser.": "Mehr › Datei › Gemeinsam bauen… baut ein Modell live mit jemandem zusammen, jeder im eigenen Browser.",
+			"{{Alt+K}} checks stability: it finds the joints that would give way.": "{{Alt+K}} prüft die Stabilität: Es findet die Verbindungen, die nachgeben würden.",
+			"{{Ctrl+K}} asks Claude to change the selected parts, and only them.": "{{Ctrl+K}} bittet Claude, die ausgewählten Teile zu ändern, und nur sie.",
+			"Make › Mosaic from a picture… turns a picture into a wall of plates.": "Erstellen › Mosaik aus einem Bild… macht aus einem Bild eine Wand aus Platten.",
+			"More › Make › Mosaic from a picture… turns a picture into a wall of plates.": "Mehr › Erstellen › Mosaik aus einem Bild… macht aus einem Bild eine Wand aus Platten.",
+			"{{M}} opens the minifigure builder: a figure from real parts, stood in your model.": "{{M}} öffnet den Minifiguren-Baukasten: eine Figur aus echten Teilen, in dein Modell gestellt.",
+			"{{Ctrl+I}} lays any 3D model, a sculpt or a scan, in bricks at the size you choose.": "{{Ctrl+I}} setzt jedes 3D-Modell, eine Skulptur oder einen Scan, in Steinen um, in der Größe, die du wählst.",
+			"Each browser tab holds a model of its own: open two to work on both.": "Jeder Browser-Tab hat sein eigenes Modell: Öffne zwei, um an beiden zu arbeiten.",
+			"{{Alt+B}} lays out building instructions from your steps, to print or save as a PDF.": "{{Alt+B}} legt aus deinen Schritten eine Bauanleitung an, zum Drucken oder als PDF.",
+			"Keys like, in Settings ({{,}}), puts on BrickLink Studio's, Mecabricks' or LDCad's keys.": "„Tasten wie“ in den Einstellungen ({{,}}) übernimmt die Tasten von BrickLink Studio, Mecabricks oder LDCad.",
+			"{{Shift+F1}}, then a click on any button, says what it does without doing it.": "{{Shift+F1}}, dann ein Klick auf eine Schaltfläche, sagt, was sie tut, ohne es zu tun.",
+			"{{B}} opens the timeline, and {{Space}} plays the build step by step.": "{{B}} öffnet die Zeitleiste, und {{Space}} spielt den Bau Schritt für Schritt ab.",
+			"{{F9}} renders a photo-real picture or turntable of your model, in studio light.": "{{F9}} rendert ein fotorealistisches Bild oder eine Drehteller-Animation deines Modells, im Studiolicht.",
 		},
 		fr: {
-			"Every brick, at the size it really is.": "Chaque brique, à sa vraie taille.",
 			"of": "sur",
 			"bricks": "briques",
 			"A wall being built as the app loads": "Un mur qui se construit pendant que l’app se charge",
@@ -359,9 +657,50 @@ const loaderSays = (function () {
 			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Première visite sur ce téléphone : encore environ {n} s. Les visites suivantes démarrent plus vite.",
 			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Première visite sur ce téléphone : encore environ {n} min. Les visites suivantes démarrent plus vite.",
 			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Ce navigateur ne donne pas au studio la mémoire dont il a besoin ({why}). Fermez d’autres onglets et rechargez, ou ouvrez Brickworks sur un ordinateur.",
+			"Tip": "Astuce",
+			"Press {{F1}} for every key and click Brickworks answers to, with a box to search them.": "Appuyez sur {{F1}} pour voir chaque touche et chaque clic que Brickworks comprend, avec un champ pour les chercher.",
+			"Tap a part to select it; hold on it to take it off.": "Touchez une pièce pour la sélectionner ; restez appuyé dessus pour l’enlever.",
+			"Help › Take the tour builds your first model with you, in seven short steps.": "Aide › Faire la visite construit avec vous votre premier modèle, en sept courtes étapes.",
+			"More › Help › Take the tour builds your first model with you, in seven short steps.": "Plus › Aide › Faire la visite construit avec vous votre premier modèle, en sept courtes étapes.",
+			"Press {{/}} and type a part's name or number to find it in the bin.": "Appuyez sur {{/}} et tapez le nom ou le numéro d’une pièce pour la trouver dans le bac à pièces.",
+			"Drag with one finger to turn the view; pinch to zoom.": "Faites glisser un doigt pour tourner la vue ; pincez pour zoomer.",
+			"{{Q}} takes the last part back into your hand; right-click or {{Esc}} lets it go.": "{{Q}} reprend en main la dernière pièce ; un clic droit ou {{Esc}} la lâche.",
+			"Saved models follow your account: File › Open… shows them wherever you sign in.": "Les modèles enregistrés suivent votre compte : Fichier › Ouvrir… les montre partout où vous vous connectez.",
+			"Saved models follow your account: More › File › Open… shows them wherever you sign in.": "Les modèles enregistrés suivent votre compte : Plus › Fichier › Ouvrir… les montre partout où vous vous connectez.",
+			"{{R}} turns the part in your hand and {{T}} tips it over.": "{{R}} fait tourner la pièce en main et {{T}} la bascule.",
+			"On a phone, tap with two fingers to undo, and with three to redo.": "Sur un téléphone, touchez avec deux doigts pour annuler, et avec trois pour rétablir.",
+			"{{[}} and {{]}} step through the colours; {{Shift+C}} finds one by its name or number.": "{{[}} et {{]}} parcourent les couleurs ; {{Shift+C}} en trouve une par son nom ou son numéro.",
+			"Nobody sees a model until you share it: File › Share… makes a link anyone can open.": "Personne ne voit un modèle avant que vous le partagiez : Fichier › Partager… crée un lien que chacun peut ouvrir.",
+			"Nobody sees a model until you share it: More › File › Share… makes a link anyone can open.": "Personne ne voit un modèle avant que vous le partagiez : Plus › Fichier › Partager… crée un lien que chacun peut ouvrir.",
+			"Hold {{Ctrl}} and drag a part to copy it; on nothing, it draws a box round several.": "Maintenez {{Ctrl}} et faites glisser une pièce pour la copier ; dans le vide, vous tracez un cadre autour de plusieurs.",
+			"Double-tap a part to select it and give it a quarter turn.": "Touchez deux fois une pièce pour la sélectionner et lui faire faire un quart de tour.",
+			"Press {{E}} to make a build step of everything put down since the last one.": "Appuyez sur {{E}} pour faire une étape de montage de tout ce qui a été posé depuis la précédente.",
+			"File › Versions… keeps a model's last 20 saves, to open one again or compare.": "Fichier › Versions… garde les 20 derniers enregistrements d’un modèle, pour en rouvrir un ou comparer.",
+			"More › File › Versions… keeps a model's last 20 saves, to open one again or compare.": "Plus › Fichier › Versions… garde les 20 derniers enregistrements d’un modèle, pour en rouvrir un ou comparer.",
+			"Lost? Press {{Ctrl+/}}, type a few letters of what you want to do, then Enter.": "Perdu ? Appuyez sur {{Ctrl+/}}, tapez quelques lettres de ce que vous voulez faire, puis Entrée.",
+			"Turn two fingers about each other to turn the model round, as on a map.": "Faites tourner deux doigts l’un autour de l’autre pour tourner le modèle, comme sur une carte.",
+			"Hold {{Shift}} and double-click a part to select every one like it.": "Maintenez {{Shift}} et double-cliquez sur une pièce pour sélectionner toutes les pièces pareilles.",
+			"File › Library… opens LDraw's models of real sets, and models the community shared.": "Fichier › Bibliothèque… ouvre les modèles LDraw de vrais sets et ceux que la communauté a partagés.",
+			"More › File › Library… opens LDraw's models of real sets, and models the community shared.": "Plus › Fichier › Bibliothèque… ouvre les modèles LDraw de vrais sets et ceux que la communauté a partagés.",
+			"Keys {{1}} to {{7}} look from the front, back, sides, top, bottom and three-quarter; {{0}} goes back.": "Les touches {{1}} à {{7}} montrent l’avant, l’arrière, les côtés, le dessus, le dessous et les trois quarts ; {{0}} revient.",
+			"The Brickworks logo along the top opens the menu, with Find a command… in it.": "Le logo Brickworks en haut ouvre le menu, où se trouve « Trouver une commande… ».",
+			"{{K}} cuts the model away to work inside it; {{I}} makes all but the selection see-through.": "{{K}} coupe le modèle pour travailler à l’intérieur ; {{I}} rend transparent tout sauf la sélection.",
+			"File › Build together… builds one model with a friend, live, each in their own browser.": "Fichier › Construire ensemble… construit un modèle à plusieurs, en direct, chacun dans son navigateur.",
+			"More › File › Build together… builds one model with a friend, live, each in their own browser.": "Plus › Fichier › Construire ensemble… construit un modèle à plusieurs, en direct, chacun dans son navigateur.",
+			"{{Alt+K}} checks stability: it finds the joints that would give way.": "{{Alt+K}} vérifie la stabilité : il trouve les liaisons qui céderaient.",
+			"{{Ctrl+K}} asks Claude to change the selected parts, and only them.": "{{Ctrl+K}} demande à Claude de modifier les pièces sélectionnées, et elles seules.",
+			"Make › Mosaic from a picture… turns a picture into a wall of plates.": "Créer › Mosaïque à partir d'une image… transforme une image en un mur de plaques.",
+			"More › Make › Mosaic from a picture… turns a picture into a wall of plates.": "Plus › Créer › Mosaïque à partir d'une image… transforme une image en un mur de plaques.",
+			"{{M}} opens the minifigure builder: a figure from real parts, stood in your model.": "{{M}} ouvre le créateur de minifigurines : une figurine en vraies pièces, posée dans votre modèle.",
+			"{{Ctrl+I}} lays any 3D model, a sculpt or a scan, in bricks at the size you choose.": "{{Ctrl+I}} transforme n’importe quel modèle 3D, une sculpture ou un scan, en briques à la taille choisie.",
+			"Each browser tab holds a model of its own: open two to work on both.": "Chaque onglet du navigateur a son propre modèle : ouvrez-en deux pour travailler sur les deux.",
+			"{{Alt+B}} lays out building instructions from your steps, to print or save as a PDF.": "{{Alt+B}} met en page des instructions de montage à partir de vos étapes, à imprimer ou en PDF.",
+			"Keys like, in Settings ({{,}}), puts on BrickLink Studio's, Mecabricks' or LDCad's keys.": "« Touches comme », dans les Réglages ({{,}}), reprend les touches de BrickLink Studio, Mecabricks ou LDCad.",
+			"{{Shift+F1}}, then a click on any button, says what it does without doing it.": "{{Shift+F1}}, puis un clic sur un bouton, dit ce qu’il fait sans le faire.",
+			"{{B}} opens the timeline, and {{Space}} plays the build step by step.": "{{B}} ouvre la chronologie, et {{Space}} joue le montage étape par étape.",
+			"{{F9}} renders a photo-real picture or turntable of your model, in studio light.": "{{F9}} fait un rendu photoréaliste ou une vue tournante de votre modèle, en lumière de studio.",
 		},
 		es: {
-			"Every brick, at the size it really is.": "Cada ladrillo, a su tamaño real.",
 			"of": "de",
 			"bricks": "ladrillos",
 			"A wall being built as the app loads": "Un muro que se construye mientras carga la aplicación",
@@ -380,6 +719,48 @@ const loaderSays = (function () {
 			"First visit on this phone: about {n} s to go. Later visits start sooner.": "Primera visita en este teléfono: faltan unos {n} s. Las próximas visitas empiezan antes.",
 			"First visit on this phone: about {n} min to go. Later visits start sooner.": "Primera visita en este teléfono: faltan unos {n} min. Las próximas visitas empiezan antes.",
 			"This browser would not give the studio the memory it needs ({why}). Close other tabs and reload, or open Brickworks on a computer.": "Este navegador no le da al estudio la memoria que necesita ({why}). Cierra otras pestañas y vuelve a cargar, o abre Brickworks en un ordenador.",
+			"Tip": "Consejo",
+			"Press {{F1}} for every key and click Brickworks answers to, with a box to search them.": "Pulsa {{F1}} para ver cada tecla y cada clic que entiende Brickworks, con un cuadro para buscarlos.",
+			"Tap a part to select it; hold on it to take it off.": "Toca una pieza para seleccionarla; mantén el dedo encima para quitarla.",
+			"Help › Take the tour builds your first model with you, in seven short steps.": "Ayuda › Hacer el recorrido construye contigo tu primer modelo, en siete pasos cortos.",
+			"More › Help › Take the tour builds your first model with you, in seven short steps.": "Más › Ayuda › Hacer el recorrido construye contigo tu primer modelo, en siete pasos cortos.",
+			"Press {{/}} and type a part's name or number to find it in the bin.": "Pulsa {{/}} y escribe el nombre o el número de una pieza para encontrarla en la caja de piezas.",
+			"Drag with one finger to turn the view; pinch to zoom.": "Arrastra con un dedo para girar la vista; pellizca para hacer zoom.",
+			"{{Q}} takes the last part back into your hand; right-click or {{Esc}} lets it go.": "{{Q}} vuelve a poner en tu mano la última pieza; clic derecho o {{Esc}} la suelta.",
+			"Saved models follow your account: File › Open… shows them wherever you sign in.": "Los modelos guardados siguen a tu cuenta: Archivo › Abrir… los muestra dondequiera que inicies sesión.",
+			"Saved models follow your account: More › File › Open… shows them wherever you sign in.": "Los modelos guardados siguen a tu cuenta: Más › Archivo › Abrir… los muestra dondequiera que inicies sesión.",
+			"{{R}} turns the part in your hand and {{T}} tips it over.": "{{R}} gira la pieza que tienes en la mano y {{T}} la vuelca.",
+			"On a phone, tap with two fingers to undo, and with three to redo.": "En un teléfono, toca con dos dedos para deshacer y con tres para rehacer.",
+			"{{[}} and {{]}} step through the colours; {{Shift+C}} finds one by its name or number.": "{{[}} y {{]}} recorren los colores; {{Shift+C}} busca uno por su nombre o su número.",
+			"Nobody sees a model until you share it: File › Share… makes a link anyone can open.": "Nadie ve un modelo hasta que lo compartes: Archivo › Compartir… crea un enlace que cualquiera puede abrir.",
+			"Nobody sees a model until you share it: More › File › Share… makes a link anyone can open.": "Nadie ve un modelo hasta que lo compartes: Más › Archivo › Compartir… crea un enlace que cualquiera puede abrir.",
+			"Hold {{Ctrl}} and drag a part to copy it; on nothing, it draws a box round several.": "Mantén {{Ctrl}} y arrastra una pieza para copiarla; sobre el vacío, dibujas un recuadro alrededor de varias.",
+			"Double-tap a part to select it and give it a quarter turn.": "Toca dos veces una pieza para seleccionarla y darle un cuarto de vuelta.",
+			"Press {{E}} to make a build step of everything put down since the last one.": "Pulsa {{E}} para hacer un paso de montaje con todo lo colocado desde el anterior.",
+			"File › Versions… keeps a model's last 20 saves, to open one again or compare.": "Archivo › Versiones… guarda los últimos 20 guardados de un modelo, para abrir uno otra vez o comparar.",
+			"More › File › Versions… keeps a model's last 20 saves, to open one again or compare.": "Más › Archivo › Versiones… guarda los últimos 20 guardados de un modelo, para abrir uno otra vez o comparar.",
+			"Lost? Press {{Ctrl+/}}, type a few letters of what you want to do, then Enter.": "¿Perdido? Pulsa {{Ctrl+/}}, escribe unas letras de lo que quieres hacer y luego Intro.",
+			"Turn two fingers about each other to turn the model round, as on a map.": "Gira dos dedos uno alrededor del otro para girar el modelo, como en un mapa.",
+			"Hold {{Shift}} and double-click a part to select every one like it.": "Mantén {{Shift}} y haz doble clic en una pieza para seleccionar todas las iguales.",
+			"File › Library… opens LDraw's models of real sets, and models the community shared.": "Archivo › Biblioteca… abre los modelos de LDraw de sets reales y los que ha compartido la comunidad.",
+			"More › File › Library… opens LDraw's models of real sets, and models the community shared.": "Más › Archivo › Biblioteca… abre los modelos de LDraw de sets reales y los que ha compartido la comunidad.",
+			"Keys {{1}} to {{7}} look from the front, back, sides, top, bottom and three-quarter; {{0}} goes back.": "Las teclas {{1}} a {{7}} miran desde delante, detrás, los lados, arriba, abajo y en tres cuartos; {{0}} vuelve.",
+			"The Brickworks logo along the top opens the menu, with Find a command… in it.": "El logotipo de Brickworks de arriba abre el menú, con «Buscar un comando…» dentro.",
+			"{{K}} cuts the model away to work inside it; {{I}} makes all but the selection see-through.": "{{K}} corta el modelo para trabajar dentro; {{I}} vuelve transparente todo menos la selección.",
+			"File › Build together… builds one model with a friend, live, each in their own browser.": "Archivo › Construir juntos… construye un modelo con otra persona, en directo, cada uno en su navegador.",
+			"More › File › Build together… builds one model with a friend, live, each in their own browser.": "Más › Archivo › Construir juntos… construye un modelo con otra persona, en directo, cada uno en su navegador.",
+			"{{Alt+K}} checks stability: it finds the joints that would give way.": "{{Alt+K}} comprueba la estabilidad: encuentra las uniones que cederían.",
+			"{{Ctrl+K}} asks Claude to change the selected parts, and only them.": "{{Ctrl+K}} pide a Claude que cambie las piezas seleccionadas, y solo esas.",
+			"Make › Mosaic from a picture… turns a picture into a wall of plates.": "Crear › Mosaico a partir de una imagen… convierte una imagen en un muro de placas.",
+			"More › Make › Mosaic from a picture… turns a picture into a wall of plates.": "Más › Crear › Mosaico a partir de una imagen… convierte una imagen en un muro de placas.",
+			"{{M}} opens the minifigure builder: a figure from real parts, stood in your model.": "{{M}} abre el creador de minifiguras: una figura de piezas reales, de pie en tu modelo.",
+			"{{Ctrl+I}} lays any 3D model, a sculpt or a scan, in bricks at the size you choose.": "{{Ctrl+I}} convierte cualquier modelo 3D, una escultura o un escaneo, en ladrillos al tamaño que elijas.",
+			"Each browser tab holds a model of its own: open two to work on both.": "Cada pestaña del navegador tiene su propio modelo: abre dos para trabajar en ambos.",
+			"{{Alt+B}} lays out building instructions from your steps, to print or save as a PDF.": "{{Alt+B}} compone instrucciones de montaje a partir de tus pasos, para imprimir o guardar en PDF.",
+			"Keys like, in Settings ({{,}}), puts on BrickLink Studio's, Mecabricks' or LDCad's keys.": "«Teclas como», en Ajustes ({{,}}), usa las teclas de BrickLink Studio, Mecabricks o LDCad.",
+			"{{Shift+F1}}, then a click on any button, says what it does without doing it.": "{{Shift+F1}} y luego un clic en un botón dice lo que hace sin hacerlo.",
+			"{{B}} opens the timeline, and {{Space}} plays the build step by step.": "{{B}} abre la línea de tiempo y {{Space}} reproduce el montaje paso a paso.",
+			"{{F9}} renders a photo-real picture or turntable of your model, in studio light.": "{{F9}} renderiza una imagen fotorrealista o una vista giratoria de tu modelo, con luz de estudio.",
 		},
 	};
 	let code = "";
@@ -399,7 +780,7 @@ const loaderSays = (function () {
 		};
 		put("count-of", "of");
 		put("count-bricks", "bricks");
-		document.querySelector("#boot .tagline").textContent = says("Every brick, at the size it really is.");
+		put("tip-label", "Tip");
 		document.getElementById("wall").setAttribute("aria-label", says("A wall being built as the app loads"));
 		document.getElementById("canvas").textContent = says("Your browser does not support the canvas element.");
 		// The licences' links, as they are in the English.
@@ -411,6 +792,246 @@ const loaderSays = (function () {
 		}));
 	}
 	return says;
+})();
+
+// The wall, built as the page is read, before any of the engine has come:
+// its baseplate turns from the first frame and its bricks wait above it.
+// bootWall.lay(fraction) lays bricks up to that share of the wall, the
+// bottom course first, no sooner than one every SPACING ms, so a share
+// that jumps (the engine's files from the cache) still lands brick by
+// brick; lay(1, true) lays the rest at once, as the app comes up.
+const bootWall = (function () {
+	"use strict";
+	// Real LEGO® colours, straight from LDConfig: the mark's red, yellow and
+	// blue twice as often as green, white, orange and light bluish grey.
+	const PALETTE = [
+		"#b40000", "#f2cd37", "#1e5aa8", "#b40000", "#f2cd37", "#1e5aa8",
+		"#00852b", "#f4f4f4", "#fe8a18", "#a0a5a9",
+	];
+	const COURSES = 6;
+	const COURSE_STUDS = 16;  // studs along the wall
+	const HEIGHT = 1.2;       // a brick's height, in studs (9.6 mm to 8)
+	const SPACING = 70;
+
+	// A bonded wall: alternate courses are offset by one brick's
+	// half-length, so the joints stagger the way a real wall's do. Widths
+	// vary a little so it does not read as a grid, and no brick is the
+	// colour of the one beside it.
+	const bricks = [];
+	const WIDTHS = [4, 2, 4, 6, 2, 4];
+	let seed = 7;
+	const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+	for (let course = 0; course < COURSES; course++) {
+		let stud = course % 2 === 0 ? 0 : -2;
+		let index = 0;
+		let before = "";
+		while (stud < COURSE_STUDS) {
+			let width = WIDTHS[(course * 3 + index) % WIDTHS.length];
+			if (stud + width > COURSE_STUDS) width = COURSE_STUDS - stud;
+			if (width >= 2) {
+				let color = PALETTE[Math.floor(rand() * PALETTE.length)];
+				while (color === before) color = PALETTE[Math.floor(rand() * PALETTE.length)];
+				before = color;
+				const from = Math.max(0, stud);
+				const long = stud < 0 ? width + stud : width;
+				bricks.push({ course, x: from + long / 2 - COURSE_STUDS / 2, width: long, color });
+			}
+			stud += width;
+			index++;
+		}
+	}
+
+	const holder = document.getElementById("bricks");
+	const elements = bricks.map(function (brick) {
+		const el = document.createElement("div");
+		el.className = "brick";
+		el.style.cssText = "--x:" + brick.x + ";--y:" + (-(brick.course + 0.5) * HEIGHT).toFixed(2)
+			+ ";--w:" + brick.width + ";--c:" + brick.color;
+		el.innerHTML = '<div class="f tp"></div><div class="f lt"></div><div class="f rt"></div><div class="f fr"></div>';
+		holder.appendChild(el);
+		return el;
+	});
+	const label = document.getElementById("laid");
+	document.getElementById("total").textContent = String(bricks.length);
+
+	let shown = 0;
+	let aim = 0;
+	let last = -Infinity;
+	function lay(fraction, all) {
+		// Only ever lay more, never unlay: progress that goes backwards
+		// (it can, between the wasm and the pack) should not demolish.
+		aim = Math.max(aim, Math.round(Math.max(0, Math.min(1, fraction)) * bricks.length));
+		const now = performance.now();
+		let late = 0;
+		while (shown < aim && (all || now - last >= SPACING)) {
+			if (all) elements[shown].style.animationDelay = (late++ * 40) + "ms";
+			elements[shown].classList.add("laid");
+			shown++;
+			last = now;
+		}
+		label.textContent = String(shown);
+		return shown;
+	}
+	// Once the page is gone, nothing behind the app goes on moving.
+	function still() {
+		document.getElementById("wall").classList.add("still");
+	}
+	function hold() {
+		document.getElementById("wall").classList.add("held");
+	}
+	return { count: bricks.length, lay: lay, still: still, hold: hold };
+})();
+
+// A tip about the app under the wall, a new one every EVERY ms, faded in
+// where the last one was (its card keeps one height, so nothing on the
+// page moves), each said in the page's language. A computer is told its
+// keys and its menus; a touch screen, with no mouse or pad, its gestures,
+// and the menus where it has them, in More (src/ui/phone_shell.gd).
+// Each is true of this build: drawn from the keys sheet (Help › Keys and
+// controls) and the menus (docs-site/generated/menus.json), and docs-site/
+// for the rest. The next visit starts where this one stopped
+// (localStorage brickworks.tip), so a person who comes back meets new
+// ones. Under the pointer it waits. A screen reader hears each tip once:
+// a tip come round again changes silently. {{Key}} is drawn as a key, and
+// Ctrl as Cmd on a Mac, as the app's keys are. window.brickworksTips is
+// what it showed.
+const bootTips = (function () {
+	"use strict";
+	const EVERY = 5000;
+	const FADE = 240;
+	// For whom ("keys", "touch" or "all"), and what it says.
+	const TIPS = [
+		["keys", "Press {{F1}} for every key and click Brickworks answers to, with a box to search them."],
+		["touch", "Tap a part to select it; hold on it to take it off."],
+		["keys", "Help › Take the tour builds your first model with you, in seven short steps."],
+		["touch", "More › Help › Take the tour builds your first model with you, in seven short steps."],
+		["keys", "Press {{/}} and type a part's name or number to find it in the bin."],
+		["touch", "Drag with one finger to turn the view; pinch to zoom."],
+		["keys", "{{Q}} takes the last part back into your hand; right-click or {{Esc}} lets it go."],
+		["keys", "Saved models follow your account: File › Open… shows them wherever you sign in."],
+		["touch", "Saved models follow your account: More › File › Open… shows them wherever you sign in."],
+		["keys", "{{R}} turns the part in your hand and {{T}} tips it over."],
+		["touch", "On a phone, tap with two fingers to undo, and with three to redo."],
+		["keys", "{{[}} and {{]}} step through the colours; {{Shift+C}} finds one by its name or number."],
+		["keys", "Nobody sees a model until you share it: File › Share… makes a link anyone can open."],
+		["touch", "Nobody sees a model until you share it: More › File › Share… makes a link anyone can open."],
+		["keys", "Hold {{Ctrl}} and drag a part to copy it; on nothing, it draws a box round several."],
+		["touch", "Double-tap a part to select it and give it a quarter turn."],
+		["keys", "Press {{E}} to make a build step of everything put down since the last one."],
+		["keys", "File › Versions… keeps a model's last 20 saves, to open one again or compare."],
+		["touch", "More › File › Versions… keeps a model's last 20 saves, to open one again or compare."],
+		["keys", "Lost? Press {{Ctrl+/}}, type a few letters of what you want to do, then Enter."],
+		["touch", "Turn two fingers about each other to turn the model round, as on a map."],
+		["keys", "Hold {{Shift}} and double-click a part to select every one like it."],
+		["keys", "File › Library… opens LDraw's models of real sets, and models the community shared."],
+		["touch", "More › File › Library… opens LDraw's models of real sets, and models the community shared."],
+		["keys", "Keys {{1}} to {{7}} look from the front, back, sides, top, bottom and three-quarter; {{0}} goes back."],
+		["touch", "The Brickworks logo along the top opens the menu, with Find a command… in it."],
+		["keys", "{{K}} cuts the model away to work inside it; {{I}} makes all but the selection see-through."],
+		["keys", "File › Build together… builds one model with a friend, live, each in their own browser."],
+		["touch", "More › File › Build together… builds one model with a friend, live, each in their own browser."],
+		["keys", "{{Alt+K}} checks stability: it finds the joints that would give way."],
+		["keys", "{{Ctrl+K}} asks Claude to change the selected parts, and only them."],
+		["keys", "Make › Mosaic from a picture… turns a picture into a wall of plates."],
+		["touch", "More › Make › Mosaic from a picture… turns a picture into a wall of plates."],
+		["keys", "{{M}} opens the minifigure builder: a figure from real parts, stood in your model."],
+		["keys", "{{Ctrl+I}} lays any 3D model, a sculpt or a scan, in bricks at the size you choose."],
+		["all", "Each browser tab holds a model of its own: open two to work on both."],
+		["keys", "{{Alt+B}} lays out building instructions from your steps, to print or save as a PDF."],
+		["keys", "Keys like, in Settings ({{,}}), puts on BrickLink Studio's, Mecabricks' or LDCad's keys."],
+		["keys", "{{Shift+F1}}, then a click on any button, says what it does without doing it."],
+		["keys", "{{B}} opens the timeline, and {{Space}} plays the build step by step."],
+		["keys", "{{F9}} renders a photo-real picture or turntable of your model, in studio light."],
+	];
+	const box = document.getElementById("tip");
+	const line = document.getElementById("tip-text");
+	let touch = false;
+	let mac = false;
+	let still = false;
+	try {
+		touch = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+		still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+		mac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || "");
+	} catch (e) {}
+	const mine = TIPS.filter(function (tip) { return tip[0] === "all" || tip[0] === (touch ? "touch" : "keys"); })
+		.map(function (tip) { return tip[1]; });
+	let at = 0;
+	try { at = (parseInt(localStorage.getItem("brickworks.tip"), 10) || 0) % mine.length; } catch (e) {}
+	const heard = new Set();
+	const state = window.brickworksTips = { count: mine.length, touch: touch, at: at, shown: [], paused: false, on: true };
+
+	function keys(combo) {
+		const span = document.createElement("span");
+		span.className = "keys";
+		combo.split("+").forEach(function (key, i) {
+			if (i) span.append("+");
+			const cap = document.createElement("kbd");
+			cap.textContent = mac && key === "Ctrl" ? "Cmd" : key;
+			span.append(cap);
+		});
+		return span;
+	}
+	function show(n, first) {
+		at = ((n % mine.length) + mine.length) % mine.length;
+		// The first is the page's own words, read with it; a tip come round
+		// again is not said twice.
+		line.setAttribute("aria-live", first || heard.has(at) ? "off" : "polite");
+		heard.add(at);
+		// One run of words, so the card can centre it as a whole.
+		const words = document.createElement("span");
+		const parts = loaderSays(mine[at]).split(/\{\{(.+?)\}\}/);
+		words.append.apply(words, parts.map(function (part, i) {
+			return i % 2 ? keys(part) : document.createTextNode(part);
+		}));
+		line.replaceChildren(words);
+		state.at = at;
+		state.shown.push(at);
+		try { localStorage.setItem("brickworks.tip", String((at + 1) % mine.length)); } catch (e) {}
+	}
+	let timer = 0;
+	let fading = false;
+	function next() {
+		timer = 0;
+		if (!state.on || state.paused) return;
+		if (still) {
+			show(at + 1);
+			wait();
+			return;
+		}
+		fading = true;
+		line.classList.add("out");
+		setTimeout(function () {
+			fading = false;
+			if (!state.on) return;
+			show(at + 1);
+			line.classList.remove("out");
+			wait();
+		}, FADE);
+	}
+	function wait() {
+		if (state.on && !state.paused && !timer && !fading) timer = setTimeout(next, EVERY);
+	}
+	box.addEventListener("mouseenter", function () {
+		state.paused = true;
+		if (timer) clearTimeout(timer);
+		timer = 0;
+	});
+	box.addEventListener("mouseleave", function () {
+		state.paused = false;
+		wait();
+	});
+	show(at, true);
+	wait();
+	return {
+		// For good: the app is up, or the page has something else to say
+		// (hide: the card goes, its room kept).
+		stop: function (hide) {
+			state.on = false;
+			if (timer) clearTimeout(timer);
+			timer = 0;
+			if (hide) box.classList.add("gone");
+		},
+	};
 })();
 
 // A shared model's link (?view=<id>) asked for at once, while the engine
@@ -441,90 +1062,26 @@ const loaderSays = (function () {
 brickworksEngine.ready.then(function (chosen) {
 	"use strict";
 
-	// Real LEGO® colours, straight from LDConfig: red, yellow, green, blue,
-	// orange, dark azure, white, light bluish grey.
-	const PALETTE = [
-		"#b40000", "#f2cd37", "#00852b", "#1e5aa8",
-		"#fe8a18", "#078bc9", "#f4f4f4", "#a0a5a9",
-	];
-
-	const COURSES = 8;
-	const PITCH = 2;          // studs per unit of brick width
-	const COURSE_STUDS = 16;  // studs across the wall
-
-	const wall = document.getElementById("wall");
-	const laidLabel = document.getElementById("laid");
-	const totalLabel = document.getElementById("total");
 	const note = document.getElementById("note");
 	const boot = document.getElementById("boot");
-
-	// Lay out a bonded wall: alternate courses are offset by one brick's
-	// half-length, so the joints stagger the way a real wall's do. Widths
-	// vary a little so it does not read as a grid.
-	const bricks = [];
-	const WIDTHS = [4, 2, 4, 6, 2, 4];
-	let seed = 7;
-	const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-
-	for (let course = 0; course < COURSES; course++) {
-		let stud = course % 2 === 0 ? 0 : -2;
-		let index = 0;
-		while (stud < COURSE_STUDS) {
-			let width = WIDTHS[(course * 3 + index) % WIDTHS.length];
-			if (stud + width > COURSE_STUDS) width = COURSE_STUDS - stud;
-			if (width >= 2) {
-				bricks.push({
-					course,
-					stud: Math.max(0, stud),
-					width: stud < 0 ? width + stud : width,
-					color: PALETTE[Math.floor(rand() * PALETTE.length)],
-				});
-			}
-			stud += width;
-			index++;
-		}
-	}
-
-	// Bottom course first, so the wall grows upward as bytes arrive.
-	bricks.sort((a, b) => a.course - b.course || a.stud - b.stud);
-
-	const COURSE_HEIGHT = 100 / COURSES;
-	const elements = bricks.map((brick) => {
-		const el = document.createElement("div");
-		el.className = "brick";
-		el.style.background = brick.color;
-		el.style.left = (brick.stud / COURSE_STUDS) * 100 + "%";
-		el.style.width = (brick.width / COURSE_STUDS) * 100 + "%";
-		el.style.bottom = brick.course * COURSE_HEIGHT + "%";
-		el.style.height = COURSE_HEIGHT - 1.5 + "%";
-		wall.appendChild(el);
-		return el;
-	});
-
-	totalLabel.textContent = String(bricks.length);
-
-	let shown = 0;
-	function render(fraction) {
-		const target = Math.round(Math.max(0, Math.min(1, fraction)) * bricks.length);
-		// Only ever lay more, never unlay: progress that goes backwards
-		// (it can, between the wasm and the pack) should not demolish.
-		for (; shown < target; shown++) elements[shown].classList.add("laid");
-		laidLabel.textContent = String(shown);
-	}
+	const render = bootWall.lay;
 
 	// The engine reports the wasm and pack download; the rest of the bar is
 	// the engine starting and the catalogue parsing, which report nothing.
-	// Creeping the last slice keeps the wall moving instead of stalling at
-	// a number, and it is capped so it can never claim to be finished.
+	// Through them the wall goes on rising, ever slower, short of its last
+	// brick, which only the app up lays: it keeps moving instead of stalling
+	// at a number, and it can never claim to be finished.
 	const DOWNLOAD_SHARE = 0.86;
 	let downloaded = 0;
-	let creep = 0;
 	let running = true;
+	let fetched = 0;
 
 	(function tick() {
 		if (!running) return;
+		let creep = 0;
 		if (downloaded >= DOWNLOAD_SHARE) {
-			creep = Math.min(1 - DOWNLOAD_SHARE, creep + (1 - DOWNLOAD_SHARE) * 0.012);
+			fetched = fetched || performance.now();
+			creep = (1 - DOWNLOAD_SHARE - 1 / bootWall.count) * (1 - Math.exp((fetched - performance.now()) / 6000));
 		}
 		render(downloaded + creep);
 		requestAnimationFrame(tick);
@@ -542,8 +1099,9 @@ brickworksEngine.ready.then(function (chosen) {
 	function fail(text) {
 		running = false;
 		failed = true;
+		bootTips.stop(true);
+		bootWall.hold();
 		say(text, true);
-		laidLabel.textContent = String(shown);
 	}
 
 	// Godot passes anything after "--" to the project, which is how the
@@ -1151,6 +1709,8 @@ brickworksEngine.ready.then(function (chosen) {
 	// so here, start nothing, and ask that tab to come forward.
 	function elsewhere(id) {
 		running = false;
+		bootTips.stop(true);
+		bootWall.hold();
 		try { new BroadcastChannel("brickworks-tabs").postMessage({ show: id }); } catch (e) {}
 		document.title = loaderSays("Brickworks: your model is in another tab");
 		say("Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.");
@@ -1641,10 +2201,11 @@ brickworksEngine.ready.then(function (chosen) {
 			eta.up();
 			running = false;
 			downloaded = 1;
-			creep = 0;
-			render(1);
+			render(1, true);
 			say("Ready");
+			bootTips.stop();
 			boot.classList.add("done");
+			setTimeout(bootWall.still, 800);
 			// How the studio is used, counted (web/tally.js, /counting): after
 			// it is up, and not even fetched where the browser or the person said
 			// no (web/counting.js's cheap no: Do Not Track, GPC, a No kept, a

@@ -5948,6 +5948,20 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "the loading page",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app while the app loads (#boot): the mark beside the wordmark; the wall in CSS 3D (#wall, bootWall), its bricks dropping in as the engine's files come (#laid of #total), turning slowly; a tip under it every 5 s (#tip, bootTips, window.brickworksTips): a computer's keys or a touch screen's gestures, en/de/fr/es, waiting under the pointer, the next visit at the next (localStorage brickworks.tip); dark or light by the system or the site's kept brickworks.theme; reduced motion still. heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>]",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "loading page browser flow",
+      "entry": "tools/web/bootlook_flow.mjs",
+      "reach": "heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>] [--port=11651] [--only=pictures|checks]   (pictures at 1280x800 and 390x844 touch, dark and light, early/mid/late in a 2.5 Mbps load; layout shifts 0; every tip in en/de/fr/es on a computer and a phone on page.clock: fits, new, in the language, heard once; hover waits; the next visit's first; reduced motion; the theme kept; the app up behind it; no new address against --base). A build to flow: python3 tools/web/shell_arm.py BASE OUT, an export's engine and packs behind this checkout's page",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "phonewarn browser flow",
       "entry": "tools/web/phonewarn_flow.mjs",
