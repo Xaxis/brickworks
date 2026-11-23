@@ -91,7 +91,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Versions dialog for Red car: a line on what Open and Compare do, a note that the model has changes not saved, Save it now, then its four saves, newest first, each with the day, the time and its count of parts, the newest marked the last save, and Compare and Open on each.",
+   "alt": "The Versions dialog for Red car: a line on what Open and Compare do, a note that the model has changes not saved, Save it now, then its four saves, newest first, each with the day, the time and its count of parts, and how many more than the save before it, the newest marked the last save, and Compare and Open on each.",
    "caption": "File › Versions…: the model's last 20 saves, to compare or open.",
    "features": [
     "ui:versions of a model",
