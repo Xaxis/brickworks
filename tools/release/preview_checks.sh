@@ -48,6 +48,7 @@ declare -A CMD=(
   # on the same page with no reload; a signed-out /profile opens it by
   # itself. A throwaway at a Resend test address, its code minted.
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
+  # local only: made_shown_flow.mjs. It runs a local relay against production's functions with throwaway accounts (aiprivate); model_page and gallery carry what a stranger sees.
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,

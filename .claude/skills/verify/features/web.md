@@ -950,7 +950,32 @@ plan with Claude as the client.
   assistant or brickify, as the app says (400 for anything else), kept by a
   PATCH of its own that never stops the publish (nothing before the file is
   applied) and answered as `made_with`; not said, it stays as it was.
-  `share_probe` checks both. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
+  `share_probe` checks both. `made_with_shown` (2026-11-23, the owner: not
+  "unless a user wants to share it that way"; `supabase/made_with_shown.sql`,
+  false for every model): whether its owner chose to say how it was made,
+  true or false on a publish (400 otherwise; not said, kept as it was), and
+  `?op=made&id=X` the owner's own GET `{made_with, way, by, made_with_shown,
+  ready}` and POST `{shown}`. Until it is true nothing public says it:
+  `web/card.js madePublic` takes `made_with` and the `ai-designed`/`brickify`
+  tags off in `cardOf`, `modelPage` (its fact, its tags, its keywords,
+  similar models) and the viewer's JSON (`publishedRow` reads the column
+  where it is, and without it before the file); the feed's way pill is only
+  Designed with the assistant or Made with Brickify, shown (no Built by
+  hand, which would tell the rest apart); Made's With the assistant and
+  `tag=ai-designed` list only shown models (gallery_models, and the API
+  drops a row not shown), Hand-built every other. A challenge's track is
+  the entrant's own and unchanged. `node tools/web/made_shown_check.mjs`
+  (stand-in, no browser: HouseMod01 tagged and not shown, HouseMod02
+  shown; 5 FAIL on base 919471139). The owner's choice on the model page
+  (web/model-page.js `madeChoice`): signed in as its owner, More has **Say
+  it was made with the assistant** (Brickify's: **with Brickify**), or
+  **Stop saying it...** once shown, from `?op=made` (none for a hand-built
+  model, or before the column); pressed, it POSTs `{shown}` and puts the
+  page's `li.pill.made` fact in or takes it out at once. On the real
+  functions and database: `node tools/web/made_shown_relay.mjs
+  --url=<a local relay_server.mjs>` (a run's own throwaway publishes as the
+  app does for Claude's model, a stranger reads its page and JSON, its owner
+  shows it and takes it back; 7 ok on 11-23 once the SQL was applied). Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) whose links each open a tab — the threaded engine
@@ -1765,8 +1790,11 @@ plan with Claude as the client.
   `object-fit: cover`; Tested is a `.pill.good`. The Assistant or Brickify
   mark is `madeOf(model)`: `made_with` as the app said (`cardOf` passes it
   from `directory_card`), else the `ai-designed`/`brickify` tags; its title
-  says which. `card_check` holds a hand-built model tagged ai-designed
-  unmarked, an untagged one of Claude's marked (red on base). Since
+  says which, and only where its owner chose to show it (`madePublic`,
+  `made_with_shown`, below). `card_check` holds a hand-built model tagged
+  ai-designed unmarked, an untagged one of Claude's marked (red on base),
+  and the model page's fact on HouseMod02 (shown) alone, never HouseMod01
+  (tagged, not shown). Since
   2026-10-26 (site277, from site273's review) the marks are one row
   (`.marks` one pill tall; a mark that does not fit is left off whole),
   and a mark 90% or more of a page's cards carry (four cards or more) is
@@ -2897,8 +2925,11 @@ plan with Claude as the client.
   false), and deploy.sh's `app_closed` lets the site's own pages frame it;
   its ways out take the whole window (`src/main.gd` `WHOLE_WINDOW`). Signed
   in (`<html data-signed="in">`, web/theme.js before the first frame): the
-  band gives way to Share a build (`/app?share`, `main.gd`
-  `_maybe_share`) and the tabs For you, Following (`op=feed`) and New.
+  band is its search row alone, `#find-q` with Share a build (`/app?share`,
+  `main.gd` `_maybe_share`) and Share a file beside it (`.home-acts >
+  .mine`), over the tabs For you, Following (`op=feed`) and New
+  (homefix, 2026-11-23; homefeed_check step 7: the search in view, level
+  with Share a build, "/" focusing it, the first post over the foot).
   Prove it with `tools/web/homefeed_check.mjs --url=<a served site>
   [--signed-in] [--try-start]` and `tools/web/landing_check.mjs`: a site
   put together by `tools/site.py OUT` and filled by `node
@@ -5387,8 +5418,11 @@ plan with Claude as the client.
   under, `#hero-mark`: see `home hero`), then `#feed`: `.feed-head` (its
   h2, the tabs hidden) and `#stream`, the posts (see `the home page's
   feed`), the first begun in the first screen; Show more (`#feed-more`).
-  Signed in: no band, `.feed-you` (Share a build, Share a file from another
-  program) and the tabs. Then `#beta`, `#why` (the studio, `#sets-models`
+  Signed in: the band is `.home-acts` alone, the same `#find` with Share
+  a build and Share a file from another program (`.mine`) beside it, and
+  the tabs. The band's foot: `--s-7` under its last line and over the
+  feed's heading, `--s-5` on a phone (landing_check's "room", each at
+  least 24 px, the two within 8 px; homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
   four real sets live) and `#start`. `tools/web/landing_check.mjs` checks at
   390 x 844 and 1280 x 800, light and dark: the search and Start building
   whole in the first screen, on a phone the first post's picture begun in it
