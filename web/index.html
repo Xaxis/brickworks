@@ -1,39 +1,34 @@
 <!DOCTYPE html>
 <!--
-  The page brickworks.diy serves at its root.
+  The page brickworks.diy serves at its root: the LEGO® builders' feed, which
+  is also the studio's best advertisement (homefeed, 2026-11-23, the owner:
+  "turn the landing into our lego 'social media' as it simultaneously
+  advertises and integrates the CAD"; docs/SOCIAL.md section 11 has the
+  research and the decisions). For everybody the first screen is the feed:
+  new builds, Talk's threads with their latest reply, the month's challenge
+  and its entries, each a post in one stream, never empty on day one (the
+  gallery's and Talk's own seeds). Each build's post is a way into the
+  studio: Open in the studio, Remix, Build it and Parts, a 3D turn of it on
+  a hover or a tap, and how it was made, each a link to that feature's docs.
+  Signed out, one band over it says what Brickworks is, with the search and
+  Start building; a post in the stream opens the studio itself in the feed
+  on a tap. Signed in, Share a build and the tabs For you, Following and
+  New. Under the feed: the beta while it is open, the studio (the app's
+  picture and five things a build needs), and one last offer. No title or
+  first screen calls it AI. Every claim is something the app does today
+  (.claude/skills/verify/features/web.md, docs-site/).
 
-  Turned round to lead with the community (landing, 2026-11-22, the owner:
-  "we want the 'forum/gallery' features to be better highlighted and
-  available immediately upon landing"; docs/HOME.md has the critique and
-  the plan). The first screen, on a phone and on a laptop, is what a
-  visitor to MakerWorld, Printables or Mecabricks meets first: one line of
-  what Brickworks is, a search over models, builders and sets beside Start
-  building, the month's challenge, and real models with their pictures,
-  Top, New and the real sets in 3D, in the page as it is served. Under it,
-  in the order a visitor asks: what builders are talking about (Talk,
-  once the forum has talk), the community (Build together, what a builder
-  does here), the beta while it is open, the studio itself (the app's
-  picture, which was the first screen until then, and five things a
-  build needs), and one last offer, with the plans in a line. No title
-  or first screen calls it AI, and the assistant is named once. Every
-  claim is something the app does today (.claude/skills/verify/features/
-  web.md, docs-site/).
-
-  The shelf's cards and the challenge's words are written into the page
-  at the deploy (tools/web/home_shelf.mjs, from the live gallery, else
-  web/_home.json), each card's picture copied beside the page, so the
-  first screen needs no answer from the server to be whole. Then
-  web/landing.js asks again and puts in what changed, a card for a card
-  and a line for a line, so nothing moves: the challenge's days left,
-  this week's pick, a model shared since the deploy. A card goes in only
-  once its picture has arrived and decoded, so it can never show a dead
-  one. Under the first screen it fills each part as it nears: the forum's
-  latest talk, the beta's way in, four real sets. The pictures are in
-  web/img/ (img/manifest.json says where each came from), WebP at the
-  widths a laptop and a phone each need, every one with its size given so
-  nothing moves as they arrive. The header and footer are web/_shell.html
-  (tools/site_shell.py). The JSON-LD at the foot is data, not script: the
-  site's content security policy runs no inline script.
+  The first posts are written into the page at the deploy
+  (tools/web/home_shelf.mjs, from the live gallery, Talk and the challenge,
+  else web/_home.json), each picture copied beside the page, so the first
+  screen needs no answer from the server to be whole and a search engine
+  reads them. Then web/landing.js asks again, says each post's counts as
+  they are now, a number for a number, and puts in the rest under them,
+  so nothing in view moves. The pictures are in web/img/ (img/manifest.json
+  says where each came from), WebP, every one with its size given. The
+  header and footer are web/_shell.html (tools/site_shell.py). The JSON-LD
+  at the foot is data, not script: the site's content security policy runs
+  no inline script.
 -->
 <html lang="en">
 <head>
@@ -77,29 +72,26 @@
 <meta name="apple-mobile-web-app-title" content="Brickworks">
 <link rel="stylesheet" href="/site.css">
 <style>
-/* Only layout here; every control, panel, card and tile is site.css's (the landing kit). */
+/* Only layout here; every control, panel, card and post is site.css's. */
 
-/* The first screen (landing, 2026-11-22): the line, the search and Start
-   building, with the month's challenge beside them from 900 px; then the
-   shelf, a row of real models that scrolls inside itself, Top, New and
-   the sets in 3D its tabs. Laid out so the shelf's pictures are in the
-   first screen at 390 x 844 and 1280 x 800, over the beta's bar. */
-.home-top { padding: clamp(24px, 4vw, 48px) 0 var(--s-6); }
-.home-hero { display: grid; gap: var(--s-5); grid-template-columns: minmax(0, 1fr); align-items: center; }
-@media (width >= 900px) { .home-hero { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-7); } }
-@media (width >= 1400px) { .home-hero { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
-/* The line at --t-h1, a page title's size: --t-display, the landing's before
-   the shelf, would push the shelf out of the first screen. */
+/* The first screen (homefeed, 2026-11-23; docs/SOCIAL.md section 11): the
+   feed. Signed out, one band over it says what Brickworks is in a line,
+   with the search and Start building; signed in (<html data-signed>,
+   web/theme.js, before the first frame) the band gives way to Share a
+   build and the feed's tabs, For you, Following and New. Laid out so a
+   phone's first post starts within 600 px and a laptop's first row of
+   pictures is in its first screen. */
+.home-band { padding: clamp(20px, 3vw, 40px) 0 var(--s-4); }
+:root[data-signed="in"] .home-band { display: none; }
+/* The line at --t-h1, a page title's size. */
 .home-words h1 {
-	margin: 0 0 var(--s-3); max-width: 18ch; font-size: var(--t-h1); line-height: 1.02; letter-spacing: -0.04em; font-weight: 760;
+	margin: 0 0 var(--s-2); max-width: 22ch; font-size: var(--t-h1); line-height: 1.02; letter-spacing: -0.04em; font-weight: 760;
 	text-wrap: balance;
 }
-.home-words .lede { margin: 0 0 var(--s-5); max-width: 52ch; }
+.home-words .lede { margin: 0 0 var(--s-4); max-width: 60ch; }
 /* The search and Start building in a row, the search taking what is left;
    on a phone one over the other, each the whole width. Both at the 44 px
-   every field and button is (docs/DESIGN_SYSTEM.md): the search was 52 and
-   Start building a big one, the only field on the site drawn its own size
-   (landfix, 2026-11-22). */
+   every field and button is (docs/DESIGN_SYSTEM.md). */
 .home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
 .find { position: relative; flex: 1 1 320px; min-width: 0; }
 .home-acts > .cta { flex: none; }
@@ -107,6 +99,7 @@
 	.home-acts > .cta { flex: 1 1 100%; justify-content: center; }
 	.find .search .hint { display: none; }
 	.find .search input { padding-right: 12px; }
+	.home-words .note { display: none; }
 }
 .home-words .note { margin-top: var(--s-3); }
 /* What the search finds as it is typed (web/home-find.js): a list under
@@ -128,58 +121,32 @@
 .find-list [role="option"] small { margin-left: auto; padding-left: var(--s-3); color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; }
 .find-list .all { color: var(--ink-soft); font-size: var(--t-small); }
 
-/* The month's challenge: beside the words from 900 px, under the shelf on
-   a phone. Every line holds its room from the first frame, so what the
-   server says fills it and moves nothing. */
-.home-challenge .words { padding: var(--s-5); }
-/* Its name a tile's heading: an h3 at --t-h3, a part of the first screen. */
-.home-challenge h3 { margin: 0; font-size: var(--t-h3); line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
-.home-challenge .badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
-.home-challenge #challenge-left[hidden] { display: inline-flex !important; visibility: hidden; }
-#challenge-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2lh; }
-@media (width < 900px) { .home-challenge { order: 3; } .home-hero { display: contents; } .home-top > .wrap { display: flex; flex-direction: column; gap: var(--s-5); } }
+/* The feed: its head (signed in, Share a build and the tabs), then the
+   stream, a column on a phone, two from 700 px, three from 1100 and four
+   from 1560; the studio to try two columns wide where there are two. */
+.home-feed { padding: 0 0 var(--section); }
+:root[data-signed="in"] .home-feed { padding-top: clamp(16px, 3vw, 32px); }
+.feed-you { display: none; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin: 0 0 var(--s-4); }
+:root[data-signed="in"] .feed-you { display: flex; }
+.feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-4); border-bottom: 1px solid var(--line); }
+.feed-head h2 { margin: 0; padding: 0 0 10px; font-size: var(--t-h3); line-height: 1.3; font-weight: 650; }
+.feed-head .tabs { display: none; margin: 0 0 -1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
+:root[data-signed="in"] .feed-head h2 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root[data-signed="in"] .feed-head .tabs { display: flex; }
+.feed-head > a { flex: none; padding: 0 0 10px; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
+.feed-head > a:hover { color: var(--ink); text-decoration: underline; }
+.stream { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@media (width >= 700px) { .stream { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); } .stream > .post.try { grid-column: span 2; } }
+@media (width >= 1100px) { .stream { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (width >= 1560px) { .stream { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stream > .post.try .post-pic { aspect-ratio: 16 / 9; }
+@media (width < 700px) { .stream > .post.try .post-pic { aspect-ratio: 4 / 5; } }
+.stream[aria-busy="true"] { cursor: progress; }
+.stream-more { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--s-4); margin: var(--s-6) 0 0; }
+.stream-more [hidden] { display: none; }
+.stream-said { margin: var(--s-4) 0 0; text-align: center; color: var(--ink-soft); }
 
-/* The shelf: its tabs and See all over one row of cards that scrolls in
-   itself (site.css .models.scroller). The shown tab's cards are in the
-   page as it is served (tools/web/home_shelf.mjs, at the deploy), its
-   first picture asked for at once. */
-.shelf { margin-top: var(--s-6); }
-@media (width < 900px) { .shelf { margin-top: 0; } }
-.shelf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-3); border-bottom: 1px solid var(--line); }
-/* The tabs scroll in themselves where a language's words outrun a phone
-   (Echte Sets in 3D), their underline kept on the line under them, with the
-   thin scrollbar every row has (site.css .tabs), shown under a pointer. */
-.shelf-head .tabs { margin: 0 0 -1px; padding-bottom: 1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
-@media (width < 600px) {
-	.shelf-head { gap: var(--s-2); }
-	.shelf-head .tabs button { padding: 0 var(--s-2); }
-}
-.shelf-head > a { flex: none; padding: 10px 0; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
-.shelf-head > a:hover { color: var(--ink); text-decoration: underline; }
-.shelf .models.scroller { padding-bottom: 6px; }
-.shelf [role="tabpanel"][hidden] { display: none; }
-/* Every card's words one height (two lines of name, the designer's line
-   and one more), so a card put in for another never moves the row. */
-.shelf .model .words { height: calc(22px + 2 * 1.35em + 31px + var(--t-tiny) * 1.65); overflow: hidden; font-size: var(--t-body); }
-
-/* The latest in Talk (unit talk's rows, their looks in site.css), shown
-   only once there is talk to show, never an empty box. */
-#talk-latest[hidden] { display: none; }
-
-/* The community: Build together beside what a builder does here. */
-.together-row { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
-.together-row .wide .pic { aspect-ratio: 1200 / 630; }
-@media (width >= 900px) {
-	.together-row .wide { flex-direction: row; }
-	.together-row .wide .pic { flex: 0 0 62%; border-bottom: 0; border-right: 1px solid var(--line); }
-	.together-row .wide .words { justify-content: center; }
-}
-.acts { display: grid; gap: var(--s-3) var(--s-5); grid-template-columns: minmax(0, 1fr); margin: var(--s-6) 0 0; padding: 0; list-style: none; }
-@media (width >= 600px) { .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (width >= 1200px) { .acts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.acts li { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
-
-/* The studio, under the community: the app itself, then what a build needs. */
+/* The studio, under the feed: the app itself, then what a build needs. */
 .studio-shot { margin: 0 0 var(--s-6); border-radius: var(--r-4); }
 .studio-shot img { aspect-ratio: 16 / 9; }
 .benefits { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; }
@@ -260,132 +227,70 @@
 </header>
 
 <main id="main">
-	<!-- The first screen (landing, 2026-11-22, docs/HOME.md): what
-	     Brickworks is in a line; a search over models, builders and sets
+	<!-- The band over the feed, signed out (homefeed, 2026-11-23): what
+	     Brickworks is in a line, a search over models, builders and sets
 	     (web/home-find.js, asked for once the field is used) and Start
-	     building; the month's challenge; and the shelf, real models with
-	     their pictures, in the page as it is served. -->
-	<section class="home-top halo" id="home" aria-labelledby="hero-h">
+	     building, which opens the studio. Signed in it gives way to Share a
+	     build and the feed's tabs (<html data-signed>, web/theme.js). -->
+	<section class="home-band halo" id="home" aria-labelledby="hero-h">
 		<div class="wrap wide">
-			<div class="home-hero">
-				<div class="home-words">
-					<h1 id="hero-h">Build, share and find <em>LEGO® models</em></h1>
-					<p class="lede">A free CAD in your browser. Open what builders share, or a real set, and build it step by step.</p>
-					<div class="home-acts">
-						<!-- Sent, it is the gallery's search (models, builders and
-						     tags); as it is typed, sets and builders as well. -->
-						<form class="find" id="find" role="search" action="/gallery" method="get">
-							<label class="search">
-								<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-								<span class="visually-hidden">Search models, builders and sets</span>
-								<input type="search" id="find-q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-									placeholder="Search models, builders and sets" aria-keyshortcuts="/"
-									role="combobox" aria-expanded="false" aria-controls="find-list" aria-autocomplete="list">
-								<kbd class="hint" aria-hidden="true">/</kbd>
-							</label>
-							<div class="find-list" id="find-list" role="listbox" aria-label="What the search finds" hidden></div>
-						</form>
-						<a class="cta" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
-					</div>
-					<p class="note">Free, with nothing to install. <a href="/compare">How it compares with Studio</a></p>
+			<div class="home-words">
+				<h1 id="hero-h">Build, share and find <em>LEGO® models</em></h1>
+				<p class="lede">A free CAD in your browser. Every build here was made in it: open one, change it, build it.</p>
+				<div class="home-acts">
+					<!-- Sent, it is the gallery's search (models, builders and
+					     tags); as it is typed, sets and builders as well. -->
+					<form class="find" id="find" role="search" action="/gallery" method="get">
+						<label class="search">
+							<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+							<span class="visually-hidden">Search models, builders and sets</span>
+							<input type="search" id="find-q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+								placeholder="Search models, builders and sets" aria-keyshortcuts="/"
+								role="combobox" aria-expanded="false" aria-controls="find-list" aria-autocomplete="list">
+							<kbd class="hint" aria-hidden="true">/</kbd>
+						</label>
+						<div class="find-list" id="find-list" role="listbox" aria-label="What the search finds" hidden></div>
+					</form>
+					<a class="cta" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
 				</div>
-				<!-- The month's challenge (web/landing.js, /api/share?op=shelves),
-				     its name, brief and days in the page as served
-				     (tools/web/home_shelf.mjs), its days left and the way in
-				     said once the server has answered; between challenges the
-				     next one told; until then, what a challenge is. -->
-				<article class="tile challenge home-challenge" id="challenge" aria-labelledby="challenge-h">
-					<div class="words">
-						<p class="badges"><span class="badge accent" id="challenge-when">Every month</span><span class="badge good" id="challenge-left" hidden></span></p>
-						<h3 id="challenge-h">A new challenge</h3>
-						<p id="challenge-brief">Build to the month’s brief, by hand or with help, and the builders vote for their favourites.</p>
-						<p class="note" id="challenge-days">A new theme each month</p>
-						<p class="go-on"><a class="cta ghost" href="/challenge" id="challenge-go">See the challenge</a></p>
-					</div>
-				</article>
-			</div>
-			<!-- The shelf: Top (Trending first once a week has enough), New and
-			     the real sets in 3D, each a tab of one row of cards that
-			     scrolls in itself. The shown tab's cards are written into the
-			     page at the deploy (tools/web/home_shelf.mjs: the live
-			     gallery's, or web/_home.json's when it cannot be read), each
-			     picture copied beside the page, this week's pick first;
-			     web/landing.js asks it again once the page is in, and each
-			     other tab when first opened, and puts in what changed, a card
-			     for a card, so nothing moves. The skeletons are what a
-			     checkout's own page shows until then. -->
-			<div class="shelf" id="shelf" data-shelf="skeleton">
-				<div class="shelf-head">
-					<div class="tabs" role="tablist" aria-label="Models to open">
-						<button type="button" role="tab" id="tab-trending" aria-selected="false" aria-controls="shelf-trending" tabindex="-1" hidden>Trending</button>
-						<button type="button" role="tab" id="tab-top" aria-selected="true" aria-controls="shelf-top">Top</button>
-						<button type="button" role="tab" id="tab-new" aria-selected="false" aria-controls="shelf-new" tabindex="-1">New</button>
-						<button type="button" role="tab" id="tab-sets" aria-selected="false" aria-controls="shelf-sets" tabindex="-1">Real sets in 3D</button>
-					</div>
-					<a id="shelf-all" href="/gallery">See all</a>
-				</div>
-				<div class="models scroller" id="shelf-trending" role="tabpanel" aria-labelledby="tab-trending" hidden
-					data-ask="/api/share?op=list&amp;page=1&amp;sort=top&amp;window=week" data-all="/gallery?window=week"><!--shelf:trending--><!--/shelf:trending--></div>
-				<div class="models scroller" id="shelf-top" role="tabpanel" aria-labelledby="tab-top"
-					data-ask="/api/share?op=list&amp;page=1&amp;sort=top" data-all="/gallery"><!--shelf:top-->
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-				<!--/shelf:top--></div>
-				<div class="models scroller" id="shelf-new" role="tabpanel" aria-labelledby="tab-new" hidden
-					data-ask="/api/share?op=list&amp;page=1&amp;sort=newest" data-all="/gallery?sort=newest"><!--shelf:new--><!--/shelf:new--></div>
-				<div class="models scroller" id="shelf-sets" role="tabpanel" aria-labelledby="tab-sets" hidden
-					data-ask="/api/share?op=library&amp;page=1&amp;sort=largest&amp;model=3d" data-all="/library?model=3d&amp;sort=largest"><!--shelf:sets--><!--/shelf:sets--></div>
+				<p class="note">Free, with nothing to install. <a href="/compare">How it compares with Studio</a></p>
 			</div>
 		</div>
 	</section>
 
-	<!-- The latest in Talk, the builders' forum (unit talk: api/_talk.js
-	     talkLatest, /api/people?op=talk_latest&html=1, its rows drawn as
-	     Talk draws them, in the page's language), asked by web/landing.js
-	     as the section under it nears the screen and shown only once it
-	     answers with three threads or more, and only while its place is
-	     under the window, so nothing in view moves; else never drawn. Its
-	     link gets its address then too. -->
-	<section class="section talk-strip" id="talk-latest" data-n="4" aria-labelledby="talk-h" hidden>
+	<!-- The feed (homefeed, 2026-11-23; web/home-feed.js draws each post,
+	     web/landing.js fills it): new builds, Talk's threads with their
+	     latest reply, the month's challenge and its entries, the studio to
+	     try and builders to follow, one stream. Its first posts are in the
+	     page as it is served (tools/web/home_shelf.mjs, at the deploy, from
+	     the live gallery, Talk and the challenge, else web/_home.json), their
+	     pictures copied beside the page, so the first screen needs no answer
+	     to be whole and a search engine reads them; then landing.js asks
+	     again, says each post's counts as they are now and puts in the rest.
+	     Signed in: For you, Following (the people you follow, /feed's) and
+	     New. The skeletons are what a checkout's own page shows until then. -->
+	<section class="home-feed" id="feed" aria-labelledby="feed-h">
 		<div class="wrap wide">
-			<div class="section-head">
-				<div>
-					<p class="eyebrow">Talk</p>
-					<h2 class="title" id="talk-h">What builders are talking about</h2>
+			<div class="feed-you">
+				<a class="cta" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
+				<a class="cta ghost" href="/share-model">Share a file from another program</a>
+			</div>
+			<div class="feed-head">
+				<h2 id="feed-h">What builders are making</h2>
+				<div class="tabs" role="tablist" aria-label="The feed" id="feed-tabs">
+					<button type="button" role="tab" id="tab-foryou" aria-selected="true" aria-controls="stream" data-tab="foryou">For you</button>
+					<button type="button" role="tab" id="tab-following" aria-selected="false" aria-controls="stream" tabindex="-1" data-tab="following">Following</button>
+					<button type="button" role="tab" id="tab-new" aria-selected="false" aria-controls="stream" tabindex="-1" data-tab="new">New</button>
 				</div>
-				<a id="talk-all">All of Talk</a>
+				<a id="feed-all" href="/gallery">See the gallery</a>
 			</div>
-			<div data-talk-strip></div>
-		</div>
-	</section>
-
-	<section class="section defer" id="community" aria-labelledby="community-h">
-		<div class="wrap wide">
-			<div class="section-head">
-				<div>
-					<p class="eyebrow">The community</p>
-					<h2 class="title" id="community-h">Share it, and build with others</h2>
-				</div>
-				<a href="/collections">Browse collections</a>
-			</div>
-			<div class="together-row">
-				<article class="tile wide">
-					<span class="pic"><img src="/img/together-720.webp" srcset="/img/together-720.webp 720w, /img/together-930.webp 930w"
-						sizes="(min-width: 1640px) 973px, (min-width: 900px) 62vw, calc(100vw - 32px)" width="930" height="488" loading="lazy" decoding="async"
-						alt="Build together in the app: its panel lists You and Ann, both here, with Follow and Remove beside Ann and a link to copy; on the red car beside it, Ann’s pointer and the part they have selected, outlined in their blue."></span>
-					<div class="words"><h3>Build together, live</h3><p>Send a link. Everyone’s parts go down as they place them, and each keeps an Undo of their own.</p><a class="more" href="/docs/build-together">How it works</a></div>
-				</article>
-			</div>
-			<ul class="acts">
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#like"></use></svg></span><span>Like and save the models you love</span></li>
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#comment"></use></svg></span><span>Comment on a model, or on one step</span></li>
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><span>Follow builders and see what they make</span></li>
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><span>Post a photo of the one you built</span></li>
-			</ul>
+			<div class="stream" id="stream" data-stream="skeleton" aria-busy="false"><!--feed-->
+				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
+				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
+				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
+			<!--/feed--></div>
+			<p class="stream-said" id="stream-said" role="status"></p>
+			<p class="stream-more"><button type="button" class="cta ghost" id="feed-more" hidden>Show more</button></p>
 		</div>
 	</section>
 
@@ -395,7 +300,7 @@
 	     welcome joins it); signed in, Join the beta; a tester, Report a bug
 	     and What's new. Under it, while any are left, the months of Pro
 	     the first testers get, or a tester's thanks, and what joining
-	     agrees to (the beta's terms, its emails). Under the community
+	     agrees to (the beta’s terms, its emails). Under the feed
 	     (landing, 2026-11-22: what a visitor came for first). Drawn from the
 	     first frame where this browser has heard the beta is open (<html
 	     data-beta>, web/theme.js); else put in only while its place is under

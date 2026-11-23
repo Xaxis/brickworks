@@ -1,9 +1,6 @@
 {
- "at": "2026-11-22",
+ "at": "2026-11-23",
  "answers": {
-  "/api/share?op=list&page=1&sort=top&window=week": {
-   "models": []
-  },
   "/api/share?op=list&page=1&sort=top": {
    "models": [
     {
@@ -39,9 +36,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/r2UCzQ7Pz3",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/r2UCzQ7Pz3.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/r2UCzQ7Pz3.webp?v=mvm7mip4"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/r2UCzQ7Pz3",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/r2UCzQ7Pz3.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/r2UCzQ7Pz3.webp?v=mvm7mip4"
     },
     {
      "id": "57f5AAf5ax",
@@ -75,9 +72,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/57f5AAf5ax",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/57f5AAf5ax.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/57f5AAf5ax.webp?v=mvm7mgpu"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/57f5AAf5ax",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/57f5AAf5ax.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/57f5AAf5ax.webp?v=mvm7mgpu"
     },
     {
      "id": "j7WaRpWsuL",
@@ -111,9 +108,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/j7WaRpWsuL",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/j7WaRpWsuL.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/j7WaRpWsuL.webp?v=mvm7me79"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/j7WaRpWsuL",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/j7WaRpWsuL.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/j7WaRpWsuL.webp?v=mvm7me79"
     },
     {
      "id": "JaU2WdrqFV",
@@ -150,9 +147,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/JaU2WdrqFV",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/JaU2WdrqFV.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/JaU2WdrqFV.webp?v=mvm7mc7o"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/JaU2WdrqFV",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/JaU2WdrqFV.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/JaU2WdrqFV.webp?v=mvm7mc7o"
     },
     {
      "id": "ruNnGL5CWX",
@@ -192,9 +189,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ruNnGL5CWX",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ruNnGL5CWX.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ruNnGL5CWX.webp?v=mvm7ma78"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ruNnGL5CWX",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ruNnGL5CWX.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ruNnGL5CWX.webp?v=mvm7ma78"
     },
     {
      "id": "3TbLHphFky",
@@ -228,9 +225,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/3TbLHphFky",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/3TbLHphFky.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/3TbLHphFky.webp?v=mvm7m8cc"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/3TbLHphFky",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/3TbLHphFky.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/3TbLHphFky.webp?v=mvm7m8cc"
     },
     {
      "id": "rtqf6Xtpb4",
@@ -267,9 +264,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/rtqf6Xtpb4",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/rtqf6Xtpb4.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/rtqf6Xtpb4.webp?v=mvm5g90y"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rtqf6Xtpb4",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rtqf6Xtpb4.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rtqf6Xtpb4.webp?v=mvm5g90y"
     },
     {
      "id": "5gTFrkEYSd",
@@ -303,9 +300,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/5gTFrkEYSd",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/5gTFrkEYSd.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/5gTFrkEYSd.webp?v=mvm5g74r"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/5gTFrkEYSd",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/5gTFrkEYSd.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/5gTFrkEYSd.webp?v=mvm5g74r"
     },
     {
      "id": "AiBS96ET2M",
@@ -339,9 +336,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/AiBS96ET2M",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/AiBS96ET2M.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/AiBS96ET2M.webp?v=mvm5g4xf"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/AiBS96ET2M",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/AiBS96ET2M.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/AiBS96ET2M.webp?v=mvm5g4xf"
     },
     {
      "id": "rEBYGwnXdu",
@@ -375,86 +372,46 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/rEBYGwnXdu",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/rEBYGwnXdu.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/rEBYGwnXdu.webp?v=mvm5g24b"
-    },
-    {
-     "id": "mQ4mK2Yfhc",
-     "name": "A lakeside campsite",
-     "author": "Brickworks",
-     "parts": 174,
-     "listed_at": "2026-10-24T08:41:03.121+00:00",
-     "kind": "figure",
-     "tags": [
-      "camping",
-      "lake",
-      "campfire",
-      "minifigures",
-      "ai-designed"
-     ],
-     "licence": "cc-by-4.0",
-     "steps": 41,
-     "own_steps": true,
-     "technic": false,
-     "tested": true,
-     "made_with": null,
-     "modelled_by": null,
-     "views": 0,
-     "likes": 0,
-     "remixes": 0,
-     "builds": 0,
-     "comments": 0,
-     "moves": [],
-     "motions": [],
-     "by": {
-      "handle": "brickworks",
-      "name": "Brickworks"
-     },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/mQ4mK2Yfhc",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/mQ4mK2Yfhc.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/mQ4mK2Yfhc.webp?v=mvm5g041"
-    },
-    {
-     "id": "4PX3GV47LW",
-     "name": "A little potted cactus",
-     "author": "Brickworks",
-     "parts": 37,
-     "listed_at": "2026-10-24T08:41:00.3+00:00",
-     "kind": "nature",
-     "tags": [
-      "cactus",
-      "plant",
-      "beginner",
-      "small build",
-      "ai-designed"
-     ],
-     "licence": "cc-by-4.0",
-     "steps": 11,
-     "own_steps": false,
-     "technic": false,
-     "tested": true,
-     "made_with": null,
-     "modelled_by": null,
-     "views": 0,
-     "likes": 0,
-     "remixes": 0,
-     "builds": 0,
-     "comments": 0,
-     "moves": [],
-     "motions": [],
-     "by": {
-      "handle": "brickworks",
-      "name": "Brickworks"
-     },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4PX3GV47LW",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4PX3GV47LW.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4PX3GV47LW.webp?v=mvm5fxxo"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rEBYGwnXdu",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rEBYGwnXdu.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rEBYGwnXdu.webp?v=mvm5g24b"
     }
    ]
   },
   "/api/share?op=list&page=1&sort=newest": {
    "models": [
+    {
+     "id": "KNBYeCvR8K",
+     "name": "Cape Hatteras Lighthouse",
+     "author": "BrickManBill",
+     "parts": 1320,
+     "listed_at": "2026-11-23T02:51:46.746+00:00",
+     "kind": null,
+     "tags": [],
+     "licence": "cc-by-4.0",
+     "steps": 263,
+     "own_steps": false,
+     "technic": false,
+     "tested": false,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "turntable"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "brickmanbill",
+      "name": "BrickManBill"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/KNBYeCvR8K",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/KNBYeCvR8K.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/KNBYeCvR8K.webp?v=mwso6qw9"
+    },
     {
      "id": "XqW6brmPQs",
      "name": "6080 King's Castle",
@@ -490,9 +447,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/XqW6brmPQs",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/XqW6brmPQs.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/XqW6brmPQs.webp?v=mvr0bdd6"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/XqW6brmPQs",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/XqW6brmPQs.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/XqW6brmPQs.webp?v=mvr0bdd6"
     },
     {
      "id": "CQGKA45Wdy",
@@ -529,9 +486,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/CQGKA45Wdy",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/CQGKA45Wdy.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/CQGKA45Wdy.webp?v=mvr0b9ng"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/CQGKA45Wdy",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/CQGKA45Wdy.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/CQGKA45Wdy.webp?v=mvr0b9ng"
     },
     {
      "id": "RGcHLSCnQj",
@@ -568,9 +525,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/RGcHLSCnQj",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/RGcHLSCnQj.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/RGcHLSCnQj.webp?v=mvr0b5z1"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/RGcHLSCnQj",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/RGcHLSCnQj.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/RGcHLSCnQj.webp?v=mvr0b5z1"
     },
     {
      "id": "4b8TcCfUFu",
@@ -607,9 +564,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4b8TcCfUFu",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4b8TcCfUFu.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4b8TcCfUFu.webp?v=mvr0b29c"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4b8TcCfUFu",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4b8TcCfUFu.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4b8TcCfUFu.webp?v=mvr0b29c"
     },
     {
      "id": "2idJtvhBUo",
@@ -652,9 +609,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/2idJtvhBUo",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/2idJtvhBUo.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/2idJtvhBUo.webp?v=mvqxyox3"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/2idJtvhBUo",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/2idJtvhBUo.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/2idJtvhBUo.webp?v=mvqxyox3"
     },
     {
      "id": "ZpvBGwuKRu",
@@ -691,9 +648,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ZpvBGwuKRu",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ZpvBGwuKRu.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ZpvBGwuKRu.webp?v=mvqxylhs"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ZpvBGwuKRu",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ZpvBGwuKRu.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ZpvBGwuKRu.webp?v=mvqxylhs"
     },
     {
      "id": "yupUhhaiTB",
@@ -732,9 +689,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/yupUhhaiTB",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/yupUhhaiTB.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/yupUhhaiTB.webp?v=mvqxyi2x"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/yupUhhaiTB",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/yupUhhaiTB.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/yupUhhaiTB.webp?v=mvqxyi2x"
     },
     {
      "id": "ErWZwJDho3",
@@ -771,9 +728,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ErWZwJDho3",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ErWZwJDho3.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/ErWZwJDho3.webp?v=mvqxyeaw"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ErWZwJDho3",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ErWZwJDho3.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ErWZwJDho3.webp?v=mvqxyeaw"
     },
     {
      "id": "Y4MbnPEky9",
@@ -812,352 +769,9 @@
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/Y4MbnPEky9",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/Y4MbnPEky9.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/Y4MbnPEky9.webp?v=mvqxyap9"
-    },
-    {
-     "id": "4QwJMBny6o",
-     "name": "6396 International Jetport",
-     "author": "Brickworks",
-     "parts": 590,
-     "listed_at": "2026-10-27T17:10:05.523+00:00",
-     "kind": "town",
-     "tags": [
-      "ldraw library",
-      "airport",
-      "aeroplane",
-      "classic town",
-      "1990s"
-     ],
-     "licence": "cc-by-2.0",
-     "steps": 144,
-     "own_steps": false,
-     "technic": false,
-     "tested": false,
-     "made_with": null,
-     "modelled_by": {
-      "name": "Zoltán Kéri",
-      "page": "https://library.ldraw.org/omr/sets/601"
-     },
-     "views": 0,
-     "likes": 0,
-     "remixes": 0,
-     "builds": 0,
-     "comments": 0,
-     "moves": [
-      "turntable",
-      "doors"
-     ],
-     "motions": [],
-     "by": {
-      "handle": "brickworks",
-      "name": "Brickworks"
-     },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4QwJMBny6o",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4QwJMBny6o.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/4QwJMBny6o.webp?v=mvqxy6s3"
-    },
-    {
-     "id": "FhDqq9m72s",
-     "name": "42022 Hot Rod",
-     "author": "Brickworks",
-     "parts": 414,
-     "listed_at": "2026-10-26T16:49:10.148+00:00",
-     "kind": "vehicle",
-     "tags": [
-      "ldraw library",
-      "technic",
-      "hot rod",
-      "car",
-      "2010s"
-     ],
-     "licence": "cc-by-2.0",
-     "steps": 141,
-     "own_steps": false,
-     "technic": true,
-     "tested": false,
-     "made_with": null,
-     "modelled_by": {
-      "name": "Faramond Florent",
-      "page": "https://library.ldraw.org/omr/sets/331"
-     },
-     "views": 0,
-     "likes": 0,
-     "remixes": 0,
-     "builds": 0,
-     "comments": 0,
-     "moves": [
-      "steering",
-      "gears"
-     ],
-     "motions": [],
-     "by": {
-      "handle": "brickworks",
-      "name": "Brickworks"
-     },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/FhDqq9m72s",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/FhDqq9m72s.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/FhDqq9m72s.webp?v=mvphrfgk"
-    },
-    {
-     "id": "pzdSVhhSgW",
-     "name": "40138 Christmas Train",
-     "author": "Brickworks",
-     "parts": 227,
-     "listed_at": "2026-10-26T16:49:05.679+00:00",
-     "kind": "vehicle",
-     "tags": [
-      "ldraw library",
-      "train",
-      "christmas",
-      "seasonal",
-      "2010s"
-     ],
-     "licence": "cc-by-2.0",
-     "steps": 41,
-     "own_steps": true,
-     "technic": false,
-     "tested": false,
-     "made_with": null,
-     "modelled_by": {
-      "name": "Philippe Hurbain",
-      "page": "https://library.ldraw.org/omr/sets/62"
-     },
-     "views": 0,
-     "likes": 0,
-     "remixes": 0,
-     "builds": 0,
-     "comments": 0,
-     "moves": [],
-     "motions": [],
-     "by": {
-      "handle": "brickworks",
-      "name": "Brickworks"
-     },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/pzdSVhhSgW",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/pzdSVhhSgW.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/pzdSVhhSgW.webp?v=mvphrc0f"
-    }
-   ]
-  },
-  "/api/share?op=library&page=1&sort=largest&model=3d": {
-   "models": [
-    {
-     "id": "set-10294-1",
-     "name": "Titanic",
-     "parts": 9092,
-     "modelled_by": {
-      "name": "Jens Brühl",
-      "page": "https://library.ldraw.org/omr/sets/1444"
-     },
-     "library": {
-      "set": "10294-1",
-      "theme": "Icons",
-      "year": 2021,
-      "page": "/library/set/10294-1",
-      "picture": "/library/omr-10294-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-10276-1",
-     "name": "Colosseum",
-     "parts": 9036,
-     "modelled_by": {
-      "name": "Orion Pobursky",
-      "page": "https://library.ldraw.org/omr/sets/1381"
-     },
-     "library": {
-      "set": "10276-1",
-      "theme": "Icons",
-      "year": 2020,
-      "page": "/library/set/10276-1",
-      "picture": "/library/omr-10276-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-10256-1",
-     "name": "Taj Mahal",
-     "parts": 5923,
-     "modelled_by": {
-      "name": "Orion Pobursky",
-      "page": "https://library.ldraw.org/omr/sets/1372"
-     },
-     "library": {
-      "set": "10256-1",
-      "theme": "Creator",
-      "year": 2017,
-      "page": "/library/set/10256-1",
-      "picture": "/library/omr-10256-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-10179-1",
-     "name": "Millennium Falcon",
-     "parts": 5205,
-     "modelled_by": {
-      "name": "Roland Dahl",
-      "page": "https://library.ldraw.org/omr/sets/320"
-     },
-     "library": {
-      "set": "10179-1",
-      "theme": "Star Wars",
-      "year": 2007,
-      "page": "/library/set/10179-1",
-      "picture": "/library/omr-10179-1.webp",
-      "model3d": true,
-      "figs": 5
-     }
-    },
-    {
-     "id": "set-10214-1",
-     "name": "Tower Bridge",
-     "parts": 4287,
-     "modelled_by": {
-      "name": "Orion Pobursky",
-      "page": "https://library.ldraw.org/omr/sets/24"
-     },
-     "library": {
-      "set": "10214-1",
-      "theme": "Creator",
-      "year": 2010,
-      "page": "/library/set/10214-1",
-      "picture": "/library/omr-10214-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-10253-1",
-     "name": "Big Ben",
-     "parts": 4167,
-     "modelled_by": {
-      "name": "Orion Pobursky",
-      "page": "https://library.ldraw.org/omr/sets/1371"
-     },
-     "library": {
-      "set": "10253-1",
-      "theme": "Creator",
-      "year": 2016,
-      "page": "/library/set/10253-1",
-      "picture": "/library/omr-10253-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-10261-1",
-     "name": "Roller Coaster",
-     "parts": 4147,
-     "modelled_by": {
-      "name": "Philippe Hurbain",
-      "page": "https://library.ldraw.org/omr/sets/872"
-     },
-     "library": {
-      "set": "10261-1",
-      "theme": "Creator",
-      "year": 2018,
-      "page": "/library/set/10261-1",
-      "picture": "/library/omr-10261-1.webp",
-      "model3d": true,
-      "figs": 11
-     }
-    },
-    {
-     "id": "set-42100-1",
-     "name": "Liebherr R 9800 Excavator",
-     "parts": 4106,
-     "modelled_by": {
-      "name": "Philippe Hurbain",
-      "page": "https://library.ldraw.org/omr/sets/1038"
-     },
-     "library": {
-      "set": "42100-1",
-      "theme": "Technic",
-      "year": 2019,
-      "page": "/library/set/42100-1",
-      "picture": "/library/omr-42100-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-42082-1",
-     "name": "Rough Terrain Crane",
-     "parts": 4055,
-     "modelled_by": {
-      "name": "Philippe Hurbain",
-      "page": "https://library.ldraw.org/omr/sets/550"
-     },
-     "library": {
-      "set": "42082-1",
-      "theme": "Technic",
-      "year": 2018,
-      "page": "/library/set/42082-1",
-      "picture": "/library/omr-42082-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-42055-1",
-     "name": "Bucket Wheel Excavator",
-     "parts": 3928,
-     "modelled_by": {
-      "name": "Philippe Hurbain",
-      "page": "https://library.ldraw.org/omr/sets/302"
-     },
-     "library": {
-      "set": "42055-1",
-      "theme": "Technic",
-      "year": 2016,
-      "page": "/library/set/42055-1",
-      "picture": "/library/omr-42055-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-10272-1",
-     "name": "Old Trafford - Manchester United",
-     "parts": 3897,
-     "modelled_by": {
-      "name": "Orion Pobursky",
-      "page": "https://library.ldraw.org/omr/sets/1148"
-     },
-     "library": {
-      "set": "10272-1",
-      "theme": "Creator",
-      "year": 2020,
-      "page": "/library/set/10272-1",
-      "picture": "/library/omr-10272-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
-    },
-    {
-     "id": "set-42131-1",
-     "name": "Cat D11 Bulldozer",
-     "parts": 3853,
-     "modelled_by": {
-      "name": "Philippe Hurbain",
-      "page": "https://library.ldraw.org/omr/sets/1437"
-     },
-     "library": {
-      "set": "42131-1",
-      "theme": "Technic",
-      "year": 2021,
-      "page": "/library/set/42131-1",
-      "picture": "/library/omr-42131-1.webp",
-      "model3d": true,
-      "figs": 0
-     }
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/Y4MbnPEky9",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/Y4MbnPEky9.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/Y4MbnPEky9.webp?v=mvqxyap9"
     }
    ]
   },
@@ -1172,53 +786,310 @@
      "score": 5
     },
     "model": {
-     "id": "JaU2WdrqFV",
-     "name": "A moon rover and its crew",
+     "id": "4PX3GV47LW",
+     "name": "A little potted cactus",
      "author": "Brickworks",
-     "parts": 431,
-     "listed_at": "2026-10-24T09:41:57.972+00:00",
-     "kind": "space",
+     "parts": 37,
+     "listed_at": "2026-10-24T08:41:00.3+00:00",
+     "kind": "nature",
      "tags": [
-      "rover",
-      "moon",
-      "astronaut",
-      "minifigures",
+      "cactus",
+      "plant",
+      "beginner",
+      "small build",
       "ai-designed"
      ],
      "licence": "cc-by-4.0",
-     "steps": 112,
-     "own_steps": true,
+     "steps": 11,
+     "own_steps": false,
      "technic": false,
      "tested": true,
      "made_with": null,
      "modelled_by": null,
-     "views": 1,
+     "views": 0,
      "likes": 0,
      "remixes": 0,
      "builds": 0,
      "comments": 0,
-     "moves": [
-      "boom",
-      "doors"
-     ],
+     "moves": [],
      "motions": [],
      "by": {
       "handle": "brickworks",
       "name": "Brickworks"
      },
-     "url": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/JaU2WdrqFV",
-     "image": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/JaU2WdrqFV.png",
-     "thumb": "https://brickworks-kpabpocfu-xaxis-projects.vercel.app/m/JaU2WdrqFV.webp?v=mvm7mc7o"
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4PX3GV47LW",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4PX3GV47LW.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4PX3GV47LW.webp?v=mvm5fxxo"
     },
-    "kept": "2026-11-16"
+    "kept": "2026-11-23"
    },
    "challenge": {
+    "id": 108,
     "title": "Microscale",
+    "brief": "A city, a castle on its hill, a harbour full of ships: something big, built small, where a round 1×1 plate is a tree and a tile is a road. The fewer parts it takes to read, the better.",
     "state": "open",
     "starts_on": "2026-11-01",
     "ends_on": "2026-11-30",
-    "days_said": "1 November 2026 to 30 November 2026"
+    "days_said": "1 November 2026 to 30 November 2026",
+    "test": false
    }
+  },
+  "/api/people?op=challenge": {
+   "ready": true,
+   "challenge": {
+    "id": 108,
+    "title": "Microscale",
+    "brief": "A city, a castle on its hill, a harbour full of ships: something big, built small, where a round 1×1 plate is a tree and a tile is a road. The fewer parts it takes to read, the better.",
+    "starts_on": "2026-11-01",
+    "ends_on": "2026-11-30",
+    "state": "open",
+    "test": false,
+    "settled": false,
+    "rules": {
+     "most_parts": null,
+     "set": null,
+     "tested": false
+    },
+    "rules_said": [],
+    "days_said": "1 November 2026 to 30 November 2026",
+    "groups": [
+     {
+      "way": "hand",
+      "label": "Built by hand",
+      "entries": []
+     },
+     {
+      "way": "assistant",
+      "label": "Built with the assistant",
+      "entries": []
+     }
+    ],
+    "winners": [],
+    "rounds": false,
+    "entries_until": null,
+    "votes_from": null,
+    "round": null,
+    "shortlisted": false,
+    "judge": null
+   }
+  },
+  "/api/people?op=latest": {
+   "models": [],
+   "photos": [],
+   "designers": [
+    {
+     "handle": "brickworks",
+     "name": "Brickworks",
+     "score": 98,
+     "builds": 1,
+     "models": [
+      {
+       "id": "r2UCzQ7Pz3",
+       "name": "A treehouse in an old oak"
+      },
+      {
+       "id": "57f5AAf5ax",
+       "name": "A vintage tractor and hay trailer"
+      },
+      {
+       "id": "j7WaRpWsuL",
+       "name": "A red fox on a mossy log"
+      },
+      {
+       "id": "JaU2WdrqFV",
+       "name": "A moon rover and its crew"
+      },
+      {
+       "id": "ruNnGL5CWX",
+       "name": "A working windmill"
+      },
+      {
+       "id": "3TbLHphFky",
+       "name": "A village bakery"
+      },
+      {
+       "id": "rtqf6Xtpb4",
+       "name": "A friendly maintenance robot"
+      },
+      {
+       "id": "5gTFrkEYSd",
+       "name": "A narrow-gauge tank engine and coach"
+      },
+      {
+       "id": "AiBS96ET2M",
+       "name": "A pagoda in a garden"
+      },
+      {
+       "id": "rEBYGwnXdu",
+       "name": "A little dragon asleep on its hoard"
+      },
+      {
+       "id": "mQ4mK2Yfhc",
+       "name": "A lakeside campsite"
+      },
+      {
+       "id": "4PX3GV47LW",
+       "name": "A little potted cactus"
+      },
+      {
+       "id": "8eb6GRvnSV",
+       "name": "Orrery of the Sun and eight planets"
+      },
+      {
+       "id": "EzEXhtXE2C",
+       "name": "Wizard's Tower"
+      },
+      {
+       "id": "kfpYMjke5U",
+       "name": "A castle, from one sentence"
+      },
+      {
+       "id": "uoRqCfPWYJ",
+       "name": "A barn owl"
+      },
+      {
+       "id": "B6FhDpMowd",
+       "name": "A three-core heavy-lift rocket"
+      },
+      {
+       "id": "cGHqpHnEFZ",
+       "name": "A small modular corner shop"
+      },
+      {
+       "id": "o3dLMc5A3Z",
+       "name": "A sports car, and its driver"
+      },
+      {
+       "id": "CQGKA45Wdy",
+       "name": "928 Galaxy Explorer"
+      },
+      {
+       "id": "XqW6brmPQs",
+       "name": "6080 King's Castle"
+      },
+      {
+       "id": "RGcHLSCnQj",
+       "name": "10183 Hobby Train"
+      },
+      {
+       "id": "4b8TcCfUFu",
+       "name": "5891 Apple Tree House"
+      },
+      {
+       "id": "2idJtvhBUo",
+       "name": "8862 Backhoe Grader"
+      },
+      {
+       "id": "ZpvBGwuKRu",
+       "name": "21011 Brandenburg Gate"
+      },
+      {
+       "id": "yupUhhaiTB",
+       "name": "6973 Deep Freeze Defender"
+      },
+      {
+       "id": "ErWZwJDho3",
+       "name": "6066 Camouflaged Outpost"
+      },
+      {
+       "id": "Y4MbnPEky9",
+       "name": "10124 Wright Flyer"
+      },
+      {
+       "id": "4QwJMBny6o",
+       "name": "6396 International Jetport"
+      },
+      {
+       "id": "FhDqq9m72s",
+       "name": "42022 Hot Rod"
+      },
+      {
+       "id": "pzdSVhhSgW",
+       "name": "40138 Christmas Train"
+      },
+      {
+       "id": "9PyDfjvaPV",
+       "name": "6954 Renegade"
+      },
+      {
+       "id": "v3GPBRFSeU",
+       "name": "31025 Mountain Hut"
+      },
+      {
+       "id": "dJikpZoSLM",
+       "name": "6085 Black Monarch's Castle"
+      },
+      {
+       "id": "PNvC7cxJNC",
+       "name": "5521 Sea Jet"
+      },
+      {
+       "id": "RFCFXmTgLU",
+       "name": "7641 City Corner"
+      },
+      {
+       "id": "Soa3ZyivrY",
+       "name": "21016 Sungnyemun"
+      },
+      {
+       "id": "LhJWA2rFhK",
+       "name": "851 Tractor"
+      },
+      {
+       "id": "L4opmXZWHs",
+       "name": "358 Rocket Base"
+      },
+      {
+       "id": "eVP5rgkAxs",
+       "name": "346-2 House with Car"
+      },
+      {
+       "id": "KDmWrRWxCh",
+       "name": "6043 Dragon Defender"
+      },
+      {
+       "id": "Pi3bMbZdHc",
+       "name": "7815 Passenger Carriage / Sleeper"
+      },
+      {
+       "id": "TW4JVKYmPH",
+       "name": "6951 Robot Command Center"
+      },
+      {
+       "id": "gbcKbTRLUq",
+       "name": "6416 Poolside Paradise"
+      },
+      {
+       "id": "grTzeyH8px",
+       "name": "5984 Lunar Limo"
+      },
+      {
+       "id": "APossaNY7g",
+       "name": "6361 Mobile Crane"
+      },
+      {
+       "id": "pNS4DGTfCh",
+       "name": "5935 Island Hopper"
+      },
+      {
+       "id": "syu2kbZDUm",
+       "name": "6365 Summer Cottage"
+      }
+     ]
+    },
+    {
+     "handle": "brickmanbill",
+     "name": "BrickManBill",
+     "score": 0,
+     "builds": 0,
+     "models": [
+      {
+       "id": "KNBYeCvR8K",
+       "name": "Cape Hatteras Lighthouse"
+      }
+     ]
+    }
+   ]
   }
  }
 }

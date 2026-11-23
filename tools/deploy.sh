@@ -493,7 +493,12 @@ closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 
 # blob: in the site's connect-src: a model page's In your room writes its GLB
 # in the page and hands <model-viewer> its blob: address (web/room.js).
 site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach} blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
+# The app may be framed by the site's own pages, and only by them: the home
+# page's feed opens the studio in a post (Try it here, web/landing.js
+# tryHere; homefeed, 2026-11-23). Every page of the origin is the site's,
+# with no script but its own, so nothing else can frame it.
+app_closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${app_closed}"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
 # And none of the cross-origin isolation headers: the app's threaded build

@@ -184,6 +184,11 @@ var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
 var _copy_started: bool = false
+## Share a build, from the home page's feed (/app?share; homefeed,
+## 2026-11-23): the share panel opens for the model the app comes back
+## with, their last, once it is back and somebody is signed in
+## (_maybe_share). Once a visit.
+var _share_asked: bool = false
 var _first_open_done: bool = false
 var _shared: SharedModels
 ## LDraw's models of real sets (src/net/model_library.gd): the library File,
@@ -1923,6 +1928,7 @@ func _ready() -> void:
 	# A build party's code from the link (?party=CODE): its card opens with it.
 	if _party_code_wanted.is_empty() and RegEx.create_from_string("^[A-Za-z0-9]{4}$").search(_argument("--party")) != null:
 		_party_code_wanted = _argument("--party").to_upper()
+	_share_asked = _viewing.is_empty() and _copying.is_empty() and _has_argument("--share")
 	if not _viewing.is_empty():
 		# Before anything reads or writes the visitor's own layout, or a
 		# part the model carries is kept for next time.
@@ -2011,6 +2017,7 @@ func _ready() -> void:
 	if _updater != null:
 		_updater.begin()
 	_maybe_copy()
+	_maybe_share()
 	_maybe_open_library()
 	_maybe_fill_bin()
 	_maybe_join_together()
@@ -2889,6 +2896,7 @@ func _on_account_changed() -> void:
 	if not _viewing.is_empty():
 		return
 	_maybe_copy()
+	_maybe_share()
 	_maybe_join_together()
 	_tell_connector_who()
 
@@ -3528,11 +3536,17 @@ func _view_address() -> String:
 		+ ("?motion=" + _viewing_motion.uri_encode() if not _viewing_motion.is_empty() else "")
 
 
+## Where the viewer's ways out go: the whole window, also when the viewer
+## is the studio in a post of the home page's feed (web/landing.js tryHere),
+## a frame that only the site's own pages may make (deploy.sh app_closed).
+const WHOLE_WINDOW := "(window.top || window).location.assign(%s)"
+
+
 ## The newest version, from an older one: the link's own viewer.
 func _open_newest() -> void:
 	var address: String = "/app?view=" + _viewing
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
+		JavaScriptBridge.eval(WHOLE_WINDOW % JSON.stringify(address), true)
 	else:
 		Outside.open_link(SharedModels.link_for(_viewing))
 
@@ -3544,7 +3558,7 @@ func _open_copy() -> void:
 	var address: String = "/app?copy=" + _viewing \
 		+ ("&v=%d" % _view_version if _view_version < _view_newest else "")
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
+		JavaScriptBridge.eval(WHOLE_WINDOW % JSON.stringify(address), true)
 	else:
 		Outside.open_link(Deployment.api_base() + address)
 
@@ -4044,6 +4058,18 @@ func _set_address(path: String) -> void:
 	if bare.begins_with("/m/") and SharedModels.is_id(bare.trim_prefix("/m/")):
 		mark = JSON.stringify({"brickworksViewer": bare.trim_prefix("/m/")})
 	JavaScriptBridge.eval("history.replaceState(%s, '', %s)" % [mark, to], true)
+
+
+## The share panel, asked for by the address (/app?share, _share_asked):
+## once the model is back and the account lets them in, and the address
+## put back to /app, so a reload does not ask again.
+func _maybe_share() -> void:
+	if not _share_asked or not _first_open_done or _account == null or not _account.lets_in():
+		return
+	_share_asked = false
+	_set_address("")
+	if _share_panel_made == null or not _share_panel_made.visible:
+		_share_wanted()
 
 
 ## Copy a shared model into this person's own models (/app?copy=<id>): once

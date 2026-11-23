@@ -1273,6 +1273,13 @@
     },
     {
       "kind": "cli",
+      "label": "sharelink probe",
+      "entry": "src/dev/sharelink_probe.gd",
+      "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "share browser flow",
       "entry": "tools/web/share_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web   (with .env sourced)",
@@ -1471,7 +1478,7 @@
       "kind": "ui",
       "label": "landing page",
       "entry": "web/index.html",
-      "reach": "https://brickworks.diy/   (the community first: one line, the search, Start building, the month's challenge, and a row of real models in tabs, all in the first screen at 390 x 844 and 1280 x 800; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
+      "reach": "https://brickworks.diy/   (the feed first (homefeed): signed out one line, the search and Start building over one stream of posts, the first within 600 px on a phone; signed in Share a build and the tabs For you, Following and New; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
       "area": "web"
     },
     {
@@ -6194,9 +6201,9 @@
     },
     {
       "kind": "ui",
-      "label": "the home page's shelf",
-      "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#shelf in the first screen: Top (Trending once a week has 4), New and Real sets in 3D as tabs of one row of cards, in the page as served, then asked again card for card with nothing moving; See all to each tab's list; #talk under it, shown only with 3 threads of GET /api/talk?op=latest; node tools/web/landing_check.mjs --url=...)",
+      "label": "the home page's feed",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/   (#stream: builds, Talk threads with their latest reply, the month's challenge with its entries, Try it here, builders to follow, photos of builds, each a post (web/home-feed.js postHtml), the first six in the page as served (tools/web/home_shelf.mjs), the rest after with nothing moving; on each build Like, Add a comment, Follow (asking a visitor to sign in on the spot), Share, 3D, Open in the studio, Remix, Build it, Parts; node tools/web/homefeed_check.mjs --url=... [--signed-in] [--try-start], node tools/web/landing_check.mjs --url=...)",
       "area": "web"
     },
     {
@@ -6210,21 +6217,28 @@
       "kind": "cli",
       "label": "home shelf at deploy",
       "entry": "tools/web/home_shelf.mjs",
-      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: each tab's cards and the challenge written into OUT/index.html and each language's copy, the pictures copied to OUT/img/home/; web/_home.json when the gallery cannot be read)",
+      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: the feed's first six posts written into OUT/index.html and each language's copy, their pictures copied to OUT/img/home/; web/_home.json when an answer cannot be read; python3 tools/minitest.py tests/test_home_shelf.py)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "this month's challenge on the home page",
       "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#challenge beside the search, under it on a phone: its name, brief and days written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves, asked at once; This week's pick is the shelf's first card, marked Week's pick)",
+      "reach": "https://brickworks.diy/   (#challenge, a post of the feed, third at the latest: its name, brief, days and up to four entries written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves; This week's pick is the feed's first post, marked Week's pick)",
       "area": "web"
     },
     {
       "kind": "cli",
       "label": "challenge home check",
       "entry": "tools/web/challengehome_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge third in the feed at the latest and the pick its first post at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homefeed check",
+      "entry": "tools/web/homefeed_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homefeed_check.mjs --url=<preview or a site served here> --out=DIR [--signed-in] [--try-start]   (the feed's posts as served, Like/comment/Follow asking to sign in on the spot, 3D, Try it here; --signed-in throwaways Ann and Bea: the tabs, a like, a comment, a follow, a visitor signing in from a like; --try-start the studio in the post on the engine without threads, on a deployment with homefeed's deploy.sh)",
       "area": "web"
     },
     {
@@ -6398,8 +6412,8 @@
     {
       "kind": "ui",
       "label": "the latest in talk on the home page",
-      "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/ (#talk-latest under the shelf, filled from GET /api/people?op=talk_latest&n=4&html=1, shown with three threads or more)",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/ (Talk's newest threads as posts of the feed, each with its latest reply, from GET /api/people?op=talk_latest&n=6&reply=1&talking=24; none before talk.sql)",
       "area": "web"
     },
     {

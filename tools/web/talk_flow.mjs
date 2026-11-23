@@ -163,10 +163,9 @@ async function waitingOnly() {
   const text = await page.text();
   check(`/talk says Talk is not open yet: ${page.status}`, page.status === 503 && /Talk is not open on Brickworks yet/.test(text));
   const home = await open("/index.html");
-  await home.evaluate(() => document.getElementById("talk-latest")?.scrollIntoView());
-  const hidden = await until(home, () => document.getElementById("talk-latest")?.hidden === true || null,
-    "the homepage's Talk section left out", 60).catch(() => false);
-  check("the homepage leaves its Talk section out", hidden === true);
+  const none = await until(home, () => (document.documentElement.dataset.feedLive
+    ? document.querySelectorAll("#stream > .post.talk").length === 0 : null), "the homepage's feed drawn", 60).catch(() => false);
+  check("the homepage's feed has no Talk posts", none === true);
   await home.context().close();
   return true;
 }
@@ -181,22 +180,18 @@ if (await waitingOnly()) {
 
 try {
   console.log("1. The boards, signed out");
-  // The homepage's latest talk (#talk-latest), filled as it nears the screen
-  // and put in only where it moves nothing in view (web/landing.js whenOut):
-  // at 1280 x 900 the section under it shows in the first screen, so it
-  // comes once a person reads on past that section's top (scrollIntoView
-  // stops under the header, with the top still in view).
+  // The homepage's feed (homefeed, 2026-11-23): Talk's threads are posts in
+  // its stream, each its title linked to its thread and its latest reply or
+  // the ask for one (web/home-feed.js talkPostHtml).
   const landing = await open("/index.html?tests=1");
-  await landing.evaluate(() => scrollBy(0, (document.getElementById("community")?.getBoundingClientRect().top || 0) + 40));
   const strip = await until(landing, () => {
-    const place = document.getElementById("talk-latest");
-    const rows = [...(place?.querySelectorAll(".talk-row") || [])];
-    return place && !place.hidden && Number(place.dataset.filled) > 0 && rows.length
-      ? { rows: rows.length, title: rows[0].querySelector(".talk-row-title a")?.getAttribute("href") || "",
-        all: place.querySelector("a[href$='/talk'], a[href*='/talk?']")?.textContent.trim() || "" } : null;
-  }, "the homepage's latest talk", 60);
-  check(`the homepage shows the latest talk: ${strip.rows} threads, "${strip.all}"`, strip.rows >= 1 && strip.rows <= 4
-    && /^\/talk\/t\/\d+/.test(strip.title));
+    const posts = [...document.querySelectorAll("#stream > .post.talk")];
+    return document.documentElement.dataset.feedLive && posts.length
+      ? { rows: posts.length, title: posts[0].querySelector(".post-title a")?.getAttribute("href") || "",
+        reply: posts[0].querySelector(".post-reply")?.textContent.trim() || "" } : null;
+  }, "the homepage's Talk posts", 60);
+  check(`the homepage's feed has Talk: ${strip.rows} threads, the first's reply "${strip.reply.slice(0, 60)}"`, strip.rows >= 1
+    && /^\/talk\/t\/\d+/.test(strip.title) && strip.reply.length > 0);
   await landing.context().close();
   const visitor = await open("/talk?tests=1");
   const tabs = await textOf(visitor, "nav.talk-boards a");

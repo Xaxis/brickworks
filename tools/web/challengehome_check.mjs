@@ -7,12 +7,11 @@
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR
 //
 // 1. The home page at 390 (a phone) and 1280, light and dark: while a
-//    challenge is open, #challenge names it with its days left, and the
-//    shelf's first card is This week's pick, marked so, its picture drawn
-//    (landing, 2026-11-22: the pick leads the first tab, #shelf), both
-//    whole within the first two screens (their foot at most twice the
-//    window's height down), moving no more than 0.1 as they come; nothing
-//    sideways.
+//    challenge is open, its post (#challenge) names it with its days left,
+//    third in the feed at the latest, and the feed's first post is This
+//    week's pick, marked so, its picture drawn (homefeed, 2026-11-23: the
+//    feed is the home, #stream), the pick's within the first screen, moving
+//    no more than 0.1 as they come; nothing sideways.
 // 2. /challenge at 390, 768 and 1280, light and dark: it moves no more
 //    than 0.1 as it loads (the layout shifts no press made, summed as
 //    Chrome's CLS sums them, read 3 s after it is drawn).
@@ -113,7 +112,7 @@ try {
   console.log(`against ${site}`);
   const hub = await (await fetch(`${site}/api/people?op=challenge`, { headers })).json().catch(() => ({}));
   const open = hub?.challenge?.state === "open" && !hub.challenge.test ? hub.challenge : null;
-  // This week's pick, as the gallery's front has it: the home page's shelf leads with it.
+  // This week's pick, as the gallery's front has it: the home page's feed leads with it.
   const front = await (await fetch(`${site}/api/share?op=shelves`, { headers })).json().catch(() => ({}));
   const pick = front?.pick?.model && (front.pick.model.thumb || front.pick.model.image) ? front.pick.model.id : "";
   console.log(`  --    the challenge shown: ${hub?.challenge ? `"${hub.challenge.title}", ${hub.challenge.state}` : "none"}`);
@@ -123,29 +122,31 @@ try {
     for (const dark of [false, true]) {
       const { context, page: p } = await page({ width, height, phone, dark });
       await p.goto(`${site}/`, { waitUntil: "load", timeout: 60000 });
-      await until(p, () => document.documentElement.dataset.challenge && document.documentElement.dataset.shelfLive, "the home page's challenge and shelf");
+      await until(p, () => document.documentElement.dataset.challenge && document.documentElement.dataset.feedLive, "the home page's challenge and feed");
       const seen = await p.evaluate(() => {
         const box = (el) => {
           const r = el?.getBoundingClientRect();
           return r ? { top: Math.round(r.top + scrollY), bottom: Math.round(r.bottom + scrollY) } : null;
         };
-        const card = document.querySelector("#shelf [role=tabpanel]:not([hidden]) > .model[data-pick]");
-        const img = card?.querySelector("img");
+        const posts = [...document.querySelectorAll("#stream > .post:not(.skeleton)")];
+        const card = posts[0]?.matches("[data-pick]") ? posts[0] : null;
+        const img = card?.querySelector(".post-pic img");
         return { said: document.documentElement.dataset.challenge, pick: card ? "shown" : "none",
           name: document.getElementById("challenge-h")?.textContent.trim() || "",
           left: document.getElementById("challenge-left")?.hidden ? "" : document.getElementById("challenge-left")?.textContent.trim() || "",
-          pickName: card?.querySelector("a.open b")?.textContent.trim() || "",
+          pickName: card?.querySelector(".post-title")?.textContent.trim() || "",
           pictured: Boolean(img && img.complete && img.naturalWidth > 0),
-          challenge: box(document.getElementById("challenge")), pickBox: box(card), screen: innerHeight };
+          at: posts.findIndex((post) => post.id === "challenge"),
+          challenge: box(document.getElementById("challenge")), pickBox: box(card?.querySelector(".post-pic")), screen: innerHeight };
       });
       const twoScreens = 2 * seen.screen;
       await p.waitForTimeout(1000);
       const moved = await cls(p);
       check(`home at ${width}${dark ? " dark" : ""} moves ${moved.cls} as the challenge and the pick come${moved.shifts.length ? ` (${moved.shifts.join("; ")})` : ""}`,
         moved.cls <= 0.1);
-      check(`home at ${width}${dark ? " dark" : ""}: "${seen.name}" (${seen.said}, "${seen.left}") ends at ${seen.challenge?.bottom} px; `
-        + `the pick "${seen.pickName}" (${seen.pick}${seen.pictured ? ", its picture" : ""}) ends at ${seen.pickBox?.bottom} px; two screens ${twoScreens}`,
-        Boolean(seen.challenge) && seen.challenge.bottom <= twoScreens && (!pick || (seen.pickBox && seen.pickBox.bottom <= twoScreens))
+      check(`home at ${width}${dark ? " dark" : ""}: "${seen.name}" (${seen.said}, "${seen.left}") is post ${seen.at + 1}; `
+        + `the pick "${seen.pickName}" (${seen.pick}${seen.pictured ? ", its picture" : ""}) begins at ${seen.pickBox?.top} px of a ${seen.screen} px screen`,
+        (!open || (seen.at >= 0 && seen.at <= 2)) && (!pick || (seen.pickBox && seen.pickBox.top < seen.screen))
         && (!open || (seen.said === "open" && seen.name === open.title && /days? left|Last day|Entries close|judges|Fan vote/i.test(seen.left)))
         && (!pick || (seen.pick === "shown" && seen.pictured)));
       check(`...nothing sideways at ${width}`, !(await sideways(p)));

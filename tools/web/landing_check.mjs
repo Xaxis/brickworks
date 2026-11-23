@@ -10,22 +10,24 @@
 // came out 566px wide and the whole page scrolled sideways. A status
 // code cannot see that. A browser at 390px can.
 //
-// Then the first screen as a visitor opens it (landing, 2026-11-22,
-// docs/HOME.md), at a phone's 390 x 844 and a laptop's 1280 x 800, light
-// and dark: the search and Start building whole in the window, and the
-// shelf's real models with their pictures drawn, at least one whole in
-// the window; the page moving not at all (CLS 0.01 at most) as the shelf's
-// live answer comes. Its tabs by press and by arrow, each showing its own
-// cards and See all going to its own list. The search finding as it is
-// typed (models, builders and sets, then the gallery's and the sets' own
-// search), its arrows and Escape, and Enter sending it to the gallery.
-// The month's challenge as the gallery's front has it; the talk's place
-// shown only with talk in it, and asked only once the header has Talk; the
-// four real sets.
+// Then the first screen as a visitor opens it (homefeed, 2026-11-23,
+// docs/HOME.md; landing's shelf before it), at a phone's 390 x 844 and a
+// laptop's 1280 x 800, light and dark: the search and Start building whole
+// in the window, and the feed's first post begun within 600 px on a phone,
+// its picture drawn (and on a laptop one whole in the window); the page
+// moving not at all (CLS 0.01 at most) as the feed's live answers come.
+// Signed out there are no tabs, one stream, and Show more puts more posts
+// under it, none twice. The search finding as it is typed (models, builders
+// and sets, then the gallery's and the sets' own search), its arrows and
+// Escape, and Enter sending it to the gallery. The month's challenge in the
+// stream as the gallery's front has it, third at the latest; Talk's threads
+// in the stream when Talk has any, never an empty post; the four real sets.
+// tools/web/homefeed_check.mjs drives each post's own ways (like, comment,
+// follow, 3D, Try it here) and the signed-in tabs.
 //
 // With --file there is no gallery behind the page and no deploy wrote its
-// cards in: the shelf must take itself away, never stand empty. --out=DIR
-// keeps a picture of the first screen at each size and theme.
+// posts in: the skeletons must give way to words, never stand empty.
+// --out=DIR keeps a picture of the first screen at each size and theme.
 import { launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
@@ -45,7 +47,7 @@ const target = args.url || `${site.url}/${basename(file)}`;
 const bypass = process.env.VERCEL_BYPASS || process.env.BW_BYPASS;
 // A gallery behind the page: a deploy's, or a preview's.
 const live = site === null;
-// As web/landing.js: the fewest cards worth a tab.
+// The fewest posts a first page of the feed has, with a gallery behind it.
 const FEWEST = 4;
 
 const out = args.out ? resolve(String(args.out)) : "";
@@ -128,20 +130,20 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 800]
     + `${seen.intoTheApp} way${seen.intoTheApp === 1 ? "" : "s"} into the app`);
   await page.close();
   for (const theme of ["light", "dark"]) await firstScreen(label, width, height, theme);
-  await tabs(label, width, height);
+  await stream(label, width, height);
   await search(label, width, height);
-  await challengeTile(label, width, height);
+  await challengePost(label, width, height);
   await talk(label, width, height);
   await setsStrip(label, width, height);
 }
 
 /// The first screen as it opens: the search and Start building whole in
-/// the window, the shelf's models with their pictures drawn, and nothing
-/// moving as the shelf's live answer comes.
+/// the window, the feed's first post begun within 600 px on a phone, its
+/// pictures drawn, and nothing moving as the live answers come.
 async function firstScreen(label, width, height, theme) {
   const { page } = await open(width, height, { theme });
   const where = `${label} ${theme}`;
-  const settled = await page.waitForFunction(() => document.documentElement.dataset.shelfLive, null, { timeout: 30000 })
+  const settled = await page.waitForFunction(() => document.documentElement.dataset.feedLive, null, { timeout: 30000 })
     .then(() => true, () => false);
   await page.waitForTimeout(1000);
   const seen = await page.evaluate(() => {
@@ -150,112 +152,87 @@ async function firstScreen(label, width, height, theme) {
       const r = el.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
     };
-    const shelf = document.getElementById("shelf");
-    const panel = shelf?.querySelector('[role="tabpanel"]:not([hidden])');
-    const cards = [...(panel?.querySelectorAll(":scope > .model") || [])];
-    const drawn = (card) => {
-      const img = card.querySelector(".frame img");
-      return Boolean(img && img.complete && img.naturalWidth > 0);
-    };
-    // A card in the window: the rest of the row is lazy, asked for as it is scrolled to.
-    const seen = (card) => {
-      const r = card.getBoundingClientRect();
+    const stream = document.getElementById("stream");
+    const posts = [...(stream?.querySelectorAll(":scope > .post:not(.skeleton)") || [])];
+    const inView = (el) => {
+      const r = el.getBoundingClientRect();
       return r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
     };
-    const pictures = cards.filter((card) => drawn(card) && whole(card.querySelector(".frame img"))).length;
+    // A picture in the window drawn; the rest are lazy, asked for as they near.
+    const pictures = posts.flatMap((post) => [...post.querySelectorAll(".post-pic img")]).filter(inView);
+    const drawn = (img) => img.complete && img.naturalWidth > 0;
     return {
-      said: document.documentElement.dataset.shelfLive || "",
-      served: shelf?.dataset.shelf || "",
-      shown: Boolean(shelf && !shelf.hidden && shelf.getBoundingClientRect().height > 0),
-      cards: cards.length,
-      inView: cards.filter(seen).length,
-      drawn: cards.filter((card) => !seen(card) || drawn(card)).length,
-      named: cards.filter((card) => card.querySelector("a.open b")?.textContent.trim()).length,
-      skeletons: panel?.querySelectorAll(".skeleton-card").length || 0,
-      pictures,
+      said: document.documentElement.dataset.feedLive || "",
+      served: stream?.dataset.stream || "",
+      posts: posts.length,
+      kinds: posts.slice(0, 6).map((post) => post.dataset.kind),
+      first: posts[0] ? Math.round(posts[0].getBoundingClientRect().top + scrollY) : -1,
+      pictures: pictures.length,
+      drawn: pictures.filter(drawn).length,
+      whole: pictures.filter((img) => drawn(img) && whole(img)).length,
+      named: posts.filter((post) => post.querySelector(".post-title")?.textContent.trim()).length,
+      skeletons: stream?.querySelectorAll(".skeleton").length || 0,
+      words: document.getElementById("stream-said")?.textContent.trim() || "",
+      tabs: Boolean(document.getElementById("feed-tabs")?.offsetHeight),
       search: whole(document.getElementById("find-q")),
       start: whole(document.querySelector('#home a[href^="/app"]')),
       shifts: window.__shifts || [],
     };
   });
   const moved = seen.shifts.reduce((sum, s) => sum + s.value, 0);
-  if (!settled) problems.push(`${where}: the shelf never settled (no data-shelf-live after 30 s)`);
+  if (!settled) problems.push(`${where}: the feed never settled (no data-feed-live after 30 s)`);
   if (!seen.search) problems.push(`${where}: the search is not whole in the first screen`);
   if (!seen.start) problems.push(`${where}: Start building is not whole in the first screen`);
-  if (seen.shown) {
-    if (seen.cards < FEWEST || seen.drawn !== seen.cards || seen.named !== seen.cards || seen.skeletons) {
-      problems.push(`${where}: the shelf shows ${seen.cards} cards, ${seen.drawn} pictures drawn, ${seen.named} named, ${seen.skeletons} skeletons`);
+  if (seen.tabs) problems.push(`${where}: a visitor is shown the signed-in tabs`);
+  if (seen.posts) {
+    if (seen.posts < FEWEST || seen.named !== seen.posts || seen.skeletons || seen.drawn !== seen.pictures) {
+      problems.push(`${where}: the feed shows ${seen.posts} posts, ${seen.named} named, ${seen.drawn} of ${seen.pictures} pictures in view drawn, ${seen.skeletons} skeletons`);
     }
-    if (seen.pictures < 1) problems.push(`${where}: no model's picture is whole in the first screen`);
+    if (width < 600 && seen.first > 600) problems.push(`${where}: the first post begins ${seen.first} px down, past 600`);
+    if (width >= 600 && seen.whole < 1) problems.push(`${where}: no post's picture is whole in the first screen`);
   } else if (live) {
-    problems.push(`${where}: the shelf is not shown with a gallery behind the page (${seen.said})`);
+    problems.push(`${where}: the feed shows nothing with a gallery behind the page (${seen.said})`);
+  } else if (seen.skeletons || !seen.words) {
+    problems.push(`${where}: with nothing behind the page the feed shows ${seen.skeletons} skeletons and says "${seen.words}"`);
   }
-  // A page with cards written in moves nothing as the live ones come; one
-  // without (a checkout's) takes the shelf away, which may.
+  // A page with posts written in moves nothing as the live ones come.
   if (seen.served === "served" && moved > 0.01) {
     problems.push(`${where}: the first screen moved ${moved.toFixed(3)} as it came (${seen.shifts.map((s) => `${s.value.toFixed(3)}@${s.at} ${s.from}`).join("; ")})`);
   }
   if (out) await page.screenshot({ path: `${out}/first_${width}_${theme}.png` });
-  console.log(`  ${where.padEnd(13)} shelf ${seen.shown ? `${seen.cards} cards (${seen.served}, then ${seen.said}), ${seen.inView} in view, ${seen.pictures} whole` : `hidden (${seen.said})`}; `
+  console.log(`  ${where.padEnd(13)} feed ${seen.posts ? `${seen.posts} posts (${seen.served}, then ${seen.said}: ${seen.kinds.join(" ")}), first at ${seen.first} px, ${seen.whole} pictures whole` : `empty (${seen.said}: "${seen.words}")`}; `
     + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; moved ${moved.toFixed(3)}`);
   await page.close();
 }
 
-/// Each tab by press and by arrow: its own panel and cards, See all to its list.
-async function tabs(label, width, height) {
+/// Signed out, one stream: Show more puts more posts under it, none twice,
+/// nothing above it moving.
+async function stream(label, width, height) {
   const { page } = await open(width, height);
-  const where = `${label} tabs`;
-  await page.waitForFunction(() => document.documentElement.dataset.shelfLive, null, { timeout: 30000 }).catch(() => null);
-  if (!(await page.evaluate(() => Boolean(document.getElementById("shelf")) && !document.getElementById("shelf").hidden))) {
-    if (live) problems.push(`${where}: no shelf to try`);
-    console.log(`  ${where.padEnd(13)} no shelf`);
+  const where = `${label} more`;
+  await page.waitForFunction(() => document.documentElement.dataset.feedLive, null, { timeout: 30000 }).catch(() => null);
+  const keys = () => page.evaluate(() => [...document.querySelectorAll("#stream > .post:not(.skeleton)")]
+    .map((post) => `${post.dataset.kind}:${post.dataset.id || post.dataset.thread || post.dataset.photo || ""}`));
+  const before = await keys();
+  const more = page.locator("#feed-more");
+  if (!(await more.isVisible())) {
+    if (live && before.length >= 12) problems.push(`${where}: ${before.length} posts and no Show more`);
+    console.log(`  ${where.padEnd(13)} ${before.length} posts, no Show more`);
     await page.close();
     return;
   }
-  const state = () => page.evaluate(() => {
-    const on = document.querySelector('#shelf [role="tab"][aria-selected="true"]');
-    const panels = [...document.querySelectorAll('#shelf [role="tabpanel"]')].filter((p) => !p.hidden);
-    const cards = [...(panels[0]?.querySelectorAll(":scope > .model") || [])];
-    // The cards in the window drawn; the rest of the row is lazy.
-    const seen = (card) => {
-      const r = card.getBoundingClientRect();
-      return r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
-    };
-    return { tab: on?.id || "", focused: document.activeElement?.id || "", panels: panels.map((p) => p.id),
-      live: panels[0]?.dataset.live || "", cards: cards.length,
-      drawn: cards.filter((c) => !seen(c) || c.querySelector(".frame img")?.naturalWidth > 0).length,
-      all: document.getElementById("shelf-all")?.getAttribute("href") || "", want: panels[0]?.dataset.all || "" };
-  });
-  const settle = () => page.waitForFunction(() => {
-    const panel = [...document.querySelectorAll('#shelf [role="tabpanel"]')].find((p) => !p.hidden);
-    return panel && panel.dataset.live && panel.dataset.live !== "asking";
-  }, null, { timeout: 30000 }).catch(() => null);
-  const drawnInView = () => page.waitForFunction(() => {
-    const panel = [...document.querySelectorAll('#shelf [role="tabpanel"]')].find((p) => !p.hidden);
-    return [...(panel?.querySelectorAll(":scope > .model") || [])].every((card) => {
-      const r = card.getBoundingClientRect();
-      const inView = r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
-      return !inView || card.querySelector(".frame img")?.naturalWidth > 0;
-    });
-  }, null, { timeout: 20000 }).catch(() => null);
-  await page.locator("#tab-new").click();
-  await settle();
-  await drawnInView();
-  const pressed = await state();
-  if (pressed.tab !== "tab-new" || pressed.panels.join() !== "shelf-new") problems.push(`${where}: pressing New shows ${pressed.panels.join(", ")} (${pressed.tab} selected)`);
-  if (live && (pressed.cards < FEWEST || pressed.drawn !== pressed.cards)) problems.push(`${where}: New shows ${pressed.cards} cards, ${pressed.drawn} drawn`);
-  if (!pressed.all.endsWith(pressed.want)) problems.push(`${where}: See all goes to ${pressed.all} on New, not ${pressed.want}`);
-  await page.locator("#tab-new").focus();
-  await page.keyboard.press("ArrowRight");
-  await settle();
-  await drawnInView();
-  const arrowed = await state();
-  if (arrowed.tab !== "tab-sets" || arrowed.focused !== "tab-sets" || arrowed.panels.join() !== "shelf-sets") {
-    problems.push(`${where}: the right arrow from New left ${arrowed.tab} selected, ${arrowed.focused} focused, ${arrowed.panels.join(", ")} shown`);
-  }
-  if (live && (arrowed.cards < FEWEST || arrowed.drawn !== arrowed.cards)) problems.push(`${where}: the sets tab shows ${arrowed.cards} cards, ${arrowed.drawn} drawn`);
-  if (!arrowed.all.endsWith(arrowed.want)) problems.push(`${where}: See all goes to ${arrowed.all} on the sets, not ${arrowed.want}`);
-  console.log(`  ${where.padEnd(13)} New ${pressed.cards} cards (${pressed.live}), see all ${pressed.all}; → ${arrowed.tab} ${arrowed.cards} cards, see all ${arrowed.all}`);
+  const firstTop = await page.evaluate(() => document.querySelector("#stream > .post")?.getBoundingClientRect().top + scrollY);
+  await more.scrollIntoViewIfNeeded();
+  await more.click();
+  await page.waitForFunction((n) => document.querySelectorAll("#stream > .post:not(.skeleton)").length > n, before.length, { timeout: 20000 }).catch(() => null);
+  const after = await keys();
+  const twice = after.filter((key, i) => after.indexOf(key) !== i);
+  const stillTop = await page.evaluate(() => document.querySelector("#stream > .post")?.getBoundingClientRect().top + scrollY);
+  if (after.length <= before.length) problems.push(`${where}: Show more put nothing in (${before.length} posts)`);
+  if (twice.length) problems.push(`${where}: posts shown twice: ${[...new Set(twice)].join(", ")}`);
+  if (after.slice(0, before.length).join() !== before.join()) problems.push(`${where}: Show more changed the posts above it`);
+  if (Math.abs(stillTop - firstTop) > 1) problems.push(`${where}: the first post moved from ${firstTop} to ${stillTop} px`);
+  console.log(`  ${where.padEnd(13)} ${before.length} posts, then ${after.length}, ${twice.length} twice`);
   await page.close();
 }
 
@@ -298,65 +275,60 @@ async function search(label, width, height) {
   await page.close();
 }
 
-/// This month's challenge, as the gallery's front has it: its name and days
-/// once there is one open (or the next told), else the tile's own words.
-async function challengeTile(label, width, height) {
+/// This month's challenge, as the gallery's front has it: its post in the
+/// stream, third at the latest, with its name and days once there is one
+/// open (or the next told); none at all when there is none.
+async function challengePost(label, width, height) {
   const { page } = await open(width, height);
-  const settled = await page.waitForFunction(() => document.documentElement.dataset.challenge, null, { timeout: 30000 })
-    .then(() => true, () => false);
+  const settled = await page.waitForFunction(() => document.documentElement.dataset.challenge
+    && document.documentElement.dataset.feedLive, null, { timeout: 30000 }).then(() => true, () => false);
   const front = await asked(page, "/api/share?op=shelves");
   const c = front?.challenge && !front.challenge.test && ["open", "upcoming"].includes(front.challenge.state) ? front.challenge : null;
   const seen = await page.evaluate(() => {
-    const r = document.getElementById("challenge")?.getBoundingClientRect();
+    const posts = [...document.querySelectorAll("#stream > .post:not(.skeleton)")];
     return {
       said: document.documentElement.dataset.challenge || "",
+      at: posts.findIndex((post) => post.id === "challenge"),
       name: document.getElementById("challenge-h")?.textContent.trim() || "",
       days: document.getElementById("challenge-days")?.textContent.trim() || "",
       left: document.getElementById("challenge-left")?.hidden ? "" : document.getElementById("challenge-left")?.textContent.trim() || "",
-      foot: r ? Math.round(r.bottom + scrollY) : 0,
+      go: document.getElementById("challenge-go")?.getAttribute("href") || "",
     };
   });
   const where = `${label} challenge`;
   if (!settled) problems.push(`${where}: never settled (no data-challenge after 30 s)`);
   else if (c && seen.name !== c.title) problems.push(`${where}: shows "${seen.name}" for "${c.title}"`);
   else if (c && c.state === "open" && (!seen.days || !seen.left)) problems.push(`${where}: "${seen.name}" without its days (${seen.days}) or what is left (${seen.left})`);
-  else if (!c && (seen.said !== "none" || !seen.name)) problems.push(`${where}: said ${seen.said} with "${seen.name}" and none asked`);
-  if (seen.foot > 2 * height) problems.push(`${where}: ends ${seen.foot} px down, past the first two screens (${2 * height})`);
-  console.log(`  ${where.padEnd(13)} ${seen.said}: ${seen.name}${seen.days ? `, ${seen.days}` : ""}${seen.left ? `, ${seen.left}` : ""}; ends at ${seen.foot} px`);
+  else if (c && (seen.at < 0 || seen.at > 2)) problems.push(`${where}: its post is ${seen.at < 0 ? "not in the stream" : `post ${seen.at + 1}`}, not third at the latest`);
+  else if (c && !/\/challenge$/.test(seen.go)) problems.push(`${where}: Enter the challenge goes to "${seen.go}"`);
+  else if (!c && (seen.said !== "none" || seen.at >= 0)) problems.push(`${where}: said ${seen.said} with its post at ${seen.at} and none asked`);
+  console.log(`  ${where.padEnd(13)} ${seen.said}: ${seen.name}${seen.days ? `, ${seen.days}` : ""}${seen.left ? `, ${seen.left}` : ""}; post ${seen.at + 1}`);
   await page.close();
 }
 
-/// What builders are talking about (#talk-latest, filled from Talk's
-/// /api/people?op=talk_latest&html=1): asked only on a site whose header
-/// links to Talk, shown with three threads or more; else hidden, never an
-/// empty box, and never asked where it would answer 400.
+/// Talk's threads in the stream (/api/people?op=talk_latest&reply=1): with
+/// Talk applied and threads in it, one in the first page at least, each its
+/// title linked to its thread and its latest reply or the ask for one;
+/// without, none, and never an empty post.
 async function talk(label, width, height) {
   const { page } = await open(width, height);
-  await page.evaluate(() => {
-    const next = document.getElementById("community");
-    if (next) scrollTo(0, Math.max(0, next.offsetTop - 2 * innerHeight));
-  });
-  const settled = await page.waitForFunction(() => document.documentElement.dataset.talk, null, { timeout: 30000 })
+  const settled = await page.waitForFunction(() => document.documentElement.dataset.feedLive, null, { timeout: 30000 })
     .then(() => true, () => false);
-  await page.waitForTimeout(300);
-  const seen = await page.evaluate(() => {
-    const band = document.getElementById("talk-latest");
-    const strip = band?.querySelector("[data-talk-strip]");
-    return { said: document.documentElement.dataset.talk || "", shown: Boolean(band && !band.hidden && band.offsetHeight),
-      linked: Boolean(document.querySelector('.site-head a[href$="/talk"]')),
-      threads: strip ? (strip.querySelectorAll(".talk-row").length || strip.querySelectorAll("a[href]").length) : 0,
-      all: document.getElementById("talk-all")?.getAttribute("href") || "" };
-  });
-  const answer = seen.linked ? await asked(page, "/api/people?op=talk_latest&n=4&html=1") : null;
-  const has = typeof answer?.html === "string" ? Number(answer.count) || 0 : 0;
+  const seen = await page.evaluate(() => [...document.querySelectorAll("#stream > .post.talk")].map((post) => ({
+    href: post.querySelector(".post-title a")?.getAttribute("href") || "",
+    title: post.querySelector(".post-title")?.textContent.trim() || "",
+    reply: post.querySelector(".post-reply")?.textContent.trim() || "",
+  })));
+  const answer = await asked(page, "/api/people?op=talk_latest&n=6&reply=1");
+  const has = Array.isArray(answer?.threads) ? answer.threads.length : 0;
   const where = `${label} talk`;
-  if (!settled) problems.push(`${where}: never settled (no data-talk after 30 s)`);
-  else if (seen.shown && !seen.linked) problems.push(`${where}: shown on a site with no Talk in its header`);
-  else if (seen.shown && seen.threads < 3) problems.push(`${where}: shown with ${seen.threads} threads`);
-  else if (seen.shown && !/\/talk$/.test(seen.all)) problems.push(`${where}: All of Talk links to "${seen.all}"`);
-  else if (!seen.shown && seen.said !== "none") problems.push(`${where}: said ${seen.said} but stayed hidden`);
-  else if (seen.linked && has >= 3 && !seen.shown) problems.push(`${where}: hidden with ${has} threads to show`);
-  console.log(`  ${where.padEnd(13)} ${seen.shown ? `${seen.threads} threads` : "hidden"} (${seen.linked ? `Talk answers ${answer ? `${has} threads` : "nothing"}` : "no Talk in the header, not asked"})`);
+  if (!settled) problems.push(`${where}: never settled (no data-feed-live after 30 s)`);
+  else if (has && !seen.length) problems.push(`${where}: Talk answers ${has} threads and the stream shows none`);
+  else if (!has && seen.length) problems.push(`${where}: ${seen.length} Talk posts with Talk answering none`);
+  for (const one of seen) {
+    if (!/\/talk\/t\/[1-9]/.test(one.href) || !one.title || !one.reply) problems.push(`${where}: a Talk post "${one.title}" to "${one.href}" with "${one.reply}"`);
+  }
+  console.log(`  ${where.padEnd(13)} ${seen.length} Talk posts (Talk answers ${answer ? `${has} threads` : "nothing"})`);
   await page.close();
 }
 

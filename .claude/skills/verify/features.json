@@ -171,7 +171,6 @@
       "area": "web",
       "tests": [
         "tests/test_flows_for.py",
-        "tests/test_home_shelf.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
@@ -338,7 +337,6 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
-        "tests/test_home_shelf.py",
         "tests/test_library_site.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
@@ -918,6 +916,7 @@
         "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
+        "tests/test_home_shelf.py",
         "tests/test_insights.py",
         "tests/test_oauth_clients.py",
         "tests/test_update_parts.py"
@@ -1031,7 +1030,7 @@
       "id": "cli:challenge home check",
       "kind": "cli",
       "entry": "tools/web/challengehome_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge third in the feed at the latest and the pick its first post at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
       "area": "web",
       "tests": []
     },
@@ -1711,7 +1710,15 @@
       "id": "cli:home shelf at deploy",
       "kind": "cli",
       "entry": "tools/web/home_shelf.mjs",
-      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: each tab's cards and the challenge written into OUT/index.html and each language's copy, the pictures copied to OUT/img/home/; web/_home.json when the gallery cannot be read)",
+      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: the feed's first six posts written into OUT/index.html and each language's copy, their pictures copied to OUT/img/home/; web/_home.json when an answer cannot be read; python3 tools/minitest.py tests/test_home_shelf.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:homefeed check",
+      "kind": "cli",
+      "entry": "tools/web/homefeed_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homefeed_check.mjs --url=<preview or a site served here> --out=DIR [--signed-in] [--try-start]   (the feed's posts as served, Like/comment/Follow asking to sign in on the spot, 3D, Try it here; --signed-in throwaways Ann and Bea: the tabs, a like, a comment, a follow, a visitor signing in from a like; --try-start the studio in the post on the engine without threads, on a deployment with homefeed's deploy.sh)",
       "area": "web",
       "tests": []
     },
@@ -3172,6 +3179,14 @@
       "kind": "cli",
       "entry": "src/dev/share_view_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:sharelink probe",
+      "kind": "cli",
+      "entry": "src/dev/sharelink_probe.gd",
+      "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
       "area": "web",
       "tests": []
     },
@@ -4678,7 +4693,6 @@
         "tests/fixtures/social/api_check.mjs",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
-        "tests/test_home_shelf.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
@@ -4928,7 +4942,8 @@
       "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/replies.sql --dry --try=tools/replies_try.sql --table=model_comments   (.env sourced; then the comments browser flow, and tools/web/replies_stand_in.mjs holds it for a local run)",
       "area": "web",
       "tests": [
-        "tests/test_feedback.py"
+        "tests/test_feedback.py",
+        "tests/test_home_shelf.py"
       ]
     },
     {
@@ -5104,6 +5119,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_home_shelf.py",
         "tests/test_insights.py"
       ]
     },
@@ -6448,7 +6464,7 @@
       "id": "ui:landing page",
       "kind": "ui",
       "entry": "web/index.html",
-      "reach": "https://brickworks.diy/   (the community first: one line, the search, Start building, the month's challenge, and a row of real models in tabs, all in the first screen at 390 x 844 and 1280 x 800; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
+      "reach": "https://brickworks.diy/   (the feed first (homefeed): signed out one line, the search and Start building over one stream of posts, the first within 600 px on a phone; signed in Share a build and the tabs For you, Following and New; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
       "area": "web",
       "tests": []
     },
@@ -7743,23 +7759,20 @@
       ]
     },
     {
+      "id": "ui:the home page's feed",
+      "kind": "ui",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/   (#stream: builds, Talk threads with their latest reply, the month's challenge with its entries, Try it here, builders to follow, photos of builds, each a post (web/home-feed.js postHtml), the first six in the page as served (tools/web/home_shelf.mjs), the rest after with nothing moving; on each build Like, Add a comment, Follow (asking a visitor to sign in on the spot), Share, 3D, Open in the studio, Remix, Build it, Parts; node tools/web/homefeed_check.mjs --url=... [--signed-in] [--try-start], node tools/web/landing_check.mjs --url=...)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:the home page's search",
       "kind": "ui",
       "entry": "web/home-find.js",
       "reach": "https://brickworks.diy/   (#find-q: type 2 letters for models, builders and sets from GET /api/share?op=list&q= and op=library&q=, then the gallery's and the sets' own search; arrows, Enter, Escape; \"/\" puts the cursor in it; node tools/web/landing_check.mjs)",
       "area": "web",
       "tests": []
-    },
-    {
-      "id": "ui:the home page's shelf",
-      "kind": "ui",
-      "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#shelf in the first screen: Top (Trending once a week has 4), New and Real sets in 3D as tabs of one row of cards, in the page as served, then asked again card for card with nothing moving; See all to each tab's list; #talk under it, shown only with 3 threads of GET /api/talk?op=latest; node tools/web/landing_check.mjs --url=...)",
-      "area": "web",
-      "tests": [
-        "tests/fixtures/insights/db_check.mjs",
-        "tests/test_insights.py"
-      ]
     },
     {
       "id": "ui:the homepage's open beta",
@@ -7783,13 +7796,10 @@
     {
       "id": "ui:the latest in talk on the home page",
       "kind": "ui",
-      "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/ (#talk-latest under the shelf, filled from GET /api/people?op=talk_latest&n=4&html=1, shown with three threads or more)",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/ (Talk's newest threads as posts of the feed, each with its latest reply, from GET /api/people?op=talk_latest&n=6&reply=1&talking=24; none before talk.sql)",
       "area": "web",
-      "tests": [
-        "tests/fixtures/insights/db_check.mjs",
-        "tests/test_insights.py"
-      ]
+      "tests": []
     },
     {
       "id": "ui:the loader's words for a phone and a browser without WebGL 2",
@@ -7914,6 +7924,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_home_shelf.py",
         "tests/test_insights.py"
       ]
     },
@@ -7956,7 +7967,7 @@
       "id": "ui:this month's challenge on the home page",
       "kind": "ui",
       "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#challenge beside the search, under it on a phone: its name, brief and days written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves, asked at once; This week's pick is the shelf's first card, marked Week's pick)",
+      "reach": "https://brickworks.diy/   (#challenge, a post of the feed, third at the latest: its name, brief, days and up to four entries written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves; This week's pick is the feed's first post, marked Week's pick)",
       "area": "web",
       "tests": [
         "tests/fixtures/insights/db_check.mjs",
@@ -8256,7 +8267,6 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
-        "tests/test_home_shelf.py",
         "tests/test_insights.py",
         "tests/test_realset.py",
         "tests/test_start_abba.py"

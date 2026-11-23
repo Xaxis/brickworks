@@ -20,22 +20,24 @@ lib:directory
 
 ## On the home page {#home}
 
-The [home page](/) opens on the gallery. Under one line of what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Beside it (under it on a phone) is this month's [challenge](/docs/challenges) with its days left. Then a row of models with their pictures, in tabs:
+The [home page](/) is a feed of what builders make and say. Signed out, one line over it says what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Then the feed, one post after another:
 
-- **Top**, the gallery's Top, its first card [This week's pick](/docs/challenges#pick), marked **Week’s pick**. Once a week has enough new models, **Trending** comes first: Top over this week.
-- **New**, the newest first.
-- **Real sets in 3D**, the biggest sets with a 3D model, as **Sets** orders them by Most parts.
+- **A build**: who made it, with **Follow**; its picture; how it was made (**Designed with the assistant**, **Built by hand**, **Made with Brickify**) and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
+- **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**.
+- **This month's [challenge](/docs/challenges)**, its days left and its entries, with **Enter the challenge**.
+- **Try the studio, right here**: **Try it here** puts the studio itself in the post, a model on it to turn, play with and build step by step. **Open the whole studio** opens a copy of it as yours.
+- **Builders to follow**, and photos of models people [built for real](/docs/model-pages#actions).
 
-Under the row, **What builders are talking about** shows the newest threads in [Talk](/docs/talk), the builders' forum, once there are three; **All of Talk** opens it.
+![The home page on a computer: Gallery, Talk, Challenges and Docs across the top; Build, share and find LEGO® models over the search and Start building; then the feed's first row, This week's pick first, each post with who made it, its picture, how it was made, its likes and Open in the studio, Remix, Build it and Parts.](/docs/img/home-first-screen.webp "The home page: one line, then the feed.")
 
-![The home page on a computer: Gallery, Talk, Challenges and Docs across the top; Build, share and find LEGO® models over a search for models, builders and sets and Start building; the month's challenge beside them; then the tabs Top, New and Real sets in 3D over a row of model cards, the first marked Week's pick.](/docs/img/home-first-screen.webp "The home page: the search, the challenge and the gallery's models first.")
+Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept. **Show more** at the end adds more posts.
 
-Swipe or scroll the row; the arrow keys move along the tabs. **See all** opens the tab's whole list in the gallery. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
+Signed in, the line gives way to **Share a build**, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
 
-![The home page on a phone: Build, share and find LEGO® models, the search, Start building, and the tabs Top, New and Real sets in 3D over the first model cards, which scroll sideways.](/docs/img/home-phone.webp "On a phone, the same first screen.")
+![The home page on a phone: Build, share and find LEGO® models, the search and Start building, and under them the feed's first post, a build with its picture and the studio's verbs.](/docs/img/home-phone.webp "On a phone, the feed starts in the first screen.")
 
 <!-- covers
-ui:the home page's shelf
+ui:the home page's feed
 ui:the home page's search
 -->
 

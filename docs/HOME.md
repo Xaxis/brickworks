@@ -1,90 +1,111 @@
 # The home page
 
 What brickworks.diy's front page is for, what it shows and why. The page is
-`web/index.html`, `web/landing.js` and `web/home-find.js`, on the design
-system (docs/DESIGN_SYSTEM.md); its first screen's models are written in at
-the deploy by `tools/web/home_shelf.mjs`.
+`web/index.html`, `web/landing.js`, `web/home-feed.js` (each post, drawn the
+same in the browser and at the deploy) and `web/home-find.js`, on the design
+system (docs/DESIGN_SYSTEM.md); its first posts are written in at the deploy
+by `tools/web/home_shelf.mjs`.
 
-## Now: the community first (landing, 2026-11-22)
+## Now: the feed (homefeed, 2026-11-23)
 
-The owner: "We want the 'forum/gallery' features to be better highlighted
-and available immediately upon landing. Critically analyze and brilliantly
-implement." The critique, with pictures of ours and the others' first
-screens, is bench/results/landing-2026-11-22/CRITIQUE.md.
+The owner: "turn the landing into our lego 'social media' as it
+simultaneously advertises and integrates the CAD. Do better!" What the home
+feeds of Instagram, Pinterest, Reddit, the model sites and the LEGO® sites
+do, and the decisions taken from them, are docs/SOCIAL.md section 11.
 
-What was wrong: the first screen sold the studio (a 72 px headline over
-three lines, a lede, two buttons, the top of the app's screenshot) and
-showed nothing of the community: no model, no builder, no search, no
-challenge. The first model sat 2,380 px down a phone (docs/SOCIAL.md R8,
-row 10). The header gave Plans the weight of the Gallery and had no Sets or
-Challenges. MakerWorld, Printables, Thingiverse, Rebrickable and Mecabricks
-all open on the community's models, with a search first and tabs over them.
+What a stranger sees, at 390 x 844 and at 1280 x 800:
 
-The first screen now, at 390 x 844 and at 1280 x 800:
+1. **One band, one line.** "Build, share and find LEGO® models", one
+   sentence ("A free CAD in your browser. Every build here was made in it:
+   open one, change it, build it."), the search over models, builders and
+   real sets, and **Start building**. Signed in, the band gives way to
+   **Share a build** (`/app?share`: the studio's share panel for their
+   last model) and the tabs.
+2. **The feed**, at once under it (the first post within 600 px on a
+   phone): one stream of posts, a column on a phone, two from 700 px,
+   three from 1100 and four from 1560. This week's pick first, then Top and
+   New in turn, the month's challenge third with its entries, then a Talk
+   thread with its latest reply, the studio to try, more builds, another
+   thread, builders to follow, a photo of a real build, and so on. Show
+   more adds the next page; there is an end, and the footer.
+3. **A build's post**: who made it (their profile, Follow), the day, its
+   picture (marked Week's pick or Tested), a **3D** button; its name; a
+   pill for how it was made (Designed with the assistant, Built by hand,
+   Made with Brickify) and one for what moves or how many steps, each to
+   that feature's docs page; like, comments and share, its parts; then the
+   studio's verbs, **Open in the studio** (`/app?view=<id>`), **Remix**
+   (`/app?copy=<id>`, a copy of their own crediting the builder), **Build
+   it** (`&build`, the steps) and **Parts** (its page's parts, to list and
+   buy); and the newest thing said of it, with Add a comment.
+4. **A Talk post**: who started the thread and on which board, its title
+   and first words, its latest reply, the reply count and Reply.
+5. **The challenge's post**: its name, brief, days and days left (or its
+   round), up to four entries, Enter the challenge and See the entries.
+6. **Try the studio, right here**: Try it here puts the studio itself in
+   the post (the viewer, `/app?view=<id>`, on the engine without threads,
+   since the page keeps its sign-in popups and so is not cross-origin
+   isolated; the app may be framed by the site's own pages only, deploy.sh
+   `app_closed`). Its Open in Brickworks and the post's Open the whole
+   studio take the whole window to a copy of their own.
 
-1. **One line and a search.** "Build, share and find LEGO® models", one
-   sentence of what Brickworks is, a search over models, builders and real
-   sets (suggestions as it is typed, `web/home-find.js`), and **Start
-   building**. "/" puts the cursor in the search, as in the gallery.
-2. **This month's challenge** beside it (under the shelf on a phone), with
-   its days left or its round.
-3. **The shelf**: tabs Top, New and Real sets in 3D (Trending first once a
-   week's Top has four models with pictures), each one row of ten cards
-   that scrolls sideways, the gallery's own cards. This week's pick is the
-   first card of the first tab, marked Week's pick. See all opens the tab's
-   whole list.
+Signed in, the tabs: **For you** (the stream asked as them: what they
+liked, nobody they blocked), **Following** (what the people they follow
+made, as /feed has it) and **New** (everything newest first).
 
-Then:
+In each post, in place: **Like**, a **comment** (its box opens under the
+post, the last three said above it, All its comments to the model's page)
+and **Follow** ask a visitor to sign in in a dialog over the page, and go
+on once they are in, where they were, what was typed kept. **Share** is the
+device's own share, else the link copied. **3D**: a pointer resting on a
+picture for 0.7 s, or a tap of 3D, turns the model in its picture's place
+(`web/viewer3d.js`, asked for then); Escape, or the pointer leaving, puts
+the picture back; never unasked for somebody who asked for less motion.
 
-4. **What builders are talking about** (`#talk-latest`), the forum's
-   latest threads (unit talk, `/api/people?op=talk_latest&html=1`, its rows
-   drawn by Talk), asked only once the header links to Talk and hidden
-   until it answers with three, never an empty box.
-5. **Build together**, and four things a builder does here.
-6. **The beta**, while it is open.
-7. **The studio**: the app's picture (no longer the first screen's), will
-   it stand, the booklet, four real sets live, free, your own AI.
-8. **Build something today**, the way in again.
-
-The header on every page (`web/_shell.html`): Gallery and Challenges, then
-Docs (Talk joins after Challenges when it lands: the four links the owner
-capped the bar at); Open the app and Sign in far right. Plans and Desktop
-app are in the phone menu, the account menu and the footer. Sets stays the
-gallery's tab and the shelf's, as the owner had it ("one is just a tab in
-another", 2026-11-02).
+Under the feed, as before: the beta while it is open, the studio and what a
+build needs, Build something today.
 
 ## Rules it keeps
 
-- **Honest for a young site.** One row of cards, never a grid that counts
-  how few; a tab shows only with four models with pictures; the sets tab
-  shows depth that is real today; the talk shows only with talk.
+- **Never empty, honest for a young site.** The first posts are the house's
+  seeded gallery, Talk's house threads (once talk.sql is applied), the
+  month's challenge; a kind with nothing to show is passed over, never an
+  empty post.
 - **In the HTML as served.** `tools/deploy.sh` runs `tools/web/home_shelf.mjs`
-  after `tools/site.py`: the shown tab's cards and the challenge are
-  written into the page and each language's copy (the other tabs, a
-  third of the page if written too, come when first opened) from brickworks.diy's own answers
-  (or `web/_home.json`, the last kept with `--save`), the cards' pictures
-  copied beside the page (`/img/home/`, the CDN, a day's cache, never the
-  bucket). A visitor sees models before any script runs.
-- **Nothing moves.** `web/landing.js` asks each tab again once the page is
-  idle (the others when first opened) and swaps a card only for one whose
-  picture has decoded, in a row of the same height (each card's words a
-  fixed height). What comes under the first screen comes only while its
-  place is out of sight.
-- **Nothing slower.** The first card's picture loads at once
-  (`fetchpriority=high`), the rest lazily, as the row is laid out (four at
-  once were drawn into the first frame and put a laptop's first paint back
-  726 ms, bench/results/landing-2026-11-22 timing3); the app's screenshot, the
-  old largest paint, is lazy below the fold; the search's script loads
-  only once the field is used; the old five renders (195 KB) are gone.
-- AI second: no title or first screen says AI; the assistant is one tile.
+  after `tools/site.py`: the first six posts are written into the page and
+  each language's copy from brickworks.diy's own answers (or
+  `web/_home.json`, the last kept with `--save`), their pictures copied
+  beside the page (`/img/home/`). A visitor, and a crawler, read posts
+  before any script runs.
+- **Nothing moves.** `web/landing.js` asks each answer again once the page
+  is idle, tells each post there its counts and newest comment in the room
+  it holds, and puts the rest in under them; a post's parts hold their
+  room from the first frame.
+- **Nothing slower.** The first picture loads at once (`fetchpriority=high`),
+  the rest lazily; three.js only on a 3D turn; the studio only on Try it
+  here; the search's script only once the field is used.
+- AI second: no title or first screen says AI; the assistant is one pill.
 - LEGO® an adjective, the disclaimer in the footer (tests/test_trademarks.py).
 - de, fr, es: every new word has its entry (`tools/site_lang.py --check`).
 
-`tools/web/landing_check.mjs` (every deploy) proves it: the search and
-Start building whole in the first screen at both sizes, light and dark, the
-shelf's cards with their pictures, at least one whole in view, no layout
-shift as the live answer comes, the tabs, the search, the challenge, the
-talk and the sets.
+`tools/web/landing_check.mjs` (every deploy) proves the first screen: the
+search and Start building whole at both sizes, light and dark, the first
+post within 600 px on a phone with its pictures drawn, no layout shift,
+Show more, the search, the challenge third at the latest, Talk's posts and
+the sets. `tools/web/homefeed_check.mjs` drives each post: the served
+HTML's links, Like, a comment and Follow asking to sign in, 3D, Try it
+here, and signed in, the tabs, a like, a comment and a follow made, and a
+visitor signing in from a like.
+
+## Before: the community first (landing, 2026-11-22)
+
+The first screen was one line and a search, the month's challenge beside
+it, and a shelf of tabs (Top, New, Real sets in 3D), each one row of ten of
+the gallery's cards; under it the latest in Talk, Build together and four
+things a builder does, then the studio. It put the community on the first
+screen (a phone's first model at 529 px), but as a page with a community
+section: the cards were the gallery's, with no way into the studio from
+them and nothing to do on them but open them. The critique is
+bench/results/landing-2026-11-22/CRITIQUE.md.
 
 ## Before: the studio first (landing, 2026-11-03)
 

@@ -204,9 +204,12 @@ export function open3d(shell, given) {
       if (shape) bytes += shape.bytes || 0;
       return shape;
     });
-    // Still as it arrives, where the picture was: the person turns it.
+    // Still as it arrives, where the picture was: the person turns it. A
+    // card of the home's feed asks it turning (given.spin, homefeed), until
+    // it is taken hold of, as the view's own autoRotate stops then; never
+    // for somebody who asked for less motion (still).
     view = new View(stage, data, {
-      still, spin: false, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
+      still, spin: given.spin === true, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
       mark: (what) => {
         // Timed to the frame drawn, not to when it was asked for: a pixel
         // read back waits for the graphics (SwiftShader draws in seconds

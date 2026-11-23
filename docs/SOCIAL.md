@@ -1624,9 +1624,9 @@ made-up members.
   the replies as Comment [TK-DF], hreflang copies in German, French and
   Spanish, and an RSS feed for every board and for all of Talk.
 - **On the first screen.** "Talk" in the header beside Gallery, in Menu
-  and in the footer's Community; the homepage's "What builders are
-  talking about", under the shelf, draws the newest threads as Talk draws
-  them once there are three (`web/landing.js`).
+  and in the footer's Community; on the homepage the newest threads are
+  posts in its feed, each with its latest reply (section 11, homefeed
+  2026-11-23; landing's band before it).
 - **The two pools.** Throwaway test accounts talk in a pool of their own
   (`?tests=1`), as the gallery's; a preview never writes the real pool's
   house threads.
@@ -1634,6 +1634,92 @@ made-up members.
 What it does not do yet: likes on posts, accepted answers in Help, a
 board you follow (Discourse's Watching First Post), and post drafts kept
 across devices. Each is a follow-up for the owner to choose.
+
+## 11. The home is the feed (2026-11-23)
+
+The owner, 2026-11-23: "turn the landing into our lego 'social media' as it
+simultaneously advertises and integrates the CAD." Unit homefeed read how
+the home feeds of the social sites and the model sites work: what a card
+holds, how a card sells the tool behind it, and how a stranger becomes a
+member. Then it made brickworks.diy's home one feed (`web/home-feed.js`,
+`web/landing.js`, `tools/web/home_shelf.mjs`; docs/HOME.md).
+
+### What the others do
+
+| | A card holds | The tool behind it | A stranger |
+|---|---|---|---|
+| Instagram [HF-IG] | the picture, heart, comment, share, save | | a few rows, then a sign-in pop-up that cannot be closed |
+| Pinterest [HF-PI] | the picture; Save and a board picker on hover | | trending Pins, then a sign-up pop-up; its own test found the pop-up that cannot be closed lost members over time |
+| Reddit [HF-RD] | title, media, votes, comments; a reason ("Because…") and Join on a recommended one | | For you and Following since 2026-10-28, reopening on the last used; six trending posts for a visitor |
+| Printables [HF-PR] | picture, likes, downloads; a community feed of uploads, makes and likes, repeats collapsed | Open in PrusaSlicer, off until turned on in settings | featured models, contests |
+| MakerWorld [HF-MW] | picture, boosts, prints | Open in Bambu Studio, with the designer's printer settings; printing from the card | recommendations tuned for good new models with real photos |
+| Thingiverse [HF-TV] | picture, likes | Open in Customizer on some | downloads with no account |
+| Rebrickable [HF-RB] | picture, parts, the MOC's kind (original, alternate, mod) | Build: what you own against what it needs, the rest to a BrickLink cart | "Create an account to find MOCs you can build from the parts you already own" |
+| Mecabricks [HF-MB] | picture, four numbers with no labels, no Follow | an Editor tab on the model's page: the whole editor | "Build & Render your 3D LEGO® models online", Start Now, then twelve cards |
+| BrickLink Studio [HF-BL] | picture, likes, comments | Import in the desktop app, greyed out for display-only builds | asked to sign in once a download has started |
+| Flickr's LEGO® group [HF-FL] | the photo alone: no title, no author | | Join; a monthly takeover of Explore chosen from members |
+
+Three things decide the design. Every model site hands its builds to a
+program somewhere else, and each makes that hard: a setting to turn on, a
+desktop app, a greyed-out Import. A CAD that runs in the page can open an
+editable copy from the card itself, and can put the studio in the feed.
+The hard walls (Instagram's, Pinterest's pop-up, Reddit's tests) lose
+people, by Pinterest's own numbers; a visitor should read freely and be
+asked to sign in only when they act. And no source found a 3D turn on a
+card, or a sign-in that brings the person back to what they pressed: both
+are Brickworks' to have first.
+
+### Decisions
+
+- **The feed is the first screen, for everybody.** One stream of posts:
+  builds, Talk's threads with their latest reply, the month's challenge
+  with its entries, the studio to try, builders to follow, photos of real
+  builds. Signed out, one band over it says what Brickworks is in a line,
+  with the search and Start building, and nothing else stands between a
+  visitor and the first post (within 600 px on a phone).
+- **Signed in: For you, Following and New** (Reddit's and Instagram's
+  tabs). For you is the stream asked as them (their likes, nobody they
+  blocked); Following is what the people they follow made (`/feed`'s own
+  rows); New is everything newest first. Share a build at the top opens
+  the studio's publish for their last model (`/app?share`).
+- **Every build card is a way into the studio.** Open in the studio (the
+  viewer), Remix (a copy of their own, its page saying whose it was),
+  Build it (the steps, one at a time) and Parts (to list and buy), on
+  every card, no setting to turn on. A pill says how it was made (with
+  the assistant, by hand, Brickify, what moves, how many steps), each a
+  link to that feature's docs page: the card sells the feature that made
+  it (Mecabricks' Editor tab and Rebrickable's Build, on the card).
+- **A 3D turn in the picture's place**, on a pointer that rests on it or a
+  tap of 3D, three.js asked for only then; never unasked for somebody
+  who asked for less motion.
+- **The studio in the feed.** A Try it here post puts the real studio in
+  the post on a tap (the viewer at `/app?view=<id>`: turn it, play what
+  moves, build it step by step), nothing of it asked for before; Open the
+  whole studio takes the model across as a copy of their own. A visitor
+  edits nothing before signing in (everyone who builds has an account,
+  13 and over): what carries across is the model, not a pose played in
+  the post.
+- **No walls; asked on the spot.** A visitor reads every post, follows
+  every link, opens every model in the studio. Like, a comment and Follow
+  ask to sign in in a dialog over the page (`askToSignIn`), and once in,
+  the like or the comment goes on, the page where it was, what was typed
+  kept.
+- **Never empty on day one.** The first posts are written into the page
+  at the deploy from the live answers (the house's seeded gallery, Talk's
+  house threads, the month's challenge), or from the last answers kept
+  (`web/_home.json`), so the first screen never waits on the server; the
+  rest come once the page is idle, counts said in place, nothing in view
+  moving.
+- **An end to it.** Show more, not endless scrolling (NN/g, section 2):
+  the footer and the studio's own sections stay reachable.
+- **Found on the web.** The first posts are in the page as served, each a
+  link to its model's page, for a crawler as for a person.
+
+Not done here, each for the owner to choose: a reason on a recommended
+card ("Because you liked…"), owned-parts matching on a card ("you have 80%
+of its parts"), collapsing a builder's many uploads into one post
+(Printables), and For you ranked by what a person likes rather than by
+the gallery's own order.
 
 ## Sources
 
@@ -1839,3 +1925,35 @@ text where the page itself refused a reader.
 - [TK-RB] Brickset, interview with Rebrickable's founder (MOCs, the forum):
   https://brickset.com/article/111720/interview-with-nathan-thom-founder-of-rebrickable
 - [TK-MB] Mecabricks' forum, as cited by builders' blogs: https://blog.firestartoys.com/?p=1139 *(excerpt)*
+
+### Round 11, the home feed (2026-11-23)
+
+Read on 2026-11-23. MakerWorld, Printables and Thingiverse answered 403,
+Rebrickable 402 and BrickLink its maintenance page, so claims about them
+rest on their help pages, blogs and press; *(excerpt)* marks a search
+result's text alone.
+
+- [HF-IG] Instagram: Following and Favorites, https://about.instagram.com/blog/announcements/favorites-and-following ;
+  suggested posts, https://help.instagram.com/381638392275939 ; the sign-in
+  wall, https://thenextweb.com/news/instagram-now-forces-people-to-sign-in-to-view-public-profiles
+- [HF-PI] Pinterest: the home feed, https://help.pinterest.com/en/article/explore-the-home-feed ;
+  saving, https://help.pinterest.com/en/article/save-pins-on-pinterest ; the
+  sign-up modal test, https://medium.com/@Pinterest_Engineering/lessons-in-growth-and-increasing-signups-d6e7d8fef479 *(excerpt)*
+- [HF-RD] Reddit: For You and Following, https://techcrunch.com/2026/10/28/reddit-is-the-latest-platform-to-embrace-the-for-you-feed/ ;
+  the logged-out landing, https://techcrunch.com/2023/08/01/reddit-updates-its-site-design-for-logged-out-users/ ;
+  login-wall tests, https://www.ghacks.net/2026/05/13/reddit-tests-forcing-logged-out-mobile-users-into-app-with-non-dismissible-pop-up/
+- [HF-PR] Printables: Open in PrusaSlicer, https://help.prusa3d.com/article/opening-models-in-prusaslicer-from-supported-websites_399198 ;
+  the community feed, https://blog.prusa3d.com/new-on-printables-com-community-feed-improved-search-new-rewards-and-more_69067/
+- [HF-MW] MakerWorld: one-step printing, https://blog.bambulab.com/makerworld-one-step-printing ;
+  Open in Bambu Studio, https://forum.bambulab.com/t/noob-question-about-print-profiles-from-mw/90714 ;
+  boosts, https://blog.bambulab.com/rethinking-rewards-makerworld-boost-system
+- [HF-TV] Thingiverse: Customizer, https://www.thingiverse.com/apps/customizer/ *(excerpt)* ;
+  the 2020 redesign, https://all3dp.com/4/thingiverse-gets-a-new-design-and-introduces-ads/
+- [HF-RB] Rebrickable: https://en.wikipedia.org/wiki/Rebrickable ; sharing a MOC,
+  https://bricknerd.com/home/mastering-rebrickable-a-guide-to-sharing-mocs-and-instructions-1-10-25
+- [HF-MB] Mecabricks: https://www.mecabricks.com/ , https://www.mecabricks.com/en/library/selection ,
+  a model page https://mecabricks.com/en/models/VzvMRWy7aJp
+- [HF-BL] BrickLink Studio: access levels, https://studiohelp.bricklink.com/hc/en-us/articles/5705436653847 ;
+  the Welcome Screen's gallery, https://studiohelp.bricklink.com/hc/en-us/articles/6153755149591
+- [HF-FL] Flickr: the LEGO® group's pool, https://www.flickr.com/groups/lego/pool/ ; Explore,
+  https://blog.flickr.net/?p=91697

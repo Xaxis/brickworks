@@ -565,10 +565,11 @@ try {
             termsTo: document.querySelector("#beta-terms a")?.getAttribute("href") || "",
             // Under the first screen, with only the community's places
             // between (#now: this month's challenge and This week's pick,
-            // challengehonours; #talk-latest and #community, landing).
+            // challengehonours; #talk-latest and #community, landing;
+            // #feed, the home's feed, homefeed).
             afterHero: hero !== band && (() => {
               let one = band.previousElementSibling;
-              while (one && one !== hero && ["now", "talk-latest", "community"].includes(one.id)) one = one.previousElementSibling;
+              while (one && one !== hero && ["now", "talk-latest", "community", "feed"].includes(one.id)) one = one.previousElementSibling;
               return one === hero;
             })(),
             heroBottom: Math.round(hero.getBoundingClientRect().bottom + scrollY), top: Math.round(band.getBoundingClientRect().top + scrollY),

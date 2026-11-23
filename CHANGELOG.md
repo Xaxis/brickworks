@@ -15,6 +15,17 @@ whole cycle.
 
 ### Added
 
+- **brickworks.diy's home is a feed.** What builders make and say, one post
+  after another: new builds, threads in Talk with their latest reply, this
+  month's challenge with its entries, builders to follow and photos of
+  real builds. Each build says how it was made, with a link to how to do
+  it, and opens in the studio, as a remix of your own, as steps to build,
+  or as its parts to buy, from the post. Press **3D** to turn it where its
+  picture was. Like, comment and follow from the post; signed out, you
+  sign in there and go on where you were. **Try it here** puts the studio
+  itself in the feed. Signed in, the feed has tabs (**For you**,
+  **Following**, **New**) and **Share a build** opens the share panel for
+  your last model.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

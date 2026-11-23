@@ -1,52 +1,47 @@
-// The home page's first screen, written into the page as it is served
-// (landing, 2026-11-22, docs/HOME.md): the shelf's cards, real models with
-// their pictures, and the month's challenge's name, brief and days.
+// The home page's first posts, written into the page as it is served
+// (homefeed, 2026-11-23; landing's shelf before it): the feed's first
+// FIRST posts, real models with their pictures, Talk's threads with their
+// latest reply and the month's challenge with its entries, drawn as
+// web/home-feed.js draws them in the browser.
 //
 //   node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]
 //
 // OUT is the site put together (tools/site.py OUT): its index.html and each
 // language's (OUT/de/index.html, ...). tools/deploy.sh runs it after
-// tools/site.py. Each tab of the shelf (web/index.html #shelf, its panels'
-// data-ask) is asked of --from's gallery as anybody signed out asks it, and
-// /api/share?op=shelves for this week's pick and the challenge. What cannot
-// be read there is read from web/_home.json, the answers kept the last time
-// --save was given, so a deploy never ships a first screen that waits on the
+// tools/site.py. Each of the feed's answers (ASKS, as web/landing.js asks
+// them for somebody signed out) is asked of --from; what cannot be read
+// there is read from web/_home.json, the answers kept the last time --save
+// was given, so a deploy never ships a first screen that waits on the
 // server. --offline reads web/_home.json alone (tests, a checkout's look).
 //
-// Each card is the site's own (web/card.js cardHtml, as the server draws
-// one), in the page's language from the words its copy carries
-// (#site-words); its picture is copied into OUT/img/home/, so the first
-// screen's pictures come from the CDN beside the page and never wait on a
-// function or the bucket. The first tab shown is Trending once the week's
-// list has FEWEST models with pictures, else Top, with this week's pick
-// first. web/landing.js asks each list again once the page is in and puts
-// in what changed, a card for a card.
+// Each post is the site's own (web/home-feed.js postHtml), in the page's
+// language from the words its copy carries (#site-words); each picture of a
+// model in them is copied into OUT/img/home/, so the first screen's pictures
+// come from the CDN beside the page and never wait on a function or the
+// bucket. web/landing.js asks each answer again once the page is in, tells
+// each post its counts as they are now and puts in the rest under them.
 //
-// It changes nothing it cannot fill: a page without the shelf's markers is
-// left as it is and said; nothing to show leaves the skeletons, and says so.
+// It changes nothing it cannot fill: a page without the feed's markers is
+// refused and said; nothing to show leaves the skeletons, and says so.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cardHtml, escapeHtml, marksOf, pictureOf, quietMarks } from "../../web/card.js";
+import { escapeHtml, pictureOf } from "../../web/card.js";
+import { EAGER, FIRST, compose, postHtml } from "../../web/home-feed.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SNAPSHOT = join(ROOT, "web/_home.json");
 const LANGS = ["", "de", "fr", "es"];
-const TABS = ["trending", "top", "new", "sets"];
-/// Cards a tab shows: a row that scrolls, half again what a laptop shows.
-export const CARDS = 10;
-/// The fewest cards with pictures that make a tab worth showing.
-export const FEWEST = 4;
-/// The first cards of the tab shown whose pictures are asked for at once:
-/// the first only. With four (the first card of each place a laptop shows),
-/// a laptop's first paint came 726 ms later than with one (median of ten
-/// rounds at the same moments, later in 8; bench/results/landing-2026-11-22
-/// timing3): four pictures decoded in time are drawn into the first frame.
-/// The rest of the row, lazy, are asked for as it is laid out, a moment
-/// after the first paint, into frames already their size.
-export const EAGER = 1;
-const MODEL = /^[A-Za-z0-9]{10}$/;
-const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
+/// What the feed is made of, as web/landing.js feeds() asks it signed out.
+export const ASKS = {
+  top: "/api/share?op=list&page=1&sort=top",
+  newest: "/api/share?op=list&page=1&sort=newest",
+  shelves: "/api/share?op=shelves",
+  challenge: "/api/people?op=challenge",
+  talk: "/api/people?op=talk_latest&n=6&reply=1&talking=24",
+  latest: "/api/people?op=latest",
+};
+export { EAGER, FIRST };
 
 const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith("--")).map((a) => {
   const [k, ...rest] = a.slice(2).split("=");
@@ -69,38 +64,26 @@ async function ask(path) {
   }
 }
 
-/// The cards of [answer] (a list's) a tab may show: real ones with pictures.
-export function shown(answer) {
-  return (answer?.models || []).filter((m) => m && (MODEL.test(String(m.id)) || SET.test(String(m.id))) && pictureOf(m));
+/// The feed's first posts from [given] (each of ASKS's answers, by name):
+/// what web/landing.js would draw first for somebody signed out.
+export function decide(given) {
+  return compose(given, { tab: "foryou" }).slice(0, FIRST);
 }
 
-/// Each tab's models, this week's pick first on the first, and which tab
-/// is shown: what [answers] (each panel's data-ask's answer, and shelves)
-/// hold.
-export function decide(asks, answers) {
-  const lists = Object.fromEntries(TABS.map((tab) => [tab, shown(answers[asks[tab]])]));
-  const tabs = TABS.filter((tab) => lists[tab].length >= FEWEST);
-  const first = tabs.includes("trending") ? "trending" : tabs.includes("top") ? "top" : tabs[0] || "";
-  const pick = answers.shelves?.pick?.model && MODEL.test(String(answers.shelves.pick.model.id)) && pictureOf(answers.shelves.pick.model)
-    ? answers.shelves.pick.model : null;
-  const cards = {};
-  for (const tab of tabs) {
-    const leads = tab === first && pick && tab !== "sets" ? [pick] : [];
-    const rest = lists[tab].filter((m) => !leads.some((one) => one.id === m.id));
-    cards[tab] = [...leads, ...rest].slice(0, CARDS);
-  }
-  const c = answers.shelves?.challenge;
-  const challenge = c && !c.test && ["open", "upcoming"].includes(c.state) && c.title ? c : null;
-  return { tabs, first, cards, pick: pick?.id || "", challenge };
+/// Every picture of a model in [items]: the builds', the studio's to try
+/// and the challenge's entries'.
+export function picturesOf(items) {
+  const models = items.flatMap((item) => (item.kind === "build" || item.kind === "try" ? [item.model]
+    : item.kind === "challenge" ? (item.entries || []).slice(0, 4) : []));
+  return [...new Set(models.map((m) => pictureOf(m)).filter((src) => src.startsWith("/")))];
 }
 
 /// Where a picture of the site is copied to under img/home/, by its address.
 const copyName = (src) => `${src.replace(/^\/+/, "").replace(/\?v=/, "-").replace(/[^A-Za-z0-9.-]+/g, "-")}`.replace(/\.webp-/, "-") + (/\.webp$/.test(src) ? "" : ".webp");
 
-/// Every picture of [cards] copied into [dir], each its address on the
-/// site once copied: a Map of the site's address to the copy's.
-async function copyPictures(cards, dir) {
-  const wanted = [...new Set(cards.map((m) => pictureOf(m)).filter((src) => src.startsWith("/")))];
+/// Each of [wanted] copied into [dir], each its address on the site once
+/// copied: a Map of the site's address to the copy's.
+async function copyPictures(wanted, dir) {
   const copied = new Map();
   mkdirSync(dir, { recursive: true });
   let next = 0;
@@ -117,22 +100,12 @@ async function copyPictures(cards, dir) {
         writeFileSync(join(dir, name), body);
         copied.set(src, `/img/home/${name}`);
       } catch {
-        // Left at its own address: the card still shows it, from the server.
+        // Left at its own address: the post still shows it, from the server.
       }
     }
   };
   await Promise.all(Array.from({ length: 6 }, one));
   return copied;
-}
-
-/// "1–30 November" in [locale], as web/landing.js says a challenge's days.
-export function days(from, to, locale) {
-  const at = (day) => new Date(`${day}T12:00:00Z`);
-  try {
-    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "UTC" }).formatRange(at(from), at(to));
-  } catch {
-    return "";
-  }
 }
 
 /// The words a copy's scripts say ([page]'s #site-words), or none in English.
@@ -153,58 +126,31 @@ function inLanguage(code, words, draw) {
   }
 }
 
-/// [page] with [plan]'s cards and challenge written in, in [code]'s
-/// language; [copied] the pictures' copies.
-export function filled(page, code, plan, copied) {
+const MARKERS = /<!--feed-->[\s\S]*?<!--\/feed-->/;
+
+/// [page] with [items] written in as posts, in [code]'s language; [copied]
+/// the pictures' copies.
+export function filled(page, code, items, copied) {
+  if (!MARKERS.test(page)) throw new Error("the feed has no <!--feed--> markers");
+  if (!items.length) return page;
   const words = code ? wordsOf(page) : null;
-  let text = page;
-  for (const tab of TABS) {
-    const marker = new RegExp(`<!--shelf:${tab}-->[\\s\\S]*?<!--/shelf:${tab}-->`);
-    if (!marker.test(text)) throw new Error(`the shelf's ${tab} has no <!--shelf:${tab}--> markers`);
-    // Only the tab shown: the others are the first screen's only once
-    // opened, and web/landing.js fills each then. Written in, they were a
-    // third of the page (21 KB of 66), parsed before a phone's first paint.
-    // A tab with nothing to show keeps what it holds (the top's skeletons).
-    const cards = tab === plan.first ? plan.cards[tab] || [] : [];
-    if (!cards.length) continue;
-    const html = inLanguage(code, words, () => cards.map((m, i) => {
-      const shownFirst = tab === plan.first;
-      let card = cardHtml(m, { eager: shownFirst && i < EAGER, pick: shownFirst && i === 0 && m.id === plan.pick });
-      const src = pictureOf(m);
-      if (copied.has(src)) card = card.replace(`src="${escapeHtml(src)}"`, `src="${copied.get(src)}" data-from="${escapeHtml(src)}"`);
-      return card;
-    }).join(""));
-    text = text.replace(marker, `<!--shelf:${tab}-->${html}<!--/shelf:${tab}-->`);
+  let posts = inLanguage(code, words, () => items.map((item, i) => postHtml(item, { eager: i < EAGER })).join("\n"));
+  for (const [src, copy] of copied) posts = posts.replaceAll(`src="${escapeHtml(src)}"`, `src="${copy}" data-from="${escapeHtml(src)}"`);
+  return page.replace(MARKERS, () => `<!--feed-->${posts}<!--/feed-->`)
+    .replace('<div class="stream" id="stream" data-stream="skeleton"', '<div class="stream" id="stream" data-stream="served"');
+}
+
+/// Only what a first screen and its posts show, of each answer, to keep.
+function kept(name, answer) {
+  if (name === "top" || name === "newest") return { models: (answer.models || []).slice(0, FIRST + 4) };
+  if (name === "shelves") return { pick: answer.pick || null, challenge: answer.challenge || null };
+  if (name === "challenge") {
+    const c = answer.challenge;
+    return { ready: answer.ready, challenge: c ? { ...c, groups: (c.groups || []).map((g) => ({ ...g, entries: (g.entries || []).slice(0, 4) })) } : null };
   }
-  if (plan.first) {
-    // The tab shown, and the rest at hand.
-    for (const tab of TABS) {
-      const on = tab === plan.first;
-      const ours = plan.tabs.includes(tab);
-      text = text.replace(new RegExp(`<button type="button" role="tab" id="tab-${tab}"[^>]*>`), (button) => button
-        .replace(/ aria-selected="(true|false)"/, ` aria-selected="${on}"`)
-        .replace(/ tabindex="-1"/, "").replace(/ hidden/, "")
-        .replace(/>$/, `${on ? "" : ' tabindex="-1"'}${ours ? "" : " hidden"}>`));
-      text = text.replace(new RegExp(`(<div class="models scroller" id="shelf-${tab}" role="tabpanel"[^>]*?)( hidden)?(\\s*\\n?\\s*data-ask=)`),
-        (all, start, _hidden, rest) => `${start}${on ? "" : " hidden"}${rest}`);
-    }
-    const all = new RegExp(`id="shelf-${plan.first}"[^>]*data-all="([^"]*)"`).exec(text)?.[1] || "/gallery";
-    text = text.replace(/<a id="shelf-all" href="[^"]*">/, `<a id="shelf-all" href="${code ? `/${code}` : ""}${all}">`);
-    text = text.replace('<div class="shelf" id="shelf" data-shelf="skeleton">', '<div class="shelf" id="shelf" data-shelf="served">');
-  }
-  // The marks nearly every card carries are not said (web/card.js
-  // quietPage, which the gallery's cards run as they are drawn).
-  const quiet = quietMarks((plan.cards[plan.first] || []).map(marksOf));
-  if (quiet) text = text.replace(/<body>/, `<body data-quiet="${quiet}">`);
-  const c = plan.challenge;
-  if (c) {
-    // Its maker's words, as written (English): marked so; its days in the page's.
-    text = text.replace(/<h3 id="challenge-h">[^<]*<\/h3>/, `<h3 id="challenge-h" lang="en">${escapeHtml(c.title)}</h3>`);
-    if (c.brief) text = text.replace(/<p id="challenge-brief">[^<]*<\/p>/, `<p id="challenge-brief" lang="en">${escapeHtml(c.brief)}</p>`);
-    const span = days(c.starts_on, c.ends_on, code || "en-GB");
-    if (span) text = text.replace(/<p class="note" id="challenge-days">[^<]*<\/p>/, `<p class="note" id="challenge-days">${escapeHtml(span)}</p>`);
-  }
-  return text;
+  if (name === "talk") return { ready: answer.ready, threads: (answer.threads || []).slice(0, 4), talking: (answer.talking || []).slice(0, 12) };
+  if (name === "latest") return { models: [], photos: (answer.photos || []).slice(0, 2), designers: (answer.designers || []).slice(0, 4) };
+  return answer;
 }
 
 async function main() {
@@ -212,39 +158,30 @@ async function main() {
     console.error("home_shelf: give the site's folder (tools/site.py OUT), with its index.html");
     process.exit(2);
   }
-  const english = readFileSync(join(out, "index.html"), "utf8");
-  const asks = Object.fromEntries(TABS.map((tab) => [tab,
-    (new RegExp(`id="shelf-${tab}"[^>]*data-ask="([^"]*)"`).exec(english)?.[1] || "").replace(/&amp;/g, "&")]));
-  const wanted = [...Object.values(asks).filter(Boolean), "/api/share?op=shelves"];
-  const kept = existsSync(SNAPSHOT) ? JSON.parse(readFileSync(SNAPSHOT, "utf8")) : { answers: {} };
-  const answers = {};
+  const snapshot = existsSync(SNAPSHOT) ? JSON.parse(readFileSync(SNAPSHOT, "utf8")) : { answers: {} };
+  const given = {};
   const said = [];
-  for (const path of wanted) {
+  for (const [name, path] of Object.entries(ASKS)) {
     const live = args.offline ? null : await ask(path);
-    answers[path] = live || kept.answers?.[path] || null;
-    said.push(`${path.replace("/api/share?op=", "")}: ${live ? "live" : answers[path] ? `kept (${kept.at || "?"})` : "none"}`);
+    given[name] = live || snapshot.answers?.[path] || null;
+    said.push(`${name}: ${live ? "live" : given[name] ? `kept (${snapshot.at || "?"})` : "none"}`);
   }
-  answers.shelves = answers["/api/share?op=shelves"];
-  const plan = decide(asks, answers);
+  const items = decide(given);
   if (args.save && !args.offline) {
-    // Only what a first screen shows: each list's first models, the pick and the challenge.
-    const kept = (path, answer) => (path === "/api/share?op=shelves" ? { pick: answer.pick || null, challenge: answer.challenge || null }
-      : { models: (answer.models || []).slice(0, CARDS + 2) });
-    const keep = Object.fromEntries(wanted.filter((path) => answers[path]).map((path) => [path, kept(path, answers[path])]));
+    const keep = Object.fromEntries(Object.entries(ASKS).filter(([name]) => given[name]).map(([name, path]) => [path, kept(name, given[name])]));
     writeFileSync(SNAPSHOT, `${JSON.stringify({ at: new Date().toISOString().slice(0, 10), answers: keep }, null, 1)}\n`);
   }
-  const all = plan.cards[plan.first] || [];
-  const copied = args.offline ? new Map() : await copyPictures(all, join(out, "img/home"));
+  const copied = args.offline ? new Map() : await copyPictures(picturesOf(items), join(out, "img/home"));
   let pages = 0;
   for (const code of LANGS) {
     const where = join(out, code, "index.html");
     if (!existsSync(where)) continue;
-    writeFileSync(where, filled(readFileSync(where, "utf8"), code, plan, copied));
+    writeFileSync(where, filled(readFileSync(where, "utf8"), code, items, copied));
     pages += 1;
   }
-  console.log(`home_shelf: ${plan.first ? `${plan.tabs.join(", ")} (${plan.first} first${plan.pick ? `, the pick ${plan.pick}` : ""})`
-    : "NOTHING to show: the skeletons stay, and web/landing.js asks"}; ${all.length} cards, ${copied.size} pictures copied; `
-    + `${plan.challenge ? `the challenge "${plan.challenge.title}"` : "no challenge"}; ${pages} pages; ${said.join(", ")}`);
+  const kinds = items.map((item) => item.kind).join(", ");
+  console.log(`home_shelf: ${items.length ? `${items.length} posts (${kinds})` : "NOTHING to show: the skeletons stay, and web/landing.js asks"}; `
+    + `${copied.size} pictures copied; ${pages} pages; ${said.join(", ")}`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
