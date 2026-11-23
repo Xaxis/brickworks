@@ -1896,7 +1896,8 @@ plan with Claude as the client.
   strips, the gallery's shelves, Pinned on /u/ and /profile, a model
   page's More by / Similar with a See all in `.scroller-head`),
   `.pills.scroller` (the gallery's and library's kinds, `.inset` in a
-  toolbar), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
+  toolbar, a person's badges on `/u/<handle>` under 900 px, wrapping
+  beside the page: `awardsHtml(..., { row: true })`), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
   `nav.tabs`, an inner page's `.page-toc ul.scroller` under 900 px, and
   the boxes `.table`, docs `.code > pre` and /admin's `.card.scroller`. It
   scrolls inside itself (`overscroll-behavior-x: contain`, never the
@@ -2007,7 +2008,14 @@ plan with Claude as the client.
   "brickworks.lang" too), else the browser's first the site has, else English
   (`web/theme.js` `brickworksLang`): an English page with a copy gives way to
   it before it is drawn (its `link rel=alternate hreflang`), and every link to
-  `/app` carries `?lang=<code>`. The scripts' words (`web/download.js`,
+  `/app` carries `?lang=<code>`: the page's own by theme.js's `carry()`, one a
+  script draws later (the home's feed, a set's, a challenge's, the 3D
+  frame's) through `web/card.js` `appAt`, which asks `brickworksLang.app()`
+  for the same language; `tools/site_lang.py --check` (`unapped`) fails a
+  script under `web/` that writes `/app` by hand (sitefix325, 2026-11-23).
+  The home's first posts, written at deploy for every language at once
+  (`tools/web/home_shelf.mjs`), say their lines as each is drawn
+  (`web/home-feed.js` `buildPostHtml`), never while composing. The scripts' words (`web/download.js`,
   `web/card.js` `say`/`number`, the header's account in `web/follow.js`) come
   from the copy's `#site-words`. The app's loading page (`src/boot/shell.html`)
   says its words in `?lang` or the kept language. The sign-in's dialogs
