@@ -64,8 +64,8 @@
    "settle": 60,
    "crop": "_render._preview",
    "pad": 0,
-   "alt": "The car rendered at Best in the Product look on a wooden table, path traced: the bright window behind it mirrored along the glossy tops of its red and black parts, its shadow falling forward onto the grain.",
-   "caption": "On a wooden table at Best: the tops shine with the bright window behind the model, as a photograph's do.",
+   "alt": "The car rendered at Best in the Product look on a wooden table, path traced and lit from behind as by a window: the black studs on its roof catch white highlights, its shadow falls forward onto the grain, and the table pales towards the back.",
+   "caption": "On a wooden table at Best: lit from behind, as by a window, so glossy tops shine as a photograph's do.",
    "features": ["lib:staged product photographs", "lib:a large source on a table"]
   },
   {
