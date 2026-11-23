@@ -17,25 +17,29 @@
 .talk-boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); margin: 0 0 var(--s-6); }
 @media (width >= 900px) { .talk-boards { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-3); } }
 .talk-board-tile {
-	display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center;
+	display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center;
 	min-height: 64px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
 	color: var(--ink); text-decoration: none; box-shadow: var(--highlight), var(--shadow-1);
 	transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease), transform var(--motion) var(--ease);
 }
-.talk-board-tile .talk-tile { grid-row: span 2; width: 44px; height: 44px; border-radius: var(--r-2); }
-.talk-board-tile .talk-tile .icon { width: 24px; height: 24px; }
-.talk-board-tile .talk-board-name { align-self: end; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+.talk-board-tile .talk-tile { grid-row: span 2; width: 40px; height: 40px; border-radius: var(--r-2); }
+.talk-board-tile .talk-tile .icon { width: 22px; height: 22px; }
+/* Small enough that "Show and tell" is one line in a sixth of a laptop's page. */
+.talk-board-tile .talk-board-name { align-self: end; font-size: var(--t-small); font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
 .talk-board-tile:not(:has(.n)) .talk-board-name { grid-row: span 2; align-self: center; }
 .talk-board-tile .n { align-self: start; color: var(--ink-soft); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
 .talk-board-tile:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 .talk-board-tile[aria-current="page"] { border-color: var(--accent-edge); box-shadow: inset 0 0 0 1px var(--accent-edge), var(--shadow-1); }
 @media (hover: hover) { .talk-board-tile:hover { transform: translateY(-2px); } }
+/* On a phone, three to a row and two rows, each its icon over its name and
+   count on one line, so the threads begin on the first screen. */
 @media (width < 600px) {
-	.talk-board-tile { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; justify-items: center; row-gap: 4px;
-		min-height: 0; padding: 10px 6px; text-align: center; font-size: var(--t-small); }
-	.talk-board-tile .talk-tile { grid-row: auto; width: 36px; height: 36px; }
-	.talk-board-tile .talk-tile .icon { width: 20px; height: 20px; }
-	.talk-board-tile:not(:has(.n)) .talk-board-name { grid-row: auto; }
+	.talk-board-tile { grid-template-columns: auto auto; justify-content: center; column-gap: 4px; row-gap: 4px;
+		min-height: 0; padding: 8px 4px; text-align: center; }
+	.talk-board-tile .talk-tile { grid-row: auto; grid-column: 1 / -1; justify-self: center; width: 32px; height: 32px; }
+	.talk-board-tile .talk-tile .icon { width: 18px; height: 18px; }
+	.talk-board-tile .talk-board-name, .talk-board-tile .n { grid-row: 2; align-self: baseline; }
+	.talk-board-tile:not(:has(.n)) .talk-board-name { grid-row: 2; grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .talk-board-tile:hover { transform: none; } }
 
@@ -59,6 +63,8 @@
    what was said under it (sitebold, 2026-11-23: 64 px thumbnails). */
 .talk-talking { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
 @media (600px <= width < 960px) { .talk-talking { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* One alone takes the row, as large as the aside lets it. */
+.talk-talking > li:only-child { grid-column: 1 / -1; }
 .talk-talking a { display: grid; gap: 6px; color: var(--ink); text-decoration: none; }
 .talk-talking-pic { display: block; aspect-ratio: 4 / 3; border-radius: var(--r-2); overflow: hidden; background: var(--picture-ground); }
 .talk-talking-pic img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 300ms var(--ease); }

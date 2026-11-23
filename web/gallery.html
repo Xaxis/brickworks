@@ -178,7 +178,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 .feed #models { display: contents; }
 /* Three to a row at a laptop's width, each picture its card's hero, four
    from 1600 px (sitebold, 2026-11-23: four of 280 px read as a list). */
-@media (width >= 900px) { .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-6) var(--s-5); } }
+@media (width >= 900px) { .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (width >= 1600px) { .feed { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 /* The week's pick across the grid's width: from 900 px its picture large on
    the left, wide as a share's picture is, turning in 3D under a resting
@@ -188,7 +188,10 @@ html[data-tab="builds"] .toolbar { position: static; }
 .pick-card .pick-go { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0 0; }
 .pick-card .pick-go > .cta { position: relative; z-index: 1; flex: 1 1 auto; }
 @media (width >= 900px) {
-	.feed .pick-card { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+	/* Its picture 5:4 of the words' width: the pick whole on a 1280 x 800
+	   laptop's first screen, and the cards' first row begun under it on
+	   one 900 tall. */
+	.feed .pick-card { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
 	.feed .pick-card .frame { aspect-ratio: 2 / 1; }
 	.feed .pick-card .words { justify-content: center; gap: var(--s-2); padding: var(--s-5) var(--s-6); }
 	.feed .pick-card .open b { font-size: var(--t-h2); line-height: 1.2; -webkit-line-clamp: 3; }
