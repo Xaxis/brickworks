@@ -24,6 +24,8 @@ var _copy: Button
 var _rows: VBoxContainer
 var _end: Button
 var _end_row: HBoxContainer
+## The body that scrolls, and End's row under it.
+var _frame: VBoxContainer
 var _removes: Array[Button] = []
 var _follows: Array[Button] = []
 var _chat_box: VBoxContainer
@@ -93,7 +95,12 @@ func _ready() -> void:
 	# the bar made the sheet its width wider than a phone (together_fit).
 	if Phone.on():
 		_body.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	add_child(_body)
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# What scrolls, and under it End's row, which never does (_ready's end).
+	_frame = VBoxContainer.new()
+	_frame.add_theme_constant_override("separation", 8)
+	add_child(_frame)
+	_frame.add_child(_body)
 	_body.add_child(column)
 	_note = Label.new()
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -173,8 +180,11 @@ func _ready() -> void:
 	_end.pressed.connect(_on_end)
 	# End on the left, and the owner's Open or Close to watchers at the
 	# other end of the same row: one place to open and close, apart from
-	# End, and no row of its own, so a tablet held sideways keeps End and
-	# Close in sight (together_fit).
+	# End. The row is under what scrolls, not in it: however tall the
+	# session's words, people, chat and asks grow, and however short the
+	# window (a laptop's browser at 1366 x 768 has about 648 points), End
+	# and Close stay in sight. In the column, the watch row pushed them
+	# out of sight on a tablet held sideways (together_fit, 2026-11-23).
 	_end_row = HBoxContainer.new()
 	_end_row.add_theme_constant_override("separation", 8)
 	_end_row.add_child(_end)
@@ -183,7 +193,7 @@ func _ready() -> void:
 	_end_row.add_child(apart)
 	_end_row.add_child(_watch_open)
 	_end_row.add_child(_watch_close)
-	column.add_child(_end_row)
+	_frame.add_child(_end_row)
 	together.changed.connect(func() -> void:
 		if visible:
 			fill())
@@ -192,6 +202,7 @@ func _ready() -> void:
 	# session started or ended, its words grown for a finger) or the window
 	# changes size.
 	_column.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
+	_end_row.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
 	get_tree().root.size_changed.connect(_fit, CONNECT_DEFERRED)
 
 
@@ -357,8 +368,8 @@ func fit_to(most: float) -> void:
 
 
 ## The body as tall as the column wants, or as [param most] leaves it
-## beside Close and the panel's margins, never under four lines; whether
-## that changed it.
+## beside End's row, Close and the panel's margins, never under four lines;
+## whether that changed it.
 func _keep_to(most: float) -> bool:
 	var wants: float = _column.get_combined_minimum_size().y
 	var around: float = get_contents_minimum_size().y - _body.get_combined_minimum_size().y
