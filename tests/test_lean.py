@@ -192,3 +192,29 @@ def test_what_a_change_reaches_is_worked_out_once_per_tree(lean, tmp_path):
     assert lean.memo("probes", "HEAD~1", "HEAD", lambda: {"beams"}) == {"beams"}
     assert lean.memo("checks", "HEAD~2", "HEAD", lambda: set()) == set()
     assert len(list((tmp_path / "proofs" / "reach").iterdir())) == 3
+
+
+def test_a_check_whose_script_refuses_the_live_site_is_known_without_running_it(lean, tmp_path):
+    # rel-m319's designer_period queued 45 minutes on brickworks.diy to exit 2.
+    tree = _tree(tmp_path, {
+        "tools/release/preview_checks.sh": (
+            'declare -A CMD=(\n'
+            '  [always]="tools/web/always_flow.mjs --url=$P --out=$S/x"\n'
+            '  [signed]="tools/web/signed_check.mjs --url=$P --signed-in --try-start"\n'
+            '  [plain]="tools/web/signed_check.mjs --url=$P"\n'
+            '  [owner]="tools/web/owner_flow.mjs --url=$P"\n'
+            '  [said]="tools/web/said_flow.mjs --url=$P"\n'
+            '  [free]="tools/web/free_flow.mjs --url=$P"\n'
+            ')\n'),
+        "tools/web/always_flow.mjs": 'if (/(^|\\.)brickworks\\.diy$/.test(new URL(site).hostname)) {\n'
+                                     '  console.error("always_flow: never on brickworks.diy; give a preview");\n  process.exit(2);\n}\n',
+        "tools/web/signed_check.mjs": 'if (/brickworks\\.diy$/.test(host) && args["signed-in"]) {\n'
+                                      '  console.error("signed_check: --signed-in never on brickworks.diy");\n  process.exit(2);\n}\n',
+        "tools/web/owner_flow.mjs": 'if (live) {\n  console.error("owner_flow: never against brickworks.diy: the owner\'s own");\n'
+                                    '  process.exit(2);\n}\n',
+        # Said only in a comment, as console3's notice part: it runs there.
+        "tools/web/said_flow.mjs": '// 6. The notice (never on brickworks.diy: a check posts nothing there)\n',
+        "tools/web/free_flow.mjs": 'console.log("runs anywhere");\n',
+    })
+    names = ["always", "signed", "plain", "owner", "said", "free", "unknown"]
+    assert lean.never_live(tree, names) == ["always", "signed", "owner"]

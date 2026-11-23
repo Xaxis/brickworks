@@ -1167,7 +1167,6 @@
   "New models, versions and photos of builds from the designers you follow.": "Les nouveaux modèles, versions et photos de constructions des créateurs que vous suivez.",
   "The sets you own and want, the models you saved, and lists of your own.": "Les sets que vous avez et voulez, les modèles enregistrés et vos propres listes.",
   "How Brickworks looks, what it tells you, what others see and the AI in your tabs.": "L’apparence de Brickworks, ce qu’il vous signale, ce que les autres voient et l’IA dans vos onglets.",
-  "Comments, builds, remixes and likes on your models, replies, challenges and levels. <a href=\"/settings#kinds-part\">Choose what you hear of, and where</a>.": "Commentaires, constructions, remix et j’aime sur vos modèles, réponses, défis et niveaux. <a href=\"/settings#kinds-part\">Choisissez ce dont vous êtes averti, et où</a>.",
   "In the app, at the top beside Account, or in Help. On the site, in the bar at the top of every page.": "Dans l’application, en haut à côté de Compte, ou dans Aide. Sur le site, dans la barre en haut de chaque page.",
   "Brickworks is in open beta. Its bar at the top of every page has Report a bug and the way to join. Chosen for this browser.": "Brickworks est en bêta ouverte. Sa barre en haut de chaque page propose Signaler un bug et le moyen de rejoindre la bêta. Choisi pour ce navigateur.",
   "The bar at the top of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "La barre en haut de chaque page, avec Signaler un bug. Choisi pour ce navigateur ; Signaler un bug est de toute façon dans le menu de votre compte.",
@@ -1177,7 +1176,15 @@
   "Pick a face, hair or a hat, a torso and colours. It is your avatar wherever your name is.": "Choisissez un visage, des cheveux ou un chapeau, un torse et des couleurs. Elle sera votre avatar partout où figure votre nom.",
   "Surprise me": "Surprenez-moi",
   "Built from real parts of the LDraw™ library (CC BY).": "Construite avec de vraies pièces de la bibliothèque LDraw™ (CC BY).",
-  "Your minifig at its sizes, on a light page and a dark one": "Votre minifigurine à ses différentes tailles, sur une page claire et une page sombre"
+  "Your minifig at its sizes, on a light page and a dark one": "Votre minifigurine à ses différentes tailles, sur une page claire et une page sombre",
+  "Comments, builds, remixes and likes on your models, replies, challenges and levels.": "Commentaires, constructions, remix et j’aime sur vos modèles, réponses, défis et niveaux.",
+  "Nothing of this kind yet.": "Rien de ce genre pour l’instant.",
+  "All <span class=\"n\" hidden></span>": "Tout <span class=\"n\" hidden></span>",
+  "Comments <span class=\"n\" hidden></span>": "Commentaires <span class=\"n\" hidden></span>",
+  "Remixes <span class=\"n\" hidden></span>": "Remix <span class=\"n\" hidden></span>",
+  "Mentions <span class=\"n\" hidden></span>": "Mentions <span class=\"n\" hidden></span>",
+  "Choose what you hear of, and where": "Choisissez ce dont vous êtes averti, et où",
+  "Achievements <span class=\"n\" hidden></span>": "Réussites <span class=\"n\" hidden></span>"
  },
  "scripts": {
   "Copy": "Copier",

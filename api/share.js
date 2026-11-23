@@ -3230,6 +3230,7 @@ async function gallery(request, response, origin) {
   // gallery_models asks itself once supabase/made_with_shown.sql is
   // applied. Before, its rows say nothing shown, and none is listed.
   if (asked.made === "assistant") rows = rows.filter((row) => row.made_with_shown === true);
+  const mades = tabs ? await madesOffered(Boolean(said.tests), asked.made === "assistant" ? rows : null) : null;
   // Signed in: nothing of anybody they blocked (supabase/block.sql). A
   // page may then hold fewer; the next is where it was.
   const models = await withoutTheirBlocked(mine,
@@ -3251,12 +3252,34 @@ async function gallery(request, response, origin) {
     sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
     ...(tabs ? {
       windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
-      mades: Object.entries(MADES).map(([id, label]) => ({ id, label })),
+      mades,
       following: Boolean(mine),
     } : {}),
     score: SCORE,
     ...(mine ? { mine: mine.pool } : {}),
   });
+}
+
+/// The Made filter's ways a visitor may pick: With the assistant only while
+/// at least one public model's owner chose to say so (supabase/
+/// made_with_shown.sql), so it never leads to an empty list; Hand-built
+/// always. Asked of gallery_models as the list is ([listed], the list just
+/// asked with made=assistant, says it at once), and kept a few minutes for
+/// test models and for the rest apart. Never throws: unanswered, it is
+/// offered as before nothing was shown, without With the assistant.
+const MADES_KEPT = new Map();
+const MADES_KEEP_MS = 5 * 60 * 1000;
+async function madesOffered(tests, listed = null) {
+  let any = listed ? listed.length > 0 : null;
+  const kept = MADES_KEPT.get(tests);
+  if (any === null && kept && Date.now() - kept.at < MADES_KEEP_MS) any = kept.any;
+  if (any === null) {
+    const { asked } = listQuery({ made: "assistant", ...(tests ? { tests: "1" } : {}) }, 1, 1);
+    const rows = await db("rpc/gallery_models", { method: "POST", body: { query: asked } }).catch(() => []);
+    any = (rows || []).some((row) => row.made_with_shown === true);
+  }
+  MADES_KEPT.set(tests, { at: Date.now(), any });
+  return Object.entries(MADES).filter(([id]) => id !== "assistant" || any).map(([id, label]) => ({ id, label }));
 }
 
 /// [cards] without the models of anybody [mine] (the person asking, signed

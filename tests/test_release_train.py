@@ -88,6 +88,7 @@ exit 0
 # they fail, once a probe has begun beside them.
 [ -z "${STUB_CI_FAIL:-}" ] && exit 0
 for _ in $(seq 1 6000); do [ -e "$RELEASE_OUT/probe_times" ] && break; sleep 0.05; done
+[ -z "${STUB_CI_SAYS:-}" ] || printf '%s\n' "$STUB_CI_SAYS"
 exit 1
 """,
     "tools/release/parse_gate.sh": "#!/bin/bash\n# stand-in: every script parses\nexit 0\n",
@@ -428,8 +429,11 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         time.sleep(1)  # ten polls, and still waiting
         assert "waits for t-m1 to serve" in y.spec("t-m2", "step")
         assert not (y.wt / "t-m2").exists()
-        # Waiting, it already keeps every unit off the live database (preview_checks.sh).
-        assert (y.r / ".git" / "live-db.release" / y.spec("t-m2", "pid").strip()).exists()
+        # Waiting, it keeps nothing off the live database: its mark there
+        # held rel-m319's own runs on brickworks.diy while it waited for
+        # rel-m319 (2026-11-23). It is made once t-m1 serves.
+        mark = y.r / ".git" / "live-db.release" / y.spec("t-m2", "pid").strip()
+        assert not mark.exists()
         waiting = y.train("status").stdout
         assert waiting.startswith("live: brickworks.diy serves 0000000\n"), waiting
         assert "t-m1: shipping, begun by hand at " in waiting, waiting
@@ -452,9 +456,11 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         (spec / "units").write_text("unitA unitB unitC\n")
         y.serves("t-m1")
 
-        # The battery's last check is held: status mid-ship.
+        # The battery's last check is held: status mid-ship, and until its
+        # battery is done no unit's battery begins (preview_checks.sh).
         y.until(lambda: (y.ro / "t-m2_pv.out").exists()
                 and (y.ro / "t-m2_pv.out").read_text().count(" exit=") == 3)
+        assert mark.exists()
         sha = y.spec("t-m2", "sha")
         assert sha == y.git(y.wt / "t-m2", "rev-parse", "--short", "HEAD")
         shipping = y.train("status", "t-m2").stdout
@@ -988,17 +994,30 @@ def test_the_web_lane_is_refused_where_an_app_file_differs_and_its_merge_is_chec
 
 def test_a_check_that_changes_what_is_live_never_runs_on_brickworks_diy(tmp_path):
     """console flipped the real beta's switch there until b66e9044a, and
-    console3's Run now runs the real crons there: failing on a preview, such
-    a check holds the release, never run on brickworks.diy to be shipped past."""
+    console3's Run now runs the real crons there: such a check is never run
+    on brickworks.diy. Failing on a preview, it holds the release at once,
+    with no run there of the rest, and only the lead's word (--accept)
+    ships past it (fastship, 2026-11-23: rel-m319 waited 45 minutes there
+    for a check that could not run)."""
     y = Yard(tmp_path)
     try:
+        assert y.train("stage", "t-m1", "stage2", "--checks", "console people",
+                       STUB_FAILS="console people", STUB_STALE_FAILS="console people").returncode == 0
+        y.until(lambda: y.spec("t-m1", "result"))
+        assert y.spec("t-m1", "result").endswith(
+            "held, failed on the preview: console, which cannot run on brickworks.diy: the lead judges it "
+            "(train.sh reship t-m1 --accept NAME \"why\")"), y.logs()
+        assert not (y.ro / "t-m1_stale_args").exists(), y.logs()
+        y.unmoved()
         assert y.train("stage", "t-m2", "stage2", "--checks", "console people", "--accept", "console", "fails there too",
                        STUB_FAILS="console people", STUB_STALE_FAILS="console people").returncode == 0
         y.until(lambda: y.spec("t-m2", "result"))
         assert y.spec("t-m2", "result").endswith(
-            "held, failed on the preview: console people (failing on brickworks.diy too: people)"), y.logs()
+            "held, failed on the preview: people (failing on brickworks.diy too: people)"), y.logs()
         assert y.text("t-m2_stale_args").split()[2:] == ["people"], y.logs()
-        assert "SHIP: never run on brickworks.diy, as each changes what is live there: console" in y.text("t-m2_lead.out")
+        lead = y.text("t-m2_lead.out")
+        assert "SHIP: never run on brickworks.diy, as each changes what is live there or its script refuses it: console" in lead
+        assert "SHIP: ships past console, which cannot run on brickworks.diy, as the lead judged: fails there too" in lead
         assert "not run there: console" in y.train("status", "t-m2").stdout
         y.unmoved()
     finally:
@@ -1997,5 +2016,71 @@ def test_a_rehearsal_runs_every_gate_and_stops_before_main_moves(tmp_path):
         assert not any(a.startswith("--promote=") for a in y.text("deploy_args").split()), y.text("deploy_args")
         assert not (y.wt / "t-m2").exists()
         assert "beams" in y.text("probes_run").split(), y.logs()
+    finally:
+        y.stop()
+
+
+def test_a_check_that_cannot_run_on_the_live_site_goes_to_the_leads_judgement_at_once(tmp_path):
+    """rel-m319's designer_period refuses brickworks.diy (exit 2), and its
+    run there queued 45 minutes to learn so (2026-11-23). One whose script
+    refuses the live site, given the check's options, holds the release at
+    once with no run there, and ships past only as the lead judges it."""
+    y = Yard(tmp_path)
+    try:
+        y.git(y.r, "worktree", "add", "-q", str(y.wt / "stage2"), "stage2")
+        (y.wt / "stage2" / "tools/web").mkdir(parents=True)
+        (y.wt / "stage2" / "tools/web/keys_flow.mjs").write_text(
+            "const site = process.argv[2];\n"
+            "if (/^(?:www\\.)?brickworks\\.diy$/.test(new URL(site).host)) {\n"
+            "  console.error(\"keys_flow: never on brickworks.diy; give a preview\");\n"
+            "  process.exit(2);\n}\n")
+        # Refused only with an option the check does not pass: it runs there.
+        (y.wt / "stage2" / "tools/web/people_flow.mjs").write_text(
+            "if (/brickworks\\.diy/.test(site) && args[\"signed-in\"]) {\n"
+            "  console.error(\"people_flow: --signed-in never on brickworks.diy\");\n  process.exit(2);\n}\n")
+        y.git(y.wt / "stage2", "add", "tools/web")
+        y.git(y.wt / "stage2", "commit", "-q", "-m", "two checks that know the live site")
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "io people keys", STUB_FAILS="people keys")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == (
+            "not live: ship.sh ended exit 1: SHIP: held, failed on the preview: keys, which cannot run on "
+            "brickworks.diy: the lead judges it (train.sh reship t-m2 --accept NAME \"why\")"), y.logs()
+        assert not (y.ro / "t-m2_stale_args").exists(), "nothing ran on the live site"
+        assert y.text("t-m2_stale.never").split() == ["keys"]
+        # The lead's word ships past it, with the fix to people.
+        again = y.train("reship", "t-m2", "--accept", "keys", "checked by hand on the preview", "io",
+                        STUB_FAILS="keys")
+        assert again.returncode == 0, again.stdout + again.stderr
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        accepted = y.text("t-m2_accepted")
+        assert "keys: checked by hand on the preview" in accepted and "there: never run (the lead judged it)" in accepted, accepted
+    finally:
+        y.stop()
+
+
+def test_the_python_suites_failures_the_lead_judged_ship_from_the_spec(tmp_path):
+    """SHIP_GATE_OK (rel-m321 held 40 minutes on 7 known failures), kept in
+    the train's spec (--gate-ok, TAG.train/gate_ok) for its reships too:
+    the gate beside the ship fails only in those files, and it ships."""
+    y = Yard(tmp_path)
+    try:
+        said = "  FAIL  tests/test_known.py::test_a: a picture yet to be made"
+        assert y.train("stage", "t-m2", "stage2", "--checks", "io", "--probes", "slow_one",
+                       "--gate-ok", "tests/test_known.py", STUB_CI_FAIL="1", STUB_CI_SAYS=said).returncode == 0
+        assert y.spec("t-m2", "gate_ok") == "tests/test_known.py"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert "SHIP: ships past the Python suite's judged failures (SHIP_GATE_OK): tests/test_known.py" \
+            in y.text("t-m2_lead.out"), y.text("t-m2_lead.out")
+        # One more failure, in a file not judged: held.
+        more = said + "\n  FAIL  tests/test_new.py::test_b: new"
+        assert y.train("stage", "t-m3", "unitB", "--checks", "io", "--probes", "slow_one",
+                       "--gate-ok", "tests/test_known.py", STUB_CI_FAIL="1", STUB_CI_SAYS=more).returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result").startswith(
+            "not live: ship.sh ended exit 1: SHIP: held, the version, the Python suite or a shell script"), y.logs()
+        assert y.spec("t-m3", "result").endswith(": not judged: tests/test_new.py"), y.spec("t-m3", "result")
     finally:
         y.stop()

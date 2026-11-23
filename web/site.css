@@ -1666,6 +1666,18 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	.beta-bar .cta.small { padding-inline: 10px; }
 	.beta-bar .icon-btn.small { min-width: 40px; }
 }
+/* From 600 px it is one line of 32 px, the same parts made smaller, so a
+   visitor who never presses its × still has the gallery's first row of
+   models on a 1280 x 900 first screen (the lead, 2026-11-23). A phone
+   keeps 48 px and its finger-sized controls. */
+@media (width >= 600px) {
+	:root { --betabar-row: 32px; }
+	.beta-bar > .badge { min-height: 22px; padding: 0 10px; line-height: 20px; }
+	.beta-bar .cta.small { min-height: 24px; padding: 0 10px; font-size: var(--t-tiny); line-height: 22px; }
+	.beta-bar .tester { min-height: 24px; padding: 0 8px; font-size: var(--t-tiny); }
+	.beta-bar .tester .icon { width: 14px; height: 14px; }
+	.beta-bar .icon-btn.small { min-width: 24px; min-height: 24px; }
+}
 .beta-bar.tight > .badge { display: none; }
 
 /* The site's notice (web/notice.js, console3): what the owner set in the
@@ -2166,7 +2178,10 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .list-aside > section { min-width: 0; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); }
 .list-aside h2 { margin: 0 0 var(--s-3); }
 @media (width >= 900px) {
-	.list-layout:has(> .list-aside:not([hidden])) { grid-template-columns: minmax(0, 1fr) 320px; }
+	/* The aside's column kept while it has nothing to show (the feed with
+	   no designers to suggest), so the list is one width on every list
+	   page and in every state: two tabs of one area never differ. */
+	.list-layout:has(> .list-aside) { grid-template-columns: minmax(0, 1fr) 320px; }
 	.list-aside { position: sticky; top: calc(var(--head-h) + var(--s-5)); }
 }
 

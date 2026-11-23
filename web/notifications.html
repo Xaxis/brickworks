@@ -95,7 +95,7 @@
 			<div class="page-head">
 				<div class="page-title">
 					<h1>Notifications</h1>
-					<p class="lede">Comments, builds, remixes and likes on your models, replies, challenges and levels. <a href="/settings#kinds-part">Choose what you hear of, and where</a>.</p>
+					<p class="lede">Comments, builds, remixes and likes on your models, replies, challenges and levels.</p>
 				</div>
 				<div class="page-acts">
 					<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
@@ -136,6 +136,7 @@
 					</div>
 					<p class="state" id="not-yet" hidden>Notifications are not open on Brickworks yet.</p>
 					<ol class="list-rows notices" id="groups" aria-label="Notifications"></ol>
+					<p class="state" id="no-kind" hidden>Nothing of this kind yet.</p>
 					<div class="state" id="empty" hidden>
 						<p>Nothing yet. When somebody comments on one of your models, posts a photo of
 							their build of it, remixes it or likes it, or replies to your comment, it is
@@ -150,6 +151,28 @@
 					<p class="said" id="said" role="status"></p>
 				</section>
 			</div>
+			<!-- Beside the list as the feed's designers are beside its posts, one
+			     column on both tabs (listkit, 2026-11-23): which kinds the list shows,
+			     your achievements as a card, and where to choose what you hear of. -->
+			<aside class="list-aside notices-aside" aria-label="Your notifications">
+				<section class="kinds" id="kinds" aria-labelledby="kinds-title" hidden>
+					<h2 id="kinds-title">Show</h2>
+					<ul class="kind-list">
+						<li><a href="?kind=all" data-kind="all" aria-current="true">All <span class="n" hidden></span></a></li>
+						<li><a href="?kind=comments" data-kind="comments">Comments <span class="n" hidden></span></a></li>
+						<li><a href="?kind=remixes" data-kind="remixes">Remixes <span class="n" hidden></span></a></li>
+						<li><a href="?kind=builds" data-kind="builds">Builds <span class="n" hidden></span></a></li>
+						<li><a href="?kind=mentions" data-kind="mentions">Mentions <span class="n" hidden></span></a></li>
+						<li><a href="?kind=achievements" data-kind="achievements">Achievements <span class="n" hidden></span></a></li>
+					</ul>
+				</section>
+				<section class="achieved" id="achieved" hidden>
+					<ol class="list-rows notices" id="achievements" aria-label="Your achievements"></ol>
+				</section>
+				<section class="hear">
+					<p><a href="/settings#kinds-part">Choose what you hear of, and where</a></p>
+				</section>
+			</aside>
 		</div>
 	</div>
 </main>

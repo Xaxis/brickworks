@@ -980,7 +980,16 @@ plan with Claude as the client.
   Designed with the assistant or Made with Brickify, shown (no Built by
   hand, which would tell the rest apart); Made's With the assistant and
   `tag=ai-designed` list only shown models (gallery_models, and the API
-  drops a row not shown), Hand-built every other. A challenge's track is
+  drops a row not shown), Hand-built every other; With the assistant is
+  offered in Made only while a public model is shown (`madesOffered`,
+  asked of gallery_models, kept 5 minutes apart for test models), so it
+  never leads to an empty list; `gallery_flow` checks it offered over the
+  stand-in crowd's seeded shown tenth and lists none of the rest. A search
+  never finds a model by those two tags unless shown
+  (`supabase/search_shown.sql`: directory_models and gallery_models recheck
+  a hidden row's words without them; dry run `tools/search_shown_try.sql`,
+  "ai-designed" finds the shown try model alone, 19 hidden live models
+  before, 0 after; `sql_compare` 17/17). A challenge's track is
   the entrant's own and unchanged. `node tools/web/made_shown_check.mjs`
   (stand-in, no browser: HouseMod01 tagged and not shown, HouseMod02
   shown; 5 FAIL on base 919471139). The owner's choice on the model page
@@ -1916,8 +1925,11 @@ plan with Claude as the client.
   run at the end of `design_flow`, so by `[design]`; `--no-layout` leaves
   it out): every list, signed-in and words page on the one head
   (`.page-hero` > `.page-head`: h1 and one lede left, `.page-acts` right,
-  `.tabs` on the band's foot), list pages on `.list-layout` (760 px list,
-  320 px aside at the right edge) with `.list-row` rows, `.state` empty
+  `.tabs` on the band's foot), list pages on `.list-layout` (the list
+  from the left edge, a 320 px aside on every list page, its column kept
+  while empty, so the list is the feed's width on every list page; and
+  pages sharing a tab bar, the head's tabs or Talk's boards, with their
+  main column at one x and width, within a pixel) with `.list-row` rows, `.state` empty
   and `.pager` more: /feed, /notifications, /talk, /talk/b/<board>,
   /talk/new, /lists, the gallery's five addresses and its search,
   /settings, /faq, the legal pages, /takedown, /changelog, /compare,
@@ -1928,7 +1940,9 @@ plan with Claude as the client.
   the head's top, 16 on a phone) as well as to the feed's. On rel-m323
   (630700306) it fails /notifications four ways at 1280: its h1 111 px
   under the head's top, the head padded 72, the h1 outside a
-  .page-title, its list not the site's. Talk's lists and its new thread
+  .page-title, its list not the site's; on 237645b19, before the
+  notifications' aside, it fails /notifications' list at 1216 px against
+  the feed's 864. Talk's lists and its new thread
   are drawn here by `design_stand_in.mjs` (three threads, the boards'
   counts).
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
@@ -2492,8 +2506,12 @@ plan with Claude as the client.
 - `first steps after a first sign-in` (`web/first-steps.js`, docs/SOCIAL.md
   U10): `web/account.js` `askAgeIfAsked`, once the age question is
   answered 13 or over (a first sign-in, from the dialog or a page that asks
-  on load), imports it and opens `dialog.first-steps` before the page goes
-  on: `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
+  on load), imports it and opens `dialog.first-steps` at once from a page's
+  own Sign in; signed in to do something (a like, a follow: `pending`),
+  what was pressed is done first and First steps are offered after it in a
+  snackbar (`offerFirstSteps`, kept in localStorage
+  `brickworks.first_steps_due` until offered, also on the next page if that
+  one went; checkdrift 2026-11-23): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
   name until typed in, the `.face-row` avatar from it, `#first-make` posts
   `?op=profile`; left out with a profile already), `kinds` (the gallery's
   kinds from `?op=list&sort=top` as `button.pill[data-kind]`,
@@ -3175,7 +3193,11 @@ plan with Claude as the client.
   place, `GET op=comments` for the version, `POST op=comment`) and Follow
   (`web/follow.js` `followButton`, a visitor's drawn without asking)
   each ask a visitor to sign in on the spot (`account.js` `askToSignIn`)
-  and go on after; Share (`navigator.share`, else the link copied); 3D
+  and go on after, a new person's First steps offered only once it is
+  done (a snackbar), the like put on the stream as drawn again for them
+  (`signedInDraw`); the Following tab waits on a Follow still being sent
+  (`follow.js` `followsSettled`; checkdrift 2026-11-23, homefeed_check
+  steps 8 and 9); Share (`navigator.share`, else the link copied); 3D
   (`data-feed-turn`, `web/viewer3d.js` `open3d({spin: true})` in the
   picture's place on a 0.7 s hover with a fine pointer or a tap); Open in
   the studio `/app?view=<id>`, Remix `/app?copy=<id>`, Build it
@@ -7470,8 +7492,9 @@ Brickworks to follow and six models castles first, Following, See your
 feed: 7 posts by Brickworks with their cards, no Latest
 (`2_{profile,kinds,start,followed,feed}-*.png`); Skip, Skip, Follow, See
 your feed: 4 taps to a filled feed (`3_feed-390-*.png`); signed in from
-Follow on `/u/brickworks`: First steps end with Done only, and the follow
-goes on after (`4_start_pending-*.png`). It ends "first steps: a first
+Follow on `/u/brickworks`: the follow goes first with no dialog over it,
+then First steps from the snackbar end with Done only
+(`4_start_pending-*.png`). It ends "first steps: a first
 visit meets a designer to follow, a first sign-in makes a profile and
 fills the feed: ok". With `--url`, throwaway Ada (a listed castle, one
 build) is suggested at 390 and 1280; Bob signs in through the dialog,
@@ -9644,7 +9667,12 @@ PROBE_SIZE=390x844 tools/probe.sh studio_start_probe -- --pictures=shots/studio_
 
 It passes when it ends "the studio's first screen: every check passed": the
 four saved models newest first, the week's build, three came back (one on a
-part) and six from the gallery; the pin pressed selects its part within a
+part) and six from the gallery; every Continue tile showing its model (the
+three with no stored picture drawn from their files, `StudioStart._drawing_of`,
+kept in `user://thumbnails/` by the file's MD5) and no letter; each came-back
+row led by whoever it was (their picture, or their initial on their colour,
+`StudioStart.tone_of` = `web/card.js avatarTone`); × at the card's top right
+and New model a button's height, the title under them on a phone; the pin pressed selects its part within a
 second; a pin written meanwhile shows within a minute unasked
 (`Main.PINS_EVERY`); Escape; a gallery model opened as a copy. Then in a
 browser, with two throwaway accounts, on a local relay over an export or a

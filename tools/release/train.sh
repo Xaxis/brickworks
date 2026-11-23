@@ -3,7 +3,7 @@
 #
 #   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..." | --probes all | --probes none --why "..."]
 #                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]... [--web | --full]
-#                             [--every-check] [--plan]
+#                             [--every-check] [--gate-ok "tests/a.py ..."] [--plan]
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
 #   train.sh reship TAG [--probes "..."] [--accept CHECK "REASON"]... [CHECK...]
@@ -130,7 +130,7 @@ suite_names() { sed -E 's/(^|[[:space:]])#.*//' | awk 'NF { split($1, p, ":"); p
 
 stage() {
   [ $# -ge 2 ] || usage
-  local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid
+  local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid gate_ok=""
   local lane="" plan="" every=""
   shift 2
   case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
@@ -144,7 +144,7 @@ stage() {
     [ $# -ge 2 ] || { echo "train: $1 wants a value"; exit 2; }
     case "$1" in
       --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2; named_probes=1 ;;
-      --why) said=${2//[$'\t\n']/ } ;; --units) units=$2 ;; --title) title=$2 ;;
+      --why) said=${2//[$'\t\n']/ } ;; --units) units=$2 ;; --title) title=$2 ;; --gate-ok) gate_ok=$2 ;;
       --accept) [ $# -ge 3 ] && [ -n "$3" ] || { echo "train: --accept wants a check and the reason"; exit 2; }
         accepts+="$2"$'\t'"${3//[$'\t\n']/ }"$'\n'; shift ;;
       *) echo "train: no option $1"; exit 2 ;;
@@ -321,6 +321,7 @@ stage() {
   # What the lead named, kept through lean_now's choice once it is merged,
   # and whether it carries proof over (every: --every-check), and whether
   # the probes were named (lean_now leaves those as they are).
+  echo "$gate_ok" > "$SPEC/gate_ok"
   echo "$named_checks" > "$SPEC/named"; echo "${every:+every}" > "$SPEC/lean"; echo "$checks" > "$SPEC/checks.planned"
   if [ -n "$probes_by_lean" ] && [ "${said:0:20}" != "none: the web lane, " ]; then echo lean > "$SPEC/probes.lean"; else echo named > "$SPEC/probes.lean"; fi
   echo "$said" > "$SPEC/probes.why"
@@ -332,7 +333,7 @@ stage() {
   # the release staged after it that this one had ended (m178 held on
   # m177's, 2026-10-26). So would what it shipped past and how its failures
   # fared on brickworks.diy.
-  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing} "$RO/${tag}_ab.asked" \
+  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing,never} "$RO/${tag}_ab.asked" \
     "$RO/${tag}_export.sha"
   for log in lead train; do
     [ -e "$RO/${tag}_$log.out" ] && mv -f "$RO/${tag}_$log.out" "$RO/${tag}_$log.prev.out"
@@ -392,7 +393,7 @@ release() {
 
 reship() {
   [ $# -ge 1 ] || usage
-  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails accepts="" why
+  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails accepts="" why there
   shift
   local SPEC=$RO/$tag.train
   while [ $# -gt 0 ]; do
@@ -421,6 +422,9 @@ reship() {
     [ -n "$n" ] || continue
     passed_here "$tag" "$n" && { echo "train: $n passed on $tag's preview: there is nothing to ship past"; exit 1; }
     fails_there "$tag" "$n" && continue
+    # One that cannot run there (ship.sh's TAG_stale.never) is the lead's
+    # judgement alone.
+    grep -qx "$n" "$RO/${tag}_stale.never" 2>/dev/null && continue
     f=$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" 2>/dev/null | cut -c1-140)
     case "$f" in
       *" exit=0 "*) echo "train: $n passes on $SITE ($f): its failure is $tag's, not one to ship past" ;;
@@ -439,8 +443,10 @@ reship() {
       grep -v "^$n"$'\t' "$SPEC/accept" > "$SPEC/accept.$$" 2>/dev/null; mv -f "$SPEC/accept.$$" "$SPEC/accept"
       printf '%s\t%s\n' "$n" "$why" >> "$SPEC/accept"
       grep -q "^$n: " "$RO/${tag}_accepted" 2>/dev/null && continue
+      there=$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" 2>/dev/null | cut -c1-200)
+      grep -qx "$n" "$RO/${tag}_stale.never" 2>/dev/null && there="never run (the lead judged it)"
       printf '%s: %s\n  here: %s\n  there: %s\n' "$n" "$why" "$(failed_here "$tag" "$n" | cut -c1-200)" \
-        "$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" | cut -c1-200)" >> "$RO/${tag}_accepted"
+        "$there" >> "$RO/${tag}_accepted"
     done <<< "$accepts"
     remerge || { echo "train: could not write $W's merge message again"; exit 1; }
     echo "train: $tag's merge now says: $(git -C "$W" log -1 --format=%B "$(merge_of)" | sed -n '3,$p' | paste -sd' ')"
@@ -744,16 +750,8 @@ run() {
   # one not running, and stop.
   echo $$ > "$SPEC/pid.$$" && mv -f "$SPEC/pid.$$" "$SPEC/pid"
   rm -f "$SPEC/probes.pid"
-  # Until its battery on the preview is done no unit's battery begins a
-  # check on the live database (preview_checks.sh): a unit's together run,
-  # taken while the release merged and probed, held rel-m233's oauth 33
-  # minutes, and a lock cannot be taken back from a run already in it
-  # (2026-10-31). A file named for its pid says so, which ship.sh takes
-  # away once that battery is done (SHIP_LIVE_MARK); once the pid is gone,
-  # or names another process (the start time it holds, live_db_lib.sh), the
-  # file says nothing.
   LIVE_REL="$(git -C "$R" rev-parse --path-format=absolute --git-common-dir)/live-db.release"
-  mkdir -p "$LIVE_REL" && awk '{ sub(/.*\) /, ""); print $20 }' "/proc/$$/stat" > "$LIVE_REL/$$"
+  TRAIN_PID=$$
   # Killed (kill -- -PID ends its work too), it says so and stops the
   # probes, which run in a group of their own: no result would leave the
   # release staged after it waiting until its deadline. nohup has HUP
@@ -767,6 +765,22 @@ run() {
   WORK=$!
   trap killed TERM INT
   wait "$WORK"
+}
+
+# Until its battery on the preview is done no unit's battery begins a
+# check on the live database (preview_checks.sh): a unit's together run,
+# taken while the release merged and probed, held rel-m233's oauth 33
+# minutes, and a lock cannot be taken back from a run already in it
+# (2026-10-31). A file named for the train's pid says so, which ship.sh
+# takes away once that battery is done (SHIP_LIVE_MARK); once the pid is
+# gone, or names another process (the start time it holds,
+# live_db_lib.sh), the file says nothing. Made once the release before has
+# served and no hold stops it, never while waiting: rel-m320's mark, made as it began to
+# wait, kept rel-m319's runs on brickworks.diy (a unit's place in line)
+# behind it while rel-m320 waited for rel-m319 to serve, until the lead
+# moved it aside (2026-11-23).
+mark_live_db() {
+  mkdir -p "$LIVE_REL" && awk '{ sub(/.*\) /, ""); print $20 }' "/proc/$TRAIN_PID/stat" > "$LIVE_REL/$TRAIN_PID"
 }
 
 # Stopped by hand: its work ended first, so nothing of it writes after this.
@@ -824,6 +838,7 @@ work() {
   if [ -e "$SPEC/reship" ]; then
     # Its merge is made and the release before it served (reship).
     reshipping=1
+    mark_live_db
     BRANCH=$(cat "$SPEC/branch"); TIP=$(cat "$SPEC/tip")
     step "reships $W at $(git -C "$W" rev-parse --short HEAD)"
     tree_ok
@@ -864,8 +879,9 @@ work() {
   PROBES=$!
   echo "$PROBES" > "$SPEC/probes.pid"
   step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
-  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$$" \
+  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$TRAIN_PID" \
     ${TRAIN_REHEARSE:+SHIP_REHEARSE=1} SHIP_T0="$TRAIN_T0" \
+    SHIP_GATE_OK="${SHIP_GATE_OK:-} $(cat "$SPEC/gate_ok" 2>/dev/null)" \
     SHIP_STALE=1 SHIP_ACCEPT="$SPEC/accept" ${reshipping:+SHIP_REUSE=1} "${ship_export[@]}" \
     bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
   ship=$!
@@ -932,6 +948,7 @@ merged() {
   done
 
   unheld "the merge"
+  mark_live_db
   base=${TRAIN_BASE:-origin/main}
   timeout 300 git -C "$R" fetch -q origin 2>&1 | tail -1
   [ -e "$W" ] && stop "$W exists"

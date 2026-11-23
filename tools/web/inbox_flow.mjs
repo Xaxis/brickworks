@@ -149,7 +149,7 @@ const gridDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#
 const on = (grid, channel) => grid.filter((row) => row.boxes.find((box) => box.channel === channel)?.on).map((row) => row.kind);
 
 /// /notifications as drawn: each group's key, model, name and rows' kinds.
-const listDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#groups .notice")].map((li) => ({
+const listDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("ol.notices .notice")].map((li) => ({
   key: li.dataset.key || "", model: li.dataset.model || "", name: li.querySelector(".row-title a, .row-title")?.textContent.trim() || "",
   kinds: [...li.querySelectorAll(".lines li")].map((row) => row.dataset.kind), done: Boolean(li.querySelector("[data-done]")),
   mute: Boolean(li.querySelector("[data-mute]")) })));

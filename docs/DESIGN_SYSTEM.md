@@ -530,12 +530,17 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
     boards are sitebold's tiles, too large for the head's line of tabs,
     so they open its body over the threads.
   - **The list**: `.page-body > .list-layout`, the whole page's width:
-    `.list-main` from the page's left edge to its right, or from 900 px to
-    its `.list-aside` (320 px, 32 px from it, sticky, each `section` in it
-    a panel) ending at the page's right edge. No column of its own width
-    with empty sides (the lead, 2026-11-23); a row's words keep a 75ch
-    measure inside it. Under 900 px, the site's breakpoint, the aside
-    follows the list.
+    `.list-main` from the page's left edge, and from 900 px its
+    `.list-aside` (320 px, 32 px from it, sticky, each `section` in it a
+    panel) ending at the page's right edge. Every list page has the aside,
+    and its column is kept while it has nothing to show, so the list is
+    one width on every list page and in every state: two tabs of one area
+    (the feed and the notifications) never differ, the owner's example.
+    Pages that share a tab bar (the head's tabs, or Talk's boards) have
+    their main column at one x and one width, which layout_audit holds.
+    No column of its own width with empty sides (the lead, 2026-11-23); a
+    row's words keep a 75ch measure inside it. Under 900 px, the site's
+    breakpoint, the aside follows the list.
   - **A row**: `ol.list-rows > li.list-row`: `.row-pic` (a 4:3 picture, 96
     px, 72 on a phone) or `.row-face` (an avatar), `.row-body`
     (`.row-title`, `.row-said`, `.row-meta`: who and when), at most one
@@ -1147,6 +1152,13 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   in its `.pic.challenge`. Not opened yet: `.unread`, edged in
   `--accent-edge` with a `.dot`. `/notifications` and `/feed` share one
   `.tabs` row on the band's foot, each tab's count in `.n`, hidden at none.
+  Its aside (listkit, 2026-11-23), as the feed's designers are beside its
+  posts: Show, the list's kinds (All, Comments, Remixes, Builds, Mentions,
+  Achievements, `?kind=`) a line each with how many groups have it, the
+  one shown lit, filtering the rows in place; "Your achievements" as a
+  card, the group's row without its frame and its newest two levels (in
+  the list, every level, while Show says Achievements); and where to
+  choose what you hear of.
 - **The feed** (`/feed`, docs/SOCIAL.md U9): the one head and list
   layout, its posts `ol.list-rows.feed-list` of `.list-row.feed-row`: the
   avatar as `.row-face`, `.what` the sentence with who and the thing's

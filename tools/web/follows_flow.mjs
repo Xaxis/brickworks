@@ -377,7 +377,7 @@ try {
   await bobPage.waitForURL(`**/${where}`, { timeout: 20000 });
   if (split) {
     await until(bobPage, () => document.documentElement.dataset.notifications === "ready", "his notifications");
-    rows = await bobPage.evaluate(() => [...document.querySelectorAll("#groups .notice .lines li")].map((li) => ({
+    rows = await bobPage.evaluate(() => [...document.querySelectorAll("ol.notices .notice .lines li")].map((li) => ({
       kind: li.dataset.kind, text: (li.querySelector(".what")?.textContent || "").replace(/\s+/g, " ").trim(),
       href: li.querySelector("a")?.getAttribute("href") || "", new: /New/.test(li.textContent),
       model: li.closest(".notice").dataset.model })));

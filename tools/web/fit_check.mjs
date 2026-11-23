@@ -88,7 +88,11 @@ const ONE = ["model_name", "new", "save", "clear", "key_field", "use_key", "part
   "assistant_rail"];
 // A phone's own bars (PhoneShell): the mark, the name, Undo and Redo along
 // the top, the parts and More, where every command is, along the foot; and
-// the assistant's button once it is on.
+// the assistant's button once it is on. Where the top bar has no room for
+// Redo (the assistant's button and Menu on it, at 390 points) Redo is in
+// More's Edit alone (PhoneShell._share_top): missing from the bar it is
+// taken as moved only when the app says More holds it (the phone's state,
+// more_redo), never assumed. rel-m324 stopped on "phone_redo not shown".
 const PHONE = ["app_menu", "phone_name", "phone_undo", "phone_redo", "phone_parts", "phone_more",
   "phone_assistant"];
 // The assistant's, asked for only once it is on.
@@ -262,6 +266,7 @@ async function fits(page, label, wanted, share, width, height) {
     where = await read();
   }
   const outside = [];
+  const moved = [];
   // Up, but signed out: the sign-in screen is all there is.
   if (where.signin_email && !where.save) outside.push("the sign-in screen is up (is .env sourced?)");
   for (const name of wanted) {
@@ -271,6 +276,16 @@ async function fits(page, label, wanted, share, width, height) {
       if (name === "clear" && !("clear" in where)) continue;
       // The rails are published from 2026-10-11, both or neither.
       if (RAILS.includes(name) && !RAILS.some((rail) => rail in where)) continue;
+      if (name === "phone_redo" && isPhone(width, height)) {
+        const told = await askApp(page, "Phone");
+        const phone = (told && told.phone) || {};
+        if (phone.more_redo === true && phone.redo_on_top === false) {
+          moved.push("phone_redo in More's Edit");
+          continue;
+        }
+        outside.push(`phone_redo not shown, nor in More (the app says more_redo ${phone.more_redo})`);
+        continue;
+      }
       outside.push(`${name} not shown`);
       continue;
     }
@@ -309,7 +324,9 @@ async function fits(page, label, wanted, share, width, height) {
   await page.screenshot({ path: `${out}/${label.split(" ").join("_")}.png`, timeout: 120000 }).catch(() => {});
   const inPage = outside.length === 0;
   const clear = over.length === 0;
-  console.log(`  ${inPage ? "ok  " : "FAIL"}  ${label}: ${inPage ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}`);
+  const asked = wanted.filter((name) => !moved.some((m) => m.startsWith(name + " ")));
+  console.log(`  ${inPage ? "ok  " : "FAIL"}  ${label}: ${inPage ? `every control on the page (${asked.join(", ")}`
+    + `${moved.length ? `; ${moved.join(", ")}` : ""})` : outside.join("; ")}`);
   const said = view ? `model [${view}]${layout ? `, ${layout.samples} points, columns ${layout.columns}` : " (from centres)"}` : "";
   const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width`
     + `${isPhone(width, height) ? `, ${Math.round((100 * view[3]) / height)}% of the height` : ""}` : "";

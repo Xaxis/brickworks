@@ -8,11 +8,15 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      360 px of the top (the week's pick before the month's challenge),
+//      360 px of the top under the beta's strip (48 px over the header
+//      on a phone while the beta is open, pagebar), the week's pick
+//      before the month's challenge,
 //      one card to a row (the owner's, 2026-10-29), three cards' names on
 //      the first two screens; at 1280 the week's pick whole across the first
 //      screen, its picture beside its words, and under it the cards four
-//      to a row (the owner's four on a desktop, 2026-10-29), the first row's pictures begun on that screen (sitebold,
+//      to a row (the owner's four on a desktop, 2026-10-29), the first row's
+//      pictures 60 px at least on that screen with the beta's strip shown
+//      over the header, the strip 32 px at most (sitebold and the lead,
 //      2026-11-23: four whole small cards before it), the cards marked
 //      once (no row of marks, none that nearly every card carries, no
 //      card ending in a row that holds only its like); Top the tab shown,
@@ -170,6 +174,11 @@ const drawn = (page) => page.evaluate(() => {
   return {
     address: location.pathname + location.search,
     firstPicture: Math.round(firstPicture + scrollY),
+    // The beta's strip over the header while the beta is open (pagebar,
+    // web/site.css :root[data-betabar]): the room the page holds for it at
+    // its top, which scrolls away and its × takes off; 0 once it is gone.
+    strip: document.documentElement.hasAttribute("data-betabar")
+      ? Math.round(parseFloat(getComputedStyle(document.body).paddingTop) || 0) : 0,
     columns: Math.max(0, ...Object.values(rows)),
     // The marks shown: the most rows of them on a card, and the share of
     // the cards that show each; cards whose numbers' row holds only a button.
@@ -239,18 +248,22 @@ try {
         // the search on its own, 56 px lower: rel-m318's first picture at
         // 322 px, rel-m319's at 378. The month's challenge over the pick put
         // it at 425 (sitepolish); the pick comes first on a phone now.
-        check(seen.firstPicture <= 360 && seen.columns === 1 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (360 at most), ${seen.columns} to a row, nothing sideways`);
+        // Under the beta's strip, which pagebar put above the header (48 px)
+        // in place of a bar over the page: the 360 is the page's own.
+        check(seen.firstPicture - seen.strip <= 360 && seen.columns === 1 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px, ${seen.firstPicture - seen.strip} under the beta's strip `
+          + `(${seen.strip} px; 360 at most), ${seen.columns} to a row, nothing sideways`);
         // One to a row, a card is half a phone's screen: the pick's name and
         // two cards' (four at two a row before 2026-11-23).
         check(seen.names.length >= 3 && seen.names[2] <= 2 * 844,
           `390 ${theme}: three cards' names on the first two screens, the third's ending at ${seen.names[2]} px (${2 * 844} at most)`);
       } else {
         const pick = seen.pickFeature;
-        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin < 900 - 60 && !seen.sideways,
+        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin <= 900 - 60 && seen.strip <= 32 && !seen.sideways,
           `1280 ${theme}: the week's pick whole on the first screen (${pick ? `${pick.top} to ${pick.bottom} px, ${pick.width} wide, `
           + `${pick.beside ? "its words beside its picture" : "its words not beside its picture"}` : "none"}), the cards under it `
-          + `${seen.columns} to a row from ${seen.cardsBegin} px (60 px of them at least on the screen), nothing sideways`);
+          + `${seen.columns} to a row from ${seen.cardsBegin} px (60 px of them at least on the screen, the beta's strip of ${seen.strip} px `
+          + `over the header, 32 at most), nothing sideways`);
       }
       const common = Object.entries(seen.markShare).filter(([, share]) => share >= 0.9).map(([mark]) => mark);
       check(seen.markRows <= 1 && !common.length && seen.lonelyLike === 0,
@@ -300,16 +313,25 @@ try {
     await page.click('#kinds [data-kind=""]');
     await until(page, () => !location.search.includes("kind=") && document.documentElement.dataset.gallery === "ready");
     await page.click("#filters summary");
+    // Offered only while a public model's owner chose to say so (api/share.js
+    // madesOffered): here the stand-in crowd's every tenth, seeded shown.
+    const offered = await page.evaluate(() => [...document.querySelectorAll("#made option")].map((one) => one.value).join(","));
+    check(offered === ",hand,assistant", `Made offers "${offered}": With the assistant, as a shown model is public`);
     await page.selectOption("#made", "assistant");
     await until(page, () => location.search.includes("made=assistant") && document.documentElement.dataset.gallery === "ready");
     const made = await page.evaluate(() => {
       const cards = [...document.querySelectorAll("#models .model")];
       // The list is the filter's; no card says how it was made (its own page does).
       return { n: cards.length, saying: cards.filter((el) => el.dataset.made || el.querySelector(".marks .pill.made")).length,
-        said: document.getElementById("filters-said").textContent };
+        said: document.getElementById("filters-said").textContent,
+        ids: cards.map((el) => el.dataset.id || el.querySelector("a[href^='/m/']")?.getAttribute("href")?.slice(3) || "") };
     });
-    check(made.n > 0 && made.saying === 0 && made.said === "1",
-      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card; Filters says ${made.said} on`);
+    // Only the shown ones: Crowd00001, Crowd00011, ... (every tenth), never
+    // the ai-designed ones in between whose owners said nothing.
+    const quiet = made.ids.filter((id) => /^Crowd\d{5}$/.test(id) && (Number(id.slice(5)) - 1) % 10 !== 0);
+    check(made.n > 0 && made.saying === 0 && made.said === "1" && !quiet.length,
+      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card, ${quiet.length} not shown `
+      + `(${quiet.slice(0, 3).join(", ") || "none"}); Filters says ${made.said} on`);
     await shot(page, "2_made_assistant_1280.png");
     await context.close();
   }

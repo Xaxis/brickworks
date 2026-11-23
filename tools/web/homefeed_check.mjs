@@ -40,11 +40,16 @@
 //      marked as going, then the server's, its count one; on the model);
 //      replies to Ann's thread from its post in the feed (the reply under
 //      the latest, its count, in the thread, the page not left);
-//      follows Ann from it, and Following then shows Ann's model; New puts
-//      Ann's newest first;
+//      follows Ann from it, and Following at once shows Ann's model (it
+//      waits for the follow's answer); New puts Ann's newest first;
 //   9. a visitor types a comment on Ann's post and presses Post, signs in
 //      in the dialog that opens, and the comment goes from the same post,
-//      the page where it was; then Like, signed in, goes at once.
+//      the page where it was; their First steps then offered in a snackbar
+//      over nothing, opening when pressed; then Like, signed in, goes at once.
+//  10. another visitor presses Like on Ann's post, signs in in the dialog
+//      that opens, and is back where they were with the like made, no
+//      dialog over it, First steps offered after it in a snackbar (never
+//      over the like, which waited behind them till 11-23).
 // The accounts, Ann's model and her thread are deleted at the end.
 //
 // Pictures in --out. It passes when it ends "homefeed: all ok".
@@ -459,7 +464,7 @@ try {
     check(`   New: Ann's tower first (${newest})`, newest === modelId);
     await context.close();
 
-    // 9. A visitor signs in from a like and is back where they were.
+    // 9. A visitor signs in from a comment and is back where they were.
     const visitor = await open("/?tests=1", { width: 1280, height: 800 });
     const vp = visitor.page;
     if (await findAnnIn(vp)) {
@@ -477,6 +482,7 @@ try {
       const code = await mintCode(emails.cy, { welcome: false });
       await vp.fill("dialog.sign-in .code-boxes input:first-child", code);
       await until(vp, () => (!document.querySelector("dialog.sign-in") ? true : null), "the sign-in done", 30);
+      await watchOffer(vp);
       if (await until(vp, () => (document.querySelector("dialog.age[open]") ? true : null), null, 8)) {
         await vp.selectOption("#age-month", { index: 1 });
         await vp.selectOption("#age-year", "1990");
@@ -490,16 +496,85 @@ try {
         + `(${(heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)}), still at ${nowY} px (was ${atY})`,
         String(went).includes(`Signed in from here ${rand}`) && (heardIt.body.comments || []).some((one) => one.body === `Signed in from here ${rand}`)
         && Math.abs(nowY - atY) <= 40);
+      await offeredAfter(vp, "the comment", "first-steps-after-comment.png");
       // And now signed in, Like goes at once.
       await vp.click(`${sel} [data-like]`);
       const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true" ? true : null), null, 30, sel);
       check(`   then Like, signed in, made (${Boolean(done)})`, Boolean(done));
-      await shot(vp, "signed-in-from-like.png");
+      await shot(vp, "signed-in-from-comment.png");
     } else {
       check("9. Ann's tower is in a visitor's feed", false);
     }
     await visitor.context.close();
     await deleteAccount(emails.cy).catch(() => {});
+
+    // 10. Another visitor signs in from a like: the like first, nothing
+    // over it, First steps offered after it.
+    const liker = await open("/?tests=1", { width: 1280, height: 800 });
+    const lp = liker.page;
+    const dee = `delivered+bw-feed-dee-${rand}@resend.dev`;
+    if (await findAnnIn(lp)) {
+      await lp.locator(sel).scrollIntoViewIfNeeded();
+      const atY = await lp.evaluate(() => Math.round(scrollY));
+      await lp.click(`${sel} [data-like]`);
+      await lp.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
+      await lp.fill("dialog.sign-in input", dee);
+      await lp.click('dialog.sign-in button[type="submit"]');
+      await until(lp, () => document.querySelector("dialog.sign-in .code-boxes input")?.checkVisibility() || null, "the code's boxes", 30);
+      await lp.fill("dialog.sign-in .code-boxes input:first-child", await mintCode(dee, { welcome: false }));
+      await until(lp, () => (!document.querySelector("dialog.sign-in") ? true : null), "the sign-in done", 30);
+      await watchOffer(lp);
+      if (await until(lp, () => (document.querySelector("dialog.age[open]") ? true : null), null, 8)) {
+        await lp.selectOption("#age-month", { index: 1 });
+        await lp.selectOption("#age-year", "1990");
+        await lp.click("#age-go");
+      }
+      const done = await until(lp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
+        ? !document.querySelector("dialog[open]") : null), null, 30, sel);
+      const nowY = await lp.evaluate(() => Math.round(scrollY));
+      check(`10. a visitor's Like: signed in in the dialog, the like made with no dialog over it (${done}), still at ${nowY} px (was ${atY})`,
+        done === true && Math.abs(nowY - atY) <= 40);
+      await offeredAfter(lp, "the like", "first-steps-after-like.png");
+      await shot(lp, "signed-in-from-like.png");
+    } else {
+      check("10. Ann's tower is in a visitor's feed", false);
+    }
+    await liker.context.close();
+    await deleteAccount(dee).catch(() => {});
+
+    // What the snackbar came with, looked at from the age's answer on, so a
+    // check slower than its 8 s on the screen still sees it came: its
+    // words, whether Ann's post was liked or commented on by then, and any
+    // dialog open.
+    async function watchOffer(one) {
+      await one.evaluate((s) => {
+        window.__offer = null;
+        const look = setInterval(() => {
+          const act = document.querySelector(".toast.shown .toast-act");
+          if (!act) return;
+          clearInterval(look);
+          window.__offer = { said: act.textContent.trim(),
+            done: document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
+              || /Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || ""),
+            dialogs: [...document.querySelectorAll("dialog[open]")].map((d) => d.className).join(",") };
+        }, 100);
+      }, sel);
+    }
+    // First steps offered after [what] in a snackbar over no dialog, and
+    // opened by it; pressed at once (a picture first takes seconds on a
+    // loaded box, longer than the snackbar stays), then put away.
+    async function offeredAfter(one, what, picture) {
+      const offer = await until(one, () => window.__offer, null, 30);
+      const shown = await one.click(".toast.shown .toast-act", { timeout: 2000 }).then(() => true, () => false);
+      const steps = shown && await until(one, () => (document.querySelector("dialog.first-steps[open]") ? true : null), null, 20);
+      check(`   then First steps offered in a snackbar ("${offer?.said}") after ${what} (${offer?.done}), over no dialog (${offer?.dialogs || "none"}), `
+        + `pressed (${shown}), opening (${Boolean(steps)})`, offer?.said === "First steps" && offer.done && !offer.dialogs && Boolean(steps));
+      await shot(one, picture);
+      if (steps) {
+        await one.keyboard.press("Escape");
+        await until(one, () => (!document.querySelector("dialog[open]") ? true : null), null, 10);
+      }
+    }
 
     async function findAnnIn(one) {
       for (let i = 0; i < 4; i += 1) {

@@ -1,6 +1,9 @@
 // First steps (docs/SOCIAL.md U10, D12): what a person is offered after
 // their first sign-in, once the age question says they are 13 or over
-// (web/account.js askAgeIfAsked). Three steps in one dialog, each skippable:
+// (web/account.js askAgeIfAsked): at once from a page's own Sign in, and
+// after what they pressed is done where they signed in to do something (a
+// like, a follow), from a snackbar that covers nothing (offerFirstSteps).
+// Three steps in one dialog, each skippable:
 //
 //   1. Make your profile: a name and a handle, the avatar made from the
 //      handle drawn as they type (left out when they have one already).
@@ -11,8 +14,8 @@
 // The kinds chosen only order what step 3 suggests: nothing of them is
 // kept, here or on the server (D13). Following a designer here is the
 // Follow of everywhere else (web/follow.js), so what they make fills the
-// feed; "See your feed" ends it there, unless the person signed in to do
-// something on this page (a like, a comment), which then goes on as before.
+// feed; "See your feed" ends it there, unless they came from the snackbar
+// after doing something on this page (a like, a comment): they stay on it.
 //
 // Every word is put on the page as text; a card and an avatar are the
 // kit's, which escape their own. Every word is said in the visitor's
