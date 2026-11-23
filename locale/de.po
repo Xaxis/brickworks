@@ -16872,6 +16872,9 @@ msgstr "Wo kommst du nicht weiter?"
 msgid "Ask in Talk"
 msgstr "In Talk fragen"
 
+msgid "The question is longer than Talk takes, 4,000 characters. Make it shorter and ask again."
+msgstr "Die Frage ist länger, als Talk annimmt, 4.000 Zeichen. Kürze sie und frag noch einmal."
+
 msgid "Asking"
 msgstr "Wird gefragt"
 

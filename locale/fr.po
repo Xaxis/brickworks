@@ -16872,6 +16872,9 @@ msgstr "Où bloquez-vous ?"
 msgid "Ask in Talk"
 msgstr "Demander dans Talk"
 
+msgid "The question is longer than Talk takes, 4,000 characters. Make it shorter and ask again."
+msgstr "La question est plus longue que ce que Talk accepte, 4 000 caractères. Raccourcis-la et pose-la à nouveau."
+
 msgid "Asking"
 msgstr "Envoi de la question"
 

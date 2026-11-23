@@ -94,6 +94,9 @@ signal asked(said: Dictionary)
 const WIDE := 490.0
 ## A question's first line is its thread's title: 3 to 120 characters.
 const MOST_TITLE := 120
+## The longest question Talk takes (a post's 4,000 characters): a longer one
+## is refused with words, never cut where nobody sees it.
+const MOST_QUESTION := 4000
 ## The parts a question may be about, as api/_asks.js takes them.
 const MOST_ASKED := 12
 const TALL := 780.0
@@ -240,6 +243,10 @@ var _done: Button
 
 func setup() -> void:
 	visible = false
+	# A question is about the model it was typed for: another opened, or a
+	# new one begun, starts the box afresh, never asking it about the other.
+	store.loaded.connect(func(_title: String, _bricks: int) -> void: _question_afresh())
+	store.begun.connect(func(_title: String) -> void: _question_afresh())
 	var backing := StyleBoxFlat.new()
 	backing.bg_color = Color(0.10, 0.11, 0.13, 0.98)
 	backing.border_color = Color(1, 1, 1, 0.14)
@@ -445,7 +452,6 @@ func setup() -> void:
 	column.add_child(ask_row)
 	_question = LineEdit.new()
 	_question.placeholder_text = "What are you stuck on?"
-	_question.max_length = 4000
 	_question.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_question.custom_minimum_size = Vector2(0, 34)
 	_question.text_submitted.connect(func(_text: String) -> void: ask_builders())
@@ -1272,16 +1278,21 @@ func ask_builders() -> void:
 	var question: String = _question.text.strip_edges()
 	if question.is_empty():
 		question = String(TranslationServer.translate(question_for(int(_asking["step"]))))
+	if question.length() > MOST_QUESTION:
+		_ask_fail("The question is longer than Talk takes, 4,000 characters. Make it shorter and ask again.")
+		return
+	# Asking from here, before anything is waited on: Enter in the box and a
+	# press of Ask in Talk at once ask once.
+	ask_state = "asking"
+	_ask.disabled = true
+	_ask.text = "Asking…"
+	_ask_open.visible = false
 	if account.renewing:
 		_status.text = Account.waiting_words("It is asked")
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_ask_fail("Sign in to Brickworks to ask in Talk.")
 		return
-	ask_state = "asking"
-	_ask.disabled = true
-	_ask.text = "Asking…"
-	_ask_open.visible = false
 	# The link's state read first, so a work in progress publishes as one.
 	if not store.share_id.is_empty() and _checked_for != store.share_id:
 		await _check_link(store.share_id, false)
@@ -1327,6 +1338,20 @@ func ask_builders() -> void:
 	_question_said = ""
 	_fresh_ask()
 	asked.emit(made)
+
+
+## Another model open, or a new one begun: the box back to the question
+## its step starts with, and the last question's thread put away.
+func _question_afresh() -> void:
+	if _question == null or ask_state == "asking":
+		return
+	_question.text = ""
+	_question_said = ""
+	asked_thread = {}
+	ask_state = "idle"
+	ask_said = ""
+	_ask_open.visible = false
+	_fresh_ask()
 
 
 func _ask_fail(words: String) -> void:

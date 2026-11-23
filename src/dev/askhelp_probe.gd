@@ -308,6 +308,28 @@ func _the_studio() -> void:
 		"a work in progress changed since is published as work in progress first (wip %s)"
 			% [fake.published[1].get("wip") if fake.published.size() > 1 else "-"])
 
+	# Enter in the box and a press of Ask in Talk while the sign-in is still
+	# being renewed: asked once (self_attack, partplaces F1).
+	question.text = "Which plate holds the sails?"
+	account.renewing = true
+	question.text_submitted.emit(question.text)
+	await _press(ask)
+	account.renewing = false
+	account._confirmed.emit()
+	await _asked(panel, 4)
+	await _seconds(1.0)
+	_check(fake.asked.size() == 4 and str(fake.asked[-1].get("body", "")) == "Which plate holds the sails?",
+		"Enter and Ask in Talk at once ask once (%d asks, 4 wanted)" % fake.asked.size())
+	# A question longer than Talk takes: refused with words, never cut.
+	question.text = "x".repeat(4001)
+	await _press(ask)
+	await _settle()
+	_check(fake.asked.size() == 4 and panel.ask_state == "failed" and panel.ask_said.contains("4,000")
+		and question.text.length() == 4001,
+		"a question of 4,001 characters is refused in words, kept whole (%d asks, \"%s\")"
+			% [fake.asked.size(), panel.ask_said])
+	question.text = ""
+
 	print("\n(b) the answers, watched")
 	var pins: Control = _main.call("_part_pins_now")
 	pins.set("every_for_probe", EVERY)
@@ -413,6 +435,17 @@ func _the_studio() -> void:
 	_check(not bool(pins.page_state().get("polling", true)) and fake.asks_asked == stopped_at
 		and int(pins.page_state().get("asks", 1)) == 0,
 		"no questions left, it stops asking (%d asks since)" % (fake.asks_asked - stopped_at))
+
+	# Words typed about one model are never asked about another: a new one
+	# begun puts the box back to its first question (self_attack,
+	# hubprogram F1).
+	var share_box: LineEdit = panel.controls_by_name().get("share_question")
+	share_box.text = "Why does the tower lean?"
+	store.begin("Another model")
+	await _settle()
+	_check(share_box.text != "Why does the tower lean?" and share_box.text.begins_with("How should I build")
+		and panel.ask_state == "idle",
+		"another model begun, the box starts afresh (\"%s\")" % share_box.text)
 	_reached_end = true
 	_main.queue_free()
 	for _n: int in 10:
