@@ -10,7 +10,7 @@ description: Put parts down, colour and turn them, make a step, save the model a
 
 This walks through one small model, from an empty baseplate to a link you can send, in about ten minutes. Open [brickworks.diy/app](/app) and sign in; the window looks like this.
 
-Came from somebody's model? **Open in Brickworks** on its page brings you here with that model as your own copy, and offers **Recolour a part**, **Add a part** and **Build it** to start with ([a copy to change](/docs/model-pages#open)); the steps below work on it the same way.
+Came from somebody's model? **Open in the studio** on its page brings you here with that model as your own copy, and offers **Recolour a part**, **Add a part** and **Build it** to start with ([a copy to change](/docs/model-pages#open)); the steps below work on it the same way.
 
 ![The Brickworks window on a first visit, a red car on the baseplate. Numbered outlines mark 1, the menus along the top; 2, the toolbar; 3, the parts bin on the left; 4, the view cube; 5, Build your first model's offer over the model.](/docs/img/first-model-window.webp "The window: 1 menus, 2 toolbar, 3 parts bin, 4 view cube, 5 Build your first model.")
 

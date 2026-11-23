@@ -40,14 +40,15 @@ export function sitePages({ remote = "" } = {}) {
     { name: "builds", path: "/builds",
       ready: (page) => until(page, () => ["ready", "none"].includes(document.documentElement.dataset.builds)) },
     { name: "model", path: `/m/${stand.MODEL_ID}`,
-      // The comments listed (Comment's count), and signed out Report it made
-      // live in More. On a deployment the page is its own model, whose
-      // comments the stand-in answering the API has none of: there, the
-      // comments asked and either listed or said why not.
+      // The comments listed (in their tab, unseen until it is chosen:
+      // pagekit), and signed out Report it made live in More. On a
+      // deployment the page is its own model, whose comments the stand-in
+      // answering the API has none of: there, the comments asked and either
+      // listed or said why not.
       ready: (page, { signedIn }) => until(page, signedIn
-        ? (remote ? () => !document.getElementById("comments")?.hidden
+        ? (remote ? () => !document.querySelector("#comments .comments-body")?.hidden
           || Boolean(document.querySelector("#comments .comments-said")?.textContent)
-          : () => !document.getElementById("comments")?.hidden)
+          : () => !document.querySelector("#comments .comments-body")?.hidden)
         : () => !document.querySelector('[data-report="this model"]')?.hidden),
       open: async (page, { signedIn, judge }) => {
         // Share's sheet (web/model-page.js, docs/SOCIAL.md U14): the link and
@@ -85,6 +86,8 @@ export function sitePages({ remote = "" } = {}) {
           await until(page, () => !document.querySelector("dialog.keep-panel[open]"));
         }
         const states = [];
+        // Add a photo is in the Builds tab (pagekit): chosen first.
+        await page.click('#page-tabs [data-tab="builds"]');
         const add = page.locator("[data-add-build]");
         if (await add.isVisible().catch(() => false)) {
           await add.click();

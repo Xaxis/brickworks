@@ -12,7 +12,7 @@ Your profile is your page on the site: your models, your builds and what you hav
 ## Your profile {#profile}
 
 1. Open [brickworks.diy/profile](/profile). The first time, **Make your profile**: a name and a handle (3 to 24 lower-case letters, digits and dashes), then **Make my profile**. Your public page is then `/u/<handle>`.
-2. **Edit profile** sets your **Name**, **Handle**, **About you**, up to two links, **Across the top** (a model's picture for the banner) and up to three models **Pinned above the rest, in this order**. **Save** keeps them.
+2. **Edit profile** sets your **Name**, **Handle**, **About you**, up to two links, **Across the top** (a model's picture for the banner) and up to three models **Pinned above the rest, in this order**, first in the **Models** tab. **Save** keeps them.
 
 Its tabs are **Models**, **Builds**, **Likes** (only when you chose to show them, in [Settings › Privacy](#settings)), **Saved** (the models you saved and [your lists](/docs/lists)), **Sets**, **Insights** and **Achievements**. Saved, Sets and Achievements say *Only you see this tab.*
 

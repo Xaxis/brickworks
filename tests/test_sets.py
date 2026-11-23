@@ -396,10 +396,10 @@ console.log(JSON.stringify({ de: de.body, es: es.body, en: en.body, statuses: [d
         assert f'<a class="skip" href="#main">{words[code]["Skip to content"]}</a>' in page
     # What it shows, its words for its scripts left out.
     de, es = (re.sub(r'<script [^>]*id="site-words".*?</script>', "", said[code], flags=re.S) for code in ("de", "es"))
-    assert "<h1>Galaxy Explorer</h1>" in de and words["de"]["Open its parts in Brickworks"] in de
+    assert '<h1 class="obj-title">Galaxy Explorer</h1>' in de and words["de"]["Open its parts in Brickworks"] in de
     assert "Open its parts in Brickworks" not in de and "every part" not in de and "Skip to content" not in es
     # Gear is a word, so said in Spanish; the set's name is a name.
-    assert "<h1>Key Chain Falcon</h1>" in es and f'>{words["es"]["theme\x04Gear"]}</a>' in es
+    assert '<h1 class="obj-title">Key Chain Falcon</h1>' in es and f'>{words["es"]["theme\x04Gear"]}</a>' in es
     assert words["es"]["Rebrickable lists no parts for it: a book, gear or something else that is not built."] in es
     # The English page names the copies and stays its own canonical.
     assert '<html lang="en">' in said["en"] and '<link rel="canonical" href="https://brickworks.test/library/set/10497-1">' in said["en"]

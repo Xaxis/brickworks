@@ -3011,14 +3011,14 @@
       "kind": "ui",
       "label": "model page action bar",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Save: the card's control, Saved and your lists in one panel (web/keep.js), Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: the card's control, Saved and your lists in one panel (web/keep.js), Share: the share sheet with its link, Post it to each network and the embed code, More: Download first, Report it; Like and Save sign in on the way; Comment and I built it are its tabs' counts since pagekit)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "change a model with your Claude",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Open in Brickworks' second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
+      "reach": "https://brickworks.diy/m/<id>   (Open in the studio's second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
       "area": "web"
     },
     {
@@ -3032,7 +3032,7 @@
       "kind": "ui",
       "label": "model page pictures and tabs",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs About, Comments, Builds, Remixes, Versions, kept on screen)",
+      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs Overview, Comments, Parts, Builds, Remixes, Versions: one panel shown, its key in the address, arrow keys, Back)",
       "area": "web"
     },
     {
@@ -6961,6 +6961,13 @@
       "entry": "src/dev/appchrome_probe.gd",
       "reach": "tools/probe.sh appchrome_probe; PROBE_SIZE=390x844 tools/probe.sh appchrome_probe   (the desktop's and the web's header in the studio, the viewer, Build it, after Close, Lay out page and after Done: one rect, mark and right controls; pictures in shots/appchrome/)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "an object's page and its tabs",
+      "entry": "web/tabs.js",
+      "reach": "https://brickworks.diy/m/<id>, /library/set/<id>, /library/omr-<id>, /u/<handle>, /c/<id>, /challenge, /talk/t/<n>   (pagekit: the sticky aside with the title, one main action, the social row and the facts; real tabs from api/_tabs.js, web/tabs.js: one panel shown, #key in the address, arrow keys, Back, a link inside a panel chooses its tab; bench/results/pagekit-2026-11-23/tabs_check.mjs and the model page browser flow's 8)",
+      "area": "web"
     }
   ]
 }

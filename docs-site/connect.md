@@ -48,11 +48,11 @@ ui:connect your AI
 
 ## Change a model with your Claude {#with-your-claude}
 
-Every model's page has **With your Claude** beside **Open in Brickworks** ([A model's page](/docs/model-pages#with-your-claude)): say what to change, press **Copy for Claude**, and paste the message into a chat with Claude. It opens a copy in your models and changes it; publish the copy and its page credits the model it came from.
+Every model's page has **With your Claude** beside **Open in the studio** ([A model's page](/docs/model-pages#with-your-claude)): say what to change, press **Copy for Claude**, and paste the message into a chat with Claude. It opens a copy in your models and changes it; publish the copy and its page credits the model it came from.
 
 Came here from a model's page with **Connect Claude**? Your message is waiting at the top of this page: connect Claude [as above](#in-the-app), then press **Copy it** and paste it into a new chat there.
 
-![A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.](/docs/img/connect-with-claude.webp "A model's page hands your Claude the model.")
+![A model's page with Open in the studio and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.](/docs/img/connect-with-claude.webp "A model's page hands your Claude the model.")
 
 ## Claude on your own key {#api-key}
 

@@ -28,7 +28,8 @@
 //      address.
 //   4. Community: three models, with pictures. Open on the all rights
 //      reserved bench opens tab C at ?new=1&copy=LibStubBch: copied into the
-//      person's models as Open in Brickworks does, credited to its designer.
+//      person's models as a model page's Open in the studio does, credited
+//      to its designer.
 //   5. A is as it was: its name, its parts, no credit.
 //   6. The screen at 1400 x 900 and 390 x 844, in the light and dark colour
 //      schemes (the app has one look; the page around it follows the scheme).
@@ -477,7 +478,7 @@ try {
   const c = copy.tab;
   await settle(c);
   // Saved under its own name, saying which link it is a copy of
-  // (ModelStore.REMIX_META), as Open in Brickworks on its page saves it.
+  // (ModelStore.REMIX_META), as Open in the studio on its page saves it.
   check("...the bench is copied into the person's models, a remix of its link", await until(async () =>
     String(await stored(c, "models/Stub Park Bench.ldr") || "").includes("0 !BRICKWORKS REMIX LibStubBch"), 180));
   const cState = await state(c);

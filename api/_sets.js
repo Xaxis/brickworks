@@ -44,6 +44,7 @@ import { SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_direct
 import { counted, iconHtml, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
 import { byKey, search } from "./_search.js";
+import { panelAttrs, tabsHtml } from "./_tabs.js";
 
 /// How the library's sets are put in order, the first by default: those LDraw
 /// has a model of first, since their picture is the set built in 3D, to
@@ -500,17 +501,26 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
   const pictureFoot = others.length ? pictureCredit
     : `<div class="picture-foot"><p class="no3d">${asText(say("No 3D model of this set yet"))}</p>${pictureCredit}</div>`;
   const insideHtml = inside.length
-    ? `<section class="words" id="inside" aria-labelledby="inside-h"><h2 id="inside-h">${asText(say("Sets packed in it"))}</h2><ul class="pills">`
+    ? `<section class="words" id="inside"${panelAttrs("inside")}><h2 class="visually-hidden" id="inside-h">${asText(say("Sets packed in it"))}</h2><ul class="pills">`
       + inside.map(([one, n]) => `<li><a class="pill" href="${at}${pageOf(one)}">${n > 1 ? `${n} × ` : ""}`
         + `${escapeHtml(titleOf(one))}</a></li>`).join("") + "</ul></section>" : "";
   const modelsHtml = others.length
-    ? `<section class="words" id="models3d" aria-labelledby="models3d-h"><h2 id="models3d-h">${asText(say("In 3D"))}</h2><ul class="list">`
+    ? `<section class="words" id="models3d"${panelAttrs("models3d")}><h2 class="visually-hidden" id="models3d-h">${asText(say("In 3D"))}</h2><ul class="list">`
       + others.map((one) => `<li><a href="${at}/library/${escapeHtml(one.id)}">${escapeHtml(one.name)}</a>`
         + `${one.author ? asText(say(", modelled by {author} for LDraw's Official Model Repository", { author: one.author })) : ""}</li>`).join("")
       + "</ul></section>" : "";
+  const owned = entry.lots
+    ? `<section class="owned" id="owned" data-set="${escapeHtml(entry.set)}" aria-live="polite" hidden>`
+      + `<h2 id="owned-h">${asText(say("Parts you own"))}</h2>${ownCountHtml(entry)}<p class="owned-said" id="owned-said"></p>`
+      + `<div class="actions" id="owned-wanted" hidden><span class="note">${asText(say("What you are missing, as a wanted list:"))}</span>`
+      + `<button type="button" class="cta ghost small" data-wanted="bricklink">BrickLink XML</button>`
+      + `<button type="button" class="cta ghost small" data-wanted="rebrickable">Rebrickable CSV</button>`
+      + `<button type="button" class="cta ghost small" data-wanted="pickabrick" hidden>${asText(say("LEGO® Pick a Brick CSV"))}</button></div></section>`
+    : "";
+  // The parts are its page's first tab, what you own of them at its top.
   const partsHtml = entry.lots
-    ? `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${pageOf(entry)}/parts.json">`
-      + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${asText(say("{parts} in {lots}, its minifigures' and the sets packed in it counted in, spares not",
+    ? `<section class="parts" id="parts"${panelAttrs("parts", true)} data-parts="${pageOf(entry)}/parts.json">`
+      + `<h2 class="visually-hidden" id="parts-h">${asText(say("Parts"))}</h2>${owned}<p class="note">${asText(say("{parts} in {lots}, its minifigures' and the sets packed in it counted in, spares not",
         { parts: counted(entry.parts, "part"), lots: counted(entry.lots, "lot") }))}</p>`
       + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
       + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
@@ -521,16 +531,8 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + (entry.lots > 12 ? `<button type="button" class="cta ghost small" data-all hidden>${asText(say("Show all {lots}",
         { lots: counted(entry.lots, "lot") }))}</button>` : "")
       + "</section>"
-    : `<section class="parts" id="parts-none"><h2>${asText(say("Parts"))}</h2><p class="note">`
+    : `<section class="parts" id="parts"${panelAttrs("parts", true)}><h2 class="visually-hidden">${asText(say("Parts"))}</h2><p class="obj-empty">`
       + `${asText(say("Rebrickable lists no parts for it: a book, gear or something else that is not built."))}</p></section>`;
-  const owned = entry.lots
-    ? `<section class="owned" id="owned" data-set="${escapeHtml(entry.set)}" aria-live="polite" hidden>`
-      + `<h2 id="owned-h">${asText(say("Parts you own"))}</h2>${ownCountHtml(entry)}<p class="owned-said" id="owned-said"></p>`
-      + `<div class="actions" id="owned-wanted" hidden><span class="note">${asText(say("What you are missing, as a wanted list:"))}</span>`
-      + `<button type="button" class="cta ghost small" data-wanted="bricklink">BrickLink XML</button>`
-      + `<button type="button" class="cta ghost small" data-wanted="rebrickable">Rebrickable CSV</button>`
-      + `<button type="button" class="cta ghost small" data-wanted="pickabrick" hidden>${asText(say("LEGO® Pick a Brick CSV"))}</button></div></section>`
-    : "";
   const last = entry.theme[entry.theme.length - 1];
   const nextHtml = next.length
     ? `<section class="next" id="similar" aria-labelledby="similar-h"><h2 id="similar-h">${escapeHtml(last
@@ -580,7 +582,7 @@ ${chrome.header}
     ${pictureFoot}
     </div>
     <div class="side">
-      <h1>${escapeHtml(entry.name)}</h1>
+      <h1 class="obj-title"${entry.name.length > 48 ? ` title="${escapeHtml(entry.name)}"` : ""}>${escapeHtml(entry.name)}</h1>
       <p class="modelled">${escapeHtml(entry.year ? say("LEGO® set {set}, from {year}", { set: entry.set, year: entry.year })
         : say("LEGO® set {set}", { set: entry.set }))}</p>
       ${keepBarHtml(entry)}
@@ -595,11 +597,14 @@ ${chrome.header}
         { page: `<a href="${at}/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` })}</p>` : ""}
     </div>
     <div class="rest">
-  ${owned}
+  <div class="obj-panels">
+  ${tabsHtml([{ key: "parts", name: say("Parts"), n: entry.parts }, others.length && { key: "models3d", name: say("In 3D"), n: others.length },
+    inside.length && { key: "inside", name: say("Sets packed in it"), n: inside.length }], { label: say("About this set"), extra: "page-tabs" })}
   ${partsHtml}
-  ${insideHtml}
   ${modelsHtml}
-  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About this page"))}</h2>
+  ${insideHtml}
+  </div>
+  <section class="words set-credit" id="about" aria-labelledby="about-h"><h2 class="visually-hidden" id="about-h">${asText(say("About this page"))}</h2>
     <p class="credit">${sayHtml("Set and inventory data: {rebrickable}.", { rebrickable: `<a href="${CREDIT.url}">Rebrickable</a>` })}${photo
     ? ` ${sayHtml("The set's picture is {rebrickable}.", { rebrickable: `<a href="${escapeHtml(creditOf(entry))}">${asText(say("Rebrickable's"))}</a>` })}`
     : ""} ${asText(say("The parts are drawn by Brickworks from LDraw's geometry."))} ${asText(say("LEGO® is a trademark of the LEGO Group, which does not sponsor, authorise or endorse this site."))}</p></section>

@@ -23,9 +23,9 @@
 // goes as ever; the flow proves that and passes, saying so.
 //
 //   1. Pia shares a tower; Max comments on it.
-//   2. Lia, at 1280 px (light), types @ in the box: the picker offers Pia
-//      (the designer) and Max; typing narrows it, Escape closes it alone,
-//      Enter puts Max in. She names a handle nobody has too, and sends.
+//   2. Lia, at 1280 px (light), on the Comments tab, types @ in the box:
+//      the picker offers Pia (the designer) and Max; typing narrows it,
+//      Escape closes it alone, Enter puts Max in. She names a handle nobody has too, and sends.
 //   3. Her comment: @Max a link to his profile, the other words; the API's
 //      comment names Max alone.
 //   4. Max, at 390 px (dark): Notifications has "Lia mentioned you in a
@@ -161,6 +161,8 @@ try {
     const page = await sam.newPage();
     listen(page, "Sam");
     await page.goto(`${site}/m/${stand.MODEL_ID}`, { waitUntil: "load" });
+    // Only the chosen tab's panel shows (pagekit): Comments chosen.
+    await page.click('#page-tabs [data-tab="comments"]');
     await until(page, () => document.querySelector("#comment-110 .comment-body"), "the comments");
     const words = await wordsOf(page, 110);
     check(`Jo's reply: "${words.text}", its link ${JSON.stringify(words.links)}`, words.links.length === 1
@@ -264,6 +266,7 @@ try {
     const page = await liaSite.newPage();
     listen(page, "Lia");
     await page.goto(`${site}/m/${tower}?tests=1`, { waitUntil: "load" });
+    await page.click('#page-tabs [data-tab="comments"]');
     await until(page, () => document.querySelector(`#comment-${document.querySelector("#comments li.comment")?.id.slice(8)} .comment-body`)
       && !document.querySelector("#comments form.comment-new").hidden, "the comments and the box");
     const box = "#comment-body";
@@ -294,6 +297,7 @@ try {
     const hers = (listed.body.comments || []).find((one) => String(one.id) === String(id));
     const applied = Array.isArray(hers?.mentions);
     console.log(applied ? "  --    comment_mentions.sql is applied: the whole of it" : "  --    comment_mentions.sql is not applied: a comment names nobody");
+    // The address kept the Comments tab (#comments): reloaded, it opens on it.
     await page.reload({ waitUntil: "load" });
     await until(page, (key) => document.querySelector(`#comment-${key} .comment-body`), "her comment after a reload", 30, id);
     const words = await wordsOf(page, id);

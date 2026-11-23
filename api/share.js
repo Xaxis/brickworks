@@ -330,6 +330,7 @@ import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, keepHtml, langAt, mad
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
+import { panelAttrs, tabsHtml } from "./_tabs.js";
 // Whose picture to show beside their name (supabase/avatars.sql).
 import { withFaces } from "./_faces.js";
 import { blockedHandles, blockedModels, refuseFor, standingBetween, withoutBlocked } from "./_blocks.js";
@@ -1269,14 +1270,6 @@ function nextRow(key, title, cards, all = "") {
     + `<div class="models scroller" role="group" aria-labelledby="${key}-h">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
 }
 
-/// The action bar: Like, Save, Share, Comment, I built it and More, each an
-/// icon button that says its name and count (web/kit.js), never a count of
-/// none. web/model-page.js makes them work, asking to sign in first where
-/// one must be; it counts the comments as it lists them. Save is the one a
-/// card has (web/card.js keepHtml, lists2a): Save at a tap, and its arrow
-/// the panel of your lists (web/keep.js), one panel and one request for a
-/// model wherever it is saved. [url] is the page's own address, an older
-/// version's its own.
 /// Open in Brickworks' second choice, With your Claude (claudelink,
 /// docs/MASTERPLAN.md "What only Brickworks can do" 6): the other half of
 /// the one control, which opens claudePanel under the row. Drawn hidden, and
@@ -1318,16 +1311,28 @@ function claudePanel(origin, id, model) {
     + `<p class="said claude-said" role="status"></p></div>`;
 }
 
+/// The action bar: Like, Save, Share and More, each an icon button that
+/// says its name and count (web/kit.js), never a count of none; Download,
+/// Report it and Takedown requests in More. Commenting and saying it was
+/// built are the Comments and Builds tabs' (pagekit, 2026-11-23: nine
+/// buttons competed in the column, Comment and Built among them, each only
+/// a jump to a part of the page). web/model-page.js makes them work, asking
+/// to sign in first where one must be. Save is the one a card has
+/// (web/card.js keepHtml, lists2a): Save at a tap, and its arrow the panel
+/// of your lists (web/keep.js), one panel and one request for a model
+/// wherever it is saved. [url] is the page's own address, an older
+/// version's its own; [file] its file, for Download.
 function actionBar(origin, id, model, url = links(origin, id).url, file = "") {
   // A set of the LDraw library has no row to like, save, comment on or say
   // was built: Share and More alone.
   const more = asText(say("More"));
+  const download = file ? `<a href="${escapeHtml(file)}" download>${asText(say("Download"))}</a>` : "";
   if (model.library) {
     return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
       + iconButtonHtml({ icon: "share", name: say("Share"),
         attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link"))}"` })
       + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
-      + `${iconHtml("more")}</summary><div class="menu-list"><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
+      + `${iconHtml("more")}</summary><div class="menu-list">${download}<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
       + `</div>` + shareSheet(origin, id, model, url);
   }
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
@@ -1336,14 +1341,8 @@ function actionBar(origin, id, model, url = links(origin, id).url, file = "") {
     + keepHtml(`model:${id}`, model.name)
     + iconButtonHtml({ icon: "share", name: say("Share"),
       attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link, and the code to embed it"))}"` })
-    + iconButtonHtml({ icon: "comment", name: say("Comment"), attrs: `data-mark="comment" title="${asText(say("Comments on it and its steps"))}"` })
-    + iconButtonHtml({ icon: "build", name: say("I built it"), count: model.builds, one: "build", many: "builds", labelled: true,
-      word: say("Built"), attrs: `data-mark="built" title="${asText(say("I built it: add a photo of your build"))}"` })
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
-      + `${iconHtml("more")}</summary><div class="menu-list">`
-      // Download, More's on a phone, where Open in Brickworks and With your
-      // Claude fill the row it shared (web/directory.css .menu-download).
-      + (file ? `<a class="menu-download" href="${escapeHtml(file)}" download>${asText(say("Download"))}</a>` : "")
+      + `${iconHtml("more")}</summary><div class="menu-list">${download}`
       + `<button type="button" data-report="${asText(say("this model"))}" data-report-model="${id}" hidden>${asText(say("Report it"))}</button>`
       + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
     + `</div>`
@@ -1564,15 +1563,14 @@ ${header}
     ${mediaStrip(model, picture, photos, small)}
     </div>
     <div class="side">
-      <h1>${escapeHtml(model.name)}</h1>
+      <h1 class="obj-title"${model.name.length > 48 ? ` title="${escapeHtml(model.name)}"` : ""}>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
       ${modelledLine(model)}
       ${altHtml(model.alt)}
       <div class="actions">
-        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
+        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in the studio"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
-        <span class="open-split"><a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>${claudeButton()}</span>`}
-        <a class="cta ghost" href="${fileAt}.mpd" download>${asText(say("Download"))}</a>
+        <span class="open-split"><a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in the studio"))}</a>${claudeButton()}</span>`}
       </div>
       ${set ? "" : claudePanel(origin, id, model)}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url, `${fileAt}.mpd`)}
@@ -1584,15 +1582,17 @@ ${header}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
+  <div class="obj-panels">
   ${pageTabs(model, newest, lists?.count, parts, logged(versions))}
-  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About it"))}</h2>
+  <section class="words" id="overview"${panelAttrs("overview", true)}><h2 class="visually-hidden" id="about-h">${asText(say("About it"))}</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="${asText(say("Tags"))}">${tags}</ul>` : ""}
-    <div class="licence"><h3 id="licence-h">${asText(say("Licence"))}</h3>${licenceWords(model)}</div></section>
+    <div class="licence"><h3 id="licence-h">${asText(say("Licence"))}</h3>${licenceWords(model)}</div>
+    ${listsSection(lists)}</section>
+  ${set ? "" : commentsSection(id, version.n, newest, stepsCounted ? stepsCounted.pages : null)}
   ${partsSection(fileAt, parts)}
-  ${set ? "" : `${commentsSection(id, version.n, newest, stepsCounted ? stepsCounted.pages : null)}
-  ${buildsSection(id, model, photos)}
-  <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">${asText(say("Remixes"))}</h2>
+  ${set ? "" : `${buildsSection(id, model, photos)}
+  <section class="tree" id="remixes"${panelAttrs("remixes")}><h2 class="visually-hidden" id="tree-h">${asText(say("Remixes"))}</h2>
     ${drawnTree ? `${drawnTree}${unlisted ? `<p class="note">${asText(say(listedRemixes.length
       ? "And {remixes} shared by link, not in the gallery." : "{remixes} shared by link, not in the gallery.",
     { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : ""}` : `${line ? `<h3>${asText(say("It came from"))}</h3><ol class="line">${line}</ol>` : ""}
@@ -1601,11 +1601,11 @@ ${header}
         ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
         + (unlisted ? `<p class="note">${asText(say(listedRemixes.length ? "And {remixes} shared by link, not in the gallery."
           : "{remixes} shared by link, not in the gallery.", { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : "")
-      : `<p class="note none">${sayHtml("Nobody has remixed it yet. {open} to make a copy of your own to change; share that, "
+      : `<p class="obj-empty none">${sayHtml("Nobody has remixed it yet. {open} to make a copy of your own to change; share that, "
         + "and it shows here.", { open: `<a href="${escapeHtml(copyLink)}">${asText(say("Open it in Brickworks"))}</a>` })}</p>`}`}
   </section>`}
-  ${listsSection(lists)}
   ${versionsSection(id, versions, version, at, model)}
+  </div>
     </div>
   </div>
   ${model.by ? nextRow("more-by", sayHtml("More by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>` }),
@@ -1644,18 +1644,28 @@ function mediaStrip(model, picture, photos, small = picture) {
     + `<button type="button" class="thumb add" data-add-picture hidden>${asText(say("Add a picture"))}</button></div>`;
 }
 
-/// The page's tabs (docs/SOCIAL.md U4): a link to each part below, with its
-/// count once there is one, kept on screen as the page scrolls; the one
-/// being read is marked by web/model-page.js, which also counts the
-/// comments as it lists them. Versions only once there are two.
+/// The page's tabs (docs/SOCIAL.md U4; pagekit, 2026-11-23): real tabs, each
+/// switching its panel in place (web/tabs.js), in the order a visitor wants
+/// them: Overview (what its owner said, its tags, its licence and the
+/// lists it is in), Comments, Parts, Builds, Remixes, and its Log (its
+/// versions and what was built between them, buildlog) once there is one;
+/// each with its count once there is one, each its own address
+/// (#comments), so a link opens on it and Back goes back a tab. Before,
+/// they were links down one page of 3,800 px, the 67-lot parts list over
+/// the comments, and the owner, on the live page: "Dont you think the
+/// comments section should be the second subtab". web/model-page.js counts
+/// the comments on their tab as it lists them. A set of the LDraw library
+/// has Overview and Parts.
 function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
-  const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${asText(name)}`
-    + (Number(n) ? ` <span class="n">${number(n)}</span>` : "") + "</a>";
-  return `<nav class="tabs page-tabs" id="page-tabs" aria-label="${asText(say("On this page"))}">${tab("about", say("About"))}`
-    + `${parts ? tab("parts", say("Parts"), parts.pieces) : ""}`
-    + `${model.library ? "" : `${tab("comments", say("Comments"))}${tab("builds", say("Builds"), model.builds)}${tab("remixes", say("Remixes"), model.remixes)}`}`
-    + `${Number(inLists) ? tab("collections", say("Lists"), inLists) : ""}`
-    + `${log ? tab("versions", say("Log"), newest) : ""}</nav>`;
+  const library = Boolean(model.library);
+  return tabsHtml([
+    { key: "overview", name: say("Overview"), also: "about" },
+    !library && { key: "comments", name: say("Comments") },
+    parts && { key: "parts", name: say("Parts"), n: parts.pieces },
+    !library && { key: "builds", name: say("Builds"), n: model.builds },
+    !library && { key: "remixes", name: say("Remixes"), n: model.remixes },
+    log && { key: "versions", name: say("Log"), n: newest },
+  ], { label: say("About it"), extra: "page-tabs" });
 }
 
 /// How many rows the Parts list shows before Show all, and each row's
@@ -1676,8 +1686,8 @@ function partsSection(at, parts) {
   const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
   const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
-  return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
-    + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
+  return `<section class="parts" id="parts"${panelAttrs("parts")} data-parts="${at}/parts.json">`
+    + `<h2 class="visually-hidden" id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
       { parts: counted(parts.pieces, "part"), lots: counted(parts.lots.length, "lot") }))}</p>`
     + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
     + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
@@ -1734,11 +1744,11 @@ function pickABrickNote(made) {
 function listsSection(lists) {
   if (!lists || !Number(lists.count) || !lists.lists.length) return "";
   const more = Number(lists.count) - lists.lists.length;
-  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">${asText(say("In lists"))}</h2>`
+  return `<div class="in-lists" id="collections"><h3 id="lists-h">${asText(say("In lists"))}</h3>`
     + `<p class="note">${asText(say("People put it in {lists}.", { lists: counted(lists.count, "public list") }))}</p>`
     + `<div class="list-cards">${lists.lists.map((list) => listCardHtml(list, lists.covers, { by: true })).join("")}</div>`
     + (more > 0 ? `<p class="note">${asText(say("And {lists} more.", { lists: counted(more, "list") }))}</p>` : "")
-    + `</section>`;
+    + `</div>`;
 }
 
 /// One photo of a real build, as the strip shows it: the photo, the line
@@ -1764,12 +1774,12 @@ function buildFigure(model, photo) {
 /// are not said to be none.
 function buildsSection(id, model, photos) {
   const builds = Number(model.builds) || 0;
-  return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
-    <h2 id="builds-h">${asText(say("Built by people"))}</h2>
+  return `<section class="builds" id="builds"${panelAttrs("builds")} data-id="${id}">
+    <h2 class="visually-hidden" id="builds-h">${asText(say("Built by people"))}</h2>
     ${builds ? `<p class="built-line">${asText(builds === 1 ? say("Built to the last step once, by people following its steps in Brickworks.")
       : say("Built to the last step {times}, by people following its steps in Brickworks.", { times: counted(builds, "time") }))}</p>` : ""}
     ${photos?.length ? `<div class="build-strip scroller" role="group" aria-labelledby="builds-h">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
-      : !photos ? `<p class="note no-builds" hidden></p>` : `<p class="note no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
+      : !photos ? `<p class="note no-builds" hidden></p>` : `<p class="obj-empty no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
         : say("Nobody has built it yet. Built it? Add a photo of yours."))}</p>`}
     <div class="add-build" id="add-build" data-id="${id}">
       <button type="button" class="cta ghost" data-add-build>${asText(say("I built it: add a photo"))}</button>
@@ -1804,15 +1814,17 @@ function commentsSection(id, shown, newest, steps) {
   // Shown once asked (web/model-page.js); until then a skeleton holds its
   // place at the size most are drawn at (none yet, and the box), so its
   // coming moves nothing under it: it pushed Builds down the screen (site275).
-  return `<div class="comments-hold skeleton" id="comments-hold" aria-hidden="true"><span class="bone short title"></span>
+  // The tab's panel (pagekit) holds the skeleton and, once they are listed,
+  // the comments (.comments-body), shown then by web/model-page.js.
+  return `<section class="comments" id="comments"${panelAttrs("comments")} data-id="${id}"
+    data-version="${shown}" data-newest="${newest}">
+  <div class="comments-hold skeleton" id="comments-hold" aria-hidden="true"><span class="bone short title"></span>
     <span class="bone line"></span><span class="bone line short"></span><span class="bone box"></span><span class="bone button"></span></div>
-  <section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
-    data-version="${shown}" data-newest="${newest}" hidden>
-    <h2 id="comments-h">${asText(say("Comments"))}</h2>
+  <div class="comments-body" hidden>
+    <h2 class="visually-hidden" id="comments-h">${asText(say("Comments"))}</h2>
     <p class="note comments-lede">${sayHtml("What builders said about it and its steps, the newest first, with the replies under each. "
       + "Plain words only; {guidelines} say what is welcome.", { guidelines: `<a href="${langAt()}/guidelines">${asText(say("the guidelines"))}</a>` })}</p>
     <p class="note talk-about" id="talk-about" hidden></p>
-    <ol class="comment-list"></ol>
     <form class="comment-new" hidden>
       <div class="comment-on"><label for="comment-step">${asText(say("On"))}</label> ${picker}
         <span class="note">${asText(shown < newest ? say("of version {n}, an older one", { n: shown }) : say("of version {n}", { n: shown }))}</span></div>
@@ -1822,7 +1834,9 @@ function commentsSection(id, shown, newest, steps) {
       <div class="actions"><button class="cta small" type="submit">${asText(say("Add the comment"))}</button>
         <span class="note comment-count" aria-live="polite"></span></div>
     </form>
+    <ol class="comment-list"></ol>
     <div class="comment-why" hidden><p class="note"></p></div>
+  </div>
     <p class="said comments-said" role="status"></p>
   </section>`;
 }
@@ -1879,7 +1893,7 @@ function versionsSection(id, versions, shown, at = "", model = {}) {
         : one.n === 1 ? `<p class="log-changed">${asText(say("The first version."))}</p>` : ""}`
       + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}</div></li>`;
   }).join("");
-  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">${asText(say("Log"))}</h2>
+  return `<section class="versions" id="versions"${panelAttrs("versions")}><h2 class="visually-hidden" id="versions-h">${asText(say("Log"))}</h2>
     ${building}
     <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : asText(say("Version {n}, the first.", { n: shown.n }))}
       <span class="when">${when(shown.at)}</span></p>
