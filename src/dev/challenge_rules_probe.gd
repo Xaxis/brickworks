@@ -4,7 +4,8 @@
 ##
 ##   set -a; . ./.env; set +a
 ##   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/challenge_rules_check.mjs --out=DIR
-##   tools/probe.sh challenge_rules_probe --fixtures=DIR
+##   godot --headless --path . --script src/dev/challenge_rules_probe.gd -- --fixtures=DIR
+##     (tools/probe.sh challenge_rules_probe --fixtures=DIR runs it so)
 ##   PG_MODULE=... node tools/challenge_rules_check.mjs --out=DIR --studio=DIR/studio
 ##
 ## Two equalities, each on one text read by both:
