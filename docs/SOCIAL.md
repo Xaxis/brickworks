@@ -1,5 +1,7 @@
 # brickworks.diy as a social site: research and plan
 
+The CAD and the community as one loop, graded step by step, with the units that join them: [MASTERPLAN.md](MASTERPLAN.md) (2026-11-23).
+
 The owner (2026-10-22): "drastically improve the brickworks.diy site, it
 needs to feel and act much more like a 'social media' site… the UI/UX of
 the gallery need to be drastically improved, including individual gallery
