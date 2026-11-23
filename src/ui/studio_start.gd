@@ -325,7 +325,7 @@ func _ask() -> void:
 
 func _find_now() -> void:
 	_typed.stop()
-	var words: String = _search.text.strip_edges()
+	var words: String = plain(_search.text)
 	# Said, never cut: the gallery searches at most SEARCH_MOST letters.
 	if words.length() > SEARCH_MOST:
 		_found_title.text = "Search with fewer words: at most %d letters" % SEARCH_MOST
@@ -744,7 +744,8 @@ func page_state() -> Dictionary:
 	var prompt: Variant = answer.get("prompt")
 	return {"shown": visible, "continue": models.size(), "came": mini(came.size(), CAME_MOST), "pins": pins,
 		"prompt": str((prompt as Dictionary).get("title", "")) if prompt is Dictionary else "",
-		"found": found.size(), "found_for": found_for, "real": real_items(), "asked": asked,
+		"found": found.size(), "found_for": found_for,
+		"found_title": _found_title.text if _found_title != null else "", "real": real_items(), "asked": asked,
 		"shown_ms": shown_ms, "filled_ms": filled_ms, "chosen": chosen, "items": items,
 		"names": models.map(func(one: Dictionary) -> String: return str(one["name"]))}
 
@@ -800,6 +801,23 @@ static func link_of(path: String) -> String:
 
 
 ## The saved model shared under [param link]: its path, or "" for none here.
+## What a person typed or pasted, as the gallery searches it: a no-break,
+## wide or other Unicode space read as a space, the zero-width ones gone,
+## runs of spaces made one.
+static func plain(typed: String) -> String:
+	var out: String = ""
+	for i: int in typed.length():
+		var c: int = typed.unicode_at(i)
+		if c in [0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF, 0xAD]:
+			continue
+		var space: bool = c < 32 or c == 0x7F or c in [0xA0, 0x1680, 0x202F, 0x205F, 0x3000, 0x2028, 0x2029] \
+			or (c >= 0x2000 and c <= 0x200A)
+		out += " " if space else String.chr(c)
+	while out.contains("  "):
+		out = out.replace("  ", " ")
+	return out.strip_edges()
+
+
 static func saved_with(link: String, saved: Array) -> String:
 	if not SharedModels.is_id(link):
 		return ""

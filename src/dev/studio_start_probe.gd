@@ -43,6 +43,7 @@ class FakeShared extends SharedModels:
 	var model_text: String = ""
 	var asked_comments: int = 0
 	var asked_start: int = 0
+	var gallery_asked: int = 0
 
 	func studio_start(_token: String, _lang: String = "en") -> Dictionary:
 		asked_start += 1
@@ -50,6 +51,7 @@ class FakeShared extends SharedModels:
 		return {"code": 200, "body": start.duplicate(true)}
 
 	func gallery(_words: String, _token: String = "") -> Dictionary:
+		gallery_asked += 1
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		return {"code": 200, "body": gallery_answer.duplicate(true)}
 
@@ -128,7 +130,7 @@ func _run() -> void:
 	await _the_list(start, signed_ms)
 	await _the_pin(start, fake)
 	await _a_new_pin(fake)
-	await _a_copy(start)
+	await _a_copy(start, fake)
 	_finish()
 
 
@@ -277,7 +279,7 @@ func _a_new_pin(fake: FakeShared) -> void:
 			shown_ms, fake.asked_comments - asked])
 
 
-func _a_copy(start: Control) -> void:
+func _a_copy(start: Control, fake: FakeShared) -> void:
 	# Shown again (Escape put it away), as a check may: its gallery's first.
 	start.call("open", (_main.get("_store") as ModelStore).list_saved())
 	for _n: int in 30:
@@ -288,6 +290,25 @@ func _a_copy(start: Control) -> void:
 	Input.parse_input_event(key)
 	await _a_while(5)
 	_check(not start.visible, "(d) Escape puts it away")
+	# Pasted words searched as typed: Unicode and zero-width spaces read as
+	# one plain space, and a search past the gallery's limit said, not cut.
+	var pasted: String = String.chr(0xA0) + "tug" + String.chr(0x200B) + "  " + String.chr(0x3000) + "boat" \
+		+ String.chr(0x2009)
+	var plain: String = start.get_script().plain(pasted)
+	_check(plain == "tug boat", "(d) pasted spaces searched as plain ones: “%s”" % plain)
+	start.call("open", (_main.get("_store") as ModelStore).list_saved())
+	for _n: int in 30:
+		await process_frame
+	var field: LineEdit = start.find_child("StudioStartSearch", true, false)
+	var asked_before: int = fake.gallery_asked
+	field.text = "x".repeat(140)
+	field.text_submitted.emit(field.text)
+	await _a_while(5)
+	var said: String = str((start.call("page_state") as Dictionary).get("found_title", ""))
+	_check(fake.gallery_asked == asked_before and said.contains("at most 100"),
+		"(d) a search of 140 letters is said to be too long, not cut and sent: “%s”" % said)
+	field.text = ""
+	start.call("close", "probe")
 	start.call("open", (_main.get("_store") as ModelStore).list_saved())
 	for _n: int in 30:
 		await process_frame

@@ -11070,9 +11070,13 @@ func _studio_start_now() -> Control:
 	_studio_start.set("open_saved", func(path: String) -> void:
 		if _store.title == path.get_file().get_basename() and not _store.example:
 			return
+		# Over work not saved, asked first as File › Open asks.
+		if not await _bar.ask_to_replace("“%s”" % path.get_file().get_basename()):
+			return
 		var placed: int = await _bar.open_with_progress(path)
 		if placed >= 0:
-			_bar.opened.emit(placed))
+			_bar.opened.emit(placed)
+			_bar.offer_moved(true, path))
 	_studio_start.set("copy", _start_copy)
 	_studio_start.set("came_wanted", _open_came)
 	_studio_start.set("begin_new", func() -> void: _bar.ask_for_new())
@@ -11123,6 +11127,8 @@ func _open_came(item: Dictionary) -> void:
 		var path: String = Later.script(&"StudioStart").saved_with(id, _store.list_saved())
 		if path.is_empty():
 			Outside.open_link(address)
+			return
+		if not await _bar.ask_to_replace("“%s”" % path.get_file().get_basename()):
 			return
 		var placed: int = await _bar.open_with_progress(path)
 		if placed < 0:
