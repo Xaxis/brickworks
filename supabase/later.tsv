@@ -70,3 +70,5 @@ push.sql	push_on_photo	push_2.sql	query_canceled
 push.sql	push_on_remix	push_2.sql	query_canceled
 push.sql	push_on_settled	push_2.sql	query_canceled
 push_2.sql	push_collect	talk.sql	'talk-' || (w.item->>'thread')
+replies.sql	claim_comment_digest	notification_prefs.sql	notices_told
+talk.sql	push_collect	notification_prefs.sql	notification_kind(r.kind)

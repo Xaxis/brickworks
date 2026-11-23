@@ -126,6 +126,11 @@
 //   POST ?op=notifications_read   (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
 //                                 or {all: true}: read
 //   POST ?op=news                 (session) {news}: Brickworks' news by email or not, off until chosen
+//   GET  ?op=notifications&view=done | &most=5   what was marked done; the newest few for the account menu
+//   POST ?op=notifications_done   (session) {group | all: true, at, undo?}: done up to then (notification_prefs.sql)
+//   POST ?op=notification_mute    (session) {model, on}: that model's notifications stop, or start again
+//   GET  ?op=notification_prefs   (session) each kind here, by push and by email, and the models muted
+//   POST ?op=notification_prefs   (session) {kind, channel, on}: one of those choices
 //   GET  ?op=push[&endpoint=]     whether this deployment pushes, its key, and (session) whether
 //                                 this device is on for the caller (api/_push.js)
 //   POST ?op=push                 (session) {on, endpoint, p256dh, auth, lang}: this device's
@@ -247,7 +252,8 @@ import { chooseNews, newsOf, newsUnsubscribe } from "./_announce.js";
 import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
-import { feedCount, notifications, notificationsRead } from "./_notifications.js";
+import { chooseNotification, feedCount, notificationMute, notificationPrefs, notifications, notificationsDone, notificationsRead }
+  from "./_notifications.js";
 import { DIRECTORY_PAGE, coversOf, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf } from "./_lists.js";
 import {
   ITEMS_PAGE, KEY, MOST_MODELS_IN_A_LIST, OWNED_SIZES, OWNED_SORTS, itemsOf, keep, keeps, listCsv, listItems, listOrder,
@@ -2011,6 +2017,7 @@ async function handler(request, response) {
       if (op === "latest") return await latest(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
       if (op === "notifications") return await notifications(request, response, { origin: "" });
+      if (op === "notification_prefs") return await notificationPrefs(request, response);
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);
@@ -2061,6 +2068,10 @@ async function handler(request, response) {
       if (op === "follow_choice") return await followChoice(request, response);
       if (op === "block") return await setBlock(request, response);
       if (op === "notifications_read") return await notificationsRead(request, response);
+      // Done, mute and what you hear of where (supabase/notification_prefs.sql).
+      if (op === "notifications_done") return await notificationsDone(request, response);
+      if (op === "notification_mute") return await notificationMute(request, response);
+      if (op === "notification_prefs") return await chooseNotification(request, response);
       if (op === "enter") return await enter(request, response);
       if (op === "withdraw") return await withdraw(request, response);
       if (op === "vote") return await vote(request, response);

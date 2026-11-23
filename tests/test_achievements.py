@@ -150,7 +150,8 @@ def test_the_pages_ask_for_levels_and_tell_them() -> None:
     assert people.count("achievementsOf({ about, earned, built, wins, levels })") == 2
     notices = (ROOT / "api/_notifications.js").read_text()
     # Written down before it is counted or listed, so it is told at once.
-    assert 'marked(asker).then(() => call("notification_counts"' in notices
+    assert "const levels = marked(asker);" in notices and 'levels.then(() => call("notification_counts"' in notices
+    assert 'levels.then(() => call("notification_count_kept"' in notices
     assert notices.index("await marked(asker);") < notices.index('call("notification_list"')
     assert 'call("achievement_read"' in notices
     page = (ROOT / "web/notifications.js").read_text()

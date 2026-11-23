@@ -627,6 +627,16 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .pic.award, .notice .pic.challenge, .notice .pic.announce, .notice .pic.talk { display: grid; place-items: center; color: var(--ink-soft); }
 .notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon, .notice .pic.talk .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 .notice .what .words { display: block; margin-top: 2px; white-space: pre-line; }
+/* A group's Done and More (inbox, 2026-11-23): beside its name, at its end;
+   a finger's 44 px on a touch screen. Inbox and Done above the list. */
+.notice .notice-top { display: flex; align-items: flex-start; gap: var(--s-2); }
+.notice .notice-top h2 { flex: 1 1 auto; min-width: 0; }
+.notice .acts { display: flex; flex: none; align-items: center; gap: var(--s-1); margin: -4px -4px 0 0; }
+.notices-view { margin: 0 0 var(--s-3); }
+.notices-head .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
+@media (pointer: coarse) {
+	.notice .acts .icon-btn.small { min-width: 44px; min-height: 44px; }
+}
 @media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
 }

@@ -6,6 +6,9 @@
   comments, photos of builds, remixes, likes as a number a day (never
   who), the end of a challenge you entered. Opening it clears the count on
   your avatar; a group is marked until it is opened, or Mark all read.
+  Done (or Mark all done) moves a group to the Done view and out of the
+  count until something new comes; More › Mute this model stops a model's
+  notifications (supabase/notification_prefs.sql, inbox 2026-11-23).
 
   Signed in with the app's own sign-in in this browser (web/account.js).
   notifications.js puts every word on the page as text. No inline script:
@@ -91,9 +94,12 @@
 			<p class="eyebrow">For you</p>
 			<div class="notices-head">
 				<h1>Notifications</h1>
-				<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
+				<div class="actions">
+					<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
+					<button class="cta ghost small" type="button" id="all-done" hidden>Mark all done</button>
+				</div>
 			</div>
-			<p class="lede">Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter, each level you reach and news from Brickworks.</p>
+			<p class="lede">Comments, photos of builds, remixes and likes on your models, replies to your comments, the challenges you enter, each level you reach and news from Brickworks. <a href="/settings#kinds-part">Choose what you hear of, and where</a>.</p>
 			<nav class="tabs" aria-label="What is new for you">
 				<a href="/notifications" aria-current="page">Notifications <span class="n" data-count="notifications" hidden></span></a>
 				<a href="/feed">Your feed <span class="n" data-count="feed" hidden></span></a>
@@ -120,6 +126,12 @@
 		</div>
 
 		<section id="signed-in" hidden>
+			<!-- The list, or what was marked done (supabase/notification_prefs.sql): Done takes a group
+			     out of the count and keeps it here until something new about it comes. -->
+			<div class="segmented notices-view" role="group" aria-label="Show" id="views" hidden>
+				<button type="button" data-view="inbox" aria-pressed="true">Inbox</button>
+				<button type="button" data-view="done" aria-pressed="false">Done</button>
+			</div>
 			<p class="note" id="not-yet" hidden>Notifications are not open on Brickworks yet.</p>
 			<ol class="notices" id="groups" aria-label="Notifications"></ol>
 			<div class="state" id="empty" hidden>
@@ -128,6 +140,10 @@
 					here, with the model.</p>
 				<p><a href="/profile">Your models</a> · <a href="/gallery">the gallery</a> ·
 					<a href="/challenge">this month’s challenge</a></p>
+			</div>
+			<div class="state" id="empty-done" hidden>
+				<p>Nothing marked done. Done takes a notification out of your count and keeps it here; anything
+					new about it comes back to the inbox.</p>
 			</div>
 			<p class="said" id="said" role="status"></p>
 		</section>

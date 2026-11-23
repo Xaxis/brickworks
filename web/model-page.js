@@ -2370,3 +2370,66 @@ function pickMentions(field, people) {
     event.stopPropagation();
   });
 }
+
+// ---------------------------------------------------------------------------
+// Mute this model (inbox, 2026-11-23; supabase/notification_prefs.sql): in
+// More, signed in, for anybody's model: its comments, replies and mentions
+// on it, photos, remixes, likes and challenge results stop being counted,
+// listed, pushed or emailed, until Unmute (here, or in Settings ›
+// Notifications). What it says is asked the first time More opens.
+function muteItem() {
+  const more = marks && marks.querySelector("#more");
+  const menu = more && more.querySelector(".menu-list");
+  if (!menu || !ID_OK.test(String(id || ""))) return;
+  let asked = null;
+  const drawn = async () => {
+    if (!signedIn()) {
+      menu.querySelector("[data-mute]")?.remove();
+      return;
+    }
+    asked ||= call("/api/people?op=notification_prefs").catch(() => null);
+    const answer = await asked;
+    if (!answer || answer.status !== 200 || answer.body.ready !== true) return;
+    let button = menu.querySelector("[data-mute]");
+    if (!button) {
+      button = document.createElement("button");
+      button.type = "button";
+      button.dataset.mute = "";
+      // Before Takedown requests, the menu's last.
+      const last = menu.querySelector("a[href$='/takedown']");
+      if (last) last.before(button);
+      else menu.append(button);
+      button.addEventListener("click", async () => {
+        const on = button.dataset.mute !== "on";
+        button.disabled = true;
+        const done = await call("/api/people?op=notification_mute", { method: "POST", body: { model: id, on } }).catch(() => null);
+        button.disabled = false;
+        more.open = false;
+        const said = document.querySelector(".marks-said");
+        if (!done || done.status !== 200) {
+          if (said) said.textContent = told(done?.body?.error, say("That did not work just now."));
+          return;
+        }
+        button.dataset.mute = done.body.muted ? "on" : "";
+        button.textContent = done.body.muted ? say("Unmute notifications") : say("Mute notifications");
+        if (said) {
+          said.textContent = done.body.muted
+            ? say("Muted: nothing about this model reaches you until you unmute it, here or in Settings.")
+            : say("Unmuted: you hear of this model again.");
+        }
+        asked = null;
+      });
+    }
+    const muted = (answer.body.muted || []).some((one) => one.model === id);
+    button.dataset.mute = muted ? "on" : "";
+    button.textContent = muted ? say("Unmute notifications") : say("Mute notifications");
+  };
+  more.addEventListener("toggle", () => {
+    if (more.open) drawn().catch(() => null);
+  });
+  addEventListener("brickworks:signed-in-done", () => {
+    asked = null;
+  });
+}
+const ID_OK = /^[A-Za-z0-9]{10}$/;
+muteItem();

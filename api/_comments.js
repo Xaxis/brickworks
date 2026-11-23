@@ -78,6 +78,7 @@ import { Unacceptable, count } from "./_directory.js";
 import { mentionsIn } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
+import { noticeSaid } from "./_notifications.js";
 import { blockedHandles, blockedModels, commentsShown, hiddenComments, refuseFor, rowsWithout, standing, unnameable }
   from "./_blocks.js";
 
@@ -456,23 +457,36 @@ function short(text, most) {
   return line.length > most ? `${line.slice(0, most - 1)}…` : line;
 }
 
-/// The email for a digest ({comments, more, feed, feed_more}): {subject,
-/// text, html}. Each comment's model, where it was said, by whom, its first
-/// words, and a link to it on the model's page; then each row of the feed
-/// of the kinds chosen (follows.sql), in the words the feed says it, with
-/// its link.
+/// The email for a digest ({comments, more, feed, feed_more, notices,
+/// notices_more}): {subject, text, html}. Each comment's model, where it was
+/// said, by whom, its first words, and a link to it on the model's page;
+/// then each row of the feed of the kinds chosen (follows.sql), in the
+/// words the feed says it, with its link; then each notification of the
+/// kinds chosen by email in Settings (notification_prefs.sql: a reply, a
+/// mention, likes, Talk, a challenge, a result, a level), in the words
+/// Notifications says it, with its link.
 export function renderCommentDigest(digest, origin) {
   const comments = Array.isArray(digest?.comments) ? digest.comments : [];
   const feed = (Array.isArray(digest?.feed) ? digest.feed : []).map((row) => feedSaid(row, origin));
+  const notices = (Array.isArray(digest?.notices) ? digest.notices : []).map((row) => {
+    const said = noticeSaid(row, origin);
+    return { kind: row.kind, line: String(said.line || "").replace("{who}", said.who || ""), said: said.said || "",
+      link: said.link, name: short(row.kind === "remix" ? row.of_name : row.name || row.title || "", 80) };
+  });
   const n = comments.length;
   const m = feed.length;
+  const k = notices.length;
   const more = Number(digest?.more) || 0;
   const feedMore = Number(digest?.feed_more) || 0;
-  const things = (k) => (k === 1 ? "something new" : `${k} new things`);
-  const subject = m === 0
-    ? (n === 1 ? "Brickworks: a comment on your model" : `Brickworks: ${n} comments on your models`)
-    : n === 0 ? `Brickworks: ${things(m)} in your feed`
-      : `Brickworks: ${count(n, "comment")} on your models, and ${things(m)} in your feed`;
+  const noticesMore = Number(digest?.notices_more) || 0;
+  const things = (j) => (j === 1 ? "something new" : `${j} new things`);
+  const before = n === 0 && m === 0 ? ""
+    : m === 0 ? (n === 1 ? "Brickworks: a comment on your model" : `Brickworks: ${n} comments on your models`)
+      : n === 0 ? `Brickworks: ${things(m)} in your feed`
+        : `Brickworks: ${count(n, "comment")} on your models, and ${things(m)} in your feed`;
+  const subject = k === 0 ? before
+    : before ? `${before}, and ${k === 1 ? "one more thing" : `${k} more things`} for you`
+      : `Brickworks: ${k === 1 ? "something new" : `${k} new things`} for you`;
   const items = comments.map((one) => ({
     name: short(one.name || "your model", 80),
     where: one.step ? `step ${one.step} of version ${one.version}` : `version ${one.version}`,
@@ -484,7 +498,10 @@ export function renderCommentDigest(digest, origin) {
   const behind = more ? `${more} more wait for tomorrow's email.` : "";
   const feedHead = m === 0 ? "" : "In your feed since the last email:";
   const feedBehind = feedMore ? `${feedMore} more are in your feed: ${origin}/feed` : "";
-  const off = `You asked for these at ${origin}/profile, at most one a day. Turn them off there.`;
+  const noticesHead = k === 0 ? "" : "For you since the last email:";
+  const noticesBehind = noticesMore ? `${noticesMore} more are in your notifications: ${origin}/notifications` : "";
+  const off = `You asked for these at ${origin}/settings#email-part, at most one a day. Turn them off there.`;
+  const told = (one) => `${one.name ? `“${one.name}”: ` : ""}${one.line}${one.said ? `: “${one.said}”` : ""}`;
   const line = (row) => `${row.who} ${row.did} “${row.name}”${row.said ? `: “${row.said}”` : ""}`;
   const text = [...(since ? [since, ""] : []),
     ...items.flatMap((item, at) => [`${at + 1}. “${item.name}”, on ${item.where}, by ${item.by}:`,
@@ -492,7 +509,10 @@ export function renderCommentDigest(digest, origin) {
     ...(behind ? [behind, ""] : []),
     ...(feedHead ? [feedHead, ""] : []),
     ...feed.flatMap((row) => [`- ${line(row)}`, `  ${row.link}`, ""]),
-    ...(feedBehind ? [feedBehind, ""] : []), off].join("\n");
+    ...(feedBehind ? [feedBehind, ""] : []),
+    ...(noticesHead ? [noticesHead, ""] : []),
+    ...notices.flatMap((one) => [`- ${told(one)}`, `  ${one.link}`, ""]),
+    ...(noticesBehind ? [noticesBehind, ""] : []), off].join("\n");
   const html = `<!doctype html>
 <div style="font:15px/1.55 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;color:#14181d;max-width:560px;margin:0 auto;padding:24px 20px">
   <p style="margin:0 0 16px;font-size:14px;color:#5b6472">Brickworks</p>
@@ -510,6 +530,13 @@ export function renderCommentDigest(digest, origin) {
     <p style="margin:0"><a href="${escape(row.link)}">See it</a></p>
   </div>`).join("\n  ")}
   ${feedBehind ? `<p style="margin:0 0 12px">${escape(feedBehind)}</p>` : ""}
+  ${noticesHead ? `<p style="margin:8px 0 12px"><b>${escape(noticesHead)}</b></p>` : ""}
+  ${notices.map((one) => `<div style="margin:0 0 12px;padding:10px 14px;border:1px solid #d9dee5;border-radius:8px" data-kind="${escape(one.kind)}">
+    <p style="margin:0 0 4px">${one.name ? `<b>${escape(one.name)}</b>: ` : ""}${escape(one.line)}</p>
+    ${one.said ? `<p style="margin:0 0 6px">“${escape(one.said)}”</p>` : ""}
+    <p style="margin:0"><a href="${escape(one.link)}">See it</a></p>
+  </div>`).join("\n  ")}
+  ${noticesBehind ? `<p style="margin:0 0 12px">${escape(noticesBehind)}</p>` : ""}
   <p style="margin:0;color:#97a0ae;font-size:13px">${escape(off)}</p>
 </div>`;
   return { subject, text, html };
@@ -527,13 +554,15 @@ export function renderCommentDigest(digest, origin) {
 async function digestShown(digest) {
   const comments = Array.isArray(digest?.comments) ? digest.comments : [];
   const feed = Array.isArray(digest?.feed) ? digest.feed : [];
+  const notices = Array.isArray(digest?.notices) ? digest.notices : [];
   const owner = digest?.owner || null;
   const handles = owner ? await blockedHandles(owner) : new Set();
-  if (!handles.size) return { ...digest, comments, feed };
+  if (!handles.size) return { ...digest, comments, feed, notices };
   const models = [...new Set(comments.map((one) => String(one?.model || "")).filter(Boolean))];
   const hidden = new Set((await Promise.all(models.map((model) => hiddenComments(model, owner)))).flatMap((ids) => [...ids]));
-  const gone = await blockedModels(owner, feed.map((row) => row?.model));
-  return { ...digest, comments: comments.filter((one) => !hidden.has(Number(one?.id))), feed: rowsWithout(feed, handles, gone) };
+  const gone = await blockedModels(owner, [...feed, ...notices].map((row) => row?.model));
+  return { ...digest, comments: comments.filter((one) => !hidden.has(Number(one?.id))), feed: rowsWithout(feed, handles, gone),
+    notices: rowsWithout(notices, handles, gone) };
 }
 
 export async function sendCommentDigests({ origin, owner = null }) {
@@ -548,7 +577,7 @@ export async function sendCommentDigests({ origin, owner = null }) {
     // address is made up, at a domain that takes no mail. Recorded, never sent.
     // Or one whose every line came from somebody its owner blocked since.
     if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))
-      || (!digest.comments.length && !digest.feed.length)) {
+      || (!digest.comments.length && !digest.feed.length && !digest.notices.length)) {
       await finish("dry");
       done.push({ id: digest.digest, owner: digest.owner, state: "dry" });
       continue;

@@ -33,11 +33,12 @@
 // What goes: a new row of the person's notifications (notification_rows,
 // the page's own, so every rule of what is shown holds: nothing hidden,
 // removed, by an account under 13, by somebody they blocked) of the kinds
-// somebody did to them: a comment or a reply, a mention, a photo of a
-// build of their model, a remix, a challenge's result. Not a like (a count
-// a day on the page), a level reached, a challenge opening or the owner's
-// announcements: those wait for the page (the inbox unit gives each kind
-// its own choice). Each row once (push_sent), only rows newer than the
+// they chose to be pushed in Settings › Notifications (inbox,
+// supabase/notification_prefs.sql): by default a reply and a mention, and
+// any of the eleven once chosen, a like a model a day; nothing of a model
+// they muted. Before that file, the kinds somebody did to them: a comment
+// or a reply, a mention, a photo of a build of their model, a remix, a
+// challenge's result. Each row once (push_sent), only rows newer than the
 // device's turning on, and none older than half an hour.
 //
 // When: the database marks the person due as the row is written (push.sql's
@@ -68,8 +69,11 @@ import { noticeSaid } from "./_notifications.js";
 import { blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 import { say } from "./_card.js";
 
-/// The kinds of notification that are pushed (Talk's since talk.sql).
-export const KINDS = ["comment", "reply", "mention", "photo", "remix", "result", "talk_reply", "talk_mention"];
+/// The kinds of notification that may be pushed (Talk's since talk.sql;
+/// the rest since notification_prefs.sql, which picks the ones chosen).
+export const KINDS = ["comment", "reply", "mention", "photo", "remix", "result", "talk_reply", "talk_mention", "likes",
+  "achievement", "challenge_open", "challenge_closing", "challenge_won", "announcement"];
+const CHALLENGES = new Set(["challenge_open", "challenge_closing", "challenge_won"]);
 const TALK = new Set(["talk_reply", "talk_mention"]);
 /// Who a push says it is from: the site, never an email address.
 const SUBJECT = "https://brickworks.diy";
@@ -225,12 +229,16 @@ export function pushSaid(row, lang = "en", origin = "https://brickworks.diy", mo
     const line = String(said.line || "").replace("{who}", said.who || "");
     // A thread of Talk is named as Notifications names it, one push a thread.
     const thread = TALK.has(row.kind) ? Number(row.thread) || 0 : 0;
-    const name = String((row.kind === "remix" ? row.of_name : thread ? say("Talk: {title}", { title: row.title || "" }) : row.name)
+    // A challenge, an announcement and a level are named as their groups are.
+    const name = String((row.kind === "remix" ? row.of_name : thread ? say("Talk: {title}", { title: row.title || "" })
+      : CHALLENGES.has(row.kind) ? say("Challenge: {title}", { title: row.title || "" })
+        : row.kind === "announcement" ? row.title : row.kind === "achievement" ? say("Your achievements") : row.name)
       || "Brickworks").slice(0, 80);
     const model = String(row.kind === "remix" ? row.of || row.model || "" : row.model || "");
     const others = more > 0 ? say("{n} more on its page", { n: more }) : "";
+    const challenge = CHALLENGES.has(row.kind) ? Number(row.challenge) || 0 : 0;
     return { title: name, body: [line, said.said, others].filter(Boolean).join("\n").slice(0, 600), url: said.link,
-      tag: model ? `model-${model}` : thread ? `talk-${thread}` : `kind-${row.kind}` };
+      tag: model ? `model-${model}` : thread ? `talk-${thread}` : challenge ? `challenge-${challenge}` : `kind-${row.kind}` };
   });
 }
 
