@@ -96,7 +96,7 @@ func _restep(path: String, into: String) -> void:
 	var now: Dictionary = first
 	var left: Dictionary = {}           # line -> why it stays where it was
 	var passes: int = 0
-	while passes < 200:
+	while passes < 60:
 		var moving: Dictionary = {}
 		for float_at: Array in now["floats"]:
 			var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
@@ -271,7 +271,7 @@ func _line_of(measured: Dictionary, number: int, id: int, file: Restepped) -> Ar
 			continue
 		var section: String = entry[0]
 		var depth: int = 0 if section.is_empty() else section.split("/").size()
-		var line: int = _at_depth(measured, id, depth)
+		var line: int = _at_depth(measured, id, depth, file)
 		if line < 0 or not file.block.has(line):
 			return [-1, -1]
 		var now: int = int(file.block[line])
@@ -280,7 +280,7 @@ func _line_of(measured: Dictionary, number: int, id: int, file: Restepped) -> Ar
 			for other: Variant in (measured["near"] as Dictionary).get(part, {}):
 				if thing.has(int(other)):
 					continue
-				var held_by: int = _at_depth(measured, int(other), depth)
+				var held_by: int = _at_depth(measured, int(other), depth, file)
 				if held_by < 0 or not file.block.has(held_by) \
 						or file.section_of[held_by] != file.section_of[line]:
 					continue
@@ -291,10 +291,14 @@ func _line_of(measured: Dictionary, number: int, id: int, file: Restepped) -> Ar
 	return [-1, -1]
 
 
-## The line of [param id]'s placing at [param depth] (0 the model's own).
-static func _at_depth(measured: Dictionary, id: int, depth: int) -> int:
+## The line of [param id]'s placing at [param depth] (0 the model's own),
+## as the file has it. Up to dd713c90e the written text's line was taken for
+## the file's, and from the second pass on the wrong lines moved.
+## Read off the text measured, which [param file] last wrote: the file's line.
+static func _at_depth(measured: Dictionary, id: int, depth: int, file: Restepped) -> int:
 	var lines: PackedStringArray = str(measured["origin"].get(id, "")).split("/")
-	return int(lines[depth]) if depth < lines.size() and not lines[depth].is_empty() else -1
+	return file.of_written(int(lines[depth])) if depth < lines.size() and not lines[depth].is_empty() \
+		else -1
 
 
 static func _origins(step: Instructions.Step, origin_of: Callable) -> Array:
@@ -349,9 +353,14 @@ class Restepped extends RefCounted:
 	var was: Dictionary = {}            ## part line -> the file's
 	var blocks: PackedInt32Array = PackedInt32Array()  ## section -> its file's steps
 	var names: PackedStringArray = PackedStringArray()
+	## Each line of the text last written -> the file's line it is, -1 for a
+	## STEP line it made: what a measure of that text reads its lines by.
+	var written: PackedInt32Array = PackedInt32Array()
 
 	func _init(text: String) -> void:
 		lines = text.split("\n")
+		for n: int in lines.size():
+			written.append(n)
 		var section: int = -1
 		var at: int = 0
 		for n: int in lines.size():
@@ -368,6 +377,10 @@ class Restepped extends RefCounted:
 			elif line.begins_with("1 "):
 				block[n] = at
 				was[n] = at
+
+	## The file's line that line [param n] of the text last written is.
+	func of_written(n: int) -> int:
+		return written[n] if n >= 0 and n < written.size() else -1
 
 	func section_name(line: int) -> String:
 		return names[section_of[line]]
@@ -402,18 +415,25 @@ class Restepped extends RefCounted:
 			and block.has(n + 1)
 
 	func text() -> String:
-		var out := PackedStringArray()
+		var order: Array = []
 		var n: int = 0
 		while n < lines.size():
 			var section: int = section_of[n]
 			var end: int = n
 			while end < lines.size() and section_of[end] == section:
 				end += 1
-			out.append_array(_section(n, end))
+			order.append_array(_section(n, end))
 			n = end
+		var out := PackedStringArray()
+		written = PackedInt32Array()
+		for at: int in order:
+			out.append(lines[at] if at >= 0 else "0 STEP")
+			written.append(at)
 		return "\n".join(out)
 
-	func _section(from: int, to: int) -> PackedStringArray:
+	## The file's lines of the section from [param from] to [param to] in the
+	## order they are written, -1 for a STEP line made.
+	func _section(from: int, to: int) -> Array:
 		# Its last lines: those after its last part or STEP line, as they are.
 		var tail: int = to
 		while tail > from and not lines[tail - 1].strip_edges().begins_with("1 ") \
@@ -436,31 +456,31 @@ class Restepped extends RefCounted:
 			var line: String = lines[n].strip_edges()
 			if line == "0 STEP":
 				at += 1
-				steps_at.append(lines[n])
+				steps_at.append(n)
 				continue
 			if block.has(n):
 				parts_in[int(block[n])] += 1
 				if int(block[n]) == at:
-					(kept[at] as Array).append(lines[n])
+					(kept[at] as Array).append(n)
 				else:
 					if n > from and _attached(n - 1):
-						(moved_in[int(block[n])] as Array).append(lines[n - 1])
-					(moved_in[int(block[n])] as Array).append(lines[n])
+						(moved_in[int(block[n])] as Array).append(n - 1)
+					(moved_in[int(block[n])] as Array).append(n)
 				continue
 			if _attached(n) and int(block[n + 1]) != at:
 				continue
-			(kept[at] as Array).append(lines[n])
-		var out := PackedStringArray()
+			(kept[at] as Array).append(n)
+		var out: Array = []
 		var any_before: bool = false
 		for b: int in count:
 			var has_parts: bool = int(parts_in[b]) > 0
 			if b > 0 and has_parts and any_before:
-				out.append(steps_at[b - 1] if b - 1 < steps_at.size() else "0 STEP")
-			out.append_array(PackedStringArray(moved_in[b]))
-			out.append_array(PackedStringArray(kept[b]))
+				out.append(steps_at[b - 1] if b - 1 < steps_at.size() else -1)
+			out.append_array(moved_in[b])
+			out.append_array(kept[b])
 			any_before = any_before or has_parts
 		for n: int in range(tail, to):
-			out.append(lines[n])
+			out.append(n)
 		return out
 
 	## The lines of [param after] that are not [param before]'s in the same
