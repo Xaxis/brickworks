@@ -346,7 +346,9 @@ const modelPicture = (model) => {
 };
 
 /// One row of a list of threads: its title (a link), its board, pinned and
-/// locked, its first words, who started it, its replies and its last word.
+/// locked, its first words, who started it, its replies and its last word,
+/// and Reply, which opens the composer in the row (web/talk.js, web/composer.js;
+/// the thread's own box without a script), on a thread that takes replies.
 export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const at = langAt();
   const pills = [
@@ -366,8 +368,10 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
     + `${pills ? `<p class="pills">${pills}</p>` : ""}`
     + `${thread.said ? `<p class="row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
     + `<p class="row-meta talk-row-meta">${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}`
-    + ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
-    + `${last}${replies ? ` ${timeHtml(thread.last_at, now)}` : ""}</p></div></li>`;
+    + ` · <span class="talk-replies" data-replies="${replies}">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
+    + `${last}${replies ? ` ${timeHtml(thread.last_at, now)}` : ""}`
+    + `${thread.locked ? "" : ` · <a class="talk-row-reply" href="${at}${threadPath(thread)}#reply" data-reply-thread="${Number(thread.id)}"`
+      + ` aria-expanded="false" aria-label="${asText(say("Reply to {name}", { name: thread.title }))}">${asText(say("Reply"))}</a>`}</p></div></li>`;
 }
 
 /// The cards under a post, for what it links ([embeds], embedsIn), each

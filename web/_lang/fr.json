@@ -3567,6 +3567,12 @@
   "Stop saying it was made with Brickify": "Ne plus dire qu’il a été fait avec Brickify",
   "Its page now says it was made with the assistant.": "Sa page dit maintenant qu’il a été fait avec l’assistant.",
   "Its page now says it was made with Brickify.": "Sa page dit maintenant qu’il a été fait avec Brickify.",
-  "Its page no longer says how it was made.": "Sa page ne dit plus comment il a été fait."
+  "Its page no longer says how it was made.": "Sa page ne dit plus comment il a été fait.",
+  "{keys} posts": "{keys} pour publier",
+  "Post": "Publier",
+  "Not posted: your words are still here.": "Non publié : votre texte est toujours là.",
+  "Show fewer": "Afficher moins",
+  "Replies": "Réponses",
+  "Posted, on step {n}.": "Publié, sur l’étape {n}."
  }
 }
