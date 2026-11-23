@@ -450,12 +450,11 @@ func _take(shot: Dictionary) -> void:
 
 ## A phone draws at a browser's scale (Main.screen_factor, web), where a
 ## desktop window draws its layout half as big, which no phone does: held
-## there, with the phone layout's own look at the window's density stopped
-## (open_menu_reach_probe).
+## there by the phone layout (PhoneShell.holds_scale, open_menu_reach_probe).
 func _hold_phone_scale() -> void:
 	var layout: Variant = _main.get("_phone")
 	if layout is Node:
-		(layout as Node).set_process(false)
+		(layout as Node).set("holds_scale", true)
 	else:
 		_failed.append("the phone's layout was asked for and is not in the window")
 	for link: Dictionary in root.size_changed.get_connections():

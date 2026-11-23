@@ -28,13 +28,19 @@
 ##      second came down, the part back where it was and the selection as it
 ##      was; a pinch whose first finger stays still on the ground lets go of
 ##      nothing; and one finger dragged on a part still carries it (pre261
-##      carried the part off with the first finger and selected it);
+##      carried the part off with the first finger and selected it); after a
+##      two-finger turn a tap on a part selects it, and after a pinch a finger
+##      held still on a part opens its actions (phonedrag);
 ##   6. on a phone's and a tablet's layout (TouchSizing), a dialog freed
 ##      while it was open leaves the next dialog laid out for a finger and its
 ##      field the one typed in (pre261 raised a script error over the freed
 ##      one and laid out nothing after it).
-## Every gesture leaves the model as it was. Pictures before and after the
-## turn in shots/twist/. Exits non-zero when a check fails.
+## Every gesture leaves the model as it was, and the window stays at the
+## scale the check set from start to end: a browser's, on a phone (phonedrag:
+## held by stopping the phone's layout, it went back to the desktop's at the
+## first line the layout said, and section 5's points fell on the foot row's
+## More). Pictures before and after the turn in shots/twist/. Exits non-zero
+## when a check fails.
 extends SceneTree
 
 const SHOTS := "res://shots/twist/"
@@ -99,7 +105,7 @@ func _run() -> void:
 		(playback as BuildPlayback).stop()
 	# A phone draws at a browser's scale, as open_menu_reach_probe holds it.
 	if _layout == "phone":
-		(_main.get("_phone") as Node).set_process(false)
+		(_main.get("_phone") as Node).set("holds_scale", true)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":
@@ -108,6 +114,7 @@ func _run() -> void:
 		root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
 			ShellPrefs.interface_size(), true)
 	await _frames(20)
+	var units: Vector2 = root.get_visible_rect().size
 	(_main.get("_store") as ModelStore).keeps = false
 	_camera = _main.get("_camera")
 	_world = _main.get("_world")
@@ -139,6 +146,9 @@ func _run() -> void:
 	await _on_a_part()
 	print("\n6. a dialog freed while it was open, then the next")
 	await _after_a_freed_dialog()
+	var now: Vector2 = root.get_visible_rect().size
+	_check("the window kept the scale the check set (%d x %d units, %d x %d at the start)"
+		% [roundi(now.x), roundi(now.y), roundi(units.x), roundi(units.y)], now.is_equal_approx(units))
 
 	print("\ntwist_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
@@ -346,7 +356,8 @@ func _on_a_part() -> void:
 	_builder.select_brick(kept, false)
 	var chosen: Array = _parts()
 	var ground: Vector2 = middle + Vector2(0.0, _reach())
-	_check("...the ground there has no part on it", _verbs.brick_at(ground) == 0)
+	_check("...the ground there has no part on it, nor a bar over it", _verbs.brick_at(ground) == 0
+		and not bool(_main.call("_over_panel_at", ground)))
 	var spread_from: Callable = func(t: float) -> Array:
 		return [ground, ground + Vector2(near * lerpf(1.0, 3.0, t), 0.0)]
 	await _two(spread_from)
@@ -363,6 +374,56 @@ func _on_a_part() -> void:
 	print("  measure one_finger %s" % _moved(before))
 	_check("one finger dragged 60 units on a part still carries it (%s)" % _moved(before),
 		_moved_count(before) > 0)
+
+	# A two-finger turn, then a tap on a part: it is selected, as a tap is.
+	await _fresh_model()
+	await _go_home()
+	await _two(_turning(middle, near, 90.0))
+	await _go_home()
+	# A person's pause after the turn: the click the turn's own lift raises
+	# is let go of for SWALLOW_MS, by the clock.
+	var lifted: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - lifted < CadCamera.SWALLOW_MS + 50:
+		await process_frame
+	before = _parts()
+	var tapped: int = _verbs.brick_at(first)
+	_touch(0, first, true)
+	await process_frame
+	_touch(0, first, false)
+	await _settle()
+	print("  measure tap_after_turn %s" % _moved(before))
+	_check("a turn, then a tap on a part selects it (%s), the model as it was"
+		% _moved(before), tapped != 0 and _builder.selection.keys() == [tapped]
+		and _moved_count(before) == 0)
+	_builder.clear_selection()
+
+	# A pinch, then a finger held still on a part: its actions, as a hold is
+	# (a phone's and a tablet's layout; the desktop's has a right button).
+	var held: Timer = _main.get("_phone_hold")
+	if held == null:
+		print("  (the desktop's layout: a part's actions are its right click, no hold)")
+		return
+	await _fresh_model()
+	await _go_home()
+	await _two(_turning(middle, near, 0.0, 3.0))
+	await _go_home()
+	before = _parts()
+	var shell: Node = _main.get("_phone")
+	var actions: Node = shell.get("_context")
+	_touch(0, first, true)
+	var since: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - since < roundi(held.wait_time * 1000.0) + 300:
+		await process_frame
+	var opened: bool = bool(actions.call("is_open"))
+	_touch(0, first, false)
+	await _settle()
+	print("  measure hold_after_pinch %s %s" % [opened, _moved(before)])
+	_check("a pinch, then a finger held still on a part opens its actions (%s), the model as it was"
+		% ("open" if opened else "not open"), opened and _moved_count(before) == 0)
+	if bool(actions.call("is_open")):
+		actions.call("close")
+	_builder.clear_selection()
+	await _frames(4)
 
 
 ## How many parts are not where [param before] had them, and how many are
