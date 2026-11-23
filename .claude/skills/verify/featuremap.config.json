@@ -5865,6 +5865,13 @@
     },
     {
       "kind": "ui",
+      "label": "the steps bar on a phone",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "a browser at 390 x 844 (or a probe with Phone._on = 1, Phone._wide = false): a shared model's link, or Build › Timeline: one row of Back, Step n of N, Next, Parts and More, each a fingertip; the step's number opens Go to a step (every step a chip); a thumb swiped along the bar is Next or Back; Parts shows the step's parts as pictures with their counts; More holds Play, Start, End, the order, Find, Instructions, Done and the Booklet row; the steps opened again come back to the step left (ux15_phone_probe p15 and p18)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "find a step by what it places",
       "entry": "src/ui/steps_bar.gd",
       "reach": "godot --path .  (B opens the timeline; a part's number, name or colour typed in its find, \"red 3024\": every step that places one listed, with how many, and marked along the top of the row of steps; a click on one, Enter or Shift+Enter goes there, as Next goes to a step; Escape clears; on a phone or a tablet Find… opens it in a sheet above the keyboard; edit_steps {\"find\": \"red 3024\"} over MCP)",

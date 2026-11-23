@@ -483,9 +483,9 @@ func _review_cases() -> void:
 ## F5 laid out for a finger: a phone's, at a browser's scale, or a tablet's.
 func _by_finger() -> void:
 	# A phone draws at a browser's scale (Main.screen_factor, web), held there
-	# with the phone's layout's own look at it stopped (open_menu_reach_probe).
+	# by the phone's layout (PhoneShell.holds_scale, open_menu_reach_probe).
 	if not Phone.wide() and not OS.has_feature("web"):
-		(_main.get("_phone") as Node).set_process(false)
+		(_main.get("_phone") as Node).set("holds_scale", true)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":

@@ -210,7 +210,7 @@ const builds = async (id) => (await api(null, `/api/share?id=${id}`, null, "GET"
 async function toLastStep(page, id) {
   await page.goto(`${site}/app?view=${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the viewer", 600);
-  await until(page, () => Boolean((window.brickworksControls || {}).steps_slider), "the timeline", 180);
+  await until(page, () => Boolean((window.brickworksControls || {}).steps_slider || (window.brickworksControls || {}).steps_next), "the timeline", 180);
   if (!(await build(page)).open) await press(page, "view_build");
   await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player", 60);
   const { last } = await build(page);

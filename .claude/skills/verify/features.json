@@ -8764,6 +8764,14 @@
       ]
     },
     {
+      "id": "ui:the steps bar on a phone",
+      "kind": "ui",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "a browser at 390 x 844 (or a probe with Phone._on = 1, Phone._wide = false): a shared model's link, or Build \u203a Timeline: one row of Back, Step n of N, Next, Parts and More, each a fingertip; the step's number opens Go to a step (every step a chip); a thumb swiped along the bar is Next or Back; Parts shows the step's parts as pictures with their counts; More holds Play, Start, End, the order, Find, Instructions, Done and the Booklet row; the steps opened again come back to the step left (ux15_phone_probe p15 and p18)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:the studio's first screen",
       "kind": "ui",
       "entry": "src/ui/studio_start.gd",
