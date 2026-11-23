@@ -25,7 +25,7 @@
 //   4. /settings, Delete this account: the address typed, Delete my account
 //      asks; Cancel sends nothing, the focus back on Delete my account; in
 //      German at /de/settings its words are German.
-//   5. /profile, a collection's Delete: Escape sends nothing, the focus back
+//   5. /profile, a list's Delete: Escape sends nothing, the focus back
 //      on Delete.
 //   6. A model's page, Block on a comment's row (web/block.js): Enter on
 //      Cancel sends nothing, the focus back on Block once it is let go;
@@ -259,20 +259,20 @@ const JOURNEYS = {
     await context.close();
   },
 
-  // 5. Your profile: Delete a collection.
+  // 5. Your profile: Delete a list.
   async profile(browser, { theme, width }) {
     if (width !== 1280 || theme !== "light") return;
-    const label = `/profile collections ${width} ${theme}`;
+    const label = `/profile lists ${width} ${theme}`;
     const { context, page, posts, natives, errors } = await visit(browser, "/profile?tab=saved", { width, theme });
     const drop = page.locator("#lists button", { hasText: "Delete" }).first();
     if (!(await drop.waitFor({ timeout: 30000 }).then(() => true, () => false))) {
-      check(false, `${label}: a collection's Delete to press`);
+      check(false, `${label}: a list's Delete to press`);
       await context.close();
       return;
     }
     const name = await page.locator("#lists input:not([type=checkbox])").first().inputValue();
     await drop.click();
-    await judgeAsk(page, label, { title: `Delete the collection "${name}"?`, body: "The models in it are not touched.", start: "no",
+    await judgeAsk(page, label, { title: `Delete the list "${name}"?`, body: "The models in it are not touched.", start: "no",
       style: "danger" });
     await page.keyboard.press("Escape");
     check(await gone(page), `${label}: Escape closes it`);
