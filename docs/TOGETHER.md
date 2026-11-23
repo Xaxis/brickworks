@@ -371,7 +371,8 @@ a click. Here:
 ## Watching: building now (buildlive, 2026-11-23)
 
 The designer opens a session to watchers from the studio: **Open to
-watchers** in File › Build together… (`Together.open_to_watchers`,
+watchers**, at the far end of End the session's row in File › Build
+together… (`Together.open_to_watchers`,
 `op=watch_open {s, model}`). The session gets a second name, `watch`, 12
 letters and digits, which is public and is not the secret. Its page is
 `/live/<watch>` (`web/live.html`, `web/live.js`). While it is open, and while

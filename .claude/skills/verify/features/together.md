@@ -21,11 +21,12 @@ app, joined by a link (docs/TOGETHER.md).
   to `--together=`) joins once signed in and the first model is down
   (`Main._maybe_join_together`), then shows the panel. Controls for checks:
   `together_start`, `together_join_field`, `together_join`, `together_copy`,
-  `together_end`, `together_remove_N`, `together_close`. The owner's watch box (buildlive): **Open to watchers**
-  (`together_watch_open`, `Together.open_to_watchers`), then the watch
-  page's address with **Copy** (`together_watch_copy`), how many watch
-  (`op=watch_count` every 20 s while the panel is open), **Close to
-  watchers** (`together_watch_close`), and each watcher who asked with
+  `together_end`, `together_remove_N`, `together_close`. The owner's watch controls (buildlive): **Open to watchers**
+  at the far end of End's row (`together_watch_open`,
+  `Together.open_to_watchers`), and once open **Close to watchers** in its
+  place (`together_watch_close`), with a row above of how many watch
+  (`op=watch_count` every 20 s while the panel is open) and **Copy watch
+  link** (`together_watch_copy`), and each watcher who asked with
   **Give a seat** (`together_seat_N`, `Together.give_seat`); none of it for
   a joiner. A watcher's line is in the chat by its `~by` name. Ending a
   watched session emits `watched_ended`, and `Main._keep_watched` shares

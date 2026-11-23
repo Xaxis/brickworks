@@ -58,7 +58,7 @@ Comments are kept in the model's file, so saving, opening and sharing by link ke
 
 ### Open it to watchers {#watch}
 
-**Open to watchers**, under the link, gives the session a page anyone can watch, at `/live/<name>`. **Copy** its address to send it. While you build it is listed first on the home page, under *Building now*, and on your profile. The panel says how many are watching.
+**Open to watchers**, at the end of the row with End the session, gives the session a page anyone can watch, at `/live/<name>`. **Copy watch link** to send it. While you build it is listed first on the home page, under *Building now*, and on your profile. The panel says how many are watching.
 
 ![A build being watched at /live/<name>: Building now over its title and its designer, how many watch with Ask to build and Copy link, the model in 3D as it stands, and the chat beside it with who is building.](/docs/img/live-watch.webp "Watching a build: each part lands as it is put down.")
 
