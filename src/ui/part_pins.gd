@@ -100,6 +100,8 @@ var _seen: Dictionary = {}
 var _panel: PartPinsPanel
 var _told: String = ""
 var _ask_timer: Timer
+## The last answer set_asks was given, as its words, to tell a new one.
+var _asks_said: String = ""
 ## The Talk answers seen this visit, and those lit now, by post.
 var _known_answers: Dictionary = {}
 var _lit_answers: Dictionary = {}
@@ -145,10 +147,18 @@ func forget() -> void:
 ## and told; asked for again every [param seconds] while there is a
 ## question, never for a model with none.
 func set_asks(given: Array, seconds: float, model: String = "") -> void:
-	asks = given.filter(func(one: Variant) -> bool: return one is Dictionary)
-	asks_of = model if not asks.is_empty() else ""
 	if seconds > 0.0:
 		every = seconds
+	# The same answer as last time, as most are: nothing placed or listed
+	# again. Filled again every ask, the list's buttons were freed under a
+	# press on its way (askhelp_probe, 2026-11-23).
+	var said: String = "%s|%s" % [model, JSON.stringify(given)]
+	if said == _asks_said:
+		_poll()
+		return
+	_asks_said = said
+	asks = given.filter(func(one: Variant) -> bool: return one is Dictionary)
+	asks_of = model if not asks.is_empty() else ""
 	_read_done()
 	var fresh: Array = []
 	for one: Dictionary in talk_answers():

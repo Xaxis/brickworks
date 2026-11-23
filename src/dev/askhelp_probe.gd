@@ -52,6 +52,9 @@ var _phone: bool = false
 var _taps: int = 0
 var _placed: Dictionary = {}
 var _part_of_colour: Dictionary = {}
+## Set at the studio's last line: a script error ends a coroutine where it
+## is, and its caller goes on, so a run cut short would read as passed.
+var _reached_end: bool = false
 
 
 class FakeShared extends SharedModels:
@@ -129,6 +132,7 @@ func _run() -> void:
 	var window: Vector2i = DisplayServer.window_get_size()
 	_size = "%dx%d" % [window.x, window.y]
 	await _the_studio()
+	_check(_reached_end, "the run reached its end")
 	_finish()
 
 
@@ -409,6 +413,7 @@ func _the_studio() -> void:
 	_check(not bool(pins.page_state().get("polling", true)) and fake.asks_asked == stopped_at
 		and int(pins.page_state().get("asks", 1)) == 0,
 		"no questions left, it stops asking (%d asks since)" % (fake.asks_asked - stopped_at))
+	_reached_end = true
 	_main.queue_free()
 	for _n: int in 10:
 		await process_frame
